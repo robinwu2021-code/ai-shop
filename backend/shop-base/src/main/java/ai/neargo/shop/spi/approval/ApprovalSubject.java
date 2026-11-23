@@ -64,11 +64,21 @@ public interface ApprovalSubject {
     /** 送审快照：标题、摘要、范围标签、流程条件字段。 */
     Snapshot snapshot(String subjectRef);
 
+    /** 带拟定结果的送审快照：申请内容里要把拟定结果列出来给审批人看。默认忽略拟定结果。 */
+    default Snapshot snapshot(String subjectRef, Map<String, Object> proposal) {
+        return snapshot(subjectRef);
+    }
+
     /**
      * 执行节点触发：让业务生效。<b>必须幂等</b>（OpsKit 回复丢失时会重投同一事件）。
      * 对象已被改过 / 已不在待审态时抛 {@link ApprovalApplyException}（code = {@code STALE} 等）。
      */
     void apply(String subjectRef, long revision);
+
+    /** 带拟定结果生效（送审时冻结的那一份）。默认忽略拟定结果。 */
+    default void apply(String subjectRef, long revision, Map<String, Object> proposal) {
+        apply(subjectRef, revision);
+    }
 
     /** 审批未通过（驳回 / 撤回 / 放弃）：业务回到可编辑状态。对象已变化时直接忽略。 */
     void onClosed(String subjectRef, long revision, Outcome outcome, String reason);

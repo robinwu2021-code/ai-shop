@@ -11,6 +11,8 @@ import ai.neargo.shop.event.outbox.RetryableOutboxException;
 import ai.neargo.shop.spi.approval.ApprovalSubmitRequested;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import tools.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
@@ -25,6 +27,9 @@ public class OpsKitSubmitConsumer implements OutboxConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(OpsKitSubmitConsumer.class);
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final TypeReference<Map<String, Object>> MAP = new TypeReference<>() { };
+    /** 拟定结果在 OpsKit 实例字段里的键；执行节点从这里取回（ActionContext.fields）。 */
+    public static final String PROPOSAL_FIELD = "proposal";
 
     private final ApprovalClient client;
     private final ApprovalSubjects subjects;
@@ -67,9 +72,13 @@ public class OpsKitSubmitConsumer implements OutboxConsumer {
             log.error("[opskit] {} {} 未启用审批，送审丢弃", type, ref);
             return;
         }
-        var snap = subject.snapshot(ref);
+        Map<String, Object> proposal = row.proposal() == null ? null : JSON.readValue(row.proposal(), MAP);
+        var snap = proposal == null ? subject.snapshot(ref) : subject.snapshot(ref, proposal);
         var fields = new LinkedHashMap<String, Object>(snap.fields());
         fields.put("revision", revision);
+        if (proposal != null) {
+            fields.put(PROPOSAL_FIELD, proposal);
+        }
         Submit submit = Submit.of(subject.processCode(), type, ref, snap.title(), OnBehalfOf.of(row.submittedBy(), row.submittedName()))
                 .withSummary(snap.summary()).withFields(fields).withScopes(snap.scopes()).withFacts(facts(snap));
         try {

@@ -19,7 +19,7 @@ public class ApprovalLinkStore {
     public static final String SUBMIT_FAILED = "SUBMIT_FAILED";
 
     private static final String COLS =
-            "subject_type,subject_ref,revision,process_code,approval_no,instance_no,status,reason,submitted_by,submitted_name";
+            "subject_type,subject_ref,revision,process_code,approval_no,instance_no,status,reason,submitted_by,submitted_name,proposal";
 
     private final JdbcTemplate db;
 
@@ -30,10 +30,16 @@ public class ApprovalLinkStore {
     /** 唯一键冲突 = 同一修订已经送过审，幂等返回 false。 */
     public boolean insertIfAbsent(String subjectType, String subjectRef, long revision, String processCode,
                                   String submittedBy, String submittedName) {
+        return insertIfAbsent(subjectType, subjectRef, revision, processCode, submittedBy, submittedName, null);
+    }
+
+    /** @param proposal 拟定结果的 JSON，可空 */
+    public boolean insertIfAbsent(String subjectType, String subjectRef, long revision, String processCode,
+                                  String submittedBy, String submittedName, String proposal) {
         try {
-            return db.update("INSERT INTO approval_link(subject_type,subject_ref,revision,process_code,status,submitted_by,submitted_name,created_at,updated_at)"
-                            + " VALUES(?,?,?,?,?,?,?,NOW(),NOW())",
-                    subjectType, subjectRef, revision, processCode, PENDING_SUBMIT, submittedBy, submittedName) == 1;
+            return db.update("INSERT INTO approval_link(subject_type,subject_ref,revision,process_code,status,submitted_by,submitted_name,proposal,created_at,updated_at)"
+                            + " VALUES(?,?,?,?,?,?,?,?,NOW(),NOW())",
+                    subjectType, subjectRef, revision, processCode, PENDING_SUBMIT, submittedBy, submittedName, proposal) == 1;
         } catch (DuplicateKeyException e) {
             return false;
         }
@@ -92,11 +98,11 @@ public class ApprovalLinkStore {
 
     private static Row row(ResultSet r, int i) throws SQLException {
         return new Row(r.getString(1), r.getString(2), r.getLong(3), r.getString(4), r.getString(5), r.getString(6),
-                r.getString(7), r.getString(8), r.getString(9), r.getString(10));
+                r.getString(7), r.getString(8), r.getString(9), r.getString(10), r.getString(11));
     }
 
     public record Row(String subjectType, String subjectRef, long revision, String processCode, String approvalNo,
-                      String instanceNo, String status, String reason, String submittedBy, String submittedName) {
+                      String instanceNo, String status, String reason, String submittedBy, String submittedName, String proposal) {
         public Link toLink() {
             return new Link(subjectType, subjectRef, revision, processCode, approvalNo, instanceNo, status, reason);
         }

@@ -22,6 +22,13 @@ public interface ApprovalPort {
      */
     void submit(String subjectType, String subjectRef, long revision, Submitter submitter);
 
+    /**
+     * 带拟定结果送审（方案-第一批审批工作流 Q7）：审批人要在审批时决定的数据（退款金额、核定实收、服务范围…）
+     * 先在业务页填好，随送审冻结；审批只做同意 / 不同意，生效时 {@link ApprovalSubject#apply(String, long, java.util.Map)} 按它执行。
+     * 拟定结果要改，就以新修订号重新送审。
+     */
+    void submit(String subjectType, String subjectRef, long revision, Submitter submitter, java.util.Map<String, Object> proposal);
+
     /** 该业务对象最近一次送审的关联记录。 */
     Optional<Link> latest(String subjectType, String subjectRef);
 

@@ -9,12 +9,16 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.Optional;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /** {@link ApprovalPort} 的 OpsKit 实现：送审 = 同事务写 approval_link + 发件箱（事件号由关联键派生，重复送审幂等）。 */
 public class OpsKitApprovalPort implements ApprovalPort {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final ApprovalSubjects subjects;
     private final ApprovalLinkStore links;
@@ -34,9 +38,16 @@ public class OpsKitApprovalPort implements ApprovalPort {
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void submit(String subjectType, String subjectRef, long revision, Submitter submitter) {
+        submit(subjectType, subjectRef, revision, submitter, null);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void submit(String subjectType, String subjectRef, long revision, Submitter submitter, Map<String, Object> proposal) {
         var subject = subjects.find(subjectType)
                 .orElseThrow(() -> new IllegalStateException("业务未启用审批：" + subjectType));
-        if (links.insertIfAbsent(subjectType, subjectRef, revision, subject.processCode(), submitter.staffNo(), submitter.displayName())) {
+        String json = proposal == null || proposal.isEmpty() ? null : JSON.writeValueAsString(new java.util.TreeMap<>(proposal));
+        if (links.insertIfAbsent(subjectType, subjectRef, revision, subject.processCode(), submitter.staffNo(), submitter.displayName(), json)) {
             outbox.publish(eventNo(subjectType, subjectRef, revision), new ApprovalSubmitRequested(subjectType, subjectRef, revision));
         }
     }

@@ -160,6 +160,15 @@ public interface OpsService {
                     List<String> grantCodes);
 
     /**
+     * 入驻审批通过后的生效（OpsKit 执行节点调用；方案-第一批审批工作流 T10）。
+     * 启用审批后，{@link #auditApply} 的「通过」只把拟定的服务范围 / 社区 / 授权码送审，审批通过才走到这里真正建主体。
+     *
+     * @param revision 送审时申请单的版本；对不上（申请单在审批期间变了）抛 {@code ApprovalApplyException(STALE)}
+     */
+    MerchantApplyVO applyApprovedEntry(String applyNo, long revision, String reason,
+                    String serviceScope, List<String> communityNos, List<String> grantCodes);
+
+    /**
      * 受理申请：PENDING → REVIEWING。
      *
      * <p>这一步<b>不改变审核结果，只改变商家的体感</b>：提交后一直显示「待审核」，

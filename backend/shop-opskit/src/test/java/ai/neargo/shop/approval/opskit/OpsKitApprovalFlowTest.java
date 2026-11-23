@@ -90,6 +90,16 @@ class OpsKitApprovalFlowTest {
     }
 
     @Test
+    void proposalFrozenAtSubmitReachesApply() {
+        subject.version.set(7);
+        String body = "{\"instanceNo\":\"PI1\",\"processCode\":\"shop_store_opening\",\"subject\":{\"type\":\"shop.store_opening\",\"ref\":\"S1\"},"
+                + "\"action\":\"shop.store_opening.apply\",\"token\":\"okc_t1\",\"gateEpoch\":1,"
+                + "\"fields\":{\"revision\":7,\"proposal\":{\"cashAmount\":1200,\"restoreCredit\":true}}}";
+        send("instance.awaiting_confirmation", "PI1:1", body);
+        assertThat(subject.proposals).containsExactly(Map.of("cashAmount", 1200, "restoreCredit", true));
+    }
+
+    @Test
     void redeliveryOfTheSameEventIsIgnoredByTheLedger() {
         subject.version.set(7);
         send("instance.awaiting_confirmation", "PI1:1", awaiting(7));
@@ -117,7 +127,7 @@ class OpsKitApprovalFlowTest {
 
     @Test
     void rejectionClosesTheLinkAndReturnsTheBusinessToEditable() {
-        var row = new ApprovalLinkStore.Row(TYPE, "S1", 7, "shop_store_opening", "AP1", "PI1", "PENDING", null, "E107", "Ali");
+        var row = new ApprovalLinkStore.Row(TYPE, "S1", 7, "shop_store_opening", "AP1", "PI1", "PENDING", null, "E107", "Ali", null);
         when(links.forInstance("PI1", TYPE, "S1")).thenReturn(Optional.of(row));
         when(links.close(eq(TYPE), eq("S1"), eq(7L), eq("PI1"), eq("REJECTED"), any())).thenReturn(true);
         send("instance.transitioned", "PI1:4", "{\"instanceNo\":\"PI1\",\"processCode\":\"shop_store_opening\","
@@ -128,7 +138,7 @@ class OpsKitApprovalFlowTest {
 
     @Test
     void repeatedFinishDoesNotCloseTwice() {
-        var row = new ApprovalLinkStore.Row(TYPE, "S1", 7, "shop_store_opening", "AP1", "PI1", "APPLIED", null, "E107", "Ali");
+        var row = new ApprovalLinkStore.Row(TYPE, "S1", 7, "shop_store_opening", "AP1", "PI1", "APPLIED", null, "E107", "Ali", null);
         when(links.forInstance(anyString(), anyString(), anyString())).thenReturn(Optional.of(row));
         when(links.close(anyString(), anyString(), anyLong(), anyString(), anyString(), any())).thenReturn(false);
         send("instance.transitioned", "PI1:5", "{\"instanceNo\":\"PI1\",\"subject\":{\"type\":\"shop.store_opening\",\"ref\":\"S1\"},"
@@ -141,7 +151,7 @@ class OpsKitApprovalFlowTest {
     void reconciliationFillsInALostCallbackOnce() {
         var outcomes = new ApprovalOutcomes(new ApprovalSubjects(List.of(subject),
                 new OpsKitProperties(false, "http://x", null, null, null, null, Set.of(TYPE), null)), links);
-        var row = new ApprovalLinkStore.Row(TYPE, "S1", 7, "shop_store_opening", "AP1", "PI1", "PENDING", null, "E107", "Ali");
+        var row = new ApprovalLinkStore.Row(TYPE, "S1", 7, "shop_store_opening", "AP1", "PI1", "PENDING", null, "E107", "Ali", null);
         when(links.forInstance("PI1", TYPE, "S1")).thenReturn(Optional.of(row));
         when(links.close(eq(TYPE), eq("S1"), eq(7L), eq("PI1"), eq("REJECTED"), any())).thenReturn(true, false);
         var rejected = new ai.neargo.opskit.connector.Reconciler.Outcome(ai.neargo.opskit.connector.Reconciler.State.REJECTED,
@@ -246,6 +256,7 @@ class OpsKitApprovalFlowTest {
         final AtomicLong version = new AtomicLong();
         final List<String> applied = new ArrayList<>();
         final List<String> closed = new ArrayList<>();
+        final List<Map<String, Object>> proposals = new ArrayList<>();
 
         @Override public String subjectType() { return TYPE; }
         @Override public String processCode() { return "shop_store_opening"; }
@@ -259,6 +270,12 @@ class OpsKitApprovalFlowTest {
                 throw new ApprovalApplyException(ApprovalApplyException.STALE, "changed");
             }
             applied.add(ref + "@" + revision);
+        }
+
+        @Override
+        public void apply(String ref, long revision, Map<String, Object> proposal) {
+            apply(ref, revision);
+            proposals.add(proposal);
         }
 
         @Override

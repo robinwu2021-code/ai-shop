@@ -13,6 +13,8 @@ CREATE TABLE approval_link (
  submitted_by VARCHAR(64) NOT NULL,
  submitted_name VARCHAR(128) NULL,
  reason VARCHAR(512) NULL,
+ -- 拟定结果（方案-第一批审批工作流 Q7）：审批人在业务页填好的决定内容（如退款金额、核定实收、服务范围），随送审冻结在 OpsKit 字段里，生效时按它执行
+ proposal TEXT NULL,
  created_at DATETIME NOT NULL,
  updated_at DATETIME NOT NULL,
  PRIMARY KEY (id),

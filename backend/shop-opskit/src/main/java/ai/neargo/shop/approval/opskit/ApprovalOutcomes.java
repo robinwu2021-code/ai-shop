@@ -31,7 +31,13 @@ public class ApprovalOutcomes {
             throw new ApprovalActionException(ApprovalApplyException.STALE, "送审字段缺少 revision");
         }
         try {
-            subject.apply(ctx.subjectRef(), n.longValue());
+            Object proposal = ctx.field(OpsKitSubmitConsumer.PROPOSAL_FIELD);
+            if (proposal instanceof Map<?, ?> m) {
+                @SuppressWarnings("unchecked") Map<String, Object> p = (Map<String, Object>) m;
+                subject.apply(ctx.subjectRef(), n.longValue(), p);
+            } else {
+                subject.apply(ctx.subjectRef(), n.longValue());
+            }
         } catch (ApprovalApplyException e) {
             log.warn("[opskit] {} {} 生效失败 {}: {}", ctx.subjectType(), ctx.subjectRef(), e.code(), e.getMessage());
             throw new ApprovalActionException(e.code(), e.getMessage());
