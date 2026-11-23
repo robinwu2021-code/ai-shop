@@ -49,6 +49,19 @@ public interface PayoutAccountService {
      */
     PayoutAccountVO audit(String accountNo, boolean approved, String remark);
 
+    /** 审批类型（T17 · 方案-第二批审批工作流）。启用后商家提交即送审，运营端「审核」改到审批中心。 */
+    String APPROVAL_TYPE = "shop.payout_account";
+
+    /**
+     * 审批中心的执行节点 / 未通过回调：只在账户仍待审、且修订号没变时动手，审核人记为 {@code auditedBy}。
+     * 回调线程没有登录人与数据域，本方法自己绕开数据域。
+     *
+     * @return false = 账户已不在待审或修订号已变（迟到 / 重复回调）
+     */
+    default boolean auditApproved(String accountNo, long revision, boolean approved, String remark, String auditedBy) {
+        throw new UnsupportedOperationException("approval audit unavailable");
+    }
+
     /**
      * 付款用：取这个主体<b>生效中</b>的账户。
      *
