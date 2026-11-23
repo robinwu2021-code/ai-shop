@@ -102,7 +102,10 @@ class ArchitectureTest {
             "beauty",
             // invoice：发票（ivc_*，ADR-063）。与 logistics 同形态 —— 现在内嵌、将来可拆；
             // 行业经 spi.invoice 供数，这里登记后它直接 import 订单实体就当场红
-            "invoice"};
+            "invoice",
+            // approval：审批适配器（approval_link，V690；TDD-OpsKit审批对接）。代码在 shop-opskit 模块、只在 profile opskit 构建，
+            // 不启用时匹配不到类；登记进来是为了启用的那一刻边界规则立即生效
+            "approval"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {

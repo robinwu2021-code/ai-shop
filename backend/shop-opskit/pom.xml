@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-opskit</artifactId>
+    <packaging>jar</packaging>
+    <description>审批适配器：把 spi.approval 接到 OpsKit（TDD-OpsKit审批对接 §1）</description>
+
+    <!--
+      为什么单独成模块、只在 profile opskit 里构建：opskit-approval-client 还没发布到 Nexus（TDD §3 K5），
+      放进常规模块会让 CI 与 pre-push 的后端编译闸门拉不到依赖、整个仓库都推不上去。
+      业务域只依赖 shop-base 里的 spi.approval；不启用本模块时业务照原流程走。
+      发布到 Nexus 后可以并回常规模块列表。
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-store-mybatis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.opskit</groupId>
+            <artifactId>opskit-approval-client</artifactId>
+        </dependency>
+    </dependencies>
+</project>

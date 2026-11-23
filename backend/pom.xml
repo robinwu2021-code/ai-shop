@@ -105,6 +105,8 @@
          那是生成器看不见的一层，2026-09-06 挂上时全 reactor 只有上面那一处，钉住即归零。 -->
     <properties>
         <commerce.version>0.1.0-SNAPSHOT</commerce.version>
+        <!-- OpsKit 审批 client（独立仓库 codeup p2027/opskit）。发布到 Nexus 前需本机从源码 install：mvn -pl approval-client -am install -DskipTests -->
+        <opskit.version>0.1.0-SNAPSHOT</opskit.version>
         <archunit.version>1.3.0</archunit.version>
         <!-- 进销存独立服务的版本线（ADR-046）。迁出仓库后换成 Nexus 上的发布版 -->
         <inventory.version>1.0.0-SNAPSHOT</inventory.version>
@@ -154,6 +156,10 @@
             <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-core</artifactId><version>${commerce.version}</version></dependency>
             <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-persistence</artifactId><version>${commerce.version}</version></dependency>
             <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-spring-boot-starter</artifactId><version>${commerce.version}</version></dependency>
+            <dependency><groupId>ai.neargo.opskit</groupId><artifactId>opskit-approval-client</artifactId><version>${opskit.version}</version></dependency>
+            <dependency><groupId>ai.neargo.opskit</groupId><artifactId>opskit-connector</artifactId><version>${opskit.version}</version></dependency>
+            <dependency><groupId>ai.neargo.opskit</groupId><artifactId>platform-api</artifactId><version>${opskit.version}</version></dependency>
+            <dependency><groupId>ai.neargo.opskit</groupId><artifactId>opskit-commons</artifactId><version>${opskit.version}</version></dependency>
 
             <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId><version>3.0.8</version></dependency>
             <!-- 证明联一维码 / QR（TDD-发票模块 §2.3）：只用 core 编码，不引 javase 的图像依赖 -->
@@ -281,6 +287,11 @@
     </build>
 
     <profiles>
+        <!-- OpsKit 审批适配器（TDD-OpsKit审批对接）。client 发布到 Nexus 前只在本 profile 构建：mvn -P opskit … -->
+        <profile>
+            <id>opskit</id>
+            <modules><module>shop-opskit</module></modules>
+        </profile>
         <profile>
             <id>retail-commerce-embedded</id>
             <modules><module>../backend-plugins/shop-retail-commerce</module></modules>
