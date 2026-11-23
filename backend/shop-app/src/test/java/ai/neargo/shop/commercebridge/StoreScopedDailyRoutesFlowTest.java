@@ -219,6 +219,36 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 发票（/biz/invoices*、/biz/invoice-setup/*）在新模型门店上能进门店（2026-11-23 v2 上全部 70006 STORE_ACCESS）")
+    void invoiceRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020139");
+        // 只看门店准入：权限码与业务错误由控制器判，进到入口之后的 4xx 都算「进去了」
+        for (String[] r : new String[][] {
+                {"GET", "/biz/invoices"}, {"GET", "/biz/invoices/IVC-NO-SUCH"}, {"GET", "/biz/invoices/IVC-NO-SUCH/print-facts"},
+                {"GET", "/biz/invoices/upload-backlog"}, {"GET", "/biz/invoices/buyer-preferences"},
+                {"GET", "/biz/invoice-setup/profile"}, {"GET", "/biz/invoice-setup/providers"},
+                {"GET", "/biz/invoice-setup/ranges"}, {"GET", "/biz/invoice-setup/provider-tracks"},
+                {"POST", "/biz/invoices"}, {"POST", "/biz/invoices/IVC-NO-SUCH/void"},
+                {"POST", "/biz/invoices/IVC-NO-SUCH/revocation"}, {"POST", "/biz/invoices/IVC-NO-SUCH/reissue"},
+                {"POST", "/biz/invoices/IVC-NO-SUCH/allowances"}, {"POST", "/biz/invoices/IVC-NO-SUCH/allowances/ALW-NO-SUCH/void"},
+                {"POST", "/biz/invoices/IVC-NO-SUCH/retransmissions"}, {"POST", "/biz/invoices/IVC-NO-SUCH/provider-checks"},
+                {"PUT", "/biz/invoice-setup/profile"}, {"POST", "/biz/invoice-setup/ranges"},
+                {"POST", "/biz/invoice-setup/provider-verification"}, {"POST", "/biz/invoice-setup/provider-tracks"},
+                {"POST", "/biz/invoice-setup/provider-ranges"}}) {
+            var request = switch (r[0]) {
+                case "GET" -> get(r[1]);
+                case "PUT" -> put(r[1]);
+                default -> post(r[1]);
+            };
+            var response = mvc.perform(request.header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse();
+            String body = response.getContentAsString();
+            assertFalse(body.contains("STORE_ACCESS"), r[0] + " " + r[1] + " → " + body);
+        }
+    }
+
+    @Test
     @DisplayName("★★★ 储值对新模型门店开放（2026-11-19）：门店侧、门店命名空间下、管理空间下的入口都能进；没列出来的储值入口仍然关着")
     void storedValueOpensForNewModelStoresButUnlistedStaysClosed() throws Exception {
         String[] o = newModelOwner("15965020132");

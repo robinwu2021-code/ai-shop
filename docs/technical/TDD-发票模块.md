@@ -1251,3 +1251,21 @@ App 从 v2 取发票 PDF 时，`download-grants` 返回的 `/private/print-artif
 - 探测：health UP；公网 `/ops-shop-v2/{,e-invoices/,payment-center/}` 200；`/shop-api-v2/biz/invoices`、`/shop-api-v2/biz/print/simulations`、`/ops-shop-v2/ops/sales-invoices` 401；坏签名下载 422；旧 `/shop-api` 照常。
 - 构建注意：ops-web 用借来的 `node_modules` 会缺 `opencc-js`（`Can't resolve 'opencc-js/cn2t'`），要在构建目录真 `npm install` 后再 `git restore package-lock.json`；.80 本机健康检查用 `192.168.3.80:18180`，等待循环里 `curl` 失败不要配 `set -e`。
 - 过程失误：首次构建时临时目录已不存在，`cd` 失败后命令落在共享工作区 `ai-shop`，把它切成了游离的 `origin/main` 约 1–2 分钟，随即切回 `main`（`4ca938d56`）；未提交改动与他人未跟踪文件未受影响，但该期间工作区已跟踪文件显示为 `origin/main` 内容，`backend/*/target` 被重编、`ops-web/out` 被清空（均为构建产物）。正式发布包另在干净 worktree 构建。以后构建脚本以 `set -e` 开头，`cd` 失败即停。
+
+### §23.4 新模型门店的发票接口准入（2026-11-23，用户：「修复并上线」）
+
+**现象**：商户 App 用用户本人会话在 v2 读 `/biz/invoice-setup/{providers,profile,ranges}`、`/biz/invoices`，三家门店（ume早餐店、ume咖啡廳、Oscar Retail QA 1121）都回 `70006 FORBIDDEN`，`data = {nextAction: CONTACT_ADMIN, deniedBy: STORE_ACCESS}`；正式库无写入。
+
+**原因**：新模型门店的 `/biz` 请求先过门店准入（`ShopCommerceEndContextAdapter` → `CommerceRoutePolicy`），未登记的路由默认 `DENY`。§23 合入 main 时没把发票的 22 个端点登记进 `ShopStoreMemberRoutes`；打印 `/biz/print/.+` 早已登记，所以打印模拟能走通。本地与 H5 实测用的是老模型门店，不过这道准入，没暴露。这不是方案 / 功能开关问题，运营端也开不了。
+
+| 改动 | 内容 |
+|---|---|
+| `backend/shop-gateway/.../commercebridge/ShopStoreMemberRoutes.java` | 登记 `GET,POST /biz/invoices(?:/.*)?` 与 `GET,POST,PUT /biz/invoice-setup/(?:profile\|providers\|ranges\|provider-verification\|provider-tracks\|provider-ranges)`（逐个列名，不按族放开）；权限码 `biz:invoice:*` 仍由控制器判 |
+| `backend/shop-app/src/test/.../StoreScopedDailyRoutesFlowTest.java` | `invoiceRoutesPassAdmission`：新模型店主对 22 个端点（9 读 13 写）请求，响应都不得含 `STORE_ACCESS` |
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| 新模型门店能进全部发票端点 | `StoreScopedDailyRoutesFlowTest#invoiceRoutesPassAdmission` | 改前失败：`GET /biz/invoices → {"code":70006,…"deniedBy":"STORE_ACCESS"}`；改后通过 |
+| 其它准入、权限码、架构不回退 | `StoreScopedDailyRoutesFlowTest`（23）、`BizEndpointPermTest`（12）、`ArchitectureTest`（27，跳过 1）；`commercebridge` 及准入相关 173 条 | 全部通过 |
+
+- 未在本机跑：`commerce-spring-boot-starter` 中要求真实 MySQL 的 6 条（`COMMERCE_MYSQL_URL`），本次未改该模块。
