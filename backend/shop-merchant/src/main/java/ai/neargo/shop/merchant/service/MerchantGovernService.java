@@ -397,6 +397,9 @@ public interface MerchantGovernService {
      */
     StoreAuditVO decideStoreAudit(String auditNo, boolean pass, String reason, String operatorNo);
 
+    /** 审批类型（T24 · 方案-第二批审批工作流）：机审命中的店招 / 公告进人工审核时送审，运营端「裁决」改到审批中心。 */
+    String STORE_SIGN_APPROVAL = "shop.store_sign";
+
     /**
      * @param hits    机审命中的词。人审要看到「机器为什么标它」——
      *                否则只能凭感觉判，同一类内容两个人两个结论

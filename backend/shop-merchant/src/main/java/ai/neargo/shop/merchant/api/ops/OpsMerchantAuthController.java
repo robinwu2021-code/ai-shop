@@ -1,7 +1,6 @@
 package ai.neargo.shop.merchant.api.ops;
 
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.merchant.service.MerchantAuthCodeService;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
@@ -17,6 +16,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.spi.approval.ApprovalPort;
+import ai.neargo.shop.auth.SecurityUtils;
 
 /**
  * 平台端 · 商家类目经营授权。
@@ -33,6 +36,13 @@ public class OpsMerchantAuthController {
     private final MerchantAuthCodeService authCodeService;
     private final MerchantGovernService governService;
     private final AuditLogPort auditLogPort;
+
+    private ObjectProvider<ApprovalPort> approvals;
+
+    @Autowired(required = false)
+    public void setApprovals(ObjectProvider<ApprovalPort> value) {
+        this.approvals = value;
+    }
 
     public OpsMerchantAuthController(MerchantAuthCodeService authCodeService,
                                      MerchantGovernService governService,
@@ -55,7 +65,7 @@ public class OpsMerchantAuthController {
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_BAN + "')")
     public java.util.Map<String, Object> archiveMerchant(@PathVariable String merchantNo) {
         long at = archiveService.archive(ai.neargo.shop.archive.ArchiveService.Kind.MERCHANT,
-                merchantNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo());
+                merchantNo, SecurityUtils.currentUserNo());
         return java.util.Map.of("merchantNo", merchantNo, "archivedAt", at);
     }
 
@@ -63,7 +73,7 @@ public class OpsMerchantAuthController {
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_BAN + "')")
     public java.util.Map<String, Object> unarchiveMerchant(@PathVariable String merchantNo) {
         archiveService.unarchive(ai.neargo.shop.archive.ArchiveService.Kind.MERCHANT,
-                merchantNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo());
+                merchantNo, SecurityUtils.currentUserNo());
         return java.util.Map.of("merchantNo", merchantNo);
     }
 
@@ -216,6 +226,11 @@ public class OpsMerchantAuthController {
     @PreAuthorize("@perm.can('" + Perms.STORE_PAGE_AUDIT + "')")
     public MerchantGovernService.StoreAuditVO decideStoreAudit(@PathVariable String auditNo,
                                                                @RequestBody StoreAuditDecideReq req) {
+        var port = approvals == null ? null : approvals.getIfAvailable();
+        if (port != null && port.enabled(MerchantGovernService.STORE_SIGN_APPROVAL)) {
+            // 接入审批后在这里直接裁决会绕过审批中心（T24）
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.APPROVAL_IN_OPSKIT);
+        }
         boolean pass = Boolean.TRUE.equals(req.pass());
         var vo = governService.decideStoreAudit(auditNo, pass, req.reason(),
                 SecurityUtils.currentUserNo());

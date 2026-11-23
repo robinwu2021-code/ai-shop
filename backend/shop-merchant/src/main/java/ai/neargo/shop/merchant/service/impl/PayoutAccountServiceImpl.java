@@ -18,6 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.spi.approval.ApprovalPort;
+import ai.neargo.shop.auth.SecurityUtils;
 
 /** {@link PayoutAccountService} 实现。见接口注释：<b>账号明文只在两个瞬间存在</b>。 */
 @Service
@@ -30,14 +34,14 @@ public class PayoutAccountServiceImpl implements PayoutAccountService {
     private final PayoutAccountCipher cipher;
 
     /** 审批出口（T17）：启用 OpsKit 且登记了 shop.payout_account 时，商家提交即送审。 */
-    private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.approval.ApprovalPort> approvals;
+    private ObjectProvider<ApprovalPort> approvals;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void setApprovals(org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.approval.ApprovalPort> value) {
+    @Autowired(required = false)
+    public void setApprovals(ObjectProvider<ApprovalPort> value) {
         this.approvals = value;
     }
 
-    private ai.neargo.shop.spi.approval.ApprovalPort approvalPort() {
+    private ApprovalPort approvalPort() {
         var port = approvals == null ? null : approvals.getIfAvailable();
         return port != null && port.enabled(APPROVAL_TYPE) ? port : null;
     }
@@ -109,9 +113,9 @@ public class PayoutAccountServiceImpl implements PayoutAccountService {
             // 修订号取库里的 version：插入时由乐观锁初始化，后续任何 updateById 都会让它变
             MchPayoutAccount saved = DataScopeContext.executeWithoutScope(() -> accounts.selectOne(
                     Wrappers.<MchPayoutAccount>lambdaQuery().eq(MchPayoutAccount::getAccountNo, a.getAccountNo())));
-            var user = ai.neargo.shop.auth.SecurityUtils.currentUser().orElse(null);
+            var user = SecurityUtils.currentUser().orElse(null);
             port.submit(APPROVAL_TYPE, a.getAccountNo(), revisionOf(saved),
-                    new ai.neargo.shop.spi.approval.ApprovalPort.Submitter(
+                    new ApprovalPort.Submitter(
                             user == null ? "SYSTEM" : user.userNo(), user == null ? "商家" : user.nickname()));
         }
 
