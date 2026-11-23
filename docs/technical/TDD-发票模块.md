@@ -1269,3 +1269,41 @@ App 从 v2 取发票 PDF 时，`download-grants` 返回的 `/private/print-artif
 | 其它准入、权限码、架构不回退 | `StoreScopedDailyRoutesFlowTest`（23）、`BizEndpointPermTest`（12）、`ArchitectureTest`（27，跳过 1）；`commercebridge` 及准入相关 173 条 | 全部通过 |
 
 - 未在本机跑：`commerce-spring-boot-starter` 中要求真实 MySQL 的 6 条（`COMMERCE_MYSQL_URL`），本次未改该模块。
+
+### §23.5 发布 §23.4 的修复（2026-11-23 01:45–01:47 UTC）与测试 schema 守卫补漏
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| ai-shop v2 后端 | .80 `releases/shop-app-main-58e5af6bf.jar`（sha256 前缀 `4d6f1b1194e35cca`），`run.sh` 标签 `main-58e5af6bf`；01:45:15 重启，01:46:48 `Started ShopApplication in 90.5 seconds`，中断约 95 秒，无迁移 | `cp releases/run-before-main-58e5af6bf.sh run.sh && ./run.sh all restart` |
+| 运营端页面 | 未变，仍是 `main-cd09b0cc5`（本次只动后端） | — |
+
+- 验证：商户 App 用用户本人会话对 ume早餐店、ume咖啡廳、Oscar Retail QA 1121 只读复测，`/biz/invoice-setup/{providers,profile,ranges}`、`/biz/invoices` 全部 `code=0`，不再有 `STORE_ACCESS`。
+- **测试 schema 守卫**：§23 合入后 `SchemaParityTest` 只重放 `db/pay`、`db/secret`，没跟上 `gen-test-schema.py` / `SchemaDriftTest` 已加的 `db/invoice`，把 8 张 `ivc_*` 报成 unexpected，挡住所有人的 pre-push。PR #41（`528fe006d`）补上发票目录，改前复现失败、改后 `SchemaParityTest` / `SchemaDriftTest` / `BizRoleSeedTest` 11 条通过。
+
+### §23.6 v2 启用密钥模块（2026-11-23 02:05–02:07 UTC，用户：「启用并重启」）
+
+**现象**：App 首次开通 ume早餐店（01:59:16 UTC）`PUT /biz/invoice-setup/profile` 回 `10500`，日志 `SecretException: ENV_NOT_CONFIGURED: shop.secret.env is not set`。开通要把 QR AES 金钥封存进密钥模块（命名空间 `PLATFORM`），v2 没配 `shop.secret.env`、没注入主密钥；事务回滚，无写入。
+
+**前置核对**：正式库 `ai_shop_ume` 里 `sec_*` 8 张表已存在且为空（主密钥、密文、密钥均 0 行），`sec_flyway_history` 也是 0 行；逐列比对与 `db/secret` V1+V2 一致（138 列）。若打开 `SHOP_SECRET_FLYWAY_ENABLED`，Flyway 会因历史表已存在而从 V1 重跑并在 `CREATE TABLE` 失败，所以**迁移保持关闭**，也就不需要临时授 CREATE / ALTER。
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| .80 `ai-shop-all-v2.env` | 追加 `SHOP_SECRET_ENV=PRODUCTION`、`SHOP_SECRET_MASTERKEYS_0_{ALIAS=platform-prod-2026a, NAMESPACE=PLATFORM, MATERIAL, ACTIVE=true}`；材料在服务器上 `openssl rand -base64 32` 生成（32 字节），未出服务器、未打印；备份 `.before-secret-20261123` | 仅在**尚未封存任何密文**时可还原 env 并重启；§23.7 之后已有 1 条密文，回退会让它无法解开 |
+| 正式库 `sec_master_key` | 02:06:47 启动时登记 `platform-prod-2026a`（provider `ENV`、`PLATFORM`、`PRODUCTION`、`ACTIVE`） | — |
+| v2 重启 | 02:05:21 → 02:06:47 `Started ShopApplication in 83.4 seconds`，中断约 90 秒 | — |
+
+- **主密钥备份**：.80 `/data0/app/ai-shop-v2/secret-backup/platform-prod-2026a.env`（目录 700、文件 600，属 ume），与 env 中的值逐字节一致。它和生产配置在同一台机器上，**须另做离线备份**；丢失则封存的 QR 金钥与加值中心账号都无法解开。
+- 顺带发现（未处理）：启动日志报 `SHOP_MEDIA_SIGN_SECRET` 未配置、每次重启随机生成，已发出的媒体签名 URL 在重启后失效；与 §23.2 提到的 `SHIP_TRACK_KEY` 同类。
+
+### §23.7 ume早餐店 开通发票与测试号段（2026-11-23 02:08 UTC，用户批准：只开通与登记测试字轨，不开票）
+
+商户 App 用用户本人会话，门店 ume早餐店 `STUME12517541085359112192`：
+
+| 步骤 | 结果 |
+|---|---|
+| `PUT /biz/invoice-setup/profile`（02:08:35） | `code=0`：`TW_EGUI`，统编 `50766768`「創科系統有限公司」（用户确认），`gatewayCode=STUB`（`MERCHANT`），`qrKeyConfigured=true`（金钥为 32 个 0），`autoIssue=false`，`ACTIVE` |
+| `POST /biz/invoice-setup/ranges`（02:08:52） | `code=0`：`IVR261123PDHHHZQ5V3`，期别 11512，字轨 `ZZ` 00000000–00000049（50 张），`allocationOwner=MANUAL`，`ACTIVE` |
+
+- 正式库核对：`ivc_regime_profile` 1 行（`50766768 / STUB / auto_issue=0 / ACTIVE / qr_key_ref` 已填）；`ivc_number_range` 1 行（`ZZ`、`ACTIVE`）；`ivc_invoice` 0 行；`sec_secret_blob` 1 行。
+- **ZZ 号码不是财政部配给的**，用它开出的票不是合法发票，不得交给顾客；测完开出的票须作废，号段须停用。STUB 不对外送票。
+- **未做**：开票与真实发票（`FACT`）打印。三家店目前都是 0 单，开票需要一张已付款订单，怎么建由用户决定。
