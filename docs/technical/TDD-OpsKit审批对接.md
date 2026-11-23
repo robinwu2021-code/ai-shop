@@ -244,3 +244,29 @@ ops-web client.test.ts      Tests 5 passed            （基址 · 寻址与头 
 ops-web tsc --noEmit         新增文件无错误（全量仅剩既有的 opencc-js 缺包，主工作区同样存在）
 gen-ui-catalog.py --check    界面清单是最新的（347 个界面）
 ```
+
+## 7. 下一步任务（2026-11-23）
+
+依据：
+- 用户 2026-11-23 定的三条：① 一律可以本人审批 ② 审批分 3 级 ③ 每个审批整理工作流。分级与工作流见 [审核需求清单](../requirements/审核需求清单-near-pay与ai-shop.md) §8、§9。
+- OpsKit 交接文档 `opskit/docs/handoff/neargo-joint-test-2026-11-23/README.md`（`a8dfa87`）：C8、C9、K1–K3 已交付到 .80；剩 C10 / C11 / C12、Maven 发布、凭证交付与回调登记。
+- 本 PR [robinwu2021-code/ai-shop#43](https://github.com/robinwu2021-code/ai-shop/pull/43)（阶段 1 + 阶段 2）。
+
+| # | 任务 | 内容 | 谁 | 工作量 | 前置 |
+|---|---|---|---|---|---|
+| **N1** | 合并 #43 | 评审合并；默认构建不受影响（开关全关、OpsKit 模块只在 `-P opskit`） | ai-shop | 0.5 | 评审 |
+| **N2** | .80 联调上线 | ① 用户从 .80 读出 `OPSKIT_APP_AISHOP_*`、`OPSKIT_NEARGO_INTROSPECT_*`，经安全渠道配进 ai-shop-v2 ② `-P opskit` 打包部署，开 `shop.opskit.enabled`、`opskit-proxy`，`enabled-subjects=shop.store_opening` ③ 通知 OpsKit 登记回调 `http://127.0.0.1:18180/internal/opskit/webhook` ④ 跑联调三阶段，交界文档 §9 前 8 条验收 | 用户 + ai-shop + OpsKit | 2 | N1；凭证；OpsKit Maven 发布或部署机从源码 install |
+| **N3** | 分级落代码 | `ApprovalSubject` 加 `level()`（一 / 二 / 三级）、`recheckPerm()`、`facts(ref)`（C8，带改前 → 改后）、二级的条件字段；`OpsKitProcessRegistrar` 按等级生成默认流程（一级 1 步 72h；二级 1 步 + `when` 复核；三级固定 2 步），一律 `selfApproval=true`、`crossStepExclusive=false`；门店开通定为二级 | ai-shop | 1.5 | — |
+| **N4** | ai-shop 运营侧接入（●） | 入驻 A10 · 店招 A12 · 出款账户 A18 · 报名 E1 · 商城退款 F4 · 结算放行 G4 · 积分资金池 G10 · 积分调账 G12：各写 `ApprovalSubject`，原审核端点在开关期间保留 | ai-shop | 8（约 1 / 类） | N3 |
+| **N5** | ai-shop 新增建议（＋） | 服务范围 A13 · 新社区 A14 · 自提点 A15 · 资质授码 A16 · 商城核款 F5 · 套餐线下付款 F6 · 放款 G5 · 补充计划 G11（并入 G10）· 平台密钥 C6 | ai-shop | 7 | N4；用户确认这批是否都进 |
+| **N6** | near-pay S1 | 16 类审批中心 + 退款复核 F1 + 提现 G1 + 开放应用申请 C3 迁入 OpsKit，按 §9 分级登记默认流程；补新增建议 B5、B8、B9、C2、G3、G8、F11；BM25 在途单排空 | near-pay | 另估 | OpsKit client 发布 |
+| **N7** | 菜单切换 | 「支付中心 → 审批 / 审批流程」改指 `/approvals`、`/approval-flows`；菜单点迁移、`ui-catalog.json`；下线 `approvals-tab`、重复的「退款复核」菜单 | ai-shop | 1 | N6 上线 |
+| **N8** | S3 商户侧 | OpsKit C11（开商户空间）、C12（内省多空间）；ai-shop 内省支持 `btk_`；接入 E2 储值活动、A19 品牌变更、F7 人工改价、H1 盘点（b-app 补审批入口）、H3 退餐、H4 日结签核、H5 例外结转、H8 美业接待异常；b-app「审批」入口 | ai-shop + OpsKit | 10 | N4 |
+| **N9** | S4 清理 | 删原硬性自批校验（Q1 后由流程决定）、旧 `ApprovalServiceImpl` 与 V8 CHECK、业务表审批状态列、`stl_withdraw`、死权限码；更新过期文档（平台端功能清单、TP-33 / TB-39、角色对齐清单） | ai-shop + near-pay | 3 | N6–N8 稳定两周 |
+| **N10** | 待排期需求（○） | 审核清单 §9 里标 ○ 的 30 组（调账、费率 / 佣金发布、风控、合规、ME04、运营端功能矩阵 §七、餐饮、美业、代客下单等）按产品优先级排进各自迭代；落地时直接按 §9 的工作流接 OpsKit | 产品 | — | — |
+| **N11** | OpsKit 侧 | C10 应用级作废；Maven 发布（K5，等用户给发布账号）；24 §九 Q3（执行节点按条件跳过）/ Q4（规则跨段）/ Q5（ShareHub 账户）待定 | OpsKit | 见其排期 | 用户 |
+| **N12** | 不进审批的去向 | 审核队列 7 类暂不动；售后裁决、告警处置、风险事件、争议案件、POS UAT 走 OpsKit 工单 —— 另立「工单接入」方案 | 产品 + OpsKit | — | — |
+
+**关键路径**：N1 → N2（真环境跑通试点）→ N3 → N4 → N7（随 N6）。N3 不依赖 N2，可以立即开始。
+
+**无需改 OpsKit 的点**：金额阈值类条件（退款单笔额、改价幅度、差异金额、占用预算）由业务送审时算好布尔字段（如 `overThreshold`）放进 `fields`，流程步骤用 `when: {field, op: "TRUE"}`；OpsKit 现有 `TRUE / EQ / IN` 足够。
