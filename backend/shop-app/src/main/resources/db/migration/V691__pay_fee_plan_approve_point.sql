@@ -1,0 +1,6 @@
+-- near-pay 佣金规则发布接入 OpsKit 审批（方案-第一批审批工作流 T4）后，审批人权限码 pay:fee-plan:approve 要能在 ai-shop 角色里授予：
+-- OpsKit 按运营员工的权限码派待办。运营端没有对应接口，只给审批人用。
+-- 与 V686 同规则：补一个 ACTION 功能点（挂 OPS_FINANCE），授权只给 SUPER_ADMIN，不授给既有岗位。只新增、可重复执行。
+-- 码表见 near-pay docs/api/opskit-approver-permission-codes.txt，由 PayOpsPermissionCodesTest 对账。
+INSERT INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) SELECT 'ACT__PAY_FEE_PLAN_APPROVE','OPS_FINANCE','佣金规则：审批发布','支付中心',NULL,'pay:fee-plan:approve','pay:fee-plan:approve','IMPLEMENTED',1,NULL,'ACTION',690,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM sys_function_point WHERE perm_code='pay:fee-plan:approve' OR point_code='ACT__PAY_FEE_PLAN_APPROVE');
+INSERT INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_FEE_PLAN_APPROVE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_function_point WHERE point_code='ACT__PAY_FEE_PLAN_APPROVE') AND EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_FEE_PLAN_APPROVE' AND end_code='OPS');
