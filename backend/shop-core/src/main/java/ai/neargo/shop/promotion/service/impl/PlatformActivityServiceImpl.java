@@ -11,6 +11,7 @@ import ai.neargo.shop.promotion.dto.PlatformVOs.EnrollRule;
 import ai.neargo.shop.promotion.dto.PlatformVOs.EnrollmentVO;
 import ai.neargo.shop.promotion.dto.PlatformVOs.PlatformActivityVO;
 import ai.neargo.shop.promotion.dto.PlatformVOs.PlatformDraft;
+import ai.neargo.shop.promotion.approval.EnrollmentApprovalSubject;
 import ai.neargo.shop.promotion.entity.PmtActivity;
 import ai.neargo.shop.promotion.entity.PmtEnrollment;
 import ai.neargo.shop.promotion.entity.PmtEnrollmentGoods;
@@ -23,6 +24,8 @@ import ai.neargo.shop.spi.user.MerchantQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -67,6 +70,14 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
     private final MerchantQueryPort merchantPort;
     private final GoodsQueryPort goodsPort;
     private final ObjectMapper json;
+
+    /** 审批出口（T18）：启用后报名即送审。 */
+    private ObjectProvider<EnrollmentApprovalSubject> approvals;
+
+    @Autowired(required = false)
+    public void setApprovals(ObjectProvider<EnrollmentApprovalSubject> value) {
+        this.approvals = value;
+    }
 
     public PlatformActivityServiceImpl(ActivityMapper activityMapper, EnrollmentMapper enrollmentMapper,
                                        EnrollmentGoodsMapper enrollmentGoodsMapper,
@@ -367,6 +378,8 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
                     .set(PmtEnrollment::getRejectReason, null)
                     .set(PmtEnrollment::getReviewedBy, null)
                     .set(PmtEnrollment::getReviewedAt, null)
+                    // 重报时修订号要变：内容相同的重报不能撞上一次送审的修订号（T18）
+                    .setSql("version = version + 1")
                     .eq(PmtEnrollment::getEnrollmentNo, row.getEnrollmentNo())
                     .eq(PmtEnrollment::getEntityNo, entityNo));
         }
@@ -376,6 +389,10 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
             eg.setEnrollmentNo(row.getEnrollmentNo());
             eg.setGoodsNo(g);
             enrollmentGoodsMapper.insert(eg);
+        }
+        var approval = approvals == null ? null : approvals.getIfAvailable();
+        if (approval != null) {
+            approval.submit(row.getEnrollmentNo());
         }
         return enrollmentVO(reload(row.getEnrollmentNo()));
     }
