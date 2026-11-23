@@ -1,22 +1,35 @@
-// 开放 API 接入全流程（mock）：运营端从接入申请走到商户拿密钥调通，再到泄露应急锁定。
-// 对照 2026-11-23 生产试点 ume早餐店 APP07071A89D8EC4F20 的实际步骤；mock 与生产的差别写在各步注释里：
-// - 生产的「应用启用」「密钥启用」各要一张已批准的审批（OPEN_APP_ENABLE / CREDENTIAL_ENABLE）、执行人 ≠ 登记人 / 录入人；
-//   mock 只有 admin 一个身份、审批不设闸，这两道门在这里只校验「启用人 ≠ 录入人」。
-// - 门店授权由商户端（b-app）发起，mock 网关不校验门店。
+// 开放 API 全流程（mock）：
+//   一、运营端：接入申请 → 批准 → 核验回调 → 启用审批 → 启用应用 → 签发 / 核验 / 启用审批 / 启用密钥 → 商户调通 → 泄露应急锁定
+//   二、商户拿到密钥后：建单 → 发起支付 → 第三方渠道付款回调平台 → 平台推送 → 接入方验签解密 → 查单；
+//       退款 → 渠道退款回调 → 推送退款结果 → 查退款；门店授权、日退款限额、RSA 应用的推送签名
+// 对照 2026-11-23 生产试点 ume早餐店 APP07071A89D8EC4F20。mock 与生产仍有的差别：mock 只有 admin 一个身份（near-pay 单人审批开关
+// 默认也是打开的），「执行人 ≠ 登记人」不在 mock 里校验；密钥启用的「启用人 ≠ 录入人」照样校验（mock 签发的录入人记成另一位运营）。
 import { describe, expect, it } from "vitest";
+import type { PayCenterApi } from "./_api/api";
 import { createMockPayCenterApi } from "./_api/mock";
-import { createMockGateway, gatewayAppOf, TEST_VECTOR_APP, type MockApp } from "./_api/open-api-gateway";
-import { openWebhook, type Delivery } from "./_api/open-api-payment-sim";
+import { createMockGateway, gatewayAppOf, MOCK_PLATFORM_SIGN_SERIAL, TEST_VECTOR_APP, type MockApp } from "./_api/open-api-gateway";
 import { OPEN_ENDPOINTS } from "./_api/open-api-catalog";
 import { buildSignedCall } from "./_api/open-api-sim";
-import { verifyResponse } from "./_api/open-api-signer";
+import { openWebhook, type Delivery, type WebhookVerifier } from "./_api/open-api-payment-sim";
+import { generateRsaKeyPair, verifyResponse, verifyResponseRsa } from "./_api/open-api-signer";
 
 const BASE = { origin: "https://tpay.neargo.ai", prefix: "/openapi/v1" };
 const ep = (key: string) => OPEN_ENDPOINTS.find((e) => e.key === key)!;
 const cmd = (expectedVersion: number, reason: string) => ({ expectedVersion, reason });
 
-describe("开放 API 接入全流程（mock）", () => {
-  it("申请 → 批准 → 核验回调 → 启用应用 → 签发 / 核验 / 启用密钥 → 商户调通 → 应急锁定", async () => {
+/** 审核待办里走完一张审批：认领 → 同意（两级就各走一次）；返回审批号 */
+async function approve(api: PayCenterApi, approvalNo: string, levels = 1) {
+  for (let i = 0; i < levels; i++) {
+    const task = (await api.approvals.detail(approvalNo)).record.activeTask!;
+    await api.approvals.claim(task.taskNo, cmd(task.version, "认领"));
+    const d = (await api.approvals.detail(approvalNo)).record;
+    await api.approvals.review(approvalNo, { expectedVersion: d.version, decision: "APPROVE", reason: "同意", materialVersion: d.materialVersion });
+  }
+  return approvalNo;
+}
+
+describe("一、运营端接入全流程（mock）", () => {
+  it("申请 → 批准 → 核验回调 → 启用审批 → 启用应用 → 签发 / 核验 / 启用审批 / 启用密钥 → 商户调通 → 应急锁定", async () => {
     const api = createMockPayCenterApi();
     const gateway = createMockGateway(BASE.prefix, []);
     const appView = async (no: string) => (await api.apps.detail(no)).record.app;
@@ -36,12 +49,15 @@ describe("开放 API 接入全流程（mock）", () => {
     let app = await appView(appNo);
     expect(app).toMatchObject({ status: "DRAFT", callbackStatus: "UNVERIFIED", credentialStatus: "NONE", environment: "LIVE", scopes: ["READ", "COLLECT"] });
 
-    // 2. 有回调地址就必须先核验，才能启用
+    // 2. 有回调地址就必须先核验；没有已批准的 OPEN_APP_ENABLE 审批不能启用
     await expect(api.apps.command(appNo, "enable", cmd(app.version, "启用"))).rejects.toThrow(/回调地址核验/);
     await api.apps.verifyCallback(appNo, { ...cmd(app.version, "回调验证通过"), evidenceRef: "CB-TEST-1" });
     app = await appView(appNo);
-    await api.apps.command(appNo, "enable", cmd(app.version, "试点启用")); // 生产：先过 OPEN_APP_ENABLE 审批，由非登记人执行
+    await expect(api.apps.command(appNo, "enable", cmd(app.version, "启用"))).rejects.toThrow(/OPEN_APP_ENABLE .*已批准且未执行的审批/);
+    const appApproval = await approve(api, (await api.approvals.submit({ subjectType: "OPEN_APP_ENABLE", subjectRef: appNo, subjectRevision: app.version + 1, action: "ENABLE", reason: "试点启用" })).approvalNo);
+    await api.apps.command(appNo, "enable", cmd(app.version, "试点启用"));
     expect((await appView(appNo)).status).toBe("ACTIVE");
+    expect((await api.approvals.detail(appApproval)).record.execution.status).toBe("SUCCEEDED"); // 审批用掉了
 
     // 3. 签发 APP_SECRET：明文只在这一次响应里，版本是草稿
     const issued = await api.apps.issueCredential(appNo, { credentialType: "APP_SECRET", reason: "签发" });
@@ -52,14 +68,17 @@ describe("开放 API 接入全流程（mock）", () => {
 
     // 草稿密钥调不通（网关只认应用启用 + 密钥启用）
     gateway.registerApp(gatewayAppOf(await appView(appNo), issued.secret));
-    expect((await call("queryOrder", appNo, issued.secret, { payOrderNo: "P1" })).status).toBe(401);
+    expect((await call("queryByOut", appNo, issued.secret, { outOrderNo: "O1" })).status).toBe(401);
 
-    // 4. 核验 → 启用（生产：CREDENTIAL_ENABLE 两审 + 启用人 ≠ 录入人）
-    await expect(api.credentials.enable(issued.keyId, 1, { approvalRef: "AP-TEST", reason: "跳过核验" })).rejects.toThrow(/已核验/);
+    // 4. 核验 → CREDENTIAL_ENABLE 两级审批 → 在审核待办里「执行」= 启用版本
+    await expect(api.credentials.enable(issued.keyId, 1, { approvalRef: null, reason: "跳过核验" })).rejects.toThrow(/已核验/);
     await api.credentials.verify(issued.keyId, 1, { evidenceRef: `核对 keyId ${issued.keyId} v1 归属 ${appNo}`, reason: "签发核对" });
-    await api.credentials.enable(issued.keyId, 1, { approvalRef: "AP-TEST", reason: "启用" });
+    await expect(api.credentials.enable(issued.keyId, 1, { approvalRef: null, reason: "没审批" })).rejects.toThrow(/CREDENTIAL_ENABLE .*已批准且未执行的审批/);
+    const keyApproval = await approve(api, (await api.approvals.submit({ subjectType: "CREDENTIAL_ENABLE", subjectRef: `${issued.keyId}:1`, subjectRevision: 1, action: "ENABLE", reason: "启用" })).approvalNo, 2);
+    await api.approvals.execute(keyApproval, cmd((await api.approvals.detail(keyApproval)).record.version, "启用"));
     app = await appView(appNo);
     expect(app).toMatchObject({ status: "ACTIVE", credentialStatus: "ACTIVE" });
+    expect((await api.credentials.detail(issued.keyId)).versions[0]).toMatchObject({ status: "ACTIVE" });
     gateway.registerApp(gatewayAppOf(app, issued.secret));
 
     // 5. 商户调用：建单、查单通过且响应签名可验；scope 外的退款 403；密钥错 401；正式环境不给 ping
@@ -67,10 +86,9 @@ describe("开放 API 接入全流程（mock）", () => {
     expect(created.status).toBe(200);
     const payOrderNo = JSON.parse(created.body).data.payOrderNo as string;
     const ok = await call("queryOrder", appNo, issued.secret, { payOrderNo });
-    expect(ok.status).toBe(200);
     expect(JSON.parse(ok.body).data).toMatchObject({ outOrderNo: "O1", status: "PENDING" });
     expect((await verifyResponse(issued.secret, ok.headers, ok.body)).status).toBe("VALID");
-    expect((await call("refund", appNo, issued.secret, { payOrderNo: "P1" }, '{"outRefundNo":"R1","amountMinor":100}')).status).toBe(403);
+    expect((await call("refund", appNo, issued.secret, { payOrderNo }, '{"outRefundNo":"R1","amountMinor":100}')).status).toBe(403);
     expect((await call("queryOrder", appNo, `${issued.secret.slice(0, -1)}x`, { payOrderNo })).status).toBe(401);
     expect((await call("ping", appNo, issued.secret, {}, "{}")).status).toBe(403);
 
@@ -82,42 +100,52 @@ describe("开放 API 接入全流程（mock）", () => {
     expect(app.credentialStatus).toBe("REVOKED");
     gateway.registerApp(gatewayAppOf(app, issued.secret));
     expect((await call("queryOrder", appNo, issued.secret, { payOrderNo })).status).toBe(401);
-  });
+  }, 30_000); // mock API 每次调用带模拟延迟
 
-  it("没配回调地址的应用可以直接启用（与 near-pay 一致：notifyUrl 为空不要求核验）", async () => {
+  it("没配回调地址的应用不要求核验回调，但启用审批照样要；审批可在审核待办里直接执行，只能执行一次", async () => {
     const api = createMockPayCenterApi();
     const d = await api.apps.create({ name: "无回调", purpose: null, ownerKind: "MERCHANT", merchantNo: "PM1001", environment: "LIVE", scopes: ["READ"], notifyUrl: null, callbackDomains: [], ipWhitelist: null, rateLimitQps: 20, dailyRefundLimitMinor: 0, reason: "试点" } as never);
     const no = d.record.app.appNo;
-    await api.apps.command(no, "enable", cmd(d.record.app.version, "启用"));
+    await expect(api.apps.command(no, "enable", cmd(d.record.app.version, "启用"))).rejects.toThrow(/已批准且未执行的审批/);
+    const ap = await approve(api, (await api.approvals.submit({ subjectType: "OPEN_APP_ENABLE", subjectRef: no, subjectRevision: d.record.app.version + 1, action: "ENABLE", reason: "试点" })).approvalNo);
+    await api.approvals.execute(ap, cmd((await api.approvals.detail(ap)).record.version, "执行"));
     expect((await api.apps.detail(no)).record.app.status).toBe("ACTIVE");
-  });
+    await expect(api.approvals.execute(ap, cmd((await api.approvals.detail(ap)).record.version, "再执行"))).rejects.toThrow(/已执行/);
+  }, 30_000);
 });
 
-describe("拿到密钥后的支付全链路（mock 第三方渠道 + 推送）", () => {
+describe("二、拿到密钥后的支付 / 退款全链路（mock 第三方渠道 + 推送）", () => {
   const NOTIFY = "https://erp.ume.tw/pay/notify";
   /** 接入方服务器（mock）：收推送、按 eventId 幂等处理；statuses 依次决定回给平台的 HTTP 状态 */
-  function merchantServer(appSecret: string, encryptKey: string | undefined, statuses: number[] = []) {
+  function merchantServer(verifier: () => WebhookVerifier, encryptKey: string | undefined, statuses: number[] = []) {
     const inbox: Delivery[] = []; const processed = new Map<string, Record<string, unknown>>();
     const deliver = async (d: Delivery) => {
       inbox.push(d);
-      const evt = await openWebhook(appSecret, encryptKey, d.headers, d.body);
+      const evt = await openWebhook(verifier(), encryptKey, d.headers, d.body);
       if (!evt.valid) return 401;
       const status = statuses.shift() ?? 200;
       if (status === 200 && !processed.has(evt.eventId!)) processed.set(evt.eventId!, { eventType: evt.eventType, ...evt.data });
       return status;
     };
-    return { inbox, processed, deliver };
+    return { inbox, processed, events: () => [...processed.values()], deliver };
   }
   const setup = (app: MockApp, statuses?: number[]) => {
-    const server = merchantServer(app.appSecret!, app.encryptKey, statuses);
+    const server = merchantServer(() => ({ appSecret: app.appSecret! }), app.encryptKey, statuses);
     const gateway = createMockGateway(BASE.prefix, [app], undefined, { deliver: server.deliver });
-    const call = async (key: string, params: Record<string, string> = {}, body = "") => {
-      const c = await buildSignedCall({ endpoint: ep(key), params, body, appId: app.appId, scheme: "HMAC", appSecret: app.appSecret }, BASE);
+    const call = async (key: string, params: Record<string, string> = {}, body = "", fields?: Record<string, string>) => {
+      const c = await buildSignedCall({ endpoint: ep(key), params, body, appId: app.appId, scheme: "HMAC", appSecret: app.appSecret, ...(fields ? { fields, encryptKey: app.encryptKey, encryptSerial: "3" } : {}) }, BASE);
       const r = await gateway({ method: ep(key).method, pathWithQuery: c.pathWithQuery, headers: c.signed.headers, body: c.payload });
       expect((await verifyResponse(app.appSecret!, r.headers, r.body)).status).toBe("VALID"); // 每个响应都按 P2 签了
-      return { status: r.status, ...(JSON.parse(r.body) as { code: number; data: Record<string, unknown> }) };
+      return { status: r.status, ...(JSON.parse(r.body) as { code: number; message: string; data: Record<string, unknown> }) };
     };
-    return { server, gateway, call };
+    /** 建单并付款成功，返回平台单号 */
+    const paid = async (outOrderNo: string, amountMinor = 12000, storeRef = "ST2001") => {
+      const payOrderNo = (await call("createOrder", {}, JSON.stringify({ outOrderNo, storeRef, amountMinor, currency: "TWD", subject: "早餐" }))).data.payOrderNo as string;
+      const payUrl = ((await call("startPayment", { payOrderNo }, '{"payMethod":"LINEPAY"}')).data.payParams as { payUrl: string }).payUrl;
+      expect(await gateway.payments.channel.pay(payUrl)).toEqual({ accepted: true });
+      return payOrderNo;
+    };
+    return { server, gateway, call, paid };
   };
   const ORDER = '{"outOrderNo":"UME-20261123-001","storeRef":"ST2001","amountMinor":12000,"currency":"TWD","subject":"早餐套餐"}';
 
@@ -166,17 +194,90 @@ describe("拿到密钥后的支付全链路（mock 第三方渠道 + 推送）",
     expect(retry.headers["x-nonce"]).not.toBe(first.headers["x-nonce"]);
 
     // 接入方：验签 + 解密拿到订单；篡改体、错 EncryptKey 都过不了
-    const opened = await openWebhook(app.appSecret!, app.encryptKey, retry.headers, retry.body);
+    const secret = { appSecret: app.appSecret! };
+    const opened = await openWebhook(secret, app.encryptKey, retry.headers, retry.body);
     expect(opened).toMatchObject({ valid: true, eventType: "PAYMENT_SUCCEEDED", data: { payOrderNo, status: "SUCCEEDED", paidMinor: 12000, payChannel: "LINEPAY" } });
-    expect((await openWebhook(app.appSecret!, app.encryptKey, retry.headers, retry.body.replace("PAYMENT_SUCCEEDED", "PAYMENT_CLOSED"))).valid).toBe(false);
-    await expect(openWebhook(app.appSecret!, "x".repeat(32), retry.headers, retry.body)).rejects.toThrow();
-    expect([...server.processed.values()]).toEqual([expect.objectContaining({ eventType: "PAYMENT_SUCCEEDED", status: "SUCCEEDED" })]);
+    expect((await openWebhook(secret, app.encryptKey, retry.headers, retry.body.replace("PAYMENT_SUCCEEDED", "PAYMENT_CLOSED"))).valid).toBe(false);
+    await expect(openWebhook(secret, "x".repeat(32), retry.headers, retry.body)).rejects.toThrow();
+    expect(server.events()).toEqual([expect.objectContaining({ eventType: "PAYMENT_SUCCEEDED", status: "SUCCEEDED" })]);
 
     // 以查单为准；渠道重复回调幂等、不再推送；已付款不能关单
     expect((await call("queryOrder", { payOrderNo })).data).toMatchObject({ status: "SUCCEEDED", paidMinor: 12000 });
     expect(await gateway.payments.channel.pay(payUrl)).toEqual({ accepted: true });
     expect(gateway.payments.notifies).toHaveLength(1);
     expect((await call("closeOrder", { payOrderNo }, "{}")).status).toBe(409);
+  });
+
+  it("退款：部分退 → 渠道成功回调 → 推 REFUND_SUCCEEDED；超额 409、单号幂等；渠道失败推 REFUND_FAILED 并释放额度；伪造回调拒收", async () => {
+    const app: MockApp = { ...TEST_VECTOR_APP, notifyUrl: NOTIFY };
+    const { server, gateway, call, paid } = setup(app);
+    const payOrderNo = await paid("UME-R-001");
+
+    // 未付款的单不能退
+    const unpaid = (await call("createOrder", {}, '{"outOrderNo":"UME-R-000","storeRef":"ST2001","amountMinor":100,"currency":"TWD","subject":"x"}')).data.payOrderNo as string;
+    expect((await call("refund", { payOrderNo: unpaid }, '{"outRefundNo":"RF-0","amountMinor":100}')).status).toBe(409);
+
+    // 部分退 2000：受理为处理中；同单号同金额回原单，金额不同 409
+    const r1 = await call("refund", { payOrderNo }, '{"outRefundNo":"RF-1","amountMinor":2000,"reason":"少一份蛋饼"}');
+    expect(r1.data).toMatchObject({ outRefundNo: "RF-1", payOrderNo, status: "PROCESSING", amountMinor: 2000 });
+    const payRefundNo = r1.data.payRefundNo as string;
+    expect((await call("refund", { payOrderNo }, '{"outRefundNo":"RF-1","amountMinor":2000}')).data.payRefundNo).toBe(payRefundNo);
+    expect((await call("refund", { payOrderNo }, '{"outRefundNo":"RF-1","amountMinor":3000}')).status).toBe(409);
+    // 处理中的额度也算占用：12000 - 2000 处理中 = 最多再退 10000
+    expect(await call("refund", { payOrderNo }, '{"outRefundNo":"RF-2","amountMinor":10001}')).toMatchObject({ status: 409, message: "err.pay.open.refund_exceeds_paid" });
+    expect(gateway.payments.channel.pendingRefunds()).toEqual([payRefundNo]);
+
+    // 渠道回调：伪造拒收；真实成功 → 已退 2000、推 REFUND_SUCCEEDED；重复回调幂等
+    expect(await gateway.payments.channel.forgeRefund(payRefundNo)).toEqual({ accepted: false, reason: "渠道签名不符" });
+    expect((await call("queryRefund", { payRefundNo })).data.status).toBe("PROCESSING");
+    expect(await gateway.payments.channel.settleRefund(payRefundNo)).toEqual({ accepted: true });
+    expect(await gateway.payments.channel.settleRefund(payRefundNo)).toEqual({ accepted: true });
+    expect((await call("queryRefund", { payRefundNo })).data).toMatchObject({ status: "SUCCEEDED", amountMinor: 2000 });
+    expect((await call("queryOrder", { payOrderNo })).data).toMatchObject({ status: "SUCCEEDED", paidMinor: 12000, refundedMinor: 2000 });
+    expect(server.events().map((e) => e.eventType)).toEqual(["PAYMENT_SUCCEEDED", "REFUND_SUCCEEDED"]);
+    expect(server.events()[1]).toMatchObject({ payRefundNo, outRefundNo: "RF-1", status: "SUCCEEDED", amountMinor: 2000 });
+
+    // 线下退款带收款账号：明文 400，按 P3 加密才受理，查询只回掩码；渠道失败 → 推 REFUND_FAILED，额度释放
+    expect((await call("refund", { payOrderNo }, '{"outRefundNo":"RF-3","amountMinor":10000,"refundAccount":{"accountNo":"8123004567"}}')).status).toBe(400);
+    const r3 = await call("refund", { payOrderNo }, '{"outRefundNo":"RF-3","amountMinor":10000}', { "refundAccount.accountNo": "8123004567" });
+    expect(r3.data).toMatchObject({ status: "PROCESSING", refundAccount: { accountNo: "****" } });
+    expect(JSON.stringify(r3)).not.toContain("8123004567");
+    expect(await gateway.payments.channel.settleRefund(r3.data.payRefundNo as string, { fail: "原卡已注销" })).toEqual({ accepted: true });
+    expect(server.events()[2]).toMatchObject({ eventType: "REFUND_FAILED", status: "FAILED", failReason: "原卡已注销" });
+    expect((await call("queryOrder", { payOrderNo })).data.refundedMinor).toBe(2000);
+    // 失败的不占额度：剩下 10000 可以再退，退完就不能再退
+    const r4 = await call("refund", { payOrderNo }, '{"outRefundNo":"RF-4","amountMinor":10000}');
+    expect(r4.data.status).toBe("PROCESSING");
+    await gateway.payments.channel.settleRefund(r4.data.payRefundNo as string);
+    expect((await call("queryOrder", { payOrderNo })).data.refundedMinor).toBe(12000);
+    expect((await call("refund", { payOrderNo }, '{"outRefundNo":"RF-5","amountMinor":1}')).status).toBe(409);
+  });
+
+  it("日退款上限：处理中 + 成功都计入，失败不计；上限 0（应急锁定后）一分都不能退", async () => {
+    const { call, gateway, paid } = setup({ ...TEST_VECTOR_APP, notifyUrl: NOTIFY, dailyRefundLimitMinor: 5000 });
+    const a = await paid("UME-L-001", 4000), b = await paid("UME-L-002", 4000);
+    const r1 = await call("refund", { payOrderNo: a }, '{"outRefundNo":"L-1","amountMinor":3000}');
+    expect(r1.data.status).toBe("PROCESSING");
+    expect(await call("refund", { payOrderNo: b }, '{"outRefundNo":"L-2","amountMinor":2001}')).toMatchObject({ status: 409, message: "err.pay.open.refund_limit_exceeded" });
+    expect((await call("refund", { payOrderNo: b }, '{"outRefundNo":"L-2","amountMinor":2000}')).data.status).toBe("PROCESSING");
+    await gateway.payments.channel.settleRefund(r1.data.payRefundNo as string, { fail: "渠道拒绝" });
+    expect((await call("refund", { payOrderNo: a }, '{"outRefundNo":"L-3","amountMinor":3000}')).data.status).toBe("PROCESSING"); // 失败的 3000 释放了
+
+    const locked = setup({ ...TEST_VECTOR_APP, dailyRefundLimitMinor: 0 });
+    const c = await locked.paid("UME-L-009", 100);
+    expect(await locked.call("refund", { payOrderNo: c }, '{"outRefundNo":"L-9","amountMinor":1}')).toMatchObject({ status: 409, message: "err.pay.open.refund_limit_exceeded" });
+  });
+
+  it("门店授权：建单 / 支付要 COLLECT，查询要 READ，退款要 REFUND；没授权的门店 403", async () => {
+    const app: MockApp = { ...TEST_VECTOR_APP, grants: { ST2001: ["READ", "COLLECT", "REFUND"], ST2002: ["READ", "COLLECT"], ST2003: ["READ"] } };
+    const { call, paid } = setup(app);
+    expect((await call("createOrder", {}, ORDER.replace("ST2001", "ST9999"))).status).toBe(403);
+    expect((await call("createOrder", {}, ORDER.replace("ST2001", "ST2003"))).status).toBe(403); // 只读门店不能收款
+    const own = await paid("UME-G-001", 500, "ST2001");
+    const noRefund = await paid("UME-G-002", 500, "ST2002");
+    expect((await call("refund", { payOrderNo: own }, '{"outRefundNo":"G-1","amountMinor":100}')).status).toBe(200);
+    expect((await call("refund", { payOrderNo: noRefund }, '{"outRefundNo":"G-2","amountMinor":100}')).status).toBe(403);
+    expect((await call("queryOrder", { payOrderNo: noRefund })).status).toBe(200);
   });
 
   it("没付款就关单：推 PAYMENT_CLOSED，之后不能再发起支付；接入方还没有 EncryptKey 时推送带明文 data", async () => {
@@ -195,7 +296,7 @@ describe("拿到密钥后的支付全链路（mock 第三方渠道 + 推送）",
   it("没配回调地址：不推送，接入方靠查单；别的应用查不到这张单", async () => {
     const app: MockApp = { ...TEST_VECTOR_APP, notifyUrl: null };
     const other: MockApp = { ...TEST_VECTOR_APP, appId: "APPOTHER01" };
-    const server = merchantServer(app.appSecret!, app.encryptKey);
+    const server = merchantServer(() => ({ appSecret: app.appSecret! }), app.encryptKey);
     const gateway = createMockGateway(BASE.prefix, [app, other], undefined, { deliver: server.deliver });
     const send = async (appId: string, key: string, params: Record<string, string>, body = "") => {
       const c = await buildSignedCall({ endpoint: ep(key), params, body, appId, scheme: "HMAC", appSecret: app.appSecret }, BASE);
@@ -209,5 +310,36 @@ describe("拿到密钥后的支付全链路（mock 第三方渠道 + 推送）",
     expect(server.inbox).toHaveLength(0);
     expect((await send(app.appId, "queryOrder", { payOrderNo })).data.status).toBe("SUCCEEDED");
     expect((await send(other.appId, "queryOrder", { payOrderNo })).status).toBe(404);
+  });
+
+  it("RSA 应用：商家私钥签请求，平台用签名私钥签响应和推送（带 X-Key-Serial），接入方按 /certificates 的公钥验", async () => {
+    const pair = await generateRsaKeyPair("SIGN");
+    const encryptKey = "Pa7Ve2Ky9Wq4Zm6Tn3Lr8Hs5Dc1Fb0Gx";
+    let keys: { serial: string; usage: string; publicKeyPem: string }[] = [];
+    const server = merchantServer(() => ({ platformKeys: keys }), encryptKey);
+    const gateway = createMockGateway(BASE.prefix, [], undefined, { deliver: server.deliver });
+    gateway.registerApp({ appId: "APPRSA0001", rsa: { serial: "K1", publicPem: pair.publicPem }, encryptKey, environment: "SANDBOX", scopes: ["pay:create", "pay:read"], status: "ACTIVE", notifyUrl: NOTIFY });
+    const send = async (key: string, params: Record<string, string>, body = "") => {
+      const c = await buildSignedCall({ endpoint: ep(key), params, body, appId: "APPRSA0001", scheme: "RSA", privateKeyPem: pair.privatePem, keySerial: "K1" }, BASE);
+      return gateway({ method: ep(key).method, pathWithQuery: c.pathWithQuery, headers: c.signed.headers, body: c.payload });
+    };
+    // 先取平台公钥（接入方遇到不认识的序列号先刷新）
+    keys = JSON.parse((await send("certificates", {})).body).data;
+    expect(keys.find((k) => k.usage === "SIGN")?.serial).toBe(MOCK_PLATFORM_SIGN_SERIAL);
+
+    const created = await send("createOrder", {}, ORDER);
+    expect(created.headers["x-key-serial"]).toBe(MOCK_PLATFORM_SIGN_SERIAL);
+    expect((await verifyResponseRsa(keys, created.headers, created.body)).status).toBe("VALID");
+    const payOrderNo = JSON.parse(created.body).data.payOrderNo;
+    const payUrl = JSON.parse((await send("startPayment", { payOrderNo }, '{"payMethod":"JKOPAY"}')).body).data.payParams.payUrl;
+    expect(await gateway.payments.channel.pay(payUrl)).toEqual({ accepted: true });
+
+    expect(server.inbox).toHaveLength(1);
+    expect(server.inbox[0].headers["x-key-serial"]).toBe(MOCK_PLATFORM_SIGN_SERIAL);
+    expect(server.events()).toEqual([expect.objectContaining({ eventType: "PAYMENT_SUCCEEDED", payOrderNo, status: "SUCCEEDED", payChannel: "JKOPAY" })]);
+    // 拿 HMAC 的方式验 RSA 推送过不了；换一把不认识的平台公钥也过不了
+    expect((await openWebhook({ appSecret: TEST_VECTOR_APP.appSecret! }, encryptKey, server.inbox[0].headers, server.inbox[0].body)).valid).toBe(false);
+    const stranger = await generateRsaKeyPair("SIGN");
+    expect((await openWebhook({ platformKeys: [{ serial: MOCK_PLATFORM_SIGN_SERIAL, usage: "SIGN", publicKeyPem: stranger.publicPem }] }, encryptKey, server.inbox[0].headers, server.inbox[0].body)).valid).toBe(false);
   });
 });

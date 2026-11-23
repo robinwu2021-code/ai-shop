@@ -2,13 +2,15 @@
 // 支付链路（建单 / 发起支付 / 查单 / 关单）走有状态的 open-api-payment-sim（含 mock 第三方渠道与推送），其余回 catalog 样例；都按 P2 签名。只在 mock 模式用；真实实例（生产无沙箱）运营端只做签名预览，不发请求。
 // 照搬 near-pay ops-web/lib/open-api/simulator.ts（createMockGateway），路径按对外前缀（/openapi/v1）匹配。
 import { OPEN_ENDPOINTS, type OpenEndpoint } from "./open-api-catalog";
-import { createPaymentSim, type Deliver, type PaymentSim } from "./open-api-payment-sim";
+import { createPaymentSim, type Deliver, type PayApp, type PaymentSim } from "./open-api-payment-sim";
 import { canonicalQuery, derToPem, generateRsaKeyPair, hmacBase64, hmacKeyOf, randomNonce, rsaSignBase64, rsaVerifyBase64, sha256Hex } from "./open-api-signer";
 
 export interface SimRequest { method: string; pathWithQuery: string; headers: Record<string, string>; body: string }
 export interface SimResponse { status: number; headers: Record<string, string>; body: string; durationMs: number }
 
-export interface MockApp { appId: string; appSecret?: string; encryptKey?: string; encryptSerial?: string; rsa?: { serial: string; publicPem: string }; environment: "SANDBOX" | "LIVE"; scopes: string[]; status: "ACTIVE" | "SUSPENDED"; notifyUrl?: string | null }
+export interface MockApp { appId: string; appSecret?: string; encryptKey?: string; encryptSerial?: string; rsa?: { serial: string; publicPem: string }; environment: "SANDBOX" | "LIVE"; scopes: string[]; status: "ACTIVE" | "SUSPENDED"; notifyUrl?: string | null;
+  /** 门店授权 storeRef → READ / COLLECT / REFUND；不给 = 不校验门店 */ grants?: Record<string, string[]>;
+  /** 日退款上限（最小单位）；不给 = 不限 */ dailyRefundLimitMinor?: number }
 export type MockGateway = ((req: SimRequest) => Promise<SimResponse>) & { registerRsaApp(appId: string, serial: string, publicPem: string): void; registerApp(app: MockApp): void; payments: PaymentSim };
 
 /** 接入应用 scopes（READ / COLLECT / REFUND）→ 网关鉴权码，与 near-pay OpenAppModels.SCOPE_OF 一致 */
@@ -18,8 +20,9 @@ export const SCOPE_OF: Record<string, string> = { READ: "pay:read", COLLECT: "pa
  * 运营端「接入应用」的状态 → 网关能认的应用：应用启用且密钥已启用才放行（near-pay 守卫：应用非 ACTIVE 或无有效密钥一律 401）。
  * appSecret 只来自签发那一次的响应 —— 平台不存明文，商户拿着它来调。
  */
-export function gatewayAppOf(app: { appNo: string; environment: string; scopes: string[]; status: string; credentialStatus: string; notifyUrl?: string | null }, appSecret: string, encryptKey?: string): MockApp {
-  return { appId: app.appNo, appSecret, encryptKey, notifyUrl: app.notifyUrl ?? null, environment: app.environment === "LIVE" ? "LIVE" : "SANDBOX", scopes: app.scopes.map((x) => SCOPE_OF[x]).filter(Boolean),
+export function gatewayAppOf(app: { appNo: string; environment: string; scopes: string[]; status: string; credentialStatus: string; notifyUrl?: string | null; dailyRefundLimitMinor?: number },
+  appSecret: string, encryptKey?: string, grants?: Record<string, string[]>): MockApp {
+  return { appId: app.appNo, appSecret, encryptKey, notifyUrl: app.notifyUrl ?? null, grants, dailyRefundLimitMinor: app.dailyRefundLimitMinor, environment: app.environment === "LIVE" ? "LIVE" : "SANDBOX", scopes: app.scopes.map((x) => SCOPE_OF[x]).filter(Boolean),
     status: app.status === "ACTIVE" && app.credentialStatus === "ACTIVE" ? "ACTIVE" : "SUSPENDED" };
 }
 
@@ -44,7 +47,11 @@ function match(prefix: string, method: string, pathname: string): OpenEndpoint |
 /** opts.deliver：模拟接入方服务器收推送（缺省一律 200）；支付链路见 open-api-payment-sim.ts */
 export function createMockGateway(prefix: string, initial: MockApp[] = [TEST_VECTOR_APP], now: () => number = () => Date.now(), opts: { deliver?: Deliver } = {}): MockGateway {
   const apps = [...initial];
-  const payments = createPaymentSim({ now, appOf: (id) => apps.find((a) => a.appId === id), deliver: opts.deliver }); const seen = new Map<string, number>(); let seq = 0;
+  // 推送签名：RSA 应用用平台签名私钥（带 X-Key-Serial），HMAC 应用用 AppSecret
+  const sign = async (app: PayApp, toSign: string) => (app.rsa
+    ? { signature: await rsaSignBase64((await platformKey()).privatePem, toSign), keySerial: MOCK_PLATFORM_SIGN_SERIAL }
+    : { signature: await hmacBase64(hmacKeyOf(app.appSecret!), toSign) });
+  const payments = createPaymentSim({ now, appOf: (id) => apps.find((a) => a.appId === id), deliver: opts.deliver, sign }); const seen = new Map<string, number>(); let seq = 0;
   let platform: Promise<{ privatePem: string; publicPem: string }> | null = null;
   const platformKey = () => (platform ??= generateRsaKeyPair("SIGN"));
   let encrypt: Promise<CryptoKeyPair> | null = null;
