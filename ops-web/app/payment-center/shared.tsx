@@ -71,13 +71,22 @@ export function errorText(e: unknown, c: C): string {
  * 执行一个命令：成功 toast + 刷新；失败 toast 并把错误抛回去
  * （确认弹框据此留在原地，ActionForm 据此不关抽屉）。
  */
+/** near-pay 已切 OpsKit 审批的操作（出款回执、对账差异关闭、人工确认到账）回的是「待审批」而不是结果。 */
+export function isPendingApproval(r: unknown): boolean {
+  if (!r || typeof r !== "object") return false;
+  const o = r as { status?: unknown; statusAfter?: unknown };
+  return o.status === "PENDING_APPROVAL" || o.statusAfter === "PENDING_APPROVAL";
+}
+
 export function useRun(name: string) {
   const c = usePc();
   const refresh = useRefresh(name);
   return React.useCallback(async <R,>(fn: () => Promise<R>, success?: string): Promise<R> => {
     try {
       const r = await fn();
-      notify.success(success ?? c.done);
+      // OpsKit 审批（第二批 Q11）：near-pay 拦下的操作回 PENDING_APPROVAL —— 没有生效，不能报「已完成」
+      if (isPendingApproval(r)) notify.info(c.pendingApproval);
+      else notify.success(success ?? c.done);
       await refresh();
       return r;
     } catch (e) {
