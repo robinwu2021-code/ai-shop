@@ -211,8 +211,10 @@ export interface SiBuyer {
   carrierId?: string;
   donateCode?: string;
 }
+/** 发票来源类型（TDD-发票模块 §24）：核心子单 / 门店收款支付单 / App 外收款记录 */
+export type SiSourceType = "SUB_ORDER" | "PAY_ORDER" | "OFFLINE_RECORD";
 export interface SiIssueReq {
-  sourceType: "SUB_ORDER";
+  sourceType: SiSourceType;
   sourceNo: string;
   buyer?: SiBuyer;
 }

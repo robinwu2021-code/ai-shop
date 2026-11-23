@@ -3,7 +3,7 @@
 状态：已实现（后端、证明联打印、B 端页面、自动开立、混合课税、Turnkey 通道；运营端与回执回写见 §7 后续）
 档位：2 · 依据：[PRD-发票开立与打印](../requirements/PRD-发票开立与打印.md) §4 ·
 决策：[ADR-063](./ADR/ADR-063-发票独立成模块与税制SPI.md)
-创建：2026-11-21 · 最后更新：2026-11-23
+创建：2026-11-21 · 最后更新：2026-11-23（§24 POS 收款开票来源）
 
 ---
 
@@ -23,7 +23,7 @@
 | 发票域 | `backend/invoice/invoice-domain` `ai.neargo.shop.invoice` | 号段、开立、作废、折让、上传任务、B 端 API、打印来源 |
 | 税制 SPI | `…invoice.regime` / `…invoice.regime.tw` | 买受人校验、号码格式、证明联内容（一维码 / QR）、上传报文 |
 | 通道 SPI | `…invoice.gateway`；实现在 `invoice-channel` | 首期 `STUB`，正式加值中心另加实现 |
-| 来源实现 | `shop-app` `ai.neargo.shop.invoicebridge.port` | `SubOrderInvoiceSourcePortImpl`：已付核心子单 → 发票来源（零售、餐饮、美业共用） |
+| 来源实现 | `shop-app` `ai.neargo.shop.invoicebridge.port` | `SubOrderInvoiceSourcePortImpl`：已付核心子单 → 发票来源（零售、餐饮、美业共用）；POS 收款的 `PayOrderInvoiceSourcePortImpl`、`OfflineRecordInvoiceSourcePortImpl` 见 §24 |
 | 打印接入 | 发票域 `InvoicePrintSourceFactsPortImpl` + 打印中心场景 `INVOICE_PROOF` | 证明联走共享打印中心；打印中心新增 `barcode` / `qrPair` 版面块 |
 | 迁移 | `invoice-domain/src/main/resources/db/invoice`，历史表 `ivc_flyway_history` | 独立序列 V1 起，不与主序列抢号 |
 
@@ -1307,3 +1307,98 @@ App 从 v2 取发票 PDF 时，`download-grants` 返回的 `/private/print-artif
 - 正式库核对：`ivc_regime_profile` 1 行（`50766768 / STUB / auto_issue=0 / ACTIVE / qr_key_ref` 已填）；`ivc_number_range` 1 行（`ZZ`、`ACTIVE`）；`ivc_invoice` 0 行；`sec_secret_blob` 1 行。
 - **ZZ 号码不是财政部配给的**，用它开出的票不是合法发票，不得交给顾客；测完开出的票须作废，号段须停用。STUB 不对外送票。
 - **未做**：开票与真实发票（`FACT`）打印。三家店目前都是 0 单，开票需要一张已付款订单，怎么建由用户决定。
+
+## §24 POS 收款开票来源（PAY_ORDER / OFFLINE_RECORD）
+
+档位：1（新增 sourceType 取值 = `POST /biz/invoices` 的契约取值扩展）· 状态：已实现 · 2026-11-23
+
+手持 POS「输金额收款」不产生核心订单：走支付通道的落成**支付单**（`POST /biz/payment/collection`、本店静态码、POS 终端），
+现金 / 外部刷卡 / 转账落成 **App 外收款记录**（`POST /biz/payment/offline-records`）。此前发票只认 `SUB_ORDER`，这两类收款开不了票。
+
+### §24.0 AC（Given / When / Then）
+
+| AC | Given | When | Then |
+|---|---|---|---|
+| P1 | 本店一条 `RECORDED` 的 App 外收款记录（金额 35 000、TWD、备注「早餐 3 份」） | 按 `OFFLINE_RECORD` + recordNo 开票 | 一行应税明细：名 = 备注（空则「收款」，超 256 字截断），数量 1，金额 = 总计 = 记录金额；币种取记录；paidAt = 实收时间；买家空；查询按 tenant / entity / store / record_no 收窄 |
+| P2 | 记录已作废、金额非正、或属于别的门店 | 同上 | `INVOICE_SOURCE_NOT_READY` |
+| P3 | （同 P1 的查询收窄）| — | 见 P1 |
+| P4 | 本店一笔 `SUCCEEDED` 的门店收款支付单（来源 COLLECT / QR_CODE / POS） | 按 `PAY_ORDER` + payOrderNo 开票 | 一行应税「收款」，金额 = 总计 = 实收；币种取支付单；paidAt = 成功时间 |
+| P5 | 支付单未成功、部分 / 全额退款、或有退款在复核 / 在途（可退额 < 实收） | 同上 | `INVOICE_SOURCE_NOT_READY`；被驳回的退款不占额、不挡 |
+| P6 | 别店的支付单（支付域回 NOT_FOUND），或核心订单的线上支付（来源 ORDER） | 同上 | `INVOICE_SOURCE_NOT_READY`（ORDER 走 `SUB_ORDER` 开，防同一笔钱两张票） |
+| P7 | 两种来源已就绪 | 同来源再开、同号不同类型开、作废后再开、取打印事实 | 同来源回原票；来源键 `类型:单号` 互不冲突；作废后取新号；证明联 + 明细两份打印事实 —— 全部走 `InvoiceServiceImpl` 通用链路，无改动 |
+
+### §24.1 现状与影响面
+
+- `InvoiceServiceImpl` 按 `sourceType` 分派到 `InvoiceSourcePort`，幂等键 `active_source_key = sourceType:sourceNo`，作废 / 折让 / 打印事实都不看类型 → **发票域零改动**。
+- `IssueInvoiceReq.sourceType` 只有 `@NotBlank @Size(max=32)`，无白名单；未登记的类型在服务里回 `INVOICE_SOURCE_NOT_READY`。
+- `InvoicePrintSourceFactsPortImpl` 只在 `SUB_ORDER` 时把打印件挂到子单上，新类型 `subOrderNo=null`，打印照出（P7 验证）。
+- `sourcesOfBuyerOrder` 用接口默认（空集合）：POS 收款没有平台买家与 C 端订单。自动开立（`InvoiceAutoIssueConsumer`）只监听子单付款，不涉及新类型。
+
+### §24.2 方案（模块设计）
+
+| 文件 | 内容 |
+|---|---|
+| `backend/shop-app/.../invoicebridge/port/OfflineRecordInvoiceSourcePortImpl.java` | `OFFLINE_RECORD`：`DataScopeContext.executeWithoutScope` 内用 trade 域 `OfflineRecordMappers.RecordMapper` 按 scope 显式查 |
+| `backend/shop-app/.../invoicebridge/port/PayOrderInvoiceSourcePortImpl.java` | `PAY_ORDER`：经 `payclient.BizPaymentAppService#paymentDetail(storeNo, payOrderNo)` 读（内嵌直调支付域、独立形态走 near-pay 内部端点），**不直连 `pay_order`**；`NOT_FOUND` → NOT_READY |
+| `backend/shop-app/src/test/.../invoicebridge/port/{OfflineRecord,PayOrder}InvoiceSourcePortImplTest.java` | P1–P6 |
+| `backend/invoice/invoice-domain/src/test/.../InvoiceServiceMysqlTest.java` | P7；测试来源桩登记三种类型 |
+| `b-app/src/api/sales-invoice.ts` | `SiSourceType = "SUB_ORDER" \| "PAY_ORDER" \| "OFFLINE_RECORD"`，`SiIssueReq.sourceType` 用它 |
+| `docs/api/invoice.openapi.json` | `sourceType` 两处说明列出三种取值 |
+| 本文 L2 表、§24 | 设计与对账 |
+
+**sourceType 契约字符串**：`SUB_ORDER`（既有）、`PAY_ORDER`、`OFFLINE_RECORD`。industryCode 两者都记 `RETAIL`。
+
+**取舍**：
+- 支付单读视图（`MerchantPaymentQueryService.Detail`）不带 `subject`，明细名一律「收款」。要用商品标题需给 Detail 加字段 —— 那是支付读接口（含 near-pay）的契约变更，本期不做。
+- 走 `BizPaymentAppService` 意味着开票需要商家会话（操作员取 `SecurityUtils.currentUserNo()`），并会写一条 `BIZ_PAY_VIEW` 审计；`/biz/invoices` 本就在商家会话下。系统身份（如将来对支付单自动开立）不能走这条路。
+- 实体归属：支付单按门店圈；scope 的门店已由发票域按登录上下文收窄到所属主体，不再二次判主体（同一事实不判两次）。
+- App 外收款记录可带 `orderNo` / `bizNo` 引用；若某笔现金同时又落成了已付子单，两个来源各开一张的风险由商家操作避免，本期不做交叉判重。
+
+### §24.5 对账三 · 实现 → 需求（测试）
+
+| AC | 测试方法 | 结果 |
+|---|---|---|
+| P1 | `OfflineRecordInvoiceSourcePortImplTest#acP1RecordedCashBecomesOneTaxableLineForTheReceivedAmount` | ✅ |
+| P2 | `OfflineRecordInvoiceSourcePortImplTest#acP2VoidedMissingOrOtherStoreRecordIsNotReady` | ✅ |
+| P3 | `OfflineRecordInvoiceSourcePortImplTest#acP1QueryIsNarrowedToTheScopeTenantEntityAndStore` | ✅ |
+| P4 | `PayOrderInvoiceSourcePortImplTest#acP4SucceededCollectionBecomesOneTaxableLineForThePaidAmount` | ✅ |
+| P5 | `PayOrderInvoiceSourcePortImplTest#acP5UnpaidRefundedOrRefundingPaymentIsNotReady` | ✅ |
+| P6 | `PayOrderInvoiceSourcePortImplTest#acP6OtherStoreOrCoreOrderPaymentIsNotReady` | ✅ |
+| P7 | `InvoiceServiceMysqlTest#acP7PosSourcesIssueOnceVoidAndPrintLikeSubOrder`（MySQL 9.7 @127.0.0.1:3308） | ✅ |
+
+`COMMERCE_MYSQL_URL=jdbc:mysql://127.0.0.1:3308/?… mvn -o -pl shop-app -am test -Dtest='*Invoice*,ArchitectureTest,BizEndpointPermTest,SchemaParityTest,StoreScopedDailyRoutesFlowTest'`（2026-11-23，`BUILD SUCCESS`）：
+
+```
+Tests run: 52, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.invoice.service.impl.InvoiceServiceMysqlTest
+Tests run: 27, Failures: 0, Errors: 0, Skipped: 1 -- in ai.neargo.shop.arch.ArchitectureTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.BizEndpointPermTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.SchemaParityTest
+Tests run: 23, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.commercebridge.StoreScopedDailyRoutesFlowTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.invoicebridge.port.OfflineRecordInvoiceSourcePortImplTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.invoicebridge.port.PayOrderInvoiceSourcePortImplTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.invoicebridge.port.SubOrderInvoiceSourcePortImplTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.invoicebridge.InvoiceAutoIssueConsumerTest
+模块合计：invoice-domain 59/0/0/0 · invoice-channel 58/0/0/0 · print-channel 4/0/0/0 · shop-app 90/0/0/1
+```
+
+`b-app`：`npx vue-tsc --noEmit` 退出码 0。
+
+### §24.6 对账二 · 设计 → 实现
+
+`git show --stat HEAD`（本节随同一提交，TDD 行数为回填前的值）：
+
+```
+ b-app/src/api/sales-invoice.ts                     |  4 +-
+ .../service/impl/InvoiceServiceMysqlTest.java      | 27 +++++-
+ .../port/OfflineRecordInvoiceSourcePortImpl.java   | 64 +++++++++++++++
+ .../port/PayOrderInvoiceSourcePortImpl.java        | 67 +++++++++++++++
+ .../OfflineRecordInvoiceSourcePortImplTest.java    | 91 ++++++++++++++++++++
+ .../port/PayOrderInvoiceSourcePortImplTest.java    | 92 +++++++++++++++++++++
+ docs/api/invoice.openapi.json                      |  4 +-
+ docs/technical/TDD-发票模块.md                      | 96 +++++++++++++++++++++-
+ 8 files changed, 439 insertions(+), 6 deletions(-)
+```
+
+与 §24.2 逐行比：8 个文件全部在表内，表内没有未动的文件。
+
+偏差：无。生成物：`node scripts/check-generated-docs.mjs` 列出 12 份过期产物，与 main 上 PR #43 留下的 12 份同名同数，本次未新增过期文件，未重新生成。

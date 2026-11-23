@@ -423,6 +423,31 @@ class InvoiceServiceMysqlTest {
                 () -> invoices.printFacts(new Scope("T1", "E1", "S2", "U1"), r.invoiceNo()));
     }
 
+    /**
+     * §24 AC-P7：POS 收款来源（PAY_ORDER / OFFLINE_RECORD）走同一条通用链路 —— 同来源二次开票回原票、
+     * 来源键带类型（同号不同类型是两张票）、作废后可重开、打印事实照出。
+     */
+    @Test
+    void acP7PosSourcesIssueOnceVoidAndPrintLikeSubOrder() {
+        sources.paid("POS1", 12_300);
+        var record = invoices.issue(SCOPE, "OFFLINE_RECORD", "POS1", Buyer.consumer());
+        assertEquals(12_300L, row(record.invoiceNo()).getTotalMinor());
+        assertEquals(record.invoiceNo(), invoices.issue(SCOPE, "OFFLINE_RECORD", "POS1", Buyer.consumer()).invoiceNo());
+        var payment = invoices.issue(SCOPE, "PAY_ORDER", "POS1", Buyer.consumer());
+        assertNotEquals(record.invoiceNo(), payment.invoiceNo(), "来源键是 类型:单号");
+        assertEquals(payment.invoiceNo(), invoices.issue(SCOPE, "PAY_ORDER", "POS1", Buyer.consumer()).invoiceNo());
+        assertEquals(2, count("ivc_invoice"));
+        assertEquals("OFFLINE_RECORD:POS1", row(record.invoiceNo()).getActiveSourceKey());
+        assertEquals(List.of("INVOICE_PROOF", "INVOICE_DETAIL"),
+                invoices.printFacts(SCOPE, payment.invoiceNo()).stream().map(f -> f.scene()).toList());
+
+        invoices.voidInvoice(SCOPE, payment.invoiceNo(), "開錯");
+        var again = invoices.issue(SCOPE, "PAY_ORDER", "POS1", Buyer.consumer());
+        assertNotEquals(payment.fiscalNumber(), again.fiscalNumber());
+        assertCode(ErrorCode.INVOICE_SOURCE_NOT_READY,
+                () -> invoices.issue(SCOPE, "OFFLINE_RECORD", "NOPE", Buyer.consumer()));
+    }
+
     /** AC40（数据域，§18.7）：运营会话只看自己商家范围内的主体；空范围一个都看不到；不限则全部可见。 */
     @Test
     void ac40OpsViewsAreNarrowedToTheStaffMerchantScope() {
@@ -1438,7 +1463,7 @@ class InvoiceServiceMysqlTest {
         }
 
         public Set<String> sourceTypes() {
-            return Set.of("SUB_ORDER");
+            return Set.of("SUB_ORDER", "PAY_ORDER", "OFFLINE_RECORD");
         }
 
         public InvoiceSource load(Scope scope, String type, String no) {
