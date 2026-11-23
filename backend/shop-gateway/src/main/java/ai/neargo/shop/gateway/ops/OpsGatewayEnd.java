@@ -40,11 +40,17 @@ public class OpsGatewayEnd extends AbstractGatewayEnd {
     @Bean
     @Order(3)
     SecurityFilterChain operatorChain(HttpSecurity http, SpringSecurityAdapter adapter,
-                                      ObjectProvider<PayOpsPassThrough> payOps) throws Exception {
+                                      ObjectProvider<PayOpsPassThrough> payOps,
+                                      ObjectProvider<OpsKitPassThrough> opsKit) throws Exception {
         // 支付运营接口透传：放在授权之后，走到它的都已登录；开关关时没有这个 bean（TDD-支付运营端经网关转发与权限下沉 §2.3）
         PayOpsPassThrough passThrough = payOps.getIfAvailable();
         if (passThrough != null) {
             http.addFilterAfter(passThrough.filter(), AuthorizationFilter.class);
+        }
+        // 审批页面透传到 OpsKit（TDD-OpsKit审批对接 §1.2）：同样只要求有效运营会话，权限由 OpsKit 拿令牌回内省后自己判
+        OpsKitPassThrough opsKitPassThrough = opsKit.getIfAvailable();
+        if (opsKitPassThrough != null) {
+            http.addFilterAfter(opsKitPassThrough.filter(), AuthorizationFilter.class);
         }
         return adapter.install(http, spec());
     }

@@ -166,6 +166,22 @@ class OpsKitApprovalFlowTest {
     }
 
     @Test
+    void newTodoNotifiesStaffHoldingTheConcretePermissionOnly() {
+        var staff = mock(ai.neargo.shop.spi.platform.OpsStaffPort.class);
+        var alerts = mock(ai.neargo.shop.spi.notify.OpsAlertPort.class);
+        when(staff.staffNosWithPerm("merchant:apply:audit")).thenReturn(List.of("E1", "E2"));
+        var body = "{\"eventId\":\"e\",\"eventType\":\"task.created\",\"accountId\":\"a\",\"workspaceId\":\"w\",\"workspaceExternalRef\":\"PLATFORM\","
+                + "\"occurredAt\":1,\"idemKey\":\"T1:created:1\",\"data\":{\"taskNo\":\"T1\",\"processCode\":\"shop_store_opening\","
+                + "\"subject\":{\"type\":\"shop.store_opening\",\"ref\":\"S1\",\"display\":{\"title\":\"门店经营开通 · 文三路店\"}},"
+                + "\"candidates\":[\"perm:merchant:apply:audit\",\"perm:merchant:apply:*\",\"perm:merchant:*\",\"perm:*\",\"group:x\"]}}";
+        new OpsKitTodoNotifier(staff, alerts).taskCreated(ai.neargo.opskit.connector.Envelope.parse(body));
+        verify(staff).staffNosWithPerm("merchant:apply:audit");
+        verify(staff, never()).staffNosWithPerm("merchant:*");
+        verify(alerts).approvalTodo(eq(new ai.neargo.shop.spi.notify.OpsAlertPort.ApprovalTodo("T1", "门店经营开通 · 文三路店", "shop_store_opening")),
+                eq(List.of("E1", "E2")), eq("/approvals?tab=todo"));
+    }
+
+    @Test
     void ledgerKeysFitTheConsumedTable() {
         assertThat(DbEventLedger.key("instance.awaiting_confirmation", "PI01M83CK0NDZ0PDWPE5FYE5YPWS:12")).hasSize(64);
     }

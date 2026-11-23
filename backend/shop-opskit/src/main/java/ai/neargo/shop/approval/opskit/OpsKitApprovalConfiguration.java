@@ -5,6 +5,9 @@ import ai.neargo.shop.approval.port.OpsKitApprovalPort;
 import ai.neargo.shop.approval.port.OpsKitWebhookPort;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.approval.ApprovalSubject;
+import ai.neargo.shop.spi.notify.OpsAlertPort;
+import ai.neargo.shop.spi.platform.OpsStaffPort;
+import org.springframework.beans.factory.ObjectProvider;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +41,11 @@ public class OpsKitApprovalConfiguration {
     }
 
     @Bean
-    ApprovalClient opskitApprovalClient(OpsKitProperties props, ApprovalSubjects subjects, ApprovalOutcomes outcomes, JdbcTemplate db) {
+    ApprovalClient opskitApprovalClient(OpsKitProperties props, ApprovalSubjects subjects, ApprovalOutcomes outcomes, JdbcTemplate db,
+                                        ObjectProvider<OpsStaffPort> staff, ObjectProvider<OpsAlertPort> alerts) {
+        OpsStaffPort staffPort = staff.getIfAvailable();
+        OpsAlertPort alertPort = alerts.getIfAvailable();
+        var notifier = staffPort == null || alertPort == null ? null : new OpsKitTodoNotifier(staffPort, alertPort);
         var b = ApprovalClient.builder()
                 .baseUrl(props.baseUrl()).workspace(props.workspace())
                 .credential(props.credential()).signingSecret(props.signingSecret())
@@ -46,8 +53,13 @@ public class OpsKitApprovalConfiguration {
                 .subjectPrefixes("shop.")
                 .ledger(new DbEventLedger(db))
                 .onFinished(outcomes::finished)
-                // 站内消息推送在阶段 2.9（等 OpsKit K3 给出 candidates）；这里先记录
-                .onTaskCreated(e -> log.info("[opskit] 新待办 {} {}", e.eventType(), e.idemKey()));
+                .onTaskCreated(e -> {
+                    if (notifier != null) {
+                        notifier.taskCreated(e);
+                    } else {
+                        log.info("[opskit] 新待办 {}（没有站内消息出口）", e.idemKey());
+                    }
+                });
         for (ApprovalSubject s : subjects.all()) {
             b.action(ApprovalSubjects.actionOf(s), ctx -> outcomes.apply(s, ctx));
         }

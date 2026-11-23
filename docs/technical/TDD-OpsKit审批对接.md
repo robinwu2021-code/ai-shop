@@ -185,7 +185,7 @@ ops-web (/ops-web/approvals, /ops-web/approval-flows)
 
 ## 6. 实现记录
 
-### 6.1 阶段 1（2026-11-23，未提交）
+### 6.1 阶段 1（2026-11-23，提交 58cb92cc6）
 
 | 落点 | 文件 | 与 §1 的偏差 |
 |---|---|---|
@@ -213,4 +213,34 @@ StoreOperationalReviewTest Tests run: 7, Failures: 0, Errors: 0, Skipped: 0   �
   送审带当前修订 · STALE 不生效 · 无数据域的回调线程上生效且幂等 · 驳回回到可重新提交、旧修订的驳回被忽略
 ArchitectureTest          Tests run: 27, Failures: 0, Errors: 0, Skipped: 1   （-P opskit，含 approval 域）
 默认构建（不带 profile）  mvn -pl shop-app -am compile：通过
+```
+
+### 6.3 阶段 2（2026-11-23，未提交）
+
+| 落点 | 文件 | 与 §1 的偏差 |
+|---|---|---|
+| 2.1 内省 | `shop-gateway/.../portal/internal/OpsKitIntrospectEndpoint`（`POST /internal/opskit/introspect`，Basic：`shop.opskit.introspect.client-id/secret`） | **偏差**：`exp` 给「现在 + 5 分钟」而不是会话的 30 天滑动过期 —— 只作 OpsKit 缓存上限（OpsKit 另有 60 秒上限），不用为它多读一次会话表。`btk_` 先回 `active:false`（S3 / C12） |
+| 2.2 透传 | `gateway/ops/OpsKitPassThrough`（开关 `shop.gateway.ops.opskit-proxy.enabled`，目标 `shop.services.targets.OPSKIT`）· `OpsGatewayEnd` 挂载 · `ServiceName.OPSKIT` · `PassThroughInvoker` 透传响应头加 `traceId / Idempotent-Replayed / ETag / X-Definition-Version`，下游不可用的文案按服务区分（审批服务 / 支付服务） | —— |
+| 2.3 nginx | **不用改**：运营端接口本就经 `/ops-shop/ops/` → 网关 `/ops/`，`/ops/opskit/v1/**` 自然包含在内（`app166.conf` 的 `/oms-api` 是 near-pay 运营端的入口） | **偏差**：原计划在 `/oms-api` 加一段 |
+| 2.4 客户端 | `ops-web/app/approvals/_api/{client.ts, types.ts, errors.ts, error-keys.json}`；基址默认 `${NEXT_PUBLIC_API_BASE}/ops/opskit/v1`，可用 `NEXT_PUBLIC_OPSKIT_API_BASE` 覆盖 | 类型按 OpenAPI 手写，未加快照比对测试（错误码表是 OpsKit 原文件拷贝） |
+| 2.5 审批中心 | `ops-web/app/approvals/page.tsx`：待我审批（P2，带数量）· 我提交的（`createdBy:"me"`）· 生效失败（`statusPrefix:"failed_"`）· 全部（有 `approval:view:all` 才显示） | —— |
+| 2.6 详情 | `ops-web/app/approvals/detail/page.tsx`：申请内容（改前 → 改后）· 流程进度（pipeline）· 审批步骤 · 审批记录 · 流转记录；按钮按 `mine`，不能审批时显示 `whyNot` 文案；重试 / 放弃按 `pipeline[].actions` 走实例迁移；通过不填意见、驳回必填 | —— |
+| 2.7 流程配置 | `ops-web/app/approval-flows/{page.tsx, detail/page.tsx}`：列表（版本、在途、启停）· 编辑审批步骤（5 种审批人、ANY/ALL、条件、时限）与执行节点（已登记的动作只读、超时）· 规则 · 版本说明 · 版本历史；422 字段错误标到对应步骤 | —— |
+| 2.8 菜单 | **未做，待用户定**：现有「支付中心 → 审批 / 审批流程」显示的是 near-pay BM25 旧审批，还在用；现在替换会让运营看不到在途旧单。新页面先按地址访问（`/approvals`、`/approval-flows`），菜单在 near-pay S1 切换时与下线 `approvals-tab` 一起换（含菜单点迁移与界面清单） | **偏差** |
+| 2.9 站内消息 | `spi/notify/OpsAlertPort.approvalTodo`（默认空实现）+ `OpsAlertAdapter` 实现 + `shop-opskit/OpsKitTodoNotifier`；按 `task.created.candidates` 里不含通配的 `perm:` 反查运营员工；三语词条 `approval.todo.title/body` | —— |
+| 测试配置 | `ops-web/vitest.config.mts` 的 include 加 `app/approvals/**/*.test.ts` | —— |
+
+**配置（启用时，追加）**：`shop.gateway.ops.opskit-proxy.enabled=true` · `shop.services.targets.OPSKIT=http://127.0.0.1:8090`（或 Nacos `shop.nacos.discovery.services.OPSKIT=opskit`）·
+`shop.opskit.introspect.client-id=${OPSKIT_NEARGO_INTROSPECT_CLIENT_ID}` · `shop.opskit.introspect.client-secret=${OPSKIT_NEARGO_INTROSPECT_CLIENT_SECRET}`。
+
+### 6.4 阶段 2 测试（真实输出）
+
+```
+OpsKitApprovalFlowTest      Tests run: 10, Failures: 0  （+ 待办只通知持具体权限码的员工）
+OpsKitIntrospectEndpointTest Tests run: 3, Failures: 0  （Basic 错 401 · 无效 / 商户 / 不存在员工 active=false · 运营 sub/roles/perms 与 /ops/auth/me 一致）
+OpsKitPassThroughTest       Tests run: 3, Failures: 0  （未登录 401 · 令牌与请求体原样、traceId / Idempotent-Replayed 带回 · 403 错误体原样）
+PayOpsPassThroughTest 3 · PayOpsPassThroughOffTest 1 · PassThroughInvokerTest 5 · OperatorIdentityEndpointTest 5：全部通过（未受影响）
+ops-web client.test.ts      Tests 5 passed            （基址 · 寻址与头 · 错误体 · 实例→审批单 · 错误码表）
+ops-web tsc --noEmit         新增文件无错误（全量仅剩既有的 opencc-js 缺包，主工作区同样存在）
+gen-ui-catalog.py --check    界面清单是最新的（347 个界面）
 ```
