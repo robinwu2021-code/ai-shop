@@ -1224,3 +1224,17 @@ App 从 v2 取发票 PDF 时，`download-grants` 返回的 `/private/print-artif
 - 只开这一个精确路径，`/shop-api-v2/private/` 下其它路径仍走兜底 404。链接本身有 60 秒签名，不带登录态。
 - 探测：`/shop-api-v2/private/print-artifacts?key=x&expires=1&signature=bad` → 后端 422，`code=82001`、`data.key=print.downloadExpired`（不再是 nginx 404）；`/shop-api-v2/biz/invoices/X/print-facts` 401；`/ops-shop-v2/` 200；旧 `/shop-api` 照常应答。
 - 已通知商户 App 发票打印会话复测下载。**未验证**：用真实发票走完「模拟 → 导出 → 授权 → 取字节」，需要指向 `/shop-api-v2` 的 debug 包与用户本人登录。
+
+### §23.2 打印件签名密钥（2026-11-23 00:41–00:43 UTC，用户：「生成并重启」）
+
+§23.1 之后 App 用 v2 实测：模拟与导出都成功，但 `POST /biz/print/exports/{no}/download-grants` 每次回 `82003 print.artifactSigningNotConfigured`。`PrivateLocalArtifactStore` 读 `shop.print.artifacts.signing-key`（base64，≥ 32 字节，HMAC-SHA256），v2 的 `ai-shop-all-v2.env` 没配这一项（模板 `deploy/storage/local.env.example` 有，§23 发布时漏了）。
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| .80 `/data0/app/ai-shop-v2/ai-shop-all-v2.env` | 追加 `SHOP_PRINT_ARTIFACTS_SIGNING_KEY`，值在服务器上由 `openssl rand -base64 32` 生成直接写入（44 字符 = 32 字节），未出过服务器、未打印；`./run.sh all restart`，00:42:50 `Started ShopApplication in 88.5 seconds`，中断约 95 秒，无迁移 | `cp -p ai-shop-all-v2.env.before-print-signing-20261123 ai-shop-all-v2.env && ./run.sh all restart` |
+
+- 换密钥只会让当时未过期（60 秒内）的下载链接失效，无其它数据依赖。
+- 探测：health UP（.80 本机 `127.0.0.1:18180` 不通，要用 `192.168.3.80:18180`）；容器内变量长度 44；`/shop-api-v2/biz/invoices` 401、坏签名下载 422、`/ops-shop-v2/` 200。
+- **端到端**（商户 App 会话，用户本人登录 oscar＠umeshop.ai、门店 ume早餐店、`source.type=SAMPLE`）：证明联 58、交易明细 58/80、折让证明单 58/80 × 原卷宽 / A4 共 10 组，grant 均 `code=0` → 拼 `/shop-api-v2` 取字节 2xx、`%PDF` 开头、1 页、14 634–17 666 字节 → App 内显示；「重新开启 PDF」重新申请授权可再次显示。截图在 ai-shop-bapp `docs/handoff/invoice-print-mock-2026-11-22/screenshots/v2/`。
+- 顺带发现（未处理，与本次无关）：启动日志报 `shop.ship.track-key`（`SHIP_TRACK_KEY`）未配置，发货短信与看件页不可用。
+- **未验证**：真实发票（`source.type=FACT`、`print-facts`），要等门店开通发票设置（现在 `/biz/invoices` 回 70006）；iOS。
