@@ -33,9 +33,15 @@ export class MallOfflineReviewAttempt {
     if (this.phase !== "ready" && this.phase !== "absent") throw new Error("LOOKUP_REQUIRED");
     // A thrown response may follow a committed action. Only a read-only lookup can enable retry.
     this.phase = "unknown";
-    return this.outcome(await (this.intent.kind === "confirm"
-      ? api.confirmOfflinePayment(storeNo, orderNo, this.intent.request)
-      : this.intent.kind === "supplement" ? api.supplementOfflineReceipt!(storeNo,orderNo,this.intent.request) : api.voidOfflineOrder(storeNo, orderNo, this.intent.request)));
+    try {
+      return this.outcome(await (this.intent.kind === "confirm"
+        ? api.confirmOfflinePayment(storeNo, orderNo, this.intent.request)
+        : this.intent.kind === "supplement" ? api.supplementOfflineReceipt!(storeNo,orderNo,this.intent.request) : api.voidOfflineOrder(storeNo, orderNo, this.intent.request)));
+    } catch (e) {
+      // 审批门禁拦下（T9b）：后端明确没执行，等同查过「不存在」，审批通过后可直接用同一份内容再点
+      if (e instanceof Error && e.message.startsWith("APPROVAL_")) this.phase = "absent";
+      throw e;
+    }
   }
   async resolve(lookup: (actionNo: string) => Promise<MallOfflineActionView | null>) {
     const result = await lookup(this.intent.request.actionNo);
