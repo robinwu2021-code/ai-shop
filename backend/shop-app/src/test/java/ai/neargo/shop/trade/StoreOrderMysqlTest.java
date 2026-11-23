@@ -476,6 +476,26 @@ class StoreOrderMysqlTest {
     }
 
     @Test
+    void ac6SkuWithoutGoodsTaxClassTakesTheStoreDefaultOrStaysPending() {
+        // 无门店默认：同 P1，待补
+        var pending = create(CLERK, "POS-P2-SKU-ND", "K-P2-SKU-ND", List.of(sku("SKU-X", 1, 600)), List.of(), null);
+        assertEquals(List.of(new MissingView(1, List.of("taxType"))), pending.invoiceReadiness().missing());
+        // 门店默认 TAXABLE：商品没设课税别（OUT_OF_SCOPE）的 SKU 行取它，来源 STORE_DEFAULT；有课税别的商品不变
+        invoices.settings = new InvoicePort.StoreSettings("TAXABLE", "MANUAL");
+        var view = create(CLERK, "POS-P2-SKU-D", "K-P2-SKU-D", List.of(sku("SKU-X", 1, 600), sku("SKU-A", 1, 2500)),
+                List.of(), null);
+        assertEquals(List.of("TAXABLE", "TAXABLE"), view.lines().stream().map(StoreOrderService.LineView::taxType).toList());
+        assertTrue(view.invoiceReadiness().missing().isEmpty());
+        assertEquals(List.of("STORE_DEFAULT|STANDARD", "GOODS|STANDARD"), jdbc.queryForList("SELECT CONCAT_WS('|',"
+                + "invoice_data_source,tax_class) FROM ord_item WHERE sub_order_no=? ORDER BY id", String.class,
+                view.subOrderNo()));
+        // 门店默认零税率：收银员（无 tax-override）照样能建
+        invoices.settings = new InvoicePort.StoreSettings("ZERO_RATED", "MANUAL");
+        assertEquals("ZERO_RATED", create(CLERK, "POS-P2-SKU-Z", "K-P2-SKU-Z", List.of(sku("SKU-X", 1, 600)), List.of(),
+                null).lines().getFirst().taxType());
+    }
+
+    @Test
     void ac11StoreItemSuppliesNameAndTaxTypeEvenZeroRatedWithoutOverride() {
         invoices.items.put("IVS-1", new InvoicePort.StoreItem("IVS-1", "外銷清潔劑", "ZERO_RATED", true));
         invoices.items.put("IVS-2", new InvoicePort.StoreItem("IVS-2", "書籍", "EXEMPT", true));

@@ -166,10 +166,18 @@ public class StoreOrderServiceImpl implements StoreOrderService {
                 item.setCategoryNo(sku.categoryNo());
                 item.setInvoiceName(sku.title());
                 var taxClass = taxClasses.get(sku.skuNo());
-                // 不在课税范围 / 没设：不冻结一个猜的值，留空 = 待补
                 item.setTaxClass(InvoiceReadinessPolicy.taxType(taxClass == null ? null : taxClass.name()) == null
                         ? null : taxClass.name());
                 item.setInvoiceDataSource(SOURCE_GOODS);
+                if (item.getTaxClass() == null) {
+                    // 商品没设课税别（或 OUT_OF_SCOPE）：取门店默认课税别（用户 2026-11-24「用门店默认税别」）；
+                    // 门店也没设就留空 = 待补，不猜。默认值是店长设定的边界，零税率 / 免税不需另授权
+                    if (settings == null) settings = storeSettings(scope);
+                    if (settings.defaultTaxType() != null) {
+                        item.setTaxClass(InvoiceReadinessPolicy.taxClass(settings.defaultTaxType()));
+                        item.setInvoiceDataSource(SOURCE_STORE_DEFAULT);
+                    }
+                }
             } else {
                 // 自订行没有商品：goods_no / sku_no 是 NOT NULL 列，存空串（不是任何商品号）
                 item.setGoodsNo("");

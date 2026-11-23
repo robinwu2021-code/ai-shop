@@ -94,6 +94,8 @@ POST /biz/store-orders
 - `POST /biz/store-orders`：自订行 `storeItemNo`（与 `name` / `taxType` 互斥，校验在请求体）→ 复制品项的品名与课税别，`invoice_data_source=STORE_ITEM`，
   零税率 / 免税**不需** `biz:invoice:tax-override`；不存在、别店或停用 → `20026 STORE_ORDER_STORE_ITEM_UNAVAILABLE`。
   自订行没填 `taxType`（也没选品项）→ 取门店 `defaultTaxType`（来源 `STORE_DEFAULT`，同样不需另授权；门店没设仍待补）。
+  **SKU 行**的商品没设课税别（无 `prd_sku_pricing_policy.tax_class` 或 OUT_OF_SCOPE）→ 同样取门店 `defaultTaxType`（来源 `STORE_DEFAULT`，
+  零税率 / 免税不需另授权；用户 2026-11-24「用门店默认税别」）；门店没设仍待补（NEEDS_INFO，可补）。商品有课税别的不变（`GOODS`）。
   `invoice.timing` 存 `ord_order.invoice_timing`（null = 跟门店设定），响应 `invoiceTiming` 回显。
 - `PUT /biz/store-orders/{orderNo}/invoice-data`：行上可带 `storeItemNo`（与 `name` / `taxType` 互斥），只补空字段，零税率 / 免税不需另授权。
 - `POST /biz/store-orders/{orderNo}/cancel`：已挂收款（`paidMinor > 0`，部分付款）也回 `20024`，先作废现金记录 / 退收款。
@@ -218,6 +220,7 @@ BUILD SUCCESS
 | 并发：现金 600 与收款码 600 同时到（4 轮）只转一次、一组事件；两笔足额现金同时到一笔成功、一笔 20024 不落库 | `#concurrentPaymentsSettleExactlyOnceAndPublishOneEvent` | ✅ |
 | D3 回归：非门店零售单的现金记录不改子单状态、不发事件 | `BizOfflineRecordFlowTest#record_with_order_of_another_store_is_not_found`（新增两条断言） | ✅ |
 | AC6 自订行没填税别取门店默认（零税率也不需另授权），来源 `STORE_DEFAULT` | `StoreOrderMysqlTest#ac6StoreDefaultTaxTypeFillsACustomLineWithoutOne` | ✅ |
+| AC6 SKU 行商品没设课税别：门店默认 TAXABLE → 取它（`STORE_DEFAULT`）、不再缺；无门店默认 → 仍缺；门店默认零税率收银员也能建；有课税别的商品不变 | `StoreOrderMysqlTest#ac6SkuWithoutGoodsTaxClassTakesTheStoreDefaultOrStaysPending` | ✅ |
 | AC11 常用品项带出品名 / 税别（零税率、免税不需另授权），停用的 20026；补资料也能选品项 | `#ac11StoreItemSuppliesNameAndTaxTypeEvenZeroRatedWithoutOverride` | ✅ |
 | AC11 门店设定默认 `{null, MANUAL}`、清空默认税别写 NULL、门店隔离、CHECK | `InvoiceServiceMysqlTest#storeSettingsDefaultToManualAndSaveClearsTheDefaultTaxTypeExplicitly` | ✅ |
 | AC11 常用品项按店、按 sort、可改可删（幂等）、上限 50 → 26015 | `InvoiceServiceMysqlTest#storeItemsArePerStoreCappedAndEditable` | ✅ |
@@ -246,6 +249,7 @@ Tests run: 54, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.invoice.s
 shop-core 146 · invoice-domain 61 · invoice-channel 58 · shop-app 555（Skipped 6）… 各模块合计 886 条，Failures 0 Errors 0
 BUILD SUCCESS
 ```
+追加「SKU 行回落门店默认税别」后重跑 `-Dtest=StoreOrderMysqlTest`：`Tests run: 22, Failures: 0, Errors: 0, Skipped: 0`，BUILD SUCCESS。
 
 ## §6 对账二 · 设计 → 实现
 
@@ -350,6 +354,9 @@ P1 共 6 个提交（`git diff --stat 95209a38f..HEAD`，不含本文）：
 9. **`invoice_data_source`**：品项 `STORE_ITEM`；默认税别 `STORE_DEFAULT`（只在品名、税别都没填时；填了品名、税别取默认的仍记 `ENTERED`）；补资料选品项仍记 `FILLED`（稽核行有值）。
 10. **多收**：`paidMinor` 如实大于总额，不记找零金额（POS 自己算）；退多收的钱是 P3。
 11. **收款码币别不符 / 别店 / 已取消后到账**：不报错（钱已收），只记日志或只记不转状态，需人工处理。
+12. **SKU 行回落门店默认税别**（用户 2026-11-24「用门店默认税别」，P2 中途追加）：商品没设课税别或 OUT_OF_SCOPE 的 SKU 行取门店
+    `defaultTaxType`，`invoice_data_source=STORE_DEFAULT`；门店没设仍待补。改变了 P1 偏差 6 的前提（「SKU 行没税别只能补」）——
+    现在只有门店也没默认时才需补。此用例与实现同批写成，首跑即绿（`StoreOrderMysqlTest` 22 条，0 失败）。
 
 ### 闸门（2026-11-24，`bash .githooks/pre-push`，HEAD 干净副本）
 
