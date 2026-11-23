@@ -83,7 +83,7 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
               ]} /> },
               { title: m.keyUsage, content: <KeyUsageTable api={api} appNo={a.appNo} name={NAME} /> },
             ];
-            return <DetailBody sections={sections} actions={<DetailActions ctx={ctx} keys={["revoke", "emergencyLock", "suspend", "issueKey", "publicKey", "callback", "scopes", "verifyCallback", "enable", "resume", "edit"]} />} />;
+            return <DetailBody sections={sections} actions={<DetailActions ctx={ctx} keys={["revoke", "emergencyLock", "suspend", "issueKey", "publicKey", "callback", "scopes", "verifyCallback", "submitEnable", "enable", "resume", "edit"]} />} />;
           }}
         </DetailLoader>
       ),
@@ -136,6 +136,10 @@ export function AppsTab({ header }: { header: React.ReactNode }) {
           onSubmit={(v) => run(() => api.apps.verifyCallback(ctx.row!.appNo, { expectedVersion: ctx.row!.version, evidenceRef: String(v.evidenceRef).trim(), reason: String(v.reason) }))} onDone={ctx.back ?? ctx.close} />
       ),
     },
+    // near-pay OpenAppEnableSubject：OPEN_APP_ENABLE / ENABLE，冻结版本 = 当前版本 + 1；提交码 pay:app:manage
+    { key: "submitEnable", label: m.submitAppApproval, kind: "dialog", perm: "pay:app:manage", visible: st("DRAFT", "SUSPENDED"),
+      confirm: () => ({ title: m.submitAppApprovalTitle, desc: m.submitAppApprovalDesc, reasonHint: c.reasonHint }),
+      run: (r, reason) => run(async () => api.approvals.submit({ subjectType: "OPEN_APP_ENABLE", subjectRef: r!.appNo, subjectRevision: (await api.apps.detail(r!.appNo)).version + 1, action: "ENABLE", reason }), m.submitAppApprovalDone) },
     { key: "enable", label: c.appEnable, kind: "dialog", perm: "pay:app:approve", visible: st("DRAFT"), confirm: () => ({ title: c.appEnableTitle, reasonHint: c.reasonHint }), run: cmd("enable") },
     { key: "resume", label: c.appResume, kind: "dialog", perm: "pay:app:approve", visible: st("SUSPENDED"), confirm: () => ({ title: c.appResumeTitle, reasonHint: c.reasonHint }), run: cmd("resume") },
     { key: "suspend", label: c.appSuspend, kind: "dialog", perm: "pay:app:manage", danger: true, visible: st("ACTIVE"), confirm: () => ({ title: c.appSuspendTitle, danger: true, reasonHint: c.reasonHint }), run: cmd("suspend") },

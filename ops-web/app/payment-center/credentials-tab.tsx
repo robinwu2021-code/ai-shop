@@ -179,33 +179,38 @@ export function CredentialDetailView({ api, keyId, run, name = NAME }: { api: Pa
   );
 }
 
-/** 版本行内操作：核验（草稿）· 启用（已核验，审批权限）· 撤销（审批权限）；表单就地展开 */
+/** 版本行内操作：核验（草稿）· 提交启用审批（已核验，录入权限）· 启用（已核验，审批权限）· 撤销（审批权限）；表单就地展开 */
 function VersionActions({ api, keyId, v, allowed, run }: { api: PayCenterApi; keyId: number; v: CredentialVersion; allowed: string[]; run: Run }) {
   const c = usePc();
   const m = useCopy(P10_COPY);
   const allow = useCan();
-  const [open, setOpen] = React.useState<"verify" | "enable" | "revoke" | null>(null);
+  const [open, setOpen] = React.useState<"verify" | "submit" | "enable" | "revoke" | null>(null);
   const can = {
     verify: v.status === "DRAFT" && allowed.includes("VERIFY") && allow("pay:credential:manage"),
+    // near-pay CredentialEnableSubject：CREDENTIAL_ENABLE / ENABLE，对象号 keyId:版本，冻结版本 = 版本号；提交码 pay:credential:manage
+    submit: v.status === "VERIFIED" && allowed.includes("ENABLE") && allow("pay:credential:manage"),
     enable: v.status === "VERIFIED" && allowed.includes("ENABLE") && allow("pay:credential:approve"),
     revoke: v.status !== "REVOKED" && allowed.includes("REVOKE") && allow("pay:credential:approve"),
   };
   if (!open) return (
     <div className="flex gap-1">
       {can.verify && <Button size="sm" variant="outline" onClick={() => setOpen("verify")}>{m.verify}</Button>}
+      {can.submit && <Button size="sm" variant="outline" onClick={() => setOpen("submit")}>{m.submitEnable}</Button>}
       {can.enable && <Button size="sm" onClick={() => setOpen("enable")}>{m.enable}</Button>}
       {can.revoke && <Button size="sm" variant="ghost" onClick={() => setOpen("revoke")}>{m.revoke}</Button>}
     </div>
   );
   const fields: FieldDef[] = open === "verify" ? [{ key: "evidenceRef", label: m.evidenceRef, maxLength: 120, help: m.evidenceHelp }, reasonField(c)]
     : open === "enable" ? [{ key: "approvalRef", label: m.approvalRef, maxLength: 128 }, reasonField(c)] : [reasonField(c)];
-  const title = fill(open === "verify" ? m.verifyTitle : open === "enable" ? m.enableTitle : m.revokeTitle, { v: v.versionIndex });
+  const title = fill(open === "verify" ? m.verifyTitle : open === "submit" ? m.submitEnableTitle : open === "enable" ? m.enableTitle : m.revokeTitle, { v: v.versionIndex });
   return (
     <div className="w-72 space-y-2">
       <p className="txt-label">{title}</p>
-      {open !== "verify" && <Notice tone={open === "revoke" ? "warning" : "info"}>{open === "enable" ? m.enableDesc : m.revokeDesc}</Notice>}
+      {open !== "verify" && <Notice tone={open === "revoke" ? "warning" : "info"}>{open === "submit" ? m.submitEnableDesc : open === "enable" ? m.enableDesc : m.revokeDesc}</Notice>}
       <ActionForm notify={false} draft={null} fields={fields} initial={{ evidenceRef: "", approvalRef: "", reason: "" }}
-        onSubmit={(x) => run(() => (open === "verify" ? api.credentials.verify(keyId, v.versionIndex, { evidenceRef: String(x.evidenceRef ?? "").trim() || null, reason: String(x.reason) })
+        onSubmit={(x) => open === "submit"
+          ? run(() => api.approvals.submit({ subjectType: "CREDENTIAL_ENABLE", subjectRef: `${keyId}:${v.versionIndex}`, subjectRevision: v.versionIndex, action: "ENABLE", reason: String(x.reason) }), m.submitEnableDone)
+          : run(() => (open === "verify" ? api.credentials.verify(keyId, v.versionIndex, { evidenceRef: String(x.evidenceRef ?? "").trim() || null, reason: String(x.reason) })
           : open === "enable" ? api.credentials.enable(keyId, v.versionIndex, { approvalRef: String(x.approvalRef ?? "").trim() || null, reason: String(x.reason) })
             : api.credentials.revoke(keyId, v.versionIndex, String(x.reason))))}
         onDone={() => setOpen(null)} />

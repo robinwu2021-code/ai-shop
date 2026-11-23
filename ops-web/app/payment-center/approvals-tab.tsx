@@ -15,6 +15,7 @@ import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/
 import { APPROVAL_STATUSES, APPROVAL_VIEWS, type ApprovalRow, type ApprovalTask } from "@/app/payment-center/_api/types";
 import { fmtTime } from "@/lib/utils";
 import { DetailLoader, MiniTable, reasonField, usePayOperatorNo, useRun, useStatusMap, useTabList, usePc, yesNo } from "./shared";
+import { approvalActionVisible } from "./approval-actions";
 
 const NAME = "approvals";
 /** 详情的 allowedActions → 底栏按钮（review 拆成同意 / 驳回两个） */
@@ -31,7 +32,10 @@ export function ApprovalsTab({ header }: { header: React.ReactNode }) {
   const viewMap = Object.fromEntries(APPROVAL_VIEWS.filter((v) => v !== "CANDIDATE").map((v) => [v, { label: (c as Record<string, string>)[`view_${v}`], tone: "muted" as const }]));
   const list = useTabList<ApprovalRow, { view: string; status: string }>(NAME, { view: "", status: "" }, (api, q) => api.approvals.list({ ...q, view: (q.view as string) || "CANDIDATE" } as never));
   const { api } = list;
-  const pending = (r: ApprovalRow | null) => !!r && r.status.startsWith("PENDING");
+  /** 详情接口给的 allowedActions（服务端结论），按审批号记；动作一执行就作废，等详情重取 */
+  const known = React.useRef(new Map<string, string[]>());
+  const shown = (key: string) => (r: ApprovalRow | null) => approvalActionVisible(key, r, me, r ? known.current.get(r.approvalNo) : undefined);
+  const forget = (r: ApprovalRow | null) => { if (r) known.current.delete(r.approvalNo); };
   /** 现取当前任务（号与版本） */
   const taskOf = async (r: ApprovalRow): Promise<ApprovalTask> => {
     const d = await api.approvals.detail(r.approvalNo);
@@ -39,6 +43,7 @@ export function ApprovalsTab({ header }: { header: React.ReactNode }) {
     return d.record.activeTask;
   };
   const review = (decision: "APPROVE" | "REJECT") => async (r: ApprovalRow | null, reason: string) => run(async () => {
+    forget(r);
     const d = await api.approvals.detail(r!.approvalNo);
     return api.approvals.review(r!.approvalNo, { expectedVersion: d.record.version, decision, reason, materialVersion: d.record.materialVersion });
   });
@@ -47,7 +52,7 @@ export function ApprovalsTab({ header }: { header: React.ReactNode }) {
     {
       key: "view", label: c.view, kind: "drawer", width: "w-[720px]", title: () => c.approvalDetailTitle,
       render: (ctx) => (
-        <DetailLoader name={NAME} id={ctx.row!.approvalNo} load={() => api.approvals.detail(ctx.row!.approvalNo)}>
+        <DetailLoader name={NAME} id={ctx.row!.approvalNo} load={async () => { const d = await api.approvals.detail(ctx.row!.approvalNo); known.current.set(ctx.row!.approvalNo, d.allowedActions); return d; }}>
           {(d) => {
             const a = d.record;
             return (
@@ -86,47 +91,47 @@ export function ApprovalsTab({ header }: { header: React.ReactNode }) {
       ),
     },
     {
-      key: "claim", label: c.claim, kind: "confirm", perm: "pay:approval:review", visible: (r) => pending(r) && !r!.assigneeNo,
+      key: "claim", label: c.claim, kind: "confirm", perm: "pay:approval:review", visible: shown("claim"),
       confirm: () => ({ title: c.claimTitle }),
-      run: (r) => run(async () => { const t = await taskOf(r!); return api.approvals.claim(t.taskNo, { expectedVersion: t.version, reason: c.claimReason }); }),
+      run: (r) => run(async () => { forget(r); const t = await taskOf(r!); return api.approvals.claim(t.taskNo, { expectedVersion: t.version, reason: c.claimReason }); }),
     },
     {
-      key: "approve", label: c.approve, kind: "dialog", perm: "pay:approval:review", visible: (r) => pending(r) && r!.assigneeNo === me,
+      key: "approve", label: c.approve, kind: "dialog", perm: "pay:approval:review", visible: shown("approve"),
       confirm: () => ({ title: c.approveTitle, reasonHint: c.reasonHint }),
       run: review("APPROVE"),
     },
     {
-      key: "reject", label: c.reject, kind: "dialog", perm: "pay:approval:review", danger: true, visible: (r) => pending(r) && r!.assigneeNo === me,
+      key: "reject", label: c.reject, kind: "dialog", perm: "pay:approval:review", danger: true, visible: shown("reject"),
       confirm: () => ({ title: c.rejectTitle, danger: true, reasonHint: c.reasonHint }),
       run: review("REJECT"),
     },
     {
-      key: "release", label: c.release, kind: "confirm", visible: (r) => pending(r) && r!.assigneeNo === me,
+      key: "release", label: c.release, kind: "confirm", visible: shown("release"),
       confirm: () => ({ title: c.releaseTitle }),
-      run: (r) => run(async () => { const t = await taskOf(r!); return api.approvals.release(t.taskNo, { expectedVersion: t.version, reason: c.releaseReason }); }),
+      run: (r) => run(async () => { forget(r); const t = await taskOf(r!); return api.approvals.release(t.taskNo, { expectedVersion: t.version, reason: c.releaseReason }); }),
     },
     {
-      key: "assign", label: c.assign, kind: "drawer", perm: "pay:approval:dispatch", visible: pending, title: () => c.assignTitle,
+      key: "assign", label: c.assign, kind: "drawer", perm: "pay:approval:dispatch", visible: shown("assign"), title: () => c.assignTitle,
       render: (ctx) => (
         <ActionForm
           notify={false}
           fields={[{ key: "assigneeNo", label: c.assigneeNo, required: true, maxLength: 64 }, reasonField(c)]}
           initial={{ assigneeNo: "", reason: "" }}
           draft={operator ? { operator, page: "pay-approvals", action: "assign", id: ctx.row!.approvalNo } : null}
-          onSubmit={(v) => run(async () => { const t = await taskOf(ctx.row!); return api.approvals.assign(t.taskNo, { expectedVersion: t.version, assigneeNo: String(v.assigneeNo).trim(), reason: String(v.reason) }); })}
+          onSubmit={(v) => run(async () => { forget(ctx.row); const t = await taskOf(ctx.row!); return api.approvals.assign(t.taskNo, { expectedVersion: t.version, assigneeNo: String(v.assigneeNo).trim(), reason: String(v.reason) }); })}
           onDone={ctx.back ?? ctx.close}
         />
       ),
     },
     {
-      key: "withdraw", label: c.withdraw, kind: "dialog", danger: true, visible: (r) => pending(r) && r!.applicantNo === me,
+      key: "withdraw", label: c.withdraw, kind: "dialog", danger: true, visible: shown("withdraw"),
       confirm: () => ({ title: c.withdrawTitle, danger: true, reasonHint: c.reasonHint }),
-      run: (r, reason) => run(async () => { const d = await api.approvals.detail(r!.approvalNo); return api.approvals.withdraw(r!.approvalNo, { expectedVersion: d.record.version, reason }); }),
+      run: (r, reason) => run(async () => { forget(r); const d = await api.approvals.detail(r!.approvalNo); return api.approvals.withdraw(r!.approvalNo, { expectedVersion: d.record.version, reason }); }),
     },
     {
-      key: "execute", label: c.execute, kind: "dialog", visible: (r) => r?.status === "APPROVED" && r.executionStatus === "NOT_STARTED",
+      key: "execute", label: c.execute, kind: "dialog", visible: shown("execute"),
       confirm: () => ({ title: c.executeTitle, reasonHint: c.reasonHint }),
-      run: (r, reason) => run(async () => { const d = await api.approvals.detail(r!.approvalNo); return api.approvals.execute(r!.approvalNo, { expectedVersion: d.record.version, reason }); }),
+      run: (r, reason) => run(async () => { forget(r); const d = await api.approvals.detail(r!.approvalNo); return api.approvals.execute(r!.approvalNo, { expectedVersion: d.record.version, reason }); }),
     },
   ];
 

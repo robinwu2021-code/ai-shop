@@ -9,6 +9,7 @@ import { buildSignedCall } from "./_api/open-api-sim";
 import { aesGcmEncryptField, generateRsaKeyPair, hmacBase64, hmacKeyOf, rsaSignBase64, sha256Hex, signRequest, verifyResponse } from "./_api/open-api-signer";
 import { createMockGateway, TEST_VECTOR_APP } from "./_api/open-api-gateway";
 import { merchantCommands } from "./app-keys";
+import { approvalActionVisible } from "./approval-actions";
 
 function httpApi(data: unknown = {}) {
   const f = vi.fn(async (_u: string, _i?: RequestInit) => new Response(JSON.stringify({ code: 0, message: "OK", data, requestId: "r" }), { status: 200 }));
@@ -82,9 +83,39 @@ describe("「是不是我」按 near-pay 员工号判断（/me/access），不�
       expect(src, file).not.toMatch(/useAuth\(\(s\) => s\.username\)/);
     }
   });
+
+  it("审核待办按钮：服务端给了 allowedActions 就以它为准，不受列表旧行与取不到员工号影响", () => {
+    const row = { status: "PENDING_SECOND", assigneeNo: null, applicantNo: "ST-NEARA", executionStatus: "NOT_STARTED" };
+    // 认领后列表行还是旧的（assigneeNo 为空），员工号也没取到 —— 只要服务端说能审，同意 / 驳回 / 释放 / 撤回都要出现
+    const server = ["review", "release", "assign", "withdraw"];
+    for (const k of ["approve", "reject", "release", "withdraw", "assign"]) expect(approvalActionVisible(k, row, null, server), k).toBe(true);
+    expect(approvalActionVisible("claim", row, null, server)).toBe(false);
+    expect(approvalActionVisible("execute", row, null, server)).toBe(false);
+    // 服务端没说（列表行上的菜单）：退回本地判断
+    expect(approvalActionVisible("approve", { ...row, assigneeNo: "ST-NEARA" }, "ST-NEARA", undefined)).toBe(true);
+    expect(approvalActionVisible("approve", row, "ST-NEARA", undefined)).toBe(false);
+    expect(approvalActionVisible("claim", row, "ST-NEARA", undefined)).toBe(true);
+  });
+
+  it("员工号取失败会重试，不把一次超时缓存成「不是我」", async () => {
+    const src = (await import("node:fs")).readFileSync(new URL("./shared.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/queryKey: \[KEY, "me", api\.source\][^\n]*retry: (?!false)/);
+  });
 });
 
 describe("数据范围 · 提交启用审批（near-pay DataScopeSubject）", () => {
+  it("接入应用：草稿 / 暂停的应用有「提交启用审批」，按 OPEN_APP_ENABLE 提交、冻结版本 = 当前版本 + 1", async () => {
+    const src = (await import("node:fs")).readFileSync(new URL("./apps-tab.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/key: "submitEnable"[^\n]*perm: "pay:app:manage"[^\n]*visible: st\("DRAFT", "SUSPENDED"\)/);
+    expect(src).toMatch(/subjectType: "OPEN_APP_ENABLE", subjectRef: r!\.appNo, subjectRevision: \(await api\.apps\.detail\(r!\.appNo\)\)\.version \+ 1, action: "ENABLE"/);
+  });
+
+  it("凭证版本：已核验的版本有「提交启用审批」，按 CREDENTIAL_ENABLE 提交、对象号 keyId:版本", async () => {
+    const src = (await import("node:fs")).readFileSync(new URL("./credentials-tab.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/submit: v\.status === "VERIFIED" && allowed\.includes\("ENABLE"\) && allow\("pay:credential:manage"\)/);
+    expect(src).toContain('subjectType: "CREDENTIAL_ENABLE", subjectRef: `${keyId}:${v.versionIndex}`, subjectRevision: v.versionIndex, action: "ENABLE"');
+  });
+
   it("DATA_SCOPE_ENABLE / ENABLE，冻结版本 = 当前版本 + 1，带幂等号", async () => {
     const { f, api } = httpApi({ approvalNo: "AP1" });
     await api.approvals.submit({ subjectType: "DATA_SCOPE_ENABLE", subjectRef: "DSA90145CF72E34A40", subjectRevision: 1, action: "ENABLE", reason: "开放 API 试点" });
@@ -221,7 +252,8 @@ describe("P12 · mock 网关（与守卫同顺序）", () => {
     expect(JSON.parse((await send(g, plain)).body).code).toBe(70097);
     const enc = await buildSignedCall({ endpoint: refund, params: { payOrderNo: "P1" }, body: '{"outRefundNo":"R1","amountMinor":100}', appId: TEST_VECTOR_APP.appId, scheme: "HMAC", appSecret: TEST_VECTOR_APP.appSecret, fields: { "refundAccount.accountNo": "8123004567" }, encryptKey: TEST_VECTOR_APP.encryptKey, encryptSerial: "3" }, base);
     expect(enc.signed.headers["X-Encrypt-Serial"]).toBe("3");
-    expect(JSON.parse((await send(g, enc)).body).code).toBe(0);
+    // 加密后过了 P3 守卫，进到业务：P1 这张单不存在 → 404（不再是字段错误）
+    expect(JSON.parse((await send(g, enc)).body).code).toBe(10404);
   });
 
   it("RSA 应用：商家私钥签名 + X-Key-Serial 通过；序列号不符 401", async () => {

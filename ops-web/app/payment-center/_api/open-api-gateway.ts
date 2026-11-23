@@ -1,19 +1,42 @@
 // SY13 调用模拟的 mock 网关：按与 near-pay 开放 API 守卫相同的顺序校验（应用 → 时间窗 → 验签 → nonce → scope → 敏感字段），
-// 成功回 catalog 里的样例并按 P2 签名。只在 mock 模式用；真实实例（生产无沙箱）运营端只做签名预览，不发请求。
+// 支付链路（建单 / 发起支付 / 查单 / 关单）走有状态的 open-api-payment-sim（含 mock 第三方渠道与推送），其余回 catalog 样例；都按 P2 签名。只在 mock 模式用；真实实例（生产无沙箱）运营端只做签名预览，不发请求。
 // 照搬 near-pay ops-web/lib/open-api/simulator.ts（createMockGateway），路径按对外前缀（/openapi/v1）匹配。
 import { OPEN_ENDPOINTS, type OpenEndpoint } from "./open-api-catalog";
+import { createPaymentSim, type Deliver, type PayApp, type PaymentSim } from "./open-api-payment-sim";
 import { canonicalQuery, derToPem, generateRsaKeyPair, hmacBase64, hmacKeyOf, randomNonce, rsaSignBase64, rsaVerifyBase64, sha256Hex } from "./open-api-signer";
 
 export interface SimRequest { method: string; pathWithQuery: string; headers: Record<string, string>; body: string }
 export interface SimResponse { status: number; headers: Record<string, string>; body: string; durationMs: number }
 
-export interface MockApp { appId: string; appSecret?: string; encryptKey?: string; rsa?: { serial: string; publicPem: string }; environment: "SANDBOX" | "LIVE"; scopes: string[]; status: "ACTIVE" | "SUSPENDED" }
-export type MockGateway = ((req: SimRequest) => Promise<SimResponse>) & { registerRsaApp(appId: string, serial: string, publicPem: string): void };
+export interface MockApp { appId: string; appSecret?: string; encryptKey?: string; encryptSerial?: string; rsa?: { serial: string; publicPem: string }; environment: "SANDBOX" | "LIVE"; scopes: string[]; status: "ACTIVE" | "SUSPENDED"; notifyUrl?: string | null;
+  /** 门店授权 storeRef → READ / COLLECT / REFUND；不给 = 不校验门店 */ grants?: Record<string, string[]>;
+  /** 日退款上限（最小单位）；不给 = 不限 */ dailyRefundLimitMinor?: number }
+export type MockGateway = ((req: SimRequest) => Promise<SimResponse>) & { registerRsaApp(appId: string, serial: string, publicPem: string): void; registerApp(app: MockApp): void; payments: PaymentSim };
+
+/** 接入应用 scopes（READ / COLLECT / REFUND）→ 网关鉴权码，与 near-pay OpenAppModels.SCOPE_OF 一致 */
+export const SCOPE_OF: Record<string, string> = { READ: "pay:read", COLLECT: "pay:create", REFUND: "pay:refund" };
+
+/**
+ * 运营端「接入应用」的状态 → 网关能认的应用：应用启用且密钥已启用才放行（near-pay 守卫：应用非 ACTIVE 或无有效密钥一律 401）。
+ * appSecret 只来自签发那一次的响应 —— 平台不存明文，商户拿着它来调。
+ */
+export function gatewayAppOf(app: { appNo: string; environment: string; scopes: string[]; status: string; credentialStatus: string; notifyUrl?: string | null; dailyRefundLimitMinor?: number },
+  appSecret: string, encryptKey?: string, grants?: Record<string, string[]>): MockApp {
+  return { appId: app.appNo, appSecret, encryptKey, notifyUrl: app.notifyUrl ?? null, grants, dailyRefundLimitMinor: app.dailyRefundLimitMinor, environment: app.environment === "LIVE" ? "LIVE" : "SANDBOX", scopes: app.scopes.map((x) => SCOPE_OF[x]).filter(Boolean),
+    status: app.status === "ACTIVE" && app.credentialStatus === "ACTIVE" ? "ACTIVE" : "SUSPENDED" };
+}
 
 /** 契约测试向量里的沙箱应用（openapi-pay-open.yaml info.x-test-vectors）：mock 网关据此真实验签 */
 export const TEST_VECTOR_APP: MockApp = { appId: "APP7Q2K9XW", appSecret: "sk_test_Zk3Qm9Lp2Xv7Rt5Wb8Nc4Hd6Jf1Gs0Ay", encryptKey: "Pa7Ve2Ky9Wq4Zm6Tn3Lr8Hs5Dc1Fb0Gx", environment: "SANDBOX", scopes: ["pay:create", "pay:read", "pay:refund"], status: "ACTIVE" };
 export const MOCK_PLATFORM_SIGN_SERIAL = "P2026010100000001";
 const ENCRYPT_SERIAL = "Q2026010100000001";
+
+/** 按端点模板取路径参数：/orders/{payOrderNo}/pay → { payOrderNo } */
+function pathParams(prefix: string, e: OpenEndpoint, pathname: string): Record<string, string> {
+  const names = [...e.path.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+  const m = new RegExp(`^${e.path.replace(/\{\w+\}/g, "([^/]+)")}$`).exec(pathname.slice(prefix.length));
+  return Object.fromEntries(names.map((n, i) => [n, decodeURIComponent(m?.[i + 1] ?? "")]));
+}
 
 function match(prefix: string, method: string, pathname: string): OpenEndpoint | null {
   if (!pathname.startsWith(`${prefix}/`)) return null;
@@ -21,8 +44,14 @@ function match(prefix: string, method: string, pathname: string): OpenEndpoint |
   return OPEN_ENDPOINTS.find((e) => e.method === method && new RegExp(`^${e.path.replace(/\{\w+\}/g, "[^/]+")}$`).test(rel)) ?? null;
 }
 
-export function createMockGateway(prefix: string, initial: MockApp[] = [TEST_VECTOR_APP], now: () => number = () => Date.now()): MockGateway {
-  const apps = [...initial]; const seen = new Map<string, number>(); let seq = 0;
+/** opts.deliver：模拟接入方服务器收推送（缺省一律 200）；支付链路见 open-api-payment-sim.ts */
+export function createMockGateway(prefix: string, initial: MockApp[] = [TEST_VECTOR_APP], now: () => number = () => Date.now(), opts: { deliver?: Deliver } = {}): MockGateway {
+  const apps = [...initial];
+  // 推送签名：RSA 应用用平台签名私钥（带 X-Key-Serial），HMAC 应用用 AppSecret
+  const sign = async (app: PayApp, toSign: string) => (app.rsa
+    ? { signature: await rsaSignBase64((await platformKey()).privatePem, toSign), keySerial: MOCK_PLATFORM_SIGN_SERIAL }
+    : { signature: await hmacBase64(hmacKeyOf(app.appSecret!), toSign) });
+  const payments = createPaymentSim({ now, appOf: (id) => apps.find((a) => a.appId === id), deliver: opts.deliver, sign }); const seen = new Map<string, number>(); let seq = 0;
   let platform: Promise<{ privatePem: string; publicPem: string }> | null = null;
   const platformKey = () => (platform ??= generateRsaKeyPair("SIGN"));
   let encrypt: Promise<CryptoKeyPair> | null = null;
@@ -98,12 +127,19 @@ export function createMockGateway(prefix: string, initial: MockApp[] = [TEST_VEC
     if (req.body) { try { JSON.parse(req.body); } catch { return reply(400, 10400, "err.bad_request", null, true); } }
     const fieldError = hit.sensitive ? await checkFields(app, hit.sensitive, req.body) : null;
     if (fieldError) return reply(400, fieldError, fieldError === 70097 ? "err.pay.open.field_encrypt_required" : "err.pay.open.field_decrypt_failed", null, true);
+    const biz = await payments.handle(app, hit, pathParams(prefix, hit, url.pathname), url.searchParams, req.body);
+    if (biz) return reply(biz.status, biz.code, biz.message, biz.data, true);
     return reply(200, 0, "OK", hit.sampleResponse, true);
   };
   return Object.assign(gateway, {
+    payments,
     registerRsaApp(appId: string, serial: string, publicPem: string) {
       const i = apps.findIndex((a) => a.appId === appId);
       const app: MockApp = { appId, rsa: { serial, publicPem }, environment: "SANDBOX", scopes: ["pay:create", "pay:read", "pay:refund"], status: "ACTIVE" };
+      if (i >= 0) apps[i] = app; else apps.push(app);
+    },
+    registerApp(app: MockApp) {
+      const i = apps.findIndex((a) => a.appId === app.appId);
       if (i >= 0) apps[i] = app; else apps.push(app);
     },
   });
