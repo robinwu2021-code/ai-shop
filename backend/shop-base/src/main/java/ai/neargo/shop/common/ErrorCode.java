@@ -390,12 +390,16 @@ public enum ErrorCode {
     STORE_ORDER_STATE_INVALID(20024, "err.trade.store_order_state_invalid"),
     /** 门店零售单的明细加整单调整后合计小于 0。 */
     STORE_ORDER_TOTAL_INVALID(20025, "err.trade.store_order_total_invalid"),
-    /** 门店常用品项（storeItemNo）在 P2 才接入；P1 收到非空值直接拒，不静默忽略。 */
-    STORE_ORDER_STORE_ITEM_UNSUPPORTED(20026, "err.trade.store_order_store_item_unsupported"),
+    /** 门店常用品项（storeItemNo）不存在、不属本店或已停用（P2；P1 用同一号表示「未开放」，未发布即改义）。 */
+    STORE_ORDER_STORE_ITEM_UNAVAILABLE(20026, "err.trade.store_order_store_item_unavailable"),
     /** 补开票资料：这一项已冻结（SKU 行、已补过的行、已设的买受人），只能补空的。 */
     INVOICE_DATA_FROZEN(20027, "err.trade.invoice_data_frozen"),
     /** 补开票资料：这张单已开出发票，开票资料锁死；要改请作废重开或开折让。 */
     INVOICE_DATA_LOCKED(20028, "err.trade.invoice_data_locked"),
+    /** 收款挂在已付清的门店零售单上：不能作废或更正（要退钱走退款，P3）。 */
+    STORE_ORDER_PAYMENT_LOCKED(20029, "err.trade.store_order_payment_locked"),
+    /** 收款币别与门店零售单币别不同，不能挂单。 */
+    STORE_ORDER_CURRENCY_MISMATCH(20030, "err.trade.store_order_currency_mismatch"),
 
     // 26xxx · 发票（ADR-063，TDD-发票模块 §2.1）
     INVOICE_REGIME_NOT_ENABLED(26001, "err.invoice.regime_not_enabled"),
@@ -419,6 +423,8 @@ public enum ErrorCode {
     INVOICE_PROVIDER_UNSUPPORTED(26013, "err.invoice.provider_unsupported"),
     /** 加值中心账号字段与供应商的声明不符（格式不对，或应自动带出的字段填了别的值）；{0} = 字段 */
     INVOICE_PROVIDER_ACCOUNT_INVALID(26014, "err.invoice.provider_account_invalid"),
+    /** 门店常用品项已达上限（TDD-统一订单与开票资料 AC11）；{0} = 上限 */
+    INVOICE_STORE_ITEM_LIMIT(26015, "err.invoice.store_item_limit"),
 
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),

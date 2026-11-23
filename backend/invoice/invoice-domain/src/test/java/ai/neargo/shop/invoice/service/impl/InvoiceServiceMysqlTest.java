@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -26,6 +27,9 @@ import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceChoiceReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.SaveCarrierReq;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.StoreItemReq;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.StoreSettingsReq;
+import ai.neargo.shop.invoice.dto.InvoiceDtos.StoreSettingsVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.NumberRangeReq;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsInvoiceQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsSellerQuery;
@@ -47,6 +51,7 @@ import ai.neargo.shop.invoice.regime.InvoiceRegimes;
 import ai.neargo.shop.invoice.service.InvoiceBuyerService;
 import ai.neargo.shop.invoice.service.InvoiceService;
 import ai.neargo.shop.invoice.service.InvoiceSetupService;
+import ai.neargo.shop.invoice.service.InvoiceStoreSetupService;
 import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
 import ai.neargo.shop.invoice.regime.tw.TwEguiRegime;
 import ai.neargo.shop.invoice.regime.tw.TwPeriods;
@@ -91,6 +96,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -119,6 +125,7 @@ class InvoiceServiceMysqlTest {
     @Autowired InvoiceSetupService setup;
     @Autowired InvoiceTransmissionService transmissions;
     @Autowired InvoiceBuyerService buyers;
+    @Autowired InvoiceStoreSetupService storeSetup;
     @Autowired InvoicePrintSourceFactsPortImpl printSource;
     @Autowired Sources sources;
     @Autowired FlakyGateway gateway;
@@ -134,7 +141,7 @@ class InvoiceServiceMysqlTest {
     @BeforeEach
     void reset() {
         for (var t : List.of("ivc_invoice_line", "ivc_allowance", "ivc_transmission", "ivc_invoice", "ivc_buyer_preference",
-                "ivc_user_carrier",
+                "ivc_user_carrier", "ivc_store_item", "ivc_store_setting",
                 "ivc_number_range", "ivc_regime_profile")) jdbc.update("DELETE FROM " + t);
         sources.byNo.clear();
         sources.orders.clear();
@@ -1397,6 +1404,47 @@ class InvoiceServiceMysqlTest {
         return out;
     }
 
+    // ---------------------------------------------------------------- 门店开票设定与常用品项（TDD-统一订单与开票资料 AC11）
+
+    @Test
+    void storeSettingsDefaultToManualAndSaveClearsTheDefaultTaxTypeExplicitly() {
+        assertEquals(new StoreSettingsVO(null, "MANUAL"), storeSetup.settings(SCOPE));
+        assertEquals(new StoreSettingsVO("ZERO_RATED", "ON_PAID"),
+                storeSetup.saveSettings(SCOPE, new StoreSettingsReq("ZERO_RATED", "ON_PAID")));
+        assertEquals(new StoreSettingsVO("ZERO_RATED", "ON_PAID"), storeSetup.settings(SCOPE));
+        storeSetup.saveSettings(SCOPE, new StoreSettingsReq(null, "LATER"));
+        assertEquals(new StoreSettingsVO(null, "LATER"), storeSetup.settings(SCOPE), "清空默认税别要真的写 NULL");
+        assertEquals(new StoreSettingsVO(null, "MANUAL"), storeSetup.settings(new Scope("T1", "E1", "S2", "U1")),
+                "门店级：别店不受影响");
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_store_setting", Integer.class));
+        assertThrows(DataAccessException.class, () -> jdbc.update("UPDATE ivc_store_setting SET invoice_timing='NOW'"));
+    }
+
+    @Test
+    void storeItemsArePerStoreCappedAndEditable() {
+        var a = storeSetup.addItem(SCOPE, new StoreItemReq(" 清潔用品 ", "TAXABLE", 2, null));
+        var b = storeSetup.addItem(SCOPE, new StoreItemReq("外銷品", "ZERO_RATED", 1, false));
+        assertTrue(a.storeItemNo().startsWith("IVS"));
+        assertEquals(List.of("外銷品|ZERO_RATED|false", "清潔用品|TAXABLE|true"), storeSetup.items(SCOPE).stream()
+                .map(i -> i.name() + "|" + i.taxType() + "|" + i.enabled()).toList());
+        var other = new Scope("T1", "E1", "S2", "U1");
+        assertTrue(storeSetup.items(other).isEmpty());
+        assertNull(storeSetup.item(other, a.storeItemNo()), "别店的品项看不到");
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(BizException.class, () -> storeSetup.updateItem(other,
+                a.storeItemNo(), new StoreItemReq("x", "EXEMPT", null, null))).errorCode());
+        assertEquals("EXEMPT", storeSetup.updateItem(SCOPE, b.storeItemNo(),
+                new StoreItemReq("書籍", "EXEMPT", 1, true)).taxType());
+        storeSetup.deleteItem(SCOPE, a.storeItemNo());
+        storeSetup.deleteItem(SCOPE, a.storeItemNo());
+        assertEquals(List.of("書籍"), storeSetup.items(SCOPE).stream().map(i -> i.name()).toList());
+        for (int i = 1; i < InvoiceStoreSetupService.MAX_STORE_ITEMS; i++)
+            storeSetup.addItem(SCOPE, new StoreItemReq("品項" + i, "TAXABLE", null, null));
+        var full = assertThrows(BizException.class, () -> storeSetup.addItem(SCOPE,
+                new StoreItemReq("第 51 項", "TAXABLE", null, null)));
+        assertEquals(ErrorCode.INVOICE_STORE_ITEM_LIMIT, full.errorCode());
+        assertEquals(InvoiceStoreSetupService.MAX_STORE_ITEMS, storeSetup.items(SCOPE).size());
+    }
+
     // ---------------------------------------------------------------- fixture
 
     static final class Db {
@@ -1433,7 +1481,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(14, applied); // V1–V14（V14：电子发票菜单点归入「应付发票」）
+            assertEquals(15, applied); // V1–V15（V15：门店开票设定与常用品项）
             return ds;
         }
     }
@@ -1628,7 +1676,7 @@ class InvoiceServiceMysqlTest {
     @Configuration
     @EnableTransactionManagement
     @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", sqlSessionFactoryRef = "sqlSessionFactory")
-    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class, InvoiceGateways.class, InvoiceGatewayPolicy.class,
+    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class, InvoiceStoreSetupServiceImpl.class, InvoiceGateways.class, InvoiceGatewayPolicy.class,
             InvoiceRegimes.class, TwEguiRegime.class, InvoicePrintSourceFactsPortImpl.class})
     static class Config {
         @Bean

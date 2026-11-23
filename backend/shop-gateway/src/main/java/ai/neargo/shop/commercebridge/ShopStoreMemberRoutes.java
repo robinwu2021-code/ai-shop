@@ -76,6 +76,10 @@ final class ShopStoreMemberRoutes {
             // 权限码 biz:invoice:* 由控制器判；2026-11-23 v2 上新模型门店全部 70006 STORE_ACCESS，即漏登记
             HostRoute.of("GET,POST", "/biz/invoices(?:/.*)?"),
             HostRoute.of("GET,POST,PUT", "/biz/invoice-setup/(?:profile|providers|ranges|provider-verification|provider-tracks|provider-ranges)"),
+            // 门店开票设定与常用品项（TDD-统一订单与开票资料 P2）：读 biz:invoice:read、写 biz:invoice:setup，由控制器判
+            HostRoute.of("GET,PUT", "/biz/invoice-setup/store-settings"),
+            HostRoute.of("GET,POST", "/biz/invoice-setup/store-items"),
+            HostRoute.of("PUT,DELETE", "/biz/invoice-setup/store-items/" + ID),
             // 门店零售单（TDD-统一订单与开票资料 P1）：POS 建单、详情与开票准备度、补开票资料、取消未付款的单。
             // 权限码 biz:order:create / biz:order:view / biz:invoice:issue 由控制器判，这里只放进门店上下文
             HostRoute.of("POST", "/biz/store-orders"),

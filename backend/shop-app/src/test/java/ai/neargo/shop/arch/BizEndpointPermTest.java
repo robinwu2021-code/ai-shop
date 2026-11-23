@@ -294,6 +294,10 @@ class BizEndpointPermTest {
                     put("/biz/invoice-setup/provider-ranges", BizPerms.INVOICE_SETUP);
                     put("/biz/invoice-setup/providers", BizPerms.INVOICE_SETUP);
                     put("/biz/invoice-setup/provider-tracks", BizPerms.INVOICE_SETUP);
+                    // 门店开票设定与常用品项（TDD-统一订单与开票资料 P2）：收银员要读（快选），改只给设置码；同一路径登记读的那一个
+                    put("/biz/invoice-setup/store-settings", BizPerms.INVOICE_READ);
+                    put("/biz/invoice-setup/store-items", BizPerms.INVOICE_READ);
+                    put("/biz/invoice-setup/store-items/{storeItemNo}", BizPerms.INVOICE_SETUP);
                     put("/biz/pricing-tax-settings", BizPerms.PRICING_TAX_UPDATE);
                     put("/biz/pricing-tax-settings/reset", BizPerms.PRICING_TAX_UPDATE);
                     put("/biz/personnel/{personnelNo}/assignments", BizPerms.STORE_ADMIN);

@@ -111,6 +111,7 @@ import ai.neargo.shop.trade.service.LegacyCouponCheckoutJournal;
 import ai.neargo.shop.trade.service.LegacyCouponOrderCreationCoordinator;
 import ai.neargo.shop.trade.service.LegacyCouponOrderPricingService;
 import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.trade.service.StoreOrderSettlementService;
 import ai.neargo.shop.trade.service.OrderStatusView;
 import ai.neargo.shop.trade.support.OrderNoGenerator;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -265,6 +266,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     @Autowired private OrderCustomerAccess customerAccess;
     @Autowired private PaymentLifecycleService paymentLifecycle;
     @Autowired private PaymentResolutionService paymentResolutions;
+    /** 门店零售单收款挂单（P2）：支付单号补单时按 biz_no 挂到门店零售单 */
+    @Autowired private ObjectProvider<StoreOrderSettlementService> storeSettlements;
 
     private ai.neargo.shop.trade.order.printing.service.OrderPrintFactService orderPrintFacts;
     @org.springframework.beans.factory.annotation.Autowired
@@ -3408,6 +3411,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         // 第三方 / 收银台的支付单不是交易单：回调与三个对账器都经这里补单，一处跳过、五条路都安全（I5 S4）
         if (PayOrderNumbers.isPayOrderNo(orderNo)) {
             log.info("[markPaid] {} 是支付单号、不是交易单，跳过", orderNo);
+            // 唯一例外：门店代客收款单的 biz_no 指向门店零售单时挂单、判付清（TDD-统一订单与开票资料 AC7）。
+            // 挂单失败照常抛出 —— 回调回失败让通道重推，挂单本身按支付单号幂等
+            if (storeSettlements != null) storeSettlements.ifAvailable(s -> s.onPayOrderSucceeded(orderNo));
             return;
         }
         OrdOrder source = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()

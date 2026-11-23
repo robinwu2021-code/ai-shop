@@ -31,6 +31,27 @@ public interface InvoicePort {
      */
     Optional<InvoiceReceipt> issueIfAutomatic(Scope scope, String sourceType, String sourceNo);
 
+    /**
+     * 门店开票设定（TDD-统一订单与开票资料 AC11）：自订行的默认课税别与开票时机。没设过返回
+     * {@code (null, MANUAL)}，不是错误。
+     */
+    StoreSettings storeSettings(Scope scope);
+
+    /** 本店的一个常用品项（含已停用的，调用方按 {@code enabled} 判）；不存在或别店的为空。 */
+    Optional<StoreItem> storeItem(Scope scope, String storeItemNo);
+
+    /**
+     * @param defaultTaxType 自订行没填课税别时用的默认值：TAXABLE / ZERO_RATED / EXEMPT；null = 不带默认（待补）
+     * @param invoiceTiming  ON_PAID 付清且资料齐自动开 / MANUAL 手动 / LATER 稍后再补
+     */
+    record StoreSettings(String defaultTaxType, String invoiceTiming) {
+        public static final String ON_PAID = "ON_PAID";
+        public static final String MANUAL = "MANUAL";
+    }
+
+    /** @param taxType TAXABLE / ZERO_RATED / EXEMPT */
+    record StoreItem(String storeItemNo, String name, String taxType, boolean enabled) {}
+
     /** 谁在哪家店开票。主体与门店由调用方从已鉴权的上下文取，不从请求体取。 */
     record Scope(String tenantNo, String entityNo, String storeNo, String actorNo) {}
 

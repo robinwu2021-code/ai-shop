@@ -27,7 +27,10 @@ public interface StoreOrderService {
      */
     StoreSaleView fillInvoiceData(Scope scope, String orderNo, FillCmd cmd);
 
-    /** 取消未付款的单；已取消的原样返回，已付款的回 {@code STORE_ORDER_STATE_INVALID}。 */
+    /**
+     * 取消未付款的单；已取消的原样返回，已付款或已挂了收款（部分付款）的回 {@code STORE_ORDER_STATE_INVALID}
+     * —— 先作废现金记录 / 退收款，再取消。
+     */
     StoreSaleView cancel(Scope scope, String orderNo, String reason);
 
     /**
@@ -37,13 +40,17 @@ public interface StoreOrderService {
     record Scope(String entityNo, String storeNo, String operatorNo, boolean mayReprice, boolean mayOverrideTax) {}
 
     /**
-     * @param member  会员（P3 才接会员载具）：本期收下不处理
-     * @param invoice 开票偏好：买受人本期生效；{@code timing}（P2 门店开票时机）收下不处理
+     * @param buyer         买受人（可空）：建单同一事务预存
+     * @param invoiceTiming 本单开票时机 ON_PAID / MANUAL / LATER（P2）：存在订单上，null = 跟门店开票设定
      */
     record CreateCmd(String idempotencyKey, String clientOrderNo, String channel, String currency,
-            List<LineCmd> lines, List<AdjustmentCmd> adjustments, BuyerCmd buyer) {}
+            List<LineCmd> lines, List<AdjustmentCmd> adjustments, BuyerCmd buyer, String invoiceTiming) {}
 
-    /** @param storeItemNo 门店常用品项（P2）：本期非空即拒 */
+    /**
+     * @param storeItemNo 门店常用品项（仅自订行，与 name / taxType 互斥）：带出品名与课税别，选零税率 / 免税不需
+     *                    {@code biz:invoice:tax-override}；不存在或已停用回 {@code STORE_ORDER_STORE_ITEM_UNAVAILABLE}
+     * @param taxType     自订行没填（也没选品项）时取门店默认课税别（{@code STORE_DEFAULT}），门店没设则待补
+     */
     record LineCmd(String kind, String skuNo, int quantity, long unitPriceMinor, String name, String taxType,
             String storeItemNo) {}
 
@@ -54,13 +61,17 @@ public interface StoreOrderService {
 
     record FillCmd(String idempotencyKey, List<FillLineCmd> lines, BuyerCmd buyer, String reason) {}
 
-    record FillLineCmd(int lineNo, String name, String taxType) {}
+    /** @param storeItemNo 门店常用品项：补空着的品名与课税别（与 name / taxType 互斥），零税率 / 免税不需另授权 */
+    record FillLineCmd(int lineNo, String name, String taxType, String storeItemNo) {}
 
     /**
      * 对外视图（POS 契约，TDD §2「关键数据结构」）。{@code status}：AWAITING_PAYMENT / PAID / CANCELLED / REFUNDED。
+     * {@code paidMinor}：已挂收款合计（未作废的现金记录 + 已成功的收款码 / 付款链接，同币别），付清后可大于
+     * {@code totalMinor}（多收，POS 找零）；{@code invoiceTiming}：本单开票时机，null = 跟门店设定。
      */
     record StoreSaleView(String orderNo, String subOrderNo, String clientOrderNo, String status, String currency,
-            long totalMinor, long paidMinor, List<LineView> lines, InvoiceReadinessView invoiceReadiness) {}
+            long totalMinor, long paidMinor, String invoiceTiming, List<LineView> lines,
+            InvoiceReadinessView invoiceReadiness) {}
 
     /** @param taxType TAXABLE / ZERO_RATED / EXEMPT；null = 待补 */
     record LineView(int lineNo, String kind, String skuNo, String name, String taxType, int quantity,

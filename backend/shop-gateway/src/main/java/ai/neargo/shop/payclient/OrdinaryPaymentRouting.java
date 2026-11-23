@@ -10,7 +10,11 @@ import ai.neargo.shop.spi.settle.OrdinaryPaymentPort;
 import ai.neargo.shop.spi.settle.OrdinaryPaymentInitiationPort;
 import ai.neargo.shop.pay.service.OrdinaryPaymentInitiationService;
 import ai.neargo.shop.pay.acquiring.port.InternalCallers;
+import ai.neargo.shop.pay.acquiring.port.PaidCollectionPortImpl;
 import ai.neargo.shop.pay.acquiring.port.PaymentPortImpl;
+import ai.neargo.shop.pay.mapper.acquiring.AcquiringMappers.PayOrderMapper;
+import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
+import ai.neargo.shop.spi.pay.PaidCollectionPort;
 import ai.neargo.shop.pay.acquiring.service.PaymentService;
 import ai.neargo.shop.pay.acquiring.service.RefundService;
 import ai.neargo.shop.pay.api.guard.internal.InternalCallRecorder;
@@ -48,5 +52,11 @@ public class OrdinaryPaymentRouting {
                             InternalCallRecorder recorder) {
         PaymentPort port = new PaymentPortImpl(payments, refunds, callers, enabled);
         return record ? new RecordingPaymentPort(port, recorder) : port;
+    }
+
+    /** 收款码 / 付款链接成功后，门店零售单按支付单 biz_no 挂单（TDD-统一订单与开票资料 AC7）；独立形态走已验签收款推送 */
+    @Bean
+    PaidCollectionPort paidCollectionPort(PayOrderMapper orders, PayMerchantBindingService stores) {
+        return new PaidCollectionPortImpl(orders, stores);
     }
 }

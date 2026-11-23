@@ -17,7 +17,12 @@ import ai.neargo.shop.common.BizDetailedException;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.GlobalExceptionHandler;
+import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.event.OutboxPump;
+import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.invoicebridge.InvoiceAutoIssueConsumer;
 import ai.neargo.shop.invoicebridge.port.SubOrderInvoiceSourcePortImpl;
 import ai.neargo.shop.numbering.DocumentNumberFormatter;
 import ai.neargo.shop.numbering.DocumentType;
@@ -30,15 +35,24 @@ import ai.neargo.shop.product.port.GoodsPricingPolicyPortImpl;
 import ai.neargo.shop.product.service.impl.GoodsPricingPolicyServiceImpl;
 import ai.neargo.shop.spi.invoice.InvoicePort;
 import ai.neargo.shop.spi.invoice.InvoiceSourcePort.Line;
+import ai.neargo.shop.spi.pay.MarketPort;
+import ai.neargo.shop.spi.pay.PaidCollectionPort;
+import ai.neargo.shop.spi.pay.PaidCollectionPort.PaidCollection;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort.SkuSnapshot;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+import ai.neargo.shop.spi.user.UserQueryPort;
+import ai.neargo.shop.trade.mapper.OfflineRecordMappers.EventMapper;
+import ai.neargo.shop.trade.mapper.OfflineRecordMappers.RecordMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.IndustryOrderSourceMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.InvoiceDataFillMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.PriceQuoteLineMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.StoreCollectionMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.service.OfflineRecordService;
 import ai.neargo.shop.trade.service.StoreOrderService;
 import ai.neargo.shop.trade.service.StoreOrderService.AdjustmentCmd;
 import ai.neargo.shop.trade.service.StoreOrderService.BuyerCmd;
@@ -49,9 +63,14 @@ import ai.neargo.shop.trade.service.StoreOrderService.LineCmd;
 import ai.neargo.shop.trade.service.StoreOrderService.MissingView;
 import ai.neargo.shop.trade.service.StoreOrderService.Scope;
 import ai.neargo.shop.trade.service.StoreOrderService.StoreSaleView;
+import ai.neargo.shop.trade.service.StoreOrderSettlementService;
+import ai.neargo.shop.trade.service.impl.OfflineRecordServiceImpl;
 import ai.neargo.shop.trade.service.impl.StoreOrderServiceImpl;
+import ai.neargo.shop.trade.service.impl.StoreOrderSettlementServiceImpl;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -61,6 +80,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -83,7 +105,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * 门店零售单在真实 MySQL 9 上的验收（TDD-统一订单与开票资料 §5，P1：AC1–6、AC9、AC10、AC15）。
+ * 门店零售单在真实 MySQL 9 上的验收（TDD-统一订单与开票资料 §5，P1：AC1–6、AC9、AC10、AC15；
+ * P2：AC6 门店默认税别、AC7 / AC16 收款挂单与付清、AC8 付清自动开票、AC11 常用品项）。
  *
  * <p><b>表结构从哪来</b>：平台迁移不能在空 MySQL 上从零重放（V1–V574 是 MariaDB 方言，见 run-local），所以这里
  * 从本机开发库 {@code ai_shop}（{@code SHOW CREATE TABLE}，只读）复制本次涉及的几张表的现行结构到一个随机库，
@@ -91,6 +114,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  *
  * <p>连接串沿用 {@code COMMERCE_MYSQL_URL/USER/PASSWORD}（只认 127.0.0.1），没配或本机没有 {@code ai_shop} 时跳过。
  * 商品快照与发票域用替身：前者不是本次改动，后者在 shop-app 只能经 spi 使用（InvoiceOptionalTest）。
+ * 现金记录走真实 {@code OfflineRecordServiceImpl}，事件走真实 {@code OutboxEventBus}（写 {@code sys_outbox}），
+ * 自动开票走真实 {@code InvoiceAutoIssueConsumer}；支付域的「已成功支付单」用替身（{@link FakeCollections}）。
  */
 @SpringJUnitConfig(StoreOrderMysqlTest.Config.class)
 class StoreOrderMysqlTest {
@@ -103,11 +128,19 @@ class StoreOrderMysqlTest {
     @Autowired SubOrderInvoiceSourcePortImpl invoiceSource;
     @Autowired FakeInvoices invoices;
     @Autowired JdbcTemplate jdbc;
+    @Autowired OfflineRecordService cash;
+    @Autowired StoreOrderSettlementService settlements;
+    @Autowired FakeCollections payOrders;
+    @Autowired InvoiceAutoIssueConsumer autoIssue;
+    @Autowired SysOutboxMapper outbox;
 
     @BeforeEach
     void reset() {
         invoices.buyers.clear();
         invoices.active.clear();
+        invoices.items.clear();
+        invoices.settings = new InvoicePort.StoreSettings(null, "MANUAL");
+        payOrders.byNo.clear();
     }
 
     // ------------------------------------------------------------------ AC1 / AC2 / AC3 / AC4
@@ -161,7 +194,7 @@ class StoreOrderMysqlTest {
                 () -> create(CLERK, "POS-AC2-N", "K-AC2-N", List.of(sku("SKU-OTHER-STORE", 1, 100)), List.of(), null));
         assertCode(ErrorCode.STORE_ORDER_TOTAL_INVALID, () -> create(CLERK, "POS-AC2-T", "K-AC2-T",
                 List.of(custom(1, 100, "x", "TAXABLE")), List.of(new AdjustmentCmd("DISCOUNT", null, -101)), null));
-        assertCode(ErrorCode.STORE_ORDER_STORE_ITEM_UNSUPPORTED, () -> create(CLERK, "POS-AC2-I", "K-AC2-I",
+        assertCode(ErrorCode.STORE_ORDER_STORE_ITEM_UNAVAILABLE, () -> create(CLERK, "POS-AC2-I", "K-AC2-I",
                 List.of(new LineCmd("CUSTOM", null, 1, 100, null, null, "SI-1")), List.of(), null));
     }
 
@@ -201,7 +234,7 @@ class StoreOrderMysqlTest {
         var view = create(CLERK, "POS-AC5", "K-AC5", List.of(sku("SKU-A", 1, 2500), custom(1, 1000, null, null)),
                 List.of(), null);
         var filled = orders.fillInvoiceData(CLERK, view.orderNo(), new FillCmd("F-AC5",
-                List.of(new FillLineCmd(2, "清潔用品", "TAXABLE")),
+                List.of(new FillLineCmd(2, "清潔用品", "TAXABLE", null)),
                 new BuyerCmd("COMPANY", "50766768", "創科系統有限公司", null, null, null), "輸入金額補品名"));
         assertEquals("NOT_PAID", filled.invoiceReadiness().state());
         assertTrue(filled.invoiceReadiness().missing().isEmpty());
@@ -215,13 +248,13 @@ class StoreOrderMysqlTest {
                 + "ORDER BY id DESC LIMIT 1", String.class, view.subOrderNo()));
         // 同一幂等键再送：原样返回，不再记稽核
         orders.fillInvoiceData(CLERK, view.orderNo(), new FillCmd("F-AC5",
-                List.of(new FillLineCmd(2, "清潔用品", "TAXABLE")), null, "retry"));
+                List.of(new FillLineCmd(2, "清潔用品", "TAXABLE", null)), null, "retry"));
         assertEquals(3, count("SELECT COUNT(*) FROM ord_invoice_data_fill WHERE sub_order_no='" + view.subOrderNo() + "'"));
         // 已补过（或 SKU 冻结）的字段给不同值：冻结
         assertCode(ErrorCode.INVOICE_DATA_FROZEN, () -> orders.fillInvoiceData(CLERK, view.orderNo(),
-                new FillCmd("F-AC5-2", List.of(new FillLineCmd(2, "別的名字", null)), null, null)));
+                new FillCmd("F-AC5-2", List.of(new FillLineCmd(2, "別的名字", null, null)), null, null)));
         assertCode(ErrorCode.INVOICE_DATA_FROZEN, () -> orders.fillInvoiceData(CLERK, view.orderNo(),
-                new FillCmd("F-AC5-3", List.of(new FillLineCmd(1, null, "EXEMPT")), null, null)));
+                new FillCmd("F-AC5-3", List.of(new FillLineCmd(1, null, "EXEMPT", null)), null, null)));
         assertCode(ErrorCode.INVOICE_DATA_FROZEN, () -> orders.fillInvoiceData(CLERK, view.orderNo(),
                 new FillCmd("F-AC5-4", List.of(), CARRIER, null)));
     }
@@ -232,9 +265,9 @@ class StoreOrderMysqlTest {
                 List.of(custom(1, 100, "外銷品", "ZERO_RATED")), List.of(), null));
         var view = create(CLERK, "POS-AC6", "K-AC6-2", List.of(custom(1, 100, "書籍", null)), List.of(), null);
         assertCode(ErrorCode.BIZ_ROLE_FORBIDDEN, () -> orders.fillInvoiceData(CLERK, view.orderNo(),
-                new FillCmd("F-AC6", List.of(new FillLineCmd(1, null, "EXEMPT")), null, null)));
+                new FillCmd("F-AC6", List.of(new FillLineCmd(1, null, "EXEMPT", null)), null, null)));
         assertEquals("EXEMPT", orders.fillInvoiceData(MANAGER, view.orderNo(),
-                new FillCmd("F-AC6-M", List.of(new FillLineCmd(1, null, "EXEMPT")), null, null)).lines().getFirst().taxType());
+                new FillCmd("F-AC6-M", List.of(new FillLineCmd(1, null, "EXEMPT", null)), null, null)).lines().getFirst().taxType());
     }
 
     // ------------------------------------------------------------------ 取消
@@ -292,6 +325,215 @@ class StoreOrderMysqlTest {
         assertEquals(expected, rendered.data().get("missing"));
     }
 
+
+    // ------------------------------------------------------------------ P2 · AC7 / AC16 收款挂单与付清
+
+    @Test
+    void ac7CashForTheFullTotalMarksPaidPublishesOrderPaidAndTurnsReady() {
+        var view = create(CLERK, "POS-P2-CASH", "K-P2-CASH", List.of(custom(1, 1000, "清潔用品", "TAXABLE")), List.of(),
+                null);
+        assertEquals("NOT_PAID", view.invoiceReadiness().state());
+        var record = pay(view, 1000);
+        assertEquals(view.subOrderNo(), record.orderNo());
+        var paid = orders.get(CLERK, view.orderNo());
+        assertEquals(List.of("PAID", 1000L, "READY"),
+                List.of(paid.status(), paid.paidMinor(), paid.invoiceReadiness().state()));
+        var row = jdbc.queryForMap("SELECT o.status,o.pay_channel,o.paid_at,s.status sub_status,s.completed_at "
+                + "FROM ord_order o JOIN ord_sub_order s ON s.order_no=o.order_no WHERE o.order_no=?", view.orderNo());
+        assertEquals(List.of("PAID", "OFFLINE", "COMPLETED"),
+                List.of(row.get("status"), row.get("pay_channel"), row.get("sub_status")));
+        assertTrue(row.get("paid_at") != null && row.get("completed_at") != null);
+        assertEquals(List.of("ORDER:" + view.orderNo() + ":ORDER_PAID", "SUB_ORDER:" + view.subOrderNo()
+                + ":SUB_ORDER_PAID"), events(view));
+        String payload = orderPaid(view).getPayload();
+        assertTrue(payload.contains("\"payAmount\":1000") && payload.contains("\"payChannel\":\"OFFLINE\""), payload);
+    }
+
+    @Test
+    void ac16SplitCashAndCollectionSettlesOnlyWhenTheSumReachesTheTotal() {
+        var view = create(CLERK, "POS-P2-SPLIT", "K-P2-SPLIT", List.of(custom(1, 1000, "清潔用品", "TAXABLE")),
+                List.of(), null);
+        pay(view, 400);
+        var partial = orders.get(CLERK, view.orderNo());
+        assertEquals(List.of("AWAITING_PAYMENT", 400L, "NOT_PAID"),
+                List.of(partial.status(), partial.paidMinor(), partial.invoiceReadiness().state()));
+        assertEquals(List.of(), events(view), "部分付款不发事件");
+        assertCode(ErrorCode.STORE_ORDER_STATE_INVALID, () -> orders.cancel(CLERK, view.orderNo(), null));
+        assertTrue(settlements.attachCollection(collection("PYO-SPLIT-1", "S1", view.subOrderNo(), "TWD", 600)));
+        var paid = orders.get(CLERK, view.orderNo());
+        assertEquals(List.of("PAID", 1000L), List.of(paid.status(), paid.paidMinor()));
+        assertEquals("MIXED", jdbc.queryForObject("SELECT pay_channel FROM ord_order WHERE order_no=?", String.class,
+                view.orderNo()));
+        assertEquals(2, events(view).size());
+    }
+
+    @Test
+    void overpaymentIsAcceptedAndRecordedAsPaidMinor() {
+        var view = create(CLERK, "POS-P2-OVER", "K-P2-OVER", List.of(custom(1, 1000, "清潔用品", "TAXABLE")), List.of(),
+                null);
+        pay(view, 1200);
+        var paid = orders.get(CLERK, view.orderNo());
+        assertEquals(List.of("PAID", 1000L, 1200L), List.of(paid.status(), paid.totalMinor(), paid.paidMinor()));
+        // 付清后再来的现金不挂（挂上就作废不掉）；后到的收款码照记（钱已经收了），不再转状态、不再发事件
+        assertCode(ErrorCode.STORE_ORDER_STATE_INVALID, () -> pay(view, 100));
+        assertTrue(settlements.attachCollection(collection("PYO-LATE", "S1", view.subOrderNo(), "TWD", 50)));
+        assertEquals(1250, orders.get(CLERK, view.orderNo()).paidMinor());
+        assertEquals(2, events(view).size());
+    }
+
+    @Test
+    void voidingCashOnAnUnpaidOrderRecomputesButOnAPaidOrderIsRejected() {
+        var view = create(CLERK, "POS-P2-VOID", "K-P2-VOID", List.of(custom(1, 1000, "清潔用品", "TAXABLE")), List.of(),
+                null);
+        var partial = pay(view, 300);
+        cash.voidRecord(cashScope(), partial.recordNo(), new OfflineRecordService.VoidCmd("輸錯", partial.version()));
+        assertEquals(0, orders.get(CLERK, view.orderNo()).paidMinor());
+        // 更正成更大的金额：就此付清
+        var small = pay(view, 500);
+        var corrected = cash.correct(cashScope(), small.recordNo(), new OfflineRecordService.CorrectCmd(1000, "TWD",
+                "CASH", null, "少打一個零", small.version()));
+        assertEquals("PAID", orders.get(CLERK, view.orderNo()).status());
+        assertCode(ErrorCode.STORE_ORDER_PAYMENT_LOCKED, () -> cash.voidRecord(cashScope(), small.recordNo(),
+                new OfflineRecordService.VoidCmd("想作廢", corrected.version())));
+        assertCode(ErrorCode.STORE_ORDER_PAYMENT_LOCKED, () -> cash.correct(cashScope(), small.recordNo(),
+                new OfflineRecordService.CorrectCmd(900, "TWD", "CASH", null, "改", corrected.version())));
+        assertEquals("RECORDED|1000", jdbc.queryForObject("SELECT CONCAT_WS('|',status,amount_minor) "
+                + "FROM ord_offline_record WHERE record_no=?", String.class, small.recordNo()));
+    }
+
+    @Test
+    void cashInAnotherCurrencyOrOnACancelledOrderIsRejectedAndNothingIsRecorded() {
+        var usd = orders.create(CLERK, new CreateCmd("K-P2-USD", "POS-P2-USD", "POS", "USD",
+                List.of(custom(1, 1000, "x", "TAXABLE")), List.of(), null, null));
+        assertCode(ErrorCode.STORE_ORDER_CURRENCY_MISMATCH, () -> pay(usd, 1000));
+        var cancelled = create(CLERK, "POS-P2-CNL", "K-P2-CNL", List.of(custom(1, 1000, "x", "TAXABLE")), List.of(),
+                null);
+        orders.cancel(CLERK, cancelled.orderNo(), null);
+        assertCode(ErrorCode.STORE_ORDER_STATE_INVALID, () -> pay(cancelled, 1000));
+        assertEquals(0, count("SELECT COUNT(*) FROM ord_offline_record WHERE order_no IN ('" + usd.subOrderNo() + "','"
+                + cancelled.subOrderNo() + "')"));
+    }
+
+    @Test
+    void collectionAttachesByBizNoOfTheSameStoreOnlyOnceAndViaThePaidPayOrder() {
+        var view = create(CLERK, "POS-P2-COL", "K-P2-COL", List.of(custom(1, 1000, "清潔用品", "TAXABLE")), List.of(),
+                null);
+        assertFalse(settlements.attachCollection(collection("PYO-OTHER", "S2", view.subOrderNo(), "TWD", 1000)),
+                "别店的收款不挂");
+        assertFalse(settlements.attachCollection(collection("PYO-JPY", "S1", view.subOrderNo(), "JPY", 1000)),
+                "币别不符不挂");
+        assertFalse(settlements.attachCollection(collection("PYO-NOTSTORE", "S1", "OS-NOT-A-STORE-ORDER", "TWD", 1)));
+        assertEquals(0, orders.get(CLERK, view.orderNo()).paidMinor());
+        // 回调 / 对账补单交来的是支付单号：按支付域确认的事实挂（金额取支付单实收），重复到达只挂一次
+        payOrders.byNo.put("PYO-PAID-1", collection("PYO-PAID-1", "S1", view.subOrderNo(), "TWD", 1000));
+        settlements.onPayOrderSucceeded("PYO-PAID-1");
+        settlements.onPayOrderSucceeded("PYO-PAID-1");
+        settlements.onPayOrderSucceeded("PYO-UNKNOWN");
+        var paid = orders.get(CLERK, view.orderNo());
+        assertEquals(List.of("PAID", 1000L), List.of(paid.status(), paid.paidMinor()));
+        assertEquals(1, count("SELECT COUNT(*) FROM ord_store_collection WHERE sub_order_no='" + view.subOrderNo() + "'"));
+        assertEquals("WX_NATIVE", jdbc.queryForObject("SELECT pay_channel FROM ord_order WHERE order_no=?",
+                String.class, view.orderNo()));
+        assertEquals(2, events(view).size());
+    }
+
+    @Test
+    void concurrentPaymentsSettleExactlyOnceAndPublishOneEvent() throws Exception {
+        for (int round = 0; round < 4; round++) {
+            var view = create(CLERK, "POS-P2-RACE-" + round, "K-P2-RACE-" + round,
+                    List.of(custom(1, 1000, "清潔用品", "TAXABLE")), List.of(), null);
+            int r = round;
+            var outcomes = race(() -> pay(view, 600), () -> settlements.attachCollection(
+                    collection("PYO-RACE-" + r, "S1", view.subOrderNo(), "TWD", 600)));
+            assertTrue(outcomes.stream().noneMatch(o -> o instanceof Throwable), outcomes.toString());
+            var paid = orders.get(CLERK, view.orderNo());
+            assertEquals(List.of("PAID", 1200L), List.of(paid.status(), paid.paidMinor()));
+            assertEquals(2, events(view).size(), "一次付清、一组事件");
+        }
+        // 两笔各自足额的现金同时到：一笔付清，另一笔回 20024 且不落库
+        var view = create(CLERK, "POS-P2-RACE-CASH", "K-P2-RACE-CASH", List.of(custom(1, 1000, "x", "TAXABLE")),
+                List.of(), null);
+        var outcomes = race(() -> pay(view, 1000), () -> pay(view, 1000));
+        assertEquals(1, outcomes.stream().filter(o -> o instanceof BizException e
+                && e.errorCode() == ErrorCode.STORE_ORDER_STATE_INVALID).count(), outcomes.toString());
+        assertEquals(1, count("SELECT COUNT(*) FROM ord_offline_record WHERE order_no='" + view.subOrderNo() + "'"));
+        assertEquals(2, events(view).size());
+    }
+
+    // ------------------------------------------------------------------ P2 · AC6 / AC11 门店默认税别与常用品项
+
+    @Test
+    void ac6StoreDefaultTaxTypeFillsACustomLineWithoutOne() {
+        invoices.settings = new InvoicePort.StoreSettings("ZERO_RATED", "MANUAL");
+        var view = create(CLERK, "POS-P2-DEF", "K-P2-DEF", List.of(custom(1, 100, null, null),
+                custom(1, 200, "外銷品", null), custom(1, 300, "一般", "TAXABLE")), List.of(), null);
+        assertEquals(List.of("ZERO_RATED", "ZERO_RATED", "TAXABLE"),
+                view.lines().stream().map(StoreOrderService.LineView::taxType).toList(),
+                "门店默认是店长定的边界：收银员沿用零税率不需另授权");
+        assertEquals(List.of(new MissingView(1, List.of("name"))), view.invoiceReadiness().missing());
+        assertEquals(List.of("STORE_DEFAULT", "ENTERED", "ENTERED"), jdbc.queryForList("SELECT invoice_data_source "
+                + "FROM ord_item WHERE sub_order_no=? ORDER BY id", String.class, view.subOrderNo()));
+    }
+
+    @Test
+    void ac11StoreItemSuppliesNameAndTaxTypeEvenZeroRatedWithoutOverride() {
+        invoices.items.put("IVS-1", new InvoicePort.StoreItem("IVS-1", "外銷清潔劑", "ZERO_RATED", true));
+        invoices.items.put("IVS-2", new InvoicePort.StoreItem("IVS-2", "書籍", "EXEMPT", true));
+        invoices.items.put("IVS-OFF", new InvoicePort.StoreItem("IVS-OFF", "停用", "TAXABLE", false));
+        var view = create(CLERK, "POS-P2-ITEM", "K-P2-ITEM",
+                List.of(new LineCmd("CUSTOM", null, 2, 150, null, null, "IVS-1"), custom(1, 80, null, null)),
+                List.of(), null);
+        var line = view.lines().getFirst();
+        assertEquals(List.of("外銷清潔劑", "ZERO_RATED", true), List.of(line.name(), line.taxType(), line.frozen()));
+        assertEquals("STORE_ITEM", jdbc.queryForObject("SELECT invoice_data_source FROM ord_item WHERE sub_order_no=? "
+                + "ORDER BY id LIMIT 1", String.class, view.subOrderNo()));
+        assertCode(ErrorCode.STORE_ORDER_STORE_ITEM_UNAVAILABLE, () -> create(CLERK, "POS-P2-ITEM-OFF", "K-P2-ITEM-OFF",
+                List.of(new LineCmd("CUSTOM", null, 1, 1, null, null, "IVS-OFF")), List.of(), null));
+        // 补资料也能选品项：免税同样不需另授权
+        var filled = orders.fillInvoiceData(CLERK, view.orderNo(), new FillCmd("F-P2-ITEM",
+                List.of(new FillLineCmd(2, null, null, "IVS-2")), null, "選品項"));
+        assertEquals(List.of("書籍", "EXEMPT"), List.of(filled.lines().get(1).name(), filled.lines().get(1).taxType()));
+        assertTrue(filled.invoiceReadiness().missing().isEmpty());
+    }
+
+    // ------------------------------------------------------------------ P2 · AC8 付清自动开票
+
+    @Test
+    void ac8OnPaidIssuesWithTheRememberedBuyerAndManualDoesNot() {
+        // 本单 ON_PAID（门店默认 MANUAL）：付清 → ORDER_PAID → 自动开，买受人用建单时预存的载具
+        var onPaid = create(CLERK, "POS-P2-AUTO", "K-P2-AUTO", List.of(custom(1, 1000, "清潔用品", "TAXABLE")),
+                List.of(), CARRIER, "ON_PAID");
+        assertEquals("ON_PAID", onPaid.invoiceTiming());
+        pay(onPaid, 1000);
+        autoIssue.consume(orderPaid(onPaid));
+        assertEquals(CARRIER.carrierId(), invoices.issuedBuyers.get(onPaid.subOrderNo()).carrierId());
+        assertEquals("ISSUED", orders.get(CLERK, onPaid.orderNo()).invoiceReadiness().state());
+        // 门店 MANUAL、本单没指定：不开
+        var manual = create(CLERK, "POS-P2-MANUAL", "K-P2-MANUAL", List.of(custom(1, 1000, "清潔用品", "TAXABLE")),
+                List.of(), null);
+        pay(manual, 1000);
+        autoIssue.consume(orderPaid(manual));
+        assertEquals("READY", orders.get(CLERK, manual.orderNo()).invoiceReadiness().state());
+        // 门店 ON_PAID：本单 MANUAL 覆盖它不开；本单没指定跟门店开（一般消费者）
+        invoices.settings = new InvoicePort.StoreSettings(null, "ON_PAID");
+        var override = create(CLERK, "POS-P2-OVR", "K-P2-OVR", List.of(custom(1, 1000, "x", "TAXABLE")), List.of(),
+                null, "MANUAL");
+        pay(override, 1000);
+        autoIssue.consume(orderPaid(override));
+        assertFalse(invoices.active.containsKey(override.subOrderNo()));
+        var follow = create(CLERK, "POS-P2-FOLLOW", "K-P2-FOLLOW", List.of(custom(1, 1000, "x", "TAXABLE")), List.of(),
+                null);
+        pay(follow, 1000);
+        autoIssue.consume(orderPaid(follow));
+        assertEquals(InvoicePort.Buyer.consumer(), invoices.issuedBuyers.get(follow.subOrderNo()));
+        // ON_PAID 但资料不齐：26002 跳过（留给补资料后手动开），不交回 outbox 重试
+        var pending = create(CLERK, "POS-P2-PEND", "K-P2-PEND", List.of(custom(1, 1000, null, "TAXABLE")), List.of(),
+                null);
+        pay(pending, 1000);
+        autoIssue.consume(orderPaid(pending));
+        assertEquals("NEEDS_INFO", orders.get(CLERK, pending.orderNo()).invoiceReadiness().state());
+    }
+
     // ------------------------------------------------------------------ 迁移本身
 
     @Test
@@ -311,7 +553,12 @@ class StoreOrderMysqlTest {
 
     private StoreSaleView create(Scope scope, String clientNo, String key, List<LineCmd> lines,
             List<AdjustmentCmd> adjustments, BuyerCmd buyer) {
-        return orders.create(scope, new CreateCmd(key, clientNo, "POS", "TWD", lines, adjustments, buyer));
+        return create(scope, clientNo, key, lines, adjustments, buyer, null);
+    }
+
+    private StoreSaleView create(Scope scope, String clientNo, String key, List<LineCmd> lines,
+            List<AdjustmentCmd> adjustments, BuyerCmd buyer, String invoiceTiming) {
+        return orders.create(scope, new CreateCmd(key, clientNo, "POS", "TWD", lines, adjustments, buyer, invoiceTiming));
     }
 
     private static LineCmd sku(String skuNo, int qty, long price) {
@@ -327,6 +574,57 @@ class StoreOrderMysqlTest {
         jdbc.update("UPDATE ord_order SET status='PAID',paid_at=? WHERE order_no=?", System.currentTimeMillis(),
                 view.orderNo());
         jdbc.update("UPDATE ord_sub_order SET status='WAIT_FULFILL' WHERE sub_order_no=?", view.subOrderNo());
+    }
+
+    private OfflineRecordService.Scope cashScope() {
+        return new OfflineRecordService.Scope("E1", "S1", "U1");
+    }
+
+    private OfflineRecordService.OfflineRecordView pay(StoreSaleView view, long amount) {
+        return cash.record(cashScope(), new OfflineRecordService.RecordCmd("CASH-" + UUID.randomUUID(), amount, "TWD",
+                "CASH", view.subOrderNo(), null, null, null));
+    }
+
+    private static PaidCollection collection(String payOrderNo, String storeNo, String bizNo, String currency,
+            long amount) {
+        return new PaidCollection(payOrderNo, storeNo, bizNo, currency, amount, "WX_NATIVE");
+    }
+
+    /** 这张单的 outbox 事件，按写入顺序：聚合类型:聚合号:事件类型 */
+    private List<String> events(StoreSaleView view) {
+        return jdbc.queryForList("SELECT CONCAT_WS(':',aggregate_type,aggregate_id,event_type) FROM sys_outbox "
+                + "WHERE aggregate_id IN (?,?) ORDER BY id", String.class, view.orderNo(), view.subOrderNo());
+    }
+
+    /** 这张单的 ORDER_PAID（生产上由同进程的 outbox 投递泵交给自动开票消费者） */
+    private SysOutbox orderPaid(StoreSaleView view) {
+        return outbox.selectList(null).stream().filter(e -> "ORDER_PAID".equals(e.getEventType())
+                && view.orderNo().equals(e.getAggregateId())).findFirst().orElseThrow();
+    }
+
+    /** 两个动作同时起跑；返回各自的结果或异常 */
+    private static List<Object> race(Supplier<?> a, Supplier<?> b) throws Exception {
+        var start = new CountDownLatch(1);
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var futures = new ArrayList<Future<Object>>();
+            for (Supplier<?> action : List.of(a, b)) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    try {
+                        return (Object) action.get();
+                    } catch (RuntimeException e) {
+                        return e;
+                    }
+                }));
+            }
+            start.countDown();
+            var out = new ArrayList<Object>();
+            for (var f : futures) out.add(f.get());
+            return out;
+        } finally {
+            pool.shutdown();
+        }
     }
 
     private long count(String sql) {
@@ -347,7 +645,8 @@ class StoreOrderMysqlTest {
         static final String USER = System.getenv("COMMERCE_MYSQL_USER");
         static final String PASS = System.getenv("COMMERCE_MYSQL_PASSWORD");
         static final List<String> TABLES = List.of("ord_order", "ord_sub_order", "ord_item",
-                "ord_industry_order_source", "ord_price_quote_line", "prd_sku_pricing_policy", "mch_role");
+                "ord_industry_order_source", "ord_price_quote_line", "prd_sku_pricing_policy", "mch_role",
+                "ord_offline_record", "ord_offline_record_event", "sys_outbox");
         static DataSource ds;
         static boolean created;
 
@@ -373,7 +672,8 @@ class StoreOrderMysqlTest {
                     + " VALUES ('*','MANAGER','店长','[\"biz:order:view\"]',1,'MAIN',NOW(),NOW()),"
                     + " ('*','CLERK','店员','[\"biz:invoice:read\"]',1,'MAIN',NOW(),NOW())");
             for (var migration : List.of("V692__store_order_invoice_data.sql", "V693__store_order_walk_in_party.sql",
-                    "V694__store_order_role_permissions.sql", "V694__store_order_role_permissions.sql")) {
+                    "V694__store_order_role_permissions.sql", "V694__store_order_role_permissions.sql",
+                    "V695__store_order_settlement.sql")) {
                 String sql = new ClassPathResource("db/migration/" + migration).getContentAsString(StandardCharsets.UTF_8);
                 for (var statement : sql.replaceAll("(?m)^--.*$", "").split(";"))
                     if (!statement.isBlank()) jdbc.execute(statement);
@@ -397,10 +697,30 @@ class StoreOrderMysqlTest {
     static final class FakeInvoices implements InvoicePort {
         final Map<String, Buyer> buyers = new ConcurrentHashMap<>();
         final Map<String, InvoiceReceipt> active = new ConcurrentHashMap<>();
+        final Map<String, Buyer> issuedBuyers = new ConcurrentHashMap<>();
+        final Map<String, StoreItem> items = new ConcurrentHashMap<>();
+        volatile StoreSettings settings = new StoreSettings(null, "MANUAL");
+        /** 开票前按真实发票来源读一遍：不 READY 抛 26002，与发票域同口径 */
+        volatile SubOrderInvoiceSourcePortImpl source;
 
         @Override
         public InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo, Buyer buyer) {
-            throw new UnsupportedOperationException();
+            var loaded = source.load(scope, sourceType, sourceNo);
+            var receipt = new InvoiceReceipt("IV-" + sourceNo, "TW_EGUI", "AB00000002", "11512", "0000", "ISSUED",
+                    false, loaded.currency(), loaded.totalMinor());
+            active.put(sourceNo, receipt);
+            issuedBuyers.put(sourceNo, buyer);
+            return receipt;
+        }
+
+        @Override
+        public StoreSettings storeSettings(Scope scope) {
+            return settings;
+        }
+
+        @Override
+        public Optional<StoreItem> storeItem(Scope scope, String storeItemNo) {
+            return Optional.ofNullable(items.get(storeItemNo));
         }
 
         @Override
@@ -426,8 +746,19 @@ class StoreOrderMysqlTest {
         }
     }
 
+    /** 支付域替身：已成功的收款码 / 付款链接支付单（内嵌形态由 PaidCollectionPortImpl 读 pay_order） */
+    static final class FakeCollections implements PaidCollectionPort {
+        final Map<String, PaidCollection> byNo = new ConcurrentHashMap<>();
+
+        @Override
+        public Optional<PaidCollection> paidCollection(String payOrderNo) {
+            return Optional.ofNullable(byNo.get(payOrderNo));
+        }
+    }
+
     @Configuration
-    @MapperScan(basePackageClasses = {OrderMapper.class, GoodsMapper.class}, markerInterface = BaseMapper.class,
+    @MapperScan(basePackageClasses = {OrderMapper.class, GoodsMapper.class, SysOutboxMapper.class},
+            markerInterface = BaseMapper.class,
             sqlSessionFactoryRef = "sqlSessionFactory")
     static class Config {
         @Bean
@@ -442,6 +773,10 @@ class StoreOrderMysqlTest {
             var global = new GlobalConfig();
             global.setMetaObjectHandler(new AuditMetaObjectHandler());
             factory.setGlobalConfig(global);
+            // 与生产 PrimaryPersistenceConfiguration 同一个乐观锁插件：现金记录作废 / 更正靠 @Version
+            var interceptor = new MybatisPlusInterceptor();
+            interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
+            factory.setPlugins(interceptor);
             return factory.getObject();
         }
 
@@ -462,15 +797,63 @@ class StoreOrderMysqlTest {
 
         @Bean
         SubOrderInvoiceSourcePortImpl invoiceSource(SubOrderMapper subs, OrderMapper orders, OrderItemMapper items,
-                IndustryOrderSourceMapper bindings, PriceQuoteLineMapper quoteLines) {
-            return new SubOrderInvoiceSourcePortImpl(subs, orders, items, bindings, quoteLines,
+                IndustryOrderSourceMapper bindings, PriceQuoteLineMapper quoteLines, FakeInvoices invoices) {
+            var source = new SubOrderInvoiceSourcePortImpl(subs, orders, items, bindings, quoteLines,
+                    tools.jackson.databind.json.JsonMapper.builder().build());
+            invoices.source = source;
+            return source;
+        }
+
+        @Bean
+        FakeCollections payOrders() {
+            return new FakeCollections();
+        }
+
+        @Bean
+        OutboxEventBus outboxEventBus(SysOutboxMapper rows) {
+            return new OutboxEventBus(rows, tools.jackson.databind.json.JsonMapper.builder().build(),
+                    new StaticListableBeanFactory().getBeanProvider(OutboxPump.class));
+        }
+
+        @Bean
+        StoreOrderSettlementService settlements(OrderMapper orders, SubOrderMapper subs, RecordMapper records,
+                StoreCollectionMapper collections, OutboxEventBus events, FakeCollections payOrders,
+                PlatformTransactionManager tx) {
+            return new StoreOrderSettlementServiceImpl(orders, subs, records, collections, events,
+                    new StaticListableBeanFactory(Map.of("payOrders", payOrders)).getBeanProvider(PaidCollectionPort.class),
+                    tx);
+        }
+
+        @Bean
+        OfflineRecordService cash(RecordMapper records, EventMapper events, SubOrderMapper subs,
+                PlatformTransactionManager tx) {
+            var merchants = mock(MerchantQueryPort.class);
+            when(merchants.marketOf("E1")).thenReturn("TW");
+            var markets = mock(MarketPort.class);
+            when(markets.find("TW")).thenReturn(Optional.of(
+                    new MarketPort.MarketBrief("TW", "台灣", "TWD", 0, "Asia/Taipei", 1, true)));
+            // setOwnershipWrites / setStoreSettlements 由容器按 @Autowired 注入
+            return new OfflineRecordServiceImpl(records, events, subs, merchants, markets, mock(UserQueryPort.class), tx);
+        }
+
+        @Bean
+        StoreOwnershipWritePort ownershipWrites() {
+            return new StoreOwnershipWritePort() {
+                @Override public void lockAndCheck(String t, String e, String s) { }
+                @Override public void lockEntityAndCheck(String t, String e) { }
+            };
+        }
+
+        @Bean
+        InvoiceAutoIssueConsumer autoIssue(FakeInvoices invoices, SubOrderMapper subs, OrderMapper orders) {
+            return new InvoiceAutoIssueConsumer(invoices, subs, orders,
                     tools.jackson.databind.json.JsonMapper.builder().build());
         }
 
         @Bean
         StoreOrderService storeOrders(OrderMapper orders, SubOrderMapper subs, OrderItemMapper items,
                 InvoiceDataFillMapper fills, GoodsMapper goodsRows, SkuMapper skuRows, SkuPricingPolicyMapper policies,
-                PlatformTransactionManager tx, FakeInvoices invoices) {
+                PlatformTransactionManager tx, FakeInvoices invoices, StoreOrderSettlementService settlements) {
             var policyPort = new GoodsPricingPolicyPortImpl(new GoodsPricingPolicyServiceImpl(goodsRows, skuRows,
                     policies, mock(IdempotencyService.class), tx));
             var goods = mock(GoodsQueryPort.class);
@@ -503,7 +886,7 @@ class StoreOrderMysqlTest {
             });
             var provider = new StaticListableBeanFactory(Map.of("invoices", invoices)).getBeanProvider(InvoicePort.class);
             return new StoreOrderServiceImpl(orders, subs, items, fills, goods, policyPort, ownership, numbers,
-                    provider, tx);
+                    provider, tx, settlements);
         }
 
         private static SkuSnapshot snapshot(String skuNo, String goodsNo, String storeNo, String title, long price) {
