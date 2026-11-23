@@ -8,7 +8,19 @@ export interface SimRequest { method: string; pathWithQuery: string; headers: Re
 export interface SimResponse { status: number; headers: Record<string, string>; body: string; durationMs: number }
 
 export interface MockApp { appId: string; appSecret?: string; encryptKey?: string; rsa?: { serial: string; publicPem: string }; environment: "SANDBOX" | "LIVE"; scopes: string[]; status: "ACTIVE" | "SUSPENDED" }
-export type MockGateway = ((req: SimRequest) => Promise<SimResponse>) & { registerRsaApp(appId: string, serial: string, publicPem: string): void };
+export type MockGateway = ((req: SimRequest) => Promise<SimResponse>) & { registerRsaApp(appId: string, serial: string, publicPem: string): void; registerApp(app: MockApp): void };
+
+/** 接入应用 scopes（READ / COLLECT / REFUND）→ 网关鉴权码，与 near-pay OpenAppModels.SCOPE_OF 一致 */
+export const SCOPE_OF: Record<string, string> = { READ: "pay:read", COLLECT: "pay:create", REFUND: "pay:refund" };
+
+/**
+ * 运营端「接入应用」的状态 → 网关能认的应用：应用启用且密钥已启用才放行（near-pay 守卫：应用非 ACTIVE 或无有效密钥一律 401）。
+ * appSecret 只来自签发那一次的响应 —— 平台不存明文，商户拿着它来调。
+ */
+export function gatewayAppOf(app: { appNo: string; environment: string; scopes: string[]; status: string; credentialStatus: string }, appSecret: string, encryptKey?: string): MockApp {
+  return { appId: app.appNo, appSecret, encryptKey, environment: app.environment === "LIVE" ? "LIVE" : "SANDBOX", scopes: app.scopes.map((x) => SCOPE_OF[x]).filter(Boolean),
+    status: app.status === "ACTIVE" && app.credentialStatus === "ACTIVE" ? "ACTIVE" : "SUSPENDED" };
+}
 
 /** 契约测试向量里的沙箱应用（openapi-pay-open.yaml info.x-test-vectors）：mock 网关据此真实验签 */
 export const TEST_VECTOR_APP: MockApp = { appId: "APP7Q2K9XW", appSecret: "sk_test_Zk3Qm9Lp2Xv7Rt5Wb8Nc4Hd6Jf1Gs0Ay", encryptKey: "Pa7Ve2Ky9Wq4Zm6Tn3Lr8Hs5Dc1Fb0Gx", environment: "SANDBOX", scopes: ["pay:create", "pay:read", "pay:refund"], status: "ACTIVE" };
@@ -104,6 +116,10 @@ export function createMockGateway(prefix: string, initial: MockApp[] = [TEST_VEC
     registerRsaApp(appId: string, serial: string, publicPem: string) {
       const i = apps.findIndex((a) => a.appId === appId);
       const app: MockApp = { appId, rsa: { serial, publicPem }, environment: "SANDBOX", scopes: ["pay:create", "pay:read", "pay:refund"], status: "ACTIVE" };
+      if (i >= 0) apps[i] = app; else apps.push(app);
+    },
+    registerApp(app: MockApp) {
+      const i = apps.findIndex((a) => a.appId === app.appId);
       if (i >= 0) apps[i] = app; else apps.push(app);
     },
   });

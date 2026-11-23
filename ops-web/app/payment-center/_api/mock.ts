@@ -747,10 +747,26 @@ export function createMockPayCenterApi(): PayCenterApi {
       command: (no, action, c) => run(() => {
         const from: Record<string, string[]> = { enable: ["DRAFT"], resume: ["SUSPENDED"], suspend: ["ACTIVE"], revoke: ["DRAFT", "ACTIVE", "SUSPENDED"] };
         const to: Record<string, string> = { enable: "ACTIVE", resume: "ACTIVE", suspend: "SUSPENDED", revoke: "REVOKED" };
-        if (action === "enable" || action === "resume") need(apps.get(no).callbackStatus === "VERIFIED", "回调地址核验通过后才能启用");
+        // near-pay OpenAppService#activate：没配回调地址可以直接启用；配了就必须先核验
+        if (action === "enable" || action === "resume") need(!apps.get(no).notifyUrl || apps.get(no).callbackStatus === "VERIFIED", "回调地址核验通过后才能启用");
         return setStatus(apps, no, c, from[action], to[action]);
       }),
-      issueCredential: (no, b) => run(async () => { reasonOf(b.reason); need(apps.get(no).status !== "REVOKED", "已吊销的应用不能签发密钥"); await apps.update(no, { credentialStatus: "ACTIVE" }); const secret = Array.from({ length: 32 }, () => "abcdefghijkmnpqrstuvwxyz23456789"[Math.floor(Math.random() * 32)]).join(""); return { keyId: Date.now() % 100000, versionIndex: 1, serial: `${no}-1`, secret, fingerprint: `SHA256:${secret.slice(0, 8)}…`, status: "ACTIVE" }; }),
+      // 与 near-pay 同序（PayCredentialService#issueAppCredential）：按应用登记凭证、生成一版 DRAFT，明文只在这次响应里；
+      // 之后核验 → 两人启用。mock 只有 admin 一个身份，录入人记成另一位运营（ST-OPS-1），好让 admin 走完「启用人 ≠ 录入人」。
+      issueCredential: (no, b) => run(async () => {
+        reasonOf(b.reason); const app = apps.get(no); need(app.status !== "REVOKED", "已吊销的应用不能签发密钥");
+        const type = b.credentialType ?? "APP_SECRET";
+        need(type === "APP_SECRET" || type === "APP_DATA_KEY", "只能签发 APP_SECRET / APP_DATA_KEY");
+        const env = app.environment === "LIVE" ? "live" : "test";
+        const secret = `sk_${env}_${Array.from({ length: 32 }, () => "abcdefghijkmnpqrstuvwxyz23456789"[Math.floor(Math.random() * 32)]).join("")}`;
+        const existing = creds.all().find((r) => r.ownerType === "PARTNER_APP" && r.ownerRef === no && r.credentialType === type && r.status !== "REVOKED");
+        const keyId = existing?.keyId ?? Math.max(...creds.all().map((r) => r.keyId)) + 1;
+        const v: CredentialVersion = { ...ver(existing ? Math.max(0, ...existing.versions.map((x) => x.versionIndex)) + 1 : 1, "DRAFT"), source: "GENERATED", displayPrefix: `sk_${env}_`, fingerprint: `fp${secret.slice(8, 16)}` };
+        if (existing) await creds.update(String(keyId), { versions: [v, ...existing.versions], pendingVersions: existing.pendingVersions + 1 });
+        else await creds.insert({ keyId, credentialType: type, ownerType: "PARTNER_APP", ownerRef: no, name: `${no} ${type}`, counterparty: null, purpose: "APP_SIGN", algorithm: type === "APP_SECRET" ? "HMAC-SHA256" : "AES-256-GCM", materialType: "SYMMETRIC_SECRET", env: app.environment === "LIVE" ? "PRODUCTION" : "SANDBOX", status: "ACTIVE", currentVersion: 0, currentFingerprint: null, expiresAt: null, expiryState: "NONE", pendingVersions: 1, lastUsedAt: null, versions: [v], version: 1 });
+        if (app.credentialStatus !== "ACTIVE") await apps.update(no, { credentialStatus: "PENDING" });
+        return { keyId, versionIndex: v.versionIndex, serial: `${no}-${v.versionIndex}`, secret, fingerprint: v.fingerprint, status: "DRAFT" };
+      }),
 
       keyChallenge: (no) => run(() => {
         const a = apps.get(no); need(a.signType === "RSA", "只有 RSA 应用上传商家公钥"); need(a.status === "ACTIVE", "应用启用后才能上传公钥");
@@ -868,7 +884,7 @@ export function createMockPayCenterApi(): PayCenterApi {
       addVersion: (id, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); need(!!(b.secret || b.hashKey || b.publicMaterial), "请填写密钥材料"); const v = ver(Math.max(0, ...r.versions.map((x) => x.versionIndex)) + 1, "DRAFT", "admin"); await creds.update(String(id), { versions: [v, ...r.versions], pendingVersions: r.pendingVersions + 1 }); return v; }),
       generate: (id, reason) => run(async () => { reasonOf(reason); const r = creds.get(String(id)); const v = ver(Math.max(0, ...r.versions.map((x) => x.versionIndex)) + 1, "DRAFT", "admin"); await creds.update(String(id), { versions: [v, ...r.versions], pendingVersions: r.pendingVersions + 1 }); return { keyId: id, versionIndex: v.versionIndex, serial: `ext-${v.versionIndex}`, secret: `sk_test_mock_${Date.now()}`, fingerprint: v.fingerprint, status: "DRAFT" }; }),
       verify: (id, vi, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(v?.status === "DRAFT", "只有草稿版本可核验"); const next = { ...v!, status: "VERIFIED", verifiedAt: Date.now(), verifyEvidence: b.evidenceRef ? `MANUAL:${b.evidenceRef}` : null }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x)) }); return next; }),
-      enable: (id, vi, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(v?.status === "VERIFIED", "只有已核验的版本可启用"); need(v!.enteredBy !== "admin", "启用人不能是录入人（双人复核）"); const next = { ...v!, status: "ACTIVE", enabledBy: "admin", enabledAt: Date.now() }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x.status === "ACTIVE" ? { ...x, status: "ROTATING" } : x)), currentVersion: vi, pendingVersions: Math.max(0, r.pendingVersions - 1) }); return next; }),
+      enable: (id, vi, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(v?.status === "VERIFIED", "只有已核验的版本可启用"); need(v!.enteredBy !== "admin", "启用人不能是录入人（双人复核）"); const next = { ...v!, status: "ACTIVE", enabledBy: "admin", enabledAt: Date.now() }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x.status === "ACTIVE" ? { ...x, status: "ROTATING" } : x)), currentVersion: vi, pendingVersions: Math.max(0, r.pendingVersions - 1) }); if (r.ownerType === "PARTNER_APP" && r.credentialType === "APP_SECRET") await apps.update(r.ownerRef, { credentialStatus: "ACTIVE" }); return next; }),
       revoke: (id, vi, reason) => run(async () => { reasonOf(reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(!!v && v.status !== "REVOKED", "版本已撤销"); const next = { ...v!, status: "REVOKED", revokedBy: "admin", revokedAt: Date.now(), revokeReason: reason }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x)) }); return next; }),
       bindings: () => run(() => [{ keyId: 4101, source: "SEC" as const, consumerType: "CHANNEL_ACCOUNT", consumerRef: "NWP7000", consumerName: "蓝新商户 7000", field: "pay_merchant.sec_key_id", channel: "NEWEBPAY", status: "ACTIVE", environment: "PRODUCTION", transactions: 128, lastFrozenAt: T0 - H }]),
     },
