@@ -52,11 +52,18 @@ public class PointsAdjustmentServiceImpl implements PointsAdjustmentService {
  }
  public Page list(String type,long after,int limit) {
   require(text(type,40) && after>=0 && limit>=1 && limit<=100,"POINTS_PAGE_INVALID");
-  var result=rows.page(type,after,limit).stream().map(row->{
-   var r=json.readValue((String)row.get("payload_json"),Submission.class);
-   return new View(number(row,"id"),r.adjustmentNo(),r.typeCode(),r.userNo(),r.direction(),r.points(),r.reason(),(String)row.get("state"),(String)row.get("submitted_by"),(String)row.get("approved_by"),number(row,"version"), timestamp(row.get("created_at")), "SUBMITTED".equals(row.get("state")) ? null : timestamp(row.get("updated_at")));
-  }).toList();
+  var result=rows.page(type,after,limit).stream().map(this::view).toList();
   return new Page(result,result.isEmpty()?after:result.getLast().id(),result.size()==limit);
+ }
+ public Optional<View> adjustment(String adjustmentNo) {
+  var row=rows.find(adjustmentNo); return row==null?Optional.empty():Optional.of(view(row));
+ }
+ public List<View> submitted(int limit) {
+  require(limit>=1 && limit<=500,"POINTS_PAGE_INVALID"); return rows.submitted(limit).stream().map(this::view).toList();
+ }
+ private View view(Map<String,Object> row) {
+  var r=json.readValue((String)row.get("payload_json"),Submission.class);
+  return new View(number(row,"id"),r.adjustmentNo(),r.typeCode(),r.userNo(),r.direction(),r.points(),r.reason(),(String)row.get("state"),(String)row.get("submitted_by"),(String)row.get("approved_by"),number(row,"version"), timestamp(row.get("created_at")), "SUBMITTED".equals(row.get("state")) ? null : timestamp(row.get("updated_at")));
  }
  private Long timestamp(Object value) {
   if(value instanceof java.sql.Timestamp t) return t.toInstant().toEpochMilli();
