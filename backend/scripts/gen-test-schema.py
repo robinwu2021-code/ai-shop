@@ -746,13 +746,13 @@ def _h2_constant_json_append(stmt: str) -> str:
     Exact quoted-token membership preserves migration idempotency. Only the
     restricted permission-code alphabet is translated; arbitrary JSON is not.
     """
-    append = re.compile(r"JSON_ARRAY_APPEND\(\s*(\w+)\s*,\s*'\$'\s*,\s*'([a-z:]+)'\s*\)", re.I)
+    append = re.compile(r"JSON_ARRAY_APPEND\(\s*(\w+)\s*,\s*'\$'\s*,\s*'([a-z:-]+)'\s*\)", re.I)
     def replace(match):
         column, permission = match.groups()
         return (f"CONCAT(LEFT(TRIM({column}),CHAR_LENGTH(TRIM({column}))-1),"
                 f"CASE WHEN TRIM({column})='[]' THEN '' ELSE ',' END,'\"{permission}\"]')")
     stmt = append.sub(replace, stmt)
-    membership = re.compile(r"JSON_CONTAINS\(\s*(\w+)\s*,\s*JSON_QUOTE\(\s*'([a-z:]+)'\s*\)\s*\)\s*=\s*0", re.I)
+    membership = re.compile(r"JSON_CONTAINS\(\s*(\w+)\s*,\s*JSON_QUOTE\(\s*'([a-z:-]+)'\s*\)\s*\)\s*=\s*0", re.I)
     return membership.sub(lambda m: f"LOCATE('\"{m.group(2)}\"',{m.group(1)})=0", stmt)
 
 
@@ -1200,6 +1200,10 @@ def _apply_action(table, action, cols):
 
     if re.match(r"ADD\s+(?:INDEX|KEY)\s+(?:IF\s+NOT\s+EXISTS\s+)?\w*\s*\(", action, re.I):
         # 普通索引：H2 测试库用不上，与 CREATE INDEX 同样跳过
+        return
+
+    if re.fullmatch(r"(?:ALGORITHM|LOCK)\s*=\s*\w+", action, re.I):
+        # MySQL 在线 DDL 的执行方式（ALGORITHM=INSTANT / LOCK=NONE），不改表结构；H2 没有对应语法
         return
 
     # **兜底必须炸。** 这个分支此前是隐式的 `pass` —— 与本脚本开头写的

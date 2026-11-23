@@ -22,6 +22,9 @@ public interface InvoicePort {
      */
     void rememberBuyer(Scope scope, String sourceType, String sourceNo, Buyer buyer);
 
+    /** 付款前预存的买受人（{@link #rememberBuyer}）；没存过为空。门店零售单据此显示 {@code buyerSet}、判买受人是否已定。 */
+    Optional<Buyer> rememberedBuyer(Scope scope, String sourceType, String sourceNo);
+
     /**
      * 付款成功后的自动开票：主体开通了税制且打开「自动开立」才开，用预存买受人（没有则一般消费者）。
      * 没开通 / 没打开时返回空，不是错误。每次调用自成一个事务。

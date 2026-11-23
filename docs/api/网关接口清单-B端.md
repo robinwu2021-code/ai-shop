@@ -3,7 +3,7 @@
 > 由 `python3 scripts/gen-gateway-api-inventory.py` 生成，**请勿手改**。来源是后端源码里实际声明的入口。
 > 总览、分类规则与验证清单见 [网关接口清单](网关接口清单.md)。
 
-共 **1182** 个入口：支付 261、零售 554、餐饮 261、服务业 32、库存 45、平台与通用 29。
+共 **1186** 个入口：支付 261、零售 558、餐饮 261、服务业 32、库存 45、平台与通用 29。
 
 ## 支付（261）
 
@@ -370,9 +370,9 @@
 | GET | `/biz/stores/{storeNo}/stored-value/recharge-options` | `@perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueIssuerOperationsController |
 | GET | `/biz/stores/{storeNo}/stored-value/store-summary` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueReportController |
 
-## 零售（554）
+## 零售（558）
 
-网关判权：能提前判 425、只要求登录 123、留给入口判 6。构建：默认构建 486、插件 shop-commerce-integration 68。生产：已入网关 468、未部署 86。
+网关判权：能提前判 429、只要求登录 123、留给入口判 6。构建：默认构建 490、插件 shop-commerce-integration 68。生产：已入网关 468、未部署 90。
 
 ### activities（5）
 
@@ -1201,6 +1201,15 @@
 | GET | `/biz/store/{storeNo}/stock-reconcile/{operationNo}` | `@perm.canBiz('biz:stock')` | 能提前判 | 默认构建 | 已入网关 | BizStockSyncController |
 | GET | `/biz/store/{storeNo}/stock-sync` | `@perm.canBiz('biz:stock')` | 能提前判 | 默认构建 | 已入网关 | BizStockSyncController |
 | PUT | `/biz/store/{storeNo}/stock-sync` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 默认构建 | 已入网关 | BizStockSyncController |
+
+### store-orders（4）
+
+| 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
+|---|---|---|---|---|---|---|
+| POST | `/biz/store-orders` | `@perm.canBiz('biz:order:create')` | 能提前判 | 默认构建 | 未部署 | BizStoreOrderController |
+| GET | `/biz/store-orders/{orderNo}` | `@perm.canBiz('biz:order:view')` | 能提前判 | 默认构建 | 未部署 | BizStoreOrderController |
+| POST | `/biz/store-orders/{orderNo}/cancel` | `@perm.canBiz('biz:order:create')` | 能提前判 | 默认构建 | 未部署 | BizStoreOrderController |
+| PUT | `/biz/store-orders/{orderNo}/invoice-data` | `@perm.canBiz('biz:invoice:issue')` | 能提前判 | 默认构建 | 未部署 | BizStoreOrderController |
 
 ### store-sales-catalog（2）
 

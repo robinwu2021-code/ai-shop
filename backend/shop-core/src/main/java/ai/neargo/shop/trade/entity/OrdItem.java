@@ -86,4 +86,17 @@ public class OrdItem extends BaseEntity {
     private Integer refundedQty;
     /** 已退金额（V404） */
     private Long refundedMinor;
+
+    /**
+     * 订单行开票资料（V692，ADR-065）：四列全空 = 旧订单行，发票来源按原规则处理。
+     * {@code lineKind} SKU / CUSTOM；{@code taxClass} STANDARD / ZERO_RATED / EXEMPT，NULL = 待补；
+     * {@code invoiceDataSource} GOODS（建单时按商品资料冻结）/ STORE_ITEM / FILLED（建单后补填）。
+     */
+    private String lineKind;
+    private String taxClass;
+    private String invoiceName;
+    private String invoiceDataSource;
+
+    public static final String LINE_SKU = "SKU";
+    public static final String LINE_CUSTOM = "CUSTOM";
 }

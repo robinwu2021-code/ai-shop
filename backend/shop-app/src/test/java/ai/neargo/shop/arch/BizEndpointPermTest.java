@@ -270,6 +270,12 @@ class BizEndpointPermTest {
                     // Resource registry uses stricter write permission; method security tests
                     // verify read/write separately.
                     // 发票（ADR-063）：同一路径上查与开分属两个码，这里登记读的那一个，开 / 作废在注解里各自判
+                    // 门店零售单（TDD-统一订单与开票资料 P1）：建 / 取消用建单码，看单沿订单查看码，
+                    // 补开票资料是开票前一步，用开票码（店员有）。改价、零税率 / 免税在服务里按行另判
+                    put("/biz/store-orders", BizPerms.ORDER_CREATE);
+                    put("/biz/store-orders/{orderNo}", BizPerms.ORDER_VIEW);
+                    put("/biz/store-orders/{orderNo}/invoice-data", BizPerms.INVOICE_ISSUE);
+                    put("/biz/store-orders/{orderNo}/cancel", BizPerms.ORDER_CREATE);
                     put("/biz/invoices", BizPerms.INVOICE_READ);
                     put("/biz/invoices/{invoiceNo}", BizPerms.INVOICE_READ);
                     put("/biz/invoices/{invoiceNo}/print-facts", BizPerms.INVOICE_READ);

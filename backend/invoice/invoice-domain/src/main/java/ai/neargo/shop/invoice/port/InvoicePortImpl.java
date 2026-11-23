@@ -31,6 +31,11 @@ public class InvoicePortImpl implements InvoicePort {
     }
 
     @Override
+    public Optional<Buyer> rememberedBuyer(Scope scope, String sourceType, String sourceNo) {
+        return invoices.rememberedBuyer(scope, sourceType, sourceNo);
+    }
+
+    @Override
     public Optional<InvoiceReceipt> issueIfAutomatic(Scope scope, String sourceType, String sourceNo) {
         return invoices.issueIfAutomatic(scope, sourceType, sourceNo);
     }

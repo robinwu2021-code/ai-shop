@@ -249,6 +249,26 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 门店零售单（/biz/store-orders*）在新模型门店上能进门店：POS 建单、看单、补开票资料、取消")
+    void storeOrderRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020140");
+        for (String[] r : new String[][] {
+                {"POST", "/biz/store-orders"}, {"GET", "/biz/store-orders/OD-NO-SUCH"},
+                {"PUT", "/biz/store-orders/OD-NO-SUCH/invoice-data"}, {"POST", "/biz/store-orders/OD-NO-SUCH/cancel"}}) {
+            var request = switch (r[0]) {
+                case "GET" -> get(r[1]);
+                case "PUT" -> put(r[1]);
+                default -> post(r[1]);
+            };
+            var response = mvc.perform(request.header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .header("Idempotency-Key", "K-ROUTE").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse();
+            String body = response.getContentAsString();
+            assertFalse(body.contains("STORE_ACCESS"), r[0] + " " + r[1] + " → " + body);
+        }
+    }
+
+    @Test
     @DisplayName("★★★ 储值对新模型门店开放（2026-11-19）：门店侧、门店命名空间下、管理空间下的入口都能进；没列出来的储值入口仍然关着")
     void storedValueOpensForNewModelStoresButUnlistedStaysClosed() throws Exception {
         String[] o = newModelOwner("15965020132");

@@ -26,6 +26,9 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DuplicateKeyException;
@@ -119,7 +122,19 @@ public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService 
         }
         return GoodsPricingPolicyFacts.freeze(scope, result);
     }
-    private void owned(Scope scope, SkuRef ref) {
+    @Override
+    public Map<String, TaxClass> taxClasses(Scope scope, Collection<String> skuNos) {
+        var out = new HashMap<String, TaxClass>();
+        if (skuNos.isEmpty()) return out;
+        for (var row : DataScopeContext.executeWithoutScope(() -> policies.selectList(
+                new QueryWrapper<PrdSkuPricingPolicy>().select("sku_no", "tax_class")
+                        .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo())
+                        .eq("store_no", scope.storeNo()).in("sku_no", skuNos).eq("deleted", 0)))) {
+            out.put(row.getSkuNo(), TaxClass.valueOf(row.getTaxClass()));
+        }
+        return out;
+    }
+        private void owned(Scope scope, SkuRef ref) {
         var sku = DataScopeContext.executeWithoutScope(() -> skus.selectOne(new QueryWrapper<PrdSku>()
                 .select("sku_no", "goods_no", "entity_no", "market")
                 .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo()).eq("goods_no", ref.goodsNo())
