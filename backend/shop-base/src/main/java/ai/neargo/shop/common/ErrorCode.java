@@ -386,6 +386,16 @@ public enum ErrorCode {
     CHECKOUT_RECEIPT_EVIDENCE_INVALID(20022, "err.trade.checkout_receipt_evidence_invalid"),
     CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE(20023, "err.trade.checkout_payment_params_unavailable"),
     MANAGED_SERVICE_COMPLETION_BLOCKED(20018, "err.trade.managed_service_completion_blocked"),
+    /** 门店零售单（TDD-统一订单与开票资料）：当前状态不允许这个动作（已付款 / 已取消的单不能取消）。 */
+    STORE_ORDER_STATE_INVALID(20024, "err.trade.store_order_state_invalid"),
+    /** 门店零售单的明细加整单调整后合计小于 0。 */
+    STORE_ORDER_TOTAL_INVALID(20025, "err.trade.store_order_total_invalid"),
+    /** 门店常用品项（storeItemNo）在 P2 才接入；P1 收到非空值直接拒，不静默忽略。 */
+    STORE_ORDER_STORE_ITEM_UNSUPPORTED(20026, "err.trade.store_order_store_item_unsupported"),
+    /** 补开票资料：这一项已冻结（SKU 行、已补过的行、已设的买受人），只能补空的。 */
+    INVOICE_DATA_FROZEN(20027, "err.trade.invoice_data_frozen"),
+    /** 补开票资料：这张单已开出发票，开票资料锁死；要改请作废重开或开折让。 */
+    INVOICE_DATA_LOCKED(20028, "err.trade.invoice_data_locked"),
 
     // 26xxx · 发票（ADR-063，TDD-发票模块 §2.1）
     INVOICE_REGIME_NOT_ENABLED(26001, "err.invoice.regime_not_enabled"),

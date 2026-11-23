@@ -1,6 +1,7 @@
 package ai.neargo.shop.invoicebridge.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizDetailedException;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
@@ -15,12 +16,15 @@ import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.PriceQuoteLineMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.refund.policy.LineShares;
+import ai.neargo.shop.trade.policy.InvoiceReadinessPolicy;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,9 +38,14 @@ import tools.jackson.databind.ObjectMapper;
  * <p><b>金额组成</b>：商品明细 + 运费 − 优惠 − 积分折抵 ± 称重调整 = 实付，每一项一行（折扣类为负数）。
  * 对不上、或开票前已部分退款（那应开折让）时回 {@code INVOICE_SOURCE_NOT_READY}，不开一张与收款对不上的票。
  *
- * <p><b>课税别</b>取自行业单冻结的报价行税类（{@code allocations_json} 把订单行连到报价源行）：
- * STANDARD → 应税、ZERO_RATED → 零税率、EXEMPT → 免税；没有行业绑定的普通零售单按应税。
- * 混合税别时整单级的优惠 / 积分折抵 / 称重调整分不到各税别，这种单回 NOT_READY（TDD-发票模块 §4）。
+ * <p><b>品名与课税别</b>：订单行带开票资料（门店零售单，V692 {@code invoice_name / tax_class}）时以它为准，
+ * 缺任何一项回 {@code INVOICE_SOURCE_NOT_READY} 且 {@code data.missing} 列出缺哪几行哪几项（与订单准备度同一口径，
+ * {@link InvoiceReadinessPolicy}）。没有这两列的旧订单保持原规则：取行业单冻结的报价行税类
+ * （{@code allocations_json} 把订单行连到报价源行），没有行业绑定的普通零售单按应税。
+ * STANDARD → 应税、ZERO_RATED → 零税率、EXEMPT → 免税。
+ *
+ * <p><b>混合税别</b>时整单级的优惠 / 积分折抵 / 称重调整按各税别的明细金额比例（最大余数法，与
+ * {@link LineShares} 同一算法）分到各税别，每个税别各出一行（TDD-统一订单与开票资料 AC10；原先回 NOT_READY）。
  *
  * <p>主体与门店已由发票域按登录上下文收窄后传入，这里显式按它们查，所以绕开数据域拦截器（同一事实不判两次）。
  */
@@ -83,26 +92,31 @@ public class SubOrderInvoiceSourcePortImpl implements InvoiceSourcePort {
         if (order == null || order.getPaidAt() == null) throw notReady();
         var binding = industrySources.selectOne(new QueryWrapper<OrdIndustryOrderSource>()
                 .eq("tenant_no", scope.tenantNo()).eq("sub_order_no", subOrderNo).last("LIMIT 1"));
-        var taxTypes = taxTypesByItem(binding);
+        var rows = items.selectList(new QueryWrapper<OrdItem>().eq("sub_order_no", subOrderNo).orderByAsc("id"));
+        boolean frozenData = InvoiceReadinessPolicy.carriesInvoiceData(rows);
+        if (frozenData) {
+            var missing = InvoiceReadinessPolicy.missing(rows);
+            if (!missing.isEmpty()) throw new BizDetailedException(ErrorCode.INVOICE_SOURCE_NOT_READY,
+                    Map.of("missing", missing.stream().map(InvoiceReadinessPolicy.Missing::asMap).toList()));
+        }
+        var taxTypes = frozenData ? Map.<Long, String>of() : taxTypesByItem(binding);
         var lines = new ArrayList<Line>();
-        var types = new HashSet<String>();
-        for (var item : items.selectList(new QueryWrapper<OrdItem>().eq("sub_order_no", subOrderNo)
-                .orderByAsc("id"))) {
+        var weightByType = new LinkedHashMap<String, Long>();
+        for (var item : rows) {
             BigDecimal quantity = item.getSaleQuantity() != null ? item.getSaleQuantity()
                     : BigDecimal.valueOf(item.getQty());
-            String type = taxTypes.getOrDefault(item.getId(), Line.TAXABLE);
-            types.add(type);
-            lines.add(new Line(String.valueOf(item.getId()), item.getTitle(), quantity, item.getQuantityUnit(),
+            String type = frozenData ? lineType(item.getTaxClass()) : taxTypes.getOrDefault(item.getId(), Line.TAXABLE);
+            String name = frozenData ? item.getInvoiceName() : item.getTitle();
+            weightByType.merge(type, Math.max(0L, item.getAmount()), Math::addExact);
+            lines.add(new Line(String.valueOf(item.getId()), name, quantity, item.getQuantityUnit(),
                     item.getPrice(), item.getAmount(), type));
         }
         long freight = value(sub.getFreightAmount()), discount = value(sub.getDiscountAmount()),
                 points = value(sub.getPointsDeductMinor()), weigh = value(sub.getWeighAdjustMinor());
-        if (types.size() > 1 && (discount != 0 || points != 0 || weigh != 0)) throw notReady();
-        String whole = types.size() == 1 ? types.iterator().next() : Line.TAXABLE;
         if (freight > 0) lines.add(new Line("FREIGHT", "運費", BigDecimal.ONE, null, freight, freight, Line.TAXABLE));
-        if (discount > 0) lines.add(new Line("DISCOUNT", "折扣", BigDecimal.ONE, null, -discount, -discount, whole));
-        if (points > 0) lines.add(new Line("POINTS", "點數折抵", BigDecimal.ONE, null, -points, -points, whole));
-        if (weigh != 0) lines.add(new Line("WEIGH", "秤重調整", BigDecimal.ONE, null, weigh, weigh, whole));
+        if (discount > 0) addSplit(lines, weightByType, "DISCOUNT", "折扣", -discount);
+        if (points > 0) addSplit(lines, weightByType, "POINTS", "點數折抵", -points);
+        if (weigh != 0) addSplit(lines, weightByType, "WEIGH", "秤重調整", weigh);
         String industry = binding == null || "CORE".equals(binding.getSourceSystem()) ? "RETAIL"
                 : binding.getSourceSystem();
         return new InvoiceSource(industry, order.getCurrency(), Instant.ofEpochMilli(order.getPaidAt()),
@@ -142,6 +156,37 @@ public class SubOrderInvoiceSourcePortImpl implements InvoiceSourcePort {
             out.put(a.path("orderItemId").asLong(), type);
         }
         return out;
+    }
+
+    /**
+     * 整单级金额（折扣 / 积分为负，称重调整可正可负）按各税别明细金额比例分到各税别，最大余数法：
+     * Σ 恰等于原额。只有一个税别时就是一行，与原先相同；分到 0 的税别不出行。
+     */
+    private static void addSplit(List<Line> lines, Map<String, Long> weightByType, String ref, String name,
+            long amount) {
+        List<String> types = weightByType.isEmpty() ? List.of(Line.TAXABLE) : new ArrayList<>(weightByType.keySet());
+        if (types.size() == 1) {
+            lines.add(new Line(ref, name, BigDecimal.ONE, null, amount, amount, types.getFirst()));
+            return;
+        }
+        long[] weights = types.stream().mapToLong(weightByType::get).toArray();
+        long[] shares = LineShares.allocate(Math.abs(amount), weights);
+        if (Arrays.stream(shares).sum() != Math.abs(amount)) throw notReady(); // 明细全为 0：分不了
+        for (int i = 0; i < types.size(); i++) {
+            if (shares[i] == 0) continue;
+            long part = amount < 0 ? -shares[i] : shares[i];
+            lines.add(new Line(ref + ":" + types.get(i), name, BigDecimal.ONE, null, part, part, types.get(i)));
+        }
+    }
+
+    /** 订单行冻结的课税别 → 发票明细税别；准备度已保证三者之一 */
+    private static String lineType(String taxClass) {
+        return switch (taxClass) {
+            case "STANDARD" -> Line.TAXABLE;
+            case "ZERO_RATED" -> Line.ZERO;
+            case "EXEMPT" -> Line.EXEMPT;
+            default -> throw notReady();
+        };
     }
 
     private static long value(Long v) {

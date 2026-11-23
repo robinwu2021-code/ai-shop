@@ -616,6 +616,10 @@ CREATE TABLE IF NOT EXISTS ord_item
     activity_no VARCHAR(64)  NULL,
     activity_benefit_type VARCHAR(16) NULL,
     activity_benefit_minor BIGINT NOT NULL DEFAULT 0,
+    line_kind VARCHAR(16) NULL,
+    tax_class VARCHAR(16) NULL,
+    invoice_name VARCHAR(256) NULL,
+    invoice_data_source VARCHAR(16) NULL,
     PRIMARY KEY (id)
 );
 
@@ -657,13 +661,17 @@ CREATE TABLE IF NOT EXISTS ord_order
     store_no VARCHAR(32)  NULL,
     caller VARCHAR(16)  NULL,
     operation_no VARCHAR(64)  NULL,
+    client_order_no VARCHAR(64)  NULL,
+    channel VARCHAR(16) NULL,
+    CONSTRAINT uk_order_client_no UNIQUE (tenant_no,store_no,client_order_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_order_no UNIQUE (order_no),
     CONSTRAINT ck_order_manual_provenance CHECK (receipt_provenance IS NULL OR
          (admission_kind='MANUAL_OFFLINE' AND receipt_provenance='MANUAL_DECLARATION'
           AND pay_channel IS NULL AND pay_trade_no IS NULL)),
     CONSTRAINT ck_order_admission_kind CHECK (((CASE admission_kind WHEN 'LEGACY_FUNDED' THEN TRUE WHEN 'MANUAL_OFFLINE' THEN TRUE ELSE CASE WHEN admission_kind IS NULL THEN NULL ELSE FALSE END END) AND customer_kind <> 'CHANNEL')
-   OR (admission_kind='CHANNEL' AND customer_kind='CHANNEL')),
+   OR (admission_kind='CHANNEL' AND customer_kind='CHANNEL')
+        OR (admission_kind='STORE_SALE' AND customer_kind='WALK_IN')),
     CONSTRAINT ck_counter_order_party CHECK (
         (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
          AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
@@ -681,7 +689,13 @@ CREATE TABLE IF NOT EXISTS ord_order
         AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL
         AND (CASE caller WHEN 'FOOD' THEN TRUE WHEN 'RETAIL' THEN TRUE ELSE CASE WHEN caller IS NULL THEN NULL ELSE FALSE END END) AND entity_no IS NOT NULL AND store_no IS NOT NULL
         AND operation_no IS NOT NULL AND CHAR_LENGTH(TRIM(entity_no))>0
-        AND CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(TRIM(operation_no))>0))
+        AND CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(TRIM(operation_no))>0)
+        OR (customer_kind='WALK_IN' AND admission_kind='STORE_SALE' AND user_no IS NULL
+            AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL AND caller='POS'
+            AND entity_no IS NOT NULL AND store_no IS NOT NULL AND operation_no IS NOT NULL
+            AND client_order_no IS NOT NULL AND CHAR_LENGTH(TRIM(entity_no))>0
+            AND CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(TRIM(operation_no))>0
+            AND CHAR_LENGTH(TRIM(client_order_no))>0))
 );
 
 CREATE TABLE IF NOT EXISTS ord_status_log
@@ -784,7 +798,9 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
    (admission_kind='MANUAL_OFFLINE' AND customer_kind <> 'CHANNEL'
     AND fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION'
     AND source_operation_no IS NOT NULL AND fulfillment='STORE_VERIFY') OR
-   (admission_kind='CHANNEL' AND customer_kind='CHANNEL' AND fulfillment_authority IS NULL)),
+   (admission_kind='CHANNEL' AND customer_kind='CHANNEL' AND fulfillment_authority IS NULL)
+        OR (admission_kind='STORE_SALE' AND customer_kind='WALK_IN'
+    AND fulfillment_authority IS NULL AND source_operation_no IS NULL)),
     CONSTRAINT ck_counter_sub_party CHECK (
         (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
          AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
@@ -804,7 +820,11 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
         AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL
         AND (CASE caller WHEN 'FOOD' THEN TRUE WHEN 'RETAIL' THEN TRUE ELSE CASE WHEN caller IS NULL THEN NULL ELSE FALSE END END) AND entity_no IS NOT NULL AND store_no IS NOT NULL
         AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0
-        AND fulfillment_authority IS NULL AND source_operation_no IS NULL))
+        AND fulfillment_authority IS NULL AND source_operation_no IS NULL)
+        OR (customer_kind='WALK_IN' AND admission_kind='STORE_SALE' AND user_no IS NULL
+            AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL AND caller='POS'
+            AND entity_no IS NOT NULL AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(entity_no))>0
+            AND CHAR_LENGTH(TRIM(store_no))>0 AND fulfillment_authority IS NULL AND source_operation_no IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS prd_category
@@ -13191,6 +13211,35 @@ CREATE TABLE IF NOT EXISTS approval_link
     CONSTRAINT uk_approval_link_subject UNIQUE (subject_type, subject_ref, revision)
 );
 
+CREATE TABLE IF NOT EXISTS ord_invoice_data_fill
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    fill_no VARCHAR(40)  NOT NULL,
+    order_no VARCHAR(64)  NOT NULL,
+    sub_order_no VARCHAR(64)  NOT NULL,
+    entity_no VARCHAR(32)  NOT NULL,
+    store_no VARCHAR(32)  NOT NULL,
+    line_no INT NOT NULL,
+    field_code VARCHAR(16) NOT NULL,
+    old_value VARCHAR(256) NULL,
+    new_value VARCHAR(256) NULL,
+    reason VARCHAR(100) NULL,
+    operator_no VARCHAR(64)  NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_invoice_fill_no UNIQUE (tenant_no,fill_no),
+    CONSTRAINT uk_invoice_fill_field UNIQUE (tenant_no,sub_order_no,line_no,field_code),
+    CONSTRAINT ck_invoice_fill_field CHECK ((CASE field_code WHEN 'NAME' THEN TRUE WHEN 'TAX_CLASS' THEN TRUE WHEN 'BUYER' THEN TRUE ELSE CASE WHEN field_code IS NULL THEN NULL ELSE FALSE END END)
+        AND ((field_code='BUYER' AND line_no=0) OR (field_code<>'BUYER' AND line_no>0)) AND deleted=0)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -21082,6 +21131,10 @@ WHERE username = 'neara@neargo.ai' AND deleted = 0
   AND (roles IS NULL OR roles NOT LIKE '%"OPEN_API_REVIEW"%') AND CHAR_LENGTH(COALESCE(roles, '')) <= 230;
 INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) SELECT 'ACT__PAY_FEE_PLAN_APPROVE','OPS_FINANCE','佣金规则：审批发布','支付中心',NULL,'pay:fee-plan:approve','pay:fee-plan:approve','IMPLEMENTED',1,NULL,'ACTION',690,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM sys_function_point WHERE perm_code='pay:fee-plan:approve' OR point_code='ACT__PAY_FEE_PLAN_APPROVE');
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_FEE_PLAN_APPROVE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_function_point WHERE point_code='ACT__PAY_FEE_PLAN_APPROVE') AND EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_FEE_PLAN_APPROVE' AND end_code='OPS');
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:order:create"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:order:create"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:order:reprice"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:order:reprice"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:tax-override"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:tax-override"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:order:create"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:order:create"',perms)=0;
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

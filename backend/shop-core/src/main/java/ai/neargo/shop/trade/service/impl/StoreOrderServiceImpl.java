@@ -1,0 +1,452 @@
+package ai.neargo.shop.trade.service.impl;
+
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.pricing.TaxClass;
+import ai.neargo.shop.numbering.DocumentSource;
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
+import ai.neargo.shop.spi.invoice.InvoicePort;
+import ai.neargo.shop.spi.product.GoodsPricingPolicyPort;
+import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.product.GoodsQueryPort.SkuSnapshot;
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+import ai.neargo.shop.trade.entity.OrdInvoiceDataFill;
+import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.mapper.TradeMappers.InvoiceDataFillMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.refund.policy.LineShares;
+import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
+import ai.neargo.shop.trade.policy.InvoiceReadinessPolicy;
+import ai.neargo.shop.trade.service.StoreOrderService;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+/**
+ * 门店零售单的唯一实现（TDD-统一订单与开票资料 P1）。
+ *
+ * <p><b>库表口径</b>：{@code customer_kind='WALK_IN'}、{@code admission_kind='STORE_SALE'}、{@code caller='POS'}
+ * （V693 约束新支），{@code operation_no} 存幂等键的 SHA-256，{@code client_order_no} 门店内唯一（V692）。
+ * 整单优惠落子单 {@code discount_amount}（不落负数订单行）：订单列表、退款分摊（{@link LineShares}）与发票来源
+ * 都已按「商品 − 优惠 = 实付」读，负数行会让它们各自多一种情况。
+ *
+ * <p><b>事务</b>：建单在单号预留之外开事务（{@link DocumentNumberCoordinator#transaction} 要求），
+ * 买受人与订单同一事务写入，买受人不合规整单回滚。补资料、取消锁子单行串行化。
+ *
+ * <p>作用域由调用方给定并显式带进每条查询，所以统一绕开数据域拦截（同一事实不判两次）。
+ */
+@Service
+public class StoreOrderServiceImpl implements StoreOrderService {
+
+    static final String TENANT = "MAIN";
+    static final String WALK_IN = "WALK_IN";
+    static final String STORE_SALE = "STORE_SALE";
+    static final String CALLER = "POS";
+    static final String SOURCE_TYPE = "SUB_ORDER";
+    static final String SOURCE_GOODS = "GOODS";
+    static final String SOURCE_ENTERED = "ENTERED";
+    static final String SOURCE_FILLED = "FILLED";
+
+    private final OrderMapper orders;
+    private final SubOrderMapper subOrders;
+    private final OrderItemMapper items;
+    private final InvoiceDataFillMapper fills;
+    private final GoodsQueryPort goods;
+    private final GoodsPricingPolicyPort pricingPolicies;
+    private final StoreOwnershipWritePort ownership;
+    private final DocumentNumberCoordinator numbers;
+    /** 打包排除发票模块时没有实现：准备度按「未开票、买受人未设」显示，带买受人建单回 26001 */
+    private final ObjectProvider<InvoicePort> invoices;
+    private final TransactionTemplate writes;
+
+    public StoreOrderServiceImpl(OrderMapper orders, SubOrderMapper subOrders, OrderItemMapper items,
+            InvoiceDataFillMapper fills, GoodsQueryPort goods, GoodsPricingPolicyPort pricingPolicies,
+            StoreOwnershipWritePort ownership,
+            @Qualifier("coreDocumentNumberCoordinator") DocumentNumberCoordinator numbers,
+            ObjectProvider<InvoicePort> invoices,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        this.orders = orders;
+        this.subOrders = subOrders;
+        this.items = items;
+        this.fills = fills;
+        this.goods = goods;
+        this.pricingPolicies = pricingPolicies;
+        this.ownership = ownership;
+        this.numbers = numbers;
+        this.invoices = invoices;
+        this.writes = new TransactionTemplate(manager);
+    }
+
+    // ------------------------------------------------------------------ create
+
+    @Override
+    public StoreSaleView create(Scope scope, CreateCmd cmd) {
+        String keyHash = CheckoutDigests.hash(cmd.idempotencyKey());
+        var prior = unscoped(() -> byClientNo(scope, cmd.clientOrderNo()));
+        if (prior != null) return view(scope, prior);
+        var reused = unscoped(() -> orders.selectOne(storeOrders(scope).eq("operation_no", keyHash).last("LIMIT 1")));
+        if (reused != null) throw BizException.of(ErrorCode.CONFLICT);
+
+        var plan = plan(scope, cmd);
+        String orderNo;
+        try {
+            orderNo = unscoped(() -> numbers.transaction(
+                    Map.of(DocumentType.TRADE_ORDER, 1, DocumentType.TRADE_SUBORDER, 1),
+                    () -> insert(scope, cmd, keyHash, plan)));
+        } catch (DuplicateKeyException race) {
+            // 同一 clientOrderNo 并发双写：唯一键兜住，输的一路读回赢家那单
+            var winner = unscoped(() -> byClientNo(scope, cmd.clientOrderNo()));
+            if (winner == null) throw race;
+            return view(scope, winner);
+        }
+        return get(scope, orderNo);
+    }
+
+    /** 建单前算好的订单行与金额；只读商品资料，不写库。 */
+    private record Plan(List<OrdItem> lines, long goodsMinor, long discountMinor, long totalMinor) {}
+
+    private Plan plan(Scope scope, CreateCmd cmd) {
+        var skuNos = cmd.lines().stream().filter(l -> OrdItem.LINE_SKU.equals(l.kind())).map(LineCmd::skuNo)
+                .distinct().toList();
+        Map<String, SkuSnapshot> snapshots = skuNos.isEmpty() ? Map.of()
+                : goods.snapshot(skuNos, Map.of(scope.entityNo(), scope.storeNo()));
+        Map<String, TaxClass> taxClasses = skuNos.isEmpty() ? Map.of()
+                : pricingPolicies.taxClasses(policyScope(scope), skuNos);
+        var lines = new ArrayList<OrdItem>();
+        long goodsMinor = 0;
+        for (var line : cmd.lines()) {
+            if (line.storeItemNo() != null) throw BizException.of(ErrorCode.STORE_ORDER_STORE_ITEM_UNSUPPORTED);
+            var item = new OrdItem();
+            item.setLineKind(line.kind());
+            item.setQty(line.quantity());
+            item.setPrice(line.unitPriceMinor());
+            item.setAmount(Math.multiplyExact(line.unitPriceMinor(), (long) line.quantity()));
+            if (OrdItem.LINE_SKU.equals(line.kind())) {
+                var sku = snapshots.get(line.skuNo());
+                if (sku == null || !scope.entityNo().equals(sku.merchantNo())
+                        || sku.storeNo() != null && !scope.storeNo().equals(sku.storeNo()))
+                    throw BizException.of(ErrorCode.NOT_FOUND);
+                if (sku.price() != line.unitPriceMinor() && !scope.mayReprice()) throw forbidden(BizPerms.ORDER_REPRICE);
+                item.setGoodsNo(sku.goodsNo());
+                item.setSkuNo(sku.skuNo());
+                item.setTitle(sku.title());
+                item.setCover(sku.cover());
+                item.setSpec(sku.spec());
+                item.setCategoryType(sku.categoryType());
+                item.setCategoryNo(sku.categoryNo());
+                item.setInvoiceName(sku.title());
+                var taxClass = taxClasses.get(sku.skuNo());
+                // 不在课税范围 / 没设：不冻结一个猜的值，留空 = 待补
+                item.setTaxClass(InvoiceReadinessPolicy.taxType(taxClass == null ? null : taxClass.name()) == null
+                        ? null : taxClass.name());
+                item.setInvoiceDataSource(SOURCE_GOODS);
+            } else {
+                if (line.taxType() != null && InvoiceReadinessPolicy.reducesTax(line.taxType())
+                        && !scope.mayOverrideTax()) throw forbidden(BizPerms.INVOICE_TAX_OVERRIDE);
+                // 自订行没有商品：goods_no / sku_no 是 NOT NULL 列，存空串（不是任何商品号）
+                item.setGoodsNo("");
+                item.setSkuNo("");
+                item.setTitle(blankToNull(line.name()));
+                item.setInvoiceName(blankToNull(line.name()));
+                item.setTaxClass(line.taxType() == null ? null : InvoiceReadinessPolicy.taxClass(line.taxType()));
+                item.setInvoiceDataSource(item.getInvoiceName() == null && item.getTaxClass() == null
+                        ? null : SOURCE_ENTERED);
+            }
+            goodsMinor = Math.addExact(goodsMinor, item.getAmount());
+            lines.add(item);
+        }
+        long discountMinor = 0;
+        for (var adjustment : cmd.adjustments()) discountMinor = Math.subtractExact(discountMinor, adjustment.amountMinor());
+        long total = goodsMinor - discountMinor;
+        if (total < 0) throw BizException.of(ErrorCode.STORE_ORDER_TOTAL_INVALID);
+        long[] shares = LineShares.allocate(total, lines.stream().mapToLong(OrdItem::getAmount).toArray());
+        for (int i = 0; i < lines.size(); i++) lines.get(i).setPaidShareMinor(shares[i]);
+        return new Plan(lines, goodsMinor, discountMinor, total);
+    }
+
+    private String insert(Scope scope, CreateCmd cmd, String keyHash, Plan plan) {
+        ownership.lockAndCheck(TENANT, scope.entityNo(), scope.storeNo());
+        var orderNo = numbers.takeReserved(DocumentType.TRADE_ORDER);
+        var subNo = numbers.takeReserved(DocumentType.TRADE_SUBORDER);
+        var order = new OrdOrder();
+        order.setTenantNo(TENANT);
+        order.setOrderNo(orderNo.value());
+        order.setCustomerKind(WALK_IN);
+        order.setIdentityRevision(null);
+        order.setAdmissionKind(STORE_SALE);
+        order.setCaller(CALLER);
+        order.setEntityNo(scope.entityNo());
+        order.setStoreNo(scope.storeNo());
+        order.setOperationNo(keyHash);
+        order.setClientOrderNo(cmd.clientOrderNo());
+        order.setChannel(cmd.channel());
+        order.setCurrency(cmd.currency());
+        order.setGoodsAmount(plan.goodsMinor());
+        order.setFreightAmount(0L);
+        order.setDiscountAmount(plan.discountMinor());
+        order.setPayAmount(plan.totalMinor());
+        order.setStatus(OrdOrder.WAIT_PAY);
+        order.setPointsIntegrated(false);
+        orders.insert(order);
+        var sub = new OrdSubOrder();
+        sub.setTenantNo(TENANT);
+        sub.setSubOrderNo(subNo.value());
+        sub.setOrderNo(orderNo.value());
+        sub.setCustomerKind(WALK_IN);
+        sub.setIdentityRevision(null);
+        sub.setAdmissionKind(STORE_SALE);
+        sub.setCaller(CALLER);
+        sub.setEntityNo(scope.entityNo());
+        sub.setStoreNo(scope.storeNo());
+        sub.setTrafficSource(OrdSubOrder.TRAFFIC_MERCHANT_OWNED);
+        sub.setGoodsAmount(plan.goodsMinor());
+        sub.setFreightAmount(0L);
+        sub.setDiscountAmount(plan.discountMinor());
+        sub.setDiscountMerchant(plan.discountMinor());
+        sub.setDiscountPlatform(0L);
+        sub.setPayAmount(plan.totalMinor());
+        sub.setStatus(OrdSubOrder.WAIT_PAY);
+        sub.setRefundedMinor(0L);
+        sub.setRefundProgress("NONE");
+        sub.setRequireBuyerConfirm(0);
+        subOrders.insert(sub);
+        for (var item : plan.lines()) {
+            item.setTenantNo(TENANT);
+            item.setOrderNo(orderNo.value());
+            item.setSubOrderNo(subNo.value());
+            item.setSupplyStoreNo(scope.storeNo());
+            item.setRefundedQty(0);
+            item.setRefundedMinor(0L);
+            item.setIsGift(false);
+            item.setWeighed(false);
+            item.setWeighAdjustMinor(0L);
+            items.insert(item);
+        }
+        numbers.bindReserved(new DocumentSource(TENANT, "CORE", "TRADE_ORDER", orderNo.value()), orderNo);
+        numbers.bindReserved(new DocumentSource(TENANT, "CORE", "TRADE_SUBORDER", subNo.value()), subNo);
+        if (cmd.buyer() != null) requireInvoices().rememberBuyer(invoiceScope(scope), SOURCE_TYPE, subNo.value(),
+                buyer(cmd.buyer()));
+        return orderNo.value();
+    }
+
+    // ------------------------------------------------------------------ read
+
+    @Override
+    public StoreSaleView get(Scope scope, String orderNo) {
+        return view(scope, unscoped(() -> requireOrder(scope, orderNo)));
+    }
+
+    private StoreSaleView view(Scope scope, OrdOrder order) {
+        var sub = unscoped(() -> subOrders.selectOne(new QueryWrapper<OrdSubOrder>().eq("tenant_no", TENANT)
+                .eq("order_no", order.getOrderNo()).last("LIMIT 1")));
+        var lines = unscoped(() -> linesOf(sub.getSubOrderNo()));
+        var missing = InvoiceReadinessPolicy.missing(lines);
+        var port = invoices.getIfAvailable();
+        var invoiceScope = invoiceScope(scope);
+        String invoiceNo = port == null ? null : port.activeOf(invoiceScope, SOURCE_TYPE, sub.getSubOrderNo())
+                .map(InvoicePort.InvoiceReceipt::invoiceNo).orElse(null);
+        boolean buyerSet = port != null
+                && port.rememberedBuyer(invoiceScope, SOURCE_TYPE, sub.getSubOrderNo()).isPresent();
+        var lineViews = new ArrayList<LineView>();
+        for (int i = 0; i < lines.size(); i++) {
+            var l = lines.get(i);
+            String taxType = InvoiceReadinessPolicy.taxType(l.getTaxClass());
+            lineViews.add(new LineView(i + 1, l.getLineKind(), blankToNull(l.getSkuNo()), l.getInvoiceName(), taxType,
+                    l.getQty(), l.getPrice(), l.getAmount(), l.getInvoiceName() != null && taxType != null));
+        }
+        var readiness = new InvoiceReadinessView(InvoiceReadinessPolicy.state(sub, invoiceNo != null, missing),
+                missing.stream().map(m -> new MissingView(m.lineNo(), m.fields())).toList(), buyerSet, invoiceNo);
+        boolean paid = OrdSubOrder.PAID.contains(sub.getStatus());
+        return new StoreSaleView(order.getOrderNo(), sub.getSubOrderNo(), order.getClientOrderNo(), status(sub),
+                order.getCurrency(), order.getPayAmount(), paid ? order.getPayAmount() : 0L, lineViews, readiness);
+    }
+
+    private static String status(OrdSubOrder sub) {
+        if (OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) return "AWAITING_PAYMENT";
+        if (OrdSubOrder.PAID.contains(sub.getStatus())) return "PAID";
+        return sub.getStatus(); // CANCELLED / REFUNDED
+    }
+
+    // ------------------------------------------------------------------ fill
+
+    @Override
+    public StoreSaleView fillInvoiceData(Scope scope, String orderNo, FillCmd cmd) {
+        String keyHash = CheckoutDigests.hash(cmd.idempotencyKey());
+        var order = unscoped(() -> requireOrder(scope, orderNo));
+        unscoped(() -> writes.execute(tx -> {
+            var sub = lockSub(order);
+            boolean replay = fills.selectCount(new QueryWrapper<OrdInvoiceDataFill>().eq("tenant_no", TENANT)
+                    .eq("sub_order_no", sub.getSubOrderNo()).eq("request_key_hash", keyHash)) > 0;
+            if (replay) return null;
+            var port = invoices.getIfAvailable();
+            var invoiceScope = invoiceScope(scope);
+            if (port != null && port.activeOf(invoiceScope, SOURCE_TYPE, sub.getSubOrderNo()).isPresent())
+                throw BizException.of(ErrorCode.INVOICE_DATA_LOCKED);
+            var lines = linesOf(sub.getSubOrderNo());
+            for (var fill : cmd.lines()) {
+                if (fill.lineNo() < 1 || fill.lineNo() > lines.size()) throw BizException.of(ErrorCode.BAD_REQUEST);
+                var item = lines.get(fill.lineNo() - 1);
+                if (fill.name() != null && fillField(scope, sub, item, fill.lineNo(), OrdInvoiceDataFill.NAME,
+                        item.getInvoiceName(), fill.name(), cmd, keyHash))
+                    items.update(null, new UpdateWrapper<OrdItem>().eq("id", item.getId()).isNull("invoice_name")
+                            .set("invoice_name", fill.name()).set("title", fill.name())
+                            .set("invoice_data_source", SOURCE_FILLED));
+                if (fill.taxType() != null) {
+                    String taxClass = InvoiceReadinessPolicy.taxClass(fill.taxType());
+                    String current = InvoiceReadinessPolicy.taxType(item.getTaxClass()) == null ? null
+                            : item.getTaxClass();
+                    if (current == null && InvoiceReadinessPolicy.reducesTax(fill.taxType()) && !scope.mayOverrideTax())
+                        throw forbidden(BizPerms.INVOICE_TAX_OVERRIDE);
+                    if (fillField(scope, sub, item, fill.lineNo(), OrdInvoiceDataFill.TAX_CLASS, current, taxClass,
+                            cmd, keyHash))
+                        items.update(null, new UpdateWrapper<OrdItem>().eq("id", item.getId())
+                                .set("tax_class", taxClass).set("invoice_data_source", SOURCE_FILLED));
+                }
+            }
+            if (cmd.buyer() != null) {
+                var invoicePort = requireInvoices();
+                if (invoicePort.rememberedBuyer(invoiceScope, SOURCE_TYPE, sub.getSubOrderNo()).isPresent())
+                    throw BizException.of(ErrorCode.INVOICE_DATA_FROZEN);
+                invoicePort.rememberBuyer(invoiceScope, SOURCE_TYPE, sub.getSubOrderNo(), buyer(cmd.buyer()));
+                audit(scope, sub, 0, OrdInvoiceDataFill.BUYER, null, cmd.buyer().type(), cmd, keyHash);
+            }
+            return null;
+        }));
+        return get(scope, orderNo);
+    }
+
+    /**
+     * 补一个字段：原值为空 → 记稽核并返回 true（调用方写回订单行）；原值等于新值 → 什么都不做；
+     * 原值不同 → 已冻结。
+     */
+    private boolean fillField(Scope scope, OrdSubOrder sub, OrdItem item, int lineNo, String field, String current,
+            String value, FillCmd cmd, String keyHash) {
+        if (current != null) {
+            if (current.equals(value)) return false;
+            throw BizException.of(ErrorCode.INVOICE_DATA_FROZEN);
+        }
+        audit(scope, sub, lineNo, field, null, value, cmd, keyHash);
+        return true;
+    }
+
+    private void audit(Scope scope, OrdSubOrder sub, int lineNo, String field, String oldValue, String newValue,
+            FillCmd cmd, String keyHash) {
+        var row = new OrdInvoiceDataFill();
+        row.setTenantNo(TENANT);
+        row.setFillNo(BizKey.next("IDF"));
+        row.setOrderNo(sub.getOrderNo());
+        row.setSubOrderNo(sub.getSubOrderNo());
+        row.setEntityNo(scope.entityNo());
+        row.setStoreNo(scope.storeNo());
+        row.setLineNo(lineNo);
+        row.setFieldCode(field);
+        row.setOldValue(oldValue);
+        row.setNewValue(newValue);
+        row.setReason(cmd.reason());
+        row.setOperatorNo(scope.operatorNo());
+        row.setRequestKeyHash(keyHash);
+        // 唯一键 (sub_order_no, line_no, field_code)：同一空字段被两个请求同时补，后到的这里撞键回滚
+        fills.insert(row);
+    }
+
+    // ------------------------------------------------------------------ cancel
+
+    @Override
+    public StoreSaleView cancel(Scope scope, String orderNo, String reason) {
+        var order = unscoped(() -> requireOrder(scope, orderNo));
+        unscoped(() -> writes.execute(tx -> {
+            var sub = lockSub(order);
+            if (OrdSubOrder.CANCELLED.equals(sub.getStatus())) return null;
+            if (!OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) throw BizException.of(ErrorCode.STORE_ORDER_STATE_INVALID);
+            int changed = orders.update(null, new UpdateWrapper<OrdOrder>().eq("tenant_no", TENANT)
+                    .eq("order_no", order.getOrderNo()).eq("status", OrdOrder.WAIT_PAY)
+                    .set("status", OrdOrder.CANCELLED).set("cancel_reason", reason).setSql("version=version+1"));
+            if (changed != 1) throw BizException.of(ErrorCode.STORE_ORDER_STATE_INVALID);
+            subOrders.update(null, new UpdateWrapper<OrdSubOrder>().eq("id", sub.getId())
+                    .eq("status", OrdSubOrder.WAIT_PAY).set("status", OrdSubOrder.CANCELLED)
+                    .setSql("version=version+1"));
+            return null;
+        }));
+        return get(scope, orderNo);
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    private QueryWrapper<OrdOrder> storeOrders(Scope scope) {
+        return new QueryWrapper<OrdOrder>().eq("tenant_no", TENANT).eq("entity_no", scope.entityNo())
+                .eq("store_no", scope.storeNo()).eq("admission_kind", STORE_SALE);
+    }
+
+    private OrdOrder byClientNo(Scope scope, String clientOrderNo) {
+        return orders.selectOne(storeOrders(scope).eq("client_order_no", clientOrderNo));
+    }
+
+    private OrdOrder requireOrder(Scope scope, String orderNo) {
+        var order = orders.selectOne(storeOrders(scope).eq("order_no", orderNo));
+        if (order == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        return order;
+    }
+
+    private OrdSubOrder lockSub(OrdOrder order) {
+        return subOrders.selectOne(new QueryWrapper<OrdSubOrder>().eq("tenant_no", TENANT)
+                .eq("order_no", order.getOrderNo()).last("LIMIT 1 FOR UPDATE"));
+    }
+
+    private List<OrdItem> linesOf(String subOrderNo) {
+        return items.selectList(new QueryWrapper<OrdItem>().eq("tenant_no", TENANT).eq("sub_order_no", subOrderNo)
+                .orderByAsc("id"));
+    }
+
+    private InvoicePort requireInvoices() {
+        var port = invoices.getIfAvailable();
+        if (port == null) throw BizException.of(ErrorCode.INVOICE_REGIME_NOT_ENABLED);
+        return port;
+    }
+
+    private static InvoicePort.Scope invoiceScope(Scope scope) {
+        return new InvoicePort.Scope(TENANT, scope.entityNo(), scope.storeNo(), scope.operatorNo());
+    }
+
+    private static GoodsPricingPolicyPort.Scope policyScope(Scope scope) {
+        return new GoodsPricingPolicyPort.Scope(TENANT, scope.entityNo(), scope.storeNo());
+    }
+
+    /** 四种买受人只取各自的字段，其余一律不带 —— 不让「打统编」顺手捎上一个载具号 */
+    static InvoicePort.Buyer buyer(BuyerCmd b) {
+        return switch (b.type()) {
+            case "COMPANY" -> new InvoicePort.Buyer(b.taxId(), b.name(), null, null, null);
+            case "CARRIER" -> new InvoicePort.Buyer(null, null, b.carrierType(), b.carrierId(), null);
+            case "DONATE" -> new InvoicePort.Buyer(null, null, null, null, b.donateCode());
+            default -> InvoicePort.Buyer.consumer();
+        };
+    }
+
+    private static BizException forbidden(String perm) {
+        return BizException.of(ErrorCode.BIZ_ROLE_FORBIDDEN, BizPerms.labelOf(perm));
+    }
+
+    private static <T> T unscoped(Supplier<T> action) {
+        return DataScopeContext.executeWithoutScope(action::get);
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s;
+    }
+}

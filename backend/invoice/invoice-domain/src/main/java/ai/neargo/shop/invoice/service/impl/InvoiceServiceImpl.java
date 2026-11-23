@@ -296,6 +296,15 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
+    public Optional<Buyer> rememberedBuyer(Scope scope, String sourceType, String sourceNo) {
+        return Optional.ofNullable(preferences.selectOne(new QueryWrapper<IvcBuyerPreference>()
+                        .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo())
+                        .eq("source_type", sourceType).eq("source_no", sourceNo)))
+                .map(p -> new Buyer(p.getBuyerTaxId(), p.getBuyerName(), p.getCarrierType(), p.getCarrierId(),
+                        p.getDonateCode()));
+    }
+
+    @Override
     @Transactional
     public Optional<InvoiceReceipt> issueIfAutomatic(Scope scope, String sourceType, String sourceNo) {
         var profile = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", scope.tenantNo())
