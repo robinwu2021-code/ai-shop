@@ -1238,3 +1238,16 @@ App 从 v2 取发票 PDF 时，`download-grants` 返回的 `/private/print-artif
 - **端到端**（商户 App 会话，用户本人登录 oscar＠umeshop.ai、门店 ume早餐店、`source.type=SAMPLE`）：证明联 58、交易明细 58/80、折让证明单 58/80 × 原卷宽 / A4 共 10 组，grant 均 `code=0` → 拼 `/shop-api-v2` 取字节 2xx、`%PDF` 开头、1 页、14 634–17 666 字节 → App 内显示；「重新开启 PDF」重新申请授权可再次显示。截图在 ai-shop-bapp `docs/handoff/invoice-print-mock-2026-11-22/screenshots/v2/`。
 - 顺带发现（未处理，与本次无关）：启动日志报 `shop.ship.track-key`（`SHIP_TRACK_KEY`）未配置，发货短信与看件页不可用。
 - **未验证**：真实发票（`source.type=FACT`、`print-facts`），要等门店开通发票设置（现在 `/biz/invoices` 回 70006）；iOS。
+
+### §23.3 按 main 重发 v2（2026-11-23 01:07–01:09 UTC，用户：「发票模块合并到主分支后，重新部署ai-shop上线」，选「v2 按 main 重发」）
+
+`4f9890796..cd09b0cc5` 只有 #35–#37 三个文档提交，代码与线上相同；本次只为让线上版本号对齐 main。
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| ai-shop v2 后端 | .80 `releases/shop-app-main-cd09b0cc5.jar`（sha256 前缀 `99257b2008f8db24`，149 008 484 字节，与 `main-4f9890796` 同大小，哈希不同只因打包时间戳），`run.sh` 标签 `main-cd09b0cc5`；01:07:05 重启，01:08:32 `Started ShopApplication in 84.4 seconds`，中断约 90 秒，两条迁移链均 `No migration necessary`；签名密钥（§23.2）仍在容器内 | `cp releases/run-before-main-cd09b0cc5.sh run.sh && ./run.sh all restart` |
+| 运营端页面 | 166 `/data/www/ai-shop-ops-v2/releases/main-cd09b0cc5`（tgz sha256 前缀 `0c182b080d081a91`），`current` 已切 | `ln -sfn /data/www/ai-shop-ops-v2/releases/main-4f9890796 /data/www/ai-shop-ops-v2/current` |
+
+- 探测：health UP；公网 `/ops-shop-v2/{,e-invoices/,payment-center/}` 200；`/shop-api-v2/biz/invoices`、`/shop-api-v2/biz/print/simulations`、`/ops-shop-v2/ops/sales-invoices` 401；坏签名下载 422；旧 `/shop-api` 照常。
+- 构建注意：ops-web 用借来的 `node_modules` 会缺 `opencc-js`（`Can't resolve 'opencc-js/cn2t'`），要在构建目录真 `npm install` 后再 `git restore package-lock.json`；.80 本机健康检查用 `192.168.3.80:18180`，等待循环里 `curl` 失败不要配 `set -e`。
+- 过程失误：首次构建时临时目录已不存在，`cd` 失败后命令落在共享工作区 `ai-shop`，把它切成了游离的 `origin/main` 约 1–2 分钟，随即切回 `main`（`4ca938d56`）；未提交改动与他人未跟踪文件未受影响，但该期间工作区已跟踪文件显示为 `origin/main` 内容，`backend/*/target` 被重编、`ops-web/out` 被清空（均为构建产物）。正式发布包另在干净 worktree 构建。以后构建脚本以 `set -e` 开头，`cd` 失败即停。
