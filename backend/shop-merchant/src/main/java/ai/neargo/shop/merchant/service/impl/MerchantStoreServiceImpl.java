@@ -22,6 +22,10 @@ import tools.jackson.databind.ObjectMapper;
 
 import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.spi.approval.ApprovalPort;
+import ai.neargo.shop.auth.SecurityUtils;
 
 /** {@link MerchantStoreService} 实现。 */
 @Service
@@ -34,7 +38,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private static final int DEFAULT_RADIUS_M = 3000;
 
     private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership;
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public void setOwnership(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership) { this.ownership=ownership; }
     private void lockOwnership(String entity,String store) {
         if(store==null || store.isBlank()) ownership.lockEntityAndCheck("MAIN",entity);
@@ -895,6 +899,14 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         return words.stream().filter(w -> w != null && !w.isBlank() && text.contains(w)).toList();
     }
 
+    /** 审批出口（T24 · 方案-第二批审批工作流）：启用后机审命中的公告进人工审核时即送审。 */
+    private ObjectProvider<ApprovalPort> approvals;
+
+    @Autowired(required = false)
+    public void setApprovals(ObjectProvider<ApprovalPort> value) {
+        this.approvals = value;
+    }
+
     private void submitForAudit(String merchantNo, String storeNo, String kind, String content,
                                 List<String> hits, Long noticeUntil) {
         MchStoreAudit a = new MchStoreAudit();
@@ -915,5 +927,16 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         a.setHits(json.writeValueAsString(hits));
         a.setSubmittedAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> storeAuditMapper.insert(a));
+        var port = approvals == null ? null : approvals.getIfAvailable();
+        if (MchStoreAudit.NOTICE.equals(kind) && port != null
+                && port.enabled(ai.neargo.shop.merchant.service.MerchantGovernService.STORE_SIGN_APPROVAL)) {
+            var saved = DataScopeContext.executeWithoutScope(() -> storeAuditMapper.selectOne(
+                    Wrappers.<MchStoreAudit>lambdaQuery().eq(MchStoreAudit::getAuditNo, a.getAuditNo())));
+            var user = SecurityUtils.currentUser().orElse(null);
+            port.submit(ai.neargo.shop.merchant.service.MerchantGovernService.STORE_SIGN_APPROVAL, a.getAuditNo(),
+                    saved == null || saved.getVersion() == null ? 0 : saved.getVersion(),
+                    new ApprovalPort.Submitter(
+                            user == null ? "SYSTEM" : user.userNo(), user == null ? "商家" : user.nickname()));
+        }
     }
 }

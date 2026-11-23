@@ -69,6 +69,24 @@ public class OpsAlertAdapter implements OpsAlertPort {
     }
 
     @Override
+    public void approvalTodo(ApprovalTodo todo, List<String> receivers, String link) {
+        for (String receiver : receivers == null ? List.<String>of() : receivers) {
+            try {
+                messageService.pushTo(
+                        MsgMessage.RECEIVER_OPS,
+                        receiver,
+                        MessageService.SYSTEM,
+                        Messages.get("approval.todo.title"),
+                        Messages.get("approval.todo.body", todo.title(), todo.process()),
+                        link,
+                        "OPSKIT_TODO:" + todo.taskNo() + ":" + receiver);
+            } catch (RuntimeException e) {
+                log.warn("审批待办的站内消息没进 {} 的收件箱：{}", receiver, e.toString());
+            }
+        }
+    }
+
+    @Override
     public void newMerchantApply(NewApply apply, List<String> opsReceivers, String reviewLink) {
         String title = "新的入驻意向";
         String body = apply.shopName() + "（" + nvl(apply.category(), "未填经营范围") + "）";

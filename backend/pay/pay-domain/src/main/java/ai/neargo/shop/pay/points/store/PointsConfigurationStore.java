@@ -53,6 +53,9 @@ public interface PointsConfigurationStore {
 
     Map<String, Object> request(String requestNo);
 
+    /** 待审的资金池申请（审批补送用）。 */
+    java.util.List<Map<String, Object>> submittedRequests(int limit);
+
     void putAgreement(
             String no,
             String type,

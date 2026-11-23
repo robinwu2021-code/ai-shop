@@ -13171,6 +13171,26 @@ CREATE TABLE IF NOT EXISTS sys_api_resource_point
     CONSTRAINT uk_api_resource_point UNIQUE (resource_id, perm_code)
 );
 
+CREATE TABLE IF NOT EXISTS approval_link
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    subject_type VARCHAR(64) NOT NULL,
+    subject_ref VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL,
+    process_code VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    approval_no VARCHAR(64) NULL,
+    instance_no VARCHAR(64) NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    submitted_name VARCHAR(128) NULL,
+    reason VARCHAR(512) NULL,
+    proposal TEXT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_approval_link_subject UNIQUE (subject_type, subject_ref, revision)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -21060,6 +21080,8 @@ SET roles = CASE WHEN roles IS NULL OR TRIM(roles) IN ('', '[]') THEN '["OPEN_AP
     updated_at = NOW()
 WHERE username = 'neara@neargo.ai' AND deleted = 0
   AND (roles IS NULL OR roles NOT LIKE '%"OPEN_API_REVIEW"%') AND CHAR_LENGTH(COALESCE(roles, '')) <= 230;
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) SELECT 'ACT__PAY_FEE_PLAN_APPROVE','OPS_FINANCE','佣金规则：审批发布','支付中心',NULL,'pay:fee-plan:approve','pay:fee-plan:approve','IMPLEMENTED',1,NULL,'ACTION',690,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM sys_function_point WHERE perm_code='pay:fee-plan:approve' OR point_code='ACT__PAY_FEE_PLAN_APPROVE');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_FEE_PLAN_APPROVE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_function_point WHERE point_code='ACT__PAY_FEE_PLAN_APPROVE') AND EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_FEE_PLAN_APPROVE' AND end_code='OPS');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

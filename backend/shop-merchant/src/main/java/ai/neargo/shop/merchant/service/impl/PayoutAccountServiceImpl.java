@@ -18,6 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.spi.approval.ApprovalPort;
+import ai.neargo.shop.auth.SecurityUtils;
 
 /** {@link PayoutAccountService} 实现。见接口注释：<b>账号明文只在两个瞬间存在</b>。 */
 @Service
@@ -28,6 +32,19 @@ public class PayoutAccountServiceImpl implements PayoutAccountService {
     private final MerchantMappers.PayoutAccountMapper accounts;
     private final MerchantMappers.MchEntityMapper entities;
     private final PayoutAccountCipher cipher;
+
+    /** 审批出口（T17）：启用 OpsKit 且登记了 shop.payout_account 时，商家提交即送审。 */
+    private ObjectProvider<ApprovalPort> approvals;
+
+    @Autowired(required = false)
+    public void setApprovals(ObjectProvider<ApprovalPort> value) {
+        this.approvals = value;
+    }
+
+    private ApprovalPort approvalPort() {
+        var port = approvals == null ? null : approvals.getIfAvailable();
+        return port != null && port.enabled(APPROVAL_TYPE) ? port : null;
+    }
 
     public PayoutAccountServiceImpl(MerchantMappers.PayoutAccountMapper accounts,
                                     MerchantMappers.MchEntityMapper entities,
@@ -91,6 +108,16 @@ public class PayoutAccountServiceImpl implements PayoutAccountService {
         a.setBankBranch(cmd.bankBranch());
         a.setStatus(MchPayoutAccount.PENDING);
         DataScopeContext.executeWithoutScope(() -> accounts.insert(a));
+        var port = approvalPort();
+        if (port != null) {
+            // 修订号取库里的 version：插入时由乐观锁初始化，后续任何 updateById 都会让它变
+            MchPayoutAccount saved = DataScopeContext.executeWithoutScope(() -> accounts.selectOne(
+                    Wrappers.<MchPayoutAccount>lambdaQuery().eq(MchPayoutAccount::getAccountNo, a.getAccountNo())));
+            var user = SecurityUtils.currentUser().orElse(null);
+            port.submit(APPROVAL_TYPE, a.getAccountNo(), revisionOf(saved),
+                    new ApprovalPort.Submitter(
+                            user == null ? "SYSTEM" : user.userNo(), user == null ? "商家" : user.nickname()));
+        }
 
         // 日志只记掩码。账号进日志与进库是同一类泄露，且日志更难清
         log.info("[payout-account] {} 提交收款账户 {}（{}）",
@@ -126,6 +153,10 @@ public class PayoutAccountServiceImpl implements PayoutAccountService {
     @Override
     @Transactional
     public PayoutAccountVO audit(String accountNo, boolean approved, String remark) {
+        // 接入审批后不能在这里直接决定，否则绕过了审批中心的审批步骤
+        if (approvalPort() != null) {
+            throw BizException.of(ErrorCode.APPROVAL_IN_OPSKIT);
+        }
         // 驳回不写原因等于让商家猜。与入驻驳回、提现驳回同一条规矩
         if (!approved && (remark == null || remark.isBlank())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -135,6 +166,28 @@ public class PayoutAccountServiceImpl implements PayoutAccountService {
         if (a == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        return decide(a, approved, remark, null);
+    }
+
+    @Override
+    @Transactional
+    public boolean auditApproved(String accountNo, long revision, boolean approved, String remark, String auditedBy) {
+        MchPayoutAccount a = DataScopeContext.executeWithoutScope(() -> accounts.selectOne(
+                Wrappers.<MchPayoutAccount>lambdaQuery().eq(MchPayoutAccount::getAccountNo, accountNo)));
+        if (a == null || !MchPayoutAccount.PENDING.equals(a.getStatus()) || revisionOf(a) != revision) {
+            return false;
+        }
+        DataScopeContext.executeWithoutScope(() -> decide(a, approved,
+                remark == null || remark.isBlank() ? (approved ? "审批通过" : "审批未通过") : remark, auditedBy));
+        return true;
+    }
+
+    static long revisionOf(MchPayoutAccount a) {
+        return a == null || a.getVersion() == null ? 0 : a.getVersion();
+    }
+
+    private PayoutAccountVO decide(MchPayoutAccount a, boolean approved, String remark, String auditedBy) {
+        String accountNo = a.getAccountNo();
         // 只有待审的能审。已生效的再审一次会把旧账户二次顶替，且审计上看不出是重复动作
         if (!MchPayoutAccount.PENDING.equals(a.getStatus())) {
             throw BizException.of(ErrorCode.CONFLICT);
@@ -166,6 +219,7 @@ public class PayoutAccountServiceImpl implements PayoutAccountService {
             a.setStatus(MchPayoutAccount.REJECTED);
         }
         a.setAuditRemark(remark);
+        if (auditedBy != null) a.setAuditedBy(auditedBy);
         a.setAuditedAt(System.currentTimeMillis());
         accounts.updateById(a);
 

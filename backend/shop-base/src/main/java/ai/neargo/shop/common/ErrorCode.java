@@ -16,6 +16,8 @@ public enum ErrorCode {
     PRINT_BLOCKED(82001, "err.print.blocked"),
     PRINT_CONFLICT(82002, "err.print.conflict"),
     PRINT_UNAVAILABLE(82003, "err.print.unavailable"),
+    /** 这项审核已接入审批中心（OpsKit），不能在原页面直接决定：请到审批中心处理 */
+    APPROVAL_IN_OPSKIT(82101, "err.approval.in_opskit"),
     BAD_REQUEST(10400, "err.bad_request"),
     UNAUTHORIZED(10401, "err.unauthorized"),
     /*

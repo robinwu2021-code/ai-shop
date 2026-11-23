@@ -304,6 +304,8 @@ export interface PayCenterApi {
     list(merchantNo: string): Promise<ChannelAccountClaim[]>;
     detail(no: string): Promise<ChannelAccountClaim>;
     resolve(no: string, body: ClaimResolve): Promise<ChannelAccountClaim>;
+    /** OpsKit 认领审批（第二批 T26 / Q13）：先选定目标账户再送审，审批通过后按此关联。未启用时 near-pay 回 409 CAPABILITY_NOT_READY */
+    submitApproval(no: string, body: { expectedVersion: number; payMerchantNo: string; expectedAccountVersion: number; reason: string }): Promise<ChannelAccountClaim>;
     /** P9：认领命令回执（超时恢复用） */
     command(no: string, requestNo: string): Promise<ClaimCommandReceipt>;
     file(no: string, fileNo: string): Promise<Blob>;
@@ -756,6 +758,7 @@ export function createHttpPayCenterApi(c: PayOpsClient, ports: Partial<ShopPorts
         if (r.outcome === "REJECTED") throw new ReceiptRejected(r.failure?.message ?? "认领处理被拒绝", { status: r.failure?.code ?? 409, reasonCode: r.failure?.reasonCode });
         return r.result as ChannelAccountClaim;
       }),
+      submitApproval: (no, body) => c.command(`/channel-account-claims/${e(no)}/submit-approval`, { ...body }),
       command: (no, rn) => c.get(`/channel-account-claims/${e(no)}/commands/${e(rn)}`),
       file: (no, fileNo) => c.blob(`/channel-account-claims/${e(no)}/files/${e(fileNo)}`),
     },

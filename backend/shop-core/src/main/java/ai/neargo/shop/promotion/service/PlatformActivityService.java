@@ -16,6 +16,9 @@ import java.util.List;
  */
 public interface PlatformActivityService {
 
+    /** 审批类型（T18 · 方案-第二批审批工作流）：启用后商家报名即送审，运营端「审核」改到审批中心。 */
+    String ENROLLMENT_APPROVAL = "shop.promotion_enrollment";
+
     // ---------------------------------------------------------------- 运营（s29 · s30）
 
     /** 全部平台活动（含草稿），新的在前 */

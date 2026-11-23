@@ -90,6 +90,10 @@ public interface PointsConfigurationMapper {
     @Select("SELECT * FROM pts_pool_request WHERE request_no=#{no} AND deleted=0")
     Map<String, Object> request(String no);
 
+    /** 待审的资金池申请（审批送审补送用；方案-第一批审批工作流 T8）。 */
+    @Select("SELECT * FROM pts_pool_request WHERE state='SUBMITTED' AND deleted=0 ORDER BY id LIMIT #{limit}")
+    java.util.List<Map<String, Object>> submittedRequests(@Param("limit") int limit);
+
     @Select("SELECT * FROM pts_fund_pool WHERE type_code=#{type} AND deleted=0 FOR UPDATE")
     Map<String, Object> lockPoolSnapshot(String type);
 

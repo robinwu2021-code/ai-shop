@@ -22,6 +22,9 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.spi.approval.ApprovalApplyException;
+import ai.neargo.shop.spi.approval.ApprovalPort;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -416,6 +419,74 @@ public class OpsServiceImpl implements OpsService {
     @Override
     @Transactional
     public MerchantApplyVO auditApply(String applyNo, boolean approved, String reason,
+                           String serviceScope, List<String> communityNos,
+                           List<String> grantCodes) {
+        // 启用 OpsKit 审批后，「通过」改为带拟定结果送审（方案-第一批审批工作流 T10 / Q7）；驳回仍当场生效
+        ApprovalPort port = approvals == null ? null : approvals.getIfAvailable();
+        if (approved && port != null && port.enabled(MERCHANT_ENTRY)) {
+            return submitEntryApproval(port, applyNo, reason, serviceScope, communityNos, grantCodes);
+        }
+        return doAudit(applyNo, approved, reason, serviceScope, communityNos, grantCodes);
+    }
+
+    static final String MERCHANT_ENTRY = "shop.merchant_entry";
+
+    private ObjectProvider<ApprovalPort> approvals;
+
+    @Autowired
+    public void setApprovals(ObjectProvider<ApprovalPort> value) {
+        approvals = value;
+    }
+
+    /**
+     * 送审：先做通过时会做的前置校验（范围值域、托管注册、市场开放），把申请单推到 REVIEWING，
+     * 再以推进后的版本号送审，拟定结果（服务范围 / 社区 / 授权码 / 意见）随送审冻结。
+     * 同一版本已在审批中 → CONFLICT（要改拟定结果，先在审批中心撤回）。
+     */
+    private MerchantApplyVO submitEntryApproval(ApprovalPort port, String applyNo, String reason,
+                                                String serviceScope, List<String> communityNos, List<String> grantCodes) {
+        MchEntityApply apply = requireApply(applyNo);
+        if (!MchEntityApply.PENDING.equals(apply.getStatus()) && !MchEntityApply.REVIEWING.equals(apply.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (serviceScope != null && !serviceScope.isBlank()) masterDataService.assertServiceScopeAllowed(serviceScope);
+        if (apply.getEntityNo() != null && merchantAdminPort.managedRegistration(apply.getTenantNo(), apply.getEntityNo()))
+            throw BizException.of(ErrorCode.CONFLICT);
+        if (apply.getStoreProfile() != null && !marketPhones.policy(apply.getMarketCode()).marketEnabled())
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (MchEntityApply.PENDING.equals(apply.getStatus())) {
+            move(apply, MchEntityApply.REVIEWING);
+            DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(apply));
+        }
+        long revision = apply.getVersion();
+        var pending = port.latest(MERCHANT_ENTRY, applyNo).filter(l -> l.revision() == revision
+                && ("PENDING_SUBMIT".equals(l.status()) || "PENDING".equals(l.status())));
+        if (pending.isPresent()) throw BizException.of(ErrorCode.CONFLICT);
+        java.util.Map<String, Object> proposal = new java.util.LinkedHashMap<>();
+        if (serviceScope != null && !serviceScope.isBlank()) proposal.put("serviceScope", serviceScope);
+        if (communityNos != null && !communityNos.isEmpty()) proposal.put("communityNos", List.copyOf(communityNos));
+        if (grantCodes != null && !grantCodes.isEmpty()) proposal.put("grantCodes", List.copyOf(grantCodes));
+        if (reason != null && !reason.isBlank()) proposal.put("reason", reason);
+        LoginUser operator = SecurityUtils.requireUser();
+        port.submit(MERCHANT_ENTRY, applyNo, revision, new ApprovalPort.Submitter(operator.userNo(), operator.nickname()), proposal);
+        audit("MERCHANT_AUDIT_SUBMITTED", applyNo, "送审通过；商家=" + apply.getName() + "；版本=" + revision);
+        return toVO(apply);
+    }
+
+    @Override
+    @Transactional
+    public MerchantApplyVO applyApprovedEntry(String applyNo, long revision, String reason,
+                                              String serviceScope, List<String> communityNos, List<String> grantCodes) {
+        MchEntityApply apply = requireApply(applyNo);
+        if (!MchEntityApply.APPROVED.equals(apply.getStatus())
+                && (!MchEntityApply.REVIEWING.equals(apply.getStatus()) || apply.getVersion() == null || apply.getVersion() != revision)) {
+            throw new ApprovalApplyException(ApprovalApplyException.STALE,
+                    "申请单已变化：status=" + apply.getStatus() + " version=" + apply.getVersion() + "≠" + revision);
+        }
+        return doAudit(applyNo, true, reason, serviceScope, communityNos, grantCodes);
+    }
+
+    private MerchantApplyVO doAudit(String applyNo, boolean approved, String reason,
                            String serviceScope, List<String> communityNos,
                            List<String> grantCodes) {
         if (!approved && (reason == null || reason.isBlank())) {

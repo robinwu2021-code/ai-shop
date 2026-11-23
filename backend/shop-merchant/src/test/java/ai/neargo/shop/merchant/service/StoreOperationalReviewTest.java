@@ -7,6 +7,11 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.impl.StoreOperationalReviewServiceImpl;
+import ai.neargo.shop.merchant.approval.StoreOpeningApprovalSubject;
+import ai.neargo.shop.spi.approval.ApprovalApplyException;
+import ai.neargo.shop.spi.approval.ApprovalPort;
+import ai.neargo.shop.spi.approval.ApprovalSubject;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import java.util.UUID;
@@ -113,6 +118,46 @@ class StoreOperationalReviewTest {
         tx.execute(s->svc.submit("S1"));
         tx.execute(s->{svc.activatePaid("MAIN","E2","S1","STORE","O1",Long.MAX_VALUE,100L);return null;});
         assertEquals("PENDING_OPEN",status("MAIN","S1"));
+    }
+    /** TDD-OpsKit审批对接 §1.4：启用审批后「提交」带当前修订送审；执行节点生效、重投幂等、对象变了判 STALE；驳回回到可重新提交。 */
+    @SuppressWarnings("unchecked")
+    @Test void approvalPilotSubmitsCurrentRevisionAndAppliesOnlyUnchangedStores() {
+        var port=mock(ApprovalPort.class);when(port.enabled("shop.store_opening")).thenReturn(true);
+        ObjectProvider<ApprovalPort> provider=mock(ObjectProvider.class);when(provider.getIfAvailable()).thenReturn(port);
+        svc=new StoreOperationalReviewServiceImpl(db,stores,mock(StoreOwnershipWritePort.class),audit,provider);
+        var subject=new StoreOpeningApprovalSubject(db,svc);
+        tx.execute(s->svc.submit("S1"));
+        long revision=db.queryForObject("SELECT version FROM mch_store WHERE tenant_no='MAIN' AND store_no='S1'",Long.class);
+        verify(port).submit(eq("shop.store_opening"),eq("S1"),eq(revision),any(ApprovalPort.Submitter.class));
+        assertEquals(Set.of("merchant:E1"),subject.snapshot("S1").scopes());
+        assertEquals(ApprovalSubject.Level.IMPORTANT,subject.level());
+        var change=subject.snapshot("S1").facts().stream().filter(f->f.before()!=null).findFirst().orElseThrow();
+        assertEquals("待开通",change.before());assertEquals("营业中",change.value());
+        var stale=assertThrows(ApprovalApplyException.class,()->subject.apply("S1",revision+1));
+        assertEquals(ApprovalApplyException.STALE,stale.code());
+        assertEquals("PENDING_OPEN",status("MAIN","S1"));
+        DataScopeContext.clear();   // 回调线程没有数据域
+        subject.apply("S1",revision);
+        assertEquals("ACTIVE",status("MAIN","S1"));
+        subject.apply("S1",revision);   // OpsKit 重投：幂等
+        assertEquals("ACTIVE",status("MAIN","S1"));
+    }
+    @SuppressWarnings("unchecked")
+    @Test void approvalPilotRejectionReturnsStoreToResubmittableButIgnoresChangedStores() {
+        var port=mock(ApprovalPort.class);when(port.enabled("shop.store_opening")).thenReturn(true);
+        ObjectProvider<ApprovalPort> provider=mock(ObjectProvider.class);when(provider.getIfAvailable()).thenReturn(port);
+        svc=new StoreOperationalReviewServiceImpl(db,stores,mock(StoreOwnershipWritePort.class),audit,provider);
+        var subject=new StoreOpeningApprovalSubject(db,svc);
+        tx.execute(s->svc.submit("S1"));
+        long revision=db.queryForObject("SELECT version FROM mch_store WHERE tenant_no='MAIN' AND store_no='S1'",Long.class);
+        DataScopeContext.clear();
+        subject.onClosed("S1",revision-1,ApprovalSubject.Outcome.REJECTED,"旧单");
+        assertEquals("PENDING",db.queryForObject("SELECT operational_review FROM mch_store WHERE store_no='S1' AND tenant_no='MAIN'",String.class));
+        subject.onClosed("S1",revision,ApprovalSubject.Outcome.REJECTED,null);
+        assertEquals("REJECTED",db.queryForObject("SELECT operational_review FROM mch_store WHERE store_no='S1' AND tenant_no='MAIN'",String.class));
+        DataScopeContext.set(DataScopeSpec.of("MERCHANT",Set.of("E1")));
+        tx.execute(s->svc.submit("S1"));   // 驳回后可重新提交，新修订再送审
+        verify(port,times(2)).submit(eq("shop.store_opening"),eq("S1"),anyLong(),any(ApprovalPort.Submitter.class));
     }
     @AfterEach void cleanup() {DataScopeContext.clear();if(admin!=null && schema!=null)admin.execute("DROP DATABASE "+schema);}
     String status(String tenant,String store) {return db.queryForObject("SELECT status FROM mch_store WHERE tenant_no=? AND store_no=?",String.class,tenant,store);}

@@ -239,3 +239,15 @@ describe("P5 渠道账户、门店绑定、认领与补齐的端点（TDD §2.11
     expect((await api.channelAccounts.list({ merchantNo: "PM1001" })).records.find((a) => a.payMerchantNo === "LNP7100")?.boundStoreCount).toBe(1);
   });
 });
+
+import { describe as describePending, it as itPending, expect as expectPending } from "vitest";
+import { isPendingApproval } from "../shared";
+
+describePending("OpsKit 待审批结果（第二批 Q11）", () => {
+  itPending("出款回执 / 对账关闭回 status、人工确认到账回 statusAfter：都认作「待审批」，不报已完成", () => {
+    expectPending(isPendingApproval({ status: "PENDING_APPROVAL", approvalNo: "PA1" })).toBe(true);
+    expectPending(isPendingApproval({ statusAfter: "PENDING_APPROVAL" })).toBe(true);
+    expectPending(isPendingApproval({ status: "PAID" })).toBe(false);
+    expectPending(isPendingApproval(null)).toBe(false);
+  });
+});

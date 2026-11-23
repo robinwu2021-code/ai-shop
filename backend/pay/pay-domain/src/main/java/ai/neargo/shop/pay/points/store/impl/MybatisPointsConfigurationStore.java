@@ -212,6 +212,11 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
     }
 
     @Override
+    public java.util.List<Map<String, Object>> submittedRequests(int limit) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.submittedRequests(limit));
+    }
+
+    @Override
     public Map<String, Object> lockRequest(String no) {
         return DataScopeContext.executeWithoutScope(() -> mapper.lockRequest(no));
     }

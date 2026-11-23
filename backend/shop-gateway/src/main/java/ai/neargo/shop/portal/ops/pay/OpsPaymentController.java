@@ -1,5 +1,12 @@
 package ai.neargo.shop.portal.ops.pay;
 
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.paybridge.approval.PayApprovalSupport;
+import ai.neargo.shop.paybridge.approval.PlatformKeyEnableApprovalSubject;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.pay.acquiring.service.PayOpsQueryService.ExceptionRow;
 import ai.neargo.shop.pay.acquiring.service.PayOpsQueryService.NotifyRow;
@@ -38,6 +45,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpsPaymentController {
 
     private final OpsPaymentAppService app;
+    private PlatformKeyEnableApprovalSubject keyApprovals;
+    private PayApprovalSupport approvalSupport;
+
+    @Autowired(required = false)
+    public void setKeyApprovals(PlatformKeyEnableApprovalSubject subject, PayApprovalSupport support) {
+        this.keyApprovals = subject;
+        this.approvalSupport = support;
+    }
 
     public OpsPaymentController(OpsPaymentAppService app) {
         this.app = app;
@@ -196,6 +211,15 @@ public class OpsPaymentController {
     @PostMapping("/ops/payments/platform-keys/{keyId}/versions/{version}/enable")
     @PreAuthorize("@perm.can('" + Perms.SEC_KEY_ENABLE + "')")
     public void enablePlatformKey(@PathVariable long keyId, @PathVariable int version) {
+        // 启用 OpsKit 审批：「启用」改为送审，审批（两步）通过后由执行节点启用（方案-第一批审批工作流 T6）
+        if (keyApprovals != null && approvalSupport != null && approvalSupport.enabled(PlatformKeyEnableApprovalSubject.SUBJECT_TYPE)) {
+            long revision = keyApprovals.revision(keyId, version);
+            if (revision < 0) throw BizException.of(ErrorCode.NOT_FOUND);
+            var user = SecurityUtils.requireUser();
+            approvalSupport.submit(PlatformKeyEnableApprovalSubject.SUBJECT_TYPE, PlatformKeyEnableApprovalSubject.ref(keyId, version),
+                    revision, user.userNo(), user.nickname(), null);
+            return;
+        }
         app.enablePlatformKey(keyId, version);
     }
 

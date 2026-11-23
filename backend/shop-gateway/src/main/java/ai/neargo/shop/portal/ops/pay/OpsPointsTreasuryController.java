@@ -2,6 +2,8 @@ package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.pay.points.admin.PointsOperatorJournal.OperatorResult;
 import ai.neargo.shop.pay.points.admin.PointsTreasuryService.Execution;
 import ai.neargo.shop.pay.points.admin.PointsTreasuryService.GeneratePeriods;
@@ -14,6 +16,8 @@ import ai.neargo.shop.pay.points.admin.PointsTreasuryService.Review;
 import ai.neargo.shop.pay.points.admin.PointsTreasuryService.Submission;
 import ai.neargo.shop.pay.points.admin.PointsTreasuryService.Withdrawal;
 import ai.neargo.shop.payclient.PointsTreasuryAppService;
+import ai.neargo.shop.paybridge.approval.PointsApprovalSubmitter;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import jakarta.validation.Valid;
 
@@ -29,20 +33,33 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class OpsPointsTreasuryController {
     private final PointsTreasuryAppService service;
+    private final PointsApprovalSubmitter approvals;
 
     public OpsPointsTreasuryController(PointsTreasuryAppService service) {
+        this(service, null);
+    }
+
+    @Autowired
+    public OpsPointsTreasuryController(PointsTreasuryAppService service, PointsApprovalSubmitter approvals) {
         this.service = service;
+        this.approvals = approvals;
     }
 
     @PostMapping("/ops/points/requests")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
     public OperatorResult submit(@Valid @RequestBody Submission request) {
-        return service.submit(request, SecurityUtils.currentUserNo());
+        String actor = SecurityUtils.currentUserNo();
+        OperatorResult result = service.submit(request, actor);
+        // 启用审批时，提交即送审（支付事务已提交；送审失败由补送任务找回）
+        if (approvals != null) approvals.poolRequestSubmitted(request.requestNo(), actor);
+        return result;
     }
 
     @PostMapping("/ops/points/request-review")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_PAYOUT_EXECUTE + "')")
     public OperatorResult review(@Valid @RequestBody Review request) {
+        // 接入审批后在这里直接审会绕过审批中心（T8）
+        if (approvals != null && approvals.poolEnabled()) throw BizException.of(ErrorCode.APPROVAL_IN_OPSKIT);
         return service.review(request, SecurityUtils.currentUserNo());
     }
 

@@ -728,6 +728,7 @@ export function createMockPayCenterApi(): PayCenterApi {
     claims: {
       list: (merchantNo) => run(() => claims.all().filter((c) => c.merchantNo === merchantNo)),
       detail: (no) => run(() => claims.get(no)),
+      submitApproval: () => run(async () => { throw new MockPayError("CAPABILITY_NOT_READY", "认领关联未启用 OpsKit 审批"); }),
       resolve: (no, b) => run(async () => { reasonOf(b.reason); need(claims.get(no).state === "PENDING_VERIFY", "只有待核实的认领可处理"); return claims.update(no, { state: b.result, reason: b.reason, payMerchantNo: b.payMerchantNo ?? null }, b.expectedVersion); }),
       command: (_no, rn) => run(() => { throw new MockPayError("NOT_FOUND", `命令 ${rn} 没有回执`); }),
       file: () => Promise.reject(new MockPayError("NOT_FOUND", "mock 没有证明文件")),

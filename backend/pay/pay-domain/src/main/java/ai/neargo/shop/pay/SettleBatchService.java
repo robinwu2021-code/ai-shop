@@ -144,6 +144,16 @@ public interface SettleBatchService {
     BatchVO hold(String batchNo, String operator, String reason);
 
     /**
+     * 批次当前状态与修订号（审批送审、生效时比对；方案-第一批审批工作流 T7）。
+     * 修订号取 {@code updated_at}（毫秒）：批次每次写入都会刷新它（{@code version} 在部分更新里不递增，不可靠）。
+     */
+    default java.util.Optional<BatchRevision> revision(String batchNo) {
+        return java.util.Optional.empty();
+    }
+
+    record BatchRevision(BatchVO batch, long revision) {}
+
+    /**
      * @param reconScope    SELF_ONLY = 仅我方自查。<b>界面要如实标注</b>，
      *                      不能显示成「已对账」—— 没有 B 侧时那是一句自证的话
      * @param blockedReason 直接展示给商家的原话

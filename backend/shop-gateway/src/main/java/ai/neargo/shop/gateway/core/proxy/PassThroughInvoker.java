@@ -43,7 +43,9 @@ public class PassThroughInvoker extends AbstractServiceInvoker {
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
     static final List<String> REQUEST_HEADERS = List.of("Authorization", "Content-Type", "Accept", "Accept-Language", "X-Request-Id");
     static final List<String> RESPONSE_HEADERS = List.of("Content-Type", "Content-Disposition", "Cache-Control", "Pragma",
-            "X-Content-Type-Options", "Content-Security-Policy", "X-Frame-Options", "X-Request-Id");
+            "X-Content-Type-Options", "Content-Security-Policy", "X-Frame-Options", "X-Request-Id",
+            // OpsKit（TDD-OpsKit审批对接 §1.2）：追踪号、幂等重放标记、定义版本 —— 页面报错要附 traceId
+            "traceId", "Idempotent-Replayed", "ETag", "X-Definition-Version");
 
     private final ServiceLocator locator;
     private final HttpClient client;
@@ -146,7 +148,12 @@ public class PassThroughInvoker extends AbstractServiceInvoker {
         log.warn("透传失败 {} {} → {} · {}", request.getMethod(), resource.pattern(), resource.location(), error.getMessage());
         boolean timeout = error.httpStatus() == HttpServletResponse.SC_GATEWAY_TIMEOUT;
         writeError(response, error.httpStatus(), timeout ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
-                timeout ? "支付服务响应超时，请稍后重试" : "支付服务暂不可用，请稍后重试");
+                timeout ? serviceLabel(resource) + "响应超时，请稍后重试" : serviceLabel(resource) + "暂不可用，请稍后重试");
+    }
+
+    /** 报错时的服务名：透传不只支付了（审批 OpsKit 也走这里）。 */
+    private static String serviceLabel(ApiResource resource) {
+        return ai.neargo.shop.svc.ServiceName.OPSKIT.equals(resource.location()) ? "审批服务" : "支付服务";
     }
 
     /** 下游地址：对外前缀换成目标前缀，后面的路径与查询串原样（保持原始编码）。 */

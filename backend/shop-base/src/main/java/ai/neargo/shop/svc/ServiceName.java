@@ -30,6 +30,9 @@ public final class ServiceName {
     /** 库存（进销存）独立服务；同进程过渡期不存在这个进程。地址与凭证仍读 {@code shop.inventory.service.*}（TDD-网关层与统一权限 §2.22） */
     public static final String INVENTORY = "INVENTORY";
 
+    /** 审批与工单服务 OpsKit（独立仓库、独立部署；TDD-OpsKit审批对接）。运营端审批页面经网关透传到它，Nacos 服务名 {@code opskit} */
+    public static final String OPSKIT = "OPSKIT";
+
     private ServiceName() {
     }
 }

@@ -1,5 +1,9 @@
 package ai.neargo.shop.portal.ops.pay;
 
+import ai.neargo.shop.pay.SettleBatchService;
+import ai.neargo.shop.paybridge.approval.SettleApprovalSubmitter;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.pay.PayoutService;
 import ai.neargo.shop.pay.SettleService;
@@ -39,6 +43,13 @@ public class OpsSettleController {
     private final ai.neargo.shop.pay.SettleBatchService batchService;
     private final PayoutService payoutService;
     private final AuditLogPort auditLogPort;
+    /** 结算放行 / 放款送审（方案-第一批审批工作流 T7）；未启用审批时为空或不生效。 */
+    private SettleApprovalSubmitter approvals;
+
+    @Autowired(required = false)
+    public void setApprovals(SettleApprovalSubmitter value) {
+        approvals = value;
+    }
 
     public OpsSettleController(SettleService settleService,
                                ai.neargo.shop.pay.SettleBatchService batchService,
@@ -76,8 +87,13 @@ public class OpsSettleController {
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
     public ai.neargo.shop.pay.SettleBatchService.BatchVO approveBatch(
             @PathVariable String batchNo, @RequestBody DecideReq req) {
-        return batchService.approve(batchNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo(),
-                req == null ? null : req.remark());
+        String operator = ai.neargo.shop.auth.SecurityUtils.currentUserNo();
+        if (approvals != null && approvals.releaseEnabled()) {
+            // 启用审批：放行改为送审，审批通过才放行
+            approvals.releaseRequested(batchNo, operator);
+            return batchService.revision(batchNo).map(SettleBatchService.BatchRevision::batch).orElse(null);
+        }
+        return batchService.approve(batchNo, operator, req == null ? null : req.remark());
     }
 
     /**
@@ -88,6 +104,11 @@ public class OpsSettleController {
     @PreAuthorize("@perm.can('" + Perms.FINANCE_PAYOUT_EXECUTE + "')")
     public java.util.List<PayoutService.PayoutVO> releaseBatch(@PathVariable String batchNo) {
         String operator = ai.neargo.shop.auth.SecurityUtils.currentUserNo();
+        if (approvals != null && approvals.payoutEnabled()) {
+            // 启用审批：放款改为送审，审批通过才生成放款记录
+            approvals.payoutRequested(batchNo, operator);
+            return java.util.List.of();
+        }
         var payouts = payoutService.releaseBatch(batchNo, operator);
         auditLogPort.record("SETTLE_BATCH_RELEASE", batchNo,
                 "放款：生成 %d 笔 · 合计 %d 分".formatted(payouts.size(),
