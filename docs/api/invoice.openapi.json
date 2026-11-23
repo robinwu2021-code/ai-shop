@@ -508,7 +508,7 @@
                 "properties": {
                   "sourceType": {
                     "type": "string",
-                    "description": "来源类型，SUB_ORDER"
+                    "description": "来源类型：SUB_ORDER（核心子单，零售/餐饮/美业共用）/ PAY_ORDER（门店收款支付单号：代客收款码、静态码、POS 终端）/ OFFLINE_RECORD（App 外收款记录号）；见 TDD-发票模块 §24"
                   },
                   "sourceNo": {
                     "type": "string",
@@ -1428,7 +1428,7 @@
         "properties": {
           "sourceType": {
             "type": "string",
-            "description": "来源类型，首期 SUB_ORDER（零售/餐饮/美业共用）"
+            "description": "来源类型：SUB_ORDER（核心子单，零售/餐饮/美业共用）/ PAY_ORDER（门店收款支付单号：代客收款码、静态码、POS 终端）/ OFFLINE_RECORD（App 外收款记录号）；见 TDD-发票模块 §24"
           },
           "sourceNo": {
             "type": "string",
