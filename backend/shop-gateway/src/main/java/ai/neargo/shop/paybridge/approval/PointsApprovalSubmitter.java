@@ -29,6 +29,16 @@ public class PointsApprovalSubmitter {
     }
 
     /** 资金池申请提交后调用；未启用审批时什么都不做。 */
+    /** 资金池申请已切到审批：运营端原「审核」不能再直接决定。 */
+    public boolean poolEnabled() {
+        return support.enabled(PointsPoolRequestApprovalSubject.SUBJECT_TYPE);
+    }
+
+    /** 用户调账已切到审批：运营端原「审核」不能再直接决定。 */
+    public boolean adjustmentEnabled() {
+        return support.enabled(PointsAdjustmentApprovalSubject.SUBJECT_TYPE);
+    }
+
     public void poolRequestSubmitted(String requestNo, String actor) {
         if (!support.enabled(PointsPoolRequestApprovalSubject.SUBJECT_TYPE)) return;
         treasury.request(requestNo).filter(r -> "SUBMITTED".equals(r.state())).ifPresent(r ->

@@ -2,6 +2,8 @@ package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.pay.points.admin.PointsOperatorJournal.OperatorResult;
 import ai.neargo.shop.pay.points.admin.PointsTreasuryService.Execution;
 import ai.neargo.shop.pay.points.admin.PointsTreasuryService.GeneratePeriods;
@@ -56,6 +58,8 @@ public class OpsPointsTreasuryController {
     @PostMapping("/ops/points/request-review")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_PAYOUT_EXECUTE + "')")
     public OperatorResult review(@Valid @RequestBody Review request) {
+        // 接入审批后在这里直接审会绕过审批中心（T8）
+        if (approvals != null && approvals.poolEnabled()) throw BizException.of(ErrorCode.APPROVAL_IN_OPSKIT);
         return service.review(request, SecurityUtils.currentUserNo());
     }
 
