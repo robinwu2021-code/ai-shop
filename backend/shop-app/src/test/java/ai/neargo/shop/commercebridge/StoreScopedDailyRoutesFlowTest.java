@@ -554,4 +554,47 @@ class StoreScopedDailyRoutesFlowTest {
         JsonNode r = call(o[0], o[1], "/biz/stores/" + o[1] + "/not-registered");
         assertEquals(70006, r.path("code").asInt(), r.toString());
     }
+
+    @Test
+    @DisplayName("★★ 新模型门店：建的券在券列表里看得到（2026-11-24 v2：POST /biz/coupons 成功，GET /biz/coupons 却是 []）")
+    void couponCreatedOnNewModelStoreIsListed() throws Exception {
+        String[] o = newModelOwner("15965020141");
+        long now = System.currentTimeMillis();
+        String body = "{\"title\":\"QA-coupon\",\"benefitMode\":\"CASH\",\"benefitValue\":1000,"
+                + "\"minAmountMinor\":0,\"scopeType\":\"STORE\",\"scopeRefs\":[\"" + o[1] + "\"],"
+                + "\"validityMode\":\"ABSOLUTE\",\"startAt\":" + now + ",\"endAt\":" + (now + 86_400_000L * 30)
+                + ",\"issueMode\":\"TARGETED\",\"redeemMode\":\"ORDER\",\"timesTotal\":1,\"perUserLimit\":1}";
+        JsonNode created = json.readTree(mvc.perform(post("/biz/coupons").header("Authorization", "Bearer " + o[0])
+                        .header("X-Store-No", o[1]).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(0, created.path("code").asInt(), created.toString());
+        String couponNo = created.path("data").path("couponNo").asText();
+        assertFalse(couponNo.isBlank(), created.toString());
+
+        JsonNode list = call(o[0], o[1], "/biz/coupons?includeEnded=true");
+        assertEquals(0, list.path("code").asInt(), list.toString());
+        assertTrue(list.path("data").toString().contains(couponNo), "列表里没有刚建的券 " + couponNo + " → " + list);
+        JsonNode detail = call(o[0], o[1], "/biz/coupons/" + couponNo);
+        assertEquals(couponNo, detail.path("data").path("couponNo").asText(), detail.toString());
+    }
+
+    @Test
+    @DisplayName("★★ 新模型门店：柜台录入、还没消费的会员在本店会员名单里看得到（2026-11-24 v2：建成功、名单为空）")
+    void memberEnrolledAtCounterIsListedForStore() throws Exception {
+        String[] o = newModelOwner("15965020142");
+        String body = "{\"phone\":\"13912000142\",\"remark\":\"QA\",\"storeNo\":\"" + o[1] + "\",\"tagNos\":[]}";
+        JsonNode created = json.readTree(mvc.perform(post("/biz/members").header("Authorization", "Bearer " + o[0])
+                        .header("X-Store-No", o[1]).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(0, created.path("code").asInt(), created.toString());
+        String memberNo = created.path("data").path("memberNo").asText();
+        assertFalse(memberNo.isBlank(), created.toString());
+        for (String q : new String[] {"", "&status=LEAD", "&phone=13912000142"}) {
+            JsonNode list = call(o[0], o[1], "/biz/members?storeNo=" + o[1] + "&page=1&size=50" + q);
+            assertTrue(list.path("data").toString().contains(memberNo), q + " 名单里没有刚录入的会员 " + memberNo + " → " + list);
+        }
+        // 门店行专属条件（门店等级）对没下过单的人不成立：不应被补进来
+        JsonNode byLevel = call(o[0], o[1], "/biz/members?storeNo=" + o[1] + "&level=ACTIVE&page=1&size=50");
+        assertFalse(byLevel.path("data").toString().contains(memberNo), byLevel.toString());
+    }
 }

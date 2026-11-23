@@ -115,17 +115,19 @@ public class PmtCouponServiceImpl implements CouponService {
 
     @Override
     public List<CouponVO> list(String entityNo, boolean includeEnded) {
-        return documentNumbers.load(DocumentType.MARKETING_COUPON_TEMPLATE, "PMT", "pmt_coupon", couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
+        // 与活动列表（ActivityServiceImpl#list）同口径：主体已由调用方按登录上下文给定并显式钉在 entity_no 上，
+        // 绕开数据域拦截器。不绕的话新模型门店的会话没有 MERCHANT 维度的值，列表恒为空（2026-11-24 v2）
+        return DataScopeContext.executeWithoutScope(() -> documentNumbers.load(DocumentType.MARKETING_COUPON_TEMPLATE, "PMT", "pmt_coupon", couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
                         .eq(PmtCoupon::getEntityNo, entityNo)
                         .ne(!includeEnded, PmtCoupon::getStatus, PmtCoupon.ENDED)
                         .isNull(PmtCoupon::getArchivedAt)
                         .orderByDesc(PmtCoupon::getId)), PmtCoupon::getCouponNo, PmtCoupon::setDocumentNo)
-                .stream().map(c -> vo(c, usage(entityNo))).toList();
+                .stream().map(c -> vo(c, usage(entityNo))).toList());
     }
 
     @Override
     public CouponVO detail(String entityNo, String couponNo) {
-        return vo(require(entityNo, couponNo), usage(entityNo));
+        return DataScopeContext.executeWithoutScope(() -> vo(require(entityNo, couponNo), usage(entityNo)));
     }
 
     /** 券号 → {已核销次数, 已支出}。一条分组查询管一整页，不按券逐个查 */
@@ -373,7 +375,8 @@ public class PmtCouponServiceImpl implements CouponService {
 
     @Override
     public CouponVO save(String entityNo, CouponSaveCmd cmd, String operatorNo) {
-        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_COUPON_TEMPLATE, 1), () -> saveNumbered(entityNo, cmd, operatorNo));
+        // B 端入口一律由调用方给定主体并在每条查询里显式钉住 entity_no，绕开数据域（同 list 的注释）
+        return DataScopeContext.executeWithoutScope(() -> documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_COUPON_TEMPLATE, 1), () -> saveNumbered(entityNo, cmd, operatorNo)));
     }
 
     private CouponVO saveNumbered(String entityNo, CouponSaveCmd cmd, String operatorNo) {
@@ -556,6 +559,10 @@ public class PmtCouponServiceImpl implements CouponService {
     @Override
     @Transactional
     public CouponVO setStatus(String entityNo, String couponNo, String status) {
+        return DataScopeContext.executeWithoutScope(() -> setStatusScoped(entityNo, couponNo, status));
+    }
+
+    private CouponVO setStatusScoped(String entityNo, String couponNo, String status) {
         if (!PmtCoupon.ACTIVE.equals(status) && !PmtCoupon.PAUSED.equals(status)
                 && !PmtCoupon.ENDED.equals(status)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -580,11 +587,16 @@ public class PmtCouponServiceImpl implements CouponService {
     /** Delegate before opening the transaction so the candidate audience can be reserved first. */
     @Override
     public CouponIssueVO issue(String entityNo, String couponNo, String segmentNo, String operatorNo) {
-        return issue(entityNo, couponNo, segmentNo, null, operatorNo);
+        return DataScopeContext.executeWithoutScope(() -> issue(entityNo, couponNo, segmentNo, null, operatorNo));
     }
 
     @Override
     public CouponIssueVO issue(String entityNo, String couponNo, String segmentNo,
+                               List<MemberQueryPort.AudienceItem> audiences, String operatorNo) {
+        return DataScopeContext.executeWithoutScope(() -> issueScoped(entityNo, couponNo, segmentNo, audiences, operatorNo));
+    }
+
+    private CouponIssueVO issueScoped(String entityNo, String couponNo, String segmentNo,
                                List<MemberQueryPort.AudienceItem> audiences, String operatorNo) {
         // Authorize the original template before resolving its remote audience.
         // Release the preflight source lock before remote audience resolution and number reservation.
@@ -741,6 +753,10 @@ public class PmtCouponServiceImpl implements CouponService {
 
     @Override
     public List<CouponIssueVO> issues(String entityNo, String couponNo) {
+        return DataScopeContext.executeWithoutScope(() -> issuesScoped(entityNo, couponNo));
+    }
+
+    private List<CouponIssueVO> issuesScoped(String entityNo, String couponNo) {
         List<CouponIssueVO> batches = documentNumbers.load(DocumentType.MARKETING_COUPON_ISSUE, "PMT", "pmt_coupon_issue", issueMapper.selectList(Wrappers.<PmtCouponIssue>lambdaQuery()
                         .eq(PmtCouponIssue::getEntityNo, entityNo)
                         .eq(couponNo != null && !couponNo.isBlank(),
