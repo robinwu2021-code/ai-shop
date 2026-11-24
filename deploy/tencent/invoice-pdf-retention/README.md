@@ -1,6 +1,6 @@
 # 台湾 v2 发票 PDF 的服务器保留
 
-服务器主机 `192.168.3.80` 的 `/data0/app/ai-shop-v2/print-private` 持久化挂到容器的 `/data/print-private`。
+脚本从应用容器读取 `SHOP_PRINT_ARTIFACTS_ROOT`，也可从 `SHOP_STORAGE_ROOT` 派生 `print-private/`，旧部署缺省为 `/data/print-private`。
 打印中心导出时登记 `expires_at`，默认保留 7 天。
 
 用 `javac --release 17 InvoicePdfRetention.java` 编译后，将类文件和 `run.sh` 放到宿主机

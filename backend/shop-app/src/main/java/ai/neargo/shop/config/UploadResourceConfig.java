@@ -2,6 +2,8 @@ package ai.neargo.shop.config;
 import org.springframework.core.io.FileSystemResource;
 
 
+import ai.neargo.shop.channel.media.LocalDiskMediaStore;
+import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.media.MediaKeys;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -9,11 +11,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.util.UriUtils;
 
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 把上传目录里<b>公开的那一部分</b>映射成可访问的 URL。
@@ -41,11 +46,13 @@ public class UploadResourceConfig implements WebMvcConfigurer {
 
     private final String dir;
     private final String publicPrefix;
+    private final LocalDiskMediaStore store;
 
     public UploadResourceConfig(@Value("${shop.upload.dir:${shop.storage.root:./data}/uploads}") String dir,
-                                @Value("${shop.upload.public-prefix:/uploads}") String publicPrefix) {
+                                @Value("${shop.upload.public-prefix:/uploads}") String publicPrefix, LocalDiskMediaStore store) {
         this.dir = dir;
         this.publicPrefix = publicPrefix;
+        this.store = store;
     }
 
     @Override
@@ -58,7 +65,7 @@ public class UploadResourceConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new PublicImagesOnlyInterceptor(publicPrefix))
+        registry.addInterceptor(new PublicImagesOnlyInterceptor(store))
                 .addPathPatterns(publicPrefix + "/**");
     }
 
@@ -72,31 +79,31 @@ public class UploadResourceConfig implements WebMvcConfigurer {
      */
     static class PublicImagesOnlyInterceptor implements HandlerInterceptor {
 
-        private final String prefix;
+        private final LocalDiskMediaStore store;
 
-        PublicImagesOnlyInterceptor(String prefix) {
-            this.prefix = prefix;
+        PublicImagesOnlyInterceptor(LocalDiskMediaStore store) {
+            this.store = store;
         }
 
         @Override
         public boolean preHandle(HttpServletRequest req, HttpServletResponse resp, Object handler) {
-            String rest = req.getRequestURI();
-            int at = rest.indexOf(prefix + "/");
-            rest = at < 0 ? rest : rest.substring(at + prefix.length() + 1);
-
-            /*
-             * 两种形态都要认：
-             *   新：{主体}/{门店}/{用途}/{年月}/{名}  —— 看第 3 段
-             *   旧：{商家}/{名}                      —— 存量，当时全是商品图，放行
-             * 存量不搬家（TDD §L3-10），所以这两种会长期共存。
-             */
-            boolean ok = MediaKeys.isPublicKey(rest);
-            if (!ok) {
-                // 404 而不是 403：403 等于承认「这个路径下有东西」，对枚举者是一条信息
-                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                return false;
+            // Use the same path selected for the resource handler.
+            var mapped = (String) req.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
+            if (mapped == null) return notFound(resp);
+            try {
+                var decoded = UriUtils.decode(mapped, StandardCharsets.UTF_8);
+                var key = decoded.startsWith("/") ? decoded.substring(1) : decoded;
+                if (!MediaKeys.isPublicKey(key)) return notFound(resp);
+                store.objectPath(key);
+                return true;
+            } catch (IllegalArgumentException | BizException e) {
+                return notFound(resp);
             }
-            return true;
+        }
+
+        private static boolean notFound(HttpServletResponse response) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return false;
         }
     }
 

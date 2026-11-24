@@ -1,5 +1,6 @@
 package ai.neargo.shop.print.channel.port.storage;
 
+import ai.neargo.shop.common.storage.LocalObjectPaths;
 import ai.neargo.shop.spi.printing.*;
 
 import ai.neargo.shop.print.api.*;
@@ -40,12 +41,12 @@ public final class PrivateLocalArtifactStore
     private Path path(String key) {
         if (key == null
                 || key.length() > 400
-                || !key.matches("[A-Za-z0-9_/-]+[.]pdf")
-                || key.contains("..")
-                || key.startsWith("/")) throw new PrintFailure("print.invalidObjectKey");
-        Path p = root.resolve(key).normalize();
-        if (!p.startsWith(root)) throw new PrintFailure("print.invalidObjectKey");
-        return p;
+                || !key.matches("[A-Za-z0-9_/-]+[.]pdf")) throw new PrintFailure("print.invalidObjectKey");
+        try {
+            return LocalObjectPaths.resolve(root, key);
+        } catch (IllegalArgumentException e) {
+            throw new PrintFailure("print.invalidObjectKey");
+        }
     }
 
     public void put(PrivateArtifact artifact) {

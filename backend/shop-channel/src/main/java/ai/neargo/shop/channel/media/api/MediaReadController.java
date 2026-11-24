@@ -1,6 +1,7 @@
 package ai.neargo.shop.channel.media.api;
 
 import ai.neargo.shop.channel.media.LocalDiskMediaStore;
+import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.media.MediaKeys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -18,6 +19,7 @@ import org.springframework.web.servlet.HandlerMapping;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Duration;
 
@@ -42,14 +44,11 @@ import java.time.Duration;
 public class MediaReadController {
 
     private final LocalDiskMediaStore store;
-    private final Path root;
     private final String privatePrefix;
 
     public MediaReadController(LocalDiskMediaStore store,
-                               @Value("${shop.upload.dir:${shop.storage.root:./data}/uploads}") String dir,
                                @Value("${shop.upload.private-prefix:/media}") String privatePrefix) {
         this.store = store;
-        this.root = Path.of(dir).toAbsolutePath().normalize();
         this.privatePrefix = privatePrefix;
     }
 
@@ -78,10 +77,13 @@ public class MediaReadController {
             return ResponseEntity.notFound().build();
         }
 
-        Path file = root.resolve(key).normalize();
-        // 落点必须在根目录内。key 来自签名内容，改一个字签名就不对了，
-        // 但这行的成本是零，而漏了它就是一个任意文件读
-        if (!file.startsWith(root) || !Files.isRegularFile(file)) {
+        Path file;
+        try {
+            file = store.objectPath(key);
+        } catch (BizException e) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) {
             return ResponseEntity.notFound().build();
         }
 

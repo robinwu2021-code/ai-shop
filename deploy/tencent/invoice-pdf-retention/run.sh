@@ -14,5 +14,6 @@ exec 9>"$base/runtime/invoice-pdf-retention.lock"
     driver=$(unzip -l /app/shop-app.jar | awk '"'"'$NF ~ /^BOOT-INF\/lib\/mysql-connector-j-.*[.]jar$/ {print $NF}'"'"')
     test -n "$driver"
     unzip -p /app/shop-app.jar "$driver" > "$scratch/mysql.jar"
-    java -cp "$scratch:$scratch/mysql.jar" InvoicePdfRetention "$1" /data/print-private
+    root="${SHOP_PRINT_ARTIFACTS_ROOT:-${SHOP_STORAGE_ROOT:-/data}/print-private}"
+    java -cp "$scratch:$scratch/mysql.jar" InvoicePdfRetention "$1" "$root"
 ' invoice-pdf-retention "$mode" < "$base/runtime/invoice-pdf-retention/InvoicePdfRetention.class"
