@@ -511,3 +511,42 @@ Content-Type: application/json
 - V19 保存鲸跃等通道的每次上传尝试和主动查核。任务号、账户标识、账户版本、报文哈希、受理结果与时间可查。长时间未返回的尝试标记为 `UNKNOWN`，迟到旧回执受认领序号约束。
 - `GET /biz/invoices/{invoiceNo}/timeline` 用既有发票读取权限，按发票号聚合申请版本、通道尝试、正式打印、PDF 摘要和邮件交付。打印及 PDF 分别继承打印读取与导出权限。Android 在 I03 使用现有组件实现按需展开、刷新和分页。
 - 邮件 API 在 `shop.invoice.delivery.enabled` 启用后注册。台湾 v2 单独启用 `shop.invoice.delivery.local-worker` 派送该任务。公开入口只代理 `/shop-api-v2/public/invoice-deliveries/` 前缀，既有签名 PDF 路由继续使用。回滚恢复旧 JAR 与环境，保留已成功执行的追加迁移。
+
+## §10 独立生成邮件用 PDF 与本地路径规划
+
+数据库、混合存储与发票的实施顺序及验收条件见[开发总计划](TDD-数据库优化、混合存储与发票打印开发计划.md)。
+
+本节为下一批实施方案。企业票从开立时冻结的证明联资料生成 PDF，手机条码票从同一张发票冻结的交易明细资料生成 PDF。两个入口复用打印中心渲染器和导出任务，纳入[服务端本地业务文件统一管理](TDD-服务端本地业务文件统一管理.md)。实体出纸继续由正式列印路由和设备工作处理。PDF 就绪、设备出纸和邮件状态各自记录。
+
+### §10.1 PDF 来源与查询
+
+| 类型 | 权威来源 | 记录要求 |
+| --- | --- | --- |
+| 企业证明联 | 发票开立时冻结的 `proof_snapshot` 与哈希，关联实际采用的申请版本 | 独立导出登记为企业证明联，保存模板版本、纸宽、导出号、哈希和有效期限。 |
+| 手机条码交易明细 | 发票开立时冻结的 `detail_snapshot` 与哈希 | 独立导出登记为交易明细。检查发票的载具类型，按现有脱敏规则显示条码。 |
+| 实体正本、补印 | 正式打印工作的冻结版面 | 沿用工作及父工作关联。设备状态由打印回执或人工核实确定。 |
+
+独立导出以发票号、文件类型及来源修订作为业务幂等依据。生成成功后，邮件服务按租户、主体、门店及发票号核对文件类型和有效期。保留已生成文件的查询和到期记录。邮件重发引用原导出号并重新核对其有效期。
+
+### §10.2 环境目录和留存
+
+物理路径由私有存储根目录和数据库 `prn_export_task.object_key` 组成。两种新文件沿用现有对象键格式 `<tenantNo>/<entityNo>/<storeNo>/print/<yyyyMM>/<exportNo>.pdf`。发票号用于查到导出记录，文件和日志目录中使用导出编号。
+
+| 环境 | 路径 | 用途 |
+| --- | --- | --- |
+| 本机后端联调 | `/Users/robin/work/ume/invoice-qa/storage/print-private/` | 将 `shop.storage.root` 配置为本机统一业务根，打印从根派生。实际 PDF 写入其下的对象键路径。按七天留存进行清理验证。 |
+| 本机验收材料 | `/Users/robin/work/ume/invoice-qa/evidence/<run-id>/` | 保存经脱敏的验收记录、截图、票号、导出号、哈希、打印工作和邮件回执编号。确需留存的 PDF 才经受控下载另存，并与同次验收材料一并清理。 |
+| Android 模拟器 | `/data/user/0/ai.neargo.pos.handheld/cache/` | 复用现有 PDF 查看器。渲染时写入应用私有临时文件，计划改为每次独立文件并在渲染结束后清理。使用应用 ID 后缀的调试包以实际包名为准。 |
+| 台湾 v2 容器 | 当前 `/data/print-private/`，迁移后 `/data/storage/print-private/` | 通过挂载及统一根配置切换，按导出号查找对象键。 |
+| 台湾 v2 宿主机 | 当前 `/data0/app/ai-shop-v2/print-private/`，迁移后 `/data0/app/ai-shop-v2/storage/print-private/` | 容器挂载的持久目录。当前清理日志位于 `/data0/app/ai-shop-v2/runtime/invoice-pdf-retention/retention.log`。 |
+
+本地联调与验收目录限制为当前用户可访问。下载继续通过现有授权入口，客户端使用导出编号及短期授权。正式上线时同步扩展台湾 v2 的每日清理任务，按新增文件类型及发票归属识别到期文件，维持七天留存和台湾时间 03:30 清理。验收核对数据库对象键、实际文件和清理后保留的摘要。
+
+### §10.3 代码落点
+
+| 工作项 | 代码落点 |
+| --- | --- |
+| 获取冻结发票资料 | 后端 `invoice/invoice-domain` 的 `InvoicePrintSourceFactsPortImpl.java`。沿用证明联和交易明细的独立事实。 |
+| 生成、查询和留档 | 后端 `shop-core` 的 `DefaultPrintExportFacade.java`、`PrintExportWorker.java`、`PrintQueryServiceImpl.java`。物理路径解析沿用 `print-channel` 的 `PrivateLocalArtifactStore.java`。 |
+| 邮件与清理 | 后端 `invoice/invoice-domain` 的 `InvoiceDeliveryServiceImpl.java` 扩展制品校验；部署仓库 `deploy/tencent/invoice-pdf-retention/InvoicePdfRetention.java` 扩展过期文件识别。 |
+| Android 展示 | 原生 Android `handheld-pos/android/feature/invoice` 的 `InvoiceScreens.kt`、`InvoiceMailHistoryCard.kt`、`InvoiceMailApi.kt`。`app` 模块的 `MockPrintoutHost.kt` 负责预览临时文件。 |

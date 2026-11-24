@@ -3072,6 +3072,8 @@ CREATE TABLE IF NOT EXISTS sys_media_asset
     created_at         DATETIME     NOT NULL,
     updated_at         DATETIME     NOT NULL,
     purged_at          DATETIME              DEFAULT NULL,
+    storage_provider_code VARCHAR(16) NULL,
+    storage_location_ref VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_asset_key UNIQUE (asset_key)
 );
@@ -11002,6 +11004,8 @@ CREATE TABLE IF NOT EXISTS prn_export_task
     revision BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME(3) NOT NULL,
     updated_at DATETIME(3) NOT NULL,
+    storage_provider_code VARCHAR(16) NULL,
+    storage_location_ref VARCHAR(64) NULL,
     CONSTRAINT uk_prn_export_no UNIQUE (tenant_no, export_no),
     CONSTRAINT uk_prn_export_operation UNIQUE (tenant_no, operation_no),
     CONSTRAINT uk_prn_export_key UNIQUE (tenant_no, export_key)
