@@ -92,7 +92,9 @@ public final class StoreFeatureMatrix {
                 .collect(Collectors.toMap(Function.identity(), r -> BizPerms.of(Set.of(r))));
         var features = release.features().stream()
                 .filter(f -> f.lifecycle() == StoreFeature.Lifecycle.ACTIVE && f.appliesTo(catalog.businessTypeCode()))
-                .filter(f -> minTier(plans, f).isPresent())
+                .filter(f -> minTier(plans, f).isPresent()
+                        || release.proposedPlans(catalog.businessTypeCode()).stream()
+                                .anyMatch(plan -> f.entitlement().matches(Set.copyOf(plan.entitlements()))))
                 .map(f -> {
                     Map<String, Boolean> inTier = new LinkedHashMap<>();
                     plans.forEach(p -> inTier.put(p.tier().name(), f.entitlement().matches(Set.copyOf(p.entitlementCodes()))));

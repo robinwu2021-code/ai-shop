@@ -4,6 +4,7 @@ import ai.neargo.commerce.api.access.EndAccessFacade;
 import ai.neargo.commerce.starter.security.CommerceEndAccessConfiguration;
 import ai.neargo.shop.auth.*;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.*;
 
@@ -31,12 +32,14 @@ class CommerceAccessConfiguration {
             BizIdentityResolver resolver,
             EndAccessFacade access,
             AccountSessionVerifier sessions,
-            org.springframework.beans.factory.ObjectProvider<java.time.Clock> clocks) {
+            ObjectProvider<java.time.Clock> clocks,
+            ObjectProvider<PosServiceAdmission> serviceAdmission) {
         return new ShopCommerceEndContextAdapter(
                 stores,
                 resolver,
                 access,
                 sessions,
-                clocks.getIfAvailable(java.time.Clock::systemUTC));
+                clocks.getIfAvailable(java.time.Clock::systemUTC),
+                serviceAdmission::getIfAvailable);
     }
 }

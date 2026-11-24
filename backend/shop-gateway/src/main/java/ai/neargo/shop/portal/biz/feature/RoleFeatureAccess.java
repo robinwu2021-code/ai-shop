@@ -1,6 +1,6 @@
 package ai.neargo.shop.portal.biz.feature;
 
-import ai.neargo.commerce.api.common.CommerceModel;
+import ai.neargo.commerce.api.access.AccessDenied;
 import ai.neargo.commerce.api.common.StoreRef;
 import ai.neargo.commerce.api.foundation.FoundationQueryFacade;
 import ai.neargo.commerce.api.foundation.FoundationQueryFacade.StoreContext;
@@ -15,6 +15,7 @@ import ai.neargo.shop.merchant.service.MerchantRoleService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -43,12 +44,12 @@ public class RoleFeatureAccess {
 
     /** Returns the exact previous role version used for validation, also for legacy API clients on STORE_V1. */
     public Long validate(String roleCode, List<String> requested, String releaseNo, Long expectedVersion) {
-        var release = releases.current(ShopCommerceActorAdapter.current().tenantNo());
+        var actor = ShopCommerceActorAdapter.current();
+        var release = releases.current(actor.tenantNo());
         if (releaseNo != null && !releaseNo.equals(release.releaseNo())) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         StoreContext store = selectedStore();
-        if (store.commerceModel() != CommerceModel.STORE_V1 && releaseNo == null) return expectedVersion;
         if (requested == null || requested.stream().anyMatch(java.util.Objects::isNull)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -57,10 +58,22 @@ public class RoleFeatureAccess {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         Set<String> existing = before == null ? Set.of() : Set.copyOf(before.perms());
-        Set<String> grantable = RoleFeatureCatalog.grantable(release, store, this::registered);
-        if (requested.stream().anyMatch(c -> !existing.contains(c) && !grantable.contains(c))) {
-            throw BizException.of(ErrorCode.ROLE_PERM_NOT_ASSIGNABLE);
+        var additions = new HashSet<>(requested);
+        additions.removeAll(existing);
+        additions.removeAll(RoleFeatureCatalog.grantable(release, store, this::registered));
+        for (String candidate : BizContext.current().storeNos()) {
+            if (additions.isEmpty()) break;
+            if (candidate.equals(store.storeNo())) continue;
+            try {
+                var alternate = queries.store(actor, new StoreRef(actor.tenantNo(), candidate));
+                if (alternate.entityNo().equals(store.entityNo())) {
+                    additions.removeAll(RoleFeatureCatalog.grantable(release, alternate, this::registered));
+                }
+            } catch (AccessDenied ignored) {
+                // An inaccessible store cannot contribute delegable permissions.
+            }
         }
+        if (!additions.isEmpty()) throw BizException.of(ErrorCode.ROLE_PERM_NOT_ASSIGNABLE);
         return before == null ? null : before.version();
     }
 

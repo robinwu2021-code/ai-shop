@@ -10,6 +10,7 @@ import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.time.Clock;
 import org.springframework.web.context.request.*;
+import java.util.function.Supplier;
 
 public final class ShopCommerceEndContextAdapter
         implements BizContextFilter.Admission, StorePaySettingService.WriteAdmission {
@@ -23,6 +24,7 @@ public final class ShopCommerceEndContextAdapter
     private final AccountSessionVerifier sessions;
     private final Clock clock;
     private final CommerceAccessInterceptor interceptor;
+    private final Supplier<PosServiceAdmission> serviceAdmission;
     private final CommerceRoutePolicy policy = new CommerceRoutePolicy(ShopStoreMemberRoutes.ALL);
 
     ShopCommerceEndContextAdapter(
@@ -31,6 +33,13 @@ public final class ShopCommerceEndContextAdapter
             EndAccessFacade access,
             AccountSessionVerifier sessions,
             Clock clock) {
+        this(stores, resolver, access, sessions, clock, () -> null);
+    }
+
+    ShopCommerceEndContextAdapter(
+            ShopCommerceStoreAdapter stores, BizIdentityResolver resolver, EndAccessFacade access,
+            AccountSessionVerifier sessions, Clock clock, Supplier<PosServiceAdmission> serviceAdmission) {
+        this.serviceAdmission = serviceAdmission;
         this.sessions = sessions;
         this.clock = clock;
         this.stores = stores;
@@ -152,6 +161,10 @@ public final class ShopCommerceEndContextAdapter
         }
         var strict = strictScope(user, requested, facts, route, path);
         BizContext.set(strict);
+        if (facts.model() == CommerceModel.STORE_V1) {
+            var serviceGate = serviceAdmission.get();
+            if (serviceGate != null) serviceGate.require(req.getMethod(), path, facts);
+        }
         if (route.lane() == CommerceRoutePolicy.Lane.END_PROTECTED) {
             var actor = ShopCommerceActorAdapter.current();
             var check =

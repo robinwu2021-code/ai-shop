@@ -131,6 +131,8 @@ class StoreScopedDailyRoutesFlowTest {
                 {"name":"Restricted Booking","perms":["biz:booking:view"],"catalogReleaseNo":"%s"}
                 """.formatted(directory.path("catalogReleaseNo").asText());
         assertEquals(ErrorCode.ROLE_PERM_NOT_ASSIGNABLE.code(), postCode(owner, "/biz/roles", write));
+        assertEquals(ErrorCode.ROLE_PERM_NOT_ASSIGNABLE.code(), postCode(owner, "/biz/roles",
+                "{\"name\":\"Restricted Booking\",\"perms\":[\"biz:booking:view\"]}"));
     }
 
     @Test

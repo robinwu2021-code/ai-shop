@@ -335,7 +335,7 @@ features:
     entitlement: {allOf: [END_SERVICE]}
     lifecycle: ACTIVE
     actions:
-      - {code: "use", allOf: [trade:checkout:prepare, trade:manual-service:confirm, pay:cash:receive]}
+      - {code: "use", allOf: [trade:checkout:prepare, biz:order:view, trade:manual-service:confirm, pay:cash:receive]}
   - code: SVC_CARDS
     label: 療程卡
     module: SERVICE
