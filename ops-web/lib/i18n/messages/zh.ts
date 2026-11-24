@@ -105,9 +105,9 @@ export const zh = {
     created: "创建于 {date}", expires: "到期于 {date}", submitting: "正在提交申请",
     registered: "密钥已生效。请在本机验证后使用。", inactiveRegistration: "该密钥已经失效，请在本机生成新密钥。",
     conflict: "密钥编号或申请信息已冲突。请核对原申请，或生成新密钥。",
-    registerFailed: "申请提交失败。可刷新列表核对结果，或使用原申请信息重试。",
+    registerFailed: "申请失败，请用原信息重试",
     revoke: "撤销", revokeTitle: "撤销「{label}」", revokeHint: "对应设备和脚本将立即失去此密钥的访问权限。",
-    revoked: "密钥已撤销", revokeFailed: "撤销失败。请检查网络后重试。",
+    revoked: "密钥已撤销", revokeFailed: "撤销失败，请重试",
   },
   account: {
     changePwd: "修改密码",

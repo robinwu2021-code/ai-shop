@@ -107,9 +107,9 @@ export const zhTW: Messages = {
     created: "創建於 {date}", expires: "到期於 {date}", submitting: "正在提交申請",
     registered: "金鑰已生效。請在本機驗證後使用。", inactiveRegistration: "該金鑰已經失效，請在本機生成新金鑰。",
     conflict: "金鑰編號或申請資訊已衝突。請核對原申請，或生成新金鑰。",
-    registerFailed: "申請提交失敗。可重新整理列表核對結果，或使用原申請資訊重試。",
+    registerFailed: "申請失敗，請用原資訊重試",
     revoke: "撤銷", revokeTitle: "撤銷「{label}」", revokeHint: "對應裝置和指令碼將立即失去此金鑰的訪問許可權。",
-    revoked: "金鑰已撤銷", revokeFailed: "撤銷失敗。請檢查網路後重試。",
+    revoked: "金鑰已撤銷", revokeFailed: "撤銷失敗，請重試",
   },
   account: {
     changePwd: "修改密碼",

@@ -115,9 +115,9 @@ export const en: Messages = {
     registered: "The key is active. Verify it with the local client before use.",
     inactiveRegistration: "This key is no longer active. Generate a new key on your computer.",
     conflict: "This key conflicts with an existing registration. Check the original details or generate a new key.",
-    registerFailed: "Could not register the key. Refresh the list to check the result or retry with the original details.",
+    registerFailed: "Retry with the original enrollment details",
     revoke: "Revoke", revokeTitle: "Revoke “{label}”", revokeHint: "Devices and scripts using this key will lose access immediately.",
-    revoked: "Key revoked", revokeFailed: "Could not revoke the key. Check your connection and try again.",
+    revoked: "Key revoked", revokeFailed: "Could not revoke the key",
   },
   account: {
     changePwd: "Change password",

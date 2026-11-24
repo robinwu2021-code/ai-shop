@@ -72,6 +72,10 @@ export interface EnumEntry {
 }
 
 export const ENUM_REGISTRY: EnumEntry[] = [
+  { decl: "ops-web:OpsApiKeyAccess", dom: "platform", shape: "CLASS", verdict: "OK",
+    note: "员工 API 密钥的只读或管理档位，两档均受路由、角色和数据域约束。" },
+  { decl: "ops-web:OpsApiKeyStatus", dom: "platform", shape: "STATUS", verdict: "OK", words: ["EXPIRED", "REVOKED"],
+    note: "服务端由到期与撤销时间得出的密钥状态，与员工状态独立。" },
   { decl: "ops-web:AdmissionEntryType", dom: "merchant", shape: "CLASS", verdict: "OK", note: "统一准入列表来源，区分代申请与平台自营主体。" },
   { decl: "ops-web:StoreOperationalReviewStatus", dom: "store", shape: "STATUS", verdict: "OK", note: "门店开业审核结论，与经营状态独立。" },
   { decl: "ops-web:StoreOperationalReviewSource", dom: "store", shape: "CLASS", verdict: "OK", note: "开业审核的人工或商城订单来源。" },

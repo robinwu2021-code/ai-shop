@@ -626,7 +626,6 @@ export const RULES = [
   // ── 员工与权限 ─────────────────────────────────────────────────────────
   ["GET", /^\/ops\/perm\//, "iam:role:read"],
   ["*", /^\/ops\/perm\//, "iam:role:grant"],
-  ["*", /^\/ops\/staffs\/me\/api-keys(?:\/|$)/, "（已认证）"],
   ["*", /^\/ops\/staffs\/\{staffNo\}\/api-keys(?:\/|$)/, "iam:staff:api-key-manage"],
   ["GET", /^\/ops\/staffs/, "iam:staff:read"],
   ["*", /^\/ops\/staffs/, "iam:staff:update"],

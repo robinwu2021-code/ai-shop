@@ -31506,8 +31506,8 @@
         },
         {
           "key": "apiKeys.registerFailed",
-          "zh-CN": "申请提交失败。可刷新列表核对结果，或使用原申请信息重试。",
-          "en": "Could not register the key. Refresh the list to check the result or retry with the original details.",
+          "zh-CN": "申请失败，请用原信息重试",
+          "en": "Retry with the original enrollment details",
           "ar": null
         },
         {
@@ -31530,8 +31530,8 @@
         },
         {
           "key": "apiKeys.revokeFailed",
-          "zh-CN": "撤销失败。请检查网络后重试。",
-          "en": "Could not revoke the key. Check your connection and try again.",
+          "zh-CN": "撤销失败，请重试",
+          "en": "Could not revoke the key",
           "ar": null
         },
         {
