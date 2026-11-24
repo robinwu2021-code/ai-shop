@@ -36,10 +36,18 @@ public class InvoiceProviderAccounts {
 
     /** 封存账号与密码，返回 {@code provider_secret_ref}。 */
     long seal(long profileId, String user, String password) {
+        return seal(OWNER_TYPE, profileId, user, password);
+    }
+
+    long sealChannel(long accountId, String user, String password) {
+        return seal("INVOICE_CHANNEL_PROVIDER", accountId, user, password);
+    }
+
+    private long seal(String ownerType, long ownerId, String user, String password) {
         var body = new LinkedHashMap<String, String>();
         body.put("user", user);
         body.put("password", password);
-        return vault().seal(new KeyOwner(SecretNamespace.PLATFORM, OWNER_TYPE, profileId), json.writeValueAsBytes(body))
+        return vault().seal(new KeyOwner(SecretNamespace.PLATFORM, ownerType, ownerId), json.writeValueAsBytes(body))
                 .blobId();
     }
 

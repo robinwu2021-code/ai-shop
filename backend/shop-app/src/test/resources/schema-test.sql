@@ -14415,6 +14415,7 @@ CREATE TABLE IF NOT EXISTS ivc_number_range
     invoice_type VARCHAR(4) NULL,
     blank_reported_at DATETIME NULL,
     blank_report_error VARCHAR(255) NULL,
+    channel_account_no VARCHAR(64) NULL,
     CONSTRAINT uk_ivc_number_range_no UNIQUE (tenant_no, range_no),
     CONSTRAINT uk_ivc_number_range UNIQUE (tenant_no, entity_no, regime_code, period_code, track, start_no),
     CONSTRAINT ck_ivc_number_range_bounds CHECK (start_no >= 0 AND start_no <= end_no AND end_no <= 99999999
@@ -14477,6 +14478,13 @@ CREATE TABLE IF NOT EXISTS ivc_invoice
     revised_from_invoice_no VARCHAR(32) NULL,
     revised_to_invoice_no VARCHAR(32) NULL,
     blank_reported_at DATETIME NULL,
+    channel_code VARCHAR(32) NULL,
+    channel_account_no VARCHAR(64) NULL,
+    channel_account_revision BIGINT NULL,
+    channel_route_version BIGINT NULL,
+    channel_environment VARCHAR(32) NULL,
+    application_no VARCHAR(64) NULL,
+    application_revision_no INT NULL,
     CONSTRAINT uk_ivc_invoice_active_fiscal UNIQUE (tenant_no, regime_code, active_fiscal_key),
     CONSTRAINT uk_ivc_invoice_no UNIQUE (tenant_no, invoice_no),
     CONSTRAINT uk_ivc_invoice_active_source UNIQUE (tenant_no, entity_no, active_source_key),
@@ -14567,6 +14575,7 @@ CREATE TABLE IF NOT EXISTS ivc_transmission
     report_warn_at DATETIME(3) NULL,
     report_deadline_at DATETIME(3) NULL,
     deadline_level TINYINT NOT NULL DEFAULT 0,
+    channel_account_no VARCHAR(64) NULL,
     CONSTRAINT uk_ivc_transmission_no UNIQUE (tenant_no, transmission_no),
     CONSTRAINT uk_ivc_transmission_ref UNIQUE (tenant_no, message_type, ref_no)
 );
@@ -14619,6 +14628,175 @@ CREATE TABLE IF NOT EXISTS ivc_store_item
     updated_at DATETIME(3) NOT NULL,
     CONSTRAINT uk_ivc_store_item_no UNIQUE (tenant_no, store_item_no),
     CONSTRAINT ck_ivc_store_item_tax CHECK ((CASE tax_type WHEN 'TAXABLE' THEN TRUE WHEN 'ZERO_RATED' THEN TRUE WHEN 'EXEMPT' THEN TRUE ELSE CASE WHEN tax_type IS NULL THEN NULL ELSE FALSE END END) AND (CASE enabled WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN enabled IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS ivc_channel_application
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    application_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    channel_code VARCHAR(32) NOT NULL,
+    environment VARCHAR(32) NOT NULL,
+    seller_tax_id VARCHAR(32) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    current_revision INT NOT NULL,
+    account_no VARCHAR(64) NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    request_payload_hash CHAR(64) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_channel_application_no UNIQUE (tenant_no, application_no),
+    CONSTRAINT uk_ivc_channel_application_request UNIQUE (tenant_no, entity_no, environment, request_key_hash)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_channel_application_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(64) NOT NULL,
+    revision_no INT NOT NULL,
+    material_refs TEXT NOT NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    submitted_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_channel_application_revision UNIQUE (tenant_no, application_no, revision_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_channel_application_event
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(64) NOT NULL,
+    revision_no INT NOT NULL,
+    action VARCHAR(24) NOT NULL,
+    to_status VARCHAR(24) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    reason VARCHAR(256) NULL,
+    occurred_at DATETIME(3) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ivc_channel_account
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    channel_code VARCHAR(32) NOT NULL,
+    environment VARCHAR(32) NOT NULL,
+    seller_tax_id VARCHAR(32) NOT NULL,
+    provider_account_code VARCHAR(64) NOT NULL,
+    current_revision BIGINT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_channel_account_no UNIQUE (tenant_no, account_no),
+    CONSTRAINT uk_ivc_channel_account_provider UNIQUE (tenant_no, channel_code, environment, provider_account_code)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_channel_account_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    revision_no BIGINT NOT NULL,
+    application_no VARCHAR(64) NOT NULL,
+    seller_name VARCHAR(128) NOT NULL,
+    provider_secret_ref BIGINT NOT NULL,
+    qr_key_ref BIGINT NULL,
+    verified_by VARCHAR(64) NOT NULL,
+    verified_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_channel_account_revision UNIQUE (tenant_no, account_no, revision_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_channel_route
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    environment VARCHAR(32) NOT NULL,
+    active_account_no VARCHAR(64) NOT NULL,
+    route_version BIGINT NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_channel_route_scope UNIQUE (tenant_no, entity_no, regime_code, environment)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_channel_route_event
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    environment VARCHAR(32) NOT NULL,
+    route_version BIGINT NOT NULL,
+    previous_account_no VARCHAR(64) NULL,
+    active_account_no VARCHAR(64) NOT NULL,
+    number_range_no VARCHAR(32) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    reason VARCHAR(256) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_channel_route_event UNIQUE (tenant_no, entity_no, regime_code, environment, route_version)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_invoice_application
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    application_no VARCHAR(64) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    current_revision INT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    issued_invoice_no VARCHAR(64) NULL,
+    created_by VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_application_no UNIQUE (tenant_no, application_no),
+    CONSTRAINT uk_ivc_application_source UNIQUE (tenant_no, entity_no, source_type, source_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_invoice_application_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(64) NOT NULL,
+    revision_no INT NOT NULL,
+    buyer_tax_id VARCHAR(32) NULL,
+    buyer_name VARCHAR(60) NULL,
+    carrier_type VARCHAR(16) NULL,
+    carrier_id VARCHAR(64) NULL,
+    donate_code VARCHAR(16) NULL,
+    currency CHAR(3) NOT NULL,
+    source_amount_minor BIGINT NOT NULL,
+    source_fingerprint CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    submitted_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_application_revision UNIQUE (tenant_no, application_no, revision_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_invoice_application_event
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    application_no VARCHAR(64) NOT NULL,
+    revision_no INT NOT NULL,
+    action VARCHAR(24) NOT NULL,
+    from_status VARCHAR(24) NULL,
+    to_status VARCHAR(24) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    reason VARCHAR(256) NULL,
+    command_key_hash CHAR(64) NOT NULL,
+    command_payload_hash CHAR(64) NOT NULL,
+    related_invoice_no VARCHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_application_command UNIQUE (tenant_no, entity_no, store_no, action, command_key_hash)
 );
 
 -- 种子数据

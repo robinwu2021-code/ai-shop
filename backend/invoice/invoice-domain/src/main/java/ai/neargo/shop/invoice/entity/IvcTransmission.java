@@ -22,6 +22,7 @@ public class IvcTransmission {
     /** 开立门店（V8） */
     private String storeNo;
     private String regimeCode;
+    private String channelAccountNo;
     private String gatewayCode;
     /** ISSUE / VOID / ALLOWANCE */
     private String messageType;

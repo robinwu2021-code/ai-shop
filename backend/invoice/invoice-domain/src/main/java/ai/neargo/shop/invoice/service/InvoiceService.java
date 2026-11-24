@@ -17,6 +17,9 @@ public interface InvoiceService {
     /** 同来源已有有效发票则原样返回，否则取号开立。 */
     InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo, Buyer buyer);
 
+    InvoiceReceipt issueFromApplication(Scope scope, String sourceType, String sourceNo, Buyer buyer,
+            String applicationNo, int revision, String expectedSourceFingerprint);
+
     Optional<InvoiceReceipt> activeOf(Scope scope, String sourceType, String sourceNo);
 
     /** 付款前预存买受人；按主体开通的税制校验。 */

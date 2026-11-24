@@ -20,6 +20,7 @@ public class IvcNumberRange {
     private String tenantNo;
     private String entityNo;
     private String regimeCode;
+    private String channelAccountNo;
     /** {@code *} = 主体内各店共用 */
     private String storeNo;
     private String periodCode;

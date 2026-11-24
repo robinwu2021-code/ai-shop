@@ -39,6 +39,8 @@ import ai.neargo.shop.invoice.mapper.InvoiceMappers.RegimeProfileMapper;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
 import ai.neargo.shop.invoice.regime.tw.TwQrCipher;
 import ai.neargo.shop.invoice.service.InvoiceSetupService;
+import ai.neargo.shop.invoice.service.InvoiceChannelService;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -60,6 +62,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.neargo.shop.invoice.regime.InvoiceRegime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * 税制开通与号段登记。一个主体同一时刻只开通一种税制（首期只有台湾）；换税制即把原配置停用。
@@ -85,6 +88,8 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     private final InvoiceTransmissionService transmissions;
     private final InvoiceGatewayPolicy policy;
     private final InvoiceMapper invoices;
+    @Autowired(required = false)
+    private InvoiceChannelService channels;
 
     public InvoiceSetupServiceImpl(RegimeProfileMapper profiles, NumberRangeMapper ranges, InvoiceRegimes regimes,
             ObjectProvider<SecretVault> vault, InvoiceProviderAccounts accounts, InvoiceGateways gateways,
@@ -336,53 +341,39 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     public int reportBlankRanges(Instant now) {
         int reported = 0;
         for (var p : profiles.selectList(new QueryWrapper<IvcRegimeProfile>().eq("status", "ACTIVE"))) {
-            if (p.getProviderHeldAt() != null) continue;   // 账号暂停中不去打服务商
-            var blank = gateways.capability(policy.effective(p).code(), BlankRangeCapability.class);
-            if (blank.isEmpty()) continue;
             var regime = regimes.require(p.getRegimeCode());
             String previous = previousPeriod(regime, now);
             if (previous == null) continue;
             var candidates = ranges.blankCandidates(p.getTenantNo(), p.getEntityNo(), p.getRegimeCode(), previous);
-            // 已注销、到期末仍未重开的号码也是空白号码（TDD-发票-注销与同号重开 §3.4，Q1 假设）
             var revoked = invoices.selectList(new QueryWrapper<IvcInvoice>().eq("tenant_no", p.getTenantNo())
                     .eq("entity_no", p.getEntityNo()).eq("regime_code", p.getRegimeCode()).eq("period_code", previous)
                     .eq("status", "REVOKED").isNull("revised_to_invoice_no").isNull("blank_reported_at"));
-            if (candidates.isEmpty() && revoked.isEmpty()) continue;
-            var account = accounts.of(p);
-            if (account.isEmpty()) continue;
-            // 同一字轨、同一发票类别一批报
-            var groups = new LinkedHashMap<String, BlankGroup>();
-            for (var r : candidates)
-                groups.computeIfAbsent(r.getTrack() + "|" + invoiceType(r), k -> new BlankGroup(r.getTrack(), invoiceType(r)))
-                        .add(r);
-            for (var inv : revoked) {
-                var range = ranges.selectOne(new QueryWrapper<IvcNumberRange>().eq("tenant_no", inv.getTenantNo())
-                        .eq("range_no", inv.getRangeNo()).last("LIMIT 1"));
-                String track = inv.getFiscalNumber().substring(0, 2), type = range == null ? "07" : invoiceType(range);
-                groups.computeIfAbsent(track + "|" + type, k -> new BlankGroup(track, type)).add(inv);
+            var perAccount = new LinkedHashMap<String, Map<String, BlankGroup>>();
+            for (var range : candidates) {
+                perAccount.computeIfAbsent(range.getChannelAccountNo(), account -> new LinkedHashMap<>())
+                        .computeIfAbsent(range.getTrack() + "|" + invoiceType(range),
+                                group -> new BlankGroup(range.getTrack(), invoiceType(range))).add(range);
             }
-            for (var g : groups.values()) {
-                var at = LocalDateTime.ofInstant(now, ZoneOffset.UTC);
-                try {
-                    blank.get().reportBlank(account.get(), new BlankRangeCapability.BlankReport(previous,
-                            g.invoiceType, g.track, p.getSellerTaxId(), List.copyOf(g.spans)));
-                    if (!g.rangeIds.isEmpty())
-                        ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", g.rangeIds)
-                                .set("blank_reported_at", at).set("blank_report_error", null).set("updated_at", at));
-                    if (!g.invoiceIds.isEmpty())
-                        invoices.update(null, new UpdateWrapper<IvcInvoice>().in("id", g.invoiceIds)
-                                .set("blank_reported_at", at));
-                    log.info("INVOICE_BLANK_REPORTED tenant={} entity={} period={} track={} spans={}",
-                            p.getTenantNo(), p.getEntityNo(), previous, g.track, g.spans.size());
-                    reported++;
-                } catch (ProviderException e) {
-                    if (e.kind() == ProviderException.Kind.ACCOUNT) hold(p, e.code());
-                    String reason = e.code() == null ? "unknown" : e.code().length() > 255 ? e.code().substring(0, 255) : e.code();
-                    if (!g.rangeIds.isEmpty())
-                        ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", g.rangeIds)
-                                .set("blank_report_error", reason).set("updated_at", at));
-                    log.warn("INVOICE_BLANK_REPORT_FAILED tenant={} entity={} period={} track={} code={}",
-                            p.getTenantNo(), p.getEntityNo(), previous, g.track, reason);
+            for (var invoice : revoked) {
+                var range = ranges.selectOne(new QueryWrapper<IvcNumberRange>().eq("tenant_no", invoice.getTenantNo())
+                        .eq("range_no", invoice.getRangeNo()).last("LIMIT 1"));
+                String track = invoice.getFiscalNumber().substring(0, 2);
+                String type = range == null ? "07" : invoiceType(range);
+                perAccount.computeIfAbsent(invoice.getChannelAccountNo(), account -> new LinkedHashMap<>())
+                        .computeIfAbsent(track + "|" + type, group -> new BlankGroup(track, type)).add(invoice);
+            }
+            for (var entry : perAccount.entrySet()) {
+                String accountNo = entry.getKey();
+                if (accountNo == null) {
+                    if (!hasBoundRoute(p)) {
+                        reported += reportBlankGroups(p, policy.effective(p).code(), previous, now, entry.getValue(), true);
+                    }
+                } else if (channels != null) {
+                    var original = channels.historical(p.getTenantNo(), p.getEntityNo(), accountNo).orElse(null);
+                    if (original != null) {
+                        reported += reportBlankGroups(original.profile(), original.channelCode(), previous, now,
+                                entry.getValue(), false);
+                    }
                 }
             }
         }
@@ -423,6 +414,47 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
             if (!current.equals(p)) return p;
         }
         return null;
+    }
+
+    private int reportBlankGroups(IvcRegimeProfile profile, String gateway, String period, Instant now,
+            Map<String, BlankGroup> groups, boolean legacy) {
+        if (profile.getProviderHeldAt() != null) return 0;
+        var capability = gateways.capability(gateway, BlankRangeCapability.class);
+        if (capability.isEmpty()) return 0;
+        var account = accounts.of(profile);
+        if (account.isEmpty()) return 0;
+        int reported = 0;
+        var at = LocalDateTime.ofInstant(now, ZoneOffset.UTC);
+        for (var group : groups.values()) {
+            try {
+                capability.get().reportBlank(account.get(), new BlankRangeCapability.BlankReport(period,
+                        group.invoiceType, group.track, profile.getSellerTaxId(), List.copyOf(group.spans)));
+                if (!group.rangeIds.isEmpty())
+                    ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", group.rangeIds)
+                            .set("blank_reported_at", at).set("blank_report_error", null).set("updated_at", at));
+                if (!group.invoiceIds.isEmpty())
+                    invoices.update(null, new UpdateWrapper<IvcInvoice>().in("id", group.invoiceIds)
+                            .set("blank_reported_at", at));
+                log.info("INVOICE_BLANK_REPORTED tenant={} entity={} period={} track={} spans={}",
+                        profile.getTenantNo(), profile.getEntityNo(), period, group.track, group.spans.size());
+                reported++;
+            } catch (ProviderException ex) {
+                if (legacy && ex.kind() == ProviderException.Kind.ACCOUNT) hold(profile, ex.code());
+                String reason = ex.code() == null ? "unknown" : ex.code().substring(0, Math.min(255, ex.code().length()));
+                if (!group.rangeIds.isEmpty())
+                    ranges.update(null, new UpdateWrapper<IvcNumberRange>().in("id", group.rangeIds)
+                            .set("blank_report_error", reason).set("updated_at", at));
+                log.warn("INVOICE_BLANK_REPORT_FAILED tenant={} entity={} period={} track={} code={}",
+                        profile.getTenantNo(), profile.getEntityNo(), period, group.track, reason);
+            }
+        }
+        return reported;
+    }
+
+    private boolean hasBoundRoute(IvcRegimeProfile profile) {
+        return channels != null && channels.routes(
+                new Scope(profile.getTenantNo(), profile.getEntityNo(), "*", SYSTEM_ACTOR))
+                .stream().anyMatch(route -> profile.getRegimeCode().equals(route.regimeCode()));
     }
 
     private static String invoiceType(IvcNumberRange r) {
@@ -526,7 +558,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
             var regime = regimes.require(p.getRegimeCode());
             String current = regime.periodOf(now);
             if (current == null) continue;   // 无期别的地区没有号段
-            boolean auto = autoFetchable(p);
+            boolean auto = autoFetchable(p) && !hasBoundRoute(p);
             int low = lowWater(p);
 
             // ① 本期余量：第一次跌到某一级时（同期同级只一次）先试着自动领号，再按领号后的余量告警

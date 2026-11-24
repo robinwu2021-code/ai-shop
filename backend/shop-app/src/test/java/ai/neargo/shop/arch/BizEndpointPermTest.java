@@ -276,6 +276,18 @@ class BizEndpointPermTest {
                     put("/biz/store-orders/{orderNo}", BizPerms.ORDER_VIEW);
                     put("/biz/store-orders/{orderNo}/invoice-data", BizPerms.INVOICE_ISSUE);
                     put("/biz/store-orders/{orderNo}/cancel", BizPerms.ORDER_CREATE);
+                    put("/biz/invoice-channel-applications", BizPerms.INVOICE_SETUP);
+                    put("/biz/invoice-channel-applications/{applicationNo}", BizPerms.INVOICE_SETUP);
+                    put("/biz/invoice-channel-applications/{applicationNo}/revisions", BizPerms.INVOICE_SETUP);
+                    put("/biz/invoice-channel-accounts", BizPerms.INVOICE_SETUP);
+                    put("/biz/invoice-channel-routes", BizPerms.INVOICE_SETUP);
+                    put("/biz/invoice-applications", BizPerms.INVOICE_READ);
+                    put("/biz/invoice-applications/{applicationNo}", BizPerms.INVOICE_READ);
+                    put("/biz/invoice-applications/{applicationNo}/revisions", BizPerms.INVOICE_READ);
+                    put("/biz/invoice-applications/{applicationNo}/events", BizPerms.INVOICE_READ);
+                    put("/biz/invoice-applications/{applicationNo}/rejections", BizPerms.INVOICE_SETUP);
+                    put("/biz/invoice-applications/{applicationNo}/cancellations", BizPerms.INVOICE_SETUP);
+                    put("/biz/invoice-applications/{applicationNo}/issuances", BizPerms.INVOICE_ISSUE);
                     put("/biz/invoices", BizPerms.INVOICE_READ);
                     put("/biz/invoices/{invoiceNo}", BizPerms.INVOICE_READ);
                     put("/biz/invoices/{invoiceNo}/print-facts", BizPerms.INVOICE_READ);
