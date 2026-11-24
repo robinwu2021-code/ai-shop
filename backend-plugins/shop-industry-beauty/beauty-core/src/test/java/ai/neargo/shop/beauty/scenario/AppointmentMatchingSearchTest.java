@@ -49,6 +49,7 @@ class AppointmentMatchingSearchTest {
     private final List<AppointmentItemReq> items = List.of(new AppointmentItemReq("SKU", 1));
     private final ResourceBookingPort.Scope scope = new ResourceBookingPort.Scope("MAIN", "E", "S");
     private final AtomicInteger reads = new AtomicInteger();
+    private ResourceCandidatesPort.CapacityQuery capacityQuery;
 
     @Test
     void flexibleShortRoleIsReassignedSoAutomaticPreviewAndPublicSlotRemainAvailable() {
@@ -70,6 +71,15 @@ class AppointmentMatchingSearchTest {
         var result = asymmetric().match(scope, false, items,
                 List.of(new AppointmentAssignmentReq(0, "B", "R1", "P1")), null, at);
         assertThat(result.snapshot().assignments()).extracting(a -> a.resourceNo()).containsExactly("R2", "R1");
+    }
+
+    @Test
+    void capacityReadCoversOnlyTheRequestedArrangement() {
+        var matching = fixture(List.of(staff("R1", "P1")), List.of(rule("A", "STAFF", 1, 60)), List.of(120));
+        var match = matching.match(scope, false, List.of(new AppointmentItemReq("SKU", 2)), List.of(), "P1", at);
+        assertThat(match.snapshot().assignments()).extracting(a -> a.personnelNo()).containsExactly("P1", "P1");
+        assertThat(capacityQuery.from()).isEqualTo(at.toInstant());
+        assertThat(capacityQuery.to()).isEqualTo(at.plusHours(2).toInstant());
     }
 
     @Test
@@ -241,7 +251,11 @@ class AppointmentMatchingSearchTest {
                 "service", null, 1000, 60, 1L, 2L));
         ResourceCandidatesPort candidates = new ResourceCandidatesPort() {
             @Override public List<ResourceFactsPort.ResourceFact> candidates(Query q) { read(); return resources; }
-            @Override public List<Capacity> capacity(CapacityQuery q) { read(); return capacities; }
+            @Override public List<Capacity> capacity(CapacityQuery q) {
+                read();
+                capacityQuery = q;
+                return capacities;
+            }
         };
         PersonnelFactsPort personnel = q -> {
             read();

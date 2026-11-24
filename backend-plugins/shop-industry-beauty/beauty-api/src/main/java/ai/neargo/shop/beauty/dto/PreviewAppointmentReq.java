@@ -9,10 +9,16 @@ import java.time.OffsetDateTime;
 
 /** Appointment protocol projection; resource evidence stays on trusted server links. */
 public record PreviewAppointmentReq(String storeNo, String customerRef, List<AppointmentItemReq> items,
-        List<AppointmentAssignmentReq> requestedAssignments, OffsetDateTime startAt, String guestNo) {
+        List<AppointmentAssignmentReq> requestedAssignments, OffsetDateTime startAt, String guestNo,
+        String requestedPersonnelNo) {
     public PreviewAppointmentReq(String storeNo, String customerRef, List<AppointmentItemReq> items,
             List<AppointmentAssignmentReq> requestedAssignments, OffsetDateTime startAt) {
-        this(storeNo, customerRef, items, requestedAssignments, startAt, null);
+        this(storeNo, customerRef, items, requestedAssignments, startAt, null, null);
+    }
+
+    public PreviewAppointmentReq(String storeNo, String customerRef, List<AppointmentItemReq> items,
+            List<AppointmentAssignmentReq> requestedAssignments, OffsetDateTime startAt, String guestNo) {
+        this(storeNo, customerRef, items, requestedAssignments, startAt, guestNo, null);
     }
 
     public PreviewAppointmentReq {
@@ -23,6 +29,9 @@ public record PreviewAppointmentReq(String storeNo, String customerRef, List<App
                 || (items == null || items.isEmpty() || items.size() > 10 || items.stream().anyMatch(Objects::isNull))
                 || (startAt == null)
                 || (customerRef != null && (customerRef.isBlank() || customerRef.length() > 256))
+                || (requestedPersonnelNo != null && (requestedPersonnelNo.isBlank()
+                        || requestedPersonnelNo.length() > 32
+                        || requestedAssignments != null && !requestedAssignments.isEmpty()))
                 || (requestedAssignments != null && requestedAssignments.size() > 30)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
