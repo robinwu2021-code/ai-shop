@@ -1,0 +1,354 @@
+# POS 发布清单。套餐提案由现有经营目录发布后才会产生商业权益。
+schemaVersion: 1
+modules:
+  - {code: BASE, label: 共用營運}
+  - {code: POS, label: 收銀}
+  - {code: RETAIL, label: 零售}
+  - {code: FNB, label: 餐飲}
+  - {code: SERVICE, label: 服務業}
+  - {code: MARKETING, label: 會員與營銷}
+  - {code: CHAIN, label: 連鎖}
+  - {code: OTHER, label: 其他營運權限}
+entitlements:
+  - {code: END_BIZ_APP, industries: []}
+  - {code: END_APP_POS, industries: []}
+  - {code: END_RETAIL, industries: [RETAIL]}
+  - {code: END_FNB, industries: [FNB]}
+  - {code: END_SERVICE, industries: [SERVICE]}
+  - {code: END_MARKETING, industries: []}
+  - {code: END_CHAIN, industries: []}
+features:
+  - code: COLLECT
+    label: 收款記錄
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    requiresPayActivation: true
+    actions:
+      - {code: "use", anyOf: [mch:pay:order:view]}
+      - {code: "manage", anyOf: [mch:pay:refund]}
+  - code: COLLECT_QR
+    label: 掃碼收款
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    requiresPayActivation: true
+    actions:
+      - {code: "use", anyOf: [mch:pay:qr]}
+      - {code: "manage", anyOf: [mch:pay:qr]}
+  - code: CASHIER
+    label: 線上收銀
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    requiresPayActivation: true
+    actions:
+      - {code: "use", anyOf: [mch:pay:collect]}
+      - {code: "manage", anyOf: [mch:pay:collect]}
+  - code: PAY_STATEMENT
+    label: 收款對帳
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    requiresPayActivation: true
+    actions:
+      - {code: "use", anyOf: [mch:pay:statement]}
+  - code: PAY_ACTIVATION
+    label: 收款開通
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:finance]}
+      - {code: "manage", anyOf: [biz:finance]}
+  - code: STORE_PROFILE
+    label: 門店設定
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:store]}
+      - {code: "manage", anyOf: [biz:store:admin]}
+  - code: STAFF
+    label: 員工與角色
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    clientRoute: staff
+    actions:
+      - {code: "use", anyOf: [biz:store:admin]}
+      - {code: "manage", anyOf: [biz:store:admin]}
+  - code: SUBSCRIPTION
+    label: 門店方案
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: []}
+      - {code: "manage", anyOf: [biz:store:admin]}
+  - code: PRINT
+    label: 列印
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:print:read]}
+      - {code: "manage", anyOf: [biz:print:config]}
+  - code: REVIEW
+    label: 商品評價
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:review]}
+      - {code: "manage", anyOf: [biz:review]}
+  - code: GOODS
+    label: 商品
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    clientRoute: goods
+    actions:
+      - {code: "use", anyOf: [biz:goods, biz:stock]}
+      - {code: "manage", anyOf: [biz:goods]}
+  - code: ORDERS
+    label: 訂單
+    module: BASE
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    clientRoute: orders
+    actions:
+      - {code: "use", anyOf: [biz:order:view, biz:receive, biz:verify, biz:ship]}
+      - {code: "manage", anyOf: [biz:aftersale]}
+  - code: SOFTPOS
+    label: 感應收款
+    module: POS
+    industries: []
+    entitlement: {allOf: [END_APP_POS]}
+    lifecycle: ACTIVE
+    requiresPayActivation: true
+    actions:
+      - {code: "use", anyOf: [biz:receive]}
+  - code: INVENTORY
+    label: 庫存
+    module: RETAIL
+    industries: [RETAIL]
+    entitlement: {allOf: [END_RETAIL]}
+    lifecycle: ACTIVE
+    clientRoute: inventory
+    actions:
+      - {code: "use", anyOf: [biz:stock]}
+      - {code: "manage", anyOf: [biz:goods]}
+  - code: GROUP_BUY
+    label: 團購
+    module: RETAIL
+    industries: [RETAIL]
+    entitlement: {allOf: [END_RETAIL]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:campaign]}
+      - {code: "manage", anyOf: [biz:campaign]}
+  - code: FNB_ORDERING
+    label: 點餐與排隊
+    module: FNB
+    industries: [FNB]
+    entitlement: {allOf: [END_FNB]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:order:view, biz:verify]}
+      - {code: "manage", anyOf: [biz:aftersale]}
+  - code: FNB_MENU
+    label: 餐飲菜單
+    module: FNB
+    industries: [FNB]
+    entitlement: {allOf: [END_FNB]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:order:view, biz:goods]}
+      - {code: "manage", anyOf: [biz:goods]}
+  - code: FNB_TABLES
+    label: 桌台
+    module: FNB
+    industries: [FNB]
+    entitlement: {allOf: [END_FNB]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:verify, biz:store]}
+      - {code: "manage", anyOf: [biz:store]}
+  - code: FNB_KITCHEN
+    label: 出品
+    module: FNB
+    industries: [FNB]
+    entitlement: {allOf: [END_FNB]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:receive]}
+      - {code: "manage", anyOf: [biz:aftersale]}
+  - code: FNB_REPORT
+    label: 餐飲日報
+    module: FNB
+    industries: [FNB]
+    entitlement: {allOf: [END_FNB]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:order:view]}
+      - {code: "manage", anyOf: [biz:finance]}
+  - code: SVC_BOOKING
+    label: 預約與簽到
+    module: SERVICE
+    industries: [SERVICE]
+    entitlement: {allOf: [END_SERVICE]}
+    lifecycle: ACTIVE
+    clientRoute: service.appointments
+    actions:
+      - {code: "use", anyOf: [biz:booking:view, biz:booking:manage]}
+      - {code: "manage", anyOf: [biz:booking:manage]}
+  - code: SVC_CATALOG
+    label: 服務項目
+    module: SERVICE
+    industries: [SERVICE]
+    entitlement: {allOf: [END_SERVICE]}
+    lifecycle: ACTIVE
+    clientRoute: service.catalog
+    actions:
+      - {code: "use", anyOf: [biz:store]}
+      - {code: "manage", anyOf: [biz:store]}
+  - code: SVC_SCHEDULE
+    label: 技師、資源與排班
+    module: SERVICE
+    industries: [SERVICE]
+    entitlement: {allOf: [END_SERVICE]}
+    lifecycle: ACTIVE
+    clientRoute: service.schedule
+    actions:
+      - {code: "use", anyOf: [biz:store:admin]}
+      - {code: "manage", anyOf: [biz:store:admin]}
+  - code: SVC_REPORT
+    label: 服務報表
+    module: SERVICE
+    industries: [SERVICE]
+    entitlement: {allOf: [END_SERVICE]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:customer]}
+  - code: MEMBERS
+    label: 進階會員
+    module: MARKETING
+    industries: []
+    entitlement: {allOf: [END_MARKETING]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:customer]}
+      - {code: "manage", anyOf: [biz:customer]}
+  - code: CAMPAIGN
+    label: 進階營銷
+    module: MARKETING
+    industries: []
+    entitlement: {allOf: [END_MARKETING]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:campaign]}
+      - {code: "manage", anyOf: [biz:campaign]}
+  - code: CHAIN_OPS
+    label: 跨店管理
+    module: CHAIN
+    industries: []
+    entitlement: {allOf: [END_CHAIN]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:store:admin]}
+      - {code: "manage", anyOf: [biz:store:admin]}
+  - code: HR
+    label: 總部人員管理
+    module: CHAIN
+    industries: []
+    entitlement: {allOf: [END_CHAIN]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:store:admin]}
+      - {code: "manage", anyOf: [biz:store:admin]}
+  - code: POS_CHECKOUT
+    label: 共用收銀台
+    module: POS
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    clientRoute: cashier
+    actions:
+      - {code: "use", allOf: [biz:order:create]}
+  - code: POS_CASH
+    label: 現金收款
+    module: POS
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    clientRoute: cashier.cash
+    actions:
+      - {code: "use", allOf: [biz:order:create, mch:pay:offline:record]}
+  - code: MEMBERS_BASIC
+    label: 基礎會員
+    module: MARKETING
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    clientRoute: members
+    actions:
+      - {code: "use", allOf: [biz:customer]}
+      - {code: "manage", allOf: [biz:customer]}
+  - code: CAMPAIGN_BASIC
+    label: 基礎營銷
+    module: MARKETING
+    industries: []
+    entitlement: {allOf: [END_BIZ_APP]}
+    lifecycle: ACTIVE
+    clientRoute: promotions
+    actions:
+      - {code: "use", allOf: [biz:campaign]}
+      - {code: "manage", allOf: [biz:campaign]}
+  - code: SVC_TASK
+    label: 服務工單
+    module: SERVICE
+    industries: [SERVICE]
+    entitlement: {allOf: [END_SERVICE]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", anyOf: [biz:service:task:self, biz:service:task:view, biz:service:task:coordinate]}
+      - {code: "coordinate", allOf: [biz:service:task:coordinate]}
+      - {code: "approve", allOf: [biz:service:task:approve]}
+      - {code: "close", allOf: [biz:service:task:close]}
+  - code: SVC_COUNTER_CASH
+    label: 服務工單現金結帳
+    module: SERVICE
+    industries: [SERVICE]
+    entitlement: {allOf: [END_SERVICE]}
+    lifecycle: ACTIVE
+    actions:
+      - {code: "use", allOf: [trade:checkout:prepare, trade:manual-service:confirm, pay:cash:receive]}
+plans:
+  - {businessType: RETAIL, tier: FREE, entitlements: [END_BIZ_APP, END_APP_POS]}
+  - {businessType: RETAIL, tier: BASE, entitlements: [END_BIZ_APP, END_APP_POS]}
+  - {businessType: RETAIL, tier: PRO, entitlements: [END_BIZ_APP, END_APP_POS, END_RETAIL, END_MARKETING]}
+  - {businessType: RETAIL, tier: GROWTH, entitlements: [END_BIZ_APP, END_APP_POS, END_RETAIL, END_MARKETING]}
+  - {businessType: RETAIL, tier: CHAIN, entitlements: [END_BIZ_APP, END_APP_POS, END_RETAIL, END_MARKETING, END_CHAIN]}
+  - {businessType: FNB, tier: FREE, entitlements: [END_BIZ_APP, END_APP_POS]}
+  - {businessType: FNB, tier: BASE, entitlements: [END_BIZ_APP, END_APP_POS]}
+  - {businessType: FNB, tier: PRO, entitlements: [END_BIZ_APP, END_APP_POS, END_FNB, END_MARKETING]}
+  - {businessType: FNB, tier: GROWTH, entitlements: [END_BIZ_APP, END_APP_POS, END_FNB, END_MARKETING]}
+  - {businessType: FNB, tier: CHAIN, entitlements: [END_BIZ_APP, END_APP_POS, END_FNB, END_MARKETING, END_CHAIN]}
+  - {businessType: SERVICE, tier: FREE, entitlements: [END_BIZ_APP, END_APP_POS]}
+  - {businessType: SERVICE, tier: BASE, entitlements: [END_BIZ_APP, END_APP_POS]}
+  - {businessType: SERVICE, tier: PRO, entitlements: [END_BIZ_APP, END_APP_POS, END_SERVICE, END_MARKETING]}
+  - {businessType: SERVICE, tier: GROWTH, entitlements: [END_BIZ_APP, END_APP_POS, END_SERVICE, END_MARKETING]}
+  - {businessType: SERVICE, tier: CHAIN, entitlements: [END_BIZ_APP, END_APP_POS, END_SERVICE, END_MARKETING, END_CHAIN]}

@@ -65,7 +65,20 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
     @Override
     @Transactional
     public RoleVO update(String merchantNo, String roleCode, String name, List<String> perms) {
+        return updateRole(merchantNo, roleCode, name, perms, null);
+    }
+
+    @Override
+    @Transactional
+    public RoleVO update(String merchantNo, String roleCode, String name, List<String> perms, long expectedVersion) {
+        return updateRole(merchantNo, roleCode, name, perms, expectedVersion);
+    }
+
+    private RoleVO updateRole(String merchantNo, String roleCode, String name, List<String> perms, Long expectedVersion) {
         MchRole r = requireCustom(merchantNo, roleCode);
+        if (expectedVersion != null && !expectedVersion.equals(r.getVersion())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         String clean = requireName(name);
         Set<String> codes = requirePerms(perms);
 
@@ -77,7 +90,8 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
         String before = labels(parse(r.getPerms()));
         r.setName(clean);
         r.setPerms(toJson(codes));
-        DataScopeContext.executeWithoutScope(() -> roleMapper.updateById(r));
+        int changed = DataScopeContext.executeWithoutScope(() -> roleMapper.updateById(r));
+        if (changed != 1) throw BizException.of(ErrorCode.CONFLICT);
 
         audit.role(merchantNo, ai.neargo.shop.merchant.entity.MchStaffLog.ROLE_UPDATE, roleCode,
                 "角色「" + clean + "」权限：" + before + " → " + labels(codes));
@@ -197,7 +211,7 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
         List<String> codes = List.copyOf(parse(r.getPerms()));
         return new RoleVO(r.getRoleCode(), r.getName(), Boolean.TRUE.equals(r.getBuiltin()),
                 codes, codes.stream().map(c -> BizPerms.LABELS.getOrDefault(c, c)).toList(),
-                usedBy);
+                usedBy, r.getVersion());
     }
 
     private static String labels(Set<String> codes) {

@@ -13,6 +13,9 @@ import ai.neargo.commerce.api.foundation.FoundationQueryFacade.Source;
 import ai.neargo.commerce.api.foundation.FoundationQueryFacade.StoreContext;
 import ai.neargo.commerce.api.foundation.FoundationQueryFacade.Subscription;
 import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.merchant.dto.RoleVO;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import ai.neargo.shop.portal.biz.feature.StoreFeatureMatrix.FeatureState;
 import ai.neargo.shop.portal.biz.feature.StoreFeatureMatrix.PayActivation;
 
@@ -53,6 +56,10 @@ class StoreFeatureMatrixTest {
 
     /** 新店只有 FREE：基础端 ACTIVE，餐饮与连锁未购。 */
     private static StoreContext freeStore(boolean canProcure, Right... extra) {
+        return freeStore("FNB", canProcure, extra);
+    }
+
+    private static StoreContext freeStore(String businessType, boolean canProcure, Right... extra) {
         var items = new ArrayList<>(List.of(
                 right(BIZ, "ACTIVE", null), right(FNB, "NOT_PURCHASED", null), right(CHAIN, "NOT_PURCHASED", null)));
         for (Right r : extra) {
@@ -60,7 +67,7 @@ class StoreFeatureMatrixTest {
             items.add(r);
         }
         var free = new Source("SRC-F", "FREE", "P-FREE", "PV-FREE", "FREE", "FREE", false, 1L, null, null, List.of(BIZ));
-        return new StoreContext("S1", "E1", CommerceModel.STORE_V1, "FNB", "ACTIVE", "ACTIVE", canProcure,
+        return new StoreContext("S1", "E1", CommerceModel.STORE_V1, businessType, "ACTIVE", "ACTIVE", canProcure,
                 List.of(canProcure ? "OWNER" : "MANAGER"), canProcure, 100L, 7L, null,
                 new Subscription("S1", CommerceModel.STORE_V1, 7L, free, null, List.of(free), 100L, null, true, null),
                 new Entitlements("S1", CommerceModel.STORE_V1, 7L, List.copyOf(items), 100L, null));
@@ -75,8 +82,8 @@ class StoreFeatureMatrixTest {
     @Test
     void activeStoreGrantIsUsableBeforeItAppearsInThePublicCatalog() {
         var catalog = new PlanCatalog("RETAIL", 1L, "PUBLISHED", List.of(plan(PlanTier.FREE, List.of(BIZ))));
-        var active = freeStore(true, right("END_RETAIL", "ACTIVE", 999L));
-        var inactive = freeStore(true, right("END_RETAIL", "NOT_PURCHASED", null));
+        var active = freeStore("RETAIL", true, right("END_RETAIL", "ACTIVE", 999L));
+        var inactive = freeStore("RETAIL", true, right("END_RETAIL", "NOT_PURCHASED", null));
         var visible = byCode(StoreFeatureMatrix.forStore(active, catalog, OWNER, PayActivation.ACTIVE).features());
         assertTrue(visible.get("INVENTORY").canUse());
         assertEquals(999L, visible.get("INVENTORY").effectiveUntil());
@@ -273,6 +280,55 @@ class StoreFeatureMatrixTest {
                 PayActivation.ACTIVE).features());
         assertTrue(manager.get("FNB_REPORT").canUse());
         assertFalse(manager.get("FNB_REPORT").canManage(), "日结签核是 biz:finance，店长默认没有");
+    }
+
+    @Test
+    void cashAndBaseMarketingAreIndependentOfAcquiring() {
+        var state = byCode(StoreFeatureMatrix.forStore(freeStore(true), fnbCatalog(), OWNER,
+                PayActivation.NOT_ACTIVE).features());
+        for (String code : List.of("POS_CHECKOUT", "POS_CASH", "MEMBERS_BASIC", "CAMPAIGN_BASIC")) {
+            assertTrue(state.get(code).canUse(), code);
+        }
+        assertEquals("NEED_PAY_ACTIVATION", state.get("CASHIER").status());
+        var staff = byCode(StoreFeatureMatrix.forStore(freeStore(false), fnbCatalog(),
+                Set.of(BizPerms.ORDER_CREATE), PayActivation.NOT_ACTIVE).features());
+        assertTrue(staff.get("POS_CHECKOUT").canUse());
+        assertFalse(staff.get("POS_CASH").canUse());
+    }
+
+    @Test
+    void fullRoleDirectoryGatesNewServiceGrantsAndPreservesTheirVisibility() {
+        var release = PosFeatureCatalog.bundled();
+        var role = new RoleVO("R1", "Test", false,
+                List.of(BizPerms.BOOKING_VIEW), List.of(), 0);
+        var retail = freeStore("RETAIL", true);
+        var directory = RoleFeatureCatalog.forStore(release, retail, role, code -> true);
+        var booking = directory.modules().stream().flatMap(m -> m.features().stream())
+                .filter(f -> f.code().equals("SVC_BOOKING")).findFirst().orElseThrow();
+        assertEquals("NOT_APPLICABLE", booking.status());
+        assertTrue(booking.actions().getFirst().permissions().stream()
+                .anyMatch(p -> p.code().equals(BizPerms.BOOKING_VIEW) && p.selected() && !p.selectable()));
+        var service = freeStore("SERVICE", true, right("END_SERVICE", "ACTIVE", 999L));
+        assertTrue(RoleFeatureCatalog.grantable(release, service, code -> true).contains(BizPerms.BOOKING_VIEW));
+        assertFalse(RoleFeatureCatalog.grantable(release, retail, code -> true).contains(BizPerms.BOOKING_VIEW));
+        assertFalse(RoleFeatureCatalog.grantable(release, service, code -> true).contains(BizPerms.STORE_ADMIN));
+        assertFalse(RoleFeatureCatalog.grantable(release, service, code -> !code.equals(BizPerms.BOOKING_VIEW))
+                .contains(BizPerms.BOOKING_VIEW));
+    }
+
+    @Test
+    void publishedCatalogRoundTripsAndRejectsUnknownDutiesAndDuplicateKeys() throws Exception {
+        var release = PosFeatureCatalog.bundled();
+        var restored = PosFeatureCatalog.fromPublishedJson(release.canonicalJson(), release.releaseNo());
+        assertEquals(release.features(), restored.features());
+        assertTrue(restored.proposedRights("SERVICE", PlanTier.PRO).contains("END_SERVICE"));
+        assertFalse(restored.proposedRights("SERVICE", PlanTier.FREE).contains("END_SERVICE"));
+        var json = release.canonicalJson().replace("trade:manual-service:confirm", "unknown:duty");
+        assertThrows(IllegalArgumentException.class, () -> PosFeatureCatalog.read(
+                new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))));
+        assertThrows(RuntimeException.class, () -> PosFeatureCatalog.read(
+                new ByteArrayInputStream("schemaVersion: 1\nschemaVersion: 2".getBytes(
+                        StandardCharsets.UTF_8))));
     }
 
     @Test

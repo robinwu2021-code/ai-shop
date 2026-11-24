@@ -37,6 +37,9 @@ public interface MerchantRoleService {
     /** 改名 / 改权限码。**预置角色拒**：要改就先复制一份 */
     RoleVO update(String merchantNo, String roleCode, String name, List<String> perms);
 
+    /** Updates only the revision whose grants were validated by the caller. */
+    RoleVO update(String merchantNo, String roleCode, String name, List<String> perms, long expectedVersion);
+
     /**
      * 删除自定义角色。
      *

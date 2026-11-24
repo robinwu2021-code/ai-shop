@@ -16,5 +16,9 @@ import java.util.List;
  *                   并且要显示出来 —— 「删不掉」而不说为什么，比不给删更难受
  */
 public record RoleVO(String roleCode, String name, boolean builtin,
-                     List<String> perms, List<String> permLabels, int usedBy) {
+                     List<String> perms, List<String> permLabels, int usedBy, Long version) {
+    public RoleVO(String roleCode, String name, boolean builtin, List<String> perms, List<String> permLabels,
+                  int usedBy) {
+        this(roleCode, name, builtin, perms, permLabels, usedBy, null);
+    }
 }

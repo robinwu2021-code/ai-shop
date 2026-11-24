@@ -6,6 +6,7 @@ import ai.neargo.commerce.api.foundation.FoundationQueryFacade.PlanCatalog;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.commercebridge.ShopCommerceActorAdapter;
 import ai.neargo.shop.payclient.BizPaymentAppService;
+import ai.neargo.shop.portal.biz.feature.PosFeatureCatalogStore;
 import ai.neargo.shop.portal.biz.feature.StoreFeatureMatrix;
 import ai.neargo.shop.portal.biz.feature.StoreFeatureMatrix.Matrix;
 import ai.neargo.shop.portal.biz.feature.StoreFeatureMatrix.PayActivation;
@@ -33,16 +34,21 @@ public class BizStoreFeatureController {
     private final FoundationQueryFacade queries;
     private final BizPaymentAppService payments;
 
-    public BizStoreFeatureController(FoundationQueryFacade queries, BizPaymentAppService payments) {
+    private final PosFeatureCatalogStore releases;
+
+    public BizStoreFeatureController(FoundationQueryFacade queries, BizPaymentAppService payments,
+                                     PosFeatureCatalogStore releases) {
         this.queries = queries;
         this.payments = payments;
+        this.releases = releases;
     }
 
     /** 某个经营类型三档方案分别包含哪些功能、预置角色各能用到哪一级（开店选方案、方案比较页） */
     @PreAuthorize("@perm.merchantAccount()")
     @GetMapping("/biz/business-types/{typeCode}/feature-matrix")
     public Matrix matrix(@PathVariable String typeCode) {
-        return StoreFeatureMatrix.forBusinessType(queries.plans(ShopCommerceActorAdapter.current(), typeCode));
+        var actor = ShopCommerceActorAdapter.current();
+        return StoreFeatureMatrix.forBusinessType(queries.plans(actor, typeCode), releases.current(actor.tenantNo()));
     }
 
     /** 当前用户在当前门店每个功能的状态与下一步（工作台入口、锁定态） */
@@ -56,7 +62,7 @@ public class BizStoreFeatureController {
         // 经营类型没有已发布方案（旧店常见）：不按行业过滤，免得旧店一个入口都没有
         if (catalog != null && (catalog.plans() == null || catalog.plans().isEmpty())) catalog = null;
         return StoreFeatureMatrix.forStore(store, catalog, BizContext.current().effectivePerms(),
-                payActivation(store.storeNo()));
+                payActivation(store.storeNo()), releases.current(actor.tenantNo()));
     }
 
     /** 收款服务可能是远程 pay-svc：读不到时给 UNKNOWN，端上显示「重试」，不冒充「未开通」 */

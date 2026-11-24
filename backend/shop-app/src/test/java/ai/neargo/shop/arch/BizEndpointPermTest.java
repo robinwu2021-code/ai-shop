@@ -738,6 +738,7 @@ class BizEndpointPermTest {
                     // **能改角色 = 能一次性改掉所有持有者的能力**，比给某个人授权影响更大
                     put("/biz/roles", BizPerms.STORE_ADMIN);
                     put("/biz/role-perms", BizPerms.STORE_ADMIN);
+                    put("/biz/role-feature-catalog", BizPerms.STORE_ADMIN);
                     put("/biz/role/{roleCode}", BizPerms.STORE_ADMIN);
                     put("/biz/role/{roleCode}/delete", BizPerms.STORE_ADMIN);
 

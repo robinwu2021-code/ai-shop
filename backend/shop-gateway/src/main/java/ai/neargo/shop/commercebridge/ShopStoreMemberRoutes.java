@@ -47,6 +47,7 @@ final class ShopStoreMemberRoutes {
             // 店员与角色（「我的 › 店员管理」）：权限码由控制器判，这里只放进门店上下文
             HostRoute.of("GET,POST", "/biz/staff(?:/logs|/[A-Za-z0-9_-]{1,64}/(?:status|store))?"),
             HostRoute.of("GET,POST", "/biz/(?:roles|role-perms)"),
+            HostRoute.of("GET", "/biz/role-feature-catalog"),
             HostRoute.of("POST", "/biz/role/[A-Za-z0-9_.:-]{1,64}(?:/delete)?"),
             // P1 管理空间/品牌/组织上下文按 actor + 目标资源授权，精确 ACCOUNT 路由见 CommerceRoutePolicy。
             // 证照、协议与收款渠道（标准开店：选了门店之后补证照）

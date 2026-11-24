@@ -4,6 +4,7 @@ import ai.neargo.commerce.api.access.AccessDecision;
 import ai.neargo.commerce.api.access.AccessStatus;
 import ai.neargo.commerce.api.common.CommerceModel;
 import ai.neargo.commerce.api.common.PlanTier;
+import ai.neargo.commerce.api.foundation.FoundationQueryFacade.Interval;
 import ai.neargo.commerce.api.foundation.FoundationQueryFacade.PlanCard;
 import ai.neargo.commerce.api.foundation.FoundationQueryFacade.PlanCatalog;
 import ai.neargo.commerce.api.foundation.FoundationQueryFacade.Right;
@@ -11,12 +12,13 @@ import ai.neargo.commerce.api.foundation.FoundationQueryFacade.Source;
 import ai.neargo.commerce.api.foundation.FoundationQueryFacade.StoreContext;
 import ai.neargo.shop.auth.BizPerms;
 
-import java.util.Arrays;
 import java.util.Comparator;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -50,10 +52,11 @@ public final class StoreFeatureMatrix {
      */
     public record MatrixFeature(String featureCode, String group, String entitlementCode,
                                 boolean requiresPayActivation, PlanTier minTier, Map<String, Boolean> tiers,
-                                List<String> usePerms, List<String> managePerms, Map<String, String> roles) {}
+                                List<String> usePerms, List<String> managePerms, Map<String, String> roles,
+                                Map<String, Boolean> proposedTiers) {}
 
     public record Matrix(String businessTypeCode, Long catalogVersion, String status, List<TierCard> tiers,
-                         List<String> roles, List<MatrixFeature> features) {}
+                         List<String> roles, List<MatrixFeature> features, String catalogReleaseNo) {}
 
     /**
      * @param requiredTier   已发布方案里包含该权益码的最低档；旧模型门店为 null
@@ -61,11 +64,14 @@ public final class StoreFeatureMatrix {
      */
     public record FeatureState(String featureCode, String group, String entitlementCode, String status,
                                String nextAction, PlanTier requiredTier, Long effectiveUntil, boolean canUse,
-                               boolean canManage) {}
+                               boolean canManage, List<ActionState> actions) {}
+
+    public record ActionState(String actionCode, boolean allowed) {}
 
     public record StoreFeatures(String storeNo, String businessTypeCode, CommerceModel commerceModel,
                                 String currentTier, Long entitlementVersion, long serverNow, Long nextBoundaryAt,
-                                PayActivation payActivation, List<FeatureState> features) {}
+                                PayActivation payActivation, List<FeatureState> features, int featureSchemaVersion,
+                                String catalogReleaseNo, String authzVersion) {}
 
     private StoreFeatureMatrix() {
     }
@@ -73,25 +79,36 @@ public final class StoreFeatureMatrix {
     // ------------------------------------------------------------------ 经营类型的矩阵
 
     public static Matrix forBusinessType(PlanCatalog catalog) {
+        return forBusinessType(catalog, PosFeatureCatalog.bundled());
+    }
+
+    public static Matrix forBusinessType(PlanCatalog catalog, PosFeatureCatalog release) {
         var plans = sortedPlans(catalog);
         var tiers = plans.stream()
                 .map(p -> new TierCard(p.tier(), p.planNo(), p.displayName(), p.purchaseAvailable()))
                 .toList();
         Map<String, Set<String>> rolePerms = ROLES.stream()
                 .collect(Collectors.toMap(Function.identity(), r -> BizPerms.of(Set.of(r))));
-        var features = offered(plans).stream()
+        var features = release.features().stream()
+                .filter(f -> f.lifecycle() == StoreFeature.Lifecycle.ACTIVE && f.appliesTo(catalog.businessTypeCode()))
+                .filter(f -> minTier(plans, f).isPresent())
                 .map(f -> {
                     Map<String, Boolean> inTier = new LinkedHashMap<>();
-                    plans.forEach(p -> inTier.put(p.tier().name(), p.entitlementCodes().contains(f.entitlementCode())));
+                    plans.forEach(p -> inTier.put(p.tier().name(), f.entitlement().matches(Set.copyOf(p.entitlementCodes()))));
                     Map<String, String> roles = new LinkedHashMap<>();
                     ROLES.forEach(r -> roles.put(r, roleLevel(f, rolePerms.get(r))));
+                    Map<String, Boolean> proposed = new LinkedHashMap<>();
+                    PlanTier.catalogTiers(catalog.businessTypeCode()).forEach(tier -> {
+                        var rights = release.proposedRights(catalog.businessTypeCode(), tier);
+                        if (!rights.isEmpty()) proposed.put(tier.name(), f.entitlement().matches(Set.copyOf(rights)));
+                    });
                     return new MatrixFeature(f.code(), f.group().name(), f.entitlementCode(),
                             f.requiresPayActivation(), minTier(plans, f).orElse(null), inTier, f.usePerms(),
-                            f.managePerms(), roles);
+                            f.managePerms(), roles, proposed);
                 })
                 .toList();
         return new Matrix(catalog.businessTypeCode(), catalog.catalogVersion(), catalog.status(), tiers, ROLES,
-                features);
+                features, release.releaseNo());
     }
 
     private static String roleLevel(StoreFeature f, Set<String> perms) {
@@ -107,33 +124,66 @@ public final class StoreFeatureMatrix {
      */
     public static StoreFeatures forStore(StoreContext store, PlanCatalog catalog, Set<String> perms,
                                          PayActivation pay) {
+        return forStore(store, catalog, perms, pay, PosFeatureCatalog.bundled());
+    }
+
+    public static StoreFeatures forStore(StoreContext store, PlanCatalog catalog, Set<String> perms,
+                                         PayActivation pay, PosFeatureCatalog release) {
         boolean legacy = store.commerceModel() != CommerceModel.STORE_V1;
         var plans = sortedPlans(catalog);
         Map<String, Right> rights = store.entitlements() == null ? Map.of()
                 : store.entitlements().items().stream()
                         .collect(Collectors.toMap(Right::entitlementCode, Function.identity(), (a, b) -> a));
-        var offered = offered(plans);
-        var features = Arrays.stream(StoreFeature.values())
+        var activeRights = activeRights(rights);
+        var features = release.features().stream()
+                .filter(f -> f.lifecycle() == StoreFeature.Lifecycle.ACTIVE && f.appliesTo(store.businessTypeCode()))
                 .filter(f -> {
-                    boolean inCatalog = catalog == null || offered.contains(f);
+                    boolean inCatalog = catalog == null || minTier(plans, f).isPresent();
                     if (legacy) return inCatalog;
-                    var right = rights.get(f.entitlementCode());
-                    return right != null && (inCatalog || commercialStatus(right.commercialStatus()) == AccessStatus.ALLOWED);
+                    return f.entitlement().matches(activeRights)
+                            || inCatalog && f.entitlement().codes().stream().anyMatch(rights::containsKey);
                 })
-                .map(f -> state(f, legacy ? null : rights.get(f.entitlementCode()),
+                .map(f -> state(f, legacy ? AccessStatus.ALLOWED : commercialStatus(f, rights, activeRights),
+                        legacy ? null : effectiveUntil(f, rights, activeRights),
                         legacy ? null : minTier(plans, f).orElse(null), store.canProcure(), perms, pay))
                 .toList();
         return new StoreFeatures(store.storeNo(), store.businessTypeCode(), store.commerceModel(),
                 legacy ? null : currentTier(store), store.entitlementVersion(), store.serverNow(),
-                store.nextBoundaryAt(), pay, features);
+                store.nextBoundaryAt(), pay, features, release.schemaVersion(), release.releaseNo(),
+                PosFeatureCatalog.digest(String.join("\n", perms.stream().sorted().toList())
+                        .getBytes(StandardCharsets.UTF_8)));
     }
 
-    private static FeatureState state(StoreFeature f, Right right, PlanTier requiredTier, boolean canProcure,
-                                      Set<String> perms, PayActivation pay) {
-        Long until = right == null || right.current() == null ? null : right.current().endsAt();
+    /** Effective commercial rights for role delegation. Channel activation and employee duties are checked separately. */
+    public static Set<String> activeRights(StoreContext store) {
+        if (store.entitlements() == null) return Set.of();
+        return activeRights(store.entitlements().items().stream()
+                .collect(Collectors.toMap(Right::entitlementCode, Function.identity(), (first, second) -> first)));
+    }
+
+    private static Set<String> activeRights(Map<String, Right> rights) {
+        return rights.values().stream().filter(r -> commercialStatus(r.commercialStatus()) == AccessStatus.ALLOWED)
+                .map(Right::entitlementCode).collect(Collectors.toUnmodifiableSet());
+    }
+
+    private static AccessStatus commercialStatus(StoreFeature feature, Map<String, Right> rights, Set<String> active) {
+        var rule = feature.entitlement();
+        if (rule.matches(active)) return AccessStatus.ALLOWED;
+        return rule.codes().stream().filter(c -> !active.contains(c)).map(rights::get)
+                .filter(Objects::nonNull).map(r -> commercialStatus(r.commercialStatus()))
+                .findFirst().orElse(AccessStatus.NOT_PURCHASED);
+    }
+
+    private static Long effectiveUntil(StoreFeature feature, Map<String, Right> rights, Set<String> active) {
+        return feature.entitlement().codes().stream().filter(active::contains).map(rights::get)
+                .map(Right::current).filter(Objects::nonNull).map(Interval::endsAt)
+                .filter(Objects::nonNull).min(Long::compareTo).orElse(null);
+    }
+
+    private static FeatureState state(StoreFeature f, AccessStatus commercial, Long until, PlanTier requiredTier,
+                                      boolean canProcure, Set<String> perms, PayActivation pay) {
         String status;
         String next;
-        AccessStatus commercial = right == null ? AccessStatus.ALLOWED : commercialStatus(right.commercialStatus());
         if (commercial != AccessStatus.ALLOWED) {
             status = switch (commercial) {
                 case NOT_PURCHASED -> "NEED_PLAN";
@@ -151,7 +201,7 @@ public final class StoreFeatureMatrix {
                 next = "RETRY_CHECK";
             } else {
                 status = "NEED_PAY_ACTIVATION";
-                next = StoreFeature.PAY_ACTIVATION.canUse(perms) ? "APPLY_PAYMENT" : "CONTACT_OWNER";
+                next = (perms.contains("*") || perms.contains(BizPerms.FINANCE)) ? "APPLY_PAYMENT" : "CONTACT_OWNER";
             }
         } else {
             status = "AVAILABLE";
@@ -159,7 +209,10 @@ public final class StoreFeatureMatrix {
         }
         boolean canUse = "AVAILABLE".equals(status);
         return new FeatureState(f.code(), f.group().name(), f.entitlementCode(), status, next, requiredTier, until,
-                canUse, canUse && f.canManage(perms));
+                canUse, canUse && f.canManage(perms), f.actions().stream()
+                        .map(a -> new ActionState(a.code(), commercial == AccessStatus.ALLOWED
+                                && (!f.requiresPayActivation() || pay == PayActivation.ACTIVE) && a.permits(perms)))
+                        .toList());
     }
 
     /** {@code Right.commercialStatus}：ACTIVE 或 {@link AccessStatus} 的名字；认不出的按「检查不可用」 */
@@ -187,13 +240,8 @@ public final class StoreFeatureMatrix {
         return catalog.plans().stream().sorted(Comparator.comparing(PlanCard::tier)).toList();
     }
 
-    private static List<StoreFeature> offered(List<PlanCard> plans) {
-        Set<String> codes = plans.stream().flatMap(p -> p.entitlementCodes().stream()).collect(Collectors.toSet());
-        return Arrays.stream(StoreFeature.values()).filter(f -> codes.contains(f.entitlementCode())).toList();
-    }
-
     private static Optional<PlanTier> minTier(List<PlanCard> plans, StoreFeature f) {
-        return plans.stream().filter(p -> p.entitlementCodes().contains(f.entitlementCode()))
+        return plans.stream().filter(p -> f.entitlement().matches(Set.copyOf(p.entitlementCodes())))
                 .map(PlanCard::tier).findFirst();
     }
 }

@@ -1,6 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.portal.biz.feature.RoleFeatureAccess;
 import ai.neargo.shop.gateway.core.function.FunctionRegistry;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +55,10 @@ public class BizStaffController {
     @Autowired
     private ObjectProvider<FunctionRegistry> registry =
             new StaticListableBeanFactory().getBeanProvider(FunctionRegistry.class);
+
+    @Autowired
+    private ObjectProvider<RoleFeatureAccess> roleFeatures =
+            new StaticListableBeanFactory().getBeanProvider(RoleFeatureAccess.class);
 
     public BizStaffController(MerchantStaffService staffService, MerchantRoleService roleService) {
         this.staffService = staffService;
@@ -177,6 +182,8 @@ public class BizStaffController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/roles")
     public RoleVO createRole(@RequestBody RoleReq req) {
+        var access = roleFeatures.getIfAvailable();
+        if (access != null) access.validate(null, req.perms(), req.catalogReleaseNo(), null);
         return roleService.create(BizContext.requireMerchantNo(), req.name(), req.perms());
     }
 
@@ -185,8 +192,11 @@ public class BizStaffController {
     @PostMapping("/biz/role/{roleCode}")
     public RoleVO updateRole(@PathVariable String roleCode,
                                                         @RequestBody RoleReq req) {
-        return roleService.update(BizContext.requireMerchantNo(), roleCode,
-                req.name(), req.perms());
+        var access = roleFeatures.getIfAvailable();
+        Long version = access == null ? req.roleVersion()
+                : access.validate(roleCode, req.perms(), req.catalogReleaseNo(), req.roleVersion());
+        return version == null ? roleService.update(BizContext.requireMerchantNo(), roleCode, req.name(), req.perms())
+                : roleService.update(BizContext.requireMerchantNo(), roleCode, req.name(), req.perms(), version);
     }
 
     /** 删除。**还有人持有时拒** —— 删掉等于那些人的权限凭空消失，而他们看不到任何解释 */
@@ -197,7 +207,10 @@ public class BizStaffController {
     }
 
     /** @param perms 权限码。不含 {@code biz:store:admin} —— 见 {@link #createRole} */
-    public record RoleReq(String name, List<String> perms) {
+    public record RoleReq(String name, List<String> perms, String catalogReleaseNo, Long roleVersion) {
+        public RoleReq(String name, List<String> perms) {
+            this(name, perms, null, null);
+        }
     }
 
     /** @param displayName 备注名。为空时端上回落脱敏号 —— 不强制，但强烈建议填 */
