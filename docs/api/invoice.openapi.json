@@ -6,6 +6,249 @@
     "description": "多行业发票开立与台湾电子发票证明联。设计见 docs/technical/TDD-发票模块.md。证明联打印与补印走打印中心 /biz/print/requests（来源类型 INVOICE、场景 INVOICE_PROOF）。 C 端 /mp 部分见 TDD §8（载具优先）。"
   },
   "paths": {
+    "/ops/invoice-channel-applications": {
+      "get": {
+        "summary": "按主体列出通道申请",
+        "description": "需要对应运营端发票权限，且当前运营账号有权访问指定主体。",
+        "responses": {
+          "200": {
+            "description": "统一响应包的 data 返回操作结果。"
+          }
+        },
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ]
+      }
+    },
+    "/ops/invoice-channel-applications/{applicationNo}": {
+      "get": {
+        "summary": "读取通道申请和版本记录",
+        "description": "需要对应运营端发票权限，且当前运营账号有权访问指定主体。",
+        "responses": {
+          "200": {
+            "description": "统一响应包的 data 返回操作结果。"
+          }
+        },
+        "parameters": [
+          {
+            "name": "applicationNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "entityNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ]
+      }
+    },
+    "/ops/invoice-channel-applications/{applicationNo}/account-bindings": {
+      "post": {
+        "summary": "验证并绑定通道账号",
+        "description": "需要对应运营端发票权限，且当前运营账号有权访问指定主体。",
+        "responses": {
+          "200": {
+            "description": "统一响应包的 data 返回操作结果。"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "entityNo",
+                  "expectedRevision",
+                  "credentials"
+                ],
+                "properties": {
+                  "entityNo": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "credentials": {
+                    "type": "object",
+                    "required": [
+                      "user",
+                      "password"
+                    ],
+                    "properties": {
+                      "accountCode": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "user": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256,
+                        "writeOnly": true
+                      },
+                      "qrAesKeyHex": {
+                        "type": "string",
+                        "pattern": "^[A-Fa-f0-9]{32}$",
+                        "writeOnly": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "applicationNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ]
+      }
+    },
+    "/ops/invoice-channel-applications/{applicationNo}/reviews": {
+      "post": {
+        "summary": "审核通道申请",
+        "description": "需要对应运营端发票权限，且当前运营账号有权访问指定主体。",
+        "responses": {
+          "200": {
+            "description": "统一响应包的 data 返回操作结果。"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "entityNo",
+                  "expectedRevision",
+                  "decision",
+                  "reason"
+                ],
+                "properties": {
+                  "entityNo": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "APPROVED",
+                      "NEEDS_INFO",
+                      "REJECTED"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "applicationNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ]
+      }
+    },
+    "/ops/invoice-channel-routes/activations": {
+      "post": {
+        "summary": "激活主体发票通道",
+        "description": "需要对应运营端发票权限，且当前运营账号有权访问指定主体。",
+        "responses": {
+          "200": {
+            "description": "统一响应包的 data 返回操作结果。"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "entityNo",
+                  "accountNo",
+                  "expectedRouteVersion",
+                  "rangeNo",
+                  "reason"
+                ],
+                "properties": {
+                  "entityNo": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "accountNo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "expectedRouteVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "rangeNo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/biz/invoice-applications/{applicationNo}/cancellations": {
       "post": {
         "summary": "取消发票申请",
