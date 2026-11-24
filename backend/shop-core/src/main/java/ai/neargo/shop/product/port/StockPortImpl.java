@@ -182,6 +182,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
              * 突然变成 0 库存（如果强制走店级）或无限库存（如果强制走主体级）。
              */
             boolean perStore = storeNo != null && !storeNo.isBlank() && hasStoreStock(item.skuNo());
+            int expected = tracked && !perStore ? activeStockRows(item.skuNo()) : 1;
             int affected = perStore
                     ? storeStockMapper.lockStock(storeNo, item.skuNo(), item.qty())
                     : DataScopeContext.executeWithoutScope(
@@ -197,11 +198,11 @@ public class StockPortImpl implements StockPort, ReservationOwner {
              */
             boolean presale = false;
             if (affected == 0 && !perStore) {
-                presale = DataScopeContext.executeWithoutScope(
-                        () -> skuMapper.lockPresale(item.skuNo(), item.qty())) > 0;
-                affected = presale ? 1 : 0;
+                affected = DataScopeContext.executeWithoutScope(
+                        () -> skuMapper.lockPresale(item.skuNo(), item.qty()));
+                presale = affected > 0;
             }
-            if (affected == 0) {
+            if (affected == 0 || tracked && affected != expected) {
                 failed.add(item.skuNo());
                 // 不 break：一次把所有不足的 SKU 都收集齐，端上能一次性标红，
                 // 而不是让用户改一个提交一次再发现下一个
@@ -322,43 +323,51 @@ public class StockPortImpl implements StockPort, ReservationOwner {
         checked(lock, lockMapper.updateById(lock));
     }
 
-    /**
-     * 现货锁定转实扣，<b>必须恰好扣到 1 行</b>。
-     *
-     * <p>SQL 带 {@code locked_stock >= qty AND stock >= qty}，0 行说明锁定量或实存已经对不上
-     * （被改到锁定量以下、或历史漏账）。此前不看影响行数，照样把锁标成 CONFIRMED：
-     * 账上「已扣」、库里没扣，locked_stock 还永远漏在那里 —— 那批货从此卖不出去，
-     * 而对账之前没有任何人知道。这里抛出让整笔确认回滚，锁保持 LOCKED，
-     * 由上游的重试 / 告警把它暴露出来，而不是把一笔错账静默落地。
-     */
+    /** A tracked SKU writes every active market row in its shared platform stock pool. */
+    private int activeStockRows(String skuNo) {
+        return DataScopeContext.executeWithoutScope(() -> (int) skuMapper.lockSkuCurrent(skuNo).stream()
+                .filter(sku -> Integer.valueOf(0).equals(sku.getDeleted())).count());
+    }
+
+    private int expectedStockRows(PrdStockLock lock) {
+        if (lock.getStoreNo() != null || lock.getSourceManifestHash() == null) {
+            return 1;
+        }
+        int count = activeStockRows(lock.getSkuNo());
+        if (count < 1) {
+            throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH);
+        }
+        return count;
+    }
+
     private void deductLocked(PrdStockLock lock) {
+        int expected = expectedStockRows(lock);
         int affected = lock.getStoreNo() != null
                 ? storeStockMapper.confirmStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty())
                 : DataScopeContext.executeWithoutScope(
                         () -> skuMapper.confirmStock(lock.getSkuNo(), lock.getQty()));
-        if (affected != 1) {
-            LOG.error("[stock] 锁定转实扣未命中：lockNo={} sku={} store={} qty={} —— 锁定量或实存已对不上，拒绝标记 CONFIRMED",
-                    lock.getLockNo(), lock.getSkuNo(), lock.getStoreNo(), lock.getQty());
+        if (affected != expected) {
+            LOG.error("[stock] 锁定转实扣行数不符：lockNo={} sku={} store={} qty={} expected={} affected={}",
+                    lock.getLockNo(), lock.getSkuNo(), lock.getStoreNo(), lock.getQty(), expected, affected);
             throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH);
         }
     }
 
     private void releaseBalance(PrdStockLock lock) {
+        int expected = expectedStockRows(lock);
+        int affected;
         if (Boolean.TRUE.equals(lock.getPresale())) {
-            checked(
-                    lock,
-                    DataScopeContext.executeWithoutScope(
-                            () -> skuMapper.releasePresale(lock.getSkuNo(), lock.getQty())));
-        } else if (lock.getStoreNo() != null)
-            checked(
-                    lock,
-                    storeStockMapper.releaseStock(
-                            lock.getStoreNo(), lock.getSkuNo(), lock.getQty()));
-        else
-            checked(
-                    lock,
-                    DataScopeContext.executeWithoutScope(
-                            () -> skuMapper.releaseStock(lock.getSkuNo(), lock.getQty())));
+            affected = DataScopeContext.executeWithoutScope(
+                    () -> skuMapper.releasePresale(lock.getSkuNo(), lock.getQty()));
+        } else if (lock.getStoreNo() != null) {
+            affected = storeStockMapper.releaseStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
+        } else {
+            affected = DataScopeContext.executeWithoutScope(
+                    () -> skuMapper.releaseStock(lock.getSkuNo(), lock.getQty()));
+        }
+        if (lock.getSourceManifestHash() != null && affected != expected) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
     }
 
     /** Native original read makes routing independent of today's SKU or inventory configuration. */

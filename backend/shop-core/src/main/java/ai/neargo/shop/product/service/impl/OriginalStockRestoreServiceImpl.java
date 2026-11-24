@@ -169,6 +169,9 @@ public class OriginalStockRestoreServiceImpl implements OriginalStockRestoreServ
         claim.setOriginalLockId(original.getId());
         claim.setQty(qty);
         claims.insert(claim);
+        int expected = original.getStoreNo() == null && original.getSourceManifestHash() != null
+                ? (int) skus.lockSkuCurrent(original.getSkuNo()).stream()
+                        .filter(sku -> Integer.valueOf(0).equals(sku.getDeleted())).count() : 1;
         int changed;
         if (Boolean.TRUE.equals(original.getPresale())) {
             changed = skus.releasePresale(original.getSkuNo(), qty);
@@ -177,7 +180,7 @@ public class OriginalStockRestoreServiceImpl implements OriginalStockRestoreServ
         } else {
             changed = skus.restoreStock(original.getSkuNo(), qty);
         }
-        if (changed != 1) {
+        if (expected < 1 || changed != expected) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
     }
