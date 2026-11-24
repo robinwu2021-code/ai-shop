@@ -2,6 +2,7 @@ package ai.neargo.shop.channel.media;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.storage.LocalObjectPaths;
 import ai.neargo.shop.media.MediaStore;
 import ai.neargo.shop.media.MediaKeys;
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +14,10 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.SecureRandom;
@@ -42,6 +45,7 @@ public class LocalDiskMediaStore implements MediaStore {
 
     /** HMAC 算法。与 COS 的预签名同族，换过去时签名语义不变。 */
     private static final String HMAC = "HmacSHA256";
+    private static final String STAGING_PREFIX = ".media-upload-";
 
     private final Path root;
     private final String publicPrefix;
@@ -77,15 +81,34 @@ public class LocalDiskMediaStore implements MediaStore {
 
     @Override
     public void put(String key, InputStream in, long size, String contentType) {
-        Path target = resolve(key);
+        if (size < 0) throw new IllegalArgumentException("Invalid media size");
+        Path target = objectPath(key);
         try {
             Files.createDirectories(target.getParent());
-            // REPLACE_EXISTING：key 里带 UUID，正常撞不上；真撞上了也是覆盖成同一份内容更安全，
-            // 而不是抛异常让调用方留下一条 PENDING 记账行永远转不成 ACTIVE
-            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            Path staging = Files.createTempFile(objectPath(key).getParent(), STAGING_PREFIX, ".part");
+            try {
+                try (var output = Files.newOutputStream(staging, LinkOption.NOFOLLOW_LINKS)) {
+                    copyExact(in, output, size);
+                }
+                Files.move(staging, objectPath(key), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } finally {
+                Files.deleteIfExists(staging);
+            }
         } catch (IOException e) {
             throw new IllegalStateException("写入失败：" + key, e);
         }
+    }
+
+    private static void copyExact(InputStream input, OutputStream output, long expectedBytes) throws IOException {
+        byte[] buffer = new byte[8192];
+        long remaining = expectedBytes;
+        while (remaining > 0) {
+            int count = input.read(buffer, 0, (int) Math.min(remaining, buffer.length));
+            if (count < 0) throw new IOException("Media size does not match declared size");
+            output.write(buffer, 0, count);
+            remaining -= count;
+        }
+        if (input.read() >= 0) throw new IOException("Media size does not match declared size");
     }
 
     @Override
@@ -94,7 +117,7 @@ public class LocalDiskMediaStore implements MediaStore {
             try {
                 // deleteIfExists 而不是 delete：回收批次要能整批重跑，
                 // 上一轮已经删掉的那些不该让重跑整批失败
-                Files.deleteIfExists(resolve(key));
+                Files.deleteIfExists(objectPath(key));
             } catch (IOException e) {
                 // 单个删不掉不该中断整批：批次会把它记成失败，运营可以重跑
                 log.warn("删除失败，留给批次重跑：{}", key, e);
@@ -105,12 +128,12 @@ public class LocalDiskMediaStore implements MediaStore {
     @Override
     public InputStream openPrivate(String key) throws IOException {
         if (MediaKeys.isPublicKey(key)) throw new IllegalArgumentException("PRIVATE_KEY_REQUIRED");
-        return Files.newInputStream(resolve(key));
+        return Files.newInputStream(objectPath(key), LinkOption.NOFOLLOW_LINKS);
     }
 
     @Override
     public boolean exists(String key) {
-        return Files.isRegularFile(resolve(key));
+        return Files.isRegularFile(objectPath(key), LinkOption.NOFOLLOW_LINKS);
     }
 
     @Override
@@ -125,6 +148,7 @@ public class LocalDiskMediaStore implements MediaStore {
 
     @Override
     public String signedUrl(String key, Duration ttl) {
+        objectPath(key);
         long exp = System.currentTimeMillis() / 1000 + ttl.toSeconds();
         return privatePath(key) + "?exp=" + exp + "&sig=" + sign(key, exp);
     }
@@ -155,17 +179,17 @@ public class LocalDiskMediaStore implements MediaStore {
         }
     }
 
-    /**
-     * key → 磁盘路径，并确认落点在根目录内。
-     *
-     * <p>key 的各段虽然都来自登录态与 UUID、正常不含 {@code ..}，
-     * 但这行的成本是零，而漏了它就是一个任意文件读写。
-     */
-    private Path resolve(String key) {
-        Path target = root.resolve(key).normalize();
-        if (!target.startsWith(root)) {
+    /** Filesystem target used by the adapter and its HTTP reader. */
+    public Path objectPath(String key) {
+        Path path;
+        try {
+            path = LocalObjectPaths.resolve(root, key);
+        } catch (IllegalArgumentException e) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        return target;
+        for (Path segment : root.relativize(path)) {
+            if (segment.toString().startsWith(STAGING_PREFIX)) throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return path;
     }
 }

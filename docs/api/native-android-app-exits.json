@@ -1,0 +1,115 @@
+{
+  "repository": "https://codeup.aliyun.com/67221143cff8dd759318ddd9/p2027/ai-shop-bapp.git",
+  "commit": "6ce4114771c1f68c524c461ae606f620a4734d50",
+  "calls": [
+    {
+      "source": "handheld-pos/android/feature/invoice/src/main/kotlin/ai/neargo/pos/feature/invoice/InvoiceLifecycleApi.kt",
+      "endpoints": [
+        [
+          "GET",
+          "/biz/invoice-applications"
+        ],
+        [
+          "GET",
+          "/biz/invoice-applications/{no}"
+        ],
+        [
+          "GET",
+          "/biz/invoice-applications/{no}/events"
+        ],
+        [
+          "GET",
+          "/biz/invoice-applications/{no}/revisions"
+        ],
+        [
+          "POST",
+          "/biz/invoice-applications"
+        ],
+        [
+          "POST",
+          "/biz/invoice-applications/{no}/issuances"
+        ],
+        [
+          "POST",
+          "/biz/invoice-applications/{no}/revisions"
+        ],
+        [
+          "GET",
+          "/biz/invoice-channel-accounts"
+        ],
+        [
+          "GET",
+          "/biz/invoice-channel-applications"
+        ],
+        [
+          "GET",
+          "/biz/invoice-channel-applications/{no}"
+        ],
+        [
+          "GET",
+          "/biz/invoice-channel-routes"
+        ],
+        [
+          "POST",
+          "/biz/invoice-channel-applications"
+        ],
+        [
+          "POST",
+          "/biz/invoice-channel-applications/{no}/revisions"
+        ]
+      ]
+    },
+    {
+      "source": "handheld-pos/android/feature/invoice/src/main/kotlin/ai/neargo/pos/feature/invoice/InvoiceMailApi.kt",
+      "endpoints": [
+        [
+          "GET",
+          "/biz/invoices/{invoiceNo}/deliveries"
+        ],
+        [
+          "POST",
+          "/biz/invoices/{invoiceNo}/deliveries"
+        ],
+        [
+          "POST",
+          "/biz/invoices/{invoiceNo}/deliveries/{no}/resends"
+        ]
+      ]
+    },
+    {
+      "source": "handheld-pos/android/feature/invoice/src/main/kotlin/ai/neargo/pos/feature/invoice/InvoiceTimelineCard.kt",
+      "endpoints": [
+        [
+          "GET",
+          "/biz/invoices/{invoiceNo}/timeline"
+        ]
+      ]
+    },
+    {
+      "source": "handheld-pos/android/feature/invoice/src/main/kotlin/ai/neargo/pos/feature/invoice/RemoteInvoices.kt",
+      "endpoints": [
+        [
+          "GET",
+          "/biz/invoices/{invoiceNo}/documents"
+        ],
+        [
+          "POST",
+          "/biz/invoices/{invoiceNo}/documents"
+        ],
+        [
+          "GET",
+          "/biz/print/invoices/{no}/proof-history"
+        ]
+      ]
+    },
+    {
+      "source": "handheld-pos/android/feature/orders/src/main/kotlin/ai/neargo/pos/feature/orders/RemoteOrders.kt",
+      "endpoints": [
+        [
+          "POST",
+          "/biz/payment/offline-records/{no}/refund"
+        ]
+      ]
+    }
+  ]
+}

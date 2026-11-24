@@ -133,6 +133,15 @@ class PrintOrderSoftwareFlowTest {
         assertEquals(0, simulations.runNext(budget).succeeded());
         var view = data(get("/biz/print/simulations/" + simulation), owner);
         assertEquals("PASSED", view.path("status").asText());
+        var matchingRuns = data(get("/biz/print/simulations").param("storeNo", owner.store())
+                .param("scene", "ORDER_PAID").param("factNo", ref.factNo()), owner).path("records");
+        assertEquals(1, matchingRuns.size());
+        assertEquals(simulation, matchingRuns.get(0).path("simulationNo").asText());
+        assertEquals(ref.factNo(), matchingRuns.get(0).path("factNo").asText());
+        assertTrue(data(get("/biz/print/simulations").param("storeNo", owner.store())
+                .param("scene", "ORDER_PAID").param("factNo", ref.factNo() + "OTHER"), owner)
+                .path("records").isEmpty());
+
         assertEquals(before, count("prn_job", "store_no", owner.store()));
         var export = data(post("/biz/print/exports").header("Idempotency-Key", "software-pdf")
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of(

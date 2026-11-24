@@ -118,6 +118,7 @@ public class OtpChannelPortImpl implements OtpChannelPort {
                 case OtpScenes.PHONE_CHANGE -> simplified ? "手机号变更" : "手機號碼變更";
                 case OtpScenes.EMAIL_CHANGE -> simplified ? "邮箱变更" : "電子郵件變更";
                 case OtpScenes.ORDER_PICKUP_CONFIRM -> simplified ? "提货确认" : "取貨確認";
+                case OtpScenes.INVOICE_ARTIFACT_ACCESS -> simplified ? "发票下载" : "發票下載";
                 default -> throw BizException.of(ErrorCode.BAD_REQUEST);
             };
             String validity = seconds % 60 == 0 ? (seconds / 60) + (simplified ? " 分钟" : " 分鐘") : seconds + " 秒";

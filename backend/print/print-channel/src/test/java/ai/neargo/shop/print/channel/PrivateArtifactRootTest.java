@@ -1,14 +1,17 @@
 package ai.neargo.shop.print.channel;
 
 import ai.neargo.shop.print.api.PrivateArtifact;
+import ai.neargo.shop.print.api.PrintFailure;
 import ai.neargo.shop.print.api.PrintHashes;
 import ai.neargo.shop.print.channel.port.storage.PrivateLocalArtifactStore;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PrivateArtifactRootTest {
     @TempDir Path root;
@@ -35,5 +38,18 @@ class PrivateArtifactRootTest {
                     assertThat(explicit.resolve(KEY)).hasBinaryContent(BYTES);
                     assertThat(root.resolve("new/print-private").resolve(KEY)).doesNotExist();
                 });
+    }
+
+    @Test void rejectsAmbiguousAndSymlinkedObjectPaths() throws Exception {
+        var outside = Files.createDirectory(root.resolve("outside"));
+        var privateRoot = Files.createDirectory(root.resolve("print-private"));
+        Files.write(outside.resolve("receipt.pdf"), BYTES);
+        Files.createSymbolicLink(privateRoot.resolve("linked"), outside);
+        var store = new PrivateLocalArtifactStore(privateRoot.toString(), "", "");
+
+        for (String key : new String[] {"MAIN//receipt.pdf", "linked/receipt.pdf"}) {
+            assertThatThrownBy(() -> store.verify(key)).isInstanceOfSatisfying(
+                    PrintFailure.class, failure -> assertThat(failure.key()).isEqualTo("print.invalidObjectKey"));
+        }
     }
 }

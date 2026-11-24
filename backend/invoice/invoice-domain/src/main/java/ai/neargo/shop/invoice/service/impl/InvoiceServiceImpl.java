@@ -32,6 +32,8 @@ import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
 import ai.neargo.shop.invoice.gateway.ProviderCapability;
 import ai.neargo.shop.invoice.regime.InvoiceRegime;
 import ai.neargo.shop.invoice.regime.InvoiceRegimes;
+import ai.neargo.shop.invoice.service.InvoiceChannelService;
+import ai.neargo.shop.invoice.service.InvoiceChannelService.BoundAccount;
 import ai.neargo.shop.invoice.service.InvoiceService;
 import ai.neargo.shop.print.api.BusinessPrintFactReady;
 import ai.neargo.shop.print.api.PrintHashes;
@@ -55,6 +57,7 @@ import java.util.Optional;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -86,6 +89,10 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final ObjectMapper json;
     private final InvoiceGatewayPolicy policy;
     private final InvoiceGateways gateways;
+    @Autowired(required = false)
+    private InvoiceChannelService channels;
+
+    private record ApplicationRef(String number, int revision, String sourceFingerprint) {}
 
     public InvoiceServiceImpl(RegimeProfileMapper profiles, NumberRangeMapper ranges, InvoiceMapper invoices,
             InvoiceLineMapper lines, AllowanceMapper allowances, TransmissionMapper transmissions,
@@ -114,7 +121,15 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     @Transactional
     public InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo, Buyer buyer) {
-        return issue(scope, sourceType, sourceNo, (profile, source) -> buyer, null);
+        return issue(scope, sourceType, sourceNo, (profile, source) -> buyer, null, null);
+    }
+
+    @Override
+    @Transactional
+    public InvoiceReceipt issueFromApplication(Scope scope, String sourceType, String sourceNo, Buyer buyer,
+            String applicationNo, int revision, String expectedSourceFingerprint) {
+        return issue(scope, sourceType, sourceNo, (profile, source) -> buyer, null,
+                new ApplicationRef(applicationNo, revision, expectedSourceFingerprint));
     }
 
     /**
@@ -123,7 +138,7 @@ public class InvoiceServiceImpl implements InvoiceService {
      */
     private InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo,
             BiFunction<IvcRegimeProfile, InvoiceSourcePort.InvoiceSource, Buyer> buyerOf) {
-        return issue(scope, sourceType, sourceNo, buyerOf, null);
+        return issue(scope, sourceType, sourceNo, buyerOf, null, null);
     }
 
     /**
@@ -131,17 +146,27 @@ public class InvoiceServiceImpl implements InvoiceService {
      *                    同来源已有有效发票时拒绝而不是回原票
      */
     private InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo,
-            BiFunction<IvcRegimeProfile, InvoiceSourcePort.InvoiceSource, Buyer> buyerOf, IvcInvoice revisedFrom) {
+            BiFunction<IvcRegimeProfile, InvoiceSourcePort.InvoiceSource, Buyer> buyerOf, IvcInvoice revisedFrom,
+            ApplicationRef application) {
         var existing = active(scope, sourceType, sourceNo);
         if (existing != null) {
             if (revisedFrom != null) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
-            return receipt(existing);
+            return existingReceipt(scope, existing, application);
         }
-        var profile = activeProfile(scope);
+        BoundAccount originalBinding = revisedFrom != null && revisedFrom.getChannelAccountNo() != null
+                ? historical(revisedFrom) : null;
+        var profile = originalBinding == null ? activeProfile(scope) : originalBinding.profile();
         var regime = regimes.require(profile.getRegimeCode());
         var port = sources.get(sourceType);
         if (port == null) throw BizException.of(ErrorCode.INVOICE_SOURCE_NOT_READY);
         var source = port.load(scope, sourceType, sourceNo);
+        if (application != null && application.sourceFingerprint() != null
+                && !application.sourceFingerprint().equals(InvoiceApplicationServiceImpl.sourceFingerprint(json, source))) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        var binding = revisedFrom == null && channels != null
+                ? channels.activeForIssue(scope, regime.code()).orElse(null) : originalBinding;
+        if (binding != null) profile = binding.profile();
         var buyer = buyerOf.apply(profile, source);
         regime.validateBuyer(buyer, profile);
         long sum = 0;
@@ -154,11 +179,11 @@ public class InvoiceServiceImpl implements InvoiceService {
         String fiscalNumber, rangeNo, periodCode;
         if (revisedFrom == null) {
             var range = ranges.lockUsable(scope.tenantNo(), scope.entityNo(), regime.code(), regime.periodOf(now),
-                    scope.storeNo());
+                    scope.storeNo(), binding == null ? null : binding.accountNo());
             if (range == null) throw BizException.of(ErrorCode.INVOICE_NUMBER_EXHAUSTED);
             // 同来源的并发请求都排在同一号段锁后面；拿到锁后用锁定读再看一次，后到的直接回原发票，不取号
             existing = invoices.lockActive(scope.tenantNo(), scope.entityNo(), sourceKey(sourceType, sourceNo));
-            if (existing != null) return receipt(existing);
+            if (existing != null) return existingReceipt(scope, existing, application);
             int number = range.getNextNo();
             ranges.advance(range.getId());
             fiscalNumber = regime.fiscalNumber(range.getTrack(), number);
@@ -184,6 +209,17 @@ public class InvoiceServiceImpl implements InvoiceService {
         inv.setIndustryCode(source.industryCode());
         inv.setSourceType(sourceType);
         inv.setSourceNo(sourceNo);
+        if (binding != null) {
+            inv.setChannelCode(binding.channelCode());
+            inv.setChannelAccountNo(binding.accountNo());
+            inv.setChannelAccountRevision(binding.accountRevision());
+            inv.setChannelRouteVersion(revisedFrom == null ? binding.routeVersion() : revisedFrom.getChannelRouteVersion());
+            inv.setChannelEnvironment(binding.environment());
+        }
+        if (application != null) {
+            inv.setApplicationNo(application.number());
+            inv.setApplicationRevisionNo(application.revision());
+        }
         inv.setActiveSourceKey(sourceKey(sourceType, sourceNo));
         inv.setFiscalNumber(fiscalNumber);
         inv.setActiveFiscalKey(fiscalNumber);
@@ -407,7 +443,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         inv.setActiveSourceKey(null);
         inv.setVoidReason(reason);
         inv.setVoidedAt(now);
-        enqueue(inv, activeProfile(scope), "VOID", inv.getInvoiceNo(),
+        enqueue(inv, null, "VOID", inv.getInvoiceNo(),
                 regime.message("VOID", inv, List.of(), null));
         return view(inv, true);
     }
@@ -439,7 +475,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .eq("message_type", "REVOKE").eq("ref_no", inv.getInvoiceNo()));
         var message = regime.message("REVOKE", inv, List.of(), null);
         if (previous == null) {
-            enqueue(inv, activeProfile(scope), "REVOKE", inv.getInvoiceNo(), message);
+            enqueue(inv, null, "REVOKE", inv.getInvoiceNo(), message);
         } else {
             var window = regime.reportWindow("REVOKE", inv);
             String payload = json.writeValueAsString(message);
@@ -461,7 +497,14 @@ public class InvoiceServiceImpl implements InvoiceService {
             throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
         Buyer chosen = buyer != null ? buyer : new Buyer(original.getBuyerTaxId(), original.getBuyerName(),
                 original.getCarrierType(), original.getCarrierId(), original.getDonateCode());
-        var r = issue(scope, original.getSourceType(), original.getSourceNo(), (profile, source) -> chosen, original);
+        ApplicationRef application = original.getApplicationNo() == null ? null
+                : new ApplicationRef(original.getApplicationNo(), original.getApplicationRevisionNo(), null);
+        if (application != null && buyer != null && !buyer.equals(new Buyer(original.getBuyerTaxId(),
+                original.getBuyerName(), original.getCarrierType(), original.getCarrierId(), original.getDonateCode()))) {
+            throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
+        }
+        var r = issue(scope, original.getSourceType(), original.getSourceNo(), (profile, source) -> chosen, original,
+                application);
         return view(require(scope, r.invoiceNo()), true);
     }
 
@@ -498,7 +541,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         a.setPrintSnapshotHash(PrintHashes.sha256(a.getPrintSnapshot()));
         allowances.insert(a);
         events.publish(new BusinessPrintFactReady(a.getAllowanceNo(), InvoicePrintSourceFactsPortImpl.ref(inv, a)));
-        enqueue(inv, activeProfile(scope), "ALLOWANCE", a.getAllowanceNo(),
+        enqueue(inv, null, "ALLOWANCE", a.getAllowanceNo(),
                 regime.message("ALLOWANCE", inv, List.of(), a));
         return view(require(scope, invoiceNo), true);
     }
@@ -528,7 +571,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         a.setStatus("VOIDED");
         a.setVoidReason(reason);
         a.setVoidedAt(now);
-        enqueue(inv, activeProfile(scope), "ALLOWANCE_VOID", a.getAllowanceNo(),
+        enqueue(inv, null, "ALLOWANCE_VOID", a.getAllowanceNo(),
                 regime.message("ALLOWANCE_VOID", inv, List.of(), a));
         return view(require(scope, invoiceNo), true);
     }
@@ -541,7 +584,12 @@ public class InvoiceServiceImpl implements InvoiceService {
         t.setEntityNo(inv.getEntityNo());
         t.setStoreNo(inv.getStoreNo());
         t.setRegimeCode(inv.getRegimeCode());
-        String gatewayCode = policy.effective(profile).code();
+        var original = inv.getChannelCode() == null && !"ISSUE".equals(type) ? issueTransmission(inv) : null;
+        String gatewayCode = inv.getChannelCode() != null ? inv.getChannelCode()
+                : original != null ? original.getGatewayCode()
+                : policy.effective(profile != null ? profile : activeProfile(
+                        new Scope(inv.getTenantNo(), inv.getEntityNo(), inv.getStoreNo(), inv.getCreatedBy()))).code();
+        t.setChannelAccountNo(inv.getChannelAccountNo());
         String payload = json.writeValueAsString(message);
         preflight(gatewayCode, inv.getRegimeCode(), type, refNo, payload);
         t.setGatewayCode(gatewayCode);   // 开立时冻结：之后切换供应商，这张票仍走原供应商
@@ -673,6 +721,21 @@ public class InvoiceServiceImpl implements InvoiceService {
         return inv;
     }
 
+    private BoundAccount historical(IvcInvoice invoice) {
+        return (channels == null ? Optional.<BoundAccount>empty()
+                : channels.historical(invoice.getTenantNo(), invoice.getEntityNo(), invoice.getChannelAccountNo()))
+                .orElseThrow(() -> BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, "original_account_unavailable"));
+    }
+
+    private InvoiceReceipt existingReceipt(Scope scope, IvcInvoice invoice, ApplicationRef application) {
+        if (!scope.storeNo().equals(invoice.getStoreNo())) throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);
+        if (application != null && (!application.number().equals(invoice.getApplicationNo())
+                || !Integer.valueOf(application.revision()).equals(invoice.getApplicationRevisionNo()))) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return receipt(invoice);
+    }
+
     private InvoiceReceipt receipt(IvcInvoice i) {
         return new InvoiceReceipt(i.getInvoiceNo(), i.getRegimeCode(), i.getFiscalNumber(), i.getPeriodCode(),
                 i.getRandomCode(), i.getStatus(), "Y".equals(i.getPrintMark()), i.getCurrency(), i.getTotalMinor());
@@ -709,7 +772,10 @@ public class InvoiceServiceImpl implements InvoiceService {
                 i.getZeroTaxSalesMinor(), i.getFreeTaxSalesMinor(), i.getTaxMinor(),
                 i.getTotalMinor(), i.getAllowedMinor(), i.getStatus(), i.getVoidReason(),
                 issue == null ? null : issue.getStatus(), issue == null ? null : issue.getReportDeadlineAt(),
-                lineViews, allowanceViews, revocable, revocation);
+                lineViews, allowanceViews, revocable, revocation, i.getApplicationNo(), i.getApplicationRevisionNo(),
+                i.getChannelCode() != null ? i.getChannelCode() : issue == null ? null : issue.getGatewayCode(),
+                i.getChannelAccountNo(), i.getChannelAccountRevision(), i.getChannelRouteVersion(),
+                i.getChannelEnvironment());
     }
 
     private IvcTransmission issueTransmission(IvcInvoice i) {

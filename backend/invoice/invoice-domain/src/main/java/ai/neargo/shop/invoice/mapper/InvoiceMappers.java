@@ -35,9 +35,12 @@ public final class InvoiceMappers {
          */
         @Select("SELECT * FROM ivc_number_range WHERE tenant_no=#{tenant} AND entity_no=#{entity}"
                 + " AND regime_code=#{regime} AND period_code=#{period} AND status='ACTIVE'"
+                + " AND ((channel_account_no IS NULL AND #{channelAccount,jdbcType=VARCHAR} IS NULL)"
+                + " OR channel_account_no=#{channelAccount,jdbcType=VARCHAR})"
                 + " AND store_no IN (#{store}, '*') ORDER BY (store_no='*'), start_no LIMIT 1 FOR UPDATE")
         IvcNumberRange lockUsable(@Param("tenant") String tenant, @Param("entity") String entity,
-                @Param("regime") String regime, @Param("period") String period, @Param("store") String store);
+                @Param("regime") String regime, @Param("period") String period, @Param("store") String store,
+                @Param("channelAccount") String channelAccount);
 
         /** 推进到下一号；最后一号用掉时同句置 EXHAUSTED。 */
         @Update("UPDATE ivc_number_range SET next_no=next_no+1,"

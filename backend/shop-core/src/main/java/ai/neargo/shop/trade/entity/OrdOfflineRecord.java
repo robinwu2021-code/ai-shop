@@ -15,8 +15,8 @@ import java.time.LocalDateTime;
  * 商家自报的一笔 App 外收款（TDD-商户App外部记账）。
  *
  * <p>只保存当前值；每一步的前后值在 {@link OrdOfflineRecordEvent}。它不是支付单：不进支付台账、
- * 不进通道对账、不能退款，带了 {@code orderNo} 也只是引用。{@code version} 即对外的 {@code version}，
- * 更正与作废时由乐观锁加一。
+ * 不进通道对账。已付门店零售单的单笔现金收款可记全额退款。
+ * 更正、作废与退款时由乐观锁将对外的 {@code version} 加一。
  */
 @Getter
 @Setter
@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 public class OrdOfflineRecord extends BaseEntity {
     public static final String RECORDED = "RECORDED";
     public static final String VOIDED = "VOIDED";
+    public static final String REFUNDED = "REFUNDED";
 
     @TableField(updateStrategy = FieldStrategy.NEVER)
     private String recordNo;

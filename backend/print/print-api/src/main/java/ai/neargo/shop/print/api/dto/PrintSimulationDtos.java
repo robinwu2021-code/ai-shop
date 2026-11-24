@@ -26,7 +26,7 @@ public final class PrintSimulationDtos {
             PrintOutputOptions outputOptions) {}
 
     public record SimulationQuery(
-            String storeNo, String scene, String status, Integer page, Integer size) {}
+            String storeNo, String scene, String status, Integer page, Integer size, String factNo) {}
 
     public record SimulationView(
             String simulationNo,
@@ -36,5 +36,6 @@ public final class PrintSimulationDtos {
             FrozenJson expectedResults,
             FrozenJson actualResults,
             FrozenJson eventJournal,
-            long revision) {}
+            long revision,
+            String factNo) {}
 }

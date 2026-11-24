@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "运营端通道审核、账号绑定与激活接口已实现，运营端页面待接入。",
+  "plan": "docs/technical/TDD-发票申请与交付追溯.md",
+  "contract": "docs/api/invoice.openapi.json",
+  "entries": [
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/invoice-channel-applications"
+    },
+    {
+      "app": "ops-web",
+      "method": "GET",
+      "path": "/ops/invoice-channel-applications/{applicationNo}"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/invoice-channel-applications/{applicationNo}/account-bindings"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/invoice-channel-applications/{applicationNo}/reviews"
+    },
+    {
+      "app": "ops-web",
+      "method": "POST",
+      "path": "/ops/invoice-channel-routes/activations"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 package ai.neargo.shop.print.channel.port.storage;
 
+import ai.neargo.shop.common.storage.LocalObjectPaths;
 import ai.neargo.shop.spi.printing.*;
 
 import ai.neargo.shop.print.api.*;
@@ -40,12 +41,12 @@ public final class PrivateLocalArtifactStore
     private Path path(String key) {
         if (key == null
                 || key.length() > 400
-                || !key.matches("[A-Za-z0-9_/-]+[.]pdf")
-                || key.contains("..")
-                || key.startsWith("/")) throw new PrintFailure("print.invalidObjectKey");
-        Path p = root.resolve(key).normalize();
-        if (!p.startsWith(root)) throw new PrintFailure("print.invalidObjectKey");
-        return p;
+                || !key.matches("[A-Za-z0-9_/-]+[.]pdf")) throw new PrintFailure("print.invalidObjectKey");
+        try {
+            return LocalObjectPaths.resolve(root, key);
+        } catch (IllegalArgumentException e) {
+            throw new PrintFailure("print.invalidObjectKey");
+        }
     }
 
     public void put(PrivateArtifact artifact) {
@@ -152,11 +153,17 @@ public final class PrivateLocalArtifactStore
                         sign(key, expires).getBytes(StandardCharsets.US_ASCII),
                         signature.getBytes(StandardCharsets.US_ASCII)))
             throw new PrintFailure("print.downloadExpired");
-        if (!exists(key)) throw new PrintFailure("print.artifactNotFound");
-        try {
-            if (Files.size(path(key)) > 20 * 1024 * 1024)
+        return readBytes(key);
+    }
+
+    public byte[] readBytes(String key) {
+        var file = path(key);
+        if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) throw new PrintFailure("print.artifactNotFound");
+        try (var in = Files.newInputStream(file, LinkOption.NOFOLLOW_LINKS)) {
+            byte[] bytes = in.readNBytes(20 * 1024 * 1024 + 1);
+            if (bytes.length > 20 * 1024 * 1024)
                 throw new PrintFailure("print.artifactTooLarge");
-            return Files.readAllBytes(path(key));
+            return bytes;
         } catch (java.io.IOException e) {
             throw new PrintFailure("print.artifactReadFailed");
         }

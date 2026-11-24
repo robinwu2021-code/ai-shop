@@ -1,6 +1,6 @@
 # TDD-统一订单与开票资料（POS 建单 · 待补资料 · 付清开票）
 
-状态：已确认（2026-11-24，用户：「按 B 开始 P1」）；P1、P2 已实现并发布到 v2（§7）；P3 未开始
+状态：已确认（2026-11-24，用户：「按 B 开始 P1」）；P1、P2 已实现并发布到 v2（§7）；P3 已补单笔现金全额退款
 档位：2 · 依据：[PRD-统一订单与开票资料](../requirements/PRD-统一订单与开票资料.md) · 决策：[ADR-065](./ADR/ADR-065-门店零售单与订单行开票资料.md)
 关联：[TDD-发票模块](./TDD-发票模块.md) §9 / §24，[TDD-多行业统一业务架构-零售餐饮美业](./TDD-多行业统一业务架构-零售餐饮美业.md)，[TDD-统一试算引擎-初始规则与结账税费](./TDD-统一试算引擎-初始规则与结账税费.md)
 创建：2026-11-24 · 最后更新：2026-11-24（P2 实现）
@@ -104,7 +104,8 @@ POST /biz/store-orders
 - `POST /biz/payment/offline-records`（`orderNo` = 门店零售单子单号，**只对 `admission_kind='STORE_SALE'`**）：写入同一事务里锁子单、加总、够了就付清。
   单已付清 / 已取消 → `20024`（不再挂现金，挂上就作废不掉）；记录币别 ≠ 订单币别 → `20030 STORE_ORDER_CURRENCY_MISMATCH`。两种都整笔回滚、记录不落。
   其他订单号照决策 D3「只记、不改订单」。
-- `POST /biz/payment/offline-records/{recordNo}/void`、`…/correct`：所挂门店零售单已付清 → `20029 STORE_ORDER_PAYMENT_LOCKED`（退款是 P3）；未付清放行并重算（更正成更大金额可就此付清）。
+- `POST /biz/payment/offline-records/{recordNo}/refund`：门店收款管理权限。提交 `amountMinor`、`reason`、`expectedVersion`。仅受理已付门店零售单的单笔等额现金全退，且子单和现金记录无有效发票。原收款金额保留，现金记录和子单同时更新为 `REFUNDED` 并记录操作人、原因和退款金额。同一记录重复全退返回已退款状态。
+- `POST /biz/payment/offline-records/{recordNo}/void`、`…/correct`：所挂门店零售单已付清 → `20029 STORE_ORDER_PAYMENT_LOCKED`；未付清放行并重算（更正成更大金额可就此付清）。
 - `POST /biz/payment/collection`（`bizNo` = 子单号）：支付单成功后挂单。**事实来源**：内嵌形态 = 回调 / 三个对账器补单都经 `OrderServiceImpl#markPaid(PYO…)`，
   原先直接跳过，现在先经新 spi `PaidCollectionPort`（支付域实现，读 `pay_order`：`biz_type=BIZ_COLLECT`、已成功、`paid_minor`、门店号）取事实再挂；
   独立形态（near-pay，v2 现状）= 已验签收款推送 `PaymentCollectionFact` → `MERCHANT_COLLECTION_RECEIVED` → `StoreOrderCollectionConsumer`（`shop.payment-collections.enabled=true` 时装配）。

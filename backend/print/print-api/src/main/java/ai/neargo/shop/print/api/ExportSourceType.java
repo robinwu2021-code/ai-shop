@@ -7,5 +7,11 @@ import java.util.*;
 public enum ExportSourceType {
     JOB,
     BATCH,
-    SIMULATION
+    SIMULATION,
+    INVOICE_PROOF,
+    INVOICE_DETAIL;
+
+    public boolean isInvoiceDocument() {
+        return this == INVOICE_PROOF || this == INVOICE_DETAIL;
+    }
 }

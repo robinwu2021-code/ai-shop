@@ -227,6 +227,12 @@ class StoreScopedDailyRoutesFlowTest {
         for (String[] r : new String[][] {
                 {"GET", "/biz/invoices"}, {"GET", "/biz/invoices/IVC-NO-SUCH"}, {"GET", "/biz/invoices/IVC-NO-SUCH/print-facts"},
                 {"GET", "/biz/invoices/upload-backlog"}, {"GET", "/biz/invoices/buyer-preferences"},
+                {"GET", "/biz/invoice-applications"}, {"GET", "/biz/invoice-applications/IVA-MISSING"},
+                {"GET", "/biz/invoice-applications/IVA-MISSING/revisions"}, {"GET", "/biz/invoice-applications/IVA-MISSING/events"},
+                {"POST", "/biz/invoice-applications"}, {"POST", "/biz/invoice-applications/IVA-MISSING/issuances"},
+                {"GET", "/biz/invoice-channel-applications"}, {"GET", "/biz/invoice-channel-applications/ICA-MISSING"},
+                {"POST", "/biz/invoice-channel-applications"}, {"POST", "/biz/invoice-channel-applications/ICA-MISSING/revisions"},
+                {"GET", "/biz/invoice-channel-accounts"}, {"GET", "/biz/invoice-channel-routes"},
                 {"GET", "/biz/invoice-setup/profile"}, {"GET", "/biz/invoice-setup/providers"},
                 {"GET", "/biz/invoice-setup/ranges"}, {"GET", "/biz/invoice-setup/provider-tracks"},
                 {"POST", "/biz/invoices"}, {"POST", "/biz/invoices/IVC-NO-SUCH/void"},

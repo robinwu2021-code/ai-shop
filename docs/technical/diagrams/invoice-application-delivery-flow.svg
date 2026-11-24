@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="408" viewBox="0 0 900 408" role="img" aria-labelledby="title desc">
+  <title id="title">发票申请、开立与交付</title>
+  <desc id="desc">门店绑定经营主体。经营主体分别关联支付商户与发票通道。订单与申请版本汇入开票。冻结发票分别用于上传、正式出纸与 PDF 留档，邮件取得同一已冻结的 PDF。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#4b6175"/>
+    </marker>
+  </defs>
+  <rect width="900" height="408" fill="#f5f8fa" rx="14"/>
+  <g fill="none" stroke="#4b6175" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M 215 56 H 300"/>
+    <path d="M 520 56 H 574 V 27 H 626"/>
+    <path d="M 520 56 H 574 V 84 H 626"/>
+    <path d="M 745 104 V 119 H 438 V 217"/>
+  </g>
+  <g fill="#fff" stroke="#a2b4c2" stroke-width="1.4">
+    <rect x="30" y="36" width="185" height="40" rx="9"/>
+    <rect x="302" y="36" width="218" height="40" rx="9" fill="#e4f3ef" stroke="#438773"/>
+    <rect x="628" y="8" width="234" height="38" rx="9"/>
+    <rect x="628" y="65" width="234" height="39" rx="9"/>
+  </g>
+  <g fill="#1d3142" text-anchor="middle" font-family="system-ui, PingFang SC, sans-serif" font-size="16" font-weight="600">
+    <text x="122" y="62">门店</text>
+    <text x="411" y="62">经营主体</text>
+    <text x="745" y="33">支付商户及支付渠道</text>
+    <text x="745" y="90">发票通道账户及生效路由</text>
+  </g>
+  <g transform="translate(0 120)">
+  <g fill="none" stroke="#4b6175" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M 218 57 H 276 V 126 H 323"/>
+    <path d="M 218 199 H 276 V 126 H 323"/>
+    <path d="M 544 126 H 585 V 53 H 626"/>
+    <path d="M 544 126 H 626"/>
+    <path d="M 544 126 H 585 V 200 H 626"/>
+    <path d="M 746 221 V 236"/>
+  </g>
+  <g fill="#fff" stroke="#a2b4c2" stroke-width="1.4">
+    <rect x="30" y="34" width="188" height="46" rx="9"/>
+    <rect x="30" y="176" width="188" height="46" rx="9"/>
+    <rect x="324" y="98" width="220" height="56" rx="9" fill="#e4f3ef" stroke="#438773"/>
+    <rect x="628" y="30" width="234" height="46" rx="9"/>
+    <rect x="628" y="103" width="234" height="46" rx="9"/>
+    <rect x="628" y="177" width="234" height="44" rx="9"/>
+    <rect x="628" y="238" width="234" height="35" rx="9"/>
+  </g>
+  <g fill="#1d3142" text-anchor="middle" font-family="system-ui, PingFang SC, sans-serif" font-size="16" font-weight="600">
+    <text x="124" y="62">申请与不可变版本</text>
+    <text x="124" y="204">已付款订单与税别</text>
+    <text x="434" y="132">开立并冻结发票内容</text>
+    <text x="745" y="58">鲸跃上传与逐次回执</text>
+    <text x="745" y="131">正式出纸与设备回执</text>
+    <text x="745" y="204">服务器 PDF 与文件哈希</text>
+    <text x="745" y="261">邮件交付与重发</text>
+  </g>
+  </g>
+</svg>

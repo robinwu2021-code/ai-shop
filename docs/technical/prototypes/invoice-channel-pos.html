@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>门店发票工作台 · Android POS 原型</title>
+<style>
+:root {
+  --ink: #132d28; --muted: #526962; --line: #d8e4de; --surface: #fff;
+  --canvas: #f2f6f3; --accent: #075b47; --soft: #e2f2e9;
+  --warning: #75500c; --warning-bg: #fff1cd; --danger: #a12c32; --danger-bg: #fcebed;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--ink); background: #e4eee8; font-size: 14px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #168b6c; outline-offset: 2px; }
+button:disabled { opacity: .5; cursor: default; }
+button, h1, h2, h3, p, dd { margin: 0; }
+.shell { display: grid; grid-template-columns: 260px minmax(0, 426px); gap: 42px; align-items: start; justify-content: center; max-width: 820px; margin: auto; padding: 40px 24px; }
+.guide { padding: 42px 0 16px; }
+.eyebrow { color: var(--accent); font-weight: 800; letter-spacing: .1em; font-size: 11px; text-transform: uppercase; }
+.guide h1 { margin: 12px 0 14px; font-size: 35px; line-height: 1.17; letter-spacing: -.05em; }
+.guide p, .guide li { color: var(--muted); line-height: 1.7; }
+.guide ol { padding-left: 21px; margin: 14px 0 22px; }
+.guide li + li { margin-top: 9px; }
+.guide-box { border-top: 1px solid #b8cec2; padding-top: 15px; margin-top: 25px; }
+.guide-box strong { display: block; margin-bottom: 6px; }
+.device { background: var(--canvas); border: 1px solid #adc7ba; border-radius: 26px; overflow: clip; box-shadow: 0 22px 54px #1c4e3422; display: flex; flex-direction: column; height: min(835px, calc(100dvh - 80px)); min-height: 520px; position: relative; }
+.top { padding: 16px 16px 14px; background: #103a31; color: #fff; }
+.top-row, .between { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.top-row { margin-bottom: 12px; }
+.brand { font-weight: 800; font-size: 15px; }
+.demo { color: #d9fbe8; border: 1px solid #69a990; border-radius: 5px; padding: 3px 6px; font-size: 11px; font-weight: 700; }
+.context { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.context button { min-height: 45px; text-align: left; border: 1px solid #598475; border-radius: 9px; background: #234b40; color: #fff; padding: 6px 10px; }
+.context button:last-child { min-width: 81px; text-align: center; }
+.context small { display: block; color: #c6e4d7; font-size: 10px; margin-bottom: 2px; }
+.context strong { font-size: 12px; }
+main { flex: 1; overflow: auto; padding: 17px 15px 72px; scrollbar-width: thin; overscroll-behavior: contain; }
+.page-title { margin-bottom: 13px; }
+.page-title h2 { font-size: 23px; line-height: 1.3; letter-spacing: -.03em; }
+.page-title p { margin-top: 5px; color: var(--muted); line-height: 1.45; font-size: 12px; }
+.card { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin-bottom: 10px; }
+.card h3 { font-size: 15px; line-height: 1.4; }
+.card h3, .card p, dd, .timeline li { overflow-wrap: anywhere; }
+.card p + p { margin-top: 6px; }
+.card .lead { margin-top: 8px; font-size: 17px; font-weight: 800; }
+.card-head { align-items: flex-start; }
+.hero { background: var(--soft); border-color: #b8dbca; }
+.hero h3 { font-size: 19px; }
+.kicker { display: block; font-size: 11px; color: var(--accent); font-weight: 800; margin-bottom: 6px; }
+.hint, small.meta { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.card .hint, .card small.meta { margin-top: 5px; }
+.badge { display: inline-flex; align-items: center; white-space: nowrap; border-radius: 999px; padding: 4px 8px; background: var(--canvas); color: var(--muted); font-weight: 700; font-size: 11px; }
+.badge.good { background: var(--soft); color: var(--accent); }
+.badge.warn { background: var(--warning-bg); color: var(--warning); }
+.badge.bad { background: var(--danger-bg); color: var(--danger); }
+.hero .badge { background: white; }
+.label { color: var(--muted); }
+.mono { font-variant-numeric: tabular-nums; }
+.fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 8px 12px; margin: 12px 0 0; font-size: 12px; line-height: 1.42; }
+.fields dt { color: var(--muted); }
+.fields dd { text-align: right; font-weight: 650; }
+.actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.action { min-height: 43px; padding: 8px 12px; border: 1px solid #adcbc0; border-radius: 8px; background: #fff; color: var(--accent); font-weight: 750; }
+.action.primary { color: white; background: var(--accent); border-color: var(--accent); }
+.action.danger { color: var(--danger); border-color: #dfb6b7; }
+.action.link { border-color: transparent; padding-left: 0; background: transparent; min-height: 35px; }
+.section-title { margin: 17px 0 8px; font-size: 13px; font-weight: 800; }
+.notice { margin: 10px 0; padding: 10px 11px; background: var(--warning-bg); border-radius: 8px; color: var(--warning); font-size: 12px; line-height: 1.55; }
+.timeline { list-style: none; margin: 10px 0 0; padding: 0 0 0 8px; }
+.timeline li { position: relative; border-left: 1px solid #acd1c1; padding: 0 0 12px 14px; line-height: 1.4; }
+.timeline li:last-child { padding-bottom: 0; }
+.timeline li::before { content: ''; position: absolute; top: 4px; left: -4px; width: 7px; height: 7px; border-radius: 100%; background: #43826d; }
+.timeline small { display: block; margin-top: 3px; }
+nav { position: absolute; bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(4, 1fr); background: #fff; border-top: 1px solid var(--line); padding: 5px 7px max(6px, env(safe-area-inset-bottom)); }
+nav button { background: none; border: 0; min-height: 51px; border-radius: 8px; color: var(--muted); font-weight: 700; font-size: 11px; }
+nav button[aria-current=page] { background: var(--soft); color: var(--accent); }
+nav span { display: block; font-size: 17px; line-height: 1.2; margin-bottom: 3px; }
+form label { display: grid; gap: 5px; font-size: 12px; font-weight: 700; margin-top: 12px; }
+input, select, textarea { width: 100%; min-height: 43px; padding: 8px 10px; border: 1px solid #afc5ba; border-radius: 7px; background: #fff; color: var(--ink); }
+input[type=checkbox] { width: 16px; min-height: 16px; margin: 0; }
+form label.check { display: flex; align-items: center; gap: 8px; line-height: 1.45; }
+textarea { min-height: 66px; resize: vertical; }
+.search { display: grid; grid-template-columns: 1fr auto; gap: 7px; margin-bottom: 8px; }
+.search input { min-width: 0; }
+.search label { margin: 0; }
+.filter { margin-bottom: 10px; }
+.empty { text-align: center; padding: 26px 14px; color: var(--muted); }
+.choice { width: 100%; text-align: left; margin-top: 8px; }
+.choice small { display: block; margin-top: 4px; }
+.sheet { width: min(calc(100% - 28px), 386px); max-height: calc(100dvh - 32px); border: 1px solid var(--line); border-radius: 16px; padding: 17px; color: var(--ink); box-shadow: 0 20px 70px #103a3144; }
+.sheet::backdrop { background: #102e2780; }
+.sheet h2 { font-size: 18px; }
+.sheet .hint { margin: 9px 0 0; }
+.close { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font-size: 22px; }
+#toast { position: absolute; bottom: 68px; left: 13px; right: 13px; z-index: 2; color: #fff; background: #103a31; padding: 10px 12px; border-radius: 8px; box-shadow: 0 4px 15px #16331f32; line-height: 1.5; }
+#toast:empty { display: none; }
+.sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 730px) {
+  .shell { display: block; padding: 0; max-width: 426px; }
+  .guide { display: none; }
+  .device { height: 100dvh; min-height: 0; border: 0; border-radius: 0; }
+}
+@media (max-width: 360px) {
+  .top, main { padding-left: 11px; padding-right: 11px; }
+  .context strong { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="guide" aria-label="原型演示路线">
+    <div class="eyebrow">Android POS · 交互原型</div>
+    <h1>门店发票<br>工作台</h1>
+    <p>用两家门店查看主体如何绑定支付与发票服务，并练习切换通道后的原票处置。</p>
+    <div class="guide-box">
+      <strong>演示路线</strong>
+      <ol>
+        <li>在概览切换两家门店，对比支付商户与发票通道。</li>
+        <li>在发票申请修改买方资料，再按当前版本开立。</li>
+        <li>为台北店申请汎宇。用运营角色完成审核和启用。</li>
+        <li>到历史搜索 <b>ZZ-26000001</b>，查核或作废鲸跃原票。</li>
+      </ol>
+      <button class="action" data-act="reset">重置演示数据</button>
+    </div>
+  </aside>
+  <section class="device" aria-label="Android POS 门店发票工作台">
+    <header class="top">
+      <div class="top-row"><span class="brand">门店发票工作台</span><span class="demo">测试环境 · 模拟</span></div>
+      <div class="context" id="context"></div>
+    </header>
+    <main id="screen" tabindex="-1"></main>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <nav id="nav" aria-label="发票工作台导航"></nav>
+  </section>
+</div>
+<dialog class="sheet" id="sheet" aria-labelledby="sheet-title"></dialog>
+<script>
+'use strict';
+const entities = {
+  A: { name: '北岸生活有限公司', store: '北岸生活 · 台北店', storeNo: 'ST-DEMO-A01', tax: '**4831', merchant: 'PAY-DEMO-A', payment: 'NearPay · 台北门店授权', provider: '鲸跃', account: 'ACC-WHALE-A1', period: '2026/11–12', amount: 680 },
+  B: { name: '南岛选物有限公司', store: '南岛选物 · 高雄店', storeNo: 'ST-DEMO-B01', tax: '**7294', merchant: 'PAY-DEMO-B', payment: 'NearPay · 高雄门店授权', provider: '汎宇', account: 'ACC-FY-B1', period: '2026/11–12', amount: 420 }
+};
+const tabs = [ ['home','⌂','概览'], ['channel','⇄','通道'], ['app','▤','发票申请'], ['history','◎','历史'] ];
+const roles = { store: '门店人员', ops: '运营人员' };
+const stages = {
+  SUBMITTED: ['待审核','warn'], UNDER_REVIEW: ['审核中','warn'], NEEDS_INFO: ['待补件','warn'], APPROVED: ['审核通过','good'], REJECTED: ['已驳回','bad'], VERIFY_PENDING: ['待核验','warn'], VERIFIED: ['已核验','good'], ACTIVE: ['已启用','good'], ISSUED: ['已开立','good'], VOIDED: ['已作废','bad'], CANCELLED: ['已撤回','bad']
+};
+const applicationStates = { ...stages, SUBMITTED: ['待开立','warn'] };
+const storageKey = 'invoice-channel-pos-prototype-v1';
+const screen = document.querySelector('#screen');
+const sheet = document.querySelector('#sheet');
+const toast = document.querySelector('#toast');
+let toastTimer;
+let scope = 'A';
+let role = 'store';
+let page = 'home';
+let detail = null;
+let query = '';
+let filter = '';
+let formHandler;
+let buyerDraft;
+let sheetTrigger;
+
+function initial() {
+  const fixture = {};
+  for (const [key, entity] of Object.entries(entities)) {
+    fixture[key] = {
+      route: { account: entity.account, provider: entity.provider, version: 1, events: [{ title: '初始路由启用', note: `${entity.account} · 路由 V1`, actor: '运营甲', time: '2026/11/20 09:00' }] },
+      accounts: [{ no: entity.account, provider: entity.provider, version: 1, range: key === 'A' ? 'ZZ-26000001～ZZ-26000999' : 'ZY-26000001～ZY-26000999', status: 'active', prefix: key === 'A' ? 'ZZ' : 'ZY', next: 2 }],
+      channels: [], applications: [], invoices: [{
+        no: key === 'A' ? 'ZZ-26000001' : 'ZY-26000001', id: `IVC-DEMO-${key}01`, order: `SO-DEMO-${key}01`, amount: entity.amount,
+        provider: entity.provider, account: entity.account, accountVersion: 1, routeVersion: 1, environment: '测试', buyer: '个人买受人', status: 'ISSUED',
+        refund: key === 'A' ? { id: 'RF-DEMO-A01', status: '全额退款成功', amount: entity.amount } : null,
+        upload: `UP-DEMO-${key}01`, events: [{ title: '开立上传回执 · 已受理', note: `UP-DEMO-${key}01 · ${entity.account}`, actor: '系统', time: '2026/11/23 14:30' }]
+      }],
+      orders: [2, 3, 4].map((number) => ({ no: `SO-DEMO-${key}0${number}`, amount: entity.amount + (number - 2) * 150 }))
+    };
+  }
+  return fixture;
+}
+function load() {
+  try { return JSON.parse(localStorage.getItem(storageKey)) ?? initial(); }
+  catch { return initial(); }
+}
+let state = load();
+const current = () => state[scope];
+const entity = () => entities[scope];
+const html = (value = '') => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+const money = (amount) => `NT$ ${new Intl.NumberFormat('zh-TW').format(amount)}`;
+const badge = (label, tone = 'good') => `<span class="badge ${tone}">${html(label)}</span>`;
+const status = (code, dictionary = stages) => badge(...dictionary[code]);
+const action = (label, name, type = '', id = '') => `<button type="button" class="action ${type}" data-act="${name}" data-id="${html(id)}">${html(label)}</button>`;
+const actions = (...buttons) => `<div class="actions">${buttons.join('')}</div>`;
+const fields = (entries) => `<dl class="fields">${entries.map(([key, value]) => `<dt>${html(key)}</dt><dd>${html(value)}</dd>`).join('')}</dl>`;
+const heading = (title, description = '') => `<div class="page-title"><h2>${html(title)}</h2>${description ? `<p>${html(description)}</p>` : ''}</div>`;
+const timeline = (events) => `<ol class="timeline">${[...events].reverse().map(({title, note, actor, time}) => `<li><strong>${html(title)}</strong><small class="meta">${html(note)} · ${html(actor)} · ${html(time)}</small></li>`).join('')}</ol>`;
+const card = (title, body, mark = '', css = '') => `<section class="card ${css}"><div class="between card-head"><h3>${html(title)}</h3>${mark}</div>${body}</section>`;
+const unavailable = (message) => `<section class="card empty">${html(message)}</section>`;
+const actor = () => role === 'ops' ? '运营乙' : '门店甲';
+const now = () => new Intl.DateTimeFormat('zh-TW', { dateStyle: 'short', timeStyle: 'short', hourCycle: 'h23', timeZone: 'Asia/Taipei' }).format(new Date());
+const last = (items) => items[items.length - 1];
+const event = (events, title, note) => events.push({ title, note, actor: actor(), time: now() });
+function save(message) {
+  try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch { /* Demo still works for this tab. */ }
+  closeSheet();
+  render();
+  if (message) {
+    toast.textContent = message;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.textContent = ''; }, 3200);
+  }
+}
+function go(tab, key = null) {
+  page = tab;
+  detail = key;
+  toast.textContent = '';
+  render();
+  screen.scrollTop = 0;
+  screen.focus({ preventScroll: true });
+}
+function render() {
+  const item = entity();
+  const store = current();
+  document.querySelector('#context').innerHTML = `
+    <button type="button" data-act="choose-store" aria-label="切换示例门店，当前${html(item.store)}"><small>当前门店</small><strong>${html(item.store)} ▾</strong></button>
+    <button type="button" data-act="choose-role" aria-label="切换演示角色，当前${roles[role]}"><small>演示角色</small><strong>${roles[role]} ▾</strong></button>`;
+  document.querySelector('#nav').innerHTML = tabs.map(([key, icon, label]) => `<button type="button" data-act="nav" data-id="${key}" ${key === page ? 'aria-current="page"' : ''}><span aria-hidden="true">${icon}</span>${label}</button>`).join('');
+  const views = { home: homeView, channel: channelView, app: appView, history: historyView };
+  screen.innerHTML = views[page](store, item);
+}
+function homeView(store, item) {
+  return heading('主体与服务', '门店继承当前主体在台湾测试环境的服务配置') +
+    card(item.name, fields([['门店编号', item.storeNo], ['卖方统编', item.tax], ['税制', '台湾电子发票']]), badge('主体已绑定'), 'hero') +
+    card('支付商户', `<p class="lead mono">${item.merchant}</p><p class="hint">${item.payment}</p>`, badge('已授权')) +
+    card('发票通道', `<p class="lead">${store.route.provider}</p>` + fields([['开票账户', store.route.account], ['生效路由', `V${store.route.version} · 测试`]]) + actions(action('管理通道', 'nav', '', 'channel')), badge('新票开立')) +
+    actions(action('查看发票申请', 'nav', 'primary', 'app'), action('查询历史发票', 'nav', '', 'history'), action('重置演示数据', 'reset', 'link'));
+}
+function channelView(store, item) {
+  if (detail) return channelDetail(store.channels.find(record => record.no === detail), store);
+  const accountList = store.accounts.map(account => card(account.provider,
+    fields([['账户号', account.no], ['凭据版', `V${account.version} · 脱敏`], ['测试号段', account.range || '待准备']]),
+    account.status === 'active' ? badge('新票使用') : account.status === 'history' ? badge('历史处置', '') : badge('待启用', 'warn'))).join('');
+  const applicationList = store.channels.map(record => card(record.provider, `<p class="hint">${record.no} · R${last(record.versions).version} · ${record.mode}</p>` + actions(action('查看进度', 'channel-detail', '', record.no)), status(record.stage))).join('');
+  return heading('发票通道', `${item.name} · 台湾电子发票 · 测试`) +
+    card('当前新票路由', `<p class="lead">${store.route.provider} · V${store.route.version}</p>` + fields([['生效账户', store.route.account]]) + timeline(store.route.events), badge('生效中'), 'hero') +
+    '<h3 class="section-title">通道申请</h3>' +
+    (role === 'store' ? actions(action('申请发票通道', 'new-channel', 'primary')) : '<p class="hint">运营可审核、绑定账号并发布路由。</p>') +
+    (applicationList || unavailable('当前主体暂无通道申请')) +
+    '<h3 class="section-title">已绑定账户</h3>' + accountList;
+}
+function channelDetail(record, store) {
+  const revision = last(record.versions);
+  const account = store.accounts.find(candidate => candidate.no === record.account);
+  let buttons = [];
+  if (role === 'store' && record.stage === 'NEEDS_INFO') buttons = [action('补件并重新提交', 'supplement', 'primary', record.no)];
+  if (role === 'ops' && record.stage === 'SUBMITTED') buttons = [action('开始审核', 'begin-review', 'primary', record.no)];
+  if (role === 'ops' && record.stage === 'UNDER_REVIEW') buttons = [action('审核通过', 'approve', 'primary', record.no), action('要求补件', 'needs-info', '', record.no), action('驳回', 'reject-channel', 'danger', record.no)];
+  if (role === 'ops' && record.stage === 'APPROVED') buttons = [action('绑定测试账户', 'bind', 'primary', record.no)];
+  if (record.stage === 'VERIFY_PENDING') buttons = [action('核验账户与号段', 'verify', 'primary', record.no)];
+  if (role === 'ops' && record.stage === 'VERIFIED') buttons = [action('启用并切换路由', 'activate', 'primary', record.no)];
+  const next = {
+    SUBMITTED: '待运营人员开始审核当前申请版本。', UNDER_REVIEW: '待运营人员记录审核结论。', NEEDS_INFO: `补件要求 · ${record.reason}`,
+    APPROVED: '待运营人员绑定渠道测试账户。', VERIFY_PENDING: '请选择指定账户，核验卖方、环境、凭据、能力和可用号段。',
+    VERIFIED: '待运营人员确认生效。启用后，当前主体的新票走新路由。', ACTIVE: '历史发票仍按各自开立时冻结的账户查询和处置。'
+  }[record.stage];
+  return action('‹ 通道列表', 'nav', 'link', 'channel') + heading(`${record.provider}通道申请`, record.no) +
+    card('申请进度', fields([['经营主体', entity().name], ['开通方式', record.mode], ['环境', '测试'], ['当前材料版本', `R${revision.version}`], ['材料引用', revision.material]]) +
+      (next ? `<div class="notice">${html(next)}</div>` : '') + actions(...buttons), status(record.stage), 'hero') +
+    (account ? card('渠道账户', fields([['账户号', account.no], ['凭据版', `V${account.version} · 脱敏`], ['测试号段', account.range || '待准备'], ['核验能力', account.range ? '开立、查票、作废（演示）' : '待核验']])) : '') +
+    card('申请材料版本', [...record.versions].reverse().map(item => `<p class="hint">R${item.version} · ${html(item.material)} · ${html(item.actor)}</p>`).join('')) +
+    card('进件与生效记录', timeline(record.events));
+}
+function appView(store) {
+  if (detail) return appDetail(store.applications.find(record => record.no === detail), store);
+  const available = store.orders.filter(order => !store.applications.some(record => record.order === order.no));
+  return heading('发票申请', '按门店已支付子单提交买方与交付资料') +
+    (available.length && role === 'store' ? card('待申请订单', available.map(order => `<div class="between"><p class="hint mono">${order.no} · ${money(order.amount)}</p>${action('提交申请', 'new-app', 'link', order.no)}</div>`).join(''), badge('已支付')) : '') +
+    '<h3 class="section-title">本店申请</h3>' +
+    (store.applications.map(record => card(record.no, `<p class="hint mono">${record.order} · V${last(record.versions).version} · ${money(record.amount)}</p>` + actions(action('查看申请', 'app-detail', '', record.no)), status(record.stage, applicationStates))).join('') || unavailable('本店暂无发票申请'));
+}
+function appDetail(record, store) {
+  const revision = last(record.versions);
+  const invoice = store.invoices.find(item => item.application === record.no);
+  const buttons = [];
+  if (role === 'store' && ['SUBMITTED', 'REJECTED', 'CANCELLED'].includes(record.stage)) {
+    buttons.push(action(record.stage === 'SUBMITTED' ? '修改申请' : '修改并重提', 'edit-app', '', record.no));
+  }
+  if (role === 'store' && record.stage === 'SUBMITTED') buttons.push(action(`按 V${revision.version} 开立`, 'issue', 'primary', record.no));
+  if (role === 'ops' && record.stage === 'SUBMITTED') buttons.push(action('驳回申请', 'reject-app', 'danger', record.no));
+  if (invoice) buttons.push(action('查看已开立发票', 'invoice-detail', 'primary', invoice.no));
+  return action('‹ 发票申请列表', 'nav', 'link', 'app') + heading('申请详情', record.no) +
+    card(`当前版本 V${revision.version}`, fields([['来源子单', record.order], ['交易金额', money(record.amount)], ['买方抬头', revision.buyer], ['买方统编', revision.tax || '个人'], ['交付方式', revision.delivery], ['当前新票通道', `${store.route.provider} · 路由 V${store.route.version}`]]) + actions(...buttons), status(record.stage, applicationStates), 'hero') +
+    '<h3 class="section-title">版本快照</h3>' + [...record.versions].reverse().map(item => card(`V${item.version} · ${item.buyer}`, fields([['买方统编', item.tax || '个人'], ['交付方式', item.delivery], ['记录原因', item.reason]]), item.version === revision.version ? badge('当前版本') : badge('历史版本', ''))).join('') +
+    card('申请记录', timeline(record.events));
+}
+function historyView(store) {
+  if (detail) return invoiceDetail(store.invoices.find(invoice => invoice.no === detail), store);
+  const normalized = query.toUpperCase().replace(/[-\s]/g, '');
+  const results = store.invoices.filter(invoice =>
+    (!filter || invoice.status === filter) && [invoice.no, invoice.id, invoice.order, invoice.application, invoice.refund?.id, invoice.returnNo, invoice.account].some(value => value?.toUpperCase().replace(/[-\s]/g, '').includes(normalized)));
+  return heading('历史发票', '限当前门店 · 支持票号、子单、申请号、退款号和退票号') +
+    `<form class="search" data-form="search"><label><span class="sr">搜索关键词</span><input name="query" type="search" value="${html(query)}" placeholder="输入票号或子单号"></label><button class="action primary">查询</button></form>` +
+    `<label class="filter"><span class="sr">发票状态</span><select id="history-filter"><option value="">所有票状态</option><option value="ISSUED" ${filter === 'ISSUED' ? 'selected' : ''}>已开立</option><option value="VOIDED" ${filter === 'VOIDED' ? 'selected' : ''}>已作废</option></select></label>` +
+    `<h3 class="section-title">${results.length} 笔发票</h3>` +
+    (results.map(invoice => card(invoice.no, `<p class="hint mono">${invoice.order} · ${money(invoice.amount)}</p><p class="hint">${invoice.provider} · ${invoice.account} · 路由 V${invoice.routeVersion}</p>` + actions(action('查看详情', 'invoice-detail', '', invoice.no)), status(invoice.status))).join('') || unavailable('本店没有符合条件的发票'));
+}
+function returnBlock(invoice) {
+  const block = invoice.status === 'VOIDED' ? '这张发票已作废。' : !invoice.refund ? '示例订单尚无全额退款记录，作废当前不可用。' : role !== 'store' ? '请切回门店人员角色执行作废。' : '';
+  return card('退票与退款', fields([['支付退款', invoice.refund?.status || '暂无退款记录'], ['退款凭证', invoice.refund?.id || '—'], ['退票动作', invoice.returnNo || '—'], ['原通道作废回执', invoice.returnReceipt || '—']]) +
+    (block ? `<div class="notice">${html(block)}</div>` : '') +
+    actions(action('向原通道查核', 'provider-check', '', invoice.no), !block ? action('作废发票', 'void', 'danger', invoice.no) : ''));
+}
+function invoiceDetail(invoice, store) {
+  const old = invoice.account !== store.route.account;
+  return action('‹ 历史发票列表', 'nav', 'link', 'history') + heading('发票详情', invoice.no) +
+    card(invoice.no, fields([['经营主体', entity().name], ['交易子单', invoice.order], ['发票金额', money(invoice.amount)], ['买方抬头', invoice.buyer], ['开立申请', invoice.application ? `${invoice.application} · V${invoice.applicationVersion}` : '存量记录 · 未关联'], ['开立上传', `${invoice.upload} · 已受理`]]) +
+      (invoice.application ? actions(action('查看申请版本', 'app-detail', '', invoice.application)) : ''), status(invoice.status), 'hero') +
+    card('开立时的发票账户', fields([['开立通道', invoice.provider], ['原账户', invoice.account], ['开立账户版本', `V${invoice.accountVersion}`], ['开立路由', `V${invoice.routeVersion} · ${invoice.environment}`], ['当前新票路由', `${store.route.provider} · V${store.route.version}`]]) +
+      (old ? '<div class="notice">当前路由已切换，查核和作废继续使用原账户。</div>' : ''), old ? badge('历史账户', 'warn') : badge('账户仍生效')) +
+    returnBlock(invoice) + card('回执时间线', timeline(invoice.events));
+}
+function openSheet(title, content, handler) {
+  sheetTrigger = document.activeElement;
+  formHandler = handler;
+  sheet.innerHTML = `<div class="between"><h2 id="sheet-title">${html(title)}</h2><button type="button" class="close" data-act="close" aria-label="关闭">×</button></div>${content}`;
+  sheet.showModal();
+}
+function closeSheet() {
+  if (sheet.open) sheet.close();
+  formHandler = null;
+  sheetTrigger?.focus({ preventScroll: true });
+  sheetTrigger = null;
+}
+function form(title, content, submitLabel, handler) {
+  openSheet(title, `<form data-form="modal">${content}<div class="actions"><button type="submit" class="action primary">${html(submitLabel)}</button>${action('取消', 'close')}</div></form>`, handler);
+}
+const input = (label, name, value = '', extra = '') => `<label>${html(label)}<input name="${name}" value="${html(value)}" required maxlength="80" ${extra}></label>`;
+const textArea = (label = '操作原因') => `<label>${html(label)}<textarea name="reason" required maxlength="120"></textarea></label>`;
+const select = (label, name, choices, current = '') => `<label>${html(label)}<select name="${name}">${choices.map(value => `<option ${value === current ? 'selected' : ''}>${html(value)}</option>`).join('')}</select></label>`;
+const check = (label) => `<label class="check"><input type="checkbox" name="confirmed" required>${html(label)}</label>`;
+const hint = (description) => `<p class="hint">${html(description)}</p>`;
+function confirm(title, description, submitLabel, handler) {
+  form(title, hint(description), submitLabel, handler);
+}
+function reasonForm(title, description, submitLabel, handler) {
+  form(title, hint(description) + textArea(), submitLabel, values => handler(values.reason));
+}
+function changeChannel(record, stage, title, note) {
+  record.stage = stage;
+  event(record.events, title, note);
+  save(title);
+}
+function applyChannel() {
+  const store = current();
+  const alternate = store.route.provider === '鲸跃' ? '汎宇' : '鲸跃';
+  form('申请发票通道', hint(`${entity().name} · 台湾电子发票 · 测试环境`) +
+    select('发票通道', 'provider', [alternate, store.route.provider]) + select('开通方式', 'mode', ['运营代办', '绑定已开户账户']) +
+    input('资质材料引用（示例）', 'material', `DOC-DEMO-${scope}-01`), '提交通道申请', values => {
+    const record = {
+      no: `ICA-DEMO-${scope}${String(store.channels.length + 1).padStart(2, '0')}`,
+      provider: values.provider, mode: values.mode, stage: 'SUBMITTED',
+      versions: [{ version: 1, material: values.material, actor: actor() }], events: []
+    };
+    event(record.events, '通道申请已提交', `R1 · ${values.material}`);
+    store.channels.push(record);
+    detail = record.no;
+    screen.scrollTop = 0;
+    save('通道申请已提交，等待运营审核');
+  });
+}
+function bindAccount(record) {
+  const store = current();
+  const providerCode = record.provider === '鲸跃' ? 'WHALE' : 'FY';
+  const no = `ACC-${providerCode}-${scope}${store.accounts.length + 1}`;
+  form('绑定渠道测试账户', hint(`${entity().name} · ${record.provider} · 测试环境`) +
+    input('外部办公室编号（演示）', 'office', `OFFICE-DEMO-${scope}${store.accounts.length + 1}`) +
+    '<p class="hint">模拟凭据版本 V1 · Secret 引用已预置。</p>', '绑定账户', values => {
+    store.accounts.push({ no, provider: record.provider, office: values.office, version: 1, range: null, status: 'candidate', next: 1 });
+    record.account = no;
+    changeChannel(record, 'VERIFY_PENDING', '账户已绑定', `${no} · ${values.office} · 测试`);
+  });
+}
+function verifyAccount(record) {
+  const store = current();
+  const account = store.accounts.find(item => item.no === record.account);
+  const prefix = `X${'ABCDEFGHIJKLMNOPQRSTUVW'[store.accounts.indexOf(account) - 1]}`;
+  const rangeStart = scope === 'A' ? 26100001 : 26200001;
+  form('核验指定账户', fields([['账户', account.no], ['外部办公室', account.office], ['卖方统编', entity().tax], ['环境', '测试'], ['凭据版', 'V1 · 脱敏'], ['预计可用号段', `${prefix}-${rangeStart}～${prefix}-${rangeStart + 998}`]]) +
+    check('确认模拟卖方、端点环境、凭据、能力和号段核验'), '执行模拟核验', () => {
+    account.prefix = prefix;
+    account.start = rangeStart;
+    account.range = `${prefix}-${rangeStart}～${prefix}-${rangeStart + 998}`;
+    changeChannel(record, 'VERIFIED', '账户核验通过 · 号段已就绪', `${account.no} · ${account.range}`);
+  });
+}
+function activateRoute(record) {
+  const store = current();
+  const account = store.accounts.find(item => item.no === record.account);
+  const old = store.accounts.find(item => item.no === store.route.account);
+  form('启用并切换路由', fields([['经营主体', entity().name], ['当前开票账户', old.no], ['新开票账户', account.no], ['已准备号段', account.range], ['路由版本', `V${store.route.version} → V${store.route.version + 1}`]]) +
+    hint('切换仅影响该经营主体的新票，旧票查核和退票继续使用各自的原开立账户。') + textArea('切换原因'), '确认启用新路由', values => {
+    old.status = 'history';
+    account.status = 'active';
+    const version = store.route.version + 1;
+    event(store.route.events, '新票路由切换', `${old.no} → ${account.no} · V${version} · ${values.reason}`);
+    Object.assign(store.route, { account: account.no, provider: account.provider, version });
+    changeChannel(record, 'ACTIVE', '账户与路由已启用', `${account.no} · V${version} · ${values.reason}`);
+  });
+}
+function submitApplication(order, record) {
+  const previous = record && last(record.versions);
+  const editing = Boolean(record);
+  const version = editing ? previous.version + 1 : 1;
+  buyerDraft = previous?.kind || '个人买受人';
+  form(editing ? `提交申请 V${version}` : '提交发票申请',
+    fields([['已付子单', order.no], ['交易金额', money(order.amount)]]) +
+    select('买方类型', 'kind', ['个人买受人', '企业买受人'], buyerDraft) + '<div id="buyer-fields"></div>' +
+    select('交付方式', 'delivery', ['打印证明联', '电子邮件'], previous?.delivery) + '<div id="recipient-fields"></div>' +
+    (editing ? textArea(record.stage === 'REJECTED' ? '更正说明' : '修改原因') : ''), editing ? '保存并提交新版' : '提交 V1', values => {
+    const entry = { version, kind: values.kind, buyer: values.buyer || '个人买受人', tax: values.tax, delivery: values.delivery, reason: values.reason || '初次提交',
+      recipient: values.email ? values.email.replace(/^(.).*@/, '$1***@') : null };
+    const application = record || {
+      no: `IVA-DEMO-${scope}${String(current().applications.length + 1).padStart(2, '0')}`,
+      order: order.no, amount: order.amount, stage: 'SUBMITTED', versions: [], events: []
+    };
+    const title = record?.stage === 'REJECTED' ? '更正后重提' : editing ? '修改后提交' : '初次提交';
+    application.stage = 'SUBMITTED';
+    application.versions.push(entry);
+    event(application.events, title, `V${version} · ${entry.reason}`);
+    if (!editing) current().applications.push(application);
+    detail = application.no;
+    screen.scrollTop = 0;
+    save(`申请 V${version} 已提交`);
+  });
+  const buyerFields = sheet.querySelector('#buyer-fields');
+  const recipients = sheet.querySelector('#recipient-fields');
+  function renderBuyerFields(kind) {
+    buyerFields.innerHTML = kind === '企业买受人' ? input('买方抬头', 'buyer', previous?.buyer || '') + input('买方统编', 'tax', previous?.tax || '', 'inputmode="numeric" pattern="[0-9]{8}" title="请输入 8 位数字"') : '';
+  }
+  function renderRecipientFields(delivery) {
+    recipients.innerHTML = delivery === '电子邮件' ? input('收件邮箱（示例）', 'email', '', 'type="email" placeholder="demo@example.com"') +
+      hint('邮箱仅保存脱敏显示，演示不会发送邮件。') : '';
+  }
+  renderBuyerFields(buyerDraft);
+  renderRecipientFields(previous?.delivery);
+  sheet.querySelector('[name=kind]').addEventListener('change', ({target}) => renderBuyerFields(target.value));
+  sheet.querySelector('[name=delivery]').addEventListener('change', ({target}) => renderRecipientFields(target.value));
+}
+function issueApplication(record) {
+  const store = current();
+  const revision = last(record.versions);
+  const account = store.accounts.find(item => item.no === store.route.account);
+  form(`按申请 V${revision.version} 开立`, fields([['申请编号', record.no], ['买方抬头', revision.buyer], ['交易金额', money(record.amount)], ['开立通道', account.provider], ['开立账户', account.no], ['生效路由', `V${store.route.version} · 测试`]]) +
+    check('已核对当前申请版本与开立账户'), '确认模拟开立', () => {
+    const suffix = store.invoices.length + 1;
+    const invoice = {
+      no: `${account.prefix}-${(account.start || 26000001) + account.next - 1}`, id: `IVC-DEMO-${scope}${String(suffix).padStart(2, '0')}`,
+      order: record.order, amount: record.amount, provider: account.provider, account: account.no, accountVersion: account.version,
+      routeVersion: store.route.version, environment: '测试', buyer: revision.buyer, status: 'ISSUED', refund: null,
+      application: record.no, applicationVersion: revision.version, upload: `UP-DEMO-${scope}${String(suffix).padStart(2, '0')}`, events: []
+    };
+    account.next++;
+    store.invoices.unshift(invoice);
+    record.stage = 'ISSUED';
+    event(record.events, '按申请版本开立完成', `V${revision.version} · ${invoice.no}`);
+    event(invoice.events, '按申请版本开立', `${record.no} · V${revision.version} · ${invoice.account}`);
+    event(invoice.events, '开立上传回执 · 已受理', `${invoice.upload} · ${invoice.account}`);
+    page = 'history';
+    detail = invoice.no;
+    query = filter = '';
+    screen.scrollTop = 0;
+    save(`已按 V${revision.version} 模拟开立 ${invoice.no}`);
+  });
+}
+function providerCheck(invoice) {
+  confirm('向原通道查核', `${invoice.no} · ${invoice.provider} · ${invoice.account} · 测试环境。`, '执行模拟查核', () => {
+    const receipt = `CHK-${invoice.id.replace('IVC-DEMO-', '')}-${invoice.events.filter(item => item.title.startsWith('原通道查核')).length + 1}`;
+    event(invoice.events, `原通道查核 · ${invoice.status === 'VOIDED' ? '作废已受理' : '发票已受理'}`, `${receipt} · ${invoice.account} · 结果 00`);
+    save(`已通过原账户 ${invoice.account} 取得模拟查核回执`);
+  });
+}
+function voidInvoice(invoice) {
+  if (invoice.status === 'VOIDED' || !invoice.refund || role !== 'store') return;
+  form('作废发票', fields([['财政票号', invoice.no], ['支付退款', `${invoice.refund.status} · ${money(invoice.refund.amount)}`], ['退款凭证', invoice.refund.id], ['原开立通道', invoice.provider], ['执行账户', invoice.account]]) +
+    hint('本次只发起发票作废，支付退款的状态和凭证仍可独立查询。') + textArea('作废原因'), '确认模拟作废', values => {
+    invoice.status = 'VOIDED';
+    const suffix = invoice.id.replace('IVC-DEMO-', '');
+    invoice.returnNo = `RET-DEMO-${suffix}`;
+    invoice.returnReceipt = `VR-DEMO-${suffix} · 已受理`;
+    event(invoice.events, '作废上传 · 原通道已受理', `${invoice.returnNo} · ${invoice.account} · ${invoice.returnReceipt} · ${values.reason}`);
+    save(`发票已模拟作废，使用原账户 ${invoice.account}`);
+  });
+}
+const handlers = {
+  'nav': id => go(id),
+  'close': closeSheet,
+  'choose-store': () => openSheet('切换示例门店', Object.entries(entities).map(([key, item]) =>
+    `<button class="action choice" type="button" data-act="store" data-id="${key}">${item.store}${scope === key ? ' · 当前' : ''}<small>${item.name} · ${state[key].route.provider}</small></button>`).join('')),
+  'store': id => { scope = id; query = filter = ''; closeSheet(); go('home'); },
+  'choose-role': () => openSheet('切换演示角色', hint('角色切换用于体验原型中的门店与运营操作。') + Object.entries(roles).map(([key, label]) =>
+    `<button class="action choice" type="button" data-act="role" data-id="${key}">${label}${role === key ? ' · 当前' : ''}<small>${key === 'store' ? '申请通道、核验账户、开立与作废' : '审核进件、绑定账户、启用路由'}</small></button>`).join('')),
+  'role': id => { role = id; closeSheet(); render(); screen.focus({ preventScroll: true }); },
+  'reset': () => confirm('重置演示数据', '清除浏览器中本原型的变更，并恢复两家示例门店。', '重置演示', () => {
+    state = initial(); scope = 'A'; role = 'store'; query = filter = ''; page = 'home'; detail = null;
+    screen.scrollTop = 0;
+    save('演示数据已重置');
+  }),
+  'new-channel': applyChannel,
+  'channel-detail': id => go('channel', id),
+  'begin-review': (_, record) => changeChannel(record, 'UNDER_REVIEW', '运营开始审核', `审查材料 R${last(record.versions).version}`),
+  'approve': (_, record) => confirm('审核通过', `确认通过材料 R${last(record.versions).version}，下一步绑定测试账户。`, '通过当前版本', () =>
+    changeChannel(record, 'APPROVED', '审核通过', `通过材料 R${last(record.versions).version}`)),
+  'needs-info': (_, record) => reasonForm('要求补件', `补件针对材料 R${last(record.versions).version}。`, '发送补件要求', (reason) => {
+    record.reason = reason;
+    changeChannel(record, 'NEEDS_INFO', '已要求补件', `R${last(record.versions).version} · ${reason}`);
+  }),
+  'supplement': (_, record) => form('补件并重新提交', hint(record.reason) + input('新材料引用（示例）', 'material', `DOC-DEMO-${scope}-SUPPLEMENT`), '提交补件版本', values => {
+    const version = last(record.versions).version + 1;
+    record.versions.push({ version, material: values.material, actor: actor() });
+    changeChannel(record, 'SUBMITTED', '补件后重提', `R${version} · ${values.material}`);
+  }),
+  'reject-channel': (_, record) => reasonForm('驳回通道申请', `记录材料 R${last(record.versions).version} 的审核结论。`, '确认驳回', reason =>
+    changeChannel(record, 'REJECTED', '通道申请已驳回', reason)),
+  'bind': (_, record) => bindAccount(record),
+  'verify': (_, record) => verifyAccount(record),
+  'activate': (_, record) => activateRoute(record),
+  'new-app': id => submitApplication(current().orders.find(order => order.no === id)),
+  'edit-app': (_, __, application) => submitApplication(current().orders.find(order => order.no === application.order), application),
+  'app-detail': id => go('app', id),
+  'reject-app': (_, __, application) => reasonForm('驳回发票申请', `当前版本 V${last(application.versions).version} 会保留，门店可更正后重提。`, '确认驳回', reason => {
+    application.stage = 'REJECTED';
+    event(application.events, '申请已驳回', `V${last(application.versions).version} · ${reason}`);
+    save('申请已驳回');
+  }),
+  'issue': (_, __, application) => issueApplication(application),
+  'invoice-detail': id => go('history', id),
+  'provider-check': (_, __, ___, invoice) => providerCheck(invoice),
+  'void': (_, __, ___, invoice) => voidInvoice(invoice)
+};
+document.addEventListener('click', ({ target }) => {
+  const button = target.closest('[data-act]');
+  if (!button) return;
+  const { act, id } = button.dataset;
+  const store = current();
+  handlers[act](id, store.channels.find(record => record.no === id), store.applications.find(record => record.no === id), store.invoices.find(record => record.no === id));
+});
+document.addEventListener('submit', (event) => {
+  const form = event.target;
+  if (!form.dataset.form) return;
+  event.preventDefault();
+  const values = Object.fromEntries([...new FormData(form)].map(([key, value]) => [key, value.trim()]));
+  if (form.dataset.form === 'search') {
+    query = values.query;
+    render();
+    screen.querySelector('input[name=query]').focus();
+    return;
+  }
+  const empty = [...form.elements].find(field => field.required && field.value && !field.value.trim());
+  if (empty) {
+    empty.setCustomValidity('请填写内容');
+    empty.reportValidity();
+    empty.addEventListener('input', () => empty.setCustomValidity(''), { once: true });
+    return;
+  }
+  formHandler(values);
+});
+document.addEventListener('change', ({ target }) => {
+  if (target.id === 'history-filter') {
+    filter = target.value;
+    render();
+    screen.querySelector('#history-filter').focus();
+  }
+});
+sheet.addEventListener('cancel', (event) => { event.preventDefault(); closeSheet(); });
+render();
+</script>
+</body>
+</html>

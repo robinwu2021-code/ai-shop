@@ -21,6 +21,13 @@ public class IvcInvoice {
     private String entityNo;
     private String storeNo;
     private String regimeCode;
+    private String channelCode;
+    private String channelAccountNo;
+    private Long channelAccountRevision;
+    private Long channelRouteVersion;
+    private String channelEnvironment;
+    private String applicationNo;
+    private Integer applicationRevisionNo;
     private String industryCode;
     private String sourceType;
     private String sourceNo;

@@ -43,6 +43,13 @@ public interface MailPort {
         return send(to, subject, body);
     }
 
+    default SendResult sendAttachment(String to, String subject, String body, Attachment attachment,
+                                      String bizType, String operatorNo) {
+        throw new MailException("邮件通道不支持附件");
+    }
+
+    record Attachment(String filename, String contentType, byte[] bytes) {}
+
     /** 邮件发送失败。 */
     class MailException extends RuntimeException {
 

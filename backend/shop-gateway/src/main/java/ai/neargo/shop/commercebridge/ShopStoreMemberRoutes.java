@@ -75,6 +75,13 @@ final class ShopStoreMemberRoutes {
             // 电子发票（TDD-发票模块 §23.4）：开立、查询、作废 / 折让 / 重送、打印事实，及本店开票设置与号段。
             // 权限码 biz:invoice:* 由控制器判；2026-11-23 v2 上新模型门店全部 70006 STORE_ACCESS，即漏登记
             HostRoute.of("GET,POST", "/biz/invoices(?:/.*)?"),
+            HostRoute.of("GET,POST", "/biz/invoice-applications"),
+            HostRoute.of("GET", "/biz/invoice-applications/" + ID + "(?:/(?:revisions|events))?"),
+            HostRoute.of("POST", "/biz/invoice-applications/" + ID + "/(?:revisions|rejections|cancellations|issuances)"),
+            HostRoute.of("GET,POST", "/biz/invoice-channel-applications"),
+            HostRoute.of("GET", "/biz/invoice-channel-applications/" + ID),
+            HostRoute.of("POST", "/biz/invoice-channel-applications/" + ID + "/revisions"),
+            HostRoute.of("GET", "/biz/invoice-channel-(?:accounts|routes)"),
             HostRoute.of("GET,POST,PUT", "/biz/invoice-setup/(?:profile|providers|ranges|provider-verification|provider-tracks|provider-ranges)"),
             // 门店开票设定与常用品项（TDD-统一订单与开票资料 P2）：读 biz:invoice:read、写 biz:invoice:setup，由控制器判
             HostRoute.of("GET,PUT", "/biz/invoice-setup/store-settings"),

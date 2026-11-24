@@ -91,6 +91,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -399,6 +400,36 @@ class StoreOrderMysqlTest {
                 new OfflineRecordService.CorrectCmd(900, "TWD", "CASH", null, "改", corrected.version())));
         assertEquals("RECORDED|1000", jdbc.queryForObject("SELECT CONCAT_WS('|',status,amount_minor) "
                 + "FROM ord_offline_record WHERE record_no=?", String.class, small.recordNo()));
+    }
+
+    @Test
+    void cashRefundIsFullAuditedAndIdempotent() {
+        var order = create(CLERK, "POS-FULL-REFUND", "K-FULL-REFUND",
+                List.of(custom(1, 1000, "清潔用品", "TAXABLE")), List.of(), null);
+        var received = pay(order, 1000);
+        var partial = new OfflineRecordService.RefundCmd(500, "測試", received.version());
+        var full = new OfflineRecordService.RefundCmd(1000, "測試", received.version());
+        assertCode(ErrorCode.STORE_ORDER_STATE_INVALID, () -> cash.refundCash(cashScope(), received.recordNo(), partial));
+        invoices.active.put(order.subOrderNo(), new InvoicePort.InvoiceReceipt("IV-REFUND", "TW_EGUI",
+                "AB00000001", "11512", "1234", "ISSUED", false, "TWD", 1000));
+        assertCode(ErrorCode.INVOICE_DATA_LOCKED, () -> cash.refundCash(cashScope(), received.recordNo(), full));
+        invoices.active.remove(order.subOrderNo());
+
+        var refunded = cash.refundCash(cashScope(), received.recordNo(), full);
+        var replay = cash.refundCash(cashScope(), received.recordNo(), full);
+        assertEquals("REFUNDED", refunded.status());
+        assertEquals(1000, refunded.amountMinor());
+        assertEquals(refunded, replay);
+        assertEquals(1, count("SELECT COUNT(*) FROM ord_offline_record_event WHERE action='REFUND' AND record_no='"
+                + received.recordNo() + "'"));
+        var after = orders.get(CLERK, order.orderNo());
+        assertEquals("REFUNDED", after.status());
+        assertEquals(0, after.paidMinor());
+        assertEquals("REFUNDED|1000|FULL", jdbc.queryForObject(
+                "SELECT CONCAT_WS('|',status,refunded_minor,refund_progress) FROM ord_sub_order WHERE sub_order_no=?",
+                String.class, order.subOrderNo()));
+        assertCode(ErrorCode.INVOICE_SOURCE_NOT_READY, () -> invoices.source.load(
+                new InvoicePort.Scope("MAIN", "E1", "S1", "U1"), "SUB_ORDER", order.subOrderNo()));
     }
 
     @Test
@@ -838,10 +869,10 @@ class StoreOrderMysqlTest {
         @Bean
         StoreOrderSettlementService settlements(OrderMapper orders, SubOrderMapper subs, RecordMapper records,
                 StoreCollectionMapper collections, OutboxEventBus events, FakeCollections payOrders,
-                PlatformTransactionManager tx) {
+                ObjectProvider<InvoicePort> invoicePort, PlatformTransactionManager tx) {
             return new StoreOrderSettlementServiceImpl(orders, subs, records, collections, events,
                     new StaticListableBeanFactory(Map.of("payOrders", payOrders)).getBeanProvider(PaidCollectionPort.class),
-                    tx);
+                    invoicePort, tx);
         }
 
         @Bean

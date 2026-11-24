@@ -22,6 +22,7 @@ public class IvcTransmission {
     /** 开立门店（V8） */
     private String storeNo;
     private String regimeCode;
+    private String channelAccountNo;
     private String gatewayCode;
     /** ISSUE / VOID / ALLOWANCE */
     private String messageType;
@@ -30,6 +31,8 @@ public class IvcTransmission {
     /** PENDING / SENDING / SENT / FAILED / HELD（账号问题暂停）/ NEEDS_REVIEW（被拒，待人工） */
     private String status;
     private Integer attempts;
+    /** Monotonic execution fence, including claims that did not report a result. */
+    private Long attemptSequence;
     private LocalDateTime nextAttemptAt;
     private String lastError;
     private String gatewayRef;

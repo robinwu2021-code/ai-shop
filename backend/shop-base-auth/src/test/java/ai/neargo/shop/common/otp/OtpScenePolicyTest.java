@@ -55,8 +55,9 @@ class OtpScenePolicyTest {
             var enabled = new OtpSettings.Scene(); enabled.setEnabled(true); enabled.setEntries(Set.of("ANY"));
             settings.getScenes().put(scene, enabled);
             var configured = new OtpScenePolicies(settings, true);
-            var channel = OtpScenes.EMAIL_CHANGE.equals(scene) ? Channel.EMAIL : Channel.SMS;
-            var rule = configured.require(scene, channel, "ANY", OtpScenes.ORDER_PICKUP_CONFIRM.equals(scene) ? "order1" : null);
+            boolean invoice = OtpScenes.INVOICE_ARTIFACT_ACCESS.equals(scene);
+            var channel = OtpScenes.EMAIL_CHANGE.equals(scene) || invoice ? Channel.EMAIL : Channel.SMS;
+            var rule = configured.require(scene, channel, "ANY", OtpScenes.ORDER_PICKUP_CONFIRM.equals(scene) || invoice ? "reference1" : null);
             assertThat(configured.mode(rule, "ANY")).as(scene).isEqualTo(OtpScenePolicy.CaptchaMode.ADAPTIVE);
         }
         var defaults = new OtpSettings();
@@ -65,5 +66,12 @@ class OtpScenePolicyTest {
         assertThat(defaults.getPlatformHourly()).isEqualTo(500);
         assertThat(defaults.getPlatformDaily()).isEqualTo(3000);
         assertThat(policies).isNotNull();
+    }
+    @Test void invoiceAccessUsesOnlyTrustedEmailWithDeliveryBinding() {
+        var policies = new OtpScenePolicies(new OtpSettings(), true);
+        var rule = policies.require(OtpScenes.INVOICE_ARTIFACT_ACCESS, Channel.EMAIL, OtpEntries.INVOICE_ARTIFACT, "IVD1");
+        assertThat(policies.mode(rule, OtpEntries.INVOICE_ARTIFACT)).isEqualTo(OtpScenePolicy.CaptchaMode.RATE_ONLY);
+        assertThatThrownBy(() -> policies.require(OtpScenes.INVOICE_ARTIFACT_ACCESS, Channel.EMAIL, OtpEntries.BIZ_LOGIN, "IVD1"))
+                .isInstanceOf(BizException.class);
     }
 }

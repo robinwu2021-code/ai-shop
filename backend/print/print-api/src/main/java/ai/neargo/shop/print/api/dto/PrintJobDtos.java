@@ -1,5 +1,6 @@
 package ai.neargo.shop.print.api.dto;
 
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.print.api.*;
 import ai.neargo.shop.print.api.dto.PrintAgentDtos.*;
 import ai.neargo.shop.print.api.dto.PrintConfigDtos.*;
@@ -124,6 +125,13 @@ public final class PrintJobDtos {
             String resultEvidence,
             String lastErrorCode,
             Instant confirmedAt) {}
+
+    public record InvoiceProofHistory(List<PrintRequestVO> requests, PageData<InvoiceProofJob> jobs) {}
+
+    public record InvoiceProofJob(PrintJobVO job, String attemptNo, String reprintReason, InvoiceProofArchive archive) {}
+
+    public record InvoiceProofArchive(String exportNo, String status, String sha256,
+            int paperWidthMm, Instant readyAt, Instant expiresAt, Instant deletedAt) {}
 
     public record ListAttemptsQuery(Integer page, Integer size) {}
 

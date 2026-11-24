@@ -236,15 +236,17 @@ public class DefaultPrintSimulationFacade implements PrintSimulationFacade {
 
     public PageData<SimulationView> page(SimulationQuery q, PrintActor a) {
         require(a.storeNo().equals(q.storeNo()), "print.forbidden");
-        var p =
-                simulations.selectPage(
-                        new Page<>(
-                                pageNumber(q.page()),
-                                pageSize(q.size())),
-                        PrintSupport.<PrnSimulationRun>scoped(scope(a))
-                                .eq(q.scene() != null, "scene", q.scene())
-                                .eq(q.status() != null, "status", q.status())
-                                .orderByDesc("id"));
+        var rows = PrintSupport.<PrnSimulationRun>scoped(scope(a))
+                .eq(q.scene() != null, "scene", q.scene())
+                .eq(q.status() != null, "status", q.status());
+        if (q.factNo() != null) {
+            require(q.factNo().matches("[A-Za-z0-9_-]{1,64}"), "print.invalidFactNo");
+            // MySQL normalizes spacing in JSON columns. Match the complete factNo value.
+            rows.eq("source_type", SimulationSourceType.FACT.name())
+                    .apply("REGEXP_LIKE(source_ref, {0})", "\"factNo\"\\s*:\\s*\""
+                            + q.factNo() + "\"");
+        }
+        var p = simulations.selectPage(new Page<>(pageNumber(q.page()), pageSize(q.size())), rows.orderByDesc("id"));
         return PageData.of(
                 p.getRecords().stream().map(this::view).toList(),
                 p.getTotal(),
@@ -263,6 +265,7 @@ public class DefaultPrintSimulationFacade implements PrintSimulationFacade {
     }
 
     private SimulationView view(PrnSimulationRun r) {
+        var source = json.read(r.getSourceRef(), SimulationSource.class);
         return new SimulationView(
                 r.getSimulationNo(),
                 r.getScene(),
@@ -271,6 +274,7 @@ public class DefaultPrintSimulationFacade implements PrintSimulationFacade {
                 json.freeze(r.getExpectedResults()),
                 json.freeze(r.getActualResults()),
                 json.freeze(r.getEventJournal()),
-                r.getRevision());
+                r.getRevision(),
+                source.factRef() == null ? null : source.factRef().factNo());
     }
 }

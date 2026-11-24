@@ -339,7 +339,10 @@ public final class InvoiceDtos {
             /** 现在能否注销（已开立、无折让、开立已送达、本期内、供应商支持注销） */
             boolean revocable,
             /** 注销与同号重开（TDD-发票-注销与同号重开）；从未注销过且不是重开票时为空 */
-            RevocationVO revocation) {}
+            RevocationVO revocation,
+            String applicationNo, Integer applicationRevisionNo,
+            String channelCode, String channelAccountNo, Long channelAccountRevision, Long channelRouteVersion,
+            String channelEnvironment) {}
 
     /**
      * @param revisedFromInvoiceNo 本票是哪张注销票的同号重开

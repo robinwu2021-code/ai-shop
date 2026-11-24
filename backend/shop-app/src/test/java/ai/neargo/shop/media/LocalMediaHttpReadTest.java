@@ -5,6 +5,7 @@ import ai.neargo.shop.channel.media.CosMediaStore;
 import ai.neargo.shop.channel.media.api.MediaReadController;
 import ai.neargo.shop.config.UploadResourceConfig;
 import java.io.ByteArrayInputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -107,6 +108,26 @@ class LocalMediaHttpReadTest {
                         .andExpect(status().isOk()).andExpect(content().bytes(bytes))
                         .andExpect(content().contentTypeCompatibleWith(extension.equals("csv") ? "text/csv" : "application/octet-stream"));
             }
+        }
+    }
+
+    @Test void publicAndSignedRoutesRejectReplacedSymlinksAndStagingFiles() throws Exception {
+        try (var context = context()) {
+            var store = context.getBean(MediaStore.class);
+            var mvc = MockMvcBuilders.webAppContextSetup(context).build();
+            var outside = Files.write(root.resolve("outside.png"), new byte[]{8});
+            for (String purpose : java.util.List.of("goods", "qual")) {
+                String key = "E1/S1/" + purpose + "/202611/photo.png";
+                String signed = store.signedUrl(key, Duration.ofMinutes(1));
+                Path object = root.resolve("uploads").resolve(key);
+                Files.createDirectories(object.getParent());
+                Files.createSymbolicLink(object, outside);
+                mvc.perform(get(store.publicUrl(key))).andExpect(status().isNotFound());
+                mvc.perform(get(signed)).andExpect(status().isNotFound());
+            }
+            String staged = "E1/S1/goods/202611/.media-upload-123.part";
+            Files.write(root.resolve("uploads").resolve(staged), new byte[]{9});
+            mvc.perform(get(store.publicUrl(staged))).andExpect(status().isNotFound());
         }
     }
 

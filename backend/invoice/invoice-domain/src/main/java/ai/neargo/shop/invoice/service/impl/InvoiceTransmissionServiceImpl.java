@@ -14,6 +14,7 @@ import ai.neargo.shop.invoice.regime.InvoiceRegimes;
 import ai.neargo.shop.invoice.entity.IvcAllowance;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
 import ai.neargo.shop.invoice.entity.IvcTransmission;
+import ai.neargo.shop.invoice.entity.IvcTransmissionAttempt;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayRequest;
@@ -21,7 +22,9 @@ import ai.neargo.shop.invoice.gateway.InvoiceGateways;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.AllowanceMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.RegimeProfileMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.TransmissionMapper;
+import ai.neargo.shop.invoice.service.InvoiceChannelService;
 import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -70,15 +73,19 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
     private final InvoiceGateways gateways;
     private final InvoiceMapper invoices;
     private final InvoiceRegimes regimes;
+    private final InvoiceTransmissionJournal journal;
+
+    private record AccountContext(IvcRegimeProfile profile, Long revision) {}
 
     public InvoiceTransmissionServiceImpl(TransmissionMapper transmissions, RegimeProfileMapper profiles,
             AllowanceMapper allowances, InvoiceProviderAccounts accounts, InvoiceGateways gateways,
-            InvoiceMapper invoices, InvoiceRegimes regimes) {
+            InvoiceMapper invoices, InvoiceRegimes regimes, InvoiceTransmissionJournal journal) {
         this.transmissions = transmissions;
         this.profiles = profiles;
         this.allowances = allowances;
         this.invoices = invoices;
         this.regimes = regimes;
+        this.journal = journal;
         this.accounts = accounts;
         this.gateways = gateways;
     }
@@ -89,13 +96,13 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         // SENDING 超过 10 分钟没回音 = 上一个执行者在发送途中退出；报文幂等由通道按发票号识别，重发安全
         var due = transmissions.selectList(new QueryWrapper<IvcTransmission>()
                 .and(w -> w.in("status", "PENDING", "FAILED").le("next_attempt_at", now)
-                        .or(x -> x.eq("status", "SENDING").le("updated_at", now.minusMinutes(10))))
+                        .or(x -> x.eq("status", "SENDING").le("updated_at", now.minusMinutes(InvoiceTransmissionJournal.STALE_MINUTES))))
                 .orderByAsc("next_attempt_at", "id").last("LIMIT " + limit));
         int sent = 0;
         // 同一轮里同一主体的配置只查一次；本轮刚被暂停的主体，后面的任务直接转 HELD
-        var profileCache = new HashMap<String, IvcRegimeProfile>();
+        var profileCache = new HashMap<String, AccountContext>();
         for (var t : due) {
-            if (transmitOne(t, profileCache, now)) sent++;
+            if (transmitOne(t, profileCache, null)) sent++;
         }
         return sent;
     }
@@ -107,51 +114,61 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
      */
     @Override
     public int transmitNow(Scope scope, String invoiceNo) {
-        var now = LocalDateTime.now(ZoneOffset.UTC);
         var refs = new ArrayList<String>();
         refs.add(invoiceNo);
         allowances.selectList(new QueryWrapper<IvcAllowance>().eq("tenant_no", scope.tenantNo())
                         .eq("entity_no", scope.entityNo()).eq("invoice_no", invoiceNo))
                 .forEach(a -> refs.add(a.getAllowanceNo()));
         var due = transmissions.selectList(new QueryWrapper<IvcTransmission>().eq("tenant_no", scope.tenantNo())
-                .eq("entity_no", scope.entityNo()).in("ref_no", refs).in("status", "PENDING", "FAILED")
+                .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo())
+                .in("ref_no", refs).in("status", "PENDING", "FAILED")
                 .orderByAsc("id"));
         int sent = 0;
-        var profileCache = new HashMap<String, IvcRegimeProfile>();
+        var profileCache = new HashMap<String, AccountContext>();
         for (var t : due) {
-            if (transmitOne(t, profileCache, now)) sent++;
+            if (transmitOne(t, profileCache, scope.actorNo())) sent++;
         }
         return sent;
     }
 
-    /** 认领一条任务并发送、记账；返回是否被通道接受。 */
-    private boolean transmitOne(IvcTransmission t, HashMap<String, IvcRegimeProfile> profileCache, LocalDateTime now) {
-        var gateway = gateways.find(t.getGatewayCode()).orElse(null);
-        IvcRegimeProfile profile = gateway != null && gateway.profile().requiresAccount()
-                ? profileCache.computeIfAbsent(t.getTenantNo() + "|" + t.getEntityNo() + "|" + t.getRegimeCode(),
-                        k -> profileOf(t))
-                : null;
+    /** The committed claim fences this network attempt from stale workers and concurrent checks. */
+    private boolean transmitOne(IvcTransmission task, HashMap<String, AccountContext> profileCache, String actorNo) {
+        var gateway = gateways.find(task.getGatewayCode()).orElse(null);
+        var account = gateway != null && gateway.profile().requiresAccount()
+                ? profileCache.computeIfAbsent(task.getTenantNo() + "|" + task.getEntityNo() + "|" + task.getRegimeCode()
+                        + "|" + task.getChannelAccountNo() + "|" + task.getGatewayCode(),
+                        k -> accountContext(task))
+                : new AccountContext(null, null);
+        var profile = account.profile();
+        var now = LocalDateTime.now(ZoneOffset.UTC);
         if (profile != null && profile.getProviderHeldAt() != null) {
-            transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", t.getId())
-                    .eq("status", t.getStatus()).set("status", HELD).set("updated_at", now));
+            journal.markHeld(task, now);
             return false;
         }
-        if (transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", t.getId())
-                .eq("status", t.getStatus()).eq("attempts", t.getAttempts())
-                .set("status", "SENDING").set("updated_at", now)) != 1) return false;
+        var claim = journal.claim(task, actorNo, account.revision(), now);
+        if (claim == null) return false;
+
         GatewayReceipt receipt;
+        String auditOutcome;
+        String safeCode = null;
         try {
-            receipt = send(gateway, t, profile);
+            receipt = send(gateway, task, profile);
+            auditOutcome = receipt.outcome().name();
         } catch (RuntimeException e) {
-            // 业务动作：通道异常即本次未送达，转为可重试状态；原报文留着下一轮补发
+            // Keep retry policy and task diagnostics while avoiding provider text in the audit.
             receipt = GatewayReceipt.retryable(String.valueOf(e.getMessage()));
+            auditOutcome = "UNKNOWN";
+            safeCode = "PROVIDER_EXCEPTION";
         }
-        record(t, receipt);
-        if (receipt.outcome() == GatewayReceipt.Outcome.ACCOUNT_PROBLEM && profile != null) {
-            hold(profile, receipt.error());
-            profile.setProviderHeldAt(now);   // 本轮后续同主体任务据此直接转 HELD
+        var result = receipt;
+        var after = LocalDateTime.now(ZoneOffset.UTC);
+        boolean completed = journal.complete(claim, auditOutcome, safeCode, after,
+                () -> record(task, claim, result, after));
+        if (completed && result.outcome() == GatewayReceipt.Outcome.ACCOUNT_PROBLEM && profile != null) {
+            if (task.getChannelAccountNo() == null) hold(profile, result.error());
+            profile.setProviderHeldAt(now);
         }
-        return receipt.accepted();
+        return completed && result.accepted();
     }
 
     @Override
@@ -161,7 +178,7 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
                 .eq("entity_no", entityNo).eq("regime_code", regimeCode)
                 .set("provider_hold_reason", null).set("provider_held_at", null).set("updated_at", now));
         int released = transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("tenant_no", tenantNo)
-                .eq("entity_no", entityNo).eq("regime_code", regimeCode).eq("status", HELD)
+                .eq("entity_no", entityNo).eq("regime_code", regimeCode).isNull("channel_account_no").eq("status", HELD)
                 .set("status", "PENDING").set("next_attempt_at", now).set("updated_at", now));
         if (released > 0) log.info("INVOICE_PROVIDER_RELEASED tenant={} entity={} tasks={}", tenantNo, entityNo, released);
         return released;
@@ -177,7 +194,9 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
                 .forEach(a -> refs.add(a.getAllowanceNo()));
         var now = LocalDateTime.now(ZoneOffset.UTC);
         int n = transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("tenant_no", scope.tenantNo())
-                .eq("entity_no", scope.entityNo()).in("ref_no", refs).eq("status", NEEDS_REVIEW)
+                .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).in("ref_no", refs)
+                .and(w -> w.eq("status", NEEDS_REVIEW)
+                        .or(bound -> bound.isNotNull("channel_account_no").eq("status", HELD)))
                 .set("status", "PENDING").set("next_attempt_at", now).set("last_error", null).set("updated_at", now));
         if (n == 0) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
         return n;
@@ -219,26 +238,31 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         var inv = invoices.selectOne(new QueryWrapper<IvcInvoice>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).eq("invoice_no", invoiceNo));
         if (inv == null) throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);
-        var profile = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", inv.getTenantNo())
-                .eq("entity_no", inv.getEntityNo()).eq("regime_code", inv.getRegimeCode()).last("LIMIT 1"));
-        // 查这张票当初送去的那家（开立时冻结），而不是主体现在生效的那家
+        // 查这张票开立时冻结的服务商与账户。
         var issued = transmissions.selectOne(new QueryWrapper<IvcTransmission>().eq("tenant_no", inv.getTenantNo())
                 .eq("entity_no", inv.getEntityNo()).eq("message_type", "ISSUE").eq("ref_no", invoiceNo).last("LIMIT 1"));
-        var provider = profile == null || issued == null ? null
+        var context = issued == null ? new AccountContext(null, null) : accountContext(issued);
+        var provider = issued == null ? null
                 : gateways.capability(issued.getGatewayCode(), QueryCapability.class).orElse(null);
         if (provider == null) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
-        var account = accounts.of(profile).orElseThrow(
+        var account = accounts.of(context.profile()).orElseThrow(
                 () -> BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, "account_not_configured"));
         var day = LocalDate.ofInstant(inv.getIssuedAt().toInstant(ZoneOffset.UTC),
                 regimes.require(inv.getRegimeCode()).zone());
+        var query = journal.startQuery(issued, "PROVIDER_CHECK", invoiceNo, scope.actorNo(), context.revision(),
+                LocalDateTime.now(ZoneOffset.UTC));
         QueryCapability.ProviderInvoiceStatus status;
         try {
             status = provider.queryStatus(account, inv.getFiscalNumber(), day);
         } catch (ProviderException e) {
-            // 业务动作：服务商拒绝或不可达，原文代码交给用户
+            finishFailedQuery(query, e.kind());
             throw BizException.of(ErrorCode.INVOICE_PROVIDER_REJECTED, e.code());
+        } catch (RuntimeException e) {
+            journal.finishQuery(query, "UNKNOWN", "PROVIDER_EXCEPTION", LocalDateTime.now(ZoneOffset.UTC));
+            throw e;
         }
         var now = LocalDateTime.now(ZoneOffset.UTC);
+        journal.finishQuery(query, "CHECKED", status.state().name(), now);
         var tasks = transmissions.selectList(new QueryWrapper<IvcTransmission>().eq("tenant_no", inv.getTenantNo())
                 .eq("entity_no", inv.getEntityNo()).in("message_type", "ISSUE", "VOID").eq("ref_no", invoiceNo));
         // 补记：服务商已有这张票 → 开立已送达；服务商已作废 → 作废也已送达（鲸跃收到的就是我们发的那份报文）
@@ -246,10 +270,8 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         for (var t : tasks) {
             boolean delivered = "ISSUE".equals(t.getMessageType()) ? status.state() != State.NOT_FOUND
                     : status.state() == State.VOIDED;
-            if (delivered && !"SENT".equals(t.getStatus()) && transmissions.update(null,
-                    new UpdateWrapper<IvcTransmission>().eq("id", t.getId()).ne("status", "SENT").set("status", "SENT")
-                            .set("gateway_ref", t.getGatewayCode() + ":QUERY:" + status.rawCode())
-                            .set("last_error", null).set("deadline_level", 2).set("updated_at", now)) == 1) {
+            if (delivered && !"SENT".equals(t.getStatus())
+                    && journal.reconcile(t, t.getGatewayCode() + ":QUERY:" + status.rawCode(), now)) {
                 reconciled.add(t.getMessageType());
                 log.info("INVOICE_TRANSMISSION_RECONCILED tenant={} entity={} type={} ref={} provider={}",
                         t.getTenantNo(), t.getEntityNo(), t.getMessageType(), invoiceNo, status.rawCode());
@@ -303,10 +325,10 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         return new UploadBacklogVO(pending, held, review, dueSoon, overdue, oldest);
     }
 
-    private void record(IvcTransmission t, GatewayReceipt receipt) {
+    private boolean record(IvcTransmission t, IvcTransmissionAttempt claim, GatewayReceipt receipt, LocalDateTime after) {
         int attempts = t.getAttempts() + 1;
-        var after = LocalDateTime.now(ZoneOffset.UTC);
         var update = new UpdateWrapper<IvcTransmission>().eq("id", t.getId()).eq("status", "SENDING")
+                .eq("attempt_sequence", claim.getAttemptIndex()).eq("attempts", t.getAttempts())
                 .set("attempts", attempts).set("updated_at", after);
         String error = receipt.error() == null ? "rejected" : receipt.error();
         String clipped = error.length() > 512 ? error.substring(0, 512) : error;
@@ -316,19 +338,19 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
             case RETRYABLE -> update.set("status", "FAILED").set("last_error", clipped)
                     .set("next_attempt_at", after.plusMinutes(Math.min(60, 1L << Math.min(attempts - 1, 6))));
             case ACCOUNT_PROBLEM -> update.set("status", HELD).set("last_error", clipped);
-            case FINAL -> {
-                update.set("status", NEEDS_REVIEW).set("last_error", clipped);
-                log.error("INVOICE_TRANSMISSION_NEEDS_REVIEW tenant={} entity={} type={} ref={} error={}",
-                        t.getTenantNo(), t.getEntityNo(), t.getMessageType(), t.getRefNo(), clipped);
-            }
+            case FINAL -> update.set("status", NEEDS_REVIEW).set("last_error", clipped);
         }
-        transmissions.update(null, update);
+        if (transmissions.update(null, update) != 1) return false;
+        if (receipt.outcome() == GatewayReceipt.Outcome.FINAL)
+            log.error("INVOICE_TRANSMISSION_NEEDS_REVIEW tenant={} entity={} type={} ref={} error={}",
+                    t.getTenantNo(), t.getEntityNo(), t.getMessageType(), t.getRefNo(), clipped);
         // 注销被服务商拒收（终态）：发票回到已开立，可改正后再次注销（TDD-发票-注销与同号重开 §3.2）
         if ("REVOKE".equals(t.getMessageType()) && receipt.outcome() == GatewayReceipt.Outcome.FINAL)
             invoices.update(null, new UpdateWrapper<IvcInvoice>().eq("tenant_no", t.getTenantNo())
                     .eq("invoice_no", t.getRefNo()).eq("status", "REVOKING").set("status", "ISSUED")
                     .set("revoke_error", clipped.length() > 255 ? clipped.substring(0, 255) : clipped)
                     .set("updated_at", after));
+        return true;
     }
 
     @Override
@@ -343,18 +365,25 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
                     .eq("message_type", "REVOKE").eq("ref_no", inv.getInvoiceNo()));
             if (t == null || !"SENT".equals(t.getStatus())) continue;
             var capability = gateways.capability(t.getGatewayCode(), RevokeStatusCapability.class).orElse(null);
-            var profile = profileOf(t);
-            var account = profile == null ? null : accounts.of(profile).orElse(null);
+            var context = accountContext(t);
+            var account = accounts.of(context.profile()).orElse(null);
             if (capability == null || account == null) continue;
+            var query = journal.startQuery(t, "REVOCATION_CHECK", inv.getInvoiceNo(), null, context.revision(),
+                    LocalDateTime.now(ZoneOffset.UTC));
             RevokeStatusCapability.RevokeState state;
             try {
                 state = capability.revokeStatus(account, inv.getFiscalNumber(),
                         LocalDate.ofInstant(inv.getIssuedAt().toInstant(ZoneOffset.UTC), regimes.require(inv.getRegimeCode()).zone()));
             } catch (ProviderException e) {
+                finishFailedQuery(query, e.kind());
                 log.warn("INVOICE_REVOKE_STATUS_FAILED tenant={} invoice={} code={}", inv.getTenantNo(),
                         inv.getInvoiceNo(), e.code());
                 continue;
+            } catch (RuntimeException e) {
+                journal.finishQuery(query, "UNKNOWN", "PROVIDER_EXCEPTION", LocalDateTime.now(ZoneOffset.UTC));
+                throw e;
             }
+            journal.finishQuery(query, "CHECKED", state.name(), LocalDateTime.now(ZoneOffset.UTC));
             var base = new UpdateWrapper<IvcInvoice>().eq("id", inv.getId()).eq("status", "REVOKING");
             switch (state) {
                 case DONE -> {
@@ -411,9 +440,25 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
                     profile.getEntityNo(), profile.getGatewayCode(), clipped);
     }
 
-    private IvcRegimeProfile profileOf(IvcTransmission t) {
-        return profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", t.getTenantNo())
-                .eq("entity_no", t.getEntityNo()).eq("regime_code", t.getRegimeCode()).last("LIMIT 1"));
+    @Autowired(required = false)
+    private InvoiceChannelService channels;
+
+    private AccountContext accountContext(IvcTransmission task) {
+        if (task.getChannelAccountNo() != null) {
+            return channels == null ? new AccountContext(null, null)
+                    : channels.historical(task.getTenantNo(), task.getEntityNo(), task.getChannelAccountNo())
+                            .filter(account -> task.getGatewayCode().equals(account.channelCode()))
+                            .map(account -> new AccountContext(account.profile(), account.accountRevision()))
+                            .orElseGet(() -> new AccountContext(null, null));
+        }
+        return new AccountContext(profiles.selectOne(new QueryWrapper<IvcRegimeProfile>()
+                .eq("tenant_no", task.getTenantNo()).eq("entity_no", task.getEntityNo())
+                .eq("regime_code", task.getRegimeCode()).last("LIMIT 1")), null);
+    }
+
+    private void finishFailedQuery(IvcTransmissionAttempt query, ProviderException.Kind kind) {
+        var outcome = kind == ProviderException.Kind.UNAVAILABLE ? "UNKNOWN" : "FAILED";
+        journal.finishQuery(query, outcome, kind.name(), LocalDateTime.now(ZoneOffset.UTC));
     }
 
     private GatewayReceipt send(InvoiceGateway gateway, IvcTransmission t, IvcRegimeProfile profile) {

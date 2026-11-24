@@ -19,6 +19,12 @@ public interface PrintQueryService {
 
     PageData<PrintJobVO> listJobs(ListJobsQuery query, PrintActor actor);
 
+    InvoiceProofHistory invoiceProofHistory(String invoiceNo, Integer page, Integer size, PrintActor actor);
+
+    Instant originalInvoiceProofExpiry(String invoiceNo, String exportNo, PrintActor actor);
+
+    Instant invoiceDeliveryDocumentExpiry(String invoiceNo, String exportNo, ExportSourceType type, PrintActor actor);
+
     PrintJobView getJob(PrintJobRef ref, PrintActor actor);
 
     PageData<PrintAttemptVO> listAttempts(String jobNo, ListAttemptsQuery query, PrintActor actor);

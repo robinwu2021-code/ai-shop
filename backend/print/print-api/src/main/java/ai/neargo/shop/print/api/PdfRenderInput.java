@@ -11,8 +11,17 @@ public record PdfRenderInput(
         List<PrintLayout> layouts,
         String rendererVersion,
         String fontBundleVersion,
-        Instant exportCreatedAt) {
+        Instant exportCreatedAt,
+        InvoiceDocumentProvenance invoiceDocument) {
     public PdfRenderInput {
         layouts = List.copyOf(Objects.requireNonNull(layouts, "layouts"));
     }
+
+    public PdfRenderInput(String exportNo, PrintArtifactKind artifactKind, PdfOutputProfile profile,
+            List<PrintLayout> layouts, String rendererVersion, String fontBundleVersion,
+            Instant exportCreatedAt) {
+        this(exportNo, artifactKind, profile, layouts, rendererVersion, fontBundleVersion, exportCreatedAt, null);
+    }
+
+    public record InvoiceDocumentProvenance(PrintFactRef fact, FrozenJson templateResolution) {}
 }

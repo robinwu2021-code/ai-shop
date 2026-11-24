@@ -11,6 +11,7 @@ import ai.neargo.shop.printing.entity.PrnJob;
 import ai.neargo.shop.printing.center.persistence.entity.*;
 import ai.neargo.shop.printing.mapper.PrintMappers.JobMapper;
 import ai.neargo.shop.printing.center.persistence.mapper.PrintMappers.*;
+import ai.neargo.shop.printing.center.source.PrintSourceRegistry;
 import ai.neargo.shop.printing.center.support.*;
 import ai.neargo.shop.printing.center.template.*;
 
@@ -29,6 +30,9 @@ public class PrintReprintServiceImpl implements PrintReprintService {
     private final PrintJsonCodec json;
     private final PrintSystemSlotPolicy slots;
     private final PrintSceneRegistry scenes;
+    private final PrnRequestMapper requests;
+    private final PrintSourceRegistry sources;
+    private final PrintExportFacade exports;
 
     public PrintReprintServiceImpl(
             JobMapper j,
@@ -38,7 +42,10 @@ public class PrintReprintServiceImpl implements PrintReprintService {
             PrintOperationService o,
             PrintJsonCodec c,
             PrintSystemSlotPolicy s,
-            PrintSceneRegistry sc) {
+            PrintSceneRegistry sc,
+            PrnRequestMapper requests,
+            PrintSourceRegistry sources,
+            PrintExportFacade exports) {
         jobs = j;
         batches = b;
         printers = p;
@@ -47,6 +54,9 @@ public class PrintReprintServiceImpl implements PrintReprintService {
         json = c;
         slots = s;
         scenes = sc;
+        this.requests = requests;
+        this.sources = sources;
+        this.exports = exports;
     }
 
     public PrintOperation reprint(String no, ReprintReq r, PrintActor a) {
@@ -172,6 +182,14 @@ public class PrintReprintServiceImpl implements PrintReprintService {
             var document = json.read(source.getRichDocumentSnapshot(), PrintDocument.class);
             require(!extra || scenes.extraCopiesAllowed(document.scene()), "print.extraCopiesNotAllowed");
             access(scope, a, document.requiredDataScopes());
+            boolean invoiceDocument = document.scene().startsWith("INVOICE_");
+            if (invoiceDocument) {
+                var request = requests.selectOne(PrintSupport.<PrnRequest>scoped(scope)
+                        .eq("request_no", source.getRequestNo()));
+                var fact = json.read(request.getSourceRef(), PrintFactRef.class);
+                require(sources.require(fact.sourceType()).executionGuard(fact).allowed(),
+                        "print.sourceExecutionHeld");
+            }
             var batch = batchByRequest.get(source.getRequestNo());
             if (batch == null) {
                 batch = init(new PrnBatch(), scope);
@@ -204,6 +222,7 @@ public class PrintReprintServiceImpl implements PrintReprintService {
                 j.setTargetKey(printerNo);
                 j.setParentJobNo(source.getJobNo());
                 j.setJobKind(extra ? "EXTRA" : "REPRINT");
+                j.setReprintReason(reason);
                 j.setCopyIndex(copy);
                 j.setStatus("PENDING");
                 j.setResolutionStatus("OPEN");
@@ -263,6 +282,9 @@ public class PrintReprintServiceImpl implements PrintReprintService {
                                 Map.of("printerNo", printerNo, "copiedFrom", source.getJobNo())));
                 ai.neargo.shop.printing.service.PreparedPrintJobs.initialize(j);
                 jobs.insert(j);
+                if ("INVOICE_PROOF".equals(document.scene())) {
+                    exports.archiveInvoiceProof(j.getJobNo(), j.getRevision(), a);
+                }
                 created.add(j.getJobNo());
                 resultNos.add(j.getJobNo());
                 batch.setExpectedCount(batch.getExpectedCount() + j.getRequired());

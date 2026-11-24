@@ -132,6 +132,90 @@ public class PrintQueryServiceImpl implements PrintQueryService {
                 p.getSize());
     }
 
+    public InvoiceProofHistory invoiceProofHistory(String invoiceNo, Integer page, Integer size, PrintActor actor) {
+        var scope = scope(actor);
+        access(scope, actor, PrintSourceDataScopes.required("INVOICE"));
+        var proofRequests = requests.selectList(PrintSupport.<PrnRequest>scoped(scope)
+                .eq("biz_type", "INVOICE").eq("biz_no", invoiceNo).eq("scene", "INVOICE_PROOF")
+                .orderByDesc("id"));
+        int current = pageNumber(page);
+        int limit = pageSize(size);
+        if (proofRequests.isEmpty()) {
+            return new InvoiceProofHistory(List.of(), PageData.empty(current, limit));
+        }
+        var byRequest = new HashMap<String, PrnRequest>();
+        proofRequests.forEach(r -> byRequest.put(r.getRequestNo(), r));
+        var proofJobs = jobs.selectPage(new Page<>(current, limit), PrintSupport.<PrnJob>scoped(scope)
+                .in("request_no", byRequest.keySet()).orderByDesc("id"));
+        var byJob = new HashMap<String, PrnExportTask>();
+        if (!proofJobs.getRecords().isEmpty() && actor.dataScopes().contains("biz:print:export")) {
+            var jobNos = proofJobs.getRecords().stream().map(PrnJob::getJobNo).toList();
+            exports.selectList(PrintSupport.<PrnExportTask>scoped(scope)
+                    .eq("source_type", "JOB").eq("created_by", PrintExportFacade.INVOICE_PROOF_ARCHIVE_ACTOR)
+                    .in("source_no", jobNos)).forEach(e -> byJob.put(e.getSourceNo(), e));
+        }
+        var records = proofJobs.getRecords().stream().map(j -> {
+            var e = byJob.get(j.getJobNo());
+            var archive = e == null ? null : new InvoiceProofArchive(e.getExportNo(),
+                    e.getExpiresAt().isAfter(now()) ? e.getStatus() : "EXPIRED",
+                    e.getContentHash(), json.read(j.getLayoutSnapshot(), PrintLayout.class).pageWidthMm().intValueExact(),
+                    instant(e.getReadyAt()), instant(e.getExpiresAt()), instant(e.getObjectDeletedAt()));
+            return new InvoiceProofJob(view(j, actor, byRequest.get(j.getRequestNo())), j.getCurrentAttemptNo(),
+                    j.getReprintReason(), archive);
+        }).toList();
+        return new InvoiceProofHistory(proofRequests.stream().map(PrintViews::request).toList(),
+                PageData.of(records, proofJobs.getTotal(), proofJobs.getCurrent(), proofJobs.getSize()));
+    }
+
+    public Instant originalInvoiceProofExpiry(String invoiceNo, String exportNo, PrintActor actor) {
+        var scope = scope(actor);
+        access(scope, actor, Set.of("SOURCE_INVOICE_READ", "biz:print:export"));
+        var archive = exports.selectOne(PrintSupport.<PrnExportTask>scoped(scope)
+                .eq("export_no", exportNo)
+                .eq("status", "READY").gt("expires_at", now()).isNull("object_deleted_at"));
+        require(archive != null, "print.exportNotReady");
+        if (ExportSourceType.INVOICE_PROOF.name().equals(archive.getSourceType())) {
+            requireInvoiceDocument(invoiceNo, archive, ExportSourceType.INVOICE_PROOF, actor);
+            return instant(archive.getExpiresAt());
+        }
+        require("JOB".equals(archive.getSourceType())
+                        && PrintExportFacade.INVOICE_PROOF_ARCHIVE_ACTOR.equals(archive.getCreatedBy()),
+                "print.exportNotReady");
+        var job = jobs.selectOne(PrintSupport.<PrnJob>scoped(scope).eq("job_no", archive.getSourceNo())
+                .eq("scene", "INVOICE_PROOF").eq("job_kind", "INITIAL"));
+        require(job != null && requests.selectCount(PrintSupport.<PrnRequest>scoped(scope)
+                .eq("request_no", job.getRequestNo()).eq("biz_type", "INVOICE").eq("biz_no", invoiceNo)) == 1,
+                "print.sourceUnavailable");
+        return instant(archive.getExpiresAt());
+    }
+
+    public Instant invoiceDeliveryDocumentExpiry(String invoiceNo, String exportNo, ExportSourceType type,
+            PrintActor actor) {
+        var scope = scope(actor);
+        access(scope, actor, Set.of("SOURCE_INVOICE_READ", "biz:print:export"));
+        var archive = exports.selectOne(PrintSupport.<PrnExportTask>scoped(scope)
+                .eq("export_no", exportNo).eq("source_type", type.name()).eq("source_no", invoiceNo)
+                .eq("status", "READY").gt("expires_at", now()).isNull("object_deleted_at"));
+        require(archive != null, "print.exportNotReady");
+        requireInvoiceDocument(invoiceNo, archive, type, actor);
+        return instant(archive.getExpiresAt());
+    }
+
+    private void requireInvoiceDocument(String invoiceNo, PrnExportTask archive, ExportSourceType type,
+            PrintActor actor) {
+        require(type.isInvoiceDocument() && type.name().equals(archive.getSourceType())
+                && invoiceNo.equals(archive.getSourceNo()), "print.sourceUnavailable");
+        var scope = scope(actor);
+        var required = json.read(archive.getRequiredDataScopes(), String[].class);
+        access(scope, actor, Set.of(required));
+        var provenance = json.read(archive.getSourceSnapshot(), PdfRenderInput.class).invoiceDocument();
+        var port = sources.require("INVOICE");
+        var fact = port.resolveReference(new PrintSourceReference("INVOICE", invoiceNo, invoiceNo, null,
+                type.name()), scope);
+        require(provenance != null && fact.equals(provenance.fact()) && port.executionGuard(fact).allowed(),
+                "print.sourceUnavailable");
+    }
+
     public PrintJobView getJob(PrintJobRef ref, PrintActor a) {
         access(new PrintScope(ref.tenantNo(), ref.entityNo(), ref.storeNo()), a, Set.of());
         var j = job(ref.jobNo(), a);
