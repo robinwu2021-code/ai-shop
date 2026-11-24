@@ -13319,7 +13319,7 @@ CREATE TABLE IF NOT EXISTS mch_pos_staff_pin_policy
 CREATE TABLE IF NOT EXISTS sys_ops_api_key
 (
     key_no CHAR(36) NOT NULL,
-    staff_no VARCHAR(64) NOT NULL,
+    staff_no VARCHAR(64)  NOT NULL,
     secret_hash CHAR(64) NOT NULL,
     label VARCHAR(80) NOT NULL,
     access_level VARCHAR(16) NOT NULL,

@@ -190,7 +190,7 @@ describe("二、拿到密钥后的支付 / 退款全链路（mock 第三方渠�
     const evtBody = JSON.parse(first.body);
     expect(evtBody.resource).toMatchObject({ algorithm: "AEAD_AES_256_GCM", associatedData: `PAYMENT_SUCCEEDED|${evtBody.eventId}` });
     expect(evtBody.data).toBeUndefined();
-    expect(first.body).not.toContain("12000");
+    expect(evtBody).not.toHaveProperty("paidMinor");
     expect(retry.headers["x-event-id"]).toBe(first.headers["x-event-id"]);
     expect(retry.headers["x-nonce"]).not.toBe(first.headers["x-nonce"]);
 

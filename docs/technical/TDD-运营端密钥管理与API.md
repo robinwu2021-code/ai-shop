@@ -45,7 +45,7 @@
 
 ### 表结构与状态
 
-沿用 MySQL 9 迁移 [V701__ops_staff_api_key.sql](../../backend/shop-app/src/main/resources/db/migration/V701__ops_staff_api_key.sql) 的 `sys_ops_api_key`。自助申请复用当前表结构，审批状态、申请队列和设备信息均无需持久化。历史迁移保持原有 checksum。
+沿用 MySQL 9 迁移 [V701__ops_staff_api_key.sql](../../backend/shop-app/src/main/resources/db/migration/V701__ops_staff_api_key.sql) 的 `sys_ops_api_key`。自助申请复用当前表结构，审批状态、申请队列和设备信息均无需持久化。历史迁移保持原有 checksum。 [V702](../../backend/shop-app/src/main/resources/db/migration/V702__align_ops_api_key_staff_collation.sql) 将 `staff_no` 的排序规则与员工表对齐，确保 MySQL 可按员工号完成认证查询。
 
 | 字段 | 类型与约束 | 自助申请的写入及用途 |
 |---|---|---|
