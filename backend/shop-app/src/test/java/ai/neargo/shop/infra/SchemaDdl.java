@@ -176,7 +176,7 @@ public final class SchemaDdl {
                     String key;
                     if (named.matches()) { key = named.group(1); }
                     else { key = definition.split("\\s+", 2)[0];
-                        if (key.equalsIgnoreCase("CHECK")) { key += "@" + parts.size(); }
+                        if (key.equalsIgnoreCase("CHECK") || key.equalsIgnoreCase("UNIQUE")) { key += "@" + parts.size(); }
                     }
                     if (parts.putIfAbsent(key, definition) != null) { throw malformed("duplicate definition " + key); }
                     start = at + 1;

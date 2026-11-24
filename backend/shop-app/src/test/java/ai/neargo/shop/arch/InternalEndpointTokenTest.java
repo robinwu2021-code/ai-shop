@@ -1,12 +1,15 @@
 package ai.neargo.shop.arch;
 
 import ai.neargo.job.api.JobHttpPaths;
+import ai.neargo.shop.portal.internal.OpsKitIntrospectEndpoint;
+import ai.neargo.shop.portal.internal.OpsKitWebhookEndpoint;
 import ai.neargo.shop.svc.InternalHttp;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,14 +23,15 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 每个 {@code portal.internal} 端点都必须收服务令牌头。
+ * 每个 {@code portal.internal} 端点都必须接收其服务认证凭据。
  *
  * <p>{@code /internal/**} 在安全链上是放行的，鉴权全靠端点自己比对
  * {@code shop.services.internal-token}（或 job 侧的 {@code X-Job-Token}）。
  * C8：27 个端点里 {@code InternalPricingFeeScopeEndpoint} 漏了这一步，任何能连到 shop-app
  * 的人都能按 entity+store 读改价申请与原单引用，而没有任何地方会说。
  *
- * <p>判据：每个映射方法都有一个 {@code @RequestHeader} 参数，名字是两种令牌头之一。
+ * <p>判据：每个映射方法都声明服务认证头。OpsKit 的内省与回调按各自的外部协议使用 Basic 与 HMAC，
+ * 其余处理器使用通用服务令牌或调度器令牌。
  * 收了头却不比对的写法这里看不出来 —— 各端点的单测负责「无令牌/错令牌回 401」，这道闸只防「忘了收」。
  */
 class InternalEndpointTokenTest {
@@ -52,9 +56,19 @@ class InternalEndpointTokenTest {
     }
 
     private static boolean takesToken(Method m) {
+        if (m.getDeclaringClass() == OpsKitIntrospectEndpoint.class && m.getName().equals("introspect")) {
+            return takesHeader(m, Set.of(HttpHeaders.AUTHORIZATION));
+        }
+        if (m.getDeclaringClass() == OpsKitWebhookEndpoint.class && m.getName().equals("webhook")) {
+            return takesHeader(m, Set.of("X-OpsKit-Signature"));
+        }
+        return takesHeader(m, TOKEN_HEADERS);
+    }
+
+    private static boolean takesHeader(Method m, Set<String> allowedHeaders) {
         for (Parameter p : m.getParameters()) {
             RequestHeader h = p.getAnnotation(RequestHeader.class);
-            if (h != null && (TOKEN_HEADERS.contains(h.value()) || TOKEN_HEADERS.contains(h.name()))) return true;
+            if (h != null && (allowedHeaders.contains(h.value()) || allowedHeaders.contains(h.name()))) return true;
         }
         return false;
     }
