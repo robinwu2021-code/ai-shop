@@ -118,6 +118,7 @@ public class OtpChannelPortImpl implements OtpChannelPort {
                 case OtpScenes.PHONE_CHANGE -> simplified ? "手机号变更" : "手機號碼變更";
                 case OtpScenes.EMAIL_CHANGE -> simplified ? "邮箱变更" : "電子郵件變更";
                 case OtpScenes.ORDER_PICKUP_CONFIRM -> simplified ? "提货确认" : "取貨確認";
+                case OtpScenes.POS_PIN_RECOVERY -> simplified ? "收银 PIN 重设" : "收銀 PIN 重設";
                 case OtpScenes.INVOICE_ARTIFACT_ACCESS -> simplified ? "发票下载" : "發票下載";
                 default -> throw BizException.of(ErrorCode.BAD_REQUEST);
             };

@@ -729,6 +729,13 @@ class BizEndpointPermTest {
                     put("/biz/store/{storeNo}/payment", BizPerms.STORE_ADMIN);
                     // 货架读：店长要看得见本店卖哪几类；改货架是店铺配置，收紧到 STORE_ADMIN
                     put("/biz/store/{storeNo}/categories", BizPerms.STORE);
+                    put("/biz/auth/pos-pin", BizPerms.ORDER_VIEW);
+                    put("/biz/auth/pos-pin/policy", BizPerms.STORE_ADMIN);
+                    put("/biz/auth/pos-pin/verify", BizPerms.ORDER_VIEW);
+                    put("/biz/auth/pos-pin/recovery/methods", BizPerms.ORDER_VIEW);
+                    put("/biz/auth/pos-pin/recovery/challenges", BizPerms.ORDER_VIEW);
+                    put("/biz/auth/pos-pin/recovery/challenges/{challengeId}/verify", BizPerms.ORDER_VIEW);
+                    put("/biz/auth/pos-pin/recovery", BizPerms.ORDER_VIEW);
                     put("/biz/staff", BizPerms.STORE_ADMIN);
                     put("/biz/staff/{mchAccountNo}/status", BizPerms.STORE_ADMIN);
                     put("/biz/staff/{mchAccountNo}/store", BizPerms.STORE_ADMIN);

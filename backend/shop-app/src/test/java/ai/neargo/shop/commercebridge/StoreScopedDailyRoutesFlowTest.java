@@ -9,13 +9,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.OtpStore;
+import ai.neargo.shop.common.otp.OtpKeys;
+import ai.neargo.shop.common.otp.OtpScenes;
+import ai.neargo.shop.common.otp.service.OtpSendService.Channel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -33,6 +39,8 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest(
         properties = {
             "shop.auth.token-store=db",
+            "shop.pos-pin.pepper=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            "shop.sms.stub=true",
             "commerce.enabled=true",
             "commerce.access.active-key-id=test",
             "commerce.access.keys.test=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
@@ -99,6 +107,124 @@ class StoreScopedDailyRoutesFlowTest {
         jdbc.update("update mch_store set commerce_model='STORE_V1', business_type_code='RETAIL' where store_no=?",
                 store);
         return new String[] {login(phone), store};
+    }
+
+    @Test
+    void posPinRecoveryIsScopedToTheEmployeeStoreAndLoginSession() throws Exception {
+        String phone = "15965020135";
+        String staffPhone = "15965020137";
+        String[] owner = newModelOwner(phone);
+        String[] other = newModelOwner("15965020136");
+        String path = "/biz/auth/pos-pin";
+        String password = "Local-password-for-pin-qa";
+
+        JsonNode staff = write(HttpMethod.POST, owner[0], owner[1], "/biz/staff",
+                json.createObjectNode().put("loginPhone", staffPhone));
+        assertEquals(0, staff.path("code").asInt(-1), staff.toString());
+        String staffNo = staff.path("data").path("mchAccountNo").asText();
+        assertFalse(staffNo.isBlank());
+        JsonNode grant = write(HttpMethod.POST, owner[0], owner[1], "/biz/staff/" + staffNo + "/store",
+                json.createObjectNode().put("storeNo", owner[1]).put("role", "CLERK"));
+        assertEquals(0, grant.path("code").asInt(-1), grant.toString());
+        String staffToken = login(staffPhone);
+
+        JsonNode initial = call(owner[0], owner[1], path).path("data");
+        assertTrue(initial.path("canManagePolicy").asBoolean());
+        assertFalse(initial.path("enabled").asBoolean());
+        assertFalse(call(staffToken, owner[1], path).path("data").path("canManagePolicy").asBoolean());
+        var enable = json.createObjectNode().put("enabled", true);
+        assertNotEquals(0, write(HttpMethod.PUT, staffToken, owner[1], path + "/policy", enable).path("code").asInt());
+        assertTrue(write(HttpMethod.PUT, owner[0], owner[1], path + "/policy", enable)
+                .path("data").path("enabled").asBoolean());
+        assertTrue(call(staffToken, owner[1], path).path("data").path("enabled").asBoolean());
+        assertFalse(call(other[0], other[1], path).path("data").path("enabled").asBoolean());
+        assertTrue(write(HttpMethod.PUT, other[0], other[1], path + "/policy", enable)
+                .path("data").path("enabled").asBoolean());
+
+        JsonNode setPassword = write(HttpMethod.POST, owner[0], null, "/biz/auth/password",
+                json.createObjectNode().put("password", password));
+        assertEquals(0, setPassword.path("code").asInt(-1), setPassword.toString());
+        assertEquals("SAVED", outcome(write(HttpMethod.PUT, owner[0], owner[1], path,
+                json.createObjectNode().put("newPin", "1739"))));
+        assertEquals("SAVED", outcome(write(HttpMethod.PUT, staffToken, owner[1], path,
+                json.createObjectNode().put("newPin", "2759"))));
+        assertEquals("SAVED", outcome(write(HttpMethod.PUT, other[0], other[1], path,
+                json.createObjectNode().put("newPin", "7395"))));
+        assertEquals("WRONG", outcome(write(HttpMethod.POST, staffToken, owner[1], path + "/verify",
+                json.createObjectNode().put("pin", "1739"))));
+
+        JsonNode challenge = write(HttpMethod.POST, owner[0], owner[1], path + "/recovery/challenges",
+                json.createObjectNode().put("method", "PASSWORD"));
+        assertEquals(0, challenge.path("code").asInt(-1), challenge.toString());
+        String challengeId = challenge.path("data").path("challengeId").asText();
+        assertFalse(challengeId.isBlank());
+        JsonNode proof = write(HttpMethod.POST, owner[0], owner[1],
+                path + "/recovery/challenges/" + challengeId + "/verify",
+                json.createObjectNode().put("credential", password));
+        assertEquals("VERIFIED", outcome(proof));
+        String resetToken = proof.path("data").path("resetToken").asText();
+        assertFalse(resetToken.isBlank());
+        JsonNode reset = json.createObjectNode().put("resetToken", resetToken).put("newPin", "5813");
+
+        assertEquals(ErrorCode.BAD_REQUEST.code(), write(HttpMethod.PUT, staffToken, owner[1], path + "/recovery", reset)
+                .path("code").asInt());
+        assertEquals(ErrorCode.BAD_REQUEST.code(), write(HttpMethod.PUT, other[0], other[1], path + "/recovery", reset)
+                .path("code").asInt());
+        assertNotEquals(0, call(owner[0], other[1], path).path("code").asInt());
+        String secondSession = login(phone);
+        assertNotEquals(owner[0], secondSession);
+        assertTrue(call(secondSession, owner[1], path).path("data").path("configured").asBoolean());
+        assertEquals(ErrorCode.BAD_REQUEST.code(), write(HttpMethod.PUT, secondSession, owner[1], path + "/recovery", reset)
+                .path("code").asInt());
+        assertEquals("SAVED", outcome(write(HttpMethod.PUT, owner[0], owner[1], path + "/recovery", reset)));
+        assertEquals(ErrorCode.BAD_REQUEST.code(), write(HttpMethod.PUT, owner[0], owner[1], path + "/recovery", reset)
+                .path("code").asInt());
+        assertEquals("WRONG", outcome(write(HttpMethod.POST, owner[0], owner[1], path + "/verify",
+                json.createObjectNode().put("pin", "1739"))));
+        assertEquals("MATCH", outcome(write(HttpMethod.POST, owner[0], owner[1], path + "/verify",
+                json.createObjectNode().put("pin", "5813"))));
+        assertEquals("MATCH", outcome(write(HttpMethod.POST, staffToken, owner[1], path + "/verify",
+                json.createObjectNode().put("pin", "2759"))));
+
+        JsonNode staffChallenge = write(HttpMethod.POST, staffToken, owner[1], path + "/recovery/challenges",
+                json.createObjectNode().put("method", "PHONE_OTP"));
+        assertEquals(0, staffChallenge.path("code").asInt(-1), staffChallenge.toString());
+        assertTrue(staffChallenge.path("data").path("maskedRecipient").asText().endsWith("0137"));
+        String staffChallengeId = staffChallenge.path("data").path("challengeId").asText();
+        String otpKey = OtpKeys.storageKey(OtpScenes.POS_PIN_RECOVERY, Channel.SMS, staffPhone, staffChallengeId);
+        String verifyStaffOtp = path + "/recovery/challenges/" + staffChallengeId + "/verify";
+        JsonNode staffProof = write(HttpMethod.POST, staffToken, owner[1], verifyStaffOtp,
+                json.createObjectNode().put("credential", otp.peek(otpKey).orElseThrow()));
+        assertEquals("VERIFIED", outcome(staffProof));
+        assertTrue(otp.peek(otpKey).isEmpty());
+        JsonNode resetStaff = json.createObjectNode().put("resetToken", staffProof.path("data").path("resetToken").asText())
+                .put("newPin", "6815");
+        assertEquals("SAVED", outcome(write(HttpMethod.PUT, staffToken, owner[1], path + "/recovery", resetStaff)));
+        assertEquals("MATCH", outcome(write(HttpMethod.POST, staffToken, owner[1], path + "/verify",
+                json.createObjectNode().put("pin", "6815"))));
+
+        var disable = json.createObjectNode().put("enabled", false);
+        JsonNode disabled = write(HttpMethod.PUT, owner[0], owner[1], path + "/policy", disable);
+        assertEquals(0, disabled.path("code").asInt(-1));
+        assertFalse(call(staffToken, owner[1], path).path("data").path("enabled").asBoolean(true));
+        assertEquals("DISABLED", outcome(write(HttpMethod.POST, staffToken, owner[1], path + "/verify",
+                json.createObjectNode().put("pin", "6815"))));
+        assertTrue(call(other[0], other[1], path).path("data").path("enabled").asBoolean());
+        assertEquals(0, write(HttpMethod.PUT, other[0], other[1], path + "/policy", disable).path("code").asInt(-1));
+    }
+
+    private JsonNode write(HttpMethod method, String token, String store, String path, JsonNode body) throws Exception {
+        var builder = request(method, path).header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content(body.toString());
+        if (store != null) {
+            builder.header("X-Store-No", store);
+        }
+        return json.readTree(mvc.perform(builder).andReturn().getResponse().getContentAsString());
+    }
+
+    private static String outcome(JsonNode response) {
+        assertEquals(0, response.path("code").asInt(-1), response.toString());
+        return response.path("data").path("outcome").asText();
     }
 
     @Test

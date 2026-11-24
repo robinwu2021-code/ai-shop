@@ -21507,3 +21507,41 @@ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code = 'FINANCE'
 UPDATE ivc_regime_profile SET gateway_code = NULL WHERE gateway_code = 'STUB';
 UPDATE ivc_invoice SET active_fiscal_key = fiscal_number;
 UPDATE sys_function_point SET function_code='OPS_FINANCE',name='电子发票',group_name='应付发票',sort=105,updated_at=NOW() WHERE point_code='OPS_FINANCE__E_INVOICES' AND point_type='MENU';
+
+CREATE TABLE IF NOT EXISTS mch_pos_staff_pin_policy (
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (tenant_no, entity_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_pos_staff_pin (
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    subject_kind VARCHAR(16) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    pin_hash VARCHAR(60) NOT NULL,
+    failed_count INT NOT NULL DEFAULT 0,
+    locked_until_ms BIGINT NULL,
+    PRIMARY KEY (tenant_no, entity_no, store_no, subject_kind, actor_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_pos_pin_recovery (
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    subject_kind VARCHAR(16) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    method VARCHAR(16) NOT NULL,
+    challenge_id CHAR(36) NOT NULL,
+    session_hash CHAR(64) NOT NULL,
+    expires_at_ms BIGINT NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    reset_hash CHAR(64) NULL,
+    reset_expires_at_ms BIGINT NULL,
+    consumed_at_ms BIGINT NULL,
+    PRIMARY KEY (tenant_no, entity_no, store_no, subject_kind, actor_no, method),
+    UNIQUE (challenge_id),
+    UNIQUE (reset_hash)
+);
