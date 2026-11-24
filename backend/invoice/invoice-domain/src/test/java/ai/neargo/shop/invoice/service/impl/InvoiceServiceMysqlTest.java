@@ -670,6 +670,25 @@ class InvoiceServiceMysqlTest {
     }
 
     @Test
+    void ac40SyncUploadSendsOnlyThisInvoiceInOrderAndOnce() {
+        sources.paid("SO1", 1_000);
+        sources.paid("SO2", 2_000);
+        var r1 = issue("SO1");
+        issue("SO2");
+
+        assertEquals(1, transmissions.transmitNow(SCOPE, r1.invoiceNo()), "只送这张票的开立");
+        assertEquals(1, transmissions.backlog(SCOPE).pending(), "别的票不受影响，留给定时任务");
+        assertEquals(0, transmissions.transmitNow(SCOPE, r1.invoiceNo()), "已送达的不再送");
+
+        invoices.voidInvoice(SCOPE, r1.invoiceNo(), "開錯");
+        assertEquals(1, transmissions.transmitNow(SCOPE, r1.invoiceNo()), "作废当场送出");
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE ref_no=? AND status<>'SENT'",
+                Integer.class, r1.invoiceNo()));
+
+        assertEquals(1, transmissions.transmitDue(10), "定时任务只剩另一张");
+    }
+
+    @Test
     void ac37DeadlinesWarnOnceEscalateOnceAndBacklogIsPerStore() {
         sources.paid("SO1", 1_000);
         var r = issue("SO1");

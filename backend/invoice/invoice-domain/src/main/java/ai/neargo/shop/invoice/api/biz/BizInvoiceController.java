@@ -14,6 +14,10 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.VoidInvoiceReq;
 import ai.neargo.shop.invoice.service.InvoiceService;
 import ai.neargo.shop.invoice.service.InvoiceTransmissionService;
 import ai.neargo.shop.spi.invoice.InvoicePort.Buyer;
+import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import java.util.List;
@@ -40,13 +44,30 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.RevokeReq;
 @RestController
 @Validated
 public class BizInvoiceController {
+    private static final Logger log = LoggerFactory.getLogger(BizInvoiceController.class);
 
     private final InvoiceService invoices;
     private final InvoiceTransmissionService transmissions;
+    /** 同步上传（发票模块 §25）：开立 / 作废 / 折让提交后当场送服务商，不等定时任务；失败留给重试 */
+    private final boolean syncUpload;
 
-    public BizInvoiceController(InvoiceService invoices, InvoiceTransmissionService transmissions) {
+    public BizInvoiceController(InvoiceService invoices, InvoiceTransmissionService transmissions,
+            @Value("${shop.invoice.transmission.sync:false}") boolean syncUpload) {
         this.invoices = invoices;
         this.transmissions = transmissions;
+        this.syncUpload = syncUpload;
+    }
+
+    /** 业务动作已提交；同步上传失败只记日志，任务留在库里由重试补发，不影响已完成的开立 / 作废 */
+    private InvoiceVO uploaded(Scope scope, String invoiceNo) {
+        if (syncUpload) {
+            try {
+                transmissions.transmitNow(scope, invoiceNo);
+            } catch (RuntimeException e) {
+                log.warn("INVOICE_SYNC_UPLOAD_FAILED invoice={} error={}", invoiceNo, e.toString());
+            }
+        }
+        return invoices.get(scope, invoiceNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_ISSUE + "')")
@@ -57,7 +78,7 @@ public class BizInvoiceController {
         var buyer = b == null ? Buyer.consumer()
                 : new Buyer(b.taxId(), b.name(), b.carrierType(), b.carrierId(), b.donateCode());
         var receipt = invoices.issue(scope, req.sourceType(), req.sourceNo(), buyer);
-        return invoices.get(scope, receipt.invoiceNo());
+        return uploaded(scope, receipt.invoiceNo());
     }
 
     /** 付款前记下买受人（载具 / 统编 / 捐赠）；主体打开自动开立时，付款成功即按它开票。 */
@@ -98,7 +119,9 @@ public class BizInvoiceController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_VOID + "')")
     @PostMapping("/biz/invoices/{invoiceNo}/void")
     public InvoiceVO voidInvoice(@PathVariable String invoiceNo, @Valid @RequestBody VoidInvoiceReq req) {
-        return invoices.voidInvoice(BizInvoiceScope.current(), invoiceNo, req.reason());
+        var scope = BizInvoiceScope.current();
+        invoices.voidInvoice(scope, invoiceNo, req.reason());
+        return uploaded(scope, invoiceNo);
     }
 
     /** 注销（TDD-发票-注销与同号重开）：开错了的票撤回，完成后可用原号码重开。与作废同属处置类权限。 */
@@ -116,20 +139,26 @@ public class BizInvoiceController {
             @Valid @RequestBody(required = false) ReissueReq req) {
         var b = req == null ? null : req.buyer();
         var buyer = b == null ? null : new Buyer(b.taxId(), b.name(), b.carrierType(), b.carrierId(), b.donateCode());
-        return invoices.reissue(BizInvoiceScope.current(), invoiceNo, buyer);
+        var scope = BizInvoiceScope.current();
+        var issued = invoices.reissue(scope, invoiceNo, buyer);
+        return uploaded(scope, issued.invoiceNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_VOID + "')")
     @PostMapping("/biz/invoices/{invoiceNo}/allowances")
     public InvoiceVO allowance(@PathVariable String invoiceNo, @Valid @RequestBody AllowanceReq req) {
-        return invoices.allowance(BizInvoiceScope.current(), invoiceNo, req.amountMinor(), req.reason());
+        var scope = BizInvoiceScope.current();
+        invoices.allowance(scope, invoiceNo, req.amountMinor(), req.reason());
+        return uploaded(scope, invoiceNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.INVOICE_VOID + "')")
     @PostMapping("/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void")
     public InvoiceVO voidAllowance(@PathVariable String invoiceNo, @PathVariable String allowanceNo,
             @Valid @RequestBody VoidInvoiceReq req) {
-        return invoices.voidAllowance(BizInvoiceScope.current(), invoiceNo, allowanceNo, req.reason());
+        var scope = BizInvoiceScope.current();
+        invoices.voidAllowance(scope, invoiceNo, allowanceNo, req.reason());
+        return uploaded(scope, invoiceNo);
     }
 
     /**

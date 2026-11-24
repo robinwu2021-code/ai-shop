@@ -10,12 +10,30 @@ import org.springframework.stereotype.Component;
 @Component
 public class InvoicePortImpl implements InvoicePort {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(InvoicePortImpl.class);
+
     private final InvoiceService invoices;
     private final InvoiceStoreSetupService stores;
+    private final ai.neargo.shop.invoice.service.InvoiceTransmissionService transmissions;
+    private final boolean syncUpload;
 
-    public InvoicePortImpl(InvoiceService invoices, InvoiceStoreSetupService stores) {
+    public InvoicePortImpl(InvoiceService invoices, InvoiceStoreSetupService stores,
+            ai.neargo.shop.invoice.service.InvoiceTransmissionService transmissions,
+            @org.springframework.beans.factory.annotation.Value("${shop.invoice.transmission.sync:false}") boolean syncUpload) {
         this.invoices = invoices;
         this.stores = stores;
+        this.transmissions = transmissions;
+        this.syncUpload = syncUpload;
+    }
+
+    @Override
+    public void uploadNow(Scope scope, String invoiceNo) {
+        if (!syncUpload) return;
+        try {
+            transmissions.transmitNow(scope, invoiceNo);
+        } catch (RuntimeException e) {
+            log.warn("INVOICE_SYNC_UPLOAD_FAILED invoice={} error={}", invoiceNo, e.toString());
+        }
     }
 
     @Override

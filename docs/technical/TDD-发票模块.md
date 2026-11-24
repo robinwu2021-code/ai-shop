@@ -1402,3 +1402,17 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.invoicebri
 与 §24.2 逐行比：8 个文件全部在表内，表内没有未动的文件。
 
 偏差：无。生成物：`node scripts/check-generated-docs.mjs` 列出 12 份过期产物，与 main 上 PR #43 留下的 12 份同名同数，本次未新增过期文件，未重新生成。
+
+## §25 同步上传（2026-11-24，用户：「发票上传在ume服务器上，链接没问题，小先通过同步接口调通」「按这个做」）
+
+v2 只跑 `api,ops`、没有 worker，`InvoiceTransmissionJob` 不运行；按用户要求先走同步：开立 / 作废 / 折让提交之后，在同一个请求里把这张票的上传任务送服务商（鲸跃 UploadInvoice 等），不依赖定时任务。
+
+| 改动 | 内容 |
+|---|---|
+| `InvoiceTransmissionService#transmitNow(scope, invoiceNo)` | 取这张票及其折让 `PENDING / FAILED` 的任务，按 id 顺序（开立在作废前）逐条认领并发送；与 `transmitDue` 共用 `transmitOne`（先条件更新为 SENDING 再发，定时任务同时碰到也只发一次；失败照常记为可重试；账号问题照常暂停主体） |
+| `BizInvoiceController` | 开立、作废、同号重开、折让、作废折让：业务提交后若 `shop.invoice.transmission.sync=true` 调 `transmitNow`，再回读发票（`uploadStatus` 即时）；上传失败只记 `INVOICE_SYNC_UPLOAD_FAILED`，不影响已完成的业务 |
+| `InvoicePort#uploadNow`（默认空实现）+ `InvoicePortImpl` | 付清自动开立（`InvoiceAutoIssueConsumer`，门店零售单与 `issueIfAutomatic` 两条）开出后同样当场上传 |
+| 配置 | `shop.invoice.transmission.sync`（默认 false）；与 `shop.invoice.transmission.enabled`（定时任务）互不依赖，二者都开时由认领保证不重发 |
+
+- 测试：`InvoiceServiceMysqlTest#ac40SyncUploadSendsOnlyThisInvoiceInOrderAndOnce`——只送这张票、已送达不重送、作废当场送出、定时任务只剩别的票；发票模块 55 条 + 相关 shop-app / 架构共 216 条 0 失败。
+- 未覆盖：注销（revocation）走 `checkRevocations` 的既有流程，未接同步；运营端代作废未接同步（定时任务或重传兜底）。

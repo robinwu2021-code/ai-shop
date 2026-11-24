@@ -95,34 +95,63 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
         // 同一轮里同一主体的配置只查一次；本轮刚被暂停的主体，后面的任务直接转 HELD
         var profileCache = new HashMap<String, IvcRegimeProfile>();
         for (var t : due) {
-            var gateway = gateways.find(t.getGatewayCode()).orElse(null);
-            IvcRegimeProfile profile = gateway != null && gateway.profile().requiresAccount()
-                    ? profileCache.computeIfAbsent(t.getTenantNo() + "|" + t.getEntityNo() + "|" + t.getRegimeCode(),
-                            k -> profileOf(t))
-                    : null;
-            if (profile != null && profile.getProviderHeldAt() != null) {
-                transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", t.getId())
-                        .eq("status", t.getStatus()).set("status", HELD).set("updated_at", now));
-                continue;
-            }
-            if (transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", t.getId())
-                    .eq("status", t.getStatus()).eq("attempts", t.getAttempts())
-                    .set("status", "SENDING").set("updated_at", now)) != 1) continue;
-            GatewayReceipt receipt;
-            try {
-                receipt = send(gateway, t, profile);
-            } catch (RuntimeException e) {
-                // 业务动作：通道异常即本次未送达，转为可重试状态；原报文留着下一轮补发
-                receipt = GatewayReceipt.retryable(String.valueOf(e.getMessage()));
-            }
-            if (receipt.accepted()) sent++;
-            record(t, receipt);
-            if (receipt.outcome() == GatewayReceipt.Outcome.ACCOUNT_PROBLEM && profile != null) {
-                hold(profile, receipt.error());
-                profile.setProviderHeldAt(now);   // 本轮后续同主体任务据此直接转 HELD
-            }
+            if (transmitOne(t, profileCache, now)) sent++;
         }
         return sent;
+    }
+
+    /**
+     * 同步上传：开立 / 作废 / 折让提交之后，在同一个请求里把这张票（含其折让）待传的任务立刻送出。
+     * 与 {@link #transmitDue} 共用认领与记账：先条件更新成 SENDING 再发，定时任务与本方法同时碰到同一条也只发一次；
+     * 失败照常记成可重试，留给定时任务或人工重传。按任务 id 顺序发，开立（C0401）总在作废（C0501）之前。
+     */
+    @Override
+    public int transmitNow(Scope scope, String invoiceNo) {
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        var refs = new ArrayList<String>();
+        refs.add(invoiceNo);
+        allowances.selectList(new QueryWrapper<IvcAllowance>().eq("tenant_no", scope.tenantNo())
+                        .eq("entity_no", scope.entityNo()).eq("invoice_no", invoiceNo))
+                .forEach(a -> refs.add(a.getAllowanceNo()));
+        var due = transmissions.selectList(new QueryWrapper<IvcTransmission>().eq("tenant_no", scope.tenantNo())
+                .eq("entity_no", scope.entityNo()).in("ref_no", refs).in("status", "PENDING", "FAILED")
+                .orderByAsc("id"));
+        int sent = 0;
+        var profileCache = new HashMap<String, IvcRegimeProfile>();
+        for (var t : due) {
+            if (transmitOne(t, profileCache, now)) sent++;
+        }
+        return sent;
+    }
+
+    /** 认领一条任务并发送、记账；返回是否被通道接受。 */
+    private boolean transmitOne(IvcTransmission t, HashMap<String, IvcRegimeProfile> profileCache, LocalDateTime now) {
+        var gateway = gateways.find(t.getGatewayCode()).orElse(null);
+        IvcRegimeProfile profile = gateway != null && gateway.profile().requiresAccount()
+                ? profileCache.computeIfAbsent(t.getTenantNo() + "|" + t.getEntityNo() + "|" + t.getRegimeCode(),
+                        k -> profileOf(t))
+                : null;
+        if (profile != null && profile.getProviderHeldAt() != null) {
+            transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", t.getId())
+                    .eq("status", t.getStatus()).set("status", HELD).set("updated_at", now));
+            return false;
+        }
+        if (transmissions.update(null, new UpdateWrapper<IvcTransmission>().eq("id", t.getId())
+                .eq("status", t.getStatus()).eq("attempts", t.getAttempts())
+                .set("status", "SENDING").set("updated_at", now)) != 1) return false;
+        GatewayReceipt receipt;
+        try {
+            receipt = send(gateway, t, profile);
+        } catch (RuntimeException e) {
+            // 业务动作：通道异常即本次未送达，转为可重试状态；原报文留着下一轮补发
+            receipt = GatewayReceipt.retryable(String.valueOf(e.getMessage()));
+        }
+        record(t, receipt);
+        if (receipt.outcome() == GatewayReceipt.Outcome.ACCOUNT_PROBLEM && profile != null) {
+            hold(profile, receipt.error());
+            profile.setProviderHeldAt(now);   // 本轮后续同主体任务据此直接转 HELD
+        }
+        return receipt.accepted();
     }
 
     @Override
