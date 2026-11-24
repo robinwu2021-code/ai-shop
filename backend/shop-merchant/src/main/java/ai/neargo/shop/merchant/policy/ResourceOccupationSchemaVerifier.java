@@ -2,6 +2,10 @@ package ai.neargo.shop.merchant.policy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.ExecutionSchemaHistory;
+import ai.neargo.shop.common.RuntimeTriggerMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.datasource.DataSourceUtils;
@@ -33,6 +37,7 @@ import javax.sql.DataSource;
 /** Per-use physical owner inspection keeps optional execution damage from becoming an unfenced legacy write. */
 @Component
 public final class ResourceOccupationSchemaVerifier {
+    private static final Logger log = LoggerFactory.getLogger(ResourceOccupationSchemaVerifier.class);
     private static final String DESCRIPTOR = "META-INF/shop/resource-actual-occupation-schema.json";
     private static final String MIGRATION = "db/migration/V621__resource_actual_occupation.sql";
     private static final Set<String> TABLES = Set.of(
@@ -115,27 +120,29 @@ public final class ResourceOccupationSchemaVerifier {
                     if (installed.contains(column.path("name").asString())) { altered++; }
                 }
             }
-            Set<String> expectedTriggers = new HashSet<>();
-            contract.path("triggers").forEach(t -> expectedTriggers.add(t.path("name").asString()));
-            long installedTriggers = query(connection,
-                    "SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=?"
-                            + " AND EVENT_OBJECT_TABLE IN (?,?,?,?,?,?,?,?)", schema,
-                    "mch_resource_occupation", "mch_resource_occupation_unit", "mch_resource_occupation_segment",
-                    "mch_resource_occupation_bucket", "mch_booking_owner", "mch_resource_command",
-                    "mch_booking_hold_unit", "mch_resource_bucket").size();
-            if (present == 0 && markers.isEmpty() && altered == 0 && installedTriggers == 0) {
-                return Installation.ABSENT;
+            if (present == 0 && markers.isEmpty() && altered == 0) {
+                var triggers = query(connection,
+                        "SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=?"
+                                + " AND EVENT_OBJECT_TABLE IN (?,?,?,?,?,?,?,?)", schema,
+                        "mch_resource_occupation", "mch_resource_occupation_unit", "mch_resource_occupation_segment",
+                        "mch_resource_occupation_bucket", "mch_booking_owner", "mch_resource_command",
+                        "mch_booking_hold_unit", "mch_resource_bucket");
+                if (triggers.isEmpty()) { return Installation.ABSENT; }
             }
-            require(present == 4 && altered == expectedAltered && markers.size() == 1
-                    && installedTriggers == expectedTriggers.size());
-            Map<String, Object> marker = markers.getFirst();
-            require("V621__resource_actual_occupation.sql".equals(text(marker, "script"))
-                    && "SQL".equals(text(marker, "type")) && success(marker.get("success"))
-                    && marker.get("checksum") instanceof Number checksum
-                    && checksum.intValue() == contract.path("flywayChecksum").asInt());
+            require(present == 4 && altered == expectedAltered && markers.size() <= 1);
+            if (markers.isEmpty()) {
+                require(ExecutionSchemaHistory.baselineCovers(connection, schema, historyTable, 621));
+            } else {
+                Map<String, Object> marker = markers.getFirst();
+                require("V621__resource_actual_occupation.sql".equals(text(marker, "script"))
+                        && "SQL".equals(text(marker, "type")) && success(marker.get("success"))
+                        && marker.get("checksum") instanceof Number checksum
+                        && checksum.intValue() == contract.path("flywayChecksum").asInt());
+            }
             inspect(connection, schema, contract);
             return Installation.INSTALLED;
         } catch (Exception failure) {
+            log.debug("Resource occupation schema verification failed", failure);
             return Installation.CORRUPT;
         } finally {
             if (connection != null) {
@@ -219,13 +226,8 @@ public final class ResourceOccupationSchemaVerifier {
         }
         require(seen.containsAll(TABLES) && seen.size() == 8);
         Map<String, Map<String, Object>> triggers = new HashMap<>();
-        for (var trigger : query(connection,
-                "SELECT TRIGGER_NAME,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_TIMING,ACTION_STATEMENT"
-                        + " FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=?"
-                        + " AND EVENT_OBJECT_TABLE IN (?,?,?,?,?,?,?,?)", schema,
-                "mch_resource_occupation", "mch_resource_occupation_unit", "mch_resource_occupation_segment",
-                "mch_resource_occupation_bucket", "mch_booking_owner", "mch_resource_command", "mch_booking_hold_unit",
-                "mch_resource_bucket")) {
+        for (var trigger : RuntimeTriggerMetadata.read(connection, schema,
+                RuntimeTriggerMetadata.Scope.RESOURCE_OCCUPATION)) {
             require(triggers.put(text(trigger, "trigger_name"), trigger) == null);
         }
         require(triggers.size() == contract.path("triggers").size());
@@ -391,11 +393,21 @@ public final class ResourceOccupationSchemaVerifier {
     // Preserve literal bytes and boolean grouping. Only quoting, whitespace and charset introducers normalize.
     private static List<String> tokens(String sql) {
         Pattern token = Pattern.compile("\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
-                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.-]");
+                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.%-]");
         Matcher matcher = token.matcher(sql);
         List<String> result = new ArrayList<>();
         int offset = 0;
         while (offset < sql.length()) {
+            // MySQL 9 CHECK metadata may quote literal boundaries as \'.
+            if (sql.startsWith("\\'", offset)) {
+                int end = sql.indexOf("\\'", offset + 2);
+                require(end >= 0);
+                String literal = sql.substring(offset + 2, end);
+                require(literal.indexOf('\\') < 0 && literal.indexOf('\'') < 0);
+                result.add("'" + literal + "'");
+                offset = end + 2;
+                continue;
+            }
             matcher.region(offset, sql.length());
             require(matcher.lookingAt());
             String value = matcher.group();
@@ -433,7 +445,7 @@ public final class ResourceOccupationSchemaVerifier {
             while (take("or")) {
                 values.add(and());
             }
-            return values.size() == 1 ? values.getFirst() : "or(" + String.join(",", values) + ")";
+            return booleanGroup("or", values);
         }
 
         private String and() {
@@ -442,7 +454,16 @@ public final class ResourceOccupationSchemaVerifier {
             while (take("and")) {
                 values.add(comparison());
             }
-            return values.size() == 1 ? values.getFirst() : "and(" + String.join(",", values) + ")";
+            return booleanGroup("and", values);
+        }
+
+        // MySQL flattens nested groups of the same boolean operator in CHECK metadata.
+        private String booleanGroup(String op, List<String> values) {
+            if (values.size() == 1) { return values.getFirst(); }
+            String prefix = op + "(";
+            return prefix + values.stream()
+                    .map(value -> value.startsWith(prefix) ? value.substring(prefix.length(), value.length() - 1) : value)
+                    .collect(java.util.stream.Collectors.joining(",")) + ")";
         }
 
         private String comparison() {
@@ -476,10 +497,25 @@ public final class ResourceOccupationSchemaVerifier {
         }
 
         private String sum() {
-            String value = atom();
+            String value = modulo();
             while (at < input.size() && List.of("+", "-").contains(input.get(at))) {
                 String op = input.get(at++);
-                value = op + "(" + value + "," + atom() + ")";
+                if ("+".equals(op) && take("interval")) {
+                    String amount = atom();
+                    expect("minute");
+                    // MySQL 9 renders TIMESTAMPADD(MINUTE, n, value) as value + INTERVAL n MINUTE.
+                    value = "timestampadd(minute," + amount + "," + value + ")";
+                } else {
+                    value = op + "(" + value + "," + modulo() + ")";
+                }
+            }
+            return value;
+        }
+
+        private String modulo() {
+            String value = atom();
+            while (take("%")) {
+                value = "mod(" + value + "," + atom() + ")";
             }
             return value;
         }

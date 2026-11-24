@@ -201,9 +201,10 @@ public final class AppointmentMatching {
         var staff = people.isEmpty() ? List.<PersonnelFactsPort.PersonnelFact>of()
                 : personnel.getObject().getBatch(new PersonnelFactsPort.Query(scope.tenantNo(), scope.entityNo(),
                         scope.storeNo(), people, startAt.toInstant()));
-        // Small bounded horizon includes before buffers. Full raw spans still must fit a proven schedule window.
-        Instant from = startAt.toInstant().minus(1, ChronoUnit.DAYS);
-        Instant to = startAt.toInstant().plus(10, ChronoUnit.DAYS);
+        // The schedule and capacity facts only need to cover this arrangement, including buffers.
+        Instant firstStart = startAt.toInstant();
+        Instant from = firstStart.minus(inputs.getFirst().duration().bufferBeforeMin(), ChronoUnit.MINUTES);
+        Instant to = arrangementEnd(inputs, firstStart);
         var windows = schedules.getObject().getBatch(new ScheduleWindowsPort.Query(scope.tenantNo(), scope.entityNo(),
                 scope.storeNo(), ids, from, to));
         var capacity = candidates.getObject().capacity(new ResourceCandidatesPort.CapacityQuery(
@@ -225,8 +226,7 @@ public final class AppointmentMatching {
             var rules = product.rules();
             for (int repetition = 0; repetition < item.qty(); repetition++) {
                 String line = BizKey.next("BTAI");
-                Instant serviceStart = items.isEmpty() ? cursor
-                        : ceil(cursor.plus(product.duration().bufferBeforeMin(), ChronoUnit.MINUTES));
+                Instant serviceStart = serviceStart(cursor, product.duration(), items.isEmpty());
                 lastServiceEnd = serviceStart.plus(product.duration().minutes(), ChronoUnit.MINUTES);
                 items.add(new AppointmentPlanItemVO(line, item.skuNo(), product.goodsNo(),
                         product.definitionVersionNo(), 1, product.priceMinor(), product.duration().minutes(),
@@ -288,7 +288,7 @@ public final class AppointmentMatching {
                                 a, b, choices));
                     }
                 }
-                cursor = ceil(lastServiceEnd.plus(product.duration().bufferAfterMin(), ChronoUnit.MINUTES));
+                cursor = bufferedEnd(serviceStart, product.duration());
             }
         }
         if (consumed.size() != specified.size()) { bad(); }
@@ -310,6 +310,27 @@ public final class AppointmentMatching {
                 lastServiceEnd.atOffset(ZoneOffset.UTC), plan,
                 new Snapshot(items, assignments, price, cancelRule), pool.size() < 50);
     }
+    private static Instant arrangementEnd(List<MatchItem> inputs, Instant firstStart) {
+        Instant cursor = firstStart;
+        boolean first = true;
+        for (var item : inputs) {
+            for (int i = 0; i < item.request().qty(); i++) {
+                cursor = bufferedEnd(serviceStart(cursor, item.duration(), first), item.duration());
+                first = false;
+            }
+        }
+        return cursor;
+    }
+
+    private static Instant serviceStart(Instant cursor, PublishServiceDefinitionVersionReq.Duration duration,
+            boolean first) {
+        return first ? cursor : ceil(cursor.plus(duration.bufferBeforeMin(), ChronoUnit.MINUTES));
+    }
+
+    private static Instant bufferedEnd(Instant start, PublishServiceDefinitionVersionReq.Duration duration) {
+        return ceil(start.plus((long) duration.minutes() + duration.bufferAfterMin(), ChronoUnit.MINUTES));
+    }
+
     /** No IO here: undo every allocation on backtrack and distinguish exhausted work from proven infeasibility. */
     private Choice[] allocate(List<Slot> slots, boolean truncated) {
         Choice[] selected = new Choice[slots.size()];

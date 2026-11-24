@@ -10,6 +10,7 @@ import ai.neargo.shop.spi.marketing.CounterCampaignContract;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutLineReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.PromotionOption;
 import ai.neargo.shop.spi.trade.CheckoutPort.QuoteLine;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import ai.neargo.shop.trade.service.OrderService.CreateOrderCommand;
 import tools.jackson.core.StreamReadFeature;
@@ -240,7 +241,8 @@ public final class CounterEconomicCodec {
     }
 
     private void requireLegacyMoney(CheckoutEconomicSnapshot economic) {
-        check(economic != null && economic.counterActivitySeal() == null, "old counter seal must be absent");
+        check(economic != null && economic.counterActivitySeal() == null && "CNY".equals(economic.currency()),
+                "invalid old counter economic lane");
         requireLane(economic);
         check(economic.discountMinor() == 0 && economic.platformMinor() == 0 && economic.merchantMinor() == 0
                 && economic.freightMinor() == 0 && economic.goodsMinor() == economic.dueMinor()
@@ -252,7 +254,8 @@ public final class CounterEconomicCodec {
     private static void requireLane(CheckoutEconomicSnapshot economic) {
         requireEvidence(economic.evidence());
         check(economic.quoteHash() != null && economic.quoteHash().matches("[0-9a-f]{64}")
-                && reference(economic.entityNo()) && reference(economic.storeNo()) && "CNY".equals(economic.currency())
+                && reference(economic.entityNo()) && reference(economic.storeNo())
+                && ManualServiceAdmissionPort.supportsCounterCurrency(economic.currency())
                 && "OFFLINE".equals(economic.payMode()) && "STORE_VERIFY".equals(economic.fulfillment())
                 && "SERVICE_EXECUTION".equals(economic.fulfillmentAuthority())
                 && economic.goodsMinor() > 0 && economic.dueMinor() > 0, "unsupported counter economic lane");

@@ -9,6 +9,7 @@ import ai.neargo.shop.merchant.dto.StoreVO;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
+import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.StoreSlugs;
 import ai.neargo.shop.merchant.entity.MchStore;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -104,9 +106,26 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     @Override
     @Transactional
     public StoreVO create(String merchantNo, CreateCommand cmd) {
-        ownership.lockEntityAndCheck("MAIN",merchantNo);
+        return create(merchantNo, cmd, null, false);
+    }
+
+    @Override
+    @Transactional
+    public StoreVO createFirst(String merchantNo, String market, String ownerUserNo, CreateCommand cmd) {
+        ownership.lockEntityExclusiveAndCheck("MAIN", merchantNo);
+        MchEntity entity = DataScopeContext.executeWithoutScope(() -> entityMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("for update")));
+        if (entity == null || !MchEntity.ACTIVE.equals(entity.getStatus())
+                || !Objects.equals(market, entity.getMarket())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        return create(merchantNo, cmd, ownerUserNo, true);
+    }
+
+    private StoreVO create(String merchantNo, CreateCommand cmd, String ownerUserNo, boolean firstStore) {
+        if (!firstStore) ownership.lockEntityAndCheck("MAIN", merchantNo);
         String name = cmd.name();
-        var actor = commerce.actor(null);
+        var actor = commerce.actor(ownerUserNo);
         if (name == null || name.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -126,6 +145,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         s.setStoreNo(BizKey.next(BizKey.STORE));
         var replay = commerce.reserveBranch(actor, merchantNo, cmd, s.getStoreNo());
         if (replay.isPresent()) {
+            if (firstStore) throw BizException.of(ErrorCode.CONFLICT);
             MchStore original = DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
                     Wrappers.<MchStore>lambdaQuery()
                             .eq(MchStore::getEntityNo, merchantNo)
@@ -139,6 +159,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
                         .filter(x -> MchStore.ACTIVE.equals(x.getStatus())).count());
         // 数完之后才读列表：第一家店要自动成为默认店，这个判断不能用加锁前的快照
         List<MchStore> existing = stores(merchantNo, actor != null);
+        if (firstStore && !existing.isEmpty()) throw BizException.of(ErrorCode.CONFLICT);
         s.setEntityNo(merchantNo);
         s.setName(name);
         s.setAddress(cmd.address());

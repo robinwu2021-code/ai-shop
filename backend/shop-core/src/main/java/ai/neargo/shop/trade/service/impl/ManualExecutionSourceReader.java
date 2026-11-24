@@ -183,7 +183,8 @@ final class ManualExecutionSourceReader {
         }
         if (!Objects.equals(op.getBuyerNo(), economics.buyerNo())
                 || !op.getEntityNo().equals(economics.entityNo())
-                || !op.getStoreNo().equals(economics.storeNo())) {
+                || !op.getStoreNo().equals(economics.storeNo())
+                || !Objects.equals(economics.currency(), parent.getCurrency())) {
             throw conflict();
         }
         var sourceLines =
@@ -299,7 +300,6 @@ final class ManualExecutionSourceReader {
                     || !op.getOperationNo().equals(quote.getOperationNo())
                     || !"MAIN".equals(evidence.tenantNo()) || evidence.scopeRevision() != op.getScopeRevision()
                     || !op.getScopeHash().equals(evidence.scopeHash())
-                    || !"CNY".equals(economics.currency()) || !"CNY".equals(parent.getCurrency())
                     || !"OFFLINE".equals(economics.payMode())
                     || !"STORE_VERIFY".equals(economics.fulfillment())
                     || !OrdSubOrder.SERVICE_EXECUTION.equals(economics.fulfillmentAuthority())) {
@@ -331,7 +331,7 @@ final class ManualExecutionSourceReader {
                     || !quote.getQuoteHash().equals(consent.getQuoteHash())
                     || !parent.getOrderNo().equals(consent.getOrderNo())
                     || !Long.valueOf(economics.dueMinor()).equals(consent.getAmountMinor())
-                    || !"CNY".equals(consent.getCurrency()) || consent.getAcceptedAt() == null
+                    || !economics.currency().equals(consent.getCurrency()) || consent.getAcceptedAt() == null
                     || consent.getConfirmedAt() == null || consent.getConsumedAt() == null
                     || !"MERCHANT".equals(consent.getActorRealm())
                     || !List.of("MCH", "USR").contains(consent.getActorKind())

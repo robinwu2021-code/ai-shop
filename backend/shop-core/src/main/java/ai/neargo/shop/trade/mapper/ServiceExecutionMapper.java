@@ -27,7 +27,7 @@ public interface ServiceExecutionMapper extends BaseMapper<OrdServiceExecution> 
     @Select("""
             SELECT * FROM ord_checkout_line
             WHERE tenant_no='MAIN' AND caller='BEAUTY' AND source_line_no=#{binding.sourceLineNo}
-              AND operation_no=#{binding.sourceOperationNo} AND order_no=#{binding.orderNo}
+              AND operation_no=#{binding.sourceOperationNo}
               AND sub_order_no=#{binding.subOrderNo} AND deleted=0
               AND EXISTS (SELECT 1 FROM ord_checkout_operation o
                   WHERE o.tenant_no='MAIN' AND o.caller='BEAUTY' AND o.operation_no=#{binding.sourceOperationNo}

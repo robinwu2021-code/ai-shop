@@ -160,7 +160,7 @@ public interface ManualServiceAdmissionPort {
                     || !"OFFLINE".equals(quote.payMode())
                     || !"STORE_VERIFY".equals(quote.fulfillment())
                     || !"SERVICE_EXECUTION".equals(quote.fulfillmentAuthority())
-                    || !"CNY".equals(quote.currency())
+                    || !supportsCounterCurrency(quote.currency())
                     || quote.dueMinor() <= 0
                     || quote.goodsMinor() <= 0
                     || quote.discountMinor() < 0
@@ -344,7 +344,7 @@ public interface ManualServiceAdmissionPort {
                     || expectedOrderRevision < 0
                     || method == null
                     || declaredMinor <= 0
-                    || !"CNY".equals(currency)
+                    || !supportsReceiptCurrency(method, currency)
                     || receivedAt == null
                     || receivedAt.getNano() % 1_000_000 != 0
                     || note != null && note.length() > 500) {
@@ -408,7 +408,7 @@ public interface ManualServiceAdmissionPort {
                     || orderRevision < 0
                     || admissionRevision < 0
                     || !state(admissionState)
-                    || !"CNY".equals(currency)
+                    || !supportsReceiptCurrency(method, currency)
                     || !optionalReference(orderNo)
                     || !optionalReference(subOrderNo)
                     || (orderNo == null) != (subOrderNo == null)) {
@@ -632,6 +632,15 @@ public interface ManualServiceAdmissionPort {
         return value != null
                 && List.of("AWAITING_RECEIPT", "ADMITTED", "SUSPENDED", "CANCELLED", "UNKNOWN")
                         .contains(value);
+    }
+
+    static boolean supportsCounterCurrency(String currency) {
+        return "CNY".equals(currency) || "TWD".equals(currency);
+    }
+
+    private static boolean supportsReceiptCurrency(ManualMethod method, String currency) {
+        return "CNY".equals(currency)
+                || "TWD".equals(currency) && (method == null || method == ManualMethod.CASH);
     }
 
     private static boolean bounded(String value, int max) {

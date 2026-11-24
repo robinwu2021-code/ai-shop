@@ -73,7 +73,7 @@ public final class AppointmentServiceImpl implements AppointmentService {
         access.merchant(entity, store, actor, true);
         AppointmentPersistence.require(store.equals(req.storeNo()));
         var scope = matching.scope(store); AppointmentPersistence.require(entity.equals(scope.entityNo()));
-        return preparations.save(matching.match(scope, false, req.items(), req.requestedAssignments(), null,
+        return preparations.save(matching.match(scope, false, req.items(), req.requestedAssignments(), req.requestedPersonnelNo(),
                 req.startAt()), req.customerRef(), req.guestNo(), null, 0);
     }
     @Override
@@ -115,7 +115,8 @@ public final class AppointmentServiceImpl implements AppointmentService {
     public AppointmentChangePreviewVO previewAppointmentChange(String entity, String store, String actor,
             String number, PreviewAppointmentChangeReq req) {
         var root = merchantRoot(entity, store, actor, number, true);
-        return changePreview(root, req.expectedRevision(), req.items(), req.startAt(), req.assignments(), null, false);
+        return changePreview(root, req.expectedRevision(), req.items(), req.startAt(), req.assignments(),
+                req.requestedPersonnelNo(), false);
     }
     @Override
     public AppointmentChangePreviewVO previewMyAppointmentChange(String user, String number,

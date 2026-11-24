@@ -40,11 +40,11 @@ public interface ManualAdmissionMapper extends BaseMapper<OrdManualServiceAdmiss
     @Select("""
             SELECT l.* FROM ord_checkout_line l
             WHERE l.tenant_no='MAIN' AND l.caller='BEAUTY' AND l.operation_no=#{coordinates.sourceOperationNo}
-              AND l.order_no=#{coordinates.orderNo} AND l.sub_order_no=#{coordinates.subOrderNo} AND l.deleted=0
+              AND l.sub_order_no=#{coordinates.subOrderNo} AND l.deleted=0
               AND EXISTS (SELECT 1 FROM ord_checkout_operation o
                 WHERE o.tenant_no=l.tenant_no AND o.caller=l.caller AND o.operation_no=l.operation_no
                   AND o.entity_no=#{coordinates.scope.entityNo} AND o.store_no=#{coordinates.scope.storeNo}
-                  AND o.order_no=l.order_no AND o.sub_order_no=l.sub_order_no AND o.deleted=0)
+                  AND o.order_no=#{coordinates.orderNo} AND o.sub_order_no=l.sub_order_no AND o.deleted=0)
             ORDER BY l.source_line_no FOR UPDATE
             """)
     List<OrdCheckoutLine> lockExecutionSourceLines(@Param("coordinates") ExecutionCoordinates coordinates);
@@ -128,8 +128,8 @@ public interface ManualAdmissionMapper extends BaseMapper<OrdManualServiceAdmiss
                     + " d.declared_minor=o.pay_amount AND d.currency=o.currency AND d.deleted=0) AND"
                     + " NOT EXISTS (SELECT 1 FROM ord_checkout_payment_request p WHERE"
                     + " p.tenant_no=o.tenant_no AND p.order_no=o.order_no AND p.deleted=0) AND NOT"
-                    + " EXISTS (SELECT 1 FROM ord_payment_resolution p WHERE p.tenant_no=o.tenant_no"
-                    + " AND p.pay_no=o.order_no AND p.deleted=0)")
+                    + " EXISTS (SELECT 1 FROM ord_payment_resolution p WHERE p.tenant_no='MAIN'"
+                    + " AND p.pay_no=#{order} AND p.deleted=0)")
     int confirmParent(
             @Param("order") String order,
             @Param("revision") long revision,

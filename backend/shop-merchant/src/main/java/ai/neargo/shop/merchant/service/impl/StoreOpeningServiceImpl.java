@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -7,6 +8,7 @@ import ai.neargo.shop.merchant.service.StoreCreationAccessService;
 import ai.neargo.shop.merchant.service.StoreOpeningService;
 import ai.neargo.shop.merchant.service.StoreAdminService;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
+import java.util.Objects;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -43,10 +45,16 @@ public class StoreOpeningServiceImpl implements StoreOpeningService {
             var result=merchants.quickStart(command);
             createdEntity=result.entityNo(); createdStore=result.storeNo();
         } else {
-            var source=choices.sources().stream().filter(s->entityNo.equals(s.entityNo()) && sourceStoreNo.equals(s.storeNo())).findFirst()
-                .orElseThrow(()->BizException.of(ErrorCode.FORBIDDEN));
-            if(!source.market().equals(command.market())) throw BizException.of(ErrorCode.BAD_REQUEST);
-            var result=stores.create(entityNo,new StoreAdminService.CreateCommand(command.storeName(),command.address(),command.businessTypeCode(),requestNo,null));
+            boolean first = sourceStoreNo == null;
+            if (first && user.subjectKind() != SubjectKind.USR) throw BizException.of(ErrorCode.FORBIDDEN);
+            var candidates = first ? choices.firstStoreSources() : choices.sources();
+            var source = candidates.stream()
+                    .filter(s -> entityNo.equals(s.entityNo()) && Objects.equals(sourceStoreNo, s.storeNo()))
+                    .findFirst().orElseThrow(() -> BizException.of(ErrorCode.FORBIDDEN));
+            if (!source.market().equals(command.market())) throw BizException.of(ErrorCode.BAD_REQUEST);
+            var fields = new StoreAdminService.CreateCommand(command.storeName(), command.address(),
+                    command.businessTypeCode(), requestNo, null);
+            var result = first ? stores.createFirst(entityNo, source.market(), user.userNo(), fields) : stores.create(entityNo, fields);
             createdEntity=entityNo; createdStore=result.storeNo();
             int updated=jdbc.update("UPDATE mch_store SET address_detail=?,industry_code=?,sub_industry_code=?,industry_text=?,sub_industry_text=?,lat_e6=?,lng_e6=?,coord_sys=? WHERE tenant_no=? AND entity_no=? AND store_no=? AND deleted=0",
                 command.addressDetail(),command.industryCode(),command.subIndustryCode(),command.industryText(),command.subIndustryText(),

@@ -118,6 +118,30 @@ class IndustryPublicationTest {
     }
 
     @Test
+    void verifiedBootstrapEndCanAddAnIndustryWithoutChangingExistingBindings() {
+        var f = new CatalogFixture();
+        f.setup();
+        f.plans();
+        f.facade.publishIndustry(f.ops, f.publication(List.of(), 0));
+        f.facade.saveBusinessType(f.ops, new BusinessTypeDraft("SERVICE", "服務業", 3, false, 0, "create"));
+        var expanded = new BusinessEndDraft(
+                "BASE", "BASE", "BASE", EndScope.STORE, List.of("RETAIL", "SERVICE"),
+                ReleaseStatus.VERIFIED, false, true, true,
+                "client", "routes", "acceptance", 1, "enable service onboarding");
+
+        f.facade.saveBusinessEnd(f.ops, expanded);
+        assertEquals(List.of("RETAIL", "SERVICE"),
+                f.repo.load("tenant-a", CatalogLockMode.NONE)
+                        .ends.get("BASE").draft().allowedBusinessTypes());
+
+        var narrowed = new BusinessEndDraft(
+                "BASE", "BASE", "BASE", EndScope.STORE, List.of("SERVICE"),
+                ReleaseStatus.VERIFIED, false, true, true,
+                "client", "routes", "acceptance", 2, "drop existing retail binding");
+        assertThrows(CatalogException.class, () -> f.facade.saveBusinessEnd(f.ops, narrowed));
+    }
+
+    @Test
     void stalePublicationFailsAndPublishedVersionCannotBeEdited() {
         var f = new CatalogFixture();
         f.setup();

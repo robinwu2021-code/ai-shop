@@ -100,15 +100,4 @@ public interface CounterCampaignFenceMapper {
             """)
     @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
     List<String> checkEnforcement();
-
-    /** Every event on the seven predicate tables is inspected; no prefix scan or guessed owner is used. */
-    @Select("""
-            SELECT TRIGGER_NAME AS name, EVENT_MANIPULATION AS event, ACTION_TIMING AS timing,
-                EVENT_OBJECT_TABLE AS owner_table, ACTION_STATEMENT AS body
-            FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE()
-                AND EVENT_OBJECT_TABLE IN ('mkt_campaign', 'pmt_activity', 'pmt_activity_version',
-                    'pmt_activity_goods', 'pmt_activity_rule', 'pmt_enrollment', 'pmt_enrollment_goods')
-            """)
-    @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
-    List<Map<String, Object>> triggers();
 }

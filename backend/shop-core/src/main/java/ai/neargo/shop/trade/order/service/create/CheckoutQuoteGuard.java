@@ -200,7 +200,7 @@ public class CheckoutQuoteGuard {
                 || !Objects.equals(authorization.party().userNo(), actual.buyerNo())
                 || !op.getEntityNo().equals(actual.entityNo())
                 || !op.getStoreNo().equals(actual.storeNo())
-                || !"CNY".equals(actual.currency())
+                || !actual.currency().equals(locked.confirmation().getCurrency())
                 || !"OFFLINE".equals(actual.payMode())
                 || !Long.valueOf(actual.dueMinor()).equals(locked.confirmation().getAmountMinor())
                 || !"STORE_VERIFY".equals(actual.fulfillment())

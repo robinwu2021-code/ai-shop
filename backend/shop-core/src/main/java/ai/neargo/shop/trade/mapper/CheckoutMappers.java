@@ -107,13 +107,23 @@ public final class CheckoutMappers {
      * Read and write immutable original item links; refund work remains a plain consistent read.
      */
     public interface LineMapper extends BaseMapper<OrdCheckoutLine> {
-        @Select(
-                "SELECT 'CASH' AS kind,execution_no AS referenceNo,status,resource_status AS"
-                    + " resourceStatus FROM ord_refund_execution WHERE tenant_no='MAIN' AND"
-                    + " sub_order_no=#{no} AND deleted=0 UNION ALL SELECT"
-                    + " 'POINTS',after_sale_no,state,NULL FROM ord_points_refund_execution WHERE"
-                    + " tenant_no='MAIN' AND sub_order_no=#{no} AND deleted=0 ORDER BY"
-                    + " kind,referenceNo")
+        @Select("""
+                SELECT 'CASH' AS kind, execution_no COLLATE utf8mb4_bin AS referenceNo,
+                    status COLLATE utf8mb4_bin AS status, resource_status AS resourceStatus
+                FROM ord_refund_execution WHERE tenant_no='MAIN' AND sub_order_no=#{no} AND deleted=0
+                UNION ALL
+                SELECT 'POINTS', after_sale_no COLLATE utf8mb4_bin, state COLLATE utf8mb4_bin, NULL
+                FROM ord_points_refund_execution WHERE tenant_no='MAIN' AND sub_order_no=#{no} AND deleted=0
+                ORDER BY kind, referenceNo
+                """)
+        @Select(value = """
+                SELECT 'CASH' AS kind, execution_no AS referenceNo, status, resource_status AS resourceStatus
+                FROM ord_refund_execution WHERE tenant_no='MAIN' AND sub_order_no=#{no} AND deleted=0
+                UNION ALL
+                SELECT 'POINTS', after_sale_no, state, NULL
+                FROM ord_points_refund_execution WHERE tenant_no='MAIN' AND sub_order_no=#{no} AND deleted=0
+                ORDER BY kind, referenceNo
+                """, databaseId = "H2")
         List<RefundWork> refundWork(@Param("no") String subOrderNo);
     }
 }

@@ -1,5 +1,6 @@
 package ai.neargo.shop.beauty.port;
 
+import ai.neargo.shop.beauty.config.ConditionalOnBeautyEnabled;
 import ai.neargo.shop.spi.user.StoreRelinkIndustryFactsPort;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 /** All original rows count, including cancelled and archived business history. */
 @Component
+@ConditionalOnBeautyEnabled
 public final class BeautyStoreRelinkFactsPortImpl implements StoreRelinkIndustryFactsPort {
     private final JdbcTemplate jdbc;
     private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownershipWrites;

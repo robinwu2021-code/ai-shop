@@ -1,6 +1,8 @@
 package ai.neargo.shop.beauty.config;
 
+import ai.neargo.shop.common.RuntimeTriggerMetadata;
 import ai.neargo.shop.beauty.policy.ServiceExecutionSchemaVerifier;
+import ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaVerifier;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.output.ValidateResult;
@@ -29,8 +31,13 @@ import javax.sql.DataSource;
 /** Owns only beauty migration history; ordinary validation cannot silently baseline existing business data. */
 public final class BeautySchemaValidator {
     private static final String HISTORY = "bty_flyway_history";
-    private static final String EXTENSION_TABLE = "bty_service_execution_fence";
-    private static final String EXTENSION_SCRIPT = "V10__beauty_service_execution_fence.sql";
+    private static final Map<String, String> EXECUTION_SCRIPTS = Map.of(
+            "10", "V10__beauty_service_execution_fence.sql",
+            "11", "V11__beauty_service_execution_stock_intent.sql");
+    private static final Set<String> EXECUTION_TABLES =
+            Set.of("bty_service_execution_fence", "bty_service_execution_stock_intent");
+    private static final Set<String> EXECUTION_STATES = Set.of("SUCCESS", "PENDING", "FAILED",
+            "MISSING_SUCCESS", "MISSING_FAILED", "FUTURE_SUCCESS", "FUTURE_FAILED");
     private static final String RESOURCE = "db/industry/beauty/V1__beauty_p1_tables.sql";
     private static final String SHA256 =
             "ac2a539664c42fdb7e4893f1359879fc5affbe4b24f95aae1809cd25f11061a4";
@@ -85,12 +92,12 @@ public final class BeautySchemaValidator {
                 actual.contains(HISTORY) || "migrate".equals(mode),
                 "Beauty history missing; publish migration first");
         require(
-                privateTables.stream().allMatch(table -> expected.containsKey(table) || EXTENSION_TABLE.equals(table)),
+                privateTables.stream().allMatch(table -> expected.containsKey(table) || EXECUTION_TABLES.contains(table)),
                 "Unknown beauty tables; inspect migration ownership");
         // Not a Spring bean: the platform's Flyway and locations remain untouched.
         Flyway flyway =
                 Flyway.configure()
-                        .dataSource(source)
+                        .dataSource("migrate".equals(mode) ? new BeautyMigrationDataSource(source) : source)
                         .locations("classpath:db/industry/beauty")
                         .table(HISTORY)
                         .baselineOnMigrate("migrate".equals(mode))
@@ -111,7 +118,7 @@ public final class BeautySchemaValidator {
         Map<String, String> base = Map.of("1", RESOURCE, "2", V2, "3", V3, "4", V4, "5", V5,
                 "6", V6, "7", V7, "8", V8, "9", V9);
         Set<String> baseSeen = new HashSet<>();
-        MigrationInfo extension = null;
+        Map<String, MigrationInfo> execution = new HashMap<>();
         boolean baselineSeen = false;
         for (MigrationInfo migration : migrations) {
             require(migration.getVersion() != null, "Versionless beauty history/resolution is unsupported");
@@ -127,44 +134,40 @@ public final class BeautySchemaValidator {
                                 && base.get(version).endsWith("/" + migration.getScript()),
                         "Missing, duplicate or changed base beauty migration: " + version);
             } else {
-                require("10".equals(version) && extension == null
-                                && EXTENSION_SCRIPT.equals(migration.getScript())
-                                && Set.of("SUCCESS", "PENDING", "FAILED", "MISSING_SUCCESS", "MISSING_FAILED",
-                                        "FUTURE_SUCCESS", "FUTURE_FAILED").contains(state),
+                require(migration.getScript().equals(EXECUTION_SCRIPTS.get(version))
+                                && EXECUTION_STATES.contains(state)
+                                && execution.putIfAbsent(version, migration) == null,
                         "Unknown beauty migration identity/state: " + version + "/" + state);
-                extension = migration;
             }
         }
         require(baseSeen.equals(base.keySet()), "Beauty base requires successful V1-V9 history");
-        classifyValidation(validation, extension);
-        // The optional extension never weakens any of the frozen 28 physical base contracts or V9 trigger.
+        classifyValidation(validation, execution);
         validateStructure(source, expected);
         validateManualTrigger(source);
-        var installation = new ServiceExecutionSchemaVerifier(source).installation();
         if ("migrate".equals(mode)) {
-            require(validation.validationSuccessful && installation == ServiceExecutionSchemaVerifier.Installation.INSTALLED,
-                    "Explicit beauty migration requires the full valid V1-V10 sequence");
-        } else if (extension == null || "PENDING".equals(extension.getState().name())) {
-            // A table without an applied/failed marker is recognized known extension damage, never legacy absence.
-            require(extension != null || !actual.contains(EXTENSION_TABLE)
-                            || installation == ServiceExecutionSchemaVerifier.Installation.CORRUPT,
-                    "Unclassified beauty execution installation");
+            require(validation.validationSuccessful
+                            && new ServiceExecutionSchemaVerifier(source).installation()
+                                    == ServiceExecutionSchemaVerifier.Installation.INSTALLED
+                            && new ServiceExecutionStockIntentSchemaVerifier(source).installation()
+                                    == ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED,
+                    "Explicit beauty migration requires the full valid V1-V11 sequence");
         }
     }
 
-    /** Every isolated Flyway diagnostic maps to the one exact known V10 identity inspected above. */
-    private static void classifyValidation(ValidateResult result, MigrationInfo extension) {
+    /** Read-only startup leaves known execution schema faults to the affected operation's verifier. */
+    private static void classifyValidation(ValidateResult result, Map<String, MigrationInfo> execution) {
         require(result != null, "Beauty Flyway validation returned no result");
         if (result.validationSuccessful) return;
         require(result.errorDetails != null && "VALIDATE_ERROR".equals(result.errorDetails.errorCode.toString()),
                 "Unclassified beauty Flyway summary diagnostic");
-        require(extension != null && result.invalidMigrations != null && !result.invalidMigrations.isEmpty(),
+        require(result.invalidMigrations != null && !result.invalidMigrations.isEmpty(),
                 "Unclassified beauty Flyway validation failure");
         for (var diagnostic : result.invalidMigrations) {
             String path = diagnostic.filepath;
-            require("10".equals(diagnostic.version) && EXTENSION_SCRIPT.equals(extension.getScript())
-                            && (path == null || path.isBlank() || path.replace('\\', '/').endsWith("/" + EXTENSION_SCRIPT)
-                                    || EXTENSION_SCRIPT.equals(path)),
+            var migration = execution.get(diagnostic.version);
+            require(migration != null
+                            && (path == null || path.isBlank() || path.replace('\\', '/').endsWith("/" + migration.getScript())
+                                    || migration.getScript().equals(path)),
                     "Base or unknown beauty migration validation diagnostic");
         }
     }
@@ -390,31 +393,19 @@ public final class BeautySchemaValidator {
         String sql = frozenText(V9, V9_SHA256);
         String expected =
                 sql.substring(sql.indexOf("\nBEGIN\n") + 1, sql.lastIndexOf("$$\nDELIMITER"));
-        try (var connection = source.getConnection();
-                var statement =
-                        connection.prepareStatement(
-                                "SELECT"
-                                        + " TRIGGER_NAME,EVENT_MANIPULATION,ACTION_TIMING,"
-                                        + "EVENT_OBJECT_TABLE,ACTION_STATEMENT"
-                                        + " FROM information_schema.TRIGGERS WHERE"
-                                        + " TRIGGER_SCHEMA=DATABASE() AND EVENT_OBJECT_TABLE LIKE"
-                                        + " 'bty_%' AND EVENT_OBJECT_TABLE<>'bty_service_execution_fence'")) {
+        try (var connection = source.getConnection()) {
             connection.setReadOnly(true);
-            int count = 0;
-            try (var rows = statement.executeQuery()) {
-                while (rows.next()) {
-                    count++;
-                    require(
-                            "trg_bty_source_observation_domain_guard".equals(rows.getString(1))
-                                    && "UPDATE".equals(rows.getString(2))
-                                    && "BEFORE".equals(rows.getString(3))
-                                    && "bty_source_observation".equals(rows.getString(4))
-                                    && normalizeTrigger(expected)
-                                            .equals(normalizeTrigger(rows.getString(5))),
-                            "Beauty V9 trigger differs");
-                }
-            }
-            require(count == 1, "Beauty V9 domain trigger missing or unexpected");
+            var rows = RuntimeTriggerMetadata.read(connection, connection.getCatalog(),
+                    RuntimeTriggerMetadata.Scope.BEAUTY_BASE);
+            require(rows.size() == 1, "Beauty V9 domain trigger missing or unexpected");
+            var row = rows.getFirst();
+            require(
+                    "trg_bty_source_observation_domain_guard".equals(row.get("trigger_name"))
+                            && "UPDATE".equals(row.get("event_manipulation"))
+                            && "BEFORE".equals(row.get("action_timing"))
+                            && "bty_source_observation".equals(row.get("event_object_table"))
+                            && normalizeTrigger(expected).equals(normalizeTrigger((String) row.get("action_statement"))),
+                    "Beauty V9 trigger differs");
         } catch (SQLException failure) {
             throw inspectionFailure(failure);
         }

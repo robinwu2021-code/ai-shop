@@ -70,6 +70,15 @@ class ActualResourceExecutionIT {
         assertThat(verifier().installation()).isEqualTo(ResourceOccupationSchemaVerifier.Installation.CORRUPT);
     }
 
+    @Test void platformBaselineCoversV621OnlyWithIntactPhysicalContract() {
+        ResourceOccupationNativeFixture.install(source);
+        sql.update("DELETE FROM flyway_schema_history WHERE version='621'");
+        sql.update("UPDATE flyway_schema_history SET version='622' WHERE type='BASELINE'");
+        assertThat(verifier().installation()).isEqualTo(ResourceOccupationSchemaVerifier.Installation.INSTALLED);
+        sql.execute("DROP TABLE mch_resource_occupation_bucket");
+        assertThat(verifier().installation()).isEqualTo(ResourceOccupationSchemaVerifier.Installation.CORRUPT);
+    }
+
     @Test void forwardNativeUpgradeHasRealHistoryAndPermanentOriginalTriggerProtection() {
         ResourceOccupationNativeFixture.install(source);
         assertThat(verifier().installation()).isEqualTo(ResourceOccupationSchemaVerifier.Installation.INSTALLED);
@@ -89,7 +98,7 @@ class ActualResourceExecutionIT {
             assertThat(sql.queryForObject("SELECT updated_by FROM " + table, String.class)).isEqualTo(ResourceOccupationNativeFixture.ACTOR);
         }
         assertThat(sql.queryForObject("SELECT segment_no FROM mch_resource_occupation_bucket", String.class)).isEqualTo("SEG");
-        assertThat(sql.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE version='607' AND success=1", Long.class))
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE version='621' AND success=1", Long.class))
                 .isOne();
         assertThatThrownBy(() -> sql.update("DELETE FROM mch_resource_occupation_unit"))
                 .isInstanceOf(RuntimeException.class);
