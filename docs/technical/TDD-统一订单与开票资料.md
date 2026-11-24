@@ -1,6 +1,6 @@
 # TDD-统一订单与开票资料（POS 建单 · 待补资料 · 付清开票）
 
-状态：已确认（2026-11-24，用户：「按 B 开始 P1」）；P1 已实现（未发布）；P2 已实现（未发布）
+状态：已确认（2026-11-24，用户：「按 B 开始 P1」）；P1、P2 已实现并发布到 v2（§7）；P3 未开始
 档位：2 · 依据：[PRD-统一订单与开票资料](../requirements/PRD-统一订单与开票资料.md) · 决策：[ADR-065](./ADR/ADR-065-门店零售单与订单行开票资料.md)
 关联：[TDD-发票模块](./TDD-发票模块.md) §9 / §24，[TDD-多行业统一业务架构-零售餐饮美业](./TDD-多行业统一业务架构-零售餐饮美业.md)，[TDD-统一试算引擎-初始规则与结账税费](./TDD-统一试算引擎-初始规则与结账税费.md)
 创建：2026-11-24 · 最后更新：2026-11-24（P2 实现）
@@ -373,3 +373,22 @@ P1 共 6 个提交（`git diff --stat 95209a38f..HEAD`，不含本文）：
 - packages/shared / ops-web 守卫：7 + 2 条，均为主干既有（`data-scope-coverage` 因 `ord_store_collection` 红过一次，已登记豁免理由）。
 - `check-head-compiles.sh`（干净 HEAD，带 `COMMERCE_MYSQL_*`）：全量 5392 条 / 1 红 —— `FunctionPointPermAlignmentTest`（`pay:fee-plan:approve`，主干既有），与本次无关。
   末一个提交（SKU 行回落门店默认税别）只动 `StoreOrderServiceImpl` 与测试，未再跑全量，`StoreOrderMysqlTest` 22 条已绿。
+
+## §7 上线记录（v2，`.80` `/data0/app/ai-shop-v2`，正式库 `ai_shop_ume`）
+
+包一律在 main 上以 `-P opskit` 构建（与 v2 上 OpsKit 审批版本同依赖集），`run.sh` 切标签与包后 `./run.sh all restart`，每次中断约 90 秒。
+
+| 时间（UTC） | 版本 | 内容 | 迁移 | 回退 |
+|---|---|---|---|---|
+| 2026-11-23 20:41 | `main-d30a1e678`（#48） | P1：建单、准备度、补开票资料、发票来源读订单行 | V692–V694（`ord_item` 4 列、`ord_order.client_order_no/channel` + 唯一键、`ord_invoice_data_fill`、四个约束加 WALK_IN 支、角色权限） | `cp releases/run-before-main-d30a1e678.sh run.sh && ./run.sh all restart` |
+| 2026-11-24 01:49 | `main-96552f2df`（#49 + #50） | P2：收款挂单付清、门店开票设置、付清自动开票；券列表 / 会员名单修复 | V695（`ord_order.invoice_timing`、`ord_offline_record` 索引、`ord_store_collection`）；发票链 V15（`ivc_store_setting`、`ivc_store_item`） | `cp releases/run-before-main-96552f2df.sh run.sh && ./run.sh all restart` |
+| 2026-11-24 02:21 | `main-49872def0`（#51） | 发票同步上传（TDD-发票模块 §25）；env 加 `SHOP_INVOICE_TRANSMISSION_SYNC=true`（备份 `ai-shop-all-v2.env.before-sync-upload-20261124`） | 无 | 还原 env 备份并 `cp releases/run-before-main-49872def0.sh run.sh && ./run.sh all restart` |
+
+- 迁移所需的 CREATE / ALTER / INDEX：应用账号 `ai_shop_ume@192.168.3.80` 当时已带着（他人 OpsKit 上线时授予、未收回），本方案未另授权；是否收回待用户决定。
+- V693 上线前已核对：正式库现有五条订单约束与本机一致，V693 应用后原文逐字保留、只追加 WALK_IN 一支。
+
+**v2 实测（手持收银机会话，用户本人会话，门店 Oscar Retail QA 1121 `ST2611210W463ZZ12A`，STUB 通道）**
+- P1：输入金额 / SKU 建单、`NEEDS_INFO` 待补、补资料、未付开票回 26002——均符合预期。
+- P2：现金付清转 PAID、开票 ZZ-00000100（自订行 NT$100，未税 95 + 税 5）与 ZZ-00000101（SKU 行补税别后）、模拟打印 PDF 正确、作废；券列表 / 会员名单修复生效。
+- 付清自动开票（门店 ON_PAID）：触发正常，`OD20261124000202` 因测试号段已停用回 26003 并按既定设计重试；门店已改回 `MANUAL`，重试将跳过。
+- 未测：收款码 / 付款链接挂单（v2 已启用 `shop.payment-collections`，代码路径已测）、买方统编 / 载具 / 捐赠、鲸跃正式通道（待用户录入账号，见交接文档）。
