@@ -128,6 +128,8 @@ public class TwEguiRegime implements InvoiceRegime {
         if (b2b) {
             out.put("format", "格式 25");
             out.put("buyerTaxId", inv.getBuyerTaxId());
+            if (inv.getBuyerName() != null && !inv.getBuyerName().isBlank())
+                out.put("buyerName", inv.getBuyerName());
             out.put("sales", Long.toString(dollars(inv.getSalesMinor())));
             out.put("tax", Long.toString(dollars(inv.getTaxMinor())));
             if (inv.getZeroTaxSalesMinor() != 0) out.put("zeroTaxSales", Long.toString(dollars(inv.getZeroTaxSalesMinor())));

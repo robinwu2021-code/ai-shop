@@ -14,6 +14,7 @@ import ai.neargo.shop.spi.invoice.InvoicePort.Buyer;
 import ai.neargo.shop.spi.invoice.InvoiceSourcePort;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import javax.crypto.Cipher;
@@ -23,6 +24,31 @@ import org.junit.jupiter.api.Test;
 
 /** 台湾电子发票纯规则（PRD AC4、AC5，TDD §2.3）。 */
 class TwRulesTest {
+
+    @Test
+    void businessProofIncludesBuyerTitleButConsumerProofDoesNot() {
+        var invoice = new IvcInvoice();
+        invoice.setIssuedAt(LocalDateTime.parse("2026-11-24T05:11:32"));
+        invoice.setPeriodCode("11512");
+        invoice.setFiscalNumber("HR22644552");
+        invoice.setRandomCode("1234");
+        invoice.setTotalMinor(10500L);
+        invoice.setSalesMinor(10000L);
+        invoice.setTaxMinor(500L);
+        invoice.setZeroTaxSalesMinor(0L);
+        invoice.setFreeTaxSalesMinor(0L);
+        invoice.setBuyerTaxId("50765634");
+        invoice.setBuyerName("創勢科技股份有限公司");
+        invoice.setBuyerType("B2B");
+        var regime = new TwEguiRegime();
+        var business = regime.proof(invoice, List.of(), null);
+        assertEquals("50765634", business.get("buyerTaxId"));
+        assertEquals("創勢科技股份有限公司", business.get("buyerName"));
+        invoice.setBuyerType("B2C");
+        var consumer = regime.proof(invoice, List.of(), null);
+        assertFalse(consumer.containsKey("buyerTaxId"));
+        assertFalse(consumer.containsKey("buyerName"));
+    }
 
     @Test
     void periodIsRocYearPlusEvenMonthInTaipeiTime() {
