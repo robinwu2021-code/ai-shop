@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.policy;
 
+import ai.neargo.shop.common.ExecutionSchemaHistory;
 import ai.neargo.shop.common.RuntimeTriggerMetadata;
 import static ai.neargo.shop.common.ExecutionSchemaSql.expression;
 import static ai.neargo.shop.common.ExecutionSchemaSql.tokens;
@@ -90,13 +91,17 @@ public final class ServiceExecutionSchemaVerifier {
             if (present == 0 && markers.isEmpty()) {
                 return Installation.ABSENT;
             }
-            require(present == 3 && markers.size() == 1);
+            require(present == 3 && markers.size() <= 1);
             JsonNode contract = descriptor();
-            Map<String, Object> marker = markers.getFirst();
-            require("V604__manual_service_execution_authority.sql".equals(text(marker, "script"))
-                    && "SQL".equals(text(marker, "type")) && success(marker.get("success"))
-                    && marker.get("checksum") instanceof Number checksum
-                    && checksum.intValue() == contract.path("flywayChecksum").asInt());
+            if (markers.isEmpty()) {
+                require(ExecutionSchemaHistory.baselineCovers(connection, schema, historyTable, 604));
+            } else {
+                Map<String, Object> marker = markers.getFirst();
+                require("V604__manual_service_execution_authority.sql".equals(text(marker, "script"))
+                        && "SQL".equals(text(marker, "type")) && success(marker.get("success"))
+                        && marker.get("checksum") instanceof Number checksum
+                        && checksum.intValue() == contract.path("flywayChecksum").asInt());
+            }
             inspect(connection, schema, contract);
             return Installation.INSTALLED;
         } catch (Exception failure) {
