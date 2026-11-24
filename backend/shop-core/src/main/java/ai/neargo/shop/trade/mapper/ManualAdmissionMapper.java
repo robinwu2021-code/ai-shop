@@ -128,8 +128,8 @@ public interface ManualAdmissionMapper extends BaseMapper<OrdManualServiceAdmiss
                     + " d.declared_minor=o.pay_amount AND d.currency=o.currency AND d.deleted=0) AND"
                     + " NOT EXISTS (SELECT 1 FROM ord_checkout_payment_request p WHERE"
                     + " p.tenant_no=o.tenant_no AND p.order_no=o.order_no AND p.deleted=0) AND NOT"
-                    + " EXISTS (SELECT 1 FROM ord_payment_resolution p WHERE p.tenant_no=o.tenant_no"
-                    + " AND p.pay_no=o.order_no AND p.deleted=0)")
+                    + " EXISTS (SELECT 1 FROM ord_payment_resolution p WHERE p.tenant_no='MAIN'"
+                    + " AND p.pay_no=#{order} AND p.deleted=0)")
     int confirmParent(
             @Param("order") String order,
             @Param("revision") long revision,
