@@ -68,6 +68,12 @@ class ScheduledJobConventionTest {
     private static Map<String, String> jobSources() throws IOException {
         Map<String, String> found = new LinkedHashMap<>();
         for (Path module : Files.list(BACKEND).filter(Files::isDirectory).toList()) {
+            // 未启用 Maven opskit profile 时，当前应用没有集成这个独立模块。
+            if (module.getFileName().toString().equals("shop-opskit")
+                    && ScheduledJobConventionTest.class.getResource(
+                            "/ai/neargo/shop/approval/opskit/OpsKitReconcileJob.class") == null) {
+                continue;
+            }
             Path src = module.resolve("src/main/java");
             if (!Files.isDirectory(src)) {
                 continue;
