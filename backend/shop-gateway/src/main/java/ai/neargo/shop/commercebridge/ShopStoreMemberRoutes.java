@@ -23,6 +23,9 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET,POST", "/biz/sku-identity(?:/.*)?"),
             HostRoute.of("GET,POST", "/biz/(?:spec-dims|spec-props|spec-values|spec-templates|spec-override|my-spec-dims)(?:/.*)?"),
             HostRoute.of("GET", "/biz/(?:spu-std|pickable-props|category/tree|freight-template/list)"),
+            // 本店销售目录：读与发布均由控制器检查商品权限及所选门店。
+            HostRoute.of("GET", "/biz/store-sales-catalog"),
+            HostRoute.of("POST", "/biz/store-sales-catalog/versions"),
             // 订单与售后
             HostRoute.of("GET,POST", "/biz/order(?:/.*)?"),
             HostRoute.of("GET,POST", "/biz/after-sale(?:/.*)?"),
@@ -118,6 +121,10 @@ final class ShopStoreMemberRoutes {
             // 美业插件（开发计划 B3）：26 个商家接口在服务层判权（AppointmentAccess / ReceptionAccess /
             // ServiceSubmissionAccess / ServiceExecutionAccess），另 5 个 @PreAuthorize；逐条审计见开发计划第八节
             HostRoute.of("GET,POST", "/biz/x/beauty/.+"),
+            // 美业柜台收银：下单、查来源、收款按控制器权限和当前门店校验。
+            HostRoute.of("POST", "/biz/service-orders/counter-quotes/" + ID + "/(?:acceptances|orders)"),
+            HostRoute.of("GET", "/biz/service-orders/" + ID + "/manual-source"),
+            HostRoute.of("POST", "/biz/service-orders/" + ID + "/manual-receipts"),
             // 服务业共用的人员、资源、周排班（shop-merchant）：各接口 @PreAuthorize biz:store:admin
             HostRoute.of("GET,POST", "/biz/personnel(?:/.*)?"),
             HostRoute.of("GET,POST", "/biz/resources(?:/.*)?"),

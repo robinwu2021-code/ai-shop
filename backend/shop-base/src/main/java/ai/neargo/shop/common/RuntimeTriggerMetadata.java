@@ -16,12 +16,22 @@ public final class RuntimeTriggerMetadata {
         BEAUTY_BASE("LEFT(EVENT_OBJECT_TABLE,4)='bty_' AND EVENT_OBJECT_TABLE NOT IN "
                 + "('bty_service_execution_fence','bty_service_execution_stock_intent')"),
         BEAUTY_EXECUTION("EVENT_OBJECT_TABLE='bty_service_execution_fence'"),
-        BEAUTY_STOCK("EVENT_OBJECT_TABLE='bty_service_execution_stock_intent'");
+        BEAUTY_STOCK("EVENT_OBJECT_TABLE='bty_service_execution_stock_intent'"),
+        RESOURCE_OCCUPATION("EVENT_OBJECT_TABLE IN ('mch_resource_occupation','mch_resource_occupation_unit',"
+                + "'mch_resource_occupation_segment','mch_resource_occupation_bucket','mch_booking_owner',"
+                + "'mch_resource_command','mch_booking_hold_unit','mch_resource_bucket')",
+                "shop_resource_trigger_metadata");
 
         private final String predicate;
+        private final String procedure;
 
         Scope(String predicate) {
+            this(predicate, "shop_runtime_trigger_metadata");
+        }
+
+        Scope(String predicate, String procedure) {
             this.predicate = predicate;
+            this.procedure = procedure;
         }
     }
 
@@ -45,7 +55,7 @@ public final class RuntimeTriggerMetadata {
         }
         // The routine returns live metadata for the same fixed scope. Missing or denied remains a failure.
         try (var proxy = connection.prepareStatement(
-                "CALL `" + schema + "`.shop_runtime_trigger_metadata(?)")) {
+                "CALL `" + schema + "`.`" + scope.procedure + "`(?)")) {
             proxy.setString(1, scope.name());
             if (!proxy.execute()) {
                 throw new SQLException("Runtime trigger metadata procedure returned no result");

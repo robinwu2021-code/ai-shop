@@ -34,4 +34,25 @@ class StoreAdmissionRoutesTest {
     void unknownStoreRouteIsShownAsDenied() {
         assertThat(StoreAdmissionRoutes.describe("GET", "/biz/stores/{storeNo}/no-such-feature")).startsWith("DENY");
     }
+
+    @Test
+    void nativeBeautyCheckoutRoutesMatchOnlyRegisteredMethodsAndPaths() {
+        for (String[] route : new String[][] {
+                {"GET", "/biz/store-sales-catalog"},
+                {"POST", "/biz/store-sales-catalog/versions"},
+                {"POST", "/biz/service-orders/counter-quotes/BOP-1/acceptances"},
+                {"POST", "/biz/service-orders/counter-quotes/BOP-1/orders"},
+                {"GET", "/biz/service-orders/OD-1/manual-source"},
+                {"POST", "/biz/service-orders/OD-1/manual-receipts"}}) {
+            assertThat(StoreAdmissionRoutes.describe(route[0], route[1]))
+                    .as("%s %s", route[0], route[1]).isEqualTo("BOOTSTRAP");
+            String wrongMethod = "GET".equals(route[0]) ? "POST" : "GET";
+            assertThat(StoreAdmissionRoutes.describe(wrongMethod, route[1]))
+                    .as("%s %s", wrongMethod, route[1]).isEqualTo("DENY");
+            assertThat(StoreAdmissionRoutes.describe(route[0], route[1] + "/unregistered"))
+                    .as("%s %s/unregistered", route[0], route[1]).isEqualTo("DENY");
+        }
+        assertThat(StoreAdmissionRoutes.describe("POST", "/biz/service-orders/counter-quotes/BOP-1/cancel"))
+                .isEqualTo("DENY");
+    }
 }
