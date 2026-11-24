@@ -139,12 +139,13 @@ public class StockDispositionServiceImpl implements StockDispositionService {
         DataScopeContext.executeWithoutScope(
                 () -> {
                     for (var need : original.needs()) {
-                        var sku =
-                                skus.selectOne(
+                        var marketRows =
+                                skus.selectList(
                                         Wrappers.<PrdSku>lambdaQuery()
                                                 .eq(PrdSku::getTenantNo, original.tenantNo())
                                                 .eq(PrdSku::getSkuNo, need.skuNo()));
-                        if (sku == null || !original.entityNo().equals(sku.getEntityNo())) {
+                        if (marketRows.isEmpty() || marketRows.stream().anyMatch(
+                                sku -> !original.entityNo().equals(sku.getEntityNo()))) {
                             throw BizException.of(ErrorCode.NOT_FOUND);
                         }
                     }
