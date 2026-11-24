@@ -48,7 +48,7 @@ class GoodsPricingPolicyApiTest {
         card("E");
     }
     private void card(String entity) {
-        when(stores.cards(List.of("S"))).thenReturn(Map.of("S", new StoreDirectoryPort.StoreCard(
+        when(stores.configCards(List.of("S"))).thenReturn(Map.of("S", new StoreDirectoryPort.StoreCard(
                 "S", "Store", entity, "", "ACTIVE", true, "", "", null, null, 0, 0)));
     }
     @AfterEach void clear() { context.close(); SecurityContextHolder.clearContext(); BizContext.clear(); }
@@ -71,6 +71,14 @@ class GoodsPricingPolicyApiTest {
         assertThatThrownBy(() -> api.save("G", "A", new SaveReq(0, true, TaxClass.STANDARD), "K"))
                 .isInstanceOf(BizException.class);
         verifyNoInteractions(service);
+    }
+    @Test void ownerOfEntityUnderReviewIsAuthorizedThroughConfigurationCards() {
+        // cards() hides entities that are not ACTIVE; configCards() also returns PENDING_LICENSE entities.
+        when(stores.cards(List.of("S"))).thenReturn(Map.of());
+        merchant(true, BizPerms.STOCK);
+        var request = new SaveReq(0, true, TaxClass.STANDARD);
+        api.save("G", "A", request, "K");
+        verify(service).save(any(), eq("G"), eq("A"), eq(request), eq("K"));
     }
     @Test void merchantOwnerWritesCurrentServerScopeAndOriginalIdempotencyKey() {
         merchant(true, BizPerms.STOCK);

@@ -14,6 +14,7 @@ import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.idem.SysIdempotentMapper;
@@ -162,6 +163,17 @@ class ScheduleMaintenanceIT {
                     + "event_type='MERCHANT_SCHEDULE_CHANGED' AND status='ARCHIVED'", Integer.class)).isOne();
             assertThatThrownBy(() -> save(ctx, "S", body.replace("600", "610"), "CREATE"))
                     .isInstanceOf(BizException.class);
+        });
+    }
+    @Test
+    void pendingLicenseEntitySavesRulesButSuspendedEntityIsNotOperational() {
+        sql.update("UPDATE mch_entity SET status='PENDING_LICENSE' WHERE entity_no='E'");
+        runner().run(ctx -> {
+            var saved = save(ctx, "S", body("R", null, 1, 600, 660, "ACTIVE"), "PENDING");
+            assertThat(saved.get("resourceRevision").asLong()).isEqualTo(2);
+            assertThat(schedule(ctx, "R").get("rules").size()).isOne();
+            sql.update("UPDATE mch_entity SET status='SUSPENDED' WHERE entity_no='E'");
+            assertThatThrownBy(() -> schedule(ctx, "R")).isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ENTITY_NOT_OPERATIONAL));
         });
     }
     @Test

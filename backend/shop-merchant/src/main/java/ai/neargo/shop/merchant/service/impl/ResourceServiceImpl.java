@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.policy.StoreConfigScope;
 import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 
@@ -140,7 +141,7 @@ public class ResourceServiceImpl implements ResourceService {
                         row.setUpdatedBy(actor);
                         one(resources.insert(row));
                     } else {
-                        var trusted = parents.lockScope("MAIN", entity, store);
+                        var trusted = StoreConfigScope.lock(parents, entity, store);
                         row = resources.lockScopedResource(trusted, request.resourceNo());
                         if (row == null || !request.resourceNo().equals(row.getResourceNo())) {
                             throw BizException.of(ErrorCode.NOT_FOUND);
@@ -199,10 +200,7 @@ public class ResourceServiceImpl implements ResourceService {
                 row.getName(), row.getCapacity(), row.getStatus(), row.getVersion(), row.getOpenOccupationNo() != null);
     }
     private void scope(String entity, String store) {
-        var trusted = parents.lockScope("MAIN", entity, store);
-        if (trusted == null || !entity.equals(trusted.entityNo()) || !store.equals(trusted.storeNo())) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
+        StoreConfigScope.lock(parents, entity, store);
     }
     private void identity(String entity, String store, String actor) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {

@@ -22,7 +22,8 @@ public class GoodsPricingPolicyAccessPolicy {
                 || (write && !BizContext.current().owner())) throw forbidden();
         String entity = BizContext.requireMerchantNo(); String store = BizContext.requireStoreNo();
         if (!BizContext.current().storeNos().contains(store)) throw forbidden();
-        var card = stores.cards(List.of(store)).get(store);
+        // 课税别是店内设定：审核中（PENDING_LICENSE）的主体也可设（TDD-手持收银机后端 W2）；负责人检查不变。
+        var card = stores.configCards(List.of(store)).get(store);
         if (card == null || !entity.equals(card.entityNo()) || !store.equals(card.storeNo())) throw forbidden();
         return new Context(new Scope(user.tenantNo(), entity, store), user.userNo());
     }

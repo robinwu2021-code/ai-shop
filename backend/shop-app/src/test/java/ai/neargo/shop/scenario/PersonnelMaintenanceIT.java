@@ -38,6 +38,7 @@ import org.springframework.context.annotation.Primary;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.idem.SysIdempotentMapper;
@@ -175,6 +176,19 @@ class PersonnelMaintenanceIT {
                     Integer.class)).isZero();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE "
                     + "event_type='MERCHANT_PERSONNEL_CHANGED' AND status='ARCHIVED'", Integer.class)).isOne();
+        });
+    }
+    @Test
+    void pendingLicenseEntityMaintainsPersonnelButSuspendedEntityIsNotOperational() {
+        sql.update("UPDATE mch_entity SET status='PENDING_LICENSE' WHERE entity_no='E'");
+        runner().run(context -> {
+            var person = create(context, "PENDING");
+            assertThat(person.get("revision").asLong()).isEqualTo(1);
+            assertThat(tree(call(context, "listPersonnel", "E", "S", "OWNER", req("PersonnelQuery", "{}")))
+                    .get("total").asLong()).isOne();
+            sql.update("UPDATE mch_entity SET status='SUSPENDED' WHERE entity_no='E'");
+            assertThatThrownBy(() -> call(context, "listPersonnel", "E", "S", "OWNER", req("PersonnelQuery", "{}")))
+                    .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ENTITY_NOT_OPERATIONAL));
         });
     }
     @Test
