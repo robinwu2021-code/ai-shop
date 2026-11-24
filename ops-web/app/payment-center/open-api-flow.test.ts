@@ -89,7 +89,8 @@ describe("一、运营端接入全流程（mock）", () => {
     expect(JSON.parse(ok.body).data).toMatchObject({ outOrderNo: "O1", status: "PENDING" });
     expect((await verifyResponse(issued.secret, ok.headers, ok.body)).status).toBe("VALID");
     expect((await call("refund", appNo, issued.secret, { payOrderNo }, '{"outRefundNo":"R1","amountMinor":100}')).status).toBe(403);
-    expect((await call("queryOrder", appNo, `${issued.secret.slice(0, -1)}x`, { payOrderNo })).status).toBe(401);
+    const wrongSecret = issued.secret.slice(0, -1) + (issued.secret.endsWith("x") ? "y" : "x");
+    expect((await call("queryOrder", appNo, wrongSecret, { payOrderNo })).status).toBe(401);
     expect((await call("ping", appNo, issued.secret, {}, "{}")).status).toBe(403);
 
     // 6. 泄露应急：吊销全部密钥版本、日退款上限置 0 → 再调 401
