@@ -3,7 +3,7 @@ package ai.neargo.shop.invoice.api.biz;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.invoice.service.impl.InvoiceDocumentService;
+import ai.neargo.shop.invoice.service.InvoiceDocumentService;
 import ai.neargo.shop.print.api.dto.PrintExportDtos.ExportView;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import jakarta.validation.constraints.Max;

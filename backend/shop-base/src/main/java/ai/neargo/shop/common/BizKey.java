@@ -229,6 +229,8 @@ public final class BizKey {
     public static final String INVOICE_RANGE = "IVR";
     /** 发票上传任务（开立 / 作废 / 折让各一条） */
     public static final String INVOICE_TRANSMISSION = "IVT";
+    /** 发票邮件交付编号。 */
+    public static final String INVOICE_DELIVERY = "IVD";
     /** 买家常用发票载具 */
     public static final String INVOICE_CARRIER = "IVK";
     /** 门店常用品项（TDD-统一订单与开票资料 AC11） */

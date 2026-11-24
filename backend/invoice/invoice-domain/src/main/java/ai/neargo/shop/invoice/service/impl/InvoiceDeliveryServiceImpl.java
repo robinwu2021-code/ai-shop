@@ -7,6 +7,7 @@ import ai.neargo.secret.api.SecretNamespace;
 import ai.neargo.secret.api.SecretRef;
 import ai.neargo.secret.api.SecretVault;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Masks;
 import ai.neargo.shop.common.PageData;
@@ -44,7 +45,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -67,13 +68,13 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     private final SecretVault vault;
     private final PrintQueryService printing;
     private final PrintExportFacade exports;
-    private final MailPort mail;
+    private final ObjectProvider<MailPort> mailProvider;
     private final OtpSendService otp;
     private final String origin;
     private final boolean mailStub;
 
     public InvoiceDeliveryServiceImpl(InvoiceMapper invoices, InvoiceDeliveryMapper deliveries, SecretVault vault,
-            PrintQueryService printing, PrintExportFacade exports, MailPort mail, OtpSendService otp,
+            PrintQueryService printing, PrintExportFacade exports, ObjectProvider<MailPort> mailProvider, OtpSendService otp,
             @Value("${shop.invoice.delivery.public-origin}") String origin,
             @Value("${shop.mail.stub:true}") boolean mailStub) {
         URI uri = URI.create(origin);
@@ -87,7 +88,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
         this.vault = vault;
         this.printing = printing;
         this.exports = exports;
-        this.mail = mail;
+        this.mailProvider = mailProvider;
         this.otp = otp;
         this.mailStub = mailStub;
     }
@@ -110,7 +111,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
         if (prior != null) return view(prior);
         readyInvoice(invoice);
         if (deliveries.selectCount(scoped(scope, invoiceNo).isNull("parent_delivery_no")) != 0) throw badState();
-        var template = attachmentTemplate(InvoiceDocumentService.sourceType(invoice));
+        var template = attachmentTemplate(InvoiceDocumentServiceImpl.sourceType(invoice));
         var row = create(scope, invoice, exportNo, template, null, Masks.email(address), reason, key, requestHash);
         row.setRecipientSecretRef(vault.seal(new KeyOwner(SecretNamespace.PLATFORM, OWNER_TYPE, row.getId()),
                 address.getBytes(StandardCharsets.UTF_8)).blobId());
@@ -143,18 +144,18 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
 
     private IvcInvoiceDelivery create(Scope scope, IvcInvoice invoice, String exportNo, String template, String parentNo,
             String mask, String reason, String key, String requestHash) {
-        if (documentType(template) != InvoiceDocumentService.sourceType(invoice)) throw badState();
+        if (documentType(template) != InvoiceDocumentServiceImpl.sourceType(invoice)) throw badState();
         LocalDateTime expiry;
         try {
             expiry = LocalDateTime.ofInstant(documentExpiry(invoice.getInvoiceNo(), exportNo, template, scope), ZoneOffset.UTC);
         } catch (PrintFailure failure) {
-            throw InvoiceDocumentService.exportFailure(failure);
+            throw InvoiceDocumentServiceImpl.exportFailure(failure);
         }
         var row = new IvcInvoiceDelivery();
         row.setTenantNo(scope.tenantNo());
         row.setEntityNo(scope.entityNo());
         row.setStoreNo(scope.storeNo());
-        row.setDeliveryNo("IVD" + UUID.randomUUID().toString().replace("-", ""));
+        row.setDeliveryNo(BizKey.next(BizKey.INVOICE_DELIVERY));
         row.setInvoiceNo(invoice.getInvoiceNo());
         row.setApplicationNo(invoice.getApplicationNo());
         row.setApplicationRevisionNo(invoice.getApplicationRevisionNo());
@@ -196,7 +197,8 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
             finish(row, "CANCELLED", "INVOICE_OR_PDF_UNAVAILABLE", null);
             return;
         }
-        if (mailStub) {
+        var mail = mailStub ? null : mailProvider.getIfAvailable();
+        if (mail == null) {
             finish(row, "FAILED", "MAIL_CHANNEL_DISABLED", null);
             return;
         }
@@ -315,7 +317,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     }
 
     private IvcInvoice invoice(Scope scope, String invoiceNo, boolean lock) {
-        return InvoiceDocumentService.scopedInvoice(invoices, scope, invoiceNo, lock);
+        return InvoiceDocumentServiceImpl.scopedInvoice(invoices, scope, invoiceNo, lock);
     }
 
     private static void readyInvoice(IvcInvoice invoice) {

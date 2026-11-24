@@ -7,6 +7,7 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.regime.tw.TwBuyerRules;
+import ai.neargo.shop.invoice.service.InvoiceDocumentService;
 import ai.neargo.shop.print.api.ExportCommand;
 import ai.neargo.shop.print.api.ExportSource;
 import ai.neargo.shop.print.api.ExportSourceType;
@@ -25,17 +26,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
-public class InvoiceDocumentService {
+public class InvoiceDocumentServiceImpl implements InvoiceDocumentService {
     private static final long FROZEN_INVOICE_REVISION = 1;
 
     private final InvoiceMapper invoices;
     private final PrintExportFacade exports;
 
-    public InvoiceDocumentService(InvoiceMapper invoices, PrintExportFacade exports) {
+    public InvoiceDocumentServiceImpl(InvoiceMapper invoices, PrintExportFacade exports) {
         this.invoices = invoices;
         this.exports = exports;
     }
 
+    @Override
     public PageData<ExportView> list(Scope scope, String invoiceNo, int page, int size) {
         var source = sourceType(scopedInvoice(invoices, scope, invoiceNo, false));
         try {
@@ -46,6 +48,7 @@ public class InvoiceDocumentService {
         }
     }
 
+    @Override
     public ExportView create(Scope scope, String invoiceNo, String key) {
         var invoice = scopedInvoice(invoices, scope, invoiceNo, false);
         if (!"ISSUED".equals(invoice.getStatus())) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
