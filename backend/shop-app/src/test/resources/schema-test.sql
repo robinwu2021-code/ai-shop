@@ -11801,7 +11801,6 @@ CREATE TABLE IF NOT EXISTS ord_checkout_confirmation
     CONSTRAINT uk_checkout_confirm_key UNIQUE (tenant_no,buyer_no,request_key_hash),
     CONSTRAINT uk_checkout_confirm_quote UNIQUE (tenant_no,caller,operation_no,quote_no),
     CONSTRAINT ck_checkout_confirm_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND quote_revision=1),
-    CONSTRAINT ck_checkout_confirm_money CHECK (amount_minor>=0 AND currency='CNY' AND purpose='ORDINARY_SERVICE_PURCHASE'),
     CONSTRAINT ck_checkout_confirm_state CHECK ((status='CONSUMED' AND consumed_at IS NOT NULL AND order_no IS NOT NULL) OR ((CASE status WHEN 'AUTHORIZED' THEN TRUE WHEN 'REVOKED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND consumed_at IS NULL AND order_no IS NULL)),
     CONSTRAINT ck_checkout_confirm_deleted CHECK (deleted=0),
     CONSTRAINT ck_counter_confirmation_party CHECK (
@@ -11828,7 +11827,12 @@ CREATE TABLE IF NOT EXISTS ord_checkout_confirmation
             AND actor_kind IS NOT NULL AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)
             AND account_no IS NOT NULL AND CHAR_LENGTH(TRIM(account_no))>0
             AND accepted_at IS NOT NULL AND accepted_at<=confirmed_at)),
-    CONSTRAINT ck_counter_confirmation_namespace CHECK (authority_namespace_hash REGEXP '^[a-f0-9]{64}$')
+    CONSTRAINT ck_counter_confirmation_namespace CHECK (authority_namespace_hash REGEXP '^[a-f0-9]{64}$'),
+    CONSTRAINT ck_checkout_confirm_money CHECK (
+        amount_minor >= 0 AND purpose = 'ORDINARY_SERVICE_PURCHASE' AND
+        (currency = 'CNY' OR (currency = 'TWD' AND amount_minor > 0 AND MOD(amount_minor, 100) = 0
+            AND admission_kind = 'MANUAL_OFFLINE' AND purchase_authority = 'MERCHANT_RECORDED_IN_PERSON'))
+    )
 );
 
 CREATE TABLE IF NOT EXISTS ord_checkout_line
@@ -12022,8 +12026,6 @@ CREATE TABLE IF NOT EXISTS ord_manual_service_admission
     CONSTRAINT uk_manual_receipt_key UNIQUE (tenant_no,entity_no,store_no,request_key_hash),
     CONSTRAINT ck_manual_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND
         admission_kind='MANUAL_OFFLINE' AND actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)),
-    CONSTRAINT ck_manual_money CHECK (declared_minor>0 AND currency='CNY' AND
-        (CASE method WHEN 'CASH' THEN TRUE WHEN 'OFFLINE_TRANSFER' THEN TRUE ELSE CASE WHEN method IS NULL THEN NULL ELSE FALSE END END) AND receipt_provenance='MANUAL_DECLARATION'),
     CONSTRAINT ck_manual_phase CHECK ((CASE phase WHEN 'RECEIVED' THEN TRUE WHEN 'STOCK_PENDING' THEN TRUE WHEN 'ADMITTED' THEN TRUE WHEN 'SUSPENDED' THEN TRUE WHEN 'CANCELLED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_manual_revisions CHECK (admission_revision>0 AND order_revision>=0 AND version>0 AND deleted=0),
     CONSTRAINT ck_manual_stock CHECK ((CASE stock_authority WHEN 'PLATFORM' THEN TRUE WHEN 'DUAL' THEN TRUE WHEN 'INVENTORY' THEN TRUE ELSE CASE WHEN stock_authority IS NULL THEN NULL ELSE FALSE END END) AND
@@ -12042,7 +12044,12 @@ CREATE TABLE IF NOT EXISTS ord_manual_service_admission
         OR (customer_kind='GUEST' AND buyer_no IS NULL AND guest_no IS NOT NULL
             AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
             AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND caller='BEAUTY'
-        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0))
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)),
+    CONSTRAINT ck_manual_money CHECK (
+        declared_minor > 0 AND receipt_provenance = 'MANUAL_DECLARATION' AND
+        ((currency = 'CNY' AND (CASE method WHEN 'CASH' THEN TRUE WHEN 'OFFLINE_TRANSFER' THEN TRUE ELSE CASE WHEN method IS NULL THEN NULL ELSE FALSE END END)) OR
+            (currency = 'TWD' AND method = 'CASH' AND MOD(declared_minor, 100) = 0))
+    )
 );
 
 CREATE TABLE IF NOT EXISTS ord_manual_service_admission_action

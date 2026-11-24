@@ -249,23 +249,26 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
 
     @Override
     public Map<String, SkuSnapshot> snapshotForCounter(
-            CustomerParty party, List<String> skuNos, Map<String, String> storeByEntity) {
+            CustomerParty party, String entityNo, String market,
+            List<String> skuNos, Map<String, String> storeByEntity) {
         if (party == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        return snapshots(party.userNo(), skuNos, storeByEntity, party);
+        return snapshots(party.userNo(), skuNos, storeByEntity, party, entityNo, market);
     }
 
     private Map<String, SkuSnapshot> snapshots(
             String buyerNo, List<String> skuNos, Map<String, String> storeByEntity) {
-        return snapshots(buyerNo, skuNos, storeByEntity, null);
+        return snapshots(buyerNo, skuNos, storeByEntity, null, null, MARKET_CN);
     }
 
     private Map<String, SkuSnapshot> snapshots(
             String buyerNo,
             List<String> skuNos,
             Map<String, String> storeByEntity,
-            CustomerParty party) {
+            CustomerParty party,
+            String entityNo,
+            String market) {
         if (skuNos == null || skuNos.isEmpty()) {
             return Map.of();
         }
@@ -277,14 +280,17 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         List<PrdSku> skus = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
                         .in(PrdSku::getSkuNo, skuNos)
-                        .eq(PrdSku::getMarket, MARKET_CN)));
+                        .eq(PrdSku::getMarket, market)
+                        .eq(party != null, PrdSku::getEntityNo, entityNo)));
         if (skus.isEmpty()) {
             return Map.of();
         }
 
         List<String> goodsNos = skus.stream().map(PrdSku::getGoodsNo).distinct().toList();
         Map<String, PrdGoods> goodsMap = DataScopeContext.executeWithoutScope(() ->
-                        goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery().in(PrdGoods::getGoodsNo, goodsNos)))
+                        goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                                .in(PrdGoods::getGoodsNo, goodsNos)
+                                .eq(party != null, PrdGoods::getEntityNo, entityNo)))
                 .stream().collect(Collectors.toMap(PrdGoods::getGoodsNo, Function.identity(), (a, b) -> a));
 
         /*
@@ -334,7 +340,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                 storeOfGoods.put(g.getGoodsNo(), st);
             }
         }
-        Map<String, Long> storePrice = storePricesAt(skus, storeOfGoods);
+        Map<String, Long> storePrice = storePricesAt(skus, storeOfGoods, market);
 
         /*
          * 门店级下架：与门店价同一个覆盖层，但**方向相反** ——
@@ -371,7 +377,8 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
     }
 
     /** 按每件货自己的门店取门店价（{@link #storePrices} 的逐件版：一单里同主体可能有两家店） */
-    private Map<String, Long> storePricesAt(List<PrdSku> skus, Map<String, String> storeOfGoods) {
+    private Map<String, Long> storePricesAt(
+            List<PrdSku> skus, Map<String, String> storeOfGoods, String market) {
         if (storeOfGoods.isEmpty()) {
             return Map.of();
         }
@@ -391,7 +398,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                                 .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, storeOfSku.keySet())
                                 .in(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo,
                                         new java.util.HashSet<>(storeOfSku.values()))
-                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, MARKET_CN)));
+                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, market)));
         Map<String, Long> out = new HashMap<>();
         for (var r : rows) {
             if (r.getPrice() != null && r.getStoreNo().equals(storeOfSku.get(r.getSkuNo()))) {

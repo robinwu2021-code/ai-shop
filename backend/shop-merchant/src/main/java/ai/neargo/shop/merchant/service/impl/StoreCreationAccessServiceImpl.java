@@ -3,6 +3,7 @@ package ai.neargo.shop.merchant.service.impl;
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.merchant.service.MerchantEntityService;
 import ai.neargo.shop.merchant.service.MerchantPlanService;
@@ -17,21 +18,35 @@ import org.springframework.beans.factory.annotation.Value;
 public class StoreCreationAccessServiceImpl implements StoreCreationAccessService {
     private final MerchantEntityService entities;
     private final MerchantPlanService plans;
+    private final MerchantQueryPort directory;
     private final boolean enabled;
-    public StoreCreationAccessServiceImpl(MerchantEntityService entities,MerchantPlanService plans,@Value("${commerce.store-creation.enabled:false}") boolean enabled) {
-        this.entities=entities;this.plans=plans;this.enabled=enabled;
+    public StoreCreationAccessServiceImpl(MerchantEntityService entities,MerchantPlanService plans,
+                                          MerchantQueryPort directory, @Value("${commerce.store-creation.enabled:false}") boolean enabled) {
+        this.entities=entities;this.plans=plans;this.directory=directory;this.enabled=enabled;
     }
     public Access access(LoginUser user) {
         if(!enabled || user.realm()!=Realm.MERCHANT || !Set.of(SubjectKind.USR,SubjectKind.MCH).contains(user.subjectKind())) return new Access(false,false,List.of());
         var owned=entities.myStores(user).stream().filter(g->g.entity().canManage()).toList();
         var sources=new ArrayList<Source>();
+        var firstStoreSources = new ArrayList<Source>();
         for(var group:owned) {
             if(!Set.of("ACTIVE","PENDING_LICENSE").contains(group.entity().status()))continue;
             var anchor=group.stores().stream().filter(s->"ACTIVE".equals(s.status()) && s.market()!=null && !s.market().isBlank()).findFirst();
-            if(anchor.isEmpty())continue;
+            if (anchor.isEmpty()) {
+                if (user.subjectKind() == SubjectKind.USR && "ACTIVE".equals(group.entity().status())
+                        && group.stores().isEmpty()) {
+                    String market = directory.marketOf(group.entity().entityNo());
+                    if (market != null && !market.isBlank()) {
+                        var plan = plans.current(group.entity().entityNo());
+                        firstStoreSources.add(new Source(group.entity().entityNo(), group.entity().name(), null,
+                                market, plan.storeQuota(), 0, plan.storeQuota() > 0));
+                    }
+                }
+                continue;
+            }
             var plan=plans.mine(group.entity().entityNo());var store=anchor.get();
             sources.add(new Source(group.entity().entityNo(),group.entity().name(),store.storeNo(),store.market(),plan.storeQuota(),plan.storeUsed(),plan.storeUsed()<plan.storeQuota()));
         }
-        return new Access(user.subjectKind()==SubjectKind.USR && owned.size()<MerchantAdminPort.MAX_ENTITIES_PER_ACCOUNT && owned.stream().noneMatch(g->"PENDING_LICENSE".equals(g.entity().status()) && !g.stores().isEmpty()),user.subjectKind()==SubjectKind.USR && owned.stream().anyMatch(g->"PENDING_LICENSE".equals(g.entity().status()) && !g.stores().isEmpty()),List.copyOf(sources));
+        return new Access(user.subjectKind()==SubjectKind.USR && owned.size()<MerchantAdminPort.MAX_ENTITIES_PER_ACCOUNT && owned.stream().noneMatch(g->"PENDING_LICENSE".equals(g.entity().status()) && !g.stores().isEmpty()),user.subjectKind()==SubjectKind.USR && owned.stream().anyMatch(g->"PENDING_LICENSE".equals(g.entity().status()) && !g.stores().isEmpty()),List.copyOf(sources),true,true,List.copyOf(firstStoreSources));
     }
 }

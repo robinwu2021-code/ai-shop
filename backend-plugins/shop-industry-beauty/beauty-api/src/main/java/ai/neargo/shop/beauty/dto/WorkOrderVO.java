@@ -7,6 +7,13 @@ import java.util.List;
 public record WorkOrderVO(String workOrderNo, String appointmentNo, long scopeRevision, String status,
         String submissionNo,
         String sourceState, String operationNo, String operationState, List<String> taskNos,
-        OffsetDateTime plannedStartAt) {
+        OffsetDateTime plannedStartAt, Long revision) {
     public WorkOrderVO { taskNos = List.copyOf(taskNos); }
+
+    public WorkOrderVO(String workOrderNo, String appointmentNo, long scopeRevision, String status,
+            String submissionNo, String sourceState, String operationNo, String operationState,
+            List<String> taskNos, OffsetDateTime plannedStartAt) {
+        this(workOrderNo, appointmentNo, scopeRevision, status, submissionNo, sourceState,
+                operationNo, operationState, taskNos, plannedStartAt, null);
+    }
 }

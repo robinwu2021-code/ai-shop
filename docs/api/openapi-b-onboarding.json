@@ -9521,7 +9521,7 @@
             "$ref": "#/components/schemas/QuickStartRequest"
           }
         },
-        "description": "entityNo omitted creates/resumes an account-owned entity; EXISTING requires sourceStoreNo from store-creation-context. Only the published FREE initialization is executed. Same requestNo must retain the same complete intent."
+        "description": "Omit entityNo to create or resume an account-owned entity. For an existing entity, supply its sourceStoreNo from store-creation-context. A personal owner can omit sourceStoreNo for an ACTIVE entity listed under firstStoreSources and must supply market, businessTypeCode, industryCode and subIndustryCode. Only the published FREE initialization is executed. Same requestNo must retain the same complete intent."
       },
       "StoreSettingsProfile": {
         "type": "object",

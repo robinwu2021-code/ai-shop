@@ -44,6 +44,8 @@ public interface StoreAdminService {
     }
     StoreVO create(String merchantNo, CreateCommand command);
 
+    StoreVO createFirst(String merchantNo, String market, String ownerUserNo, CreateCommand command);
+
     /** 改门店名与地址。门面其余部分走 {@link MerchantStoreService}。 */
     StoreVO rename(String merchantNo, String storeNo, String name, String address);
 

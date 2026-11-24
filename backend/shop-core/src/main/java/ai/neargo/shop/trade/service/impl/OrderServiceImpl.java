@@ -44,6 +44,8 @@ import ai.neargo.shop.spi.trade.ManualServiceAdmissionEvents.CounterOrderCreated
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
+import ai.neargo.shop.spi.pay.MarketPort;
+import ai.neargo.shop.spi.pay.MarketPort.MarketBrief;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.trade.dto.OrderPayMethodVO;
@@ -86,6 +88,7 @@ import ai.neargo.shop.trade.order.service.create.CheckoutClock;
 import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 import ai.neargo.shop.trade.order.service.create.CheckoutEconomicSnapshot;
 import ai.neargo.shop.trade.order.service.create.CheckoutPricingScope;
+import ai.neargo.shop.trade.policy.CashStepPolicy;
 import ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard;
 import ai.neargo.shop.trade.order.service.create.CounterEconomicCodec.CounterPolicy;
 import ai.neargo.shop.trade.order.service.create.CounterOrderPlan;
@@ -167,6 +170,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     @Autowired private ObjectMapper legacyCheckoutJson;
     @Autowired private CheckoutClock checkoutClock;
     @Autowired private CheckoutQuoteGuard checkoutGuard;
+    @Autowired private MarketPort markets;
     @Autowired private CheckoutMappers.OperationMapper checkoutOperations;
     @Autowired private CheckoutMappers.ConfirmationMapper checkoutConfirmations;
     @Autowired private CheckoutMappers.QuoteMapper checkoutQuotes;
@@ -1391,13 +1395,17 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     /** 按商家算活动用的金额。预览、下单、枚举最省组合三处共用这一份 */
     private List<CampaignPort.MerchantAmount> merchantAmounts(CreateOrderCommand cmd, Split split,
                                                              Map<String, String> stores) {
-        boolean offline = PayModes.OFFLINE.equals(cmd.payMode());
+        return merchantAmounts(split, stores, !PayModes.OFFLINE.equals(cmd.payMode()));
+    }
+
+    private List<CampaignPort.MerchantAmount> merchantAmounts(
+            Split split, Map<String, String> stores, boolean includeGoodsLines) {
         return split.groups.stream()
                 .map(g -> new CampaignPort.MerchantAmount(
                         g.merchantNo, g.goodsAmount(), g.goodsQty(), stores.get(g.key()),
                         // 逐件小计：平台活动只对报名的货生效，门槛按那几件货判（P3）
-                        offline ? List.<CampaignPort.GoodsLine>of() : g.lines.stream().map(l -> new CampaignPort.GoodsLine(
-                                l.snapshot.goodsNo(), l.amount(), l.qty)).toList(), false))
+                        includeGoodsLines ? g.lines.stream().map(l -> new CampaignPort.GoodsLine(
+                                l.snapshot.goodsNo(), l.amount(), l.qty)).toList() : List.of(), false))
                 .toList();
     }
 
@@ -1723,9 +1731,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         } else if (manual) {
             checkoutGuard.requireManualPricing(scope, userNo);
         }
+        var counterMarket = counter ? counterMarket(scope.entityNo()) : null;
         Split raw =
                 counter
-                        ? split(cmd, userNo, scope.party())
+                        ? split(cmd, userNo, scope.party(), scope.entityNo(), counterMarket.market())
                         : scope == null ? split(cmd) : split(cmd, userNo);
         if (raw.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1831,7 +1840,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 : scope == null ? giftQtyOf(split) : giftQtyOf(split, userNo);
         Map<String, Integer> gifts = selectedGifts.quantities();
         var counterCandidates = counter && scope.counterPolicy() != CounterPolicy.FROZEN_M2A_ZERO
-                ? counterDiscounts(scope.party(), merchantAmounts(cmd, split, storeOfMerchant), cmd.activityChoices())
+                ? counterDiscounts(scope.party(), merchantAmounts(split, storeOfMerchant, true), cmd.activityChoices())
                 : null;
         Discounts discounts = counter
                 ? counterCandidates == null ? Discounts.none()
@@ -1905,7 +1914,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                         ? null
                         : checkoutEconomics(
                                 userNo, cmd, scope, split, payMode, pointsStaged, gifts, discounts,
-                                counterCandidates == null ? null : counterCandidates.seal());
+                                counterCandidates == null ? null : counterCandidates.seal(),
+                                counterMarket);
         return new CreatePricing(
                 split,
                 group,
@@ -1922,6 +1932,16 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 List.copyOf(counterPromotions));
     }
 
+    private MarketBrief counterMarket(String entityNo) {
+        var market = markets.find(merchantPort.marketOf(entityNo))
+                .orElseThrow(() -> BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION));
+        if (!("CN".equals(market.market()) && "CNY".equals(market.currency())
+                || "TW".equals(market.market()) && "TWD".equals(market.currency()))) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        return market;
+    }
+
     private CampaignPort.CounterCandidates counterDiscounts(CustomerParty party,
             List<CampaignPort.MerchantAmount> amounts, Map<String, String> choices) {
         return campaignPort.counterCandidates(party, amounts, choices);
@@ -1936,7 +1956,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             boolean points,
             Map<String, Integer> gifts,
             Discounts discounts,
-            CampaignPort.CounterActivitySeal counterSeal) {
+            CampaignPort.CounterActivitySeal counterSeal,
+            MarketBrief counterMarket) {
         var catalog = scope.catalog();
         var at = checkoutClock.now();
         if (scope.manual()
@@ -2057,6 +2078,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                         catalog.versionNo(),
                         catalog.effectiveRevision(),
                         catalog.snapshotHash());
+        long dueMinor = split.payAmount() - discounts.total();
+        String currency = counterMarket == null ? CURRENCY_CNY : counterMarket.currency();
+        if (counterMarket != null && !CashStepPolicy.onStep(dueMinor, currency, counterMarket.currencyScale())) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
         var money =
                 new CheckoutEconomicSnapshot(
                         null,
@@ -2064,7 +2090,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                         buyer,
                         scope.entityNo(),
                         scope.storeNo(),
-                        CURRENCY_CNY,
+                        currency,
                         payMode,
                         Fulfillments.STORE_VERIFY,
                         OrdSubOrder.SERVICE_EXECUTION,
@@ -2072,7 +2098,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                         split.goodsAmount(),
                         split.freightAmount(),
                         discounts.total(),
-                        split.payAmount() - discounts.total(),
+                        dueMinor,
                         discounts.platformFunded(group.merchantNo(), group.storeNo()),
                         discounts.merchantFunded(group.merchantNo(), group.storeNo()),
                         activity,
@@ -2120,7 +2146,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 buyer,
                 scope.entityNo(),
                 scope.storeNo(),
-                CURRENCY_CNY,
+                currency,
                 payMode,
                 Fulfillments.STORE_VERIFY,
                 OrdSubOrder.SERVICE_EXECUTION,
@@ -2359,7 +2385,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         order.setGoodsAmount(split.goodsAmount());
         order.setFreightAmount(split.freightAmount());
         order.setDiscountAmount(discounts.total());
-        order.setCurrency(CURRENCY_CNY);
+        order.setCurrency(counter ? pricing.economic().currency() : CURRENCY_CNY);
         /*
          * 线下支付落 WAIT_OFFLINE_PAY：钱还没收到，**不能算已支付** ——
          * 直接落 PAID 的话，商家一旦收不到钱，退款链路要去退一笔平台从没收过的钱。
@@ -4281,10 +4307,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     private Split split(CreateOrderCommand cmd, String buyerNo) {
-        return split(cmd, buyerNo, null);
+        return split(cmd, buyerNo, null, null, null);
     }
 
-    private Split split(CreateOrderCommand cmd, String buyerNo, CustomerParty party) {
+    private Split split(CreateOrderCommand cmd, String buyerNo, CustomerParty party, String entityNo, String market) {
         List<CreateOrderCommand.Item> requested = cmd.items() == null || cmd.items().isEmpty()
                 ? selectedCartItems() : cmd.items();
         if (requested.isEmpty()) {
@@ -4295,7 +4321,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         List<String> skuNos = requested.stream().map(CreateOrderCommand.Item::skuNo).toList();
         Map<String, GoodsQueryPort.SkuSnapshot> snapshots =
                 party != null
-                        ? goodsPort.snapshotForCounter(party, skuNos, cmd.storeChoices())
+                        ? goodsPort.snapshotForCounter(party, entityNo, market, skuNos, cmd.storeChoices())
                         : buyerNo == null
                                 ? goodsPort.snapshot(skuNos)
                                 : goodsPort.snapshotFor(buyerNo, skuNos, cmd.storeChoices());
@@ -4340,7 +4366,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          */
         snapshots =
                 party != null
-                        ? goodsPort.snapshotForCounter(party, skuNos, cmd.storeChoices())
+                        ? goodsPort.snapshotForCounter(party, entityNo, market, skuNos, cmd.storeChoices())
                         : buyerNo == null
                                 ? goodsPort.snapshot(skuNos, storeByEntity)
                                 : goodsPort.snapshotFor(buyerNo, skuNos, cmd.storeChoices());

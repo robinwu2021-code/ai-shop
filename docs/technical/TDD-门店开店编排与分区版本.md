@@ -54,3 +54,10 @@ Flutter 定向回归和静态检查通过；模拟器完成四业态首页与设
 实际 App 会话已确认 store-creation-context 的新版能力为 true、store/settings 返回成功，修复原 settings 路径误判导致的 403。REDMI 只读确认台北早餐状态营业中，店名可进详情。最新 UI 将公告、日常设置及收款设置放首页，实体资质按 entityNo 读写，未改变后台权限或归属。
 
 真实环境新建门店、已提交但丢响应恢复、分区并发写入和设置保存尚未完成；保留已有原生 MySQL9 与 Mock 验证证据，不标记为真机闭环通过。台北早餐当前会话没有对应支付商户进件查询权限，未扩大授权；无真实付款。
+
+
+## 已启用主体首店补充
+
+- GET /biz/merchant/store-creation-context 另列 firstStoreSources。仅个人账号本人是所有者、主体 ACTIVE、该主体没有任何现存门店且有明确市场时列出，回传现有额度。原 sources 继续只列有有效来源店的加店选项。
+- POST /biz/merchant/store-openings 携带 entityNo、明确的 market/businessTypeCode/industryCode/subIndustryCode 且省略 sourceStoreNo 时，沿原回执和额度事务为该主体建立默认首店。写入前锁定主体、复查 ACTIVE/市场/门店数量，并使用现有个人所有者校验。没有来源店时不继承门店资料。
+- App 在现有建店流程展示首店选项，继续使用原请求编号提交与恢复。StoreCreationChoicesTest 覆盖身份和主体资格，StoreOpeningRecoveryMysqlTest 覆盖默认目标和同号重试契约。

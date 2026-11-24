@@ -457,6 +457,57 @@ class ManualCounterPurchaseIT extends CheckoutFlowFixture {
     }
 
     @Test
+    void taiwanCashUsesFrozenTwdCounterQuoteAndOrder() {
+        jdbc.update("UPDATE mch_entity SET market='TW' WHERE entity_no=?", entity);
+        var selection = new CounterCustomerRef("USER", member, null, null);
+        var wrongMarket = counterRequest("twd-wrong-market", selection);
+        assertThatThrownBy(() -> asMerchant(() -> manual.prepareCounter(scope, wrongMarket)))
+                .isInstanceOfSatisfying(BizException.class, failure ->
+                        assertThat(failure.errorCode()).isEqualTo(ErrorCode.NOT_FOUND));
+
+        jdbc.update("UPDATE prd_sku SET market='TW',price=40000 WHERE sku_no=?", sku);
+        jdbc.update("INSERT INTO prd_store_price(store_no,sku_no,entity_no,market,price)"
+                + " VALUES (?,?,?,'CN',1100),(?,?,?,'TW',48050)", store, sku, entity, store, sku, entity);
+        var fractional = counterRequest("twd-fractional", selection);
+        assertThatThrownBy(() -> asMerchant(() -> manual.prepareCounter(scope, fractional)))
+                .isInstanceOfSatisfying(BizException.class, failure ->
+                        assertThat(failure.errorCode()).isEqualTo(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION));
+        noOrderOrStock(fractional.operation());
+
+        jdbc.update("UPDATE prd_store_price SET price=48000 WHERE store_no=? AND sku_no=? AND market='TW'",
+                store, sku);
+        var quote = prepare(counterRequest("twd", selection));
+        assertThat(quote.quote().currency()).isEqualTo("TWD");
+        assertThat(quote.quote().dueMinor()).isEqualTo(48000L);
+        var operation = quote.quote().operation();
+        assertThat(asMerchant(() -> manual.source(scope, new SourceLookup(operation, null))).currency())
+                .isEqualTo("TWD");
+        var created = place(accept(quote));
+        assertThat(created.phase()).isEqualTo("CREATED");
+        var sourceLookup = new SourceLookup(operation, created.subOrderNo());
+        var source = asMerchant(() -> manual.source(scope, sourceLookup));
+        assertThat(source.currency()).isEqualTo("TWD");
+        assertThat(source.dueMinor()).isEqualTo(48000L);
+
+        var at = testClock.instant().truncatedTo(ChronoUnit.MILLIS);
+        var wrongCurrency = new ConfirmManualReceipt(operation, "wrong-currency-" + sku,
+                source.orderRevision(), ManualMethod.CASH, 48000, "CNY", at, null);
+        assertThatThrownBy(() -> asMerchant(() -> manual.confirm(scope, wrongCurrency)))
+                .isInstanceOfSatisfying(BizException.class, failure ->
+                        assertThat(failure.errorCode()).isEqualTo(ErrorCode.ORDER_STATE_ILLEGAL));
+        var receipt = new ConfirmManualReceipt(operation, "twd-receipt-" + sku,
+                source.orderRevision(), ManualMethod.CASH, 48000, "TWD", at, null);
+        var admitted = asMerchant(() -> manual.confirm(scope, receipt));
+        assertThat(admitted.admissionState()).isEqualTo("ADMITTED");
+        assertThat(admitted.currency()).isEqualTo("TWD");
+        assertThat(admitted.declaredMinor()).isEqualTo(48000L);
+        assertThat(asMerchant(() -> manual.confirm(scope, receipt))).isEqualTo(admitted);
+        var paid = asMerchant(() -> manual.source(scope, sourceLookup));
+        assertThat(paid.currency()).isEqualTo("TWD");
+        assertThat(paid.declaration()).isEqualTo(admitted);
+    }
+
+    @Test
     void actualUserAndGuestBuyWithoutConsumerSession() {
         var violation = new AssertionError("counter purchase crossed a financial boundary");
         doThrow(violation).when(payModes).availablePayModes(anyString(), anyString());
@@ -1145,7 +1196,8 @@ class ManualCounterPurchaseIT extends CheckoutFlowFixture {
         var actual = AopUtils.getTargetClass(bean);
         assertThat(actual).isEqualTo(expected);
         String location = actual.getProtectionDomain().getCodeSource().getLocation().toString();
-        assertThat(location).contains("/beauty-data/ai-shop-codex/").contains("/target/classes/");
+        String sourceRoot = System.getProperty("manual.service.test.source-root", "/beauty-data/ai-shop-codex");
+        assertThat(location).contains(sourceRoot + "/").contains("/target/classes/");
         System.out.println("TASK66_CODE_SOURCE " + actual.getName() + ' ' + location);
     }
 }

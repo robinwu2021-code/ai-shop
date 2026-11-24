@@ -140,7 +140,8 @@ public final class WorkOrderQuery {
                                             execution == null ? null : execution.taskSnapshot(),
                                             taskSteps,
                                             people,
-                                            legacy ? List.of() : List.of("READ"));
+                                            legacy ? List.of() : List.of("READ"),
+                                            task.getVersion());
                                 })
                         .toList();
         var submission = submissions.selectOpenForWorkOrder(root.getEntityNo(), root.getStoreNo(),
@@ -181,7 +182,8 @@ public final class WorkOrderQuery {
                         legacy ? null : operation.getOperationNo(),
                         legacy ? "UNKNOWN" : operation.getPhase(),
                         projected.stream().map(WorkOrderTaskVO::taskNo).toList(),
-                        projected.isEmpty() ? null : projected.getFirst().plannedStartAt());
+                        projected.isEmpty() ? null : projected.getFirst().plannedStartAt(),
+                        root.getVersion());
         return new WorkOrderDetailVO(
                 vo,
                 new CustomerIdentityVO(

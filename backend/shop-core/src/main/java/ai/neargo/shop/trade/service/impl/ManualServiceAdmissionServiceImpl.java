@@ -953,6 +953,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                 hash = observed;
             }
         }
+        var admission = view(op, parent, declaration);
         return new ManualSourceFacts(
                 new OperationRef(op.getCaller(), op.getOperationNo()),
                 op.getOrderNo(),
@@ -969,8 +970,8 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                 lines,
                 clock.now(),
                 parent == null ? null : parent.getPayAmount(),
-                "CNY",
-                view(op, parent, declaration),
+                parent == null ? admission.currency() : parent.getCurrency(),
+                admission,
                 op.getPurchaseAuthority());
     }
 
@@ -985,6 +986,18 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
             requireDeclarationParty(op, declaration);
         }
         if (declaration == null) {
+            String currency;
+            if (parent != null) {
+                currency = parent.getCurrency();
+            } else if ("MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())) {
+                var quote = quotes.find(op.getCurrentQuoteNo());
+                if (quote == null) {
+                    throw conflict();
+                }
+                currency = new CounterEconomicCodec(json).readQuote(quote.getPricingJson()).currency();
+            } else {
+                currency = "CNY";
+            }
             return new ManualAdmissionView(
                     new OperationRef(op.getCaller(), op.getOperationNo()),
                     op.getOrderNo(),
@@ -996,7 +1009,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                     null,
                     null,
                     null,
-                    "CNY",
+                    currency,
                     null,
                     null,
                     "AWAITING_RECEIPT",

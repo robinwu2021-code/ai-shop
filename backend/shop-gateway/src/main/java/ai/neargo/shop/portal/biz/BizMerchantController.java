@@ -382,7 +382,16 @@ public class BizMerchantController {
     public StoreOpeningService.Receipt openStore(@jakarta.validation.Valid @RequestBody OpeningReq req) {
         var user=SecurityUtils.requireUser();
         if(req.entityNo()==null) BizAuthController.personalUser();
-        if(req.entityNo()!=null && (req.sourceStoreNo()==null || req.sourceStoreNo().isBlank())) throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (req.sourceStoreNo() != null && (req.entityNo() == null || req.sourceStoreNo().isBlank()))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (req.entityNo() != null && req.sourceStoreNo() == null) {
+            BizAuthController.personalUser();
+            if (req.entityNo().isBlank() || req.fields().market() == null || req.fields().market().isBlank()
+                    || req.fields().businessTypeCode() == null || req.fields().businessTypeCode().isBlank()
+                    || req.fields().industryCode() == null || req.fields().industryCode().isBlank()
+                    || req.fields().subIndustryCode() == null || req.fields().subIndustryCode().isBlank())
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         String market=req.entityNo()==null ? marketFor(user.userNo(),req.fields())
             : resolveMarket(Objects.requireNonNullElse(req.fields().market(),defaultMarket),markets.getIfAvailable(),req.fields(),otherBusinessType,industries());
         return openings.open(user,req.requestNo(),req.entityNo(),req.sourceStoreNo(),quickStartCommand(user.userNo(),market,req.fields(),industries()));

@@ -14,8 +14,10 @@ import java.util.Map;
  * 将来商品域改一列，交易域跟着炸。
  */
 public interface GoodsQueryPort {
+    /** Counter prices are selected for the authenticated entity and its market. */
     default Map<String, SkuSnapshot> snapshotForCounter(
-            CustomerParty party, List<String> skuNos, Map<String, String> storeByEntity) {
+            CustomerParty party, String entityNo, String market,
+            List<String> skuNos, Map<String, String> storeByEntity) {
         throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
     }
 

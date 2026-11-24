@@ -20,7 +20,7 @@ import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@EnabledIfEnvironmentVariable(named="COMMERCE_MYSQL_URL",matches="jdbc:mysql://127\\.0\\.0\\.1:3308/.*")
+@EnabledIfEnvironmentVariable(named="COMMERCE_MYSQL_URL",matches="jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/.*")
 class StoreOpeningRecoveryMysqlTest {
     JdbcTemplate admin,jdbc;
     String schema;
@@ -35,6 +35,7 @@ class StoreOpeningRecoveryMysqlTest {
     }
     @BeforeEach void setup() {
         String url=System.getenv("COMMERCE_MYSQL_URL"),dbUser=System.getenv("COMMERCE_MYSQL_USER"),pw=System.getenv("COMMERCE_MYSQL_PASSWORD");
+        assertTrue(url.contains("/?"), "Test sandbox URL must leave the database name empty");
         admin=new JdbcTemplate(new DriverManagerDataSource(url,dbUser,pw));
         assertTrue(admin.queryForObject("SELECT VERSION()",String.class).startsWith("9."));
         schema="store_open_test_"+UUID.randomUUID().toString().replace("-","");
@@ -74,6 +75,29 @@ class StoreOpeningRecoveryMysqlTest {
         }
         verify(merchants,times(1)).quickStart(any());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_opening_request",Integer.class));
+    }
+    @Test void storelessOwnerUsesExistingEntityAndReplaysAfterTheFirstStoreExists() {
+        jdbc.execute("CREATE TABLE mch_store (tenant_no VARCHAR(32),entity_no VARCHAR(64),store_no VARCHAR(64),address_detail VARCHAR(64),industry_code VARCHAR(32),sub_industry_code VARCHAR(32),industry_text VARCHAR(32),sub_industry_text VARCHAR(32),lat_e6 INT,lng_e6 INT,coord_sys VARCHAR(16),deleted INT NOT NULL DEFAULT 0)");
+        var candidate = new StoreCreationAccessService.Source("E1","Entity",null,"TW",1,0,true);
+        when(access.access(user)).thenReturn(new StoreCreationAccessService.Access(false,false,List.of(),true,true,List.of(candidate)));
+        var first = mock(ai.neargo.shop.merchant.dto.StoreVO.class);
+        when(first.storeNo()).thenReturn("FIRST");
+        when(stores.createFirst(eq("E1"), eq("TW"), eq(user.userNo()), any(StoreAdminService.CreateCommand.class)))
+                .thenAnswer(call -> {
+                    jdbc.update("INSERT INTO mch_store(tenant_no,entity_no,store_no) VALUES('MAIN','E1','FIRST')");
+                    return first;
+                });
+        var request = command("New store");
+        var receipt = tx.execute(status -> service.open(user,"FIRST-REQ","E1",null,request));
+        assertEquals("E1", receipt.entityNo());
+        assertEquals("FIRST", receipt.storeNo());
+        assertEquals("GENERAL_RETAIL",jdbc.queryForObject("SELECT sub_industry_code FROM mch_store",String.class));
+        when(access.access(user)).thenReturn(new StoreCreationAccessService.Access(false,false,List.of()));
+        assertEquals(receipt, tx.execute(status -> service.open(user,"FIRST-REQ","E1",null,request)));
+        assertEquals(ErrorCode.FORBIDDEN, assertThrows(BizException.class,
+                () -> tx.execute(status -> service.open(user,"ANOTHER-REQ","E1",null,request))).errorCode());
+        verify(stores,times(1)).createFirst(eq("E1"), eq("TW"), eq(user.userNo()), any(StoreAdminService.CreateCommand.class));
+        verifyNoInteractions(merchants);
     }
     @Test void branchUsesCurrentCapacityDespiteStaleDisplayAndKeepsItsFields() {
         jdbc.execute("CREATE TABLE mch_store (tenant_no VARCHAR(32),entity_no VARCHAR(64),store_no VARCHAR(64),address_detail VARCHAR(64),industry_code VARCHAR(32),sub_industry_code VARCHAR(32),industry_text VARCHAR(32),sub_industry_text VARCHAR(32),lat_e6 INT,lng_e6 INT,coord_sys VARCHAR(16),deleted INT NOT NULL DEFAULT 0)");
