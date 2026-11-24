@@ -84,7 +84,8 @@ public class InvoiceAutoIssueConsumer implements OutboxConsumer {
             var scope = new InvoicePort.Scope(sub.getTenantNo(), sub.getEntityNo(), sub.getStoreNo(), "SYSTEM");
             try {
                 if (STORE_SALE.equals(sub.getAdmissionKind())) issueStoreSale(scope, sub);
-                else invoices.issueIfAutomatic(scope, "SUB_ORDER", sub.getSubOrderNo());
+                else invoices.issueIfAutomatic(scope, "SUB_ORDER", sub.getSubOrderNo())
+                        .ifPresent(r -> invoices.uploadNow(scope, r.invoiceNo()));
             } catch (BizException e) {
                 if (!SKIP.contains(e.errorCode())) throw e;
                 log.warn("[invoice-auto-issue] {} 不自动开票，留给收银员手动开：{}", sub.getSubOrderNo(), e.errorCode());
@@ -101,6 +102,7 @@ public class InvoiceAutoIssueConsumer implements OutboxConsumer {
         if (!InvoicePort.StoreSettings.ON_PAID.equals(timing)) return;
         var buyer = invoices.rememberedBuyer(scope, "SUB_ORDER", sub.getSubOrderNo())
                 .orElse(InvoicePort.Buyer.consumer());
-        invoices.issue(scope, "SUB_ORDER", sub.getSubOrderNo(), buyer);
+        var receipt = invoices.issue(scope, "SUB_ORDER", sub.getSubOrderNo(), buyer);
+        invoices.uploadNow(scope, receipt.invoiceNo());
     }
 }

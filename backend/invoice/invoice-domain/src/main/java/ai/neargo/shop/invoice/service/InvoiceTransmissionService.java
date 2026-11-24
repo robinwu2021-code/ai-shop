@@ -18,6 +18,9 @@ public interface InvoiceTransmissionService {
     /** 把一张发票（含其折让）待人工处理的上传任务放回待发；没有可重传的任务时拒绝。@return 放回的条数 */
     int retry(Scope scope, String invoiceNo);
 
+    /** 同步上传：这张票（含折让）待传的任务立刻送出，返回被通道接受的条数（shop.invoice.transmission.sync）。 */
+    int transmitNow(Scope scope, String invoiceNo);
+
     /**
      * 期限巡检：未送达的任务到预警时点告警一次（WARN），过了法定期限再告警一次（ERROR）。
      * @return [新预警条数, 新逾期条数]

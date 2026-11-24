@@ -32,6 +32,13 @@ public interface InvoicePort {
     Optional<InvoiceReceipt> issueIfAutomatic(Scope scope, String sourceType, String sourceNo);
 
     /**
+     * 同步上传（TDD-发票模块 §25）：开立已提交后，把这张票待传的任务当场送服务商。
+     * 没开 {@code shop.invoice.transmission.sync} 时什么都不做；失败不抛，任务留给重试。
+     */
+    default void uploadNow(Scope scope, String invoiceNo) {
+    }
+
+    /**
      * 门店开票设定（TDD-统一订单与开票资料 AC11）：自订行的默认课税别与开票时机。没设过返回
      * {@code (null, MANUAL)}，不是错误。
      */
