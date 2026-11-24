@@ -112,4 +112,6 @@ shop.commerce.mall.accepted-deployments:
 | B7 | 未改 `StoreFeatureMatrix`；功能矩阵测试照旧 |
 | 回归 | `QuickStartFlowTest`（10）、`MerchantEntityStoreMarketTest`、`SchemaGeneratorTest`、`SchemaDriftTest` |
 
+166 冒烟发现（2026-11-09）：B3 在真实请求下没生效 —— `I18nConfig` 的语言解析只认简体、英文、阿拉伯文，`zh-TW` 一律回落简体。修法：繁体请求（`zh-TW / zh-HK / zh-MO` 或书写体系 `Hant`）解析成 `zh_TW`；没有繁体文案文件，服务端提示照旧回落简体。测试 `I18nConfigTest`（3，先红后绿）。市场名「中国台湾」来自 `sys_market` 的单一名称，不随语言变，需要时由运营在「市场货币」改名。
+
 实施中发现：库里已有一张 `sys_industry`（支付侧行业，带微信 / 支付宝小微开关），新表因此命名 `sys_store_industry`。契约 `openapi-b-onboarding.json` 的 `QuickStartRequest.subIndustryCode`、`Store.industryCode / subIndustryCode` 说明已同步。
