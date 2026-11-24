@@ -3,11 +3,11 @@
 > 由 `python3 scripts/gen-gateway-api-inventory.py` 生成，**请勿手改**。来源是后端源码里实际声明的入口。
 > 总览、分类规则与验证清单见 [网关接口清单](网关接口清单.md)。
 
-共 **1192** 个入口：支付 261、零售 564、餐饮 261、服务业 32、库存 45、平台与通用 29。
+共 **1215** 个入口：支付 268、零售 580、餐饮 261、服务业 32、库存 45、平台与通用 29。
 
-## 支付（261）
+## 支付（268）
 
-网关判权：能提前判 164、只要求登录 97。构建：默认构建 261。生产：已入网关 223、未部署 38。
+网关判权：能提前判 171、只要求登录 97。构建：默认构建 268。生产：已入网关 223、未部署 45。
 
 ### checkout（3）
 
@@ -63,7 +63,7 @@
 |---|---|---|---|---|---|---|
 | GET | `/biz/entitlements/{instanceNo}` | `@perm.canBiz('pay:ent:read')` | 能提前判 | 默认构建 | 已入网关 | BizEntitlementQueryController |
 
-### invoices（13）
+### invoices（19）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
@@ -74,11 +74,17 @@
 | GET | `/biz/invoices/{invoiceNo}` | `@perm.canBiz('biz:invoice:read')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceController |
 | POST | `/biz/invoices/{invoiceNo}/allowances` | `@perm.canBiz('biz:invoice:void')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceController |
 | POST | `/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void` | `@perm.canBiz('biz:invoice:void')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceController |
+| GET | `/biz/invoices/{invoiceNo}/deliveries` | `@perm.canBiz('biz:invoice:read')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceDeliveryController |
+| POST | `/biz/invoices/{invoiceNo}/deliveries` | `@perm.canBiz('biz:invoice:issue') and @perm.canBiz('biz:invoice:read') and @perm.canBiz('biz:print:export')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceDeliveryController |
+| POST | `/biz/invoices/{invoiceNo}/deliveries/{deliveryNo}/resends` | `@perm.canBiz('biz:invoice:issue') and @perm.canBiz('biz:invoice:read') and @perm.canBiz('biz:print:export')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceDeliveryController |
+| GET | `/biz/invoices/{invoiceNo}/documents` | `@perm.canBiz('biz:invoice:read') and @perm.canBiz('biz:print:export')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceDocumentController |
+| POST | `/biz/invoices/{invoiceNo}/documents` | `@perm.canBiz('biz:invoice:read') and @perm.canBiz('biz:print:export')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceDocumentController |
 | GET | `/biz/invoices/{invoiceNo}/print-facts` | `@perm.canBiz('biz:invoice:read')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceController |
 | POST | `/biz/invoices/{invoiceNo}/provider-checks` | `@perm.canBiz('biz:invoice:issue')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceController |
 | POST | `/biz/invoices/{invoiceNo}/reissue` | `@perm.canBiz('biz:invoice:issue')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceController |
 | POST | `/biz/invoices/{invoiceNo}/retransmissions` | `@perm.canBiz('biz:invoice:issue')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceController |
 | POST | `/biz/invoices/{invoiceNo}/revocation` | `@perm.canBiz('biz:invoice:void')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceController |
+| GET | `/biz/invoices/{invoiceNo}/timeline` | `@perm.canBiz('biz:invoice:read')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceTimelineController |
 | POST | `/biz/invoices/{invoiceNo}/void` | `@perm.canBiz('biz:invoice:void')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceController |
 
 ### management（60）
@@ -206,7 +212,7 @@
 | POST | `/biz/pay/v2/onboardings/{no}/newebpay-materials` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizPayOnboardingController |
 | GET | `/biz/pay/v2/onboardings/{no}/readiness` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizPayOnboardingController |
 
-### payment（29）
+### payment（30）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
@@ -223,6 +229,7 @@
 | POST | `/biz/payment/offline-records` | `@perm.canBiz('mch:pay:offline:record')` | 能提前判 | 默认构建 | 已入网关 | BizOfflineRecordController |
 | GET | `/biz/payment/offline-records/summary` | `@perm.canBiz('mch:pay:order:view')` | 能提前判 | 默认构建 | 已入网关 | BizOfflineRecordController |
 | POST | `/biz/payment/offline-records/{recordNo}/correct` | `@perm.canBiz('mch:pay:offline:manage')` | 能提前判 | 默认构建 | 已入网关 | BizOfflineRecordController |
+| POST | `/biz/payment/offline-records/{recordNo}/refund` | `@perm.canBiz('mch:pay:offline:manage')` | 能提前判 | 默认构建 | 未部署 | BizOfflineRecordController |
 | POST | `/biz/payment/offline-records/{recordNo}/void` | `@perm.canBiz('mch:pay:offline:manage')` | 能提前判 | 默认构建 | 已入网关 | BizOfflineRecordController |
 | GET | `/biz/payment/orders` | `@perm.canBiz('mch:pay:order:view')` | 能提前判 | 默认构建 | 已入网关 | BizPaymentController |
 | GET | `/biz/payment/orders/lookup` | `@perm.canBiz('mch:pay:order:view')` | 能提前判 | 默认构建 | 已入网关 | BizPaymentController |
@@ -370,9 +377,9 @@
 | GET | `/biz/stores/{storeNo}/stored-value/recharge-options` | `@perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueIssuerOperationsController |
 | GET | `/biz/stores/{storeNo}/stored-value/store-summary` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueReportController |
 
-## 零售（564）
+## 零售（580）
 
-网关判权：能提前判 435、只要求登录 123、留给入口判 6。构建：默认构建 496、插件 shop-commerce-integration 68。生产：已入网关 468、未部署 96。
+网关判权：能提前判 451、只要求登录 123、留给入口判 6。构建：默认构建 512、插件 shop-commerce-integration 68。生产：已入网关 468、未部署 112。
 
 ### activities（5）
 
@@ -638,6 +645,41 @@
 |---|---|---|---|---|---|---|
 | GET | `/biz/groups` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 已入网关 | BizCampaignController |
 | POST | `/biz/groups` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 已入网关 | BizCampaignController |
+
+### invoice-applications（9）
+
+| 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
+|---|---|---|---|---|---|---|
+| GET | `/biz/invoice-applications` | `@perm.canBiz('biz:invoice:read')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceApplicationController |
+| POST | `/biz/invoice-applications` | `@perm.canBiz('biz:invoice:issue')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceApplicationController |
+| GET | `/biz/invoice-applications/{applicationNo}` | `@perm.canBiz('biz:invoice:read')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceApplicationController |
+| POST | `/biz/invoice-applications/{applicationNo}/cancellations` | `@perm.canBiz('biz:invoice:setup')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceApplicationController |
+| GET | `/biz/invoice-applications/{applicationNo}/events` | `@perm.canBiz('biz:invoice:read')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceApplicationController |
+| POST | `/biz/invoice-applications/{applicationNo}/issuances` | `@perm.canBiz('biz:invoice:issue')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceApplicationController |
+| POST | `/biz/invoice-applications/{applicationNo}/rejections` | `@perm.canBiz('biz:invoice:setup')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceApplicationController |
+| GET | `/biz/invoice-applications/{applicationNo}/revisions` | `@perm.canBiz('biz:invoice:read')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceApplicationController |
+| POST | `/biz/invoice-applications/{applicationNo}/revisions` | `@perm.canBiz('biz:invoice:issue')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceApplicationController |
+
+### invoice-channel-accounts（1）
+
+| 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
+|---|---|---|---|---|---|---|
+| GET | `/biz/invoice-channel-accounts` | `@perm.canBiz('biz:invoice:setup')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceChannelController |
+
+### invoice-channel-applications（4）
+
+| 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
+|---|---|---|---|---|---|---|
+| GET | `/biz/invoice-channel-applications` | `@perm.canBiz('biz:invoice:setup')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceChannelController |
+| POST | `/biz/invoice-channel-applications` | `@perm.canBiz('biz:invoice:setup')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceChannelController |
+| GET | `/biz/invoice-channel-applications/{applicationNo}` | `@perm.canBiz('biz:invoice:setup')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceChannelController |
+| POST | `/biz/invoice-channel-applications/{applicationNo}/revisions` | `@perm.canBiz('biz:invoice:setup')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceChannelController |
+
+### invoice-channel-routes（1）
+
+| 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
+|---|---|---|---|---|---|---|
+| GET | `/biz/invoice-channel-routes` | `@perm.canBiz('biz:invoice:setup')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceChannelController |
 
 ### invoice-setup（15）
 
@@ -934,7 +976,7 @@
 | PUT | `/biz/pricing-tax-settings` | `@perm.canBiz('biz:pricing:tax:update')` | 能提前判 | 默认构建 | 已入网关 | BizPricingTaxSettingController |
 | POST | `/biz/pricing-tax-settings/reset` | `@perm.canBiz('biz:pricing:tax:update')` | 能提前判 | 默认构建 | 已入网关 | BizPricingTaxSettingController |
 
-### print（69）
+### print（70）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
@@ -955,6 +997,7 @@
 | GET | `/biz/print/health` | `@perm.canBiz('biz:print:read')` | 能提前判 | 默认构建 | 已入网关 | BizPrintMonitorController |
 | GET | `/biz/print/incidents` | `@perm.canBiz('biz:print:resolve')` | 能提前判 | 默认构建 | 已入网关 | BizPrintMonitorController |
 | POST | `/biz/print/incidents/{incidentNo}/acknowledgements` | `@perm.canBiz('biz:print:resolve')` | 能提前判 | 默认构建 | 已入网关 | BizPrintMonitorController |
+| GET | `/biz/print/invoices/{invoiceNo}/proof-history` | `@perm.canBiz('biz:print:read')` | 能提前判 | 默认构建 | 未部署 | BizPrintJobQueryController |
 | GET | `/biz/print/jobs` | `@perm.canBiz('biz:print:read')` | 能提前判 | 默认构建 | 已入网关 | BizPrintJobQueryController |
 | GET | `/biz/print/jobs/{jobNo}` | `@perm.canBiz('biz:print:read')` | 能提前判 | 默认构建 | 已入网关 | BizPrintJobQueryController |
 | GET | `/biz/print/jobs/{jobNo}/attempts` | `@perm.canBiz('biz:print:read')` | 能提前判 | 默认构建 | 已入网关 | BizPrintJobQueryController |

@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 56 个权限点 × 565 个受控端点**。
+统计：**6 个角色 × 56 个权限点 × 583 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -24,22 +24,22 @@
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 25 | ✅ | ✅ | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
-| `PRINT_READ` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | ✅ | — | — | — |
+| `PRINT_READ` | 更正与作废 App 外收款记录（原因必填、留痕） | 16 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_CONFIG` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | — | — | — | — |
 | `PRINT_RESOLVE` | 更正与作废 App 外收款记录（原因必填、留痕） | 14 | ✅ | ✅ | — | — | — | — |
+| `INVOICE_SETUP` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 14 | ✅ | ✅ | — | — | — | — |
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 13 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `AFTERSALE` | 售后同意/驳回/收货 | 13 | ✅ | ✅ | — | — | — | ✅ |
+| `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 13 | ✅ | ✅ | ✅ | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 9 | ✅ | — | — | — | — | — |
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
-| `INVOICE_SETUP` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 7 | ✅ | ✅ | — | — | — | — |
+| `INVOICE_ISSUE` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_DEVICE` | 更正与作废 App 外收款记录（原因必填、留痕） | 6 | ✅ | ✅ | — | — | — | — |
-| `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 6 | ✅ | ✅ | ✅ | — | — | — |
 | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 5 | ✅ | — | — | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 5 | ✅ | ✅ | — | — | — | ✅ |
 | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
-| `INVOICE_ISSUE` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 5 | ✅ | ✅ | ✅ | — | — | — |
 | `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 4 | ✅ | — | — | — | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `INVOICE_VOID` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 4 | ✅ | ✅ | — | — | — | — |
@@ -450,6 +450,7 @@
 - `/biz/print/batches/{batchNo}`
 - `/biz/print/changes`
 - `/biz/print/health`
+- `/biz/print/invoices/{invoiceNo}/proof-history`
 - `/biz/print/jobs`
 - `/biz/print/jobs/{jobNo}`
 - `/biz/print/jobs/{jobNo}/attempts`
@@ -497,6 +498,23 @@
 - `/biz/print/printers/{printerNo}/uncertainty-resolutions`
 - `/biz/print/requests/{requestNo}/generation-retries`
 
+### `INVOICE_SETUP`　（OWNER、MANAGER）
+
+- `/biz/invoice-applications/{applicationNo}/cancellations`
+- `/biz/invoice-applications/{applicationNo}/rejections`
+- `/biz/invoice-channel-accounts`
+- `/biz/invoice-channel-applications`
+- `/biz/invoice-channel-applications/{applicationNo}`
+- `/biz/invoice-channel-applications/{applicationNo}/revisions`
+- `/biz/invoice-channel-routes`
+- `/biz/invoice-setup/profile`
+- `/biz/invoice-setup/provider-ranges`
+- `/biz/invoice-setup/provider-tracks`
+- `/biz/invoice-setup/provider-verification`
+- `/biz/invoice-setup/providers`
+- `/biz/invoice-setup/ranges`
+- `/biz/invoice-setup/store-items/{storeItemNo}`
+
 ### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
 
 - `/biz/checkout/{operationNo}/offline-receipts/lookup`
@@ -528,6 +546,22 @@
 - `/biz/x/commerce/after-sales/{caseNo}`
 - `/biz/x/commerce/after-sales/{caseNo}:apply-decision`
 - `/biz/x/commerce/stores/{storeNo}/after-sales`
+
+### `INVOICE_READ`　（OWNER、MANAGER、CLERK）
+
+- `/biz/invoice-applications`
+- `/biz/invoice-applications/{applicationNo}`
+- `/biz/invoice-applications/{applicationNo}/events`
+- `/biz/invoice-applications/{applicationNo}/revisions`
+- `/biz/invoice-setup/store-items`
+- `/biz/invoice-setup/store-settings`
+- `/biz/invoices`
+- `/biz/invoices/upload-backlog`
+- `/biz/invoices/{invoiceNo}`
+- `/biz/invoices/{invoiceNo}/deliveries`
+- `/biz/invoices/{invoiceNo}/documents`
+- `/biz/invoices/{invoiceNo}/print-facts`
+- `/biz/invoices/{invoiceNo}/timeline`
 
 ### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
 
@@ -564,15 +598,15 @@
 - `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts`
 - `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records`
 
-### `INVOICE_SETUP`　（OWNER、MANAGER）
+### `INVOICE_ISSUE`　（OWNER、MANAGER、CLERK）
 
-- `/biz/invoice-setup/profile`
-- `/biz/invoice-setup/provider-ranges`
-- `/biz/invoice-setup/provider-tracks`
-- `/biz/invoice-setup/provider-verification`
-- `/biz/invoice-setup/providers`
-- `/biz/invoice-setup/ranges`
-- `/biz/invoice-setup/store-items/{storeItemNo}`
+- `/biz/invoice-applications/{applicationNo}/issuances`
+- `/biz/invoices/buyer-preferences`
+- `/biz/invoices/{invoiceNo}/deliveries/{deliveryNo}/resends`
+- `/biz/invoices/{invoiceNo}/provider-checks`
+- `/biz/invoices/{invoiceNo}/reissue`
+- `/biz/invoices/{invoiceNo}/retransmissions`
+- `/biz/store-orders/{orderNo}/invoice-data`
 
 ### `PRINT_DEVICE`　（OWNER、MANAGER）
 
@@ -582,15 +616,6 @@
 - `/biz/print/printers/{printerNo}/probes`
 - `/biz/print/printers/{printerNo}/status-changes`
 - `/biz/print/printers/{printerNo}/test-jobs`
-
-### `INVOICE_READ`　（OWNER、MANAGER、CLERK）
-
-- `/biz/invoice-setup/store-items`
-- `/biz/invoice-setup/store-settings`
-- `/biz/invoices`
-- `/biz/invoices/upload-backlog`
-- `/biz/invoices/{invoiceNo}`
-- `/biz/invoices/{invoiceNo}/print-facts`
 
 ### `PRICING_CONFIG_PUBLISH`　（OWNER）
 
@@ -623,14 +648,6 @@
 - `/biz/stored-value/consumptions/orders/{orderNo}/cancel`
 - `/biz/stored-value/consumptions/preview`
 - `/biz/stored-value/consumptions/resolve`
-
-### `INVOICE_ISSUE`　（OWNER、MANAGER、CLERK）
-
-- `/biz/invoices/buyer-preferences`
-- `/biz/invoices/{invoiceNo}/provider-checks`
-- `/biz/invoices/{invoiceNo}/reissue`
-- `/biz/invoices/{invoiceNo}/retransmissions`
-- `/biz/store-orders/{orderNo}/invoice-data`
 
 ### `PRICING_CONFIG_READ`　（OWNER）
 
