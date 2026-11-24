@@ -27,6 +27,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -173,12 +174,15 @@ class DispatchPoolFlowTest {
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService threads = Executors.newFixedThreadPool(2);
         List<Future<String>> results = new ArrayList<>();
+        AtomicReference<String> winningClaimNo = new AtomicReference<>();
         for (List<String> batch : List.of(List.of(c5, c6), List.of(c6))) {
             results.add(threads.submit((Callable<String>) () -> {
                 start.await();
                 try {
-                    dispatch.claim(new Caller("SHAREHUB", owner, "STAFF:E1001", "R-" + UUID.randomUUID(), null),
+                    var claim = dispatch.claim(
+                            new Caller("SHAREHUB", owner, "STAFF:E1001", "R-" + UUID.randomUUID(), null),
                             batch, "SIGN");
+                    winningClaimNo.set(claim.claimNo());
                     return "OK";
                 } catch (InventoryException e) {
                     return e.error().name();
@@ -202,17 +206,20 @@ class DispatchPoolFlowTest {
                     .findValuesAsString("status")).containsOnly("AVAILABLE");
         }
 
+        write(post("/api/inventory/v1/dispatch-pool/claims/" + winningClaimNo.get() + "/release"))
+                .andExpect(status().isOk());
+
         // 按幂等键查签收结果；释放后回到待签收
         String key = "K-" + UUID.randomUUID();
         String claimNo = id(mvc.perform(post("/api/inventory/v1/dispatch-pool/claims")
                 .contentType(MediaType.APPLICATION_JSON).header("Authorization", bearer)
                 .header("Idempotency-Key", key).header("X-Inventory-Actor", "STAFF:E1001")
-                .content("{\"dispatchIds\":[\"%s\"],\"businessRef\":\"S-1\"}".formatted(bigBatchWon ? c6 : c5)))
+                .content("{\"dispatchIds\":[\"%s\"],\"businessRef\":\"S-1\"}".formatted(c6)))
                 .andExpect(status().isOk()), "claimNo");
         assertThat(id(mvc.perform(get("/api/inventory/v1/dispatch-pool/claims/by-request/" + key)
                 .header("Authorization", bearer)).andExpect(status().isOk()), "claimNo")).isEqualTo(claimNo);
         write(post("/api/inventory/v1/dispatch-pool/claims/" + claimNo + "/release")).andExpect(status().isOk());
-        assertThat(pool("serialNo=" + (bigBatchWon ? "C6" : "C5")).get(0).get("status").asString())
+        assertThat(pool("serialNo=C6").get(0).get("status").asString())
                 .isEqualTo("AVAILABLE");
     }
 
