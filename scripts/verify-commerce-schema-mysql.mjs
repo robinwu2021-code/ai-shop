@@ -21,10 +21,10 @@ try {
   catch { await new Promise(resolve => setTimeout(resolve, 500)); }
  }
  assert.ok(ready, 'Disposable MySQL failed to start');
- sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql', import.meta.url), 'utf8'));
- sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V2__commerce_authorization_operations.sql', import.meta.url), 'utf8'));
- sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V3__commerce_catalog_synchronization.sql', import.meta.url), 'utf8'));
- sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V4__commerce_resource_mappings.sql', import.meta.url), 'utf8'));
+ sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V1__commerce_draft_resources.sql', import.meta.url), 'utf8'));
+ sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V2__commerce_authorization_operations.sql', import.meta.url), 'utf8'));
+ sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V3__commerce_catalog_synchronization.sql', import.meta.url), 'utf8'));
+ sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V4__commerce_resource_mappings.sql', import.meta.url), 'utf8'));
  assert.equal(sql('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()'), '17');
  const connection = (no, entity, store, identity) => `INSERT INTO cim_store_connection(connection_no,entity_no,
  store_no,profile_no,account_no,external_store_ref,channel_store_key,active_revision_no,status,identity_receipt_ref,identity_verified_at,identity_valid_until)

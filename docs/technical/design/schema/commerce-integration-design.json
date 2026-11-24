@@ -4079,7 +4079,7 @@
   "implementation": {
     "status": "ALL_BACKEND_SOURCE_CHECKPOINT_INTEGRATION_AND_CONCENTRATED_TESTS_PENDING",
     "moduleRoot": "backend-plugins/shop-commerce-integration",
-    "migration": "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",
+    "migration": "commerce-core/src/main/resources/db/commerce-integration/V1__commerce_draft_resources.sql",
     "tables": [
       "cim_provider",
       "cim_product_profile",
@@ -4171,10 +4171,10 @@
     "limitations": "仅 Mock 适配及默认关闭可选配置；真实供应商合同、账号授权联验和运行接入均递延。平台 ACK/PAID/REFUNDED 不是本地资金凭证；原独立资金授权/退款 owner 未提供时 WAITING_FUNDS，原已发料退回 owner 未提供时等待，禁止自动回补熟制材料。PMS 财务 owner 缺失不闭环。零售读取原商品真实发布修订及显式 SKU，缺历史/日历/税/媒体/资金来源均失败关闭。RETAIL 原撤销 owner 尚无实现，不假成功清空。普通正向校验失败不能转为撤销；只有真实 DISABLED 审计证明和显式双门禁可完整替换空目录。前端、真实平台、部署和生产迁移均不在本轮完成口径。",
     "tests": "本轮 ALL 整批行为测试、架构/权限守卫、原生数据库验收尚未执行；源码/测试源码已编写，统一编译由主执行者记录。历史专项证据独立保存在 historicalTests，不代表本轮通过；最终编译及集中测试以 TDD 实际记录为准。",
     "migrations": [
-      "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",
-      "commerce-core/src/main/resources/db/commerce/V2__commerce_authorization_operations.sql",
-      "commerce-core/src/main/resources/db/commerce/V3__commerce_catalog_synchronization.sql",
-      "commerce-core/src/main/resources/db/commerce/V4__commerce_resource_mappings.sql"
+      "commerce-core/src/main/resources/db/commerce-integration/V1__commerce_draft_resources.sql",
+      "commerce-core/src/main/resources/db/commerce-integration/V2__commerce_authorization_operations.sql",
+      "commerce-core/src/main/resources/db/commerce-integration/V3__commerce_catalog_synchronization.sql",
+      "commerce-core/src/main/resources/db/commerce-integration/V4__commerce_resource_mappings.sql"
     ],
     "dtoTypes": {
       "SourceReq": "ai.neargo.shop.commerce.dto.CatalogContracts.SourceReq",
@@ -8886,7 +8886,7 @@
         {
           "owner": "CIM",
           "version": 5,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V5__commerce_source_notices.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V5__commerce_source_notices.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
@@ -8993,7 +8993,7 @@
         {
           "owner": "CIM",
           "version": 6,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V6__commerce_inbound_callbacks.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V6__commerce_inbound_callbacks.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
@@ -9227,7 +9227,7 @@
         {
           "owner": "CIM",
           "version": 7,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V7__commerce_managed_mapping_projection.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V7__commerce_managed_mapping_projection.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [],
           "alterations": [
@@ -9237,7 +9237,7 @@
         {
           "owner": "CIM",
           "version": 8,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V8__commerce_original_channel_orders.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V8__commerce_original_channel_orders.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
@@ -9498,7 +9498,7 @@
         {
           "owner": "CIM",
           "version": 9,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V9__commerce_order_preparation_deadline.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V9__commerce_order_preparation_deadline.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [],
           "alterations": [
@@ -9509,7 +9509,7 @@
         {
           "owner": "CIM",
           "version": 10,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V10__commerce_original_line_allocations.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V10__commerce_original_line_allocations.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
@@ -9624,7 +9624,7 @@
         {
           "owner": "CIM",
           "version": 11,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V11__commerce_original_fulfillment_publications.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V11__commerce_original_fulfillment_publications.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
@@ -9809,7 +9809,7 @@
         {
           "owner": "CIM",
           "version": 12,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V12__commerce_availability_publications.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V12__commerce_availability_publications.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
@@ -9913,7 +9913,7 @@
         {
           "owner": "CIM",
           "version": 13,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V13__commerce_supplier_statements.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V13__commerce_supplier_statements.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
@@ -10127,7 +10127,7 @@
         {
           "owner": "CIM",
           "version": 14,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V14__commerce_native_after_sale.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V14__commerce_native_after_sale.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
@@ -10431,7 +10431,7 @@
         {
           "owner": "CIM",
           "version": 15,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V15__commerce_external_certificate_redemptions.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V15__commerce_external_certificate_redemptions.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
@@ -10894,7 +10894,7 @@
         {
           "owner": "CIM",
           "version": 16,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V16__commerce_explicit_source_withdrawal.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V16__commerce_explicit_source_withdrawal.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
@@ -10991,7 +10991,7 @@
         {
           "owner": "CIM",
           "version": 17,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V17__commerce_store_business_availability.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V17__commerce_store_business_availability.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [],
           "alterations": [
@@ -11004,7 +11004,7 @@
         {
           "owner": "CIM",
           "version": 18,
-          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V18__commerce_tax_source_notice.sql",
+          "source": "backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce-integration/V18__commerce_tax_source_notice.sql",
           "status": "CODED_EXECUTION_PENDING",
           "tables": [
             {
