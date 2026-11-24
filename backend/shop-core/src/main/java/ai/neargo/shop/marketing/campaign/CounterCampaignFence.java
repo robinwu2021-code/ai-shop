@@ -3,8 +3,10 @@ package ai.neargo.shop.marketing.campaign;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.RuntimeTriggerMetadata;
 import ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,6 +30,7 @@ import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitializat
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.JsonNode;
@@ -190,14 +193,26 @@ public class CounterCampaignFence implements SmartInitializingSingleton {
                     && enforcement.stream().allMatch("YES"::equals));
         }
         Map<String, Map<String, Object>> triggers = new HashMap<>();
-        for (var row : mapper.triggers()) require(triggers.put(text(row, "name"), row) == null);
+        for (var row : triggerMetadata()) require(triggers.put(text(row, "trigger_name"), row) == null);
         require(triggers.size() == contract.path("triggers").size());
         for (var expected : contract.path("triggers")) {
             var actual = triggers.get(expected.path("name").asText());
-            require(actual != null && text(actual, "event").equals(expected.path("event").asText())
-                    && text(actual, "timing").equals(expected.path("timing").asText())
-                    && text(actual, "owner_table").equals(expected.path("table").asText())
-                    && tokens(text(actual, "body")).equals(tokens(expected.path("body").asText())));
+            require(actual != null && text(actual, "event_manipulation").equals(expected.path("event").asText())
+                    && text(actual, "action_timing").equals(expected.path("timing").asText())
+                    && text(actual, "event_object_table").equals(expected.path("table").asText())
+                    && tokens(text(actual, "action_statement")).equals(tokens(expected.path("body").asText())));
+        }
+    }
+
+    private List<Map<String, Object>> triggerMetadata() {
+        var connection = DataSourceUtils.getConnection(source);
+        try {
+            return RuntimeTriggerMetadata.read(connection, connection.getCatalog(),
+                    RuntimeTriggerMetadata.Scope.COUNTER_CAMPAIGN);
+        } catch (SQLException failure) {
+            throw unavailable();
+        } finally {
+            DataSourceUtils.releaseConnection(connection, source);
         }
     }
 

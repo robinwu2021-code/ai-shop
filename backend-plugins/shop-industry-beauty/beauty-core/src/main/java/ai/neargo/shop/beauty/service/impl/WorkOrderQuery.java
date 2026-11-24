@@ -58,6 +58,10 @@ public final class WorkOrderQuery {
     }
     /** The Service has already authorized this persisted root in SQL; callers cannot supply a request number. */
     public WorkOrderDetailVO detail(BtyWorkOrder root) {
+        return db.read(() -> detailByScope(root));
+    }
+
+    private WorkOrderDetailVO detailByScope(BtyWorkOrder root) {
         var context = contexts.selectScoped(root.getEntityNo(), root.getStoreNo(), root.getWorkOrderNo());
         boolean legacy = context == null;
         var operation = legacy ? null : operations.selectOpenedForWorkOrder(root.getEntityNo(), root.getStoreNo(),

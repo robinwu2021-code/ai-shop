@@ -17,6 +17,9 @@ public final class RuntimeTriggerMetadata {
                 + "('bty_service_execution_fence','bty_service_execution_stock_intent')"),
         BEAUTY_EXECUTION("EVENT_OBJECT_TABLE='bty_service_execution_fence'"),
         BEAUTY_STOCK("EVENT_OBJECT_TABLE='bty_service_execution_stock_intent'"),
+        COUNTER_CAMPAIGN("EVENT_OBJECT_TABLE IN ('mkt_campaign','pmt_activity','pmt_activity_version',"
+                + "'pmt_activity_goods','pmt_activity_rule','pmt_enrollment','pmt_enrollment_goods')",
+                "shop_counter_campaign_trigger_metadata"),
         RESOURCE_OCCUPATION("EVENT_OBJECT_TABLE IN ('mch_resource_occupation','mch_resource_occupation_unit',"
                 + "'mch_resource_occupation_segment','mch_resource_occupation_bucket','mch_booking_owner',"
                 + "'mch_resource_command','mch_booking_hold_unit','mch_resource_bucket')",
