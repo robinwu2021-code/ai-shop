@@ -74,7 +74,7 @@ W3 → W9（美业小项要在 v2 实测）
 | **W2 店内设定放行** | | |
 | H12 | Given 主体 `PENDING_LICENSE` When 人员／房间／排班／排班规则的读写 Then 放行（门店须 ACTIVE） | 新 `BookingOwnerMapper#lockConfigScope` |
 | H13 | Given 主体 `PENDING_LICENSE` 且为主体负责人 When 读写商品课税别 Then 放行 | `GoodsPricingPolicyAccessPolicy` 改用 `StoreDirectoryPort#configCard` |
-| H14 | Given 主体不是 ACTIVE／PENDING_LICENSE When 上述接口 Then 回 `30071 ENTITY_NOT_OPERATIONAL`（不再借 10404） | ErrorCode + 三语文案 |
+| H14 | Given 主体不是 ACTIVE／PENDING_LICENSE When 上述接口 Then 回 `70200 ENTITY_NOT_OPERATIONAL`（不再借 10404） | ErrorCode + 三语文案 |
 | **W3 美业启用** | | |
 | H15 | When 访问 v2 `/biz/x/beauty/*`（未登入） Then 401 而不是 404；测试门店可建预约 | 运维步骤（§2 W3）；无代码变更 |
 | **W4 设备与员工** | | |
@@ -172,7 +172,7 @@ W3 → W9（美业小项要在 v2 实测）
 | 端点（行为变化） | `GET /biz/store-orders/{no}` 收 OS…；`POST /biz/store-orders` 处理 `member`、`adjustments` 新 `COUPON / ACTIVITY`、扣库存；`POST …/cancel` 释放库存／券／活动；`POST /biz/payment/offline-records` 收 `shiftNo`，回应带 `storeOrderNo`；`POST /biz/coupons/{no}/issue` 认 `MEMBER`；`POST /biz/activities`（更新）进行中可改名、收 `expectedRevision`；`ActivityVO` 加 `revision`；`/biz/personnel`、`/biz/resources`、`/biz/schedules`、`/biz/schedule-rules`、`/biz/goods/{g}/skus/{s}/pricing-policy` 放行 `PENDING_LICENSE`；美业预约 VO 加 `customer` |
 | 库表（`db/migration` V696 起） | V696 `ord_order` 加 `member_no`、`operator_no`、`device_no` + 索引 `(store_no, admission_kind, created_at)`、`(entity_no, member_no, created_at)`；V697 `mch_pos_device`、`mch_pos_activation`、`mch_account_pin`；V698 `ord_pos_shift`、`ord_pos_cash_movement`、`ord_pos_day_close`，`ord_offline_record` 加 `shift_no`；V699 `ord_store_refund`、`ord_store_refund_line`（按执行顺序编号，避免后建的迁移号小于已上线的） |
 | 权限码 | 新 `biz:order:refund`（MANAGER 有，CLERK 无）、`biz:pos:device`（只店主）、`biz:shift`（MANAGER、CLERK 有）；`biz:order:view` 沿用于列表与汇总 |
-| 错误码（三语） | `20031 STORE_ORDER_STOCK_SHORT`（data 列 SKU）、`20032 STORE_ORDER_COUPON_UNUSABLE`、`20033 STORE_ORDER_ACTIVITY_MISMATCH`（data 带后端金额）、`20034 STORE_ORDER_REFUND_EXCEEDS`、`20035 STORE_ORDER_REFUND_METHOD_UNAVAILABLE`、`20036 STORE_ORDER_MEMBER_REQUIRED`、`20040 DAY_CLOSE_OPEN_SHIFTS`、`20041 SHIFT_STATE_INVALID`、`30071 ENTITY_NOT_OPERATIONAL`、`30072 POS_ACTIVATION_INVALID`、`30073 POS_PIN_LOCKED`、`30074 POS_PIN_INVALID`（号段在实现时按 `ErrorCode` 现有分布核对） |
+| 错误码（三语） | `20031 STORE_ORDER_STOCK_SHORT`（data 列 SKU）、`20032 STORE_ORDER_COUPON_UNUSABLE`、`20033 STORE_ORDER_ACTIVITY_MISMATCH`（data 带后端金额）、`20034 STORE_ORDER_REFUND_EXCEEDS`、`20035 STORE_ORDER_REFUND_METHOD_UNAVAILABLE`、`20036 STORE_ORDER_MEMBER_REQUIRED`、`20040 DAY_CLOSE_OPEN_SHIFTS`、`20041 SHIFT_STATE_INVALID`、`70200 ENTITY_NOT_OPERATIONAL`、`70201 POS_ACTIVATION_INVALID`、`70202 POS_PIN_LOCKED`、`70203 POS_PIN_INVALID`（号段在实现时按 `ErrorCode` 现有分布核对） |
 | 配置项 | 无新开关。W3 在 v2 设 `shop.beauty.enabled`、`shop.beauty.deployment`、一次性 `shop.beauty.migration.mode=migrate` |
 
 ### W1 门店零售单 P3（拆 4 次提交）
@@ -217,7 +217,7 @@ W3 → W9（美业小项要在 v2 实测）
 
 - `BookingOwnerMapper` 新增 `lockConfigScope`：同 `lockScope`，但 `e.status IN ('ACTIVE','PENDING_LICENSE')`；`PersonnelServiceImpl / ScheduleServiceImpl / ResourceServiceImpl` 的 `scope()` 与 `ResourceServiceImpl:143` 改用它。**`lockScope` 原方法与预约下单不动**。
 - `StoreDirectoryPort` 新增 `configCard(storeNo)`：主体 `ACTIVE / PENDING_LICENSE` 都回卡片；`GoodsPricingPolicyAccessPolicy` 改用它（负责人检查保留）。
-- 拿不到 scope 时，若门店存在但主体状态不在允许集合 → `30071 ENTITY_NOT_OPERATIONAL`；门店不存在仍 `10404`。
+- 拿不到 scope 时，若门店存在但主体状态不在允许集合 → `70200 ENTITY_NOT_OPERATIONAL`；门店不存在仍 `10404`。
 
 ### W3 美业在 v2 启用（运维，1 天；每一步执行前由用户在本会话确认）
 
@@ -238,7 +238,7 @@ W3 → W9（美业小项要在 v2 实测）
 - 员工 PIN：`mch_account_pin(mch_account_no, pin_hash(bcrypt), pin_version, failed_count, locked_until, updated_by)`。
   - `PUT /biz/staff/{mchAccountNo}/pin {newPin}`：本人（MERCHANT token 的 `mchAccountNo` 相同）或有 `STORE_ADMIN` 者；4–6 位数字。
   - `GET /pos/staff-roster` → `{staff:[{staffNo(=mchAccountNo), name, avatar, roles[], pinSet}], rosterVersion}`：本店 `mch_store_role` 有角色、帐号 ACTIVE 者。**不下发任何 PIN 资料**（§3 S5）。
-  - `POST /pos/staff-sessions {staffNo, pin}` → 校验通过发 `LoginUser.merchant(mchAccountNo, …)` 的 MERCHANT token，`allowedStores = [设备门店]`，TTL 12 小时；token 记 `device_no`，供建单／退款／班次写入。连错 5 次 `locked_until = now + 15 分` → `30073`。
+  - `POST /pos/staff-sessions {staffNo, pin}` → 校验通过发 `LoginUser.merchant(mchAccountNo, …)` 的 MERCHANT token，`allowedStores = [设备门店]`，TTL 12 小时；token 记 `device_no`，供建单／退款／班次写入。连错 5 次 `locked_until = now + 15 分` → `70202`。
   - 离线：App 只允许「7 天内在本机线上登入过」的员工离线登入，用本机 Keystore 保护的验证资料，服务端不参与。
 - 订单归属（基础阶段前移，V696）：`ord_order` 加 `member_no`、`operator_no`、`device_no` 与两个索引；门店零售单建单写入
   `operator_no`（Scope 操作员）、`device_no`（设备 token 有就记）、`member_no`（`member.memberNo` 经 `resolveCounterReference` 解析；
@@ -316,9 +316,9 @@ W3 → W9（美业小项要在 v2 实测）
 | 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
 |---|---|---|---|---|---|
 | T101 | 新增 `lockConfigScope`（主体 `ACTIVE / PENDING_LICENSE`） | `shop-merchant` `MerchantMappers.BookingOwnerMapper` | H12 | 0.2 | T001 |
-| T102 | 人员、排班、资源三处 `scope()` 及 `ResourceServiceImpl:143` 改用 `lockConfigScope`；拿不到时区分 `30071` 与 `10404` | `PersonnelServiceImpl`、`ScheduleServiceImpl`、`ResourceServiceImpl` | H12、H14 | 0.3 | T101 |
+| T102 | 人员、排班、资源三处 `scope()` 及 `ResourceServiceImpl:143` 改用 `lockConfigScope`；拿不到时区分 `70200` 与 `10404` | `PersonnelServiceImpl`、`ScheduleServiceImpl`、`ResourceServiceImpl` | H12、H14 | 0.3 | T101 |
 | T103 | `StoreDirectoryPort#configCard` + `GoodsPricingPolicyAccessPolicy` 改用它（负责人检查保留） | `shop-base` spi、`StoreDirectoryPortImpl`、`shop-core` product/policy | H13 | 0.2 | — |
-| T104 | 错误码 `30071 ENTITY_NOT_OPERATIONAL` + 三语文案 | `ErrorCode`、`messages*.properties` | H14 | 0.1 | — |
+| T104 | 错误码 `70200 ENTITY_NOT_OPERATIONAL` + 三语文案 | `ErrorCode`、`messages*.properties` | H14 | 0.1 | — |
 | T105 | 单测与闸门：`ArchitectureTest`、`BackendI18nParityTest`；PR；发 v2 后通知手持会话用 `MUME88600253990002308` 实测 | — | H12–H14 | 0.2 | T101–T104 |
 
 **W4 收银设备、员工 PIN、订单归属栏位（5.5 天，发 v2）**
@@ -332,7 +332,7 @@ W3 → W9（美业小项要在 v2 实测）
 | T115 | 匿名激活 `POST /pos/devices/activate`（限速、码一次有效 10 分钟）；设备凭证 `X-Device-Token` 认证过滤器，`/pos/**` 只认设备凭证 | 安全配置、`PosDeviceAuthFilter` | H16 | 1 | T114 |
 | T116 | 员工 PIN：`PUT /biz/staff/{mchAccountNo}/pin`（本人或店主，bcrypt，4–6 位） | `BizStaffController`、`PosStaffService(Impl)` | H19 | 0.5 | T113 |
 | T117 | `GET /pos/staff-roster`（不含 PIN 资料）；`POST /pos/staff-sessions`（发 MERCHANT token，限设备门店、12 小时、记 `device_no`；连错 5 次锁 15 分） | `PosStaffController`、`LoginUser.merchant`、token 存储 | H17、H18 | 1.2 | T115、T116 |
-| T118 | 错误码 `30072–30074` 三语；单测、闸门、PR、发 v2 | — | H16–H20 | 0.7 | T111–T117 |
+| T118 | 错误码 `70201–70203` 三语；单测、闸门、PR、发 v2 | — | H16–H20 | 0.7 | T111–T117 |
 
 **W5 班次与日结（4 天，发 v2）**
 
@@ -359,6 +359,135 @@ W3 → W9（美业小项要在 v2 实测）
 | T141 | `GET /biz/store-orders/summary?from&to&groupBy=`：成交、退款（先只含线上售后）、折扣、笔数、客单价 | 新 `StoreSalesSummaryService(Impl)`、`BizStoreOrderController` | H23 | 1 | T111 |
 | T142 | 维度：`hour / day / payMethod`（现金记录 `method` + 收款单与线上 `pay_channel`）/ `staff`（`operator_no`）/ `category` | 同上 + mapper SQL | H23 | 1 | T141 |
 | T143 | 单测（含现金、跨日边界按台湾日）、闸门、PR、与 W7 一起发 v2 | — | H23 | 0.5 | T142、T132 |
+
+### 第一阶段（基础）实现方案（2026-11-24 细化，读 `main` 56b98097c）
+
+> 用户 2026-11-24：「先实现第一阶段，先给出具体的任务清单以及实现方案」。本节是第一阶段的**施工图**：
+> 精确到文件、方法、SQL 与测试；上面 T1xx 表是索引，以本节为准（有出入时本节覆盖）。
+
+**提交与分支**：共享工作区，**每个 PR 一个独立 worktree**（从 `origin/main` 拉分支），不切换主目录的分支。
+
+| PR | 内容 | 迁移 | 估时 |
+|---|---|---|---|
+| PR-1 | W2 店内设定放行 | 无 | 1 天 |
+| PR-2 | W4 设备、PIN、POS 会话 + 订单归属栏位 | V696、V697 | 5.5 天 |
+| PR-3 | W5 班次与日结 | V698 | 4 天 |
+| PR-4 | W7 会员消费纪录 + W6 营业汇总 | 无 | 3.5 天 |
+
+每个 PR：先写测试（红）→ 实现 → 本模块单测 + `ArchitectureTest` + `BackendI18nParityTest`（+ 有迁移时 `SchemaParityTest`）→ 提交前 `git diff` 自读 → 推送时 pre-push 全套 → 合入 → 发 v2（**经用户确认**）→ 通知手持会话实测。
+
+#### PR-1 · W2 店内设定放行
+
+现状要点：`BookingOwnerMapper#lockScope` 与 `#selectScope` 都写死 `e.status='ACTIVE'`；人员、排班、资源三个服务各有一份几乎相同的私有 `scope()`（拿不到就 `10404`）；
+商品课税别经 `GoodsPricingPolicyAccessPolicy#context` → `StoreDirectoryPort#cards`，而 `cards` 只回 ACTIVE 主体的门店。门店建立时一律 `MchStore.ACTIVE`（`StoreAdminServiceImpl:147`），T001 只需在 v2 复核一次。
+
+| 步 | 改动 | 说明 |
+|---|---|---|
+| 1 | `MerchantMappers.BookingOwnerMapper` 新增 `lockConfigScope(tenantNo, entityNo, storeNo)` | SQL 同 `lockScope`，只把条件改为 `e.status IN ('ACTIVE','PENDING_LICENSE')`；同样 `@InterceptorIgnore(dataPermission="true")`、`LOCK IN SHARE MODE` |
+| 2 | 同上新增 `selectScopeState(tenantNo, entityNo, storeNo)` → `(entity_status, store_status)` | 不加锁、不过滤状态，只用于区分「不存在」与「状态不允许」 |
+| 3 | 新 `shop-merchant/.../service/support/StoreConfigScopeGuard`（`@Component`） | `ResourceCommandScopeRow lock(String entity, String store)`：`lockConfigScope` 命中且号码一致 → 回；否则查 `selectScopeState`：有行 → `70200 ENTITY_NOT_OPERATIONAL`，无行 → `10404` |
+| 4 | `PersonnelServiceImpl#scope`、`ScheduleServiceImpl#scope`、`ResourceServiceImpl#scope` 与 `ResourceServiceImpl:143` 改调 `StoreConfigScopeGuard#lock`；删掉三份私有 `scope()` | **`lockScope` / `selectScope` 原方法不动**（预约下单 `ResourceCommandServiceImpl`、`ResourceCandidatesPortImpl` 仍要求 ACTIVE） |
+| 5 | `shop-base` `StoreDirectoryPort` 新增 `Map<String, StoreCard> configCards(Collection<String> storeNos)`；`StoreDirectoryPortImpl` 实现 | 同 `cards`，但主体状态取 `ACTIVE / PENDING_LICENSE`（把 `activeEntities` 参数化为状态集合，`cards` 调用处不变） |
+| 6 | `GoodsPricingPolicyAccessPolicy#context` 改用 `configCards` | 负责人检查 `owner()`、门店在 `storeNos` 内的检查**保留** |
+| 7 | `ErrorCode` 加 `ENTITY_NOT_OPERATIONAL(70200, "err.entity.not_operational")`；`messages*.properties` 三语 | 文案：「營業主體尚未啟用，暫不能設定」类 |
+
+测试：
+- `StoreConfigScopeGuardTest`（mock mapper）：ACTIVE 回行；PENDING_LICENSE 回行；SUSPENDED → 70200；不存在 → 10404。
+- 在既有 `PersonnelMaintenanceIT`、`ScheduleMaintenanceIT` 各加一例「主体 PENDING_LICENSE 可建人员／存排班规则」；资源在同一 IT 风格下加一例。
+- `GoodsPricingPolicyAccessPolicyTest`：PENDING_LICENSE 负责人可写；非负责人仍 10403。
+- 回归：预约相关 IT 不改断言、照跑（证明 `lockScope` 未被波及）。
+
+#### PR-2 · W4 设备、PIN、POS 会话、订单归属栏位
+
+**迁移**
+- `V696__store_order_attribution.sql`：`ord_order` 加 `member_no VARCHAR(32) NULL`、`operator_no VARCHAR(32) NULL`、`device_no VARCHAR(32) NULL`；索引 `idx_order_store_sale (store_no, admission_kind, created_at)`、`idx_order_entity_member (entity_no, member_no, created_at)`。
+- `V697__pos_device_and_pin.sql`：
+  - `mch_pos_device`（`device_no` 唯一 `PD…`、`tenant_no`、`entity_no`、`store_no`、`name`、`model`、`app_version`、`status ACTIVE|UNBOUND`、`token_hash CHAR(64)` 唯一、`bound_by`、`bound_at`、`unbound_by`、`unbound_at`、`last_seen_at`、`version`）
+  - `mch_pos_activation`（`code_hash CHAR(64)` 唯一、`entity_no`、`store_no`、`expires_at`、`used_at`、`used_device_no`、`created_by`）
+  - `mch_account_pin`（`mch_account_no` 主键、`pin_hash`（bcrypt）、`pin_version`、`failed_count`、`locked_until`、`updated_by`、`updated_at`、`version`）
+  - `mch_pos_session`（`token_hash CHAR(64)` 主键、`device_no`、`entity_no`、`store_no`、`mch_account_no`、`issued_at`、`expires_at`、`revoked_at`；索引 `(device_no)`）
+  - 权限码 `biz:pos:device` 只给店主（OWNER 为 `*`），**不需**角色种子更新。
+
+**代码**（`shop-merchant` 放实体、mapper、服务；控制器放 `shop-gateway/portal/biz` 与新 `portal/pos`，与 `BizStaffController` 同层）
+
+| 步 | 改动 | 说明 |
+|---|---|---|
+| 1 | `BizPerms.POS_DEVICE = "biz:pos:device"` + 标签 | 不进 MANAGER / CLERK |
+| 2 | `PosDeviceService(Impl)`：`issueActivationCode(entity, store, actor)` → 6 位数字码（`SecureRandom`），存 SHA-256，10 分钟；同店未用旧码作废 | `POST /biz/pos/activation-codes {storeNo}` |
+| 3 | `activate(code, deviceInfo)`：按码哈希 `FOR UPDATE`，未用且未过期 → 建 `mch_pos_device`、产生 32 字节随机 `deviceToken`（只回一次，存 SHA-256）、标记码已用 | `POST /pos/devices/activate`（匿名）；以 `InMemoryRateLimiter` 每 IP 每分钟 10 次，超过 `10429` 类既有码 |
+| 4 | `list(entity, store)`、`unbind(deviceNo, actor)`：`status=UNBOUND`，并把该设备所有 `mch_pos_session.revoked_at` 置值 | `GET /biz/pos/devices`、`POST /biz/pos/devices/{deviceNo}/unbind` |
+| 5 | `PosDeviceAuthFilter`（`/pos/**`，除 `/pos/devices/activate`）：读 `X-Device-Token` → 哈希查 `ACTIVE` 设备 → 放入请求属性 `PosDevice{deviceNo, entityNo, storeNo}`，并更新 `last_seen_at`（每分钟至多一次）；Spring Security 对 `/pos/**` 放行、由本过滤器把关 | 失败 401 |
+| 6 | `PosStaffService(Impl)#setPin(actor, mchAccountNo, pin)`：本人或有 `STORE_ADMIN` 者；4–6 位数字；`BCryptPasswordEncoder`；`pin_version+1`、清锁 | `PUT /biz/staff/{mchAccountNo}/pin`（新 `BizPosStaffController`，权限在服务内判） |
+| 7 | `roster(PosDevice)`：`mch_store_role` 有该店角色且 `mch_account.status=ACTIVE` → `{staffNo, name, avatar, roles[], pinSet}` + `rosterVersion`（最大更新时间） | `GET /pos/staff-roster` |
+| 8 | `openSession(PosDevice, staffNo, pin)`：员工须在该店有角色；锁 `mch_account_pin` 行；`locked_until` 未过 → `70202`；比对失败 `failed_count+1`，到 5 → 锁 15 分钟，回 `70203`；成功清零 → `tokenStore.issue(SessionData.of(LoginUser.merchant(mchAccountNo, displayName)))`，写 `mch_pos_session`（12 小时） | `POST /pos/staff-sessions` → `{token, expiresAt, staff{…}, storeNo}` |
+| 9 | `PosSessionBinder`（挂在 `BizContextFilter` 之后）：Bearer token 的 SHA-256 命中 `mch_pos_session` → 必须同时带同一设备的 `X-Device-Token`、未撤销、未过期，否则 401；通过则把 `BizContext` 收窄为该设备门店（`storeNos={store}`、当前门店=store），并设 `PosSessionContext.current() = {deviceNo, storeNo}`（请求级） | 查询结果用 Caffeine 缓存 30 秒（撤销最长 30 秒生效） |
+| 10 | `StoreOrderServiceImpl#insert`：写 `operator_no = scope.operator`、`device_no = PosSessionContext.deviceNo()`；`BizStoreOrderController` 把 `member.memberNo` 传入 `CreateCmd`，服务内 `CustomerIdentityPort#resolveCounterReference` 解析后写 `member_no`（不存在 `10404`） | 解析要求主体 ACTIVE（`requireMerchant`）—— PENDING 主体带会员建单回 10404，记入偏差 |
+| 11 | `StoreSaleView` 加 `memberNo`、`operatorNo`、`deviceNo` | 回应新增栏位，旧端不受影响 |
+| 12 | `ErrorCode` `70201 POS_ACTIVATION_INVALID`、`70202 POS_PIN_LOCKED`（带 `{0}` = 解锁时间）、`70203 POS_PIN_INVALID`（带 `{0}` = 剩余次数）三语 | `BackendI18nParityTest` 要求带参必传 |
+
+测试：
+- `PosDeviceServiceImplTest`：码一次有效、过期失效、同店新码作废旧码；解绑后会话全部撤销。
+- `PosStaffServiceImplTest`：本人／店主可设 PIN、他人 10403；连错 5 次锁 15 分钟、锁内正确 PIN 也拒；成功清零；名册不含任何 PIN 栏位（反射断言字段名）。
+- `PosSessionHttpFlowTest`（`shop-app` scenario）：激活 → 设 PIN → 开会话 → 带两个头建门店零售单 → 详情 `operatorNo / deviceNo` 正确；只带 Bearer 不带设备头 → 401；解绑后 401；会话收窄后 `X-Store-No` 指别店无效。
+- `StoreOrderServiceImplTest#member_no_written_from_member_body`。
+- `BizEndpointPermTest` 覆盖新端点。
+
+#### PR-3 · W5 班次与日结
+
+**迁移** `V698__pos_shift.sql`：
+- `ord_pos_shift`（`shift_no` 唯一 `SH…`、`tenant_no`、`entity_no`、`store_no`、`device_no`、`operator_no`、`opening_cash_minor`、`currency`、`status OPEN|CLOSED`、`opened_at`、`closed_at`、`closed_by`、`counted_cash_minor`、`denominations JSON`、`expected_cash_minor`、`diff_minor`、`summary JSON`、`version`；产生列 `open_device_no = IF(status='OPEN', device_no, NULL)` + 唯一键 → 同设备只一个 OPEN）
+- `ord_pos_cash_movement`（`movement_no`、`shift_no`、`type IN|OUT`、`amount_minor`、`reason`、`operator_no`、`at`、`idem_key_hash` 唯一）
+- `ord_pos_day_close`（`store_no + business_date` 唯一、`entity_no`、`summary JSON`、`closed_by`、`closed_at`）
+- `ord_offline_record` 加 `shift_no VARCHAR(32) NULL` + 索引 `(shift_no)`
+- 角色种子：照 `V694` 写法把 `biz:shift` 追加到内置 `MANAGER`、`CLERK`
+- 产生列与 `known-sql-dialect.txt` 的关系：实现时先跑 SQL 方言守卫；若不允许，改为服务内锁设备当前班次行实现同一约束
+
+**代码**（trade 域：`shop-core/.../trade`）
+
+| 步 | 改动 | 说明 |
+|---|---|---|
+| 1 | `BizPerms.SHIFT = "biz:shift"`，`ROLE_PERMS` 给 MANAGER、CLERK | 与 V698 种子一致 |
+| 2 | `PosShiftService(Impl)#open(scope, deviceNo, openingCashMinor, openedAt, key)` | 须在 POS 会话内（`PosSessionContext` 有设备），否则 `20041`；唯一键冲突 → 回该设备现有 OPEN 班次的 `20041` |
+| 3 | `#move(shiftNo, type, amountMinor, reason, at, key)` | 只对本店 OPEN 班次 |
+| 4 | `OfflineRecordService.RecordCmd` 加 `shiftNo`；`BizOfflineRecordController.RecordBody` 加 `shiftNo`（请求体拒未知字段，必须显式加）；`OfflineRecordServiceImpl#record` 校验同店 OPEN 班次后写入 | 不带照旧 |
+| 5 | `#close(shiftNo, countedCashMinor, denominations, closedAt, key)`：锁班次 → `expected = opening + Σ现金记录(RECORDED, method=CASH, shift) + ΣIN − ΣOUT`（门店退款在零售阶段 T216 补）；`diff = counted − expected`；`summary.byMethod` = 本班现金记录按 `method` + 本设备在开班至交班期间所建门店零售单挂的 `ord_store_collection` 按 `pay_channel`；`summary.orders` 笔数与金额 | 重复交班回原结果 |
+| 6 | `#list(store, date)`、`#get(shiftNo)` | `GET /biz/shifts?date=`、`GET /biz/shifts/{shiftNo}` |
+| 7 | `DayCloseService#close(store, date)`：当日（门店市场时区的营业日，沿用支付汇总的 market-day 边界工具）班次须全为 CLOSED，否则 `20040`（data 列未交班号）；汇总写快照；已日结回原快照 | `POST /biz/day-closes {date}`、`GET /biz/day-closes/{date}` |
+| 8 | 新 `BizShiftController`（`shop-core/.../trade/api/biz`），写操作带 `Idempotency-Key` | 权限 `biz:shift` |
+| 9 | `ErrorCode` `20040 DAY_CLOSE_OPEN_SHIFTS`、`20041 SHIFT_STATE_INVALID` 三语 | |
+
+测试：`PosShiftServiceImplTest`（应有现金含进出与现金记录、不含已作废、不含别班；重复交班幂等；同设备二次开班拒）、`DayCloseServiceImplTest`（有未交班拒并列号；重复日结同快照）、`BizOfflineRecordFlowTest` 加 `shiftNo` 用例（别店班次拒、已交班拒）。
+
+#### PR-4 · W7 会员消费纪录 + W6 营业汇总
+
+**W7**
+
+| 步 | 改动 | 说明 |
+|---|---|---|
+| 1 | trade 域新 `MemberOrderHistoryService(Impl)#page(entity, memberNo, userNo, from, to, cursor, size)` | SQL：`ord_sub_order s JOIN ord_order o` where `s.entity_no=?` and `(o.member_no=? OR o.user_no=?)`，`created_at` 区间，`(created_at, id)` 倒序游标，`size ≤ 50`；品名摘要取 `ord_item` 前 3 个 `goods_name` |
+| 2 | `BizMemberController` 新增 `GET /biz/members/{memberNo}/orders`（`biz:customer`） | 会员 → `userNo` 用 `MemberService` 既有解析；会员不在本主体 → 10404；没有 `userNo`（LEAD）时只按 `member_no` 查 |
+| 3 | 行：`{orderNo, subOrderNo, storeNo, storeName, at, totalMinor, itemsSummary, status, kind: STORE_SALE|ONLINE}` | 店名经 `StoreDirectoryPort#cards` 批量取 |
+
+测试：`MemberOrderHistoryServiceImplTest`（门店零售单按 `member_no` 命中、线上单按 `user_no` 命中、别主体不出现、游标连续）。
+
+**W6**
+
+| 步 | 改动 | 说明 |
+|---|---|---|
+| 1 | trade 域新 `StoreSalesSummaryService(Impl)#summarize(entity, store, from, to, groupBy)` | `from/to` 为营业日（门店市场时区），跨度 ≤ 31 天 |
+| 2 | 基础数：本店 `ord_sub_order` 状态属已成交集合（与 `MerchantOrderServiceImpl` 的 `TRANSACTED` 同一常量，**按 `created_at`**，与 `/biz/report` 同一时间轴）→ `grossMinor`、`count`、`discountMinor`（`discount_amount`）；`refundMinor` = 同区间 `ord_after_sale` 已退款金额（门店退款在 T216 补）；`netMinor = gross − refund`；`avgMinor = gross / count` | 门店零售单与线上单都在内 |
+| 3 | `groupBy=hour|day`：按门店时区截断 `created_at` | |
+| 4 | `groupBy=payMethod`：门店零售单 = 现金记录按 `method` + `ord_store_collection` 按 `pay_channel`；线上单 = `ord_order.pay_channel` | 一张单多种付款各自计入 |
+| 5 | `groupBy=staff`：门店零售单按 `operator_no`（名称经 `mch_account` 批量取）；没有 `operator_no` 的归「未记录」；线上单归「线上」 | |
+| 6 | `groupBy=category`：`ord_item.category_no` 的 `paid_share_minor` 合计，名称经类目端口；空归「未分类」 | 自订行无类目 |
+| 7 | `GET /biz/store-orders/summary`（`BizStoreOrderController`，`biz:order:view`） | 回 `{from, to, currency, grossMinor, refundMinor, netMinor, discountMinor, count, avgMinor, groups:[{key, label, amountMinor, count}]}` |
+
+测试：`StoreSalesSummaryServiceImplTest`（含现金记录与收款单的混合付款按方式拆分；跨午夜按台湾日；已作废现金记录不计；退款扣减 net；员工维度）。
+
+#### 第一阶段执行前需要确认的两件事
+
+1. **T001**：v2 上 `PENDING_LICENSE` 主体（`MUME88600253990002308`）旗下门店的 `mch_store.status` —— 只读查一条正式库，需用户同意（或由手持会话在 App 侧确认门店卡片可见）。不阻塞 PR-1 开发。
+2. **PR-2 的会员解析要求主体 ACTIVE**：审核中的主体建单若带会员号会回 10404。建议维持（会员属对外经营）；若要放行，需另改 `MemberCodeResolveServiceImpl#requireMerchant`。
 
 #### 阶段二 · 零售（约 15 天）
 
@@ -500,7 +629,7 @@ W3 → W9（美业小项要在 v2 实测）
 | H11 | `StoreOrderRefundHttpFlowTest#detail_lists_refunds` | |
 | H12 | `PersonnelServiceImplTest#pending_license_entity_may_manage_personnel`、`ScheduleServiceImplTest#…`、`ResourceServiceImplTest#…` | |
 | H13 | `GoodsPricingPolicyAccessPolicyTest#pending_license_owner_may_write` | |
-| H14 | `PersonnelServiceImplTest#suspended_entity_returns_30071` | |
+| H14 | `PersonnelServiceImplTest#suspended_entity_returns_70200` | |
 | H15 | v2 实测纪录（`curl` 输出贴本节） | |
 | H16 | `PosDeviceServiceImplTest#activation_code_single_use_and_expires` | |
 | H17 | `PosStaffServiceImplTest#roster_has_no_pin_material` | |
@@ -527,3 +656,6 @@ W3 → W9（美业小项要在 v2 实测）
 |---|---|
 | 2026-11-24 | 草稿：依手持 App 18 项需求与代码盘点（`main` 56b98097c）写成 |
 | 2026-11-24 | 用户调整顺序：「美业放在后面，先实现基础功能，然后零售，美业」；`ord_order` 三栏位前移到 W4 |
+| 2026-11-24 | 错误码改用商家号段 7xxxx（3xxxx 属履约）：`70200 ENTITY_NOT_OPERATIONAL`；W4 预留 `70201–70203` |
+| 2026-11-24 | PR-1（W2）提交 #57（`dd14beb42`）：单测、`ArchitectureTest`、`BackendI18nParityTest` 绿，新 SQL 在 MySQL 8.4 实测；三个 `*MaintenanceIT` 新增用例因 `schema-test.sql` 含 H2 专用语法无法在 MySQL 建表而未跑；未发 v2 |
+| 2026-11-24 | PR-2（W4）未开工，按用户要求转交接：[交接文档](../handoff/handheld-pos-backend-2026-11-24/README.md) |
