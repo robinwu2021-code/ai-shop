@@ -1308,6 +1308,20 @@ App 从 v2 取发票 PDF 时，`download-grants` 返回的 `/private/print-artif
 - **ZZ 号码不是财政部配给的**，用它开出的票不是合法发票，不得交给顾客；测完开出的票须作废，号段须停用。STUB 不对外送票。
 - **未做**：开票与真实发票（`FACT`）打印。三家店目前都是 0 单，开票需要一张已付款订单，怎么建由用户决定。
 
+### §23.8 v2 真实发票打印（2026-11-23 02:37–03:05 UTC，用户：「正式库插测试单」）
+
+开票只认 `SUB_ORDER`（`SubOrderInvoiceSourcePortImpl`：子单 `WAIT_FULFILL`/`FULFILLING`/`COMPLETED`、未退款、主单 `paid_at` 有值、明细金额对上实付）。v2 上没有不经顾客端就能产生已付款子单的正规流程（线下收款记账写死 CNY；收款链接 / 收款码产生的是收款单；线下销售不记钱；运营端线下下单是商城采购单），按用户决定直接在正式库插一张测试单。
+
+| 步骤 | 内容 |
+|---|---|
+| 插测试单 | `ord_order` `TESTIVC20261123001`（`PAID`、`TWD`、5000）、`ord_sub_order` `TESTIVC20261123001S1`（`WAIT_FULFILL`）、`ord_item` #47「測試品項（非真實交易）」5000 × 1；买家号 `TEST-IVC-BUYER`，`created_by=claude-invoice-test`。约束 `ck_counter_order_party` 只允许 USER（须有 `user_no`）/ GUEST（仅美业线下）/ CHANNEL，首次 `user_no` 为空被拒、整笔回滚。v2 `SHOP_JOB_ENABLED=false`，不会被结算或超时任务处理 |
+| 第一张票 | 02:46:22 `IVC2611231DV7681E9M` ZZ00000000：品名乱码导致打印 `82001 print.controlCharacter`——插数时 mysql 客户端用 latin1 连接，UTF-8 被二次编码，含 U+0081 等控制字符；以 `utf8mb4` 连接重写品名（HEX 逐字节核对）；02:52:30 作废 |
+| 第二张票 | 02:54:39 `IVC261123SG85RDN4WS` ZZ00000001（B2C，`printMark=true`）→ print-facts 证明联 + 交易明细 → 6 组模拟打印全部 READY 并显示（证明联 58 原卷宽 15494 / A4 15423；交易明细 58 原卷宽 17024 / A4 17033；80 原卷宽 17018 / A4 17005 字节），PDF 内容核对：創科系統有限公司、ZZ-00000001、115 年 11–12 月、随机码 9875、总计 50、卖方 50766768、条码与 QR；02:58:30 作废 |
+| 收尾 | 03:0x 删除测试单三行（各 1 行，`created_by` 限定）；两张作废票留在 `ivc_invoice`（`source_no` 指向已删的子单，仅作记录）；号段 `IVR261123PDHHHZQ5V3` 用掉 2 张、剩 48；门店开通配置保留 |
+
+- STUB 不对外送票，两张 ZZ 票不是合法发票。
+- **教训**：在容器里用 `mysql` 写中文必须 `--default-character-set=utf8mb4`（或 `SET NAMES utf8mb4`），否则静默写坏；打印中心的控制字符校验把它挡在了出纸之前。
+
 ## §24 POS 收款开票来源（PAY_ORDER / OFFLINE_RECORD）
 
 档位：1（新增 sourceType 取值 = `POST /biz/invoices` 的契约取值扩展）· 状态：已实现 · 2026-11-23
