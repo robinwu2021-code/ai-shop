@@ -535,7 +535,21 @@ public class MemberServiceImpl implements MemberService {
                     .le(idleBefore != null, MbrMemberStore::getLastOrderAt, idleBefore)
                     .le(q.lastOrderBefore() != null, MbrMemberStore::getLastOrderAt, q.lastOrderBefore())
                     .ge(q.lastOrderAfter() != null, MbrMemberStore::getLastOrderAt, q.lastOrderAfter()));
-            List<String> nos = storeRows.stream().map(MbrMemberStore::getMemberNo).toList();
+            List<String> nos = new java.util.ArrayList<>(storeRows.stream().map(MbrMemberStore::getMemberNo).toList());
+            /*
+             * 门店行只在这家店下过单之后才写（applyStore）。在本店录入、还没消费的会员（含线索）
+             * 没有门店行，却是本店的人：按「首次归属门店」补进来（2026-11-24 v2：柜台建了会员，名单里没有）。
+             * 只在没有门店行专属条件（门店等级、沉睡、下单时间）时补 —— 那些条件对没下过单的人恒不成立。
+             */
+            boolean storeRowOnlyFilters = q.level() != null || idleBefore != null
+                    || q.lastOrderBefore() != null || q.lastOrderAfter() != null;
+            if (!storeRowOnlyFilters) {
+                memberMapper.selectList(Wrappers.<MbrMember>lambdaQuery()
+                                .select(MbrMember::getMemberNo)
+                                .eq(MbrMember::getEntityNo, entityNo)
+                                .eq(MbrMember::getFirstStoreNo, q.storeNo()))
+                        .forEach(m -> { if (!nos.contains(m.getMemberNo())) nos.add(m.getMemberNo()); });
+            }
             // 一个都没有时给一个不可能命中的值，否则 in() 空集合会被 MyBatis-Plus 忽略掉，
             // 变成「整个主体的会员」—— 那正好是反的
             w.in(MbrMember::getMemberNo, nos.isEmpty() ? List.of("__none__") : nos);
