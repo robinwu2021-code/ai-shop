@@ -215,7 +215,7 @@ class PrintDatabaseAcceptanceTest {
     }
 
     @Test
-    void invoiceDocumentsGenerateWithoutRouteAndKeepTheirFrozenIdentity() {
+    void invoiceDocumentsGenerateWithoutRouteAndKeepTheirFrozenIdentity() throws java.io.IOException {
         var scope = new PrintScope("T5", "E5", "S5");
         var actor = new PrintActor("T5", "E5", "S5", "MERCHANT", "U5", "first-document",
                 Set.of("SOURCE_INVOICE_READ", "biz:print:export"));
@@ -242,11 +242,15 @@ class PrintDatabaseAcceptanceTest {
                         proofAction(actor, "another-key-" + type)).targetNo());
                 assertEquals("READY", facade.get(result.targetNo(), actor).status());
                 assertNotNull(facade.download(result.targetNo(), actor));
+                assertTrue(new String(facade.readVerified(result.targetNo(), actor), 0, 5,
+                        java.nio.charset.StandardCharsets.US_ASCII).equals("%PDF-"));
+                assertThrows(PrintFailure.class, () -> facade.readVerified(result.targetNo(), actor("other-store")));
                 assertThrows(PrintFailure.class, () -> facade.download(result.targetNo(), actor("other-store")));
                 assertNotNull(queries.invoiceDeliveryDocumentExpiry(invoiceNo, result.targetNo(), type, actor));
                 assertThrows(PrintFailure.class, () -> queries.invoiceDeliveryDocumentExpiry(
                         invoiceNo + "-other", result.targetNo(), type, actor));
                 var row = mapper.selectOne(new QueryWrapper<PrnExportTask>().eq("export_no", result.targetNo()));
+                assertEquals(row.getContentHash(), PrintHashes.sha256(facade.readVerified(result.targetNo(), actor)));
                 var sourceSnapshot = codec.read(row.getSourceSnapshot(), PdfRenderInput.class).invoiceDocument();
                 assertEquals(ref, sourceSnapshot.fact());
                 assertNotNull(sourceSnapshot.templateResolution().sha256());
@@ -257,6 +261,17 @@ class PrintDatabaseAcceptanceTest {
                         () -> queries.invoiceDeliveryDocumentExpiry(invoiceNo, result.targetNo(), type, actor));
                 assertNotNull(facade.download(result.targetNo(), actor));
                 source.blocked = false;
+
+                var diskFile = Path.of(System.getProperty("shop.print.artifacts.root")).resolve(row.getObjectKey());
+                var original = Files.readAllBytes(diskFile);
+                var corrupted = original.clone();
+                corrupted[corrupted.length - 1] ^= 1;
+                try {
+                    Files.write(diskFile, corrupted);
+                    assertThrows(PrintFailure.class, () -> facade.readVerified(result.targetNo(), actor));
+                } finally {
+                    Files.write(diskFile, original);
+                }
             }
             assertEquals(initialJobs, jobs.selectCount(null));
         } finally {

@@ -153,11 +153,17 @@ public final class PrivateLocalArtifactStore
                         sign(key, expires).getBytes(StandardCharsets.US_ASCII),
                         signature.getBytes(StandardCharsets.US_ASCII)))
             throw new PrintFailure("print.downloadExpired");
-        if (!exists(key)) throw new PrintFailure("print.artifactNotFound");
-        try {
-            if (Files.size(path(key)) > 20 * 1024 * 1024)
+        return readBytes(key);
+    }
+
+    public byte[] readBytes(String key) {
+        var file = path(key);
+        if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) throw new PrintFailure("print.artifactNotFound");
+        try (var in = Files.newInputStream(file, LinkOption.NOFOLLOW_LINKS)) {
+            byte[] bytes = in.readNBytes(20 * 1024 * 1024 + 1);
+            if (bytes.length > 20 * 1024 * 1024)
                 throw new PrintFailure("print.artifactTooLarge");
-            return Files.readAllBytes(path(key));
+            return bytes;
         } catch (java.io.IOException e) {
             throw new PrintFailure("print.artifactReadFailed");
         }

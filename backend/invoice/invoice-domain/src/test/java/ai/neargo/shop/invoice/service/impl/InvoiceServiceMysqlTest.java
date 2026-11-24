@@ -259,8 +259,10 @@ class InvoiceServiceMysqlTest {
         when(deliveryPrintQuery.invoiceDeliveryDocumentExpiry(org.mockito.ArgumentMatchers.eq(invoice.invoiceNo()),
                 org.mockito.ArgumentMatchers.eq("EX-DETAIL"), org.mockito.ArgumentMatchers.eq(ExportSourceType.INVOICE_DETAIL),
                 any())).thenReturn(expiry);
-        when(deliveryMail.send(org.mockito.ArgumentMatchers.eq("buyer@example.test"),
-                org.mockito.ArgumentMatchers.eq("NearGo 電子發票明細"), any(), any(), any()))
+        byte[] pdf = "%PDF-1.7 detail".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        when(deliveryExports.readVerified(org.mockito.ArgumentMatchers.eq("EX-DETAIL"), any())).thenReturn(pdf);
+        when(deliveryMail.sendAttachment(org.mockito.ArgumentMatchers.eq("buyer@example.test"),
+                org.mockito.ArgumentMatchers.eq("NearGo 電子發票明細"), any(), any(), any(), any()))
                 .thenReturn(SendResult.of("<invoice-detail@example.test>"));
 
         var first = invoiceDeliveries.enqueue(SCOPE, invoice.invoiceNo(), "EX-DETAIL", "buyer@example.test", null, "detail-1");
@@ -270,8 +272,17 @@ class InvoiceServiceMysqlTest {
         invoiceDeliveries.dispatchDue();
         assertEquals(first.deliveryNo(), second.parentDeliveryNo());
         assertEquals("ACCEPTED", invoiceDeliveries.list(SCOPE, invoice.invoiceNo(), 1, 10).records().getFirst().status());
-        assertEquals(List.of("INVOICE_DETAIL_LINK_V1", "INVOICE_DETAIL_LINK_V1"), jdbc.queryForList(
+        assertEquals(List.of("INVOICE_DETAIL_ATTACHMENT_V1", "INVOICE_DETAIL_ATTACHMENT_V1"), jdbc.queryForList(
                 "SELECT template_version FROM ivc_invoice_delivery WHERE invoice_no=? ORDER BY id", String.class, invoice.invoiceNo()));
+        verify(deliveryMail, times(2)).sendAttachment(org.mockito.ArgumentMatchers.eq("buyer@example.test"),
+                org.mockito.ArgumentMatchers.eq("NearGo 電子發票明細"),
+                argThat(body -> !body.contains("https://")),
+                argThat(attachment -> attachment.filename().endsWith("-detail.pdf")
+                        && attachment.contentType().equals("application/pdf")
+                        && java.util.Arrays.equals(pdf, attachment.bytes())), any(), any());
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM ivc_invoice_delivery WHERE invoice_no=? AND token_hash IS NOT NULL",
+                Integer.class, invoice.invoiceNo()));
         verify(deliveryPrintQuery, never()).originalInvoiceProofExpiry(org.mockito.ArgumentMatchers.eq(invoice.invoiceNo()), any(), any());
     }
 
@@ -290,13 +301,19 @@ class InvoiceServiceMysqlTest {
                     String body = call.getArgument(2);
                     token.set(body.substring(body.indexOf('#') + 1).split("\\s")[0]);
                     return SendResult.of("<invoice-test@example.test>");
-                }).thenThrow(new MailPort.MailException("provider response unavailable"));
+                });
+        byte[] pdf = "%PDF-1.7 proof".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        when(deliveryExports.readVerified(org.mockito.ArgumentMatchers.eq("EX-A"), any())).thenReturn(pdf);
+        when(deliveryMail.sendAttachment(org.mockito.ArgumentMatchers.eq("buyer@example.test"), any(), any(), any(), any(), any()))
+                .thenThrow(new MailPort.MailException("provider response unavailable"));
         var first = invoiceDeliveries.enqueue(SCOPE, ref, "EX-A", "buyer@example.test", null, "mail-a");
         assertEquals(invoices.get(SCOPE, ref).applicationRevisionNo(), first.applicationRevisionNo());
         assertEquals("PENDING", first.status());
         assertFalse(first.recipientMask().contains("buyer@example.test"));
         assertEquals(first, invoiceDeliveries.enqueue(SCOPE, ref, "EX-A", "buyer@example.test", null, "mail-a"));
         assertThrows(BizException.class, () -> invoiceDeliveries.enqueue(SCOPE, ref, "EX-A", "other@example.test", null, "mail-a"));
+        jdbc.update("UPDATE ivc_invoice_delivery SET template_version='INVOICE_PROOF_LINK_V1' WHERE delivery_no=?",
+                first.deliveryNo());
         invoiceDeliveries.dispatchDue();
         var result = invoiceDeliveries.list(SCOPE, ref, 1, 10).records().getFirst();
         assertEquals("ACCEPTED", result.status());
@@ -315,6 +332,10 @@ class InvoiceServiceMysqlTest {
         assertEquals(first.deliveryNo(), resent.parentDeliveryNo());
         invoiceDeliveries.dispatchDue();
         assertEquals("UNKNOWN", invoiceDeliveries.list(SCOPE, ref, 1, 10).records().getFirst().status());
+        verify(deliveryMail).sendAttachment(org.mockito.ArgumentMatchers.eq("buyer@example.test"),
+                org.mockito.ArgumentMatchers.eq("NearGo 電子發票證明聯"), any(),
+                argThat(attachment -> attachment.filename().endsWith("-proof.pdf")
+                        && java.util.Arrays.equals(pdf, attachment.bytes())), any(), any());
         assertThrows(BizException.class, () ->
                 invoiceDeliveries.resend(SCOPE, ref, resent.deliveryNo(), "補寄", false, "mail-c"));
         assertThrows(BizException.class, () ->

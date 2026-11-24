@@ -30,6 +30,7 @@ import ai.neargo.shop.print.api.PrintHashes;
 import ai.neargo.shop.print.api.PrintQueryService;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import ai.neargo.shop.spi.notify.MailPort;
+import ai.neargo.shop.spi.notify.MailPort.Attachment;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -54,8 +55,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String OWNER_TYPE = "INVOICE_DELIVERY";
-    private static final String PROOF_TEMPLATE = "INVOICE_PROOF_LINK_V1";
-    private static final String DETAIL_TEMPLATE = "INVOICE_DETAIL_LINK_V1";
+    private static final String PROOF_LINK = "INVOICE_PROOF_LINK_V1";
+    private static final String DETAIL_LINK = "INVOICE_DETAIL_LINK_V1";
+    private static final String PROOF_ATTACHMENT = "INVOICE_PROOF_ATTACHMENT_V1";
+    private static final String DETAIL_ATTACHMENT = "INVOICE_DETAIL_ATTACHMENT_V1";
     private static final String TO_MAIL_LOG = "INVOICE_DELIVERY";
     private static final String PUBLIC_PATH = "/public/invoice-deliveries/open";
 
@@ -107,8 +110,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
         if (prior != null) return view(prior);
         readyInvoice(invoice);
         if (deliveries.selectCount(scoped(scope, invoiceNo).isNull("parent_delivery_no")) != 0) throw badState();
-        var source = InvoiceDocumentService.sourceType(invoice);
-        var template = source == ExportSourceType.INVOICE_DETAIL ? DETAIL_TEMPLATE : PROOF_TEMPLATE;
+        var template = attachmentTemplate(InvoiceDocumentService.sourceType(invoice));
         var row = create(scope, invoice, exportNo, template, null, Masks.email(address), reason, key, requestHash);
         row.setRecipientSecretRef(vault.seal(new KeyOwner(SecretNamespace.PLATFORM, OWNER_TYPE, row.getId()),
                 address.getBytes(StandardCharsets.UTF_8)).blobId());
@@ -131,7 +133,8 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
                 || deliveries.selectCount(scoped(scope, invoiceNo).in("status", "PENDING", "SENDING")) != 0) {
             throw badState();
         }
-        var row = create(scope, invoice, parent.getExportNo(), parent.getTemplateVersion(), parent.getDeliveryNo(),
+        var template = attachmentTemplate(documentType(parent.getTemplateVersion()));
+        var row = create(scope, invoice, parent.getExportNo(), template, parent.getDeliveryNo(),
                 parent.getRecipientMask(), reason, key, requestHash);
         row.setRecipientSecretRef(parent.getRecipientSecretRef());
         deliveries.updateById(row);
@@ -184,8 +187,10 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     private void dispatch(IvcInvoiceDelivery row) {
         if (deliveries.update(null, state(row, "PENDING").set("status", "SENDING").set("started_at", now())) != 1) return;
         var scope = scopeOf(row);
+        IvcInvoice invoice;
         try {
-            readyInvoice(invoice(scope, row.getInvoiceNo(), false));
+            invoice = invoice(scope, row.getInvoiceNo(), false);
+            readyInvoice(invoice);
             documentExpiry(row.getInvoiceNo(), row.getExportNo(), row.getTemplateVersion(), scope);
         } catch (BizException | PrintFailure unavailable) {
             finish(row, "CANCELLED", "INVOICE_OR_PDF_UNAVAILABLE", null);
@@ -195,26 +200,52 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
             finish(row, "FAILED", "MAIL_CHANNEL_DISABLED", null);
             return;
         }
-        String recipient = recipient(row);
-        var bytes = new byte[32];
-        RANDOM.nextBytes(bytes);
-        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        boolean detail = documentType(row.getTemplateVersion()) == ExportSourceType.INVOICE_DETAIL;
-        String subject = detail ? "NearGo 電子發票明細" : "NearGo 電子發票證明聯";
-        String intro = detail ? "請開啟下方連結，完成電子郵件驗證後下載發票明細。此檔案僅供查閱，不是電子發票證明聯。"
-                : "請開啟下方連結，完成電子郵件驗證後下載發票。";
-        String body = intro + "\n\n"
-                + origin + PUBLIC_PATH + "#" + token + "\n\n連結有效至發票 PDF 保存期限。";
-        if (deliveries.update(null, state(row, "SENDING").set("token_hash", PrintHashes.sha256(token))
-                .set("content_hash", PrintHashes.sha256(subject + "\n" + body))) != 1) return;
+        Draft draft;
         try {
-            var result = mail.send(recipient, subject, body, TO_MAIL_LOG, row.getActorNo());
+            draft = draft(row, scope, invoice);
+        } catch (PrintFailure unavailable) {
+            finish(row, "CANCELLED", "INVOICE_OR_PDF_UNAVAILABLE", null);
+            return;
+        }
+        if (deliveries.update(null, state(row, "SENDING").set("token_hash", draft.tokenHash())
+                .set("content_hash", draft.contentHash())) != 1) return;
+        String recipient = recipient(row);
+        try {
+            var result = draft.attachment() == null
+                    ? mail.send(recipient, draft.subject(), draft.body(), TO_MAIL_LOG, row.getActorNo())
+                    : mail.sendAttachment(recipient, draft.subject(), draft.body(), draft.attachment(),
+                            TO_MAIL_LOG, row.getActorNo());
             if (result.providerMsgId() == null) finish(row, "UNKNOWN", "SMTP_RECEIPT_MISSING", null);
             else finish(row, "ACCEPTED", null, result.providerMsgId());
         } catch (MailPort.MailException responseUnknown) {
             finish(row, "UNKNOWN", "SMTP_RESULT_UNKNOWN", null);
         }
     }
+
+    private Draft draft(IvcInvoiceDelivery row, Scope scope, IvcInvoice invoice) {
+        var template = row.getTemplateVersion();
+        boolean detail = documentType(template) == ExportSourceType.INVOICE_DETAIL;
+        String subject = detail ? "NearGo 電子發票明細" : "NearGo 電子發票證明聯";
+        if (template.equals(PROOF_ATTACHMENT) || template.equals(DETAIL_ATTACHMENT)) {
+            byte[] pdf = exports.readVerified(row.getExportNo(), printActor(scope));
+            String fiscalNumber = invoice.getFiscalNumber().replaceAll("[^A-Za-z0-9_-]", "_");
+            String filename = fiscalNumber + (detail ? "-detail.pdf" : "-proof.pdf");
+            String body = detail ? "附件為電子發票交易明細。發票已存入手機條碼載具，交易明細僅供查閱。"
+                    : "附件為電子發票證明聯，請下載 PDF 查閱。";
+            String hash = PrintHashes.sha256(subject + "\n" + body + "\n" + filename + "\n" + PrintHashes.sha256(pdf));
+            return new Draft(subject, body, new Attachment(filename, "application/pdf", pdf), null, hash);
+        }
+        var bytes = new byte[32];
+        RANDOM.nextBytes(bytes);
+        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        String intro = detail ? "請開啟下方連結，完成電子郵件驗證後下載發票明細。此檔案僅供查閱，不是電子發票證明聯。"
+                : "請開啟下方連結，完成電子郵件驗證後下載發票。";
+        String body = intro + "\n\n"
+                + origin + PUBLIC_PATH + "#" + token + "\n\n連結有效至發票 PDF 保存期限。";
+        return new Draft(subject, body, null, PrintHashes.sha256(token), PrintHashes.sha256(subject + "\n" + body));
+    }
+
+    private record Draft(String subject, String body, Attachment attachment, String tokenHash, String contentHash) {}
 
     private void finish(IvcInvoiceDelivery row, String status, String failureCode, String messageId) {
         deliveries.update(null, state(row, "SENDING").set("status", status)
@@ -267,10 +298,14 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
 
     private static ExportSourceType documentType(String template) {
         return switch (template) {
-            case PROOF_TEMPLATE -> ExportSourceType.INVOICE_PROOF;
-            case DETAIL_TEMPLATE -> ExportSourceType.INVOICE_DETAIL;
+            case PROOF_LINK, PROOF_ATTACHMENT -> ExportSourceType.INVOICE_PROOF;
+            case DETAIL_LINK, DETAIL_ATTACHMENT -> ExportSourceType.INVOICE_DETAIL;
             default -> throw badState();
         };
+    }
+
+    private static String attachmentTemplate(ExportSourceType source) {
+        return source == ExportSourceType.INVOICE_DETAIL ? DETAIL_ATTACHMENT : PROOF_ATTACHMENT;
     }
 
     private IvcInvoiceDelivery replay(Scope scope, String invoiceNo, String key, String hash) {

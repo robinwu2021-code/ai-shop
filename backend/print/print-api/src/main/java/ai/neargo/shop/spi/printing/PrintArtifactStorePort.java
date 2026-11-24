@@ -22,6 +22,8 @@ public interface PrintArtifactStorePort {
 
     ArtifactVerification verify(String objectKey);
 
+    byte[] readBytes(String objectKey);
+
     DownloadGrant signedDownload(String objectKey, Duration ttl);
 
     void delete(String objectKey);

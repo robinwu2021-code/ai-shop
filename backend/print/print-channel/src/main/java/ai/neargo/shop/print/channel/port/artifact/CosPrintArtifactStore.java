@@ -87,14 +87,19 @@ public final class CosPrintArtifactStore
 
     public ArtifactVerification verify(String key) {
         if (!exists(key)) return new ArtifactVerification(false, key, 0, null);
-        var object = cos.getObject(bucket, key(key));
-        try (var in = object.getObjectContent()) {
+        byte[] bytes = readBytes(key);
+        return new ArtifactVerification(true, key, bytes.length, PrintHashes.sha256(bytes));
+    }
+
+    public byte[] readBytes(String key) {
+        String objectKey = key(key);
+        try (var object = cos.getObject(bucket, objectKey); var in = object.getObjectContent()) {
             if (object.getObjectMetadata().getContentLength() > 20 * 1024 * 1024)
                 throw new PrintFailure("print.artifactTooLarge");
             byte[] bytes = in.readNBytes(20 * 1024 * 1024 + 1);
             if (bytes.length > 20 * 1024 * 1024) throw new PrintFailure("print.artifactTooLarge");
-            return new ArtifactVerification(true, key, bytes.length, PrintHashes.sha256(bytes));
-        } catch (IOException e) {
+            return bytes;
+        } catch (IOException | com.qcloud.cos.exception.CosClientException e) {
             throw new PrintFailure("print.artifactReadFailed");
         }
     }

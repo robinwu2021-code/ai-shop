@@ -329,12 +329,7 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
     }
 
     public DownloadGrant download(String no, PrintActor a) {
-        var e = exports.selectOne(PrintSupport.<PrnExportTask>scoped(scope(a)).eq("export_no", no));
-        require(e != null, "print.notFound");
-        authorize(e, a);
-        require(
-                "READY".equals(e.getStatus()) && e.getExpiresAt().isAfter(now()),
-                "print.exportNotReady");
+        var e = readyExport(no, a);
         var verified = store.verify(e.getObjectKey());
         require(
                 verified.exists()
@@ -342,5 +337,24 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
                         && verified.size() == e.getFileSize(),
                 "print.artifactIntegrityFailed");
         return store.signedDownload(e.getObjectKey(), Duration.ofSeconds(60));
+    }
+
+    public byte[] readVerified(String no, PrintActor a) {
+        var e = readyExport(no, a);
+        var bytes = store.readBytes(e.getObjectKey());
+        require(e.getFileSize() != null && bytes.length == e.getFileSize()
+                        && PrintHashes.sha256(bytes).equals(e.getContentHash()),
+                "print.artifactIntegrityFailed");
+        return bytes;
+    }
+
+    private PrnExportTask readyExport(String no, PrintActor a) {
+        var e = exports.selectOne(PrintSupport.<PrnExportTask>scoped(scope(a)).eq("export_no", no));
+        require(e != null, "print.notFound");
+        authorize(e, a);
+        require(
+                "READY".equals(e.getStatus()) && e.getExpiresAt().isAfter(now()),
+                "print.exportNotReady");
+        return e;
     }
 }

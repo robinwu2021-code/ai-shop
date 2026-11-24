@@ -31,4 +31,6 @@ public interface PrintExportFacade {
     ExportView get(String exportNo, PrintActor actor);
 
     DownloadGrant download(String exportNo, PrintActor actor);
+
+    byte[] readVerified(String exportNo, PrintActor actor);
 }

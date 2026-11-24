@@ -2,13 +2,17 @@ package ai.neargo.shop.notify.port;
 
 import ai.neargo.shop.spi.notify.MailPort;
 import ai.neargo.shop.spi.notify.SendResult;
+import jakarta.activation.DataHandler;
 import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
 import jakarta.mail.PasswordAuthentication;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+import jakarta.mail.util.ByteArrayDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -122,14 +126,42 @@ public class SmtpMailGateway implements MailPort {
 
     @Override
     public SendResult send(String to, String subject, String body) {
-        try {
-            MimeMessage msg = new MimeMessage(session);
-            msg.setFrom(new InternetAddress(from));
-            msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
-            msg.setSubject(subject, StandardCharsets.UTF_8.name());
-            // 纯文本：密码与重置链接不需要排版，而 HTML 邮件更容易被判成垃圾邮件
+        return transmit(to, subject, body, null);
+    }
+
+    @Override
+    public SendResult sendAttachment(String to, String subject, String body, Attachment attachment,
+                                     String bizType, String operatorNo) {
+        return transmit(to, subject, body, attachment);
+    }
+
+    private MimeMessage message(String to, String subject, String body, Attachment attachment)
+            throws jakarta.mail.MessagingException {
+        var msg = new MimeMessage(session);
+        msg.setFrom(new InternetAddress(from));
+        msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
+        msg.setSubject(subject, StandardCharsets.UTF_8.name());
+        if (attachment == null) {
             msg.setText(body, StandardCharsets.UTF_8.name());
-            msg.saveChanges();
+        } else {
+            var text = new MimeBodyPart();
+            text.setText(body, StandardCharsets.UTF_8.name());
+            var file = new MimeBodyPart();
+            file.setDataHandler(new DataHandler(new ByteArrayDataSource(attachment.bytes(), attachment.contentType())));
+            file.setFileName(attachment.filename());
+            file.setDisposition(jakarta.mail.Part.ATTACHMENT);
+            var parts = new MimeMultipart("mixed");
+            parts.addBodyPart(text);
+            parts.addBodyPart(file);
+            msg.setContent(parts);
+        }
+        msg.saveChanges();
+        return msg;
+    }
+
+    private SendResult transmit(String to, String subject, String body, Attachment attachment) {
+        try {
+            var msg = message(to, subject, body, attachment);
             Transport.send(msg);
             return SendResult.of(msg.getMessageID());
         } catch (jakarta.mail.AuthenticationFailedException e) {

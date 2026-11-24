@@ -9,6 +9,7 @@ import ai.neargo.shop.spi.notify.SendResult;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import java.util.function.Supplier;
 
 /**
  * 给邮件通道套一层发送记录。理由同 {@link NotifyLoggingSmsPort}。
@@ -58,9 +59,21 @@ public class NotifyLoggingMailPort implements MailPort {
      */
     public SendResult send(String to, String subject, String body,
                            String bizType, String operatorNo, String templateNo) {
+        return logged(to, subject, bizType, operatorNo, templateNo, () -> delegate.send(to, subject, body));
+    }
+
+    @Override
+    public SendResult sendAttachment(String to, String subject, String body, Attachment attachment,
+                                     String bizType, String operatorNo) {
+        return logged(to, subject, bizType, operatorNo, null,
+                () -> delegate.sendAttachment(to, subject, body, attachment, bizType, operatorNo));
+    }
+
+    private SendResult logged(String to, String subject, String bizType, String operatorNo, String templateNo,
+                              Supplier<SendResult> send) {
         try {
             OutboxLease.check();
-            SendResult r = delegate.send(to, subject, body);
+            SendResult r = send.get();
             // 邮件没有通道方模板号，把**主题**记进 templateCode 列 —— 列表页要能一眼看出这是哪类邮件
             writer.write(SysNotifyLog.MAIL, bizType, to, subject,
                     templateNo, SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
