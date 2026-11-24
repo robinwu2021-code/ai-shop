@@ -77,12 +77,18 @@ public final class BusinessEndService {
                                                                                                 .equals(
                                                                                                         c
                                                                                                                 .entitlementCode())));
+                        boolean addsVerifiedBootstrapTypes =
+                                o.bootstrapRequired()
+                                        && o.releaseStatus() == ReleaseStatus.VERIFIED
+                                        && d.releaseStatus() == ReleaseStatus.VERIFIED
+                                        && d.allowedBusinessTypes().size() > o.allowedBusinessTypes().size()
+                                        && d.allowedBusinessTypes().containsAll(o.allowedBusinessTypes());
                         check(
                                 !used
                                         || (o.scope() == d.scope()
-                                                && o.allowedBusinessTypes()
-                                                        .equals(d.allowedBusinessTypes())
-                                                && o.bootstrapRequired() == d.bootstrapRequired()),
+                                                && o.bootstrapRequired() == d.bootstrapRequired()
+                                                && (o.allowedBusinessTypes().equals(d.allowedBusinessTypes())
+                                                        || addsVerifiedBootstrapTypes)),
                                 "referenced end scope/base binding is immutable");
                     }
                     long v = old == null ? 1 : old.version() + 1;
