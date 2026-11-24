@@ -6,6 +6,134 @@
     "description": "多行业发票开立与台湾电子发票证明联。设计见 docs/technical/TDD-发票模块.md。证明联打印与补印走打印中心 /biz/print/requests（来源类型 INVOICE、场景 INVOICE_PROOF）。 C 端 /mp 部分见 TDD §8（载具优先）。"
   },
   "paths": {
+    "/biz/invoice-applications/{applicationNo}/cancellations": {
+      "post": {
+        "summary": "取消发票申请",
+        "description": "权限 `biz:invoice:setup`。门店通过 X-Store-No 选择，主体取当前登录上下文。以申请当前版本和幂等键执行状态转换。",
+        "parameters": [
+          {
+            "name": "applicationNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expectedRevision",
+                  "reason"
+                ],
+                "properties": {
+                  "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包的 data 返回申请详情，status 为 CANCELLED。"
+          }
+        }
+      }
+    },
+    "/biz/invoice-applications/{applicationNo}/rejections": {
+      "post": {
+        "summary": "驳回发票申请",
+        "description": "权限 `biz:invoice:setup`。门店通过 X-Store-No 选择，主体取当前登录上下文。以申请当前版本和幂等键执行状态转换。",
+        "parameters": [
+          {
+            "name": "applicationNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expectedRevision",
+                  "reason"
+                ],
+                "properties": {
+                  "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应包的 data 返回申请详情，status 为 REJECTED。"
+          }
+        }
+      }
+    },
     "/biz/invoices": {
       "post": {
         "summary": "按来源单开票（同来源返回原发票）",

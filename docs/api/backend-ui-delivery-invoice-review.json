@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "发票申请的取消与驳回由具备发票设定权限的人员处理，原生 Android 审核操作待接入。",
+  "plan": "docs/technical/TDD-发票申请与交付追溯.md",
+  "contract": "docs/api/invoice.openapi.json",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/invoice-applications/{applicationNo}/cancellations"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/invoice-applications/{applicationNo}/rejections"
+    }
+  ]
+}
