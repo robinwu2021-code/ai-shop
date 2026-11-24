@@ -170,7 +170,7 @@ W3 → W9（美业小项要在 v2 实测）
 |---|---|
 | 端点（新增） | `GET /biz/store-orders`；`GET /biz/store-orders/summary`；`POST /biz/store-orders/{no}/refunds`、`GET …/refunds`、`GET …/refunds/{refundNo}`；`GET /biz/activities/{no}/effect`；`GET /biz/members/{memberNo}/orders`；`POST /biz/member-code/select`；`GET /biz/x/beauty/work-orders`；`POST /biz/pos/activation-codes`、`POST /pos/devices/activate`、`GET /biz/pos/devices`、`POST /biz/pos/devices/{deviceNo}/unbind`、`GET /pos/staff-roster`、`POST /pos/staff-sessions`、`PUT /biz/staff/{mchAccountNo}/pin`；`POST /biz/shifts`、`POST /biz/shifts/{no}/cash-movements`、`POST /biz/shifts/{no}/close`、`GET /biz/shifts`、`POST /biz/day-closes`、`GET /biz/day-closes/{date}` |
 | 端点（行为变化） | `GET /biz/store-orders/{no}` 收 OS…；`POST /biz/store-orders` 处理 `member`、`adjustments` 新 `COUPON / ACTIVITY`、扣库存；`POST …/cancel` 释放库存／券／活动；`POST /biz/payment/offline-records` 收 `shiftNo`，回应带 `storeOrderNo`；`POST /biz/coupons/{no}/issue` 认 `MEMBER`；`POST /biz/activities`（更新）进行中可改名、收 `expectedRevision`；`ActivityVO` 加 `revision`；`/biz/personnel`、`/biz/resources`、`/biz/schedules`、`/biz/schedule-rules`、`/biz/goods/{g}/skus/{s}/pricing-policy` 放行 `PENDING_LICENSE`；美业预约 VO 加 `customer` |
-| 库表（`db/migration` V696 起） | V696 `ord_order` 加 `member_no`、`operator_no`、`device_no` + 索引 `(store_no, admission_kind, created_at)`、`(entity_no, member_no, created_at)`；V697 `ord_store_refund`、`ord_store_refund_line`；V698 `mch_pos_device`、`mch_pos_activation`、`mch_account_pin`；V699 `ord_pos_shift`、`ord_pos_cash_movement`、`ord_pos_day_close`，`ord_offline_record` 加 `shift_no` |
+| 库表（`db/migration` V696 起） | V696 `ord_order` 加 `member_no`、`operator_no`、`device_no` + 索引 `(store_no, admission_kind, created_at)`、`(entity_no, member_no, created_at)`；V697 `mch_pos_device`、`mch_pos_activation`、`mch_account_pin`；V698 `ord_pos_shift`、`ord_pos_cash_movement`、`ord_pos_day_close`，`ord_offline_record` 加 `shift_no`；V699 `ord_store_refund`、`ord_store_refund_line`（按执行顺序编号，避免后建的迁移号小于已上线的） |
 | 权限码 | 新 `biz:order:refund`（MANAGER 有，CLERK 无）、`biz:pos:device`（只店主）、`biz:shift`（MANAGER、CLERK 有）；`biz:order:view` 沿用于列表与汇总 |
 | 错误码（三语） | `20031 STORE_ORDER_STOCK_SHORT`（data 列 SKU）、`20032 STORE_ORDER_COUPON_UNUSABLE`、`20033 STORE_ORDER_ACTIVITY_MISMATCH`（data 带后端金额）、`20034 STORE_ORDER_REFUND_EXCEEDS`、`20035 STORE_ORDER_REFUND_METHOD_UNAVAILABLE`、`20036 STORE_ORDER_MEMBER_REQUIRED`、`20040 DAY_CLOSE_OPEN_SHIFTS`、`20041 SHIFT_STATE_INVALID`、`30071 ENTITY_NOT_OPERATIONAL`、`30072 POS_ACTIVATION_INVALID`、`30073 POS_PIN_LOCKED`、`30074 POS_PIN_INVALID`（号段在实现时按 `ErrorCode` 现有分布核对） |
 | 配置项 | 无新开关。W3 在 v2 设 `shop.beauty.enabled`、`shop.beauty.deployment`、一次性 `shop.beauty.migration.mode=migrate` |
@@ -294,6 +294,153 @@ W3 → W9（美业小项要在 v2 实测）
 | **另立项** | — | 储值付款（L4-1） | — | — |
 
 合计：基础约 14 人天，零售约 15 人天，美业约 3 人天。每个工作流：先补本篇 §5 对应测试（红）→ 实现 → 相关闸门（`ArchitectureTest`、`BackendI18nParityTest`、`SchemaParityTest`、pre-push）→ 一个 PR → 合入后发 v2（发布动作经用户确认，按 [v2 部署纪录](./TDD-统一订单与开票资料.md#7-上线记录v2data0appai-shop-v2正式库-ai_shop_ume) 的方式）→ 通知手持会话实测。
+
+### 待开发任务清单
+
+> 编号 `T<阶段><序号>`；「验收」列指向 §0 的 AC 与 §5 的测试。每个任务完成即勾选，并在 §6 贴该提交的 `git show --stat`。
+> 估时为后端人天，不含 v2 发布与手持端实测等待。
+
+#### 阶段 0 · 查证（0.5 天，不改代码）
+
+| 编号 | 任务 | 产出 | 估时 | 依赖 |
+|---|---|---|---|---|
+| T001 | v2 查 `PENDING_LICENSE` 主体旗下门店的 `mch_store.status`（W2 只放主体，若门店也不是 ACTIVE 要一并放） | 结论写进 §1.2 | 0.1 | — |
+| T002 | v2 实测 `POST /biz/stored-value/plan-recharges`、`confirm-offline` 在 TWD 门店是否可用 | 结论写进 §1.4 / L4-1 | 0.1 | — |
+| T003 | 核对 B 端有无「按会员列可用券」的端点（W1-c 要用） | 有：记端点；无：W1-c 加 T205a | 0.1 | — |
+| T004 | 找支付退款结果回调的消费点，确认能按 `out_refund_no` 前缀 `RFS` 分流 | 结论写进 W1-d | 0.2 | — |
+
+#### 阶段一 · 基础（约 14 天）
+
+**W2 店内设定放行（1 天，单独发 v2）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T101 | 新增 `lockConfigScope`（主体 `ACTIVE / PENDING_LICENSE`） | `shop-merchant` `MerchantMappers.BookingOwnerMapper` | H12 | 0.2 | T001 |
+| T102 | 人员、排班、资源三处 `scope()` 及 `ResourceServiceImpl:143` 改用 `lockConfigScope`；拿不到时区分 `30071` 与 `10404` | `PersonnelServiceImpl`、`ScheduleServiceImpl`、`ResourceServiceImpl` | H12、H14 | 0.3 | T101 |
+| T103 | `StoreDirectoryPort#configCard` + `GoodsPricingPolicyAccessPolicy` 改用它（负责人检查保留） | `shop-base` spi、`StoreDirectoryPortImpl`、`shop-core` product/policy | H13 | 0.2 | — |
+| T104 | 错误码 `30071 ENTITY_NOT_OPERATIONAL` + 三语文案 | `ErrorCode`、`messages*.properties` | H14 | 0.1 | — |
+| T105 | 单测与闸门：`ArchitectureTest`、`BackendI18nParityTest`；PR；发 v2 后通知手持会话用 `MUME88600253990002308` 实测 | — | H12–H14 | 0.2 | T101–T104 |
+
+**W4 收银设备、员工 PIN、订单归属栏位（5.5 天，发 v2）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T111 | 迁移 V696：`ord_order` 加 `member_no / operator_no / device_no` + 索引 `(store_no, admission_kind, created_at)`、`(entity_no, member_no, created_at)` | `db/migration/V696__*.sql`；`SchemaParityTest` | — | 0.3 | — |
+| T112 | 门店零售单建单写入 `operator_no`、`device_no`；`member.memberNo` 经 `resolveCounterReference` 解析后写 `member_no`（会员不存在 `10404`） | `BizStoreOrderController`、`StoreOrderService.CreateCmd`、`StoreOrderServiceImpl#insert` | H4（前半） | 0.5 | T111 |
+| T113 | 迁移 V697：`mch_pos_device`、`mch_pos_activation`、`mch_account_pin` | `db/migration/V697__*.sql` | — | 0.3 | — |
+| T114 | 权限码 `biz:pos:device`（只店主）；激活码签发 `POST /biz/pos/activation-codes`；设备列表、解绑 | 新 `BizPosDeviceController`、`PosDeviceService(Impl)`（shop-merchant） | H16、H20 | 1 | T113 |
+| T115 | 匿名激活 `POST /pos/devices/activate`（限速、码一次有效 10 分钟）；设备凭证 `X-Device-Token` 认证过滤器，`/pos/**` 只认设备凭证 | 安全配置、`PosDeviceAuthFilter` | H16 | 1 | T114 |
+| T116 | 员工 PIN：`PUT /biz/staff/{mchAccountNo}/pin`（本人或店主，bcrypt，4–6 位） | `BizStaffController`、`PosStaffService(Impl)` | H19 | 0.5 | T113 |
+| T117 | `GET /pos/staff-roster`（不含 PIN 资料）；`POST /pos/staff-sessions`（发 MERCHANT token，限设备门店、12 小时、记 `device_no`；连错 5 次锁 15 分） | `PosStaffController`、`LoginUser.merchant`、token 存储 | H17、H18 | 1.2 | T115、T116 |
+| T118 | 错误码 `30072–30074` 三语；单测、闸门、PR、发 v2 | — | H16–H20 | 0.7 | T111–T117 |
+
+**W5 班次与日结（4 天，发 v2）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T121 | 迁移 V698：`ord_pos_shift`、`ord_pos_cash_movement`、`ord_pos_day_close`；`ord_offline_record` 加 `shift_no` | `db/migration/V698__*.sql` | — | 0.4 | T111 |
+| T122 | 权限码 `biz:shift`（MANAGER、CLERK）；开班 `POST /biz/shifts`（同设备只一个 OPEN）、现金进出 | 新 `BizShiftController`、`PosShiftService(Impl)`（trade 域） | H21 | 1 | T121、T115 |
+| T123 | 现金记录收 `shiftNo`（须同店 OPEN 班次） | `BizOfflineRecordController`、`OfflineRecordServiceImpl` | H21 | 0.4 | T122 |
+| T124 | 交班：应有现金 = 备用金 + 现金记录 ± 进出（门店退款留 T216 补）；`byMethod` 汇总；`GET /biz/shifts` | `PosShiftServiceImpl#close` | H21 | 1 | T123 |
+| T125 | 日结 `POST /biz/day-closes`（有未交班回 `20040`，重复回原快照）、`GET /biz/day-closes/{date}` | 同上 | H22 | 0.6 | T124 |
+| T126 | 错误码 `20040–20041` 三语；单测、闸门、PR、发 v2 | — | H21、H22 | 0.6 | T121–T125 |
+
+**W7 会员消费纪录（1 天，与 W6 合并发）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T131 | `GET /biz/members/{memberNo}/orders`：会员 → `userNo`；`ord_order` 按 `member_no` 或 `user_no` 倒序游标；行含品名摘要与 `kind` | `BizMemberController`、新 `MemberOrderQueryService`（trade 域查询经 port） | H24 | 0.8 | T112 |
+| T132 | 单测 | — | H24 | 0.2 | T131 |
+
+**W6 营业汇总（2.5 天）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T141 | `GET /biz/store-orders/summary?from&to&groupBy=`：成交、退款（先只含线上售后）、折扣、笔数、客单价 | 新 `StoreSalesSummaryService(Impl)`、`BizStoreOrderController` | H23 | 1 | T111 |
+| T142 | 维度：`hour / day / payMethod`（现金记录 `method` + 收款单与线上 `pay_channel`）/ `staff`（`operator_no`）/ `category` | 同上 + mapper SQL | H23 | 1 | T141 |
+| T143 | 单测（含现金、跨日边界按台湾日）、闸门、PR、与 W7 一起发 v2 | — | H23 | 0.5 | T142、T132 |
+
+#### 阶段二 · 零售（约 15 天）
+
+**W1-a 读单与列表（2.5 天，发 v2）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T201 | `requireOrder` 接受 OS… | `StoreOrderServiceImpl` | H1 | 0.3 | — |
+| T202 | `InvoicePort#issuedSources(scope, "SUB_ORDER", from, to)` 及实现 | `shop-base` spi `InvoicePort`、`InvoicePortImpl` | H2 | 0.5 | — |
+| T203 | `GET /biz/store-orders` 列表（31 天、`size ≤ 50`、游标、`status`、`invoiceState` 筛选、`payMethods[]`、`operatorName`） | 新 `StoreOrderQueryService(Impl)` + mapper | H2 | 1.2 | T202、T111 |
+| T204 | 现金记录、收款单回应加 `storeOrderNo` | `OfflineRecordView`、`BizPaymentController` 的回应 | H3 | 0.3 | — |
+| T205 | 单测、闸门、PR、发 v2 | — | H1–H3 | 0.2 | T201–T204 |
+
+**W1-b 会员载具与库存（2 天，发 v2）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T206 | `InvoicePort#defaultCarrier(tenant, userNo)` 读 `ivc_user_carrier`；建单未带买受人且有会员 → 记为 CARRIER 买受人 | `InvoicePort(Impl)`、`StoreOrderServiceImpl` | H4 | 0.6 | T112 |
+| T207 | 建单 `StockPort#lock(subOrderNo, SKU 行)`，缺货 `20031`（data 列 SKU）；付清 `confirm`；取消 `release` | `StoreOrderServiceImpl`、`StoreOrderSettlementServiceImpl#settle`、`cancel` | H5 | 1 | — |
+| T208 | 按 L4-3 处理离线补传缺货（建议：`offline:true` 允许负库存并记异常） | 同上 | H5 | 0.2 | T207、L4-3 |
+| T209 | 错误码 `20031`、`20036` 三语；单测（PLATFORM 与 INVENTORY 两种库存权威各一）、PR、发 v2 | — | H4、H5 | 0.2 | T206–T208 |
+
+**W1-c 用券与活动（3.5 天，发 v2）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T210 | `adjustments` 接受 `COUPON {userCouponNo}`：需会员；`CouponPort#allocate` 算折抵并分摊；`markUsed` 占用；不可用 `20032` | `BizStoreOrderController.AdjustmentBody`、`StoreOrderServiceImpl#plan / insert` | H6 | 1.2 | T112、T003 |
+| T210a | （T003 为「无」时）按会员列可用券端点 | `BizCouponController` | H6 | 0.5 | T003 |
+| T211 | `adjustments` 接受 `ACTIVITY {activityNo, amountMinor}`：后端重算，不符 `20033`（带后端金额）；`commitCounter` 记使用、写 `ord_item.activity_no` 与效果投影 | 同上 + `CampaignPort` | H7 | 1.2 | — |
+| T212 | 取消时同事务释放库存、券、活动 | `StoreOrderServiceImpl#cancel` | H6、H7 | 0.3 | T207、T210、T211 |
+| T213 | `GET /biz/activities/{no}/effect` | `BizActivityController`、`ActivityMarketingSummaryService` | H8 | 0.4 | T211 |
+| T214 | 错误码 `20032–20033` 三语；单测、PR、发 v2 | — | H6–H8 | 0.4 | T210–T213 |
+
+**W1-d 退款与发票（5.5 天，发 v2）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T215 | 迁移 V699：`ord_store_refund`、`ord_store_refund_line`；权限码 `biz:order:refund`（MANAGER） | `db/migration/V699__*.sql`、`BizPerms`、角色种子迁移 | — | 0.4 | — |
+| T216 | `POST /biz/store-orders/{no}/refunds`：锁单、可退校验、金额分摊（最大余数）、`CASH` 直接成功；回补库存 `StockPort#restore`；更新已退数量金额与子单状态；全退释放券与活动；收 `shiftNo`；**同时把门店现金退款补进 T124 应有现金、T141 退款合计** | 新 `StoreOrderRefundService(Impl)`、`BizStoreOrderController`、`PosShiftServiceImpl`、`StoreSalesSummaryServiceImpl` | H9 | 2 | T215、T207、T212 |
+| T217 | `method=ORIGINAL`：只限单笔收款单；经 `PayBizFacade` 发起退款（`outRefundNo = refundNo`），`PENDING`；退款结果回调回写 | 同上 + 支付退款结果消费 | H10 | 1 | T216、T004 |
+| T218 | `InvoicePort#reverseForRefund`：未开票 `NONE`、全额且在可作废期 `VOID`、否则 `ALLOWANCE`；outbox `STORE_ORDER_REFUNDED` 由发票域消费，结果回写退款单 | `InvoicePort(Impl)`、`InvoiceService`、新 consumer | H9 | 1.2 | T216 |
+| T219 | `SubOrderInvoiceSourcePortImpl`：部分退款后未开票的单按「实付 − 已退」开票 | `SubOrderInvoiceSourcePortImpl` | H9 | 0.3 | T216 |
+| T220 | `GET …/refunds`、`GET …/refunds/{refundNo}`；详情带 `refunds[]` | `BizStoreOrderController` | H11 | 0.3 | T216 |
+| T221 | 错误码 `20034–20035` 三语；单测（部分退、全退作废、幂等重放、超额、原路退款）、PR、发 v2 | — | H9–H11 | 0.3 | T215–T220 |
+
+**W8 活动小项（1.5 天，发 v2）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T222 | 发券对象 `MEMBER`：常量 + `AudienceResolver` 分支（`value = memberNo`） | `MemberQueryPort`、`AudienceResolver` | H25 | 0.5 | — |
+| T223 | 活动编辑：`ActivityVO.revision`、`ActivityDraft.expectedRevision`（更新必填、不符 409）；进行中可改 `name` | `ActivityVOs`、`ActivityServiceImpl#save` | H26 | 0.7 | — |
+| T224 | 单测、PR、发 v2；通知手持会话（X24 走既有 `POST /biz/activities` 带 `activityNo`） | — | H25、H26 | 0.3 | T222、T223 |
+
+#### 阶段三 · 美业（约 3 天）
+
+**W3 美业在 v2 启用（1 天，运维；每一步执行前由用户在本会话确认）**
+
+| 编号 | 任务 | 产出 | 估时 | 依赖 |
+|---|---|---|---|---|
+| T301 | 本机以 `-Pbeauty-embedded` 构建并跑 `BeautyBm04EmbeddedHttpIT`、`BeautyPolicyEndToEndIT` | 构建产物 `main-<sha>-beauty` | 0.2 | — |
+| T302 | v2 设 `shop.beauty.enabled=true`、`deployment=embedded`、`migration.mode=migrate`（与 `shop.member-code.enabled`）；重启前通知相关会话 | v2 配置 | 0.2 | T301、用户确认 |
+| T303 | 确认 `bty_flyway_history` 到 V11 → 改回 `migration.mode=validate` 再重启；未登入访问回 401 | 验证纪录 | 0.2 | T302 |
+| T304 | 用 L4-7 指定的已审核主体建美业测试门店：技师 2、房间 2、排班、服务项目 3 与服务定义、门店政策 | 门店号 | 0.3 | T303、L4-7 |
+| T305 | 回手持会话：环境网址与门店号；结果写进 §7 | — | 0.1 | T304 |
+
+**W9 美业小项（2 天，发 v2）**
+
+| 编号 | 任务 | 改动位置 | 验收 | 估时 | 依赖 |
+|---|---|---|---|---|---|
+| T311 | `AppointmentSummaryVO` 加 `customer{displayName, phoneLast4, memberNo}`（批量查） | `beauty-api` dto、`AppointmentServiceImpl` | H27 | 0.6 | — |
+| T312 | `GET /biz/x/beauty/work-orders?storeNo&from&to&status&page&size` | `BizWorkOrderController`、工单服务与 mapper | H28 | 0.7 | — |
+| T313 | `POST /biz/member-code/select {storeNo, memberNo}` → `customerRef` | `BizMemberCodeController`、`MemberCodeResolveService` | H29 | 0.4 | — |
+| T314 | 单测、以 `-Pbeauty-embedded` 构建、PR、发 v2；手持会话在测试门店实测 | — | H27–H29 | 0.3 | T311–T313、T305 |
+
+#### 另立项（本篇不做）
+
+| 编号 | 事项 | 前置 |
+|---|---|---|
+| X01 | 储值作为门店零售单付款方式（台湾 TWD） | L4-1 定案 + 支付域（near-pay）排期 |
+| X02 | 未付门店零售单逾期自动取消 | L4-2 |
+| X03 | 改价次数统计 | L4-5 |
+| X04 | 美业全店时段停约、预约通知 | L4-6、MSG-01 |
 
 ---
 
