@@ -3491,6 +3491,13 @@
             "omitIfEmpty": true
           },
           {
+            "type": "keyValue",
+            "label": "買方抬頭",
+            "binding": "fields.buyerName",
+            "format": "plain",
+            "omitIfEmpty": true
+          },
+          {
             "type": "text",
             "binding": "fields.format",
             "omitIfEmpty": true

@@ -21,6 +21,7 @@ import java.util.Set;
 import ai.neargo.shop.print.api.PrintDrawing;
 import ai.neargo.shop.print.api.PrintFailure;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
@@ -29,6 +30,27 @@ import tools.jackson.databind.node.ObjectNode;
 class InvoiceProofLayoutTest {
 
     private final ReceiptSoftwareAcceptanceTest base = new ReceiptSoftwareAcceptanceTest();
+
+    @Test
+    void businessProofPrintsBuyerTaxIdAndTitleWhileConsumerProofOmitsBoth() throws Exception {
+        var example = (ObjectNode) ReceiptSoftwareAcceptanceTest.scenes.require("INVOICE_PROOF").example().deepCopy();
+        var fields = (ObjectNode) example.path("fields");
+        fields.put("buyerTaxId", "50765634");
+        fields.put("buyerName", "創勢科技股份有限公司");
+        var business = base.render(base.layout("INVOICE_PROOF", 58, example), PdfOutputProfile.ORIGINAL_ROLL);
+        try (var doc = Loader.loadPDF(business.bytes())) {
+            var text = new PDFTextStripper().getText(doc);
+            assertTrue(text.contains("50765634"));
+            assertTrue(text.replaceAll("\\s+", "").contains("買方抬頭:創勢科技股份有限公司"), () -> text);
+        }
+        fields.remove(List.of("buyerTaxId", "buyerName"));
+        var consumer = base.render(base.layout("INVOICE_PROOF", 58, example), PdfOutputProfile.ORIGINAL_ROLL);
+        try (var doc = Loader.loadPDF(consumer.bytes())) {
+            var text = new PDFTextStripper().getText(doc);
+            assertFalse(text.contains("50765634"));
+            assertFalse(text.contains("買方抬頭"));
+        }
+    }
 
     @Test
     void proofDrawsBarcodeAndTwoQrCodesAsImagesThatSurviveIntoPdf() throws Exception {

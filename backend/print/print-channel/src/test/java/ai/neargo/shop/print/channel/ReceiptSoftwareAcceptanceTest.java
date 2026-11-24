@@ -14,6 +14,7 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
+import tools.jackson.databind.JsonNode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -40,8 +41,12 @@ class ReceiptSoftwareAcceptanceTest {
     }
 
     PrintLayout layout(String code, int width) {
+        return layout(code, width, scenes.require(code).example());
+    }
+
+    PrintLayout layout(String code, int width, JsonNode example) {
         var s = scenes.require(code);
-        var payload = json.freeze(s.example());
+        var payload = json.freeze(example);
         var ref =
                 new PrintFactRef(
                         "T1",

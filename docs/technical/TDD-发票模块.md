@@ -1075,6 +1075,7 @@ MySQL 9 全类 34/34；ops-web `tsc` 无错；vitest 935 条中仅 `lib/mock/db/
 复用打印中心既有能力，不新增打印侧代码：
 
 1. `GET /biz/invoices/{invoiceNo}/print-facts`（新，`biz:invoice:read`）→ 本张票的打印件与 `factRef`（应印的证明联、交易明细、未作废的折让证明单；作废的票不出证明联与明细）
+   - 企业证明联在开立时冻结买方统编与已填写的抬头。58 mm 标准模板分别列印「買方」和「買方抬頭」；后者对应选填的 `fields.buyerName`，空值或旧快照缺字段时省略。
 2. `POST /biz/print/simulations`：`source` 为 `FACT`（带 factRef）或 `SAMPLE`，`fixtureCode=SUCCESS`，`outputOptions.pdfEnabled=true` —— 提交后模拟与 PDF 导出都就地执行
 3. 轮询 `GET /biz/print/exports/{exportNo}` 至 `READY`（约 10 秒上限）
 4. `POST /biz/print/exports/{exportNo}/download-grants` → 60 秒签名链接；H5 用 iframe 内嵌显示，App / 小程序用 `uni.openDocument`；「重新打开 PDF」每次重新申请授权

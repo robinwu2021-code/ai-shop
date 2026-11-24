@@ -2047,6 +2047,12 @@
           "required": false
         },
         {
+          "path": "fields.buyerName",
+          "label": "买方抬头",
+          "type": "String",
+          "required": false
+        },
+        {
           "path": "fields.format",
           "label": "格式",
           "type": "String",
