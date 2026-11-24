@@ -26,6 +26,15 @@ public final class InvoicePdfRetention {
                     AND CAST(j.job_no AS BINARY) = CAST(e.source_no AS BINARY)
                     AND j.scene IN ('INVOICE_PROOF', 'INVOICE_DETAIL')
                 ))
+                OR (e.source_type = 'BATCH' AND EXISTS (
+                  SELECT 1 FROM prn_job j
+                  WHERE CAST(j.tenant_no AS BINARY) = CAST(e.tenant_no AS BINARY)
+                    AND CAST(j.entity_no AS BINARY) = CAST(e.entity_no AS BINARY)
+                    AND CAST(j.store_no AS BINARY) = CAST(e.store_no AS BINARY)
+                    AND CAST(j.batch_no AS BINARY) = CAST(e.source_no AS BINARY)
+                  GROUP BY j.batch_no
+                  HAVING COUNT(*) = SUM(CASE WHEN j.scene IN ('INVOICE_PROOF', 'INVOICE_DETAIL') THEN 1 ELSE 0 END)
+                ))
               )
             """;
 

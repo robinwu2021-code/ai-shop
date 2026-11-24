@@ -15,7 +15,16 @@ import java.time.*;
 import java.util.*;
 
 public interface PrintExportFacade {
+    String INVOICE_PROOF_ARCHIVE_ACTOR = "invoice-proof-archive";
     PrintOperation create(ExportCommand command, PrintActor actor);
+
+    default String archiveInvoiceProof(String jobNo, long revision, PrintActor actor) {
+        var scope = new PrintScope(actor.tenantNo(), actor.entityNo(), actor.storeNo());
+        var archiveActor = new PrintActor(scope.tenantNo(), scope.entityNo(), scope.storeNo(),
+                "SYSTEM", INVOICE_PROOF_ARCHIVE_ACTOR, jobNo, actor.dataScopes());
+        return create(new ExportCommand(scope, new ExportSource(ExportSourceType.JOB, jobNo, revision),
+                PdfOutputProfile.ORIGINAL_ROLL), archiveActor).targetNo();
+    }
 
     PageData<ExportView> page(ExportQuery query, PrintActor actor);
 

@@ -14576,6 +14576,7 @@ CREATE TABLE IF NOT EXISTS ivc_transmission
     report_deadline_at DATETIME(3) NULL,
     deadline_level TINYINT NOT NULL DEFAULT 0,
     channel_account_no VARCHAR(64) NULL,
+    attempt_sequence BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_ivc_transmission_no UNIQUE (tenant_no, transmission_no),
     CONSTRAINT uk_ivc_transmission_ref UNIQUE (tenant_no, message_type, ref_no)
 );
@@ -14797,6 +14798,64 @@ CREATE TABLE IF NOT EXISTS ivc_invoice_application_event
     related_invoice_no VARCHAR(64) NULL,
     occurred_at DATETIME(3) NOT NULL,
     CONSTRAINT uk_ivc_application_command UNIQUE (tenant_no, entity_no, store_no, action, command_key_hash)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_invoice_delivery
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    delivery_no VARCHAR(64) NOT NULL,
+    invoice_no VARCHAR(64) NOT NULL,
+    application_no VARCHAR(64) NULL,
+    application_revision_no INT NULL,
+    export_no VARCHAR(64) NOT NULL,
+    parent_delivery_no VARCHAR(64) NULL,
+    recipient_secret_ref BIGINT NULL,
+    recipient_mask VARCHAR(191) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    reason VARCHAR(256) NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    idempotency_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    template_version VARCHAR(32) NOT NULL,
+    content_hash CHAR(64) NULL,
+    provider_message_id VARCHAR(256) NULL,
+    failure_code VARCHAR(64) NULL,
+    token_hash CHAR(64) NULL,
+    expires_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    started_at DATETIME(3) NULL,
+    finished_at DATETIME(3) NULL,
+    opened_at DATETIME(3) NULL,
+    CONSTRAINT uk_ivc_delivery_no UNIQUE (tenant_no, delivery_no),
+    CONSTRAINT uk_ivc_delivery_idem UNIQUE (tenant_no, entity_no, store_no, invoice_no, idempotency_hash),
+    CONSTRAINT uk_ivc_delivery_token UNIQUE (token_hash)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_transmission_attempt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    attempt_no VARCHAR(40) NOT NULL,
+    transmission_no VARCHAR(32) NOT NULL,
+    attempt_index BIGINT NULL,
+    operation VARCHAR(32) NOT NULL,
+    ref_no VARCHAR(64) NOT NULL,
+    gateway_code VARCHAR(32) NOT NULL,
+    channel_account_no VARCHAR(64) NULL,
+    account_revision BIGINT NULL,
+    actor_no VARCHAR(64) NULL,
+    phase VARCHAR(16) NOT NULL,
+    outcome VARCHAR(24) NOT NULL,
+    safe_code VARCHAR(32) NULL,
+    payload_hash CHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_attempt_phase UNIQUE (tenant_no, attempt_no, phase),
+    CONSTRAINT uk_ivc_attempt_sequence UNIQUE (tenant_no, transmission_no, attempt_index, phase)
 );
 
 -- 种子数据

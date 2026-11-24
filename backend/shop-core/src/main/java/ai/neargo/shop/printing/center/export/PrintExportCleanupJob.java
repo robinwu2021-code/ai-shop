@@ -75,6 +75,7 @@ public class PrintExportCleanupJob {
                 new QueryWrapper<PrnExportTask>()
                         .eq("status", "EXPIRED")
                         .isNotNull("object_deleted_at")
+                        .ne("created_by", PrintExportFacade.INVOICE_PROOF_ARCHIVE_ACTOR)
                         .lt("created_at", now().minusDays(180)));
         return new PrintWorkReport(due.size(), done, failed, due.size() == budget.maxItems());
     }

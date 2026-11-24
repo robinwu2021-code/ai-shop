@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>下載電子發票證明聯</title>
+<style>
+  body { font: 1rem system-ui, sans-serif; margin: 3rem auto; padding: 0 1.25rem; max-width: 28rem; }
+  label, input, button { display: block; margin-top: 0.75rem; font: inherit; }
+  input, button { padding: 0.75rem; }
+  [hidden] { display: none; }
+</style>
+<main>
+  <h1>下載電子發票證明聯</h1>
+  <p>請先取得寄到原收件信箱的六位數驗證碼。</p>
+  <button id="send" type="button">取得驗證碼</button>
+  <form id="verify" hidden>
+    <label for="code">電子郵件驗證碼</label>
+    <input id="code" required pattern="[0-9]{6}" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+    <button type="submit">下載 PDF</button>
+  </form>
+  <p id="message" role="status"></p>
+</main>
+<script>
+  const token = location.hash.slice(1);
+  history.replaceState(null, "", location.pathname);
+  const send = document.querySelector("#send");
+  const form = document.querySelector("#verify");
+  const message = document.querySelector("#message");
+  const code = document.querySelector("#code");
+  const valid = /^[A-Za-z0-9_-]{43}$/.test(token);
+  if (!valid) { send.disabled = true; message.textContent = "連結無效，請重新開啟郵件中的連結。"; }
+  async function request(path, body) {
+    const response = await fetch(path, {method:"POST", cache:"no-store",
+      headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+    const result = await response.json();
+    if (!response.ok || result.code !== 0) throw new Error();
+    return result.data;
+  }
+  send.addEventListener("click", async () => {
+    send.disabled = true;
+    try {
+      await request("access-challenges", {token});
+      form.hidden = false;
+      message.textContent = "驗證碼已寄出，請查看原收件信箱。";
+      code.focus();
+      setTimeout(() => { send.disabled = false; }, 60000);
+    } catch {
+      message.textContent = "暫時無法寄出驗證碼，請確認連結仍有效並稍後再試。";
+      send.disabled = false;
+    }
+  });
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = form.querySelector("button");
+    button.disabled = true;
+    try {
+      const result = await request("accesses", {token, code:code.value});
+      code.value = "";
+      location.assign(result.url);
+    } catch {
+      message.textContent = "驗證沒有完成，請核對驗證碼與連結有效期限。";
+    } finally { button.disabled = false; }
+  });
+</script>
+</html>

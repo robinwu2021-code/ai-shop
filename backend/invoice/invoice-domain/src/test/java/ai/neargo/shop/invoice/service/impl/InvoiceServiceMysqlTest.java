@@ -15,7 +15,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import ai.neargo.shop.common.otp.service.OtpSendService;
+import ai.neargo.shop.invoice.service.InvoiceDeliveryService;
+import ai.neargo.shop.print.api.DownloadGrant;
+import ai.neargo.shop.print.api.PrintExportFacade;
+import ai.neargo.shop.print.api.PrintQueryService;
+import ai.neargo.shop.spi.notify.MailPort;
+import ai.neargo.shop.spi.notify.SendResult;
+import java.net.URI;
 import ai.neargo.shop.invoice.dto.InvoiceApplicationDtos.IssueApplicationReq;
 import ai.neargo.shop.invoice.dto.InvoiceApplicationDtos.ReviseApplicationReq;
 import ai.neargo.shop.invoice.dto.InvoiceApplicationDtos.SubmitApplicationReq;
@@ -50,6 +59,7 @@ import ai.neargo.shop.invoice.dto.InvoiceDtos.OpsTransmissionQuery;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.RegimeProfileReq;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.gateway.InvoiceGateway;
+import ai.neargo.shop.invoice.gateway.InvoiceGateway.GatewayReceipt;
 import ai.neargo.shop.invoice.gateway.AccountCapability;
 import ai.neargo.shop.invoice.gateway.InvoiceGateways;
 import ai.neargo.shop.invoice.gateway.ProviderException;
@@ -130,7 +140,8 @@ import tools.jackson.databind.json.JsonMapper;
  */
 @SpringJUnitConfig(InvoiceServiceMysqlTest.Config.class)
 @TestPropertySource(properties = {"shop.invoice.regimes.TW_EGUI.default-gateway=TEST",
-        "shop.invoice.channel.environment=TEST"})
+        "shop.invoice.channel.environment=TEST", "shop.invoice.delivery.enabled=true",
+        "shop.invoice.delivery.public-origin=https://invoice.example.test/shop-api-v2", "shop.mail.stub=false"})
 class InvoiceServiceMysqlTest {
 
     static final Scope SCOPE = new Scope("T1", "E1", "S1", "U1");
@@ -139,6 +150,7 @@ class InvoiceServiceMysqlTest {
     @Autowired InvoiceService invoices;
     @Autowired InvoiceSetupService setup;
     @Autowired InvoiceTransmissionService transmissions;
+    @Autowired ai.neargo.shop.invoice.service.InvoiceTransmissionAuditService transmissionAudit;
     @Autowired InvoiceBuyerService buyers;
     @Autowired InvoiceStoreSetupService storeSetup;
     @Autowired InvoicePrintSourceFactsPortImpl printSource;
@@ -147,6 +159,11 @@ class InvoiceServiceMysqlTest {
     @Autowired FakeProvider provider;
     @Autowired @Qualifier("secondProvider") FakeProvider secondProvider;
     @Autowired InvoiceApplicationService invoiceApplications;
+    @Autowired InvoiceDeliveryService invoiceDeliveries;
+    @Autowired PrintQueryService deliveryPrintQuery;
+    @Autowired PrintExportFacade deliveryExports;
+    @Autowired OtpSendService deliveryOtp;
+    @Autowired MailPort deliveryMail;
     @Autowired InvoiceChannelService invoiceChannels;
     @Autowired OutboxEventBus events;
     @Autowired JdbcTemplate jdbc;
@@ -158,7 +175,7 @@ class InvoiceServiceMysqlTest {
 
     @BeforeEach
     void reset() {
-        for (var t : List.of("ivc_channel_route_event", "ivc_channel_route", "ivc_channel_account_revision",
+        for (var t : List.of("ivc_invoice_delivery", "ivc_transmission_attempt", "ivc_channel_route_event", "ivc_channel_route", "ivc_channel_account_revision",
                 "ivc_channel_account", "ivc_channel_application_event", "ivc_channel_application_revision",
                 "ivc_channel_application", "ivc_invoice_application_event", "ivc_invoice_application_revision",
                 "ivc_invoice_application", "ivc_invoice_line", "ivc_allowance", "ivc_transmission", "ivc_invoice", "ivc_buyer_preference",
@@ -167,6 +184,7 @@ class InvoiceServiceMysqlTest {
         sources.byNo.clear();
         sources.orders.clear();
         gateway.fail.set(false);
+        gateway.overrideSend = null;
         gateway.payloads.clear();
         secondProvider.seen.clear();
         secondProvider.sends.set(0);
@@ -190,6 +208,52 @@ class InvoiceServiceMysqlTest {
         period = TwPeriods.periodOf(Instant.now());
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null, null, null, null, null, null, null));
         setup.addRange(SCOPE, new NumberRangeReq("TW_EGUI", period, "AB", 1, 50, null));
+    }
+
+    @Test
+    void invoiceMailKeepsVersionAndScopedLinkAndRequiresAnExplicitResend() {
+        var invoice = issueApplication(SCOPE, "MAIL-A");
+        var ref = invoice.invoiceNo();
+        var expiry = Instant.now().plusSeconds(3600);
+        when(deliveryPrintQuery.originalInvoiceProofExpiry(org.mockito.ArgumentMatchers.eq(ref),
+                org.mockito.ArgumentMatchers.eq("EX-A"), any())).thenReturn(expiry);
+        when(deliveryExports.download(org.mockito.ArgumentMatchers.eq("EX-A"), any()))
+                .thenReturn(new DownloadGrant(URI.create("/private/print-artifacts?test=1"), expiry, "proof.pdf", "application/pdf"));
+        var token = new java.util.concurrent.atomic.AtomicReference<String>();
+        when(deliveryMail.send(org.mockito.ArgumentMatchers.eq("buyer@example.test"), any(), any(), any(), any()))
+                .thenAnswer(call -> {
+                    String body = call.getArgument(2);
+                    token.set(body.substring(body.indexOf('#') + 1).split("\\s")[0]);
+                    return SendResult.of("<invoice-test@example.test>");
+                }).thenThrow(new MailPort.MailException("provider response unavailable"));
+        var first = invoiceDeliveries.enqueue(SCOPE, ref, "EX-A", "buyer@example.test", null, "mail-a");
+        assertEquals(invoices.get(SCOPE, ref).applicationRevisionNo(), first.applicationRevisionNo());
+        assertEquals("PENDING", first.status());
+        assertFalse(first.recipientMask().contains("buyer@example.test"));
+        assertEquals(first, invoiceDeliveries.enqueue(SCOPE, ref, "EX-A", "buyer@example.test", null, "mail-a"));
+        assertThrows(BizException.class, () -> invoiceDeliveries.enqueue(SCOPE, ref, "EX-A", "other@example.test", null, "mail-a"));
+        invoiceDeliveries.dispatchDue();
+        var result = invoiceDeliveries.list(SCOPE, ref, 1, 10).records().getFirst();
+        assertEquals("ACCEPTED", result.status());
+        assertEquals("<invoice-test@example.test>", result.providerMessageId());
+        assertNotEquals(token.get(), jdbc.queryForObject("SELECT token_hash FROM ivc_invoice_delivery WHERE delivery_no=?",
+                String.class, first.deliveryNo()));
+        invoiceDeliveries.challenge(token.get(), "127.0.0.1");
+        verify(deliveryOtp).send(argThat(command -> command.businessKey().equals(first.deliveryNo())), any());
+        assertThrows(BizException.class, () -> invoiceDeliveries.download(token.get(), "000000", "127.0.0.1"));
+        when(deliveryOtp.verifyAndConsume(argThat(command -> command.businessKey().equals(first.deliveryNo())
+                && command.code().equals("123456")), any())).thenReturn(true);
+        assertEquals("https://invoice.example.test/shop-api-v2/private/print-artifacts?test=1",
+                invoiceDeliveries.download(token.get(), "123456", "127.0.0.1"));
+        assertTrue(invoiceDeliveries.list(SCOPE, ref, 1, 10).records().getFirst().openedAt() != null);
+        var resent = invoiceDeliveries.resend(SCOPE, ref, first.deliveryNo(), "補寄", false, "mail-b");
+        assertEquals(first.deliveryNo(), resent.parentDeliveryNo());
+        invoiceDeliveries.dispatchDue();
+        assertEquals("UNKNOWN", invoiceDeliveries.list(SCOPE, ref, 1, 10).records().getFirst().status());
+        assertThrows(BizException.class, () ->
+                invoiceDeliveries.resend(SCOPE, ref, resent.deliveryNo(), "補寄", false, "mail-c"));
+        assertThrows(BizException.class, () ->
+                invoiceDeliveries.list(new Scope("T1", "E1", "OTHER", "U1"), ref, 1, 10));
     }
 
     @Test
@@ -231,6 +295,13 @@ class InvoiceServiceMysqlTest {
         assertEquals("CONSISTENT", transmissions.checkWithProvider(SCOPE, firstInvoice.invoiceNo()).verdict());
         assertEquals(List.of("OFFICE-OLD", "OFFICE-OLD", "OFFICE-OLD"),
                 provider.seen.stream().map(InvoiceGateway.ProviderAccount::accountCode).toList());
+        var oldHistory = transmissionAudit.list(SCOPE, firstInvoice.invoiceNo());
+        assertEquals(List.of("ISSUE", "PROVIDER_CHECK", "VOID", "PROVIDER_CHECK"),
+                oldHistory.stream().map(a -> a.operation()).toList());
+        assertTrue(oldHistory.stream().allMatch(a -> first.equals(a.channelAccountNo()) && a.finishedAt() != null));
+        assertEquals("VOIDED", oldHistory.getLast().safeCode());
+        assertEquals(SCOPE.actorNo(), oldHistory.getLast().actorNo());
+
         assertTrue(secondProvider.seen.isEmpty());
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE ref_no=?"
                 + " AND gateway_code='PROV' AND channel_account_no=?", Integer.class, firstInvoice.invoiceNo(), first));
@@ -1317,6 +1388,53 @@ class InvoiceServiceMysqlTest {
     }
 
     @Test
+    void staleNetworkClaimIsAuditedAndItsLateResponseCannotReplaceNewerResult() throws Exception {
+        sources.paid("STALE", 1_000);
+        var invoice = issue("STALE");
+        var firstNetworkCall = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        gateway.overrideSend = request -> {
+            if (calls.incrementAndGet() != 1) return GatewayReceipt.accepted("G-NEW");
+            firstNetworkCall.countDown();
+            try {
+                if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("test timeout");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
+            }
+            return GatewayReceipt.rejected("late unredacted test response");
+        };
+        try (var pool = Executors.newSingleThreadExecutor()) {
+            var first = pool.submit(() -> transmissions.transmitNow(SCOPE, invoice.invoiceNo()));
+            try {
+                assertTrue(firstNetworkCall.await(5, java.util.concurrent.TimeUnit.SECONDS));
+                var committed = transmissionAudit.list(SCOPE, invoice.invoiceNo()).getFirst();
+                assertEquals("STARTED", committed.outcome(), "journal must commit before network");
+                assertEquals(1L, committed.attemptIndex());
+                assertEquals(SCOPE.actorNo(), committed.actorNo());
+                jdbc.update("UPDATE ivc_transmission SET updated_at=UTC_TIMESTAMP(3) - INTERVAL 11 MINUTE WHERE ref_no=?",
+                        invoice.invoiceNo());
+                assertEquals(1, transmissions.transmitDue(10));
+            } finally {
+                release.countDown();
+            }
+            assertEquals(0, first.get(5, java.util.concurrent.TimeUnit.SECONDS));
+        }
+        var attempts = transmissionAudit.list(SCOPE, invoice.invoiceNo());
+        assertEquals(List.of(1L, 2L), attempts.stream().map(a -> a.attemptIndex()).toList());
+        assertEquals(List.of("UNKNOWN", "ACCEPTED"), attempts.stream().map(a -> a.outcome()).toList());
+        assertEquals("STALE_CLAIM", attempts.getFirst().safeCode());
+        assertEquals(attempts.getFirst().payloadHash(), attempts.getLast().payloadHash());
+        assertEquals("G-NEW", jdbc.queryForObject("SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?",
+                String.class, invoice.invoiceNo()));
+        assertEquals(1, jdbc.queryForObject("SELECT attempts FROM ivc_transmission WHERE ref_no=?",
+                Integer.class, invoice.invoiceNo()));
+        assertCode(ErrorCode.INVOICE_NOT_FOUND, () -> transmissionAudit.list(
+                new Scope(SCOPE.tenantNo(), SCOPE.entityNo(), "OTHER", SCOPE.actorNo()), invoice.invoiceNo()));
+    }
+
+    @Test
     void ac14NoRegimeMeansNoInvoice() {
         jdbc.update("UPDATE ivc_regime_profile SET status='SUSPENDED'");
         sources.paid("SO1", 1_000);
@@ -1624,7 +1742,7 @@ class InvoiceServiceMysqlTest {
             int applied = Flyway.configure().dataSource(ds).locations("classpath:db/invoice")
                     .table("ivc_flyway_history").baselineOnMigrate(true).baselineVersion("0").load().migrate()
                     .migrationsExecuted;
-            assertEquals(17, applied);
+            assertEquals(19, applied);
             return ds;
         }
     }
@@ -1667,6 +1785,7 @@ class InvoiceServiceMysqlTest {
     static final class FlakyGateway implements InvoiceGateway {
         final AtomicBoolean fail = new AtomicBoolean();
         final List<String> payloads = new ArrayList<>();
+        volatile java.util.function.Function<GatewayRequest, GatewayReceipt> overrideSend;
 
         public String code() {
             return "TEST";
@@ -1678,6 +1797,8 @@ class InvoiceServiceMysqlTest {
         }
 
         public GatewayReceipt send(GatewayRequest request) {
+            var handler = overrideSend;
+            if (handler != null) return handler.apply(request);
             if (fail.get()) throw new IllegalStateException("gateway down");
             payloads.add(request.payloadJson());
             return GatewayReceipt.accepted("G-" + payloads.size());
@@ -1829,10 +1950,14 @@ class InvoiceServiceMysqlTest {
     @Configuration
     @EnableTransactionManagement
     @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", sqlSessionFactoryRef = "sqlSessionFactory")
-    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class, InvoiceStoreSetupServiceImpl.class, InvoiceGateways.class, InvoiceGatewayPolicy.class,
+    @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class, InvoiceTransmissionJournal.class, InvoiceStoreSetupServiceImpl.class, InvoiceGateways.class, InvoiceGatewayPolicy.class,
             InvoiceRegimes.class, TwEguiRegime.class, InvoicePrintSourceFactsPortImpl.class,
-            InvoiceChannelServiceImpl.class, InvoiceApplicationServiceImpl.class})
+            InvoiceChannelServiceImpl.class, InvoiceApplicationServiceImpl.class, InvoiceDeliveryServiceImpl.class})
     static class Config {
+        @Bean PrintQueryService deliveryPrintQuery() { return mock(PrintQueryService.class); }
+        @Bean PrintExportFacade deliveryExports() { return mock(PrintExportFacade.class); }
+        @Bean OtpSendService deliveryOtp() { return mock(OtpSendService.class); }
+        @Bean MailPort deliveryMail() { return mock(MailPort.class); }
         @Bean
         DataSource dataSource() {
             return Db.dataSource();

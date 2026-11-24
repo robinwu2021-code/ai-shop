@@ -37,7 +37,7 @@ public class PublicGatewayChain {
                 // **显式写出来**：不写就是靠「碰巧没有一条链匹配它所以放行」，
                 // 而那种性质会在有人把 securityMatcher 改宽时静默消失。
                 .securityMatcher("/common/**", "/callback/**", "/actuator/**",
-                        "/uploads/**", "/media/**", "/s/**", "/l/**")
+                        "/uploads/**", "/media/**", "/s/**", "/l/**", "/public/invoice-deliveries/**")
                 .cors(c -> c.configurationSource(cors))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

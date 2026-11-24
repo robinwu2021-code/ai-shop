@@ -371,6 +371,7 @@ public class DefaultPrintFacade
         batch.setCreatedBy(actor.actorNo());
         batches.insert(batch);
         generated.sort(Comparator.comparing(PrnJob::getPrinterNo));
+        var invoiceExports = new ArrayList<String>();
         for (var job : generated) {
             var runtime =
                     runtimes.selectOne(
@@ -386,6 +387,9 @@ public class DefaultPrintFacade
             job.setBatchNo(batch.getBatchNo());
             ai.neargo.shop.printing.service.PreparedPrintJobs.initialize(job);
             jobs.insert(job);
+            if ("INVOICE_PROOF".equals(ref.scene())) {
+                invoiceExports.add(exports.archiveInvoiceProof(job.getJobNo(), job.getRevision(), actor));
+            }
         }
         request.setStatus("GENERATED");
         request.setBlockCode(null);
@@ -394,7 +398,10 @@ public class DefaultPrintFacade
         request.setUpdatedAt(now());
         requests.updateById(request);
         var submission = submission(request, actor);
-        if (output.pdfEnabled()) {
+        if (!invoiceExports.isEmpty()) {
+            submission = new PrintSubmission(submission.requestNo(), submission.batchNos(),
+                    submission.jobNos(), null, invoiceExports);
+        } else if (output.pdfEnabled()) {
             var exported =
                     exports.create(
                             new ExportCommand(

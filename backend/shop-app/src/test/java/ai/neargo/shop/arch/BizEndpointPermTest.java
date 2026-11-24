@@ -238,6 +238,7 @@ class BizEndpointPermTest {
                     put("/biz/print/jobs/{jobNo}/stale-releases", BizPerms.PRINT_RESOLVE);
                     put("/biz/print/operations/{operationNo}", BizPerms.PRINT_READ);
                     put("/biz/print/orders/{orderNo}/summary", BizPerms.PRINT_READ);
+                    put("/biz/print/invoices/{invoiceNo}/proof-history", BizPerms.PRINT_READ);
                     put("/biz/print/printers", BizPerms.PRINT_READ);
                     put("/biz/print/printers/{printerNo}", BizPerms.PRINT_READ);
                     put("/biz/print/printers/{printerNo}/probes", BizPerms.PRINT_DEVICE);
@@ -288,6 +289,9 @@ class BizEndpointPermTest {
                     put("/biz/invoice-applications/{applicationNo}/rejections", BizPerms.INVOICE_SETUP);
                     put("/biz/invoice-applications/{applicationNo}/cancellations", BizPerms.INVOICE_SETUP);
                     put("/biz/invoice-applications/{applicationNo}/issuances", BizPerms.INVOICE_ISSUE);
+                    put("/biz/invoices/{invoiceNo}/deliveries", BizPerms.INVOICE_READ);
+                    put("/biz/invoices/{invoiceNo}/deliveries/{deliveryNo}/resends", BizPerms.INVOICE_ISSUE);
+                    put("/biz/invoices/{invoiceNo}/timeline", BizPerms.INVOICE_READ);
                     put("/biz/invoices", BizPerms.INVOICE_READ);
                     put("/biz/invoices/{invoiceNo}", BizPerms.INVOICE_READ);
                     put("/biz/invoices/{invoiceNo}/print-facts", BizPerms.INVOICE_READ);

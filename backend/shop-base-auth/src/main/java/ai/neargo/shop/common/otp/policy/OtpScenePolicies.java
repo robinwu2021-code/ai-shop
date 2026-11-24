@@ -26,21 +26,23 @@ public final class OtpScenePolicies {
         for (String scene : OtpScenes.ALL) {
             boolean login = OtpScenes.LOGIN.equals(scene);
             boolean pickup = OtpScenes.ORDER_PICKUP_CONFIRM.equals(scene);
+            boolean invoice = OtpScenes.INVOICE_ARTIFACT_ACCESS.equals(scene);
             var override = settings.getScenes().getOrDefault(scene, new OtpSettings.Scene());
             Set<Channel> allowed = switch (scene) {
                 case OtpScenes.PHONE_CHANGE, OtpScenes.ORDER_PICKUP_CONFIRM -> Set.of(Channel.SMS);
-                case OtpScenes.EMAIL_CHANGE -> Set.of(Channel.EMAIL);
+                case OtpScenes.EMAIL_CHANGE, OtpScenes.INVOICE_ARTIFACT_ACCESS -> Set.of(Channel.EMAIL);
                 default -> Set.of(Channel.SMS, Channel.EMAIL);
             };
             // Every SMS / email send shows the slider only past the per-recipient or platform threshold.
             var mode = override.getCaptchaMode() != null ? override.getCaptchaMode() : CaptchaMode.ADAPTIVE;
             var validity = Map.of(Channel.SMS, Duration.ofSeconds(override.getSmsTtlSeconds() == null ? 300 : override.getSmsTtlSeconds()),
                     Channel.EMAIL, Duration.ofSeconds(override.getEmailTtlSeconds() == null ? (login || OtpScenes.EMAIL_CHANGE.equals(scene) ? 600 : 300) : override.getEmailTtlSeconds()));
-            rules.put(scene, new OtpScenePolicy(scene, override.getEnabled() == null ? login : override.getEnabled(),
+            rules.put(scene, new OtpScenePolicy(scene, override.getEnabled() == null ? login || invoice : override.getEnabled(),
                     override.getChannels() == null ? allowed : override.getChannels(), validity, mode,
                     override.getAccountHourly() == null ? (pickup ? 1 : settings.getAccountHourly()) : override.getAccountHourly(),
-                    override.getAccountDaily() == null ? (pickup ? 3 : settings.getAccountDaily()) : override.getAccountDaily(), pickup));
-            callers.put(scene, override.getEntries() == null ? (login ? Set.of(OtpEntries.BIZ_LOGIN, OtpEntries.LEGACY_AUTH) : Set.of())
+                    override.getAccountDaily() == null ? (pickup ? 3 : settings.getAccountDaily()) : override.getAccountDaily(), pickup || invoice));
+            callers.put(scene, override.getEntries() == null ? (login ? Set.of(OtpEntries.BIZ_LOGIN, OtpEntries.LEGACY_AUTH)
+                            : invoice ? Set.of(OtpEntries.INVOICE_ARTIFACT) : Set.of())
                     : Set.copyOf(override.getEntries()));
         }
         policies = Map.copyOf(rules); entries = Map.copyOf(callers);
@@ -62,7 +64,8 @@ public final class OtpScenePolicies {
             throw BizException.of(ErrorCode.BAD_REQUEST);
     }
     public CaptchaMode mode(OtpScenePolicy rule, String entryCode) {
-        if (!captchaEnabled || (OtpScenes.LOGIN.equals(rule.scene()) && OtpEntries.LEGACY_AUTH.equals(entryCode)))
+        if (!captchaEnabled || (OtpScenes.LOGIN.equals(rule.scene()) && OtpEntries.LEGACY_AUTH.equals(entryCode))
+                || (OtpScenes.INVOICE_ARTIFACT_ACCESS.equals(rule.scene()) && OtpEntries.INVOICE_ARTIFACT.equals(entryCode)))
             return CaptchaMode.RATE_ONLY;
         return rule.captchaMode();
     }

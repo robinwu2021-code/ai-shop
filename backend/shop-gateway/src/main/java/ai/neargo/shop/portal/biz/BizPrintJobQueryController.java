@@ -47,6 +47,14 @@ public class BizPrintJobQueryController {
     }
 
     @PreAuthorize("@perm.canBiz('biz:print:read')")
+    @GetMapping("/biz/print/invoices/{invoiceNo}/proof-history")
+    public InvoiceProofHistory invoiceProofHistory(
+            @PathVariable("invoiceNo") String invoiceNo,
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size) {
+        return service0.invoiceProofHistory(invoiceNo, page, size, actors.merchant(null));
+    }
+
+    @PreAuthorize("@perm.canBiz('biz:print:read')")
     @GetMapping("/biz/print/jobs/{jobNo}")
     public PrintJobView getJob(@PathVariable("jobNo") String jobNo) {
         var actor = actors.merchant(null);

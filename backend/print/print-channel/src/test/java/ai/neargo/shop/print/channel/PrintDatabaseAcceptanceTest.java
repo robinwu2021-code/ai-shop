@@ -181,13 +181,14 @@ class PrintDatabaseAcceptanceTest {
 
     static class FakeSource implements PrintSourceFactsPort {
         PrintFact fact;
+        boolean blocked;
 
         public Set<String> scenes() {
-            return Set.of("ORDER_PAID");
+            return Set.of("ORDER_PAID", "INVOICE_PROOF");
         }
 
         public Set<String> sourceTypes() {
-            return Set.of("SUB_ORDER");
+            return Set.of("SUB_ORDER", "INVOICE");
         }
 
         public PrintFactRef resolveReference(PrintSourceReference r, PrintScope scope) {
@@ -204,9 +205,114 @@ class PrintDatabaseAcceptanceTest {
         }
 
         public PrintExecutionGuard executionGuard(PrintFactRef ref) {
+            if (blocked) {
+                return new PrintExecutionGuard(false, GuardDecision.CANCEL_UNSUBMITTED_EXECUTION,
+                        ref.bizRevision(), true, "INVOICE_VOIDED");
+            }
             return new PrintExecutionGuard(
                     true, GuardDecision.ALLOW_HISTORICAL_RECEIPT, ref.bizRevision(), false, null);
         }
+    }
+
+    @Test
+    void invoiceOriginalAndReprintKeepSeparateServerArchives() {
+        String scene = "INVOICE_PROOF";
+        String invoiceNo = "IVC-EXAMPLE";
+        var scope = new PrintScope("T4", "E4", "S4");
+        var actor = new PrintActor("T4", "E4", "S4", "MERCHANT", "U4", "proof-flow",
+                Set.of("SOURCE_INVOICE_READ", "biz:print:export", "biz:print:reprint", "biz:print:resolve"));
+        var cloud = context.getBean(FakeCloud.class);
+        var devices = context.getBean(PrintDeviceService.class);
+        var printer = devices.createPrinter(new CreatePrinterReq("S4", "Invoice proof", 58,
+                new Connection("CLOUD", cloud.adapterCode(), "testuser", "INVSN04", null, Map.of(), null,
+                        Map.of("user", "testuser", "ukey", "testkey"))), actor).targetNo();
+        devices.changeStatus(printer, new ChangeStatusReq(devices.getPrinter(printer, actor).printer().revision(),
+                "ACTIVE", "acceptance"), proofAction(actor, "proof-active"));
+        var routes = context.getBean(PrintRouteService.class);
+        var route = routes.createRoute(new CreateRouteReq("S4", scene), proofAction(actor, "proof-route")).targetNo();
+        var version = routes.createRouteVersion(route, new CreateRouteVersionReq(0L,
+                List.of(new RouteRule("default", 0, new RoutePredicate(List.of()),
+                        List.of(new RouteTarget("main", printer, 1, true,
+                                new TemplateSelection(TemplateSelectionMode.SCENE_DEFAULT, "STANDARD_58", null)))))),
+                proofAction(actor, "proof-route-version")).targetNo();
+        routes.publishRoute(version, new PublishRouteReq(0L, 1L), proofAction(actor, "proof-route-publish"));
+        context.getBean(PrintScenePolicyService.class).saveScenePolicy(scene, new SaveScenePolicyReq("S4", 0L,
+                new Policy(true, false, Set.of(), null, 15, 120, 3, 60, 600, Map.of(),
+                        new PrintOutputOptions(false, PdfOutputProfile.ORIGINAL_ROLL))), proofAction(actor, "proof-policy"));
+        var codec = context.getBean(PrintJsonCodec.class);
+        var frozen = codec.freeze(context.getBean(PrintSceneRegistry.class).require(scene).example());
+        var ref = new PrintFactRef("T4", "E4", "S4", "INVOICE", invoiceNo, "1", scene, frozen.sha256());
+        var source = context.getBean(FakeSource.class);
+        var priorFact = source.fact;
+        source.fact = new PrintFact(ref, null, "SUB-INVOICE", "INVOICE_ISSUED", invoiceNo, Instant.now(),
+                1, frozen, Printability.READY, null, List.of());
+        var facade = context.getBean(PrintFacade.class);
+        var queries = context.getBean(PrintQueryService.class);
+        try {
+            var intent = new PrintIntent(ref, PrintMode.EXISTING_FACT, null);
+            var first = facade.submit(intent, actor);
+            assertEquals(1, first.jobNos().size());
+            assertEquals(1, first.exportNos().size());
+            assertEquals(first.jobNos(), facade.submit(intent, actor).jobNos());
+            var original = queries.invoiceProofHistory(invoiceNo, 1, 20, actor).jobs().records().getFirst();
+            assertEquals("PENDING", original.job().status());
+            assertEquals("READY", original.archive().status());
+            assertNotNull(original.archive().sha256());
+            assertTrue(queries.invoiceProofHistory("IVC-OTHER", 1, 20, actor).jobs().records().isEmpty());
+            assertThrows(PrintFailure.class, () -> queries.invoiceProofHistory(invoiceNo, 1, 20, actor("no-invoice-read")));
+
+            var jdbc = new JdbcTemplate(context.getBean(DataSource.class));
+            confirmProofJob(scope, original.job().jobNo());
+            original = queries.invoiceProofHistory(invoiceNo, 1, 20, actor).jobs().records().getFirst();
+            assertEquals("COMPLETED", original.job().status());
+            var originalJob = original;
+            var reprints = context.getBean(PrintReprintService.class);
+            var command = new ReprintReq(original.job().revision(), "customer copy", null, false);
+            var copied = reprints.reprint(original.job().jobNo(), command, proofAction(actor, "proof-reprint"));
+            assertEquals(copied, reprints.reprint(original.job().jobNo(), command, proofAction(actor, "proof-reprint")));
+            var records = queries.invoiceProofHistory(invoiceNo, 1, 20, actor).jobs().records();
+            assertEquals(2, records.size());
+            var copy = records.getFirst();
+            assertEquals(original.job().jobNo(), copy.job().parentJobNo());
+            assertEquals("READY", copy.archive().status());
+            assertNotEquals(original.archive().sha256(), copy.archive().sha256());
+            confirmProofJob(scope, copy.job().jobNo());
+
+            source.blocked = true;
+            assertThrows(PrintFailure.class, () ->
+                    reprints.reprint(originalJob.job().jobNo(), command, proofAction(actor, "proof-voided")));
+            assertNotNull(context.getBean(PrintExportFacade.class).download(copy.archive().exportNo(), actor));
+            jdbc.update("UPDATE prn_export_task SET expires_at=? WHERE export_no=?",
+                    java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).minusDays(1), copy.archive().exportNo());
+            context.getBean(PrintExportCleanupJob.class).expire(new PrintWorkerBudget(100, Duration.ofSeconds(10), "proof-cleanup"));
+            var expired = queries.invoiceProofHistory(invoiceNo, 1, 20, actor).jobs().records().getFirst().archive();
+            assertEquals("EXPIRED", expired.status());
+            assertEquals(copy.archive().sha256(), expired.sha256());
+            assertNotNull(expired.deletedAt());
+        } finally {
+            source.fact = priorFact;
+            source.blocked = false;
+        }
+    }
+
+    private PrintActor proofAction(PrintActor actor, String key) {
+        return new PrintActor(actor.tenantNo(), actor.entityNo(), actor.storeNo(), actor.actorType(),
+                actor.actorNo(), key, actor.dataScopes());
+    }
+
+    private void confirmProofJob(PrintScope scope, String jobNo) {
+        var budget = new PrintWorkerBudget(100, Duration.ofSeconds(10), "proof-acceptance");
+        var dispatch = context.getBean(PrintDispatchService.class);
+        var receipt = context.getBean(PrintReceiptService.class);
+        dispatch.dispatchCloud(budget);
+        receipt.applyPending(budget);
+        var attempt = context.getBean(AttemptMapper.class).selectOne(new QueryWrapper<PrnAttempt>().eq("job_no", jobNo));
+        assertNotNull(attempt);
+        var codec = context.getBean(PrintJsonCodec.class);
+        dispatch.reconcileAttempt(new PrintAttemptRef(scope, attempt.getAttemptNo(), attempt.getProviderScope(),
+                attempt.getProviderJobId(), attempt.getDispatchKey(), attempt.getCredentialRef(),
+                codec.freeze(attempt.getConnectionSnapshot())));
+        receipt.applyPending(budget);
     }
 
     static class FakeCloud implements PrintDispatchPort {
@@ -233,7 +339,7 @@ class PrintDatabaseAcceptanceTest {
             last = d;
             return new DispatchResult(
                     DispatchOutcome.ACCEPTED,
-                    "VENDOR1",
+                    "VENDOR-" + d.jobNo(),
                     new PrintJsonCodec()
                             .freeze(Map.of("queueTerminated", false, "partialOutput", false)),
                     null);

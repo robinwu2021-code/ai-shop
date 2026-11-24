@@ -195,9 +195,12 @@ public class InvoicePrintSourceFactsPortImpl implements PrintSourceFactsPort {
         var fact = snapshot(r);
         if (TYPE.equals(r.sourceType())) {
             var inv = invoice(new PrintScope(r.tenantNo(), r.entityNo(), r.storeNo()), r.factNo());
-            if ("VOIDED".equals(inv.getStatus()))
+            if ("REVOKING".equals(inv.getStatus()))
+                return new PrintExecutionGuard(false, GuardDecision.HOLD_UNKNOWN, r.bizRevision(),
+                        false, "INVOICE_REVOKING");
+            if (Set.of("VOIDED", "REVOKED").contains(inv.getStatus()))
                 return new PrintExecutionGuard(false, GuardDecision.CANCEL_UNSUBMITTED_EXECUTION, r.bizRevision(),
-                        true, "INVOICE_VOIDED");
+                        true, "INVOICE_" + inv.getStatus());
         }
         if (ALLOWANCE_TYPE.equals(r.sourceType())) {
             var a = allowance(new PrintScope(r.tenantNo(), r.entityNo(), r.storeNo()), r.factNo());
