@@ -806,7 +806,8 @@ public class CheckCartServiceImpl implements CheckCartService, ai.neargo.shop.fo
                 Wrappers.<FnbCheckCart>lambdaQuery()
                         .eq(FnbCheckCart::getEntityNo, entity)
                         .eq(FnbCheckCart::getStoreNo, store)
-                        .ne(FnbCheckCart::getStatus, "CLOSED");
+                        // ARCHIVED 是移单/移行留下的终态（要在新车上重新报价），与 CLOSED 一样不再占位。
+                        .notIn(FnbCheckCart::getStatus, "CLOSED", "ARCHIVED");
         if (check != null) filter.eq(FnbCheckCart::getCheckNo, check);
         else filter.isNull(FnbCheckCart::getCheckNo).eq(FnbCheckCart::getSessionNo, session);
         var found = carts.selectList(filter.last("FOR UPDATE"));

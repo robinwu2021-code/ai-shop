@@ -190,6 +190,23 @@ class KitchenCustodyServiceTest {
         assertThatThrownBy(() -> pack("1","pack-1")).isInstanceOf(BizException.class);
     }
 
+    /**
+     * 整单交接（HANDOVER）后任务定稿，但顾客退回的菜仍要由后厨做退菜处置（RETURN_DISPOSE），
+     * 否则退单的后厨状态永远停在 PENDING，退料/报损也做不了。其余动作仍被交接锁住。
+     */
+    @Test void wholeHandoverStillAllowsReturnDisposalButNothingElse() {
+        pack("3","pack-1"); handover("3","hand-1");
+        assertThat(facts).anyMatch(e -> "HANDOVER".equals(e.getAction()));
+        var disposed=service.act("E","S","A","TASK",new ai.neargo.shop.food.dto.KitchenContracts.TaskActionReq(
+                task.getVersion(),"RETURN_DISPOSE",BigDecimal.ONE,"spoiled"),"return-1");
+        assertThat(disposed).isNotNull();
+        assertThat(facts).anyMatch(e -> "RETURN_LOSS".equals(e.getAction()) && BigDecimal.ONE.compareTo(e.getQty())==0);
+        for (String action : List.of("VOID","LOSS","SERVE"))
+            assertThatThrownBy(() -> service.act("E","S","A","TASK",new ai.neargo.shop.food.dto.KitchenContracts.TaskActionReq(
+                    task.getVersion(),action,BigDecimal.ONE,"after handover"),"after-"+action))
+                    .isInstanceOf(BizException.class);
+    }
+
     private CustodyReceiptVO pack(String qty,String key) {
         return service.confirmPacking("E","S","A","B",new PackingReq(
                 List.of(new HandoverLine("L",new BigDecimal(qty))),"checked"),key);

@@ -1450,6 +1450,75 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
                 });
     }
 
+    /**
+     * 共享购物车由 G1 建、G2 提交：价格事实与报价都绑定提交人 G2 的会话，
+     * 下单投影必须用同一主体；批次的 party 也要记成 G2，G2 才能查到自己的单。
+     */
+    @Test
+    void secondGuestCanSubmitSharedCartAndReadsOwnBatch() {
+        run(
+                true,
+                c -> {
+                    c.fixture.sql().update("UPDATE fnb_check_cart SET buyer_no=NULL");
+                    var g2 = new CartAccess("G2", "secret-G2", null);
+                    var original = c.facts.customer("C", BUYER, 0);
+                    var p = original.payload();
+                    var payload =
+                            new DiningPriceFacts.Payload(
+                                    p.entityNo(), "G2", p.cart(), p.menus(), p.identities(), p.offers(),
+                                    p.restrictions(), p.units(), p.composition(), p.currency(),
+                                    p.amountMinor(), p.delivery(), p.feeSources());
+                    var asG2 = new DiningPriceFacts(original.schemaVersion(), payload, PricingSnapshotHash.of(payload));
+                    var projection =
+                            DiningPricingSourcePolicy.project(
+                                    asG2, null, new PricingSourceRef("FOOD", "CART", "C", 0, null, null), "G2");
+                    var q = c.pricing.revalidateCustomer(null, null, "Q", DIGEST);
+                    var quote =
+                            new PricingCheckoutPort.QuoteVO(
+                                    q.quoteNo(), q.status(), q.expiresAt(), q.sourceVersion(),
+                                    projection.prices().sourceSnapshotHash(), q.currency(), q.lines(),
+                                    q.totals(), q.confirmationDigest());
+                    when(c.facts.customer("C", g2, 0)).thenReturn(asG2);
+                    when(c.pricing.revalidateCustomer(any(), any(), anyString(), anyString())).thenReturn(quote);
+                    var shared = c.carts.customerGetCart("C", BUYER);
+                    when(c.carts.customerGetCart("C", g2)).thenReturn(shared);
+                    var seen = new AtomicReference<IndustryOrderPort.Identity>();
+                    doAnswer(call -> {
+                                seen.set(((IndustryOrderPort.Command) call.getArgument(0)).identity());
+                                return c.receipt.get();
+                            })
+                            .when(c.core)
+                            .place(any(), anyString());
+                    var placed = c.service.customerPlace("A", g2, postpayRequest(), "G2-PLACE");
+                    assertThat(placed.status()).isEqualTo("ACCEPTED");
+                    assertThat(seen.get().partyNo()).isEqualTo("G2");
+                    assertThat(
+                                    c.fixture
+                                            .sql()
+                                            .queryForObject("SELECT party_no FROM fnb_order_batch", String.class))
+                            .isEqualTo("G2");
+                });
+    }
+
+    /** 扫码顾客在开台前下堂食单：绑定阶段必然因没有台账而失败，所以必须在去核心建单之前就拒绝，不能留孤儿单。 */
+    @Test
+    void customerDineInWithoutCheckIsRejectedBeforeCoreOrderIsCreated() {
+        run(
+                true,
+                c -> {
+                    c.fixture.sql().update("UPDATE fnb_check_cart SET fulfillment='DINE_IN',check_no=NULL");
+                    assertThatThrownBy(
+                                    () -> c.service.customerPlace("A", BUYER, postpayRequest(), "DINE-NO-CHECK"))
+                            .isInstanceOf(BizException.class);
+                    assertThat(c.coreCalls).hasValue(0);
+                    assertThat(
+                                    c.fixture
+                                            .sql()
+                                            .queryForObject("SELECT COUNT(*) FROM fnb_order_batch", Integer.class))
+                            .isZero();
+                });
+    }
+
     @Test
     void postpayAcceptsRealUnpaidOwnerProofAndPublishesQuotaAndDispatchInOneTransaction() {
         run(

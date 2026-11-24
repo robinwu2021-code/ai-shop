@@ -787,6 +787,10 @@ public class DiningOrderServiceImpl implements DiningOrderService {
         if (!Objects.equals(access.buyerNo(), cart.getBuyerNo())
                 || !List.of("H5", "QR", "KIOSK").contains(cart.getOrderSource())
                 || !List.of("PICKUP", "DINE_IN", "DELIVERY").contains(cart.getFulfillment())
+                // 堂食只能挂在已开台账上后付（绑定阶段 validateDiningRoomFrozen 的前提），
+                // 必须在去核心建单之前拒绝，否则核心留下一张永远绑不上的 WAIT_PAY 单。
+                || "DINE_IN".equals(cart.getFulfillment())
+                        && (cart.getCheckNo() == null || !"POSTPAY".equals(req.payMode()))
                 || access.buyerNo() == null && !"POSTPAY".equals(req.payMode()))
             throw unsupported();
         String principal = access.buyerNo() == null ? access.sessionNo() : access.buyerNo();
@@ -817,9 +821,13 @@ public class DiningOrderServiceImpl implements DiningOrderService {
                             sourceFacts,
                             null,
                             source,
-                            sourceFacts.payload().cart().sessionNo() == null
-                                    ? access.buyerNo()
-                                    : sourceFacts.payload().cart().sessionNo());
+                            // 与 DiningPricingFactsServiceImpl 取主体的规则一致：提交人自己的会话优先。
+                            // 共享车由 G1 建、G2 提交时，事实与报价都绑定 G2，不能拿建车人的会话去比。
+                            access.sessionNo() != null
+                                    ? access.sessionNo()
+                                    : sourceFacts.payload().cart().sessionNo() != null
+                                            ? sourceFacts.payload().cart().sessionNo()
+                                            : access.buyerNo());
             IndustryOrderCompositionFacts.require(
                     projection, IndustryOrderPort.Mode.valueOf(req.payMode()));
             if (!quote.sourceHash().equals(projection.prices().sourceSnapshotHash()))
@@ -1095,8 +1103,11 @@ public class DiningOrderServiceImpl implements DiningOrderService {
         batch.setBuyerNo(buyer);
         batch.setOperatorNo(actor);
         if (buyer == null) {
-            CartInputPolicy.key(cart.getSessionNo());
-            batch.setPartyNo(cart.getSessionNo());
+            // 顾客下单时 party 是提交人（principal = 自己的会话），不是建车人；
+            // 否则共享车上 G2 下的单记在 G1 名下，G2 自己查不到。店员代下单仍沿用车上的会话。
+            String party = "CONSUMER".equals(realm) ? actor : cart.getSessionNo();
+            CartInputPolicy.key(party);
+            batch.setPartyNo(party);
         }
         batch.setScheduledAt(cart.getScheduledAt());
         batch.setStatus("PREPARED");

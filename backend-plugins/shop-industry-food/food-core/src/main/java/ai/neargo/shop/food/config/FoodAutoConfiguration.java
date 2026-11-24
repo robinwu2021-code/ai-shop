@@ -159,7 +159,7 @@ import tools.jackson.databind.ObjectMapper;
 /** 餐饮模块装配入口。 */
 @AutoConfiguration(afterName = {"org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration",
         "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration"})
-@Import({ai.neargo.shop.food.port.FoodStoreRelinkFactsPortImpl.class, FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class, FoodOperationsConfiguration.class, FoodMaterialSourceConfiguration.class})
+@Import({FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class, FoodOperationsConfiguration.class, FoodMaterialSourceConfiguration.class})
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {

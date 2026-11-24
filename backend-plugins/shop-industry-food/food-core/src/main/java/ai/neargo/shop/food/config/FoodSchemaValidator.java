@@ -28,6 +28,12 @@ import javax.sql.DataSource;
 /** 餐饮私有历史校验；只在显式 MIGRATE 模式执行餐饮迁移，从不接管平台 Flyway。 */
 public final class FoodSchemaValidator {
     public static final String HISTORY = "fnb_flyway_history";
+
+    /**
+     * 餐饮迁移的目标版本：必须等于 db/industry/food 下最高的 V 号。
+     * 新增迁移时同步改这里（FoodSchemaVersionGuardTest 会对账）。
+     */
+    public static final String EXPECTED_VERSION = "39";
     private static final String RESOURCE = "db/industry/food/V1__food_business_tables.sql";
     private static final String SHA256 =
             "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9";
@@ -77,8 +83,8 @@ public final class FoodSchemaValidator {
         }
         var current = flyway.info().current();
         require(
-                current != null && "37".equals(current.getVersion().getVersion()),
-                "food migration version must be 37");
+                current != null && EXPECTED_VERSION.equals(current.getVersion().getVersion()),
+                "food migration version must be " + EXPECTED_VERSION);
         try (var connection = source.getConnection();
                 var column =
                         connection

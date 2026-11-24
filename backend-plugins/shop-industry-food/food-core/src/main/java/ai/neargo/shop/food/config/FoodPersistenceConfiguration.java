@@ -22,6 +22,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnFoodEnabled
 @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+// 门店改绑的行业事实要查餐饮表，依赖 foodSqlSessionTemplate；只能随持久化一起装配。
+@org.springframework.context.annotation.Import(ai.neargo.shop.food.port.FoodStoreRelinkFactsPortImpl.class)
 @MapperScan(basePackages = "ai.neargo.shop.food.mapper", markerInterface = BaseMapper.class,
         sqlSessionTemplateRef = "foodSqlSessionTemplate")
 public class FoodPersistenceConfiguration {

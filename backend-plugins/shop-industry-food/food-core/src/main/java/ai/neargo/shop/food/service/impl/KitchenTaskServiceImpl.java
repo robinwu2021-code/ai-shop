@@ -536,7 +536,10 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                 req,
                 EventVO.class,
                 () -> {
-                    var task = lockedTask(entity, store, taskNo);
+                    // 交接即定稿；唯一例外是顾客退回后的退菜处置，它记的是售后损耗，不改出品。
+                    var task =
+                            lockedTask(
+                                    entity, store, taskNo, "RETURN_DISPOSE".equals(req.action()));
                     if (req.version() == null || !req.version().equals(task.getVersion()))
                         throw conflict();
                     if (Set.of("START", "FIRE").contains(req.action()))
@@ -644,7 +647,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                 req,
                 TicketVO.class,
                 () -> {
-                    var original = lockedTask(entity, store, taskNo);
+                    var original = lockedTask(entity, store, taskNo, false);
                     if (req.version() == null || !req.version().equals(original.getVersion()))
                         throw conflict();
                     var parent = head(entity, original.getTicketNo());
@@ -1485,7 +1488,8 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
         return task;
     }
 
-    private FnbKitchenTask lockedTask(String entity, String store, String number) {
+    private FnbKitchenTask lockedTask(
+            String entity, String store, String number, boolean afterHandover) {
         var original = scopedTask(entity, store, number);
         batch(entity, store, head(entity, original.getTicketNo()).getBatchNo(), true);
         var row =
@@ -1495,6 +1499,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                                 .eq(FnbKitchenTask::getTaskNo, number)
                                 .last("FOR UPDATE"));
         if (row == null) throw missing();
+        if (afterHandover) return row;
         var lineTasks =
                 tasks.selectList(
                         Wrappers.<FnbKitchenTask>lambdaQuery()
