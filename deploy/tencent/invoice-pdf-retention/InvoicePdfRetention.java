@@ -12,7 +12,13 @@ public final class InvoicePdfRetention {
             FROM prn_export_task e
             WHERE e.status IN ('READY', 'EXPIRED') AND e.expires_at <= UTC_TIMESTAMP(3)
               AND (
-                (e.source_type = 'SIMULATION' AND EXISTS (
+                (e.source_type IN ('INVOICE_PROOF', 'INVOICE_DETAIL')
+                  AND BINARY JSON_UNQUOTE(JSON_EXTRACT(e.source_snapshot, '$.invoiceDocument.fact.factNo'))
+                    = BINARY e.source_no
+                  AND BINARY JSON_UNQUOTE(JSON_EXTRACT(e.source_snapshot, '$.invoiceDocument.fact.scene'))
+                    = BINARY e.source_type
+                )
+                OR (e.source_type = 'SIMULATION' AND EXISTS (
                   SELECT 1 FROM prn_simulation_run s
                   WHERE s.tenant_no = e.tenant_no AND s.entity_no = e.entity_no AND s.store_no = e.store_no
                     AND s.simulation_no = e.source_no AND s.source_type IN ('FACT', 'JOB')

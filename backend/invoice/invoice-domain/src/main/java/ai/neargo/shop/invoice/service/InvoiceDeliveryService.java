@@ -8,7 +8,7 @@ public interface InvoiceDeliveryService {
     record Delivery(String deliveryNo, String exportNo, String parentDeliveryNo, String applicationNo,
             Integer applicationRevisionNo, String recipientMask, String status, String providerMessageId,
             String reason, String actorNo, String failureCode, LocalDateTime createdAt, LocalDateTime startedAt,
-            LocalDateTime finishedAt, LocalDateTime openedAt) {}
+            LocalDateTime finishedAt, LocalDateTime openedAt, String documentType) {}
     PageData<Delivery> list(Scope scope, String invoiceNo, int page, int size);
     Delivery enqueue(Scope scope, String invoiceNo, String exportNo, String email, String reason, String key);
     Delivery resend(Scope scope, String invoiceNo, String deliveryNo, String reason, boolean acknowledgeUnknown, String key);

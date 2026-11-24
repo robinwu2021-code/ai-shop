@@ -16,6 +16,7 @@ import ai.neargo.shop.printing.center.persistence.entity.*;
 import ai.neargo.shop.printing.mapper.PrintMappers.JobMapper;
 import ai.neargo.shop.printing.center.persistence.mapper.PrintMappers.*;
 import ai.neargo.shop.printing.center.simulation.SimulationModels.SimulationInput;
+import ai.neargo.shop.printing.center.source.PrintSourceRegistry;
 import ai.neargo.shop.printing.center.support.*;
 import ai.neargo.shop.printing.center.template.*;
 
@@ -45,6 +46,12 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
     private final PrintOperationService ops;
     private final PrintJsonCodec json;
     private final PrintArtifactStorePort store;
+    private final PrintPreviewFacts previewFacts;
+    private final PrintSourceRegistry sources;
+    private final PrintTemplateResolver templates;
+    private final PrintDocumentCompiler compiler;
+    private final PrintLayoutEngine layoutEngine;
+    private final LayoutProfileRegistry profiles;
 
     public DefaultPrintExportFacade(
             PrnExportTaskMapper e,
@@ -53,7 +60,13 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
             JobMapper j,
             PrintOperationService o,
             PrintJsonCodec c,
-            PrintArtifactStorePort store) {
+            PrintArtifactStorePort store,
+            PrintPreviewFacts previewFacts,
+            PrintSourceRegistry sources,
+            PrintTemplateResolver templates,
+            PrintDocumentCompiler compiler,
+            PrintLayoutEngine layoutEngine,
+            LayoutProfileRegistry profiles) {
         exports = e;
         simulations = s;
         batches = b;
@@ -61,6 +74,12 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
         ops = o;
         json = c;
         this.store = store;
+        this.previewFacts = previewFacts;
+        this.sources = sources;
+        this.templates = templates;
+        this.compiler = compiler;
+        this.layoutEngine = layoutEngine;
+        this.profiles = profiles;
     }
 
     public PrintOperation create(ExportCommand c, PrintActor a) {
@@ -74,7 +93,43 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
                     var layouts = new ArrayList<PrintLayout>();
                     var required = new HashSet<String>();
                     var source = c.source();
-                    if (source.type() == ExportSourceType.SIMULATION) {
+                    String no = no("EX");
+                    var createdAt = Instant.now();
+                    PdfRenderInput.InvoiceDocumentProvenance invoiceDocument = null;
+                    if (source.type().isInvoiceDocument()) {
+                        require(c.profile() == PdfOutputProfile.ORIGINAL_ROLL, "print.profileRequired");
+                        required.add("biz:print:export");
+                        required.addAll(PrintSourceDataScopes.required("INVOICE"));
+                        access(scope(a), a, required);
+                        var reference = invoiceReference(source.type().name(), source.no());
+                        var fact = previewFacts.get(reference.scene(), reference, a);
+                        require(Long.toString(source.expectedRevision()).equals(fact.ref().bizRevision()),
+                                "print.revisionConflict");
+                        require(sources.require("INVOICE").executionGuard(fact.ref()).allowed(),
+                                "print.sourceBlocked");
+
+                        // The operation holds the store print lock, including for different callers.
+                        var existing = exports.selectOne(PrintSupport.<PrnExportTask>scoped(scope(a))
+                                .eq("source_type", source.type().name()).eq("source_no", source.no())
+                                .eq("source_revision", source.expectedRevision())
+                                .in("status", "PENDING", "GENERATING", "READY")
+                                .gt("expires_at", now()).isNull("object_deleted_at")
+                                .orderByDesc("id").last("LIMIT 1"));
+                        if (existing != null) {
+                            authorize(existing, a);
+                            return exportOperation(no("PO"), existing.getExportNo(), createdAt);
+                        }
+
+                        var resolved = templates.resolve(new TemplateResolutionCommand(scope(a), reference.scene(),
+                                fact.payloadSchemaVersion(), "STANDARD_58", null, ResolutionPurpose.PRODUCTION,
+                                a.dataScopes()));
+                        var doc = compiler.compile(fact, resolved, new SystemPrintSlots(no, PrintJobKind.INITIAL,
+                                1, createdAt, null, null, Set.of(), null));
+                        required.addAll(doc.requiredDataScopes());
+                        layouts.add(layoutEngine.layout(doc, profiles.require("ROLL58", "1")));
+                        invoiceDocument = new PdfRenderInput.InvoiceDocumentProvenance(fact.ref(),
+                                resolved.resolutionSnapshot());
+                    } else if (source.type() == ExportSourceType.SIMULATION) {
                         var sim =
                                 simulations.selectOne(
                                         PrintSupport.<PrnSimulationRun>scoped(scope(a))
@@ -124,7 +179,6 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
                                     && layouts.stream().mapToInt(l -> l.pages().size()).sum()
                                             <= 200,
                             "print.exportLimit");
-                    String no = no("EX");
                     String operationNo = no("PO");
                     var kind =
                             source.type() == ExportSourceType.SIMULATION
@@ -138,7 +192,8 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
                                     layouts,
                                     "1",
                                     layouts.getFirst().fontBundleVersion(),
-                                    Instant.now());
+                                    createdAt,
+                                    invoiceDocument);
                     var row = init(new PrnExportTask(), scope(a));
                     row.setExportNo(no);
                     row.setOperationNo(operationNo);
@@ -179,17 +234,17 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
                     AfterCommit.runOutsideTransaction("print-artifact "+no,transactionManager,
                             ()->artifactWorker.getObject().generateNext(new PrintWorkerBudget(1,Duration.ofSeconds(5),"print-direct")));
 
-                    return new PrintOperation(
-                            operationNo,
-                            "CREATE_EXPORT",
-                            PrintOperationStatus.SUCCEEDED,
-                            "EXPORT",
-                            no,
-                            json.freeze(Map.of("exportNo", no)),
-                            null,
-                            Instant.now(),
-                            Instant.now());
+                    return exportOperation(operationNo, no, createdAt);
                 });
+    }
+
+    private PrintOperation exportOperation(String operationNo, String exportNo, Instant createdAt) {
+        return new PrintOperation(operationNo, "CREATE_EXPORT", PrintOperationStatus.SUCCEEDED, "EXPORT",
+                exportNo, json.freeze(Map.of("exportNo", exportNo)), null, createdAt, Instant.now());
+    }
+
+    private static PrintSourceReference invoiceReference(String scene, String invoiceNo) {
+        return new PrintSourceReference("INVOICE", invoiceNo, invoiceNo, null, scene);
     }
 
     private void authorize(PrnExportTask e, PrintActor a) {
@@ -210,7 +265,17 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
                                             .eq("job_no", e.getSourceNo()))
                             == 1,
                     "print.sourceUnavailable");
-        else
+        else if (ExportSourceType.valueOf(e.getSourceType()).isInvoiceDocument()) {
+            var source = json.read(e.getSourceSnapshot(), PdfRenderInput.class).invoiceDocument();
+            require(source != null, "print.sourceUnavailable");
+            try {
+                var actual = sources.require("INVOICE").resolveReference(
+                        invoiceReference(e.getSourceType(), e.getSourceNo()), scope(a));
+                require(actual.equals(source.fact()), "print.sourceUnavailable");
+            } catch (PrintFailure failure) {
+                throw new PrintFailure("print.sourceUnavailable");
+            }
+        } else
             require(
                     batches.selectCount(
                                     PrintSupport.<PrnBatch>scoped(scope(a))
@@ -224,7 +289,7 @@ public class DefaultPrintExportFacade implements PrintExportFacade {
                 e.getExportNo(),
                 e.getSourceType(),
                 e.getSourceNo(),
-                e.getStatus(),
+                e.getExpiresAt().isAfter(now()) ? e.getStatus() : "EXPIRED",
                 e.getFileSize() == null ? 0 : e.getFileSize(),
                 e.getPageCount() == null ? 0 : e.getPageCount(),
                 instant(e.getExpiresAt()),

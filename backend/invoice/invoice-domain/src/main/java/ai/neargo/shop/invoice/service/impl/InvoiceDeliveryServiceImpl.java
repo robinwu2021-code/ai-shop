@@ -22,6 +22,7 @@ import ai.neargo.shop.invoice.entity.IvcInvoiceDelivery;
 import ai.neargo.shop.invoice.mapper.InvoiceDeliveryMapper;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.service.InvoiceDeliveryService;
+import ai.neargo.shop.print.api.ExportSourceType;
 import ai.neargo.shop.print.api.PrintActor;
 import ai.neargo.shop.print.api.PrintExportFacade;
 import ai.neargo.shop.print.api.PrintFailure;
@@ -35,6 +36,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -52,7 +54,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String OWNER_TYPE = "INVOICE_DELIVERY";
-    private static final String TEMPLATE = "INVOICE_PROOF_LINK_V1";
+    private static final String PROOF_TEMPLATE = "INVOICE_PROOF_LINK_V1";
+    private static final String DETAIL_TEMPLATE = "INVOICE_DETAIL_LINK_V1";
     private static final String TO_MAIL_LOG = "INVOICE_DELIVERY";
     private static final String PUBLIC_PATH = "/public/invoice-deliveries/open";
 
@@ -104,7 +107,9 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
         if (prior != null) return view(prior);
         readyInvoice(invoice);
         if (deliveries.selectCount(scoped(scope, invoiceNo).isNull("parent_delivery_no")) != 0) throw badState();
-        var row = create(scope, invoice, exportNo, null, Masks.email(address), reason, key, requestHash);
+        var source = InvoiceDocumentService.sourceType(invoice);
+        var template = source == ExportSourceType.INVOICE_DETAIL ? DETAIL_TEMPLATE : PROOF_TEMPLATE;
+        var row = create(scope, invoice, exportNo, template, null, Masks.email(address), reason, key, requestHash);
         row.setRecipientSecretRef(vault.seal(new KeyOwner(SecretNamespace.PLATFORM, OWNER_TYPE, row.getId()),
                 address.getBytes(StandardCharsets.UTF_8)).blobId());
         deliveries.updateById(row);
@@ -126,17 +131,22 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
                 || deliveries.selectCount(scoped(scope, invoiceNo).in("status", "PENDING", "SENDING")) != 0) {
             throw badState();
         }
-        var row = create(scope, invoice, parent.getExportNo(), parent.getDeliveryNo(),
+        var row = create(scope, invoice, parent.getExportNo(), parent.getTemplateVersion(), parent.getDeliveryNo(),
                 parent.getRecipientMask(), reason, key, requestHash);
         row.setRecipientSecretRef(parent.getRecipientSecretRef());
         deliveries.updateById(row);
         return view(row);
     }
 
-    private IvcInvoiceDelivery create(Scope scope, IvcInvoice invoice, String exportNo, String parentNo,
+    private IvcInvoiceDelivery create(Scope scope, IvcInvoice invoice, String exportNo, String template, String parentNo,
             String mask, String reason, String key, String requestHash) {
-        var expiry = LocalDateTime.ofInstant(printing.originalInvoiceProofExpiry(invoice.getInvoiceNo(), exportNo,
-                printActor(scope)), ZoneOffset.UTC);
+        if (documentType(template) != InvoiceDocumentService.sourceType(invoice)) throw badState();
+        LocalDateTime expiry;
+        try {
+            expiry = LocalDateTime.ofInstant(documentExpiry(invoice.getInvoiceNo(), exportNo, template, scope), ZoneOffset.UTC);
+        } catch (PrintFailure failure) {
+            throw InvoiceDocumentService.exportFailure(failure);
+        }
         var row = new IvcInvoiceDelivery();
         row.setTenantNo(scope.tenantNo());
         row.setEntityNo(scope.entityNo());
@@ -153,7 +163,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
         row.setReason(reason);
         row.setIdempotencyHash(PrintHashes.sha256(key));
         row.setRequestHash(requestHash);
-        row.setTemplateVersion(TEMPLATE);
+        row.setTemplateVersion(template);
         row.setCreatedAt(now());
         row.setExpiresAt(expiry);
         deliveries.insert(row);
@@ -176,7 +186,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
         var scope = scopeOf(row);
         try {
             readyInvoice(invoice(scope, row.getInvoiceNo(), false));
-            printing.originalInvoiceProofExpiry(row.getInvoiceNo(), row.getExportNo(), printActor(scope));
+            documentExpiry(row.getInvoiceNo(), row.getExportNo(), row.getTemplateVersion(), scope);
         } catch (BizException | PrintFailure unavailable) {
             finish(row, "CANCELLED", "INVOICE_OR_PDF_UNAVAILABLE", null);
             return;
@@ -189,8 +199,11 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
         var bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        String subject = "NearGo 電子發票證明聯";
-        String body = "請開啟下方連結，完成電子郵件驗證後下載發票。\n\n"
+        boolean detail = documentType(row.getTemplateVersion()) == ExportSourceType.INVOICE_DETAIL;
+        String subject = detail ? "NearGo 電子發票明細" : "NearGo 電子發票證明聯";
+        String intro = detail ? "請開啟下方連結，完成電子郵件驗證後下載發票明細。此檔案僅供查閱，不是電子發票證明聯。"
+                : "請開啟下方連結，完成電子郵件驗證後下載發票。";
+        String body = intro + "\n\n"
                 + origin + PUBLIC_PATH + "#" + token + "\n\n連結有效至發票 PDF 保存期限。";
         if (deliveries.update(null, state(row, "SENDING").set("token_hash", PrintHashes.sha256(token))
                 .set("content_hash", PrintHashes.sha256(subject + "\n" + body))) != 1) return;
@@ -237,8 +250,27 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
         if (row == null) throw badState();
         var scope = scopeOf(row);
         readyInvoice(invoice(scope, row.getInvoiceNo(), false));
-        printing.originalInvoiceProofExpiry(row.getInvoiceNo(), row.getExportNo(), printActor(scope));
+        try {
+            documentExpiry(row.getInvoiceNo(), row.getExportNo(), row.getTemplateVersion(), scope);
+        } catch (PrintFailure failure) {
+            throw badState();
+        }
         return row;
+    }
+
+    private Instant documentExpiry(String invoiceNo, String exportNo, String template, Scope scope) {
+        var source = documentType(template);
+        return source == ExportSourceType.INVOICE_PROOF
+                ? printing.originalInvoiceProofExpiry(invoiceNo, exportNo, printActor(scope))
+                : printing.invoiceDeliveryDocumentExpiry(invoiceNo, exportNo, source, printActor(scope));
+    }
+
+    private static ExportSourceType documentType(String template) {
+        return switch (template) {
+            case PROOF_TEMPLATE -> ExportSourceType.INVOICE_PROOF;
+            case DETAIL_TEMPLATE -> ExportSourceType.INVOICE_DETAIL;
+            default -> throw badState();
+        };
     }
 
     private IvcInvoiceDelivery replay(Scope scope, String invoiceNo, String key, String hash) {
@@ -248,11 +280,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     }
 
     private IvcInvoice invoice(Scope scope, String invoiceNo, boolean lock) {
-        var invoice = invoices.selectOne(new QueryWrapper<IvcInvoice>().eq("tenant_no", scope.tenantNo())
-                .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).eq("invoice_no", invoiceNo)
-                .last(lock, "FOR UPDATE"));
-        if (invoice == null) throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);
-        return invoice;
+        return InvoiceDocumentService.scopedInvoice(invoices, scope, invoiceNo, lock);
     }
 
     private static void readyInvoice(IvcInvoice invoice) {
@@ -290,6 +318,6 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
         return new Delivery(row.getDeliveryNo(), row.getExportNo(), row.getParentDeliveryNo(), row.getApplicationNo(),
                 row.getApplicationRevisionNo(), row.getRecipientMask(), row.getStatus(), row.getProviderMessageId(),
                 row.getReason(), row.getActorNo(), row.getFailureCode(), row.getCreatedAt(), row.getStartedAt(),
-                row.getFinishedAt(), row.getOpenedAt());
+                row.getFinishedAt(), row.getOpenedAt(), documentType(row.getTemplateVersion()).name());
     }
 }

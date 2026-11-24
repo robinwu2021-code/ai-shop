@@ -184,7 +184,7 @@ class PrintDatabaseAcceptanceTest {
         boolean blocked;
 
         public Set<String> scenes() {
-            return Set.of("ORDER_PAID", "INVOICE_PROOF");
+            return Set.of("ORDER_PAID", "INVOICE_PROOF", "INVOICE_DETAIL");
         }
 
         public Set<String> sourceTypes() {
@@ -211,6 +211,57 @@ class PrintDatabaseAcceptanceTest {
             }
             return new PrintExecutionGuard(
                     true, GuardDecision.ALLOW_HISTORICAL_RECEIPT, ref.bizRevision(), false, null);
+        }
+    }
+
+    @Test
+    void invoiceDocumentsGenerateWithoutRouteAndKeepTheirFrozenIdentity() {
+        var scope = new PrintScope("T5", "E5", "S5");
+        var actor = new PrintActor("T5", "E5", "S5", "MERCHANT", "U5", "first-document",
+                Set.of("SOURCE_INVOICE_READ", "biz:print:export"));
+        var facade = context.getBean(PrintExportFacade.class);
+        var queries = context.getBean(PrintQueryService.class);
+        var mapper = context.getBean(PrnExportTaskMapper.class);
+        var jobs = context.getBean(JobMapper.class);
+        var codec = context.getBean(PrintJsonCodec.class);
+        var scenes = context.getBean(PrintSceneRegistry.class);
+        long initialJobs = jobs.selectCount(null);
+        var source = context.getBean(FakeSource.class);
+        var prior = source.fact;
+        try {
+            for (var type : List.of(ExportSourceType.INVOICE_PROOF, ExportSourceType.INVOICE_DETAIL)) {
+                String invoiceNo = "IVC-EXAMPLE-" + type.name();
+                var payload = codec.freeze(scenes.require(type.name()).example());
+                var ref = new PrintFactRef("T5", "E5", "S5", "INVOICE", invoiceNo, "1", type.name(), payload.sha256());
+                source.fact = new PrintFact(ref, null, "SUB-DOCUMENT", "INVOICE_ISSUED", invoiceNo, Instant.now(),
+                        1, payload, Printability.READY, null, List.of());
+                var command = new ExportCommand(scope, new ExportSource(type, invoiceNo, 1),
+                        PdfOutputProfile.ORIGINAL_ROLL);
+                var result = facade.create(command, proofAction(actor, "generate-" + type));
+                assertEquals(result.targetNo(), facade.create(command,
+                        proofAction(actor, "another-key-" + type)).targetNo());
+                assertEquals("READY", facade.get(result.targetNo(), actor).status());
+                assertNotNull(facade.download(result.targetNo(), actor));
+                assertThrows(PrintFailure.class, () -> facade.download(result.targetNo(), actor("other-store")));
+                assertNotNull(queries.invoiceDeliveryDocumentExpiry(invoiceNo, result.targetNo(), type, actor));
+                assertThrows(PrintFailure.class, () -> queries.invoiceDeliveryDocumentExpiry(
+                        invoiceNo + "-other", result.targetNo(), type, actor));
+                var row = mapper.selectOne(new QueryWrapper<PrnExportTask>().eq("export_no", result.targetNo()));
+                var sourceSnapshot = codec.read(row.getSourceSnapshot(), PdfRenderInput.class).invoiceDocument();
+                assertEquals(ref, sourceSnapshot.fact());
+                assertNotNull(sourceSnapshot.templateResolution().sha256());
+
+                source.blocked = true;
+                assertThrows(PrintFailure.class, () -> facade.create(command, proofAction(actor, "voided-" + type)));
+                assertThrows(PrintFailure.class,
+                        () -> queries.invoiceDeliveryDocumentExpiry(invoiceNo, result.targetNo(), type, actor));
+                assertNotNull(facade.download(result.targetNo(), actor));
+                source.blocked = false;
+            }
+            assertEquals(initialJobs, jobs.selectCount(null));
+        } finally {
+            source.fact = prior;
+            source.blocked = false;
         }
     }
 

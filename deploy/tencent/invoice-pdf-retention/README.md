@@ -10,5 +10,5 @@
 30 3 * * * /bin/bash /data0/app/ai-shop-v2/runtime/invoice-pdf-retention/run.sh --apply >> /data0/app/ai-shop-v2/runtime/invoice-pdf-retention/retention.log 2>&1 # ai-shop-v2-invoice-pdf-retention
 ```
 
-任务读取数据库中的到期时间和打印件归属，只清理本机已过期的发票证明联与发票明细 PDF 文件。正式打印的正本与补印分别以工作号关联 PDF。批次导出只有在全部工作都属于发票时才纳入。
+任务读取数据库中的到期时间和打印件归属，只清理本机已过期的发票证明联与发票明细 PDF 文件。正式打印的正本与补印分别以工作号关联 PDF。独立发票文件以导出来源和冻结事实中的发票号、文件类型对应。批次导出只有在全部工作都属于发票时才纳入。
 停用时，从 `ume` 的 crontab 删除带 `ai-shop-v2-invoice-pdf-retention` 标记的这一行。

@@ -290,6 +290,7 @@ class BizEndpointPermTest {
                     put("/biz/invoice-applications/{applicationNo}/cancellations", BizPerms.INVOICE_SETUP);
                     put("/biz/invoice-applications/{applicationNo}/issuances", BizPerms.INVOICE_ISSUE);
                     put("/biz/invoices/{invoiceNo}/deliveries", BizPerms.INVOICE_READ);
+                    put("/biz/invoices/{invoiceNo}/documents", BizPerms.INVOICE_READ);
                     put("/biz/invoices/{invoiceNo}/deliveries/{deliveryNo}/resends", BizPerms.INVOICE_ISSUE);
                     put("/biz/invoices/{invoiceNo}/timeline", BizPerms.INVOICE_READ);
                     put("/biz/invoices", BizPerms.INVOICE_READ);

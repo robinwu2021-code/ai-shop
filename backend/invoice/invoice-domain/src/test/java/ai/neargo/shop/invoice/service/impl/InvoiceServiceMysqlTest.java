@@ -18,8 +18,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.otp.service.OtpSendService;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.invoice.service.InvoiceDeliveryService;
 import ai.neargo.shop.print.api.DownloadGrant;
+import ai.neargo.shop.print.api.ExportSourceType;
+import ai.neargo.shop.print.api.ExportCommand;
+import ai.neargo.shop.print.api.ExportSource;
+import ai.neargo.shop.print.api.PdfOutputProfile;
+import ai.neargo.shop.print.api.PrintOperation;
+import ai.neargo.shop.print.api.PrintOperationStatus;
+import ai.neargo.shop.print.api.dto.PrintExportDtos.ExportQuery;
+import ai.neargo.shop.print.api.dto.PrintExportDtos.ExportView;
 import ai.neargo.shop.print.api.PrintExportFacade;
 import ai.neargo.shop.print.api.PrintQueryService;
 import ai.neargo.shop.spi.notify.MailPort;
@@ -208,6 +217,62 @@ class InvoiceServiceMysqlTest {
         period = TwPeriods.periodOf(Instant.now());
         setup.saveProfile(SCOPE, new RegimeProfileReq("TW_EGUI", "12345675", "示例營業人", "TEST", KEY_HEX, null, null, null, null, null, null, null));
         setup.addRange(SCOPE, new NumberRangeReq("TW_EGUI", period, "AB", 1, 50, null));
+    }
+
+    @Test
+    void documentsSelectTheFrozenInvoiceTypeAndIsolateStores() {
+        var exports = mock(PrintExportFacade.class);
+        var documents = new InvoiceDocumentService(invoiceRows, exports);
+        var proof = issueApplication(SCOPE, "DOC-BUSINESS");
+        sources.paid("DOC-MOBILE", 100);
+        var detail = invoices.issue(SCOPE, "SUB_ORDER", "DOC-MOBILE",
+                new Buyer(null, null, "3J0002", "/ABC+123", null));
+        sources.paid("DOC-DONATE", 100);
+        var donated = invoices.issue(SCOPE, "SUB_ORDER", "DOC-DONATE", new Buyer(null, null, null, null, "8585"));
+        var proofView = new ExportView("EX-PROOF", "INVOICE_PROOF", proof.invoiceNo(), "PENDING", 0, 0, null, 1);
+        when(exports.create(any(), any())).thenReturn(new PrintOperation("PO-1", "CREATE_EXPORT",
+                PrintOperationStatus.SUCCEEDED, "EXPORT", "EX-PROOF", null, null, Instant.now(), Instant.now()));
+        when(exports.get(org.mockito.ArgumentMatchers.eq("EX-PROOF"), any())).thenReturn(proofView);
+        var detailView = new ExportView("EX-DETAIL", "INVOICE_DETAIL", detail.invoiceNo(), "READY", 69, 1, Instant.now(), 2);
+        when(exports.page(any(), any())).thenReturn(PageData.of(List.of(detailView), 1, 2, 3));
+
+        assertEquals(proofView, documents.create(SCOPE, proof.invoiceNo(), "document-key"));
+        verify(exports).create(org.mockito.ArgumentMatchers.eq(new ExportCommand(new PrintScope("T1", "E1", "S1"),
+                new ExportSource(ExportSourceType.INVOICE_PROOF, proof.invoiceNo(), 1), PdfOutputProfile.ORIGINAL_ROLL)),
+                argThat(actor -> actor.idempotencyKey().equals("document-key") && actor.actorType().equals("MERCHANT")));
+        assertEquals(List.of(detailView), documents.list(SCOPE, detail.invoiceNo(), 2, 3).records());
+        verify(exports).page(org.mockito.ArgumentMatchers.eq(new ExportQuery("S1", "INVOICE_DETAIL", detail.invoiceNo(), null, 2, 3)),
+                argThat(actor -> actor.dataScopes().containsAll(Set.of("SOURCE_INVOICE_READ", "biz:print:export"))));
+        assertCode(ErrorCode.INVOICE_NOT_FOUND,
+                () -> documents.list(new Scope("T1", "E1", "OTHER", "U1"), detail.invoiceNo(), 1, 20));
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> documents.create(SCOPE, donated.invoiceNo(), "donation-key"));
+        assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoiceDeliveries.enqueue(SCOPE, donated.invoiceNo(),
+                "EX-DONATE", "buyer@example.test", null, "donation-mail-key"));
+    }
+
+    @Test
+    void mobileCarrierMailUsesTheDetailArtifactAndKeepsItsTypeOnResend() {
+        sources.paid("MAIL-MOBILE", 100);
+        var invoice = invoices.issue(SCOPE, "SUB_ORDER", "MAIL-MOBILE",
+                new Buyer(null, null, "3J0002", "/ABC+123", null));
+        var expiry = Instant.now().plusSeconds(3600);
+        when(deliveryPrintQuery.invoiceDeliveryDocumentExpiry(org.mockito.ArgumentMatchers.eq(invoice.invoiceNo()),
+                org.mockito.ArgumentMatchers.eq("EX-DETAIL"), org.mockito.ArgumentMatchers.eq(ExportSourceType.INVOICE_DETAIL),
+                any())).thenReturn(expiry);
+        when(deliveryMail.send(org.mockito.ArgumentMatchers.eq("buyer@example.test"),
+                org.mockito.ArgumentMatchers.eq("NearGo 電子發票明細"), any(), any(), any()))
+                .thenReturn(SendResult.of("<invoice-detail@example.test>"));
+
+        var first = invoiceDeliveries.enqueue(SCOPE, invoice.invoiceNo(), "EX-DETAIL", "buyer@example.test", null, "detail-1");
+        invoiceDeliveries.dispatchDue();
+        assertEquals("ACCEPTED", invoiceDeliveries.list(SCOPE, invoice.invoiceNo(), 1, 10).records().getFirst().status());
+        var second = invoiceDeliveries.resend(SCOPE, invoice.invoiceNo(), first.deliveryNo(), "補寄", false, "detail-2");
+        invoiceDeliveries.dispatchDue();
+        assertEquals(first.deliveryNo(), second.parentDeliveryNo());
+        assertEquals("ACCEPTED", invoiceDeliveries.list(SCOPE, invoice.invoiceNo(), 1, 10).records().getFirst().status());
+        assertEquals(List.of("INVOICE_DETAIL_LINK_V1", "INVOICE_DETAIL_LINK_V1"), jdbc.queryForList(
+                "SELECT template_version FROM ivc_invoice_delivery WHERE invoice_no=? ORDER BY id", String.class, invoice.invoiceNo()));
+        verify(deliveryPrintQuery, never()).originalInvoiceProofExpiry(org.mockito.ArgumentMatchers.eq(invoice.invoiceNo()), any(), any());
     }
 
     @Test
