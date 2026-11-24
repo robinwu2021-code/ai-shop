@@ -5,6 +5,12 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
 import ai.neargo.shop.merchant.service.StoreOperationalReviewService;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.merchant.approval.StoreOpeningApprovalSubject;
+import ai.neargo.shop.spi.approval.ApprovalPort;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.merchant.service.StoreOperationalReviewService.ReviewVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -39,6 +45,12 @@ public class OpsStoreController {
 
     private final MerchantGovernService governService;
     private final StoreOperationalReviewService operationalReviews;
+    private ObjectProvider<ApprovalPort> approvals;
+
+    @Autowired(required = false)
+    public void setApprovals(ObjectProvider<ApprovalPort> value) {
+        this.approvals = value;
+    }
     private final AuditLogPort auditLogPort;
     private final ai.neargo.shop.merchant.service.StoreFulfillmentService fulfillmentService;
 
@@ -68,6 +80,11 @@ public class OpsStoreController {
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
     public ReviewVO decideOperationalReview(
             @PathVariable String storeNo, @Valid @RequestBody OperationalDecisionReq req) {
+        var port = approvals == null ? null : approvals.getIfAvailable();
+        if (port != null && port.enabled(StoreOpeningApprovalSubject.SUBJECT_TYPE)) {
+            // 接入审批后在这里直接决定会绕过审批中心（T1）
+            throw BizException.of(ErrorCode.APPROVAL_IN_OPSKIT);
+        }
         return operationalReviews.decide(storeNo,req.approved(),req.reason());
     }
     public record OperationalDecisionReq(@NotNull Boolean approved,

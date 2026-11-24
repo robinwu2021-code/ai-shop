@@ -221,6 +221,18 @@ public final class BizKey {
     public static final String QRCODE_PRINT = "QP";
     /** Immutable business printing fact (refund / stored-value receipt). */
     public static final String BUSINESS_PRINT_FACT = "BF";
+    /** 发票（ADR-063）。内部单号；法定字轨号码另存 fiscal_number，二者不互换 */
+    public static final String INVOICE = "IVC";
+    /** 发票折让单 */
+    public static final String INVOICE_ALLOWANCE = "IVA";
+    /** 发票字轨号段登记 */
+    public static final String INVOICE_RANGE = "IVR";
+    /** 发票上传任务（开立 / 作废 / 折让各一条） */
+    public static final String INVOICE_TRANSMISSION = "IVT";
+    /** 买家常用发票载具 */
+    public static final String INVOICE_CARRIER = "IVK";
+    /** 门店常用品项（TDD-统一订单与开票资料 AC11） */
+    public static final String INVOICE_STORE_ITEM = "IVS";
     /** 快递代下单的取件单（TDD-快递100商家寄件）。作为 thirdOrderId 传给通道，长度要 ≤32 */
     public static final String EXPRESS_PICKUP = "EP";
     /**

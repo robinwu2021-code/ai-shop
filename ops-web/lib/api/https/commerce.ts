@@ -3,6 +3,7 @@
 // **不回落 mock**：接口没装配（开关关着 → 404）、没权限（403）、后端拒绝（10409 等）一律原样抛 ApiError，
 // 页面显示错误态。这批接口管的是钱和权益，「看起来成功了」比报错坏得多。
 import { client } from "../http-client";
+import { ApiError } from "../error";
 import type { CommerceApi } from "../contracts/commerce";
 import type {
   MallBusinessEndView, MallBusinessTypeView, MallCatalogOverview, MallCategoryView, MallDeploymentOption, MallDraftSaveResult,
@@ -13,6 +14,18 @@ import type {
 } from "@/lib/types";
 
 const seg = encodeURIComponent;
+
+/**
+ * T9a / T9b 审批门禁：后端拦下时回 `{ approvalStatus }` 而不是业务结果。这表示**没有执行**，
+ * 按错误抛出（原因码见 commerce-reason），表单保持原样；审批通过后用同样内容再点一次才执行。
+ */
+async function gated<T>(call: Promise<T>): Promise<T> {
+  const r = await call;
+  const held = r as { approvalStatus?: unknown } | null;
+  if (held && typeof held === "object" && typeof held.approvalStatus === "string")
+    throw new ApiError(10409, `APPROVAL_${held.approvalStatus}`);
+  return r;
+}
 
 export const commerceHttp: CommerceApi = {
   platformMallOrders: (filter) => client.get("/ops/platform-mall/orders", filter),
@@ -59,7 +72,7 @@ export const commerceHttp: CommerceApi = {
   reviewMallRefund: (storeNo, orderNo, refundNo, v) =>
     client.post<MallRefundReviewQuoteView>(`/ops/biz-mall/orders/${seg(orderNo)}/refunds/${seg(refundNo)}/review-quotes`, v, { storeNo }),
   approveMallRefund: (storeNo, orderNo, refundNo, v) =>
-    client.post<MallRefundView>(`/ops/biz-mall/orders/${seg(orderNo)}/refunds/${seg(refundNo)}/approve`, v, { storeNo }),
+    gated(client.post<MallRefundView>(`/ops/biz-mall/orders/${seg(orderNo)}/refunds/${seg(refundNo)}/approve`, v, { storeNo })),
   rejectMallRefund: (storeNo, orderNo, refundNo, v) =>
     client.post<MallRefundView>(`/ops/biz-mall/orders/${seg(orderNo)}/refunds/${seg(refundNo)}/reject`, v, { storeNo }),
 
@@ -94,7 +107,7 @@ export const commerceHttp: CommerceApi = {
   offlineAction: (storeNo, orderNo, actionNo) =>
     client.get<MallOfflineActionView | null>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/actions/${seg(actionNo)}`, { storeNo }),
   confirmOfflinePayment: (storeNo, orderNo, v) =>
-    client.post<MallOfflineActionView>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/confirmations`, v, { storeNo }),
+    gated(client.post<MallOfflineActionView>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/confirmations`, v, { storeNo })),
   voidOfflineOrder: (storeNo, orderNo, v) =>
     client.post<MallOfflineActionView>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/voids`, v, { storeNo }),
   recoverOfflineOrder: (storeNo, orderNo) =>

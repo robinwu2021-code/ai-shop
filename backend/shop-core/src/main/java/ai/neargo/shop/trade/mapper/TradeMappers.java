@@ -12,6 +12,8 @@ import ai.neargo.shop.trade.entity.OrdChannelPreparation;
 import ai.neargo.shop.trade.entity.OrdChannelQuote;
 import ai.neargo.shop.trade.entity.OrdExpressPickup;
 import ai.neargo.shop.trade.entity.OrdIndustryOrderSource;
+import ai.neargo.shop.trade.entity.OrdInvoiceDataFill;
+import ai.neargo.shop.trade.entity.OrdStoreCollection;
 import ai.neargo.shop.trade.entity.OrdInvoiceRequest;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
@@ -82,6 +84,10 @@ public final class TradeMappers {
     }
 
     public interface OrderItemMapper extends BaseMapper<OrdItem> {}
+
+    public interface InvoiceDataFillMapper extends BaseMapper<OrdInvoiceDataFill> {}
+
+    public interface StoreCollectionMapper extends BaseMapper<OrdStoreCollection> {}
 
     public interface EntitlementAuthorizationMapper extends BaseMapper<OrdEntAuthorization> {}
 

@@ -3,6 +3,8 @@ import org.apache.ibatis.annotations.*;
 import java.util.*;
 public interface PointsAdjustmentMapper {
  @Select("SELECT * FROM pts_user_adjustment WHERE adjustment_no=#{no} FOR UPDATE") Map<String,Object> lock(String no);
+ @Select("SELECT * FROM pts_user_adjustment WHERE adjustment_no=#{no}") Map<String,Object> find(String no);
+ @Select("SELECT * FROM pts_user_adjustment WHERE state='SUBMITTED' ORDER BY id LIMIT #{limit}") java.util.List<Map<String,Object>> submitted(@org.apache.ibatis.annotations.Param("limit") int limit);
  @Insert("INSERT INTO pts_user_adjustment(adjustment_no,type_code,submitted_by,payload_json) VALUES(#{no},#{type},#{actor},#{payload})")
  int insert(@Param("no") String no,@Param("type") String type,@Param("actor") String actor,@Param("payload") String payload);
  @Update("UPDATE pts_user_adjustment SET state=#{state},approved_by=#{actor},version=version+1,updated_at=CURRENT_TIMESTAMP WHERE adjustment_no=#{no} AND version=#{version} AND state='SUBMITTED'")

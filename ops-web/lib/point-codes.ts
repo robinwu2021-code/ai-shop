@@ -131,6 +131,7 @@ export const POINT_CODES: Record<string, string> = {
   "/finance?tab=payout-accounts": "OPS_FINANCE__TAB_PAYOUT_ACCOUNTS",
   "/finance?tab=purchase-invoices": "OPS_FINANCE__TAB_PURCHASE_INVOICES",
   "/finance?tab=buyer-invoices": "OPS_FINANCE__TAB_BUYER_INVOICES",
+  "/e-invoices": "OPS_FINANCE__E_INVOICES",
   "/finance?tab=invoice": "OPS_FINANCE__TAB_INVOICE",
   "/finance?tab=rates": "OPS_FINANCE__TAB_RATES",
   "/finance?tab=pay-channels": "OPS_FINANCE__TAB_PAY_CHANNELS",

@@ -636,6 +636,17 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     }
 
     @Override
+    public java.util.Optional<BatchRevision> revision(String batchNo) {
+        StlSettleBatch b = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectOne(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getBatchNo, batchNo).last("LIMIT 1")));
+        if (b == null) return java.util.Optional.empty();
+        long revision = b.getUpdatedAt() == null ? 0
+                : b.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        return java.util.Optional.of(new BatchRevision(toVO(b), revision));
+    }
+
+    @Override
     @Transactional("payTxManager")
     public BatchVO approve(String batchNo, String operator, String remark) {
         return decide(batchNo, operator, remark, true);

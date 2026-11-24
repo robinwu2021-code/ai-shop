@@ -67,8 +67,10 @@ class SchemaParityTest {
         }
         Path repository = H2FixtureProjection.repositoryRoot(root);
         // The generated primary fixture appends these independent histories in this exact order.
+        // 与 gen-test-schema.py、SchemaDriftTest 同口径：支付 → 密钥 → 发票（ADR-063）
         for (String extra : List.of("backend/pay/pay-domain/src/main/resources/db/pay",
-                "backend/secret/secret-store/src/main/resources/db/secret")) {
+                "backend/secret/secret-store/src/main/resources/db/secret",
+                "backend/invoice/invoice-domain/src/main/resources/db/invoice")) {
             Path directory = repository.resolve(extra);
             if (!Files.isDirectory(directory)) continue;
             try (var files = Files.list(directory)) {

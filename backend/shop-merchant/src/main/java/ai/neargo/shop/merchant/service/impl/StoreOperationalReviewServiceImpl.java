@@ -5,9 +5,13 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.StoreOperationalReviewService;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.spi.approval.ApprovalPort;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +24,25 @@ public class StoreOperationalReviewServiceImpl implements StoreOperationalReview
     private final MchStoreMapper stores;
     private final StoreOwnershipWritePort ownership;
     private final AuditLogPort audit;
+    /** 审批出口（TDD-OpsKit审批对接 §1.4）：启用 OpsKit 且登记了 shop.store_opening 时，「提交」即送审，生效由执行节点触发 decide。 */
+    private final ObjectProvider<ApprovalPort> approvals;
     public StoreOperationalReviewServiceImpl(JdbcTemplate db, MchStoreMapper stores,
             StoreOwnershipWritePort ownership, AuditLogPort audit) {
-        this.db=db;this.stores=stores;this.ownership=ownership;this.audit=audit;
+        this(db,stores,ownership,audit,null);
     }
+    @Autowired
+    public StoreOperationalReviewServiceImpl(JdbcTemplate db, MchStoreMapper stores,
+            StoreOwnershipWritePort ownership, AuditLogPort audit, ObjectProvider<ApprovalPort> approvals) {
+        this.db=db;this.stores=stores;this.ownership=ownership;this.audit=audit;this.approvals=approvals;
+    }
+    private void submitForApproval(String no) {
+        ApprovalPort port=approvals==null?null:approvals.getIfAvailable();
+        if(port==null || !port.enabled(STORE_OPENING)) return;
+        long revision=db.queryForObject("SELECT version FROM mch_store WHERE tenant_no='MAIN' AND store_no=? AND deleted=0",Long.class,no);
+        var user=SecurityUtils.currentUser().orElse(null);
+        port.submit(STORE_OPENING,no,revision,new ApprovalPort.Submitter(user==null?"SYSTEM":user.userNo(),user==null?"系统":user.nickname()));
+    }
+    private static final String STORE_OPENING="shop.store_opening";
     private MchStore scoped(String no) {
         var store=stores.selectOne(Wrappers.<MchStore>lambdaQuery().select(MchStore::getStoreNo,MchStore::getEntityNo).eq(MchStore::getTenantNo,"MAIN").eq(MchStore::getStoreNo,no));
         if(store==null) throw BizException.of(ErrorCode.NOT_FOUND);
@@ -40,7 +59,7 @@ public class StoreOperationalReviewServiceImpl implements StoreOperationalReview
         var result=view("MAIN",no);
         if(changed==0 && !("PENDING_OPEN".equals(result.status()) && "PENDING".equals(result.review())))
             throw BizException.of(ErrorCode.CONFLICT);
-        if(changed==1) audit.record("STORE_OPERATIONAL_SUBMITTED",no,"提交门店经营开通审核",true);
+        if(changed==1) { audit.record("STORE_OPERATIONAL_SUBMITTED",no,"提交门店经营开通审核",true); submitForApproval(no); }
         return result;
     }
     @Override @Transactional public ReviewVO decide(String no,boolean approved,String reason) {

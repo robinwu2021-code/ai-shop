@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**128 个功能点**，其中 **36 个游客可用**；**12 个没有任何页面调用**。
+统计：**134 个功能点**，其中 **36 个游客可用**；**12 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -80,6 +80,9 @@
 | `chooseQuote` | `POST /mp/group-request/:requestNo/choose` | 是 | request | — |
 | `confirmRequest` | `POST /mp/group-request/:requestNo/confirm` | 是 | request | — |
 | `toggleInterest` | `POST /mp/group-request/:requestNo/interest` | 是 | request | — |
+| `invoiceCarriers` | `GET /mp/invoice-carrier` | 是 | invoice-carriers · invoice-choice | — |
+| `saveInvoiceCarrier` | `POST /mp/invoice-carrier` | 是 | invoice-carriers | — |
+| `deleteInvoiceCarrier` | `POST /mp/invoice-carrier/:carrierNo/delete` | 是 | invoice-carriers | — |
 | `applyInvoice` | `POST /mp/invoice/apply` | 是 | order | — |
 | `myInvoices` | `GET /mp/invoice/mine` | 是 | **无** | — |
 | `invoiceOfOrder` | `GET /mp/invoice/order/:orderNo` | 是 | order | — |
@@ -128,6 +131,9 @@
 | `reviewList` | `GET /mp/review` | 游客 | goods · merchant · store | — |
 | `createReview` | `POST /mp/review` | 是 | review-write | — |
 | `toggleReviewLike` | `POST /mp/review/:reviewNo/like` | 是 | goods · merchant | — |
+| `mySalesInvoices` | `GET /mp/sales-invoice` | 是 | sales-invoices | — |
+| `salesInvoiceDetail` | `GET /mp/sales-invoice/:invoiceNo` | 是 | sales-invoice | — |
+| `chooseSalesInvoice` | `PUT /mp/sales-invoice/choice` | 是 | invoice-choice | — |
 | `storeHome` | `GET /mp/store/:no` | 游客 | store | — |
 | `storeAcode` | `GET /mp/store/:no/acode` | 游客 | (components)/biz | — |
 | `storeEnter` | `POST /mp/store/:no/enter` | 是 | **无** | — |

@@ -74,3 +74,19 @@ describe("mall offline review recovery", () => {
     expect(seen).toEqual([{ ...payload, unmatchedDispositions: { payment: "returned" } }]);
   });
 });
+
+import { describe as describeGate, it as itGate, expect as expectGate } from "vitest";
+import { ApiError as GateError } from "./api/error";
+import { mallReason as gateReason } from "./commerce-reason";
+import { MallOfflineReviewAttempt as GateAttempt } from "./mall-offline-review";
+
+describeGate("T9b 审批门禁", () => {
+  itGate("被拦下 = 没执行：可直接用同一份内容再点，且原因码有中英说明", async () => {
+    const a = new GateAttempt({ kind: "confirm", request: { actionNo: "A1", actualAmount: { currency: "TWD", minor: 100 } } as never });
+    const api = { confirmOfflinePayment: async () => { throw new GateError(10409, "APPROVAL_SUBMITTED"); }, voidOfflineOrder: async () => { throw new Error("x"); } };
+    await expectGate(a.submit(api as never, "S1", "O1")).rejects.toThrow("APPROVAL_SUBMITTED");
+    expectGate(a.phase).toBe("absent");
+    expectGate(gateReason("APPROVAL_PENDING", "zh")).toContain("审批中");
+    expectGate(gateReason("APPROVAL_REJECTED", "en")).toContain("rejected");
+  });
+});

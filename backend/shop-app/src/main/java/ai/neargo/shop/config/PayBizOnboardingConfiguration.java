@@ -3,6 +3,7 @@ package ai.neargo.shop.config;
 import ai.neargo.shop.auth.ApiAuthEntryPoint;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.RequestMetaFilter;
+import ai.neargo.shop.gateway.biz.PayBizPassThrough;
 import ai.neargo.shop.pay.client.BizOnboardingForwarder;
 import ai.neargo.shop.payclient.PayBizAuthenticationFilter;
 import ai.neargo.shop.payclient.PayBizSessionVerifier;
@@ -25,6 +26,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
@@ -63,8 +65,13 @@ public class PayBizOnboardingConfiguration {
       HttpSecurity http,
       PayBizSessionVerifier sessions,
       @Qualifier("handlerExceptionResolver") HandlerExceptionResolver errors,
-      @Qualifier("corsSource") CorsConfigurationSource cors)
+      @Qualifier("corsSource") CorsConfigurationSource cors,
+      ObjectProvider<PayBizPassThrough> payBiz)
       throws Exception {
+    // 开了 B 端支付透传（TDD-支付三端经网关透传与权限归属 §3.1）：/biz/pay/v2/** 认证照旧走这条链，
+    // 认证之后整前缀原样转给支付服务，不再进下面的转发入口（不改写商户号、不加来源委托头）。
+    PayBizPassThrough passThrough = payBiz.getIfAvailable();
+    if (passThrough != null) http.addFilterAfter(passThrough.filter(), AuthorizationFilter.class);
     return http.securityMatcher("/biz/auth/session", "/biz/pay/v2/**")
         .cors(c -> c.configurationSource(cors))
         .csrf(c -> c.disable())

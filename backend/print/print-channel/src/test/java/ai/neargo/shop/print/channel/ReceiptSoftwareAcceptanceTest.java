@@ -14,6 +14,7 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
+import tools.jackson.databind.JsonNode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -40,8 +41,12 @@ class ReceiptSoftwareAcceptanceTest {
     }
 
     PrintLayout layout(String code, int width) {
+        return layout(code, width, scenes.require(code).example());
+    }
+
+    PrintLayout layout(String code, int width, JsonNode example) {
         var s = scenes.require(code);
-        var payload = json.freeze(s.example());
+        var payload = json.freeze(example);
         var ref =
                 new PrintFactRef(
                         "T1",
@@ -107,7 +112,12 @@ class ReceiptSoftwareAcceptanceTest {
     @ParameterizedTest
     @MethodSource("scenarios")
     void allScenesRenderBothWidthsWithProtectedMarks(String code) throws Exception {
-        for (int width : new int[] {58, 80}) {
+        // 按场景声明的纸宽跑：发票证明联法定 5.7 cm，只有 58 一种（TDD-发票模块 §2.3）
+        var widths = new ArrayList<Integer>();
+        scenes.require(code).definition().path("defaultVariants").propertyNames()
+                .forEach(w -> widths.add(Integer.parseInt(w)));
+        assertTrue(widths.contains(58));
+        for (int width : widths) {
             compiler.validateTemplate(
                     code,
                     json.freeze(

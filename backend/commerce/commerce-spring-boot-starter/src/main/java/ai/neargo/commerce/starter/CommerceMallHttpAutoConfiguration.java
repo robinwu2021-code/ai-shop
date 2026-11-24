@@ -107,9 +107,11 @@ public class CommerceMallHttpAutoConfiguration {
                 ObjectProvider<ai.neargo.commerce.api.fulfillment.FulfillmentFacade> fulfillment,
                 ObjectProvider<ai.neargo.commerce.api.mall.RefundFacade> refunds,
                 MallHttpContextPort context,
-                MallHttpEnvelopePort envelope) {
+                MallHttpEnvelopePort envelope,
+                ObjectProvider<ai.neargo.commerce.starter.http.OpsApprovalGatePort> gate) {
             return new CommerceOpsMallHttpController(
-                    queries, refunds.getIfAvailable(), fulfillment.getIfAvailable(), context, envelope);
+                    queries, refunds.getIfAvailable(), fulfillment.getIfAvailable(), context, envelope)
+                    .approvalGate(gate.getIfAvailable());
         }
 
         @Bean
@@ -127,8 +129,10 @@ public class CommerceMallHttpAutoConfiguration {
                 ai.neargo.commerce.api.offline.OfflinePurchaseFacade offline,
                 ai.neargo.commerce.api.mall.MallFacade mall,
                 MallHttpContextPort context,
-                MallHttpEnvelopePort envelope) {
-            return new CommerceOfflineOpsHttpController(offline, mall, context, envelope);
+                MallHttpEnvelopePort envelope,
+                ObjectProvider<ai.neargo.commerce.starter.http.OpsApprovalGatePort> gate) {
+            return new CommerceOfflineOpsHttpController(offline, mall, context, envelope)
+                    .approvalGate(gate.getIfAvailable());
         }
     }
 }

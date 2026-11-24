@@ -51,6 +51,7 @@ const zh = {
   loadFailed: "加载失败",
   retry: "重试",
   done: "已完成",
+  pendingApproval: "已提交审批，审批通过后才生效（到「审批」页查看进度）",
   versionChanged: "这条记录已被他人修改，请刷新后再操作",
   approvalSubmitted: "已提交，等待审核人在「审核待办」处理",
   oms: "在支付端工作区办理",
@@ -316,6 +317,10 @@ const zh = {
   revokeTitle: "撤销这条数据委托",
   enableScopeTitle: "启用这条数据委托",
   enableScopeDesc: "录入人不能自己启用。",
+  submitScopeApproval: "提交启用审批",
+  submitScopeApprovalTitle: "提交这条数据委托的启用审批",
+  submitScopeApprovalDesc: "支付端开了审批时，启用前须先审批：提交后到「审核待办」由另一人批准，批准后在审核待办执行或回到这里点启用。",
+  submitScopeApprovalDone: "已提交启用审批，请到「审核待办」由另一人批准",
 
   // ── 状态 ──
   st_order_CREATED: "已创建",
@@ -968,6 +973,7 @@ const en: typeof zh = {
   loadFailed: "Failed to load",
   retry: "Retry",
   done: "Done",
+  pendingApproval: "Submitted for approval. It takes effect once approved (see Approvals for progress).",
   versionChanged: "Someone else changed this record. Refresh and try again",
   approvalSubmitted: "Submitted. A reviewer handles it in Approvals",
   oms: "Open in the payment workspace",
@@ -1223,6 +1229,10 @@ const en: typeof zh = {
   revokeTitle: "Revoke this data scope",
   enableScopeTitle: "Enable this data scope",
   enableScopeDesc: "The person who entered it can't enable it.",
+  submitScopeApproval: "Request enablement",
+  submitScopeApprovalTitle: "Submit this data scope for enablement approval",
+  submitScopeApprovalDesc: "When the payment side requires approval, enabling needs an approved request first: someone else approves it under Approvals, then execute it there or come back and enable.",
+  submitScopeApprovalDone: "Enablement approval submitted; have someone else approve it under Approvals",
 
   st_order_CREATED: "Created",
   st_order_AWAITING_PAYMENT: "Awaiting payment",

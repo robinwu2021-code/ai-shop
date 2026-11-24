@@ -125,3 +125,15 @@
 /biz/stored-value/consumptions/orders/{orderNo}/cancel  orders
 /mp/entitlement-service-orders/{orderNo}  entitlement-service-orders
 /mp/orders/{orderNo}/entitlement-authorizations  orders
+# 2026-11-22 销售发票（TDD-发票模块）：/biz/invoices 与已上线的 /biz/settle/invoices 同族复数；
+# 接口已交给商户 App（docs/handoff/invoice-print-mock-2026-11-22）按此路径开发，改单数要两端一起改。
+/biz/invoices/{invoiceNo}  invoices
+/biz/invoices/{invoiceNo}/allowances  invoices
+/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void  allowances
+/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void  invoices
+/biz/invoices/{invoiceNo}/print-facts  invoices
+/biz/invoices/{invoiceNo}/provider-checks  invoices
+/biz/invoices/{invoiceNo}/reissue  invoices
+/biz/invoices/{invoiceNo}/retransmissions  invoices
+/biz/invoices/{invoiceNo}/revocation  invoices
+/biz/invoices/{invoiceNo}/void  invoices

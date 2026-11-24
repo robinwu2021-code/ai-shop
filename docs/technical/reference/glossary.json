@@ -5788,6 +5788,510 @@
           "ar": "اكتب تقييمًا"
         },
         {
+          "key": "salesInvoice.addCarrier",
+          "zh-CN": "添加载具",
+          "en": "Add carrier",
+          "ar": "إضافة حامل"
+        },
+        {
+          "key": "salesInvoice.allowed",
+          "zh-CN": "已折让",
+          "en": "Allowances",
+          "ar": "الخصومات"
+        },
+        {
+          "key": "salesInvoice.buyerNamePh",
+          "zh-CN": "买受人名称（选填）",
+          "en": "Buyer name (optional)",
+          "ar": "اسم المشتري (اختياري)"
+        },
+        {
+          "key": "salesInvoice.carrierType.citizen",
+          "zh-CN": "自然人凭证",
+          "en": "Citizen certificate",
+          "ar": "شهادة المواطن"
+        },
+        {
+          "key": "salesInvoice.carrierType.mobile",
+          "zh-CN": "手机条码",
+          "en": "Mobile barcode",
+          "ar": "باركود الجوال"
+        },
+        {
+          "key": "salesInvoice.carriersEmpty",
+          "zh-CN": "还没有存载具",
+          "en": "No saved carriers yet",
+          "ar": "لا توجد حاملات محفوظة بعد"
+        },
+        {
+          "key": "salesInvoice.carriersEntryHint",
+          "zh-CN": "手机条码、自然人凭证",
+          "en": "Mobile barcode, citizen certificate",
+          "ar": "باركود الجوال، شهادة المواطن"
+        },
+        {
+          "key": "salesInvoice.carriersHint",
+          "zh-CN": "存好常用载具，结账选发票时一点就好。会员载具不用存，直接选就行。",
+          "en": "Save the carriers you use so choosing an invoice option takes one tap. The member carrier needs no saving; just pick it.",
+          "ar": "احفظ الحاملات التي تستخدمها ليصبح اختيار الفاتورة بنقرة واحدة. حامل العضوية لا يحتاج إلى حفظ، اختره مباشرة."
+        },
+        {
+          "key": "salesInvoice.carriersTitle",
+          "zh-CN": "发票载具",
+          "en": "Invoice carriers",
+          "ar": "حاملات الفواتير"
+        },
+        {
+          "key": "salesInvoice.choiceHint",
+          "zh-CN": "发票存进载具就不用保管纸本，中奖会自动通知。",
+          "en": "Invoices kept in a carrier need no paper, and you're notified automatically if one wins.",
+          "ar": "الفواتير المحفوظة في حامل لا تحتاج إلى ورق، وستُبلَّغ تلقائيًا إذا ربحت إحداها."
+        },
+        {
+          "key": "salesInvoice.choiceTitle",
+          "zh-CN": "发票开法",
+          "en": "E-invoice option",
+          "ar": "خيار الفاتورة الإلكترونية"
+        },
+        {
+          "key": "salesInvoice.citizenPh",
+          "zh-CN": "2 个大写英文字母加 14 位数字",
+          "en": "2 capital letters plus 14 digits",
+          "ar": "حرفان إنجليزيان كبيران ثم 14 رقمًا"
+        },
+        {
+          "key": "salesInvoice.default",
+          "zh-CN": "默认",
+          "en": "Default",
+          "ar": "افتراضي"
+        },
+        {
+          "key": "salesInvoice.delete",
+          "zh-CN": "删除",
+          "en": "Delete",
+          "ar": "حذف"
+        },
+        {
+          "key": "salesInvoice.deleteHint",
+          "zh-CN": "删除 {id} 后，已开立的发票不受影响。",
+          "en": "Deleting {id} won't affect invoices already issued.",
+          "ar": "حذف {id} لن يؤثر على الفواتير الصادرة."
+        },
+        {
+          "key": "salesInvoice.deleteTitle",
+          "zh-CN": "删除这个载具？",
+          "en": "Delete this carrier?",
+          "ar": "حذف هذا الحامل؟"
+        },
+        {
+          "key": "salesInvoice.dest.citizen",
+          "zh-CN": "自然人凭证",
+          "en": "Citizen certificate",
+          "ar": "شهادة المواطن"
+        },
+        {
+          "key": "salesInvoice.dest.donate",
+          "zh-CN": "已捐赠",
+          "en": "Donated",
+          "ar": "تم التبرع بها"
+        },
+        {
+          "key": "salesInvoice.dest.member",
+          "zh-CN": "会员载具",
+          "en": "Member carrier",
+          "ar": "حامل العضوية"
+        },
+        {
+          "key": "salesInvoice.dest.mobile",
+          "zh-CN": "手机条码",
+          "en": "Mobile barcode",
+          "ar": "باركود الجوال"
+        },
+        {
+          "key": "salesInvoice.dest.paper",
+          "zh-CN": "纸本证明联",
+          "en": "Paper proof copy",
+          "ar": "نسخة إثبات ورقية"
+        },
+        {
+          "key": "salesInvoice.dest.taxId",
+          "zh-CN": "打统一编号",
+          "en": "Company tax ID",
+          "ar": "رقم ضريبي للشركة"
+        },
+        {
+          "key": "salesInvoice.destination",
+          "zh-CN": "存放方式",
+          "en": "Kept in",
+          "ar": "مكان الحفظ"
+        },
+        {
+          "key": "salesInvoice.destinationNo",
+          "zh-CN": "号码",
+          "en": "Number",
+          "ar": "الرقم"
+        },
+        {
+          "key": "salesInvoice.detailTitle",
+          "zh-CN": "发票详情",
+          "en": "E-invoice details",
+          "ar": "تفاصيل الفاتورة"
+        },
+        {
+          "key": "salesInvoice.donatePh",
+          "zh-CN": "3–7 位爱心码",
+          "en": "3–7 digit donation code",
+          "ar": "رمز تبرع من 3 إلى 7 أرقام"
+        },
+        {
+          "key": "salesInvoice.donateWrong",
+          "zh-CN": "爱心码是 3–7 位数字",
+          "en": "A donation code is 3–7 digits",
+          "ar": "رمز التبرع من 3 إلى 7 أرقام"
+        },
+        {
+          "key": "salesInvoice.done",
+          "zh-CN": "完成",
+          "en": "Done",
+          "ar": "تم"
+        },
+        {
+          "key": "salesInvoice.empty",
+          "zh-CN": "还没有发票",
+          "en": "No e-invoices yet",
+          "ar": "لا توجد فواتير بعد"
+        },
+        {
+          "key": "salesInvoice.emptyTip",
+          "zh-CN": "商家开给你的电子发票会出现在这里",
+          "en": "E-invoices issued to you by merchants appear here",
+          "ar": "تظهر هنا الفواتير الإلكترونية التي يصدرها التجار لك"
+        },
+        {
+          "key": "salesInvoice.failed",
+          "zh-CN": "没成功，请稍后再试",
+          "en": "That didn't work. Please try again later",
+          "ar": "لم ينجح ذلك. يرجى المحاولة لاحقًا"
+        },
+        {
+          "key": "salesInvoice.formatWrong",
+          "zh-CN": "格式不对，请核对载具号码",
+          "en": "That format doesn't look right. Check the carrier number",
+          "ar": "التنسيق غير صحيح. تحقق من رقم الحامل"
+        },
+        {
+          "key": "salesInvoice.freeTaxSales",
+          "zh-CN": "免税销售额",
+          "en": "Tax-exempt sales",
+          "ar": "مبيعات معفاة"
+        },
+        {
+          "key": "salesInvoice.issuedAt",
+          "zh-CN": "开立时间",
+          "en": "Issued at",
+          "ar": "وقت الإصدار"
+        },
+        {
+          "key": "salesInvoice.kind.carrier",
+          "zh-CN": "我的载具",
+          "en": "My carrier",
+          "ar": "حاملي"
+        },
+        {
+          "key": "salesInvoice.kind.consumer",
+          "zh-CN": "一般（纸本证明联）",
+          "en": "Standard (paper proof copy)",
+          "ar": "عادية (نسخة إثبات ورقية)"
+        },
+        {
+          "key": "salesInvoice.kind.donate",
+          "zh-CN": "捐赠",
+          "en": "Donate",
+          "ar": "تبرع"
+        },
+        {
+          "key": "salesInvoice.kind.member",
+          "zh-CN": "会员载具",
+          "en": "Member carrier",
+          "ar": "حامل العضوية"
+        },
+        {
+          "key": "salesInvoice.kind.taxId",
+          "zh-CN": "打统一编号",
+          "en": "Company tax ID",
+          "ar": "رقم ضريبي للشركة"
+        },
+        {
+          "key": "salesInvoice.kindHint.carrier",
+          "zh-CN": "手机条码或自然人凭证",
+          "en": "Mobile barcode or citizen certificate",
+          "ar": "باركود الجوال أو شهادة المواطن"
+        },
+        {
+          "key": "salesInvoice.kindHint.consumer",
+          "zh-CN": "由商家印出纸本证明联",
+          "en": "The merchant prints a paper proof copy",
+          "ar": "يطبع التاجر نسخة إثبات ورقية"
+        },
+        {
+          "key": "salesInvoice.kindHint.donate",
+          "zh-CN": "捐给社福团体，填爱心码",
+          "en": "Give it to a charity with a donation code",
+          "ar": "تبرع بها لجمعية خيرية برمز التبرع"
+        },
+        {
+          "key": "salesInvoice.kindHint.member",
+          "zh-CN": "存进本平台会员账号，不用填号码",
+          "en": "Kept in your account here, no number needed",
+          "ar": "تُحفظ في حسابك هنا دون إدخال رقم"
+        },
+        {
+          "key": "salesInvoice.kindHint.taxId",
+          "zh-CN": "公司报账用，填 8 位统一编号",
+          "en": "For company expenses, enter the 8-digit tax ID",
+          "ar": "لمصاريف الشركة، أدخل الرقم الضريبي المكون من 8 أرقام"
+        },
+        {
+          "key": "salesInvoice.labelPh",
+          "zh-CN": "备注名（选填）",
+          "en": "Nickname (optional)",
+          "ar": "اسم مستعار (اختياري)"
+        },
+        {
+          "key": "salesInvoice.lines",
+          "zh-CN": "明细",
+          "en": "Items",
+          "ar": "البنود"
+        },
+        {
+          "key": "salesInvoice.loadMore",
+          "zh-CN": "加载更多",
+          "en": "Load more",
+          "ar": "تحميل المزيد"
+        },
+        {
+          "key": "salesInvoice.makeDefault",
+          "zh-CN": "设为默认载具",
+          "en": "Use as default carrier",
+          "ar": "استخدامه كحامل افتراضي"
+        },
+        {
+          "key": "salesInvoice.manageCarriers",
+          "zh-CN": "管理载具",
+          "en": "Manage carriers",
+          "ar": "إدارة الحاملات"
+        },
+        {
+          "key": "salesInvoice.mobilePh",
+          "zh-CN": "/ 加 7 码，如 /ABC+123",
+          "en": "/ plus 7 characters, e.g. /ABC+123",
+          "ar": "/ ثم 7 رموز، مثل ‎/ABC+123"
+        },
+        {
+          "key": "salesInvoice.moreFailed",
+          "zh-CN": "没加载出来，点这里重试",
+          "en": "Couldn't load more. Tap to retry",
+          "ar": "تعذر التحميل. اضغط لإعادة المحاولة"
+        },
+        {
+          "key": "salesInvoice.noOrder",
+          "zh-CN": "没有找到这笔订单",
+          "en": "Order not found",
+          "ar": "لم يتم العثور على الطلب"
+        },
+        {
+          "key": "salesInvoice.noPaper",
+          "zh-CN": "已存入载具或捐赠，不印纸本证明联",
+          "en": "Kept in a carrier or donated, so no paper copy is printed",
+          "ar": "محفوظة في حامل أو متبرع بها، لذا لا تُطبع نسخة ورقية"
+        },
+        {
+          "key": "salesInvoice.orderEntry",
+          "zh-CN": "电子发票",
+          "en": "E-invoice",
+          "ar": "الفاتورة الإلكترونية"
+        },
+        {
+          "key": "salesInvoice.orderEntryHint",
+          "zh-CN": "选择开法",
+          "en": "Choose option",
+          "ar": "اختر الخيار"
+        },
+        {
+          "key": "salesInvoice.outcome.alreadyIssued",
+          "zh-CN": "已开过发票（{no}），要改需请商家作废重开",
+          "en": "Already issued ({no}). To change it, ask the merchant to void and reissue",
+          "ar": "صدرت مسبقًا ({no}). لتغييرها اطلب من التاجر إلغاءها وإعادة إصدارها"
+        },
+        {
+          "key": "salesInvoice.outcome.issued",
+          "zh-CN": "已开立，发票号码 {no}",
+          "en": "Issued, invoice number {no}",
+          "ar": "صدرت، رقم الفاتورة {no}"
+        },
+        {
+          "key": "salesInvoice.outcome.memberUnavailable",
+          "zh-CN": "该商家未提供会员载具，请改选其他方式",
+          "en": "This merchant doesn't offer a member carrier. Please choose another option",
+          "ar": "هذا التاجر لا يقدم حامل العضوية. يرجى اختيار خيار آخر"
+        },
+        {
+          "key": "salesInvoice.outcome.notEnabled",
+          "zh-CN": "该商家未提供电子发票",
+          "en": "This merchant doesn't offer e-invoices",
+          "ar": "هذا التاجر لا يقدم فواتير إلكترونية"
+        },
+        {
+          "key": "salesInvoice.outcome.saved",
+          "zh-CN": "已记下，付款后依此开立",
+          "en": "Saved. The invoice will be issued this way after payment",
+          "ar": "تم الحفظ. ستصدر الفاتورة بهذه الطريقة بعد الدفع"
+        },
+        {
+          "key": "salesInvoice.period",
+          "zh-CN": "{y}年{a}-{b}月",
+          "en": "ROC {y}, months {a}–{b}",
+          "ar": "عام {y} (تقويم جمهورية الصين)، الشهران {a}–{b}"
+        },
+        {
+          "key": "salesInvoice.periodLabel",
+          "zh-CN": "期别",
+          "en": "Period",
+          "ar": "الفترة"
+        },
+        {
+          "key": "salesInvoice.randomCode",
+          "zh-CN": "随机码",
+          "en": "Random code",
+          "ar": "الرمز العشوائي"
+        },
+        {
+          "key": "salesInvoice.resubmit",
+          "zh-CN": "改选后重新提交",
+          "en": "Change and submit again",
+          "ar": "غيّر وأرسل مجددًا"
+        },
+        {
+          "key": "salesInvoice.resultTitle",
+          "zh-CN": "各商家的结果",
+          "en": "Result by merchant",
+          "ar": "النتيجة لكل تاجر"
+        },
+        {
+          "key": "salesInvoice.sales",
+          "zh-CN": "销售额",
+          "en": "Sales",
+          "ar": "المبيعات"
+        },
+        {
+          "key": "salesInvoice.save",
+          "zh-CN": "保存",
+          "en": "Save",
+          "ar": "حفظ"
+        },
+        {
+          "key": "salesInvoice.saved",
+          "zh-CN": "已保存",
+          "en": "Saved",
+          "ar": "تم الحفظ"
+        },
+        {
+          "key": "salesInvoice.sellerTaxId",
+          "zh-CN": "统一编号",
+          "en": "Tax ID",
+          "ar": "الرقم الضريبي"
+        },
+        {
+          "key": "salesInvoice.setDefault",
+          "zh-CN": "设为默认",
+          "en": "Set as default",
+          "ar": "تعيين كافتراضي"
+        },
+        {
+          "key": "salesInvoice.status.issued",
+          "zh-CN": "已开立",
+          "en": "Issued",
+          "ar": "صادرة"
+        },
+        {
+          "key": "salesInvoice.status.revoked",
+          "zh-CN": "已注销",
+          "en": "Revoked",
+          "ar": "مُبطلة"
+        },
+        {
+          "key": "salesInvoice.status.revoking",
+          "zh-CN": "注销中",
+          "en": "Revoking",
+          "ar": "قيد الإبطال"
+        },
+        {
+          "key": "salesInvoice.status.voided",
+          "zh-CN": "已作废",
+          "en": "Voided",
+          "ar": "ملغاة"
+        },
+        {
+          "key": "salesInvoice.subOrder",
+          "zh-CN": "订单 {no}",
+          "en": "Order {no}",
+          "ar": "الطلب {no}"
+        },
+        {
+          "key": "salesInvoice.submit",
+          "zh-CN": "确定",
+          "en": "Confirm",
+          "ar": "تأكيد"
+        },
+        {
+          "key": "salesInvoice.tax",
+          "zh-CN": "税额",
+          "en": "Tax",
+          "ar": "الضريبة"
+        },
+        {
+          "key": "salesInvoice.taxIdPh",
+          "zh-CN": "8 位统一编号",
+          "en": "8-digit tax ID",
+          "ar": "رقم ضريبي من 8 أرقام"
+        },
+        {
+          "key": "salesInvoice.taxIdWrong",
+          "zh-CN": "统一编号是 8 位数字",
+          "en": "A tax ID is 8 digits",
+          "ar": "الرقم الضريبي 8 أرقام"
+        },
+        {
+          "key": "salesInvoice.title",
+          "zh-CN": "我的发票",
+          "en": "My e-invoices",
+          "ar": "فواتيري الإلكترونية"
+        },
+        {
+          "key": "salesInvoice.total",
+          "zh-CN": "总计",
+          "en": "Total",
+          "ar": "الإجمالي"
+        },
+        {
+          "key": "salesInvoice.unknownSeller",
+          "zh-CN": "商家",
+          "en": "Merchant",
+          "ar": "التاجر"
+        },
+        {
+          "key": "salesInvoice.voidedHint",
+          "zh-CN": "这张发票已被商家作废",
+          "en": "The merchant voided this invoice",
+          "ar": "ألغى التاجر هذه الفاتورة"
+        },
+        {
+          "key": "salesInvoice.zeroTaxSales",
+          "zh-CN": "零税率销售额",
+          "en": "Zero-rated sales",
+          "ar": "مبيعات بنسبة صفرية"
+        },
+        {
           "key": "search.clear",
           "zh-CN": "清空",
           "en": "Clear",
@@ -18566,6 +19070,30 @@
           "ar": "إنشاء المنتجات والأسعار والنشر"
         },
         {
+          "key": "perm.biz:invoice:issue",
+          "zh-CN": "开立发票",
+          "en": "Issue invoices",
+          "ar": "إصدار الفواتير"
+        },
+        {
+          "key": "perm.biz:invoice:read",
+          "zh-CN": "查看发票",
+          "en": "View invoices",
+          "ar": "عرض الفواتير"
+        },
+        {
+          "key": "perm.biz:invoice:setup",
+          "zh-CN": "发票设置（税制与号段）",
+          "en": "Invoice settings (tax regime and number ranges)",
+          "ar": "إعدادات الفواتير (النظام الضريبي ونطاقات الأرقام)"
+        },
+        {
+          "key": "perm.biz:invoice:void",
+          "zh-CN": "作废发票与开折让",
+          "en": "Void invoices and issue allowances",
+          "ar": "إلغاء الفواتير وإصدار إشعارات التخفيض"
+        },
+        {
           "key": "perm.biz:order:view",
           "zh-CN": "看订单与金额",
           "en": "See orders and amounts",
@@ -20252,6 +20780,36 @@
           "ar": "تعذرت العملية. حاول مرة أخرى."
         },
         {
+          "key": "printCenter.failure.extraCopiesNotAllowed",
+          "zh-CN": "这类单据不能加印（如发票证明联只有一张正本），需要时请改用补印。",
+          "en": "Extra copies aren't allowed for this document (an invoice proof has only one original). Use reprint instead.",
+          "ar": "لا يُسمح بنسخ إضافية لهذا المستند (لإثبات الفاتورة نسخة أصلية واحدة فقط). استخدم إعادة الطباعة بدلًا من ذلك."
+        },
+        {
+          "key": "printCenter.failure.paperMismatch",
+          "zh-CN": "打印机纸宽与原票不一致。",
+          "en": "The printer's paper width doesn't match the original.",
+          "ar": "عرض ورق الطابعة لا يطابق الأصل."
+        },
+        {
+          "key": "printCenter.failure.printerUnavailable",
+          "zh-CN": "打印机不可用，请检查设备。",
+          "en": "The printer is unavailable. Check the device.",
+          "ar": "الطابعة غير متاحة. تحقّق من الجهاز."
+        },
+        {
+          "key": "printCenter.failure.reprintInProgress",
+          "zh-CN": "上一次补印还在进行，完成后再试。",
+          "en": "A reprint is already in progress. Try again when it finishes.",
+          "ar": "هناك إعادة طباعة قيد التنفيذ. حاول مجددًا بعد انتهائها."
+        },
+        {
+          "key": "printCenter.failure.revisionConflict",
+          "zh-CN": "任务已变化，请刷新后重试。",
+          "en": "The job has changed. Refresh and try again.",
+          "ar": "تغيّرت المهمة. حدّث الصفحة وأعد المحاولة."
+        },
+        {
           "key": "printCenter.fixture.ACCEPTED_NO_RESULT",
           "zh-CN": "受理后无结果",
           "en": "Accepted no result",
@@ -20526,6 +21084,144 @@
           "zh-CN": "保存草稿并预览",
           "en": "Save draft and preview",
           "ar": "Save draft and preview"
+        },
+        {
+          "key": "printCenter.scene.APPT_CONFIRM",
+          "zh-CN": "预约确认单",
+          "en": "Appointment confirmation",
+          "ar": "تأكيد الموعد"
+        },
+        {
+          "key": "printCenter.scene.CARD_BALANCE",
+          "zh-CN": "权益使用凭证",
+          "en": "Benefit usage receipt",
+          "ar": "إيصال استخدام المزايا"
+        },
+        {
+          "key": "printCenter.scene.CASHIER_RECEIPT",
+          "zh-CN": "收银结账凭证",
+          "en": "Checkout receipt",
+          "ar": "إيصال الدفع عند الصندوق"
+        },
+        {
+          "key": "printCenter.scene.CHECKOUT",
+          "zh-CN": "餐饮结账凭证",
+          "en": "Dining checkout receipt",
+          "ar": "إيصال الدفع للمطعم"
+        },
+        {
+          "key": "printCenter.scene.DAY_END",
+          "zh-CN": "日结汇总",
+          "en": "Day-end summary",
+          "ar": "ملخص نهاية اليوم"
+        },
+        {
+          "key": "printCenter.scene.DELIVERY_HANDOVER",
+          "zh-CN": "配送交接单",
+          "en": "Delivery handover slip",
+          "ar": "قسيمة تسليم التوصيل"
+        },
+        {
+          "key": "printCenter.scene.HANDOVER",
+          "zh-CN": "交班汇总",
+          "en": "Shift handover summary",
+          "ar": "ملخص تسليم الوردية"
+        },
+        {
+          "key": "printCenter.scene.INVOICE_ALLOWANCE",
+          "zh-CN": "发票折让证明单",
+          "en": "Invoice allowance certificate",
+          "ar": "إشعار خصم الفاتورة"
+        },
+        {
+          "key": "printCenter.scene.INVOICE_DETAIL",
+          "zh-CN": "发票交易明细",
+          "en": "Invoice transaction details",
+          "ar": "تفاصيل معاملة الفاتورة"
+        },
+        {
+          "key": "printCenter.scene.INVOICE_PROOF",
+          "zh-CN": "电子发票证明联",
+          "en": "E-invoice proof copy",
+          "ar": "نسخة إثبات الفاتورة الإلكترونية"
+        },
+        {
+          "key": "printCenter.scene.KITCHEN",
+          "zh-CN": "制作单",
+          "en": "Kitchen ticket",
+          "ar": "تذكرة المطبخ"
+        },
+        {
+          "key": "printCenter.scene.KITCHEN_ADD",
+          "zh-CN": "加菜单",
+          "en": "Add-on kitchen ticket",
+          "ar": "تذكرة إضافة أصناف"
+        },
+        {
+          "key": "printCenter.scene.KITCHEN_VOID",
+          "zh-CN": "退菜单",
+          "en": "Kitchen void ticket",
+          "ar": "تذكرة إلغاء أصناف"
+        },
+        {
+          "key": "printCenter.scene.ORDER_PAID",
+          "zh-CN": "订单支付凭证",
+          "en": "Order payment receipt",
+          "ar": "إيصال دفع الطلب"
+        },
+        {
+          "key": "printCenter.scene.PICKING",
+          "zh-CN": "拣货单",
+          "en": "Picking list",
+          "ar": "قائمة الانتقاء"
+        },
+        {
+          "key": "printCenter.scene.PRE_BILL",
+          "zh-CN": "预结单",
+          "en": "Pre-bill",
+          "ar": "فاتورة مبدئية"
+        },
+        {
+          "key": "printCenter.scene.PRINTER_TEST",
+          "zh-CN": "设备测试",
+          "en": "Printer test",
+          "ar": "اختبار الطابعة"
+        },
+        {
+          "key": "printCenter.scene.RECHARGE_RECEIPT",
+          "zh-CN": "储值充值凭证",
+          "en": "Stored-value top-up receipt",
+          "ar": "إيصال شحن الرصيد"
+        },
+        {
+          "key": "printCenter.scene.REFUND_RECEIPT",
+          "zh-CN": "退款凭证",
+          "en": "Refund receipt",
+          "ar": "إيصال الاسترداد"
+        },
+        {
+          "key": "printCenter.scene.SERVICE_COMPLETE",
+          "zh-CN": "服务完成单",
+          "en": "Service completion slip",
+          "ar": "قسيمة إتمام الخدمة"
+        },
+        {
+          "key": "printCenter.scene.SERVICE_START",
+          "zh-CN": "服务执行单",
+          "en": "Service work order",
+          "ar": "أمر تنفيذ الخدمة"
+        },
+        {
+          "key": "printCenter.scene.TAKEOUT_PACKING",
+          "zh-CN": "外卖打包单",
+          "en": "Takeout packing slip",
+          "ar": "قسيمة تغليف الطلبات الخارجية"
+        },
+        {
+          "key": "printCenter.scene.URGE",
+          "zh-CN": "催菜单",
+          "en": "Rush ticket",
+          "ar": "تذكرة استعجال"
         },
         {
           "key": "printCenter.sealedPairingCopied",
@@ -21750,6 +22446,1326 @@
           "zh-CN": "评价与回复",
           "en": "Reviews",
           "ar": "التقييمات والردود"
+        },
+        {
+          "key": "salesInvoice.addRange",
+          "zh-CN": "登记号段",
+          "en": "Register range",
+          "ar": "تسجيل نطاق"
+        },
+        {
+          "key": "salesInvoice.allStatus",
+          "zh-CN": "全部",
+          "en": "All",
+          "ar": "الكل"
+        },
+        {
+          "key": "salesInvoice.allowance",
+          "zh-CN": "开折让",
+          "en": "Issue allowance",
+          "ar": "إصدار خصم"
+        },
+        {
+          "key": "salesInvoice.allowanceAmount",
+          "zh-CN": "折让金额（含税）",
+          "en": "Allowance amount (tax included)",
+          "ar": "مبلغ الخصم (شامل الضريبة)"
+        },
+        {
+          "key": "salesInvoice.allowanceMax",
+          "zh-CN": "最多可折让 {amount}",
+          "en": "Up to {amount}",
+          "ar": "الحد الأقصى {amount}"
+        },
+        {
+          "key": "salesInvoice.allowanceReason",
+          "zh-CN": "折让原因",
+          "en": "Allowance reason",
+          "ar": "سبب الخصم"
+        },
+        {
+          "key": "salesInvoice.allowanceStatus.ACTIVE",
+          "zh-CN": "有效",
+          "en": "Active",
+          "ar": "ساري"
+        },
+        {
+          "key": "salesInvoice.allowanceStatus.VOIDED",
+          "zh-CN": "已作废",
+          "en": "Voided",
+          "ar": "ملغى"
+        },
+        {
+          "key": "salesInvoice.allowances",
+          "zh-CN": "折让",
+          "en": "Allowances",
+          "ar": "الخصومات"
+        },
+        {
+          "key": "salesInvoice.allowed",
+          "zh-CN": "累计折让",
+          "en": "Allowances so far",
+          "ar": "إجمالي الخصومات"
+        },
+        {
+          "key": "salesInvoice.autoFetchRanges",
+          "zh-CN": "号码不足时自动向鲸跃领号",
+          "en": "Get numbers from Cetustek automatically when running low",
+          "ar": "جلب الأرقام تلقائياً من Cetustek عند قربها من النفاد"
+        },
+        {
+          "key": "salesInvoice.autoIssue",
+          "zh-CN": "付款成功后自动开立",
+          "en": "Auto-issue after payment",
+          "ar": "الإصدار التلقائي بعد الدفع"
+        },
+        {
+          "key": "salesInvoice.backlogDueSoon",
+          "zh-CN": "有 {n} 张发票即将到达上传期限。",
+          "en": "{n} invoices are close to their upload deadline.",
+          "ar": "{n} فواتير اقترب موعد رفعها."
+        },
+        {
+          "key": "salesInvoice.backlogHeld",
+          "zh-CN": "{n} 张因服务商账号问题暂停上传。",
+          "en": "{n} are paused because of a provider account problem.",
+          "ar": "{n} متوقفة بسبب مشكلة في حساب المزوّد."
+        },
+        {
+          "key": "salesInvoice.backlogOverdue",
+          "zh-CN": "有 {n} 张发票已超过法定上传期限仍未上传，请尽快处理。",
+          "en": "{n} invoices are past the legal upload deadline and still not uploaded. Please handle them now.",
+          "ar": "{n} فواتير تجاوزت الموعد القانوني للرفع ولم تُرفع بعد. يرجى معالجتها الآن."
+        },
+        {
+          "key": "salesInvoice.backlogReview",
+          "zh-CN": "{n} 张被服务商拒收，待人工处理。",
+          "en": "{n} were rejected by the provider and need attention.",
+          "ar": "{n} رفضها المزوّد وتحتاج إلى معالجة."
+        },
+        {
+          "key": "salesInvoice.buyer",
+          "zh-CN": "买受人",
+          "en": "Buyer",
+          "ar": "المشتري"
+        },
+        {
+          "key": "salesInvoice.buyerB2C",
+          "zh-CN": "一般消费者",
+          "en": "Consumer",
+          "ar": "مستهلك"
+        },
+        {
+          "key": "salesInvoice.buyerName",
+          "zh-CN": "买方名称",
+          "en": "Buyer name",
+          "ar": "اسم المشتري"
+        },
+        {
+          "key": "salesInvoice.carrier",
+          "zh-CN": "载具",
+          "en": "Carrier",
+          "ar": "الحامل"
+        },
+        {
+          "key": "salesInvoice.carrierId",
+          "zh-CN": "载具号码",
+          "en": "Carrier number",
+          "ar": "رقم الحامل"
+        },
+        {
+          "key": "salesInvoice.citizenPh",
+          "zh-CN": "2 个英文字母加 14 位数字",
+          "en": "2 letters plus 14 digits",
+          "ar": "حرفان ثم 14 رقماً"
+        },
+        {
+          "key": "salesInvoice.credential.CETUSTEK.officeId",
+          "zh-CN": "商家代号（officeid）",
+          "en": "Office ID (officeid)",
+          "ar": "رمز التاجر (officeid)"
+        },
+        {
+          "key": "salesInvoice.credential.CETUSTEK.posId",
+          "zh-CN": "POS 密钥（posid）",
+          "en": "POS key (posid)",
+          "ar": "مفتاح نقطة البيع (posid)"
+        },
+        {
+          "key": "salesInvoice.credential.CETUSTEK.posNo",
+          "zh-CN": "POS 编号（posno）",
+          "en": "POS number (posno)",
+          "ar": "رقم نقطة البيع (posno)"
+        },
+        {
+          "key": "salesInvoice.credential.UNIVERSALEC.posId",
+          "zh-CN": "POS 机编号（POSID）",
+          "en": "POS ID (POSID)",
+          "ar": "معرّف نقطة البيع (POSID)"
+        },
+        {
+          "key": "salesInvoice.credential.UNIVERSALEC.posSn",
+          "zh-CN": "通道金钥（POSSN）",
+          "en": "Channel key (POSSN)",
+          "ar": "مفتاح القناة (POSSN)"
+        },
+        {
+          "key": "salesInvoice.credential.UNIVERSALEC.sellerId",
+          "zh-CN": "营业人统编（SELLERID）",
+          "en": "Seller tax ID (SELLERID)",
+          "ar": "الرقم الضريبي للبائع (SELLERID)"
+        },
+        {
+          "key": "salesInvoice.credentialDerived",
+          "zh-CN": "自动使用卖方统一编号，不必填写",
+          "en": "Uses the seller tax ID automatically",
+          "ar": "يُستخدم الرقم الضريبي للبائع تلقائيًا"
+        },
+        {
+          "key": "salesInvoice.detailTitle",
+          "zh-CN": "发票详情",
+          "en": "Invoice details",
+          "ar": "تفاصيل الفاتورة"
+        },
+        {
+          "key": "salesInvoice.donate",
+          "zh-CN": "捐赠爱心码",
+          "en": "Donation code",
+          "ar": "رمز التبرع"
+        },
+        {
+          "key": "salesInvoice.donatePh",
+          "zh-CN": "3–7 位爱心码",
+          "en": "3–7 digit donation code",
+          "ar": "رمز تبرع من 3 إلى 7 أرقام"
+        },
+        {
+          "key": "salesInvoice.done",
+          "zh-CN": "已完成",
+          "en": "Done",
+          "ar": "تم"
+        },
+        {
+          "key": "salesInvoice.empty",
+          "zh-CN": "还没有发票",
+          "en": "No invoices yet",
+          "ar": "لا توجد فواتير بعد"
+        },
+        {
+          "key": "salesInvoice.endNo",
+          "zh-CN": "迄号",
+          "en": "End number",
+          "ar": "رقم النهاية"
+        },
+        {
+          "key": "salesInvoice.failed",
+          "zh-CN": "操作没有成功，请稍后再试",
+          "en": "That did not work, please try again later",
+          "ar": "لم تنجح العملية، حاول لاحقاً"
+        },
+        {
+          "key": "salesInvoice.fetchRange",
+          "zh-CN": "向加值中心取号段",
+          "en": "Get a range from the provider",
+          "ar": "جلب نطاق من المزوّد"
+        },
+        {
+          "key": "salesInvoice.fetched",
+          "zh-CN": "已取回号段 {track} {start}–{end}",
+          "en": "Got range {track} {start}–{end}",
+          "ar": "تم جلب النطاق {track} {start}–{end}"
+        },
+        {
+          "key": "salesInvoice.freeTaxSales",
+          "zh-CN": "免税销售额",
+          "en": "Tax-exempt sales",
+          "ar": "مبيعات معفاة"
+        },
+        {
+          "key": "salesInvoice.gateway",
+          "zh-CN": "开票供应商",
+          "en": "Invoice provider",
+          "ar": "مزوّد الفواتير"
+        },
+        {
+          "key": "salesInvoice.gatewayDefault",
+          "zh-CN": "跟随平台默认（{name}）",
+          "en": "Platform default ({name})",
+          "ar": "الافتراضي من المنصة ({name})"
+        },
+        {
+          "key": "salesInvoice.gatewayHint",
+          "zh-CN": "不选则由平台统一指定，平台切换供应商时自动跟随；从其它系统迁来、已在用某家供应商的，可直接选它。",
+          "en": "Leave it to the platform and you follow its provider automatically when it switches. If you are moving over from another system and already use a provider, pick it here.",
+          "ar": "اتركه للمنصة لتتبع مزوّدها تلقائيًا عند تغييره. إن كنت تنتقل من نظام آخر وتستخدم مزوّدًا بالفعل، فاختره هنا."
+        },
+        {
+          "key": "salesInvoice.gatewayName.CETUSTEK",
+          "zh-CN": "鲸跃",
+          "en": "Cetustek",
+          "ar": "Cetustek"
+        },
+        {
+          "key": "salesInvoice.gatewayName.STUB",
+          "zh-CN": "模拟通道",
+          "en": "Simulated",
+          "ar": "محاكاة"
+        },
+        {
+          "key": "salesInvoice.gatewayName.TURNKEY",
+          "zh-CN": "Turnkey",
+          "en": "Turnkey",
+          "ar": "Turnkey"
+        },
+        {
+          "key": "salesInvoice.gatewayName.UNIVERSALEC",
+          "zh-CN": "汎宇",
+          "en": "Universal EC",
+          "ar": "Universal EC"
+        },
+        {
+          "key": "salesInvoice.heldHint",
+          "zh-CN": "服务商账号认证失败，本主体的发票上传已暂停。到「发票设置」核验账号，通过后会自动补传。",
+          "en": "The provider rejected this account's credentials, so invoice uploads for this business are paused. Verify the account in Invoice settings; uploads resume automatically once it passes.",
+          "ar": "رفض المزوّد بيانات اعتماد الحساب، لذا أُوقف رفع فواتير هذا النشاط مؤقتاً. تحقّق من الحساب في إعدادات الفواتير، وسيُستأنف الرفع تلقائياً بعد نجاح التحقق."
+        },
+        {
+          "key": "salesInvoice.invalidAmount",
+          "zh-CN": "金额要大于 0，且不超过可折让余额",
+          "en": "Amount must be above 0 and no more than the remaining balance",
+          "ar": "يجب أن يكون المبلغ أكبر من 0 ولا يتجاوز الرصيد المتبقي"
+        },
+        {
+          "key": "salesInvoice.invoiceType",
+          "zh-CN": "发票类别",
+          "en": "Invoice type",
+          "ar": "نوع الفاتورة"
+        },
+        {
+          "key": "salesInvoice.issueHint",
+          "zh-CN": "金额与明细按来源单开立；同一来源单重复提交只会返回原发票。",
+          "en": "Amounts and lines come from the source order; submitting the same order again returns the original invoice.",
+          "ar": "المبالغ والبنود مأخوذة من الطلب المصدر؛ إعادة الإرسال للطلب نفسه تعيد الفاتورة الأصلية."
+        },
+        {
+          "key": "salesInvoice.issueTitle",
+          "zh-CN": "开发票",
+          "en": "Issue invoice",
+          "ar": "إصدار فاتورة"
+        },
+        {
+          "key": "salesInvoice.issuedAt",
+          "zh-CN": "开立时间",
+          "en": "Issued at",
+          "ar": "وقت الإصدار"
+        },
+        {
+          "key": "salesInvoice.kind.CITIZEN",
+          "zh-CN": "自然人凭证",
+          "en": "Citizen certificate",
+          "ar": "شهادة المواطن"
+        },
+        {
+          "key": "salesInvoice.kind.DONATE",
+          "zh-CN": "捐赠",
+          "en": "Donate",
+          "ar": "تبرع"
+        },
+        {
+          "key": "salesInvoice.kind.GENERAL",
+          "zh-CN": "一般",
+          "en": "General",
+          "ar": "عام"
+        },
+        {
+          "key": "salesInvoice.kind.MOBILE",
+          "zh-CN": "手机条码",
+          "en": "Mobile barcode",
+          "ar": "باركود الجوال"
+        },
+        {
+          "key": "salesInvoice.kind.TAX_ID",
+          "zh-CN": "打统编",
+          "en": "Tax ID",
+          "ar": "رقم ضريبي"
+        },
+        {
+          "key": "salesInvoice.lines",
+          "zh-CN": "明细",
+          "en": "Lines",
+          "ar": "البنود"
+        },
+        {
+          "key": "salesInvoice.memberCarrier",
+          "zh-CN": "会员载具类别号",
+          "en": "Member carrier type",
+          "ar": "نوع حامل العضو"
+        },
+        {
+          "key": "salesInvoice.mobilePh",
+          "zh-CN": "/ 加 7 码，如 /ABC+123",
+          "en": "/ plus 7 characters, e.g. /ABC+123",
+          "ar": "/ ثم 7 أحرف، مثل /ABC+123"
+        },
+        {
+          "key": "salesInvoice.more",
+          "zh-CN": "加载更多",
+          "en": "Load more",
+          "ar": "تحميل المزيد"
+        },
+        {
+          "key": "salesInvoice.noPrint",
+          "zh-CN": "存了载具或捐赠，不印证明联",
+          "en": "Saved to a carrier or donated, so no proof copy is printed",
+          "ar": "حُفظت في حامل أو تم التبرع بها، لذلك لا تُطبع نسخة الإثبات"
+        },
+        {
+          "key": "salesInvoice.notOpened",
+          "zh-CN": "尚未开通电子发票",
+          "en": "E-invoicing is not set up yet",
+          "ar": "لم يتم إعداد الفوترة الإلكترونية بعد"
+        },
+        {
+          "key": "salesInvoice.optional",
+          "zh-CN": "选填",
+          "en": "Optional",
+          "ar": "اختياري"
+        },
+        {
+          "key": "salesInvoice.orderEntry",
+          "zh-CN": "电子发票",
+          "en": "E-invoice",
+          "ar": "الفاتورة الإلكترونية"
+        },
+        {
+          "key": "salesInvoice.overdue",
+          "zh-CN": "已逾期",
+          "en": "Overdue",
+          "ar": "متأخر"
+        },
+        {
+          "key": "salesInvoice.period",
+          "zh-CN": "期别",
+          "en": "Period",
+          "ar": "الفترة"
+        },
+        {
+          "key": "salesInvoice.periodPh",
+          "zh-CN": "期别，如 11512",
+          "en": "Period, e.g. 11512",
+          "ar": "الفترة، مثل 11512"
+        },
+        {
+          "key": "salesInvoice.preferHint",
+          "zh-CN": "门店开了「付款成功后自动开立」时，付款完成后按这里的买受人开票。",
+          "en": "If the store has auto-issue on, the invoice is issued to this buyer once payment succeeds.",
+          "ar": "إذا كان الإصدار التلقائي مفعّلاً في المتجر، تُصدر الفاتورة لهذا المشتري بعد نجاح الدفع."
+        },
+        {
+          "key": "salesInvoice.preferOnly",
+          "zh-CN": "仅预存，付款后自动开立",
+          "en": "Save only, issue after payment",
+          "ar": "حفظ فقط والإصدار بعد الدفع"
+        },
+        {
+          "key": "salesInvoice.print",
+          "zh-CN": "打印证明联",
+          "en": "Print proof copy",
+          "ar": "طباعة نسخة الإثبات"
+        },
+        {
+          "key": "salesInvoice.printAllowance",
+          "zh-CN": "打印折让证明单",
+          "en": "Print allowance certificate",
+          "ar": "طباعة إشعار الخصم"
+        },
+        {
+          "key": "salesInvoice.printCenter",
+          "zh-CN": "打印中心",
+          "en": "Print center",
+          "ar": "مركز الطباعة"
+        },
+        {
+          "key": "salesInvoice.printDetail",
+          "zh-CN": "打印交易明细",
+          "en": "Print transaction details",
+          "ar": "طباعة تفاصيل المعاملة"
+        },
+        {
+          "key": "salesInvoice.printSent",
+          "zh-CN": "已提交打印，进度在打印中心查看",
+          "en": "Print submitted; track it in the print center",
+          "ar": "تم إرسال الطباعة؛ تابعها في مركز الطباعة"
+        },
+        {
+          "key": "salesInvoice.printSimDoc",
+          "zh-CN": "打印件",
+          "en": "Document",
+          "ar": "المستند"
+        },
+        {
+          "key": "salesInvoice.printSimDocs.INVOICE_ALLOWANCE",
+          "zh-CN": "折让证明单",
+          "en": "Allowance slip",
+          "ar": "إشعار الخصم"
+        },
+        {
+          "key": "salesInvoice.printSimDocs.INVOICE_DETAIL",
+          "zh-CN": "交易明细",
+          "en": "Transaction detail",
+          "ar": "تفاصيل المعاملة"
+        },
+        {
+          "key": "salesInvoice.printSimDocs.INVOICE_PROOF",
+          "zh-CN": "证明联",
+          "en": "Proof copy",
+          "ar": "نسخة الإثبات"
+        },
+        {
+          "key": "salesInvoice.printSimFailed",
+          "zh-CN": "PDF 没有生成成功，请稍后再试",
+          "en": "The PDF could not be generated. Please try again later.",
+          "ar": "تعذّر إنشاء ملف PDF. يرجى المحاولة لاحقًا."
+        },
+        {
+          "key": "salesInvoice.printSimGenerate",
+          "zh-CN": "生成 PDF",
+          "en": "Generate PDF",
+          "ar": "إنشاء PDF"
+        },
+        {
+          "key": "salesInvoice.printSimGenerating",
+          "zh-CN": "生成中…",
+          "en": "Generating…",
+          "ar": "جارٍ الإنشاء…"
+        },
+        {
+          "key": "salesInvoice.printSimHint",
+          "zh-CN": "生成 PDF 查看证明联、交易明细、折让证明单的版面。只是模拟：不出纸，也不建正式打印任务。",
+          "en": "Generate a PDF to check the layout of the proof copy, transaction detail and allowance slip. Preview only: nothing is printed and no print job is created.",
+          "ar": "أنشئ ملف PDF لمراجعة تخطيط نسخة الإثبات وتفاصيل المعاملة وإشعار الخصم. معاينة فقط: لا تتم أي طباعة ولا تُنشأ مهمة طباعة."
+        },
+        {
+          "key": "salesInvoice.printSimNoDocs",
+          "zh-CN": "这张发票没有可打印的打印件（已作废，或存了载具 / 捐赠且无折让）。",
+          "en": "This invoice has nothing to print (voided, or stored to a carrier / donated with no allowance).",
+          "ar": "لا يوجد ما يُطبع لهذه الفاتورة (ملغاة، أو محفوظة في حامل / متبرَّع بها دون خصم)."
+        },
+        {
+          "key": "salesInvoice.printSimOpen",
+          "zh-CN": "重新打开 PDF",
+          "en": "Open PDF again",
+          "ar": "فتح PDF مرة أخرى"
+        },
+        {
+          "key": "salesInvoice.printSimProfile",
+          "zh-CN": "PDF 版式",
+          "en": "PDF layout",
+          "ar": "تخطيط PDF"
+        },
+        {
+          "key": "salesInvoice.printSimProfiles.A4_SHEET",
+          "zh-CN": "A4",
+          "en": "A4",
+          "ar": "A4"
+        },
+        {
+          "key": "salesInvoice.printSimProfiles.ORIGINAL_ROLL",
+          "zh-CN": "原卷宽",
+          "en": "Roll width",
+          "ar": "عرض اللفة"
+        },
+        {
+          "key": "salesInvoice.printSimReady",
+          "zh-CN": "已生成，共 {pages} 页",
+          "en": "Ready, {pages} page(s)",
+          "ar": "جاهز، {pages} صفحة"
+        },
+        {
+          "key": "salesInvoice.printSimSample",
+          "zh-CN": "样例",
+          "en": "Sample",
+          "ar": "نموذج"
+        },
+        {
+          "key": "salesInvoice.printSimSlow",
+          "zh-CN": "PDF 还在生成，请稍后点「重新打开 PDF」",
+          "en": "The PDF is still being generated. Tap \"Open PDF again\" shortly.",
+          "ar": "لا يزال ملف PDF قيد الإنشاء. اضغط \"فتح PDF مرة أخرى\" بعد قليل."
+        },
+        {
+          "key": "salesInvoice.printSimSource",
+          "zh-CN": "数据",
+          "en": "Data",
+          "ar": "البيانات"
+        },
+        {
+          "key": "salesInvoice.printSimThis",
+          "zh-CN": "本张发票",
+          "en": "This invoice",
+          "ar": "هذه الفاتورة"
+        },
+        {
+          "key": "salesInvoice.printSimTitle",
+          "zh-CN": "发票打印模拟",
+          "en": "Invoice print preview",
+          "ar": "معاينة طباعة الفاتورة"
+        },
+        {
+          "key": "salesInvoice.printSimWidth",
+          "zh-CN": "纸宽",
+          "en": "Paper width",
+          "ar": "عرض الورق"
+        },
+        {
+          "key": "salesInvoice.profile",
+          "zh-CN": "税制与营业人",
+          "en": "Tax regime and seller",
+          "ar": "النظام الضريبي والبائع"
+        },
+        {
+          "key": "salesInvoice.profileStatus.ACTIVE",
+          "zh-CN": "已启用",
+          "en": "Active",
+          "ar": "مفعّل"
+        },
+        {
+          "key": "salesInvoice.profileStatus.SUSPENDED",
+          "zh-CN": "已停用",
+          "en": "Suspended",
+          "ar": "موقوف"
+        },
+        {
+          "key": "salesInvoice.proofOnceHint",
+          "zh-CN": "证明联只有一张正本：重复点「打印证明联」不会多印；遗失或卡纸请用「补印证明联」，票面会标示「補印」。",
+          "en": "The proof copy has only one original: tapping Print proof copy again won't print another. If it was lost or jammed, use Reprint proof copy; the reprint is marked 補印 (Reprint).",
+          "ar": "لنسخة الإثبات أصل واحد فقط: الضغط على «طباعة نسخة الإثبات» مرة أخرى لا يطبع نسخة ثانية. عند الفقدان أو انحشار الورق استخدم «إعادة طباعة نسخة الإثبات»، وتُوسم النسخة بـ 補印 (إعادة طباعة)."
+        },
+        {
+          "key": "salesInvoice.provider",
+          "zh-CN": "加值中心账号",
+          "en": "Value-added center account",
+          "ar": "حساب مركز القيمة المضافة"
+        },
+        {
+          "key": "salesInvoice.providerAccountCode",
+          "zh-CN": "商家代号",
+          "en": "Merchant code",
+          "ar": "رمز التاجر"
+        },
+        {
+          "key": "salesInvoice.providerCheck",
+          "zh-CN": "向服务商查询状态",
+          "en": "Check status with provider",
+          "ar": "الاستعلام عن الحالة لدى المزوّد"
+        },
+        {
+          "key": "salesInvoice.providerCredMissing",
+          "zh-CN": "账号未保存",
+          "en": "Account not saved",
+          "ar": "لم يُحفظ الحساب"
+        },
+        {
+          "key": "salesInvoice.providerCredOk",
+          "zh-CN": "账号已保存",
+          "en": "Account saved",
+          "ar": "تم حفظ الحساب"
+        },
+        {
+          "key": "salesInvoice.providerHeld",
+          "zh-CN": "发票上传已暂停：{reason}。请检查账号密码后点「核验账号」，核验通过即自动恢复上传。",
+          "en": "Invoice uploads are paused: {reason}. Check the account and password, then tap Verify account; uploads resume automatically once it passes.",
+          "ar": "رفع الفواتير متوقف مؤقتاً: {reason}. تحقّق من الحساب وكلمة المرور ثم اضغط «التحقق من الحساب»، وسيُستأنف الرفع تلقائياً بعد نجاح التحقق."
+        },
+        {
+          "key": "salesInvoice.providerHint",
+          "zh-CN": "加值中心模式下号段由服务商配给：先保存账号并核验，再按期取号段。",
+          "en": "With a value-added center, the provider assigns number ranges: save and verify the account first, then get a range for the period.",
+          "ar": "مع مركز القيمة المضافة يخصّص المزوّد نطاقات الأرقام: احفظ الحساب وتحقق منه أولاً، ثم اجلب نطاق الفترة."
+        },
+        {
+          "key": "salesInvoice.providerPassword",
+          "zh-CN": "密码",
+          "en": "Password",
+          "ar": "كلمة المرور"
+        },
+        {
+          "key": "salesInvoice.providerSecretPh",
+          "zh-CN": "留空不改",
+          "en": "Leave empty to keep",
+          "ar": "اتركه فارغاً للإبقاء"
+        },
+        {
+          "key": "salesInvoice.providerState.FULLY_ALLOWED",
+          "zh-CN": "完全折让",
+          "en": "Fully allowed",
+          "ar": "خصم كامل"
+        },
+        {
+          "key": "salesInvoice.providerState.ISSUED",
+          "zh-CN": "已开立",
+          "en": "Issued",
+          "ar": "صادرة"
+        },
+        {
+          "key": "salesInvoice.providerState.NOT_FOUND",
+          "zh-CN": "查无此票",
+          "en": "Not found",
+          "ar": "غير موجودة"
+        },
+        {
+          "key": "salesInvoice.providerState.PARTIALLY_ALLOWED",
+          "zh-CN": "部分折让",
+          "en": "Partly allowed",
+          "ar": "خصم جزئي"
+        },
+        {
+          "key": "salesInvoice.providerState.VOIDED",
+          "zh-CN": "已作废",
+          "en": "Voided",
+          "ar": "ملغاة"
+        },
+        {
+          "key": "salesInvoice.providerUser",
+          "zh-CN": "账号",
+          "en": "Account",
+          "ar": "الحساب"
+        },
+        {
+          "key": "salesInvoice.qrConfigured",
+          "zh-CN": "已配置",
+          "en": "Configured",
+          "ar": "مُعدّ"
+        },
+        {
+          "key": "salesInvoice.qrKey",
+          "zh-CN": "QR 加密密钥",
+          "en": "QR encryption key",
+          "ar": "مفتاح تشفير QR"
+        },
+        {
+          "key": "salesInvoice.qrKeyPh",
+          "zh-CN": "32 位十六进制，留空不改",
+          "en": "32 hex characters; leave empty to keep",
+          "ar": "32 حرفاً سداسياً عشرياً؛ اتركه فارغاً للإبقاء"
+        },
+        {
+          "key": "salesInvoice.qrMissing",
+          "zh-CN": "未配置",
+          "en": "Not configured",
+          "ar": "غير مُعدّ"
+        },
+        {
+          "key": "salesInvoice.randomCode",
+          "zh-CN": "随机码",
+          "en": "Random code",
+          "ar": "الرمز العشوائي"
+        },
+        {
+          "key": "salesInvoice.rangeCurrent",
+          "zh-CN": "本期 {period} 剩余 {n} 张。",
+          "en": "Current period {period}: {n} numbers left.",
+          "ar": "الفترة الحالية {period}: متبقٍ {n} رقماً."
+        },
+        {
+          "key": "salesInvoice.rangeLowWater",
+          "zh-CN": "剩余号码提醒值",
+          "en": "Remaining numbers alert at",
+          "ar": "التنبيه عند بقاء أرقام أقل من"
+        },
+        {
+          "key": "salesInvoice.rangeNext",
+          "zh-CN": "下期 {period} 已备 {n} 张。",
+          "en": "Next period {period}: {n} numbers ready.",
+          "ar": "الفترة القادمة {period}: {n} رقماً جاهزة."
+        },
+        {
+          "key": "salesInvoice.rangeOwner.MANUAL",
+          "zh-CN": "手工登记",
+          "en": "Registered manually",
+          "ar": "مسجّل يدوياً"
+        },
+        {
+          "key": "salesInvoice.rangeOwner.PROVIDER",
+          "zh-CN": "服务商配给",
+          "en": "Assigned by provider",
+          "ar": "مخصّص من المزوّد"
+        },
+        {
+          "key": "salesInvoice.rangeShared",
+          "zh-CN": "各店共用",
+          "en": "Shared by all stores",
+          "ar": "مشترك بين المتاجر"
+        },
+        {
+          "key": "salesInvoice.rangeStatus.ACTIVE",
+          "zh-CN": "使用中",
+          "en": "In use",
+          "ar": "قيد الاستخدام"
+        },
+        {
+          "key": "salesInvoice.rangeStatus.EXHAUSTED",
+          "zh-CN": "已用完",
+          "en": "Used up",
+          "ar": "مستنفد"
+        },
+        {
+          "key": "salesInvoice.rangeStore",
+          "zh-CN": "限定门店",
+          "en": "Store only",
+          "ar": "متجر محدد"
+        },
+        {
+          "key": "salesInvoice.ranges",
+          "zh-CN": "字轨号段",
+          "en": "Number ranges",
+          "ar": "نطاقات الأرقام"
+        },
+        {
+          "key": "salesInvoice.rangesEmpty",
+          "zh-CN": "还没有登记号段",
+          "en": "No number ranges registered",
+          "ar": "لا توجد نطاقات مسجلة"
+        },
+        {
+          "key": "salesInvoice.reconciled",
+          "zh-CN": "已按服务商状态补记上传结果。",
+          "en": "Upload results were updated from the provider's status.",
+          "ar": "حُدّثت نتائج الرفع وفق حالة المزوّد."
+        },
+        {
+          "key": "salesInvoice.regime",
+          "zh-CN": "税制",
+          "en": "Tax regime",
+          "ar": "النظام الضريبي"
+        },
+        {
+          "key": "salesInvoice.regimeTW",
+          "zh-CN": "台湾电子发票",
+          "en": "Taiwan e-invoice",
+          "ar": "الفاتورة الإلكترونية التايوانية"
+        },
+        {
+          "key": "salesInvoice.reissue",
+          "zh-CN": "同号重开",
+          "en": "Reissue same number",
+          "ar": "إعادة الإصدار بالرقم نفسه"
+        },
+        {
+          "key": "salesInvoice.reissueHint",
+          "zh-CN": "按来源单当前的金额明细，用原号码开一张新发票；买受人沿用原票。只能在本期内重开。",
+          "en": "Issues a new invoice under the original number using the source order's current amounts and lines, with the same buyer. Only allowed within the current period.",
+          "ar": "تُصدر فاتورة جديدة بالرقم الأصلي وفق مبالغ وبنود الطلب الحالية، بالمشتري نفسه. يُسمح بذلك داخل الفترة الحالية فقط."
+        },
+        {
+          "key": "salesInvoice.reissueTitle",
+          "zh-CN": "用原号码重开？",
+          "en": "Reissue under the original number?",
+          "ar": "إعادة الإصدار بالرقم الأصلي؟"
+        },
+        {
+          "key": "salesInvoice.remaining",
+          "zh-CN": "剩余 {n} 张",
+          "en": "{n} left",
+          "ar": "متبقٍ {n}"
+        },
+        {
+          "key": "salesInvoice.reprint",
+          "zh-CN": "补印证明联",
+          "en": "Reprint proof copy",
+          "ar": "إعادة طباعة نسخة الإثبات"
+        },
+        {
+          "key": "salesInvoice.reprintBusy",
+          "zh-CN": "证明联还在打印中，出纸后再补印。",
+          "en": "The proof copy is still printing. Reprint after it comes out.",
+          "ar": "ما زالت نسخة الإثبات قيد الطباعة. أعد الطباعة بعد خروجها."
+        },
+        {
+          "key": "salesInvoice.reprintHint",
+          "zh-CN": "补印不是第二张正本，票面会醒目标示「補印」，并记录原因与操作人。",
+          "en": "A reprint is not a second original. It is clearly marked 補印 (Reprint), and the reason and operator are recorded.",
+          "ar": "إعادة الطباعة ليست أصلًا ثانيًا؛ تُوسم بوضوح بـ 補印 (إعادة طباعة) ويُسجَّل السبب والمنفّذ."
+        },
+        {
+          "key": "salesInvoice.reprintNoOriginal",
+          "zh-CN": "这张证明联还没打印过正本，请先点「打印证明联」。",
+          "en": "The original proof copy hasn't been printed yet. Tap Print proof copy first.",
+          "ar": "لم يُطبع أصل نسخة الإثبات بعد. اضغط «طباعة نسخة الإثبات» أولًا."
+        },
+        {
+          "key": "salesInvoice.reprintOther",
+          "zh-CN": "请写明补印原因",
+          "en": "Describe the reprint reason",
+          "ar": "اكتب سبب إعادة الطباعة"
+        },
+        {
+          "key": "salesInvoice.reprintReason.JAM",
+          "zh-CN": "卡纸",
+          "en": "Paper jam",
+          "ar": "انحشار الورق"
+        },
+        {
+          "key": "salesInvoice.reprintReason.LOST",
+          "zh-CN": "顾客遗失",
+          "en": "Lost by customer",
+          "ar": "فقدها العميل"
+        },
+        {
+          "key": "salesInvoice.reprintReason.OTHER",
+          "zh-CN": "其他",
+          "en": "Other",
+          "ar": "أخرى"
+        },
+        {
+          "key": "salesInvoice.reprintReason.PAPER_OUT",
+          "zh-CN": "缺纸",
+          "en": "Out of paper",
+          "ar": "نفاد الورق"
+        },
+        {
+          "key": "salesInvoice.reprintSent",
+          "zh-CN": "已提交补印，票面会标示「補印」",
+          "en": "Reprint submitted; it will be marked 補印 (Reprint)",
+          "ar": "أُرسلت إعادة الطباعة، وستُوسم بـ 補印 (إعادة طباعة)"
+        },
+        {
+          "key": "salesInvoice.reprintTitle",
+          "zh-CN": "补印原因",
+          "en": "Reprint reason",
+          "ar": "سبب إعادة الطباعة"
+        },
+        {
+          "key": "salesInvoice.reprintUnavailable",
+          "zh-CN": "这张证明联现在不能补印，请到打印中心查看任务状态。",
+          "en": "This proof copy can't be reprinted right now. Check the job status in the print center.",
+          "ar": "لا يمكن إعادة طباعة نسخة الإثبات الآن. راجع حالة المهمة في مركز الطباعة."
+        },
+        {
+          "key": "salesInvoice.reprintUnknown",
+          "zh-CN": "上一次打印结果待核实，请先到打印中心核实，以免重复出纸。",
+          "en": "The last print result is unconfirmed. Verify it in the print center first to avoid a duplicate.",
+          "ar": "نتيجة الطباعة السابقة غير مؤكدة. تحقّق منها في مركز الطباعة أولًا لتجنّب التكرار."
+        },
+        {
+          "key": "salesInvoice.required",
+          "zh-CN": "请填写必填项",
+          "en": "Please fill in the required fields",
+          "ar": "يرجى تعبئة الحقول المطلوبة"
+        },
+        {
+          "key": "salesInvoice.retransmit",
+          "zh-CN": "重新上传",
+          "en": "Upload again",
+          "ar": "إعادة الرفع"
+        },
+        {
+          "key": "salesInvoice.retransmitted",
+          "zh-CN": "已重新排队上传",
+          "en": "Queued for upload again",
+          "ar": "أُعيدت إلى قائمة الرفع"
+        },
+        {
+          "key": "salesInvoice.reviewHint",
+          "zh-CN": "服务商拒收了这张发票的上传，系统不会自动重发。确认问题已处理后可重新上传。",
+          "en": "The provider rejected this upload and it won't be retried automatically. Upload it again once the issue is fixed.",
+          "ar": "رفض المزوّد رفع هذه الفاتورة ولن تُعاد المحاولة تلقائياً. أعد الرفع بعد معالجة المشكلة."
+        },
+        {
+          "key": "salesInvoice.revisedFrom",
+          "zh-CN": "重开自",
+          "en": "Reissued from",
+          "ar": "أُعيد إصدارها من"
+        },
+        {
+          "key": "salesInvoice.revisedTo",
+          "zh-CN": "已重开为",
+          "en": "Reissued as",
+          "ar": "أُعيد إصدارها بالرقم"
+        },
+        {
+          "key": "salesInvoice.revoke",
+          "zh-CN": "注销",
+          "en": "Revoke",
+          "ar": "إبطال"
+        },
+        {
+          "key": "salesInvoice.revokeError",
+          "zh-CN": "注销没有成功：{reason}",
+          "en": "Revocation failed: {reason}",
+          "ar": "لم ينجح الإبطال: {reason}"
+        },
+        {
+          "key": "salesInvoice.revokeHint",
+          "zh-CN": "开错了（如统编、载具填错）时用：服务商完成注销后，可以用原号码重开一张。只能注销本期、未开折让的发票；已印的证明联请收回。",
+          "en": "Use this when the invoice was issued with wrong details (such as tax ID or carrier). Once the provider finishes, you can reissue it under the same number. Only invoices in the current period with no allowances can be revoked; collect any printed proof copy.",
+          "ar": "استخدمه عند إصدار الفاتورة ببيانات خاطئة (مثل الرقم الضريبي أو الحامل). بعد أن يُكمل المزوّد الإبطال يمكنك إعادة إصدارها بالرقم نفسه. لا يمكن إبطال إلا فواتير الفترة الحالية التي لا خصم عليها؛ استرجع أي نسخة إثبات مطبوعة."
+        },
+        {
+          "key": "salesInvoice.revokePendingHint",
+          "zh-CN": "已提交注销，等服务商完成后即可同号重开。",
+          "en": "Revocation submitted. You can reissue under the same number once the provider finishes.",
+          "ar": "تم إرسال الإبطال. يمكنك إعادة الإصدار بالرقم نفسه بعد أن يُكمله المزوّد."
+        },
+        {
+          "key": "salesInvoice.revokeReason",
+          "zh-CN": "注销原因",
+          "en": "Revocation reason",
+          "ar": "سبب الإبطال"
+        },
+        {
+          "key": "salesInvoice.revokeRequestedAt",
+          "zh-CN": "提交注销",
+          "en": "Requested",
+          "ar": "تاريخ الطلب"
+        },
+        {
+          "key": "salesInvoice.revokeTitle",
+          "zh-CN": "注销这张发票？",
+          "en": "Revoke this invoice?",
+          "ar": "إبطال هذه الفاتورة؟"
+        },
+        {
+          "key": "salesInvoice.revokedAt",
+          "zh-CN": "注销完成",
+          "en": "Revoked at",
+          "ar": "تاريخ الإبطال"
+        },
+        {
+          "key": "salesInvoice.sales",
+          "zh-CN": "应税销售额",
+          "en": "Taxable sales",
+          "ar": "المبيعات الخاضعة للضريبة"
+        },
+        {
+          "key": "salesInvoice.save",
+          "zh-CN": "保存",
+          "en": "Save",
+          "ar": "حفظ"
+        },
+        {
+          "key": "salesInvoice.saved",
+          "zh-CN": "已保存",
+          "en": "Saved",
+          "ar": "تم الحفظ"
+        },
+        {
+          "key": "salesInvoice.search",
+          "zh-CN": "查询",
+          "en": "Search",
+          "ar": "بحث"
+        },
+        {
+          "key": "salesInvoice.sellerName",
+          "zh-CN": "营业人名称",
+          "en": "Seller name",
+          "ar": "اسم البائع"
+        },
+        {
+          "key": "salesInvoice.sellerTaxId",
+          "zh-CN": "卖方统一编号",
+          "en": "Seller tax ID",
+          "ar": "الرقم الضريبي للبائع"
+        },
+        {
+          "key": "salesInvoice.setupTitle",
+          "zh-CN": "发票设置",
+          "en": "Invoice settings",
+          "ar": "إعدادات الفواتير"
+        },
+        {
+          "key": "salesInvoice.source",
+          "zh-CN": "来源单",
+          "en": "Source order",
+          "ar": "الطلب المصدر"
+        },
+        {
+          "key": "salesInvoice.sourceNo",
+          "zh-CN": "子订单号",
+          "en": "Sub-order number",
+          "ar": "رقم الطلب الفرعي"
+        },
+        {
+          "key": "salesInvoice.sourceNoPh",
+          "zh-CN": "输入子订单号",
+          "en": "Enter the sub-order number",
+          "ar": "أدخل رقم الطلب الفرعي"
+        },
+        {
+          "key": "salesInvoice.startNo",
+          "zh-CN": "起号",
+          "en": "Start number",
+          "ar": "رقم البداية"
+        },
+        {
+          "key": "salesInvoice.status.ISSUED",
+          "zh-CN": "已开立",
+          "en": "Issued",
+          "ar": "صادرة"
+        },
+        {
+          "key": "salesInvoice.status.REVOKED",
+          "zh-CN": "已注销",
+          "en": "Revoked",
+          "ar": "مُبطلة"
+        },
+        {
+          "key": "salesInvoice.status.REVOKING",
+          "zh-CN": "注销中",
+          "en": "Revoking",
+          "ar": "قيد الإبطال"
+        },
+        {
+          "key": "salesInvoice.status.VOIDED",
+          "zh-CN": "已作废",
+          "en": "Voided",
+          "ar": "ملغاة"
+        },
+        {
+          "key": "salesInvoice.submit",
+          "zh-CN": "开立发票",
+          "en": "Issue invoice",
+          "ar": "إصدار الفاتورة"
+        },
+        {
+          "key": "salesInvoice.tax",
+          "zh-CN": "税额",
+          "en": "Tax",
+          "ar": "الضريبة"
+        },
+        {
+          "key": "salesInvoice.taxId",
+          "zh-CN": "统一编号",
+          "en": "Tax ID",
+          "ar": "الرقم الضريبي"
+        },
+        {
+          "key": "salesInvoice.taxType.EXEMPT",
+          "zh-CN": "免税",
+          "en": "Exempt",
+          "ar": "معفى"
+        },
+        {
+          "key": "salesInvoice.taxType.TAXABLE",
+          "zh-CN": "应税",
+          "en": "Taxable",
+          "ar": "خاضع للضريبة"
+        },
+        {
+          "key": "salesInvoice.taxType.ZERO",
+          "zh-CN": "零税率",
+          "en": "Zero-rated",
+          "ar": "نسبة صفرية"
+        },
+        {
+          "key": "salesInvoice.title",
+          "zh-CN": "销售发票",
+          "en": "Sales invoices",
+          "ar": "فواتير المبيعات"
+        },
+        {
+          "key": "salesInvoice.total",
+          "zh-CN": "总计",
+          "en": "Total",
+          "ar": "الإجمالي"
+        },
+        {
+          "key": "salesInvoice.track",
+          "zh-CN": "字轨",
+          "en": "Track",
+          "ar": "المسار"
+        },
+        {
+          "key": "salesInvoice.trackEmpty",
+          "zh-CN": "这一期服务商还没有已下载的字轨",
+          "en": "The provider has no downloaded tracks for this period",
+          "ar": "لا توجد مسارات منزّلة لدى المزوّد لهذه الفترة"
+        },
+        {
+          "key": "salesInvoice.trackHint",
+          "zh-CN": "查看加值中心这一期的配号方式与已下载字轨；手动配号的营业人要在期末前上传下一期字轨（每段 50 号的整倍数，汎宇收下后约 15 分钟完成配号）。",
+          "en": "See this period's allocation mode and downloaded tracks at the value-added center. Sellers on manual allocation must upload next period's tracks before the period ends (ranges in multiples of 50; Universal EC applies them about 15 minutes later).",
+          "ar": "اعرض طريقة التخصيص والمسارات التي تم تنزيلها لدى مركز القيمة المضافة لهذه الفترة. على البائعين بالتخصيص اليدوي رفع مسارات الفترة التالية قبل نهاية الفترة (نطاقات من مضاعفات 50، ويطبّقها Universal EC بعد نحو 15 دقيقة)."
+        },
+        {
+          "key": "salesInvoice.trackMode.AUTO",
+          "zh-CN": "自动配号",
+          "en": "Automatic",
+          "ar": "تلقائي"
+        },
+        {
+          "key": "salesInvoice.trackMode.MANUAL",
+          "zh-CN": "手动配号",
+          "en": "Manual",
+          "ar": "يدوي"
+        },
+        {
+          "key": "salesInvoice.trackMode.NONE",
+          "zh-CN": "无配号记录",
+          "en": "No allocation record",
+          "ar": "لا يوجد سجل تخصيص"
+        },
+        {
+          "key": "salesInvoice.trackModeLabel",
+          "zh-CN": "配号方式",
+          "en": "Allocation",
+          "ar": "طريقة التخصيص"
+        },
+        {
+          "key": "salesInvoice.trackQuery",
+          "zh-CN": "查询字轨",
+          "en": "Check tracks",
+          "ar": "عرض المسارات"
+        },
+        {
+          "key": "salesInvoice.trackTitle",
+          "zh-CN": "服务商字轨",
+          "en": "Provider tracks",
+          "ar": "مسارات المزوّد"
+        },
+        {
+          "key": "salesInvoice.trackUpload",
+          "zh-CN": "上传下期字轨",
+          "en": "Upload next period's tracks",
+          "ar": "رفع مسارات الفترة التالية"
+        },
+        {
+          "key": "salesInvoice.trackUploaded",
+          "zh-CN": "已上传 {track} 字轨 {books} 本，约 15 分钟后生效",
+          "en": "Uploaded {books} books of track {track}; effective in about 15 minutes",
+          "ar": "تم رفع {books} دفترًا من المسار {track}، تسري بعد نحو 15 دقيقة"
+        },
+        {
+          "key": "salesInvoice.upload.FAILED",
+          "zh-CN": "上传失败",
+          "en": "Upload failed",
+          "ar": "فشل الرفع"
+        },
+        {
+          "key": "salesInvoice.upload.HELD",
+          "zh-CN": "已暂停",
+          "en": "Paused",
+          "ar": "متوقف مؤقتاً"
+        },
+        {
+          "key": "salesInvoice.upload.NEEDS_REVIEW",
+          "zh-CN": "待人工处理",
+          "en": "Needs attention",
+          "ar": "يحتاج إلى معالجة"
+        },
+        {
+          "key": "salesInvoice.upload.PENDING",
+          "zh-CN": "待上传",
+          "en": "Waiting to upload",
+          "ar": "بانتظار الرفع"
+        },
+        {
+          "key": "salesInvoice.upload.SENDING",
+          "zh-CN": "上传中",
+          "en": "Uploading",
+          "ar": "جارٍ الرفع"
+        },
+        {
+          "key": "salesInvoice.upload.SENT",
+          "zh-CN": "已上传",
+          "en": "Uploaded",
+          "ar": "تم الرفع"
+        },
+        {
+          "key": "salesInvoice.uploadDeadline",
+          "zh-CN": "上传期限",
+          "en": "Upload deadline",
+          "ar": "موعد الرفع"
+        },
+        {
+          "key": "salesInvoice.uploadLabel",
+          "zh-CN": "上传状态",
+          "en": "Upload status",
+          "ar": "حالة الرفع"
+        },
+        {
+          "key": "salesInvoice.verdict.CONSISTENT",
+          "zh-CN": "服务商状态与本地一致：{state}。",
+          "en": "The provider matches this invoice: {state}.",
+          "ar": "حالة المزوّد مطابقة لهذه الفاتورة: {state}."
+        },
+        {
+          "key": "salesInvoice.verdict.MISMATCH",
+          "zh-CN": "服务商状态「{state}」与本地不一致，请联系服务商核对。",
+          "en": "The provider shows \"{state}\", which doesn't match this invoice. Please check with the provider.",
+          "ar": "يُظهر المزوّد «{state}» وهو لا يطابق هذه الفاتورة. يرجى المراجعة مع المزوّد."
+        },
+        {
+          "key": "salesInvoice.verdict.PENDING_UPLOAD",
+          "zh-CN": "服务商当前为「{state}」，本地还有未送达的上传，补传后会一致。",
+          "en": "The provider shows \"{state}\"; some uploads are still pending and it will match once they are sent.",
+          "ar": "يُظهر المزوّد «{state}»، وما زالت هناك عمليات رفع معلّقة وستتطابق بعد إرسالها."
+        },
+        {
+          "key": "salesInvoice.verified",
+          "zh-CN": "核验通过：{name}",
+          "en": "Verified: {name}",
+          "ar": "تم التحقق: {name}"
+        },
+        {
+          "key": "salesInvoice.verifiedQr",
+          "zh-CN": "核验通过：{name}，已同步 QR 密钥",
+          "en": "Verified: {name}; QR key synced",
+          "ar": "تم التحقق: {name}، وتمت مزامنة مفتاح QR"
+        },
+        {
+          "key": "salesInvoice.verifyProvider",
+          "zh-CN": "核验账号",
+          "en": "Verify account",
+          "ar": "التحقق من الحساب"
+        },
+        {
+          "key": "salesInvoice.void",
+          "zh-CN": "作废",
+          "en": "Void",
+          "ar": "إلغاء"
+        },
+        {
+          "key": "salesInvoice.voidAllowance",
+          "zh-CN": "作废折让",
+          "en": "Void allowance",
+          "ar": "إلغاء الخصم"
+        },
+        {
+          "key": "salesInvoice.voidAllowanceHint",
+          "zh-CN": "只能作废本期折让。作废后累计折让金额退回，折让证明单不再打印；已打印的纸本请收回。",
+          "en": "Only allowances in the current period can be voided. The amount is added back to the invoice and the allowance certificate can no longer be printed; collect any printed copy.",
+          "ar": "يمكن إلغاء خصومات الفترة الحالية فقط. يُعاد المبلغ إلى الفاتورة ولا يمكن طباعة إشعار الخصم بعد ذلك؛ استرجع أي نسخة مطبوعة."
+        },
+        {
+          "key": "salesInvoice.voidAllowanceTitle",
+          "zh-CN": "作废这张折让？",
+          "en": "Void this allowance?",
+          "ar": "إلغاء هذا الخصم؟"
+        },
+        {
+          "key": "salesInvoice.voidHint",
+          "zh-CN": "只能作废本期发票，跨期请改开折让。作废后同一来源单可重新开立新号码。",
+          "en": "Only invoices in the current period can be voided; for earlier periods issue an allowance. After voiding, the same source order can be issued again with a new number.",
+          "ar": "يمكن إلغاء فواتير الفترة الحالية فقط؛ للفترات السابقة أصدر خصماً. بعد الإلغاء يمكن إصدار فاتورة جديدة للطلب نفسه برقم جديد."
+        },
+        {
+          "key": "salesInvoice.voidReason",
+          "zh-CN": "作废原因",
+          "en": "Void reason",
+          "ar": "سبب الإلغاء"
+        },
+        {
+          "key": "salesInvoice.voidTitle",
+          "zh-CN": "作废这张发票？",
+          "en": "Void this invoice?",
+          "ar": "إلغاء هذه الفاتورة؟"
+        },
+        {
+          "key": "salesInvoice.zeroTaxSales",
+          "zh-CN": "零税率销售额",
+          "en": "Zero-rated sales",
+          "ar": "مبيعات بنسبة صفرية"
         },
         {
           "key": "schedule.booked",
@@ -31827,6 +33843,90 @@
           "ar": "أكمل مطابقة مخزون هذا المتجر أولًا، ثم فعّل مزامنة المخزون"
         },
         {
+          "key": "err.invoice.allowance_exceeded",
+          "zh-CN": "折让金额超过这张发票剩余可折让的金额",
+          "en": "The allowance exceeds the remaining amount of this invoice.",
+          "ar": "مبلغ التخفيض يتجاوز المبلغ المتبقي في هذه الفاتورة."
+        },
+        {
+          "key": "err.invoice.buyer_invalid",
+          "zh-CN": "买受人信息不正确：请检查统一编号、载具号码或爱心码",
+          "en": "Buyer details are invalid. Check the tax ID, carrier number or donation code.",
+          "ar": "بيانات المشتري غير صحيحة. يرجى التحقق من الرقم الضريبي أو رقم الحامل أو رمز التبرع."
+        },
+        {
+          "key": "err.invoice.gateway_unsupported",
+          "zh-CN": "开票供应商 {0} 不在本市场支持的供应商里，请重新选择",
+          "en": "Invoice provider {0} is not supported in this market. Please choose another one.",
+          "ar": "مزوّد الفواتير {0} غير مدعوم في هذا السوق. يرجى اختيار مزوّد آخر."
+        },
+        {
+          "key": "err.invoice.key_unavailable",
+          "zh-CN": "发票密钥服务暂不可用，请稍后再试",
+          "en": "The invoice key service is unavailable. Please try again later.",
+          "ar": "خدمة مفاتيح الفواتير غير متاحة حالياً. يرجى المحاولة لاحقاً."
+        },
+        {
+          "key": "err.invoice.not_found",
+          "zh-CN": "发票不存在",
+          "en": "Invoice not found.",
+          "ar": "الفاتورة غير موجودة."
+        },
+        {
+          "key": "err.invoice.number_exhausted",
+          "zh-CN": "本期发票号码已用完，请先登记新的字轨号段",
+          "en": "Invoice numbers for this period are used up. Register a new number range first.",
+          "ar": "نفدت أرقام الفواتير لهذه الفترة. يرجى تسجيل نطاق أرقام جديد أولاً."
+        },
+        {
+          "key": "err.invoice.provider_account_invalid",
+          "zh-CN": "加值中心账号的「{0}」与供应商要求不符，请核对",
+          "en": "The provider account field \"{0}\" does not match what the provider requires. Please check it.",
+          "ar": "حقل حساب المزوّد \"{0}\" لا يطابق متطلبات المزوّد. يرجى التحقق منه."
+        },
+        {
+          "key": "err.invoice.provider_rejected",
+          "zh-CN": "发票服务商拒绝了请求（{0}），请检查服务商账号设置",
+          "en": "The invoice provider rejected the request ({0}). Please check the provider account settings.",
+          "ar": "رفض مزوّد الفواتير الطلب ({0}). يرجى التحقق من إعدادات حساب المزوّد."
+        },
+        {
+          "key": "err.invoice.provider_unsupported",
+          "zh-CN": "开票供应商 {0} 不支持这笔操作（{1}），号码未占用，请调整后再试",
+          "en": "Invoice provider {0} does not support this operation ({1}). No invoice number was used; please adjust and try again.",
+          "ar": "مزوّد الفواتير {0} لا يدعم هذه العملية ({1}). لم يُستخدم أي رقم فاتورة؛ يرجى التعديل والمحاولة مجددًا."
+        },
+        {
+          "key": "err.invoice.range_invalid",
+          "zh-CN": "号段不正确：字轨须为两个大写字母，起讫号须为 8 位数字且不能与已有号段重叠",
+          "en": "Invalid number range: the track must be two capital letters, numbers must be 8 digits and must not overlap an existing range.",
+          "ar": "نطاق الأرقام غير صحيح: يجب أن يتكون الحرف من حرفين كبيرين وأن تكون الأرقام من 8 خانات وألا تتداخل مع نطاق قائم."
+        },
+        {
+          "key": "err.invoice.regime_not_enabled",
+          "zh-CN": "该主体尚未开通发票，请先在发票设置里开通",
+          "en": "Invoicing is not enabled for this business. Enable it in invoice settings first.",
+          "ar": "لم يتم تفعيل الفوترة لهذا النشاط. يرجى تفعيلها من إعدادات الفواتير أولاً."
+        },
+        {
+          "key": "err.invoice.source_not_ready",
+          "zh-CN": "这张单还不能开发票：未付清、不存在，或金额组成暂不支持开票",
+          "en": "This order cannot be invoiced yet: it is unpaid, missing, or its amount composition is not supported.",
+          "ar": "لا يمكن إصدار فاتورة لهذا الطلب بعد: غير مدفوع أو غير موجود أو أن تركيبة المبلغ غير مدعومة."
+        },
+        {
+          "key": "err.invoice.state_invalid",
+          "zh-CN": "发票当前状态不允许这项操作",
+          "en": "The invoice's current status does not allow this action.",
+          "ar": "حالة الفاتورة الحالية لا تسمح بهذا الإجراء."
+        },
+        {
+          "key": "err.invoice.void_period_closed",
+          "zh-CN": "只能作废本期开立的发票，跨期请改开折让",
+          "en": "Only invoices issued in the current period can be voided. Issue an allowance instead.",
+          "ar": "لا يمكن إلغاء إلا الفواتير الصادرة في الفترة الحالية. يرجى إصدار إشعار تخفيض بدلاً من ذلك."
+        },
+        {
           "key": "err.marketing.activity_always_on_needs_cap",
           "zh-CN": "长期活动必须设限量或预算，否则没有停下来的那一天",
           "en": "An always-on activity needs a quota or budget, or it never stops",
@@ -33726,6 +35826,62 @@
       "zh": "计量单位字典。",
       "module": "inventory",
       "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "ivc_allowance",
+      "class": "IvcAllowance",
+      "zh": "发票折让（V1）。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_buyer_preference",
+      "class": "IvcBuyerPreference",
+      "zh": "付款前预存的买受人选择（V1）。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_invoice",
+      "class": "IvcInvoice",
+      "zh": "已开立发票（V1）。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_invoice_line",
+      "class": "IvcInvoiceLine",
+      "zh": "发票明细（V1）。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_number_range",
+      "class": "IvcNumberRange",
+      "zh": "财政部配发的字轨号段（V1）。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_regime_profile",
+      "class": "IvcRegimeProfile",
+      "zh": "主体开通的税制与开票通道（V1）。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_transmission",
+      "class": "IvcTransmission",
+      "zh": "发票上传任务（V1）。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_user_carrier",
+      "class": "IvcUserCarrier",
+      "zh": "买家常用载具（V3）。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
     },
     {
       "table": "lgs_carrier",
@@ -36902,6 +39058,83 @@
         "module": "inventory"
       },
       {
+        "host": "AbstractEncryptedApiInvoiceGateway",
+        "name": "OUTER_REJECTED",
+        "value": "OUTER_REJECTED",
+        "zh": "",
+        "module": "invoice"
+      },
+      {
+        "host": "InvoicePrintSourceFactsPortImpl",
+        "name": "TYPE",
+        "value": "INVOICE",
+        "zh": "",
+        "module": "invoice"
+      },
+      {
+        "host": "InvoicePrintSourceFactsPortImpl",
+        "name": "SCENE",
+        "value": "INVOICE_PROOF",
+        "zh": "",
+        "module": "invoice"
+      },
+      {
+        "host": "InvoicePrintSourceFactsPortImpl",
+        "name": "DETAIL_SCENE",
+        "value": "INVOICE_DETAIL",
+        "zh": "",
+        "module": "invoice"
+      },
+      {
+        "host": "InvoicePrintSourceFactsPortImpl",
+        "name": "ALLOWANCE_TYPE",
+        "value": "INVOICE_ALLOWANCE",
+        "zh": "",
+        "module": "invoice"
+      },
+      {
+        "host": "InvoicePrintSourceFactsPortImpl",
+        "name": "ALLOWANCE_SCENE",
+        "value": "INVOICE_ALLOWANCE",
+        "zh": "",
+        "module": "invoice"
+      },
+      {
+        "host": "TwBuyerRules",
+        "name": "CITIZEN",
+        "value": "CQ0001",
+        "zh": "自然人凭证载具类别号。",
+        "module": "invoice"
+      },
+      {
+        "host": "TwEguiRegime",
+        "name": "CODE",
+        "value": "TW_EGUI",
+        "zh": "",
+        "module": "invoice"
+      },
+      {
+        "host": "InvoiceGatewayPolicy",
+        "name": "SOURCE_MERCHANT",
+        "value": "MERCHANT",
+        "zh": "",
+        "module": "invoice"
+      },
+      {
+        "host": "InvoiceGatewayPolicy",
+        "name": "SOURCE_DEFAULT",
+        "value": "DEFAULT",
+        "zh": "",
+        "module": "invoice"
+      },
+      {
+        "host": "InvoiceServiceImpl",
+        "name": "QR_KEY_OWNER",
+        "value": "INVOICE_QR_KEY",
+        "zh": "QR 加密密钥在 secret 模块里的 owner 类型（命名空间 PLATFORM，与发票同进程）。",
+        "module": "invoice"
+      },
+      {
         "host": "WaybillStatus",
         "name": "CREATED",
         "value": "CREATED",
@@ -38863,6 +41096,41 @@
       },
       {
         "host": "BizKey",
+        "name": "INVOICE",
+        "value": "IVC",
+        "zh": "发票（ADR-063）。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "INVOICE_ALLOWANCE",
+        "value": "IVA",
+        "zh": "发票折让单",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "INVOICE_RANGE",
+        "value": "IVR",
+        "zh": "发票字轨号段登记",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "INVOICE_TRANSMISSION",
+        "value": "IVT",
+        "zh": "发票上传任务（开立 / 作废 / 折让各一条）",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "INVOICE_CARRIER",
+        "value": "IVK",
+        "zh": "买家常用发票载具",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "EXPRESS_PICKUP",
         "value": "EP",
         "zh": "快递代下单的取件单（TDD-快递100商家寄件）。",
@@ -39075,6 +41343,27 @@
         "host": "OtpScenes",
         "name": "ORDER_PICKUP_CONFIRM",
         "value": "ORDER_PICKUP_CONFIRM",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "Line",
+        "name": "TAXABLE",
+        "value": "TAXABLE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "Line",
+        "name": "ZERO",
+        "value": "ZERO",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "Line",
+        "name": "EXEMPT",
+        "value": "EXEMPT",
         "zh": "",
         "module": "shop-base"
       },
@@ -44745,6 +47034,16 @@
         "module": "shop-base"
       },
       {
+        "name": "AllocationMode",
+        "values": [
+          "NONE",
+          "AUTO",
+          "MANUAL"
+        ],
+        "zh": "",
+        "module": "invoice"
+      },
+      {
         "name": "AmountBasis",
         "values": [
           "PAYABLE_GROSS",
@@ -45216,6 +47515,15 @@
         "module": "shop-app"
       },
       {
+        "name": "Derived",
+        "values": [
+          "NONE",
+          "SELLER_TAX_ID"
+        ],
+        "zh": "由主体资料自动带出，页面不必填：如汎宇的 SELLERID 就是卖方统编。",
+        "module": "invoice"
+      },
+      {
         "name": "Dim",
         "values": [
           "STORE",
@@ -45467,6 +47775,20 @@
           "CHECKOUT_RECEIPT_EVIDENCE_INVALID",
           "CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE",
           "MANAGED_SERVICE_COMPLETION_BLOCKED",
+          "INVOICE_REGIME_NOT_ENABLED",
+          "INVOICE_SOURCE_NOT_READY",
+          "INVOICE_NUMBER_EXHAUSTED",
+          "INVOICE_BUYER_INVALID",
+          "INVOICE_NOT_FOUND",
+          "INVOICE_VOID_PERIOD_CLOSED",
+          "INVOICE_ALLOWANCE_EXCEEDED",
+          "INVOICE_STATE_INVALID",
+          "INVOICE_RANGE_INVALID",
+          "INVOICE_KEY_UNAVAILABLE",
+          "INVOICE_PROVIDER_REJECTED",
+          "INVOICE_GATEWAY_UNSUPPORTED",
+          "INVOICE_PROVIDER_UNSUPPORTED",
+          "INVOICE_PROVIDER_ACCOUNT_INVALID",
           "ALREADY_VERIFIED",
           "NOT_THIS_PICKUP_POINT",
           "ORDER_REFUNDED",
@@ -46154,6 +48476,29 @@
         "module": "pay/pay-channel"
       },
       {
+        "name": "InvoiceFeature",
+        "values": [
+          "ZERO_RATED",
+          "MIXED_TAX",
+          "EXEMPT",
+          "B2B",
+          "CARRIER",
+          "DONATION"
+        ],
+        "zh": "供应商支持的发票业务特性（TDD-发票-供应商能力定义完善 D2）。",
+        "module": "invoice"
+      },
+      {
+        "name": "IssueMode",
+        "values": [
+          "DONATE",
+          "CARRIER",
+          "PRINT"
+        ],
+        "zh": "发票去向：捐赠 / 存载具 / 纸本。",
+        "module": "invoice"
+      },
+      {
         "name": "JobStatus",
         "values": [
           "SUCCESS",
@@ -46165,6 +48510,19 @@
         ],
         "zh": "一轮执行的结局。",
         "module": "job"
+      },
+      {
+        "name": "Kind",
+        "values": [
+          "ACCOUNT",
+          "NOT_FOUND",
+          "UNSUPPORTED",
+          "REJECTED",
+          "UNAVAILABLE",
+          "UNEXPECTED"
+        ],
+        "zh": "",
+        "module": "invoice"
       },
       {
         "name": "Kind",
@@ -46594,6 +48952,17 @@
         "module": "commerce"
       },
       {
+        "name": "NumberingMode",
+        "values": [
+          "LOCAL_RANGE",
+          "PROVIDER_RANGE",
+          "PROVIDER_ONLINE",
+          "LOCAL_SEQUENCE"
+        ],
+        "zh": "发票号码从哪来。",
+        "module": "invoice"
+      },
+      {
         "name": "ObservedPrintStatus",
         "values": [
           "RECEIVED",
@@ -46711,6 +49080,17 @@
         ],
         "zh": "",
         "module": "commerce"
+      },
+      {
+        "name": "Outcome",
+        "values": [
+          "ACCEPTED",
+          "RETRYABLE",
+          "ACCOUNT_PROBLEM",
+          "FINAL"
+        ],
+        "zh": "",
+        "module": "invoice"
       },
       {
         "name": "Outcome",
@@ -47304,6 +49684,49 @@
         "module": "shop-base"
       },
       {
+        "name": "ProviderCapability",
+        "values": [
+          "VERIFY_ACCOUNT",
+          "ALLOCATE_RANGE",
+          "QUERY_STATUS",
+          "MANAGE_TRACKS",
+          "REPORT_BLANK",
+          "REVOKE"
+        ],
+        "zh": "供应商能力的标准名（TDD-发票-供应商能力定义完善 D1）。",
+        "module": "invoice"
+      },
+      {
+        "name": "ProviderOperation",
+        "values": [
+          "ISSUE",
+          "VOID",
+          "ALLOWANCE",
+          "ALLOWANCE_VOID",
+          "REVOKE",
+          "VERIFY",
+          "RANGE",
+          "QUERY",
+          "TRACK_MODE",
+          "TRACK_QUERY",
+          "TRACK_UPLOAD",
+          "BLANK_REPORT",
+          "REVOKE_STATUS"
+        ],
+        "zh": "供应商动作的标准名（TDD-发票-加值中心模板-鲸跃与汎宇 §1）。",
+        "module": "invoice"
+      },
+      {
+        "name": "QrKeySource",
+        "values": [
+          "MERCHANT",
+          "VERIFY",
+          "RANGE"
+        ],
+        "zh": "证明联 QR 加密金钥从哪来（TDD-发票-供应商能力定义完善 D5）。",
+        "module": "invoice"
+      },
+      {
         "name": "Quality",
         "values": [
           "SALEABLE",
@@ -47311,6 +49734,16 @@
         ],
         "zh": "",
         "module": "inventory"
+      },
+      {
+        "name": "RangeWindow",
+        "values": [
+          "CURRENT",
+          "NEXT",
+          "ANY"
+        ],
+        "zh": "服务商能配给哪些期别的号段（TDD-发票-供应商能力定义完善 D6）：窗口外领域直接拒绝，不打服务商。",
+        "module": "invoice"
       },
       {
         "name": "Realm",
@@ -47445,6 +49878,17 @@
         "module": "commerce"
       },
       {
+        "name": "ReportMode",
+        "values": [
+          "ASYNC_UPLOAD",
+          "FILE_DROP",
+          "NETWORK_DELIVERY",
+          "SYNC_ON_ISSUE"
+        ],
+        "zh": "报文怎么送到税务机关。",
+        "module": "invoice"
+      },
+      {
         "name": "ResolutionPurpose",
         "values": [
           "PRODUCTION",
@@ -47500,6 +49944,16 @@
         ],
         "zh": "为什么被撤销。",
         "module": "shop-auth-store"
+      },
+      {
+        "name": "RevokeState",
+        "values": [
+          "DONE",
+          "PENDING",
+          "FAILED"
+        ],
+        "zh": "汎宇 Z11 STATUSCODE：1 完成 / 2 尚未完成 / 3 失败。",
+        "module": "invoice"
       },
       {
         "name": "RouteStyle",
@@ -47666,6 +50120,16 @@
         "module": "print"
       },
       {
+        "name": "Slot",
+        "values": [
+          "ACCOUNT_CODE",
+          "KEY_ID",
+          "SECRET"
+        ],
+        "zh": "三元里的位置：InvoiceGateway.ProviderAccount 的 accountCode / keyId / secret。",
+        "module": "invoice"
+      },
+      {
         "name": "Source",
         "values": [
           "PLATFORM_DEFAULT",
@@ -47747,6 +50211,18 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "ISSUED",
+          "VOIDED",
+          "PARTIALLY_ALLOWED",
+          "FULLY_ALLOWED",
+          "NOT_FOUND"
+        ],
+        "zh": "",
+        "module": "invoice"
       },
       {
         "name": "State",
@@ -48717,6 +51193,29 @@
         "zh": "门店经营模式。"
       },
       {
+        "name": "BuyerInvoiceStatus",
+        "client": "c-app",
+        "values": [
+          "ISSUED",
+          "VOIDED",
+          "REVOKING",
+          "REVOKED"
+        ],
+        "zh": "REVOKING 注销中 / REVOKED 已注销（商家注销后可同号重开一张新票）"
+      },
+      {
+        "name": "BuyerKind",
+        "client": "b-app",
+        "values": [
+          "GENERAL",
+          "TAX_ID",
+          "MOBILE",
+          "CITIZEN",
+          "DONATE"
+        ],
+        "zh": "买受人怎么取发票。"
+      },
+      {
         "name": "BuyerPointsAccountStatus",
         "client": "c-app",
         "values": [
@@ -48958,6 +51457,40 @@
           "NEARBY"
         ],
         "zh": "判重的依据。"
+      },
+      {
+        "name": "EInvoiceGatewaySource",
+        "client": "ops-web",
+        "values": [
+          "MERCHANT",
+          "DEFAULT"
+        ],
+        "zh": "生效供应商的来源"
+      },
+      {
+        "name": "EInvoiceProblem",
+        "client": "ops-web",
+        "values": [
+          "HELD",
+          "OVERDUE",
+          "REVIEW",
+          "BACKLOG",
+          "LOW_RANGE"
+        ],
+        "zh": ""
+      },
+      {
+        "name": "EInvoiceUploadStatus",
+        "client": "ops-web",
+        "values": [
+          "PENDING",
+          "SENDING",
+          "SENT",
+          "FAILED",
+          "HELD",
+          "NEEDS_REVIEW"
+        ],
+        "zh": "上传任务状态（与后端 ivc_transmission.status 逐字一致）"
       },
       {
         "name": "EarningRewardMode",
@@ -49364,6 +51897,39 @@
           "ARCHIVED"
         ],
         "zh": "Delivery state of an inventory/order synchronization event."
+      },
+      {
+        "name": "InvoiceCarrierType",
+        "client": "c-app",
+        "values": [
+          "3J0002",
+          "CQ0001"
+        ],
+        "zh": "载具类别（财政部代码）：3J0002 手机条码 / CQ0001 自然人凭证。"
+      },
+      {
+        "name": "InvoiceChoiceKind",
+        "client": "c-app",
+        "values": [
+          "CONSUMER",
+          "MEMBER",
+          "CARRIER",
+          "TAX_ID",
+          "DONATE"
+        ],
+        "zh": "给一张订单选的开法：一般（印证明联）/ 会员载具 / 我的载具 / 打统编 / 捐赠"
+      },
+      {
+        "name": "InvoiceChoiceOutcome",
+        "client": "c-app",
+        "values": [
+          "SAVED",
+          "ISSUED",
+          "ALREADY_ISSUED",
+          "NOT_ENABLED",
+          "MEMBER_CARRIER_UNAVAILABLE"
+        ],
+        "zh": "每张子单各自的结果。"
       },
       {
         "name": "InvoiceRequestStatus",
@@ -50832,6 +53398,11 @@
           "/pages/payout-account/index",
           "/pages/deposit/index",
           "/pages/invoice/index",
+          "/pages/sales-invoices/index",
+          "/pages/sales-invoice/index",
+          "/pages/sales-invoice-issue/index",
+          "/pages/invoice-setup/index",
+          "/pages/sales-invoice-print-sim/index",
           "/pages/statement/index",
           "/pages/pay-collect/index",
           "/pages/pay-flow/index",
@@ -51315,6 +53886,130 @@
           "CANCELLED"
         ],
         "zh": "DELIVERING（派件中）与 CANCELLED（已作废）2026-10-09 加（TDD-物流模块 批 3），与 packages/shared 的同名类型对齐"
+      },
+      {
+        "name": "SiAllowanceStatus",
+        "client": "b-app",
+        "values": [
+          "ACTIVE",
+          "VOIDED"
+        ],
+        "zh": "折让单状态：作废后累计折让回退、证明单不再出纸"
+      },
+      {
+        "name": "SiCapability",
+        "client": "b-app",
+        "values": [
+          "VERIFY_ACCOUNT",
+          "ALLOCATE_RANGE",
+          "QUERY_STATUS",
+          "MANAGE_TRACKS",
+          "REPORT_BLANK",
+          "REVOKE"
+        ],
+        "zh": "供应商能力（ProviderCapability）"
+      },
+      {
+        "name": "SiCredentialDerivedFrom",
+        "client": "b-app",
+        "values": [
+          "NONE",
+          "SELLER_TAX_ID"
+        ],
+        "zh": "凭据字段的取值来源：NONE 商家填写 / SELLER_TAX_ID 由卖方统编自动带出（页面不必填）"
+      },
+      {
+        "name": "SiCredentialSlot",
+        "client": "b-app",
+        "values": [
+          "ACCOUNT_CODE",
+          "KEY_ID",
+          "SECRET"
+        ],
+        "zh": "凭据在账号三元里的位置"
+      },
+      {
+        "name": "SiGatewayCode",
+        "client": "b-app",
+        "values": [
+          "STUB",
+          "TURNKEY",
+          "CETUSTEK",
+          "UNIVERSALEC"
+        ],
+        "zh": ""
+      },
+      {
+        "name": "SiGatewaySource",
+        "client": "b-app",
+        "values": [
+          "MERCHANT",
+          "DEFAULT"
+        ],
+        "zh": "生效供应商的来源：MERCHANT 商家自选 / DEFAULT 跟随市场默认"
+      },
+      {
+        "name": "SiQrKeySource",
+        "client": "b-app",
+        "values": [
+          "MERCHANT",
+          "VERIFY",
+          "RANGE"
+        ],
+        "zh": "QR 金钥来源：商家手填 / 核验回传 / 领号回传"
+      },
+      {
+        "name": "SiRangeOwner",
+        "client": "b-app",
+        "values": [
+          "MANUAL",
+          "PROVIDER"
+        ],
+        "zh": "号段来源：MANUAL 商家登记 / PROVIDER 加值中心配给"
+      },
+      {
+        "name": "SiRangeWindow",
+        "client": "b-app",
+        "values": [
+          "CURRENT",
+          "NEXT",
+          "ANY"
+        ],
+        "zh": "能领号段的期别窗口"
+      },
+      {
+        "name": "SiStatus",
+        "client": "b-app",
+        "values": [
+          "ISSUED",
+          "VOIDED",
+          "REVOKING",
+          "REVOKED"
+        ],
+        "zh": "REVOKING 注销中（等服务商流程）/ REVOKED 已注销（可同号重开）"
+      },
+      {
+        "name": "SiTrackMode",
+        "client": "b-app",
+        "values": [
+          "NONE",
+          "AUTO",
+          "MANUAL"
+        ],
+        "zh": "服务商侧配号方式：NONE 无记录 / AUTO 自动配号 / MANUAL 手动配号"
+      },
+      {
+        "name": "SiUploadStatus",
+        "client": "b-app",
+        "values": [
+          "PENDING",
+          "SENDING",
+          "SENT",
+          "FAILED",
+          "HELD",
+          "NEEDS_REVIEW"
+        ],
+        "zh": "HELD = 账号问题暂停（核验账号后自动恢复）。"
       },
       {
         "name": "SkinGroup",
@@ -51980,6 +54675,62 @@
       "value": "\"/api/inventory/v1/system/\"",
       "zh": "系统级接口：宿主只有单号、没有业主时用（商城按订单号释放 / 确认），只认系统凭证",
       "module": "inventory"
+    },
+    {
+      "host": "ResultCodeTable",
+      "name": "ANY_TYPE",
+      "type": "String",
+      "value": "\"*\"",
+      "zh": "",
+      "module": "invoice"
+    },
+    {
+      "host": "TwMappingRules",
+      "name": "CONSUMER_ID",
+      "type": "String",
+      "value": "\"0000000000\"",
+      "zh": "一般消费者的买方识别码：10 个 0。",
+      "module": "invoice"
+    },
+    {
+      "host": "CredentialField",
+      "name": "GENERIC",
+      "type": "List<CredentialField>",
+      "value": "List.of( new CredentialField(Slot.ACCOUNT_CODE, \"accountCode\", false, null, Derived.NONE), new CredentialField(Slot.KEY_ID, \"keyId\", true, null, Derived.NONE), new CredentialField(Slot.SECRET, \"secret\", true, null, Derived.NONE))",
+      "zh": "没有专门声明的供应商沿用的三项：代号存业务表、另两项只写不读。",
+      "module": "invoice"
+    },
+    {
+      "host": "ProviderProfile",
+      "name": "ANY_REGIME",
+      "type": "String",
+      "value": "\"*\"",
+      "zh": "",
+      "module": "invoice"
+    },
+    {
+      "host": "ProviderProfile",
+      "name": "STANDARD_UPLOADS",
+      "type": "Set<ProviderOperation>",
+      "value": "Set.of(ProviderOperation.ISSUE, ProviderOperation.VOID, ProviderOperation.ALLOWANCE, ProviderOperation.ALLOWANCE_VOID)",
+      "zh": "台湾加值中心与 Turnkey 都收的四类上传报文。",
+      "module": "invoice"
+    },
+    {
+      "host": "TwBuyerRules",
+      "name": "MOBILE",
+      "type": "String",
+      "value": "\"3J0002\"",
+      "zh": "手机条码载具类别号。",
+      "module": "invoice"
+    },
+    {
+      "host": "TwPeriods",
+      "name": "TAIPEI",
+      "type": "ZoneId",
+      "value": "ZoneId.of(\"Asia/Taipei\")",
+      "zh": "",
+      "module": "invoice"
     },
     {
       "host": "JobHttpPaths",
@@ -55383,9 +58134,41 @@
     },
     {
       "host": "BizPerms",
+      "name": "INVOICE_READ",
+      "type": "String",
+      "value": "\"biz:invoice:read\"",
+      "zh": "发票（ADR-063）：查、开、作废与折让、税制与号段设置",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "INVOICE_ISSUE",
+      "type": "String",
+      "value": "\"biz:invoice:issue\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "INVOICE_VOID",
+      "type": "String",
+      "value": "\"biz:invoice:void\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "INVOICE_SETUP",
+      "type": "String",
+      "value": "\"biz:invoice:setup\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(SERVICE_TASK_SELF, \"操作本人服务任务\"), Map.entry(SERVICE_TASK_VIEW, \"查看门店服务任务\"), Map.entry(SERVICE_TASK_COORDINATE, \"协调服务任务\"), Map.entry(SERVICE_TASK_APPROVE, \"审核服务调整\"), Map.entry(SERVICE_TASK_CLOSE, \"关闭已结清服务工单\"), Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CASH_RECEIVE, \"确认线下实收\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(MANUAL_CONFIRM, \"人工确认服务收款\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(PAY_COLLECT, \"代客收款（出动态收款码）\"), Map.entry(PAY_REFUND, \"发起原路退款\"), Map.entry(PAY_STATEMENT, \"看本店收款流水\"), Map.entry(PAY_APP_GRANT, \"授权第三方代本店收款或退款\"), Map.entry(PAY_QR, \"生成与停用本店收款码\"), Map.entry(PAY_ORDER_VIEW, \"查看本店收款记录（列表与详情）\"), Map.entry(PAY_OFFLINE_RECORD, \"记录 App 外收款\"), Map.entry(PAY_OFFLINE_MANAGE, \"更正与作废 App 外收款\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(INVOICE_READ, \"查看发票\"), Map.entry(INVOICE_ISSUE, \"开立发票\"), Map.entry(INVOICE_VOID, \"作废发票与开折让\"), Map.entry(INVOICE_SETUP, \"发票设置（税制与号段）\"), Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(SERVICE_TASK_SELF, \"操作本人服务任务\"), Map.entry(SERVICE_TASK_VIEW, \"查看门店服务任务\"), Map.entry(SERVICE_TASK_COORDINATE, \"协调服务任务\"), Map.entry(SERVICE_TASK_APPROVE, \"审核服务调整\"), Map.entry(SERVICE_TASK_CLOSE, \"关闭已结清服务工单\"), Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CASH_RECEIVE, \"确认线下实收\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(MANUAL_CONFIRM, \"人工确认服务收款\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(PAY_COLLECT, \"代客收款（出动态收款码）\"), Map.entry(PAY_REFUND, \"发起原路退款\"), Map.entry(PAY_STATEMENT, \"看本店收款流水\"), Map.entry(PAY_APP_GRANT, \"授权第三方代本店收款或退款\"), Map.entry(PAY_QR, \"生成与停用本店收款码\"), Map.entry(PAY_ORDER_VIEW, \"查看本店收款记录（列表与详情）\"), Map.entry(PAY_OFFLINE_RECORD, \"记录 App 外收款\"), Map.entry(PAY_OFFLINE_MANAGE, \"更正与作废 App 外收款\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -57598,6 +60381,14 @@
       "module": "shop-core"
     },
     {
+      "host": "PayBizPassThrough",
+      "name": "PREFIX",
+      "type": "String",
+      "value": "\"/biz/pay/v2\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
       "host": "SessionStoreKinds",
       "name": "GLOBAL",
       "type": "String",
@@ -57754,6 +60545,134 @@
       "name": "BASE",
       "type": "String",
       "value": "\"/biz/pay/v2/channel-account-claims\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "PAYMENT_CREATE",
+      "type": "String",
+      "value": "\"payment.create\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "PAYMENT_QUERY",
+      "type": "String",
+      "value": "\"payment.query\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "PAYMENT_CLOSE",
+      "type": "String",
+      "value": "\"payment.close\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "REFUND_APPLY",
+      "type": "String",
+      "value": "\"refund.apply\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "REFUND_REVIEW",
+      "type": "String",
+      "value": "\"refund.review\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "DEVICE_ACTIVATE",
+      "type": "String",
+      "value": "\"device.activate\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "QRCODE_MANAGE",
+      "type": "String",
+      "value": "\"qrcode.manage\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "STORE_LEDGER_READ",
+      "type": "String",
+      "value": "\"store.ledger.read\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "STATEMENT_READ",
+      "type": "String",
+      "value": "\"statement.read\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "ONBOARDING_APPLY",
+      "type": "String",
+      "value": "\"onboarding.apply\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "ONBOARDING_QUERY",
+      "type": "String",
+      "value": "\"onboarding.query\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "MEMBER_MANAGE",
+      "type": "String",
+      "value": "\"member.manage\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "STORE_BIND",
+      "type": "String",
+      "value": "\"store.bind\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "APP_GRANT_QUERY",
+      "type": "String",
+      "value": "\"app.grant.query\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "APP_GRANT",
+      "type": "String",
+      "value": "\"app.grant\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayMemberActions",
+      "name": "MERCHANT_LINK",
+      "type": "String",
+      "value": "\"merchant.link\"",
       "zh": "",
       "module": "shop-gateway"
     },
@@ -58023,6 +60942,7 @@
         "com.alibaba.nacos:nacos-client",
         "com.google.errorprone:error_prone_annotations",
         "com.google.geometry:s2-geometry",
+        "com.google.zxing:core",
         "com.qcloud:cos_api",
         "com.tngtech.archunit:archunit-junit5",
         "io.github.resilience4j:resilience4j-bulkhead",

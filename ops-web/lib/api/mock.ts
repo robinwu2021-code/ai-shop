@@ -1,5 +1,6 @@
 import { customerMock } from "./mocks/customer";
 import { printMock } from "./mocks/print";
+import { eInvoiceMock } from "./mocks/invoice";
 // Mock 实现（组合根）。按域切片在 lib/api/mocks/*.ts，全部走 lib/mock/db 内存数据 + 模拟延迟。
 // 切片之间方法名不得重叠（后者会静默覆盖前者），由 contract.test.ts 断言。
 import type { Api } from "./contract";
@@ -56,10 +57,11 @@ export const MOCK_SLICES = {
   content: contentMock,
   system: systemMock,
   commerce: commerceMock,
+  eInvoice: eInvoiceMock,
 } as const;
 
 export const mockApi: Api = {
   ...customerMock, ...printMock, ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock, ...payOpsMock,
   ...communityMock, ...fulfillmentMock, ...storeMock,
-  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock, ...jobMock, ...commerceMock,
+  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock, ...jobMock, ...commerceMock, ...eInvoiceMock,
 };

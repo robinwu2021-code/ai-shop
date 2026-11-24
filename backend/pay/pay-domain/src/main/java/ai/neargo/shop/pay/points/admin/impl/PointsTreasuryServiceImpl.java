@@ -118,43 +118,44 @@ public class PointsTreasuryServiceImpl implements PointsTreasuryService {
     @Override
     public RequestPage requests(String type, long after, int limit) {
         page(type, after, limit);
-        var rows =
-                operations.page(type, Kind.REQUEST, after, limit).stream()
-                        .map(
-                                r -> {
-                                    var request =
-                                            json.readValue(
-                                                            (String) r.get("payload_json"),
-                                                            Envelope.class)
-                                                    .request();
-                                    boolean withdrawal =
-                                            request.action() == PoolRequest.Action.WITHDRAW_U
-                                                    || request.action()
-                                                            == PoolRequest.Action.WITHDRAW_B;
-                                    return new RequestView(
-                                            num(r, "id"),
-                                            request.requestNo(),
-                                            type,
-                                            request.action(),
-                                            request.amountMinor(),
-                                            (String) r.get("state"),
-                                            request.submittedBy(),
-                                            (String) r.get("approved_by"),
-                                            time(r, "created_at"),
-                                            r.get("reviewed_at") == null ? 0 : time(r, "reviewed_at"),
-                                            (String) r.get("submitted_reason"),
-                                            (String) r.get("review_reason"),
-                                            request.evidenceNo() != null
-                                                    && !request.evidenceNo().isBlank(),
-                                            withdrawal
-                                                    ? PointsKeys.position(
-                                                            "W", type, request.requestNo())
-                                                    : null,
-                                            num(r, "version"));
-                                })
-                        .toList();
+        var rows = operations.page(type, Kind.REQUEST, after, limit).stream().map(r -> view(r, type)).toList();
         return new RequestPage(
                 rows, rows.isEmpty() ? after : rows.getLast().id(), rows.size() == limit);
+    }
+
+    @Override
+    public java.util.Optional<RequestView> request(String requestNo) {
+        var r = configuration.request(requestNo);
+        return r == null ? java.util.Optional.empty() : java.util.Optional.of(view(r, (String) r.get("type_code")));
+    }
+
+    @Override
+    public java.util.List<RequestView> submitted(int limit) {
+        require(limit >= 1 && limit <= 500, "POINTS_PAGE_INVALID");
+        return configuration.submittedRequests(limit).stream().map(r -> view(r, (String) r.get("type_code"))).toList();
+    }
+
+    private RequestView view(java.util.Map<String, Object> r, String type) {
+        var request = json.readValue((String) r.get("payload_json"), Envelope.class).request();
+        boolean withdrawal =
+                request.action() == PoolRequest.Action.WITHDRAW_U
+                        || request.action() == PoolRequest.Action.WITHDRAW_B;
+        return new RequestView(
+                num(r, "id"),
+                request.requestNo(),
+                type,
+                request.action(),
+                request.amountMinor(),
+                (String) r.get("state"),
+                request.submittedBy(),
+                (String) r.get("approved_by"),
+                time(r, "created_at"),
+                r.get("reviewed_at") == null ? 0 : time(r, "reviewed_at"),
+                (String) r.get("submitted_reason"),
+                (String) r.get("review_reason"),
+                request.evidenceNo() != null && !request.evidenceNo().isBlank(),
+                withdrawal ? PointsKeys.position("W", type, request.requestNo()) : null,
+                num(r, "version"));
     }
 
     @Override

@@ -21,6 +21,14 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
     private final OfflinePurchaseFacade offline;
     private final MallFacade mall;
 
+    private OpsApprovalGatePort gate;
+
+    /** Optional approval gate (host-provided). */
+    public CommerceOfflineOpsHttpController approvalGate(OpsApprovalGatePort value) {
+        this.gate = value;
+        return this;
+    }
+
     public CommerceOfflineOpsHttpController(
             OfflinePurchaseFacade offline,
             MallFacade mall,
@@ -221,6 +229,10 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
             @RequestBody String body) {
         var d = json.read(body, ConfirmRequest.class);
         var actor = context.operator("commerce:mall:offline:confirm");
+        if (gate != null) {
+            var held = gate.hold(OpsApprovalGatePort.MALL_OFFLINE_CONFIRM, actor, code(store), code(order), d.actionNo(), d);
+            if (held.isPresent()) return ok(held.get());
+        }
         return ok(
                 offline.confirm(
                         actor,

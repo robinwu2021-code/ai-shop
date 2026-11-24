@@ -283,6 +283,10 @@
     },
     { "path": "pages/stored-value/index", "style": { "navigationBarTitleText": "储值记录", "app-plus": { "navigationStyle": "custom" }, "h5": { "navigationStyle": "custom" } } },
     { "path": "pages/stored-value-records/index", "style": { "navigationBarTitleText": "收支记录", "app-plus": { "navigationStyle": "custom" }, "h5": { "navigationStyle": "custom" } } },
+    { "path": "pages/sales-invoices/index", "style": { "navigationBarTitleText": "我的发票", "app-plus": { "navigationStyle": "custom" }, "h5": { "navigationStyle": "custom" } } },
+    { "path": "pages/sales-invoice/index", "style": { "navigationBarTitleText": "发票详情", "app-plus": { "navigationStyle": "custom" }, "h5": { "navigationStyle": "custom" } } },
+    { "path": "pages/invoice-carriers/index", "style": { "navigationBarTitleText": "发票载具", "app-plus": { "navigationStyle": "custom" }, "h5": { "navigationStyle": "custom" } } },
+    { "path": "pages/invoice-choice/index", "style": { "navigationBarTitleText": "发票开法", "app-plus": { "navigationStyle": "custom" }, "h5": { "navigationStyle": "custom" } } },
     {
       "path": "pages/points/index",
       "style": {

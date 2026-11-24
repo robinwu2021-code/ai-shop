@@ -72,6 +72,20 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET,POST", "/biz/review(?:/.*)?"),
             // 列印：打印机、任务、模板、场景、监控
             HostRoute.of("GET,POST,PUT", "/biz/print/.+"),
+            // 电子发票（TDD-发票模块 §23.4）：开立、查询、作废 / 折让 / 重送、打印事实，及本店开票设置与号段。
+            // 权限码 biz:invoice:* 由控制器判；2026-11-23 v2 上新模型门店全部 70006 STORE_ACCESS，即漏登记
+            HostRoute.of("GET,POST", "/biz/invoices(?:/.*)?"),
+            HostRoute.of("GET,POST,PUT", "/biz/invoice-setup/(?:profile|providers|ranges|provider-verification|provider-tracks|provider-ranges)"),
+            // 门店开票设定与常用品项（TDD-统一订单与开票资料 P2）：读 biz:invoice:read、写 biz:invoice:setup，由控制器判
+            HostRoute.of("GET,PUT", "/biz/invoice-setup/store-settings"),
+            HostRoute.of("GET,POST", "/biz/invoice-setup/store-items"),
+            HostRoute.of("PUT,DELETE", "/biz/invoice-setup/store-items/" + ID),
+            // 门店零售单（TDD-统一订单与开票资料 P1）：POS 建单、详情与开票准备度、补开票资料、取消未付款的单。
+            // 权限码 biz:order:create / biz:order:view / biz:invoice:issue 由控制器判，这里只放进门店上下文
+            HostRoute.of("POST", "/biz/store-orders"),
+            HostRoute.of("GET", "/biz/store-orders/" + ID),
+            HostRoute.of("PUT", "/biz/store-orders/" + ID + "/invoice-data"),
+            HostRoute.of("POST", "/biz/store-orders/" + ID + "/cancel"),
             // 通知设置
             HostRoute.of("GET,PUT", "/biz/notify/(?:setting|sms-phones|email|wecom)"),
             // 自提与自提点

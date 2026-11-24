@@ -1,0 +1,792 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Store retail orders (POS)",
+    "version": "2026-11-24-p2",
+    "description": "TDD-统一订单与开票资料 P1 + P2. Walk-in store orders created by the handheld POS; order lines carry the frozen invoice name and tax type. Store, entity and operator come from the authenticated merchant context, never from the body. P2: payments attach by subOrderNo (cash: POST /biz/payment/offline-records orderNo; QR / payment link: POST /biz/payment/collection bizNo) and the order turns PAID once the same-currency sum reaches totalMinor (overpay accepted, POS gives change); invoice.timing is stored on the order and overrides the store setting; storeItemNo picks a store preset item (name + tax type, ZERO_RATED/EXEMPT without biz:invoice:tax-override); a custom line without taxType, and a SKU line whose goods have no tax class, take the store default tax type (STORE_DEFAULT, no tax-override needed). member.memberNo (P3) is accepted and ignored."
+  },
+  "paths": {
+    "/biz/store-orders": {
+      "post": {
+        "operationId": "createStoreOrder",
+        "summary": "Create a walk-in store order (biz:order:create)",
+        "description": "Same clientOrderNo within the store returns the original order (offline upload). The same Idempotency-Key with a different clientOrderNo is 10409. SKU unit price different from the store price requires biz:order:reprice (70006); ZERO_RATED/EXEMPT on a custom line requires biz:invoice:tax-override (70006).",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStoreOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; data is StoreSaleView",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSaleView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/store-orders/{orderNo}": {
+      "get": {
+        "operationId": "getStoreOrder",
+        "summary": "Store order with invoiceReadiness (biz:order:view)",
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; data is StoreSaleView",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSaleView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/store-orders/{orderNo}/invoice-data": {
+      "put": {
+        "operationId": "fillStoreOrderInvoiceData",
+        "summary": "Fill empty invoice fields (biz:invoice:issue)",
+        "description": "Only empty line name/taxType and an unset buyer can be filled; a different value for a set field is 20027, any change after an invoice is issued is 20028. Each filled field is audited; the same Idempotency-Key returns the current view.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FillInvoiceData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; data is StoreSaleView",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSaleView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/store-orders/{orderNo}/cancel": {
+      "post": {
+        "operationId": "cancelStoreOrder",
+        "summary": "Cancel an unpaid store order (biz:order:create)",
+        "description": "Unpaid orders only; an order with attached payments (paidMinor > 0) is 20024 — void the cash record / refund first.",
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; data is StoreSaleView",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSaleView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/store-settings": {
+      "get": {
+        "operationId": "getStoreInvoiceSettings",
+        "summary": "Store invoice settings (biz:invoice:read); never saved → {defaultTaxType:null, invoiceTiming:MANUAL}",
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; data is StoreSettings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSettings"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveStoreInvoiceSettings",
+        "summary": "Save store invoice settings (biz:invoice:setup)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; data is StoreSettings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSettings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/store-items": {
+      "get": {
+        "operationId": "listStoreItems",
+        "summary": "Store preset items incl. disabled, by sort (biz:invoice:read)",
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; data is StoreItem[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StoreItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "addStoreItem",
+        "summary": "Add a preset item (biz:invoice:setup); at most 50 per store → 26015",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreItemReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; data is StoreItem",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreItem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/invoice-setup/store-items/{storeItemNo}": {
+      "put": {
+        "operationId": "updateStoreItem",
+        "summary": "Replace a preset item (biz:invoice:setup); other store's → 10404",
+        "parameters": [
+          {
+            "name": "storeItemNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreItemReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; data is StoreItem",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreItem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteStoreItem",
+        "summary": "Delete a preset item (biz:invoice:setup); idempotent. Orders already created keep their copied name/tax type.",
+        "parameters": [
+          {
+            "name": "storeItemNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope; data null"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateStoreOrder": {
+        "type": "object",
+        "required": [
+          "clientOrderNo",
+          "channel",
+          "currency",
+          "lines"
+        ],
+        "properties": {
+          "clientOrderNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+          },
+          "channel": {
+            "enum": [
+              "POS"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "lines": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 200,
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "quantity",
+                "unitPriceMinor"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "SKU",
+                    "CUSTOM"
+                  ]
+                },
+                "skuNo": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "unitPriceMinor": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "taxType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "TAXABLE",
+                    "ZERO_RATED",
+                    "EXEMPT",
+                    null
+                  ],
+                  "description": "Custom line: null = store default tax type (source STORE_DEFAULT), or pending when the store has none."
+                },
+                "storeItemNo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 64,
+                  "description": "Store preset item (custom lines only, excludes name/taxType). Unknown or disabled → 20026."
+                }
+              }
+            }
+          },
+          "adjustments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "amountMinor"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "DISCOUNT"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "amountMinor": {
+                  "type": "integer",
+                  "maximum": 0
+                }
+              }
+            }
+          },
+          "member": {
+            "type": "object",
+            "properties": {
+              "memberNo": {
+                "type": "string"
+              }
+            }
+          },
+          "invoice": {
+            "type": "object",
+            "properties": {
+              "buyer": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "CONSUMER",
+                      "COMPANY",
+                      "CARRIER",
+                      "DONATE"
+                    ]
+                  },
+                  "taxId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "carrierType": {
+                    "type": "string"
+                  },
+                  "carrierId": {
+                    "type": "string"
+                  },
+                  "donateCode": {
+                    "type": "string"
+                  }
+                }
+              },
+              "timing": {
+                "enum": [
+                  "ON_PAID",
+                  "MANUAL",
+                  "LATER",
+                  null
+                ],
+                "description": "Stored on the order; ON_PAID issues automatically once paid and READY (remembered buyer, else consumer)."
+              }
+            }
+          }
+        }
+      },
+      "FillInvoiceData": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "lineNo"
+              ],
+              "properties": {
+                "lineNo": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "taxType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "TAXABLE",
+                    "ZERO_RATED",
+                    "EXEMPT",
+                    null
+                  ]
+                },
+                "storeItemNo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 32,
+                  "description": "Fill name and tax type from a store preset item (excludes name/taxType); no tax-override permission needed."
+                }
+              }
+            }
+          },
+          "buyer": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "CONSUMER",
+                  "COMPANY",
+                  "CARRIER",
+                  "DONATE"
+                ]
+              },
+              "taxId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "carrierType": {
+                "type": "string"
+              },
+              "carrierId": {
+                "type": "string"
+              },
+              "donateCode": {
+                "type": "string"
+              }
+            }
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 100
+          }
+        }
+      },
+      "StoreSaleView": {
+        "type": "object",
+        "properties": {
+          "orderNo": {
+            "type": "string"
+          },
+          "subOrderNo": {
+            "type": "string"
+          },
+          "clientOrderNo": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "AWAITING_PAYMENT",
+              "PAID",
+              "CANCELLED",
+              "REFUNDED"
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "totalMinor": {
+            "type": "integer"
+          },
+          "paidMinor": {
+            "type": "integer",
+            "description": "Attached payments: non-voided cash records + succeeded QR / payment-link collections in the order currency. May exceed totalMinor after an overpayment."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "lineNo": {
+                  "type": "integer"
+                },
+                "kind": {
+                  "enum": [
+                    "SKU",
+                    "CUSTOM"
+                  ]
+                },
+                "skuNo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "taxType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "TAXABLE",
+                    "ZERO_RATED",
+                    "EXEMPT",
+                    null
+                  ]
+                },
+                "quantity": {
+                  "type": "integer"
+                },
+                "unitPriceMinor": {
+                  "type": "integer"
+                },
+                "amountMinor": {
+                  "type": "integer"
+                },
+                "frozen": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "invoiceReadiness": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "enum": [
+                  "NOT_PAID",
+                  "NEEDS_INFO",
+                  "READY",
+                  "ISSUED",
+                  "REFUNDED"
+                ]
+              },
+              "missing": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "lineNo": {
+                      "type": "integer"
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "name",
+                          "taxType"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "buyerSet": {
+                "type": "boolean"
+              },
+              "invoiceNo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "invoiceTiming": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "ON_PAID",
+              "MANUAL",
+              "LATER",
+              null
+            ],
+            "description": "This order's invoice timing; null = follow the store setting"
+          }
+        }
+      },
+      "StoreSettings": {
+        "type": "object",
+        "required": [
+          "invoiceTiming"
+        ],
+        "properties": {
+          "defaultTaxType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "TAXABLE",
+              "ZERO_RATED",
+              "EXEMPT",
+              null
+            ]
+          },
+          "invoiceTiming": {
+            "enum": [
+              "ON_PAID",
+              "MANUAL",
+              "LATER"
+            ]
+          }
+        }
+      },
+      "StoreItemReq": {
+        "type": "object",
+        "required": [
+          "name",
+          "taxType"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "taxType": {
+            "enum": [
+              "TAXABLE",
+              "ZERO_RATED",
+              "EXEMPT"
+            ]
+          },
+          "sort": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 9999
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "StoreItem": {
+        "type": "object",
+        "properties": {
+          "storeItemNo": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "taxType": {
+            "enum": [
+              "TAXABLE",
+              "ZERO_RATED",
+              "EXEMPT"
+            ]
+          },
+          "sort": {
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

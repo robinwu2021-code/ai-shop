@@ -1,0 +1,526 @@
+# TDD · 支付三端经网关透传，权限由提供接口的服务判
+
+状态：方案定稿（2026-11-22，用户：「形成方案以及交接文档」）；§7 按推荐项写入正文，用户可随时改选。**阶段 1（本仓库）已实现，开关默认关、未部署**（2026-11-22，见 §10）；阶段 2 起未做。
+交接：[docs/handoff/pay-gateway-proxy-2026-11-22](../handoff/pay-gateway-proxy-2026-11-22/README.md)。
+附录：[入口盘点](TDD-支付三端经网关透传与权限归属-附录-入口盘点.md)（`scripts/inventory-pay-endpoints.py` 生成）。
+档位：2（权限归属与入口变更：ai-shop 网关路由、统一认证接口、near-pay 判权来源；前端基址）。
+关联：
+- [TDD-支付运营端经网关转发与权限下沉](TDD-支付运营端经网关转发与权限下沉.md)：运营端 `/pay-ops/v2` 已按此模式上线，本方案把它推广到三端。
+- [ADR-060](ADR/ADR-060-网关层独立模块与鉴权不进路由网关.md)：本方案修订其第 3、5、6 条在支付上的适用。
+- [TDD-App支付权限由ai-shop决定](TDD-App支付权限由ai-shop决定.md)：店主来源委托并入 B 端统一认证。
+
+## 一句话
+
+支付相关的请求，ai-shop 网关**只认证、只转发**，不判权限。权限由**提供这个接口的服务**来判：接口在 near-pay，就由 near-pay 判；接口在 ai-shop 自己的进程里，就由 ai-shop 判。near-pay 不建自己的角色和权限表，权限码统一向 ai-shop 的统一认证接口取。
+
+## §0 用户的决定（2026-11-22，原话）
+
+> 统一网关针对支付部分也调整为仅仅做代理，权限统一交给支付，或者说谁提供 controller，谁提供权限，微服务服务没有权限，先整理方案
+
+采用的理解（§7 第 1 条）：
+
+| 原话 | 理解为 |
+|---|---|
+| 网关针对支付仅仅做代理 | 网关对支付请求只做认证（确认令牌有效、属于哪一端），然后原样转发。不按接口判权，也不进 `sys_api_resource` 的提前判权 |
+| 谁提供 controller，谁提供权限 | 哪个服务的 controller 真正处理这个请求，就由哪个服务判这个请求能不能做 |
+| 微服务没有权限 | 微服务里**没有权限数据**：不建角色表，不维护角色到权限码的映射。权限码仍在 ai-shop 授予，微服务通过统一认证接口取到再判。这与 ADR-060 第 3 条后半句「不建角色表」一致 |
+
+这样，「授予」和「判定」分开：**授予**统一在 ai-shop，运营在一个地方配；**判定**跟着接口走，谁的接口谁判。
+
+## §1 现状（ai-shop `origin/main` `1cc4fef64`；near-pay `develop/s1` `b19b2e14d`；v2 跑的是 `main-1cc4fef64`，`SHOP_PAY_DEPLOYMENT=standalone`）
+
+v2 上支付由独立的 near-pay（166:18093）提供。ai-shop 进程里的支付相关入口有三种形态：
+
+| 形态 | 例子 | 接口数（约） | 谁判权限 | 是否符合新原则 |
+|---|---|---|---|---|
+| **A. 网关透传** | 运营端 `/ops/pay-ops/v2/**` → near-pay `/pay-ops/v2/**`（`PayOpsPassThrough`） | 1 条前缀，下游 near-pay 运营端约 329 个 | near-pay：`AiShopOpsSessionFilter` 调 `/internal/auth/v1/operator` 取码，`@payPerm.can` 判 | 符合（11-21 已上线） |
+| **B. 网关转发，但 ai-shop 也判** | B 端 `/biz/pay/v2/**`：`BizPayOnboardingController`、`BizPayMerchantController`、`BizChannelAccountClaimController` 等经 `BizOnboardingForwarder` 转 near-pay，有的加了 `@perm.canBiz('biz:finance')`，并对店主改写商户号、加来源委托凭据 | 22 | 两边都判：ai-shop 判一部分，near-pay 再按**自己的成员表**判 | 不符合：判两次，且 near-pay 有自己的权限数据（成员表） |
+| **C. ai-shop 适配层** | 运营端 `/ops/payments/**`、`/ops/pay/...`（结算、提现、对账、费率、渠道……）；B 端 `/biz/payment/**`、`/biz/settle/**`、储值、权益；C 端 `/mp/` 储值、权益、积分。controller 在 ai-shop 网关模块里，经 `payclient.*AppService` 调 near-pay 的 `/internal/pay/v1|v2/**` | 运营端 141、B 端 147、C 端 20 | ai-shop：`@PreAuthorize("@perm.can…")`；near-pay 内部入口只识别调用方，不认人（ADR-045） | 要分开看，见下 |
+
+形态 C 里又分两类。[附录](TDD-支付三端经网关透传与权限归属-附录-入口盘点.md)已按依赖做了初判：运营端 C1 110、C2 31；B 端 C1 58、C2 89；C 端 C1 2、C2 18。初判要在阶段 0 逐个人工确认：
+
+- **C1 薄转调**：controller 只是把请求换个形状调 near-pay，业务在 near-pay。按新原则，接口其实是 near-pay 提供的，应改成透传，由 near-pay 判。
+- **C2 ai-shop 有业务**：controller 组合了 ai-shop 自己的数据（门店、主体、订单、积分规则等），或业务逻辑本来就在 ai-shop 进程里（如 `pay.points.admin.*`、`pay.entitlement.*` 直接注入的服务）。按新原则，接口是 ai-shop 提供的，**仍由 ai-shop 判，维持现状**。
+
+near-pay 这边已有的认证件：
+
+| 端 | 过滤器 | 现在调 ai-shop 的 | 判权依据 |
+|---|---|---|---|
+| 运营 | `AiShopOpsSessionFilter` | `/internal/auth/v1/operator`（服务间契约） | ai-shop 下发的 `pay:` 权限码 |
+| B 端 | `AiShopBizSessionFilter` | `/biz/auth/session`（页面接口）+ 主体查询 | near-pay **自己的成员表** + ai-shop 的店主来源委托 |
+| C 端 | 无（`/checkout/v1` 走支付单号与签名） | — | — |
+
+## §2 原则
+
+1. **网关对支付只做两件事**：认证（令牌有效、端对得上，不对就 401），转发（方法、路径、查询串、请求体、`Authorization`、状态码、响应体原样）。
+2. **判权在接口所在的服务里**。near-pay 的接口由 near-pay 判；ai-shop 进程里的接口由 ai-shop 判。同一个请求只判一次。
+3. **权限数据只在 ai-shop**。角色、权限码、数据范围在 ai-shop 授予；near-pay 通过统一认证接口取，按令牌短缓存，不落库、不建角色表。
+4. **业务归属不变**。商户归属、单据归属、状态机这类「这单是不是你的」「现在能不能退」的校验，本来就在业务里，不算权限，不动。
+
+## §3 方案
+
+### 3.1 网关：一个透传件，按端挂前缀
+
+复用运营端已上线的 `PassThroughInvoker`，抽出一个按端配置的透传注册：
+
+| 端 | 网关前缀 | 转到 near-pay | 开关 |
+|---|---|---|---|
+| 运营 | `/ops/pay-ops/v2/**` | `/pay-ops/v2/**` | `shop.gateway.ops.pay-ops-proxy.enabled`（已有，已开） |
+| B 端 | `/biz/pay/v2/**` | `/biz/pay/v2/**` | `shop.gateway.biz.pay-proxy.enabled`（新，默认关） |
+| B 端（旧版） | 不新增 | — | near-pay 的旧版 `/biz/pay/{app-grant,collection,qr-code,refund,statement}` ai-shop 现在没有转发；本仓库 b-app 用的是 ai-shop 的 `/biz/payment/**`（形态 C），按 3.4 处理（§7 第 4 条） |
+| C 端 | 暂不新增 | — | C 端支付走 `/checkout/v1` 与支付回调，本来就不经网关判权 |
+
+- 透传的前缀不进 `sys_api_resource`，不做提前判权；网关的「接口资源」页面上显示为一行「整前缀透传 → 支付服务」，便于看清楚。
+- 认证沿用各端已有的会话链：运营端认运营令牌、B 端认商户令牌。端不对就 401，不转发。
+- 网关**去掉**客户端带来的 `X-Internal-*`、`X-Merchant-No` 之外的内部头（防冒充）。
+- 打开 B 端透传开关后，§1 形态 B 的 forwarder 类与它们的 `@PreAuthorize` 一并下线；店主来源委托改由统一认证接口承担，见 3.2。
+
+### 3.2 统一认证接口：补 B 端
+
+运营端已有 `/internal/auth/v1/operator`。B 端新增一条，同样只在内部可达、带进程凭据：
+
+```
+GET /internal/auth/v1/merchant-staff
+Authorization: Bearer <商户端令牌>
+X-Auth-Namespace: pay:
+X-Pay-Merchant-No: <可选，App 当前选中的支付商户号>
+
+200 {"code":0,"data":{
+  "userNo":"U…","status":"ACTIVE",
+  "memberships":[                                   // 本人在哪些支付商户下、各有哪些 pay: 码
+    {"payMerchantNo":"PM…","entityNo":"M…","role":"OWNER","perms":["*"]},
+    {"payMerchantNo":"PM…","entityNo":"M…","role":"STAFF","perms":["pay:collection:read", …]}
+  ],
+  "permVersion":"…","expiresAt":…
+}}
+```
+
+- **店主**：对其名下主体关联的支付商户，`perms` 为 `["*"]`。这就是现在「店主来源委托」的效果（TDD-App支付权限由ai-shop决定 AC1），改成由认证接口直接给出，不再靠转发时改写请求头。
+- **店员**：码来自 ai-shop B 端的员工角色（`Perms` 里 B 端那一套）；按 `pay:` 前缀筛。
+- 商户号由 near-pay 按请求自己取，再到 `memberships` 里找对应一行判；不在 `memberships` 里就 403。AC2（非本人商户不委托）由此自然成立。
+
+C 端暂不需要：买家只有「本人」，没有角色。如果以后 near-pay 有直接面向买家的接口要经网关，再加 `/internal/auth/v1/buyer`，只回身份。
+
+### 3.3 near-pay：判权只认统一认证接口
+
+| 项 | 运营端 | B 端 |
+|---|---|---|
+| 认证 | 已改（调 `/internal/auth/v1/operator`，30 秒缓存） | `AiShopBizIdentityClient` 改调 `/internal/auth/v1/merchant-staff`，按令牌 SHA-256 缓存 30 秒 |
+| 判权 | `@payPerm.can(code)` 只认 ai-shop 的码；SY03 映射观察期满后退役 | 新增 `@payPerm.canBiz(merchantNo, code)`：在 `memberships` 里找该商户，有码即放行。替换现在按成员表判的守卫 |
+| 自有权限数据 | SY03 `pay_permission_mapping` 退役；SY04 数据范围按 §10 已改为按 ai-shop 角色授予 | 成员表 `pay_merchant_membership`、`pay_access_membership` 不再参与判权，先只读保留一个发布周期，再删 |
+| 灰度 | 已完成 | 开关 `near-pay.biz.permission-source=host\|host+membership`，先 `host+membership`，日志记「只靠成员表通过」的请求，一周没有再切 `host` |
+
+near-pay 的 `/internal/pay/v1|v2/**`（形态 C 调的那些）维持 ADR-045：只识别调用方，不认人。因为这些请求的权限已在 ai-shop 判过（C2），或将改成透传（C1）。
+
+### 3.4 形态 C 的去留
+
+| 类别 | 做法 |
+|---|---|
+| C1 薄转调，near-pay 已有同功能的公开接口（`/pay-ops/v2`、`/biz/pay/v2`） | 前端改调透传前缀，ai-shop 适配 controller 下线 |
+| C1 薄转调，near-pay 只有内部接口 | 由 near-pay 补公开接口（带 `@payPerm`），再按上一行处理；补之前维持现状 |
+| C2 ai-shop 有业务 | 不动：ai-shop 提供 controller，ai-shop 判 |
+
+运营端的支付中心已经全部走透传；运营端剩下的形态 C（结算、提现、对账、费率、积分、权益）多半是 C2 或 near-pay 尚无公开接口，第一期不动。
+
+## §4 对既有决定的影响
+
+| 决定 | 影响 |
+|---|---|
+| ADR-060 第 3 条「认证与鉴权在网关层做一次；微服务不认终端令牌，不建角色表」 | 对支付三端改为：网关只认证；**谁提供接口谁判权**；near-pay 认终端令牌，经统一认证接口取权限；「不建角色表」保留。需在 ADR-060 加修订说明（运营端那次只写在 TDD 里，借这次一并补进 ADR） |
+| ADR-060 第 5、6 条（链接权限入库、微服务链接白名单） | 支付透传前缀整段放行，不逐条入库；白名单粒度从「每条链接」变为「每个前缀」 |
+| TDD-App支付权限由ai-shop决定 | 结论不变（店主默认全权、权限由 ai-shop 定）；实现从「转发时改写头 + 来源委托凭据」改为「统一认证接口给出 memberships」 |
+| ADR-045（支付内部入口只识别不拒绝） | 不受影响 |
+| 记忆「网关与业务脱耦」 | 一致：网关不为支付加规则，也不改业务注解 |
+| 其他非支付微服务（库存等） | 本方案不推广。用户原话限定「支付部分」；是否推广另议 |
+
+## §5 分期与上线
+
+| 阶段 | 内容 | 谁 | 回退 |
+|---|---|---|---|
+| 0 · 盘点 | 形态 B、C 逐个接口列表：路径、当前判权码、调的 near-pay 接口、C1/C2 归类、near-pay 有无公开对应。产出一张对照表附在本 TDD | 本仓库 | — |
+| 1 · ai-shop | 透传注册抽成按端配置；B 端 `/biz/pay/v2/**` 透传（开关关）；`/internal/auth/v1/merchant-staff` | 本仓库 | 开关关 |
+| 2 · near-pay | `AiShopBizIdentityClient` 改调新接口 + 缓存；`canBiz` 判权；`permission-source=host+membership`，加日志 | near-pay（与 RobinWu 对齐排期） | 配置切回 |
+| 3 · 切换 | 开 B 端透传开关；App 无需改（路径不变）；下线形态 B 的 forwarder | 本仓库 | 关开关，forwarder 仍在包里 |
+| 4 · 观察 | 一周没有「只靠成员表通过」后切 `host`；SY03 同期退役 | near-pay + 用户确认 | 切回 |
+| 5 · 形态 C1 | 按阶段 0 的表逐批迁到透传 | 两边 | 前端改回旧路径 |
+
+阶段 1 不依赖 near-pay 改动：near-pay 现在已经认 ai-shop 的商户令牌，透传过去照样按成员表判。
+
+## §6 测试对账
+
+| 验收 | 测试 |
+|---|---|
+| 无令牌或令牌属于别的端：网关 401，下游无请求 | 网关集成测试，桩下游计数为 0 |
+| 有令牌：方法、路径、查询串、`Authorization`、请求体、上传、文件流、错误码原样往返 | `PassThroughInvokerTest` 按端各一组 |
+| 客户端伪造 `X-Internal-*`：被去掉 | 同上 |
+| 开关关：404 | 网关测试 |
+| `merchant-staff`：店主对名下商户回 `*`；店员回角色码；非成员商户不出现；过期令牌 401；无进程凭据 403 | ai-shop 接口测试 |
+| near-pay：缓存命中不回调；`host` 模式下只靠成员表的请求被拒；店主无需成员记录即可操作 | near-pay 单测 |
+| 线上：Oscar 在 App 打开渠道审核、进件、补件；店员按角色可见；非本人商户 403 | 模拟器走查 + 白名单测试账号脚本 |
+
+## §7 选项与采用
+
+用户没有逐条答复，按推荐项定稿；改选时相应调整 §3、§5。
+
+| # | 问题 | 采用 | 可改为 |
+|---|---|---|---|
+| 1 | 「微服务没有权限」的含义 | 不建角色与权限表，在服务内判；权限码由 ai-shop 授予 | 微服务连判定也不做（那就回到网关判，与「仅仅做代理」冲突） |
+| 2 | B 端店员的支付权限码从哪来 | 沿用 ai-shop B 端员工角色，按 `pay:` 前缀下发 | 另设一组支付专用角色 |
+| 3 | near-pay 成员表 | 观察期后不参与判权，只读保留一个发布周期再删 | 长期保留作店员授权来源（与第 1 条冲突） |
+| 4 | near-pay 旧版 `/biz/pay/{app-grant,collection,qr-code,refund,statement}` | 不经网关开放（ai-shop 现在也没转发）；b-app 走的 `/biz/payment/**` 按形态 C 归类迁移 | 透传开放，b-app 直接改调 |
+| 5 | 推广到库存等其他微服务 | 不推广 | 另立方案 |
+| 6 | near-pay 改动排期 | 与 RobinWu 对齐；ai-shop 阶段 1 不等它 | — |
+
+## §8 实施清单（阶段 1、3 在本仓库）
+
+| 改动 | 位置 | 测试 |
+|---|---|---|
+| 透传注册按端配置：前缀、目标服务、开关；运营端 `PayOpsPassThrough` 改为其一个实例 | `shop-gateway` `gateway.core.proxy`、`gateway.ops`、新增 `gateway.biz.PayBizPassThrough` | `PassThroughInvokerTest`、新增 B 端透传集成测试 |
+| 去掉客户端带来的 `X-Internal-*` | 同上（复用 `PayBizSourceDelegation#withoutInternal` 的逻辑） | 伪造头用例 |
+| `/internal/auth/v1/merchant-staff` | `shop-gateway` `portal.internal`，与 `OperatorIdentityEndpoint` 并列；店主商户取自 `MerchantEntityService#myEntities` + `PaySourceLinkApi#status` | `MerchantStaffIdentityEndpointTest` |
+| 开关 `shop.gateway.biz.pay-proxy.enabled` | `application.yml`，默认 false | 开关关 404 |
+| 阶段 3 下线：`BizPayOnboardingController`、`BizPayMerchantController`、`BizPayMerchantChannelController`、`BizChannelAccountClaimController`、`PayChannelAccountClaimForwarder`、`PayBizOnboardingRelay` 的委托改写 | `shop-gateway` `portal.biz`、`payclient` | 端点快照 `EndpointSnapshotTest` 更新 |
+| ADR-060 修订说明 | `docs/technical/ADR/ADR-060-网关层独立模块与鉴权不进路由网关.md` | — |
+
+档位 2 的三处对账：本 TDD（§3 设计 ↔ §6 测试 ↔ §8 清单）；`Perms` 与 near-pay `@payPerm` 的码在迁 C1 时逐批登记；生成文档闸门 `node scripts/check-generated-docs.mjs`。
+
+## §9 风险
+
+- **两次判权的过渡期**：阶段 3 之前 B 端 v2 仍是 ai-shop 与 near-pay 各判一次，阶段 2 之前 near-pay 仍按成员表判。顺序是「先透传、再换判权来源」，任何一步回退都不会放宽权限。
+- **统一认证接口不可用**：near-pay 回 503（已有 `IDENTITY_UNAVAILABLE` 处理），不会放行；缓存 30 秒能挡住短暂抖动。
+- **撤权生效延迟**：最长 30 秒（缓存期），与运营端一致。
+- **C1 初判错**：把有 ai-shop 业务的接口当薄转调迁走，会丢数据。阶段 0 必须逐个确认后才迁。
+
+## §10 阶段 1 实现记录（2026-11-22，分支 `feat/pay-gateway-proxy-s1-20261122`，用户：「根据最新的交接文档和方案，这里统一网关的调整」）
+
+只做本仓库的阶段 1：开关默认关，线上行为不变；没有部署，没有动任何环境。
+
+### 10.1 改动（对 §8 逐行）
+
+| §8 的行 | 实际改动 |
+|---|---|
+| 透传注册按端配置；`PayOpsPassThrough` 改为其一个实例；新增 `PayBizPassThrough` | 新增 `gateway.core.proxy.PrefixPassThrough`（一条整前缀透传：前缀、目标服务、目标前缀、该端追加的请求头）；`PayOpsPassThrough` 改成它的实例，行为不变；新增 `gateway.biz.PayBizPassThrough`（`/biz/pay/v2/**` → 支付 `/biz/pay/v2/**`） |
+| 去掉客户端带来的 `X-Internal-*` | 透传只转白名单请求头，`X-Internal-*` 本来就不在白名单里，不需要另写剥离逻辑；B 端追加 `X-Merchant-No`、`X-Store-No`、`X-Trace-Id`（与原转发入口 `BizOnboardingForwarder` 放行的一致）。响应头白名单补上 `Pragma`、`X-Content-Type-Options`、`Content-Security-Policy`、`X-Frame-Options`（进件附件这类私密文件要带着它们回去，两端共用） |
+| `/internal/auth/v1/merchant-staff` | 新增 `portal.internal.MerchantStaffIdentityEndpoint`，凭据 `shop.gateway.biz.identity.caller-token`（与运营端那把分开）。主体→支付商户的查找从 `PayBizSourceDelegation` 抽成 `payMerchantOf`，来源委托与本接口共用 |
+| 开关 `shop.gateway.biz.pay-proxy.enabled` | 默认关（不配即关） |
+| 阶段 3 下线 forwarder | 不在本阶段 |
+| ADR-060 修订 | 方案分支已写，本阶段不再改 |
+
+### 10.2 与方案不同的地方
+
+1. **透传要挂两条链。** v2 上 `shop.pay.biz-onboarding.enabled=true`，`/biz/pay/v2/**` 由 `PayBizOnboardingConfiguration` 的 `@Order(0)` 专用链认证（库里的商户会话），根本不进 B 端主链。所以透传过滤器挂在「认证这个前缀的那条链」的授权之后：开了进件就是专用链，没开就是 B 端主链。认证口径因此与现在完全一样。
+2. **B 端权限码的命名空间是 `mch:pay:`，不是 `pay:`。** §3.2 的示例写的是 `X-Auth-Namespace: pay:`，但 B 端支付码是 `mch:pay:order:view`、`mch:pay:refund` 这一套（`IntegrationRegistry` 里支付的两个命名空间是 `mch:pay:` 与 `pay:`）。接口照运营端那样按请求头筛，near-pay 阶段 2 要传 `mch:pay:`。
+3. **店员的码按门店给。** B 端的角色是「人 × 门店」的，同一个人在两家店可以是两个角色。接口每行多 `storeScope`（店主 `ALL`、店员 `STORES`）与 `stores=[{storeNo, perms}]`，`perms` 是各店并集；near-pay 判门店级动作时应按 `stores` 取。店员在这个主体下一个支付码都没有，这一行不出现。码取 `BizContext#effectivePerms()`，与 `/biz/**` 判权同源（含自定义角色）。
+4. **开关关时不是 404。** §6 写「开关关：404」，那是运营端的情形；B 端关时 `/biz/pay/v2/**` 仍由现有转发入口处理，测试改为断言不装透传。
+5. **两个开关不写进 `application.yml`。** 运营端的 `pay-ops-proxy.enabled` 与 `identity.caller-token` 也没写，服务器上按环境变量配；沿用同一做法，不配就是关 / 403。
+
+### 10.3 打开前的条件（阶段 3）
+
+`PayBizPassThrough` 打开后不再改写商户号、不加来源委托头。near-pay 没改成调 `merchant-staff` 判权之前打开，**店主会失去来源委托带来的全权**（near-pay 退回只按自己的成员表判）。所以顺序必须是：near-pay 阶段 2 上线并配好 `shop.gateway.biz.identity.caller-token` → 再开 `shop.gateway.biz.pay-proxy.enabled`。
+
+### 10.4 测试（§6 对账）
+
+| §6 验收 | 测试 | 结果 |
+|---|---|---|
+| 无令牌或别的端令牌：网关 401，下游无请求 | `PayBizPassThroughTest.anonymousStopsAtGateway`、`otherEndTokenRejected`；进件专用链 `PayBizOnboardingHttpTest.passThroughOnForwardsVerbatimAfterSameAuthentication`（无令牌、已吊销令牌） | 通过 |
+| 方法、路径、查询串、`Authorization`、请求体、下游错误码与包体原样往返；App 选的 `X-Merchant-No` 带过去 | `PayBizPassThroughTest.merchantForwardedVerbatim`；同上进件专用链用例；上传、文件流沿用 `PassThroughInvokerTest` | 通过 |
+| 客户端伪造 `X-Internal-*`：被去掉 | 同上两条（`X-Internal-Caller`、`X-Internal-Credential` 下游为空） | 通过 |
+| 开关关：不装透传，现有转发照旧 | `PayBizPassThroughOffTest.offByDefault`；`PayBizOnboardingHttpTest.switchOffDoesNotCreateRelay…` 加了一条断言；进件专用链其余 10 条转发用例照常 | 通过 |
+| 运营端透传改成通用件后行为不变 | `PayOpsPassThroughTest`（3）、`PayOpsPassThroughOffTest`（1） | 通过 |
+| `merchant-staff`：店主名下商户回 `*`（含没门店的主体）；店员按店回角色码；非成员 / 没关联支付的主体不出现；解析器回落到别的主体不算；指定商户号只回那一个；过期或别端令牌 401；凭据不对或没配 403；查关联失败 503 | `MerchantStaffIdentityEndpointTest` 7 条 | 通过 |
+| 来源委托抽出 `payMerchantOf` 后不变 | `PayBizSourceDelegationTest`（7） | 通过 |
+| 新端点守住内部入口规矩 | `InternalEndpointTokenTest`、`CommonPackageIsolationTest`、`ArchitectureTest`、`EndpointSnapshotTest` | 通过 |
+| near-pay 侧（缓存、`host` 模式、店主无需成员记录） | 阶段 2，near-pay 仓库 | 未做 |
+
+运行记录（本机，`mvn -o -pl shop-app -am test -Dtest=…`）：
+
+```
+PayBizPassThroughTest            Tests run: 4,  Failures: 0, Errors: 0
+PayBizPassThroughOffTest         Tests run: 1,  Failures: 0, Errors: 0
+PayBizOnboardingHttpTest         Tests run: 11, Failures: 0, Errors: 0
+PayOpsPassThroughTest            Tests run: 3,  Failures: 0, Errors: 0
+PayOpsPassThroughOffTest         Tests run: 1,  Failures: 0, Errors: 0
+PassThroughInvokerTest           Tests run: 5,  Failures: 0, Errors: 0
+MerchantStaffIdentityEndpointTest Tests run: 7, Failures: 0, Errors: 0
+OperatorIdentityEndpointTest     Tests run: 4,  Failures: 0, Errors: 0
+PayBizSourceDelegationTest       Tests run: 7,  Failures: 0, Errors: 0
+ArchitectureTest                 Tests run: 27, Failures: 0, Errors: 0, Skipped: 1
+InternalEndpointTokenTest        Tests run: 1,  Failures: 0, Errors: 0
+CommonPackageIsolationTest       Tests run: 3,  Failures: 0, Errors: 0
+EndpointSnapshotTest             Tests run: 1,  Failures: 0, Errors: 0
+```
+
+生成文档闸门 `node scripts/check-generated-docs.mjs`：新端点与新常量让 4 份产物漂了（网关接口清单 `/internal` 167→168、后端分层清单 Controller 455→456、静态常量清单与 glossary 多 `PayBizPassThrough.PREFIX`），已重新生成并一起提交。没有跑全量后端测试与 pre-push 全套。
+
+## §11 剩余阶段实施方案（2026-11-22，用户：「基于文档先出方案，然后给出计划」；已确认，见 §14）
+
+阶段 1 已落地（§10）。本节把阶段 0、2–5 细化到可以开工的程度；计划见 §12。依据：§3–§5、附录盘点、near-pay `develop/s1` 现状（`backend/pay/pay-svc/.../identity/`）。
+
+### 11.1 目标状态（全部做完后）
+
+| 请求 | 网关 | 判权 | 权限数据 |
+|---|---|---|---|
+| 运营端支付中心 `/ops/pay-ops/v2/**` | 认证 + 透传（已上线） | near-pay `@payPerm.can` | ai-shop 角色的 `pay:` 码；SY04 数据范围按 ai-shop 角色授 |
+| B 端 `/biz/pay/v2/**`（进件、商户、渠道、收款、二维码、应用授权、成员、终端） | 认证 + 透传 | near-pay `@payPerm.canBiz(商户, 动作)` | `merchant-staff` 给的 `memberships`；near-pay 成员表退出判权 |
+| ai-shop 里的支付页面接口（结算、积分、储值、权益、对账……C2） | 照旧 | ai-shop `@PreAuthorize` | ai-shop |
+| ai-shop 里的薄转调（C1，确认后） | 改走透传或保持 | 迁走的由 near-pay 判 | ai-shop |
+
+### 11.2 阶段 0 · C1 逐个确认
+
+**做法**：每个 C1 controller 的每个接口填三栏 —— ai-shop 调的 `payclient` 方法 → near-pay 内部地址；near-pay 有没有同功能的公开接口（`/biz/pay/v2`、`/pay-ops/v2`、`/pay-ops/v1`）；ai-shop 返回前有没有拼自己的数据。结论只有三种：**迁**（有公开接口、无拼数据）、**等 near-pay 补**、**改判 C2**（有拼数据，留在 ai-shop）。
+
+**先改脚本再人工看**：`scripts/inventory-pay-endpoints.py` 加一栏「调用的 near-pay 内部地址」（按 `payclient` 接口上的 `@GetMapping/@PostMapping` 解析），省掉人工一条条追。
+
+**已知的初步对应**（用来排第一批，不是结论）：
+
+| C1 | 接口数 | near-pay 现有公开接口 | 初看 |
+|---|---:|---|---|
+| B 端 `BizPaymentController`（收款、二维码、订单、退款、对账单、应用授权、门店收款方式） | 23 | `/biz/pay/v2` 下有 `BizCollectionController`、`BizQrCodeV2Controller`、`BizAppGrantController`、`BizTerminalController`；退款、对账单只有旧版 `/biz/pay/{refund,statement}` | 一部分可迁；退款、对账单要 near-pay 先在 v2 补 |
+| 运营 `OpsPaymentController`（订单、退款、二维码、通知、异常、应用凭据） | 21 | `/pay-ops/v1/{orders,refunds,qr-codes,notifies,exceptions}`，同受 `AiShopOpsSessionFilter` | 可迁：运营透传多挂一个 `/ops/pay-ops/v1` 前缀 |
+| 运营积分、应付、提现、费率、渠道、结算统计；B 端储值报表/结算；权益 | 约 110 | 没有公开接口 | 第一期不迁（near-pay 补 100 多个公开接口不划算），维持 ai-shop 判 |
+
+**交付**：附录每行补「对应公开接口」「结论」两栏；结论为「迁」的形成批次清单。
+
+### 11.3 阶段 2 · near-pay B 端改判权来源
+
+near-pay 仓库，与 RobinWu 对齐排期。四件事：
+
+1. **认证**：`AiShopBizIdentityClient` 由 `/biz/auth/session` 改调 `/internal/auth/v1/merchant-staff`，带 `X-Internal-Token`、`X-Auth-Namespace: mch:pay:`；按令牌 SHA-256 缓存 30 秒；ai-shop 不可用回 503 `IDENTITY_UNAVAILABLE`（不放行）。
+2. **判权**：新增 `@payPerm.canBiz(merchantNo, action)`。商户号取 `X-Merchant-No`，在 `memberships` 里找该商户：`OWNER` 放行；`STAFF` 把动作换成 ai-shop 码再查（门店级动作查 `stores` 里那家店）。**动作 → 码的对照写在 near-pay 代码里**，与 ai-shop `payclient` 的 `DownstreamActions`（码 → 动作）是同一张表的反向，加一条对账测试让两边一致。
+3. **灰度**：`near-pay.biz.permission-source=host+membership`（任一来源放行）先上，日志记「只靠成员表放行」的请求；一周没有再切 `host`。
+4. **`/biz/pay/v2/memberships`**（App 的商户切换器）：改成由 `memberships` 生成，形状不变。
+
+**要确认（已被 §13.3 细化：14 个动作全部能对到现有的码，只有退款复核、设备激活收紧为只给店主）**：B 端支付码现在只有 9 个（`mch:pay:collect`、`order:view`、`refund`、`qr`、`statement`、`app-grant`、`store-method`、`offline:record`、`offline:manage`），near-pay B 端动作有 14 个（`payment.create`、`refund.apply`、`onboarding.apply`、`member.manage`……）。对照表里没有对应码的动作（如 `onboarding.apply`、`member.manage`），店员一律不给 —— 只有店主能做。这与现在「店员靠 near-pay 成员表授权」相比是**收紧**，要用户点头（§11.6 第 2 条）。
+
+### 11.4 阶段 3 · 打开 B 端透传、下线转发入口
+
+前置：阶段 2 已上线并处在 `host+membership`。
+
+1. 两边配同一把 `shop.gateway.biz.identity.caller-token`（ai-shop）/ near-pay 对应配置，走现有密钥管理。
+2. v2 打开 `shop.gateway.biz.pay-proxy.enabled=true`，重启（约 40 秒）。
+3. 验证：白名单店主走一遍 App 的进件、补件、渠道审核、收款二维码；白名单店员按角色可见/不可见；非本人商户 403；`X-Internal-*` 伪造无效。
+4. 观察一个发布周期没有回退，再删 `BizPayOnboardingController`、`BizPayMerchantController`、`BizPayMerchantChannelController`、`BizChannelAccountClaimController`、`PayChannelAccountClaimForwarder` 与 `PayBizOnboardingRelay`/`PayBizSourceDelegation` 的委托改写；端点快照、网关接口清单同步更新。
+5. 回退：关开关重启，转发入口还在包里（第 4 步之前）。
+
+### 11.5 阶段 4、5
+
+- **阶段 4**：near-pay 切 `host`；成员表只读保留一个发布周期再删；运营端 SY03 映射同期退役。要用户确认（§7 第 3 条）。
+- **阶段 5 · C1 迁移**，按阶段 0 的结论分批，每批一个 PR：
+  - 批 1 运营 `OpsPaymentController` → `/ops/pay-ops/v1/**` 透传：`PrefixPassThrough` 多一个运营端实例；ops-web 改调新前缀；码在 near-pay `@payPerm` 与 `Perms` 两边登记一致；ai-shop 适配 controller 删掉。
+  - 批 2 B 端 `BizPaymentController` 里 near-pay v2 已有的那部分 → `/biz/pay/v2/**`；b-app 改调；响应形状不同的地方在 b-app 适配，不在网关改包体。
+  - 其余等 near-pay 补公开接口后再排。
+
+### 11.6 要用户拍板的
+
+| # | 问题 | 推荐 |
+|---|---|---|
+| 1 | 阶段 0 的范围 | 只确认 C1（170 个接口），C2 不复核 |
+| 2 | 店员在 near-pay 的动作只按 ai-shop 码给，没有对应码的动作只给店主 | 同意（收紧，但与「权限只在 ai-shop 授」一致）；需要店员做的动作，在 ai-shop 补 `mch:pay:` 码 |
+| 3 | C1 第一期只迁 near-pay 已有公开接口的两批，其余维持 ai-shop 判 | 同意 |
+| 4 | 动作 ↔ 码对照放 near-pay 代码，两边加对账测试 | 同意 |
+| 5 | 阶段 3 第 4 步（删转发入口）在打开后观察一个发布周期 | 同意 |
+
+### 11.7 风险
+
+- 店员权限收紧（§11.3）：上线后可能有店员发现做不了原来能做的事。缓解：阶段 2 灰度期日志里「只靠成员表放行」的请求就是这批人，按日志补码再切 `host`。
+- C1 初判错：阶段 0 逐条确认后才迁；每批 PR 附调用对照。
+- 两边对照表漂移：对账测试放在 near-pay（读 ai-shop 发布的码表快照），漂了 near-pay 构建红。
+
+## §12 实施计划（已确认，见 §14）
+
+| # | 任务 | 仓库 / 谁 | 产出 | 验证 | 依赖 |
+|---|---|---|---|---|---|
+| 1 | 盘点脚本加「near-pay 内部地址」栏，重新生成附录 | ai-shop / 本会话 | `inventory-pay-endpoints.py`、附录 | 生成文档闸门 | — |
+| 2 | C1 逐条确认（170 个接口）：对应公开接口、是否拼数据、结论 | ai-shop / 本会话，near-pay 只读 | 附录补两栏；批次清单 | 抽查：每个「迁」至少对一条真实调用 | 1 |
+| 3 | 码 → 动作对照导出成快照（JSON），供 near-pay 对账 | ai-shop | `DownstreamActions` 的支付表快照 + 测试 | 快照测试 | — |
+| 4 | near-pay：`merchant-staff` 客户端 + 30 秒缓存 + `canBiz` + `permission-source` 开关 + 日志 + memberships 改生成 | near-pay / RobinWu 排期 | near-pay PR | near-pay 单测（缓存、店主无成员行可操作、店员按码、`host` 下只靠成员表被拒）；对账测试 | 3、§11.6-2/4 |
+| 5 | 配凭据、部署 near-pay（`host+membership`） | 运维 + 用户 | — | `/internal/auth/v1/merchant-staff` 访问日志；near-pay 无 503 | 4、本分支合并上线 |
+| 6 | v2 打开 B 端透传，白名单验证 | ai-shop / 本会话 + 用户 | 验证记录写入 TDD | §11.4 第 3 条清单 | 5 |
+| 7 | 观察一周 →  near-pay 切 `host` | near-pay + 用户 | 配置变更 | 日志无「只靠成员表放行」 | 6、§7-3 |
+| 8 | 删 B 端转发入口与委托改写 | ai-shop | PR | 端点快照、网关接口清单、相关测试 | 6 之后一个发布周期 |
+| 9 | C1 批 1：运营 `/ops/pay-ops/v1` 透传 + ops-web 改调 + 删适配 | ai-shop（+ near-pay 码登记） | PR | 透传测试、ops-web vitest、线上白名单 | 2 |
+| 10 | C1 批 2：B 端收款/二维码等改走 `/biz/pay/v2` + b-app 改调 | ai-shop | PR | `vue-tsc`、b-app 走查 | 2、6 |
+| 11 | 剩余 C1 等 near-pay 补公开接口后再排 | — | — | — | — |
+
+可以马上做、不等别人的：1、2、3。4 起要 near-pay 排期；5、6、7 要部署窗口和用户。
+
+## §13 B 端 App 的菜单、权限、角色在透传下的梳理（2026-11-22，用户：「同时要考虑在 B 端 App 上的菜单，权限，角色定义判断」；已确认，见 §14）
+
+依据（只读核对）：ai-shop `BizPerms`、`BizContext`、`b-app/src/pages/me`、`b-app/src/api`；App `ai-shop-bapp` `origin/main` `9cc7f65`（`apps/merchant_app/lib`）；near-pay `MerchantRole`、`/biz/pay/v2` 各 controller。
+
+### 13.1 现状：B 端有两套角色、三处判断
+
+**两套角色**
+
+| | ai-shop（`mch_role` + `mch_store_role`） | near-pay（`pay_merchant_membership`） |
+|---|---|---|
+| 角色 | 预置 OWNER、MANAGER、CLERK、PICKER、COURIER、CS，外加商家自建的角色 | CASHIER、STORE_MANAGER、MERCHANT_ADMIN |
+| 粒度 | 人 × 门店（同一人在两家店可以是两个角色） | 人 × 支付商户，门店范围 `ALL` 或指定门店 |
+| 码 / 动作 | 码：`biz:*`、`mch:pay:*`（9 个）、`pay:sv/ent/cash`（15 个，ai-shop 进程内业务） | 动作 14 个：`payment.*`、`refund.*`、`qrcode.manage`、`onboarding.*`、`store.bind`、`member.manage`、`app.grant*`…… |
+| 谁来配 | 店主在 App / b-app「员工、角色」里配；可勾选的码由 `/biz/roles` 下发（`BizPerms.assignableCodes`） | near-pay 成员接口；App 里**没有**管理入口（App 不调 `/biz/pay/v2/members`） |
+| 店主 | OWNER = `*` | 运营代建的商户里店主没有成员行，靠 ai-shop 转发时的「来源委托」当商户管理员（11-18 起） |
+
+**三处判断**
+
+| 端 / 页面 | 菜单显隐看什么 | 接口判权在哪 |
+|---|---|---|
+| b-app（本仓库）「我的」：收入、结算、收款设置（`biz:finance`），代客收款（`mch:pay:collect`），收款流水（`mch:pay:statement`），收款码（`mch:pay:qr`），第三方收款授权（`mch:pay:app-grant`），员工（`biz:store:admin`） | `/biz/context` 下发的当前门店 `perms` | ai-shop：`/biz/payment/**`、`/biz/merchant/payment/**`（形态 C） |
+| App 资金、收款、收银、App 外收款、服务收款 | 同上（`access_catalog.dart` 由 `docs/api/access-matrix.json` 生成，与 `BizPerms` 同源） | ai-shop（形态 C） |
+| App 支付进件、渠道审核、主体开通渠道、门店挂收款号、渠道账户认领 | near-pay `/biz/pay/v2/memberships` 的 `actions`：只用到 3 个 —— `onboarding.apply`、`onboarding.query`（进件，`PayMembership.canApply/canQuery`、门店准入 `http_admission_gateway`），`store.bind`（门店挂收款号、认领） | near-pay（形态 B：ai-shop 转发 + near-pay 按成员表/来源委托判） |
+
+问题：同一个店员，「能不能收款」由 ai-shop 角色决定，「能不能看进件」由 near-pay 成员表决定，两处配、两处判；店员的 near-pay 成员行没有界面可配，事实上只有店主能进件。
+
+### 13.2 目标：一套角色、一张对照表
+
+- **角色只剩 ai-shop 一套。** 店主在「员工、角色」里给人配角色，支付相关的能力随码走；near-pay 的三个成员角色退出判权（§11.5 阶段 4 后删）。
+- **菜单仍看 ai-shop 的码**（b-app、App 资金类页面不变）；**App 进件类页面仍看 `/memberships` 的 `actions`**（App 不用改），但 `actions` 改由 near-pay 按下表从 ai-shop 的码换出来。
+- **判权跟着接口走**：`/biz/pay/v2/**` 由 near-pay 判（`canBiz`，查同一张表）；`/biz/payment/**` 等形态 C 仍由 ai-shop 判。两边用的是同一组码，菜单与判权不会再分叉。
+
+### 13.3 near-pay 动作 ↔ ai-shop 码（推荐对照，全部用现有的码，不新增）
+
+| near-pay 动作 | 用在哪（near-pay `/biz/pay/v2`） | ai-shop 码 | 预置角色默认谁有 | 与现在 near-pay 角色比 |
+|---|---|---|---|---|
+| `payment.create`、`payment.close` | `BizCollectionController` | `mch:pay:collect` | 店主、店长 | 原 CASHIER 有 → 现在要店主给他勾「代客收款」 |
+| `payment.query` | 收款查询 | `mch:pay:order:view` | 店主、店长、店员 | 一致 |
+| `refund.apply` | 退款（主要在终端侧 `TerminalOperatorSessions`、`PosTerminalService`） | `mch:pay:refund` | 店主 | 原 CASHIER 有 → 收紧，店主可勾 |
+| `refund.review` | 退款复核 | **只给店主**（`biz:store:admin`，不可勾选） | 店主 | 原 STORE_MANAGER 有 → 收紧；保住「申请与复核不是同一人」（ai-shop 只有一个退款码，分不开） |
+| `qrcode.manage` | `BizQrCodeV2Controller` | `mch:pay:qr` | 店主 | 原 STORE_MANAGER 有 → 店主可勾 |
+| `store.ledger.read`、`statement.read` | 门店流水、对账单 | `mch:pay:statement` | 店主 | 一致（可勾） |
+| `app.grant.query`、`app.grant` | `BizAppGrantController` | `mch:pay:app-grant` | 店主 | 一致（可勾） |
+| `device.activate` | 终端管理（`TerminalMerchantManagement`、`TerminalManagerAuthorizations`，SoftPOS / POS 激活） | **只给店主**（`biz:store:admin`） | 店主 | 原 STORE_MANAGER 有 → 收紧；真要店员激活设备时再加 `mch:pay:device`（契约变更，另立） |
+| `onboarding.query`、`onboarding.apply` | 进件、补件、渠道申请（`BizOnboarding*`、`BizMerchantChannelController`） | `biz:finance`（「结算账单与收款进件」，ai-shop 认领入口已经用它） | 店主 | 原来只有 MERCHANT_ADMIN → **放宽**：被勾了 `biz:finance` 的店员也能进件 |
+| `store.bind` | 门店挂收款号、渠道账户认领 | `biz:store:admin`（「建店、停用、挂收款号、管员工」，不可勾选） | 店主 | 一致（实际只有店主） |
+| `member.manage` | `BizMemberController` | `biz:store:admin` | 店主 | 一致；near-pay 成员接口随成员表一起退役 |
+| `merchant.link`（建商户前的引导动作） | `BizMerchantCreationController` | 店主（`OWNER`） | 店主 | 一致 |
+
+**终端侧不在本方案内**：`payment.*`、`refund.*`、`device.activate` 也被 near-pay 终端面（`/terminal/pay/v1|v2`，POS 与 SoftPOS 的操作员会话）使用，那条链不经 ai-shop 网关，操作员身份是终端自己的；本表只约束经 `/biz/pay/v2` 进来的商户端请求。终端操作员是否也改由 ai-shop 角色授权，另议。
+
+对照表写在 near-pay 代码里（§11.3、§11.6-4），ai-shop 侧以 `payclient` 的 `DownstreamActions`（码 → 动作）为准，两边加对账测试。
+
+### 13.4 `memberships` 与门店范围
+
+near-pay 的 `/biz/pay/v2/memberships`（App 的商户切换器与进件准入）改由 `merchant-staff` 生成，形状不变：
+
+| 字段 | 店主 | 店员 |
+|---|---|---|
+| `merchantNo` | 名下主体关联的支付商户 | 他有码的门店所属主体关联的支付商户 |
+| `role` | `MERCHANT_ADMIN`（沿用 App 已认的值） | `STAFF`（新值；已检索 App 的进件、准入、主体三个目录，没有读 `role` 的地方，只读 `actions`、`storeScope`、`storeNos`） |
+| `actions` | 全部 | 各店的码按 13.3 换成动作后取并集 —— **只用于显示**；真正下单、退款时 near-pay 按请求的门店再判 |
+| `storeScope` / `storeNos` | `ALL` / `[]` | `STORES` / 有至少一个支付码的门店 |
+
+**要核对的一点**：`storeNos` 用的是 ai-shop 门店号（App 拿当前 ai-shop 门店去比）。near-pay 判门店级动作时要把它自己的门店换成来源门店号（门店同步时已存来源引用），阶段 2 实现时确认。
+
+### 13.5 `merchant-staff` 需要的小改动
+
+13.3 用到的码不止 `mch:pay:` 一个前缀，还有 `biz:finance`、`biz:store:admin`。`X-Auth-Namespace` 改成**可传多个前缀、逗号分隔**（`mch:pay:,biz:finance,biz:store:admin`），运营端接口共用同一个筛选函数，行为对单个前缀不变。属阶段 2 之前在本仓库补的改动（§12 新增第 3b 步）。
+
+### 13.6 各端要改什么
+
+| 端 | 阶段 2/3 要改 | 不用改 |
+|---|---|---|
+| ai-shop 后端 | `merchant-staff` 多前缀（13.5）；阶段 3 删转发入口时，`PayBizSourceDelegation.memberships`（ai-shop 代答的切换器）一起删 | `BizPerms`、预置角色、`/biz/roles`、`/biz/context` 都不动 |
+| near-pay | 13.3 对照表 + `canBiz`；`memberships` 改生成；成员角色退出判权 | — |
+| b-app（本仓库） | 无（全走 ai-shop 码与形态 C）；C1 批 2 时只换接口地址 | 菜单、角色页 |
+| App（`ai-shop-bapp`） | 无代码改动；走查一遍店员视角 | 进件页仍按 `actions` 显隐 |
+| 运营端 | 无 | — |
+
+如果以后选择新增 `mch:pay:device` 或拆分退款复核码，那是契约变更：`BizPerms` 加码与说明、预置角色种子迁移、`BizRoleSeedTest`、`docs/api/access-matrix.json` 与 App 的 `access_catalog.dart` 重新生成，另立任务。
+
+### 13.7 上线前要清点的人
+
+near-pay 正式库里非 MERCHANT_ADMIN 的成员行（CASHIER、STORE_MANAGER）就是 13.3 里「收紧」会影响到的人。阶段 2 灰度期间的「只靠成员表放行」日志会把他们逐个列出来；按日志在 ai-shop 给他们的角色补码，再切 `host`。
+
+### 13.8 要用户拍板的（并入 §11.6）
+
+| # | 问题 | 推荐 |
+|---|---|---|
+| 6 | 13.3 的对照表 | 同意；`refund.review`、`device.activate` 先只给店主 |
+| 7 | 被勾了 `biz:finance` 的店员可以进件（放宽） | 同意：`biz:finance` 的说明本来就是「结算账单与收款进件」，ai-shop 的认领入口也按它判 |
+| 8 | 店员的 `memberships.role` 回 `STAFF` | 同意（App 不读该字段） |
+
+### 13.9 计划增补（并入 §12）
+
+| # | 任务 | 仓库 | 验证 | 依赖 |
+|---|---|---|---|---|
+| 3b | `merchant-staff` 支持多前缀 | ai-shop | `MerchantStaffIdentityEndpointTest`、`OperatorIdentityEndpointTest` 加用例 | — |
+| 3c | 13.3 对照表落到 `payclient` 的支付 `DownstreamActions`，导出快照 | ai-shop | 快照测试 | 13.8-6 |
+| 4+ | near-pay 实现 13.3、13.4（并入原第 4 步） | near-pay | 每个动作店主/店长/店员/无码四种身份各一条 | 3b、3c |
+| 6+ | 白名单验证加：店员有/无 `biz:finance` 看进件入口；店员有/无 `mch:pay:qr` 管收款码；店员不能复核退款、不能激活设备 | ai-shop + 用户 | App 模拟器走查 | 6 |
+| 6++ | App 店员视角走查（已检索：不读 `memberships.role`） | ai-shop-bapp | 模拟器走查 | 6 |
+
+## §14 确认记录
+
+| 日期 | 事件 |
+|---|---|
+| 2026-11-22 | 用户：「按推荐项定」。§11.6 第 1–5 条、§13.8 第 6–8 条全部按推荐项确认：阶段 0 只确认 C1；店员在 near-pay 的动作只按 ai-shop 码给；C1 第一期只迁两批；对照放 near-pay 代码、两边对账测试；打开透传后观察一个发布周期再删转发入口；§13.3 对照表（退款复核、设备激活只给店主）；`biz:finance` 店员可进件；店员 `memberships.role` 回 `STAFF`。§11、§12、§13 由「待确认」转为「已确认」 |
+| 2026-11-22 | §12 第 3b、3c 步完成（本地分支，未推送），见 §15 |
+
+## §15 第 3b、3c 步实现记录（2026-11-22）
+
+| 步 | 改动 | 测试（真实输出） |
+|---|---|---|
+| 3b `merchant-staff` 多前缀 | `OperatorIdentityEndpoint.filter` 接受逗号分隔的多个前缀，任一命中即保留，空白忽略；单个前缀行为不变（运营端共用） | `OperatorIdentityEndpointTest` 5/5（新增 `multipleNamespaces`）；`MerchantStaffIdentityEndpointTest` 7/7（改用 `mch:pay:,biz:finance,biz:store:admin`，店员多回 `biz:finance`） |
+| 3c 对照表 | 新增 `payclient.PayMemberActions`（§13.3 的表：8 个码 → 16 个动作），导出 `docs/api/pay-member-actions.json` 供 near-pay 对账 | `PayMemberActionsTest` 4/4：near-pay 每个动作恰好一个码能给、店主得全部；只给店主的 5 个动作挂在不可勾选的 `biz:store:admin` 上，其余码都可勾选；预置角色换出的动作（店长 `payment.create/close/query`、店员 `payment.query`）；导出物与代码一致 |
+
+偏差：§12 第 3 步原写「码 → 动作对照导出成快照，用 `DownstreamActions` 的支付表」。核对后那张表（`PayDownstreamActions`）是「码 → 支付内部入口的动作」（`CREATE_ONLINE` 一套），与 near-pay 公开 B 端接口的动作（`payment.create` 一套）不是一个词表，所以另建 `PayMemberActions`；两张表各管一条调用路径，互不替代。
+
+同次跑过：`PayDownstreamActionsTest` 3/3、`ArchitectureTest` 27（跳过 1）。生成文档：新常量让静态常量清单与 glossary 漂，已重新生成；闸门 `✓ 27 个生成器的产物都是最新的`。
+
+**交给 near-pay（阶段 2）的输入**：调 `merchant-staff` 时传 `X-Auth-Namespace: mch:pay:,biz:finance,biz:store:admin`；动作换算按 `docs/api/pay-member-actions.json`（`owner` 为店主全部动作，`codes` 为码 → 动作），对账测试读这份文件。
+| 2026-11-22 | §12 第 1、2 步完成（阶段 0 盘点），见 §16 |
+
+## §16 阶段 0 盘点结论（2026-11-22，用户：「接着做盘点」）
+
+产物：[附录](TDD-支付三端经网关透传与权限归属-附录-入口盘点.md) 第 1 部分（机器盘点，新增「standalone 下」与「near-pay 内部地址」两栏）、第 2 部分（逐个结论）；脚本 `scripts/inventory-pay-endpoints.py` 同时产出两部分，结论人工维护在脚本的 `CONCLUSIONS` 里，代码变了重跑，新出现的 C1 标「未定」。
+
+### 16.1 怎么判的
+
+1. **standalone 下到底走哪条路**：每个支付客户端看 `payclient/impl` 里有没有 `Remote<服务>`。有 = 远程（经 near-pay 内部接口）；没有 = 只有同进程实现，业务在 ai-shop 进程里跑。注意 `OpsPayChannelAppServiceImpl` 的 `embedded` 条件只在注释里，实际两种形态都装配。
+2. **远程的调了什么**：从 `Remote*` 调用的方法（含 `api::method` 方法引用）对到 `PayInternalApi` / `PayBizInternalApi` / `PayOpsInternalApi` 上的 `@XxxExchange`，再解析地址常量。运营 `OpsPaymentController` 21 个接口对上 21 条内部地址，核对无漏。
+3. **near-pay 有没有公开的同功能接口**：对 near-pay `develop/s1` 的 `/biz/pay/v2`（`BizCollectionController`、`BizQrCodeV2Controller`、`BizAppGrantController`、`BizTerminalController` 等 13 个）与 `/pay-ops/v1`（订单、退款、异常、通知、收款码 5 个 controller，判权用同一组 `Perms.PAY_*`）逐条比。
+
+### 16.2 结论（C1 共 170 个接口）
+
+| 结论 | 接口数 | 是什么 |
+|---|---:|---|
+| **迁** | 17 | 运营 `OpsPaymentController` 10 个（订单 2、退款 2、异常 3、通知 2、停用收款码 1 → near-pay `/pay-ops/v1`）；B 端 `BizPaymentController` 7 个（代客收款 1、收款码 3、第三方授权 3 → near-pay `/biz/pay/v2`） |
+| **等补** | 75 | near-pay 只有内部接口：B 端退款、对账单、收款单、付款链接、收款状态、门店付款方式（16）；运营应用、请求日志、收款码列表、平台密钥（11）；权益（21）、储值治理与结算（24）、费率规则（3） |
+| **改判 C2** | 78 | standalone 下在 ai-shop 进程里执行：积分（运营 46 + C 端 2）、结算应付/统计/提现/银行流水（13）、通道主数据（3）、开通申请与进件查询（4）、订单积分（7）、应收汇总（1）、门店功能开关（2） |
+
+**和 §11.2 初步判断的差别**：运营 `OpsPaymentController` 不是整类可迁，只有 10 个；应用、请求日志、平台密钥在 near-pay `/pay-ops/v2` 支付中心里也没有同名资源（支付中心有 `apps`、`credentials`、`request-logs`，但口径是支付中心自己的，与 ai-shop 这几页对不上，按「等补」处理，迁之前要逐页比字段）。另外运营端积分、结算这批 C1 初判其实全在 ai-shop 进程里，改判 C2 后「第一期不动」的范围不变，但理由从「near-pay 补不划算」变成「接口本来就是 ai-shop 提供的」。
+
+### 16.3 对计划的影响（§12 第 9、10 步细化）
+
+| 批 | 后端 | 前端要改的地方 | 前置 |
+|---|---|---|---|
+| 批 1 运营 | 运营端透传多挂一个前缀 `/ops/pay-ops/v1/**` → near-pay `/pay-ops/v1/**`（`PrefixPassThrough` 新实例，开关默认关）；`OpsPaymentController` 删这 10 个 | ops-web `app/pay-ops/{orders,refunds,exceptions,notifies,qr-codes}` 五页、`lib/api/https/payops.ts`；支付中心「退款」页签不再借道 `/ops/payments/refunds`（`app/payment-center/_api/api.ts` 第 459 行注释那条） | near-pay `/pay-ops/v1` 由 `AiShopOpsSessionFilter` 认 ai-shop 令牌（已是） |
+| 批 2 B 端 | `BizPaymentController` 删这 7 个（等阶段 3 打开 B 端透传后） | b-app `pay-collect`、`pay-qrcodes`、`pay-grants` 三页；App（`ai-shop-bapp`）收款与收款码（`/biz/payment/collection`、`/biz/payment/qr-code`，App 不调第三方授权）。形状差异：收款码停用由 PUT `/disabled` 变 POST `/disable`；授权按 `appNo` 而不是 `id` | 阶段 3；near-pay 判权按 §13.3（`payment.create`、`qrcode.manage`、`app.grant*`） |
+| 等补 | 无 | 无 | 给 near-pay 的补接口清单：B 端退款、对账单、收款单（含沙箱/正式环境路由）、付款链接、收款状态、门店付款方式；运营应用、请求日志、收款码列表、平台密钥；权益、储值、费率规则。排期由 near-pay 定 |
+
+验证：`python3 scripts/inventory-pay-endpoints.py .` 输出与附录一致；生成文档闸门通过。
+| 2026-11-22 | 推到 `main`（`1cc4fef64..087689aad`，pre-push 全过）并发布到 v2，见 §17 |
+
+## §17 发布到 v2（2026-11-22 16:06–16:08 CST，用户：「提交到 main 并部署测试」）
+
+只换后端包，开关全部保持默认（B 端透传关、`merchant-staff` 凭据未配），线上行为预期不变。没有迁移、没有改环境文件、没有动 near-pay 与运营端页面。
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| ai-shop v2 | .80 `releases/shop-app-main-087689aad.jar`（sha256 前缀 `82c24ef20b64787d`，148 043 634 字节），`run.sh` 标签 `main-087689aad`；依赖清单与上一版 `shop-app-main-1cc4fef64.jar` 逐条相同（202 个） | `cp releases/run-before-main-087689aad.sh run.sh && ./run.sh all restart`（上一版包仍在） |
+
+中断：08:06:08–08:07:40 UTC（约 92 秒，三端同时；`Started ShopApplication in 86.5 seconds`）。
+
+**发布前后探测（.80 内网，不带令牌）**
+
+| 地址 | 发布前 | 发布后 | 说明 |
+|---|---|---|---|
+| `/actuator/health` | 200 | 200 | |
+| `/ops/pay-ops/v2/merchants` | 401 | 401 | 运营透传（改成通用件后）未登录仍被网关拦 |
+| `/biz/pay/v2/memberships` | 401 | 401 | B 端透传关，仍走原转发入口的认证 |
+| `/biz/payment/orders` | 401 | 401 | |
+| `/internal/auth/v1/operator` | 403 | 403 | |
+| `/internal/auth/v1/merchant-staff` | 404 | **403** | 新接口已装配；凭据未配，按设计一律拒 |
+
+启动日志 ERROR 1 条：未配置 `shop.ship.track-key`，既有配置项，与本次无关。
+
+**未验证**：登录后的运营端支付中心经透传（需要运营账号在浏览器里打开一次支付中心，之后在日志里看「透传 … · 200」）。单测 `PayOpsPassThroughTest` 覆盖了改成通用件后的行为。

@@ -56,19 +56,28 @@ public final class PayBizSourceDelegation {
           if (service == null || api == null) throw new PayBizException(HttpStatus.SERVICE_UNAVAILABLE);
           List<String> out = new ArrayList<>();
           for (var e : service.myEntities(user)) {
-            PaySourceLinkApi.Status s;
-            try {
-              s = api.status(props.sourceScope(), e.entityNo());
-            } catch (ServiceCallException unavailable) {
-              throw new PayBizException(HttpStatus.SERVICE_UNAVAILABLE);
-            }
-            if (s != null && MAPPED.contains(s.status()) && s.merchantRef() != null && !s.merchantRef().isBlank()
-                && !out.contains(s.merchantRef())) out.add(s.merchantRef());
+            String merchant = payMerchantOf(api, props.sourceScope(), e.entityNo());
+            if (merchant != null && !out.contains(merchant)) out.add(merchant);
           }
           return out;
         },
         props.caller(),
         props.credential());
+  }
+
+  /**
+   * 主体在 near-pay 关联到的支付商户号：关联已进入审核或已通过（{@code PENDING / NEED_MORE / REJECTED / APPROVED}）才算；
+   * 没关联返回 null。near-pay 连不上抛 503，不当成「没关联」。店主来源委托与统一认证接口 {@code merchant-staff} 共用这一处。
+   */
+  public static String payMerchantOf(PaySourceLinkApi api, String sourceScope, String entityNo) {
+    PaySourceLinkApi.Status s;
+    try {
+      s = api.status(sourceScope, entityNo);
+    } catch (ServiceCallException unavailable) {
+      throw new PayBizException(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+    return s != null && MAPPED.contains(s.status()) && s.merchantRef() != null && !s.merchantRef().isBlank()
+        ? s.merchantRef() : null;
   }
 
   public boolean enabled() {

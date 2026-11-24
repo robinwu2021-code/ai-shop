@@ -15,20 +15,19 @@ import type { Column } from "@/components/ui/data-table";
 import { PayListPage, PayRefCell, useDraftOperator } from "@/app/payment-center/_kit/pay-kit";
 import type { AlertRuleSave } from "@/app/payment-center/_api/api";
 import { ALERT_EVENT_STATUSES, ALERT_METRICS, ALERT_OPERATORS, ALERT_RESOLUTIONS, ALERT_RULE_STATUSES, ALERT_SEVERITIES, type AlertEventRow, type AlertRuleRow } from "@/app/payment-center/_api/types";
-import { useAuth } from "@/lib/auth";
 import { fmtTime } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useCopy, fill } from "@/lib/use-copy";
 import { notify } from "@/lib/notify";
 import { P9_COPY } from "./p9-copy";
-import { DetailLoader, MiniTable, csv, joinCsv, options, reasonField, useRun, useStatusMap, useTabList, usePc, type C } from "./shared";
+import { DetailLoader, MiniTable, csv, joinCsv, options, reasonField, usePayOperatorNo, useRun, useStatusMap, useTabList, usePc, type C } from "./shared";
 
 const OP_SIGN: Record<string, string> = { GT: ">", GTE: "≥", LT: "<", LTE: "≤" };
 const SEV_TONE = { P1: "danger", P2: "warning", P3: "info" } as const;
 
 export function AlertEventsTab({ header }: { header: React.ReactNode }) {
   const c = usePc();
-  const me = useAuth((s) => s.username);
+  const me = usePayOperatorNo();
   const operator = useDraftOperator();
   const run = useRun("alert-events");
   const statusMap = useStatusMap("alertev", ALERT_EVENT_STATUSES, { OPEN: "warning", CLAIMED: "info", RESOLVED: "success" });

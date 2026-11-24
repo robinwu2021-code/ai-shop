@@ -14,6 +14,8 @@ import ai.neargo.shop.common.ApiResponseWrapper;
 import ai.neargo.shop.common.GlobalExceptionHandler;
 import ai.neargo.shop.config.PayBizOnboardingConfiguration;
 import ai.neargo.shop.config.PayPortalSecurityConfig;
+import ai.neargo.shop.gateway.biz.PayBizPassThrough;
+import ai.neargo.shop.svc.ServiceLocator;
 import ai.neargo.shop.gateway.GatewaySecurityConfiguration;
 import ai.neargo.shop.pay.api.guard.core.EntryGuard;
 import ai.neargo.shop.pay.api.guard.core.GuardFilter;
@@ -32,6 +34,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -121,7 +124,8 @@ class PayBizOnboardingHttpTest {
         BizPayOnboardingController.class,
         PayBizExceptionHandler.class,
         ApiResponseWrapper.class,
-        GlobalExceptionHandler.class);
+        GlobalExceptionHandler.class,
+        PayBizPassThrough.PayBizPassThroughConfiguration.class);
     context.refresh();
     mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     jdbc = context.getBean(JdbcTemplate.class);
@@ -357,12 +361,50 @@ class PayBizOnboardingHttpTest {
     }
   }
 
+  /** TDD-支付三端经网关透传与权限归属 §3.1：开了透传，认证照旧走这条链，之后整前缀原样转，不再进转发入口、不加来源委托头。 */
+  @Test
+  void passThroughOnForwardsVerbatimAfterSameAuthentication() throws Exception {
+    context.close();
+    open(
+        Map.of(
+            "shop.pay.biz-onboarding.enabled", "true",
+            "shop.auth.token-store-by-realm.merchant", "db",
+            "shop.gateway.biz.pay-proxy.enabled", "true"));
+    mvc.perform(get("/biz/pay/v2/memberships")).andExpect(status().isUnauthorized());
+    jdbc.update(
+        "UPDATE mch_session SET revoked_at=CURRENT_TIMESTAMP WHERE token_hash=?",
+        TokenHash.of("btk_staff"));
+    mvc.perform(get("/biz/pay/v2/memberships").header("Authorization", "Bearer btk_staff"))
+        .andExpect(status().isUnauthorized());
+    assertEquals(0, calls.get());
+    responseStatus.set(403);
+    responseBody.set("{\"code\":40300,\"reasonCode\":\"NOT_MEMBER\"}".getBytes(StandardCharsets.UTF_8));
+    mvc.perform(
+            post("/biz/pay/v2/onboardings/ONB/submit?x=1")
+                .header("Authorization", "Bearer btk_user")
+                .header("X-Merchant-No", "PM-APP")
+                .header("X-Internal-Caller", "forged")
+                .header("X-Internal-Credential", "forged")
+                .contentType("application/json")
+                .content("{\"a\":1}"))
+        .andExpect(status().isForbidden())
+        .andExpect(content().string("{\"code\":40300,\"reasonCode\":\"NOT_MEMBER\"}"));
+    assertEquals(1, calls.get());
+    assertEquals("POST /biz/pay/v2/onboardings/ONB/submit?x=1", target.get());
+    assertEquals("Bearer btk_user", headers.get().getFirst("Authorization"));
+    assertEquals("PM-APP", headers.get().getFirst("X-Merchant-No"));
+    assertNull(headers.get().getFirst("X-Internal-Caller"));
+    assertNull(headers.get().getFirst("X-Internal-Credential"));
+    assertEquals("{\"a\":1}", new String(body.get(), StandardCharsets.UTF_8));
+  }
+
   @Test
   void switchOffDoesNotCreateRelayAndEnablingWithoutDbFailsAtStartup() {
     context.close();
     open(Map.of());
     assertTrue(context.getBeansOfType(BizOnboardingForwarder.class).isEmpty());
     assertTrue(context.getBeansOfType(BizPaySessionController.class).isEmpty());
+    assertTrue(context.getBeansOfType(PayBizPassThrough.class).isEmpty());
     context.close();
     assertThrows(
         org.springframework.beans.BeansException.class,
@@ -398,6 +440,12 @@ class PayBizOnboardingHttpTest {
     @Bean
     ObjectMapper objectMapper() {
       return new ObjectMapper();
+    }
+
+    /** 透传的下游地址：与转发入口同一个桩（shop.pay.biz-onboarding.base-url） */
+    @Bean
+    ServiceLocator serviceLocator(org.springframework.core.env.Environment env) {
+      return service -> Optional.ofNullable(env.getProperty("shop.pay.biz-onboarding.base-url"));
     }
 
     @Bean

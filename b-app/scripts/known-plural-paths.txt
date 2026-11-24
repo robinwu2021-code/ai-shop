@@ -42,3 +42,14 @@ mTransferShip	/biz/inventory/transfers/:no/ship
 mSvConsumptionCancel	P5 verified Java namespace retained for API compatibility.
 mSvConsumptionOrder	P5 verified Java namespace retained for API compatibility.
 # P6: align published Java resource paths; no alternate aliases.
+# 2026-11-22 销售发票（TDD-发票模块）：/biz/invoices 沿用已上线的 /biz/settle/invoices 同族复数；
+# 接口已交给商户 App（docs/handoff/invoice-print-mock-2026-11-22）按此路径开发，改单数要两端一起改。
+mSiDetail	/biz/invoices/{invoiceNo}
+mSiVoid	/biz/invoices/{invoiceNo}/void
+mSiRevoke	/biz/invoices/{invoiceNo}/revocation
+mSiReissue	/biz/invoices/{invoiceNo}/reissue
+mSiAllowance	/biz/invoices/{invoiceNo}/allowances
+mSiVoidAllowance	/biz/invoices/{invoiceNo}/allowances/{allowanceNo}/void
+mSiPrintFacts	/biz/invoices/{invoiceNo}/print-facts
+mSiProviderCheck	/biz/invoices/{invoiceNo}/provider-checks
+mSiRetransmit	/biz/invoices/{invoiceNo}/retransmissions

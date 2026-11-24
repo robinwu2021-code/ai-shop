@@ -178,6 +178,7 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "pay:settlement:view": "pay:settlement:view",
   "pay:withdrawal:view": "pay:withdrawal:view",
   "pay:withdrawal:review": "pay:withdrawal:review",
+  "pay:fee-plan:approve": "pay:fee-plan:approve",
   "pay:withdrawal:manage": "pay:withdrawal:manage",
   "pay:payout:view": "pay:payout:view",
   "pay:payout:manage": "pay:payout:manage",

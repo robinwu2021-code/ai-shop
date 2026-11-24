@@ -22,6 +22,7 @@ import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 import ai.neargo.shop.trade.policy.CashStepPolicy;
 import ai.neargo.shop.trade.service.OfflineRecordService;
+import ai.neargo.shop.trade.service.StoreOrderSettlementService;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -63,6 +64,16 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
     @Autowired
     public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
         this.ownershipWrites = ownershipWrites;
+    }
+
+    /**
+     * 门店零售单的付清判断（TDD-统一订单与开票资料 AC7）。只对 {@code admission_kind='STORE_SALE'} 的子单生效，
+     * 其他订单号照决策 D3「只记、不改订单」。
+     */
+    private StoreOrderSettlementService storeSettlements;
+    @Autowired
+    public void setStoreSettlements(StoreOrderSettlementService storeSettlements) {
+        this.storeSettlements = storeSettlements;
     }
 
     /** 补记与更正 / 作废的窗口（已拍板 D4、D7）：门店市场时区「今天 − 31 天」00:00 起。 */
@@ -130,7 +141,14 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         }
         OrdOfflineRecord row;
         try {
-            row = writes.execute(tx -> insert(scope, cmd, keyHash, requestHash, receivedAt, now));
+            row = writes.execute(tx -> {
+                OrdOfflineRecord inserted = insert(scope, cmd, keyHash, requestHash, receivedAt, now);
+                if (cmd.orderNo() != null) {
+                    storeSettlements.afterOfflineRecorded(scope.entityNo(), scope.storeNo(), cmd.orderNo(),
+                            cmd.currency());
+                }
+                return inserted;
+            });
         } catch (DuplicateKeyException race) {
             // 同一键并发双写：唯一键兜住，输的那一路读回赢家那条再按摘要判同体 / 异体
             OrdOfflineRecord winner = records.findKey(scope.entityNo(), scope.storeNo(), keyHash);
@@ -217,6 +235,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         }
         OrdOfflineRecord row = writes.execute(tx -> {
             OrdOfflineRecord current = lockForChange(scope, recordNo, cmd.expectedVersion(), now, market);
+            requireMutableOrder(scope, current);
             // 不许借更正换币种；步长按原记录币种判
             if (!current.getCurrency().equals(cmd.currency())) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -242,7 +261,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
             current.setMethod(cmd.method());
             current.setReceivedAt(toAt);
             current.setCorrected(true);
-            return update(current, event);
+            return afterChange(scope, update(current, event));
         });
         return views(List.of(row), market).getFirst();
     }
@@ -253,10 +272,11 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         OrdOfflineRecord row = writes.execute(tx -> {
             OrdOfflineRecord current = lockForChange(scope, recordNo, cmd.expectedVersion(), now, market);
+            requireMutableOrder(scope, current);
             OrdOfflineRecordEvent event = event(recordNo, OrdOfflineRecordEvent.VOID, scope.actorNo(), now);
             event.setReason(cmd.reason());
             current.setStatus(OrdOfflineRecord.VOIDED);
-            return update(current, event);
+            return afterChange(scope, update(current, event));
         });
         return views(List.of(row), market).getFirst();
     }
@@ -301,6 +321,21 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         }
         events.insert(event);
         return current;
+    }
+
+    /** 挂在已付清的门店零售单上的记录不许作废 / 更正（退款是另一条路，P3）；其他订单号不判。 */
+    private void requireMutableOrder(Scope scope, OrdOfflineRecord current) {
+        if (current.getOrderNo() != null) {
+            storeSettlements.requireMutable(scope.entityNo(), scope.storeNo(), current.getOrderNo());
+        }
+    }
+
+    /** 作废 / 更正后，挂的若是门店零售单就重算付清（更正成更大的金额可能就此付清）。 */
+    private OrdOfflineRecord afterChange(Scope scope, OrdOfflineRecord changed) {
+        if (changed.getOrderNo() != null) {
+            storeSettlements.afterOfflineChanged(scope.entityNo(), scope.storeNo(), changed.getOrderNo());
+        }
+        return changed;
     }
 
     /** 本店、未作废、版本对得上、记账未超窗口（已拍板 D7-C，越界是状态不允许，回 10409）。 */
@@ -356,7 +391,10 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         return LocalDate.ofInstant(now, zone).minusDays(WINDOW_DAYS).atStartOfDay(zone).toInstant();
     }
 
-    /** 订单视角的 orderNo 就是子单号；只校验归属本店，不读也不改它的状态（已拍板 D3）。 */
+    /**
+     * 订单视角的 orderNo 就是子单号；这里只校验归属本店。不读也不改它的状态（已拍板 D3）——
+     * 唯一例外是门店零售单，由 {@link StoreOrderSettlementService} 在写入事务里判付清。
+     */
     private void requireOwnOrder(Scope scope, String orderNo) {
         Long hit = DataScopeContext.executeWithoutScope(() -> subOrders.selectCount(
                 Wrappers.<OrdSubOrder>lambdaQuery()

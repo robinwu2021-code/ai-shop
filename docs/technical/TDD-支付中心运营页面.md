@@ -2,7 +2,7 @@
 
 状态：P0–P3a 已提交并已上线 v2（39bea6a65，near-pay P3a 已上线）；P4（商户与进件原生化、支付中心独立成模块）进行中（§2.9–§2.10）；P3b / P3c 待 near-pay 补接口
 档位：1 · 依据：[TDD-支付中心菜单整合](TDD-支付中心菜单整合.md)（菜单、权限码、岗位）+ 用户 2026-11-20 页面要求
-创建：2026-11-20 · 最后更新：2026-11-20
+创建：2026-11-20 · 最后更新：2026-11-22（P12 开放 API，§2.17）
 
 ## 一句话
 
@@ -379,6 +379,25 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 - **测试**：`p11.test.ts` 6 条；ops-web 全量 159 个文件 1437 条通过；lint 无报错。
 - **统计**：本期范围 277 / 277。
 
+### 2.17 P12 开放 API 运营页面（2026-11-22，由 near-pay 开放 API 上线会话发起）
+
+背景：near-pay 开放 API（商户接入、HMAC 默认 + RSA 可选、API 清单、调用模拟）2026-11-22 已发布 UME 正式（.80 `nearpay-prod`，库 V135，对外 `https://tpay.neargo.ai/openapi/v1`）。用户定：运营端统一走网关、用本模块配置，不用 near-pay 自己的 `/oms`。契约照 near-pay `develop/s1` `a1c5da09`：`OpsAppApplicationController`、`OpsAppKeyController`、`OpsPlatformKeyController`、`docs/api/openapi-pay-open.yaml` v1.2。
+
+| AC | 内容 | 落点 |
+|---|---|---|
+| P12-1 | 接入申请（SY11）列表 / 详情 / 提交 / 批准 / 驳回 / 撤回；提交人不得审核、只能撤回；批准后建草稿应用并可跳到「接入应用」 | 新页签 `app-applications`（`app-applications-tab.tsx`）· `api.appApplications` |
+| P12-2 | 接入应用显示签名方案；RSA 应用上传商家公钥（挑战 → 持有证明签名 → 上传，登记为已核验，启用两人走凭证管理）；泄露应急锁定；近 7 天密钥用量；新增应用可选签名方案；RSA 应用只签发 APP_DATA_KEY | `apps-tab.tsx` + `app-keys.tsx` · `api.apps.keyChallenge / uploadPublicKey / emergencyLock / keyUsage` |
+| P12-3 | 开放平台密钥：已公布公钥列表、生成签名 / 加密密钥（草稿）、核验与两人启用（复用凭证管理详情，PLATFORM_OPEN） | 新页签 `platform-keys`（`platform-keys-tab.tsx`）· `api.platformKeys` |
+| P12-4 | API 清单（SY12）+ 调用模拟（SY13）：浏览器内按 P1 签名、P3 加密，出可直接执行的 curl；对外地址 `https://tpay.neargo.ai/openapi/v1`，按 `/openapi/v1/...` 签名；生产无沙箱 → 真实实例只做签名预览，mock 下发给浏览器内 mock 网关并按 P2 验响应 | 新页签 `api-catalog`（`api-catalog-tab.tsx`、`api-simulator.tsx`）· `_api/open-api-{catalog,signer,sim,gateway}.ts` |
+| P12-5 | 菜单与权限：支付中心下三个入口；权限码 `pay:app:*`、`pay:credential:*` 已由 V686 登记，权限由 near-pay 用令牌自判 | `V688__ops_payment_center_open_api_menu.sql`、`platform-menu-aliases.json`、`platform-nav.ts` |
+
+- **契约**：新增 near-pay 端点 11 个，全部封装并在页面使用（`scripts/pay-center-wiring.py` 本期范围 289 / 289）。`/app-applications` 列表 near-pay 只认精确 `applicationNo` / `merchantNo`：搜索框以 `AAP` 开头按申请单号查，否则按商户号查。挑战、上传公钥、平台密钥生成不带自动幂等号（一次性 / 后端不去重）；提交申请、审核、应急锁定带。
+- **对外基址**：`NEXT_PUBLIC_OPEN_API_BASE`（默认 `https://tpay.neargo.ai/openapi/v1`，只收 https）。签名的 PATH = 基址路径 + 接口相对路径。
+- **密钥处理**：AppSecret、EncryptKey、私钥只在抽屉组件内存，不进草稿、查询缓存、curl、运营接口；生产不收 RSA 私钥（商家侧签名）。mock 演示密钥对只在内存。
+- **菜单**：V688 只新增 3 个 MENU 点（sort 554–556）。授权 SUPER_ADMIN；接入申请、API 清单继承「接入应用」点位的岗位，开放平台密钥继承「凭证管理」（敏感，V687 只授超管）。试点账号要能提交 / 审核，须在角色里授 `pay:app:manage` / `pay:app:approve`（另一人审核）。
+- **不做**：运营端发真实开放 API 请求（生产无沙箱）；推送（P4）解密演示。
+- **试点授权种子（V689，2026-11-22 用户：「自动增加，做为种子数据」）**：新建两个非内置角色 `OPEN_API_SUBMIT`（开放API·接入提交：`pay:app:view/manage`、`pay:credential:view/manage`）与 `OPEN_API_REVIEW`（开放API·接入审核：`pay:app:view/approve`、`pay:credential:view/approve`），按 perm_code 取功能点（菜单 + 动作各 9 个）；追加给 `robin@neargo.ai` / `neara@neargo.ai`（`sys_ops_staff.roles` + `sys_role_member` 镜像，原有角色保留）。账号不存在则不生效；可重复执行。在本机一次性 MySQL 9.7 上连跑两次核对：两人各多一个角色、无关账号不变、每个角色 9 个点。
+
 ### 2.8 不做
 
 - 不回迁 shop 现有页面到新骨架；新组件稳定后另议。
@@ -614,3 +633,34 @@ P4 记的「门店设置与批量绑定线上路由不到」指的是 `merchant-
 | 审核待办 / 支付订单 | 0 条 / 151 条，无报错；支付中心菜单 24 项 ✅ |
 
 - **约定**：支付中心改动先合 main，发布一律从 main 打包；其他会话发布前先合最新 main。
+
+### P12 · 开放 API 运营页面（2026-11-22，分支 `feat/pay-center-open-api`，基于 origin/main `1f7967452`）
+
+- **文件**：`_api/{api,types,mock}.ts`（三组端点与 mock 状态机）、`_api/open-api-{catalog,signer,sim,gateway}.ts`（照搬 near-pay `lib/open-api/{catalog,signer,simulator}.ts`，路径改为相对对外基址）、`app-applications-tab.tsx`、`platform-keys-tab.tsx`、`api-catalog-tab.tsx`、`api-simulator.tsx`、`app-keys.tsx`、`apps-tab.tsx`、`credentials-tab.tsx`（导出 `CredentialDetailView` 供平台密钥复用）、`p12-copy.ts`、`p10-copy.ts`（归属类型 PLATFORM_OPEN）、`module.ts`、`page.tsx`；菜单 `V688`、`schema-test.sql`（生成器重放）、`platform-menu-aliases.json`、`platform-nav.ts`、两份菜单文案；3 份生成文档。与 §2.17 一致。
+- **偏差**：SY12 与 SY13 合成一个页签（`api-catalog`，「调用模拟」是行操作抽屉）——支付中心页签统一是「表格 + 行操作」，模拟总是针对某一个接口。
+- **测试**：`p12.test.ts` 14 条（HTTP 映射 3、mock 状态机 5、契约测试向量 P1/P2/P3 与 `/open/pay/v1` ↔ `/openapi/v1` 两种前缀 3、mock 网关 3）；`payment-center-page.test.ts` 自动覆盖 3 个新页签（页头、表格行、「查看」抽屉）。ops-web vitest 161 个文件 1458 条全过；`tsc`、`eslint --quiet` 无报错；`next build`（`NEXT_PUBLIC_USE_MOCK=0`）通过；`check-generated-docs` 27 个生成器最新；`gen-ui-catalog --check` 最新。
+- **未做**：未在浏览器实机走查（本机 dev server 端口为多会话共用）；未部署。
+
+### P12 · 发布到 v2（2026-11-22 18:33–18:40 CST，用户：「直接合并，然后部署」）
+
+PR #28 压缩合入 main（`b58dfa600`），从该提交构建发布。near-pay 与网关配置都没动。
+
+| 部件 | 现在 | 回退 |
+|---|---|---|
+| ai-shop v2 后端 | .80 `releases/shop-app-main-b58dfa600.jar`（sha256 前缀 `ef77643cadc7fbb2`，148 060 579 字节），`run.sh` 标签 `main-b58dfa600`；依赖清单与上一版 `shop-app-main-087689aad.jar` 逐条相同（201 个） | `cp releases/run-before-main-b58dfa600.sh run.sh && ./run.sh all restart`（V688 只插 3 个菜单点，旧包可直接跑） |
+| 正式库 `ai_shop_ume` | Flyway 687 → **688**（`ops payment center open api menu`，0.096 s） | 不需要；如要撤菜单：删 3 个 `OPS_FINANCE__PAYCENTER_{APP_APPLICATIONS,API_CATALOG,PLATFORM_KEYS}` 点及其 `sys_role_point` |
+| 运营端页面 | 166 `/data/www/ai-shop-ops-v2/releases/main-b58dfa600`（tgz sha256 前缀 `f0884173b46ae4e1`），`current` 已切 | `ln -sfn /data/www/ai-shop-ops-v2/releases/main-1cc4fef64 /data/www/ai-shop-ops-v2/current` |
+
+- 构建参数：`NEXT_PUBLIC_USE_MOCK=0 NEXT_PUBLIC_API_BASE=/ops-shop-v2 NEXT_PUBLIC_BASE_PATH=/ops-shop-v2 NEXT_PUBLIC_PAY_OPS_API_BASE=/ops-shop-v2/ops/pay-ops/v2 NEXT_PUBLIC_NEARPAY_ACCESS_URL=/ops-shop-v2/ops/pay-ops/v2/me/access npm run build -- --webpack`（与线上 `main-1cc4fef64` 包里的取值逐项核对）；`NEXT_PUBLIC_OPEN_API_BASE` 取默认 `https://tpay.neargo.ai/openapi/v1`。
+- 中断：10:33:28–10:34:59 UTC（约 91 秒，三端同时；`Started ShopApplication in 87.2 seconds`）。启动日志 ERROR 只有既有的 `shop.ship.track-key` 未配置一条。
+- .80 主机公钥不在本机 known_hosts：经 166 与跳板机两条路径各 `ssh-keyscan` 一次，结果一致后用临时 known_hosts 连接。
+- 探测（不带令牌）：.80 `/actuator/health` 200；`/ops/pay-ops/v2/{apps,app-applications,platform-keys}`、`/biz/payment/orders` 401；公网 `https://tw.neargo.ai/ops-shop-v2/payment-center/` 200，页面 chunk 含新页签。
+- **未验证**：登录后的三个新页签与透传调用（浏览器里没有运营会话，未代输口令）。试点 robin 提交 / neara 审核需各自角色有 `pay:app:manage` / `pay:app:approve`。
+
+### P12 · 试点授权种子 V689 发布到 v2（2026-11-22 17:04–17:06 CST，用户：「停止测试，直接提交，目前核心是支付」）
+
+- PR #30 压缩合入 main（`d585ccea4`）。推送跳过了 pre-push（用户同意）；此前单独跑过：后端全量 9224 条、餐饮 1264 条、ops-web 1458 条，均 0 红。
+- .80 `releases/shop-app-main-d585ccea4.jar`（sha256 前缀 `08bc6a0e2eaea7b4`），依赖清单与上一版相同（201 个），`run.sh` 标签 `main-d585ccea4`。`ai_shop_ume` 688 → **689**（0.150 s）。
+- 中断 13:04:55–13:06:25 UTC（约 90 秒，`Started ShopApplication in 86.2 seconds`）；health 200，运营 / B 端支付接口未登录 401。
+- 回退：`cp releases/run-before-main-d585ccea4.sh run.sh && ./run.sh all restart`（旧包不认 V689，角色数据留在库里无害；要撤授权在「角色与权限」页删两个角色）。
+- **未验证**：两个账号实际拿到角色（无正式库只读通道）；robin / neara 登录后应在支付中心看到接入申请、接入应用、API 清单、凭证管理、开放平台密钥。角色缓存 60 秒，已登录的无需重登。

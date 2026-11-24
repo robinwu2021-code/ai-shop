@@ -127,6 +127,7 @@
             <artifactId>logistics-channel</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 发票域与开票通道（ADR-063）：在下面的 invoice profile 里，默认打包；-Dinvoice.exclude 排除 -->
         <!-- 支付通道适配（2026-09-01 从 shop-channel 拆出）。
              **内嵌形态必须显式依赖它**：shop-app 不直接 import 这些类，
              只通过 spi 接口拿到 —— 所以少了这条依赖**编译照样过**，
@@ -296,10 +297,40 @@
     </properties>
 
     <profiles>
+        <!--
+            发票模块（TDD-发票模块 §17）。默认带上；打包时加 -Dinvoice.exclude（或 -P !invoice）就不打进 jar：
+              mvn -pl shop-app -am package -DskipTests -Dinvoice.exclude
+            排除后：发票接口不存在、db/invoice 迁移不跑、付款后自动开票不认领事件、
+            /biz/context 的 switches.invoice=false（B 端据此隐藏全部 biz:invoice:* 入口）。
+            shop-app 只经 spi.invoice 接口用发票，不得直接 import 发票模块的类（InvoiceOptionalTest 守着）。
+        -->
+        <profile>
+            <id>invoice</id>
+            <activation><property><name>!invoice.exclude</name></property></activation>
+            <dependencies>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId>
+                    <artifactId>invoice-domain</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId>
+                    <artifactId>invoice-channel</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
         <profile>
             <id>food-verify</id>
             <dependencies><dependency><groupId>ai.neargo.shop</groupId><artifactId>food-channel</artifactId>
                 <version>${project.version}</version><scope>test</scope></dependency></dependencies>
+        </profile>
+        <profile>
+            <id>opskit</id>
+            <dependencies>
+                <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-opskit</artifactId>
+                    <version>${project.version}</version></dependency>
+            </dependencies>
         </profile>
         <profile>
             <id>retail-commerce-embedded</id>

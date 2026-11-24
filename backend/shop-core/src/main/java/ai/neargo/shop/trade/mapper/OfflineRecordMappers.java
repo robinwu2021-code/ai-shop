@@ -37,6 +37,15 @@ public final class OfflineRecordMappers {
                 @Param("store") String store,
                 @Param("from") LocalDateTime from,
                 @Param("to") LocalDateTime to);
+
+        /** 挂在某张单上、未作废的同币别现金记录合计（门店零售单付清判断，TDD-统一订单与开票资料 AC7）。 */
+        @Select(
+                "SELECT COALESCE(SUM(amount_minor),0) FROM ord_offline_record WHERE tenant_no='MAIN'"
+                        + " AND entity_no=#{entity} AND store_no=#{store} AND order_no=#{order}"
+                        + " AND currency=#{currency} AND status='RECORDED' AND deleted=0")
+        long sumRecordedOfOrder(
+                @Param("entity") String entity, @Param("store") String store, @Param("order") String orderNo,
+                @Param("currency") String currency);
     }
 
     /** 留痕：只插、按记录号顺序读。 */

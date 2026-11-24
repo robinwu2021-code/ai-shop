@@ -236,6 +236,8 @@ const EXEMPT: Record<string, string> = {
   sys_op_log: "运营操作审计，跨主体查是它的用途",
   mch_staff_log: "商家员工授权审计，同上",
   ord_status_log: "订单状态流水，随订单一起被过滤",
+  ord_invoice_data_fill: "门店零售单补开票资料的稽核流水，只按已授权门店的订单号读写（StoreOrderServiceImpl 显式带主体与门店），不提供独立列表",
+  ord_store_collection: "门店零售单挂上的收款码 / 付款链接收款，只按子单号读写（StoreOrderSettlementServiceImpl 先按主体与门店锁子单），不提供独立列表",
   // 关联表：本身不被直接查，总是从主表 join 进来
   mch_entity_community: "主体×社区关联，从主表进入",
   // 方案 v4（2026-08-22）：channel 的两张子表。总是随 mch_fulfillment_channel

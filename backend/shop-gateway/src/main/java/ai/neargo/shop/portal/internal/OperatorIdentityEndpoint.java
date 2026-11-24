@@ -8,6 +8,7 @@ import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.platform.dto.OpsVOs.StaffVO;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -113,15 +114,21 @@ public class OperatorIdentityEndpoint {
                 live.scope() != null ? live.scope() : sessionUser.dataScope());
     }
 
-    /** 只回该前缀的码；超管的 {@code *} 原样保留。不带前缀头时回全部 */
+    /**
+     * 只回这些前缀的码；超管 / 店主的 {@code *} 原样保留。前缀可以逗号分隔传多个，任一命中即保留
+     * （B 端支付要 {@code mch:pay:,biz:finance,biz:store:admin}，TDD-支付三端经网关透传与权限归属 §13.5）。
+     * 不带前缀头（或只有空白）时回全部。
+     */
     public static List<String> filter(List<String> perms, String namespace) {
         if (perms == null) {
             return List.of();
         }
-        if (namespace == null || namespace.isBlank()) {
+        List<String> prefixes = namespace == null ? List.of()
+                : Arrays.stream(namespace.split(",")).map(String::trim).filter(p -> !p.isEmpty()).toList();
+        if (prefixes.isEmpty()) {
             return List.copyOf(perms);
         }
-        return perms.stream().filter(p -> "*".equals(p) || p.startsWith(namespace)).toList();
+        return perms.stream().filter(p -> "*".equals(p) || prefixes.stream().anyMatch(p::startsWith)).toList();
     }
 
     private boolean callerAllowed(String given) {

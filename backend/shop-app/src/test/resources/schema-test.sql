@@ -1,4 +1,4 @@
--- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql、db/secret/V*.sql 得到。
+-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql、db/secret/V*.sql、db/invoice/V*.sql 得到。
 -- Legacy/shared H2 projection; exact native omissions are descriptor/hash-bound below.
 -- Native installation/conformance is verified only on the actual supported server.
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
@@ -616,6 +616,10 @@ CREATE TABLE IF NOT EXISTS ord_item
     activity_no VARCHAR(64)  NULL,
     activity_benefit_type VARCHAR(16) NULL,
     activity_benefit_minor BIGINT NOT NULL DEFAULT 0,
+    line_kind VARCHAR(16) NULL,
+    tax_class VARCHAR(16) NULL,
+    invoice_name VARCHAR(256) NULL,
+    invoice_data_source VARCHAR(16) NULL,
     PRIMARY KEY (id)
 );
 
@@ -657,13 +661,18 @@ CREATE TABLE IF NOT EXISTS ord_order
     store_no VARCHAR(32)  NULL,
     caller VARCHAR(16)  NULL,
     operation_no VARCHAR(64)  NULL,
+    client_order_no VARCHAR(64)  NULL,
+    channel VARCHAR(16) NULL,
+    invoice_timing VARCHAR(16) NULL,
+    CONSTRAINT uk_order_client_no UNIQUE (tenant_no,store_no,client_order_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_order_no UNIQUE (order_no),
     CONSTRAINT ck_order_manual_provenance CHECK (receipt_provenance IS NULL OR
          (admission_kind='MANUAL_OFFLINE' AND receipt_provenance='MANUAL_DECLARATION'
           AND pay_channel IS NULL AND pay_trade_no IS NULL)),
     CONSTRAINT ck_order_admission_kind CHECK (((CASE admission_kind WHEN 'LEGACY_FUNDED' THEN TRUE WHEN 'MANUAL_OFFLINE' THEN TRUE ELSE CASE WHEN admission_kind IS NULL THEN NULL ELSE FALSE END END) AND customer_kind <> 'CHANNEL')
-   OR (admission_kind='CHANNEL' AND customer_kind='CHANNEL')),
+   OR (admission_kind='CHANNEL' AND customer_kind='CHANNEL')
+        OR (admission_kind='STORE_SALE' AND customer_kind='WALK_IN')),
     CONSTRAINT ck_counter_order_party CHECK (
         (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
          AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
@@ -681,7 +690,13 @@ CREATE TABLE IF NOT EXISTS ord_order
         AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL
         AND (CASE caller WHEN 'FOOD' THEN TRUE WHEN 'RETAIL' THEN TRUE ELSE CASE WHEN caller IS NULL THEN NULL ELSE FALSE END END) AND entity_no IS NOT NULL AND store_no IS NOT NULL
         AND operation_no IS NOT NULL AND CHAR_LENGTH(TRIM(entity_no))>0
-        AND CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(TRIM(operation_no))>0))
+        AND CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(TRIM(operation_no))>0)
+        OR (customer_kind='WALK_IN' AND admission_kind='STORE_SALE' AND user_no IS NULL
+            AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL AND caller='POS'
+            AND entity_no IS NOT NULL AND store_no IS NOT NULL AND operation_no IS NOT NULL
+            AND client_order_no IS NOT NULL AND CHAR_LENGTH(TRIM(entity_no))>0
+            AND CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(TRIM(operation_no))>0
+            AND CHAR_LENGTH(TRIM(client_order_no))>0))
 );
 
 CREATE TABLE IF NOT EXISTS ord_status_log
@@ -784,7 +799,9 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
    (admission_kind='MANUAL_OFFLINE' AND customer_kind <> 'CHANNEL'
     AND fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION'
     AND source_operation_no IS NOT NULL AND fulfillment='STORE_VERIFY') OR
-   (admission_kind='CHANNEL' AND customer_kind='CHANNEL' AND fulfillment_authority IS NULL)),
+   (admission_kind='CHANNEL' AND customer_kind='CHANNEL' AND fulfillment_authority IS NULL)
+        OR (admission_kind='STORE_SALE' AND customer_kind='WALK_IN'
+    AND fulfillment_authority IS NULL AND source_operation_no IS NULL)),
     CONSTRAINT ck_counter_sub_party CHECK (
         (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
          AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
@@ -804,7 +821,11 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
         AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL
         AND (CASE caller WHEN 'FOOD' THEN TRUE WHEN 'RETAIL' THEN TRUE ELSE CASE WHEN caller IS NULL THEN NULL ELSE FALSE END END) AND entity_no IS NOT NULL AND store_no IS NOT NULL
         AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0
-        AND fulfillment_authority IS NULL AND source_operation_no IS NULL))
+        AND fulfillment_authority IS NULL AND source_operation_no IS NULL)
+        OR (customer_kind='WALK_IN' AND admission_kind='STORE_SALE' AND user_no IS NULL
+            AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL AND caller='POS'
+            AND entity_no IS NOT NULL AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(entity_no))>0
+            AND CHAR_LENGTH(TRIM(store_no))>0 AND fulfillment_authority IS NULL AND source_operation_no IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS prd_category
@@ -13171,6 +13192,78 @@ CREATE TABLE IF NOT EXISTS sys_api_resource_point
     CONSTRAINT uk_api_resource_point UNIQUE (resource_id, perm_code)
 );
 
+CREATE TABLE IF NOT EXISTS approval_link
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    subject_type VARCHAR(64) NOT NULL,
+    subject_ref VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL,
+    process_code VARCHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    approval_no VARCHAR(64) NULL,
+    instance_no VARCHAR(64) NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    submitted_name VARCHAR(128) NULL,
+    reason VARCHAR(512) NULL,
+    proposal TEXT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_approval_link_subject UNIQUE (subject_type, subject_ref, revision)
+);
+
+CREATE TABLE IF NOT EXISTS ord_invoice_data_fill
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    fill_no VARCHAR(40)  NOT NULL,
+    order_no VARCHAR(64)  NOT NULL,
+    sub_order_no VARCHAR(64)  NOT NULL,
+    entity_no VARCHAR(32)  NOT NULL,
+    store_no VARCHAR(32)  NOT NULL,
+    line_no INT NOT NULL,
+    field_code VARCHAR(16) NOT NULL,
+    old_value VARCHAR(256) NULL,
+    new_value VARCHAR(256) NULL,
+    reason VARCHAR(100) NULL,
+    operator_no VARCHAR(64)  NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_invoice_fill_no UNIQUE (tenant_no,fill_no),
+    CONSTRAINT uk_invoice_fill_field UNIQUE (tenant_no,sub_order_no,line_no,field_code),
+    CONSTRAINT ck_invoice_fill_field CHECK ((CASE field_code WHEN 'NAME' THEN TRUE WHEN 'TAX_CLASS' THEN TRUE WHEN 'BUYER' THEN TRUE ELSE CASE WHEN field_code IS NULL THEN NULL ELSE FALSE END END)
+        AND ((field_code='BUYER' AND line_no=0) OR (field_code<>'BUYER' AND line_no>0)) AND deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_store_collection
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    pay_order_no VARCHAR(64)  NOT NULL,
+    order_no VARCHAR(64)  NOT NULL,
+    sub_order_no VARCHAR(64)  NOT NULL,
+    entity_no VARCHAR(32)  NOT NULL,
+    store_no VARCHAR(32)  NOT NULL,
+    currency CHAR(3) NOT NULL,
+    paid_minor BIGINT NOT NULL,
+    pay_channel VARCHAR(32) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_store_collection_pay UNIQUE (tenant_no,pay_order_no),
+    CONSTRAINT ck_store_collection_amount CHECK (paid_minor > 0 AND deleted=0)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -14270,6 +14363,262 @@ CREATE TABLE IF NOT EXISTS sec_access_log
     PRIMARY KEY (id),
     CONSTRAINT ck_sec_access_log_1 CHECK (sec_key_id IS NOT NULL OR sec_secret_blob_id IS NOT NULL OR target_id IS NOT NULL),
     CONSTRAINT ck_sec_access_log_2 CHECK (access_type <> 'BREAK_GLASS' OR approval_ref IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_regime_profile
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    seller_tax_id VARCHAR(32) NOT NULL,
+    seller_name VARCHAR(128) NOT NULL,
+    gateway_code VARCHAR(32) NULL,
+    qr_key_ref BIGINT NULL,
+    member_carrier_type VARCHAR(16) NULL,
+    auto_issue TINYINT NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    provider_account_code VARCHAR(64) NULL,
+    provider_secret_ref BIGINT NULL,
+    provider_hold_reason VARCHAR(256) NULL,
+    provider_held_at DATETIME(3) NULL,
+    range_low_water INT NOT NULL DEFAULT 50,
+    auto_fetch_ranges TINYINT NOT NULL DEFAULT 0,
+    range_alert_key VARCHAR(32) NULL,
+    next_range_alert_key VARCHAR(16) NULL,
+    CONSTRAINT uk_ivc_regime_profile UNIQUE (tenant_no, entity_no, regime_code)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_number_range
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    range_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    period_code VARCHAR(8) NOT NULL,
+    track VARCHAR(4) NOT NULL,
+    start_no INT NOT NULL,
+    end_no INT NOT NULL,
+    next_no INT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    allocation_owner VARCHAR(16) NOT NULL DEFAULT 'MANUAL',
+    apply_id VARCHAR(64) NULL,
+    invoice_type VARCHAR(4) NULL,
+    blank_reported_at DATETIME NULL,
+    blank_report_error VARCHAR(255) NULL,
+    CONSTRAINT uk_ivc_number_range_no UNIQUE (tenant_no, range_no),
+    CONSTRAINT uk_ivc_number_range UNIQUE (tenant_no, entity_no, regime_code, period_code, track, start_no),
+    CONSTRAINT ck_ivc_number_range_bounds CHECK (start_no >= 0 AND start_no <= end_no AND end_no <= 99999999
+    AND next_no >= start_no AND next_no <= end_no + 1)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_invoice
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    invoice_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    industry_code VARCHAR(32) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    active_source_key VARCHAR(128) NULL,
+    fiscal_number VARCHAR(32) NOT NULL,
+    range_no VARCHAR(32) NOT NULL,
+    period_code VARCHAR(8) NOT NULL,
+    random_code VARCHAR(8) NOT NULL,
+    seller_tax_id VARCHAR(32) NOT NULL,
+    seller_name VARCHAR(128) NOT NULL,
+    issued_at DATETIME(3) NOT NULL,
+    buyer_type VARCHAR(8) NOT NULL,
+    buyer_tax_id VARCHAR(32) NULL,
+    buyer_name VARCHAR(128) NULL,
+    carrier_type VARCHAR(16) NULL,
+    carrier_id VARCHAR(64) NULL,
+    donate_code VARCHAR(16) NULL,
+    print_mark CHAR(1) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    sales_minor BIGINT NOT NULL,
+    zero_tax_sales_minor BIGINT NOT NULL DEFAULT 0,
+    free_tax_sales_minor BIGINT NOT NULL DEFAULT 0,
+    tax_minor BIGINT NOT NULL,
+    total_minor BIGINT NOT NULL,
+    allowed_minor BIGINT NOT NULL DEFAULT 0,
+    tax_type VARCHAR(16) NOT NULL,
+    tax_rate_bp INT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    void_reason VARCHAR(256) NULL,
+    voided_at DATETIME(3) NULL,
+    voided_by VARCHAR(64) NULL,
+    proof_snapshot LONGTEXT NOT NULL,
+    proof_snapshot_hash CHAR(64) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    buyer_user_no VARCHAR(64) NULL,
+    detail_snapshot LONGTEXT NULL,
+    detail_snapshot_hash CHAR(64) NULL,
+    active_fiscal_key VARCHAR(32) NULL,
+    revoke_reason VARCHAR(128) NULL,
+    revoke_requested_at DATETIME(3) NULL,
+    revoked_at DATETIME(3) NULL,
+    revoke_error VARCHAR(255) NULL,
+    revoke_alerted TINYINT NOT NULL DEFAULT 0,
+    revised_from_invoice_no VARCHAR(32) NULL,
+    revised_to_invoice_no VARCHAR(32) NULL,
+    blank_reported_at DATETIME NULL,
+    CONSTRAINT uk_ivc_invoice_active_fiscal UNIQUE (tenant_no, regime_code, active_fiscal_key),
+    CONSTRAINT uk_ivc_invoice_no UNIQUE (tenant_no, invoice_no),
+    CONSTRAINT uk_ivc_invoice_active_source UNIQUE (tenant_no, entity_no, active_source_key),
+    CONSTRAINT ck_ivc_invoice_proof_json CHECK ((proof_snapshot IS JSON)),
+    CONSTRAINT ck_ivc_invoice_amounts CHECK (total_minor >= 0 AND allowed_minor >= 0 AND allowed_minor <= total_minor
+    AND sales_minor + zero_tax_sales_minor + free_tax_sales_minor + tax_minor = total_minor),
+    CONSTRAINT ck_ivc_invoice_detail_json CHECK (detail_snapshot IS NULL OR (detail_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ivc_invoice_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    invoice_no VARCHAR(32) NOT NULL,
+    line_no INT NOT NULL,
+    source_line_ref VARCHAR(64) NOT NULL,
+    name VARCHAR(256) NOT NULL,
+    quantity DECIMAL(18,4) NOT NULL,
+    unit VARCHAR(16) NULL,
+    unit_price_minor BIGINT NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    tax_type VARCHAR(16) NOT NULL,
+    CONSTRAINT uk_ivc_invoice_line UNIQUE (tenant_no, invoice_no, line_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_allowance
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    allowance_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    invoice_no VARCHAR(32) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    tax_minor BIGINT NOT NULL,
+    reason VARCHAR(256) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    print_snapshot LONGTEXT NULL,
+    print_snapshot_hash CHAR(64) NULL,
+    fiscal_allowance_number VARCHAR(16) NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    void_reason VARCHAR(256) NULL,
+    voided_at DATETIME(3) NULL,
+    voided_by VARCHAR(64) NULL,
+    CONSTRAINT uk_ivc_allowance_no UNIQUE (tenant_no, allowance_no),
+    CONSTRAINT ck_ivc_allowance_amount CHECK (amount_minor > 0 AND tax_minor >= 0 AND tax_minor <= amount_minor),
+    CONSTRAINT ck_ivc_allowance_print_json CHECK (print_snapshot IS NULL OR (print_snapshot IS JSON))
+);
+
+CREATE TABLE IF NOT EXISTS ivc_buyer_preference
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    buyer_tax_id VARCHAR(32) NULL,
+    buyer_name VARCHAR(128) NULL,
+    carrier_type VARCHAR(16) NULL,
+    carrier_id VARCHAR(64) NULL,
+    donate_code VARCHAR(16) NULL,
+    created_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_buyer_preference UNIQUE (tenant_no, entity_no, source_type, source_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_transmission
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    transmission_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    regime_code VARCHAR(16) NOT NULL,
+    gateway_code VARCHAR(32) NOT NULL,
+    message_type VARCHAR(16) NOT NULL,
+    ref_no VARCHAR(32) NOT NULL,
+    payload TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    next_attempt_at DATETIME(3) NOT NULL,
+    last_error VARCHAR(512) NULL,
+    gateway_ref VARCHAR(128) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    report_warn_at DATETIME(3) NULL,
+    report_deadline_at DATETIME(3) NULL,
+    deadline_level TINYINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_ivc_transmission_no UNIQUE (tenant_no, transmission_no),
+    CONSTRAINT uk_ivc_transmission_ref UNIQUE (tenant_no, message_type, ref_no)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_user_carrier
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    carrier_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    carrier_type VARCHAR(16) NOT NULL,
+    carrier_id VARCHAR(64) NOT NULL,
+    label VARCHAR(32) NULL,
+    is_default TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_user_carrier_no UNIQUE (tenant_no, carrier_no),
+    CONSTRAINT uk_ivc_user_carrier UNIQUE (tenant_no, user_no, carrier_type, carrier_id)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_store_setting
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    default_tax_type VARCHAR(16) NULL,
+    invoice_timing VARCHAR(16) NOT NULL DEFAULT 'MANUAL',
+    updated_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_store_setting UNIQUE (tenant_no, entity_no, store_no),
+    CONSTRAINT ck_ivc_store_setting CHECK ((default_tax_type IS NULL OR (CASE default_tax_type WHEN 'TAXABLE' THEN TRUE WHEN 'ZERO_RATED' THEN TRUE WHEN 'EXEMPT' THEN TRUE ELSE CASE WHEN default_tax_type IS NULL THEN NULL ELSE FALSE END END))
+    AND (CASE invoice_timing WHEN 'ON_PAID' THEN TRUE WHEN 'MANUAL' THEN TRUE WHEN 'LATER' THEN TRUE ELSE CASE WHEN invoice_timing IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS ivc_store_item
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    store_item_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    name VARCHAR(256) NOT NULL,
+    tax_type VARCHAR(16) NOT NULL,
+    sort INT NOT NULL DEFAULT 0,
+    enabled TINYINT NOT NULL DEFAULT 1,
+    updated_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_store_item_no UNIQUE (tenant_no, store_item_no),
+    CONSTRAINT ck_ivc_store_item_tax CHECK ((CASE tax_type WHEN 'TAXABLE' THEN TRUE WHEN 'ZERO_RATED' THEN TRUE WHEN 'EXEMPT' THEN TRUE ELSE CASE WHEN tax_type IS NULL THEN NULL ELSE FALSE END END) AND (CASE enabled WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN enabled IS NULL THEN NULL ELSE FALSE END END))
 );
 
 -- 种子数据
@@ -20803,6 +21152,47 @@ INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,h
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_FINANCE__PAYCENTER_CREDENTIALS','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_FINANCE__PAYCENTER_CREDENTIALS' AND end_code='OPS');
 INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_FINANCE__PAYCENTER_AUDIT_EVENTS','OPS_FINANCE','审计事件','支付运维','/payment-center?tab=audit-events','pay:audit:view','pay:audit:view','IMPLEMENTED',1,NULL,'MENU',553,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_FINANCE__PAYCENTER_AUDIT_EVENTS','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_FINANCE__PAYCENTER_AUDIT_EVENTS' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_FINANCE__PAYCENTER_APP_APPLICATIONS','OPS_FINANCE','接入申请','渠道接入','/payment-center?tab=app-applications','pay:app:view','pay:app:view','IMPLEMENTED',1,NULL,'MENU',554,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_FINANCE__PAYCENTER_APP_APPLICATIONS','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_FINANCE__PAYCENTER_APP_APPLICATIONS' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT source.role_code,'OPS_FINANCE__PAYCENTER_APP_APPLICATIONS','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source WHERE source.point_code='OPS_FINANCE__PAYCENTER_APPS' AND source.end_code='OPS' AND NOT EXISTS(SELECT 1 FROM sys_role_point target WHERE target.role_code=source.role_code AND target.point_code='OPS_FINANCE__PAYCENTER_APP_APPLICATIONS' AND target.end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_FINANCE__PAYCENTER_API_CATALOG','OPS_FINANCE','API 清单','渠道接入','/payment-center?tab=api-catalog','pay:app:view','pay:app:view','IMPLEMENTED',1,NULL,'MENU',555,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_FINANCE__PAYCENTER_API_CATALOG','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_FINANCE__PAYCENTER_API_CATALOG' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT source.role_code,'OPS_FINANCE__PAYCENTER_API_CATALOG','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source WHERE source.point_code='OPS_FINANCE__PAYCENTER_APPS' AND source.end_code='OPS' AND NOT EXISTS(SELECT 1 FROM sys_role_point target WHERE target.role_code=source.role_code AND target.point_code='OPS_FINANCE__PAYCENTER_API_CATALOG' AND target.end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_FINANCE__PAYCENTER_PLATFORM_KEYS','OPS_FINANCE','开放平台密钥','支付配置','/payment-center?tab=platform-keys','pay:credential:view','pay:credential:view','IMPLEMENTED',1,NULL,'MENU',556,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_FINANCE__PAYCENTER_PLATFORM_KEYS','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_FINANCE__PAYCENTER_PLATFORM_KEYS' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT source.role_code,'OPS_FINANCE__PAYCENTER_PLATFORM_KEYS','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source WHERE source.point_code='OPS_FINANCE__PAYCENTER_CREDENTIALS' AND source.end_code='OPS' AND NOT EXISTS(SELECT 1 FROM sys_role_point target WHERE target.role_code=source.role_code AND target.point_code='OPS_FINANCE__PAYCENTER_PLATFORM_KEYS' AND target.end_code='OPS');
+INSERT IGNORE INTO sys_role (role_code, name, end_code, builtin, wildcard, sort, created_at, updated_at)
+SELECT 'OPEN_API_SUBMIT', '开放API·接入提交', 'OPS', 0, 0, 900, NOW(), NOW() FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_code = 'OPEN_API_SUBMIT' AND end_code = 'OPS');
+INSERT IGNORE INTO sys_role (role_code, name, end_code, builtin, wildcard, sort, created_at, updated_at)
+SELECT 'OPEN_API_REVIEW', '开放API·接入审核', 'OPS', 0, 0, 901, NOW(), NOW() FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_code = 'OPEN_API_REVIEW' AND end_code = 'OPS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'OPEN_API_SUBMIT', fp.point_code, 'OPS', NOW(), NOW() FROM sys_function_point fp
+WHERE fp.perm_code IN ('pay:app:view', 'pay:app:manage', 'pay:credential:view', 'pay:credential:manage')
+  AND NOT EXISTS (SELECT 1 FROM sys_role_point rp WHERE rp.role_code = 'OPEN_API_SUBMIT' AND rp.point_code = fp.point_code AND rp.end_code = 'OPS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'OPEN_API_REVIEW', fp.point_code, 'OPS', NOW(), NOW() FROM sys_function_point fp
+WHERE fp.perm_code IN ('pay:app:view', 'pay:app:approve', 'pay:credential:view', 'pay:credential:approve')
+  AND NOT EXISTS (SELECT 1 FROM sys_role_point rp WHERE rp.role_code = 'OPEN_API_REVIEW' AND rp.point_code = fp.point_code AND rp.end_code = 'OPS');
+UPDATE sys_ops_staff
+SET roles = CASE WHEN roles IS NULL OR TRIM(roles) IN ('', '[]') THEN '["OPEN_API_SUBMIT"]'
+                 ELSE CONCAT(SUBSTRING(TRIM(roles), 1, CHAR_LENGTH(TRIM(roles)) - 1), ',"OPEN_API_SUBMIT"]') END,
+    updated_at = NOW()
+WHERE username = 'robin@neargo.ai' AND deleted = 0
+  AND (roles IS NULL OR roles NOT LIKE '%"OPEN_API_SUBMIT"%') AND CHAR_LENGTH(COALESCE(roles, '')) <= 230;
+UPDATE sys_ops_staff
+SET roles = CASE WHEN roles IS NULL OR TRIM(roles) IN ('', '[]') THEN '["OPEN_API_REVIEW"]'
+                 ELSE CONCAT(SUBSTRING(TRIM(roles), 1, CHAR_LENGTH(TRIM(roles)) - 1), ',"OPEN_API_REVIEW"]') END,
+    updated_at = NOW()
+WHERE username = 'neara@neargo.ai' AND deleted = 0
+  AND (roles IS NULL OR roles NOT LIKE '%"OPEN_API_REVIEW"%') AND CHAR_LENGTH(COALESCE(roles, '')) <= 230;
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) SELECT 'ACT__PAY_FEE_PLAN_APPROVE','OPS_FINANCE','佣金规则：审批发布','支付中心',NULL,'pay:fee-plan:approve','pay:fee-plan:approve','IMPLEMENTED',1,NULL,'ACTION',690,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM sys_function_point WHERE perm_code='pay:fee-plan:approve' OR point_code='ACT__PAY_FEE_PLAN_APPROVE');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_FEE_PLAN_APPROVE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_function_point WHERE point_code='ACT__PAY_FEE_PLAN_APPROVE') AND EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_FEE_PLAN_APPROVE' AND end_code='OPS');
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:order:create"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:order:create"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:order:reprice"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:order:reprice"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:tax-override"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:tax-override"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:order:create"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:order:create"',perms)=0;
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES
@@ -20851,3 +21241,28 @@ VALUES
     ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:read"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:read"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:issue"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:issue"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:void"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:void"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:setup"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:setup"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:read"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:invoice:read"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:issue"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:invoice:issue"',perms)=0;
+UPDATE ivc_transmission SET deadline_level = 2 WHERE status = 'SENT';
+INSERT IGNORE INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_FINANCE__E_INVOICES', 'OPS_FINANCE', '电子发票', '应付与发票',
+       '/e-invoices', 'finance:invoice:read', 'finance:invoice:read',
+       'IMPLEMENTED', 1, 'P-12.2', 'MENU', 58, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code = 'OPS_FINANCE__E_INVOICES');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_FINANCE__E_INVOICES', 'OPS', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code = 'SUPER_ADMIN'
+                  AND point_code = 'OPS_FINANCE__E_INVOICES' AND end_code = 'OPS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'FINANCE', 'OPS_FINANCE__E_INVOICES', 'OPS', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code = 'FINANCE'
+                  AND point_code = 'OPS_FINANCE__E_INVOICES' AND end_code = 'OPS');
+UPDATE ivc_regime_profile SET gateway_code = NULL WHERE gateway_code = 'STUB';
+UPDATE ivc_invoice SET active_fiscal_key = fiscal_number;
+UPDATE sys_function_point SET function_code='OPS_FINANCE',name='电子发票',group_name='应付发票',sort=105,updated_at=NOW() WHERE point_code='OPS_FINANCE__E_INVOICES' AND point_type='MENU';

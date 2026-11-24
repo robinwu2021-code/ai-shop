@@ -60,6 +60,14 @@ public final class BizPerms {
     /** 订单列表与详情、工作台待办。<b>含金额</b> */
     public static final String ORDER_VIEW = "biz:order:view";
 
+    /**
+     * 门店零售单（TDD-统一订单与开票资料）：店员在 POS 给散客建单。成交价与商品价不同要另有 {@link #ORDER_REPRICE}，
+     * 自订行选零税率 / 免税要另有 {@link #INVOICE_TAX_OVERRIDE} —— 建单本身不带这两样。
+     */
+    public static final String ORDER_CREATE = "biz:order:create";
+    /** 建门店零售单时按不同于商品价的成交价卖（改价）。 */
+    public static final String ORDER_REPRICE = "biz:order:reprice";
+
     /** 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替。 */
     public static final String CASH_RECEIVE = "pay:cash:receive";
 
@@ -201,6 +209,13 @@ public final class BizPerms {
     public static final String PRINT_RESOLVE = "biz:print:resolve";
     public static final String PRINT_SIMULATE = "biz:print:simulate";
     public static final String PRINT_EXPORT = "biz:print:export";
+    /** 发票（ADR-063）：查、开、作废与折让、税制与号段设置 */
+    public static final String INVOICE_READ = "biz:invoice:read";
+    public static final String INVOICE_ISSUE = "biz:invoice:issue";
+    public static final String INVOICE_VOID = "biz:invoice:void";
+    public static final String INVOICE_SETUP = "biz:invoice:setup";
+    /** 自订行（直接输入金额）选零税率或免税：会少报税，与改价同级，默认只给店长。 */
+    public static final String INVOICE_TAX_OVERRIDE = "biz:invoice:tax-override";
 
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             OWNER, List.of("*"),
@@ -210,9 +225,13 @@ public final class BizPerms {
                     // 预约：店长看与管、店员只看（TDD-B端门店功能矩阵与方案准入 §4-1，V640）
                     BOOKING_VIEW, BOOKING_MANAGE,
                     PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_EXTRA, PRINT_DEVICE, PRINT_CONFIG,
-                    PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT),
+                    PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT,
+                    INVOICE_READ, INVOICE_ISSUE, INVOICE_VOID, INVOICE_SETUP,
+                    // 门店零售单（V694）：店长建单、改价、自订行选零税率 / 免税；店员只建单
+                    ORDER_CREATE, ORDER_REPRICE, INVOICE_TAX_OVERRIDE),
             CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK, PAY_ORDER_VIEW, PAY_OFFLINE_RECORD, BOOKING_VIEW,
-                    PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_SIMULATE, PRINT_EXPORT),
+                    PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_SIMULATE, PRINT_EXPORT,
+                    INVOICE_READ, INVOICE_ISSUE, ORDER_CREATE),
             PICKER, List.of(RECEIVE, STOCK),
             COURIER, List.of(SHIP, ORDER_VIEW),
             // 只对着顾客说话：回评价、处理售后、看得到那张单。不碰货、不碰钱
@@ -238,6 +257,13 @@ public final class BizPerms {
             Map.entry(PRINT_RESOLVE, "核实打印异常"),
             Map.entry(PRINT_SIMULATE, "模拟打印"),
             Map.entry(PRINT_EXPORT, "导出打印PDF"),
+            Map.entry(INVOICE_READ, "查看发票"),
+            Map.entry(INVOICE_ISSUE, "开立发票"),
+            Map.entry(INVOICE_VOID, "作废发票与开折让"),
+            Map.entry(INVOICE_SETUP, "发票设置（税制与号段）"),
+            Map.entry(INVOICE_TAX_OVERRIDE, "自订品项选零税率或免税"),
+            Map.entry(ORDER_CREATE, "门店收银建单"),
+            Map.entry(ORDER_REPRICE, "收银时改成交价"),
             Map.entry(PRICING_TAX_READ, "查看商家税配置"),
             Map.entry(PRICING_TAX_UPDATE, "维护商家税配置（仅主体属主）"),
             Map.entry(PRICING_CONFIG_READ, "查看门店结账规则"),
@@ -302,7 +328,7 @@ public final class BizPerms {
     }
 
     /**
-     * 商家<b>自定义</b>角色可以勾的权限码 —— 不含主体结构及跨店税配置写权限。
+     * 商家<b>自定义</b>角色可以勾的权限码 —— 不含主体结构、跨店税配置及发票设置（统编、QR 加密密钥、号段）写权限。
      *
      * <p>那是「管人」的码：授出去等于让被授权的人能改所有人的授权、
      * 能给自己加任何角色，<b>一次授权就绕开了整个模型</b>。
@@ -311,7 +337,7 @@ public final class BizPerms {
      */
     public static Set<String> assignableCodes() {
         return LABELS.keySet().stream()
-                .filter(c -> !STORE_ADMIN.equals(c) && !PRICING_TAX_UPDATE.equals(c))
+                .filter(c -> !STORE_ADMIN.equals(c) && !PRICING_TAX_UPDATE.equals(c) && !INVOICE_SETUP.equals(c))
                 .collect(Collectors.toUnmodifiableSet());
     }
 

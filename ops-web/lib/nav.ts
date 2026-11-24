@@ -379,7 +379,7 @@ export const NAV: NavSection[] = [
 
   // ── P-12 结算与资金 ─────────────────────────────────────────────────────
   {
-    key: "finance", label: "经营财务", icon: "Wallet", modules: ["finance", "pay", "sec", "merchant"], href: "/finance", match: ["/finance", "/pay-ops/orders", "/pay-ops/exceptions", "/pay-ops/refunds", "/pay-ops/notifies", "/pay-ops/qr-codes", "/pay-ops/apps", "/pay-ops/request-logs", "/pay-ops/platform-keys"],
+    key: "finance", label: "经营财务", icon: "Wallet", modules: ["finance", "pay", "sec", "merchant"], href: "/finance", match: ["/finance", "/pay-ops/orders", "/pay-ops/exceptions", "/pay-ops/refunds", "/pay-ops/notifies", "/pay-ops/qr-codes", "/pay-ops/apps", "/pay-ops/request-logs", "/pay-ops/platform-keys", "/e-invoices"],
     children: [
       // 分账指令/重试/报备状态都是结算单**行上的动作与列**，不单独成页
       { href: "/finance", label: "结算分账", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
@@ -396,6 +396,8 @@ export const NAV: NavSection[] = [
       { href: "/finance?tab=payout-accounts", label: "供应账户", perm: "finance:payout:execute", group: "应付发票", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=purchase-invoices", label: "进项票", perm: "finance:invoice:read", group: "应付发票", matrix: "P-12.2", ready: true },
       { href: "/finance?tab=buyer-invoices", label: "开票申请", perm: "finance:invoice:read", group: "应付发票", matrix: "P-12.2", ready: true },
+      // 门店当场开立的法定电子发票（invoice 模块，TDD-发票模块 §18）；与上一条「开票申请」是两件事
+      { href: "/e-invoices", label: "电子发票", perm: "finance:invoice:read", group: "应付发票", matrix: "P-12.2", ready: true },
       /*
        * 「提现审批」2026-10-09 撤掉（TDD-账期推进与放款记录 AC9 / PRD §7）：
        * 商家向平台提现是二清（ADR-011 §2），这个入口从建成到撤掉生产 0 行。

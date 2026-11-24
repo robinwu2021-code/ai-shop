@@ -16,6 +16,12 @@ public interface PointsTreasuryService {
 
     RequestPage requests(String typeCode, long after, int limit);
 
+    /** 按申请号取一条（审批送审、生效时读当前版本；方案-第一批审批工作流 T8）。 */
+    java.util.Optional<RequestView> request(String requestNo);
+
+    /** 待审的申请，最多 {@code limit} 条（补送审批用）。 */
+    List<RequestView> submitted(int limit);
+
     OperatorResult savePlan(PlanChange request, String actor);
 
     OperatorResult generatePeriods(GeneratePeriods request, String actor);

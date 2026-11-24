@@ -17,6 +17,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { DetailBody } from "@/components/ui/detail-drawer";
 import type { PayCenterApi } from "@/app/payment-center/_api/api";
 import { PayOpsError } from "@/app/payment-center/_api/client";
+import { notify } from "@/lib/notify";
 import {
   ACCOUNT_STATUSES, CLAIM_STATES, FUNDS_PATHS, VERIFICATION_STATUSES,
   type BindingImpact, type ChannelAccountClaim, type ChannelAccountDetail, type ChannelAccountRow, type Detail, type FundsPath, type StoreBinding,
@@ -26,7 +27,7 @@ import { useCan } from "@/lib/use-can";
 import { P8_COPY } from "./p8-copy";
 import { ChannelAccountEdit } from "./p9-panels";
 import { fmtTime } from "@/lib/utils";
-import { MiniTable, usePc } from "./shared";
+import { MiniTable, errorText, usePc } from "./shared";
 import { CHANNEL_ACCOUNTS_COPY, type ChannelAccountsCopy } from "./channel-accounts-copy";
 import { CHANNEL_ACCOUNT_EXTRAS_COPY } from "./channel-account-extras-copy";
 import { CloseUnavailableNote, QualificationsPanel, ResumeApprovalPanel, TransfersPanel } from "./channel-account-extras";
@@ -432,6 +433,16 @@ function ClaimDetail({ api, merchantNo, claimNo, run, changed, onPrefill }: {
     title: result === "LINKED" ? m.claimLinkTitle : m.claimRejectTitle, desc: m.claimDesc, requireReason: true, reasonHint: c.reasonHint, danger: result === "REJECTED",
     action: async (reason) => {
       const target = result === "LINKED" ? accounts.data?.records.find((x) => x.payMerchantNo === account) : undefined;
+      if (result === "LINKED" && target) {
+        // 认领关联已切 OpsKit 审批时（第二批 T26）：先送审，审批通过后才关联；未启用时 near-pay 回 CAPABILITY_NOT_READY，照旧直接关联
+        const submitted = await api.claims.submitApproval(claimNo, { expectedVersion: row.version, payMerchantNo: target.payMerchantNo, expectedAccountVersion: target.version, reason })
+          .then(() => true, (e: unknown) => {
+            if ((e as { reasonCode?: string } | null)?.reasonCode === "CAPABILITY_NOT_READY") return false;
+            throw e;
+          })
+          .catch((e: unknown) => { notify.error(errorText(e, c)); throw e; });
+        if (submitted) { notify.info(m.claimSubmittedForApproval); await q.refetch(); changed(); return; }
+      }
       await run(() => api.claims.resolve(claimNo, { expectedVersion: row.version, result, reason, ...(target ? { payMerchantNo: target.payMerchantNo, expectedAccountVersion: target.version } : {}) }));
       await q.refetch(); changed();
     },

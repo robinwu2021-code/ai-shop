@@ -468,7 +468,7 @@ export const NAME_COLLISIONS = {
   "entry_no": "pts_ledger_entry 是积分账分录，ent_ledger 是权益账分录，各自独立发号，不可跨账关联。；统一扩展：pts_ledger_entry积分分录与ent_ledger权益分录是不同账本，不共用分录身份。",
   "binding_no": "订单积分接线与品牌门店有效期绑定是不同聚合，不能按同名连接。",
   "adjustment_no": "积分人工调整与订单人工改价分别有自己的命令/审计身份。",
-  "line_no": "prd_stock_alignment_line 是库存批次局部行序；sv_posting_line 是 tenant+voucher 内局部行序，不是全局业务身份。；统一扩展：库存对齐行与储值过账行只在各自父单据内编号，不能作为全局行身份。",
+  "line_no": "prd_stock_alignment_line 是库存批次局部行序；sv_posting_line 是 tenant+voucher 内局部行序，不是全局业务身份。；统一扩展：库存对齐行与储值过账行只在各自父单据内编号，不能作为全局行身份。 ord_invoice_data_fill.line_no 是子单内按订单行 id 升序的序号（0 = 整单买受人），只在 sub_order_no 内有意义。",
   "allocation_no": "储值冻结批次分配与报价金额分摊有不同对象、数量和金额语义。",
   "target_no": "权益所有者注册与储值发行政策的目标都是多态范围，必须结合target_type及所属域。",
   "document_no": "Core与Pay分别分配业务展示单号；通知保存来源单号，必须结合来源系统/单据类型，不能假定单一主表。",
@@ -522,7 +522,7 @@ export const NAME_COLLISIONS = {
   "express_no": "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
   "apply_no": "mch_entity_apply 是商家入驻申请单；cmt_community_apply 是商家提报新社区的单子。\n  两者都是「某人申请某事」，但申请的对象完全不同 —— 按名字 join 会把入驻单连到社区提报上。",
   "ref_no": "stl_points_pool 是积分池指向的业务单据；mch_store_audit 是审核单指向的业务记录（kind=SERVICE_AREA 时是 mch_service_area.area_no）。\n  两者都是「指针列」，但**指向的表由同行的另一列决定**（前者看 pool 类型，后者看 kind）——所以谁都不能登记成外键，按名字 join 必然连错，且不报错。",
-  "operator_no": "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。 主体购买动作operator_no为运营审核身份，只作原动作审计，不是其他业务操作人的通用外键。",
+  "operator_no": "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。 主体购买动作operator_no为运营审核身份，只作原动作审计，不是其他业务操作人的通用外键。 门店零售单补开票资料稽核（ord_invoice_data_fill）的 operator_no 是补填的商家操作人，只作稽核。",
   "template_no": "**同一个列名下有独立的模板族**：notify_template 是消息模板，notify_message.template_no 引用它；prd_spec_template.template_no 是商品规格模板，ent_template/ent_template_version是支付权益模板；三族互不相干。\n  按名字 join 会把「发过哪条推送」连到「用了哪个规格模板」上 —— 两边都有值，不报错。\n  没改名是因为两族在各自的域里都叫得通；登记在这里，是为了让下一个人先看到这句话。\n  注意 notify_message → notify_template 这一跳**没有守卫** —— LINEAGE 只管资金账与积分账，触达链路断了的后果（推送发不出去）不在这个文件的职责里。",
   "txn_no": "mch_deposit_txn.txn_no 是保证金流水号（平台代管商家资金，将来要退还）；\n  mch_debt_txn.txn_no 是商家欠款流水号（平台垫付后向商家追偿）。\n  两者都是各自表的唯一业务键（各自建了 uk），资金方向相反 ——按名字 join 会把保证金扣款连到欠款追偿上，而两边都有值、不报错。",
   "source_no": "mbr_member_source.source_no 是会员引荐来源码（记录「这个会员从哪个推广渠道来」，建了全局唯一键）；\n  mch_debt_txn.source_no 是欠款来源单号（指向售后单号或结算单号，可为空，由 source_type 决定含义）。\n  两者都是「来源」但完全不同义 —— 按名字 join 会把会员拉新来源连到商家欠款上。 渠道导入及来源守卫按source_system/source_version限定原渠道来源；零售来源、品牌券来源独立持有身份。品牌费用按tenant+source_type+source_no限定费用来源，仅费用事实和品牌券命令登记同族关系。",
@@ -658,7 +658,8 @@ export const COLLISION_MEMBERS = {
   ],
   "line_no": [
     "prd_stock_alignment_line",
-    "sv_posting_line"
+    "sv_posting_line",
+    "ord_invoice_data_fill"
   ],
   "catalog_no": [
     "prd_store_catalog",
@@ -1151,7 +1152,8 @@ export const COLLISION_MEMBERS = {
     "ord_ent_service_order",
     "sv_recharge",
     "pmt_recharge_intent",
-    "mch_plan_purchase_action"
+    "mch_plan_purchase_action",
+    "ord_invoice_data_fill"
   ],
   "template_no": [
     "prd_spec_template",

@@ -43,6 +43,17 @@ export function useTabList<T, F extends Record<string, string | boolean>>(
   };
 }
 
+/**
+ * 当前运营在 near-pay 的员工号（/me/access 的 operatorNo）。审批的申请人 / 认领人、告警认领人、接入申请提交人
+ * 在 near-pay 都记员工号（ST-…），拿登录名比永远不相等 —— 「批准」「释放」「撤回」这类「是不是我」的按钮要用它判断。
+ * 取不到时返回 null（按钮按「不是我」处理，不会误放开）。
+ */
+export function usePayOperatorNo(): string | null {
+  const api = usePayCenterApi();
+  const q = useQuery({ queryKey: [KEY, "me", api.source], queryFn: () => api.me(), staleTime: 10 * 60_000, retry: 2 });
+  return q.data?.operatorNo ?? null;
+}
+
 /** 让本页签（及打开中的详情）重新取数。 */
 export function useRefresh(name: string) {
   const qc = useQueryClient();
@@ -60,13 +71,22 @@ export function errorText(e: unknown, c: C): string {
  * 执行一个命令：成功 toast + 刷新；失败 toast 并把错误抛回去
  * （确认弹框据此留在原地，ActionForm 据此不关抽屉）。
  */
+/** near-pay 已切 OpsKit 审批的操作（出款回执、对账差异关闭、人工确认到账）回的是「待审批」而不是结果。 */
+export function isPendingApproval(r: unknown): boolean {
+  if (!r || typeof r !== "object") return false;
+  const o = r as { status?: unknown; statusAfter?: unknown };
+  return o.status === "PENDING_APPROVAL" || o.statusAfter === "PENDING_APPROVAL";
+}
+
 export function useRun(name: string) {
   const c = usePc();
   const refresh = useRefresh(name);
   return React.useCallback(async <R,>(fn: () => Promise<R>, success?: string): Promise<R> => {
     try {
       const r = await fn();
-      notify.success(success ?? c.done);
+      // OpsKit 审批（第二批 Q11）：near-pay 拦下的操作回 PENDING_APPROVAL —— 没有生效，不能报「已完成」
+      if (isPendingApproval(r)) notify.info(c.pendingApproval);
+      else notify.success(success ?? c.done);
       await refresh();
       return r;
     } catch (e) {

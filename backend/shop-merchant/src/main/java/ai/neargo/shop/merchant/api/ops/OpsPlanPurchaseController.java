@@ -2,6 +2,7 @@ package ai.neargo.shop.merchant.api.ops;
 
 import ai.neargo.commerce.api.port.PrivateEvidencePort;
 import ai.neargo.shop.auth.*;
+import ai.neargo.shop.merchant.approval.PlanPaymentApprovalSubject;
 import ai.neargo.shop.merchant.plan.EntityPlanPurchaseService;
 import ai.neargo.shop.merchant.plan.EntityPlanPurchaseService.*;
 import ai.neargo.shop.spi.platform.AuditLogPort;
@@ -9,6 +10,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.io.ByteArrayInputStream;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,6 +35,14 @@ public class OpsPlanPurchaseController {
   public OpsPlanPurchaseController(EntityPlanPurchaseService service, AuditLogPort audit) {
     this.service = service;
     this.audit = audit;
+  }
+
+  private PlanPaymentApprovalSubject approvals;
+
+  /** T9c：审批启用后「确认收款」只送审，审批通过才执行（方案-第一批审批工作流 T9c）。 */
+  @Autowired(required = false)
+  public void setApprovals(PlanPaymentApprovalSubject value) {
+    this.approvals = value;
   }
 
   private Actor actor(String entity) {
@@ -92,6 +102,12 @@ public class OpsPlanPurchaseController {
       "@perm.can('commerce:mall:offline:confirm') and @perm.can('" + Perms.MERCHANT_BAN + "')")
   public ActionView confirm(
       @PathVariable String entityNo, @PathVariable String orderNo, @Valid @RequestBody Confirm c) {
+    if (approvals != null && approvals.enabled()) {
+      var user = SecurityUtils.requireUser();
+      var pending = approvals.submit(entityNo, orderNo, c, user.userNo(), user.nickname());
+      audit.record("PLAN_PAYMENT_CONFIRM_SUBMIT", orderNo, c.reason(), true);
+      return pending;
+    }
     var r = service.confirm(actor(entityNo), orderNo, c);
     audit.record("PLAN_PAYMENT_CONFIRM", orderNo, r.status() + "|" + c.reason(), true);
     return r;

@@ -512,6 +512,7 @@ onPullDownRefresh(async () => {
   if (currentNo.value) await load(currentNo.value);
   uni.stopPullDownRefresh();
 });
+function openInvoiceIssue(){if(order.value)uni.navigateTo({url:ROUTES.salesInvoiceIssue+'?sourceNo='+encodeURIComponent(order.value.orderNo)});}
 function openPrintCenter(){if(order.value)uni.navigateTo({url:ROUTES.printCenter+'?orderNo='+encodeURIComponent(order.value.payOrderNo||order.value.orderNo)});}
 </script>
 
@@ -526,6 +527,10 @@ function openPrintCenter(){if(order.value)uni.navigateTo({url:ROUTES.printCenter
       <view v-if="merchant.can('biz:print:read')" class="sh-card sh-cell"
         @tap="openPrintCenter">
         <text>{{ $t('printCenter.orderEntry') }}</text><sh-go :text="String($t('printCenter.viewTasks'))" />
+      </view>
+      <view v-if="merchant.can('biz:invoice:issue')" class="sh-card sh-cell"
+        @tap="openInvoiceIssue">
+        <text>{{ $t('salesInvoice.orderEntry') }}</text><sh-go :text="String($t('salesInvoice.issueTitle'))" />
       </view>
       <view v-if="activeAfterSale" class="sh-card sh-mb-sm sh-row sh-row--between" @tap="openActiveAfterSale">
         <view>

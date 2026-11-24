@@ -6,6 +6,7 @@ import ai.neargo.shop.print.api.*;
 import ai.neargo.shop.printing.center.support.PrintJsonCodec;
 
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
 
 import java.math.*;
 import java.util.*;
@@ -32,7 +33,29 @@ public final class DefaultPrintLayoutEngine implements PrintLayoutEngine {
         BigDecimal y = BigDecimal.valueOf(5);
         drawings.addAll(systemDrawings(d, p));
         y = BigDecimal.valueOf(40);
+        String reprint = json.tree(d.businessData()).path("reprintNotice").asText();
+        if (d.systemSlots().jobKind() == PrintJobKind.REPRINT && !reprint.isBlank()) {
+            // 法定凭证的补印要在正文里一眼可见（发票证明联「補印」），不只是系统栏里的 REPRINT
+            var size = BigDecimal.valueOf(16);
+            drawings.add(text(reprint, p, size, y));
+            y = y.add(size.multiply(MM_PER_PT)).add(BigDecimal.valueOf(2));
+        }
         for (var row : rows) {
+            if (row.has("symbol")) {
+                // 条码行（发票证明联）：整块不跨页，放不下先换页
+                var placed = symbol(row, p, y);
+                if (y.add(placed.heightMm()).compareTo(p.maxHeightMm().subtract(BigDecimal.valueOf(7))) > 0) {
+                    if (pages.size() >= 199) throw new PrintFailure("print.pageLimit");
+                    pages.add(page(p, pages.size() + 1, drawings, y));
+                    drawings = new ArrayList<>();
+                    drawings.addAll(systemDrawings(d, p));
+                    y = BigDecimal.valueOf(40);
+                    placed = symbol(row, p, y);
+                }
+                drawings.addAll(placed.drawings());
+                y = y.add(placed.heightMm()).add(BigDecimal.valueOf(2));
+                continue;
+            }
             var size = BigDecimal.valueOf(row.path("size").asInt(10));
             for (String line : wrap(row.path("text").asText(), p, size)) {
                 BigDecimal height = size.multiply(MM_PER_PT).add(BigDecimal.valueOf(1.5));
@@ -57,6 +80,16 @@ public final class DefaultPrintLayoutEngine implements PrintLayoutEngine {
                 p.paperWidthMm(),
                 pages,
                 json.freeze(pages).sha256());
+    }
+
+    private static PrintSymbolRenderer.Placed symbol(JsonNode row, LayoutProfile p, BigDecimal y) {
+        return switch (row.path("symbol").asText()) {
+            case "CODE39" -> PrintSymbolRenderer.code39(row.path("value").asText(), p.leftMarginMm(), y,
+                    p.printableWidthMm());
+            case "QR_PAIR" -> PrintSymbolRenderer.qrPair(row.path("value").asText(), row.path("value2").asText(),
+                    p.leftMarginMm(), y, p.printableWidthMm());
+            default -> throw new PrintFailure("print.templateBlockRejected");
+        };
     }
 
     private List<String> headers(PrintDocument d) {

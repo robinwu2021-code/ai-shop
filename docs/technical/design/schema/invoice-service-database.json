@@ -1,0 +1,2049 @@
+{
+  "status": "DESIGN_ONLY_NOT_APPLIED",
+  "database": "ai_shop_invoice",
+  "flywayLocation": "db/invoice",
+  "flywayHistoryTable": "ivc_flyway_history",
+  "design": "docs/technical/TDD-发票服务-总体设计.md §5、§13",
+  "conventions": [
+    "主键 id BIGINT AUTO_INCREMENT；库内关联用 <表>_id",
+    "引用核心系统只存业务键（tenant_no / entity_no / store_no / source_no）+ 快照",
+    "时间 DATETIME(3) UTC；快照与报文用 LONGTEXT + CHECK(JSON_VALID)（JSON 类型会改键序，哈希对不上）",
+    "凭据与金钥只存 secret 模块引用，任何表无明文"
+  ],
+  "removed": [
+    {
+      "name": "ivc_regime_profile",
+      "reason": "拆为 ivc_seller + ivc_provider_account + ivc_account_credential + ivc_account_binding；迁移验证后删除"
+    }
+  ],
+  "tables": [
+    {
+      "name": "ivc_region",
+      "group": "A 主数据",
+      "action": "新",
+      "purpose": "地区与税制。一行对应一个 InvoiceRegime 实现；有行无实现启动失败",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "region_code",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "地区码：TW / AE"
+        },
+        {
+          "name": "country_code",
+          "sqlType": "CHAR(2) NOT NULL",
+          "meaning": "ISO 3166 国家码"
+        },
+        {
+          "name": "regime_code",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "税制码：TW_EGUI / AE_EINVOICE"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种"
+        },
+        {
+          "name": "amount_scale",
+          "sqlType": "TINYINT NOT NULL",
+          "meaning": "金额小数位（TWD=0）"
+        },
+        {
+          "name": "timezone",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "期别与票面时间所用时区，如 Asia/Taipei"
+        },
+        {
+          "name": "period_rule",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "BIMONTHLY / MONTHLY / NONE"
+        },
+        {
+          "name": "rule_version",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "税制规则版本，如 MIG4.0"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ACTIVE / DISABLED"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_region (region_code)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_provider",
+      "group": "A 主数据",
+      "action": "新",
+      "purpose": "开票供应商（加值中心 / 直连 / 测试）",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "provider_code",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "CETUSTEK / ECPAY / TURNKEY / STUB"
+        },
+        {
+          "name": "name",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "名称"
+        },
+        {
+          "name": "provider_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "VALUE_ADDED_CENTER / GOV_DIRECT / ASP / TEST"
+        },
+        {
+          "name": "protocol",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "SOAP / JSON_AES / FILE"
+        },
+        {
+          "name": "sandbox_endpoint",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "测试地址（Turnkey 为目录根）；不含凭据"
+        },
+        {
+          "name": "production_endpoint",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "正式地址"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ACTIVE / DISABLED（运营开关）"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        },
+        {
+          "name": "updated_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "更新人"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_provider (provider_code)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_provider_region",
+      "group": "A 主数据",
+      "action": "新",
+      "purpose": "供应商 × 地区开通关系。无行 = 该供应商在该地区不可用",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "provider_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_provider.id"
+        },
+        {
+          "name": "region_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_region.id"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ACTIVE / DISABLED"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        },
+        {
+          "name": "updated_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "更新人"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_provider_region (provider_id, region_id)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_provider_product",
+      "group": "A 主数据",
+      "action": "新",
+      "purpose": "供应商能力（供应商 × 地区 × 票种）。启动时与代码实现的能力接口比对，不一致拒绝启用",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "provider_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_provider.id"
+        },
+        {
+          "name": "region_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_region.id"
+        },
+        {
+          "name": "doc_type",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "B2C / B2B"
+        },
+        {
+          "name": "numbering_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "LOCAL_RANGE / PROVIDER_RANGE / PROVIDER_ONLINE / LOCAL_SEQUENCE"
+        },
+        {
+          "name": "report_mode",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ASYNC_UPLOAD / SYNC_ON_ISSUE / FILE_DROP"
+        },
+        {
+          "name": "supports_void",
+          "sqlType": "TINYINT NOT NULL DEFAULT 0",
+          "meaning": "支持作废"
+        },
+        {
+          "name": "supports_allowance",
+          "sqlType": "TINYINT NOT NULL DEFAULT 0",
+          "meaning": "支持折让"
+        },
+        {
+          "name": "supports_allowance_void",
+          "sqlType": "TINYINT NOT NULL DEFAULT 0",
+          "meaning": "支持折让作废"
+        },
+        {
+          "name": "supports_query",
+          "sqlType": "TINYINT NOT NULL DEFAULT 0",
+          "meaning": "支持查单"
+        },
+        {
+          "name": "supports_verify",
+          "sqlType": "TINYINT NOT NULL DEFAULT 0",
+          "meaning": "支持账户核验（无则录入即启用）"
+        },
+        {
+          "name": "carrier_types",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "支持的载具类别，逗号分隔"
+        },
+        {
+          "name": "print_mode",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "LOCAL（打印中心）/ PROVIDER_URL（供应商列印网址）"
+        },
+        {
+          "name": "enabled",
+          "sqlType": "TINYINT NOT NULL DEFAULT 1",
+          "meaning": "运营开关"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        },
+        {
+          "name": "updated_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "更新人"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_provider_product (provider_id, region_id, doc_type)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_provider_credential_field",
+      "group": "B 营业人与账户",
+      "action": "新",
+      "purpose": "供应商凭据字段定义：前端据此渲染录入表单，后端据此校验",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "provider_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_provider.id"
+        },
+        {
+          "name": "field_code",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "office_id / pos_no / pos_id；merchant_id / hash_key / hash_iv；sender_id"
+        },
+        {
+          "name": "label_key",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "多语文案键"
+        },
+        {
+          "name": "is_secret",
+          "sqlType": "TINYINT NOT NULL",
+          "meaning": "1=进 secret 模块、只回掩码；0=明文"
+        },
+        {
+          "name": "is_account_code",
+          "sqlType": "TINYINT NOT NULL DEFAULT 0",
+          "meaning": "1=该字段即 provider_account_code（每家恰好一个）"
+        },
+        {
+          "name": "required",
+          "sqlType": "TINYINT NOT NULL DEFAULT 1",
+          "meaning": "必填"
+        },
+        {
+          "name": "pattern",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "格式正则"
+        },
+        {
+          "name": "max_length",
+          "sqlType": "INT NOT NULL",
+          "meaning": "最大长度"
+        },
+        {
+          "name": "sort_no",
+          "sqlType": "INT NOT NULL",
+          "meaning": "表单顺序"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_credential_field (provider_id, field_code)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_seller",
+      "group": "B 营业人与账户",
+      "action": "新",
+      "purpose": "营业人：主体在某地区开通发票（取代 ivc_regime_profile 的营业人部分）",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "seller_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "营业人业务号"
+        },
+        {
+          "name": "tenant_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "租户"
+        },
+        {
+          "name": "entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "主体业务号（核心系统）"
+        },
+        {
+          "name": "region_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_region.id"
+        },
+        {
+          "name": "tax_id",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "统编 / TRN，由税制校验"
+        },
+        {
+          "name": "legal_name",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "营业人名称（快照）"
+        },
+        {
+          "name": "address",
+          "sqlType": "VARCHAR(256) NULL",
+          "meaning": "营业地址（快照）"
+        },
+        {
+          "name": "auto_issue",
+          "sqlType": "TINYINT NOT NULL DEFAULT 0",
+          "meaning": "付款成功后自动开立"
+        },
+        {
+          "name": "member_carrier_type",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "会员载具类别号（台湾）"
+        },
+        {
+          "name": "qr_key_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "QR 加密金钥 secret 引用（财政部按统编核发）"
+        },
+        {
+          "name": "qr_key_source",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "MERCHANT / PLATFORM / PROVIDER（鲸跃核验回传）"
+        },
+        {
+          "name": "qr_key_fingerprint",
+          "sqlType": "CHAR(16) NULL",
+          "meaning": "金钥指纹，供界面显示"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ACTIVE / SUSPENDED"
+        },
+        {
+          "name": "created_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "创建人"
+        },
+        {
+          "name": "updated_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "更新人"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_seller_no (seller_no)",
+        "UNIQUE KEY uk_ivc_seller (tenant_no, entity_no, region_id)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_provider_account",
+      "group": "B 营业人与账户",
+      "action": "新",
+      "purpose": "营业人在某供应商的账户（对照 pay_merchant）。凭据不在本表",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "account_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "账户业务号"
+        },
+        {
+          "name": "tenant_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "租户"
+        },
+        {
+          "name": "seller_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_seller.id"
+        },
+        {
+          "name": "provider_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_provider.id"
+        },
+        {
+          "name": "environment",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "SANDBOX / PRODUCTION"
+        },
+        {
+          "name": "provider_account_code",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "鲸跃 officeid / 绿界 MerchantID / Turnkey 传送者代号"
+        },
+        {
+          "name": "managed_by",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "MERCHANT（商家自填）/ PLATFORM（平台代维护）"
+        },
+        {
+          "name": "credential_version",
+          "sqlType": "INT NULL",
+          "meaning": "当前生效凭据版本（→ ivc_account_credential.version）"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ONBOARDING / ACTIVE / ISSUE_STOPPED / SUSPENDED / CLOSED"
+        },
+        {
+          "name": "verified_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "最近一次核验成功时间"
+        },
+        {
+          "name": "verified_snapshot",
+          "sqlType": "LONGTEXT NULL",
+          "meaning": "核验时供应商侧营业人资料（JSON）"
+        },
+        {
+          "name": "last_verify_error",
+          "sqlType": "VARCHAR(256) NULL",
+          "meaning": "最近一次核验失败原因（供应商原文代码）"
+        },
+        {
+          "name": "created_via",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "BIZ / OPS"
+        },
+        {
+          "name": "active_key",
+          "sqlType": "VARCHAR(80) GENERATED ALWAYS AS (CASE WHEN status='ACTIVE' THEN CONCAT(seller_id,':',provider_id,':',environment) END) VIRTUAL",
+          "meaning": "生成列：同营业人同供应商同环境至多一个 ACTIVE"
+        },
+        {
+          "name": "created_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "创建人"
+        },
+        {
+          "name": "updated_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "更新人"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_account_no (account_no)",
+        "UNIQUE KEY uk_ivc_account_active (active_key)",
+        "KEY idx_ivc_account_seller (seller_id, status)"
+      ],
+      "checks": [
+        "CONSTRAINT ck_ivc_account_snapshot CHECK (verified_snapshot IS NULL OR JSON_VALID(verified_snapshot))"
+      ]
+    },
+    {
+      "name": "ivc_account_credential",
+      "group": "B 营业人与账户",
+      "action": "新",
+      "purpose": "凭据版本。秘密字段整组封存在 secret 模块，本表只存引用、指纹、掩码",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "account_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_provider_account.id"
+        },
+        {
+          "name": "version",
+          "sqlType": "INT NOT NULL",
+          "meaning": "账户内递增"
+        },
+        {
+          "name": "sec_key_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "secret 模块引用（PLATFORM 命名空间，ownerType INVOICE_PROVIDER）"
+        },
+        {
+          "name": "fingerprint",
+          "sqlType": "CHAR(16) NOT NULL",
+          "meaning": "秘密字段规范化后 SHA-256 前 16 位"
+        },
+        {
+          "name": "masks",
+          "sqlType": "LONGTEXT NOT NULL",
+          "meaning": "各秘密字段掩码（JSON），仅供展示"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "PENDING / CURRENT / RETIRED / FAILED"
+        },
+        {
+          "name": "verify_error",
+          "sqlType": "VARCHAR(256) NULL",
+          "meaning": "核验失败原因"
+        },
+        {
+          "name": "created_via",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "BIZ / OPS"
+        },
+        {
+          "name": "created_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "创建人"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "effective_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "成为 CURRENT 的时间"
+        },
+        {
+          "name": "retired_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "退役时间"
+        },
+        {
+          "name": "current_key",
+          "sqlType": "BIGINT GENERATED ALWAYS AS (CASE WHEN status='CURRENT' THEN account_id END) VIRTUAL",
+          "meaning": "生成列：每个账户恰好一个 CURRENT"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_credential_version (account_id, version)",
+        "UNIQUE KEY uk_ivc_credential_current (current_key)"
+      ],
+      "checks": [
+        "CONSTRAINT ck_ivc_credential_masks CHECK (JSON_VALID(masks))"
+      ]
+    },
+    {
+      "name": "ivc_account_binding",
+      "group": "B 营业人与账户",
+      "action": "新",
+      "purpose": "门店 → 账户绑定；store_no='*' 为营业人级默认。只影响之后的新票",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "seller_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_seller.id"
+        },
+        {
+          "name": "store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "门店业务号；'*' = 营业人级默认"
+        },
+        {
+          "name": "account_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_provider_account.id"
+        },
+        {
+          "name": "effective_from",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "生效时间"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ACTIVE / RETIRED"
+        },
+        {
+          "name": "active_key",
+          "sqlType": "VARCHAR(80) GENERATED ALWAYS AS (CASE WHEN status='ACTIVE' THEN CONCAT(seller_id,':',store_no) END) VIRTUAL",
+          "meaning": "生成列：一个门店同一时刻只绑一个账户"
+        },
+        {
+          "name": "created_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "创建人"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_binding_active (active_key)",
+        "KEY idx_ivc_binding_account (account_id)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_account_event",
+      "group": "B 营业人与账户",
+      "action": "新",
+      "purpose": "账户事件，只增不改（不设审核，靠它追溯）",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "account_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_provider_account.id"
+        },
+        {
+          "name": "event_type",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "CREATED / CREDENTIAL_SUBMITTED / CREDENTIAL_EFFECTIVE / CREDENTIAL_FAILED / VERIFIED / VERIFY_FAILED / STATUS_CHANGED / MANAGEMENT_CHANGED / BINDING_CHANGED / RANGE_FETCHED"
+        },
+        {
+          "name": "operator_type",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "BIZ / OPS / SYSTEM"
+        },
+        {
+          "name": "operator_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "操作人"
+        },
+        {
+          "name": "detail",
+          "sqlType": "LONGTEXT NULL",
+          "meaning": "掩码后的前后差异（JSON），不含凭据"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        }
+      ],
+      "keys": [
+        "KEY idx_ivc_account_event (account_id, created_at)"
+      ],
+      "checks": [
+        "CONSTRAINT ck_ivc_account_event_detail CHECK (detail IS NULL OR JSON_VALID(detail))"
+      ]
+    },
+    {
+      "name": "ivc_number_range",
+      "group": "C 号码",
+      "action": "改",
+      "purpose": "字轨号段；取号与开立同一事务、不回收",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "range_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "号段业务号"
+        },
+        {
+          "name": "tenant_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "租户"
+        },
+        {
+          "name": "entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "主体"
+        },
+        {
+          "name": "regime_code",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "税制"
+        },
+        {
+          "name": "account_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "【新】所属账户 → ivc_provider_account.id"
+        },
+        {
+          "name": "store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "'*' = 各店共用"
+        },
+        {
+          "name": "period_code",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "期别，如 11512"
+        },
+        {
+          "name": "track",
+          "sqlType": "VARCHAR(4) NOT NULL",
+          "meaning": "字轨"
+        },
+        {
+          "name": "start_no",
+          "sqlType": "INT NOT NULL",
+          "meaning": "起号"
+        },
+        {
+          "name": "end_no",
+          "sqlType": "INT NOT NULL",
+          "meaning": "迄号"
+        },
+        {
+          "name": "next_no",
+          "sqlType": "INT NOT NULL",
+          "meaning": "下一个可用号；> end_no 即用尽"
+        },
+        {
+          "name": "low_water",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "【新】剩余低于此值提醒 / 自动领号"
+        },
+        {
+          "name": "allocation_owner",
+          "sqlType": "VARCHAR(16) NOT NULL DEFAULT 'MANUAL'",
+          "meaning": "MANUAL 商家登记 / PROVIDER 供应商配给（V5）"
+        },
+        {
+          "name": "apply_id",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "供应商配号申请号（V5）"
+        },
+        {
+          "name": "invoice_type",
+          "sqlType": "VARCHAR(4) NULL",
+          "meaning": "供应商回传发票种类（V5）"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ACTIVE / EXHAUSTED"
+        },
+        {
+          "name": "created_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "创建人"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_number_range_no (tenant_no, range_no)",
+        "UNIQUE KEY uk_ivc_number_range (tenant_no, entity_no, regime_code, period_code, track, start_no)",
+        "KEY idx_ivc_number_range_pick (account_id, period_code, status, store_no)"
+      ],
+      "checks": [
+        "CONSTRAINT ck_ivc_number_range_bounds CHECK (start_no >= 0 AND start_no <= end_no AND end_no <= 99999999 AND next_no >= start_no AND next_no <= end_no + 1)"
+      ]
+    },
+    {
+      "name": "ivc_invoice",
+      "group": "D 票据",
+      "action": "改",
+      "purpose": "发票；明细、金额、路由在开立时冻结。【新】列为本次新增",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "invoice_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "内部单号"
+        },
+        {
+          "name": "tenant_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "租户"
+        },
+        {
+          "name": "entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "主体"
+        },
+        {
+          "name": "store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "门店"
+        },
+        {
+          "name": "seller_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "【新】→ ivc_seller.id"
+        },
+        {
+          "name": "account_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "【新】冻结的开票账户 → ivc_provider_account.id"
+        },
+        {
+          "name": "region_code",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "【新】地区（快照）"
+        },
+        {
+          "name": "regime_code",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "税制"
+        },
+        {
+          "name": "provider_code",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "【新】供应商（快照）"
+        },
+        {
+          "name": "numbering_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "【新】编号方式（快照）"
+        },
+        {
+          "name": "industry_code",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "行业"
+        },
+        {
+          "name": "source_type",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "来源类型"
+        },
+        {
+          "name": "source_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "来源单号"
+        },
+        {
+          "name": "active_source_key",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "同来源同时只有一张有效票；作废 / 开立失败置空"
+        },
+        {
+          "name": "fiscal_number",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "法定号码；在线配号回写前为空【改为可空】"
+        },
+        {
+          "name": "range_no",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "号段；在线配号为空【改为可空】"
+        },
+        {
+          "name": "period_code",
+          "sqlType": "VARCHAR(8) NULL",
+          "meaning": "期别"
+        },
+        {
+          "name": "random_code",
+          "sqlType": "VARCHAR(8) NULL",
+          "meaning": "随机码"
+        },
+        {
+          "name": "provider_order_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "【新】供应商侧幂等身份（绿界 RelateNumber；鲸跃 OrderId）"
+        },
+        {
+          "name": "provider_ref",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "【新】供应商回执号"
+        },
+        {
+          "name": "issue_status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "【新】PENDING / UNKNOWN / ISSUED / REJECTED"
+        },
+        {
+          "name": "report_status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "【新】PENDING / REPORTED / REJECTED / NOT_REQUIRED"
+        },
+        {
+          "name": "seller_tax_id",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "卖方统编（冻结）"
+        },
+        {
+          "name": "seller_name",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "卖方名称（冻结）"
+        },
+        {
+          "name": "issued_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "开立时间（UTC）"
+        },
+        {
+          "name": "buyer_type",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "B2C / B2B"
+        },
+        {
+          "name": "buyer_user_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "平台买家用户号"
+        },
+        {
+          "name": "buyer_tax_id",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "买方统编"
+        },
+        {
+          "name": "buyer_name",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "买方名称"
+        },
+        {
+          "name": "carrier_type",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "载具类别"
+        },
+        {
+          "name": "carrier_id",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "载具号码"
+        },
+        {
+          "name": "donate_code",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "爱心码"
+        },
+        {
+          "name": "print_mark",
+          "sqlType": "CHAR(1) NOT NULL",
+          "meaning": "Y=印证明联"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种"
+        },
+        {
+          "name": "sales_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "应税销售额"
+        },
+        {
+          "name": "zero_tax_sales_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "零税率销售额"
+        },
+        {
+          "name": "free_tax_sales_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "免税销售额"
+        },
+        {
+          "name": "tax_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "税额"
+        },
+        {
+          "name": "total_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "总计"
+        },
+        {
+          "name": "allowed_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "累计折让"
+        },
+        {
+          "name": "tax_type",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "TAXABLE / ZERO / EXEMPT / MIXED"
+        },
+        {
+          "name": "tax_rate_bp",
+          "sqlType": "INT NOT NULL",
+          "meaning": "税率（基点）"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ISSUED / VOIDED（法律状态）"
+        },
+        {
+          "name": "void_reason",
+          "sqlType": "VARCHAR(256) NULL",
+          "meaning": "作废原因"
+        },
+        {
+          "name": "voided_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "作废时间"
+        },
+        {
+          "name": "voided_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "作废人"
+        },
+        {
+          "name": "proof_snapshot",
+          "sqlType": "LONGTEXT NULL",
+          "meaning": "证明联冻结内容；在线配号回写前为空"
+        },
+        {
+          "name": "proof_snapshot_hash",
+          "sqlType": "CHAR(64) NULL",
+          "meaning": "哈希"
+        },
+        {
+          "name": "detail_snapshot",
+          "sqlType": "LONGTEXT NULL",
+          "meaning": "交易明细冻结内容"
+        },
+        {
+          "name": "detail_snapshot_hash",
+          "sqlType": "CHAR(64) NULL",
+          "meaning": "哈希"
+        },
+        {
+          "name": "created_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "创建人"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_invoice_no (tenant_no, invoice_no)",
+        "UNIQUE KEY uk_ivc_invoice_fiscal (tenant_no, region_code, period_code, fiscal_number)",
+        "UNIQUE KEY uk_ivc_invoice_active_source (tenant_no, entity_no, active_source_key)",
+        "UNIQUE KEY uk_ivc_invoice_provider_order (account_id, provider_order_no)",
+        "KEY idx_ivc_invoice_store (tenant_no, entity_no, store_no, period_code, created_at)",
+        "KEY idx_ivc_invoice_buyer (tenant_no, buyer_user_no, issued_at)",
+        "KEY idx_ivc_invoice_recovery (issue_status, updated_at)"
+      ],
+      "checks": [
+        "CONSTRAINT ck_ivc_invoice_proof_json CHECK (proof_snapshot IS NULL OR JSON_VALID(proof_snapshot))",
+        "CONSTRAINT ck_ivc_invoice_detail_json CHECK (detail_snapshot IS NULL OR JSON_VALID(detail_snapshot))",
+        "CONSTRAINT ck_ivc_invoice_issued CHECK (issue_status <> 'ISSUED' OR (fiscal_number IS NOT NULL AND proof_snapshot IS NOT NULL))",
+        "CONSTRAINT ck_ivc_invoice_amounts CHECK (total_minor >= 0 AND allowed_minor >= 0 AND allowed_minor <= total_minor AND sales_minor + zero_tax_sales_minor + free_tax_sales_minor + tax_minor = total_minor)"
+      ]
+    },
+    {
+      "name": "ivc_invoice_line",
+      "group": "D 票据",
+      "action": "沿用",
+      "purpose": "发票明细",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "tenant_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "租户"
+        },
+        {
+          "name": "invoice_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "发票"
+        },
+        {
+          "name": "line_no",
+          "sqlType": "INT NOT NULL",
+          "meaning": "行号"
+        },
+        {
+          "name": "source_line_ref",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "来源行"
+        },
+        {
+          "name": "name",
+          "sqlType": "VARCHAR(256) NOT NULL",
+          "meaning": "品名"
+        },
+        {
+          "name": "quantity",
+          "sqlType": "DECIMAL(18,4) NOT NULL",
+          "meaning": "数量"
+        },
+        {
+          "name": "unit",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "单位"
+        },
+        {
+          "name": "unit_price_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "单价"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "金额"
+        },
+        {
+          "name": "tax_type",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "课税别"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_invoice_line (tenant_no, invoice_no, line_no)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_allowance",
+      "group": "D 票据",
+      "action": "改",
+      "purpose": "折让；账户取自原票",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "allowance_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "内部单号"
+        },
+        {
+          "name": "tenant_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "租户"
+        },
+        {
+          "name": "entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "主体"
+        },
+        {
+          "name": "store_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "门店"
+        },
+        {
+          "name": "invoice_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "原发票"
+        },
+        {
+          "name": "account_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "【新】原票账户（冗余便于任务）"
+        },
+        {
+          "name": "fiscal_allowance_number",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "对外折让单号 = 号码 + 两位序号（V5）"
+        },
+        {
+          "name": "provider_allowance_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "【新】供应商折让号（绿界）"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "含税折让金额"
+        },
+        {
+          "name": "tax_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "税额"
+        },
+        {
+          "name": "reason",
+          "sqlType": "VARCHAR(256) NOT NULL",
+          "meaning": "原因"
+        },
+        {
+          "name": "issue_status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "【新】PENDING / UNKNOWN / ISSUED / REJECTED"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "【新】ACTIVE / VOIDED"
+        },
+        {
+          "name": "voided_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "【新】作废时间"
+        },
+        {
+          "name": "print_snapshot",
+          "sqlType": "LONGTEXT NULL",
+          "meaning": "折让证明单冻结内容"
+        },
+        {
+          "name": "print_snapshot_hash",
+          "sqlType": "CHAR(64) NULL",
+          "meaning": "哈希"
+        },
+        {
+          "name": "created_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "创建人"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_allowance_no (tenant_no, allowance_no)",
+        "KEY idx_ivc_allowance_invoice (tenant_no, invoice_no)"
+      ],
+      "checks": [
+        "CONSTRAINT ck_ivc_allowance_amount CHECK (amount_minor > 0 AND tax_minor >= 0 AND tax_minor <= amount_minor)",
+        "CONSTRAINT ck_ivc_allowance_print_json CHECK (print_snapshot IS NULL OR JSON_VALID(print_snapshot))"
+      ]
+    },
+    {
+      "name": "ivc_buyer_preference",
+      "group": "E 买受人",
+      "action": "沿用",
+      "purpose": "付款前预存的买受人选择；以最后一次为准",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "tenant_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "租户"
+        },
+        {
+          "name": "entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "主体"
+        },
+        {
+          "name": "source_type",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "来源类型"
+        },
+        {
+          "name": "source_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "来源单号"
+        },
+        {
+          "name": "buyer_tax_id",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "买方统编"
+        },
+        {
+          "name": "buyer_name",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "买方名称"
+        },
+        {
+          "name": "carrier_type",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "载具类别"
+        },
+        {
+          "name": "carrier_id",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "载具号码"
+        },
+        {
+          "name": "donate_code",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "爱心码"
+        },
+        {
+          "name": "created_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "创建人"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_buyer_preference (tenant_no, entity_no, source_type, source_no)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_user_carrier",
+      "group": "E 买受人",
+      "action": "改",
+      "purpose": "买家常用载具（平台级，跨主体）",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "carrier_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "业务号"
+        },
+        {
+          "name": "tenant_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "租户"
+        },
+        {
+          "name": "user_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "买家"
+        },
+        {
+          "name": "region_code",
+          "sqlType": "VARCHAR(8) NOT NULL DEFAULT 'TW'",
+          "meaning": "【新】载具所属地区"
+        },
+        {
+          "name": "carrier_type",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "3J0002 手机条码 / CQ0001 自然人凭证"
+        },
+        {
+          "name": "carrier_id",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "载具号码"
+        },
+        {
+          "name": "label",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "买家自起名"
+        },
+        {
+          "name": "is_default",
+          "sqlType": "TINYINT NOT NULL DEFAULT 0",
+          "meaning": "默认"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_user_carrier_no (tenant_no, carrier_no)",
+        "UNIQUE KEY uk_ivc_user_carrier (tenant_no, user_no, region_code, carrier_type, carrier_id)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_transmission",
+      "group": "F 往来记录",
+      "action": "改",
+      "purpose": "异步上报任务；重试只在这里",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "transmission_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "业务号"
+        },
+        {
+          "name": "tenant_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "租户"
+        },
+        {
+          "name": "entity_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "主体"
+        },
+        {
+          "name": "account_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "【新】原票账户"
+        },
+        {
+          "name": "regime_code",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "税制"
+        },
+        {
+          "name": "provider_code",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "供应商（原 gateway_code）"
+        },
+        {
+          "name": "operation",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ISSUE / VOID / ALLOWANCE / ALLOWANCE_VOID（原 message_type）"
+        },
+        {
+          "name": "ref_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "invoice_no / allowance_no"
+        },
+        {
+          "name": "payload",
+          "sqlType": "LONGTEXT NOT NULL",
+          "meaning": "冻结报文，补传原样再发"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "PENDING / SENDING / SENT / FAILED"
+        },
+        {
+          "name": "attempts",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "已尝试次数"
+        },
+        {
+          "name": "next_attempt_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "下次尝试"
+        },
+        {
+          "name": "last_error",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "最近错误"
+        },
+        {
+          "name": "provider_ref",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "供应商回执号"
+        },
+        {
+          "name": "deadline_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "【新】法定上报期限（台湾 B2C 开立后 48 小时）"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_transmission_no (tenant_no, transmission_no)",
+        "UNIQUE KEY uk_ivc_transmission_ref (tenant_no, operation, ref_no)",
+        "KEY idx_ivc_transmission_due (status, next_attempt_at)"
+      ],
+      "checks": [
+        "CONSTRAINT ck_ivc_transmission_payload CHECK (JSON_VALID(payload))"
+      ]
+    },
+    {
+      "name": "ivc_api_request_log",
+      "group": "F 往来记录",
+      "action": "新",
+      "purpose": "调用方进来的请求留痕（对照 pay_api_request_log）",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "request_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "业务号"
+        },
+        {
+          "name": "trace_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "追踪号"
+        },
+        {
+          "name": "caller_type",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "BIZ / MP / OPS / OPEN / INTERNAL"
+        },
+        {
+          "name": "caller_ref",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "主体 / 应用 / 操作人"
+        },
+        {
+          "name": "method",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "HTTP 方法"
+        },
+        {
+          "name": "path",
+          "sqlType": "VARCHAR(255) NOT NULL",
+          "meaning": "路径模板"
+        },
+        {
+          "name": "idempotency_key",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "幂等键"
+        },
+        {
+          "name": "request_masked",
+          "sqlType": "LONGTEXT NULL",
+          "meaning": "脱敏请求"
+        },
+        {
+          "name": "response_code",
+          "sqlType": "INT NULL",
+          "meaning": "业务码"
+        },
+        {
+          "name": "elapsed_ms",
+          "sqlType": "INT NULL",
+          "meaning": "耗时"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_api_request_no (request_no)",
+        "KEY idx_ivc_api_request_idem (caller_type, caller_ref, idempotency_key)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_provider_call_log",
+      "group": "F 往来记录",
+      "action": "新",
+      "purpose": "对供应商的每一次调用",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "call_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "业务号"
+        },
+        {
+          "name": "trace_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "追踪号"
+        },
+        {
+          "name": "account_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "账户"
+        },
+        {
+          "name": "provider_code",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "供应商"
+        },
+        {
+          "name": "operation",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ISSUE / VOID / ALLOWANCE / ALLOWANCE_VOID / QUERY / RANGE / VERIFY"
+        },
+        {
+          "name": "ref_type",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "INVOICE / ALLOWANCE / ACCOUNT / RANGE"
+        },
+        {
+          "name": "ref_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "业务号"
+        },
+        {
+          "name": "attempt",
+          "sqlType": "INT NOT NULL DEFAULT 1",
+          "meaning": "第几次"
+        },
+        {
+          "name": "request_masked",
+          "sqlType": "LONGTEXT NULL",
+          "meaning": "脱敏请求"
+        },
+        {
+          "name": "response_masked",
+          "sqlType": "LONGTEXT NULL",
+          "meaning": "脱敏响应"
+        },
+        {
+          "name": "raw_payload_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "→ ivc_raw_payload.id（加密原文）"
+        },
+        {
+          "name": "http_status",
+          "sqlType": "INT NULL",
+          "meaning": "HTTP 状态"
+        },
+        {
+          "name": "elapsed_ms",
+          "sqlType": "INT NULL",
+          "meaning": "耗时"
+        },
+        {
+          "name": "outcome",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "ACCEPTED / REJECTED / UNKNOWN"
+        },
+        {
+          "name": "provider_result_code",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "供应商原文结果码（S0 / RtnCode …）"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_call_no (call_no)",
+        "KEY idx_ivc_call_ref (ref_type, ref_no)",
+        "KEY idx_ivc_call_account (account_id, created_at)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_provider_receipt",
+      "group": "F 往来记录",
+      "action": "新",
+      "purpose": "外部结果进来的唯一记录（回调 / Turnkey 回执文件 / 平台结果），可回放",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "receipt_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "业务号"
+        },
+        {
+          "name": "account_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "账户（验签前可空）"
+        },
+        {
+          "name": "provider_code",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "供应商"
+        },
+        {
+          "name": "kind",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "CALLBACK / FILE_RECEIPT / PLATFORM_RESULT"
+        },
+        {
+          "name": "ref_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "关联业务号"
+        },
+        {
+          "name": "raw_payload_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "→ ivc_raw_payload.id"
+        },
+        {
+          "name": "raw_sha256",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "原文哈希"
+        },
+        {
+          "name": "verify_result",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "PASSED / FAILED / SKIPPED"
+        },
+        {
+          "name": "outcome",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "APPLIED / IGNORED / FAILED"
+        },
+        {
+          "name": "replay_of",
+          "sqlType": "BIGINT NULL",
+          "meaning": "回放来源 → ivc_provider_receipt.id"
+        },
+        {
+          "name": "received_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "收到时间"
+        },
+        {
+          "name": "handled_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "处理完成时间"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_receipt_no (receipt_no)",
+        "KEY idx_ivc_receipt_ref (provider_code, ref_no)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_raw_payload",
+      "group": "F 往来记录",
+      "action": "新",
+      "purpose": "原文单独存（信封加密），按合规期限清理",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "cipher",
+          "sqlType": "LONGBLOB NOT NULL",
+          "meaning": "加密原文"
+        },
+        {
+          "name": "sha256",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "原文哈希"
+        },
+        {
+          "name": "expire_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "到期清理时间"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        }
+      ],
+      "keys": [
+        "KEY idx_ivc_raw_expire (expire_at)"
+      ],
+      "checks": []
+    },
+    {
+      "name": "ivc_biz_notify",
+      "group": "F 往来记录",
+      "action": "新",
+      "purpose": "独立形态下发给主应用的事件（开立、作废、打印事实）；内嵌形态走平台 Outbox",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "notify_no",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "业务号"
+        },
+        {
+          "name": "event_type",
+          "sqlType": "VARCHAR(48) NOT NULL",
+          "meaning": "InvoiceIssued / InvoiceVoided / BusinessPrintFactReady …"
+        },
+        {
+          "name": "payload",
+          "sqlType": "LONGTEXT NOT NULL",
+          "meaning": "事件内容（JSON）"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "PENDING / SENT / FAILED"
+        },
+        {
+          "name": "attempts",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "已尝试"
+        },
+        {
+          "name": "next_attempt_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "下次尝试"
+        },
+        {
+          "name": "last_error",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "最近错误"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        },
+        {
+          "name": "updated_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "更新时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_notify_no (notify_no)",
+        "KEY idx_ivc_notify_due (status, next_attempt_at)"
+      ],
+      "checks": [
+        "CONSTRAINT ck_ivc_notify_payload CHECK (JSON_VALID(payload))"
+      ]
+    },
+    {
+      "name": "ivc_recon_diff",
+      "group": "G 对账",
+      "action": "新",
+      "purpose": "本地与供应商 / 税务平台状态的差异",
+      "columns": [
+        {
+          "name": "id",
+          "sqlType": "BIGINT NOT NULL AUTO_INCREMENT",
+          "meaning": "主键"
+        },
+        {
+          "name": "recon_date",
+          "sqlType": "DATE NOT NULL",
+          "meaning": "对账日"
+        },
+        {
+          "name": "account_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "账户"
+        },
+        {
+          "name": "ref_type",
+          "sqlType": "VARCHAR(16) NOT NULL",
+          "meaning": "INVOICE / ALLOWANCE"
+        },
+        {
+          "name": "ref_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "业务号"
+        },
+        {
+          "name": "local_state",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "本地状态"
+        },
+        {
+          "name": "provider_state",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "供应商状态"
+        },
+        {
+          "name": "diff_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "MISSING_REMOTE / MISSING_LOCAL / STATE_MISMATCH / AMOUNT_MISMATCH"
+        },
+        {
+          "name": "resolution",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "OPEN / FIXED / ACCEPTED"
+        },
+        {
+          "name": "resolved_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "处理人"
+        },
+        {
+          "name": "resolved_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "处理时间"
+        },
+        {
+          "name": "created_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "创建时间（UTC）"
+        }
+      ],
+      "keys": [
+        "UNIQUE KEY uk_ivc_recon_diff (recon_date, account_id, ref_type, ref_no)"
+      ],
+      "checks": []
+    }
+  ]
+}

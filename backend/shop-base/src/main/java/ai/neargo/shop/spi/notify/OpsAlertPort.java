@@ -39,6 +39,18 @@ public interface OpsAlertPort {
             long actual,
             String dedupKey) {}
 
+    /**
+     * 有新的审批待处理（OpsKit {@code task.created}；TDD-OpsKit审批对接 §1.2）。只发站内消息，不发群机器人 —— 审批是对人的待办。
+     *
+     * @param opsReceivers 候选审批人（运营员工号），由审批适配器按候选权限码反查
+     * @param link 审批中心地址
+     */
+    default void approvalTodo(ApprovalTodo todo, List<String> opsReceivers, String link) {
+    }
+
+    /** @param taskNo OpsKit 任务号（去重键）· title 事项标题 · process 流程名 */
+    record ApprovalTodo(String taskNo, String title, String process) {}
+
     void newMerchantApply(NewApply apply, List<String> opsReceivers, String reviewLink);
 
     /**

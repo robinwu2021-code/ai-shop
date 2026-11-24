@@ -54,6 +54,12 @@ const REASONS: Record<string, [zh: string, en: string]> = {
   CATEGORY_HAS_CHILDREN: ["还有启用中的下级分类，先停用下级", "Disable its enabled child categories first"],
   CATEGORY_IN_USE: ["还有在售商品挂在这个分类上，先改商品分类或停售", "On-sale products still use this category — move or stop them first"],
   PAYMENT_UNAVAILABLE: ["支付协调未开启", "Payment coordination is not enabled"],
+  // T9a / T9b 审批门禁：这次点击没有执行，只是送审或在等审批（审批通过后用同样内容再点一次才执行）
+  APPROVAL_SUBMITTED: ["已送审：审批通过后，用同样的内容再点一次才会执行", "Submitted for approval — click again with the same values once it is approved"],
+  APPROVAL_PENDING: ["审批中：通过后再点一次执行", "Awaiting approval — click again once it is approved"],
+  APPROVAL_REJECTED: ["审批未通过，未执行；改了内容可重新送审", "Approval was rejected; nothing was done — change the values to resubmit"],
+  APPROVAL_WITHDRAWN: ["审批已撤回，未执行；改了内容可重新送审", "Approval was withdrawn; nothing was done — change the values to resubmit"],
+  APPROVAL_CANCELLED: ["审批已作废，未执行；改了内容可重新送审", "Approval was cancelled; nothing was done — change the values to resubmit"],
 };
 
 /** 已登记的原因码 → 当前语言的说明；未登记返回 null */

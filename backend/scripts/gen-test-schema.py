@@ -33,6 +33,8 @@ MIGRATION_DIR = ROOT / "backend/shop-app/src/main/resources/db/migration"
 PAY_MIGRATION_DIR = ROOT / "backend/pay/pay-domain/src/main/resources/db/pay"
 # 平台级密钥模块的独立迁移目录（W5，历史表 sec_flyway_history）。sec_* 不碰别人的表，接在 db/pay 后面重放即可
 SECRET_MIGRATION_DIR = ROOT / "backend/secret/secret-store/src/main/resources/db/secret"
+# 发票域的独立迁移目录（ADR-063，历史表 ivc_flyway_history）。在平台之后执行，V2 追加 mch_role 权限
+INVOICE_MIGRATION_DIR = ROOT / "backend/invoice/invoice-domain/src/main/resources/db/invoice"
 OUT = ROOT / "backend/shop-app/src/test/resources/schema-test.sql"
 
 HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 {source} 得到。
@@ -411,8 +413,8 @@ def main():
         else:
             replay(f.read_text(), tables, order, seeds, renames, altered)
     _policy_require(consumed == set(policies), "unused declared projection")
-    # 只在默认源目录时接上 db/pay 与 db/secret：传了第二个参数（拿别的目录做对照）就只重放那一个目录
-    extras = [d for d in (PAY_MIGRATION_DIR, SECRET_MIGRATION_DIR) if len(sys.argv) <= 2 and d.is_dir()]
+    # 只在默认源目录时接上 db/pay、db/secret 与 db/invoice：传了第二个参数（拿别的目录做对照）就只重放那一个目录
+    extras = [d for d in (PAY_MIGRATION_DIR, SECRET_MIGRATION_DIR, INVOICE_MIGRATION_DIR) if len(sys.argv) <= 2 and d.is_dir()]
     for extra in extras:
         for f in sorted(extra.glob("V*.sql"),
                         key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
@@ -744,13 +746,13 @@ def _h2_constant_json_append(stmt: str) -> str:
     Exact quoted-token membership preserves migration idempotency. Only the
     restricted permission-code alphabet is translated; arbitrary JSON is not.
     """
-    append = re.compile(r"JSON_ARRAY_APPEND\(\s*(\w+)\s*,\s*'\$'\s*,\s*'([a-z:]+)'\s*\)", re.I)
+    append = re.compile(r"JSON_ARRAY_APPEND\(\s*(\w+)\s*,\s*'\$'\s*,\s*'([a-z:-]+)'\s*\)", re.I)
     def replace(match):
         column, permission = match.groups()
         return (f"CONCAT(LEFT(TRIM({column}),CHAR_LENGTH(TRIM({column}))-1),"
                 f"CASE WHEN TRIM({column})='[]' THEN '' ELSE ',' END,'\"{permission}\"]')")
     stmt = append.sub(replace, stmt)
-    membership = re.compile(r"JSON_CONTAINS\(\s*(\w+)\s*,\s*JSON_QUOTE\(\s*'([a-z:]+)'\s*\)\s*\)\s*=\s*0", re.I)
+    membership = re.compile(r"JSON_CONTAINS\(\s*(\w+)\s*,\s*JSON_QUOTE\(\s*'([a-z:-]+)'\s*\)\s*\)\s*=\s*0", re.I)
     return membership.sub(lambda m: f"LOCATE('\"{m.group(2)}\"',{m.group(1)})=0", stmt)
 
 
@@ -1198,6 +1200,10 @@ def _apply_action(table, action, cols):
 
     if re.match(r"ADD\s+(?:INDEX|KEY)\s+(?:IF\s+NOT\s+EXISTS\s+)?\w*\s*\(", action, re.I):
         # 普通索引：H2 测试库用不上，与 CREATE INDEX 同样跳过
+        return
+
+    if re.fullmatch(r"(?:ALGORITHM|LOCK)\s*=\s*\w+", action, re.I):
+        # MySQL 在线 DDL 的执行方式（ALGORITHM=INSTANT / LOCK=NONE），不改表结构；H2 没有对应语法
         return
 
     # **兜底必须炸。** 这个分支此前是隐式的 `pass` —— 与本脚本开头写的

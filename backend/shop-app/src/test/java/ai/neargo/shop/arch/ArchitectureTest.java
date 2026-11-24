@@ -99,7 +99,13 @@ class ArchitectureTest {
             "printing",
             // food is an independently packaged industry domain, not shared infrastructure.
             "food",
-            "beauty"};
+            "beauty",
+            // invoice：发票（ivc_*，ADR-063）。与 logistics 同形态 —— 现在内嵌、将来可拆；
+            // 行业经 spi.invoice 供数，这里登记后它直接 import 订单实体就当场红
+            "invoice",
+            // approval：审批适配器（approval_link，V690；TDD-OpsKit审批对接）。代码在 shop-opskit 模块、只在 profile opskit 构建，
+            // 不启用时匹配不到类；登记进来是为了启用的那一刻边界规则立即生效
+            "approval"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {
@@ -933,7 +939,9 @@ class ArchitectureTest {
                 // 它不认识任何业务概念、也不依赖任何域。见 TDD-收件人物流触达与分享裂变 §4.2。
                 "link",
                 "print", // print-api DTOs and channel adapters; durable state belongs to printing.
-                "printbridge");
+                "printbridge",
+                // invoicebridge：发票来源的宿主适配（已付子单 → InvoiceSourcePort）。与 printbridge 同理：必须同时认识两边
+                "invoicebridge");
         List<String> known = new ArrayList<>(infra);
         known.addAll(List.of(DOMAINS));
 

@@ -149,6 +149,8 @@ export interface AppRow {
   appNo: string; name: string; purpose: string | null; ownerKind: "MERCHANT" | "PLATFORM"; merchantNo: string | null; environment: "LIVE" | "SANDBOX";
   scopes: string[]; notifyUrl: string | null; callbackDomains: string[]; callbackStatus: string; ipWhitelist: string | null; rateLimitQps: number;
   dailyRefundLimitMinor: number; credentialStatus: string; grantCount: number; status: string; lastAccessAt: number | null; lastAccessOutcome: string | null; version: number;
+  /** P12：密钥方案（near-pay OpsAppDtos.AppDto.signType，旧数据为空按 HMAC）；创建后不可改 */
+  signType?: SignType;
 }
 export interface AppDetail { app: AppRow; registeredBy: string | null; callbackSetBy: string | null; callbackVerifiedBy: string | null; callbackEvidenceRef: string | null; statusReason: string | null; enableApprovalNo: string | null }
 export interface AppGrant { appNo: string; storeNo: string; merchantNo: string; actions: string[]; status: string; grantedBy: string | null; grantedAt: number | null; version: number }
@@ -460,7 +462,7 @@ export type ReversalRecheck = "VERIFIED" | "PENDING" | "DEFERRED";
 
 // ════ P10（TDD-支付中心运营页面 §2.15；契约 near-pay da3ced2a4） ════
 
-export const CREDENTIAL_OWNER_TYPES = ["CHANNEL_PLATFORM", "PAY_MERCHANT", "PARTNER_APP", "TERMINAL"] as const;
+export const CREDENTIAL_OWNER_TYPES = ["CHANNEL_PLATFORM", "PAY_MERCHANT", "PARTNER_APP", "TERMINAL", "PLATFORM_OPEN"] as const;
 export const CREDENTIAL_VERSION_STATUSES = ["DRAFT", "VERIFIED", "ACTIVE", "ROTATING", "REVOKED"] as const;
 export const CREDENTIAL_EXPIRY_STATES = ["NONE", "OK", "EXPIRING", "EXPIRED"] as const;
 export interface CredentialTypeRow { credentialType: string; ownerType: string; counterparty: string | null; purpose: string; algorithm: string; materialType: "COMPOSITE" | "SYMMETRIC_SECRET" | "PRIVATE_KEY" | "PUBLIC_KEY"; materialFields: string[]; generated: boolean }
@@ -544,3 +546,35 @@ export interface SoftPosBinding {
   packageName: string; signatureSha256: string; appVersion: string; sdkVersion: string; configVersion: number; status: "DRAFT" | "REVOKED"; validUntil: string;
 }
 export interface SoftPosRegistration { packageName: string; signatureSha256: string; appVersion: string; sdkVersion: string; validUntil: string; reason: string }
+
+// ════ P12 开放 API（near-pay develop/s1 a1c5da09：OpsAppApplicationController / OpsAppKeyController / OpsPlatformKeyController） ════
+
+export type SignType = "HMAC" | "RSA";
+export const SIGN_TYPES = ["HMAC", "RSA"] as const;
+/** 接入申请里的接口权限（near-pay AppScope）；批准时原样成为应用的 scopes */
+export const OPEN_SCOPES = ["READ", "COLLECT", "REFUND"] as const;
+export const APPLICATION_STATUSES = ["SUBMITTED", "APPROVED", "REJECTED", "WITHDRAWN"] as const;
+/** OpsAppApplicationController.ApplicationDto（时间为 UTC 毫秒） */
+export interface AppApplicationRow {
+  applicationNo: string; merchantNo: string; appName: string; purpose: string | null; environment: string; scopes: string[];
+  notifyUrl: string | null; callbackDomains: string[]; ipWhitelist: string | null; rateLimitQps: number; dailyRefundLimitMinor: number;
+  contactName: string | null; contactEmail: string | null; status: string; submittedBy: string; reviewedBy: string | null;
+  reviewedAt: number | null; reviewReason: string | null; appNo: string | null; createdAt: number | null; version: number; signType: SignType;
+}
+/** 提交体（SubmitBody）；requestNo 由客户端按请求体生成，environment 不传 = 实例环境 */
+export interface AppApplicationSubmit {
+  merchantNo: string; appName: string; purpose: string | null; scopes: string[]; notifyUrl: string | null; callbackDomains: string[];
+  ipWhitelist: string | null; rateLimitQps: number; dailyRefundLimitMinor: number; contactName: string | null; contactEmail: string | null; signType: SignType;
+}
+/** 商家公钥持有证明挑战：商家对 stringToSignPrefix + 毫秒时间戳 用私钥签名（5 分钟、一次性） */
+export interface AppKeyChallenge { appNo: string; challenge: string; expiresAt: number; stringToSignPrefix: string }
+export interface AppPublicKeyUpload { publicKeyPem: string; challenge: string; timestamp: string; signature: string; reason: string }
+/** 登记后版本为 VERIFIED，externalKeyId = 商家公钥序列号（X-Key-Serial）；启用走凭证管理（两人） */
+export interface AppPublicKeyAdded { keyId: number; version: CredentialVersion }
+export interface EmergencyLockResult { appNo: string; revokedVersions: string[]; refundLimitBefore: number; refundLimitAfter: number; appVersion: number }
+export interface KeyUsageRow { keyVersion: number; calls: number; lastAt: number | null }
+export const PLATFORM_KEY_USAGES = ["SIGN", "ENCRYPT"] as const;
+export type PlatformKeyUsage = (typeof PLATFORM_KEY_USAGES)[number];
+/** 已公布的平台公钥（VERIFIED 预告 / ACTIVE / 重叠期内 ROTATING）；草稿不在这里，在凭证管理（PLATFORM_OPEN） */
+export interface PlatformKeyRow { usage: PlatformKeyUsage; keyId: number; versionIndex: number; serial: string; status: string; fingerprint: string; publicKeyPem: string; enabledAt: number | null; overlapUntil: number | null }
+export interface PlatformKeyGenerated { usage: PlatformKeyUsage; keyId: number; version: CredentialVersion }

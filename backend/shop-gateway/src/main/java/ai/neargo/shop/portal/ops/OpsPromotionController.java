@@ -4,7 +4,11 @@ import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.promotion.dto.OpsPromotionVOs.OpsActivityVO;
 import ai.neargo.shop.promotion.dto.OpsPromotionVOs.OpsCouponVO;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.promotion.approval.EnrollmentApprovalSubject;
 import ai.neargo.shop.promotion.service.OpsPromotionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +33,13 @@ public class OpsPromotionController {
 
     private final OpsPromotionService opsPromotionService;
     private final ai.neargo.shop.promotion.service.PlatformActivityService platformService;
+
+    private EnrollmentApprovalSubject enrollmentApproval;
+
+    @Autowired(required = false)
+    public void setEnrollmentApproval(EnrollmentApprovalSubject value) {
+        this.enrollmentApproval = value;
+    }
 
     public OpsPromotionController(OpsPromotionService opsPromotionService,
                                   ai.neargo.shop.promotion.service.PlatformActivityService platformService) {
@@ -69,6 +80,10 @@ public class OpsPromotionController {
     @PostMapping("/ops/promotion/enrollments/{enrollmentNo}/review")
     public ai.neargo.shop.promotion.dto.PlatformVOs.EnrollmentVO review(@PathVariable String enrollmentNo,
                                                                        @RequestBody ReviewReq req) {
+        if (enrollmentApproval != null && enrollmentApproval.enabled()) {
+            // 接入审批后在这里直接审会绕过审批中心（T18）
+            throw BizException.of(ErrorCode.APPROVAL_IN_OPSKIT);
+        }
         return platformService.review(enrollmentNo, Boolean.TRUE.equals(req.pass()), req.reason(),
                 SecurityUtils.currentUserNo());
     }

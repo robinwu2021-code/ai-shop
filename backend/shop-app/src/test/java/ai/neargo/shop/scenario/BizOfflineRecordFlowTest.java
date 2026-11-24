@@ -190,6 +190,11 @@ class BizOfflineRecordFlowTest {
                 .isEqualTo(10404);
         JsonNode ok = data(record(s.owner(), s, key(), body(100, "TWD", "CASH", mine, null, null)));
         assertThat(ok.get("orderNo").asString()).isEqualTo(mine);
+        // 已拍板 D3：引用但不推 —— 门店零售单付清判断（TDD-统一订单与开票资料 P2）只认 STORE_SALE，这张单原样不动
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_sub_order WHERE sub_order_no=?", String.class, mine))
+                .isEqualTo("WAIT_OFFLINE_PAY");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id IN (?,?)", Long.class,
+                mine, mainOrderNo)).isZero();
     }
 
     // ------------------------------------------------------------------ AC2 幂等

@@ -34,6 +34,12 @@ public class OrdOrder extends BaseEntity {
     private String storeNo;
     private String caller;
     private String operationNo;
+    /** 端上单号（V692）：门店内唯一，离线补传与幂等用；只有门店零售单有 */
+    private String clientOrderNo;
+    /** 建单渠道（V692）：POS …；只有门店零售单有 */
+    private String channel;
+    /** 开票时机（V695）：ON_PAID / MANUAL / LATER，NULL = 跟门店开票设定；只有门店零售单有 */
+    private String invoiceTiming;
 
     public static final String WAIT_PAY = "WAIT_PAY";
 

@@ -14,13 +14,17 @@ import org.springframework.web.bind.annotation.*;
 public class OpsPointsAdjustmentController {
  private final PointsAdjustmentService service;
  private final UserQueryPort users;
- public OpsPointsAdjustmentController(PointsAdjustmentService service,UserQueryPort users){this.service=service;this.users=users;}
+ private final ai.neargo.shop.paybridge.approval.PointsApprovalSubmitter approvals;
+ public OpsPointsAdjustmentController(PointsAdjustmentService service,UserQueryPort users,ai.neargo.shop.paybridge.approval.PointsApprovalSubmitter approvals){this.service=service;this.users=users;this.approvals=approvals;}
  @PostMapping("/ops/points/adjustments")
  @PreAuthorize("@perm.can('"+Perms.FINANCE_SETTLE_EXECUTE+"')")
- public OperatorResult submit(@RequestBody Submission request){PointsOpsAccess.platform();return PointsOpsErrors.call(()->{if(request==null || request.userNo()==null || users.find(request.userNo()).isEmpty())throw new IllegalArgumentException("POINTS_ADJUSTMENT_USER_UNKNOWN");return service.submit(request,SecurityUtils.currentUserNo());});}
+ public OperatorResult submit(@RequestBody Submission request){PointsOpsAccess.platform();return PointsOpsErrors.call(()->{if(request==null || request.userNo()==null || users.find(request.userNo()).isEmpty())throw new IllegalArgumentException("POINTS_ADJUSTMENT_USER_UNKNOWN");String actor=SecurityUtils.currentUserNo();OperatorResult result=service.submit(request,actor);approvals.adjustmentSubmitted(request.adjustmentNo(),actor);return result;});}
  @PostMapping("/ops/points/adjustment-review")
  @PreAuthorize("@perm.can('"+Perms.FINANCE_PAYOUT_EXECUTE+"')")
- public OperatorResult review(@RequestBody Review request){PointsOpsAccess.platform();return PointsOpsErrors.call(()->service.review(request,SecurityUtils.currentUserNo()));}
+ public OperatorResult review(@RequestBody Review request){PointsOpsAccess.platform();
+  // 接入审批后在这里直接审会绕过审批中心（T8）
+  if(approvals!=null && approvals.adjustmentEnabled())throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.APPROVAL_IN_OPSKIT);
+  return PointsOpsErrors.call(()->service.review(request,SecurityUtils.currentUserNo()));}
  @GetMapping("/ops/points/adjustments")
  @PreAuthorize("@perm.can('"+Perms.FINANCE_SETTLE_READ+"')")
  public Page list(@RequestParam String typeCode,@RequestParam(defaultValue="0") long after,@RequestParam(defaultValue="50") int limit){PointsOpsAccess.platform();return PointsOpsErrors.call(()->service.list(typeCode,after,limit));}

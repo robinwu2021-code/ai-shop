@@ -3,7 +3,7 @@
 > 由 `python3 scripts/gen-gateway-api-inventory.py` 生成，**请勿手改**。来源是后端源码里实际声明的入口。
 > 总览、分类规则与验证清单见 [网关接口清单](网关接口清单.md)。
 
-共 **215** 个入口：支付 22、零售 150、餐饮 29、服务业 12、平台与通用 2。
+共 **221** 个入口：支付 22、零售 156、餐饮 29、服务业 12、平台与通用 2。
 
 ## 支付（22）
 
@@ -51,9 +51,9 @@
 | GET | `/mp/stored-value/store/{storeNo}/records` | 要登录 | 网关放行，登录由业务层判 | 默认构建 | 已入网关 | MpStoredValueController |
 | GET | `/mp/stored-value/stores` | 要登录 | 网关放行，登录由业务层判 | 默认构建 | 已入网关 | MpStoredValueController |
 
-## 零售（150）
+## 零售（156）
 
-网关判权：网关放行，登录由业务层判 150。构建：默认构建 150。生产：已入网关 150。
+网关判权：网关放行，登录由业务层判 156。构建：默认构建 156。生产：已入网关 150、未部署 6。
 
 ### after-sale（6）
 
@@ -198,6 +198,14 @@
 |---|---|---|---|---|---|---|
 | GET | `/mp/help/faq` | 端上没有声明 | 网关放行，登录由业务层判 | 默认构建 | 已入网关 | MpMessageController |
 
+### invoice-carrier（3）
+
+| 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
+|---|---|---|---|---|---|---|
+| GET | `/mp/invoice-carrier` | 要登录 | 网关放行，登录由业务层判 | 默认构建 | 未部署 | MpSalesInvoiceController |
+| POST | `/mp/invoice-carrier` | 要登录 | 网关放行，登录由业务层判 | 默认构建 | 未部署 | MpSalesInvoiceController |
+| POST | `/mp/invoice-carrier/{carrierNo}/delete` | 要登录 | 网关放行，登录由业务层判 | 默认构建 | 未部署 | MpSalesInvoiceController |
+
 ### location（1）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
@@ -325,6 +333,14 @@
 | GET | `/mp/review` | 不用登录 | 网关放行，登录由业务层判 | 默认构建 | 已入网关 | MpReviewController |
 | POST | `/mp/review` | 要登录 | 网关放行，登录由业务层判 | 默认构建 | 已入网关 | MpReviewController |
 | POST | `/mp/review/{reviewNo}/like` | 要登录 | 网关放行，登录由业务层判 | 默认构建 | 已入网关 | MpReviewController |
+
+### sales-invoice（3）
+
+| 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
+|---|---|---|---|---|---|---|
+| GET | `/mp/sales-invoice` | 要登录 | 网关放行，登录由业务层判 | 默认构建 | 未部署 | MpSalesInvoiceController |
+| PUT | `/mp/sales-invoice/choice` | 要登录 | 网关放行，登录由业务层判 | 默认构建 | 未部署 | MpSalesInvoiceController |
+| GET | `/mp/sales-invoice/{invoiceNo}` | 要登录 | 网关放行，登录由业务层判 | 默认构建 | 未部署 | MpSalesInvoiceController |
 
 ### search（2）
 

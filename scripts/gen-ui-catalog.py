@@ -38,6 +38,8 @@ DOMAINS = [
                     "group-open"]),
     ("钱", ["settle", "payment", "plan", "wallet", "points", "points-records",
             "income", "invoice",
+            # 销售发票（ADR-063）：B 端列表 / 详情 / 开票 / 设置，C 端我的发票 / 载具 / 开法
+            "sales-invoices", "sales-invoice", "sales-invoice-issue", "invoice-setup", "invoice-carriers", "invoice-choice",
             # 商家端支付（TDD-支付服务-I5接入层 S8）
             "pay-collect", "pay-flow", "pay-qrcodes", "pay-grants"]),
     ("数据", ["stats", "cross-store"]),

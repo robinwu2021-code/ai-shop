@@ -12,7 +12,9 @@ import type {
   MerchantMemberRow, ProfileRevisionRow, RepairRow,
   CredentialRow, CredentialVersion, CredentialPolicy, AuditEventRow,
   PosConfigView, UatRun, SoftPosBinding,
+  AppApplicationRow, PlatformKeyRow, PlatformKeyUsage, SignType,
 } from "./types";
+import { rsaVerifyBase64 } from "./open-api-signer";
 
 const T0 = Date.UTC(2026, 10, 20, 2, 0);
 const H = 3_600_000;
@@ -151,9 +153,10 @@ export function createMockPayCenterApi(): PayCenterApi {
     configuredBy: "admin", verifiedBy: i === 1 ? null : "ops02", evidenceRef: i === 1 ? null : `EV-${i}`, deviceStatus: ["ACTIVE", "REGISTERED", "ACTIVE"][i], credentialRef: i === 1 ? null : `secret:terminal/TM${8001 + i}`,
     statusReason: null, version: 1, configurationEligibility: { canEnable: i !== 1, reasons: i === 1 ? ["UNVERIFIED"] : [] }, readiness: { ready: i === 0, canReceivePayments: i === 0, reasons: i === 0 ? [] : ["DEVICE_NOT_ACTIVE"] },
   })), (r) => r.terminalNo);
-  const apps = new VersionedTable<AppRow & { grants: AppGrant[] }>([["APP9001", "信义咖啡点餐 App", "MERCHANT", "PM1002", "ACTIVE"], ["APP9002", "平台对账服务", "PLATFORM", null, "DRAFT"], ["APP9003", "松山便当外送", "MERCHANT", "PM1004", "SUSPENDED"]].map(([no, name, owner, m, st], i) => ({
+  const apps = new VersionedTable<AppRow & { grants: AppGrant[] }>([["APP9001", "信义咖啡点餐 App", "MERCHANT", "PM1002", "ACTIVE"], ["APP9002", "平台对账服务", "PLATFORM", null, "DRAFT"], ["APP9003", "松山便当外送", "MERCHANT", "PM1004", "SUSPENDED"], ["APP9004", "台北早餐店 ERP（RSA）", "MERCHANT", "PM1001", "ACTIVE"]].map(([no, name, owner, m, st], i) => ({
+    signType: (i === 3 ? "RSA" : "HMAC") as SignType,
     appNo: no as string, name: name as string, purpose: "收款与退款", ownerKind: owner as "MERCHANT", merchantNo: m as string | null, environment: i === 1 ? "SANDBOX" : "LIVE",
-    scopes: ["payment.create", "payment.query", "refund.create"], notifyUrl: `https://hooks.example.com/${no}`, callbackDomains: ["hooks.example.com"], callbackStatus: i === 0 ? "VERIFIED" : "UNVERIFIED",
+    scopes: ["payment.create", "payment.query", "refund.create"], notifyUrl: `https://hooks.example.com/${no}`, callbackDomains: ["hooks.example.com"], callbackStatus: i === 0 || i === 3 ? "VERIFIED" : "UNVERIFIED",
     ipWhitelist: "203.0.113.0/24", rateLimitQps: 20, dailyRefundLimitMinor: 50_000_00, credentialStatus: i === 1 ? "NONE" : "ACTIVE", grantCount: i === 0 ? 1 : 0, status: st as string,
     lastAccessAt: i === 0 ? T0 - H : null, lastAccessOutcome: i === 0 ? "ACCEPTED" : null, version: 1,
     grants: i === 0 ? [{ appNo: no as string, storeNo: "ST2003", merchantNo: "PM1002", actions: ["payment.create"], status: "ACTIVE", grantedBy: "admin", grantedAt: T0 - 48 * H, version: 1 }] : [],
@@ -246,7 +249,53 @@ export function createMockPayCenterApi(): PayCenterApi {
   ], (r) => String(r.keyId));
   const credPolicies: CredentialPolicy[] = ["CHANNEL_PLATFORM", "PAY_MERCHANT", "PARTNER_APP", "TERMINAL"].map((o) => ({ ownerType: o, env: "PRODUCTION", maxAgeDays: 365, warnBeforeDays: 30, overlapDays: 7, dualControl: true, verifyBeforeEnable: true, revealOnIssueOnly: true, version: 0 }));
   const credActions = (r: CredRec) => (r.status === "REVOKED" ? [] : [r.materialType === "SYMMETRIC_SECRET" && r.ownerType === "PARTNER_APP" ? "GENERATE" : "ADD_VERSION", ...(r.versions.some((v) => v.status === "DRAFT") ? ["VERIFY"] : []), ...(r.versions.some((v) => v.status === "VERIFIED") ? ["ENABLE"] : []), "REVOKE"]);
-  const audits: AuditEventRow[] = Array.from({ length: 5 }, (_, i) => ({ auditNo: `AU${6001 + i}`, requestId: `req-${i}`, operatorNo: i % 2 ? "ST-OPS-2" : "ST-OPS-1", roleNos: ["SUPER_ADMIN"], face: "OPS", resourceType: ["MERCHANT", "CHANNEL_ACCOUNT", "STORE_BINDING", "CREDENTIAL", "ALERT_RULE"][i], resourceNo: ["PM1001", "NWP7000", "SB5001", "4101", "AR2001"][i], action: ["SUSPEND", "VERIFY", "UNBIND", "ENABLE", "PUBLISH"][i], result: "SUCCEEDED", reason: "例行操作", approvalRef: i === 3 ? "AP8100" : null, beforeSummary: '{"status":"ACTIVE"}', afterSummary: '{"status":"SUSPENDED"}', occurredAt: T0 - i * H }));
+
+  // ── 审批闸（near-pay ApprovalGate）：应用启用 / 恢复、接入应用密钥启用，须本对象已批准且未执行的审批 ──
+  // mock 只有 admin 一个身份（near-pay 单人审批开关默认打开，同一人可提交、审核、执行），所以这里只守「有没有批准」。
+  const TWO_LEVEL = new Set(["CREDENTIAL_ENABLE"]);
+  const approvalFor = (type: string, ref: string, expected?: string | null) => {
+    const a = approvals.all().find((x) => x.bizType === type && x.resourceNo === ref && x.status === "APPROVED" && x.executionStatus === "NOT_STARTED" && (!expected || x.approvalNo === expected));
+    if (!a) throw new MockPayError("STATE_CONFLICT", `执行 ${type} ${ref} 需要本对象已批准且未执行的审批${expected ? `（${expected}）` : ""}`);
+    return a;
+  };
+  const executed = (approvalNo: string) => approvals.update(approvalNo, { executionStatus: "SUCCEEDED" });
+  /** 应用启用 / 恢复（apps.command 与审批执行共用） */
+  const activateApp = async (no: string, c: Cmd, action: "enable" | "resume") => {
+    // near-pay OpenAppService#activate：没配回调地址可以直接启用；配了就必须先核验
+    need(!apps.get(no).notifyUrl || apps.get(no).callbackStatus === "VERIFIED", "回调地址核验通过后才能启用");
+    const a = approvalFor("OPEN_APP_ENABLE", no);
+    const r = await setStatus(apps, no, c, action === "enable" ? ["DRAFT"] : ["SUSPENDED"], "ACTIVE");
+    await executed(a.approvalNo); return r;
+  };
+  /** 密钥版本启用（credentials.enable 与审批执行共用）；接入应用的密钥走审批闸 */
+  const enableCredVersion = async (id: number, vi: number, approvalRef: string | null) => {
+    const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi);
+    need(v?.status === "VERIFIED", "只有已核验的版本可启用"); need(v!.enteredBy !== "admin", "启用人不能是录入人（双人复核）");
+    const gate = r.ownerType === "PARTNER_APP" ? approvalFor("CREDENTIAL_ENABLE", `${id}:${vi}`, approvalRef) : null;
+    const next = { ...v!, status: "ACTIVE", enabledBy: "admin", enabledAt: Date.now() };
+    await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x.status === "ACTIVE" ? { ...x, status: "ROTATING" } : x)), currentVersion: vi, pendingVersions: Math.max(0, r.pendingVersions - 1) });
+    if (r.ownerType === "PARTNER_APP" && r.credentialType === "APP_SECRET") await apps.update(r.ownerRef, { credentialStatus: "ACTIVE" });
+    if (gate) await executed(gate.approvalNo);
+    return next;
+  };
+
+  // ── P12：开放平台密钥（PLATFORM_OPEN 凭证）、商家公钥、接入申请 ──
+  const PEM = (tag: string) => `-----BEGIN PUBLIC KEY-----\nMOCK${tag}AAAAB3NzaC1yc2EAAAADAQABAAABAQ\n-----END PUBLIC KEY-----\n`;
+  const publicPem = new Map<string, string>(); // `${keyId}:${v}` → PEM（只放公钥）
+  const platformKey = (keyId: number, usage: PlatformKeyUsage, v: CredentialVersion): CredRec & { version: number } => ({ keyId, credentialType: usage === "SIGN" ? "OPEN_PLATFORM_SIGN" : "OPEN_PLATFORM_ENCRYPT", ownerType: "PLATFORM_OPEN", ownerRef: "OPEN", name: usage === "SIGN" ? "开放平台签名密钥" : "开放平台加密密钥", counterparty: null, purpose: usage, algorithm: usage === "SIGN" ? "RSA_SHA256" : "RSA_OAEP_SHA256", materialType: "PRIVATE_KEY", env: "PRODUCTION", status: "ACTIVE", currentVersion: v.status === "ACTIVE" ? v.versionIndex : 0, currentFingerprint: v.status === "ACTIVE" ? v.fingerprint : null, expiresAt: null, expiryState: "NONE", pendingVersions: v.status === "ACTIVE" ? 0 : 1, lastUsedAt: null, versions: [v], version: 1 });
+  for (const [keyId, usage, status, serial] of [[4201, "SIGN", "ACTIVE", "P2026112200000101"], [4202, "ENCRYPT", "VERIFIED", "Q2026112200000101"]] as const) {
+    const v = { ...ver(1, status, "ST-OPS-1"), externalKeyId: serial, source: "GENERATED", displayPrefix: serial };
+    void creds.insert(platformKey(keyId, usage, v)); publicPem.set(`${keyId}:1`, PEM(serial));
+  }
+  const usageOf = (t: string): PlatformKeyUsage => (t === "OPEN_PLATFORM_SIGN" ? "SIGN" : "ENCRYPT");
+  const challenges = new Map<string, { appNo: string; expiresAt: number }>();
+  let keySeq = 1;
+  const applications = new VersionedTable<AppApplicationRow>([
+    { applicationNo: "AAP26112200001", merchantNo: "PM1001", appName: "台北早餐店 POS 对接", purpose: "门店 POS 建单与查单", environment: "LIVE", scopes: ["READ", "COLLECT"], notifyUrl: "https://erp.example.com/pay/notify", callbackDomains: ["example.com"], ipWhitelist: "203.0.113.10", rateLimitQps: 20, dailyRefundLimitMinor: 0, contactName: "王工", contactEmail: "dev@example.com", status: "SUBMITTED", submittedBy: "admin2", reviewedBy: null, reviewedAt: null, reviewReason: null, appNo: null, createdAt: T0 - H, version: 0, signType: "HMAC" },
+    { applicationNo: "AAP26112200002", merchantNo: "PM1002", appName: "信义咖啡会员系统", purpose: "会员储值收款", environment: "LIVE", scopes: ["READ", "COLLECT", "REFUND"], notifyUrl: "https://crm.example.com/pay/notify", callbackDomains: ["example.com"], ipWhitelist: null, rateLimitQps: 10, dailyRefundLimitMinor: 20_000_00, contactName: "陈小姐", contactEmail: "it@example.com", status: "SUBMITTED", submittedBy: "admin", reviewedBy: null, reviewedAt: null, reviewReason: null, appNo: null, createdAt: T0 - 2 * H, version: 0, signType: "RSA" },
+    { applicationNo: "AAP26112100003", merchantNo: "PM1001", appName: "台北早餐店 ERP（RSA）", purpose: "ERP 对账", environment: "LIVE", scopes: ["READ"], notifyUrl: null, callbackDomains: [], ipWhitelist: null, rateLimitQps: 20, dailyRefundLimitMinor: 0, contactName: null, contactEmail: null, status: "APPROVED", submittedBy: "admin2", reviewedBy: "admin", reviewedAt: T0 - 20 * H, reviewReason: "资料齐全", appNo: "APP9004", createdAt: T0 - 24 * H, version: 1, signType: "RSA" },
+  ], (r) => r.applicationNo);
+  const appActions = (a: AppApplicationRow) => (a.status === "SUBMITTED" ? ["approve", "reject", "withdraw"] : []);  const audits: AuditEventRow[] = Array.from({ length: 5 }, (_, i) => ({ auditNo: `AU${6001 + i}`, requestId: `req-${i}`, operatorNo: i % 2 ? "ST-OPS-2" : "ST-OPS-1", roleNos: ["SUPER_ADMIN"], face: "OPS", resourceType: ["MERCHANT", "CHANNEL_ACCOUNT", "STORE_BINDING", "CREDENTIAL", "ALERT_RULE"][i], resourceNo: ["PM1001", "NWP7000", "SB5001", "4101", "AR2001"][i], action: ["SUSPEND", "VERIFY", "UNBIND", "ENABLE", "PUBLISH"][i], result: "SUCCEEDED", reason: "例行操作", approvalRef: i === 3 ? "AP8100" : null, beforeSummary: '{"status":"ACTIVE"}', afterSummary: '{"status":"SUSPENDED"}', occurredAt: T0 - i * H }));
   // ── P11：PayBy POS 配置与验收、SoftPOS 绑定（状态机与 near-pay 同口径） ──
   const posConfigs: PosConfigView[] = [];
   const uatRuns: UatRun[] = [];
@@ -284,6 +333,8 @@ export function createMockPayCenterApi(): PayCenterApi {
 
   return {
     source: "mock",
+    // mock 里「我」就是 admin（与各状态机里的操作人一致）
+    me: () => run(() => ({ operatorNo: "admin", roles: ["SUPER_ADMIN"] })),
     orders: {
       list: (q) => pageOf(orders.filter((o) => (q.needsAttention ? o.followupStatus === "ESCALATED" : true)), { ...q, needsAttention: undefined }, ["payOrderNo", "outOrderNo"]),
       detail: (no) => run(() => {
@@ -560,16 +611,29 @@ export function createMockPayCenterApi(): PayCenterApi {
       },
       detail: (no) => run((): ApprovalDetail => {
         const a = approvals.get(no);
-        const task: ApprovalTask = { taskNo: a.taskNo, approvalNo: no, nodeNo: 1, roleRef: "REVIEWER", status: a.taskStatus, assigneeNo: a.assigneeNo, decision: null, decisionReason: null, decidedAt: null, version: a.taskVersion };
+        const task: ApprovalTask = { taskNo: a.taskNo, approvalNo: no, nodeNo: a.nodeNo ?? 1, roleRef: "REVIEWER", status: a.taskStatus, assigneeNo: a.assigneeNo, decision: null, decisionReason: null, decidedAt: null, version: a.taskVersion };
         const acts = a.status === "APPROVED" ? ["execute"] : a.status.startsWith("PENDING") ? (a.taskStatus === "READY" ? ["claim", "assign", "withdraw"] : ["review", "release", "assign", "withdraw"]) : [];
         return {
           record: { approvalNo: no, subjectType: a.bizType, action: a.action, subjectRef: a.resourceNo ?? no, materialVersion: a.materialVersion, status: a.status, version: a.version, expiresAt: a.expiresAt, activeTask: a.status.startsWith("PENDING") ? task : null, execution: { status: a.executionStatus, executedAt: null, executedBy: null }, applicantNo: a.applicantNo, rejectReason: null, createdAt: a.createdAt },
           subjectTitle: a.subjectTitle, snapshotJson: JSON.stringify({ subject: a.subjectTitle, requestedBy: a.applicantNo }, null, 2), sourcePage: null, tasks: [task], decisions: [], timeline: [], allowedActions: acts,
         };
       }),
-      review: (no, b) => run(async () => { reasonOf(b.reason); const a = approvals.get(no); need(a.taskStatus === "CLAIMED", "请先认领"); const r = await approvals.update(no, { status: b.decision === "APPROVE" ? "APPROVED" : b.decision === "REJECT" ? "REJECTED" : "CANCELLED", taskStatus: "DONE" }, b.expectedVersion); return r; }),
+      // 敏感对象两级审核（near-pay 策略：凭证启用 requiredNodes = 2）：一审同意 → 待二审，新开一条待认领任务
+      review: (no, b) => run(async () => {
+        reasonOf(b.reason); const a = approvals.get(no); need(a.taskStatus === "CLAIMED", "请先认领");
+        if (b.decision === "APPROVE" && a.status === "PENDING_FIRST" && TWO_LEVEL.has(a.bizType)) return approvals.update(no, { status: "PENDING_SECOND", nodeNo: 2, taskStatus: "READY", assigneeNo: null, taskVersion: a.taskVersion + 1 }, b.expectedVersion);
+        return approvals.update(no, { status: b.decision === "APPROVE" ? "APPROVED" : b.decision === "REJECT" ? "REJECTED" : "CANCELLED", taskStatus: "DONE" }, b.expectedVersion);
+      }),
       withdraw: (no, c) => run(async () => { cmdCheck(c); need(approvals.get(no).status.startsWith("PENDING"), "只能撤回审批中的申请"); return approvals.update(no, { status: "CANCELLED", taskStatus: "DONE" }, c.expectedVersion); }),
-      execute: (no, c) => run(async () => { cmdCheck(c); need(approvals.get(no).status === "APPROVED", "审批通过后才能执行"); return approvals.update(no, { executionStatus: "SUCCEEDED" }, c.expectedVersion); }),
+      // 执行 = 让来源对象落地（near-pay ApprovalSubjectPort#execute）：应用启用 / 恢复、密钥版本启用；其他类型只记执行
+      execute: (no, c) => run(async () => {
+        cmdCheck(c); const a = approvals.get(no); need(a.status === "APPROVED", "审批通过后才能执行"); need(a.executionStatus === "NOT_STARTED", "审批已执行");
+        if (a.version !== c.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "记录已被他人修改，请刷新后重试");
+        if (a.bizType === "OPEN_APP_ENABLE") { const app = apps.get(a.resourceNo!); await activateApp(app.appNo, { expectedVersion: app.version, reason: c.reason }, app.status === "SUSPENDED" ? "resume" : "enable"); }
+        else if (a.bizType === "CREDENTIAL_ENABLE") { const [k, v] = a.resourceNo!.split(":").map(Number); await enableCredVersion(k, v, a.approvalNo); }
+        else await executed(no);
+        return approvals.get(no);
+      }),
       claim: (taskNo, c) => run(async () => { cmdCheck(c); const a = approvals.all().find((x) => x.taskNo === taskNo)!; need(a.taskStatus === "READY", "任务已被认领"); if (a.taskVersion !== c.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "记录已被他人修改，请刷新后重试"); await approvals.update(a.approvalNo, { taskStatus: "CLAIMED", assigneeNo: "admin", taskVersion: a.taskVersion + 1 }); return { taskNo, approvalNo: a.approvalNo, nodeNo: 1, roleRef: null, status: "CLAIMED", assigneeNo: "admin", decision: null, decisionReason: null, decidedAt: null, version: a.taskVersion + 1 }; }),
       release: (taskNo, c) => run(async () => { cmdCheck(c); const a = approvals.all().find((x) => x.taskNo === taskNo)!; need(a.taskStatus === "CLAIMED", "任务未被认领"); await approvals.update(a.approvalNo, { taskStatus: "READY", assigneeNo: null, taskVersion: a.taskVersion + 1 }); return { taskNo, approvalNo: a.approvalNo, nodeNo: 1, roleRef: null, status: "READY", assigneeNo: null, decision: null, decisionReason: null, decidedAt: null, version: a.taskVersion + 1 }; }),
       assign: (taskNo, b) => run(async () => { cmdCheck(b); const a = approvals.all().find((x) => x.taskNo === taskNo)!; await approvals.update(a.approvalNo, { taskStatus: "CLAIMED", assigneeNo: b.assigneeNo, taskVersion: a.taskVersion + 1 }); return { taskNo, approvalNo: a.approvalNo, nodeNo: 1, roleRef: null, status: "CLAIMED", assigneeNo: b.assigneeNo, decision: null, decisionReason: null, decidedAt: null, version: a.taskVersion + 1 }; }),
@@ -664,6 +728,7 @@ export function createMockPayCenterApi(): PayCenterApi {
     claims: {
       list: (merchantNo) => run(() => claims.all().filter((c) => c.merchantNo === merchantNo)),
       detail: (no) => run(() => claims.get(no)),
+      submitApproval: () => run(async () => { throw new MockPayError("CAPABILITY_NOT_READY", "认领关联未启用 OpsKit 审批"); }),
       resolve: (no, b) => run(async () => { reasonOf(b.reason); need(claims.get(no).state === "PENDING_VERIFY", "只有待核实的认领可处理"); return claims.update(no, { state: b.result, reason: b.reason, payMerchantNo: b.payMerchantNo ?? null }, b.expectedVersion); }),
       command: (_no, rn) => run(() => { throw new MockPayError("NOT_FOUND", `命令 ${rn} 没有回执`); }),
       file: () => Promise.reject(new MockPayError("NOT_FOUND", "mock 没有证明文件")),
@@ -717,18 +782,102 @@ export function createMockPayCenterApi(): PayCenterApi {
         if (g!.version !== c.expectedVersion) throw new MockPayError("VERSION_CONFLICT", "授权已被他人修改，请刷新后重试");
         await apps.update(no, { grants: a.grants.map((x) => (x.storeNo === store ? { ...x, status: "REVOKED", version: x.version + 1 } : x)) }); return ok(no, "REVOKED", g!.version + 1);
       }),
-      create: (b) => run(async () => { reasonOf(b.reason); const row = { appNo: `APP${9001 + apps.all().length}`, name: b.name, purpose: b.purpose, ownerKind: b.ownerKind as "MERCHANT", merchantNo: b.merchantNo, environment: (b.environment ?? "SANDBOX") as "SANDBOX", scopes: b.scopes, notifyUrl: b.notifyUrl, callbackDomains: b.callbackDomains, callbackStatus: "UNVERIFIED", ipWhitelist: b.ipWhitelist, rateLimitQps: b.rateLimitQps, dailyRefundLimitMinor: b.dailyRefundLimitMinor, credentialStatus: "NONE", grantCount: 0, status: "DRAFT", lastAccessAt: null, lastAccessOutcome: null, version: 1, grants: [] }; await apps.insert(row); const { grants: _g, ...a } = row; return wrap({ app: a, registeredBy: "admin", callbackSetBy: null, callbackVerifiedBy: null, callbackEvidenceRef: null, statusReason: null, enableApprovalNo: null }, 1, ["update"]); }),
+      create: (b) => run(async () => { reasonOf(b.reason); const row = { appNo: `APP${9001 + apps.all().length}`, name: b.name, purpose: b.purpose, ownerKind: b.ownerKind as "MERCHANT", merchantNo: b.merchantNo, environment: (b.environment ?? "SANDBOX") as "SANDBOX", scopes: b.scopes, notifyUrl: b.notifyUrl, callbackDomains: b.callbackDomains, callbackStatus: "UNVERIFIED", ipWhitelist: b.ipWhitelist, rateLimitQps: b.rateLimitQps, dailyRefundLimitMinor: b.dailyRefundLimitMinor, credentialStatus: "NONE", grantCount: 0, status: "DRAFT", lastAccessAt: null, lastAccessOutcome: null, version: 1, grants: [], signType: b.signType ?? "HMAC" }; await apps.insert(row); const { grants: _g, ...a } = row; return wrap({ app: a, registeredBy: "admin", callbackSetBy: null, callbackVerifiedBy: null, callbackEvidenceRef: null, statusReason: null, enableApprovalNo: null }, 1, ["update"]); }),
       update: (no, b) => run(async () => { reasonOf(b.reason); const { expectedVersion, reason: _r, ...rest } = b; const r = await apps.update(no, rest, expectedVersion); return ok(no, r.status, r.version); }),
       scopes: (no, b) => run(async () => { reasonOf(b.reason); const r = await apps.update(no, { scopes: b.scopes }, b.expectedVersion); return ok(no, r.status, r.version); }),
       callback: (no, b) => run(async () => { reasonOf(b.reason); const r = await apps.update(no, { notifyUrl: b.notifyUrl, callbackDomains: b.callbackDomains, callbackStatus: "UNVERIFIED" }, b.expectedVersion); return ok(no, r.status, r.version); }),
       verifyCallback: (no, b) => run(async () => { reasonOf(b.reason); const r = await apps.update(no, { callbackStatus: "VERIFIED" }, b.expectedVersion); return ok(no, r.status, r.version); }),
       command: (no, action, c) => run(() => {
-        const from: Record<string, string[]> = { enable: ["DRAFT"], resume: ["SUSPENDED"], suspend: ["ACTIVE"], revoke: ["DRAFT", "ACTIVE", "SUSPENDED"] };
-        const to: Record<string, string> = { enable: "ACTIVE", resume: "ACTIVE", suspend: "SUSPENDED", revoke: "REVOKED" };
-        if (action === "enable" || action === "resume") need(apps.get(no).callbackStatus === "VERIFIED", "回调地址核验通过后才能启用");
-        return setStatus(apps, no, c, from[action], to[action]);
+        if (action === "enable" || action === "resume") return activateApp(no, c, action);
+        return setStatus(apps, no, c, action === "suspend" ? ["ACTIVE"] : ["DRAFT", "ACTIVE", "SUSPENDED"], action === "suspend" ? "SUSPENDED" : "REVOKED");
       }),
-      issueCredential: (no, b) => run(async () => { reasonOf(b.reason); need(apps.get(no).status !== "REVOKED", "已吊销的应用不能签发密钥"); await apps.update(no, { credentialStatus: "ACTIVE" }); const secret = Array.from({ length: 32 }, () => "abcdefghijkmnpqrstuvwxyz23456789"[Math.floor(Math.random() * 32)]).join(""); return { keyId: Date.now() % 100000, versionIndex: 1, serial: `${no}-1`, secret, fingerprint: `SHA256:${secret.slice(0, 8)}…`, status: "ACTIVE" }; }),
+      // 与 near-pay 同序（PayCredentialService#issueAppCredential）：按应用登记凭证、生成一版 DRAFT，明文只在这次响应里；
+      // 之后核验 → 两人启用。mock 只有 admin 一个身份，录入人记成另一位运营（ST-OPS-1），好让 admin 走完「启用人 ≠ 录入人」。
+      issueCredential: (no, b) => run(async () => {
+        reasonOf(b.reason); const app = apps.get(no); need(app.status !== "REVOKED", "已吊销的应用不能签发密钥");
+        const type = b.credentialType ?? "APP_SECRET";
+        need(type === "APP_SECRET" || type === "APP_DATA_KEY", "只能签发 APP_SECRET / APP_DATA_KEY");
+        const env = app.environment === "LIVE" ? "live" : "test";
+        const secret = `sk_${env}_${Array.from({ length: 32 }, () => "abcdefghijkmnpqrstuvwxyz23456789"[Math.floor(Math.random() * 32)]).join("")}`;
+        const existing = creds.all().find((r) => r.ownerType === "PARTNER_APP" && r.ownerRef === no && r.credentialType === type && r.status !== "REVOKED");
+        const keyId = existing?.keyId ?? Math.max(...creds.all().map((r) => r.keyId)) + 1;
+        const v: CredentialVersion = { ...ver(existing ? Math.max(0, ...existing.versions.map((x) => x.versionIndex)) + 1 : 1, "DRAFT"), source: "GENERATED", displayPrefix: `sk_${env}_`, fingerprint: `fp${secret.slice(8, 16)}` };
+        if (existing) await creds.update(String(keyId), { versions: [v, ...existing.versions], pendingVersions: existing.pendingVersions + 1 });
+        else await creds.insert({ keyId, credentialType: type, ownerType: "PARTNER_APP", ownerRef: no, name: `${no} ${type}`, counterparty: null, purpose: "APP_SIGN", algorithm: type === "APP_SECRET" ? "HMAC-SHA256" : "AES-256-GCM", materialType: "SYMMETRIC_SECRET", env: app.environment === "LIVE" ? "PRODUCTION" : "SANDBOX", status: "ACTIVE", currentVersion: 0, currentFingerprint: null, expiresAt: null, expiryState: "NONE", pendingVersions: 1, lastUsedAt: null, versions: [v], version: 1 });
+        if (app.credentialStatus !== "ACTIVE") await apps.update(no, { credentialStatus: "PENDING" });
+        return { keyId, versionIndex: v.versionIndex, serial: `${no}-${v.versionIndex}`, secret, fingerprint: v.fingerprint, status: "DRAFT" };
+      }),
+
+      keyChallenge: (no) => run(() => {
+        const a = apps.get(no); need(a.signType === "RSA", "只有 RSA 应用上传商家公钥"); need(a.status === "ACTIVE", "应用启用后才能上传公钥");
+        const challenge = `CH${Date.now().toString(36)}${++keySeq}`; const expiresAt = Date.now() + 5 * 60_000; challenges.set(challenge, { appNo: no, expiresAt });
+        return { appNo: no, challenge, expiresAt, stringToSignPrefix: `pop|${no}|${challenge}|` };
+      }),
+      uploadPublicKey: (no, b) => run(async () => {
+        reasonOf(b.reason); const ch = challenges.get(b.challenge); need(!!ch && ch.appNo === no && ch.expiresAt > Date.now(), "挑战不存在、已过期或已使用"); challenges.delete(b.challenge);
+        need(b.publicKeyPem.includes("-----BEGIN PUBLIC KEY-----") && !b.publicKeyPem.includes("PRIVATE"), "公钥 PEM 不合法");
+        need(Math.abs(Date.now() - Number(b.timestamp)) <= 5 * 60_000, "时间戳不在 5 分钟内");
+        need(await rsaVerifyBase64(b.publicKeyPem, `pop|${no}|${b.challenge}|${b.timestamp}`, b.signature), "持有证明签名不符");
+        const serial = `K${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}${String(keySeq).padStart(2, "0")}`;
+        const keyId = 4300 + creds.all().length;
+        const v = { ...ver(1, "VERIFIED", "admin"), externalKeyId: serial, displayPrefix: serial, verifyEvidence: `POP:${b.challenge}` };
+        await creds.insert({ keyId, credentialType: "APP_PUBLIC_KEY", ownerType: "PARTNER_APP", ownerRef: no, name: `${no} 商家公钥`, counterparty: null, purpose: "APP_SIGN", algorithm: "RSA_SHA256", materialType: "PUBLIC_KEY", env: "PRODUCTION", status: "ACTIVE", currentVersion: 0, currentFingerprint: null, expiresAt: null, expiryState: "NONE", pendingVersions: 1, lastUsedAt: null, versions: [v], version: 1 });
+        publicPem.set(`${keyId}:1`, b.publicKeyPem);
+        return { keyId, version: v };
+      }),
+      emergencyLock: (no, reason) => run(async () => {
+        reasonOf(reason); const a = apps.get(no); need(a.status !== "REVOKED", "已吊销的应用不需要锁定");
+        const revoked: string[] = [];
+        for (const r of creds.all().filter((x) => x.ownerType === "PARTNER_APP" && x.ownerRef === no && ["APP_SECRET", "APP_PUBLIC_KEY"].includes(x.credentialType))) {
+          const vs = r.versions.map((v) => { if (v.status === "REVOKED") return v; revoked.push(`${r.keyId}:v${v.versionIndex}`); return { ...v, status: "REVOKED", revokedBy: "admin", revokedAt: Date.now(), revokeReason: reason }; });
+          await creds.update(String(r.keyId), { versions: vs, currentVersion: 0, currentFingerprint: null, pendingVersions: 0 });
+        }
+        const next = await apps.update(no, { dailyRefundLimitMinor: 0, credentialStatus: "REVOKED" });
+        return { appNo: no, revokedVersions: revoked, refundLimitBefore: a.dailyRefundLimitMinor, refundLimitAfter: 0, appVersion: next.version };
+      }),
+      keyUsage: (no) => run(() => (apps.get(no).lastAccessAt ? [{ keyVersion: 2, calls: 1284, lastAt: T0 - H }, { keyVersion: 1, calls: 3, lastAt: T0 - 5 * 24 * H }] : [])),    },
+    appApplications: {
+      list: (q) => pageOf([...applications.all()].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)), q, ["applicationNo", "appName", "merchantNo"]),
+      detail: (no) => run(() => { const a = applications.get(no); return wrap(a, a.version, appActions(a)); }),
+      submit: (b) => run(async () => {
+        need(!!b.merchantNo.trim() && merchants.all().some((m) => m.merchantNo === b.merchantNo.trim()), "平台商户不存在或未启用");
+        need(!!b.appName.trim() && b.appName.length <= 128, "请填写应用名称（≤128）");
+        need(b.scopes.length > 0 && b.scopes.every((x) => ["READ", "COLLECT", "REFUND"].includes(x)), "接口权限为 READ / COLLECT / REFUND 的非空子集");
+        need(Number.isInteger(b.rateLimitQps) && b.rateLimitQps >= 1 && b.rateLimitQps <= 1000 && b.dailyRefundLimitMinor >= 0, "QPS 1–1000，退款上限不能为负");
+        need(!b.contactEmail || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.contactEmail), "联系人邮箱格式不正确");
+        const domains = [...new Set(b.callbackDomains.map((d) => d.trim().toLowerCase()).filter(Boolean))].sort();
+        if (b.notifyUrl) { let u: URL | null = null; try { u = new URL(b.notifyUrl); } catch { /* 下面判 */ } need(u?.protocol === "https:", "回调须为 HTTPS 地址"); need(domains.some((d) => u!.hostname === d || u!.hostname.endsWith(`.${d}`)), "回调域名不在白名单"); }
+        const a: AppApplicationRow = { ...b, applicationNo: `AAP${Date.now().toString().slice(-11)}`, merchantNo: b.merchantNo.trim(), appName: b.appName.trim(), environment: "LIVE", callbackDomains: domains, status: "SUBMITTED", submittedBy: "admin", reviewedBy: null, reviewedAt: null, reviewReason: null, appNo: null, createdAt: Date.now(), version: 0 };
+        await applications.insert(a); return wrap(a, 0, appActions(a));
+      }),
+      decide: (no, action, c) => run(async () => {
+        cmdCheck(c); const a = applications.get(no); need(a.status === "SUBMITTED", `申请已处理：${a.status}`);
+        if (action === "withdraw") need(a.submittedBy === "admin", "仅提交人可撤回");
+        else need(a.submittedBy !== "admin", "提交人不得审核本申请（SELF_APPROVAL）");
+        let appNo: string | null = null;
+        if (action === "approve") {
+          appNo = `APP${9001 + apps.all().length}`;
+          await apps.insert({ appNo, name: a.appName, purpose: a.purpose, ownerKind: "MERCHANT", merchantNo: a.merchantNo, environment: a.environment === "SANDBOX" ? "SANDBOX" : "LIVE", scopes: a.scopes, notifyUrl: a.notifyUrl, callbackDomains: a.callbackDomains, callbackStatus: "UNVERIFIED", ipWhitelist: a.ipWhitelist, rateLimitQps: a.rateLimitQps, dailyRefundLimitMinor: a.dailyRefundLimitMinor, credentialStatus: "NONE", grantCount: 0, status: "DRAFT", lastAccessAt: null, lastAccessOutcome: null, version: 1, grants: [], signType: a.signType });
+        }
+        const status = { approve: "APPROVED", reject: "REJECTED", withdraw: "WITHDRAWN" }[action];
+        const r = await applications.update(no, { status, appNo, reviewedBy: "admin", reviewedAt: Date.now(), reviewReason: c.reason.trim() }, c.expectedVersion);
+        return ok(no, status, r.version);
+      }),
+    },
+    platformKeys: {
+      list: () => run(() => creds.all().filter((r) => r.ownerType === "PLATFORM_OPEN").flatMap((r) => r.versions
+        .filter((v) => ["VERIFIED", "ACTIVE", "ROTATING"].includes(v.status) && v.externalKeyId)
+        .map((v): PlatformKeyRow => ({ usage: usageOf(r.credentialType), keyId: r.keyId, versionIndex: v.versionIndex, serial: v.externalKeyId!, status: v.status, fingerprint: v.fingerprint, publicKeyPem: publicPem.get(`${r.keyId}:${v.versionIndex}`) ?? PEM(v.externalKeyId!), enabledAt: v.enabledAt, overlapUntil: v.overlapUntil })))
+        // 与 near-pay 同序：按类型（签名在前）、再按凭证与版本
+        .sort((a, b) => a.usage.localeCompare(b.usage) * -1 || a.keyId - b.keyId || a.versionIndex - b.versionIndex)),
+      generate: (usage, reason) => run(async () => {
+        reasonOf(reason); need(usage === "SIGN" || usage === "ENCRYPT", "usage 为 SIGN / ENCRYPT");
+        const serial = `${usage === "SIGN" ? "P" : "Q"}${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}01`;
+        const keyId = 4200 + creds.all().length + 10;
+        const v = { ...ver(1, "DRAFT", "admin"), externalKeyId: serial, source: "GENERATED", displayPrefix: serial };
+        await creds.insert(platformKey(keyId, usage, v)); publicPem.set(`${keyId}:1`, PEM(serial));
+        return { usage, keyId, version: v };
+      }),
     },
     traces: {
       requestLogs: (q) => pageOf(reqLogs, q, ["requestId", "path", "appNo"]),
@@ -775,7 +924,7 @@ export function createMockPayCenterApi(): PayCenterApi {
       addVersion: (id, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); need(!!(b.secret || b.hashKey || b.publicMaterial), "请填写密钥材料"); const v = ver(Math.max(0, ...r.versions.map((x) => x.versionIndex)) + 1, "DRAFT", "admin"); await creds.update(String(id), { versions: [v, ...r.versions], pendingVersions: r.pendingVersions + 1 }); return v; }),
       generate: (id, reason) => run(async () => { reasonOf(reason); const r = creds.get(String(id)); const v = ver(Math.max(0, ...r.versions.map((x) => x.versionIndex)) + 1, "DRAFT", "admin"); await creds.update(String(id), { versions: [v, ...r.versions], pendingVersions: r.pendingVersions + 1 }); return { keyId: id, versionIndex: v.versionIndex, serial: `ext-${v.versionIndex}`, secret: `sk_test_mock_${Date.now()}`, fingerprint: v.fingerprint, status: "DRAFT" }; }),
       verify: (id, vi, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(v?.status === "DRAFT", "只有草稿版本可核验"); const next = { ...v!, status: "VERIFIED", verifiedAt: Date.now(), verifyEvidence: b.evidenceRef ? `MANUAL:${b.evidenceRef}` : null }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x)) }); return next; }),
-      enable: (id, vi, b) => run(async () => { reasonOf(b.reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(v?.status === "VERIFIED", "只有已核验的版本可启用"); need(v!.enteredBy !== "admin", "启用人不能是录入人（双人复核）"); const next = { ...v!, status: "ACTIVE", enabledBy: "admin", enabledAt: Date.now() }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x.status === "ACTIVE" ? { ...x, status: "ROTATING" } : x)), currentVersion: vi, pendingVersions: Math.max(0, r.pendingVersions - 1) }); return next; }),
+      enable: (id, vi, b) => run(async () => { reasonOf(b.reason); return enableCredVersion(id, vi, b.approvalRef); }),
       revoke: (id, vi, reason) => run(async () => { reasonOf(reason); const r = creds.get(String(id)); const v = r.versions.find((x) => x.versionIndex === vi); need(!!v && v.status !== "REVOKED", "版本已撤销"); const next = { ...v!, status: "REVOKED", revokedBy: "admin", revokedAt: Date.now(), revokeReason: reason }; await creds.update(String(id), { versions: r.versions.map((x) => (x.versionIndex === vi ? next : x)) }); return next; }),
       bindings: () => run(() => [{ keyId: 4101, source: "SEC" as const, consumerType: "CHANNEL_ACCOUNT", consumerRef: "NWP7000", consumerName: "蓝新商户 7000", field: "pay_merchant.sec_key_id", channel: "NEWEBPAY", status: "ACTIVE", environment: "PRODUCTION", transactions: 128, lastFrozenAt: T0 - H }]),
     },

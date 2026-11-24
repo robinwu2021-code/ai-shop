@@ -30,6 +30,8 @@ import org.springframework.test.context.ActiveProfiles;
 public class PayOpsPermissionCodesTest {
 
     private static final String CODES = "/contracts/near-pay-ops-v2-permission-codes.txt";
+    /** near-pay 接入 OpsKit 后审批人用的码（同步自 near-pay docs/api/opskit-approver-permission-codes.txt）。 */
+    private static final String APPROVER_CODES = "/contracts/near-pay-opskit-approver-permission-codes.txt";
 
     @Autowired
     JdbcTemplate jdbc;
@@ -50,11 +52,21 @@ public class PayOpsPermissionCodesTest {
     }
 
     @Test
+    @DisplayName("★★★ OpsKit 审批人用的码也可授予：是运营端常量、有功能点")
+    void everyApproverCodeIsGrantable() throws IOException {
+        Set<String> approver = read(APPROVER_CODES, 5);
+        assertThat(missing(approver, ModuleOwnership.codes(Realm.OPERATOR))).as("Perms.java 里缺的审批人码").isEmpty();
+        Set<String> points = new HashSet<>(jdbc.queryForList(
+                "SELECT DISTINCT perm_code FROM sys_function_point WHERE perm_code LIKE 'pay:%'", String.class));
+        assertThat(missing(approver, points)).as("没有功能点的审批人码").isEmpty();
+    }
+
+    @Test
     @DisplayName("新补的操作功能点授给超管、不授给其它岗位")
     void newActionPointsOnlyForSuperAdmin() {
         List<String> holders = jdbc.queryForList("""
                 SELECT DISTINCT rp.role_code FROM sys_role_point rp
-                WHERE rp.point_code IN ('ACT__PAY_PERMISSION_MANAGE', 'ACT__PAY_MERCHANT_REPAIR_APPROVE')
+                WHERE rp.point_code IN ('ACT__PAY_PERMISSION_MANAGE', 'ACT__PAY_MERCHANT_REPAIR_APPROVE', 'ACT__PAY_FEE_PLAN_APPROVE')
                 """, String.class);
         assertThat(holders).containsOnly("SUPER_ADMIN");
     }
@@ -66,8 +78,12 @@ public class PayOpsPermissionCodesTest {
     }
 
     public static Set<String> nearPayCodes() throws IOException {
-        try (InputStream in = PayOpsPermissionCodesTest.class.getResourceAsStream(CODES)) {
-            assertThat(in).as(CODES).isNotNull();
+        return read(CODES, 50);
+    }
+
+    private static Set<String> read(String file, int atLeast) throws IOException {
+        try (InputStream in = PayOpsPermissionCodesTest.class.getResourceAsStream(file)) {
+            assertThat(in).as(file).isNotNull();
             Set<String> out = new TreeSet<>();
             for (String line : new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\n")) {
                 String code = line.strip();
@@ -75,7 +91,7 @@ public class PayOpsPermissionCodesTest {
                     out.add(code);
                 }
             }
-            assertThat(out).hasSizeGreaterThan(50).allMatch(c -> c.startsWith("pay:"));
+            assertThat(out).hasSizeGreaterThan(atLeast).allMatch(c -> c.startsWith("pay:"));
             return out;
         }
     }

@@ -16,6 +16,8 @@ public enum ErrorCode {
     PRINT_BLOCKED(82001, "err.print.blocked"),
     PRINT_CONFLICT(82002, "err.print.conflict"),
     PRINT_UNAVAILABLE(82003, "err.print.unavailable"),
+    /** 这项审核已接入审批中心（OpsKit），不能在原页面直接决定：请到审批中心处理 */
+    APPROVAL_IN_OPSKIT(82101, "err.approval.in_opskit"),
     BAD_REQUEST(10400, "err.bad_request"),
     UNAUTHORIZED(10401, "err.unauthorized"),
     /*
@@ -384,6 +386,45 @@ public enum ErrorCode {
     CHECKOUT_RECEIPT_EVIDENCE_INVALID(20022, "err.trade.checkout_receipt_evidence_invalid"),
     CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE(20023, "err.trade.checkout_payment_params_unavailable"),
     MANAGED_SERVICE_COMPLETION_BLOCKED(20018, "err.trade.managed_service_completion_blocked"),
+    /** 门店零售单（TDD-统一订单与开票资料）：当前状态不允许这个动作（已付款 / 已取消的单不能取消）。 */
+    STORE_ORDER_STATE_INVALID(20024, "err.trade.store_order_state_invalid"),
+    /** 门店零售单的明细加整单调整后合计小于 0。 */
+    STORE_ORDER_TOTAL_INVALID(20025, "err.trade.store_order_total_invalid"),
+    /** 门店常用品项（storeItemNo）不存在、不属本店或已停用（P2；P1 用同一号表示「未开放」，未发布即改义）。 */
+    STORE_ORDER_STORE_ITEM_UNAVAILABLE(20026, "err.trade.store_order_store_item_unavailable"),
+    /** 补开票资料：这一项已冻结（SKU 行、已补过的行、已设的买受人），只能补空的。 */
+    INVOICE_DATA_FROZEN(20027, "err.trade.invoice_data_frozen"),
+    /** 补开票资料：这张单已开出发票，开票资料锁死；要改请作废重开或开折让。 */
+    INVOICE_DATA_LOCKED(20028, "err.trade.invoice_data_locked"),
+    /** 收款挂在已付清的门店零售单上：不能作废或更正（要退钱走退款，P3）。 */
+    STORE_ORDER_PAYMENT_LOCKED(20029, "err.trade.store_order_payment_locked"),
+    /** 收款币别与门店零售单币别不同，不能挂单。 */
+    STORE_ORDER_CURRENCY_MISMATCH(20030, "err.trade.store_order_currency_mismatch"),
+
+    // 26xxx · 发票（ADR-063，TDD-发票模块 §2.1）
+    INVOICE_REGIME_NOT_ENABLED(26001, "err.invoice.regime_not_enabled"),
+    INVOICE_SOURCE_NOT_READY(26002, "err.invoice.source_not_ready"),
+    INVOICE_NUMBER_EXHAUSTED(26003, "err.invoice.number_exhausted"),
+    INVOICE_BUYER_INVALID(26004, "err.invoice.buyer_invalid"),
+    INVOICE_NOT_FOUND(26005, "err.invoice.not_found"),
+    INVOICE_VOID_PERIOD_CLOSED(26006, "err.invoice.void_period_closed"),
+    INVOICE_ALLOWANCE_EXCEEDED(26007, "err.invoice.allowance_exceeded"),
+    INVOICE_STATE_INVALID(26008, "err.invoice.state_invalid"),
+    INVOICE_RANGE_INVALID(26009, "err.invoice.range_invalid"),
+    INVOICE_KEY_UNAVAILABLE(26010, "err.invoice.key_unavailable"),
+    /** 开票服务商拒绝或不可达；{0} = 服务商回的原文代码（鲸跃 invalid / exist / nodata …） */
+    INVOICE_PROVIDER_REJECTED(26011, "err.invoice.provider_rejected"),
+    /** 商家选的开票供应商不在该市场支持的供应商里；{0} = 供应商编码 */
+    INVOICE_GATEWAY_UNSUPPORTED(26012, "err.invoice.gateway_unsupported"),
+    /**
+     * 开票供应商不支持这笔操作（TDD-发票-供应商能力定义完善）：报文预检不通过（如零税率）或期别不在领号窗口内。
+     * 在事务提交前拦下，号码不占用。{0} = 供应商编码，{1} = 原因
+     */
+    INVOICE_PROVIDER_UNSUPPORTED(26013, "err.invoice.provider_unsupported"),
+    /** 加值中心账号字段与供应商的声明不符（格式不对，或应自动带出的字段填了别的值）；{0} = 字段 */
+    INVOICE_PROVIDER_ACCOUNT_INVALID(26014, "err.invoice.provider_account_invalid"),
+    /** 门店常用品项已达上限（TDD-统一订单与开票资料 AC11）；{0} = 上限 */
+    INVOICE_STORE_ITEM_LIMIT(26015, "err.invoice.store_item_limit"),
 
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),

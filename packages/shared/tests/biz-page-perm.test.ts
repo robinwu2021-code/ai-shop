@@ -57,6 +57,8 @@ const cutsBy = (src: string, code: string) =>
  * 「因为它是对的」不算理由。
  */
 const EXEMPT: Record<string, string> = {
+  "sales-invoice/biz:invoice:void":
+    "整页按biz:invoice:read门禁；作废与折让按钮仅在can(biz:invoice:void)且发票ISSUED时出现，请求只在点按时发出并各自catch。加载不依赖该码。",
   "stored-value/pay:sv:consume:create":
     "消费浮层先ensureScope，再can(consume:create)；无权限不读商品或创建预览；独立详情入口也按该码裁消费按钮。列表/充值流程不强加消费权限。",
   "stored-value/biz:stock":

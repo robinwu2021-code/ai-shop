@@ -12,6 +12,14 @@ public final class CommerceOpsMallHttpController extends MallHttpSupport {
     private final RefundFacade refunds;
     private final ai.neargo.commerce.api.fulfillment.FulfillmentFacade fulfillment;
 
+    private OpsApprovalGatePort gate;
+
+    /** Optional approval gate (host-provided). */
+    public CommerceOpsMallHttpController approvalGate(OpsApprovalGatePort value) {
+        this.gate = value;
+        return this;
+    }
+
     public CommerceOpsMallHttpController(
             MallQueryFacade queries,
             RefundFacade refunds,
@@ -119,6 +127,10 @@ public final class CommerceOpsMallHttpController extends MallHttpSupport {
         var d = json.read(body, ApproveRequest.class);
         var actor = context.operator("commerce:refund:review");
         available();
+        if (gate != null) {
+            var held = gate.hold(OpsApprovalGatePort.MALL_REFUND_APPROVE, actor, code(store), code(order), code(refund), d);
+            if (held.isPresent()) return ok(held.get());
+        }
         return ok(
                 refunds.approve(
                         actor,

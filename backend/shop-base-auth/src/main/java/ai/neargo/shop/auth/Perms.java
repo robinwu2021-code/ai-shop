@@ -238,6 +238,8 @@ public final class Perms {
     public static final String PAY_CHANNEL_COST_MANAGE = "pay:channel-cost:manage";
     public static final String PAY_FEE_PLAN_VIEW = "pay:fee-plan:view";
     public static final String PAY_FEE_PLAN_MANAGE = "pay:fee-plan:manage";
+    /** near-pay 佣金规则发布的审批人（OpsKit 派待办用，运营端没有对应接口；方案-第一批审批工作流 T4）。 */
+    public static final String PAY_FEE_PLAN_APPROVE = "pay:fee-plan:approve";
     /** 渠道账户（商户「渠道账户」）与门店渠道绑定：查看 / 登记与维护 / 驳回核验与换绑执行分开授权（near-pay 同名码，TDD-支付中心运营页面 §2.11） */
     public static final String PAY_CHANNEL_ACCOUNT_VIEW = "pay:channel-account:view";
     public static final String PAY_CHANNEL_ACCOUNT_MANAGE = "pay:channel-account:manage";

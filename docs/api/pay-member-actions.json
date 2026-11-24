@@ -1,0 +1,16 @@
+{
+  "source": "ai-shop backend/shop-gateway/.../payclient/PayMemberActions.java",
+  "doc": "docs/technical/TDD-支付三端经网关透传与权限归属.md §13.3",
+  "namespaces": ["mch:pay:", "biz:finance", "biz:store:admin"],
+  "owner": ["app.grant", "app.grant.query", "device.activate", "member.manage", "merchant.link", "onboarding.apply", "onboarding.query", "payment.close", "payment.create", "payment.query", "qrcode.manage", "refund.apply", "refund.review", "statement.read", "store.bind", "store.ledger.read"],
+  "codes": {
+    "mch:pay:collect": ["payment.create", "payment.close"],
+    "mch:pay:order:view": ["payment.query"],
+    "mch:pay:refund": ["refund.apply"],
+    "mch:pay:qr": ["qrcode.manage"],
+    "mch:pay:statement": ["store.ledger.read", "statement.read"],
+    "mch:pay:app-grant": ["app.grant.query", "app.grant"],
+    "biz:finance": ["onboarding.query", "onboarding.apply"],
+    "biz:store:admin": ["refund.review", "device.activate", "store.bind", "member.manage", "merchant.link"]
+  }
+}

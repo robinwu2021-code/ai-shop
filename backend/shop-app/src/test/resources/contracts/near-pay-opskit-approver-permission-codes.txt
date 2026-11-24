@@ -1,0 +1,13 @@
+# near-pay 接入 OpsKit 的业务（np.*）在默认流程里用到的审批人权限码（PERM:<码>，方案-第一批审批工作流）。
+# OpsKit 按 ai-shop 运营员工的权限码派待办，所以每个码都必须能在 ai-shop 角色里授予：
+# 改动后同步到 ai-shop 的权限目录（与 ops-v2-permission-codes.txt 同一流程）。OpsKitApproverPermsTest 保证与代码一致。
+# 新增码：pay:fee-plan:approve（T4 佣金规则发布；运营端没有对应接口，只给审批人用）。
+pay:channel-account:transfer:approve
+pay:credential:approve
+pay:fee-plan:approve
+pay:merchant:approve
+pay:onboarding:approve
+pay:refund:review
+pay:store-binding:approve
+pay:store:approve
+pay:withdrawal:review

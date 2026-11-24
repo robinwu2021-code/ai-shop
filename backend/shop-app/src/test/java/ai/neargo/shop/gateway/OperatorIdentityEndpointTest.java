@@ -82,6 +82,15 @@ class OperatorIdentityEndpointTest {
         assertThat(ai.neargo.shop.portal.internal.OperatorIdentityEndpoint.filter(perms, null)).isEqualTo(perms);
     }
 
+    @Test
+    @DisplayName("多个前缀逗号分隔（TDD-支付三端经网关透传与权限归属 §13.5）：任一命中即保留，空白忽略")
+    void multipleNamespaces() {
+        var perms = List.of("mch:pay:qr", "biz:finance", "biz:store:admin", "biz:store", "biz:order:view", "*");
+        assertThat(ai.neargo.shop.portal.internal.OperatorIdentityEndpoint.filter(perms, "mch:pay:, biz:finance ,biz:store:admin"))
+                .containsExactly("mch:pay:qr", "biz:finance", "biz:store:admin", "*");
+        assertThat(ai.neargo.shop.portal.internal.OperatorIdentityEndpoint.filter(perms, " , ")).isEqualTo(perms);
+    }
+
     private org.springframework.test.web.servlet.MvcResult call(String authorization) throws Exception {
         var request = get(PATH).header("X-Internal-Token", "pay-caller-token");
         if (authorization != null) {

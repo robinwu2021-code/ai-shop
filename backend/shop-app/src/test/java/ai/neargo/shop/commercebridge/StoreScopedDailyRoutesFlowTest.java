@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -215,6 +216,79 @@ class StoreScopedDailyRoutesFlowTest {
             String body = response.getContentAsString();
             assertFalse(body.contains("STORE_ACCESS"), write[0] + " " + write[1] + " → " + body);
             assertNotEquals(403, response.getStatus(), write[0] + " " + write[1] + " → " + body);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 发票（/biz/invoices*、/biz/invoice-setup/*）在新模型门店上能进门店（2026-11-23 v2 上全部 70006 STORE_ACCESS）")
+    void invoiceRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020139");
+        // 只看门店准入：权限码与业务错误由控制器判，进到入口之后的 4xx 都算「进去了」
+        for (String[] r : new String[][] {
+                {"GET", "/biz/invoices"}, {"GET", "/biz/invoices/IVC-NO-SUCH"}, {"GET", "/biz/invoices/IVC-NO-SUCH/print-facts"},
+                {"GET", "/biz/invoices/upload-backlog"}, {"GET", "/biz/invoices/buyer-preferences"},
+                {"GET", "/biz/invoice-setup/profile"}, {"GET", "/biz/invoice-setup/providers"},
+                {"GET", "/biz/invoice-setup/ranges"}, {"GET", "/biz/invoice-setup/provider-tracks"},
+                {"POST", "/biz/invoices"}, {"POST", "/biz/invoices/IVC-NO-SUCH/void"},
+                {"POST", "/biz/invoices/IVC-NO-SUCH/revocation"}, {"POST", "/biz/invoices/IVC-NO-SUCH/reissue"},
+                {"POST", "/biz/invoices/IVC-NO-SUCH/allowances"}, {"POST", "/biz/invoices/IVC-NO-SUCH/allowances/ALW-NO-SUCH/void"},
+                {"POST", "/biz/invoices/IVC-NO-SUCH/retransmissions"}, {"POST", "/biz/invoices/IVC-NO-SUCH/provider-checks"},
+                {"PUT", "/biz/invoice-setup/profile"}, {"POST", "/biz/invoice-setup/ranges"},
+                {"POST", "/biz/invoice-setup/provider-verification"}, {"POST", "/biz/invoice-setup/provider-tracks"},
+                {"POST", "/biz/invoice-setup/provider-ranges"}}) {
+            var request = switch (r[0]) {
+                case "GET" -> get(r[1]);
+                case "PUT" -> put(r[1]);
+                default -> post(r[1]);
+            };
+            var response = mvc.perform(request.header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse();
+            String body = response.getContentAsString();
+            assertFalse(body.contains("STORE_ACCESS"), r[0] + " " + r[1] + " → " + body);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 门店零售单（/biz/store-orders*）在新模型门店上能进门店：POS 建单、看单、补开票资料、取消")
+    void storeOrderRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020140");
+        for (String[] r : new String[][] {
+                {"POST", "/biz/store-orders"}, {"GET", "/biz/store-orders/OD-NO-SUCH"},
+                {"PUT", "/biz/store-orders/OD-NO-SUCH/invoice-data"}, {"POST", "/biz/store-orders/OD-NO-SUCH/cancel"}}) {
+            var request = switch (r[0]) {
+                case "GET" -> get(r[1]);
+                case "PUT" -> put(r[1]);
+                default -> post(r[1]);
+            };
+            var response = mvc.perform(request.header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .header("Idempotency-Key", "K-ROUTE").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse();
+            String body = response.getContentAsString();
+            assertFalse(body.contains("STORE_ACCESS"), r[0] + " " + r[1] + " → " + body);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 门店开票设定与常用品项（/biz/invoice-setup/store-*）在新模型门店上能进门店：POS 快选、店长设定")
+    void storeInvoiceSetupRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020141");
+        for (String[] r : new String[][] {
+                {"GET", "/biz/invoice-setup/store-settings"}, {"PUT", "/biz/invoice-setup/store-settings"},
+                {"GET", "/biz/invoice-setup/store-items"}, {"POST", "/biz/invoice-setup/store-items"},
+                {"PUT", "/biz/invoice-setup/store-items/IVS-NO-SUCH"},
+                {"DELETE", "/biz/invoice-setup/store-items/IVS-NO-SUCH"}}) {
+            var request = switch (r[0]) {
+                case "GET" -> get(r[1]);
+                case "PUT" -> put(r[1]);
+                case "DELETE" -> delete(r[1]);
+                default -> post(r[1]);
+            };
+            var response = mvc.perform(request.header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse();
+            String body = response.getContentAsString();
+            assertFalse(body.contains("STORE_ACCESS"), r[0] + " " + r[1] + " → " + body);
         }
     }
 
@@ -503,5 +577,48 @@ class StoreScopedDailyRoutesFlowTest {
         String[] o = newModelOwner("15965020103");
         JsonNode r = call(o[0], o[1], "/biz/stores/" + o[1] + "/not-registered");
         assertEquals(70006, r.path("code").asInt(), r.toString());
+    }
+
+    @Test
+    @DisplayName("★★ 新模型门店：建的券在券列表里看得到（2026-11-24 v2：POST /biz/coupons 成功，GET /biz/coupons 却是 []）")
+    void couponCreatedOnNewModelStoreIsListed() throws Exception {
+        String[] o = newModelOwner("15965020143");
+        long now = System.currentTimeMillis();
+        String body = "{\"title\":\"QA-coupon\",\"benefitMode\":\"CASH\",\"benefitValue\":1000,"
+                + "\"minAmountMinor\":0,\"scopeType\":\"STORE\",\"scopeRefs\":[\"" + o[1] + "\"],"
+                + "\"validityMode\":\"ABSOLUTE\",\"startAt\":" + now + ",\"endAt\":" + (now + 86_400_000L * 30)
+                + ",\"issueMode\":\"TARGETED\",\"redeemMode\":\"ORDER\",\"timesTotal\":1,\"perUserLimit\":1}";
+        JsonNode created = json.readTree(mvc.perform(post("/biz/coupons").header("Authorization", "Bearer " + o[0])
+                        .header("X-Store-No", o[1]).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(0, created.path("code").asInt(), created.toString());
+        String couponNo = created.path("data").path("couponNo").asText();
+        assertFalse(couponNo.isBlank(), created.toString());
+
+        JsonNode list = call(o[0], o[1], "/biz/coupons?includeEnded=true");
+        assertEquals(0, list.path("code").asInt(), list.toString());
+        assertTrue(list.path("data").toString().contains(couponNo), "列表里没有刚建的券 " + couponNo + " → " + list);
+        JsonNode detail = call(o[0], o[1], "/biz/coupons/" + couponNo);
+        assertEquals(couponNo, detail.path("data").path("couponNo").asText(), detail.toString());
+    }
+
+    @Test
+    @DisplayName("★★ 新模型门店：柜台录入、还没消费的会员在本店会员名单里看得到（2026-11-24 v2：建成功、名单为空）")
+    void memberEnrolledAtCounterIsListedForStore() throws Exception {
+        String[] o = newModelOwner("15965020142");
+        String body = "{\"phone\":\"13912000142\",\"remark\":\"QA\",\"storeNo\":\"" + o[1] + "\",\"tagNos\":[]}";
+        JsonNode created = json.readTree(mvc.perform(post("/biz/members").header("Authorization", "Bearer " + o[0])
+                        .header("X-Store-No", o[1]).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(0, created.path("code").asInt(), created.toString());
+        String memberNo = created.path("data").path("memberNo").asText();
+        assertFalse(memberNo.isBlank(), created.toString());
+        for (String q : new String[] {"", "&status=LEAD", "&phone=13912000142"}) {
+            JsonNode list = call(o[0], o[1], "/biz/members?storeNo=" + o[1] + "&page=1&size=50" + q);
+            assertTrue(list.path("data").toString().contains(memberNo), q + " 名单里没有刚录入的会员 " + memberNo + " → " + list);
+        }
+        // 门店行专属条件（门店等级）对没下过单的人不成立：不应被补进来
+        JsonNode byLevel = call(o[0], o[1], "/biz/members?storeNo=" + o[1] + "&level=ACTIVE&page=1&size=50");
+        assertFalse(byLevel.path("data").toString().contains(memberNo), byLevel.toString());
     }
 }
