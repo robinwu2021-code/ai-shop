@@ -56,7 +56,8 @@ public final class StoreFeatureMatrix {
                                 Map<String, Boolean> proposedTiers) {}
 
     public record Matrix(String businessTypeCode, Long catalogVersion, String status, List<TierCard> tiers,
-                         List<String> roles, List<MatrixFeature> features, String catalogReleaseNo) {}
+                         List<String> roles, List<MatrixFeature> features, String catalogReleaseNo,
+                         List<PosFeatureCatalog.Plan> proposedPlans) {}
 
     /**
      * @param requiredTier   已发布方案里包含该权益码的最低档；旧模型门店为 null
@@ -108,7 +109,7 @@ public final class StoreFeatureMatrix {
                 })
                 .toList();
         return new Matrix(catalog.businessTypeCode(), catalog.catalogVersion(), catalog.status(), tiers, ROLES,
-                features, release.releaseNo());
+                features, release.releaseNo(), release.proposedPlans(catalog.businessTypeCode()));
     }
 
     private static String roleLevel(StoreFeature f, Set<String> perms) {

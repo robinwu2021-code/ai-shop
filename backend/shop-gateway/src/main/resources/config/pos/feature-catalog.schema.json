@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "POS feature catalog, schema version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "modules",
+    "entitlements",
+    "features",
+    "plans"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/module"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "entitlements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entitlement"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/feature"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "plans": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/plan"
+      },
+      "minItems": 15,
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "entitlement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "industries"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^END_[A-Z][A-Z0-9_]+$"
+        },
+        "industries": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "RETAIL",
+              "FNB",
+              "SERVICE"
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "allOf": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^END_[A-Z][A-Z0-9_]+$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "anyOf": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^END_[A-Z][A-Z0-9_]+$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "allOf": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "anyOf": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label",
+        "module",
+        "industries",
+        "entitlement",
+        "lifecycle",
+        "actions"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "module": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]+$"
+        },
+        "industries": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "RETAIL",
+              "FNB",
+              "SERVICE"
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "entitlement": {
+          "$ref": "#/$defs/rule"
+        },
+        "lifecycle": {
+          "enum": [
+            "DRAFT",
+            "ACTIVE",
+            "RETIRED"
+          ]
+        },
+        "clientRoute": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requiresPayActivation": {
+          "type": "boolean"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/action"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "businessType",
+        "tier",
+        "entitlements"
+      ],
+      "properties": {
+        "businessType": {
+          "enum": [
+            "RETAIL",
+            "FNB",
+            "SERVICE"
+          ]
+        },
+        "tier": {
+          "enum": [
+            "FREE",
+            "BASE",
+            "PRO",
+            "GROWTH",
+            "CHAIN"
+          ]
+        },
+        "entitlements": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^END_[A-Z][A-Z0-9_]+$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

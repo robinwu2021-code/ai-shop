@@ -105,6 +105,10 @@ public final class PosFeatureCatalog {
         return byCode.get(code);
     }
 
+    public List<Plan> proposedPlans(String industry) {
+        return manifest.plans().stream().filter(p -> p.businessType().equals(industry)).toList();
+    }
+
     public List<String> proposedRights(String industry, PlanTier tier) {
         return manifest.plans().stream().filter(p -> p.businessType().equals(industry) && p.tier() == tier)
                 .findFirst().map(p -> List.copyOf(p.entitlements())).orElse(List.of());
@@ -149,6 +153,13 @@ public final class PosFeatureCatalog {
                         && BizPerms.LABELS.keySet().containsAll(action.rule().codes()),
                         "Invalid action or unknown permission " + feature.code() + "/" + action.code());
             }
+        }
+
+        for (String code : List.of("POS_CHECKOUT", "POS_CASH", "GOODS", "ORDERS", "MEMBERS_BASIC", "CAMPAIGN_BASIC")) {
+            var feature = byCode.get(code);
+            require(feature != null && feature.lifecycle() == StoreFeature.Lifecycle.ACTIVE
+                            && feature.industries().isEmpty() && feature.entitlement().matches(Set.of("END_BIZ_APP")),
+                    "Missing shared baseline feature " + code);
         }
 
         var plans = index(manifest.plans(), plan -> plan.businessType() + "/" + plan.tier());

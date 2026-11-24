@@ -110,6 +110,28 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    void roleFeatureCatalogUsesSelectedStoreAndRejectsInapplicableNewGrants() throws Exception {
+        String[] owner = newModelOwner("15965020148");
+        String[] other = newModelOwner("15965020149");
+        String path = "/biz/role-feature-catalog";
+        JsonNode response = call(owner[0], owner[1], path + "?roleCode=OWNER");
+        assertEquals(0, response.path("code").asInt(-1), response.toString());
+        JsonNode directory = response.path("data");
+        assertEquals(owner[1], directory.path("storeNo").asText());
+        assertEquals("RETAIL", directory.path("businessTypeCode").asText());
+        assertEquals("OWNER", directory.path("role").path("roleCode").asText());
+        assertTrue(directory.path("modules").toString().contains("SVC_BOOKING"));
+        assertTrue(directory.path("modules").toString().contains("NOT_APPLICABLE"));
+        assertNotEquals(0, call(owner[0], other[1], path).path("code").asInt());
+        assertNotEquals(0, call(owner[0], null, path).path("code").asInt());
+
+        String write = """
+                {"name":"Restricted Booking","perms":["biz:booking:view"],"catalogReleaseNo":"%s"}
+                """.formatted(directory.path("catalogReleaseNo").asText());
+        assertEquals(ErrorCode.ROLE_PERM_NOT_ASSIGNABLE.code(), postCode(owner, "/biz/roles", write));
+    }
+
+    @Test
     void posPinRecoveryIsScopedToTheEmployeeStoreAndLoginSession() throws Exception {
         String phone = "15965020135";
         String staffPhone = "15965020137";

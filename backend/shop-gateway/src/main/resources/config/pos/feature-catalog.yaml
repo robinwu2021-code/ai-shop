@@ -336,6 +336,23 @@ features:
     lifecycle: ACTIVE
     actions:
       - {code: "use", allOf: [trade:checkout:prepare, trade:manual-service:confirm, pay:cash:receive]}
+  - code: SVC_CARDS
+    label: 療程卡
+    module: SERVICE
+    industries: [SERVICE]
+    entitlement: {allOf: [END_SERVICE]}
+    lifecycle: DRAFT
+    actions:
+      - {code: "use", allOf: [pay:ent:read]}
+      - {code: "manage", allOf: [pay:ent:template:write]}
+  - code: SVC_ONLINE
+    label: 線上預約與訂金
+    module: SERVICE
+    industries: [SERVICE]
+    entitlement: {allOf: [END_SERVICE]}
+    lifecycle: DRAFT
+    actions:
+      - {code: "use", allOf: [biz:booking:manage]}
 plans:
   - {businessType: RETAIL, tier: FREE, entitlements: [END_BIZ_APP, END_APP_POS]}
   - {businessType: RETAIL, tier: BASE, entitlements: [END_BIZ_APP, END_APP_POS]}
