@@ -10,7 +10,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * App 外收款记录的一步留痕：CREATE / CORRECT / VOID，带前后值、原因与操作人。
+ * App 外收款记录的一步留痕：CREATE / CORRECT / VOID / REFUND，带前后值、原因与操作人。
  *
  * <p>只插不改，所以不继承带乐观锁与逻辑删除的 BaseEntity —— 表里也没有那几列。
  */
@@ -21,6 +21,7 @@ public class OrdOfflineRecordEvent {
     public static final String CREATE = "CREATE";
     public static final String CORRECT = "CORRECT";
     public static final String VOID = "VOID";
+    public static final String REFUND = "REFUND";
 
     @TableId(type = IdType.AUTO)
     private Long id;

@@ -177,7 +177,8 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         }
         if (query.q() != null) {
             String pattern = escapeLike(query.q());
-            where.and(w -> w.like(OrdOfflineRecord::getOrderNo, pattern).or().like(OrdOfflineRecord::getNote, pattern));
+            where.and(w -> w.eq(OrdOfflineRecord::getRecordNo, query.q())
+                    .or().like(OrdOfflineRecord::getOrderNo, pattern).or().like(OrdOfflineRecord::getNote, pattern));
         }
         if (query.cursor() != null) {
             long[] after = decodeCursor(query.cursor());
@@ -281,6 +282,32 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         return views(List.of(row), market).getFirst();
     }
 
+    @Override
+    public OfflineRecordView refundCash(Scope scope, String recordNo, RefundCmd cmd) {
+        MarketBrief market = market(scope);
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        OrdOfflineRecord row = writes.execute(tx -> {
+            OrdOfflineRecord current = records.lock(scope.entityNo(), scope.storeNo(), recordNo);
+            if (current == null) throw BizException.of(ErrorCode.NOT_FOUND);
+            if (!"CASH".equals(current.getMethod()) || current.getAmountMinor() != cmd.amountMinor()) {
+                throw BizException.of(ErrorCode.STORE_ORDER_STATE_INVALID);
+            }
+            if (OrdOfflineRecord.REFUNDED.equals(current.getStatus())) return current;
+            if (!OrdOfflineRecord.RECORDED.equals(current.getStatus())
+                    || current.getVersion() != cmd.expectedVersion()) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            storeSettlements.refundCash(current, scope.actorNo());
+            OrdOfflineRecordEvent event = event(recordNo, OrdOfflineRecordEvent.REFUND, scope.actorNo(), now);
+            event.setReason(cmd.reason());
+            event.setFromAmountMinor(current.getAmountMinor());
+            event.setFromMethod(current.getMethod());
+            current.setStatus(OrdOfflineRecord.REFUNDED);
+            return update(current, event);
+        });
+        return views(List.of(row), market).getFirst();
+    }
+
     // ------------------------------------------------------------------ 写
 
     private OrdOfflineRecord insert(
@@ -345,7 +372,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         if (row == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        if (OrdOfflineRecord.VOIDED.equals(row.getStatus()) || row.getVersion() != expectedVersion) {
+        if (!OrdOfflineRecord.RECORDED.equals(row.getStatus()) || row.getVersion() != expectedVersion) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         Instant recordedAt = row.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant();

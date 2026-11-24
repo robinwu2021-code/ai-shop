@@ -85,7 +85,7 @@ public class BizOfflineRecordController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(name = "method", required = false) List<@Pattern(regexp = METHODS) String> methods,
-            @RequestParam(name = "status", required = false) List<@Pattern(regexp = "RECORDED|VOIDED") String> statuses,
+            @RequestParam(name = "status", required = false) List<@Pattern(regexp = "RECORDED|VOIDED|REFUNDED") String> statuses,
             @RequestParam(required = false) @Size(min = 1, max = 32) String q,
             @RequestParam(required = false) @Size(min = 1, max = 64) String orderNo,
             @RequestParam(required = false) @Size(max = 128) String cursor,
@@ -119,6 +119,17 @@ public class BizOfflineRecordController {
             @PathVariable @Size(max = 64) String recordNo, @RequestBody @Valid VoidBody body) {
         return records.voidRecord(scope(), recordNo, new VoidCmd(body.reason(), body.expectedVersion()));
     }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_OFFLINE_MANAGE + "')")
+    @PostMapping("/biz/payment/offline-records/{recordNo}/refund")
+    public OfflineRecordView refundCash(
+            @PathVariable @Size(max = 64) String recordNo, @RequestBody @Valid RefundBody body) {
+        return records.refundCash(scope(), recordNo,
+                new OfflineRecordService.RefundCmd(body.amountMinor(), body.reason(), body.expectedVersion()));
+    }
+
+    public record RefundBody(@NotNull @Positive Long amountMinor, @NotBlank @Size(max = 100) String reason,
+            @NotNull @Positive Long expectedVersion) {}
 
     private static Scope scope() {
         return new Scope(BizContext.current().requireMerchantNo(), BizContext.requireStoreNo(),

@@ -4,9 +4,11 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.spi.invoice.InvoicePort;
 import ai.neargo.shop.spi.pay.PaidCollectionPort;
 import ai.neargo.shop.spi.pay.PaidCollectionPort.PaidCollection;
 import ai.neargo.shop.spi.trade.OrderEvents;
+import ai.neargo.shop.trade.entity.OrdOfflineRecord;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStoreCollection;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
@@ -56,17 +58,19 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
     private final OutboxEventBus events;
     /** 内嵌形态由支付域装配；独立形态没有（收款事实走已验签推送） */
     private final ObjectProvider<PaidCollectionPort> paidCollections;
+    private final ObjectProvider<InvoicePort> invoices;
     private final TransactionTemplate writes;
 
     public StoreOrderSettlementServiceImpl(OrderMapper orders, SubOrderMapper subOrders, RecordMapper offline,
             StoreCollectionMapper collections, OutboxEventBus events, ObjectProvider<PaidCollectionPort> paidCollections,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            ObjectProvider<InvoicePort> invoices, @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.orders = orders;
         this.subOrders = subOrders;
         this.offline = offline;
         this.collections = collections;
         this.events = events;
         this.paidCollections = paidCollections;
+        this.invoices = invoices;
         this.writes = new TransactionTemplate(manager);
         this.writes.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
@@ -94,6 +98,32 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
     public void afterOfflineChanged(String entityNo, String storeNo, String orderNo) {
         var sub = lockStoreSale(entityNo, storeNo, orderNo);
         if (sub != null) settle(sub, orderOf(sub));
+    }
+
+    @Override
+    public void refundCash(OrdOfflineRecord record, String actorNo) {
+        var sub = lockStoreSale(record.getEntityNo(), record.getStoreNo(), record.getOrderNo());
+        if (sub == null || !OrdSubOrder.COMPLETED.equals(sub.getStatus()) || sub.getRefundedMinor() != 0) {
+            throw BizException.of(ErrorCode.STORE_ORDER_STATE_INVALID);
+        }
+        var order = orderOf(sub);
+        long amount = record.getAmountMinor();
+        if (order == null || !OrdOrder.PAID.equals(order.getStatus())
+                || !record.getCurrency().equals(order.getCurrency()) || amount != order.getPayAmount()
+                || paidMinor(record.getEntityNo(), record.getStoreNo(), sub.getSubOrderNo(), record.getCurrency()) != amount
+                || !unscoped(() -> collectionsOf(sub.getSubOrderNo())).isEmpty()) {
+            throw BizException.of(ErrorCode.STORE_ORDER_STATE_INVALID);
+        }
+        var invoice = invoices.getIfAvailable();
+        var scope = new InvoicePort.Scope("MAIN", record.getEntityNo(), record.getStoreNo(), actorNo);
+        if (invoice == null || invoice.activeOf(scope, "SUB_ORDER", sub.getSubOrderNo()).isPresent()
+                || invoice.activeOf(scope, "OFFLINE_RECORD", record.getRecordNo()).isPresent()) {
+            throw BizException.of(ErrorCode.INVOICE_DATA_LOCKED);
+        }
+        int changed = unscoped(() -> subOrders.update(null, new UpdateWrapper<OrdSubOrder>().eq("id", sub.getId())
+                .set("status", OrdSubOrder.REFUNDED).set("refunded_minor", amount).set("refund_progress", "FULL")
+                .setSql("version=version+1")));
+        if (changed != 1) throw BizException.of(ErrorCode.CONFLICT);
     }
 
     // ------------------------------------------------------------------ 收款码 / 付款链接

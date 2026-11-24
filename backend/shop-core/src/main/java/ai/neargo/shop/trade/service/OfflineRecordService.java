@@ -33,6 +33,11 @@ public interface OfflineRecordService {
     /** 作废：状态改 VOIDED，行不删。 */
     OfflineRecordView voidRecord(Scope scope, String recordNo, VoidCmd cmd);
 
+    /** 已付門店零售單的單筆現金全額退款。 */
+    OfflineRecordView refundCash(Scope scope, String recordNo, RefundCmd cmd);
+
+    record RefundCmd(long amountMinor, String reason, long expectedVersion) {}
+
     /** 服务端认定的作用域：主体、当前门店、操作人。 */
     record Scope(String entityNo, String storeNo, String actorNo) {}
 

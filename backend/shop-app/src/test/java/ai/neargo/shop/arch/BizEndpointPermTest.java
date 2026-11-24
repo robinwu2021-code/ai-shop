@@ -762,6 +762,7 @@ class BizEndpointPermTest {
                     put("/biz/payment/offline-records/summary", BizPerms.PAY_ORDER_VIEW);
                     put("/biz/payment/offline-records/{recordNo}/correct", BizPerms.PAY_OFFLINE_MANAGE);
                     put("/biz/payment/offline-records/{recordNo}/void", BizPerms.PAY_OFFLINE_MANAGE);
+                    put("/biz/payment/offline-records/{recordNo}/refund", BizPerms.PAY_OFFLINE_MANAGE);
                     put("/biz/settle/bills", BizPerms.FINANCE);
                     put("/biz/settle/income", BizPerms.FINANCE);
                     put("/biz/settle/daily-flow", BizPerms.FINANCE);

@@ -84,8 +84,13 @@ public class SubOrderInvoiceSourcePortImpl implements InvoiceSourcePort {
     }
 
     private InvoiceSource read(Scope scope, String subOrderNo) {
-        var sub = subOrders.selectOne(new QueryWrapper<OrdSubOrder>().eq("tenant_no", scope.tenantNo())
-                .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).eq("sub_order_no", subOrderNo));
+        var query = new QueryWrapper<OrdSubOrder>().eq("tenant_no", scope.tenantNo())
+                .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).eq("sub_order_no", subOrderNo);
+        var sub = subOrders.selectOne(query);
+        if (sub != null && "STORE_SALE".equals(sub.getAdmissionKind())) {
+            // Read the current state under the same row lock used by cash refund.
+            sub = subOrders.selectOne(query.last("FOR UPDATE"));
+        }
         if (sub == null || !PAID.contains(sub.getStatus()) || value(sub.getRefundedMinor()) > 0) throw notReady();
         var order = orders.selectOne(new QueryWrapper<OrdOrder>().eq("tenant_no", scope.tenantNo())
                 .eq("order_no", sub.getOrderNo()));

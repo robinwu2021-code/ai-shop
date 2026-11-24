@@ -44,7 +44,8 @@ public class OfflineRecordInvoiceSourcePortImpl implements InvoiceSourcePort {
 
     private InvoiceSource read(Scope scope, String recordNo) {
         var r = records.selectOne(new QueryWrapper<OrdOfflineRecord>().eq("tenant_no", scope.tenantNo())
-                .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).eq("record_no", recordNo));
+                .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).eq("record_no", recordNo)
+                .last("FOR UPDATE"));
         if (r == null || !OrdOfflineRecord.RECORDED.equals(r.getStatus()) || r.getAmountMinor() == null
                 || r.getAmountMinor() <= 0 || r.getReceivedAt() == null) {
             throw BizException.of(ErrorCode.INVOICE_SOURCE_NOT_READY);

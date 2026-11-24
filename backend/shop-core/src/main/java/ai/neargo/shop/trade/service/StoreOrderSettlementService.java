@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.service;
 
 import ai.neargo.shop.spi.pay.PaidCollectionPort.PaidCollection;
+import ai.neargo.shop.trade.entity.OrdOfflineRecord;
 
 /**
  * 门店零售单的收款挂单与付清（TDD-统一订单与开票资料 AC7 / AC16）。
@@ -23,13 +24,16 @@ public interface StoreOrderSettlementService {
     void afterOfflineRecorded(String entityNo, String storeNo, String orderNo, String currency);
 
     /**
-     * 作废 / 更正一条挂单现金记录之前（调用方事务内、记录行已锁）：所挂的门店零售单已付清回 {@code STORE_ORDER_PAYMENT_LOCKED}
-     * （退款是 P3）。未付清的放行，调用方改完再调 {@link #afterOfflineChanged} 重算。
+     * 作废 / 更正一条挂单现金记录之前（调用方事务内、记录行已锁）：所挂的门店零售单已付清回 {@code STORE_ORDER_PAYMENT_LOCKED}。
+     * 未付清的放行，调用方改完再调 {@link #afterOfflineChanged} 重算。
      */
     void requireMutable(String entityNo, String storeNo, String orderNo);
 
     /** 作废 / 更正之后重算（更正成更大的金额可能就此付清）。不是门店零售单什么都不做。 */
     void afterOfflineChanged(String entityNo, String storeNo, String orderNo);
+
+    /** 在收款退款交易中鎖定子單、核對付款與發票，並標記全額退款。 */
+    void refundCash(OrdOfflineRecord record, String actorNo);
 
     /**
      * 收款码 / 付款链接收款成功：{@code bizNo} 是本店门店零售单的子单号就挂上（一张支付单只挂一次）并跑付清判断。
