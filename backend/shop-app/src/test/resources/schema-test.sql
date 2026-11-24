@@ -21497,6 +21497,27 @@ UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CA
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:order:reprice"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:order:reprice"',perms)=0;
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:tax-override"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:tax-override"',perms)=0;
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:order:create"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:order:create"',perms)=0;
+INSERT IGNORE INTO sys_function_point (
+    point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+    backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at
+)
+SELECT 'ACT__IAM_STAFF_API_KEY_MANAGE', 'OPS_IAM', '员工 API 密钥管理', '账号', NULL,
+       'iam:staff:api-key-manage', 'iam:staff:api-key-manage',
+       'IMPLEMENTED', 0, NULL, 'ACTION', 930, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM DUAL
+WHERE NOT EXISTS (
+    SELECT 1 FROM sys_function_point
+    WHERE point_code = 'ACT__IAM_STAFF_API_KEY_MANAGE' OR perm_code = 'iam:staff:api-key-manage'
+);
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__IAM_STAFF_API_KEY_MANAGE', 'OPS', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_function_point WHERE point_code = 'ACT__IAM_STAFF_API_KEY_MANAGE')
+  AND EXISTS (SELECT 1 FROM sys_role WHERE role_code = 'SUPER_ADMIN' AND end_code = 'OPS' AND deleted = 0)
+  AND NOT EXISTS (
+      SELECT 1 FROM sys_role_point
+      WHERE role_code = 'SUPER_ADMIN' AND point_code = 'ACT__IAM_STAFF_API_KEY_MANAGE' AND end_code = 'OPS'
+  );
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

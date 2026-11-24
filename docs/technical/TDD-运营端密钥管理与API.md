@@ -147,6 +147,6 @@ Java 21 Maven 首批返回 `Tests run: 29, Failures: 0, Errors: 0, Skipped: 0` �
 | 自助页面与本机申请 | `ops-web/components/layout/api-keys.tsx` 及 `scripts/automation/ops-api-key.swift`。页面提交摘要，本机持有真实密钥 |
 | 员工密钥与审计 | `shop-core/platform` 的 `OpsApiKeyService`、`OpsApiKeyController`、`OpsApiKeyServiceImpl`、`OpsApiKeyStore`，以及 `OpsServiceImpl` 的停用和改密撤销 |
 | 密钥持久化 | `V701__ops_staff_api_key.sql` 及 H2 测试表。UUID 主键、密钥哈希唯一索引 |
-| 认证、准入及角色 | `OpsGatewayEnd`、`OpsApiKeyAuthFilter`、`OpsApiKeyRoutes`，复用原认证上下文及 `OperatorIdentityLoader`。签发、查询和撤销使用 `iam:staff:api-key-manage` |
+| 认证、准入及角色 | `OpsGatewayEnd`、`OpsApiKeyAuthFilter`、`OpsApiKeyRoutes`，复用原认证上下文及 `OperatorIdentityLoader`。管理员代签、查询和撤销使用 `iam:staff:api-key-manage`，V701 将该操作功能点默认授予 `SUPER_ADMIN` |
 | 已有业务 Controller 和操作契约 | 复用门店、商户、渠道、行业现有路由，由 `scripts/gen-ops-key-api.mjs` 生成[模块与角色清单](../api/运营管理API-模块与角色清单.md)和[OpenAPI](../api/ops-management.openapi.json) |
 | 数据及端点基线刷新 | 生成器排除测试用 Controller；现存权限矩阵和 OpenAPI 包含管理员与员工自助各 3 项凭据操作 |
