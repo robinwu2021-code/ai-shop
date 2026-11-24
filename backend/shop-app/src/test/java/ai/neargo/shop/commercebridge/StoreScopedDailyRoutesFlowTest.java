@@ -582,7 +582,7 @@ class StoreScopedDailyRoutesFlowTest {
     @Test
     @DisplayName("★★ 新模型门店：建的券在券列表里看得到（2026-11-24 v2：POST /biz/coupons 成功，GET /biz/coupons 却是 []）")
     void couponCreatedOnNewModelStoreIsListed() throws Exception {
-        String[] o = newModelOwner("15965020141");
+        String[] o = newModelOwner("15965020143");
         long now = System.currentTimeMillis();
         String body = "{\"title\":\"QA-coupon\",\"benefitMode\":\"CASH\",\"benefitValue\":1000,"
                 + "\"minAmountMinor\":0,\"scopeType\":\"STORE\",\"scopeRefs\":[\"" + o[1] + "\"],"
