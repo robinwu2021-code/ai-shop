@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1263 个接口**：后端已实现 1010（80%）· 前端在调 1083
+**合计 1266 个接口**：后端已实现 1013（80%）· 前端在调 1085
 
 ---
 
@@ -1215,7 +1215,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **620** 个接口 ｜ 后端已实现 **475**（77%）｜ 前端在调 **442**
+共 **623** 个接口 ｜ 后端已实现 **478**（77%）｜ 前端在调 **444**
 
 ### aftersale（5）
 
@@ -1527,7 +1527,7 @@
 | POST | `/ops/fission-campaigns` | 邀请有礼（P-9.2.1） | — | `FissionCampaign` | — | ✅ | ✅ |
 | POST | `/ops/fission-campaigns/{no}/enabled` | setFissionEnabled | — | `FissionCampaign` | — | ⬜ | ✅ |
 
-### iam（19）
+### iam（22）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1550,6 +1550,9 @@
 | POST | `/ops/staffs/{no}/roles` | 改角色（**多角色**） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/scope` | 数据域授权（P-1.1.3） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/second-factor-exempt` | 免二次验证白名单（`POST /ops/staffs/{staffNo}/second-factor-exempt`） | — | `Staff` | — | ⬜ | ⬜ |
+| GET | `/ops/staffs/me/api-keys` | 查询本人的 API 密钥元数据 | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/staffs/me/api-keys` | 绑定本机生成的密钥摘要 | `RegisterOpsApiKey` | `MyOpsApiKey` | — | ✅ | ✅ |
+| POST | `/ops/staffs/me/api-keys/{keyNo}/revoke` | 撤销本人持有的 API 密钥 | — | `object` | — | ✅ | ⬜ |
 
 ### inventory（14）
 

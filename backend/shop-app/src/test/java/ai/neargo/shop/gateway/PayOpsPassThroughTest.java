@@ -2,12 +2,14 @@ package ai.neargo.shop.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ai.neargo.auth.store.TokenHash;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.TokenStore;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -40,6 +43,8 @@ class PayOpsPassThroughTest {
     WebApplicationContext context;
     @Autowired
     TokenStore tokenStore;
+    @Autowired
+    JdbcTemplate jdbc;
 
     @DynamicPropertySource
     static void target(DynamicPropertyRegistry registry) {
@@ -98,6 +103,20 @@ class PayOpsPassThroughTest {
     @DisplayName("前缀之外的运营端地址不受影响")
     void otherOpsPathsUntouched() throws Exception {
         mvc().perform(MockMvcRequestBuilders.get("/ops/pay-ops/v2x/merchants")).andReturn();
+        assertThat(RECEIVED).isEmpty();
+    }
+
+    @Test
+    void employeeKeyNeverReachesDownstream() throws Exception {
+        String key = "oak_" + "a".repeat(43);
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+                INSERT INTO sys_ops_api_key (key_no,staff_no,secret_hash,label,access_level,issued_by,created_at,expires_at)
+                SELECT ?, staff_no, ?, 'gateway test', 'MANAGE', staff_no, ?, ? FROM sys_ops_staff WHERE username='admin'
+                """, UUID.randomUUID().toString(), TokenHash.of(key), now, now + 60_000);
+        var response = mvc().perform(MockMvcRequestBuilders.get("/ops/pay-ops/v2/merchants")
+                .header("Authorization", "Bearer " + key)).andReturn().getResponse();
+        assertThat(response.getStatus()).isEqualTo(403);
         assertThat(RECEIVED).isEmpty();
     }
 

@@ -34,6 +34,9 @@ export const PUBLIC = new Map([
   ["GET /ops/auth/me", "自查身份，返回的就是调用者自己"],
   ["POST /ops/auth/logout", "退出：只吊销请求头里那一个令牌（TDD-ops-统一登录与系统切换 §3.3）。"
     + "免鉴权是为了让过期令牌点「退出」也得到成功，而不是一个 401"],
+  ["GET /ops/staffs/me/api-keys", "运营登录会话查询自己的密钥"],
+  ["POST /ops/staffs/me/api-keys", "运营登录会话注册自己的本机密钥"],
+  ["POST /ops/staffs/me/api-keys/{keyNo}/revoke", "运营登录会话撤销自己的密钥"],
   ["GET /ops/menu", "菜单本来就按人切片 —— 再加一个码等于「要有权限才能知道自己有什么权限」"],
   ["POST /ops/staffs/me/password", "改**自己**的密码。要 iam:staff:update 的话，"
     + "拿一次性初始密码登进来的新员工反而改不了密码 —— 而首登强制改密正是为他准备的"],
@@ -61,7 +64,7 @@ export const PUBLIC = new Map([
 /** 扫 /ops 端点 → 权限常量名 */
 export function scanEndpoints(root = ROOT) {
   // Optional channel controllers retain the same permission checks as core controllers.
-  const files = execFileSync("rg", ["-l", '"/ops', "--glob", "*.java", "backend",
+  const files = execFileSync("rg", ["-l", '"/ops', "--glob", "*.java", "--glob", "!**/src/test/**", "backend",
     "backend-plugins/shop-commerce-integration/commerce-web/src/main/java"], {
     cwd: root, encoding: "utf8",
   }).trim().split("\n").filter(f => f.includes("/src/main/java/") && !f.includes("/target/"));

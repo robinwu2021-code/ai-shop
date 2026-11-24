@@ -7,6 +7,8 @@ export type FunnelStep = "SCAN" | "ENTER_STORE" | "REGISTER" | "FIRST_ORDER";
 export interface LoginResp {
   /** 登录名 */
   username: string;
+  /** 当前运营员工的编号。 */
+  staffNo?: string;
   /** 角色。**权限判定以后端为准**，前端只做菜单裁剪 */
   role: Role;
   /** 访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见 {@link challenge}） */

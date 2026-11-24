@@ -230,7 +230,11 @@ for (const [name, ep] of Object.entries(endpoints)) {
     // 列表类的查询参数是 PageQ 及其派生，形状见 lib/api/query.ts；
     // 这里不逐个展开（它们是索引签名类型，展开后是一堆 additionalProperties）
     op.description = "查询参数见 lib/api/query.ts 中对应的 *Q 类型。";
-  } else {
+  } else if (name === "registerMyApiKey") {
+    op.requestBody = {
+      required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/RegisterOpsApiKey" } } },
+    };
+  } else if (name !== "revokeMyApiKey") {
     op.requestBody = {
       required: true,
       content: { "application/json": { schema: { type: "object" } } },

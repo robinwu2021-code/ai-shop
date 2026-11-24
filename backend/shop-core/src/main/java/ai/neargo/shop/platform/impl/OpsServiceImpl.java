@@ -48,6 +48,7 @@ import ai.neargo.shop.auth.RequestMetaContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.stereotype.Service;
+import ai.neargo.shop.platform.auth.OpsApiKeyStore;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -84,6 +85,7 @@ public class OpsServiceImpl implements OpsService {
     private volatile String secondFactor;
     private final OpsLoginGuard loginGuard;
     private final OpsLoginChallenges loginChallenges;
+    private final OpsApiKeyStore apiKeys;
     private final RoleMemberMapper roleMemberMapper;
     private final RolePermResolver rolePermResolver;
     /** 改角色/数据域之后清它 —— 身份也是现算的了（见 LiveIdentityResolver） */
@@ -155,9 +157,11 @@ public class OpsServiceImpl implements OpsService {
                           ai.neargo.shop.spi.notify.OpsAlertPort opsAlertPort,
                           @org.springframework.beans.factory.annotation.Value(
                                   "${shop.web.base-url:}") String webBaseUrl,
-                          OpsLoginGuard loginGuard, OpsLoginChallenges loginChallenges) {
+                          OpsLoginGuard loginGuard, OpsLoginChallenges loginChallenges,
+                          OpsApiKeyStore apiKeys) {
         this.loginGuard = loginGuard;
         this.loginChallenges = loginChallenges;
+        this.apiKeys = apiKeys;
         this.opsAlertPort = opsAlertPort;
         this.webBaseUrl = webBaseUrl;
         this.mailPort = mailPort;
@@ -1207,6 +1211,7 @@ public class OpsServiceImpl implements OpsService {
          * 照常操作 —— 而停用他的那个人以为立刻生效了。
          */
         if (!enabled) {
+            apiKeys.revokeAll(staffNo, System.currentTimeMillis());
             tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staffNo);
         }
         audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用", true,
@@ -1442,6 +1447,7 @@ public class OpsServiceImpl implements OpsService {
          * 不踢的话拿着旧 token 的人照样在线，改密等于没改。
          */
         tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staff.getStaffNo());
+        apiKeys.revokeAll(staff.getStaffNo(), System.currentTimeMillis());
         audit("STAFF_PASSWORD", staff.getStaffNo(), "自助改密", true, null, null);
     }
 
@@ -1517,6 +1523,7 @@ public class OpsServiceImpl implements OpsService {
         staffMapper.updateById(staff);
         // 忘记密码的常见动机就是「怀疑被人用了」，不踢的话拿着旧 token 的人照样在线
         tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staffNo);
+        apiKeys.revokeAll(staffNo, System.currentTimeMillis());
         audit("STAFF_PASSWORD_RESET", staffNo, "经邮件重置", true, null, null);
     }
 

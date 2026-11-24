@@ -74,6 +74,8 @@ class OpsEndpointPermTest {
             Map.entry("/ops/auth/logout", "退出 —— 只吊销自己带来的那一个令牌"),
             Map.entry("/ops/auth/me", "「我是谁」。前端拿它决定画哪些菜单，不能反过来要权限"),
             Map.entry("/ops/staffs/me/password", "改**自己**的密码。改别人的是 iam:staff:update，那条有码"),
+            Map.entry("/ops/staffs/me/api-keys", "运营登录会话查询或注册自己的密钥，服务端确定属主"),
+            Map.entry("/ops/staffs/me/api-keys/{keyNo}/revoke", "运营登录会话撤销自己的密钥"),
             Map.entry("/ops/menu", "菜单本身就是按他的权限算出来的，再给它加一层码是循环"),
             Map.entry("/ops/message", "看**自己**的站内信"),
             Map.entry("/ops/message/unread-count", "自己的未读数"),

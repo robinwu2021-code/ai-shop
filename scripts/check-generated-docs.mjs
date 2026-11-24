@@ -55,6 +55,7 @@ const GENERATORS = [
   ["c-app/scripts/gen-openapi.mjs", ["docs/api/openapi.yaml"]],
   ["ops-web/scripts/gen-openapi.mjs", ["docs/api/openapi-ops.yaml"]],
   ["b-app/scripts/gen-openapi.mjs", ["docs/api/openapi-b.yaml"]],
+  ["scripts/gen-ops-key-api.mjs", ["docs/api/ops-management.openapi.json", "docs/api/运营管理API-模块与角色清单.md"]],
   ["scripts/gen-api-detail.mjs", ["docs/api/API详情-B端.md", "docs/api/API详情-C端.md", "docs/api/API详情-平台端.md"]],
   ["scripts/gen-biz-role-matrix.mjs", ["docs/technical/reference/B端功能矩阵-按角色.md"]],
   ["scripts/gen-biz-feature-perm-matrix.mjs", ["docs/technical/reference/B端功能点-权限码-页面.md"]],

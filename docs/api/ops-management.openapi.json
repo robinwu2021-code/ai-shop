@@ -1,0 +1,3115 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ai-shop 运营管理 API",
+    "version": "1.0.0",
+    "description": "由 scripts/gen-ops-key-api.mjs 生成。按后端准入清单选择端点。HTTP 200 仍须检查业务 code，只有 0 表示成功。"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "本地开发。运营环境使用受控 HTTPS 入口"
+    }
+  ],
+  "tags": [
+    {
+      "name": "身份与密钥"
+    },
+    {
+      "name": "门店"
+    },
+    {
+      "name": "商户"
+    },
+    {
+      "name": "渠道"
+    },
+    {
+      "name": "行业与经营范围"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "operatorApiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "员工绑定的 oak_ 密钥"
+      },
+      "operatorSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "运营交互会话 otk_"
+      }
+    },
+    "schemas": {
+      "OpsError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "not": {
+              "const": 0
+            }
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "code",
+          "msg"
+        ]
+      },
+      "OperatorIdentity": {
+        "type": "object",
+        "properties": {
+          "staffNo": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "realName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "perms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "merchantNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "communityNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pickupNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastLoginAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "mustChangePassword": {
+            "type": "boolean"
+          },
+          "secondFactorExempt": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "staffNo",
+          "username",
+          "roles",
+          "perms",
+          "status",
+          "mustChangePassword",
+          "secondFactorExempt"
+        ]
+      },
+      "OpsApiKeyMetadata": {
+        "type": "object",
+        "properties": {
+          "keyNo": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "READ_ONLY",
+              "MANAGE"
+            ]
+          },
+          "issuedBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix 毫秒"
+          },
+          "expiresAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix 毫秒"
+          },
+          "revokedAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Unix 毫秒，未撤销时为空或省略"
+          }
+        },
+        "required": [
+          "keyNo",
+          "label",
+          "access",
+          "issuedBy",
+          "createdAt",
+          "expiresAt"
+        ]
+      },
+      "MyOpsApiKey": {
+        "type": "object",
+        "properties": {
+          "keyNo": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "READ_ONLY",
+              "MANAGE"
+            ]
+          },
+          "issuedBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix 毫秒"
+          },
+          "expiresAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix 毫秒"
+          },
+          "revokedAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Unix 毫秒，未撤销时为空或省略"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "EXPIRED",
+              "REVOKED"
+            ]
+          }
+        },
+        "required": [
+          "keyNo",
+          "label",
+          "access",
+          "issuedBy",
+          "createdAt",
+          "expiresAt",
+          "status"
+        ]
+      },
+      "StoreGovern": {
+        "type": "object",
+        "properties": {
+          "storeNo": {
+            "type": "string",
+            "description": "门店号"
+          },
+          "name": {
+            "type": "string",
+            "description": "门店名"
+          },
+          "address": {
+            "type": "string",
+            "description": "门店地址"
+          },
+          "merchantNo": {
+            "type": "string",
+            "description": "所属商家主体"
+          },
+          "merchantName": {
+            "type": "string",
+            "description": "商家名快照"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "是否主体的默认门店。默认店承接「没指定门店」的那些流量"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StoreGovernStatus",
+            "description": "经营状态，见  {@link  StoreGovernStatus }"
+          },
+          "businessMode": {
+            "$ref": "#/components/schemas/BusinessMode",
+            "description": "自营 / 第三方。决定这家店的钱怎么走、票怎么开"
+          },
+          "payMerchantNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "本店专属收款商户号。\n**`null` 不是「没配」，是「用主体默认收款号」** —— 显示成空白会被读成前者。"
+          },
+          "rating": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "门店评分，**×10 的整数**（85 = 8.5 分）。与主体那几列同口径"
+          },
+          "ratingCount": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "评价条数。\n\n⚠️ **0 = 暂无评价，不是 0 分** —— 新店与还没重算过的店都是这个形状。 判空要按**条数**，按分值判会把「没人评过」显示成「0 分」。"
+          },
+          "announcement": {
+            "type": "string",
+            "description": "门店公告（走 P-10.1 的机审 + 人审）"
+          },
+          "openHours": {
+            "type": "string",
+            "description": "营业时间，展示串"
+          },
+          "deliveryRadiusM": {
+            "type": "number",
+            "description": "配送半径（米）"
+          },
+          "deliveryMinOrderMinor": {
+            "type": "number",
+            "description": "起送价（分）"
+          },
+          "deliveryFeeMinor": {
+            "type": "number",
+            "description": "配送费（分）"
+          },
+          "deliveryFreeThresholdMinor": {
+            "type": "number",
+            "description": "免配送费门槛（分）"
+          }
+        },
+        "required": [
+          "storeNo",
+          "name",
+          "address",
+          "merchantNo",
+          "merchantName",
+          "isDefault",
+          "status",
+          "businessMode",
+          "payMerchantNo",
+          "rating",
+          "ratingCount",
+          "announcement",
+          "openHours",
+          "deliveryRadiusM",
+          "deliveryMinOrderMinor",
+          "deliveryFeeMinor",
+          "deliveryFreeThresholdMinor"
+        ],
+        "additionalProperties": false
+      },
+      "StoreGovernStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "READONLY",
+          "SUSPENDED",
+          "PENDING_OPEN"
+        ],
+        "description": "门店经营状态。三档**不是同一个人在管**，所以不能压成一个 `enabled` 布尔：\n\n- `ACTIVE`    正常营业；\n- `READONLY`  商家自助停用（自己关的，自己能开回来）；\n- `SUSPENDED` 平台强制下线 —— **只有平台解得开**，商家侧的启停对它一律拒绝。\n\n压成布尔的后果是运营看不出「这家店是自己歇业还是被我们压下去的」， 而这两件事该做的动作完全相反。"
+      },
+      "BusinessMode": {
+        "type": "string",
+        "enum": [
+          "SELF_OPERATED",
+          "THIRD_PARTY"
+        ],
+        "description": "经营模式。与  {@link  FeeRuleVersion }  一起构成费率的第一个维度。\n\n自营：平台是销售主体，这个费率是**进销差价（毛利）**。 第三方：平台是撮合方，这个费率是**服务收入（佣金）**。 算法一样，记账口径不同 —— 口径由结算单上的 `businessMode` 快照决定。"
+      },
+      "StoreGovernDetail": {
+        "type": "object",
+        "properties": {
+          "store": {
+            "$ref": "#/components/schemas/StoreGovern",
+            "description": "门店档案本身（与列表行同一份形状）"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/MerchantCoverage",
+            "description": "经营范围与它的投影结果。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」"
+          },
+          "pickupNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "这家店挂靠的取货点名。空数组 = 没挂，不是没查到"
+          },
+          "scanCount30d": {
+            "type": "number",
+            "description": "近 30 天店铺码扫码次数。与获客看板同一个数据源，不另算一份"
+          }
+        },
+        "required": [
+          "store",
+          "coverage",
+          "pickupNames",
+          "scanCount30d"
+        ],
+        "additionalProperties": false,
+        "description": "门店详情（P-11.2.1c）：档案 + 三样**只有详情才算**的东西。\n\n不把这三项塞进  {@link  StoreGovern } ：列表一屏几十行，每行再查社区/自提点/扫码数 就是三次 N+1；而给它们留 null 又会让「列表不算这一项」与「这家店没有」长得一样。"
+      },
+      "MerchantCoverage": {
+        "type": "object",
+        "properties": {
+          "includes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoverageArea"
+            },
+            "description": "明确纳入的服务范围"
+          },
+          "excludes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoverageArea"
+            },
+            "description": "明确排除的服务范围"
+          },
+          "reachableCount": {
+            "type": "number",
+            "description": "当前可触达对象数量"
+          },
+          "reachableSample": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "覆盖到的聚落名，最多几条。只给一个数字的话，30 与 3 一样让人无从判断展开对不对"
+          }
+        },
+        "required": [
+          "includes",
+          "excludes",
+          "reachableCount",
+          "reachableSample"
+        ],
+        "additionalProperties": false,
+        "description": "一个主体的经营范围明细。\n\n**三块分开，缺一块都会被读反：**\n- `includes` 他框了哪些地方\n- `excludes` 他**明确排除**的地方 —— 混在上面一起列，运营会读成「他做这儿」，而事实正好相反\n- `reachableCount` 展开之后**实际覆盖几个聚落** —— 框了什么与覆盖到什么不是一回事：   框一个街道可能展开成 30 个聚落，也可能一个都没有（那条街道下还没开通任何聚落），   而后者在只看「他框了什么」的界面上完全看不出来"
+      },
+      "CoverageArea": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "description": "COMMUNITY / STREET / DISTRICT / CITY / PROVINCE"
+          },
+          "refCode": {
+            "type": "string",
+            "description": "范围所引用的行政或业务编码"
+          },
+          "name": {
+            "type": "string",
+            "description": "取不到名就给号，**不留空** —— 空会被读成「没有这一条」"
+          },
+          "status": {
+            "type": "string",
+            "description": "ACTIVE / PENDING"
+          }
+        },
+        "required": [
+          "level",
+          "refCode",
+          "name",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "Merchant": {
+        "type": "object",
+        "properties": {
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。"
+          },
+          "merchantNo": {
+            "type": "string",
+            "description": "商家单号"
+          },
+          "name": {
+            "type": "string",
+            "description": "店铺名"
+          },
+          "tier": {
+            "$ref": "#/components/schemas/MerchantTier",
+            "description": "商家分层，为引入大商家预留"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MerchantStatus",
+            "description": "**经营状态**（不是审核状态 —— 审核在申请单上）。合法迁移见 `MERCHANT_TRANSITIONS`"
+          },
+          "communityNos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "服务的社区。**是列表不是单个** —— 一家店可以服务多个社区 （后端 `mch_entity_community`，服务范围三档见 ADR-009）。 此前这里是单个 `communityNo`，多社区商家只会显示其中一个。"
+          },
+          "contactName": {
+            "type": "string",
+            "description": "联系人姓名"
+          },
+          "contactPhone": {
+            "type": "string",
+            "description": "展示一律脱敏（中间四位掩码），完整号码不下发前端"
+          },
+          "categoryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "经营类目编码，审核通过后即类目授权范围（P-11.1.3）"
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "认证标（P-11.1.2）"
+          },
+          "qualifications": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "已登记的结构化资质名。授权需要资质的类目码时要对照它。\n\n**必须是可选的。** 后端 `MerchantProfileVO` 曾经完全没有这个字段， 而这里声明成必填 `string[]` —— 类型检查过得去，真接口下 `m.qualifications.length` 直接抛 TypeError。只有 mock 有这个字段，所以一直没暴露。 「契约有、后端不发」是字段问题，不是类型问题：**别把 `?` 去掉**。"
+          },
+          "breachCount": {
+            "type": "number",
+            "description": "信用档案：毁约次数（P-11.1.5 / ADR-003）"
+          },
+          "settleAccountReady": {
+            "type": "boolean",
+            "description": "分账接收方报备状态（P-12.1.1，ADR-002）"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "入驻申请提交时间"
+          },
+          "auditRemark": {
+            "type": "string",
+            "description": "最近一次审核意见（驳回原因/补交项）"
+          },
+          "asPickupPoint": {
+            "type": "boolean",
+            "description": "申请人是否愿意承接自提点（ADR-005）。\n\n**只是意愿，通过审核不会自动建点** —— 自提点的服务费口径是逐点线下谈的， 没有一个默认值能覆盖。放在审核页上是为了让运营**看见有人在等**： 不显示的话，申请人勾了这一项、通过后什么也没发生，而中间没有任何一处会报错。"
+          },
+          "legalForm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LegalForm"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。\n\n此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。"
+          },
+          "fundsMode": {
+            "$ref": "#/components/schemas/FundsMode",
+            "description": "资金路径（轴②）：钱先进谁的账户。\n\n**与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。\n\n而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。"
+          },
+          "agriProducer": {
+            "type": "boolean",
+            "description": "农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。"
+          },
+          "selfOperated": {
+            "type": "boolean",
+            "description": "这个主体是不是**平台自己**（V329）。类目授权那几个勾选框据此决定 要不要因为「缺证件」而禁用 —— 自营不问证件，它的证件就是平台自己的证件。\n\n**不能用 `fundsMode` 代替**：归集（AGGREGATED）同时盖着平台自营与 代销第三方，而代销那一档仍然要核验（ADR-017 §3.4：平台先担责、再向商家追偿）。"
+          }
+        },
+        "required": [
+          "merchantNo",
+          "name",
+          "tier",
+          "status",
+          "communityNos",
+          "contactName",
+          "contactPhone",
+          "categoryCodes",
+          "verified",
+          "breachCount",
+          "settleAccountReady",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "MerchantTier": {
+        "type": "string",
+        "enum": [
+          "SMALL",
+          "MEDIUM",
+          "LARGE"
+        ],
+        "description": "商家**分层**（规模）。对应 `mch_entity.tier`，与 shared 的 `MerchantTier` 同名同值。\n\n⚠️ 这里此前是 `PERSONAL | INDIVIDUAL | COMPANY` —— 那是**主体类型**的旧取值 （权威码见 shared 的 `MerchantSubject`：NATURAL_PERSON / INDIVIDUAL / ENTERPRISE）。 名字对得上后端字段，取值却来自另一个概念，于是这一列**永远显示不出东西**： 后端下发的 tier 要么是 null（一期没启用分层），要么是 SMALL， 而 SMALL 不在这个联合类型里，i18n 也查不到词条。\n\n<p>如果运营界面真正想看的是**主体类型**（小微/个体户/企业），那要后端在 ops 商家 VO 里补一个字段 —— `mch_entity` 上没有 subject 列， 它在申请单与进件表上。这是另一件事，不能靠改端上的类型变出来。"
+      },
+      "MerchantStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING_LICENSE",
+          "ACTIVE",
+          "SUSPENDED",
+          "FROZEN"
+        ],
+        "description": "商家的**经营状态**。取值与后端 `mch_entity.status` 一致。\n\n⚠️ 它**不是入驻审核状态** —— 审核状态在申请单上（ {@link  ApplyStatus } ， PENDING/REVIEWING/APPROVED/REJECTED），后端刻意分成两张表： `mch_entity_apply` 记「这次申请审到哪了」，`mch_entity` 记「这家店现在能不能做生意」。\n\n这里曾经把两者揉成一个字段（DRAFT/SUBMITTED/REVIEWING/APPROVED/REJECTED/SUSPENDED）， 于是一家已经在正常经营、又提交了第二张执照的商家，status 该填什么无解 —— 而这正是「一人多主体」的常见情形。"
+      },
+      "LegalForm": {
+        "type": "string",
+        "enum": [
+          "NATURAL_PERSON",
+          "INDIVIDUAL",
+          "ENTERPRISE"
+        ],
+        "description": "主体档位 —— 与后端 `mch_entity.legal_form` 同一套取值。\n\n**三档锁定，不再增删**：S1/S2/S3 是对这三个值的读法，不是新枚举。\n\nV87 起 `MICRO` 改名 `NATURAL_PERSON` —— 那是通道发明的收款档位，不是法律形态， 且与法规「小微企业（有照）」重名含义相反。通道档留在 `mch_payment_merchant` 上。"
+      },
+      "FundsMode": {
+        "type": "string",
+        "enum": [
+          "AGGREGATED",
+          "DIRECT"
+        ],
+        "description": "资金路径。**能走哪条由商户类型决定，不是平台自选**（ADR-017 §3.2）： 自然人开不出票 → 平台按全额确认收入而成本不可税前扣除 → 禁归集； 自产农产品例外。"
+      },
+      "StoreFulfillmentRow": {
+        "type": "object",
+        "properties": {
+          "storeNo": {
+            "type": "string",
+            "description": "门店号"
+          },
+          "storeName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "门店名"
+          },
+          "storeStatus": {
+            "type": "string",
+            "description": "门店状态"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "STORE_PICKUP",
+                    "NEIGHBOR_PICKUP",
+                    "MERCHANT_DELIVERY",
+                    "EXPRESS"
+                  ]
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "denied": {
+                  "type": "boolean"
+                },
+                "templateNo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pickups": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pickupNo": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "address": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      }
+                    },
+                    "required": []
+                  }
+                },
+                "locked": {
+                  "type": "boolean"
+                },
+                "scopeMode": {
+                  "type": "string",
+                  "enum": [
+                    "ALL",
+                    "SUBSET"
+                  ]
+                },
+                "areaNos": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "inherited": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "channel",
+                "enabled",
+                "denied",
+                "locked",
+                "scopeMode",
+                "inherited"
+              ]
+            }
+          }
+        },
+        "required": [
+          "storeNo",
+          "storeName",
+          "storeStatus",
+          "channels"
+        ],
+        "additionalProperties": false,
+        "description": "门店送货方式（方案 v4，P0 只读）：每店四路开关的快照。 channel 值域 = STORE_PICKUP / NEIGHBOR_PICKUP / MERCHANT_DELIVERY / EXPRESS。"
+      },
+      "LogisticsChannel": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "渠道名：`kuaidi100` / `yto` / `wx` / `stub`"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "配置里启用没有"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LogisticsCapability"
+            },
+            "description": "每种能力可不可用"
+          },
+          "carriers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "覆盖的承运商码；`*` = 全覆盖"
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "出现在哪些路由链里（`subscribe.default#1` 这种）"
+          }
+        },
+        "required": [
+          "name",
+          "enabled",
+          "capabilities",
+          "carriers",
+          "routes"
+        ],
+        "additionalProperties": false,
+        "description": "物流渠道总览的一行（`GET /ops/logistics/channels`）"
+      },
+      "LogisticsCapability": {
+        "type": "object",
+        "properties": {
+          "capability": {
+            "$ref": "#/components/schemas/LogisticsCapabilityKind",
+            "description": "能力种类"
+          },
+          "available": {
+            "type": "boolean",
+            "description": "可不可用"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "不可用的原因（「凭据没配」「推送不可用，订阅随之不可用」）"
+          }
+        },
+        "required": [
+          "capability",
+          "available",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "description": "渠道的一种能力"
+      },
+      "LogisticsCapabilityKind": {
+        "type": "string",
+        "enum": [
+          "SUBSCRIBE",
+          "PUSH",
+          "PROBE",
+          "BIND"
+        ],
+        "description": "物流渠道的能力种类：`SUBSCRIBE` 订阅 · `PUSH` 收推送 · `PROBE` 主动查 · `BIND` 换微信 token"
+      },
+      "PayChannelSetting": {
+        "type": "object",
+        "properties": {
+          "payChannel": {
+            "type": "string",
+            "description": "通道码，如 WECHAT / ALIPAY"
+          },
+          "name": {
+            "type": "string",
+            "description": "展示名"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "停用只影响**新进件与新下单**，已开通的商户与在途的单不受影响"
+          },
+          "markets": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "JSON 数组文本，如 `[\"CN\"]`。空 / `[]` = 哪个市场都不可用（W2 起「无行 = 不可用」）"
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "结算币种，如 CNY"
+          },
+          "settleCycle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "通道结算周期，如 T+1。展示与对账预期用"
+          },
+          "supportsSubsidy": {
+            "type": "boolean",
+            "description": "能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了"
+          },
+          "currentRate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PayChannelRateVersion"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "此刻生效的那一版；**一条都没配时为 null**，要显示成「未配置」而不是 0"
+          },
+          "rates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PayChannelRateVersion"
+            },
+            "description": "全部版本，按生效时间倒序"
+          }
+        },
+        "required": [
+          "payChannel",
+          "name",
+          "enabled",
+          "markets",
+          "currency",
+          "settleCycle",
+          "supportsSubsidy",
+          "currentRate",
+          "rates"
+        ],
+        "additionalProperties": false,
+        "description": "一个支付通道的设置与费率。"
+      },
+      "PayChannelRateVersion": {
+        "type": "object",
+        "properties": {
+          "rateNo": {
+            "type": "string",
+            "description": "规则版本号"
+          },
+          "payChannel": {
+            "type": "string",
+            "description": "通道码，与 sys_pay_channel 同值域"
+          },
+          "payMethod": {
+            "type": "string",
+            "description": "`*` = 该通道全部支付方式"
+          },
+          "legalForm": {
+            "type": "string",
+            "description": "`*` = 全部主体形态"
+          },
+          "rateBp": {
+            "type": "number",
+            "description": "万分比。38 = 0.38%"
+          },
+          "minFeeMinor": {
+            "type": "number",
+            "description": "单笔最低手续费（分）。0 = 无保底"
+          },
+          "effectiveFrom": {
+            "type": "number",
+            "description": "生效时刻（毫秒）。**填未来时刻 = 预约生效**"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "停用的版本不参与取值。停用最新版 = 回退到上一版"
+          },
+          "remark": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "为什么调这一次 —— 回查时这句话比数字更有用"
+          }
+        },
+        "required": [
+          "rateNo",
+          "payChannel",
+          "payMethod",
+          "legalForm",
+          "rateBp",
+          "minFeeMinor",
+          "effectiveFrom"
+        ],
+        "additionalProperties": false,
+        "description": "通道费率的一个版本（后端 `sys_pay_channel_rate`）。"
+      },
+      "Industry": {
+        "type": "object",
+        "properties": {
+          "industry": {
+            "type": "string",
+            "description": "行业码，入驻申请回传的就是它"
+          },
+          "name": {
+            "type": "string",
+            "description": "展示名。三端都取服务端的，不各自维护翻译"
+          },
+          "sort": {
+            "type": "number",
+            "description": "排序"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "是否启用。关掉后入驻表单里不再出现这个行业"
+          },
+          "wechatMicroAllowed": {
+            "type": "boolean",
+            "description": "微信是否允许该行业以小微进件"
+          },
+          "alipayMicroAllowed": {
+            "type": "boolean",
+            "description": "支付宝是否允许"
+          },
+          "pointsForced": {
+            "type": "boolean",
+            "description": "是否**强制开启积分**（商家不可自行关闭）。 它是 `mch_entity.points_forced` 的来源 —— 高毛利行业平台会要求让利。"
+          },
+          "remark": {
+            "type": "string",
+            "description": "备注：为什么这么配。改白名单是会被商家追问的操作"
+          },
+          "merchantCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "industry",
+          "name",
+          "sort",
+          "enabled",
+          "wechatMicroAllowed",
+          "alipayMicroAllowed",
+          "pointsForced",
+          "merchantCount"
+        ],
+        "additionalProperties": false,
+        "description": "行业主数据（后端 `sys_industry`）。**已接真后端。**\n\n<p>它不是一张普通的字典表：**行业决定商家能不能以小微主体进件** —— 微信的小微白名单按行业给，判错一次商家就是进件被拒，而那时他已经开完店、上完架。"
+      },
+      "ServiceScopeConfig": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "description": "COMMUNITY / CITY / PLATFORM"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "这一期是否开放这一档。关掉**不影响已经是这一档的存量商家**，只是不能再选"
+          },
+          "merchantCount": {
+            "type": "number",
+            "description": "当前在用的商家数。不带计数的开关是盲操作"
+          }
+        },
+        "required": [
+          "scope",
+          "enabled",
+          "merchantCount"
+        ],
+        "additionalProperties": false,
+        "description": "经营范围档位的启用状态（ADR-009 三档）。\n\n档位本身是枚举，永远是那三个；这里配的是**这一期开放哪几档**。 一期自营模式关掉了 PLATFORM —— 没有虚拟商品/卡券/自营快递品支撑它。"
+      }
+    }
+  },
+  "paths": {
+    "/ops/auth/me": {
+      "get": {
+        "operationId": "me",
+        "summary": "查询当前运营员工身份",
+        "tags": [
+          "身份与密钥"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/OperatorIdentity"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "SCOPED_READ",
+        "x-permission-codes": [],
+        "x-default-roles": [
+          "ANALYST",
+          "AUDITOR",
+          "BD",
+          "CAMPAIGN_OPS",
+          "COMMUNITY_OPS",
+          "ELEC_ADMIN",
+          "FINANCE",
+          "GOODS_OPS",
+          "RISK",
+          "SUPER_ADMIN",
+          "SUPPORT",
+          "TECH_OPS"
+        ]
+      }
+    },
+    "/ops/stores": {
+      "get": {
+        "operationId": "listStores",
+        "summary": "跨主体门店检索",
+        "tags": [
+          "门店"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "records": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/StoreGovern"
+                              }
+                            },
+                            "total": {
+                              "type": "integer"
+                            },
+                            "page": {
+                              "type": "integer"
+                            },
+                            "size": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "records",
+                            "total",
+                            "page",
+                            "size"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "merchantNo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "businessMode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "communityNo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "SCOPED_READ",
+        "x-permission-codes": [
+          "merchant:merchant:read"
+        ],
+        "x-default-roles": [
+          "BD",
+          "GOODS_OPS",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/stores/{storeNo}": {
+      "get": {
+        "operationId": "getStore",
+        "summary": "门店档案详情：门面 + 配送规则 + 经营模式 + 收款商户号",
+        "tags": [
+          "门店"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/StoreGovernDetail"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "SCOPED_READ",
+        "x-permission-codes": [
+          "merchant:merchant:read"
+        ],
+        "x-default-roles": [
+          "BD",
+          "GOODS_OPS",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/stores/{storeNo}/restore": {
+      "post": {
+        "operationId": "restoreStore",
+        "summary": "解除门店强制下线，恢复被平台压下的货架行",
+        "tags": [
+          "门店"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/StoreGovern"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_MANAGE",
+        "x-permission-codes": [
+          "merchant:merchant:ban"
+        ],
+        "x-default-roles": [
+          "BD",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/merchants": {
+      "get": {
+        "operationId": "listMerchants",
+        "summary": "检索商户",
+        "tags": [
+          "商户"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "records": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/Merchant"
+                              }
+                            },
+                            "total": {
+                              "type": "integer"
+                            },
+                            "page": {
+                              "type": "integer"
+                            },
+                            "size": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "records",
+                            "total",
+                            "page",
+                            "size"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "communityNo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tier",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "showArchived",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "SCOPED_READ",
+        "x-permission-codes": [
+          "merchant:merchant:read"
+        ],
+        "x-default-roles": [
+          "BD",
+          "GOODS_OPS",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/merchants/{merchantNo}": {
+      "get": {
+        "operationId": "getMerchant",
+        "summary": "查询商户详情",
+        "tags": [
+          "商户"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/Merchant"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "merchantNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "SCOPED_READ",
+        "x-permission-codes": [
+          "merchant:merchant:read"
+        ],
+        "x-default-roles": [
+          "BD",
+          "GOODS_OPS",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/merchants/{merchantNo}/status": {
+      "post": {
+        "operationId": "setMerchantStatus",
+        "summary": "调整商户经营状态",
+        "tags": [
+          "商户"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/Merchant"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "merchantNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "SUSPENDED",
+                      "FROZEN"
+                    ]
+                  },
+                  "remark": {
+                    "type": "string",
+                    "description": "暂停或冻结时必填"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_MANAGE",
+        "x-permission-codes": [
+          "merchant:merchant:ban"
+        ],
+        "x-default-roles": [
+          "BD",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/merchants/{merchantNo}/fulfillment": {
+      "get": {
+        "operationId": "merchantFulfillment",
+        "summary": "商家履约配置（方案 v4，**只读**）：门店 × 送货方式矩阵",
+        "tags": [
+          "渠道"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/StoreFulfillmentRow"
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "merchantNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_READ",
+        "x-permission-codes": [
+          "merchant:merchant:read"
+        ],
+        "x-default-roles": [
+          "BD",
+          "GOODS_OPS",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/stores/{storeNo}/channels/{channel}/lock": {
+      "post": {
+        "operationId": "lockChannel",
+        "summary": "锁定门店履约渠道",
+        "tags": [
+          "渠道"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "storeNo": {
+                              "type": "string"
+                            },
+                            "channel": {
+                              "type": "string"
+                            },
+                            "locked": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "storeNo",
+                            "channel",
+                            "locked"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "channel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "STORE_PICKUP",
+                "NEIGHBOR_PICKUP",
+                "MERCHANT_DELIVERY",
+                "EXPRESS"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_MANAGE",
+        "x-permission-codes": [
+          "merchant:fulfillment:update"
+        ],
+        "x-default-roles": [
+          "BD",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/stores/{storeNo}/channels/{channel}/unlock": {
+      "post": {
+        "operationId": "unlockChannel",
+        "summary": "解锁门店履约渠道",
+        "tags": [
+          "渠道"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "storeNo": {
+                              "type": "string"
+                            },
+                            "channel": {
+                              "type": "string"
+                            },
+                            "locked": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "storeNo",
+                            "channel",
+                            "locked"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "channel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "STORE_PICKUP",
+                "NEIGHBOR_PICKUP",
+                "MERCHANT_DELIVERY",
+                "EXPRESS"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_MANAGE",
+        "x-permission-codes": [
+          "merchant:fulfillment:update"
+        ],
+        "x-default-roles": [
+          "BD",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/logistics/channels": {
+      "get": {
+        "operationId": "listLogisticsChannels",
+        "summary": "物流渠道总览（O4）",
+        "tags": [
+          "渠道"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/LogisticsChannel"
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_READ",
+        "x-permission-codes": [
+          "fulfillment:logistics:read"
+        ],
+        "x-default-roles": [
+          "COMMUNITY_OPS",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/settle/pay-channels": {
+      "get": {
+        "operationId": "listPayChannels",
+        "summary": "支付通道设置 + 每个通道的费率版本",
+        "tags": [
+          "渠道"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PayChannelSetting"
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_READ",
+        "x-permission-codes": [
+          "finance:rate:read"
+        ],
+        "x-default-roles": [
+          "FINANCE",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/industries": {
+      "get": {
+        "operationId": "listIndustries",
+        "summary": "查询行业主数据和在用商家数",
+        "tags": [
+          "行业与经营范围"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Industry"
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_READ",
+        "x-permission-codes": [
+          "system:industry:read"
+        ],
+        "x-default-roles": [
+          "COMMUNITY_OPS",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/service-scopes": {
+      "get": {
+        "operationId": "listServiceScopes",
+        "summary": "查询经营范围档位及在用商家数",
+        "tags": [
+          "行业与经营范围"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ServiceScopeConfig"
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_READ",
+        "x-permission-codes": [
+          "system:industry:read"
+        ],
+        "x-default-roles": [
+          "COMMUNITY_OPS",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/industries/{industry}/enabled": {
+      "post": {
+        "operationId": "setIndustryEnabled",
+        "summary": "调整行业启用状态",
+        "tags": [
+          "行业与经营范围"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/Industry"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "industry",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_MANAGE",
+        "x-permission-codes": [
+          "system:industry:update"
+        ],
+        "x-default-roles": [
+          "COMMUNITY_OPS",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/service-scopes/{scope}/enabled": {
+      "post": {
+        "operationId": "setServiceScopeEnabled",
+        "summary": "调整经营范围档位",
+        "tags": [
+          "行业与经营范围"
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "description": "0 表示成功",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ServiceScopeConfig"
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorApiKey": []
+          }
+        ],
+        "x-credential-admission": "PLATFORM_MANAGE",
+        "x-permission-codes": [
+          "system:industry:update"
+        ],
+        "x-default-roles": [
+          "COMMUNITY_OPS",
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/staffs/me/api-keys": {
+      "get": {
+        "operationId": "listMyApiKeys",
+        "summary": "查看本人的 API 密钥",
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/MyOpsApiKey"
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "身份与密钥"
+        ],
+        "security": [
+          {
+            "operatorSession": []
+          }
+        ],
+        "x-credential-admission": "SESSION",
+        "x-permission-codes": [],
+        "x-default-roles": [
+          "ANALYST",
+          "AUDITOR",
+          "BD",
+          "CAMPAIGN_OPS",
+          "COMMUNITY_OPS",
+          "ELEC_ADMIN",
+          "FINANCE",
+          "GOODS_OPS",
+          "RISK",
+          "SUPER_ADMIN",
+          "SUPPORT",
+          "TECH_OPS"
+        ]
+      },
+      "post": {
+        "operationId": "registerMyApiKey",
+        "summary": "自助申请并绑定本机 API 密钥",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "keyNo": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "调用方为本次签发生成的 UUID"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "access": {
+                    "type": "string",
+                    "enum": [
+                      "READ_ONLY",
+                      "MANAGE"
+                    ],
+                    "default": "READ_ONLY"
+                  },
+                  "validDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 90
+                  },
+                  "secretHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$",
+                    "writeOnly": true
+                  }
+                },
+                "required": [
+                  "keyNo",
+                  "label",
+                  "validDays",
+                  "secretHash"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/MyOpsApiKey"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "身份与密钥"
+        ],
+        "security": [
+          {
+            "operatorSession": []
+          }
+        ],
+        "x-credential-admission": "SESSION",
+        "x-permission-codes": [],
+        "x-default-roles": [
+          "ANALYST",
+          "AUDITOR",
+          "BD",
+          "CAMPAIGN_OPS",
+          "COMMUNITY_OPS",
+          "ELEC_ADMIN",
+          "FINANCE",
+          "GOODS_OPS",
+          "RISK",
+          "SUPER_ADMIN",
+          "SUPPORT",
+          "TECH_OPS"
+        ]
+      }
+    },
+    "/ops/staffs/me/api-keys/{keyNo}/revoke": {
+      "post": {
+        "operationId": "revokeMyApiKey",
+        "summary": "撤销本人的 API 密钥",
+        "parameters": [
+          {
+            "name": "keyNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "身份与密钥"
+        ],
+        "security": [
+          {
+            "operatorSession": []
+          }
+        ],
+        "x-credential-admission": "SESSION",
+        "x-permission-codes": [],
+        "x-default-roles": [
+          "ANALYST",
+          "AUDITOR",
+          "BD",
+          "CAMPAIGN_OPS",
+          "COMMUNITY_OPS",
+          "ELEC_ADMIN",
+          "FINANCE",
+          "GOODS_OPS",
+          "RISK",
+          "SUPER_ADMIN",
+          "SUPPORT",
+          "TECH_OPS"
+        ]
+      }
+    },
+    "/ops/staffs/{staffNo}/api-keys": {
+      "get": {
+        "operationId": "listStaffApiKeys",
+        "summary": "查询员工密钥元数据",
+        "parameters": [
+          {
+            "name": "staffNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/OpsApiKeyMetadata"
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "身份与密钥"
+        ],
+        "security": [
+          {
+            "operatorSession": []
+          }
+        ],
+        "x-credential-admission": "SESSION",
+        "x-permission-codes": [
+          "iam:staff:api-key-manage"
+        ],
+        "x-default-roles": [
+          "SUPER_ADMIN"
+        ]
+      },
+      "post": {
+        "operationId": "issueStaffApiKey",
+        "summary": "为运营员工签发密钥",
+        "parameters": [
+          {
+            "name": "staffNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "keyNo": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "调用方为本次签发生成的 UUID"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "access": {
+                    "type": "string",
+                    "enum": [
+                      "READ_ONLY",
+                      "MANAGE"
+                    ]
+                  },
+                  "validDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 90
+                  }
+                },
+                "required": [
+                  "keyNo",
+                  "label",
+                  "access",
+                  "validDays"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "$ref": "#/components/schemas/OpsApiKeyMetadata"
+                            },
+                            "apiKey": {
+                              "type": "string",
+                              "readOnly": true,
+                              "description": "密钥明文，仅此次签发返回"
+                            }
+                          },
+                          "required": [
+                            "key",
+                            "apiKey"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "身份与密钥"
+        ],
+        "security": [
+          {
+            "operatorSession": []
+          }
+        ],
+        "x-credential-admission": "SESSION",
+        "x-permission-codes": [
+          "iam:staff:api-key-manage"
+        ],
+        "x-default-roles": [
+          "SUPER_ADMIN"
+        ]
+      }
+    },
+    "/ops/staffs/{staffNo}/api-keys/{keyNo}/revoke": {
+      "post": {
+        "operationId": "revokeStaffApiKey",
+        "summary": "撤销员工密钥",
+        "parameters": [
+          {
+            "name": "staffNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "统一响应。code=0 表示成功，其他业务码见 msg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效、到期、已撤销或员工停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "身份与密钥"
+        ],
+        "security": [
+          {
+            "operatorSession": []
+          }
+        ],
+        "x-credential-admission": "SESSION",
+        "x-permission-codes": [
+          "iam:staff:api-key-manage"
+        ],
+        "x-default-roles": [
+          "SUPER_ADMIN"
+        ]
+      }
+    }
+  }
+}

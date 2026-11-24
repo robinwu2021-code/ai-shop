@@ -150,6 +150,8 @@ export const dashboardHttp: DashboardApi = {
     const staff = await client.get<BackendStaff>("/ops/auth/me");
     return {
       username: staff?.username ?? "",
+      staffNo: staff?.staffNo,
+      mustChangePassword: staff?.mustChangePassword,
       role: toOpsRole(staff?.roles?.[0]),
       // me 不换发 token —— 调用方保留手里那张
       token: "",

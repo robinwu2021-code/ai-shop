@@ -3,6 +3,7 @@ package ai.neargo.shop.gateway.core.security;
 import ai.neargo.shop.auth.ApiAuthEntryPoint;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.gateway.core.end.Access;
 import ai.neargo.shop.gateway.core.proxy.ServiceInvoker;
 import ai.neargo.shop.gateway.core.resource.ApiResource;
@@ -80,6 +81,10 @@ public class GatewayPrecheckFilter extends OncePerRequestFilter {
         String line = request.getMethod() + " " + resource.pattern();
 
         if (resource.remote()) {
+            if (GatewayExchange.localOnly(request)) {
+                ApiAuthEntryPoint.writeError(response, 403, ErrorCode.FORBIDDEN);
+                return;
+            }
             if (user == null && resource.access() != Access.PUBLIC) {
                 new ApiAuthEntryPoint().commence(request, response,
                         new InsufficientAuthenticationException("微服务链接需要登录"));

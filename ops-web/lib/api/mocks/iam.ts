@@ -3,6 +3,8 @@ import * as db from "@/lib/mock/db";
 import { CRITICAL_PERMS } from "@/lib/permissions";
 import { SCOPED_ROLES, type RoleDef, type Staff } from "@/lib/types";
 import type { Role } from "@/lib/auth";
+import type { MyOpsApiKey, RegisterOpsApiKey } from "@/lib/types/ops-api-key";
+import { ApiError } from "../error";
 import type { IamApi } from "../contracts/iam";
 import { fail, notFound } from "@/lib/biz-error";
 import { NAV } from "@/lib/nav";
@@ -31,7 +33,51 @@ function audit(action: string, target: string, detail: string, critical: boolean
   });
 }
 
+const mockApiKeys = new Map<string, { owner: string; request: RegisterOpsApiKey; metadata: MyOpsApiKey }>();
+
+function apiKeyOwner(): string {
+  const auth = currentAuth();
+  if (!auth?.token) throw new ApiError(10401, "No operator session");
+  return db.staffs.find((item) => item.username === auth.username)?.staffNo ?? auth.username;
+}
+
+function currentApiKeyStatus(key: MyOpsApiKey): MyOpsApiKey {
+  return { ...key, status: key.revokedAt ? "REVOKED" : key.expiresAt <= Date.now() ? "EXPIRED" : "ACTIVE" };
+}
+
 export const iamMock: IamApi = {
+  listMyApiKeys: () => {
+    const owner = apiKeyOwner();
+    return wait([...mockApiKeys.values()].filter((key) => key.owner === owner)
+      .map(({ metadata }) => currentApiKeyStatus(metadata)).reverse());
+  },
+  registerMyApiKey: async (request) => {
+    const owner = apiKeyOwner();
+    if (db.staffs.find((item) => item.staffNo === owner)?.mustChangePassword) {
+      throw new ApiError(10403, "Change your initial password to register a key");
+    }
+    const { keyNo, secretHash, validDays, access = "READ_ONLY" } = request;
+    const label = request.label.trim();
+    const existing = mockApiKeys.get(keyNo);
+    if (existing) {
+      const original = existing.request;
+      if (existing.owner !== owner || original.label !== label || original.secretHash !== secretHash
+        || original.validDays !== validDays || original.access !== access) throw new ApiError(10409, "Key conflict");
+      return currentApiKeyStatus(existing.metadata);
+    }
+    if ([...mockApiKeys.values()].some((key) => key.request.secretHash === secretHash)) {
+      throw new ApiError(10409, "Key conflict");
+    }
+    const createdAt = Date.now();
+    const metadata: MyOpsApiKey = { keyNo, label, access, issuedBy: owner, createdAt,
+      expiresAt: createdAt + validDays * 86_400_000, status: "ACTIVE" };
+    mockApiKeys.set(keyNo, { owner, request: { ...request, label, access }, metadata });
+    return metadata;
+  },
+  revokeMyApiKey: async (keyNo) => {
+    const key = mockApiKeys.get(keyNo);
+    if (key && key.owner === apiKeyOwner() && !key.metadata.revokedAt) key.metadata.revokedAt = Date.now();
+  },
   listStaffs: (q = {}) =>
     wait(
       db.paginate(db.staffs, q.page, q.size, (s) =>

@@ -1,9 +1,16 @@
 // 覆盖范围：员工账号、角色与 RBAC、数据域授权、操作审计（P-1.1）。
 import type { AuditLog, CreatedStaff, MenuFunction, Page, RoleDef, Staff } from "@/lib/types";
+import type { MyOpsApiKey, RegisterOpsApiKey } from "@/lib/types/ops-api-key";
 import type { Role } from "@/lib/auth";
 import type { AuditQ, StaffQ } from "../query";
 
 export interface IamApi {
+  /** 查询本人的 API 密钥元数据。 */
+  listMyApiKeys(): Promise<MyOpsApiKey[]>;
+  /** 绑定本机生成的密钥摘要。 */
+  registerMyApiKey(request: RegisterOpsApiKey): Promise<MyOpsApiKey>;
+  /** 撤销本人持有的 API 密钥。 */
+  revokeMyApiKey(keyNo: string): Promise<void>;
   listStaffs(q?: StaffQ): Promise<Page<Staff>>;
   /** 停用/启用（软删除语义，不删账号 —— 审计要能追溯到人）。 */
   setStaffEnabled(staffNo: string, enabled: boolean): Promise<Staff>;

@@ -21507,3 +21507,15 @@ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code = 'FINANCE'
 UPDATE ivc_regime_profile SET gateway_code = NULL WHERE gateway_code = 'STUB';
 UPDATE ivc_invoice SET active_fiscal_key = fiscal_number;
 UPDATE sys_function_point SET function_code='OPS_FINANCE',name='电子发票',group_name='应付发票',sort=105,updated_at=NOW() WHERE point_code='OPS_FINANCE__E_INVOICES' AND point_type='MENU';
+
+CREATE TABLE IF NOT EXISTS sys_ops_api_key (
+    key_no CHAR(36) PRIMARY KEY,
+    staff_no VARCHAR(64) NOT NULL,
+    secret_hash CHAR(64) NOT NULL UNIQUE,
+    label VARCHAR(80) NOT NULL,
+    access_level VARCHAR(16) NOT NULL,
+    issued_by VARCHAR(64) NOT NULL,
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT NOT NULL,
+    revoked_at BIGINT
+);

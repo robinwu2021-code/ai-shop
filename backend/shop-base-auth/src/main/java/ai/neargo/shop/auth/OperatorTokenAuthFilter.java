@@ -61,15 +61,13 @@ public class OperatorTokenAuthFilter extends AbstractTokenAuthFilter {
         var scope = live != null && live.scope() != null
                 ? live.scope() : sessionUser.dataScope();
 
+        return currentIdentity(sessionUser.withRolesAndScope(roles, scope));
+    }
+
+    protected final Authenticated currentIdentity(LoginUser user) {
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_OPERATOR"));
-        roles.forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_" + r)));
-
-        /*
-         * **判权读的 LoginUser 也要换成现算的这份**。只换 authorities 的话，
-         * `@PreAuthorize("@perm.can(...)")` 走的仍是 `user.roles()` 的旧快照 ——
-         * 于是「菜单按新角色画、判权按旧角色算」，两边各自说得通。
-         */
-        return new Authenticated(sessionUser.withRolesAndScope(roles, scope), authorities);
+        user.roles().forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_" + r)));
+        return new Authenticated(user, authorities);
     }
 }
