@@ -11863,6 +11863,64 @@ CREATE TABLE IF NOT EXISTS ord_manual_service_admission
         AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0))
 );
 
+CREATE TABLE IF NOT EXISTS ord_postpay_receipt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    receipt_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    biz_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    currency CHAR(3) NOT NULL,
+    due_minor BIGINT NOT NULL,
+    received_minor BIGINT NOT NULL,
+    change_minor BIGINT NOT NULL,
+    request_key_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    receipt_provenance VARCHAR(24) NOT NULL,
+    received_at DATETIME(3) NOT NULL,
+    recorded_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_postpay_receipt_no UNIQUE (tenant_no,receipt_no),
+    CONSTRAINT uk_postpay_receipt_biz UNIQUE (tenant_no,entity_no,store_no,biz_no),
+    CONSTRAINT uk_postpay_receipt_key UNIQUE (tenant_no,entity_no,store_no,request_key_hash),
+    CONSTRAINT ck_postpay_receipt_amounts CHECK (due_minor > 0 AND received_minor >= due_minor AND change_minor = received_minor - due_minor),
+    CONSTRAINT ck_postpay_receipt_provenance CHECK (receipt_provenance = 'POSTPAY_RECEIPT')
+);
+
+CREATE TABLE IF NOT EXISTS ord_postpay_receipt_root
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    receipt_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    order_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    due_minor BIGINT NOT NULL,
+    core_version VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_postpay_root_order UNIQUE (tenant_no,order_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_postpay_receipt_record
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    receipt_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    record_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    method VARCHAR(24) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_postpay_record UNIQUE (tenant_no,record_no)
+);
+
 CREATE TABLE IF NOT EXISTS ord_manual_service_admission_action
 (
     id BIGINT NOT NULL AUTO_INCREMENT,

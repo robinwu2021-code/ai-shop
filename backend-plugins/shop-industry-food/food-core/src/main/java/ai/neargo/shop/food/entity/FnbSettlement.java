@@ -16,6 +16,11 @@ public class FnbSettlement extends BaseEntity {
     /** Recovery lease; only the recovery scanner moves it, entity write-back never does (C2). */
     @TableField(updateStrategy = FieldStrategy.NEVER)
     private LocalDateTime nextRecoveryAt;
+    /** 结算来源：空或 H5 = 顾客自助先付；COUNTER = 柜台后付结账（V40）。 */
+    private String kind;
+    /** 柜台结账：核心实收的实收合计与找零（V40）；确认前与其他结算单为空。 */
+    private Long receivedMinor;
+    private Long changeMinor;
     private String entityNo;
     private String settlementNo;
     private String storeNo;

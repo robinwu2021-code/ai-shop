@@ -113,6 +113,23 @@ class BusinessCloseEvidenceTest {
         assertThat(report.issues()).contains(new Issue("PAY_UNKNOWN","SET"),new Issue("AR",batch.getBatchNo()));
     }
 
+    /** AC7：柜台后付结清（核心已出实收）的批次与结算单不再记 AR / PAY_UNKNOWN；其他结算单照旧（见上一条）。 */
+    @Test void counterSettledPostpayIsNeitherReceivableNorUnknownPayment() {
+        var f=new Fixture(); var batch=f.batch();
+        var binding=new FnbCoreOrderBinding(); binding.setPaymentRootNo("ROOT");
+        when(f.bindings.selectList(any())).thenReturn(List.of(binding));
+        var item=new FnbSettlementItem(); item.setSettlementNo("SET");
+        when(f.items.selectList(any())).thenReturn(List.of(item));
+        var settlement=new FnbSettlement(); settlement.setSettlementNo("SET"); settlement.setCurrency("CNY");
+        settlement.setDueMinor(1200L); settlement.setStatus("SETTLED"); settlement.setKind("COUNTER");
+        when(f.settlements.selectList(any())).thenReturn(List.of(settlement));
+        var report=f.service.report("E","S","A",f.query);
+        assertThat(report.issues()).doesNotContain(new Issue("PAY_UNKNOWN","SET"),new Issue("AR",batch.getBatchNo()));
+        settlement.setStatus("COLLECTING");
+        assertThat(f.service.report("E","S","A",f.query).issues())
+                .contains(new Issue("PAY_UNKNOWN","SET"),new Issue("AR",batch.getBatchNo()));
+    }
+
     @Test void originalCoreCorrectionsInvalidateCloseEvidenceWithoutHoldingFoodLocksDuringRpc() {
         var fixture = new Fixture(); fixture.batch();
         var binding = new FnbCoreOrderBinding(); binding.setStatus("BOUND");

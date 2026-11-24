@@ -54,6 +54,7 @@ import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.IndustryOrderAmendmentMapper;
+import ai.neargo.shop.trade.mapper.PostpayReceiptMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.IndustryOrderSourceMapper;
 import ai.neargo.shop.trade.order.entity.OrdCreateIntent;
 import ai.neargo.shop.trade.order.mapper.CreateIntentMapper;
@@ -138,6 +139,23 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
     @Autowired(required = false)
     public void amendmentProjection(IndustryOrderAmendmentMapper mapper) {
         this.amendmentRows = mapper;
+    }
+
+    private PostpayReceiptMapper postpayReceipts;
+
+    /** 后付人工实收（ADR-059）把已受理的后付单推到 PAID；读这张单时要认得这种来源。 */
+    @Autowired(required = false)
+    public void postpayReceiptProjection(PostpayReceiptMapper mapper) {
+        this.postpayReceipts = mapper;
+    }
+
+    /**
+     * 已受理的后付单只有两种合法状态：还没付（WAIT_PAY、无付款时间），或已被后付人工实收覆盖
+     * （PAID、有付款时间、实收表里有这张单）。其余一律视为数据冲突。
+     */
+    static boolean acceptedPostpayPaymentState(String status, Long paidAt, boolean receipted) {
+        return OrdOrder.WAIT_PAY.equals(status) && paidAt == null
+                || OrdOrder.PAID.equals(status) && paidAt != null && receipted;
     }
 
     @Autowired
@@ -1243,8 +1261,10 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                                         OrdSubOrder.FULFILLING,
                                         OrdSubOrder.COMPLETED)
                                 .contains(sub.getStatus())
-                        || !OrdOrder.WAIT_PAY.equals(order.getStatus())
-                        || order.getPaidAt() != null)) throw conflict();
+                        || !acceptedPostpayPaymentState(order.getStatus(), order.getPaidAt(),
+                                OrdOrder.PAID.equals(order.getStatus()) && postpayReceipts != null
+                                        && postpayReceipts.countRoot(order.getTenantNo(), order.getOrderNo()) == 1)))
+            throw conflict();
         long adjustment =
                 amendmentRows == null
                         ? 0

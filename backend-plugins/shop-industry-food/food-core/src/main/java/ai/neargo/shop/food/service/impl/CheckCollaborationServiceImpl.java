@@ -218,7 +218,7 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
                                 FoodCommandFingerprint.hash(check, Long.toString(expected), reason),
                                 OperationVO.class,
                                 () -> {
-                                    guard.assertPartyMutable(e, store, check);
+                                    guard.assertReleasable(e, store, check);
                                     if (version(e, store, check) != expected) conflict();
                                     var lines =
                                             mapper.checkCollaborationSelectOrderLine3(
