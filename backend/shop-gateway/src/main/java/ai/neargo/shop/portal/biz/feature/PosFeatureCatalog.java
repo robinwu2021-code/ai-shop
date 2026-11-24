@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 /** Validates the released manifest before any of its features or grant rules can be used. */
 public final class PosFeatureCatalog {
     private static final String RESOURCE = "/config/pos/feature-catalog.yaml";
-    private static final Set<String> INDUSTRIES = Set.of("RETAIL", "FNB", "SERVICE");
+    private static final Set<String> INDUSTRIES = Set.of("RETAIL", "FOOD", "SERVICE");
     private static final int PLAN_COUNT = INDUSTRIES.size() * PlanTier.catalogTiers("SERVICE").size();
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final Manifest manifest;
@@ -106,11 +106,11 @@ public final class PosFeatureCatalog {
     }
 
     public List<Plan> proposedPlans(String industry) {
-        return manifest.plans().stream().filter(p -> p.businessType().equals(industry)).toList();
+        return manifest.plans().stream().filter(p -> p.businessType().equals(StoreFeature.canonicalIndustry(industry))).toList();
     }
 
     public List<String> proposedRights(String industry, PlanTier tier) {
-        return manifest.plans().stream().filter(p -> p.businessType().equals(industry) && p.tier() == tier)
+        return manifest.plans().stream().filter(p -> p.businessType().equals(StoreFeature.canonicalIndustry(industry)) && p.tier() == tier)
                 .findFirst().map(p -> List.copyOf(p.entitlements())).orElse(List.of());
     }
 

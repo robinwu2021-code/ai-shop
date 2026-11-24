@@ -83,7 +83,7 @@
           "items": {
             "enum": [
               "RETAIL",
-              "FNB",
+              "FOOD",
               "SERVICE"
             ]
           },
@@ -178,7 +178,7 @@
           "items": {
             "enum": [
               "RETAIL",
-              "FNB",
+              "FOOD",
               "SERVICE"
             ]
           },
@@ -224,7 +224,7 @@
         "businessType": {
           "enum": [
             "RETAIL",
-            "FNB",
+            "FOOD",
             "SERVICE"
           ]
         },

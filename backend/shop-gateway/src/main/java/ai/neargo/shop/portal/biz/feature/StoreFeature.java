@@ -65,7 +65,11 @@ public record StoreFeature(String code, String label, Group module, List<String>
     }
 
     public boolean appliesTo(String industry) {
-        return industry == null || industries.isEmpty() || industries.contains(industry);
+        return industry == null || industries.isEmpty() || industries.contains(canonicalIndustry(industry));
+    }
+
+    static String canonicalIndustry(String industry) {
+        return "FNB".equals(industry) ? "FOOD" : industry;
     }
 
     public List<String> usePerms() {

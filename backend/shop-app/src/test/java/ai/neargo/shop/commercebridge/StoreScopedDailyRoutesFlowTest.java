@@ -113,6 +113,8 @@ class StoreScopedDailyRoutesFlowTest {
     void roleFeatureCatalogUsesSelectedStoreAndRejectsInapplicableNewGrants() throws Exception {
         String[] owner = newModelOwner("15965020148");
         String[] other = newModelOwner("15965020149");
+        // This fixture bypasses commerce opening and does not have a subscription ledger.
+        jdbc.update("UPDATE mch_store SET commerce_model='LEGACY' WHERE store_no=?", owner[1]);
         String path = "/biz/role-feature-catalog";
         JsonNode response = call(owner[0], owner[1], path + "?roleCode=OWNER");
         assertEquals(0, response.path("code").asInt(-1), response.toString());

@@ -11,9 +11,9 @@ modules:
   - {code: OTHER, label: 其他營運權限}
 entitlements:
   - {code: END_BIZ_APP, industries: []}
-  - {code: END_APP_POS, industries: []}
+  - {code: END_APP_POS, industries: [RETAIL]}
   - {code: END_RETAIL, industries: [RETAIL]}
-  - {code: END_FNB, industries: [FNB]}
+  - {code: END_FNB, industries: [FOOD]}
   - {code: END_SERVICE, industries: [SERVICE]}
   - {code: END_MARKETING, industries: []}
   - {code: END_CHAIN, industries: []}
@@ -135,7 +135,7 @@ features:
   - code: SOFTPOS
     label: 感應收款
     module: POS
-    industries: []
+    industries: [RETAIL]
     entitlement: {allOf: [END_APP_POS]}
     lifecycle: ACTIVE
     requiresPayActivation: true
@@ -163,7 +163,7 @@ features:
   - code: FNB_ORDERING
     label: 點餐與排隊
     module: FNB
-    industries: [FNB]
+    industries: [FOOD]
     entitlement: {allOf: [END_FNB]}
     lifecycle: ACTIVE
     actions:
@@ -172,7 +172,7 @@ features:
   - code: FNB_MENU
     label: 餐飲菜單
     module: FNB
-    industries: [FNB]
+    industries: [FOOD]
     entitlement: {allOf: [END_FNB]}
     lifecycle: ACTIVE
     actions:
@@ -181,7 +181,7 @@ features:
   - code: FNB_TABLES
     label: 桌台
     module: FNB
-    industries: [FNB]
+    industries: [FOOD]
     entitlement: {allOf: [END_FNB]}
     lifecycle: ACTIVE
     actions:
@@ -190,7 +190,7 @@ features:
   - code: FNB_KITCHEN
     label: 出品
     module: FNB
-    industries: [FNB]
+    industries: [FOOD]
     entitlement: {allOf: [END_FNB]}
     lifecycle: ACTIVE
     actions:
@@ -199,7 +199,7 @@ features:
   - code: FNB_REPORT
     label: 餐飲日報
     module: FNB
-    industries: [FNB]
+    industries: [FOOD]
     entitlement: {allOf: [END_FNB]}
     lifecycle: ACTIVE
     actions:
@@ -359,13 +359,13 @@ plans:
   - {businessType: RETAIL, tier: PRO, entitlements: [END_BIZ_APP, END_APP_POS, END_RETAIL, END_MARKETING]}
   - {businessType: RETAIL, tier: GROWTH, entitlements: [END_BIZ_APP, END_APP_POS, END_RETAIL, END_MARKETING]}
   - {businessType: RETAIL, tier: CHAIN, entitlements: [END_BIZ_APP, END_APP_POS, END_RETAIL, END_MARKETING, END_CHAIN]}
-  - {businessType: FNB, tier: FREE, entitlements: [END_BIZ_APP, END_APP_POS]}
-  - {businessType: FNB, tier: BASE, entitlements: [END_BIZ_APP, END_APP_POS]}
-  - {businessType: FNB, tier: PRO, entitlements: [END_BIZ_APP, END_APP_POS, END_FNB, END_MARKETING]}
-  - {businessType: FNB, tier: GROWTH, entitlements: [END_BIZ_APP, END_APP_POS, END_FNB, END_MARKETING]}
-  - {businessType: FNB, tier: CHAIN, entitlements: [END_BIZ_APP, END_APP_POS, END_FNB, END_MARKETING, END_CHAIN]}
-  - {businessType: SERVICE, tier: FREE, entitlements: [END_BIZ_APP, END_APP_POS]}
-  - {businessType: SERVICE, tier: BASE, entitlements: [END_BIZ_APP, END_APP_POS]}
-  - {businessType: SERVICE, tier: PRO, entitlements: [END_BIZ_APP, END_APP_POS, END_SERVICE, END_MARKETING]}
-  - {businessType: SERVICE, tier: GROWTH, entitlements: [END_BIZ_APP, END_APP_POS, END_SERVICE, END_MARKETING]}
-  - {businessType: SERVICE, tier: CHAIN, entitlements: [END_BIZ_APP, END_APP_POS, END_SERVICE, END_MARKETING, END_CHAIN]}
+  - {businessType: FOOD, tier: FREE, entitlements: [END_BIZ_APP]}
+  - {businessType: FOOD, tier: BASE, entitlements: [END_BIZ_APP]}
+  - {businessType: FOOD, tier: PRO, entitlements: [END_BIZ_APP, END_FNB, END_MARKETING]}
+  - {businessType: FOOD, tier: GROWTH, entitlements: [END_BIZ_APP, END_FNB, END_MARKETING]}
+  - {businessType: FOOD, tier: CHAIN, entitlements: [END_BIZ_APP, END_FNB, END_MARKETING, END_CHAIN]}
+  - {businessType: SERVICE, tier: FREE, entitlements: [END_BIZ_APP]}
+  - {businessType: SERVICE, tier: BASE, entitlements: [END_BIZ_APP]}
+  - {businessType: SERVICE, tier: PRO, entitlements: [END_BIZ_APP, END_SERVICE, END_MARKETING]}
+  - {businessType: SERVICE, tier: GROWTH, entitlements: [END_BIZ_APP, END_SERVICE, END_MARKETING]}
+  - {businessType: SERVICE, tier: CHAIN, entitlements: [END_BIZ_APP, END_SERVICE, END_MARKETING, END_CHAIN]}
