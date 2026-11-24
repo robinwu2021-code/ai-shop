@@ -5,5 +5,6 @@ public final class OtpEntries {
     public static final String BIZ_LOGIN = "BIZ_LOGIN";
     public static final String LEGACY_AUTH = "LEGACY_AUTH";
     public static final String INVOICE_ARTIFACT = "INVOICE_ARTIFACT";
+    public static final String POS_PIN_RECOVERY = "POS_PIN_RECOVERY";
     private OtpEntries() {}
 }

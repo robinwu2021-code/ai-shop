@@ -165,6 +165,9 @@ const EXEMPT: Record<string, string> = {
    * 什么时候回来改：公告审核在运营端有页面的那天。
    */
   mch_store_audit: "门店公告/服务范围的旧待审队列，运营端无入口，读路径扫不到",
+  mch_pos_staff_pin: "商家端 JDBC 使用可信租户、主体、门店、身份类型和操作人定位凭据，无运营列表",
+  mch_pos_pin_recovery: "商家端 JDBC 使用同一凭据归属及会话摘要限制恢复，无运营列表",
+  mch_pos_staff_pin_policy: "商家端 JDBC 按当前授权的租户和主体读取 PIN 策略，无运营列表",
 
   /*
    * ── 媒体资产：**我登记过一次，被测试打回来了** ──

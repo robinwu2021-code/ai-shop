@@ -41678,6 +41678,13 @@
         "module": "shop-base"
       },
       {
+        "host": "OtpEntries",
+        "name": "POS_PIN_RECOVERY",
+        "value": "POS_PIN_RECOVERY",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "host": "OtpScenes",
         "name": "LOGIN",
         "value": "LOGIN",
@@ -41716,6 +41723,13 @@
         "host": "OtpScenes",
         "name": "INVOICE_ARTIFACT_ACCESS",
         "value": "INVOICE_ARTIFACT_ACCESS",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "POS_PIN_RECOVERY",
+        "value": "POS_PIN_RECOVERY",
         "zh": "",
         "module": "shop-base"
       },
@@ -49391,6 +49405,16 @@
         "module": "shop-base"
       },
       {
+        "name": "Method",
+        "values": [
+          "PASSWORD",
+          "PHONE_OTP",
+          "EMAIL_OTP"
+        ],
+        "zh": "",
+        "module": "shop-gateway"
+      },
+      {
         "name": "MigrationState",
         "values": [
           "PREPARING",
@@ -49714,6 +49738,22 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "Outcome",
+        "values": [
+          "SAVED",
+          "MATCH",
+          "WRONG",
+          "LOCKED",
+          "NOT_SET",
+          "CURRENT_REQUIRED",
+          "WEAK",
+          "UNAVAILABLE",
+          "DISABLED"
+        ],
+        "zh": "",
+        "module": "shop-merchant"
       },
       {
         "name": "Outcome",
@@ -53142,7 +53182,8 @@
         "values": [
           "CREATE",
           "CORRECT",
-          "VOID"
+          "VOID",
+          "REFUND"
         ],
         "zh": "留痕动作"
       },
@@ -53162,7 +53203,8 @@
         "client": "b-app",
         "values": [
           "RECORDED",
-          "VOIDED"
+          "VOIDED",
+          "REFUNDED"
         ],
         "zh": "已记 / 已作废（作废是终态，行不删）"
       },
@@ -57921,7 +57963,7 @@
       "host": "OtpScenes",
       "name": "ALL",
       "type": "Set<String>",
-      "value": "Set.of(LOGIN, PASSWORD_RESET, PHONE_CHANGE, EMAIL_CHANGE, ORDER_PICKUP_CONFIRM, INVOICE_ARTIFACT_ACCESS)",
+      "value": "Set.of(LOGIN, PASSWORD_RESET, PHONE_CHANGE, EMAIL_CHANGE, ORDER_PICKUP_CONFIRM, INVOICE_ARTIFACT_ACCESS, POS_PIN_RECOVERY)",
       "zh": "",
       "module": "shop-base"
     },

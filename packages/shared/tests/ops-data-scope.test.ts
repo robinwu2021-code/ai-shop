@@ -919,6 +919,7 @@ function methodBodies(src: string): Map<string, string[]> {
 const classes = new Map<string, ClassInfo>();
 /** 接口/父类简名 → 实现类简名[] */
 const implOf = new Map<string, string[]>();
+const implOfQualified = new Map<string, string[]>();
 /**
  * Mapper 简名 → 候选（实体简名 + 它所在的包）。
  *
@@ -936,6 +937,13 @@ const fieldPkg = new Map<string, string>();
 /** 实体简名 → 表名 */
 const entityTable = new Map<string, string>();
 
+function qualifiedType(type: string, src: string): string {
+  if (type.includes(".")) return type;
+  const imported = [...src.matchAll(/^import\s+([\w.]+);/gm)]
+    .find((match) => match[1]!.endsWith(`.${type}`));
+  return imported?.[1] ?? `${src.match(/^package\s+([\w.]+);/m)?.[1]}.${type}`;
+}
+
 for (const f of javaFiles()) {
   const src = readFileSync(f, "utf8");
   const name = f.split("/").pop()!.replace(/\.java$/, "");
@@ -943,10 +951,14 @@ for (const f of javaFiles()) {
   if (decl) {
     for (const m of decl[1]!.matchAll(/\b(?:implements|extends)\s+([A-Za-z0-9_.<>,\s]+)/g)) {
       for (const t of m[1]!.split(",")) {
-        const tn = t.trim().replace(/<.*/, "").split(".").pop();
+        const type = t.trim().replace(/<.*/, "");
+        const tn = type.split(".").pop();
         if (!tn) continue;
         if (!implOf.has(tn)) implOf.set(tn, []);
         implOf.get(tn)!.push(name);
+        const qualified = qualifiedType(type, src);
+        if (!implOfQualified.has(qualified)) implOfQualified.set(qualified, []);
+        implOfQualified.get(qualified)!.push(name);
       }
     }
   }
@@ -1009,10 +1021,15 @@ function entityOfMapper(simple: string, importerSrc: string, fqn?: string): stri
   return null;
 }
 
-function resolveTypes(t: string): string[] {
+function resolveTypes(t: string, src: string, fqn?: string): string[] {
   const out: string[] = [];
   if (classes.has(t)) out.push(t);
-  for (const c of implOf.get(t) ?? []) if (!out.includes(c)) out.push(c);
+  const candidates = implOf.get(t) ?? [];
+  // 同名接口可在不同领域各自实现，例如营销券与商户推广券。
+  const implementations = candidates.length > 1
+    ? implOfQualified.get(qualifiedType(fqn ?? t, src)) ?? candidates
+    : candidates;
+  for (const c of implementations) if (!out.includes(c)) out.push(c);
   return out;
 }
 
@@ -1030,7 +1047,7 @@ function tablesIn(cls: string, region: string, depth = 0, seen = new Set<string>
       if (t) out.add(t);
       continue;
     }
-    for (const tc of resolveTypes(ft)) {
+    for (const tc of resolveTypes(ft, c.src, fieldPkg.get(`${cls}#${m[1]}`))) {
       const key = `${tc}#${m[2]}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -1080,7 +1097,7 @@ function bypassSites(cls: string, mname: string, registered: Set<string>,
     for (const m of body.matchAll(/(\w+)\.(\w+)\s*\(/g)) {
       const ft = c.fields.get(m[1]!);
       if (!ft || mapperEntity.has(ft)) continue;
-      for (const tc of resolveTypes(ft)) {
+      for (const tc of resolveTypes(ft, c.src, fieldPkg.get(`${cls}#${m[1]}`))) {
         for (const [k, v] of bypassSites(tc, m[2]!, registered, seen, depth + 1)) sites.set(k, v);
       }
     }
@@ -1470,15 +1487,8 @@ describe("运营端数据域接入", () => {
      * MerchantGovernServiceImpl#qualifications 同一形状：登记后要再加一处绕过，
      * 而 ops 侧的归属本就由 requireInScope 保证。
      */
-    /*
-     * 发券批次。只有 user_no（定向发给谁），**没有商家号** ——
-     * 而 `issues(couponNo)` 按券号查，**券本身已登记 MERCHANT**：
-     * 运营看不到的券，也就拿不到它的券号。归属由上一步保证。
-     *
-     * 与 prd_store_goods 那两张同一形状：登记不改变可见集合，
-     * 只会多一处 fail-closed 的机会（发券动作也读它，跑在写路径上）。
-     */
-    mkt_coupon_issue: "只有 user_no；按 couponNo 查，而券已登记 MERCHANT，归属由上一步保证",
+    mkt_coupon_issue: "收券人 user_no 不是归属；发放记录与同租户券模板关联，由 mkt_coupon 的 MERCHANT 数据域过滤",
+    ent_legacy_coupon_issue: "运营入口先通过 mkt_coupon 数据域取得券模板；Pay 按该模板和可信租户、主体读取发放记录",
 
         ord_invoice_request: "只有 user_no，提申请的是买家；SELF 会让运营只看到自己提的",
     notify_ticket: "同上，工单是买家提的",

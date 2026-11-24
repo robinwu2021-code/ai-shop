@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 56 个权限点 × 583 个受控端点**。
+统计：**6 个角色 × 56 个权限点 × 590 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,19 +16,19 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 102 | ✅ | — | — | — | — | — |
+| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 103 | ✅ | — | — | — | — | — |
 | `STOCK` | 改库存（含门店库存） | 53 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 42 | ✅ | — | — | — | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 40 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 25 | ✅ | ✅ | — | — | — | — |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 19 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_READ` | 更正与作废 App 外收款记录（原因必填、留痕） | 16 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_CONFIG` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | — | — | — | — |
 | `PRINT_RESOLVE` | 更正与作废 App 外收款记录（原因必填、留痕） | 14 | ✅ | ✅ | — | — | — | — |
 | `INVOICE_SETUP` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 14 | ✅ | ✅ | — | — | — | — |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 13 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `AFTERSALE` | 售后同意/驳回/收货 | 13 | ✅ | ✅ | — | — | — | ✅ |
 | `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 13 | ✅ | ✅ | ✅ | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
@@ -80,6 +80,7 @@
 
 ### `STORE_ADMIN`　（OWNER）
 
+- `/biz/auth/pos-pin/policy`
 - `/biz/inventory/locations/{id}/source`
 - `/biz/member-settings`
 - `/biz/personnel`
@@ -424,6 +425,28 @@
 - `/biz/stores/{storeNo}/fulfillment`
 - `/biz/stores/{storeNo}/fulfillment/{channel}/impact`
 
+### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
+
+- `/biz/auth/pos-pin`
+- `/biz/auth/pos-pin/recovery`
+- `/biz/auth/pos-pin/recovery/challenges`
+- `/biz/auth/pos-pin/recovery/challenges/{challengeId}/verify`
+- `/biz/auth/pos-pin/recovery/methods`
+- `/biz/auth/pos-pin/verify`
+- `/biz/checkout/{operationNo}/offline-receipts/lookup`
+- `/biz/checkout/{operationNo}/offline-receipts/{paymentOperationNo}`
+- `/biz/order`
+- `/biz/order/worklist`
+- `/biz/order/{orderNo}/points-earning`
+- `/biz/order/{subOrderNo}`
+- `/biz/order/{subOrderNo}/full`
+- `/biz/order/{subOrderNo}/inventory-trace`
+- `/biz/order/{subOrderNo}/logistics-updates`
+- `/biz/order/{subOrderNo}/trace`
+- `/biz/service-orders/{orderNo}/manual-admission`
+- `/biz/service-orders/{orderNo}/manual-source`
+- `/biz/store-orders/{orderNo}`
+
 ### `VERIFY`　（OWNER、MANAGER、CLERK）
 
 - `/biz/coupon-redeem`
@@ -514,22 +537,6 @@
 - `/biz/invoice-setup/providers`
 - `/biz/invoice-setup/ranges`
 - `/biz/invoice-setup/store-items/{storeItemNo}`
-
-### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
-
-- `/biz/checkout/{operationNo}/offline-receipts/lookup`
-- `/biz/checkout/{operationNo}/offline-receipts/{paymentOperationNo}`
-- `/biz/order`
-- `/biz/order/worklist`
-- `/biz/order/{orderNo}/points-earning`
-- `/biz/order/{subOrderNo}`
-- `/biz/order/{subOrderNo}/full`
-- `/biz/order/{subOrderNo}/inventory-trace`
-- `/biz/order/{subOrderNo}/logistics-updates`
-- `/biz/order/{subOrderNo}/trace`
-- `/biz/service-orders/{orderNo}/manual-admission`
-- `/biz/service-orders/{orderNo}/manual-source`
-- `/biz/store-orders/{orderNo}`
 
 ### `AFTERSALE`　（OWNER、MANAGER、CS）
 

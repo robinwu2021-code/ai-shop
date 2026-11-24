@@ -84,10 +84,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
 
   { decl: "b-app:OfflineRecordMethod", dom: "trade", shape: "CLASS", verdict: "OK",
     note: "商家自报的 App 外收款方式，与 BizOfflineRecordController.METHODS 的请求校验一致；不代表平台支付通道。" },
-  { decl: "b-app:OfflineRecordStatus", dom: "trade", shape: "STATUS", verdict: "OK", words: ["RECORDED", "VOIDED"],
+  { decl: "b-app:OfflineRecordStatus", dom: "trade", shape: "STATUS", verdict: "OK", words: ["RECORDED", "VOIDED", "REFUNDED"],
     note: "外部记账当前状态，与 OrdOfflineRecord 常量一致；作废仍保留审计历史。" },
   { decl: "b-app:OfflineRecordAction", dom: "trade", shape: "CLASS", verdict: "OK",
-    note: "外部记账只追加事件的动作，与 OrdOfflineRecordEvent.CREATE / CORRECT / VOID 一致。" },
+    note: "外部记账只追加事件的动作，与 OrdOfflineRecordEvent.CREATE / CORRECT / VOID / REFUND 一致。" },
   // 网关接口资源（TDD-网关层与统一权限，V679；运营端「接口资源」页）
   { decl: "ops-web:ApiResourceAccess", dom: "platform", shape: "CLASS", verdict: "OK", note: "接口要求的权限类别：PUBLIC 公开 / LOGIN 登录即可 / POINT 需功能点 / DEFER 交给入口方法判；对应 sys_api_resource.access。" },
   { decl: "ops-web:ApiResourceAdjustableAccess", dom: "platform", shape: "CLASS", verdict: "OK", note: "运营可在库里把接口调整成的类别，是 ApiResourceAccess 去掉 PUBLIC 的子集（不允许调成公开）。" },
@@ -600,6 +600,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "选开法后每张子单的结果（ChoiceResultVO.outcome）。是一次调用的结果分类，不是持久状态，故不按 STATUS 约束。" },
   { decl: "c-app:BuyerInvoiceStatus", dom: "finance", shape: "STATUS", verdict: "OK", words: ["ISSUED", "VOIDED", "REVOKING", "REVOKED"],
     note: "买方「我的发票」看到的发票状态（ivc_invoice.status）。与 b-app:SiStatus 同一列、同一组值；两端 contract 不共享，各自具名。" },
+  { decl: "b-app:SiSourceType", dom: "finance", shape: "CLASS", verdict: "OK",
+    note: "销售发票的交易来源类型，对应 ivc_invoice.source_type。" },
   { decl: "b-app:SiStatus", dom: "finance", shape: "STATUS", verdict: "OK", words: ["ISSUED", "VOIDED", "REVOKING", "REVOKED"],
     note: "销售发票状态（ivc_invoice.status，ADR-063；V13 加注销）。与后端 IvcInvoice.status 逐字一致；作废后同来源可重开新号码，注销后可同号重开（TDD-发票-注销与同号重开）。" },
   { decl: "b-app:SiUploadStatus", dom: "finance", shape: "STATUS", verdict: "OK", words: ["SENDING", "SENT", "HELD", "NEEDS_REVIEW"],

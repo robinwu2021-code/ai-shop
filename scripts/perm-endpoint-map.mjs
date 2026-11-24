@@ -273,6 +273,9 @@ export const RULES = [
   ["GET", /^\/ops\/purchase-invoices/, "finance:invoice:read"],
   ["POST", /^\/ops\/purchase-invoices\//, "finance:invoice:verify"],
   // 买家开票申请（按订单走），与上面那张进项票是反方向的两张票
+  ["GET", /^\/ops\/invoice-channel-applications(?:\/[^/]+)?$/, "finance:invoice:read"],
+  ["POST", /^\/ops\/invoice-channel-applications\/[^/]+\/(reviews|account-bindings)$/, "finance:invoice:verify"],
+  ["POST", /^\/ops\/invoice-channel-routes\/activations$/, "finance:invoice:verify"],
   ["GET", /^\/ops\/invoice-requests/, "finance:invoice:read"],
   ["POST", /^\/ops\/invoice-requests\//, "finance:invoice:verify"],
   // 电子发票（门店当场开立的法定发票，invoice 模块）：同一批财务人员经办，复用同一对码
@@ -481,6 +484,9 @@ export const RULES = [
   // 开票申请（**销项**，平台开给消费者）。与上面的 purchase-invoices（进项）
   // 复用同一对权限码 —— 经办的是同一批财务人员；但**不能合并成一条规则**：
   // 两者方向相反，将来若要分权（比如销项交给客服代办），得先分得开
+  ["GET", /^\/ops\/invoice-channel-applications(?:\/[^/]+)?$/, "finance:invoice:read"],
+  ["POST", /^\/ops\/invoice-channel-applications\/[^/]+\/(reviews|account-bindings)$/, "finance:invoice:verify"],
+  ["POST", /^\/ops\/invoice-channel-routes\/activations$/, "finance:invoice:verify"],
   ["GET", /^\/ops\/invoice-requests/, "finance:invoice:read"],
   ["*", /^\/ops\/invoice-requests/, "finance:invoice:verify"],
   // 电子发票（销项、门店当场开立，invoice 模块）。与开票申请复用同一对码，但分开写规则：

@@ -3,7 +3,7 @@
 > 由 `python3 scripts/gen-gateway-api-inventory.py` 生成，**请勿手改**。来源是后端源码里实际声明的入口。
 > 总览、分类规则与验证清单见 [网关接口清单](网关接口清单.md)。
 
-共 **1215** 个入口：支付 268、零售 580、餐饮 261、服务业 32、库存 45、平台与通用 29。
+共 **1223** 个入口：支付 268、零售 580、餐饮 261、服务业 32、库存 45、平台与通用 37。
 
 ## 支付（268）
 
@@ -2111,11 +2111,11 @@
 |---|---|---|---|---|---|---|
 | GET | `/biz/order/{subOrderNo}/inventory-trace` | `@perm.canBiz('biz:order:view')` | 能提前判 | 默认构建 | 已入网关 | BizOrderInventoryTraceController |
 
-## 平台与通用（29）
+## 平台与通用（37）
 
-网关判权：只要求登录 17、公开 8、能提前判 4。构建：默认构建 29。生产：已入网关 29。
+网关判权：只要求登录 17、能提前判 12、公开 8。构建：默认构建 37。生产：已入网关 29、未部署 8。
 
-### auth（18）
+### auth（26）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
@@ -2135,6 +2135,14 @@
 | GET | `/biz/auth/password` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizAuthController |
 | POST | `/biz/auth/password` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizAuthController |
 | POST | `/biz/auth/phone/change` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizAccountController |
+| GET | `/biz/auth/pos-pin` | `@perm.canBiz('biz:order:view')` | 能提前判 | 默认构建 | 未部署 | BizPosStaffPinController |
+| PUT | `/biz/auth/pos-pin` | `@perm.canBiz('biz:order:view')` | 能提前判 | 默认构建 | 未部署 | BizPosStaffPinController |
+| PUT | `/biz/auth/pos-pin/policy` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 默认构建 | 未部署 | BizPosStaffPinController |
+| PUT | `/biz/auth/pos-pin/recovery` | `@perm.canBiz('biz:order:view')` | 能提前判 | 默认构建 | 未部署 | BizPosStaffPinController |
+| POST | `/biz/auth/pos-pin/recovery/challenges` | `@perm.canBiz('biz:order:view')` | 能提前判 | 默认构建 | 未部署 | BizPosStaffPinController |
+| POST | `/biz/auth/pos-pin/recovery/challenges/{challengeId}/verify` | `@perm.canBiz('biz:order:view')` | 能提前判 | 默认构建 | 未部署 | BizPosStaffPinController |
+| GET | `/biz/auth/pos-pin/recovery/methods` | `@perm.canBiz('biz:order:view')` | 能提前判 | 默认构建 | 未部署 | BizPosStaffPinController |
+| POST | `/biz/auth/pos-pin/verify` | `@perm.canBiz('biz:order:view')` | 能提前判 | 默认构建 | 未部署 | BizPosStaffPinController |
 | GET | `/biz/auth/session` | 登录即可 | 只要求登录 | 默认构建 | 已入网关 | BizPaySessionController |
 | POST | `/biz/auth/staff-login` | 公开 | 公开 | 默认构建 | 已入网关 | BizAuthController |
 

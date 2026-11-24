@@ -45,7 +45,7 @@
 
 ### 表结构与状态
 
-沿用 MySQL 9 迁移 [V697__ops_staff_api_key.sql](../../backend/shop-app/src/main/resources/db/migration/V697__ops_staff_api_key.sql) 的 `sys_ops_api_key`。自助申请复用当前表结构，审批状态、申请队列和设备信息均无需持久化。历史迁移保持原有 checksum。
+沿用 MySQL 9 迁移 [V701__ops_staff_api_key.sql](../../backend/shop-app/src/main/resources/db/migration/V701__ops_staff_api_key.sql) 的 `sys_ops_api_key`。自助申请复用当前表结构，审批状态、申请队列和设备信息均无需持久化。历史迁移保持原有 checksum。
 
 | 字段 | 类型与约束 | 自助申请的写入及用途 |
 |---|---|---|
@@ -128,7 +128,7 @@ Java 21 Maven 首批返回 `Tests run: 29, Failures: 0, Errors: 0, Skipped: 0` �
 
 | 检查 | 结果 |
 |---|---|
-| MySQL 9.7.4 原生 V697 | 在 `127.0.0.1:3308` 的独立临时库中，用 Flyway 执行原样 V697，迁移 1 条。随后 checksum 校验通过，再次执行迁移 0 条。主键、摘要唯一索引和员工查询索引均核对通过 |
+| MySQL 9.7.4 原生迁移验证 | 在 `127.0.0.1:3308` 的独立临时库中，用 Flyway 执行密钥表迁移（验证时版本号为 V697，合入最新主分支后顺延为 V701），迁移 1 条。随后 checksum 校验通过，再次执行迁移 0 条。主键、摘要唯一索引和员工查询索引均核对通过 |
 | MySQL 9 原生事务 | 用真实 `OpsApiKeyServiceImpl`、`OpsApiKeyStore` 和 Spring JDBC 事务并发申请及撤销。同参只产生一条密钥和一次签发审计写入，修改参数及重复摘要均冲突，并发撤销只写一次审计，撤销后凭据失效。使用最小员工及事务审计测试表 |
 | HTTP 验收范围 | 本机 Keychain 到门店 API 的真实 HTTP 路径已在 H2 上通过。尝试迁用 H2 全量夹具在 MySQL 9 启动应用时，夹具里的 `IS JSON OBJECT` 成为方言阻塞。MySQL 原生证据覆盖此次迁移和密钥事务 |
 | 前后端产物 | 开发提交 `39af4f3e4` 的 JAR 打包成功并核对内置完整 Git SHA。运营前端以生产同源真实 API 配置静态导出，通过 `assert-prod-build.mjs` |
@@ -146,7 +146,7 @@ Java 21 Maven 首批返回 `Tests run: 29, Failures: 0, Errors: 0, Skipped: 0` �
 |---|---|
 | 自助页面与本机申请 | `ops-web/components/layout/api-keys.tsx` 及 `scripts/automation/ops-api-key.swift`。页面提交摘要，本机持有真实密钥 |
 | 员工密钥与审计 | `shop-core/platform` 的 `OpsApiKeyService`、`OpsApiKeyController`、`OpsApiKeyServiceImpl`、`OpsApiKeyStore`，以及 `OpsServiceImpl` 的停用和改密撤销 |
-| 密钥持久化 | `V697__ops_staff_api_key.sql` 及 H2 测试表。UUID 主键、密钥哈希唯一索引 |
+| 密钥持久化 | `V701__ops_staff_api_key.sql` 及 H2 测试表。UUID 主键、密钥哈希唯一索引 |
 | 认证、准入及角色 | `OpsGatewayEnd`、`OpsApiKeyAuthFilter`、`OpsApiKeyRoutes`，复用原认证上下文及 `OperatorIdentityLoader`。签发、查询和撤销使用 `iam:staff:api-key-manage` |
 | 已有业务 Controller 和操作契约 | 复用门店、商户、渠道、行业现有路由，由 `scripts/gen-ops-key-api.mjs` 生成[模块与角色清单](../api/运营管理API-模块与角色清单.md)和[OpenAPI](../api/ops-management.openapi.json) |
 | 数据及端点基线刷新 | 生成器排除测试用 Controller；现存权限矩阵和 OpenAPI 包含管理员与员工自助各 3 项凭据操作 |

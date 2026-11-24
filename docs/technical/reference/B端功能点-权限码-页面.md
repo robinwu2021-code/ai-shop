@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**56 个权限码 × 6 个角色 × 532 个受控功能点**
+统计：**56 个权限码 × 6 个角色 × 539 个受控功能点**
 （另有 0 个登录即可、40 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,18 +21,18 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 79 | ✅ | — | — | — | — | — |
+| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 80 | ✅ | — | — | — | — | — |
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 53 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 40 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 40 | ✅ | — | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 24 | ✅ | ✅ | — | — | — | — |
+| `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 19 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:print:read` | `PRINT_READ` | 更正与作废 App 外收款记录（原因必填、留痕） | 16 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:print:config` | `PRINT_CONFIG` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | — | — | — | — |
 | `biz:invoice:setup` | `INVOICE_SETUP` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 14 | ✅ | ✅ | — | — | — | — |
-| `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 13 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `biz:invoice:read` | `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 13 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 12 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
@@ -128,6 +128,7 @@
 | —（b-app 未接） | — | `/biz/store/{}/stock-reconcile` | — | — |
 | —（b-app 未接） | — | `/biz/store/settings/basic` | — | — |
 | —（b-app 未接） | — | `/biz/store/settings/contact` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/policy` | — | — |
 | —（b-app 未接） | — | `/biz/store/{}/entity/relink-check` | — | — |
 | —（b-app 未接） | — | `/biz/store/{}/entity` | — | — |
 | —（b-app 未接） | — | `/biz/x/commerce/account-operations` | — | — |
@@ -461,6 +462,32 @@
 | 关掉这一路会影响的在售商品 | GET | `/biz/stores/:storeNo/fulfillment/:channel/impact` | `mFulfillmentImpact` | store-scope |
 | —（b-app 未接） | — | `/biz/store/settings/hours` | — | — |
 
+### `biz:order:view`　订单列表与详情、工作台待办
+
+**可用角色**：老板、店长、店员、配送员、客服
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 订单列表 | GET | `/biz/order` | `mOrderList` | delivery、orders |
+| 订单详情 | GET | `/biz/order/:orderNo` | `mOrderDetail` | order |
+| 订单库存追溯 | GET | `/biz/order/:orderNo/inventory-trace` | `mOrderInventoryTrace` | order |
+| 物流更新记录 | GET | `/biz/order/:orderNo/logistics-updates` | `mOrderUpdates` | order |
+| 订单赠送积分进度 | GET | `/biz/order/:orderNo/points-earning` | `mOrderPointsEarning` | order |
+| 物流轨迹 | GET | `/biz/order/:orderNo/trace` | `mOrderTrace` | order |
+| 按优先级分页的订单待办 | GET | `/biz/order/worklist` | `mOrderWorklist` | orders |
+| —（b-app 未接） | — | `/biz/store-orders/{}` | — | — |
+| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/{}` | — | — |
+| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/lookup` | — | — |
+| —（b-app 未接） | — | `/biz/order/{}/full` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/verify` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/recovery/methods` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/recovery/challenges` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/recovery/challenges/{}/verify` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/recovery` | — | — |
+| —（b-app 未接） | — | `/biz/service-orders/{}/manual-admission` | — | — |
+| —（b-app 未接） | — | `/biz/service-orders/{}/manual-source` | — | — |
+
 ### `biz:verify`　核销、批量核销、按码搜索
 
 **可用角色**：老板、店长、店员
@@ -553,26 +580,6 @@
 | —（b-app 未接） | — | `/biz/invoice-applications/{}/rejections` | — | — |
 | —（b-app 未接） | — | `/biz/invoice-applications/{}/cancellations` | — | — |
 | —（b-app 未接） | — | `/biz/invoice-setup/store-items/{}` | — | — |
-
-### `biz:order:view`　订单列表与详情、工作台待办
-
-**可用角色**：老板、店长、店员、配送员、客服
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 订单列表 | GET | `/biz/order` | `mOrderList` | delivery、orders |
-| 订单详情 | GET | `/biz/order/:orderNo` | `mOrderDetail` | order |
-| 订单库存追溯 | GET | `/biz/order/:orderNo/inventory-trace` | `mOrderInventoryTrace` | order |
-| 物流更新记录 | GET | `/biz/order/:orderNo/logistics-updates` | `mOrderUpdates` | order |
-| 订单赠送积分进度 | GET | `/biz/order/:orderNo/points-earning` | `mOrderPointsEarning` | order |
-| 物流轨迹 | GET | `/biz/order/:orderNo/trace` | `mOrderTrace` | order |
-| 按优先级分页的订单待办 | GET | `/biz/order/worklist` | `mOrderWorklist` | orders |
-| —（b-app 未接） | — | `/biz/store-orders/{}` | — | — |
-| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/{}` | — | — |
-| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/lookup` | — | — |
-| —（b-app 未接） | — | `/biz/order/{}/full` | — | — |
-| —（b-app 未接） | — | `/biz/service-orders/{}/manual-admission` | — | — |
-| —（b-app 未接） | — | `/biz/service-orders/{}/manual-source` | — | — |
 
 ### `biz:invoice:read`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
 
@@ -1021,6 +1028,13 @@
 |---|---|---|
 | `/biz/activities/{}/publish` | `biz:campaign` | 老板、店长 |
 | `/biz/activity-presets` | `biz:campaign` | 老板、店长 |
+| `/biz/auth/pos-pin` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/auth/pos-pin/policy` | `biz:store:admin` | 老板 |
+| `/biz/auth/pos-pin/recovery` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/auth/pos-pin/recovery/challenges` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/auth/pos-pin/recovery/challenges/{}/verify` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/auth/pos-pin/recovery/methods` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/auth/pos-pin/verify` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
 | `/biz/card-product-bindings` | `biz:goods` | 老板、店长 |
 | `/biz/card-product-presets` | `biz:goods` | 老板、店长 |
 | `/biz/checkout/{}/offline-receipts` | `pay:cash:receive` | 老板 |

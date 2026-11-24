@@ -15871,6 +15871,7 @@ SKU 组件：一件 SKU 交付哪些东西
 - `CREATE`
 - `CORRECT`
 - `VOID`
+- `REFUND`
 
 ### OfflineRecordCreateReq
 
@@ -15929,6 +15930,7 @@ SKU 组件：一件 SKU 交付哪些东西
 
 - `RECORDED`
 - `VOIDED`
+- `REFUNDED`
 
 ### OfflineRecordSummary
 

@@ -186,6 +186,8 @@ class MitakeSmsGatewayTest {
             gateway.sendOtpForScene("0912345678", "123456", scene, "OTP", null);
             assertTrue(form.get().get("smbody").contains("123456"));
         }
+        gateway.sendOtpForScene("0912345678", "123456", "POS_PIN_RECOVERY", "OTP", null);
+        assertEquals("【NearShop】收銀 PIN 重設驗證碼：123456，請勿提供給他人。", form.get().get("smbody"));
         assertThrows(SmsException.class, () -> gateway.requireOtpScene("EMAIL_CHANGE"));
         assertThrows(SmsException.class, () -> gateway.requireOtpScene("UNKNOWN"));
     }

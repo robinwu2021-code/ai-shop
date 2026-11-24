@@ -112,6 +112,36 @@ class OpsApiKeyFlowTest {
     }
 
     @Test
+    void couponIssuesFollowStaffMerchantScope() throws Exception {
+        for (String merchant : new String[] {"KEY-TEST-BOUND", "KEY-TEST-OTHER"}) {
+            jdbc.update("""
+                    INSERT INTO mkt_coupon (coupon_no,title,type,entity_no,start_at,end_at,created_at,updated_at)
+                    VALUES (?,?,'CASH',?,0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+                    """, merchant, merchant, merchant);
+            jdbc.update("""
+                    INSERT INTO mkt_coupon_issue (issue_no,coupon_no,coupon_name,target,created_at,updated_at)
+                    VALUES (?,?,?,'SINGLE_USER',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+                    """, merchant, merchant, merchant);
+        }
+        jdbc.update("""
+                UPDATE sys_ops_staff SET roles='["CAMPAIGN_OPS"]' WHERE staff_no=?
+                """, staffNo);
+        String session = TestLogin.operator(mvc, json, staffNo, "admin123");
+        getAs("/ops/coupon-issues?couponNo=KEY-TEST-OTHER", session)
+                .andExpect(jsonPath("$.data.total").value(1));
+
+        jdbc.update("UPDATE sys_ops_staff SET merchant_no='KEY-TEST-BOUND' WHERE staff_no=?", staffNo);
+        session = TestLogin.operator(mvc, json, staffNo, "admin123");
+        getAs("/ops/coupon-issues?couponNo=KEY-TEST-BOUND", session)
+                .andExpect(jsonPath("$.data.total").value(1));
+        getAs("/ops/coupon-issues?couponNo=KEY-TEST-OTHER", session)
+                .andExpect(jsonPath("$.code").value(10404));
+        getAs("/ops/coupon-issues", session)
+                .andExpect(jsonPath("$.data.records[?(@.couponNo=='KEY-TEST-BOUND')]").isNotEmpty())
+                .andExpect(jsonPath("$.data.records[?(@.couponNo=='KEY-TEST-OTHER')]").isEmpty());
+    }
+
+    @Test
     void initialPasswordBlocksIssueAndChangingPasswordRevokesKeys() throws Exception {
         jdbc.update("UPDATE sys_ops_staff SET must_change_password=1 WHERE staff_no=?", staffNo);
         issue(UUID.randomUUID().toString(), "READ_ONLY").andExpect(jsonPath("$.code").value(10403));

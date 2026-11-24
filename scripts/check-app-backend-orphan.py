@@ -154,6 +154,8 @@ def native_android_exits(handlers):
         raise ValueError("Android endpoint evidence requires a remote repository and a full commit ID")
     result = set()
     for entry in data["calls"]:
+        if not re.fullmatch(r"[0-9a-f]{40}", entry.get("commit", data["commit"])):
+            raise ValueError("Android endpoint evidence requires a full source commit ID")
         source = Path(entry["source"])
         if not source.as_posix().startswith("handheld-pos/android/") or "/src/main/" not in source.as_posix() \
                 or ".." in source.parts or source.suffix != ".kt":

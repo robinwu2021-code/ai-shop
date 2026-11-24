@@ -15522,6 +15522,7 @@ components:
       enum:
         - "RECORDED"
         - "VOIDED"
+        - "REFUNDED"
       description: "已记 / 已作废（作废是终态，行不删）"
     OfflineRecordSummaryQuery:
       type: "object"
@@ -16196,6 +16197,7 @@ components:
         - "CREATE"
         - "CORRECT"
         - "VOID"
+        - "REFUND"
       description: "留痕动作"
     OfflineRecordPage:
       type: "object"
