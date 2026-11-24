@@ -6,6 +6,8 @@ import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.entity.IvcInvoiceLine;
 import ai.neargo.shop.invoice.entity.IvcNumberRange;
 import ai.neargo.shop.invoice.entity.IvcRegimeProfile;
+import ai.neargo.shop.invoice.entity.IvcStoreItem;
+import ai.neargo.shop.invoice.entity.IvcStoreSetting;
 import ai.neargo.shop.invoice.entity.IvcTransmission;
 import ai.neargo.shop.invoice.entity.IvcUserCarrier;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -116,5 +118,11 @@ public final class InvoiceMappers {
     }
 
     public interface UserCarrierMapper extends BaseMapper<IvcUserCarrier> {
+    }
+
+    public interface StoreSettingMapper extends BaseMapper<IvcStoreSetting> {
+    }
+
+    public interface StoreItemMapper extends BaseMapper<IvcStoreItem> {
     }
 }

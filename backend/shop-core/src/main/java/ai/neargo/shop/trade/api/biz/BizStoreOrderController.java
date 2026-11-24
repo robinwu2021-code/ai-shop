@@ -38,7 +38,9 @@ import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.annotation.JsonDeserialize;
 
 /**
- * 门店零售单（TDD-统一订单与开票资料 P1）：POS 建单、看单与开票准备度、补开票资料、取消未付款的单。
+ * 门店零售单（TDD-统一订单与开票资料 P1 / P2）：POS 建单、看单与开票准备度、补开票资料、取消未付款的单。
+ * 收款不在这里：现金走 {@code POST /biz/payment/offline-records}（{@code orderNo} = 子单号），收款码 / 付款链接走
+ * {@code POST /biz/payment/collection}（{@code bizNo} = 子单号），加总付清后本单转已付（P2）。
  *
  * <p><b>入参不收 storeNo / merchantNo / operator</b>：门店与主体取 {@link BizContext}，操作人取登录态 ——
  * 与 {@code BizOfflineRecordController} 同一条规矩。改价与零税率 / 免税两项附加权限在这里从当前门店角色读出，
@@ -71,7 +73,8 @@ public class BizStoreOrderController {
                         l.name(), l.taxType(), l.storeItemNo())).toList(),
                 body.adjustments() == null ? List.of() : body.adjustments().stream()
                         .map(a -> new AdjustmentCmd(a.kind(), a.name(), a.amountMinor())).toList(),
-                body.invoice() == null || body.invoice().buyer() == null ? null : buyer(body.invoice().buyer())));
+                body.invoice() == null || body.invoice().buyer() == null ? null : buyer(body.invoice().buyer()),
+                body.invoice() == null ? null : body.invoice().timing()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
@@ -88,7 +91,7 @@ public class BizStoreOrderController {
             @PathVariable @Size(max = 64) String orderNo, @RequestBody @Valid FillBody body) {
         return orders.fillInvoiceData(scope(), orderNo, new FillCmd(key,
                 body.lines() == null ? List.of() : body.lines().stream()
-                        .map(l -> new FillLineCmd(l.lineNo(), l.name(), l.taxType())).toList(),
+                        .map(l -> new FillLineCmd(l.lineNo(), l.name(), l.taxType(), l.storeItemNo())).toList(),
                 body.buyer() == null ? null : buyer(body.buyer()), body.reason()));
     }
 
@@ -111,8 +114,8 @@ public class BizStoreOrderController {
     }
 
     /**
-     * 建单请求体（与 POS 契约同形，TDD §2）。{@code member}（会员载具，P3）与 {@code invoice.timing}
-     * （门店开票时机，P2）本期收下不处理。
+     * 建单请求体（与 POS 契约同形，TDD §2）。{@code member}（会员载具，P3）本期收下不处理；
+     * {@code invoice.timing} 存在订单上，覆盖门店开票时机（P2）。
      */
     public record CreateBody(
             @NotBlank @Size(max = 64) @Pattern(regexp = "[A-Za-z0-9_.:-]{1,64}") String clientOrderNo,
@@ -123,7 +126,10 @@ public class BizStoreOrderController {
             @Valid MemberBody member,
             @Valid InvoiceBody invoice) {}
 
-    /** SKU 行要 skuNo，品名 / 课税别以商品资料为准（送了也不用）；自订行不收 skuNo，品名 / 课税别可空（= 待补）。 */
+    /**
+     * SKU 行要 skuNo，品名 / 课税别以商品资料为准（送了也不用）；自订行不收 skuNo，品名 / 课税别可空（= 待补，
+     * 课税别先取门店默认）。{@code storeItemNo}（门店常用品项）只给自订行，且不与 name / taxType 同送。
+     */
     public record LineBody(
             @NotNull @Pattern(regexp = "SKU|CUSTOM") String kind,
             @Size(max = 64) String skuNo,
@@ -136,6 +142,11 @@ public class BizStoreOrderController {
         @AssertTrue(message = "SKU line requires skuNo; custom line takes none")
         public boolean isShapeValid() {
             return "SKU".equals(kind) ? skuNo != null && !skuNo.isBlank() : skuNo == null;
+        }
+
+        @AssertTrue(message = "storeItemNo is for custom lines and excludes name / taxType")
+        public boolean isStoreItemValid() {
+            return storeItemNo == null || "CUSTOM".equals(kind) && name == null && taxType == null;
         }
     }
 
@@ -161,10 +172,17 @@ public class BizStoreOrderController {
             @Valid BuyerBody buyer,
             @Size(max = 100) String reason) {}
 
+    /** {@code storeItemNo}：用门店常用品项补品名与课税别，不与 name / taxType 同送。 */
     public record FillLineBody(
             @Min(1) int lineNo,
             @Size(min = 1, max = 256) String name,
-            @Pattern(regexp = TAX_TYPE) String taxType) {}
+            @Pattern(regexp = TAX_TYPE) String taxType,
+            @Size(max = 32) String storeItemNo) {
+        @AssertTrue(message = "storeItemNo excludes name / taxType")
+        public boolean isStoreItemValid() {
+            return storeItemNo == null || name == null && taxType == null;
+        }
+    }
 
     public record CancelBody(@Size(max = 100) String reason) {}
 }

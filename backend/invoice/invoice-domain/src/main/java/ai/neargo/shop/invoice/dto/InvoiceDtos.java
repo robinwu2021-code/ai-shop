@@ -353,4 +353,24 @@ public final class InvoiceDtos {
 
     /** 同号重开：买受人不传则沿用原票。 */
     public record ReissueReq(@Valid BuyerReq buyer) {}
+
+    // ---- 门店开票设定与常用品项（TDD-统一订单与开票资料 AC6 / AC11） ----
+
+    private static final String STORE_TAX_TYPE = "TAXABLE|ZERO_RATED|EXEMPT";
+
+    /** @param defaultTaxType null = 不带默认（自订行没填就是待补） */
+    public record StoreSettingsReq(
+            @Pattern(regexp = STORE_TAX_TYPE) String defaultTaxType,
+            @NotNull @Pattern(regexp = "ON_PAID|MANUAL|LATER") String invoiceTiming) {}
+
+    public record StoreSettingsVO(String defaultTaxType, String invoiceTiming) {}
+
+    /** @param sort 不传按 0；@param enabled 不传 = 启用 */
+    public record StoreItemReq(
+            @NotBlank @Size(max = 256) String name,
+            @NotNull @Pattern(regexp = STORE_TAX_TYPE) String taxType,
+            @Min(0) @Max(9999) Integer sort,
+            Boolean enabled) {}
+
+    public record StoreItemVO(String storeItemNo, String name, String taxType, int sort, boolean enabled) {}
 }

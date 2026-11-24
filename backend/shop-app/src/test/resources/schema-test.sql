@@ -663,6 +663,7 @@ CREATE TABLE IF NOT EXISTS ord_order
     operation_no VARCHAR(64)  NULL,
     client_order_no VARCHAR(64)  NULL,
     channel VARCHAR(16) NULL,
+    invoice_timing VARCHAR(16) NULL,
     CONSTRAINT uk_order_client_no UNIQUE (tenant_no,store_no,client_order_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_order_no UNIQUE (order_no),
@@ -13240,6 +13241,29 @@ CREATE TABLE IF NOT EXISTS ord_invoice_data_fill
         AND ((field_code='BUYER' AND line_no=0) OR (field_code<>'BUYER' AND line_no>0)) AND deleted=0)
 );
 
+CREATE TABLE IF NOT EXISTS ord_store_collection
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    pay_order_no VARCHAR(64)  NOT NULL,
+    order_no VARCHAR(64)  NOT NULL,
+    sub_order_no VARCHAR(64)  NOT NULL,
+    entity_no VARCHAR(32)  NOT NULL,
+    store_no VARCHAR(32)  NOT NULL,
+    currency CHAR(3) NOT NULL,
+    paid_minor BIGINT NOT NULL,
+    pay_channel VARCHAR(32) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_store_collection_pay UNIQUE (tenant_no,pay_order_no),
+    CONSTRAINT ck_store_collection_amount CHECK (paid_minor > 0 AND deleted=0)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -14561,6 +14585,40 @@ CREATE TABLE IF NOT EXISTS ivc_user_carrier
     updated_at DATETIME(3) NOT NULL,
     CONSTRAINT uk_ivc_user_carrier_no UNIQUE (tenant_no, carrier_no),
     CONSTRAINT uk_ivc_user_carrier UNIQUE (tenant_no, user_no, carrier_type, carrier_id)
+);
+
+CREATE TABLE IF NOT EXISTS ivc_store_setting
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    default_tax_type VARCHAR(16) NULL,
+    invoice_timing VARCHAR(16) NOT NULL DEFAULT 'MANUAL',
+    updated_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_store_setting UNIQUE (tenant_no, entity_no, store_no),
+    CONSTRAINT ck_ivc_store_setting CHECK ((default_tax_type IS NULL OR (CASE default_tax_type WHEN 'TAXABLE' THEN TRUE WHEN 'ZERO_RATED' THEN TRUE WHEN 'EXEMPT' THEN TRUE ELSE CASE WHEN default_tax_type IS NULL THEN NULL ELSE FALSE END END))
+    AND (CASE invoice_timing WHEN 'ON_PAID' THEN TRUE WHEN 'MANUAL' THEN TRUE WHEN 'LATER' THEN TRUE ELSE CASE WHEN invoice_timing IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS ivc_store_item
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    store_item_no VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    name VARCHAR(256) NOT NULL,
+    tax_type VARCHAR(16) NOT NULL,
+    sort INT NOT NULL DEFAULT 0,
+    enabled TINYINT NOT NULL DEFAULT 1,
+    updated_by VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_ivc_store_item_no UNIQUE (tenant_no, store_item_no),
+    CONSTRAINT ck_ivc_store_item_tax CHECK ((CASE tax_type WHEN 'TAXABLE' THEN TRUE WHEN 'ZERO_RATED' THEN TRUE WHEN 'EXEMPT' THEN TRUE ELSE CASE WHEN tax_type IS NULL THEN NULL ELSE FALSE END END) AND (CASE enabled WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN enabled IS NULL THEN NULL ELSE FALSE END END))
 );
 
 -- 种子数据

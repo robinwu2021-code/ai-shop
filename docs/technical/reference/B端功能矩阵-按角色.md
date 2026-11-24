@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 56 个权限点 × 562 个受控端点**。
+统计：**6 个角色 × 56 个权限点 × 565 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -32,8 +32,9 @@
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 9 | ✅ | — | — | — | — | — |
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
+| `INVOICE_SETUP` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 7 | ✅ | ✅ | — | — | — | — |
 | `PRINT_DEVICE` | 更正与作废 App 外收款记录（原因必填、留痕） | 6 | ✅ | ✅ | — | — | — | — |
-| `INVOICE_SETUP` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 6 | ✅ | ✅ | — | — | — | — |
+| `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 6 | ✅ | ✅ | ✅ | — | — | — |
 | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 5 | ✅ | — | — | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 5 | ✅ | ✅ | — | — | — | ✅ |
@@ -41,7 +42,6 @@
 | `INVOICE_ISSUE` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 5 | ✅ | ✅ | ✅ | — | — | — |
 | `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 4 | ✅ | — | — | — | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
-| `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 4 | ✅ | ✅ | ✅ | — | — | — |
 | `INVOICE_VOID` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 4 | ✅ | ✅ | — | — | — | — |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `PRINT_EXPORT` | 更正与作废 App 外收款记录（原因必填、留痕） | 3 | ✅ | ✅ | ✅ | — | — | — |
@@ -564,6 +564,16 @@
 - `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts`
 - `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records`
 
+### `INVOICE_SETUP`　（OWNER、MANAGER）
+
+- `/biz/invoice-setup/profile`
+- `/biz/invoice-setup/provider-ranges`
+- `/biz/invoice-setup/provider-tracks`
+- `/biz/invoice-setup/provider-verification`
+- `/biz/invoice-setup/providers`
+- `/biz/invoice-setup/ranges`
+- `/biz/invoice-setup/store-items/{storeItemNo}`
+
 ### `PRINT_DEVICE`　（OWNER、MANAGER）
 
 - `/biz/print/agents`
@@ -573,14 +583,14 @@
 - `/biz/print/printers/{printerNo}/status-changes`
 - `/biz/print/printers/{printerNo}/test-jobs`
 
-### `INVOICE_SETUP`　（OWNER、MANAGER）
+### `INVOICE_READ`　（OWNER、MANAGER、CLERK）
 
-- `/biz/invoice-setup/profile`
-- `/biz/invoice-setup/provider-ranges`
-- `/biz/invoice-setup/provider-tracks`
-- `/biz/invoice-setup/provider-verification`
-- `/biz/invoice-setup/providers`
-- `/biz/invoice-setup/ranges`
+- `/biz/invoice-setup/store-items`
+- `/biz/invoice-setup/store-settings`
+- `/biz/invoices`
+- `/biz/invoices/upload-backlog`
+- `/biz/invoices/{invoiceNo}`
+- `/biz/invoices/{invoiceNo}/print-facts`
 
 ### `PRICING_CONFIG_PUBLISH`　（OWNER）
 
@@ -635,13 +645,6 @@
 - `/biz/entitlement-usage`
 - `/biz/entitlement-uses/{operationNo}`
 - `/biz/entitlements/{instanceNo}`
-
-### `INVOICE_READ`　（OWNER、MANAGER、CLERK）
-
-- `/biz/invoices`
-- `/biz/invoices/upload-backlog`
-- `/biz/invoices/{invoiceNo}`
-- `/biz/invoices/{invoiceNo}/print-facts`
 
 ### `INVOICE_VOID`　（OWNER、MANAGER）
 

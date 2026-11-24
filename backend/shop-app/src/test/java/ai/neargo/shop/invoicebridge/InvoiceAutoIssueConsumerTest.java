@@ -15,6 +15,7 @@ import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.spi.invoice.InvoicePort;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import java.util.List;
 import java.util.Optional;
@@ -27,7 +28,7 @@ class InvoiceAutoIssueConsumerTest {
     final InvoicePort invoices = mock(InvoicePort.class);
     final SubOrderMapper subs = mock(SubOrderMapper.class);
     final JsonMapper json = JsonMapper.builder().build();
-    final InvoiceAutoIssueConsumer consumer = new InvoiceAutoIssueConsumer(invoices, subs, json);
+    final InvoiceAutoIssueConsumer consumer = new InvoiceAutoIssueConsumer(invoices, subs, mock(OrderMapper.class), json);
 
     @Test
     void everyPaidSubOrderIsOfferedAndUnissuableOnesAreSkipped() {

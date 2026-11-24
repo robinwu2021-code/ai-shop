@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -262,6 +263,29 @@ class StoreScopedDailyRoutesFlowTest {
             };
             var response = mvc.perform(request.header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
                             .header("Idempotency-Key", "K-ROUTE").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse();
+            String body = response.getContentAsString();
+            assertFalse(body.contains("STORE_ACCESS"), r[0] + " " + r[1] + " → " + body);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 门店开票设定与常用品项（/biz/invoice-setup/store-*）在新模型门店上能进门店：POS 快选、店长设定")
+    void storeInvoiceSetupRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020141");
+        for (String[] r : new String[][] {
+                {"GET", "/biz/invoice-setup/store-settings"}, {"PUT", "/biz/invoice-setup/store-settings"},
+                {"GET", "/biz/invoice-setup/store-items"}, {"POST", "/biz/invoice-setup/store-items"},
+                {"PUT", "/biz/invoice-setup/store-items/IVS-NO-SUCH"},
+                {"DELETE", "/biz/invoice-setup/store-items/IVS-NO-SUCH"}}) {
+            var request = switch (r[0]) {
+                case "GET" -> get(r[1]);
+                case "PUT" -> put(r[1]);
+                case "DELETE" -> delete(r[1]);
+                default -> post(r[1]);
+            };
+            var response = mvc.perform(request.header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
                     .andReturn().getResponse();
             String body = response.getContentAsString();
             assertFalse(body.contains("STORE_ACCESS"), r[0] + " " + r[1] + " → " + body);
@@ -558,7 +582,7 @@ class StoreScopedDailyRoutesFlowTest {
     @Test
     @DisplayName("★★ 新模型门店：建的券在券列表里看得到（2026-11-24 v2：POST /biz/coupons 成功，GET /biz/coupons 却是 []）")
     void couponCreatedOnNewModelStoreIsListed() throws Exception {
-        String[] o = newModelOwner("15965020141");
+        String[] o = newModelOwner("15965020143");
         long now = System.currentTimeMillis();
         String body = "{\"title\":\"QA-coupon\",\"benefitMode\":\"CASH\",\"benefitValue\":1000,"
                 + "\"minAmountMinor\":0,\"scopeType\":\"STORE\",\"scopeRefs\":[\"" + o[1] + "\"],"
