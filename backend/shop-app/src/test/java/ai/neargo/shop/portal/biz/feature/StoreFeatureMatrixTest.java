@@ -300,7 +300,7 @@ class StoreFeatureMatrixTest {
     void fullRoleDirectoryGatesNewServiceGrantsAndPreservesTheirVisibility() {
         var release = PosFeatureCatalog.bundled();
         var role = new RoleVO("R1", "Test", false,
-                List.of(BizPerms.BOOKING_VIEW), List.of(), 0);
+                List.of(BizPerms.BOOKING_VIEW), List.of(), 0L);
         var retail = freeStore("RETAIL", true);
         var directory = RoleFeatureCatalog.forStore(release, retail, role, code -> true);
         var booking = directory.modules().stream().flatMap(m -> m.features().stream())
