@@ -145,8 +145,32 @@ def app_exits(app: str) -> set[tuple[str, str]]:
     return out
 
 
+def native_android_exits(handlers):
+    manifest = ROOT / "docs/api/native-android-app-exits.json"
+    if not manifest.exists():
+        return set()
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    if not re.fullmatch(r"[0-9a-f]{40}", data["commit"]) or not data["repository"].startswith("https://"):
+        raise ValueError("Android endpoint evidence requires a remote repository and a full commit ID")
+    result = set()
+    for entry in data["calls"]:
+        if not re.fullmatch(r"[0-9a-f]{40}", entry.get("commit", data["commit"])):
+            raise ValueError("Android endpoint evidence requires a full source commit ID")
+        source = Path(entry["source"])
+        if not source.as_posix().startswith("handheld-pos/android/") or "/src/main/" not in source.as_posix() \
+                or ".." in source.parts or source.suffix != ".kt":
+            raise ValueError(f"Invalid Android production source: {source}")
+        for method, path in entry["endpoints"]:
+            endpoint = (method, norm(path))
+            if not path.startswith("/biz/") or endpoint not in handlers or endpoint in result:
+                raise ValueError(f"Duplicate or unknown Android endpoint: {endpoint}")
+            result.add(endpoint)
+    return result
+
+
 def orphans() -> dict[str, list[tuple[str, str]]]:
     eps = backend()
+    android = native_android_exits(set(eps))
     # 扫描面断言：任一边扫空都会让这道闸恒绿，而恒绿的闸门等于没有闸门
     assert len(eps) > 200, f"后端端点只扫到 {len(eps)} 个 —— 抽取器坏了？"
     res = {}
@@ -158,6 +182,7 @@ def orphans() -> dict[str, list[tuple[str, str]]]:
         assert mine, f"后端一个 {prefix} 端点都没有 —— 前缀写错了？"
         res[app] = sorted((m, p) for m, p in mine
                           if (m, p) not in BY_DESIGN_NO_EXIT
+                          and not (app == "b-app" and (m, p) in android)
                           and (m, p) not in exits and ("*", p) not in exits
                           and p not in paths)
     return res

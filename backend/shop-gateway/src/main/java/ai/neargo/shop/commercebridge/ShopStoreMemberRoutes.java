@@ -44,6 +44,12 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("POST", STORE + "payment"),
             HostRoute.of("GET", STORE + "entity/relink-check"),
             HostRoute.of("POST", STORE + "entity"),
+            HostRoute.of("GET,PUT", "/biz/auth/pos-pin"),
+            HostRoute.of("PUT", "/biz/auth/pos-pin/policy"),
+            HostRoute.of("POST", "/biz/auth/pos-pin/verify"),
+            HostRoute.of("GET", "/biz/auth/pos-pin/recovery/methods"),
+            HostRoute.of("POST", "/biz/auth/pos-pin/recovery/challenges(?:/" + ID + "/verify)?"),
+            HostRoute.of("PUT", "/biz/auth/pos-pin/recovery"),
             // 店员与角色（「我的 › 店员管理」）：权限码由控制器判，这里只放进门店上下文
             HostRoute.of("GET,POST", "/biz/staff(?:/logs|/[A-Za-z0-9_-]{1,64}/(?:status|store))?"),
             HostRoute.of("GET,POST", "/biz/(?:roles|role-perms)"),

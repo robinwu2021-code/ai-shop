@@ -57,7 +57,9 @@ class OtpScenePolicyTest {
             var configured = new OtpScenePolicies(settings, true);
             boolean invoice = OtpScenes.INVOICE_ARTIFACT_ACCESS.equals(scene);
             var channel = OtpScenes.EMAIL_CHANGE.equals(scene) || invoice ? Channel.EMAIL : Channel.SMS;
-            var rule = configured.require(scene, channel, "ANY", OtpScenes.ORDER_PICKUP_CONFIRM.equals(scene) || invoice ? "reference1" : null);
+            boolean requiresReference = invoice || OtpScenes.ORDER_PICKUP_CONFIRM.equals(scene)
+                    || OtpScenes.POS_PIN_RECOVERY.equals(scene);
+            var rule = configured.require(scene, channel, "ANY", requiresReference ? "reference1" : null);
             assertThat(configured.mode(rule, "ANY")).as(scene).isEqualTo(OtpScenePolicy.CaptchaMode.ADAPTIVE);
         }
         var defaults = new OtpSettings();
@@ -73,5 +75,17 @@ class OtpScenePolicyTest {
         assertThat(policies.mode(rule, OtpEntries.INVOICE_ARTIFACT)).isEqualTo(OtpScenePolicy.CaptchaMode.RATE_ONLY);
         assertThatThrownBy(() -> policies.require(OtpScenes.INVOICE_ARTIFACT_ACCESS, Channel.EMAIL, OtpEntries.BIZ_LOGIN, "IVD1"))
                 .isInstanceOf(BizException.class);
+    }
+
+    @Test void pinRecoveryRequiresItsOwnEntryAndChallengeOnBothChannels() {
+        var policies = new OtpScenePolicies(new OtpSettings(), true);
+        for (var channel : Channel.values()) {
+            var rule = policies.require(OtpScenes.POS_PIN_RECOVERY, channel, OtpEntries.POS_PIN_RECOVERY, "challenge1");
+            assertThat(policies.mode(rule, OtpEntries.POS_PIN_RECOVERY)).isEqualTo(OtpScenePolicy.CaptchaMode.RATE_ONLY);
+            assertThatThrownBy(() -> policies.require(OtpScenes.POS_PIN_RECOVERY, channel, OtpEntries.POS_PIN_RECOVERY, null))
+                    .isInstanceOf(BizException.class);
+            assertThatThrownBy(() -> policies.require(OtpScenes.POS_PIN_RECOVERY, channel, OtpEntries.BIZ_LOGIN, "challenge1"))
+                    .isInstanceOf(BizException.class);
+        }
     }
 }

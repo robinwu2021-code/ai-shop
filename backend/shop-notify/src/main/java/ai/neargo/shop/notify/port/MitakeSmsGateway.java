@@ -65,6 +65,7 @@ public class MitakeSmsGateway implements SmsPort {
                 OtpScenes.LOGIN, "【NearShop】登入驗證碼：{code}，請勿提供給他人。",
                 OtpScenes.PASSWORD_RESET, "【NearShop】重設密碼驗證碼：{code}，請勿提供給他人。",
                 OtpScenes.PHONE_CHANGE, "【NearShop】變更手機驗證碼：{code}，請勿提供給他人。",
+                OtpScenes.POS_PIN_RECOVERY, "【NearShop】收銀 PIN 重設驗證碼：{code}，請勿提供給他人。",
                 OtpScenes.ORDER_PICKUP_CONFIRM, "【NearShop】取貨確認驗證碼：{code}，請於確認取貨時使用。");
         var templates = new HashMap<String, String>();
         defaults.forEach((scene, text) -> {

@@ -27,6 +27,7 @@ public final class OtpScenePolicies {
             boolean login = OtpScenes.LOGIN.equals(scene);
             boolean pickup = OtpScenes.ORDER_PICKUP_CONFIRM.equals(scene);
             boolean invoice = OtpScenes.INVOICE_ARTIFACT_ACCESS.equals(scene);
+            boolean pin = OtpScenes.POS_PIN_RECOVERY.equals(scene);
             var override = settings.getScenes().getOrDefault(scene, new OtpSettings.Scene());
             Set<Channel> allowed = switch (scene) {
                 case OtpScenes.PHONE_CHANGE, OtpScenes.ORDER_PICKUP_CONFIRM -> Set.of(Channel.SMS);
@@ -37,12 +38,12 @@ public final class OtpScenePolicies {
             var mode = override.getCaptchaMode() != null ? override.getCaptchaMode() : CaptchaMode.ADAPTIVE;
             var validity = Map.of(Channel.SMS, Duration.ofSeconds(override.getSmsTtlSeconds() == null ? 300 : override.getSmsTtlSeconds()),
                     Channel.EMAIL, Duration.ofSeconds(override.getEmailTtlSeconds() == null ? (login || OtpScenes.EMAIL_CHANGE.equals(scene) ? 600 : 300) : override.getEmailTtlSeconds()));
-            rules.put(scene, new OtpScenePolicy(scene, override.getEnabled() == null ? login || invoice : override.getEnabled(),
+            rules.put(scene, new OtpScenePolicy(scene, override.getEnabled() == null ? login || invoice || pin : override.getEnabled(),
                     override.getChannels() == null ? allowed : override.getChannels(), validity, mode,
                     override.getAccountHourly() == null ? (pickup ? 1 : settings.getAccountHourly()) : override.getAccountHourly(),
-                    override.getAccountDaily() == null ? (pickup ? 3 : settings.getAccountDaily()) : override.getAccountDaily(), pickup || invoice));
+                    override.getAccountDaily() == null ? (pickup ? 3 : settings.getAccountDaily()) : override.getAccountDaily(), pickup || invoice || pin));
             callers.put(scene, override.getEntries() == null ? (login ? Set.of(OtpEntries.BIZ_LOGIN, OtpEntries.LEGACY_AUTH)
-                            : invoice ? Set.of(OtpEntries.INVOICE_ARTIFACT) : Set.of())
+                            : invoice ? Set.of(OtpEntries.INVOICE_ARTIFACT) : pin ? Set.of(OtpEntries.POS_PIN_RECOVERY) : Set.of())
                     : Set.copyOf(override.getEntries()));
         }
         policies = Map.copyOf(rules); entries = Map.copyOf(callers);
@@ -65,7 +66,8 @@ public final class OtpScenePolicies {
     }
     public CaptchaMode mode(OtpScenePolicy rule, String entryCode) {
         if (!captchaEnabled || (OtpScenes.LOGIN.equals(rule.scene()) && OtpEntries.LEGACY_AUTH.equals(entryCode))
-                || (OtpScenes.INVOICE_ARTIFACT_ACCESS.equals(rule.scene()) && OtpEntries.INVOICE_ARTIFACT.equals(entryCode)))
+                || (OtpScenes.INVOICE_ARTIFACT_ACCESS.equals(rule.scene()) && OtpEntries.INVOICE_ARTIFACT.equals(entryCode))
+                || (OtpScenes.POS_PIN_RECOVERY.equals(rule.scene()) && OtpEntries.POS_PIN_RECOVERY.equals(entryCode)))
             return CaptchaMode.RATE_ONLY;
         return rule.captchaMode();
     }

@@ -222,7 +222,7 @@ class InvoiceServiceMysqlTest {
     @Test
     void documentsSelectTheFrozenInvoiceTypeAndIsolateStores() {
         var exports = mock(PrintExportFacade.class);
-        var documents = new InvoiceDocumentService(invoiceRows, exports);
+        var documents = new InvoiceDocumentServiceImpl(invoiceRows, exports);
         var proof = issueApplication(SCOPE, "DOC-BUSINESS");
         sources.paid("DOC-MOBILE", 100);
         var detail = invoices.issue(SCOPE, "SUB_ORDER", "DOC-MOBILE",
