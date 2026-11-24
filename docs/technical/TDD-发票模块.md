@@ -1416,3 +1416,21 @@ v2 只跑 `api,ops`、没有 worker，`InvoiceTransmissionJob` 不运行；按�
 
 - 测试：`InvoiceServiceMysqlTest#ac40SyncUploadSendsOnlyThisInvoiceInOrderAndOnce`——只送这张票、已送达不重送、作废当场送出、定时任务只剩别的票；发票模块 55 条 + 相关 shop-app / 架构共 216 条 0 失败。
 - 未覆盖：注销（revocation）走 `checkRevocations` 的既有流程，未接同步；运营端代作废未接同步（定时任务或重传兜底）。
+
+### §25.1 鲸跃真实发票接口联调方案（不经 App；2026-11-24，用户：「要有接口测试方案，不要依赖app」）
+
+脚本：[`scripts/invoice/cetustek_v2_e2e.py`](../../scripts/invoice/cetustek_v2_e2e.py)（只用 Python 标准库）。**由用户本人在自己的终端运行**：B 端登录令牌（`BIZ_TOKEN`）与鲸跃账号（`--cred-file`，三项 `CETUSTEK_ACCOUNT_CODE` / `CETUSTEK_USER` / `CETUSTEK_PASSWORD`）只从环境变量与用户指定的文件读，不打印、不进报告。默认只读预检；会改正式环境或开出真实发票的步骤必须加 `--real`。
+
+| 步 | 接口 | 断言 |
+|---|---|---|
+| 1 预检 | `GET /biz/invoice-setup/providers`、`/profile`、`/ranges` | 可选供应商含 `CETUSTEK`；打印当前设定与号段 |
+| 2 切换（`--setup`） | `PUT /biz/invoice-setup/profile`（`gatewayCode=CETUSTEK`、统编 50766768、`autoIssue=false`、加值中心三项）→ `POST /biz/invoice-setup/provider-verification` → `POST /biz/invoice-setup/ranges`（默认 `HR 22644552–22644799`、期别 11512、本店） | 设定已切；鲸跃核验回统编一致；号段 `ACTIVE` |
+| 3 建单付清（`--sale`） | `POST /biz/store-orders`（自订行「接口聯調測試品項」NT$1 应税、`timing=MANUAL`）→ `POST /biz/payment/offline-records`（CASH，`orderNo=subOrderNo`）→ `GET /biz/store-orders/{no}` | `PAID`、`READY` |
+| 4 开票 | `POST /biz/invoices`（`SUB_ORDER`，一般消费者）→ `POST /biz/invoices/{no}/provider-checks` | 号码取自 HR；`uploadStatus` 当场为已送达（同步上传 §25）；鲸跃查单一致 |
+| 5 打印 | `print-facts` → `POST /biz/print/simulations`（`INVOICE_PROOF` 58mm）→ 轮询导出 → `download-grants` → 取 PDF | 有证明联；PDF 以 `%PDF` 开头，存到 `--out` |
+| 6 作废 | `POST /biz/invoices/{no}/void` → `provider-checks` | 本地 `VOIDED`；鲸跃查单一致（已作废，C0） |
+| 7 报告 | — | `cetustek-e2e-<时间>.json`：每次调用的 HTTP 状态 / 业务码 / 耗时，及订单号、发票号、字轨号码 |
+
+- 运行：`export BIZ_TOKEN=…`；先只读 `python3 scripts/invoice/cetustek_v2_e2e.py --store <门店号>`，确认无误后 `--setup --cred-file <文件> --real`，再 `--sale --real`（`--no-range` 跳过已登记的号段）。
+- **前提**：门店开票时机不要设成 `ON_PAID`。2026-11-24 发现 Oscar Retail QA 1121 设了 ON_PAID 时，ZZ 号段停用后付清的测试单 `OD20261124000202` 的自动开立以 26003（无号段）重试中——号段用完可重试是既定设计（补号后自动开出），但一旦登记真实号段就会给这张测试单开出真实发票；已请收银机会话改回 `MANUAL`（重试时按当时设定跳过）。
+- 脚本只开一张 NT$1、立即作废的 B2C 票；号码 HR22644552 起，开立与作废都上传财政部。
