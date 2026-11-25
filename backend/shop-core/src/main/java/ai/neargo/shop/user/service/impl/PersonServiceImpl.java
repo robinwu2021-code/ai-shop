@@ -154,6 +154,21 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
+    public java.util.Set<Integer> matchingTaiwanMobileCandidates(String personNo, java.util.List<String> candidates) {
+        if (candidates.size() > 5000) throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
+        var person = find(personNo).filter(p -> UsrPerson.ACTIVE.equals(p.getStatus()));
+        if (person.isEmpty()) return java.util.Set.of();
+        var expected = person.get().getPhoneHash();
+        var matches = new java.util.HashSet<Integer>();
+        for (int i = 0; i < candidates.size(); i++) {
+            var phone = candidates.get(i);
+            if (phone.matches("09[0-9]{8}") && java.util.stream.Stream.of(phone, "+886" + phone.substring(1),
+                    "886" + phone.substring(1)).map(crypto::hash).anyMatch(expected::equals)) matches.add(i);
+        }
+        return matches;
+    }
+
+    @Override
     public java.util.List<UsrPerson> matchPhones(java.util.List<String> personNos,String query){
         if(personNos==null||personNos.isEmpty())return java.util.List.of();
         if(personNos.size()>200)throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BAD_REQUEST);

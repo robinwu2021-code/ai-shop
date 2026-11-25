@@ -58,6 +58,13 @@ public final class RemoteWorkOrderService implements WorkOrderService {
                 api::getWorkOrder);
     }
 
+    @Override public java.util.List<ai.neargo.shop.beauty.dto.AssignedServiceTaskVO> assignedTasks(
+            String entity, String store, java.time.Instant from, java.time.Instant to) {
+        return BeautyReceptionCalls.call("BEAUTY_ASSIGNED_TASKS", "READ_SELF", entity, store,
+                ai.neargo.shop.auth.SecurityUtils.currentUserNo(), store,
+                new BeautyReceptionInternalApi.AssignedTasks(from, to), bindings, api::assignedTasks);
+    }
+
     @Override
     public MyWorkOrderVO getMyWorkOrder(String userNo, String workOrderNo) {
         return BeautyReceptionCalls.call(

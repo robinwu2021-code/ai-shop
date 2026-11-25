@@ -33,6 +33,9 @@ public class MemberGuestRegistrationPortImpl implements GuestRegistrationPort {
     @Override public GuestFact verify(Scope scope, String guestNo, String token) {
         return service.verify(scope, guestNo, token);
     }
+    @Override public GuestHistory history(Scope scope, String memberNo, String anchorGuest, String phone) {
+        return service.history(scope, memberNo, anchorGuest, phone);
+    }
     @Override public DeskGuest deskGuest(Scope scope, String guestNo, String phone) {
         return service.deskGuest(scope, guestNo, phone);
     }

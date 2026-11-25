@@ -166,6 +166,14 @@ public final class RemoteGuestRegistrationPort implements GuestRegistrationPort 
         require(result != null && request.equals(result.request()));
         return fact(result.guest(), guestNo);
     }
+    @Override public GuestHistory history(Scope scope, String memberNo, String anchorGuest, String phone) {
+        current(scope);
+        var request = new GuestRegistrationInternalApi.HistoryRequest(scope, memberNo, anchorGuest, phone);
+        var reply = ServiceCalls.call("PLATFORM", () -> api.history(request));
+        require(reply != null && scope.equals(reply.scope()) && reply.history() != null);
+        current(scope);
+        return reply.history();
+    }
     @Override public DeskGuest deskGuest(Scope scope, String guestNo, String phone) {
         current(scope);
         var request = new GuestRegistrationInternalApi.DeskGuestRequest(scope, guestNo, phone);

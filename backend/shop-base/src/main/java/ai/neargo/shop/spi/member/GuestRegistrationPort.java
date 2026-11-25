@@ -106,6 +106,13 @@ public interface GuestRegistrationPort {
         throw new UnsupportedOperationException("desk guest unavailable");
     }
 
+    default GuestHistory history(Scope scope, String memberNo, String anchorGuest, String phone) {
+        throw new UnsupportedOperationException("guest history unavailable");
+    }
+
+    record GuestHistory(String linkedUserNo, List<String> guestNos) {
+        public GuestHistory { guestNos = List.copyOf(guestNos); }
+    }
     record DeskGuest(GuestFact guest, String displayName, String phoneLastFour) {
         @Override public String toString() { return "DeskGuest[REDACTED]"; }
     }

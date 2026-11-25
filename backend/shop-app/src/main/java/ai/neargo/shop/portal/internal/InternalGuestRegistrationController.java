@@ -162,6 +162,15 @@ public class InternalGuestRegistrationController {
                             () -> guests.claim(request.scope(), request.guestNo(), request.command())));
         });
     }
+    @PostMapping(GuestRegistrationInternalApi.BASE + "history")
+    public ResponseEntity<?> history(@RequestBody GuestRegistrationInternalApi.HistoryRequest request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return invoke(given, () -> {
+            require(request != null);
+            return new GuestRegistrationInternalApi.HistoryReply(request.scope(), delegate(request.scope(),
+                    () -> guests.history(request.scope(), request.memberNo(), request.anchorGuest(), request.phone())));
+        });
+    }
     @PostMapping(GuestRegistrationInternalApi.BASE + "desk-guest")
     public ResponseEntity<?> deskGuest(@RequestBody GuestRegistrationInternalApi.DeskGuestRequest request,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {

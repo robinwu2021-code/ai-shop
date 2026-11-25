@@ -49,6 +49,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @EnabledIfSystemProperty(named = "member-guest.test.native", matches = "true")
 class MemberGuestRegistrationIT {
     @Autowired JdbcTemplate sql;
+    @Autowired ai.neargo.shop.spi.user.PersonPort people;
     @Autowired MemberGuestRegistrationService guests;
     @Autowired MemberCodeResolveService codes;
     @Autowired MemberGuestRegistrationMapper mapper;
@@ -121,6 +122,25 @@ class MemberGuestRegistrationIT {
         rejected(() -> as(scope, () -> guests.verify(scope, result.guestNo(), result.claimToken())),
                 ErrorCode.FORBIDDEN);
     }
+    @Test void legacyHistoryUsesExactContactAndRequiresTheOriginalStore() {
+        var first = as(scope, () -> guests.register(scope, new RegisterCommand("0900000197", "Desk", true, "history-1")));
+        var second = as(scope, () -> guests.register(scope, new RegisterCommand("+886900000197", "Desk", true, "history-2")));
+        as(scope, () -> guests.register(scope, new RegisterCommand("0911110197", "Different", true, "history-3")));
+        var otherStore = scope(actor, "MCH", store + "2");
+        as(otherStore, () -> guests.register(otherStore, new RegisterCommand("0900000197", "Other", true, "history-4")));
+        assertThat(as(scope, () -> guests.history(scope, null, first.guestNo(), "0900000197")).guestNos())
+                .containsExactlyInAnyOrder(first.guestNo(), second.guestNo());
+        var person = people.resolveOrCreateByPhone("+886900000197");
+        String memberNo = entity + "-PHONE";
+        sql.update("INSERT INTO mbr_member(member_no,entity_no,person_no,status,source,first_store_no,joined_at,created_at,updated_at) "
+                + "VALUES (?,?,?,'LEAD','MANUAL',?,0,NOW(),NOW())", memberNo, entity, person.personNo(), store);
+        var memberHistory = as(scope, () -> guests.history(scope, memberNo, null, null));
+        assertThat(memberHistory.linkedUserNo()).isNull();
+        assertThat(memberHistory.guestNos()).containsExactlyInAnyOrder(first.guestNo(), second.guestNo());
+        rejected(() -> as(scope, () -> guests.history(scope, null, first.guestNo(), "0911110197")),
+                ErrorCode.FORBIDDEN);
+    }
+
     @Test void sameStoreManagerHandoffRequiresTheirOwnCurrentReferenceAndOriginalGuestSecret() {
         var result = as(scope, () -> guests.register(scope, command));
         String oldRef = reference(scope, user);

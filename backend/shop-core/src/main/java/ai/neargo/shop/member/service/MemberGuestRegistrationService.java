@@ -27,6 +27,8 @@ public interface MemberGuestRegistrationService {
     Registration register(Scope scope, RegisterCommand command);
     GuestFact get(Scope scope, String guestNo);
     GuestFact verify(Scope scope, String guestNo, String claimToken);
+    ai.neargo.shop.spi.member.GuestRegistrationPort.GuestHistory history(
+            Scope scope, String memberNo, String anchorGuest, String phone);
     DeskGuest deskGuest(Scope scope, String guestNo, String phone);
     Claim claim(Scope scope, String guestNo, ClaimCommand command);
 }

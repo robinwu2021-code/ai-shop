@@ -94,6 +94,14 @@ public final class ReceptionIdentity {
         return "CLAIMED".equals(fact.state()) ? new VerifiedIdentity("USER", fact.userNo())
                 : new VerifiedIdentity("GUEST", guestNo);
     }
+    public GuestRegistrationPort.GuestHistory history(String entity, String store, String memberNo,
+            String guestNo, String phone) {
+        var actor = SecurityUtils.requireUser().userNo();
+        var scope = access.customer(entity, store, actor);
+        var history = guests.getObject().history(scope, memberNo, guestNo, phone);
+        if (!scope.equals(access.customer(entity, store, actor))) throw BizException.of(ErrorCode.FORBIDDEN);
+        return history;
+    }
     public GuestRegistrationPort.DeskGuest deskGuest(String entity, String store, String guestNo, String phone) {
         var actor = SecurityUtils.requireUser().userNo();
         var scope = access.customer(entity, store, actor);

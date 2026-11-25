@@ -22,6 +22,7 @@ public interface GuestRegistrationInternalApi {
     @PostExchange(BASE + "register") Registered register(@RequestBody Register request);
     @PostExchange(BASE + "get") Found get(@RequestBody Get request);
     @PostExchange(BASE + "verify") Verified verify(@RequestBody Verify request);
+    @PostExchange(BASE + "history") HistoryReply history(@RequestBody HistoryRequest request);
     @PostExchange(BASE + "desk-guest") DeskGuestReply deskGuest(@RequestBody DeskGuestRequest request);
     @PostExchange(BASE + "claim") Claimed claim(@RequestBody ClaimRequest request);
 
@@ -69,6 +70,10 @@ public interface GuestRegistrationInternalApi {
     record Verify(Scope scope, String guestNo, String claimToken) {
         @Override public String toString() { return "Verify[claimToken=REDACTED]"; }
     }
+    record HistoryRequest(Scope scope, String memberNo, String anchorGuest, String phone) {
+        @Override public String toString() { return "HistoryRequest[REDACTED]"; }
+    }
+    record HistoryReply(Scope scope, GuestRegistrationPort.GuestHistory history) { }
     record DeskGuestRequest(Scope scope, String guestNo, String phone) {
         @Override public String toString() { return "DeskGuestRequest[REDACTED]"; }
     }

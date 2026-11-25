@@ -21,6 +21,8 @@ public interface PersonService {
 
     Optional<UsrPerson> find(String personNo);
 
+    java.util.Set<Integer> matchingTaiwanMobileCandidates(String personNo, java.util.List<String> candidates);
+
     java.util.List<UsrPerson> matchPhones(java.util.List<String> personNos,String query);
 
     /**

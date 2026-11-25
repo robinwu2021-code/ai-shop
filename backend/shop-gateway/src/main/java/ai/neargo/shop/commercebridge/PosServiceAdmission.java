@@ -60,6 +60,7 @@ class PosServiceAdmission {
             String resource = path.substring(BEAUTY.length()).split("/", 2)[0];
             if (BOOKING.contains(resource)) return "SVC_BOOKING";
             if (CATALOG.contains(resource)) return "SVC_CATALOG";
+            if ((BEAUTY + "work-orders/my-tasks").equals(path)) return "SVC_TASK";
             if ("work-orders".equals(resource) && path.equals(BEAUTY + resource) && "POST".equals(method)) {
                 return "SVC_TASK";
             }

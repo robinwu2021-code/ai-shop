@@ -273,8 +273,27 @@ public final class AppointmentServiceImpl implements AppointmentService {
         if (q.storeNo() != null && !store.equals(q.storeNo())) { throw BizException.of(ErrorCode.FORBIDDEN); }
         var query = query(q.from(), q.to(), q.status()).eq(BtyAppointment::getEntityNo, entity)
                 .eq(BtyAppointment::getStoreNo, store);
-        if (q.memberNo() != null) {
-            query.apply(CustomerOwnership.appointmentPredicate(), receptionIdentity.customerMember(entity, store, q.memberNo()));
+        if (q.memberNo() != null || q.contactHistory() != null) {
+            if (q.memberNo() != null && q.contactHistory() != null) throw BizException.of(ErrorCode.BAD_REQUEST);
+            var contact = q.contactHistory();
+            String guestNo = null;
+            if (contact != null) {
+                guestNo = merchantRoot(entity, store, actor, contact.appointmentNo(), false).getGuestRef();
+                if (guestNo == null) throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+            var history = receptionIdentity.history(entity, store, q.memberNo(), guestNo,
+                    contact == null ? null : contact.phone());
+            var user = history.linkedUserNo();
+            var guestNos = history.guestNos();
+            if (user == null && guestNos.isEmpty()) return new PageData<>(List.of(), 0,
+                    q.page() == null ? 1 : q.page(), q.size() == null ? 20 : q.size());
+            query.and(identity -> {
+                if (user != null) identity.apply(CustomerOwnership.appointmentPredicate(), user);
+                if (!guestNos.isEmpty()) {
+                    if (user != null) identity.or();
+                    identity.isNull(BtyAppointment::getCustomerRef).in(BtyAppointment::getGuestRef, guestNos);
+                }
+            });
         }
         if (q.personnelNo() != null) {
             query.apply("EXISTS (SELECT 1 FROM bty_appointment_item i JOIN bty_appointment_assignment a "

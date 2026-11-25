@@ -241,6 +241,11 @@ public interface BeautyReceptionInternalApi {
         }
     }
 
+    @PostExchange("/internal/beauty/reception/assignedTasks")
+    InternalReply<java.util.List<ai.neargo.shop.beauty.dto.AssignedServiceTaskVO>> assignedTasks(
+            @RequestBody InternalCall<AssignedTasks> request);
+    record AssignedTasks(java.time.Instant from, java.time.Instant to) { }
+
     /** Uses the existing WorkOrderService owner; binding never grants business permission. */
     @PostExchange("/internal/beauty/reception/openWorkOrder")
     InternalReply<WorkOrderVO> openWorkOrder(@RequestBody InternalCall<OpenWorkOrder> request);

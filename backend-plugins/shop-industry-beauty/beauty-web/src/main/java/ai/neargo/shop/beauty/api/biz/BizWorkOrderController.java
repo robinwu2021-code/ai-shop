@@ -77,6 +77,16 @@ public class BizWorkOrderController {
                         idempotencyKey);
     }
 
+    @GetMapping("/my-tasks")
+    public java.util.List<ai.neargo.shop.beauty.dto.AssignedServiceTaskVO> assignedTasks(
+            @org.springframework.web.bind.annotation.RequestParam java.time.Instant from,
+            @org.springframework.web.bind.annotation.RequestParam java.time.Instant to,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
+        BookingStoreScope.require(directories, requestedStore);
+        return workOrderService.getObject().assignedTasks(
+                BizContext.requireMerchantNo(), BizContext.requireStoreNo(), from, to);
+    }
+
     /** Delegates GET_WORK_ORDER without creating alternative business state or authority. */
     @GetMapping("/{workOrderNo}")
     public WorkOrderDetailVO getWorkOrder(

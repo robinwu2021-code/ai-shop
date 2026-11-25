@@ -23,6 +23,10 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.member.config.MemberGuestCrypto;
 import ai.neargo.shop.member.dto.MemberCodeScope;
 import ai.neargo.shop.member.entity.MbrGuestRegistration;
+import ai.neargo.shop.member.entity.MbrMember;
+import ai.neargo.shop.member.mapper.MemberMappers.MemberMapper;
+import ai.neargo.shop.spi.member.GuestRegistrationPort.GuestHistory;
+import ai.neargo.shop.spi.user.PersonPort;
 import ai.neargo.shop.member.mapper.MemberGuestRegistrationMapper;
 import ai.neargo.shop.member.service.MemberCodeResolveService;
 import ai.neargo.shop.member.service.MemberGuestRegistrationService;
@@ -61,6 +65,14 @@ public class MemberGuestRegistrationServiceImpl implements MemberGuestRegistrati
     private final UserScopeFactsPort users;
     private final TransactionTemplate writes;
     private TokenStores tokens;
+    private MemberMapper members;
+    private PersonPort people;
+
+    @Autowired
+    void setHistoryDependencies(MemberMapper members, PersonPort people) {
+        this.members = members;
+        this.people = people;
+    }
 
     public MemberGuestRegistrationServiceImpl(MemberGuestRegistrationMapper rows, MerchantOperatorAccessPort access,
             MerchantScopeFactsPort stores, MemberCodeResolveService codes, MemberGuestCrypto crypto,
@@ -305,17 +317,75 @@ public class MemberGuestRegistrationServiceImpl implements MemberGuestRegistrati
         });
     }
 
+    @Override public GuestHistory history(Scope scope, String memberNo, String anchorGuest, String phone) {
+        requireScope(scope);
+        if (memberNo == null ? anchorGuest == null || phone == null : anchorGuest != null || phone != null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String contact = null;
+        String linkedUser = null;
+        String personNo = null;
+        if (memberNo != null) {
+            requireId(memberNo, 64);
+            var member = DataScopeContext.executeWithoutScope(() -> members.selectOne(Wrappers.<MbrMember>lambdaQuery()
+                    .eq(MbrMember::getTenantNo, scope.identity().tenantNo())
+                    .eq(MbrMember::getEntityNo, scope.entityNo()).eq(MbrMember::getMemberNo, memberNo)
+                    .in(MbrMember::getStatus, List.of(MbrMember.ACTIVE, MbrMember.LEAD))));
+            if (member == null) throw BizException.of(ErrorCode.NOT_FOUND);
+            var person = people.find(member.getPersonNo()).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+            if (person.userNo() != null) linkedUser = users.findActive(scope.identity().tenantNo(), person.userNo())
+                    .map(active -> active.userNo()).orElse(null);
+            personNo = person.personNo();
+        } else {
+            deskGuest(scope, anchorGuest, phone);
+            contact = mobile(phone);
+        }
+        var matches = new java.util.ArrayList<String>();
+        long after = 0;
+        while (true) {
+            final long cursor = after;
+            var candidates = DataScopeContext.executeWithoutScope(() -> rows.selectList(Wrappers.<MbrGuestRegistration>lambdaQuery()
+                    .select(MbrGuestRegistration::getId, MbrGuestRegistration::getTenantNo, MbrGuestRegistration::getEntityNo,
+                            MbrGuestRegistration::getStoreNo, MbrGuestRegistration::getGuestNo,
+                            MbrGuestRegistration::getContactCipher)
+                    .eq(MbrGuestRegistration::getTenantNo, scope.identity().tenantNo())
+                    .eq(MbrGuestRegistration::getEntityNo, scope.entityNo()).eq(MbrGuestRegistration::getStoreNo, scope.storeNo())
+                    .eq(MbrGuestRegistration::getState, "REGISTERED").isNotNull(MbrGuestRegistration::getContactCipher)
+                    .gt(MbrGuestRegistration::getId, cursor).orderByAsc(MbrGuestRegistration::getId).last("LIMIT 256")));
+            if (candidates.isEmpty()) break;
+            var phones = candidates.stream().map(this::storedMobile).toList();
+            var memberMatches = personNo == null ? Set.<Integer>of() : people.matchingTaiwanMobileCandidates(personNo, phones);
+            for (int i = 0; i < candidates.size(); i++) {
+                if (memberMatches.contains(i) || contact != null && contact.equals(phones.get(i))) {
+                    matches.add(candidates.get(i).getGuestNo());
+                }
+            }
+            if (candidates.size() < 256) break;
+            after = candidates.getLast().getId();
+        }
+        requireScope(scope);
+        return new GuestHistory(linkedUser, matches);
+    }
+
+    private String storedMobile(MbrGuestRegistration row) {
+        return mobile(row.getContactCipher() == null ? null : crypto.decrypt(row.getTenantNo(), row.getEntityNo(),
+                row.getStoreNo(), row.getGuestNo(), "contact", row.getContactCipher()));
+    }
+
+    private static String mobile(String stored) {
+        var digits = stored == null ? "" : stored.replaceAll("[+()\\s-]", "");
+        if (digits.startsWith("8869")) digits = "0" + digits.substring(3);
+        return digits.matches("09[0-9]{8}") ? digits : "";
+    }
+
     @Override public ai.neargo.shop.spi.member.GuestRegistrationPort.DeskGuest deskGuest(
             Scope scope, String guestNo, String phone) {
         requireScope(scope);
         if (phone != null && !phone.matches("09[0-9]{8}")) throw BizException.of(ErrorCode.BAD_REQUEST);
         return transaction(() -> {
             var row = guest(scope, guestNo, false);
-            var stored = row.getContactCipher() == null ? null : crypto.decrypt(row.getTenantNo(), row.getEntityNo(),
-                    row.getStoreNo(), row.getGuestNo(), "contact", row.getContactCipher());
-            var mobile = stored == null ? "" : stored.replaceAll("[+()\\s-]", "");
-            if (mobile.startsWith("8869")) mobile = "0" + mobile.substring(3);
-            var recognized = mobile.matches("09[0-9]{8}");
+            var mobile = storedMobile(row);
+            var recognized = !mobile.isEmpty();
             if (phone != null && (!recognized || !MessageDigest.isEqual(
                     phone.getBytes(StandardCharsets.US_ASCII), mobile.getBytes(StandardCharsets.US_ASCII)))) {
                 throw BizException.of(ErrorCode.FORBIDDEN);

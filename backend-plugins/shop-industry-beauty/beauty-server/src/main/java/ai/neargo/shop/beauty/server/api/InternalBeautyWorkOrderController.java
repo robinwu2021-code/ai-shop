@@ -87,6 +87,16 @@ public class InternalBeautyWorkOrderController {
                 });
     }
 
+    @PostMapping("/internal/beauty/reception/assignedTasks")
+    public ResponseEntity<?> assignedTasks(
+            @RequestBody InternalCall<BeautyReceptionInternalApi.AssignedTasks> request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String token) {
+        return calls.invoke(token, request, "BEAUTY_ASSIGNED_TASKS", "READ_SELF",
+                BoundDelegatedCalls.Mode.MERCHANT, request.binding().storeNo(),
+                () -> workOrderService.assignedTasks(request.binding().entityNo(), request.binding().storeNo(),
+                        request.request().from(), request.request().to()));
+    }
+
     /** The fixed route chooses GET_WORK_ORDER; the caller cannot dispatch another action. */
     @PostMapping("/internal/beauty/reception/getWorkOrder")
     public ResponseEntity<?> getWorkOrder(

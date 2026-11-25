@@ -148,9 +148,11 @@ public class BeautyReceptionConfiguration {
             ServiceSubmissionService submissions,
             WorkOrderBillService bills,
             BeautyMappers.WorkOrderContextMapper contexts,
-            ObjectProvider<GuestRegistrationPort> guests) {
-        return new WorkOrderServiceImpl(
-                coordinator, query, db, access, orders, submissions, bills, contexts, guests);
+            ObjectProvider<GuestRegistrationPort> guests, BeautyMappers.ServiceTaskMapper tasks,
+            ai.neargo.shop.beauty.policy.ServiceExecutionAccess executionAccess) {
+        var service = new WorkOrderServiceImpl(coordinator, query, db, access, orders, submissions, bills, contexts, guests);
+        service.attachAssignedTasks(tasks, executionAccess);
+        return service;
     }
     @Bean ReceptionCoordinator receptionCoordinator(AppointmentPersistence db, AppointmentAccess access,
             ReceptionAccess receptionAccess, ReceptionIdentity identities, CustomerOwnership ownership,

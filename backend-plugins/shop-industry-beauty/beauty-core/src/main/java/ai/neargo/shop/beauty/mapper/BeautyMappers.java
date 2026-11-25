@@ -727,6 +727,29 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
 
     /** 可独立执行服务任务；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface ServiceTaskMapper extends BaseMapper<BtyServiceTask> {
+        @Select("""
+                SELECT t.task_no, t.work_order_no, t.sku_no, t.status, MIN(a.start_at) AS planned_start_at
+                FROM bty_service_task t JOIN bty_work_order w
+                  ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
+                JOIN bty_appointment_item i
+                  ON i.tenant_no=w.tenant_no AND i.entity_no=w.entity_no AND i.appointment_no=w.appointment_no
+                  AND i.appointment_item_no=t.appointment_item_no AND i.deleted=0
+                JOIN bty_appointment_current c
+                  ON c.tenant_no=i.tenant_no AND c.entity_no=i.entity_no AND c.appointment_no=i.appointment_no
+                  AND c.deleted=0
+                JOIN bty_appointment_assignment a
+                  ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no AND a.appointment_item_no=i.appointment_item_no
+                  AND a.appointment_revision=c.arrangement_revision AND a.deleted=0
+                WHERE t.tenant_no=#{tenant} AND t.entity_no=#{entity} AND w.store_no=#{store}
+                  AND a.personnel_no=#{personnel} AND a.start_at>=#{from} AND a.start_at<#{to}
+                  AND w.deleted=0 AND t.deleted=0 AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision
+                GROUP BY t.task_no,t.work_order_no,t.sku_no,t.status
+                ORDER BY planned_start_at,t.task_no LIMIT 201
+                """)
+        List<ai.neargo.shop.beauty.dto.AssignedServiceTaskVO> selectAssigned(
+                @Param("tenant") String tenant, @Param("entity") String entity, @Param("store") String store,
+                @Param("personnel") String personnel, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
         /**
          * Every child proves the complete live root and optional original appointment-item parent.
          */

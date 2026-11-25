@@ -63,6 +63,35 @@ public final class WorkOrderServiceImpl implements WorkOrderService {
         this.guests = guests;
     }
 
+    private BeautyMappers.ServiceTaskMapper assignedTaskRows;
+    private ai.neargo.shop.beauty.policy.ServiceExecutionAccess executionAccess;
+
+    public void attachAssignedTasks(BeautyMappers.ServiceTaskMapper rows,
+            ai.neargo.shop.beauty.policy.ServiceExecutionAccess executionAccess) {
+        this.assignedTaskRows = rows;
+        this.executionAccess = executionAccess;
+    }
+
+    @Override public java.util.List<ai.neargo.shop.beauty.dto.AssignedServiceTaskVO> assignedTasks(
+            String entity, String store, java.time.Instant from, java.time.Instant to) {
+        if (from == null || to == null || !to.isAfter(from) ||
+                java.time.Duration.between(from, to).compareTo(java.time.Duration.ofDays(1)) > 0) {
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
+        }
+        if (executionAccess == null) {
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
+        }
+        var scope = new ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionScope("MAIN", entity, store);
+        var current = executionAccess.requireSelf(scope);
+        var rows = db.read(() -> assignedTaskRows.selectAssigned(scope.tenantNo(), entity, store,
+                current.personnel().personnelNo(), java.time.LocalDateTime.ofInstant(from, java.time.ZoneOffset.UTC),
+                java.time.LocalDateTime.ofInstant(to, java.time.ZoneOffset.UTC)));
+        executionAccess.requireSame(scope, current);
+        if (rows.size() > 200) throw ai.neargo.shop.common.BizException.of(
+                ai.neargo.shop.common.ErrorCode.BEAUTY_SEARCH_INCOMPLETE);
+        return rows;
+    }
+
     @Override public WorkOrderVO openWorkOrder(String entity, String store, String actor, OpenWorkOrderReq req,
             String key) { return coordinator.open(entity, store, actor, req, key); }
     @Override public WorkOrderDetailVO getWorkOrder(String entity, String store, String actor, String number) {

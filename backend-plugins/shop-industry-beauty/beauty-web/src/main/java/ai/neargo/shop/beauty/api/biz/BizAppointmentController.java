@@ -77,8 +77,30 @@ public class BizAppointmentController {
     public PageData<AppointmentSummaryVO> listAppointments(@Valid @ModelAttribute AppointmentQuery query,
             @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
         BookingStoreScope.require(directories, requestedStore);
+        if (query.contactHistory() != null) throw ai.neargo.shop.common.BizException.of(
+                ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
         return appointmentService.getObject().listAppointments(BizContext.requireMerchantNo(),
                 BizContext.requireStoreNo(), SecurityUtils.currentUserNo(), query);
+    }
+
+    @PostMapping("/{appointmentNo}/contact-history")
+    public PageData<AppointmentSummaryVO> contactHistory(@PathVariable("appointmentNo") String appointmentNo,
+            @RequestBody ContactPhone request,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false) String requestedStore) {
+        BookingStoreScope.require(directories, requestedStore);
+        BookingStoreScope.requireResourceNo(appointmentNo);
+        return appointmentService.getObject().listAppointments(BizContext.requireMerchantNo(),
+                BizContext.requireStoreNo(), SecurityUtils.currentUserNo(),
+                new AppointmentQuery(null, null, null, null, null, 1, 60, null, null,
+                        new AppointmentQuery.ContactHistory(appointmentNo, request.phone())));
+    }
+
+    public record ContactPhone(String phone) {
+        public ContactPhone {
+            if (phone == null || !phone.matches("09[0-9]{8}")) throw ai.neargo.shop.common.BizException.of(
+                    ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
+        }
+        @Override public String toString() { return "ContactPhone[REDACTED]"; }
     }
 
     /** getAppointment retains the approved public contract and delegates business authorization. */

@@ -30,6 +30,11 @@ public interface PersonPort {
 
     Optional<PersonView> find(String personNo);
 
+    /** Return the indices of submitted Taiwanese mobile candidates matching this authorized person. */
+    default java.util.Set<Integer> matchingTaiwanMobileCandidates(String personNo, java.util.List<String> candidates) {
+        return java.util.Set.of();
+    }
+
     /** Match only explicitly authorized person IDs; never return raw numbers. Batch size <=200. */
     java.util.List<PersonView> matchPhones(java.util.List<String> personNos,String query);
 

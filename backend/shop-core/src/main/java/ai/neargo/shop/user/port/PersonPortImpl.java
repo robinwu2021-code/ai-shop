@@ -45,6 +45,11 @@ public class PersonPortImpl implements PersonPort {
     }
 
     @Override
+    public java.util.Set<Integer> matchingTaiwanMobileCandidates(String personNo, java.util.List<String> candidates) {
+        return personService.matchingTaiwanMobileCandidates(personNo, candidates);
+    }
+
+    @Override
     public java.util.List<PersonView> matchPhones(java.util.List<String> ids,String query){return personService.matchPhones(ids,query).stream().map(this::view).toList();}
 
     @Override

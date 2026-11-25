@@ -15,6 +15,11 @@ public interface WorkOrderService {
             OpenWorkOrderReq req, String idempotencyKey);
     /** Authorize the live store root in SQL before projecting its real task children. */
     WorkOrderDetailVO getWorkOrder(String entityNo, String currentStoreNo, String actorNo, String workOrderNo);
+    default java.util.List<ai.neargo.shop.beauty.dto.AssignedServiceTaskVO> assignedTasks(
+            String entityNo, String storeNo, java.time.Instant from, java.time.Instant to) {
+        throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
+    }
+
     /** Consumer ownership uses canonical USER or immutable scoped guest claim receipts. */
     MyWorkOrderVO getMyWorkOrder(String userNo, String workOrderNo);
 
