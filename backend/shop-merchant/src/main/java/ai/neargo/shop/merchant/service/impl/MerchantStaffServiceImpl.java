@@ -267,6 +267,67 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
 
     @Override
     @Transactional
+    public StaffVO addWithLogin(String merchantNo, String loginPhone, String displayName,
+                                String loginEmail, String employeeCode, String storeNo, String role) {
+        ownership.lockEntityAndCheck("MAIN", merchantNo);
+        List<MchAccount> members = accounts(merchantNo);
+        MchAccount existing = members.stream().filter(a ->
+                loginPhone != null && loginPhone.equals(a.getLoginPhone())
+                        || loginEmail != null && loginEmail.equals(a.getLoginEmail()))
+                .findFirst().orElse(null);
+        if (members.stream().anyMatch(a -> a != existing &&
+                (loginPhone != null && loginPhone.equals(a.getLoginPhone())
+                        || loginEmail != null && loginEmail.equals(a.getLoginEmail())
+                        || employeeCode != null && employeeCode.equals(a.getEmployeeCode())))) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        if (existing != null) {
+            if (Boolean.TRUE.equals(existing.getIsOwner())
+                    || loginPhone != null && !loginPhone.equals(existing.getLoginPhone())
+                    || loginEmail != null && existing.getLoginEmail() != null && !loginEmail.equals(existing.getLoginEmail())
+                    || employeeCode != null && existing.getEmployeeCode() != null && !employeeCode.equals(existing.getEmployeeCode())) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            if (loginEmail != null && existing.getLoginEmail() == null) {
+                // Adding a second sign-in method also grants the recipient access to all existing store roles.
+                // Keep legacy phone accounts intact until a verified linking workflow is available.
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            if (employeeCode != null && existing.getEmployeeCode() == null) {
+                existing.setEmployeeCode(employeeCode);
+                DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(existing));
+                log(merchantNo, existing.getMchAccountNo(), MchStaffLog.STAFF_ADD,
+                        null, null, "分配員工編號 " + employeeCode);
+            }
+            if (storeNo != null && !MchAccount.ACTIVE.equals(existing.getStatus()))
+                throw BizException.of(ErrorCode.CONFLICT);
+            return storeNo == null ? single(merchantNo, existing)
+                    : grantStore(merchantNo, existing.getMchAccountNo(), storeNo, role, true);
+        }
+
+        if ((loginPhone == null && loginEmail == null)
+                || (loginPhone != null && !loginPhone.matches(ai.neargo.shop.common.Phones.INTL_MOBILE))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MchAccount account = new MchAccount();
+        account.setMchAccountNo(BizKey.next(BizKey.MERCHANT_STAFF));
+        account.setEntityNo(merchantNo);
+        account.setLoginPhone(loginPhone);
+        account.setLoginEmail(loginEmail);
+        account.setEmployeeCode(employeeCode);
+        account.setIsOwner(false);
+        account.setIsPrimary(false);
+        account.setStatus(MchAccount.ACTIVE);
+        account.setDisplayName(displayName == null || displayName.isBlank() ? null : displayName.trim());
+        DataScopeContext.executeWithoutScope(() -> staffMapper.insert(account));
+        log(merchantNo, account.getMchAccountNo(), MchStaffLog.STAFF_ADD, null, null, "新增員工");
+        return storeNo == null ? single(merchantNo, account)
+                : grantStore(merchantNo, account.getMchAccountNo(), storeNo, role, true);
+    }
+
+    @Override
+    @Transactional
     public StaffVO setStatus(String merchantNo, String mchAccountNo, boolean active) {
         ownership.lockEntityAndCheck("MAIN", merchantNo);
         MchAccount a = require(merchantNo, mchAccountNo);
@@ -705,7 +766,8 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
          * 姓名（displayName）是另一件事：它是认人的，不是身份。两者都要。
          */
         return new StaffVO(a.getMchAccountNo(), a.getDisplayName(), a.getLoginPhone(),
-                Boolean.TRUE.equals(a.getIsOwner()), a.getStatus(), roles);
+                Boolean.TRUE.equals(a.getIsOwner()), a.getStatus(), roles,
+                a.getLoginEmail(), a.getEmployeeCode(), a.getLoginUserNo() != null);
     }
 
     /**

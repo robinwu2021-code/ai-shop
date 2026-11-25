@@ -173,6 +173,53 @@ class BizIdentityNativeMysqlTest {
             assertEquals(10474,f.enter(expired,"OWNER").path("code").asInt());
         }
     }
+    @Test void employeeEmailAndCodeResolveTheSameStaffIdentity() throws Exception {
+        try (var f = new Fixture()) {
+            f.staff("STAFF", "15965040204");
+            f.db.jdbc.update("UPDATE mch_account SET login_email='staff@example.test',employee_code='01001'"
+                    + " WHERE mch_account_no='STAFF'");
+            f.db.jdbc.update("INSERT INTO usr_identity(user_no,identity_type,identity_value,created_at,updated_at)"
+                    + " VALUES('U','EMAIL','staff@example.test',NOW(),NOW()),('U','PASSWORD',?,NOW(),NOW())",
+                    new PasswordHasher().encode("test-password-2026"));
+            f.otp.save(EmailOtpService.key("staff@example.test"), "246813");
+            var email = f.post("/biz/auth/identities", Map.of("grantType", "EMAIL_OTP", "principal",
+                    "STAFF@example.test", "credential", "246813", "agreed", true));
+            assertTrue(email.path("identities").toString().contains("STAFF-STAFF"));
+            assertTrue(f.enter(email, "STAFF-STAFF").path("token").asString().startsWith("btk_"));
+            var code = f.post("/biz/auth/identities", Map.of("grantType", "EMPLOYEE_PASSWORD", "principal",
+                    "01001", "companyCode", "M", "credential", "test-password-2026", "agreed", true));
+            assertEquals(1, code.path("identities").size());
+            assertEquals("STAFF-STAFF", code.path("identities").path(0).path("identityNo").asString());
+            assertFalse(code.path("canCreateOwner").asBoolean());
+            assertEquals(10404, f.enter(code, "OWNER").path("code").asInt());
+            f.db.jdbc.update("UPDATE mch_account SET status='DISABLED' WHERE mch_account_no='STAFF'");
+            assertEquals(10404, f.enter(code, "STAFF-STAFF").path("code").asInt());
+        }
+    }
+
+    @Test void verifiedStaffOtpCanSetTheEmployeeCodePassword() throws Exception {
+        try (var f = new Fixture()) {
+            String phone = "15965040209";
+            f.staff("SMS-STAFF", phone);
+            f.db.jdbc.update("UPDATE mch_account SET employee_code='1002' WHERE mch_account_no='SMS-STAFF'");
+            f.otp.save(phone, "246813");
+            var password = "test-password-2026";
+            var setup = f.post("/biz/auth/identities", Map.of("grantType", "PHONE_OTP", "principal", phone,
+                    "credential", "246813", "newPassword", password, "agreed", true));
+            assertEquals(0, setup.path("code").asInt());
+            assertFalse(setup.path("ticket").isTextual());
+            assertEquals(1, f.db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM mch_account WHERE mch_account_no='SMS-STAFF' AND login_user_no IS NOT NULL",
+                    Integer.class));
+            var code = f.post("/biz/auth/identities", Map.of("grantType", "EMPLOYEE_PASSWORD", "principal",
+                    "1002", "companyCode", "M", "credential", password));
+            assertEquals("STAFF-SMS-STAFF", code.path("identities").path(0).path("identityNo").asString());
+            var mismatch = f.post("/biz/auth/identities", Map.of("grantType", "EMPLOYEE_PASSWORD", "principal",
+                    "1002", "companyCode", "OTHER", "credential", password));
+            assertEquals(10456, mismatch.path("code").asInt());
+        }
+    }
+
     @Test void emailUsesOnlyItsAccountsVerifiedPhoneForStaffDiscovery() throws Exception {
         try (var f = new Fixture()) {
             f.ownerPhone("15965040204");

@@ -44,6 +44,11 @@ public class MchAccount extends BaseEntity {
      * 它让人以为库上拦得住。由应用层保证 + 守卫测试。
      */
     private String loginPhone;
+    private String loginEmail;
+    private String employeeCode;
+
+    /** Verified login user. Separate from the legacy membership link used by the mini app. */
+    private String loginUserNo;
 
     /**
      * 备注名（V71）。老板自己写的，如「小张」「王姐」。

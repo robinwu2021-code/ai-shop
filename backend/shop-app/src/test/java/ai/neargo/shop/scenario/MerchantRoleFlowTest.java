@@ -134,6 +134,35 @@ class MerchantRoleFlowTest {
                 .andExpect(jsonPath("$.code").value(10409));
     }
 
+    @Test
+    void createsEmailEmployeeWithStoreRoleAndReservesTheCode() throws Exception {
+        String owner = merchant("18700270021", "員工帳號測試");
+        String store = firstStore(owner);
+        var create = post("/biz/staff").header("Authorization", "Bearer " + owner)
+                .contentType(MediaType.APPLICATION_JSON);
+        mvc().perform(create.content(json.writeValueAsString(java.util.Map.of(
+                        "displayName", "員工一", "loginEmail", "EMPLOYEE@EXAMPLE.TEST", "employeeCode", "01001",
+                        "storeNo", store, "role", "CLERK"))))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.loginEmail").value("employee@example.test"))
+                .andExpect(jsonPath("$.data.employeeCode").value("01001"))
+                .andExpect(jsonPath("$.data.emailVerified").value(false))
+                .andExpect(jsonPath("$.data.roles[0].storeNo").value(store))
+                .andExpect(jsonPath("$.data.roles[0].role").value("CLERK"));
+        mvc().perform(post("/biz/staff").header("Authorization", "Bearer " + owner)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"loginEmail\":\"other@example.test\",\"employeeCode\":\"01001\"}"))
+                .andExpect(jsonPath("$.code").value(10409));
+        mvc().perform(post("/biz/staff").header("Authorization", "Bearer " + owner)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(java.util.Map.of(
+                                "loginEmail", "forbidden@example.test", "employeeCode", "01002",
+                                "storeNo", store, "role", "OWNER"))))
+                .andExpect(jsonPath("$.code").value(10400));
+        mvc().perform(get("/biz/staff").header("Authorization", "Bearer " + owner))
+                .andExpect(jsonPath("$.data[?(@.employeeCode == '01002')]").isEmpty());
+    }
+
     // ---------------------------------------------------------------- 判权链路
 
     @Test
