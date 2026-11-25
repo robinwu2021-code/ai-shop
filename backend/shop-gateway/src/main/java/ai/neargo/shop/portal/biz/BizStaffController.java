@@ -86,7 +86,17 @@ public class BizStaffController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/staff")
-    public StaffVO addStaff(@RequestBody StaffReq req) {
+    public StaffVO addStaff(@RequestBody @jakarta.validation.Valid StaffReq req) {
+        if (req.loginEmail() != null || req.employeeCode() != null) {
+            String email = req.loginEmail() == null ? null :
+                    ai.neargo.shop.user.service.EmailOtpService.normalize(req.loginEmail());
+            String phone = req.loginPhone();
+            if (phone != null && phone.matches("[+]86" + ai.neargo.shop.common.Phones.CN_MOBILE.substring(1))) {
+                phone = phone.substring(3);
+            }
+            return staffService.addWithLogin(BizContext.requireMerchantNo(), phone,
+                    req.displayName(), email, req.employeeCode(), req.storeNo(), req.role());
+        }
         return staffService.add(BizContext.requireMerchantNo(), req.loginPhone(), req.displayName());
     }
 
@@ -201,7 +211,15 @@ public class BizStaffController {
     }
 
     /** @param displayName 备注名。为空时端上回落脱敏号 —— 不强制，但强烈建议填 */
-    public record StaffReq(String loginPhone, String displayName) {
+    public record StaffReq(@jakarta.validation.constraints.Size(max = 32) String loginPhone, String displayName,
+                           @jakarta.validation.constraints.Email @jakarta.validation.constraints.Size(min = 1, max = 191)
+                           String loginEmail,
+                           @jakarta.validation.constraints.Pattern(regexp = "[0-9]{4,8}") String employeeCode,
+                           @jakarta.validation.constraints.Size(max = 64) String storeNo,
+                           @jakarta.validation.constraints.Size(max = 32) String role) {
+        public StaffReq(String loginPhone, String displayName) {
+            this(loginPhone, displayName, null, null, null, null);
+        }
     }
 
     public record GrantReq(String storeNo, String role, Boolean granted) {

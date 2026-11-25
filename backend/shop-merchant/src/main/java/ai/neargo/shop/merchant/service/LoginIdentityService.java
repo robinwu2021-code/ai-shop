@@ -21,6 +21,10 @@ public interface LoginIdentityService {
                           boolean canCreateOwner, String currentIdentityNo) {}
     IdentityChoice verifyAndList(String grantType, String principal, String credential, Boolean agreed,
                                  String marketCode, Locale locale);
+    IdentityChoice verifyEmployeeCode(String companyCode, String employeeCode, String password,
+                                      Boolean agreed, String marketCode, Locale locale);
+    IdentityChoice resetEmployeePassword(String grantType, String principal, String otp, String newPassword,
+                                         Boolean agreed, String marketCode);
     IdentityChoice mine(LoginUser user, String token, Locale locale);
     Identity current(LoginUser user, Locale locale);
     <T> T enter(String ticket, String identityNo, Locale locale, BiFunction<LoginUser, String, T> response);

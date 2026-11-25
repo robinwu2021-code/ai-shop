@@ -33,6 +33,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Application composition; merchant and user modules retain their domain boundaries. */
 @Service
 public class LoginIdentityServiceImpl implements LoginIdentityService {
+    private static final String EMPLOYEE_CODE = "EMP_CODE";
+
     private final AuthService auth;
     private final LoginTicketService tickets;
     private final TokenStore tokens;
@@ -135,6 +137,13 @@ public class LoginIdentityServiceImpl implements LoginIdentityService {
     }
 
     private List<Identity> list(AuthService.VerifiedPrincipal principal, Locale locale, boolean lock) {
+        if (EMPLOYEE_CODE.equals(principal.type())) {
+            requireUser(principal.userNo());
+            String[] key = principal.value().split(":", 2);
+            MchAccount employee = employeeByCode(key[0], key[1], lock);
+            if (employee == null || !matchesEmployeeCredential(employee, principal.userNo())) return List.of();
+            return List.of(staff(employee, locale));
+        }
         var p = effective(principal);
         var result = new ArrayList<Identity>();
         var owned = memberships(p.userNo(), lock);
@@ -145,7 +154,23 @@ public class LoginIdentityServiceImpl implements LoginIdentityService {
                     .eq(MchAccount::getStatus, MchAccount.ACTIVE).eq(MchAccount::getIsOwner, false)
                     .orderByDesc(MchAccount::getIsPrimary).orderByAsc(MchAccount::getId).last(lock ? "FOR UPDATE" : "");
             for (var row : accounts.selectList(query)) {
-                if (p.userNo() == null || !p.userNo().equals(row.getUserNo())) result.add(staff(row, locale));
+                if ((p.userNo() == null || !p.userNo().equals(row.getUserNo()))
+                        && (!IdentityType.EMAIL.equals(p.type()) || row.getLoginEmail() == null)) {
+                    result.add(staff(row, locale));
+                }
+            }
+        }
+        if (IdentityType.EMAIL.equals(p.type())) {
+            var emailEmployees = accounts.selectList(Wrappers.<MchAccount>lambdaQuery()
+                    .eq(MchAccount::getLoginEmail, p.value()).eq(MchAccount::getIsOwner, false)
+                    .eq(MchAccount::getStatus, MchAccount.ACTIVE)
+                    .orderByAsc(MchAccount::getId).last(lock ? "FOR UPDATE" : ""));
+            for (var row : emailEmployees) {
+                var no = "STAFF-" + row.getMchAccountNo();
+                if ((row.getLoginUserNo() == null || Objects.equals(row.getLoginUserNo(), p.userNo()))
+                        && result.stream().noneMatch(i -> i.identityNo().equals(no))) {
+                    result.add(staff(row, locale));
+                }
             }
         }
         return List.copyOf(result);
@@ -163,10 +188,80 @@ public class LoginIdentityServiceImpl implements LoginIdentityService {
         }
     }
 
+    @Override
+    public IdentityChoice verifyEmployeeCode(String companyCode, String employeeCode, String password,
+                                             Boolean agreed, String market, Locale locale) {
+        try {
+            return DataScopeContext.executeWithoutScope(() -> {
+                var employee = employeeByCode(companyCode, employeeCode, false);
+                if (employee == null) throw BizException.of(ErrorCode.PASSWORD_INVALID);
+                String principal = employee.getLoginEmail() == null ? employee.getLoginPhone() : employee.getLoginEmail();
+                if (principal == null) throw BizException.of(ErrorCode.PASSWORD_INVALID);
+                var verified = auth.verify(new AuthService.LoginCommand("PASSWORD", principal, password,
+                        null, null, agreed, market));
+                if (!matchesEmployeeCredential(employee, verified.userNo()))
+                    throw BizException.of(ErrorCode.PASSWORD_INVALID);
+                var proof = new AuthService.VerifiedPrincipal(EMPLOYEE_CODE, companyCode + ":" + employeeCode,
+                        verified.userNo());
+                return issue(proof, agreed, market, null, null, locale);
+            });
+        } catch (BizException failure) {
+            auditor.failed(Realm.MERCHANT, "***", failure.errorCode().name());
+            if (failure.errorCode() == ErrorCode.PASSWORD_NOT_SET) throw BizException.of(ErrorCode.PASSWORD_INVALID);
+            throw failure;
+        }
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public IdentityChoice resetEmployeePassword(String grant, String principal, String otp,
+                                                String newPassword, Boolean agreed, String market) {
+        var proof = auth.verify(new AuthService.LoginCommand(grant, principal, otp,
+                null, null, agreed, market));
+        return DataScopeContext.executeWithoutScope(() -> {
+            var current = effective(proof);
+            boolean email = IdentityType.EMAIL.equals(current.type());
+            var query = Wrappers.<MchAccount>lambdaQuery().eq(MchAccount::getIsOwner, false)
+                    .eq(MchAccount::getStatus, MchAccount.ACTIVE).last("FOR UPDATE");
+            if (email) query.eq(MchAccount::getLoginEmail, current.value());
+            else query.isNull(MchAccount::getLoginEmail).eq(MchAccount::getLoginPhone, current.value())
+                    .isNotNull(MchAccount::getEmployeeCode);
+            var invited = accounts.selectList(query).stream()
+                    .filter(row -> row.getLoginUserNo() == null || row.getLoginUserNo().equals(current.userNo())).toList();
+            if (invited.isEmpty()) throw BizException.of(ErrorCode.PASSWORD_INVALID);
+            var account = auth.enterVerified(current, agreed, market);
+            auth.setPassword(account.getUserNo(), newPassword);
+            invited.stream().filter(row -> row.getLoginUserNo() == null).forEach(row -> {
+                row.setLoginUserNo(account.getUserNo());
+                accounts.updateById(row);
+            });
+            return new IdentityChoice(null, 0, List.of(), false, null);
+        });
+    }
+
+    private MchAccount employeeByCode(String companyCode, String code, boolean lock) {
+        return accounts.selectOne(Wrappers.<MchAccount>lambdaQuery()
+                .eq(MchAccount::getEntityNo, companyCode).eq(MchAccount::getEmployeeCode, code)
+                .eq(MchAccount::getIsOwner, false).eq(MchAccount::getStatus, MchAccount.ACTIVE)
+                .last(lock ? "LIMIT 1 FOR UPDATE" : "LIMIT 1"));
+    }
+
+    private boolean matchesEmployeeCredential(MchAccount employee, String userNo) {
+        if (userNo == null) return false;
+        var email = employee.getLoginEmail();
+        var value = email == null ? employee.getLoginPhone() : email;
+        if (value == null || employee.getLoginUserNo() != null && !userNo.equals(employee.getLoginUserNo())
+                || email != null && employee.getLoginUserNo() == null) return false;
+        var identity = credential(email == null ? IdentityType.PHONE : IdentityType.EMAIL, value);
+        return identity != null && userNo.equals(identity.getUserNo());
+    }
+
     private IdentityChoice issue(AuthService.VerifiedPrincipal p, Boolean agreed, String market,
                                  LoginUser origin, String token, Locale locale) {
         var identities = list(p, locale);
-        boolean canCreate = identities.stream().noneMatch(i -> i.type().equals("OWNER"));
+        if (EMPLOYEE_CODE.equals(p.type()) && identities.isEmpty()) throw BizException.of(ErrorCode.PASSWORD_INVALID);
+        boolean canCreate = !EMPLOYEE_CODE.equals(p.type()) &&
+                identities.stream().noneMatch(i -> i.type().equals("OWNER"));
         var issued = tickets.issue(p, agreed, market, identities.stream().map(Identity::identityNo).toList(), canCreate,
                 token, origin == null ? null : origin.userNo(), origin == null ? null : origin.subjectKind().name());
         return new IdentityChoice(issued.ticket(), issued.expiresInSeconds(), identities, canCreate,
@@ -183,7 +278,17 @@ public class LoginIdentityServiceImpl implements LoginIdentityService {
             if (live.user().subjectKind() == SubjectKind.MCH) {
                 var row = accounts.selectOne(Wrappers.<MchAccount>lambdaQuery().eq(MchAccount::getMchAccountNo, user.userNo())
                         .eq(MchAccount::getStatus, MchAccount.ACTIVE).last("LIMIT 1 FOR UPDATE"));
-                if (row == null || row.getLoginPhone() == null) throw BizException.of(ErrorCode.TOKEN_EXPIRED);
+                if (row == null) throw BizException.of(ErrorCode.TOKEN_EXPIRED);
+                String email = row.getLoginEmail();
+                if (email != null && row.getLoginUserNo() != null) {
+                    var c = credential(IdentityType.EMAIL, email);
+                    if (c == null || !row.getLoginUserNo().equals(c.getUserNo()))
+                        throw BizException.of(ErrorCode.TOKEN_EXPIRED);
+                    // A merchant staff session cannot turn into a personal owner session.
+                    var own = staff(row, locale);
+                    return new IdentityChoice(null, 0, List.of(own), false, own.identityNo());
+                }
+                if (row.getLoginPhone() == null) throw BizException.of(ErrorCode.TOKEN_EXPIRED);
                 var c = credential(IdentityType.PHONE, row.getLoginPhone());
                 p = new AuthService.VerifiedPrincipal(IdentityType.PHONE, row.getLoginPhone(), c == null ? null : c.getUserNo());
             } else {
@@ -242,6 +347,14 @@ public class LoginIdentityServiceImpl implements LoginIdentityService {
                     var row = accounts.selectOne(Wrappers.<MchAccount>lambdaQuery().eq(MchAccount::getMchAccountNo, no)
                             .eq(MchAccount::getStatus, MchAccount.ACTIVE).last("LIMIT 1 FOR UPDATE"));
                     if (row == null) return new Entry<T>(null, allowed);
+                    if (IdentityType.EMAIL.equals(ticket.principal().type())
+                            && Objects.equals(row.getLoginEmail(), ticket.principal().value())
+                            && row.getLoginUserNo() == null) {
+                        var loginUser = auth.enterVerified(effective(ticket.principal()),
+                                ticket.agreed(), ticket.marketCode());
+                        row.setLoginUserNo(loginUser.getUserNo());
+                        accounts.updateById(row);
+                    }
                     user = LoginUser.merchant(row.getMchAccountNo(), row.getDisplayName());
                 }
                 tickets.consume(ticket);

@@ -1721,6 +1721,11 @@ CREATE TABLE IF NOT EXISTS mch_account
     login_phone VARCHAR(32) DEFAULT NULL,
     display_name VARCHAR(32) DEFAULT NULL,
     PRIMARY KEY (id),
+    login_email VARCHAR(191) DEFAULT NULL,
+    employee_code VARCHAR(8) DEFAULT NULL,
+    login_user_no VARCHAR(64) DEFAULT NULL,
+    CONSTRAINT uk_mch_account_entity_email UNIQUE (entity_no,login_email),
+    CONSTRAINT uk_mch_account_entity_employee_code UNIQUE (entity_no,employee_code),
     CONSTRAINT uk_mch_account_no UNIQUE (mch_account_no),
     CONSTRAINT uk_mch_account_entity_user UNIQUE (entity_no,user_no),
     CONSTRAINT uk_mch_account_entity_phone UNIQUE (entity_no,login_phone)
