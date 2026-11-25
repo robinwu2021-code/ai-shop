@@ -102,8 +102,15 @@ public final class ReceptionCoordinator {
             if (payload.matched() == null) {
                 var scope = matching.scope(store);
                 AppointmentPersistence.require(entity.equals(scope.entityNo()));
-                op = preparations.freezeWalkIn(op, matching.matchWalkIn(scope, payload.items(), payload.assignments(),
-                        payload.requestedStartAt(), clock.instant()));
+                AppointmentMatching.Matched match;
+                try {
+                    match = matching.matchWalkIn(scope, payload.items(), payload.assignments(),
+                            payload.requestedStartAt(), clock.instant());
+                } catch (BizException unavailable) {
+                    if (unavailable.errorCode() != ErrorCode.CONFLICT) throw unavailable;
+                    return rejectUnmatchedWalkIn(op);
+                }
+                op = preparations.freezeWalkIn(op, match);
                 payload = walkInPayload(op);
             }
             if (succeeded(op)) { return walkInView(op); }
@@ -271,6 +278,21 @@ public final class ReceptionCoordinator {
             return walkInView(op);
         });
     }
+    private WalkInVO rejectUnmatchedWalkIn(BtyReceptionOperation observed) {
+        return db.tx(() -> {
+            var op = operations.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
+                    observed.getOperationNo());
+            AppointmentPersistence.require(sameWalkIn(observed, op));
+            if (!"RECEIVED".equals(op.getPhase()) || walkInPayload(op).matched() != null) return walkInView(op);
+            op.setPhase("REJECTED");
+            op.setFailureCode("RESOURCE_REJECTED");
+            op.setResult(db.json.writeValueAsString(walkInView(op)));
+            AppointmentPersistence.require(operations.updateById(op) == 1);
+            clearRetry(op);
+            return walkInView(op);
+        });
+    }
+
     private boolean future(WalkInPayload payload) {
         return payload.matched() != null && ResourcePlanContract.decode(payload.matched().plan()).demands().stream()
                 .flatMap(d -> d.intervals().stream()).allMatch(i -> i.startAt().isAfter(clock.instant()));
@@ -347,7 +369,7 @@ public final class ReceptionCoordinator {
             AppointmentPersistence.require("GUEST".equals(identity.kind()) || ownership.owns(root,
                     identity.reference()));
         }
-        return arrive(root, actor, req.expectedRevision(), "BAPI-047", key, hash, identity, null);
+        return arrive(root, actor, req.expectedRevision(), "BAPI-047", key, hash, identity, req.arrivalChallenge());
     }
     public MyArrivalVO checkInMine(String user, MyCheckInReq req, String key) {
         access.consumer(user);

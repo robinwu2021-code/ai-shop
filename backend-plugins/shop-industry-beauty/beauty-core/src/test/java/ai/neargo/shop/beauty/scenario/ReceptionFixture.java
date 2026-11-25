@@ -82,6 +82,7 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
     String revokedActor;
     boolean roomQuantities;
     boolean occupied;
+    boolean noCandidates;
     boolean otherOccupied;
     boolean failOutbox;
     long quotePrice = 1000;
@@ -172,6 +173,7 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
                 .withBean(ResourceCandidatesPort.class, () -> new ResourceCandidatesPort() {
                     @Override public List<ResourceFactsPort.ResourceFact> candidates(Query query) {
                         outside();
+                        if (noCandidates) return List.of();
                         if (roomQuantities) {
                             return List.of(new ResourceFactsPort.ResourceFact("R1", ResourceFactsPort.Type.STAFF,
                                     null, "P1", "Technician", 1, false),

@@ -4,4 +4,9 @@ import java.time.OffsetDateTime;
 
 /** Appointment protocol projection; resource evidence stays on trusted server links. */
 public record AppointmentQuery(String storeNo, OffsetDateTime from, OffsetDateTime to, String status, String
-        personnelNo, Integer page, Integer size, String assignmentState) { }
+        personnelNo, Integer page, Integer size, String assignmentState, String memberNo) {
+    public AppointmentQuery(String storeNo, OffsetDateTime from, OffsetDateTime to, String status, String personnelNo,
+            Integer page, Integer size, String assignmentState) {
+        this(storeNo, from, to, status, personnelNo, page, size, assignmentState, null);
+    }
+}

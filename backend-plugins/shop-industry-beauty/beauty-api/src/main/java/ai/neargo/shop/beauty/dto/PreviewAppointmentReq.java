@@ -10,7 +10,13 @@ import java.time.OffsetDateTime;
 /** Appointment protocol projection; resource evidence stays on trusted server links. */
 public record PreviewAppointmentReq(String storeNo, String customerRef, List<AppointmentItemReq> items,
         List<AppointmentAssignmentReq> requestedAssignments, OffsetDateTime startAt, String guestNo,
-        String requestedPersonnelNo) {
+        String requestedPersonnelNo, String memberNo) {
+    public PreviewAppointmentReq(String storeNo, String customerRef, List<AppointmentItemReq> items,
+            List<AppointmentAssignmentReq> requestedAssignments, OffsetDateTime startAt, String guestNo,
+            String requestedPersonnelNo) {
+        this(storeNo, customerRef, items, requestedAssignments, startAt, guestNo, requestedPersonnelNo, null);
+    }
+
     public PreviewAppointmentReq(String storeNo, String customerRef, List<AppointmentItemReq> items,
             List<AppointmentAssignmentReq> requestedAssignments, OffsetDateTime startAt) {
         this(storeNo, customerRef, items, requestedAssignments, startAt, null, null);
@@ -22,6 +28,9 @@ public record PreviewAppointmentReq(String storeNo, String customerRef, List<App
     }
 
     public PreviewAppointmentReq {
+        if (memberNo != null && (!memberNo.matches("[A-Za-z0-9_-]{1,64}") || guestNo != null || customerRef != null)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         if (guestNo != null && (guestNo.isBlank() || guestNo.length() > 32 || customerRef != null)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }

@@ -81,7 +81,7 @@ public final class AppointmentServiceImpl implements AppointmentService {
         AppointmentPersistence.require(store.equals(req.storeNo()));
         var scope = matching.scope(store); AppointmentPersistence.require(entity.equals(scope.entityNo()));
         return preparations.save(matching.match(scope, false, req.items(), req.requestedAssignments(), req.requestedPersonnelNo(),
-                req.startAt()), req.customerRef(), req.guestNo(), null, 0);
+                req.startAt()), req.customerRef(), req.guestNo(), null, 0, req.memberNo());
     }
     @Override
     public AppointmentPreviewVO previewMyAppointment(String user, PreviewMyAppointmentReq req) {
@@ -102,7 +102,12 @@ public final class AppointmentServiceImpl implements AppointmentService {
         var prior = preparations.find(entity, store, key, IdempotencyScope.requestHash("CREATE", request));
         if (prior != null) { return outcome(coordinator.advance(prior.getOperationNo())); }
         // Only a new request may bind the preview to the currently observed guest/customer identity.
-        preparations.customer(p, req.customerRef(), req.guestNo());
+        if (req.memberNo() != null) {
+            AppointmentPersistence.require(p.getGuestRef() == null && receptionIdentity
+                    .customerMember(entity, store, req.memberNo()).equals(p.getCustomerRef()));
+        } else {
+            preparations.customer(p, req.customerRef(), req.guestNo());
+        }
         return create(req.previewNo(), req.sourceRefs(), req.consentRef(), key, request);
     }
     @Override
@@ -268,6 +273,9 @@ public final class AppointmentServiceImpl implements AppointmentService {
         if (q.storeNo() != null && !store.equals(q.storeNo())) { throw BizException.of(ErrorCode.FORBIDDEN); }
         var query = query(q.from(), q.to(), q.status()).eq(BtyAppointment::getEntityNo, entity)
                 .eq(BtyAppointment::getStoreNo, store);
+        if (q.memberNo() != null) {
+            query.apply(CustomerOwnership.appointmentPredicate(), receptionIdentity.customerMember(entity, store, q.memberNo()));
+        }
         if (q.personnelNo() != null) {
             query.apply("EXISTS (SELECT 1 FROM bty_appointment_item i JOIN bty_appointment_assignment a "
                     + "ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no "

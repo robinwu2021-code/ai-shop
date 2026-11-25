@@ -64,6 +64,10 @@ public final class AppointmentPreparation {
     }
     public AppointmentPreviewVO save(AppointmentMatching.Matched match, String customerRef, String guestNo,
             BtyAppointment target, long expected) {
+        return save(match, customerRef, guestNo, target, expected, null);
+    }
+    public AppointmentPreviewVO save(AppointmentMatching.Matched match, String customerRef, String guestNo,
+            BtyAppointment target, long expected, String memberNo) {
         var user = SecurityUtils.requireUser();
         String customer;
         String verifiedGuest = null;
@@ -77,6 +81,9 @@ public final class AppointmentPreparation {
         else if (guest != null) {
             customer = "USER".equals(guest.kind()) ? guest.reference() : null;
             verifiedGuest = "GUEST".equals(guest.kind()) ? guest.reference() : null;
+        }
+        else if (memberNo != null) {
+            customer = identities.customerMember(match.scope().entityNo(), match.scope().storeNo(), memberNo);
         }
         else if (customerRef == null) { customer = null; }
         else {

@@ -260,6 +260,25 @@ class WalkInRecoveryIT extends ReceptionFixture {
             assertThat(unavailable.failureCode()).isEqualTo("RESOURCE_RELEASE_REQUIRED");
         });
     }
+    @Test void unavailableWalkInCanBeRetriedAtAnotherTimeWithoutOrphaningAnAppointment() {
+        noCandidates = true;
+        business().run(c -> {
+            login(LoginUser.merchant("A", "operator"));
+            owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
+            var service = c.getBean(ReceptionService.class);
+            var rejected = service.receiveWalkIn("E", "S", "A", walkIn(), "UNAVAILABLE");
+            assertThat(rejected.operationState()).isEqualTo("REJECTED");
+            assertThat(rejected.appointmentNo()).isNull();
+            assertThat(owner.accepts).isEmpty();
+            noCandidates = false;
+            assertThat(service.receiveWalkIn("E", "S", "A", walkIn(), "UNAVAILABLE")).isEqualTo(rejected);
+            var req = new ReceiveWalkInReq("S", walkIn().customerRef(), null, walkIn().items(), List.of(),
+                    start.plusMinutes(5));
+            assertThat(service.receiveWalkIn("E", "S", "A", req, "AVAILABLE").operationState()).isEqualTo("SUCCEEDED");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_work_order", Integer.class)).isOne();
+        });
+    }
+
     @Test void confirmedWalkInCreatesOneAppointmentScope() {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator"));
