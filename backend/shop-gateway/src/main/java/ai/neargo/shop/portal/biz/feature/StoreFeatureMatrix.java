@@ -42,7 +42,8 @@ public final class StoreFeatureMatrix {
     static final List<String> ROLES = List.of(BizPerms.OWNER, BizPerms.MANAGER, BizPerms.CLERK, BizPerms.PICKER,
             BizPerms.COURIER, BizPerms.CS);
 
-    public record TierCard(PlanTier tier, String planNo, String displayName, boolean purchaseAvailable) {}
+    public record TierCard(PlanTier tier, String planNo, String displayName,
+                           String saleStatus, boolean purchaseAvailable) {}
 
     /**
      * @param tiers 各档是否包含，键为档位名
@@ -65,7 +66,8 @@ public final class StoreFeatureMatrix {
 
     public record StoreFeatures(String storeNo, String businessTypeCode, CommerceModel commerceModel,
                                 String currentTier, Long entitlementVersion, long serverNow, Long nextBoundaryAt,
-                                PayActivation payActivation, List<FeatureState> features) {}
+                                PayActivation payActivation, List<FeatureState> features,
+                                Map<String, String> actions) {}
 
     private StoreFeatureMatrix() {
     }
@@ -75,7 +77,7 @@ public final class StoreFeatureMatrix {
     public static Matrix forBusinessType(PlanCatalog catalog) {
         var plans = sortedPlans(catalog);
         var tiers = plans.stream()
-                .map(p -> new TierCard(p.tier(), p.planNo(), p.displayName(), p.purchaseAvailable()))
+                .map(p -> new TierCard(p.tier(), p.planNo(), p.displayName(), p.saleStatus(), p.purchaseAvailable()))
                 .toList();
         Map<String, Set<String>> rolePerms = ROLES.stream()
                 .collect(Collectors.toMap(Function.identity(), r -> BizPerms.of(Set.of(r))));
@@ -125,7 +127,28 @@ public final class StoreFeatureMatrix {
                 .toList();
         return new StoreFeatures(store.storeNo(), store.businessTypeCode(), store.commerceModel(),
                 legacy ? null : currentTier(store), store.entitlementVersion(), store.serverNow(),
-                store.nextBoundaryAt(), pay, features);
+                store.nextBoundaryAt(), pay, features, actionStates(perms, features));
+    }
+
+    private static Map<String, String> actionStates(Set<String> perms, List<FeatureState> features) {
+        var inventory = features.stream().filter(f -> "INVENTORY".equals(f.featureCode()))
+                .findFirst().map(FeatureState::status).orElse("NEED_PLAN");
+        return Map.of(
+                "order.refund.cash", permissionState(perms, BizPerms.PAY_OFFLINE_MANAGE),
+                "order.refund.channel", permissionState(perms, BizPerms.PAY_REFUND),
+                "invoice.read", permissionState(perms, BizPerms.INVOICE_READ),
+                "invoice.issue", permissionState(perms, BizPerms.INVOICE_ISSUE),
+                "invoice.void", permissionState(perms, BizPerms.INVOICE_VOID),
+                "invoice.pdf", permissionState(perms, BizPerms.INVOICE_READ, BizPerms.PRINT_EXPORT),
+                "invoice.reprint", permissionState(perms, BizPerms.INVOICE_READ, BizPerms.PRINT_REPRINT),
+                "inventory.adjust", inventory,
+                "staff.manage", permissionState(perms, BizPerms.STORE_ADMIN));
+    }
+
+    // These values describe store-wide permission. The action endpoint still checks the target record.
+    private static String permissionState(Set<String> perms, String... required) {
+        return perms != null && (perms.contains("*") || Arrays.stream(required).allMatch(perms::contains))
+                ? "AVAILABLE" : "NO_PERMISSION";
     }
 
     private static FeatureState state(StoreFeature f, Right right, PlanTier requiredTier, boolean canProcure,

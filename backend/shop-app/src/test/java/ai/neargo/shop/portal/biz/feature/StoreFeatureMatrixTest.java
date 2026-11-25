@@ -85,6 +85,37 @@ class StoreFeatureMatrixTest {
     }
 
     @Test
+    void comparisonKeepsPublishedButOffSaleFeaturesSeparateFromPurchaseAvailability() {
+        var stopped = new PlanCard("SERVICE:BASE", "P1", PlanTier.BASE, "基礎版", "",
+                List.of(BIZ), "OFF_SALE", List.of(), "OFF_SALE", false);
+        var matrix = StoreFeatureMatrix.forBusinessType(new PlanCatalog("SERVICE", 1L, "PUBLISHED", List.of(stopped)));
+        var tier = matrix.tiers().getFirst();
+        assertEquals("OFF_SALE", tier.saleStatus());
+        assertFalse(tier.purchaseAvailable());
+        assertTrue(matrix.features().stream().anyMatch(f -> "ORDERS".equals(f.featureCode())
+                && Boolean.TRUE.equals(f.tiers().get("BASE"))));
+    }
+
+    @Test
+    void oscarRetailActionsSeparateCashRefundFromChannelRefundAndInvoiceReads() {
+        var catalog = new PlanCatalog("RETAIL", 1L, "PUBLISHED", List.of(plan(PlanTier.FREE, List.of(BIZ))));
+        var store = freeStore(true, right("END_RETAIL", "ACTIVE", 999L));
+        var manager = StoreFeatureMatrix.forStore(store, catalog, BizPerms.of(Set.of(BizPerms.MANAGER)),
+                PayActivation.NOT_ACTIVE).actions();
+        var clerk = StoreFeatureMatrix.forStore(store, catalog, BizPerms.of(Set.of(BizPerms.CLERK)),
+                PayActivation.NOT_ACTIVE).actions();
+
+        assertEquals("AVAILABLE", manager.get("order.refund.cash"));
+        assertEquals("NO_PERMISSION", manager.get("order.refund.channel"));
+        assertEquals("NO_PERMISSION", clerk.get("order.refund.cash"));
+        assertEquals("AVAILABLE", clerk.get("invoice.read"));
+        assertEquals("AVAILABLE", clerk.get("invoice.issue"));
+        assertEquals("NO_PERMISSION", clerk.get("invoice.void"));
+        assertEquals("AVAILABLE", clerk.get("inventory.adjust"));
+        assertEquals("NO_PERMISSION", manager.get("staff.manage"));
+    }
+
+    @Test
     @DisplayName("AC1 矩阵：每个功能在三档是否包含、最低档、6 个预置角色的 NONE/USE/MANAGE；未发布的权益码不返回")
     void matrixForBusinessType() {
         var m = StoreFeatureMatrix.forBusinessType(fnbCatalog());
