@@ -9,4 +9,8 @@ import org.apache.ibatis.annotations.Select;
 public interface CreateIntentMapper extends BaseMapper<OrdCreateIntent> {
     @Select("SELECT * FROM ord_create_intent WHERE pay_no=#{no} AND deleted=0 FOR UPDATE")
     OrdCreateIntent lock(@Param("no") String payNo);
+
+    @Select("SELECT * FROM ord_create_intent WHERE tenant_no='MAIN' AND pay_no=#{no}"
+            + " AND creation_kind='COUNTER' AND status='COMMITTED' AND deleted=0")
+    OrdCreateIntent readCommittedCounter(@Param("no") String payNo);
 }

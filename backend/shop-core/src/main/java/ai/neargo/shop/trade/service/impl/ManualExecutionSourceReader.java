@@ -9,6 +9,9 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.marketing.CounterCampaignContract;
+import ai.neargo.shop.spi.product.StockDispositionContract;
+import ai.neargo.shop.spi.product.StockDispositionPort;
+import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.trade.entity.OrdCheckoutConfirmation;
 import ai.neargo.shop.trade.entity.OrdCheckoutQuote;
 import ai.neargo.shop.trade.mapper.CheckoutMappers;
@@ -29,8 +32,10 @@ import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdManualServiceAdmission;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.order.entity.OrdCreateIntent;
 import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.Arrays;
@@ -403,7 +408,8 @@ final class ManualExecutionSourceReader {
     }
 
     /** Callers check that no cash declaration exists in the same owner snapshot. */
-    ConfirmedUnpaidSource confirmedUnpaid(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child) {
+    ConfirmedUnpaidSource confirmedUnpaid(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child,
+            OrdCreateIntent intent) {
         if (parent == null || child == null || !"BEAUTY".equals(op.getCaller())
                 || !"MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())
                 || !OrdOrder.WAIT_OFFLINE_PAY.equals(parent.getStatus())
@@ -427,18 +433,108 @@ final class ManualExecutionSourceReader {
                 return null;
             }
             var consent = requireCounterConsent(op, parent, quote);
+            var reservation = counterReservation(facts, intent);
             var lines = facts.lines().stream().map(line -> new ManualSourceLine(
                     line.getSourceLineNo(), line.getClientLineRef(), line.getGoodsNo(), line.getSkuNo(),
                     line.getQuantity(), 0, line.getUom())).toList();
             String fingerprint = sourceHash(op, parent, child, null, facts.lines(), facts.items(),
                     "CONFIRMED_UNPAID", lines);
             String proof = CheckoutDigests.hash(json, List.of(
-                    "BEAUTY_CONFIRMED_UNPAID_V1", fingerprint, quote.getQuoteHash(), consent.getVersion(),
-                    parent.getPayAmount(), parent.getCurrency()));
+                    "BEAUTY_CONFIRMED_UNPAID_V2", fingerprint, quote.getQuoteHash(), consent.getVersion(),
+                    parent.getPayAmount(), parent.getCurrency(), reservation.reservationOperationNo(),
+                    reservation.original().manifestHash(), reservation.observationHash()));
             return new ConfirmedUnpaidSource(consent.getConfirmationNo(), proof, lines);
-        } catch (BizException invalid) {
+        } catch (BizException | IllegalArgumentException | tools.jackson.core.JacksonException invalid) {
             return null;
         }
+    }
+
+    private StockDispositionPort.ReservationView counterReservation(Facts facts, OrdCreateIntent intent) {
+        var original = stockOriginal(facts, intent);
+        alive(intent);
+        var op = facts.op();
+        if (!facts.parent().getOrderNo().equals(intent.getPayNo())
+                || !op.getEntityNo().equals(intent.getEntityNo())
+                || !op.getStoreNo().equals(intent.getStoreNo())
+                || !op.getCaller().equals(intent.getCaller())
+                || !op.getAdmissionKind().equals(intent.getAdmissionKind())
+                || !Objects.equals(op.getAuthorityNamespaceHash(), intent.getAuthorityNamespaceHash())
+                || !"RESERVED".equals(intent.getReservationState())
+                || intent.getReservationObservationJson() == null) {
+            throw conflict();
+        }
+        var reservation = json.readValue(intent.getReservationObservationJson(),
+                StockDispositionPort.ReservationView.class);
+        if (reservation == null || !"RESERVED".equals(reservation.outcome())
+                || !original.equals(reservation.original())
+                || !reservation.reservationOperationNo().equals(intent.getReservationOperationNo())
+                || !reservation.observationHash().equals(intent.getReservationObservationHash())) {
+            throw conflict();
+        }
+        return reservation;
+    }
+
+    StockDispositionPort.Original stockOriginal(Facts facts, OrdCreateIntent intent) {
+        if (intent == null || !OrdCreateIntent.COMMITTED.equals(intent.getStatus())) {
+            throw conflict();
+        }
+        List<StockPort.SkuQty> stored =
+                json.readValue(intent.getStockNeedsJson(), new TypeReference<>() {});
+        if (stored.isEmpty()
+                || stored.stream()
+                        .anyMatch(
+                                need ->
+                                        !Objects.equals(
+                                                        need.lifecycleVersion(),
+                                                        facts.child()
+                                                                .getInventoryLifecycleVersion())
+                                                || !facts.child()
+                                                        .getSubOrderNo()
+                                                        .equals(need.fulfillmentRef())
+                                                || !facts.op()
+                                                        .getStoreNo()
+                                                        .equals(need.storeNo()))) {
+            throw conflict();
+        }
+        var allocated =
+                StockDispositionContract.needs(
+                        facts.lines().stream()
+                                .map(
+                                        line ->
+                                                new StockPort.SkuQty(
+                                                        line.getSkuNo(),
+                                                        line.getQuantity(),
+                                                        facts.child().getStoreNo(),
+                                                        facts.child().getSubOrderNo(),
+                                                        facts.child()
+                                                                .getInventoryLifecycleVersion()))
+                                .toList());
+        var actual = StockDispositionContract.needs(stored);
+        if (!allocated.equals(actual)
+                || !party(facts.op())
+                        .equals(
+                                new CustomerParty(
+                                        intent.getCustomerKind(),
+                                        intent.getUserNo(),
+                                        intent.getGuestNo(),
+                                        intent.getIdentityRevision()))
+                || "MERCHANT_RECORDED_IN_PERSON".equals(facts.op().getPurchaseAuthority())
+                        && (!"COUNTER".equals(intent.getCreationKind())
+                                || !facts.op().getOperationNo().equals(intent.getOperationNo())
+                                || !facts.op()
+                                        .getConfirmationNo()
+                                        .equals(intent.getConfirmationNo())
+                                || !facts.child().getSubOrderNo().equals(intent.getSubOrderNo()))) {
+            throw conflict();
+        }
+        return new StockDispositionPort.Original(
+                "MAIN",
+                facts.op().getEntityNo(),
+                facts.parent().getOrderNo(),
+                intent.getStockAuthority(),
+                facts.child().getInventoryLifecycleVersion(),
+                StockDispositionContract.manifestHash(actual),
+                actual);
     }
 
     /** Revalidate replayed declaration economics against the consumed original, never current prices. */

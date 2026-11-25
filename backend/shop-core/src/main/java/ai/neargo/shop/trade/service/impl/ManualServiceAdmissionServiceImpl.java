@@ -82,7 +82,6 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
@@ -333,7 +332,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                 throw BizException.of(
                                                         ErrorCode.ORDER_STATE_ILLEGAL);
                                             }
-                                            var original = original(facts);
+                                            var original = sourceReader.stockOriginal(facts, intents.lock(parent.getOrderNo()));
                                             var row = new OrdManualServiceAdmission();
                                             row.setDeclarationNo(number("MD"));
                                             row.setOperationNo(op.getOperationNo());
@@ -849,70 +848,6 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         }
     }
 
-    private Original original(Facts facts) {
-        var intent = intents.lock(facts.parent().getOrderNo());
-        if (intent == null || !"COMMITTED".equals(intent.getStatus())) {
-            throw conflict();
-        }
-        List<StockPort.SkuQty> stored =
-                json.readValue(intent.getStockNeedsJson(), new TypeReference<>() {});
-        if (stored.isEmpty()
-                || stored.stream()
-                        .anyMatch(
-                                need ->
-                                        !Objects.equals(
-                                                        need.lifecycleVersion(),
-                                                        facts.child()
-                                                                .getInventoryLifecycleVersion())
-                                                || !facts.child()
-                                                        .getSubOrderNo()
-                                                        .equals(need.fulfillmentRef())
-                                                || !facts.op()
-                                                        .getStoreNo()
-                                                        .equals(need.storeNo()))) {
-            throw conflict();
-        }
-        var allocated =
-                StockDispositionContract.needs(
-                        facts.lines().stream()
-                                .map(
-                                        line ->
-                                                new StockPort.SkuQty(
-                                                        line.getSkuNo(),
-                                                        line.getQuantity(),
-                                                        facts.child().getStoreNo(),
-                                                        facts.child().getSubOrderNo(),
-                                                        facts.child()
-                                                                .getInventoryLifecycleVersion()))
-                                .toList());
-        var actual = StockDispositionContract.needs(stored);
-        if (!allocated.equals(actual)
-                || !party(facts.op())
-                        .equals(
-                                new CustomerParty(
-                                        intent.getCustomerKind(),
-                                        intent.getUserNo(),
-                                        intent.getGuestNo(),
-                                        intent.getIdentityRevision()))
-                || "MERCHANT_RECORDED_IN_PERSON".equals(facts.op().getPurchaseAuthority())
-                        && (!"COUNTER".equals(intent.getCreationKind())
-                                || !facts.op().getOperationNo().equals(intent.getOperationNo())
-                                || !facts.op()
-                                        .getConfirmationNo()
-                                        .equals(intent.getConfirmationNo())
-                                || !facts.child().getSubOrderNo().equals(intent.getSubOrderNo()))) {
-            throw conflict();
-        }
-        return new Original(
-                "MAIN",
-                facts.op().getEntityNo(),
-                facts.parent().getOrderNo(),
-                intent.getStockAuthority(),
-                facts.child().getInventoryLifecycleVersion(),
-                StockDispositionContract.manifestHash(actual),
-                actual);
-    }
-
     private ManualSourceFacts sourceView(
             OrdCheckoutOperation op,
             OrdOrder parent,
@@ -955,7 +890,8 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         }
         var admission = view(op, parent, declaration);
         var confirmedUnpaid = verified && declaration == null && parent != null
-                ? sourceReader.confirmedUnpaid(op, parent, child(op.getSubOrderNo()))
+                ? sourceReader.confirmedUnpaid(op, parent, child(op.getSubOrderNo()),
+                        intents.readCommittedCounter(parent.getOrderNo()))
                 : null;
         return new ManualSourceFacts(
                 new OperationRef(op.getCaller(), op.getOperationNo()),

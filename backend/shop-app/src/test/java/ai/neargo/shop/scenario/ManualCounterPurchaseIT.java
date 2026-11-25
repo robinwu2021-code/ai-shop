@@ -503,6 +503,20 @@ class ManualCounterPurchaseIT extends CheckoutFlowFixture {
         });
         assertThat(asMerchant(() -> manual.source(scope, sourceLookup)).confirmedUnpaid())
                 .isEqualTo(source.confirmedUnpaid());
+        var reservationHash = jdbc.queryForObject(
+                "SELECT reservation_observation_hash FROM ord_create_intent WHERE pay_no=?",
+                String.class, created.orderNo());
+        assertThat(reservationHash).matches("[a-f0-9]{64}");
+        jdbc.update("UPDATE ord_create_intent SET reservation_observation_hash=? WHERE pay_no=?",
+                "0".repeat(64), created.orderNo());
+        try {
+            var unverifiable = asMerchant(() -> manual.source(scope, sourceLookup));
+            assertThat(unverifiable.confirmedUnpaid()).isNull();
+            assertThat(unverifiable.admissionState()).isEqualTo("AWAITING_RECEIPT");
+        } finally {
+            jdbc.update("UPDATE ord_create_intent SET reservation_observation_hash=? WHERE pay_no=?",
+                    reservationHash, created.orderNo());
+        }
         assertThat(DataScopeContext.executeWithoutScope(() -> typedDeclarations.serviceCashReceipts(
                 "MAIN", entity, store, created.orderNo(), null, null, null))).isEmpty();
 
