@@ -7,6 +7,7 @@ import java.util.List;
 /** Source-owned inventory tasks are independent from consumer refund settlement. */
 public interface PointsRefundResourceService {
     void prepare(OrdAfterSale afterSale,RefundPlan plan);
-    void recover(String afterSaleNo);
+    /** @return true when inventory restoration is confirmed by the local task state. */
+    boolean recover(String afterSaleNo);
     List<String> pendingNos(int limit);
 }

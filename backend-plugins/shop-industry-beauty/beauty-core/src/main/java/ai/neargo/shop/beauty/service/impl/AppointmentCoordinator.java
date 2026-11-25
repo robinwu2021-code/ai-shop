@@ -9,6 +9,7 @@ import ai.neargo.shop.beauty.entity.BtyAppointmentResourceIntent;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.idem.IdempotencyScope;
@@ -22,9 +23,13 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.beans.factory.ObjectProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /** Durable saga with short source transactions. Every external IO occurs before or after source locks. */
 public final class AppointmentCoordinator {
+    private static final Logger LOG = LoggerFactory.getLogger(AppointmentCoordinator.class);
     private final AppointmentPersistence db;
     private final AppointmentAccess access;
     private final ObjectProvider<ResourceBookingPort> owner;
@@ -334,6 +339,13 @@ public final class AppointmentCoordinator {
                     root.getVersion(), db.current(root).getArrangementRevision()),
                     new PublishOptions("BEAUTY:APPOINTMENT:" + IdempotencyScope.requestHash(root.getEntityNo(),
                             root.getStoreNo(), root.getAppointmentNo()), 1));
+            String state = op.getState();
+            String appointmentState = root.getStatus();
+            String requestId = MDC.get("requestId");
+            AfterCommit.run("beauty.appointment.operation_committed", () -> LOG.info(
+                    "beauty.appointment.operation_committed requestId={} operationNo={} appointmentNo={}"
+                            + " operationState={} appointmentState={}",
+                    requestId, operation.getOperationNo(), operation.getAppointmentNo(), state, appointmentState));
             return null;
         });
     }

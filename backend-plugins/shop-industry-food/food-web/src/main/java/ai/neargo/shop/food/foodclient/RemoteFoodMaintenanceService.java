@@ -14,7 +14,9 @@ public class RemoteFoodMaintenanceService implements FoodMaintenanceService {
     @Override public Report run(Task task, int limit) {
         var request = new FoodMaintenanceInternalApi.Run(task, limit);
         Report result = ServiceCalls.call(ServiceName.FOOD, () -> api.run(request));
-        if (result == null || result.processed() + result.pending() > limit) {
+        // Production scans consumption, return stock and stock sync with independent limits.
+        int maximum = task == Task.PRODUCTION_RECOVERY ? 3 * limit : limit;
+        if (result == null || (long) result.processed() + result.pending() > maximum) {
             throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
         }
         return result;

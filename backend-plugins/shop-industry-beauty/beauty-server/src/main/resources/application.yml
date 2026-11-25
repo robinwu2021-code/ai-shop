@@ -31,3 +31,19 @@ management:
       group:
         readiness:
           include: readinessState,beautyReadiness
+
+logging:
+  file:
+    name: ${BEAUTY_LOG_FILE:}
+  console:
+    enabled: ${BEAUTY_LOG_CONSOLE_ENABLED:true}
+  threshold:
+    console: ${BEAUTY_LOG_CONSOLE_LEVEL:TRACE}
+  pattern:
+    level: "%5p rid=%X{requestId:-}"
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 14
+      total-size-cap: 200MB
+      clean-history-on-start: true

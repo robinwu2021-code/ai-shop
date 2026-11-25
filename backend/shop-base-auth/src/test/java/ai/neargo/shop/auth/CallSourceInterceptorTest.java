@@ -2,6 +2,7 @@ package ai.neargo.shop.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ai.neargo.shop.common.RequestLogContext;
 import ai.neargo.shop.spi.pay.CallSource;
 import ai.neargo.shop.spi.pay.CallSources;
 import java.util.List;
@@ -34,7 +35,8 @@ class CallSourceInterceptorTest {
         r.addHeader("X-Real-IP", realIp);
         r.addHeader("X-Forwarded-For", "6.6.6.6");
         r.addHeader("User-Agent", "Mozilla/5.0 (iPhone)");
-        r.addHeader("X-Request-Id", "req-12345678");
+        r.addHeader("X-Request-Id", "client-chosen");
+        r.setAttribute(RequestLogContext.REQUEST_ID, "req-12345678");
         r.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/mp/orders/{orderNo}/pay");
         return r;
     }
@@ -75,7 +77,7 @@ class CallSourceInterceptorTest {
     }
 
     @Test
-    @DisplayName("★★ 匿名、没经认证链：操作人空、端码 UNKNOWN；没有路由模板就用原路径；请求号不合规就另起")
+    @DisplayName("★★ 匿名、没经认证链：操作人空、端码 UNKNOWN；没有路由模板就用固定分类；客户端请求号不作为内部来源")
     void anonymousRequest() throws Exception {
         MockHttpServletRequest req = new MockHttpServletRequest("GET", "/actuator/health");
         req.setRemoteAddr("10.0.0.2");
@@ -87,7 +89,7 @@ class CallSourceInterceptorTest {
 
         assertThat(s.operatorNo()).isNull();
         assertThat(s.originClient()).isEqualTo(CallSources.UNKNOWN);
-        assertThat(s.originApi()).isEqualTo("GET /actuator/health");
+        assertThat(s.originApi()).isEqualTo("GET /actuator/UNMATCHED");
         assertThat(s.traceId()).matches("[0-9a-f]{32}");
     }
 }

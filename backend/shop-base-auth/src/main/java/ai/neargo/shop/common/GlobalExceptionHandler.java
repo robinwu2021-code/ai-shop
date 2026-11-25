@@ -122,7 +122,7 @@ public class GlobalExceptionHandler {
          * 收货地址 —— 把它们写进日志，等于把一份 PII 副本堆在磁盘上，
          * 而它比数据库更难管（没有保留期、没有脱敏、谁都能 grep）。
          */
-        log.warn("入参被拒 {} {} · {}", req.getMethod(), req.getRequestURI(), rejectedFields(e));
+        log.warn("入参被拒 {} {} · {}", RequestLogContext.method(req), RequestLogContext.route(req, 400), rejectedFields(e));
         return ApiResult.error(ErrorCode.BAD_REQUEST.code(), firstMessage(e));
     }
 
@@ -152,7 +152,7 @@ public class GlobalExceptionHandler {
              * getCode() 给的正是注解简名。
              */
             return errors.stream()
-                    .map(x -> x.getField() + "(" + x.getCode() + ")")
+                    .map(x -> x.getField().replaceAll("\\[[^\\]]*\\]", "[]") + "(" + x.getCode() + ")")
                     .distinct().limit(10).collect(java.util.stream.Collectors.joining(","));
         }
         if (e instanceof MissingServletRequestParameterException m) {
@@ -176,7 +176,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(AccessDeniedException.class)
     public ApiResult<Void> onDenied(AccessDeniedException e) {
-        log.warn("判权拒绝 {} · {}", requestLine(), e.getMessage());
+        log.warn("判权拒绝 {}", requestLine());
         return ApiResult.error(ErrorCode.FORBIDDEN.code(), Messages.get(ErrorCode.FORBIDDEN.msgKey()));
     }
 
@@ -222,7 +222,8 @@ public class GlobalExceptionHandler {
         if (!(attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra)) {
             return "(无请求上下文)";
         }
-        return sra.getRequest().getMethod() + " " + sra.getRequest().getRequestURI();
+        var request = sra.getRequest();
+        return RequestLogContext.method(request) + " " + RequestLogContext.route(request, 0);
     }
 
     /** 取当前请求上的属性。拿不到请求（异步线程、单测直调）时返回 null，不抛 */
@@ -250,7 +251,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ApiResult<Void> onAny(Exception e) throws Exception {
         if (DisconnectedClientHelper.isClientDisconnectedException(e)) {
-            log.debug("客户端已断开 {} · {}", requestLine(), e.getMessage());
+            log.debug("客户端已断开 {} · {}", requestLine(), e.getClass().getSimpleName());
             throw e;
         }
         log.error("unhandled error", e);

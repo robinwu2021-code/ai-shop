@@ -25,6 +25,14 @@ class RemoteFoodMaintenanceServiceTest {
     }
 
     @Test
+    void standaloneProductionAllowsOneBatchPerRecoverySource() {
+        var accepted = new RemoteFoodMaintenanceService(api(request -> new Report(6, 9)));
+        assertThat(accepted.run(Task.PRODUCTION_RECOVERY, 5)).isEqualTo(new Report(6, 9));
+        var impossible = new RemoteFoodMaintenanceService(api(request -> new Report(6, 10)));
+        assertThatThrownBy(() -> impossible.run(Task.PRODUCTION_RECOVERY, 5)).isInstanceOf(BizException.class);
+    }
+
+    @Test
     void rejectsImpossibleOwnerReceiptsAndInvalidRequests() {
         var service = new RemoteFoodMaintenanceService(api(request -> new Report(request.limit() + 1, 0)));
         assertThatThrownBy(() -> service.run(Task.QUEUE_NOTICE, 10)).isInstanceOf(BizException.class);

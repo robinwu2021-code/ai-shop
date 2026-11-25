@@ -76,7 +76,7 @@ public final class PrefixPassThrough {
             protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
                     throws ServletException, IOException {
                 if (GatewayExchange.localOnly(request)) {
-                    ApiAuthEntryPoint.writeError(response, 403, ErrorCode.FORBIDDEN);
+                    ApiAuthEntryPoint.writeError(request, response, 403, ErrorCode.FORBIDDEN);
                     return;
                 }
                 invoker.invoke(route, request, response, chain);

@@ -11,6 +11,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -30,8 +31,7 @@ import java.util.List;
  * <b>但没给完整报文的嵌套结构</b>。硬按猜的层级取值，猜错时的表现是
  * 「事件收到了、字段取不到、什么都没发生」—— 和没接一样，且不报错。
  *
- * <p>所以这里按**字段名**递归找，不依赖层级；真找不到订单标识就把原文整条落 WARN。
- * 第一条真实事件到达时，日志里那条原文就是把它改成精确解析的依据。
+ * <p>按字段名递归查找，找不到订单标识时记录固定原因码。
  */
 @Service
 public class WxPushEventService {
@@ -66,24 +66,22 @@ public class WxPushEventService {
         JsonNode root;
         try {
             root = json.readTree(rawBody);
-        } catch (Exception e) {
-            log.warn("[wxpush] 事件不是 JSON（可能是 XML 明文模式），原文：{}", clip(rawBody));
+        } catch (JacksonException e) {
+            log.warn("wx.push.event reasonCode=INVALID_JSON errorType={} count=1", e.getClass().getSimpleName());
             return 0;
         }
         String event = firstText(root, "Event", "event", "event_type", "MsgType");
         if (!EVT_SETTLEMENT.equalsIgnoreCase(event)) {
-            log.info("[wxpush] 事件 {} 暂不处理", event == null ? "(认不出类型)" : event);
+            log.info("wx.push.event reasonCode=UNSUPPORTED_EVENT count=1");
             return 0;
         }
         String orderNo = resolveOrderNo(root);
         if (orderNo == null) {
-            // 认不出订单就把原文整条留下 —— 这条日志就是把容错解析改成精确解析的依据
-            log.warn("[wxpush] 结算事件认不出订单标识，原文：{}", clip(rawBody));
+            log.warn("wx.push.settlement reasonCode=ORDER_NOT_RESOLVED count=1");
             return 0;
         }
         int n = completeSubOrders(orderNo);
-        log.info("[wxpush] 结算事件：订单 {} 推进 {} 张子单到已完成（方式={}）",
-                orderNo, n, firstText(root, "confirm_receive_method"));
+        log.info("wx.push.settlement advanced={}", n);
         return n;
     }
 
@@ -105,7 +103,8 @@ public class WxPushEventService {
                 n++;
             } catch (RuntimeException e) {
                 // 单张失败不影响同单其余（售后进行中之类会被业务规则拒，那是对的）
-                log.warn("[wxpush] 子单 {} 确认收货被拒：{}", sub.getSubOrderNo(), e.toString());
+                log.warn("wx.push.settlement subOrderNo={} reasonCode=CONFIRM_RECEIPT_FAILED errorType={}",
+                        sub.getSubOrderNo(), e.getClass().getSimpleName());
             }
         }
         return n;
@@ -165,7 +164,4 @@ public class WxPushEventService {
         return null;
     }
 
-    private static String clip(String s) {
-        return s.length() <= 1000 ? s : s.substring(0, 1000) + "…";
-    }
 }

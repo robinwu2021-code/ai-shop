@@ -2,7 +2,9 @@ package ai.neargo.shop.merchant.paysync;
 
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.outbox.RetryableOutboxException;
 import ai.neargo.shop.spi.merchant.StoreChanged;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -12,12 +14,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 /**
  * 把门店当前快照推给 near-pay V2-02（{@code POST /internal/pay/v2/store-projections/sync}）。至少一次投递：
  * near-pay 按修订与事件号幂等（重复 = DUPLICATE，旧修订 = STALE，都算成功）。
- * 网络错误 / 5xx 抛出由 outbox 重试；4xx（参数、内容冲突、未登记调用方）记错误不重试 —— 重试也不会变好。
+ * 网络错误、429 和 5xx 由 outbox 重试；其他拒绝只记录。
  */
 @Component
 @ConditionalOnProperty(prefix = "shop.nearpay.store-sync", name = "enabled", havingValue = "true")
@@ -65,7 +68,9 @@ public class NearPayStoreSyncConsumer implements OutboxConsumer {
             log.warn("[nearpay-store-sync] store {} no longer exists; skipped", event.getAggregateId());
             return;
         }
-        String body = JSON.writeValueAsString(NearPayStoreProfile.request(snapshot, props));
+        var payload = NearPayStoreProfile.request(snapshot, props);
+        Object revision = payload.get("revision");
+        String body = JSON.writeValueAsString(payload);
         HttpRequest req = HttpRequest.newBuilder(URI.create(props.baseUrl().replaceAll("/+$", "") + PATH))
                 .timeout(props.timeout())
                 .header("Content-Type", "application/json")
@@ -77,26 +82,45 @@ public class NearPayStoreSyncConsumer implements OutboxConsumer {
         HttpResponse<String> resp;
         try {
             resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             // 门店同步按事件号与版本幂等：不可达、超时都可以原样重投（RetryableOutboxException 走退避重试，不停在「结果未知」）
-            throw new ai.neargo.shop.event.outbox.RetryableOutboxException("near-pay store sync unreachable: " + e.getClass().getSimpleName());
+            throw new RetryableOutboxException("near-pay store sync unreachable: " + e.getClass().getSimpleName());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("near-pay store sync interrupted", e);
         }
         int code = resp.statusCode();
         if (code >= 200 && code < 300) {
-            log.info("[nearpay-store-sync] store {} revision {} -> {}", snapshot.storeNo(), snapshot.revision(), brief(resp.body()));
+            if (log.isInfoEnabled()) {
+                log.info("nearpay.store.sync storeNo={} revision={} httpStatus={} resultCode={}",
+                        snapshot.storeNo(), revision, code, successCode(resp.body()));
+            }
             return;
         }
         if (code >= 500 || code == 429) {
             // 支付侧并发死锁等返回 5xx（UME166 2026-11-19 批量同步）：同上，幂等可重投
-            throw new ai.neargo.shop.event.outbox.RetryableOutboxException("near-pay store sync HTTP " + code);
+            log.warn("nearpay.store.sync storeNo={} revision={} httpStatus={} resultCode={}",
+                    snapshot.storeNo(), revision, code, code == 429 ? "RATE_LIMITED" : "SERVER_ERROR");
+            throw new RetryableOutboxException("near-pay store sync HTTP " + code);
         }
-        log.error("[nearpay-store-sync] store {} revision {} rejected HTTP {}: {}", snapshot.storeNo(), snapshot.revision(), code, brief(resp.body()));
+        log.error("nearpay.store.sync storeNo={} revision={} httpStatus={} resultCode=HTTP_REJECTED",
+                snapshot.storeNo(), revision, code);
     }
 
-    private static String brief(String s) {
-        return s == null ? "" : s.length() > 300 ? s.substring(0, 300) : s;
+    // This status is diagnostic only. HTTP status still controls acknowledgment and retry.
+    private static String successCode(String body) {
+        if (body == null || body.isBlank()) {
+            return "UNKNOWN_STATUS";
+        }
+        try {
+            return switch (JSON.readTree(body).path("status").asString("")) {
+                case "APPLIED" -> "APPLIED";
+                case "DUPLICATE" -> "DUPLICATE";
+                case "STALE" -> "STALE";
+                default -> "UNKNOWN_STATUS";
+            };
+        } catch (JacksonException e) {
+            return "UNKNOWN_STATUS";
+        }
     }
 }

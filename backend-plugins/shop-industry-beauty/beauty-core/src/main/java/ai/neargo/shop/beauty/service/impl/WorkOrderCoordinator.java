@@ -30,6 +30,7 @@ import ai.neargo.shop.beauty.service.impl.ReceptionPreparation.WalkInPayload;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.idem.IdempotencyScope;
@@ -48,9 +49,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.IntStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /** All owner observations precede the one short atomic scope transaction. */
 public final class WorkOrderCoordinator {
+    private static final Logger LOG = LoggerFactory.getLogger(WorkOrderCoordinator.class);
     private StoreOwnershipWritePort ownershipWrites;
     // Embedded host capability only. Standalone preserves its own original transaction contract;
     // its relink evidence stays incomplete when this capability is absent.
@@ -669,6 +674,10 @@ public final class WorkOrderCoordinator {
                         db.json.readValue(op.getFrozenPayload(), WalkInPayload.class).selectedStartAt(), null)
                 : result));
         AppointmentPersistence.require(receptionRows.updateById(op) == 1);
+        String requestId = MDC.get("requestId");
+        AfterCommit.run("beauty.work_order.opened", () -> LOG.info(
+                "beauty.work_order.opened requestId={} operationNo={} appointmentNo={} workOrderNo={}",
+                requestId, result.operationNo(), result.appointmentNo(), result.workOrderNo()));
         return result;
     }
     private PreparedWorkOrderScope preparedForIdentity(BtyAppointment root, PreparedWorkOrderScope prepared,

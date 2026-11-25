@@ -61,6 +61,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.function.Supplier;
 
 /**
@@ -1475,6 +1477,15 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         var ready = new LinkedHashSet<>(refundExecutions.pendingNos(Math.max(1, Math.min(limit, 1000))));
         ready.addAll(older);
         return ready.stream().limit(Math.max(1, limit)).toList();
+    }
+
+    @Override
+    public Set<String> refundedNosForRecovery(List<String> afterSaleNos) {
+        return DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
+                        .select(OrdAfterSale::getAfterSaleNo)
+                        .in(OrdAfterSale::getAfterSaleNo, afterSaleNos)
+                        .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDED)))
+                .stream().map(OrdAfterSale::getAfterSaleNo).collect(Collectors.toUnmodifiableSet());
     }
 
     /**

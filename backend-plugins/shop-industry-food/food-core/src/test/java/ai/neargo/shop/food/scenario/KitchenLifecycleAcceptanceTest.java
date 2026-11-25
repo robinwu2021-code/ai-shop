@@ -343,7 +343,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
                 return result;
             }).when(service).consume(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
-            assertThat(service.recover(4)).isEqualTo(1);
+            assertThat(service.recover(4).processed()).isEqualTo(1);
             assertThat(calls).contains("NEW").hasSize(4);
         });
     }

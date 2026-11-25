@@ -88,7 +88,7 @@ class HttpBusinessClient implements JobInvoker, JobDeclarationSource {
                 "params", in.params()));
         try {
             ResponseEntity<String> res = ServiceCalls.call(target,
-                    () -> api(target, Duration.ofSeconds(timeoutSec)).run(handlerName, body));
+                    () -> api(target, Duration.ofSeconds(timeoutSec)).run(handlerName, in.runId(), body));
             return readOutcome(res.getStatusCode().value(), res.getBody());
         } catch (ServiceCallException e) {
             return switch (e.outcome()) {

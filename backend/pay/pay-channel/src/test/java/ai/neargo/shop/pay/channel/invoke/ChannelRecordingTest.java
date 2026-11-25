@@ -16,6 +16,7 @@ import ai.neargo.shop.pay.channel.api.ChannelKey;
 import ai.neargo.shop.pay.channel.api.ChannelOperation;
 import ai.neargo.shop.pay.channel.api.ChannelResult;
 import ai.neargo.shop.pay.channel.api.Money;
+import ai.neargo.shop.pay.channel.api.PayErrorCode;
 import ai.neargo.shop.pay.channel.api.PayScene;
 import ai.neargo.shop.pay.channel.entity.PayChannelCallLog;
 import ai.neargo.shop.pay.channel.fault.FaultPolicyRegistry;
@@ -27,12 +28,16 @@ import ai.neargo.shop.pay.channel.invoke.interceptor.LoggingInterceptor;
 import ai.neargo.shop.pay.channel.invoke.interceptor.RecordingInterceptor;
 import ai.neargo.shop.pay.channel.invoke.record.ChannelCallRecorder;
 import ai.neargo.shop.pay.channel.log.JsonPayLogger;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 /** 调用记录、结构化日志与幂等（TDD-支付服务-I2渠道统一封装 S3 · AC7；设计 §11.2、§17 AmountTraceTest / SourceTraceTest） */
 class ChannelRecordingTest {
@@ -52,6 +57,33 @@ class ChannelRecordingTest {
         chain.add(new LoggingInterceptor(new JsonPayLogger()));
         chain.add(new IdempotencyInterceptor(store));
         return new ChannelInvoker(new ChannelHandlerRegistry(List.of(h), catalog), chain, List.of());
+    }
+
+    @Test
+    void channelLogKeepsStableCodesWithoutSupplierText() {
+        var logger = (Logger) LoggerFactory.getLogger("pay.channel");
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            invoker(n -> new ChannelResult.Unknown("HTTP_502: supplier-response-canary"), null, Set.of(payKey()))
+                    .execute(wechat(9), pay(100, "CNY"));
+            invoker(n -> new ChannelResult.Pending(PayInstruction.none(), null, "provider-status-canary"), null,
+                    Set.of(payKey())).execute(wechat(9), pay(100, "CNY"));
+            invoker(n -> new ChannelResult.Pending(PayInstruction.none(), null, "PAYSIGN_SELF_CHECK_FAILED"),
+                    null, Set.of(payKey())).execute(wechat(9), pay(100, "CNY"));
+            invoker(n -> new ChannelResult.Failed(PayErrorCode.CHANNEL_REJECTED,
+                    "provider-error-code-canary", "provider-error-text-canary", false), null, Set.of(payKey()))
+                    .execute(wechat(9), pay(100, "CNY"));
+            var lines = appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
+            assertThat(lines).anyMatch(line -> line.contains("\"errorCode\":\"CHANNEL_REJECTED\""));
+            assertThat(lines).anyMatch(line -> line.contains("\"reasonCode\":\"HTTP_502\""));
+            assertThat(lines).anyMatch(line -> line.contains("\"channelStatus\":\"PAYSIGN_SELF_CHECK_FAILED\""));
+            assertThat(lines).noneMatch(line -> line.contains("-canary"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     @Test

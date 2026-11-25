@@ -74,7 +74,7 @@ public class PayCallbackController {
 
         if (!verify(body)) {
             // 验签失败只回 FAIL，不透露原因 —— 回调端点是公网可达的
-            log.warn("pay callback verify failed: {}", body.outTradeNo());
+            log.warn("pay.stub.callback messageNo={} reasonCode=INVALID_SIGNATURE count=1", msgNo);
             payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED, "验签失败",
                     body.outTradeNo(), null, fields(body));
             return "FAIL";
@@ -110,8 +110,7 @@ public class PayCallbackController {
          */
         if (orderNo == null) {
             // 这笔钱认领不了：流水里没有这个单号。回 FAIL 让通道重推，同时留下线索
-            log.error("[callback] 收到无法认领的收款 outTradeNo={} —— 支付流水里没有这个单号",
-                    body.outTradeNo());
+            log.error("pay.stub.callback messageNo={} reasonCode=PAYMENT_NOT_CLAIMED count=1", msgNo);
             payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
                     "流水里没有这个商户单号", body.outTradeNo(), null, fields(body));
             return "FAIL";

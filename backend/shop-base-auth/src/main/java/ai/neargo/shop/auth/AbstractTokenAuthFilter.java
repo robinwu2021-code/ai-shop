@@ -2,6 +2,7 @@ package ai.neargo.shop.auth;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.RequestLogContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -90,10 +91,10 @@ public abstract class AbstractTokenAuthFilter extends OncePerRequestFilter {
             }
             chain.doFilter(req, resp);
         } catch (AuthenticationStorageUnavailable e) {
-            log.error("认证存储不可用，{} 端暂时无法认证 · {} {} · {}", realm, req.getMethod(),
-                    req.getRequestURI(), e.getCause().getClass().getSimpleName());
+            log.error("认证存储不可用，{} 端暂时无法认证 · {} {} · {}", realm, RequestLogContext.method(req),
+                    RequestLogContext.route(req, 503), e.getCause().getClass().getSimpleName());
             resp.setHeader("Retry-After", "5");
-            ApiAuthEntryPoint.writeError(resp, 503, ErrorCode.INTERNAL_ERROR);
+            ApiAuthEntryPoint.writeError(req, resp, 503, ErrorCode.INTERNAL_ERROR);
         } finally {
             RequestMetaContext.clear();
             if (scopeSet) {

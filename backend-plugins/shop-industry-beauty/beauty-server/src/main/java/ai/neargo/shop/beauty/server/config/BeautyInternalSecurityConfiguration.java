@@ -1,5 +1,11 @@
 package ai.neargo.shop.beauty.server.config;
 
+import ai.neargo.shop.common.ApiAccessLogFilter;
+import jakarta.servlet.DispatcherType;
+import java.util.List;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.core.Ordered;
+
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.job.api.JobHttpPaths;
 import java.nio.charset.StandardCharsets;
@@ -17,6 +23,22 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
 public class BeautyInternalSecurityConfiguration {
+
+    @Bean
+    FilterRegistrationBean<ApiAccessLogFilter> beautyAccessLogFilter(
+            @Value("${shop.obs.access-log:true}") boolean accessLog,
+            @Value("${shop.obs.slow-ms:1000}") long slowMs,
+            @Value("${shop.obs.exclude:/actuator/**}") List<String> exclude,
+            @Value("${shop.services.internal-token:}") String token,
+            @Value("${shop.job.internal-token:}") String jobToken) {
+        var registration = new FilterRegistrationBean<>(
+                new ApiAccessLogFilter(accessLog, slowMs, exclude, token, jobToken));
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        registration.setDispatcherTypes(DispatcherType.REQUEST, DispatcherType.ASYNC);
+        registration.addUrlPatterns("/*");
+        return registration;
+    }
+
 
     @Bean
     SecurityFilterChain beautyInternalChain(HttpSecurity http,

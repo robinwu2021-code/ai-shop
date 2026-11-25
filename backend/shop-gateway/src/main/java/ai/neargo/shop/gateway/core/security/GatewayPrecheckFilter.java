@@ -82,7 +82,7 @@ public class GatewayPrecheckFilter extends OncePerRequestFilter {
 
         if (resource.remote()) {
             if (GatewayExchange.localOnly(request)) {
-                ApiAuthEntryPoint.writeError(response, 403, ErrorCode.FORBIDDEN);
+                ApiAuthEntryPoint.writeError(request, response, 403, ErrorCode.FORBIDDEN);
                 return;
             }
             if (user == null && resource.access() != Access.PUBLIC) {
@@ -93,7 +93,7 @@ public class GatewayPrecheckFilter extends OncePerRequestFilter {
             Decision decision = decider.decide(user, resource);
             if (!decision.permitted()) {
                 log.warn("判权拒绝（微服务链接）{} · 缺 {}", line, decision.missing());
-                errors.write(response, decider.denial(decision));
+                errors.write(request, response, decider.denial(decision));
                 return;
             }
             invoke(resource, request, response, chain);
@@ -117,7 +117,7 @@ public class GatewayPrecheckFilter extends OncePerRequestFilter {
             if (!decision.permitted()) {
                 if ("enforce".equals(precheck)) {
                     log.warn("提前判权拒绝 {} · 缺 {}", line, decision.missing());
-                    errors.write(response, decider.denial(decision));
+                    errors.write(request, response, decider.denial(decision));
                     return;
                 }
                 log.warn("提前判权（观察）会拒绝 {} · 缺 {} · {}", line, decision.missing(), resource.handler());

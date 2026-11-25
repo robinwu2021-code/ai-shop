@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily ai-shop archive cleanup at 04:30 Asia/Shanghai
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 Asia/Shanghai
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,8 +1,11 @@
 package ai.neargo.shop.obs;
 
-import ai.neargo.shop.config.obs.ApiAccessLogFilter;
+import ai.neargo.shop.common.ApiAccessLogFilter;
+import ai.neargo.shop.config.obs.OperationLogAdvisor;
+import ai.neargo.shop.platform.OpsApiKeyService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.framework.Advised;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -34,6 +37,14 @@ class ObsWiringTest {
 
     @Autowired
     private FilterRegistrationBean<ApiAccessLogFilter> registration;
+
+    @Autowired
+    private OpsApiKeyService keys;
+
+    @Test
+    void keyOperationsHaveTheLoggingAdvisor() {
+        assertThat(((Advised) keys).getAdvisors()).anyMatch(OperationLogAdvisor.class::isInstance);
+    }
 
     @Test
     @DisplayName("★★★ 过滤器被全局注册、拦所有路径、排在最外层")

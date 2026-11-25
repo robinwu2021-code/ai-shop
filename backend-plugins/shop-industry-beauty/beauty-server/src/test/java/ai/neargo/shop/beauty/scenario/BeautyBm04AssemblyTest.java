@@ -188,6 +188,7 @@ class BeautyBm04AssemblyTest {
                                                 },
                                                 "key"))
                         .withBean(ObjectMapper.class, ObjectMapper::new)
+                        .withBean("dataSource", DataSource.class, () -> mock(DataSource.class))
                         .withBean(
                                 "transactionManager",
                                 PlatformTransactionManager.class,
@@ -226,6 +227,8 @@ class BeautyBm04AssemblyTest {
                     BeautyMappers.ServiceStepMapper.class,
                     BeautyMappers.ServiceParticipationMapper.class,
                     BeautyMappers.ServiceSubmissionMapper.class,
+                    BeautyMappers.ServiceExecutionFenceMapper.class,
+                    BeautyMappers.ServiceExecutionStockIntentMapper.class,
                     BeautyMappers.SourceObservationMapper.class,
                     BeautyMappers.SourceAllocationGuardMapper.class,
                     BeautyMappers.TradeBindingMapper.class

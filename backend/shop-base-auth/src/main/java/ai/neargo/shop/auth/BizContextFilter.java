@@ -1,6 +1,7 @@
 package ai.neargo.shop.auth;
 
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.RequestLogContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -67,6 +68,7 @@ public class BizContextFilter extends OncePerRequestFilter {
         // decoded path segments. Never skip admission based on a second, raw prefix matcher.
         String path = req.getRequestURI().substring(req.getContextPath().length());
         if (path.indexOf('%') >= 0 || !path.startsWith("/biz/")) {
+            req.setAttribute(RequestLogContext.BUSINESS_CODE, ErrorCode.BAD_REQUEST.code());
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             resp.setContentType("application/json;charset=UTF-8");
             resp.getWriter().write("{\"code\":" + ErrorCode.BAD_REQUEST.code() + ",\"msg\":\"NONCANONICAL_MERCHANT_PATH\",\"data\":null}");
@@ -101,6 +103,8 @@ public class BizContextFilter extends OncePerRequestFilter {
                 var legacy = withRequestedStore(resolver.resolveAuthenticated(user.get(),req.getHeader(STORE_HEADER)),req);
                 BizContext.set(legacy);
                 if (admission != null && !admission.admit(user.get(),legacy,req,resp)) return;
+                req.setAttribute(RequestLogContext.MERCHANT_NO, legacy.merchantNo());
+                req.setAttribute(RequestLogContext.STORE_NO, legacy.currentStoreNo());
             }
             chain.doFilter(req, resp);
         } finally {

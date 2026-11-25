@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.foodclient;
 
+import ai.neargo.shop.food.service.FoodMaintenanceService.Report;
+
 import ai.neargo.shop.food.dto.BusinessReturnApprovalContracts.ApprovalVO;
 import ai.neargo.shop.food.dto.BusinessReturnApprovalContracts.ApproveReq;
 import ai.neargo.shop.food.dto.BusinessReturnApprovalContracts.ReplacementReq;
@@ -37,7 +39,7 @@ public class RemoteBusinessReturnApprovalService implements BusinessReturnApprov
                                         e, s, a, n, r, k)));
     }
 
-    public int recover(int limit) {
+    public Report recover(int limit) {
         throw new UnsupportedOperationException("Only original FOOD host performs recovery");
     }
 }

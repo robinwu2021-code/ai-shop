@@ -2,6 +2,7 @@ package ai.neargo.shop.auth;
 
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Messages;
+import ai.neargo.shop.common.RequestLogContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -39,32 +40,30 @@ public class ApiAuthEntryPoint implements AuthenticationEntryPoint {
             throws IOException {
         boolean expired = Boolean.TRUE.equals(req.getAttribute(ConsumerTokenAuthFilter.TOKEN_EXPIRED_ATTR));
         ErrorCode code = expired ? ErrorCode.TOKEN_EXPIRED : ErrorCode.UNAUTHORIZED;
-        /*
-         * **带了令牌却被拒才打日志。**
-         *
-         * 这一层此前一行日志都没有，而它恰恰是几件要紧的事的落点：
-         * 会话过期、令牌被吊销，以及<b>跨端令牌</b>（拿 `otk_` 打 `/biz`）——
-         * 后者是真正的越权尝试，而它在服务端一点痕迹都不留。
-         *
-         * 没带令牌的那一半不打：游客与探测器每天大量撞在这里，
-         * 全打会把上面那几条淹掉 —— 淹掉与不打是一回事。
-         *
-         * ⚠️ **只打「带了令牌」这个事实与前缀的三个字符，不打令牌本身**：
-         * 令牌进了日志就等于会话可被重放，而日志会被收集转发。
-         * 前缀（`ctk`/`btk`/`otk`）足以认出「哪一端的令牌打到了哪条链」，
-         * 而它不含任何可用于重放的信息。
-         */
-        String auth = req.getHeader("Authorization");
-        if (auth != null && auth.startsWith("Bearer ") && auth.length() > 11) {
-            log.warn("认证层拒绝 {} · {} {} · 令牌前缀 {}", code,
-                    req.getMethod(), req.getRequestURI(), auth.substring(7, 11));
+        String credentialType = credentialType(req.getHeader("Authorization"));
+        if (credentialType != null) {
+            log.warn("认证层拒绝 {} · {} {} · credentialType={} rid={}", code,
+                    RequestLogContext.method(req), RequestLogContext.route(req, HttpStatus.UNAUTHORIZED.value()),
+                    credentialType, RequestLogContext.requestId(req));
         }
+        writeError(req, resp, HttpStatus.UNAUTHORIZED.value(), code);
+    }
 
-        writeError(resp, HttpStatus.UNAUTHORIZED.value(), code);
+    private static String credentialType(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return null;
+        }
+        if (authorization.startsWith("Bearer ctk_")) return "CONSUMER";
+        if (authorization.startsWith("Bearer btk_")) return "MERCHANT";
+        if (authorization.startsWith("Bearer otk_")) return "OPERATOR";
+        if (authorization.startsWith("Bearer oak_")) return "OPERATOR_API_KEY";
+        return "OTHER";
     }
 
     /** 认证层（Spring MVC 之外）统一的错误包体：与 ApiResult 逐字节一致，状态码由调用方定。 */
-    public static void writeError(HttpServletResponse resp, int status, ErrorCode code) throws IOException {
+    public static void writeError(HttpServletRequest req, HttpServletResponse resp, int status, ErrorCode code)
+            throws IOException {
+        req.setAttribute(RequestLogContext.BUSINESS_CODE, code.code());
         resp.setStatus(status);
         resp.setContentType(MediaType.APPLICATION_JSON_VALUE);
         resp.setCharacterEncoding(StandardCharsets.UTF_8.name());

@@ -21,7 +21,7 @@ from collections import defaultdict
 
 # `api m=GET p=/mp/goods/{goodsNo} s=200 ms=1234 rid=a1b2c3d4 [store=ST…]`
 LINE = re.compile(
-    r"\bapi m=(?P<m>[A-Z]+) p=(?P<p>\S+) s=(?P<s>\d{3}) ms=(?P<ms>\d+) rid=(?P<rid>\w+)")
+    r"\bapi m=(?P<m>[A-Z]+) p=(?P<p>\S+) s=(?P<s>\d{3}) ms=(?P<ms>\d+) rid=(?P<rid>[A-Za-z0-9._-]+)")
 # 行首的 ISO 时间戳：`2026-10-08T15:38:23.745+08:00  INFO …`
 TS = re.compile(r"^(?P<ts>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})")
 

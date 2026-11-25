@@ -138,7 +138,7 @@ public class PointsRefundResourceServiceImpl implements PointsRefundResourceServ
                 });
     }
     @Override @Transactional(propagation=Propagation.NOT_SUPPORTED)
-    public void recover(String as) {
+    public boolean recover(String as) {
         var row =
                 tx.execute(
                         status ->
@@ -149,7 +149,7 @@ public class PointsRefundResourceServiceImpl implements PointsRefundResourceServ
                                                 return current;
                                             }
                                             if (terminal(current)) {
-                                                return null;
+                                                return current;
                                             }
                                             if ("PROCESSING".equals(current.get("state"))
                                                     && number(current, "next_attempt_at")
@@ -165,10 +165,11 @@ public class PointsRefundResourceServiceImpl implements PointsRefundResourceServ
                                                     != 1) return null;
                                             return current;
                                         }));
-        if(row==null) return;
+        if (row == null) return false;
         if (conflict(row)) {
             throw sourceConflict();
         }
+        if (terminal(row)) return true;
         String error=null;
         boolean done=false;
         try {
@@ -222,6 +223,7 @@ public class PointsRefundResourceServiceImpl implements PointsRefundResourceServ
         if (!Boolean.TRUE.equals(retained)) {
             throw sourceConflict();
         }
+        return complete;
     }
 
     /** Caller holds a short Core transaction; child precedes task/execution source inspection. */

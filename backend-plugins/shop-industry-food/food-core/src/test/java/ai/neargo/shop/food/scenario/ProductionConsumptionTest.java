@@ -49,6 +49,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.ProductionConsumptionMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
 import ai.neargo.shop.food.policy.DiningPriceSourcePolicy;
 import ai.neargo.shop.food.policy.ProductionDemandPolicy;
+import ai.neargo.shop.food.service.FoodMaintenanceService.Report;
 import ai.neargo.shop.food.service.impl.ProductionConsumptionServiceImpl;
 import ai.neargo.shop.spi.inventory.InventoryProductionPort;
 import ai.neargo.shop.spi.inventory.InventoryProductionPort.Command;
@@ -544,11 +545,11 @@ class ProductionConsumptionTest {
         when(f.heads.selectList(any())).thenReturn(List.of());
         when(f.events.unconsumed(1)).thenReturn(List.of(
                 new ServiceEventMapper.ProductionSource("E", "S", "EVENT")), List.of());
-        assertThat(f.service.recover(2)).isZero();
+        assertThat(f.service.recover(2)).isEqualTo(new Report(0, 1));
         assertThat(f.stored.get()).isNotNull();
         assertThat(f.stored.get().getStatus()).isEqualTo("BLOCKED");
         assertThat(f.stored.get().getSourceEventNo()).isEqualTo("EVENT");
-        assertThat(f.service.recover(2)).isZero();
+        assertThat(f.service.recover(2)).isEqualTo(new Report(0, 0));
         verify(f.heads).insert(any(FnbProductionConsumption.class));
         verifyNoInteractions(f.inventory);
     }
@@ -564,7 +565,7 @@ class ProductionConsumptionTest {
         org.mockito.Mockito.doReturn(done).when(service).consume("E", "S", "SYSTEM", "OLD");
         org.mockito.Mockito.doReturn(done).when(service).consume("E", "S2", "SYSTEM", "NEW");
         when(f.events.unconsumed(1)).thenReturn(List.of(new ServiceEventMapper.ProductionSource("E", "S2", "NEW")));
-        assertThat(service.recover(2)).isEqualTo(2);
+        assertThat(service.recover(2)).isEqualTo(new Report(2, 0));
         verify(f.events).unconsumed(1);
         verify(service).consume("E", "S2", "SYSTEM", "NEW");
     }
@@ -580,7 +581,7 @@ class ProductionConsumptionTest {
         org.mockito.Mockito.doThrow(new IllegalStateException("unavailable")).when(service).consume("E", "S", "SYSTEM", "BAD");
         org.mockito.Mockito.doReturn(mock(ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO.class))
                 .when(service).consume("E", "S2", "SYSTEM", "GOOD");
-        assertThat(service.recover(4)).isEqualTo(1);
+        assertThat(service.recover(4)).isEqualTo(new Report(1, 1));
     }
 
     private static class NewEventFixture {

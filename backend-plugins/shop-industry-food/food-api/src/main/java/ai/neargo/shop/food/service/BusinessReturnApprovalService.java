@@ -23,5 +23,5 @@ public interface BusinessReturnApprovalService {
             ReplacementReq request,
             String key);
 
-    int recover(int limit);
+    FoodMaintenanceService.Report recover(int limit);
 }

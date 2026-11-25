@@ -79,12 +79,16 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
                                   ServerHttpRequest request, ServerHttpResponse response) {
         // supports() 拿不到请求，所以路径在这里判
         if (MediaType.TEXT_EVENT_STREAM.isCompatibleWith(selectedContentType)
-                || body instanceof ApiResult<?> || body instanceof Resource || isInternal(request) || isShortLink(request)
+                || body instanceof Resource || isInternal(request) || isShortLink(request)
                 || isPayPortal(request)
                 || pathOf(request).equals("/private/print-artifacts")) {
             return body;
         }
-        return ApiResult.ok(body);
+        ApiResult<?> result = body instanceof ApiResult<?> envelope ? envelope : ApiResult.ok(body);
+        if (request instanceof ServletServerHttpRequest servlet) {
+            servlet.getServletRequest().setAttribute(RequestLogContext.BUSINESS_CODE, result.code());
+        }
+        return result;
     }
 
     /** 请求路径（去掉 context path 之后）是否在 {@code /internal/} 之下 */

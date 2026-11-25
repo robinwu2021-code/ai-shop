@@ -276,7 +276,10 @@ if [ -n "$NGINX_LOG_DIR" ] && [ -d "$NGINX_LOG_DIR" ]; then
                 # 用 if 不用 case：case 的「模式)」写在 $( ) 里，bash 会把那个 ) 当成替换的结尾
                 b="$(basename "$f")"; tag=-
                 if [ "$b" = "$IMG_LOG_NAME" ] || [ "$b" = "$IMG_LOG_NAME.1" ]; then tag=IMG; fi
-                awk -v tag="$tag" '{ print tag, substr($4, 2, 17), $10 }' "$f"
+                awk -v tag="$tag" '
+                    $1 ~ /^\[/ && $3 ~ /^bytes=[0-9]+$/ { print tag, substr($1, 2, 17), substr($3, 7); next }
+                    { print tag, substr($4, 2, 17), $10 }
+                ' "$f"
             done | LC_ALL=C awk -v keys="$keys" -v hkeys="$hour_keys" -v lim="$IMG_PEAK_MBPS" '
                 BEGIN { n = split(keys, a, "\n"); for (i = 1; i <= n; i++) want[a[i]] = 1
                         n = split(hkeys, a, "\n"); for (i = 1; i <= n; i++) hour[a[i]] = 1 }
