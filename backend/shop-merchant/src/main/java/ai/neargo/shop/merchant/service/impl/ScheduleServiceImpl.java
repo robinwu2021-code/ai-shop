@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.policy.StoreConfigScope;
 import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -267,11 +268,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 row.getStatus());
     }
     private ResourceCommandScopeRow scope(String entity, String store) {
-        var scope = parents.lockScope("MAIN", entity, store);
-        if (scope == null || !entity.equals(scope.entityNo()) || !store.equals(scope.storeNo())) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        return scope;
+        return StoreConfigScope.lock(parents, entity, store);
     }
     private void identity(String entity, String store, String actor) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {

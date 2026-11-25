@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.policy.StoreConfigScope;
 import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -397,11 +398,7 @@ public class PersonnelServiceImpl implements PersonnelService {
         }
     }
     private ResourceCommandScopeRow scope(String entity, String store) {
-        var scope = parents.lockScope("MAIN", entity, store);
-        if (scope == null || !entity.equals(scope.entityNo()) || !store.equals(scope.storeNo())) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        return scope;
+        return StoreConfigScope.lock(parents, entity, store);
     }
     private MchPersonnel lock(ResourceCommandScopeRow scope, String personnelNo, long expected) {
         var person = people.lockScopedPersonnel(scope, personnelNo);

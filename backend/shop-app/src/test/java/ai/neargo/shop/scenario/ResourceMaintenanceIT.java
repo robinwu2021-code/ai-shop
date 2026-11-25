@@ -147,6 +147,18 @@ class ResourceMaintenanceIT {
         });
     }
     @Test
+    void pendingLicenseEntityCreatesAndUpdatesRoomsButSuspendedEntityIsNotOperational() {
+        sql.update("UPDATE mch_entity SET status='PENDING_LICENSE' WHERE entity_no='E'");
+        runner().run(ctx -> {
+            var row = create(ctx);
+            String no = row.get("resourceNo").asText();
+            assertThat(save(ctx, body(no, 1, "ROOM", 3, "ACTIVE"), "UPDATE").get("capacity").asInt()).isEqualTo(3);
+            sql.update("UPDATE mch_entity SET status='SUSPENDED' WHERE entity_no='E'");
+            assertThatThrownBy(() -> save(ctx, body(no, 2, "ROOM", 4, "ACTIVE"), "AGAIN"))
+                    .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ENTITY_NOT_OPERATIONAL));
+        });
+    }
+    @Test
     void revisionsProtectCapacityAndSuspensionAndReplayReturnsCommittedResult() {
         runner().run(ctx -> {
             var row = create(ctx); String no = row.get("resourceNo").asText();

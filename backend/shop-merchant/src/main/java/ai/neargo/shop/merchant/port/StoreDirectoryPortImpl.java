@@ -78,6 +78,15 @@ public class StoreDirectoryPortImpl implements StoreDirectoryPort {
 
     @Override
     public Map<String, StoreCard> cards(Collection<String> storeNos) {
+        return cardsOf(storeNos, List.of(MchEntity.ACTIVE));
+    }
+
+    @Override
+    public Map<String, StoreCard> configCards(Collection<String> storeNos) {
+        return cardsOf(storeNos, List.of(MchEntity.ACTIVE, MchEntity.PENDING_LICENSE));
+    }
+
+    private Map<String, StoreCard> cardsOf(Collection<String> storeNos, Collection<String> entityStatuses) {
         if (storeNos == null || storeNos.isEmpty()) {
             return Map.of();
         }
@@ -85,8 +94,8 @@ public class StoreDirectoryPortImpl implements StoreDirectoryPort {
                 storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
                         .in(MchStore::getStoreNo, storeNos)
                         .in(MchStore::getStatus, STORE_ACTIVE, STORE_READONLY)));
-        Map<String, MchEntity> entities = activeEntities(
-                stores.stream().map(MchStore::getEntityNo).distinct().toList());
+        Map<String, MchEntity> entities = entitiesIn(
+                stores.stream().map(MchStore::getEntityNo).distinct().toList(), entityStatuses);
         Map<String, StoreCard> out = new LinkedHashMap<>();
         for (MchStore s : stores) {
             MchEntity e = entities.get(s.getEntityNo());
@@ -219,13 +228,17 @@ public class StoreDirectoryPortImpl implements StoreDirectoryPort {
     }
 
     private Map<String, MchEntity> activeEntities(Collection<String> entityNos) {
+        return entitiesIn(entityNos, List.of(MchEntity.ACTIVE));
+    }
+
+    private Map<String, MchEntity> entitiesIn(Collection<String> entityNos, Collection<String> statuses) {
         if (entityNos.isEmpty()) {
             return Map.of();
         }
         return DataScopeContext.executeWithoutScope(() ->
                         entityMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
                                 .in(MchEntity::getEntityNo, entityNos)
-                                .eq(MchEntity::getStatus, MchEntity.ACTIVE)))
+                                .in(MchEntity::getStatus, statuses)))
                 .stream()
                 .collect(Collectors.toMap(MchEntity::getEntityNo, Function.identity(), (a, b) -> a));
     }

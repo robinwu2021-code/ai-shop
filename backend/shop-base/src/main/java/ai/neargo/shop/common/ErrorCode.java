@@ -1218,6 +1218,12 @@ public enum ErrorCode {
     STORE_SUSPENDED_BY_PLATFORM(70021, "err.merchant.store_suspended_by_platform"),
 
     /**
+     * 主体既不是 ACTIVE 也不是 PENDING_LICENSE（停权、封禁等），店内设定（人员、房间、排班、商品课税别）不可读写。
+     * 与 10404 分开：门店确实存在，端上要提示「主体未启用」而不是「找不到」（TDD-手持收银机后端 W2）。
+     */
+    ENTITY_NOT_OPERATIONAL(70200, "err.merchant.entity_not_operational"),
+
+    /**
      * 子账号数量已达套餐上限（P-11.2）。
      *
      * <p>与 {@link #STORE_QUOTA_EXCEEDED} 分成两个码而不是共用一个「额度不足」：

@@ -112,6 +112,32 @@ public final class MerchantMappers {
         ResourceCommandScopeRow lockScope(@Param("tenantNo") String tenantNo, @Param("entityNo") String entityNo,
                 @Param("storeNo") String storeNo);
 
+        /**
+         * 店内设定（人员、房间、排班）的父级锁：与 {@link #lockScope} 相同，但主体审核中（PENDING_LICENSE）也放行。
+         * 预约下单等对外经营仍走 {@link #lockScope}（TDD-手持收银机后端 W2）。
+         */
+        @InterceptorIgnore(dataPermission = "true")
+        @Select("""
+                SELECT e.tenant_no,e.entity_no,s.store_no FROM mch_entity e
+                JOIN mch_store s ON s.tenant_no=e.tenant_no AND s.entity_no=e.entity_no
+                WHERE e.tenant_no=#{tenantNo} AND e.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND e.status IN ('ACTIVE','PENDING_LICENSE') AND e.archived_at IS NULL AND e.deleted=0
+                  AND s.status='ACTIVE' AND s.deleted=0 LOCK IN SHARE MODE
+                """)
+        ResourceCommandScopeRow lockConfigScope(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo);
+
+        /** 只用于区分「门店不存在」与「存在但主体状态不允许」；不加锁、不按状态过滤。 */
+        @InterceptorIgnore(dataPermission = "true")
+        @Select("""
+                SELECT e.status FROM mch_entity e
+                JOIN mch_store s ON s.tenant_no=e.tenant_no AND s.entity_no=e.entity_no
+                WHERE e.tenant_no=#{tenantNo} AND e.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND e.deleted=0 AND s.deleted=0
+                """)
+        String selectEntityStatusOfStore(@Param("tenantNo") String tenantNo, @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo);
+
         /** Advisory normalization uses actual owner collation before reading binary actual evidence. */
         @Select("""
                 SELECT e.tenant_no,e.entity_no,s.store_no FROM mch_entity e

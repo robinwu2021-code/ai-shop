@@ -41,6 +41,16 @@ public interface StoreDirectoryPort {
     Map<String, StoreCard> cards(Collection<String> storeNos);
 
     /**
+     * 店内设定用的门店卡片：同 {@link #cards}，但主体审核中（PENDING_LICENSE）的门店也返回。
+     *
+     * <p>只给「改自己门店内部资料」的路径用（如商品课税别）；对外经营（下单、收款、门店目录）一律用
+     * {@link #cards}。默认实现等同 {@link #cards}，不放行审核中主体（TDD-手持收银机后端 W2）。
+     */
+    default Map<String, StoreCard> configCards(Collection<String> storeNos) {
+        return cards(storeNos);
+    }
+
+    /**
      * 能卖到某个社区的门店：门店 ACTIVE 且主体 ACTIVE，主体的服务范围覆盖这个社区
      * （与商家列表同一条三档规则）。{@code communityNo} 为空 = 不按社区过滤。
      *
