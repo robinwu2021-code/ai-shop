@@ -66,6 +66,19 @@ export function calledPaths() {
 // Independent PAY OPS frontend: ops-web/lib/onboarding/recognition.ts, DocumentRecognition in the material form.
 // Host permission and Taiwan scope remain enforced by OpsOnboardingDocumentController.
 const SERVICE_CONSUMERS = new Set(["GET /ops/customers/operating-entities/*", "POST /ops/onboarding-documents/recognize"]);
+// Administrator credential management is a direct API consumer contract, documented for operational tooling.
+const operatorToolSpec = join(ROOT, "docs/api/ops-management.openapi.json");
+if (existsSync(operatorToolSpec)) {
+  const { paths } = JSON.parse(readFileSync(operatorToolSpec, "utf8"));
+  for (const [path, methods] of Object.entries(paths)) {
+    for (const [method, operation] of Object.entries(methods)) {
+      if (operation["x-credential-admission"] === "SESSION"
+          && operation["x-permission-codes"]?.includes("iam:staff:api-key-manage")) {
+        SERVICE_CONSUMERS.add(`${method.toUpperCase()} ${norm(path)}`);
+      }
+    }
+  }
+}
 export const hasServiceConsumer = ({method, path}) => SERVICE_CONSUMERS.has(`${method} ${norm(path)}`);
 
 export function orphans() {

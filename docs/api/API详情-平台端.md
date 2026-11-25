@@ -2751,6 +2751,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `username` | `string` | 是 | 登录名 |
+| `staffNo` | `string` | 否 | 当前运营员工的编号。 |
 | `role` | [`Role`](#role) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
 | `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ） |
 | `mustChangePassword` | `boolean` | 否 | 仍是初始密码：统一登录页必须先让他改密，才放行到任一端（TDD-ops-统一登录与系统切换 §3.1） |
@@ -2777,6 +2778,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `username` | `string` | 是 | 登录名 |
+| `staffNo` | `string` | 否 | 当前运营员工的编号。 |
 | `role` | [`Role`](#role) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
 | `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ） |
 | `mustChangePassword` | `boolean` | 否 | 仍是初始密码：统一登录页必须先让他改密，才放行到任一端（TDD-ops-统一登录与系统切换 §3.1） |
@@ -2803,6 +2805,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `username` | `string` | 是 | 登录名 |
+| `staffNo` | `string` | 否 | 当前运营员工的编号。 |
 | `role` | [`Role`](#role) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
 | `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ） |
 | `mustChangePassword` | `boolean` | 否 | 仍是初始密码：统一登录页必须先让他改密，才放行到任一端（TDD-ops-统一登录与系统切换 §3.1） |
@@ -6517,6 +6520,66 @@ _无字段_
 | `secondFactorExempt` | `boolean` | 否 | 免二次验证白名单。第二因子（邮件验证码）开着时，勾了的账号只凭密码登录。 理由必填、不能给自己勾，变更与每次免验证登录都进审计。 |
 | `lastLoginAt` | `string` | 否 | 最近登录时间。从未登录为空 |
 | `createdAt` | `string` | 是 | 建档时间 |
+
+
+#### GET `/ops/staffs/me/api-keys`
+
+查询本人的 API 密钥元数据
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MyOpsApiKey`](#myopsapikey)\[\]
+
+
+#### POST `/ops/staffs/me/api-keys`
+
+绑定本机生成的密钥摘要
+
+**入参**
+
+请求体：[`RegisterOpsApiKey`](#registeropsapikey)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `keyNo` | `string` | 是 | 本机客户端生成的 UUID。 |
+| `label` | `string` | 是 | 员工填写的用途。 |
+| `access` | [`OpsApiKeyAccess`](#opsapikeyaccess) | 否 | 密钥访问级别，仍受运营员工当前角色和数据域约束。 |
+| `validDays` | `number` | 是 | 有效天数，取值 1–90。 |
+| `secretHash` | `string` | 是 | 本机完整密钥的 SHA-256 十六进制摘要。 |
+
+**出参**（`data`）
+
+类型：[`MyOpsApiKey`](#myopsapikey)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `keyNo` | `string` | 是 | 本机客户端生成的 UUID。 |
+| `label` | `string` | 是 | 员工填写的用途。 |
+| `access` | [`OpsApiKeyAccess`](#opsapikeyaccess) | 是 | 密钥访问级别，仍受运营员工当前角色和数据域约束。 |
+| `issuedBy` | `string` | 是 | 签发的员工编号。 |
+| `createdAt` | `number` | 是 | 签发时间，Unix 毫秒。 |
+| `expiresAt` | `number` | 是 | 到期时间，Unix 毫秒。 |
+| `revokedAt` | `number,null` | 否 | 撤销时间，Unix 毫秒。未撤销时为空。 |
+| `status` | [`OpsApiKeyStatus`](#opsapikeystatus) | 是 | 服务端按到期和撤销时间计算的状态。 |
+
+
+#### POST `/ops/staffs/me/api-keys/{keyNo}/revoke`
+
+撤销本人持有的 API 密钥
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `keyNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`
 
 
 ### inventory
@@ -16424,6 +16487,7 @@ Delivery state of an inventory/order synchronization event.
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `username` | `string` | 是 | 登录名 |
+| `staffNo` | `string` | 否 | 当前运营员工的编号。 |
 | `role` | [`Role`](#role) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
 | `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ） |
 | `mustChangePassword` | `boolean` | 否 | 仍是初始密码：统一登录页必须先让他改密，才放行到任一端（TDD-ops-统一登录与系统切换 §3.1） |
@@ -17684,6 +17748,19 @@ Region-specific contact recording. SMS can open only after the deployment declar
 | `enabled` | `boolean` | 是 | 是否启用。停用后引用它的推送任务发不出去 |
 | `sentCount` | `number` | 是 | 近 30 天发送量 |
 
+### MyOpsApiKey
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `keyNo` | `string` | 是 | 本机客户端生成的 UUID。 |
+| `label` | `string` | 是 | 员工填写的用途。 |
+| `access` | [`OpsApiKeyAccess`](#opsapikeyaccess) | 是 | 密钥访问级别，仍受运营员工当前角色和数据域约束。 |
+| `issuedBy` | `string` | 是 | 签发的员工编号。 |
+| `createdAt` | `number` | 是 | 签发时间，Unix 毫秒。 |
+| `expiresAt` | `number` | 是 | 到期时间，Unix 毫秒。 |
+| `revokedAt` | `number,null` | 否 | 撤销时间，Unix 毫秒。未撤销时为空。 |
+| `status` | [`OpsApiKeyStatus`](#opsapikeystatus) | 是 | 服务端按到期和撤销时间计算的状态。 |
+
 ### NearbyCommunity
 
 附近已开通的聚落。裁决查重用：名字不同、位置只差 50 米的两条，靠文字比对看不出来
@@ -17850,6 +17927,21 @@ Region-specific contact recording. SMS can open only after the deployment declar
 - `ACTIVE`
 - `REJECTED`
 - `FROZEN`
+
+### OpsApiKeyAccess
+
+枚举取值：
+
+- `READ_ONLY`
+- `MANAGE`
+
+### OpsApiKeyStatus
+
+枚举取值：
+
+- `ACTIVE`
+- `EXPIRED`
+- `REVOKED`
 
 ### OpsEnrollment
 
@@ -19555,6 +19647,16 @@ PrintOperation and FrozenJson preserve canonical JSON/hash without inventing exe
 | `path` | `string` | 是 | 「广东省 / 深圳市 / 龙华区 / 福城街道」 |
 | `source` | [`RegionMatchSource`](#regionmatchsource) | 是 | 来源 |
 | `detail` | `string` | 是 | 依据：匹配到的地址片段，或「茜坑社区 · 320 米」 |
+
+### RegisterOpsApiKey
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `keyNo` | `string` | 是 | 本机客户端生成的 UUID。 |
+| `label` | `string` | 是 | 员工填写的用途。 |
+| `access` | [`OpsApiKeyAccess`](#opsapikeyaccess) | 否 | 密钥访问级别，仍受运营员工当前角色和数据域约束。 |
+| `validDays` | `number` | 是 | 有效天数，取值 1–90。 |
+| `secretHash` | `string` | 是 | 本机完整密钥的 SHA-256 十六进制摘要。 |
 
 ### Review
 

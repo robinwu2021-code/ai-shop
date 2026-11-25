@@ -60,6 +60,8 @@ class OrphanModuleTest {
     // 独立执行的发布、本地运行冒烟工具和固定种子素材生成器。
     private static final Set<Path> STANDALONE_TOOLS = Set.of(
             Path.of("deploy/ume/mitake/RuntimeSmoke.java"),
+            // 发票 PDF 归档保留任务由部署说明指定的 javac 和宿主机脚本执行。
+            Path.of("deploy/tencent/invoice-pdf-retention/InvoicePdfRetention.java"),
             Path.of("scripts/captcha/GenerateSliderImages.java"),
             Path.of("scripts/local-platform-runtime/LocalMysqlHistoricalSmoke.java"));
 

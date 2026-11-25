@@ -7,6 +7,7 @@ import ai.neargo.shop.auth.PermChecker;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.gateway.core.security.AccessDecider;
 import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.platform.OpsApiKeyService;
 import ai.neargo.shop.gateway.core.config.ConditionalOnGatewayEnd;
 import ai.neargo.shop.gateway.core.config.GatewayProperties;
 import ai.neargo.shop.gateway.core.end.AbstractGatewayEnd;
@@ -27,14 +28,16 @@ public class OpsGatewayEnd extends AbstractGatewayEnd {
     private final TokenStore tokenStore;
     private final ObjectProvider<LiveIdentityResolver> identityResolver;
     private final ObjectProvider<PermChecker> perm;
+    private final ObjectProvider<OpsApiKeyService> apiKeys;
 
     public OpsGatewayEnd(Environment environment, ObjectProvider<GatewayProperties> properties,
                          TokenStore tokenStore, ObjectProvider<LiveIdentityResolver> identityResolver,
-                         ObjectProvider<PermChecker> perm) {
+                         ObjectProvider<PermChecker> perm, ObjectProvider<OpsApiKeyService> apiKeys) {
         super(environment, properties);
         this.tokenStore = tokenStore;
         this.identityResolver = identityResolver;
         this.perm = perm;
+        this.apiKeys = apiKeys;
     }
 
     @Bean
@@ -84,7 +87,9 @@ public class OpsGatewayEnd extends AbstractGatewayEnd {
 
     @Override
     protected AbstractTokenAuthFilter authenticator() {
-        return new OperatorTokenAuthFilter(tokenStore, identityResolver);
+        OpsApiKeyService keys = apiKeys.getIfAvailable();
+        return keys == null ? new OperatorTokenAuthFilter(tokenStore, identityResolver)
+                : new OpsApiKeyAuthFilter(tokenStore, identityResolver, keys);
     }
 
     // 忘记密码的两条同样免鉴权：忘了密码自然登不进来。

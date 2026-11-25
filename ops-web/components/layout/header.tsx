@@ -20,6 +20,7 @@ import { MobileNav } from "./mobile-nav";
 import { revokeOpsSession } from "@/lib/api/https/dashboard";
 import { SystemSwitcher } from "./system-switcher";
 import { ChangePasswordButton } from "./change-password";
+import { ApiKeysButton } from "./api-keys";
 
 // 面包屑：L1 › 分组 › 子功能（URL 反推，标签经 tNav 本地化）。
 // **整条不可点**：它是位置指示器不是导航 —— 每一级在 Rail / SecondaryNav / TabHeader
@@ -120,6 +121,7 @@ export function Header() {
         <span className="sr-only max-w-24 truncate font-medium md:not-sr-only md:block xl:max-w-40" title={`${username} · ${t(`role.${role}`)}`}>{username}</span>
         {/* 改密码挨着用户名与退出：三者都是「这个账号」的事，不进菜单 */}
         <ChangePasswordButton />
+        <ApiKeysButton />
         <Button
           size="sm"
           variant="ghost"

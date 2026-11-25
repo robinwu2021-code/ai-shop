@@ -59,6 +59,9 @@ function toStaff(s: BackendStaff): Staff {
 }
 
 export const iamHttp: IamApi = {
+  listMyApiKeys: () => client.get("/ops/staffs/me/api-keys"),
+  registerMyApiKey: (request) => client.post("/ops/staffs/me/api-keys", request),
+  revokeMyApiKey: (keyNo) => client.post(`/ops/staffs/me/api-keys/${encodeURIComponent(keyNo)}/revoke`, undefined),
   listStaffs: async (q) => {
     /*
      * **角色筛选要先把 ops-web 角色码翻回后端码**。BD / GOODS_OPS / SUPPORT

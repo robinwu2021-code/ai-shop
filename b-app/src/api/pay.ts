@@ -132,9 +132,9 @@ export interface PayAppGrant {
 /** 收款方式。不用 POS：那个词在收款订单的 source 里已表示平台自己的 POS 收款 */
 export type OfflineRecordMethod = "CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER";
 /** 已记 / 已作废（作废是终态，行不删） */
-export type OfflineRecordStatus = "RECORDED" | "VOIDED";
+export type OfflineRecordStatus = "RECORDED" | "VOIDED" | "REFUNDED";
 /** 留痕动作 */
-export type OfflineRecordAction = "CREATE" | "CORRECT" | "VOID";
+export type OfflineRecordAction = "CREATE" | "CORRECT" | "VOID" | "REFUND";
 
 /** 一步留痕；端上按 action 与前后值自己拼文字 */
 export interface OfflineRecordHistory {

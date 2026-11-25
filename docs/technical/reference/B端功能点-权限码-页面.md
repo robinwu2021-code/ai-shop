@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**56 个权限码 × 6 个角色 × 514 个受控功能点**
+统计：**56 个权限码 × 6 个角色 × 539 个受控功能点**
 （另有 0 个登录即可、40 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,27 +21,27 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 79 | ✅ | — | — | — | — | — |
+| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 80 | ✅ | — | — | — | — | — |
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 53 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 40 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 40 | ✅ | — | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 24 | ✅ | ✅ | — | — | — | — |
+| `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 19 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
-| `biz:print:read` | `PRINT_READ` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | ✅ | — | — | — |
+| `biz:print:read` | `PRINT_READ` | 更正与作废 App 外收款记录（原因必填、留痕） | 16 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:print:config` | `PRINT_CONFIG` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | — | — | — | — |
-| `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 13 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `biz:invoice:setup` | `INVOICE_SETUP` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 14 | ✅ | ✅ | — | — | — | — |
+| `biz:invoice:read` | `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 13 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 12 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:print:resolve` | `PRINT_RESOLVE` | 更正与作废 App 外收款记录（原因必填、留痕） | 9 | ✅ | ✅ | — | — | — | — |
-| `biz:invoice:setup` | `INVOICE_SETUP` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 7 | ✅ | ✅ | — | — | — | — |
+| `biz:invoice:issue` | `INVOICE_ISSUE` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:print:device` | `PRINT_DEVICE` | 更正与作废 App 外收款记录（原因必填、留痕） | 6 | ✅ | ✅ | — | — | — | — |
-| `biz:invoice:read` | `INVOICE_READ` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 6 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 5 | ✅ | ✅ | — | — | — | ✅ |
 | `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
-| `biz:invoice:issue` | `INVOICE_ISSUE` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 5 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:pricing:config:publish` | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read | 4 | ✅ | — | — | — | — | — |
 | `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `biz:invoice:void` | `INVOICE_VOID` | 发票（ADR-063）：查、开、作废与折让、税制与号段设置 | 4 | ✅ | ✅ | — | — | — | — |
@@ -128,6 +128,7 @@
 | —（b-app 未接） | — | `/biz/store/{}/stock-reconcile` | — | — |
 | —（b-app 未接） | — | `/biz/store/settings/basic` | — | — |
 | —（b-app 未接） | — | `/biz/store/settings/contact` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/policy` | — | — |
 | —（b-app 未接） | — | `/biz/store/{}/entity/relink-check` | — | — |
 | —（b-app 未接） | — | `/biz/store/{}/entity` | — | — |
 | —（b-app 未接） | — | `/biz/x/commerce/account-operations` | — | — |
@@ -461,6 +462,32 @@
 | 关掉这一路会影响的在售商品 | GET | `/biz/stores/:storeNo/fulfillment/:channel/impact` | `mFulfillmentImpact` | store-scope |
 | —（b-app 未接） | — | `/biz/store/settings/hours` | — | — |
 
+### `biz:order:view`　订单列表与详情、工作台待办
+
+**可用角色**：老板、店长、店员、配送员、客服
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 订单列表 | GET | `/biz/order` | `mOrderList` | delivery、orders |
+| 订单详情 | GET | `/biz/order/:orderNo` | `mOrderDetail` | order |
+| 订单库存追溯 | GET | `/biz/order/:orderNo/inventory-trace` | `mOrderInventoryTrace` | order |
+| 物流更新记录 | GET | `/biz/order/:orderNo/logistics-updates` | `mOrderUpdates` | order |
+| 订单赠送积分进度 | GET | `/biz/order/:orderNo/points-earning` | `mOrderPointsEarning` | order |
+| 物流轨迹 | GET | `/biz/order/:orderNo/trace` | `mOrderTrace` | order |
+| 按优先级分页的订单待办 | GET | `/biz/order/worklist` | `mOrderWorklist` | orders |
+| —（b-app 未接） | — | `/biz/store-orders/{}` | — | — |
+| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/{}` | — | — |
+| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/lookup` | — | — |
+| —（b-app 未接） | — | `/biz/order/{}/full` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/verify` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/recovery/methods` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/recovery/challenges` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/recovery/challenges/{}/verify` | — | — |
+| —（b-app 未接） | — | `/biz/auth/pos-pin/recovery` | — | — |
+| —（b-app 未接） | — | `/biz/service-orders/{}/manual-admission` | — | — |
+| —（b-app 未接） | — | `/biz/service-orders/{}/manual-source` | — | — |
+
 ### `biz:verify`　核销、批量核销、按码搜索
 
 **可用角色**：老板、店长、店员
@@ -501,6 +528,7 @@
 | —（b-app 未接） | — | `/biz/print/jobs/{}/document` | — | — |
 | —（b-app 未接） | — | `/biz/print/operations/{}` | — | — |
 | —（b-app 未接） | — | `/biz/print/orders/{}/summary` | — | — |
+| —（b-app 未接） | — | `/biz/print/invoices/{}/proof-history` | — | — |
 | —（b-app 未接） | — | `/biz/print/printers` | — | — |
 | —（b-app 未接） | — | `/biz/print/printers/{}` | — | — |
 | —（b-app 未接） | — | `/biz/print/requests` | — | — |
@@ -529,25 +557,50 @@
 | —（b-app 未接） | — | `/biz/print/templates` | — | — |
 | —（b-app 未接） | — | `/biz/print/templates/{}/versions` | — | — |
 
-### `biz:order:view`　订单列表与详情、工作台待办
+### `biz:invoice:setup`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
 
-**可用角色**：老板、店长、店员、配送员、客服
+**可用角色**：老板、店长
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| 订单列表 | GET | `/biz/order` | `mOrderList` | delivery、orders |
-| 订单详情 | GET | `/biz/order/:orderNo` | `mOrderDetail` | order |
-| 订单库存追溯 | GET | `/biz/order/:orderNo/inventory-trace` | `mOrderInventoryTrace` | order |
-| 物流更新记录 | GET | `/biz/order/:orderNo/logistics-updates` | `mOrderUpdates` | order |
-| 订单赠送积分进度 | GET | `/biz/order/:orderNo/points-earning` | `mOrderPointsEarning` | order |
-| 物流轨迹 | GET | `/biz/order/:orderNo/trace` | `mOrderTrace` | order |
-| 按优先级分页的订单待办 | GET | `/biz/order/worklist` | `mOrderWorklist` | orders |
-| —（b-app 未接） | — | `/biz/store-orders/{}` | — | — |
-| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/{}` | — | — |
-| —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/lookup` | — | — |
-| —（b-app 未接） | — | `/biz/order/{}/full` | — | — |
-| —（b-app 未接） | — | `/biz/service-orders/{}/manual-admission` | — | — |
-| —（b-app 未接） | — | `/biz/service-orders/{}/manual-source` | — | — |
+| 发票设置：税制配置 | GET | `/biz/invoice-setup/profile` | `mSiProfile` | invoice-setup |
+| 发票设置：开通 / 修改税制 | PUT | `/biz/invoice-setup/profile` | `mSiSaveProfile` | invoice-setup |
+| 发票设置：向加值中心取号段 | POST | `/biz/invoice-setup/provider-ranges` | `mSiFetchProviderRange` | invoice-setup |
+| 发票设置：服务商配号方式与已下载字轨 | GET | `/biz/invoice-setup/provider-tracks` | `mSiProviderTracks` | invoice-setup |
+| 发票设置：上传下期字轨 | POST | `/biz/invoice-setup/provider-tracks` | `mSiUploadProviderTracks` | invoice-setup |
+| 发票设置：核验加值中心账号 | POST | `/biz/invoice-setup/provider-verification` | `mSiVerifyProvider` | invoice-setup |
+| 发票设置：本市场可选的开票供应商 | GET | `/biz/invoice-setup/providers` | `mSiProviders` | invoice-setup |
+| 发票设置：字轨号段 | GET | `/biz/invoice-setup/ranges` | `mSiRanges` | invoice-setup |
+| 发票设置：登记字轨号段 | POST | `/biz/invoice-setup/ranges` | `mSiAddRange` | invoice-setup |
+| —（b-app 未接） | — | `/biz/invoice-channel-applications` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-channel-applications/{}` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-channel-applications/{}/revisions` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-channel-accounts` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-channel-routes` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-applications/{}/rejections` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-applications/{}/cancellations` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-setup/store-items/{}` | — | — |
+
+### `biz:invoice:read`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
+
+**可用角色**：老板、店长、店员
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 销售发票：按来源单开票 | POST | `/biz/invoices` | `mSiIssue` | sales-invoice-issue |
+| 销售发票：本店分页 | GET | `/biz/invoices` | `mSiList` | sales-invoices |
+| 销售发票：详情 | GET | `/biz/invoices/{invoiceNo}` | `mSiDetail` | sales-invoice |
+| 销售发票：可模拟打印的打印件 | GET | `/biz/invoices/{invoiceNo}/print-facts` | `mSiPrintFacts` | sales-invoice-print-sim |
+| 销售发票：本门店上传积压 | GET | `/biz/invoices/upload-backlog` | `mSiUploadBacklog` | sales-invoices |
+| —（b-app 未接） | — | `/biz/invoice-applications` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-applications/{}` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-applications/{}/revisions` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-applications/{}/events` | — | — |
+| —（b-app 未接） | — | `/biz/invoices/{}/deliveries` | — | — |
+| —（b-app 未接） | — | `/biz/invoices/{}/documents` | — | — |
+| —（b-app 未接） | — | `/biz/invoices/{}/timeline` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-setup/store-settings` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-setup/store-items` | — | — |
 
 ### `biz:aftersale`　售后同意/驳回/收货
 
@@ -602,22 +655,19 @@
 | —（b-app 未接） | — | `/biz/print/jobs/{}/retries` | — | — |
 | —（b-app 未接） | — | `/biz/print/jobs/{}/stale-releases` | — | — |
 
-### `biz:invoice:setup`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
+### `biz:invoice:issue`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
 
-**可用角色**：老板、店长
+**可用角色**：老板、店长、店员
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| 发票设置：税制配置 | GET | `/biz/invoice-setup/profile` | `mSiProfile` | invoice-setup |
-| 发票设置：开通 / 修改税制 | PUT | `/biz/invoice-setup/profile` | `mSiSaveProfile` | invoice-setup |
-| 发票设置：向加值中心取号段 | POST | `/biz/invoice-setup/provider-ranges` | `mSiFetchProviderRange` | invoice-setup |
-| 发票设置：服务商配号方式与已下载字轨 | GET | `/biz/invoice-setup/provider-tracks` | `mSiProviderTracks` | invoice-setup |
-| 发票设置：上传下期字轨 | POST | `/biz/invoice-setup/provider-tracks` | `mSiUploadProviderTracks` | invoice-setup |
-| 发票设置：核验加值中心账号 | POST | `/biz/invoice-setup/provider-verification` | `mSiVerifyProvider` | invoice-setup |
-| 发票设置：本市场可选的开票供应商 | GET | `/biz/invoice-setup/providers` | `mSiProviders` | invoice-setup |
-| 发票设置：字轨号段 | GET | `/biz/invoice-setup/ranges` | `mSiRanges` | invoice-setup |
-| 发票设置：登记字轨号段 | POST | `/biz/invoice-setup/ranges` | `mSiAddRange` | invoice-setup |
-| —（b-app 未接） | — | `/biz/invoice-setup/store-items/{}` | — | — |
+| 销售发票：向服务商查单并对账 | POST | `/biz/invoices/{invoiceNo}/provider-checks` | `mSiProviderCheck` | sales-invoice |
+| 销售发票：注销后同号重开 | POST | `/biz/invoices/{invoiceNo}/reissue` | `mSiReissue` | sales-invoice |
+| 销售发票：重传待人工处理的上传 | POST | `/biz/invoices/{invoiceNo}/retransmissions` | `mSiRetransmit` | sales-invoice |
+| 销售发票：付款前预存买受人 | PUT | `/biz/invoices/buyer-preferences` | `mSiBuyerPreference` | sales-invoice-issue |
+| —（b-app 未接） | — | `/biz/store-orders/{}/invoice-data` | — | — |
+| —（b-app 未接） | — | `/biz/invoice-applications/{}/issuances` | — | — |
+| —（b-app 未接） | — | `/biz/invoices/{}/deliveries/{}/resends` | — | — |
 
 ### `biz:print:device`　更正与作废 App 外收款记录（原因必填、留痕）
 
@@ -631,20 +681,6 @@
 | —（b-app 未接） | — | `/biz/print/printers/{}/probes` | — | — |
 | —（b-app 未接） | — | `/biz/print/printers/{}/status-changes` | — | — |
 | —（b-app 未接） | — | `/biz/print/printers/{}/test-jobs` | — | — |
-
-### `biz:invoice:read`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
-
-**可用角色**：老板、店长、店员
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 销售发票：按来源单开票 | POST | `/biz/invoices` | `mSiIssue` | sales-invoice-issue |
-| 销售发票：本店分页 | GET | `/biz/invoices` | `mSiList` | sales-invoices |
-| 销售发票：详情 | GET | `/biz/invoices/{invoiceNo}` | `mSiDetail` | sales-invoice |
-| 销售发票：可模拟打印的打印件 | GET | `/biz/invoices/{invoiceNo}/print-facts` | `mSiPrintFacts` | sales-invoice-print-sim |
-| 销售发票：本门店上传积压 | GET | `/biz/invoices/upload-backlog` | `mSiUploadBacklog` | sales-invoices |
-| —（b-app 未接） | — | `/biz/invoice-setup/store-settings` | — | — |
-| —（b-app 未接） | — | `/biz/invoice-setup/store-items` | — | — |
 
 ### `biz:receive`　到货登记、分拣单、短少上报
 
@@ -681,18 +717,6 @@
 | —（b-app 未接） | — | `/biz/stored-value/records` | — | — |
 | —（b-app 未接） | — | `/biz/stored-value/records/{}` | — | — |
 | —（b-app 未接） | — | `/biz/stored-value/accounts` | — | — |
-
-### `biz:invoice:issue`　发票（ADR-063）：查、开、作废与折让、税制与号段设置
-
-**可用角色**：老板、店长、店员
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 销售发票：向服务商查单并对账 | POST | `/biz/invoices/{invoiceNo}/provider-checks` | `mSiProviderCheck` | sales-invoice |
-| 销售发票：注销后同号重开 | POST | `/biz/invoices/{invoiceNo}/reissue` | `mSiReissue` | sales-invoice |
-| 销售发票：重传待人工处理的上传 | POST | `/biz/invoices/{invoiceNo}/retransmissions` | `mSiRetransmit` | sales-invoice |
-| 销售发票：付款前预存买受人 | PUT | `/biz/invoices/buyer-preferences` | `mSiBuyerPreference` | sales-invoice-issue |
-| —（b-app 未接） | — | `/biz/store-orders/{}/invoice-data` | — | — |
 
 ### `biz:pricing:config:publish`　Shared pricing configuration: read, draft edit and publication are independent grants.
 
@@ -1004,6 +1028,13 @@
 |---|---|---|
 | `/biz/activities/{}/publish` | `biz:campaign` | 老板、店长 |
 | `/biz/activity-presets` | `biz:campaign` | 老板、店长 |
+| `/biz/auth/pos-pin` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/auth/pos-pin/policy` | `biz:store:admin` | 老板 |
+| `/biz/auth/pos-pin/recovery` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/auth/pos-pin/recovery/challenges` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/auth/pos-pin/recovery/challenges/{}/verify` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/auth/pos-pin/recovery/methods` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
+| `/biz/auth/pos-pin/verify` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
 | `/biz/card-product-bindings` | `biz:goods` | 老板、店长 |
 | `/biz/card-product-presets` | `biz:goods` | 老板、店长 |
 | `/biz/checkout/{}/offline-receipts` | `pay:cash:receive` | 老板 |
@@ -1023,9 +1054,25 @@
 | `/biz/inventory/food-stock-projections` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/inventory/food-stock-projections/{}` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/inventory/items/{}/valuation` | `biz:stock` | 老板、店长、店员、理货员 |
+| `/biz/invoice-applications` | `biz:invoice:read` | 老板、店长、店员 |
+| `/biz/invoice-applications/{}` | `biz:invoice:read` | 老板、店长、店员 |
+| `/biz/invoice-applications/{}/cancellations` | `biz:invoice:setup` | 老板、店长 |
+| `/biz/invoice-applications/{}/events` | `biz:invoice:read` | 老板、店长、店员 |
+| `/biz/invoice-applications/{}/issuances` | `biz:invoice:issue` | 老板、店长、店员 |
+| `/biz/invoice-applications/{}/rejections` | `biz:invoice:setup` | 老板、店长 |
+| `/biz/invoice-applications/{}/revisions` | `biz:invoice:read` | 老板、店长、店员 |
+| `/biz/invoice-channel-accounts` | `biz:invoice:setup` | 老板、店长 |
+| `/biz/invoice-channel-applications` | `biz:invoice:setup` | 老板、店长 |
+| `/biz/invoice-channel-applications/{}` | `biz:invoice:setup` | 老板、店长 |
+| `/biz/invoice-channel-applications/{}/revisions` | `biz:invoice:setup` | 老板、店长 |
+| `/biz/invoice-channel-routes` | `biz:invoice:setup` | 老板、店长 |
 | `/biz/invoice-setup/store-items` | `biz:invoice:read` | 老板、店长、店员 |
 | `/biz/invoice-setup/store-items/{}` | `biz:invoice:setup` | 老板、店长 |
 | `/biz/invoice-setup/store-settings` | `biz:invoice:read` | 老板、店长、店员 |
+| `/biz/invoices/{}/deliveries` | `biz:invoice:read` | 老板、店长、店员 |
+| `/biz/invoices/{}/deliveries/{}/resends` | `biz:invoice:issue` | 老板、店长、店员 |
+| `/biz/invoices/{}/documents` | `biz:invoice:read` | 老板、店长、店员 |
+| `/biz/invoices/{}/timeline` | `biz:invoice:read` | 老板、店长、店员 |
 | `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |
 | `/biz/merchant/onboarding` | `biz:finance` | 老板 |
 | `/biz/merchant/pay-service/apply` | `biz:finance` | 老板 |
@@ -1050,6 +1097,7 @@
 | `/biz/payment/links/{}/reissue` | `undefined` | 老板 |
 | `/biz/payment/links/{}/void` | `undefined` | 老板 |
 | `/biz/payment/offline-records/{}/correct` | `undefined` | 老板 |
+| `/biz/payment/offline-records/{}/refund` | `undefined` | 老板 |
 | `/biz/payment/offline-records/{}/void` | `undefined` | 老板 |
 | `/biz/payment/orders` | `undefined` | 老板 |
 | `/biz/payment/orders/lookup` | `undefined` | 老板 |
@@ -1096,6 +1144,7 @@
 | `/biz/print/exports/{}/download-grants` | `biz:print:export` | 老板、店长、店员 |
 | `/biz/print/health` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/incidents` | `biz:print:resolve` | 老板、店长 |
+| `/biz/print/invoices/{}/proof-history` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/jobs` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/jobs/{}` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/jobs/{}/attempts` | `biz:print:read` | 老板、店长、店员 |

@@ -1,6 +1,9 @@
 package ai.neargo.shop.gateway.core.proxy;
 
+import ai.neargo.shop.auth.ApiAuthEntryPoint;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.gateway.core.resource.ApiResource;
+import ai.neargo.shop.gateway.core.security.GatewayExchange;
 import ai.neargo.shop.svc.ServiceLocator;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -72,6 +75,10 @@ public final class PrefixPassThrough {
             @Override
             protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
                     throws ServletException, IOException {
+                if (GatewayExchange.localOnly(request)) {
+                    ApiAuthEntryPoint.writeError(response, 403, ErrorCode.FORBIDDEN);
+                    return;
+                }
                 invoker.invoke(route, request, response, chain);
             }
         };

@@ -32,7 +32,7 @@ export default function ApprovalFlowsPage() {
     ? confirm({ title: c.disableTitle.replace("{name}", t.name ?? t.code), danger: true, action: () => run(() => api.setEnabled(t.code, false)) })
     : run(() => api.setEnabled(t.code, true));
   const columns: Column<TemplateSummary>[] = [
-    { header: c.colName, cell: (t) => <Link className="text-primary-ink hover:underline" href={`/approval-flows/detail?code=${encodeURIComponent(t.code)}`}>{t.name ?? t.code}</Link> },
+    { header: c.colName, cell: (t) => <Link className="focus-ring text-primary-ink hover:underline" href={`/approval-flows/detail?code=${encodeURIComponent(t.code)}`}>{t.name ?? t.code}</Link> },
     { header: c.colCode, cell: (t) => <code className="txt-caption">{t.code}</code> },
     { header: c.colSteps, cell: (t) => t.stepsSummary ?? "—" },
     { header: c.colVersion, cell: (t) => t.version ?? "—" },

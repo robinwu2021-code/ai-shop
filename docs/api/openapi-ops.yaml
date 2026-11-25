@@ -1860,6 +1860,9 @@ components:
         username:
           type: "string"
           description: "登录名"
+        staffNo:
+          type: "string"
+          description: "当前运营员工的编号。"
         role:
           "$ref": "#/components/schemas/Role"
           description: "角色。**权限判定以后端为准**，前端只做菜单裁剪"
@@ -17576,6 +17579,79 @@ components:
         - "rejection"
         - "actions"
       additionalProperties: false
+    OpsApiKeyAccess:
+      type: "string"
+      enum:
+        - "READ_ONLY"
+        - "MANAGE"
+    OpsApiKeyStatus:
+      type: "string"
+      enum:
+        - "ACTIVE"
+        - "EXPIRED"
+        - "REVOKED"
+    MyOpsApiKey:
+      type: "object"
+      properties:
+        keyNo:
+          type: "string"
+          description: "本机客户端生成的 UUID。"
+        label:
+          type: "string"
+          description: "员工填写的用途。"
+        access:
+          "$ref": "#/components/schemas/OpsApiKeyAccess"
+          description: "密钥访问级别，仍受运营员工当前角色和数据域约束。"
+        issuedBy:
+          type: "string"
+          description: "签发的员工编号。"
+        createdAt:
+          type: "number"
+          description: "签发时间，Unix 毫秒。"
+        expiresAt:
+          type: "number"
+          description: "到期时间，Unix 毫秒。"
+        revokedAt:
+          type:
+            - "number"
+            - "null"
+          description: "撤销时间，Unix 毫秒。未撤销时为空。"
+        status:
+          "$ref": "#/components/schemas/OpsApiKeyStatus"
+          description: "服务端按到期和撤销时间计算的状态。"
+      required:
+        - "keyNo"
+        - "label"
+        - "access"
+        - "issuedBy"
+        - "createdAt"
+        - "expiresAt"
+        - "status"
+      additionalProperties: false
+    RegisterOpsApiKey:
+      type: "object"
+      properties:
+        keyNo:
+          type: "string"
+          description: "本机客户端生成的 UUID。"
+        label:
+          type: "string"
+          description: "员工填写的用途。"
+        access:
+          "$ref": "#/components/schemas/OpsApiKeyAccess"
+          description: "密钥访问级别，仍受运营员工当前角色和数据域约束。"
+        validDays:
+          type: "number"
+          description: "有效天数，取值 1–90。"
+        secretHash:
+          type: "string"
+          description: "本机完整密钥的 SHA-256 十六进制摘要。"
+      required:
+        - "keyNo"
+        - "label"
+        - "validDays"
+        - "secretHash"
+      additionalProperties: false
 security:
   - bearerAuth: []
 paths:
@@ -26244,6 +26320,96 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/staffs/me/api-keys":
+    get:
+      operationId: "listMyApiKeys"
+      summary: "查询本人的 API 密钥元数据"
+      tags:
+        - "iam"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MyOpsApiKey"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "registerMyApiKey"
+      summary: "绑定本机生成的密钥摘要"
+      tags:
+        - "iam"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MyOpsApiKey"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RegisterOpsApiKey"
+  "/ops/staffs/me/api-keys/{keyNo}/revoke":
+    post:
+      operationId: "revokeMyApiKey"
+      summary: "撤销本人持有的 API 密钥"
+      tags:
+        - "iam"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "keyNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
   "/ops/staffs":
     get:
       operationId: "listStaffs"

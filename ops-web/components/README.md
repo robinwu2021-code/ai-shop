@@ -98,6 +98,7 @@
 | `ScrollHint` / `useScrollHint` | `layout/scroll-hint.tsx` | 导航溢出提示。Rail 与 L2 面板**一直都能滚**，缺的是「下面还有」这件事的可见性 —— macOS 的覆盖式滚动条静止时不渲染，而 Rail 是 56px 宽的纯图标条，21 个域在 720px 以下必有几个落在折线以下 |
 | `SystemSwitcher` / `fetchPaymentAccess` | `layout/system-switcher.tsx` | 顶栏系统切换：平台运营 ⇄ 支付运营；「支付运营」按支付端 `/me/access` 显隐，两端同源共用令牌、跳过去即已登录（TDD-ops-统一登录与系统切换） |
 | `LangSwitcher` | `layout/lang-switcher.tsx` | 顶栏**中 / EN** 语言切换 |
+| `ApiKeysButton` | `layout/api-keys.tsx` | 顶栏本人 API 密钥申请、列表及撤销抽屉。 |
 | `ChangePasswordButton` | `layout/change-password.tsx` | 顶栏「修改密码」：旧密码 + 新密码两次，调 `POST /ops/staffs/me/password`。旧密码错后端回 10401（业务码），这里说成「当前密码不正确」而不是登录过期；成功后后端吊销全部会话，所以随即登出回登录页 |
 | `PayListPage` / `usePayOps` / `usePayCenterApi` / `useDraftOperator` / `usePayOrderStatusMap` / `PayRefCell` / `ApprovalSubmitNotice` | `payment/pay-kit.tsx` | 支付中心业务件：`ListPage` + 当前账号判权与草稿操作人；near-pay `/pay-ops/v2` 客户端（`lib/pay-ops/client.ts`）；编号复制；审批提示 |
 

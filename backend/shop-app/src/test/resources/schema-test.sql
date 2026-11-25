@@ -13275,6 +13275,62 @@ CREATE TABLE IF NOT EXISTS ord_store_collection
     CONSTRAINT ck_store_collection_amount CHECK (paid_minor > 0 AND deleted=0)
 );
 
+CREATE TABLE IF NOT EXISTS mch_pos_staff_pin
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    subject_kind VARCHAR(16) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    pin_hash VARCHAR(60) NOT NULL,
+    failed_count INT NOT NULL DEFAULT 0,
+    locked_until_ms BIGINT NULL,
+    PRIMARY KEY (tenant_no, entity_no, store_no, subject_kind, actor_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_pos_pin_recovery
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    subject_kind VARCHAR(16) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    method VARCHAR(16) NOT NULL,
+    challenge_id CHAR(36) NOT NULL,
+    session_hash CHAR(64) NOT NULL,
+    expires_at_ms BIGINT NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    reset_hash CHAR(64) NULL,
+    reset_expires_at_ms BIGINT NULL,
+    consumed_at_ms BIGINT NULL,
+    PRIMARY KEY (tenant_no, entity_no, store_no, subject_kind, actor_no, method),
+    UNIQUE (challenge_id),
+    UNIQUE (reset_hash)
+);
+
+CREATE TABLE IF NOT EXISTS mch_pos_staff_pin_policy
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (tenant_no, entity_no)
+);
+
+CREATE TABLE IF NOT EXISTS sys_ops_api_key
+(
+    key_no CHAR(36) NOT NULL,
+    staff_no VARCHAR(64)  NOT NULL,
+    secret_hash CHAR(64) NOT NULL,
+    label VARCHAR(80) NOT NULL,
+    access_level VARCHAR(16) NOT NULL,
+    issued_by VARCHAR(64) NOT NULL,
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT NOT NULL,
+    revoked_at BIGINT NULL,
+    PRIMARY KEY (key_no),
+    CONSTRAINT uk_ops_api_key_hash UNIQUE (secret_hash)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -21441,6 +21497,27 @@ UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CA
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:order:reprice"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:order:reprice"',perms)=0;
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:invoice:tax-override"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"biz:invoice:tax-override"',perms)=0;
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"biz:order:create"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"biz:order:create"',perms)=0;
+INSERT IGNORE INTO sys_function_point (
+    point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+    backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at
+)
+SELECT 'ACT__IAM_STAFF_API_KEY_MANAGE', 'OPS_IAM', '员工 API 密钥管理', '账号', NULL,
+       'iam:staff:api-key-manage', 'iam:staff:api-key-manage',
+       'IMPLEMENTED', 0, NULL, 'ACTION', 930, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM DUAL
+WHERE NOT EXISTS (
+    SELECT 1 FROM sys_function_point
+    WHERE point_code = 'ACT__IAM_STAFF_API_KEY_MANAGE' OR perm_code = 'iam:staff:api-key-manage'
+);
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__IAM_STAFF_API_KEY_MANAGE', 'OPS', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_function_point WHERE point_code = 'ACT__IAM_STAFF_API_KEY_MANAGE')
+  AND EXISTS (SELECT 1 FROM sys_role WHERE role_code = 'SUPER_ADMIN' AND end_code = 'OPS' AND deleted = 0)
+  AND NOT EXISTS (
+      SELECT 1 FROM sys_role_point
+      WHERE role_code = 'SUPER_ADMIN' AND point_code = 'ACT__IAM_STAFF_API_KEY_MANAGE' AND end_code = 'OPS'
+  );
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES
@@ -21514,41 +21591,3 @@ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code = 'FINANCE'
 UPDATE ivc_regime_profile SET gateway_code = NULL WHERE gateway_code = 'STUB';
 UPDATE ivc_invoice SET active_fiscal_key = fiscal_number;
 UPDATE sys_function_point SET function_code='OPS_FINANCE',name='电子发票',group_name='应付发票',sort=105,updated_at=NOW() WHERE point_code='OPS_FINANCE__E_INVOICES' AND point_type='MENU';
-
-CREATE TABLE IF NOT EXISTS mch_pos_staff_pin_policy (
-    tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(64) NOT NULL,
-    enabled BOOLEAN NOT NULL DEFAULT FALSE,
-    PRIMARY KEY (tenant_no, entity_no)
-);
-
-CREATE TABLE IF NOT EXISTS mch_pos_staff_pin (
-    tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
-    subject_kind VARCHAR(16) NOT NULL,
-    actor_no VARCHAR(64) NOT NULL,
-    pin_hash VARCHAR(60) NOT NULL,
-    failed_count INT NOT NULL DEFAULT 0,
-    locked_until_ms BIGINT NULL,
-    PRIMARY KEY (tenant_no, entity_no, store_no, subject_kind, actor_no)
-);
-
-CREATE TABLE IF NOT EXISTS mch_pos_pin_recovery (
-    tenant_no VARCHAR(32) NOT NULL,
-    entity_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
-    subject_kind VARCHAR(16) NOT NULL,
-    actor_no VARCHAR(64) NOT NULL,
-    method VARCHAR(16) NOT NULL,
-    challenge_id CHAR(36) NOT NULL,
-    session_hash CHAR(64) NOT NULL,
-    expires_at_ms BIGINT NOT NULL,
-    attempts INT NOT NULL DEFAULT 0,
-    reset_hash CHAR(64) NULL,
-    reset_expires_at_ms BIGINT NULL,
-    consumed_at_ms BIGINT NULL,
-    PRIMARY KEY (tenant_no, entity_no, store_no, subject_kind, actor_no, method),
-    UNIQUE (challenge_id),
-    UNIQUE (reset_hash)
-);

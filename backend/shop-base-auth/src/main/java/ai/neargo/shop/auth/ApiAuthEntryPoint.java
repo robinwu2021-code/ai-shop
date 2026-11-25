@@ -64,7 +64,7 @@ public class ApiAuthEntryPoint implements AuthenticationEntryPoint {
     }
 
     /** 认证层（Spring MVC 之外）统一的错误包体：与 ApiResult 逐字节一致，状态码由调用方定。 */
-    static void writeError(HttpServletResponse resp, int status, ErrorCode code) throws IOException {
+    public static void writeError(HttpServletResponse resp, int status, ErrorCode code) throws IOException {
         resp.setStatus(status);
         resp.setContentType(MediaType.APPLICATION_JSON_VALUE);
         resp.setCharacterEncoding(StandardCharsets.UTF_8.name());

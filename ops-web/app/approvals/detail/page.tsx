@@ -32,7 +32,7 @@ function ApprovalDetail() {
   const params = useSearchParams();
   const no = params.get("no") ?? "";
   const q = useQuery({ queryKey: [QUERY_KEY, "approval", no], queryFn: () => api.approval(no), enabled: !!no });
-  const back = <Link href="/approvals" className="txt-caption text-primary-ink hover:underline">{c.back}</Link>;
+  const back = <Link href="/approvals" className="txt-caption focus-ring text-primary-ink hover:underline">{c.back}</Link>;
   if (!no) return <div><TabHeader tabs={[{ key: "detail", label: c.detailTitle }]} value="detail" onChange={() => {}} action={back} /><EmptyState title={c.noApproval} /></div>;
   if (q.isPending) return <div className="space-y-3"><Skeleton className="h-6 w-1/3" /><Skeleton className="h-40 w-full" /></div>;
   if (q.error) return <ErrorState error={new Error(explainError(q.error, locale))} onRetry={() => void q.refetch()} />;
@@ -94,7 +94,7 @@ function Detail({ a, reload }: { a: ApprovalView; reload: () => void }) {
           { title: c.sectionBasic, fields: [
             { label: c.colApprovalNo, value: a.approvalNo },
             { label: c.colStatus, value: <StatusBadge value={a.status} map={statusMap} /> },
-            { label: c.subject, value: <span className="inline-flex gap-2">{a.subject?.display?.title ?? a.subject?.ref}{source && <Link className="text-primary-ink hover:underline" href={source}>{c.openSource}</Link>}</span>, full: true },
+            { label: c.subject, value: <span className="inline-flex gap-2">{a.subject?.display?.title ?? a.subject?.ref}{source && <Link className="focus-ring text-primary-ink hover:underline" href={source}>{c.openSource}</Link>}</span>, full: true },
             { label: c.colStep, value: a.currentStep?.name ?? "—" },
             { label: c.colRequester, value: a.requestedBy?.displayName ?? a.requestedBy?.ref ?? "—" },
             { label: c.colRequestedAt, value: fmtTime(a.requestedAtMs) },

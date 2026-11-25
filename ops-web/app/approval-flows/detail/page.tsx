@@ -38,7 +38,7 @@ function Editor() {
   const { locale } = useI18n();
   const code = useSearchParams().get("code") ?? "";
   const q = useQuery({ queryKey: [QUERY_KEY, "template", code], queryFn: () => api.template(code), enabled: !!code });
-  const back = <Link href="/approval-flows" className="txt-caption text-primary-ink hover:underline">{c.back}</Link>;
+  const back = <Link href="/approval-flows" className="txt-caption focus-ring text-primary-ink hover:underline">{c.back}</Link>;
   if (q.isPending) return <div className="space-y-3"><Skeleton className="h-6 w-1/3" /><Skeleton className="h-64 w-full" /></div>;
   if (q.error) return <ErrorState error={new Error(explainError(q.error, locale))} onRetry={() => void q.refetch()} />;
   return (

@@ -110,10 +110,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  * P2：AC6 门店默认税别、AC7 / AC16 收款挂单与付清、AC8 付清自动开票、AC11 常用品项）。
  *
  * <p><b>表结构从哪来</b>：平台迁移不能在空 MySQL 上从零重放（V1–V574 是 MariaDB 方言，见 run-local），所以这里
- * 从本机开发库 {@code ai_shop}（{@code SHOW CREATE TABLE}，只读）复制本次涉及的几张表的现行结构到一个随机库，
+ * 从本机模板库（默认 {@code ai_shop}，可用 {@code STORE_ORDER_MYSQL_TEMPLATE} 指定 V691 临时库）只读复制表结构到随机库，
  * 再执行本次的 V692 / V693 / V694 —— 迁移在生产同形的表与 CHECK 名上真跑一遍，H2 证明不了这些。
  *
- * <p>连接串沿用 {@code COMMERCE_MYSQL_URL/USER/PASSWORD}（只认 127.0.0.1），没配或本机没有 {@code ai_shop} 时跳过。
+ * <p>连接串沿用 {@code COMMERCE_MYSQL_URL/USER/PASSWORD}（只认 127.0.0.1），没配或本机没有模板库时跳过。
  * 商品快照与发票域用替身：前者不是本次改动，后者在 shop-app 只能经 spi 使用（InvoiceOptionalTest）。
  * 现金记录走真实 {@code OfflineRecordServiceImpl}，事件走真实 {@code OutboxEventBus}（写 {@code sys_outbox}），
  * 自动开票走真实 {@code InvoiceAutoIssueConsumer}；支付域的「已成功支付单」用替身（{@link FakeCollections}）。
@@ -691,7 +691,7 @@ class StoreOrderMysqlTest {
 
     static final class Db {
         static final String SCHEMA = "store_order_test_" + UUID.randomUUID().toString().replace("-", "");
-        static final String TEMPLATE = "ai_shop";
+        static final String TEMPLATE = System.getenv().getOrDefault("STORE_ORDER_MYSQL_TEMPLATE", "ai_shop");
         static final String URL = System.getenv("COMMERCE_MYSQL_URL");
         static final String USER = System.getenv("COMMERCE_MYSQL_USER");
         static final String PASS = System.getenv("COMMERCE_MYSQL_PASSWORD");
@@ -705,10 +705,13 @@ class StoreOrderMysqlTest {
             if (ds != null) return ds;
             assumeTrue(URL != null && URL.matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/\\?.*"),
                     "COMMERCE_MYSQL_URL not set — native MySQL 9 test skipped");
+            if (!TEMPLATE.matches("[a-zA-Z0-9_]{1,64}")) {
+                throw new IllegalArgumentException("Invalid STORE_ORDER_MYSQL_TEMPLATE schema name");
+            }
             var root = new JdbcTemplate(new DriverManagerDataSource(URL, USER, PASS));
             assumeTrue(root.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=?"
                     + " AND table_name IN ('" + String.join("','", TABLES) + "')", Long.class, TEMPLATE)
-                    == TABLES.size(), "local ai_shop template schema missing — native MySQL 9 test skipped");
+                    == TABLES.size(), "local StoreOrder template schema missing — native MySQL 9 test skipped");
             root.execute("CREATE DATABASE " + SCHEMA);
             created = true;
             ds = new DriverManagerDataSource(URL.replace("/?", "/" + SCHEMA + "?"), USER, PASS);

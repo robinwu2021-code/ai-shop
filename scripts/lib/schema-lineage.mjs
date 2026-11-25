@@ -454,6 +454,7 @@ export const KEY_OWNERS = {
 
 
 export const NAME_COLLISIONS = {
+  "approval_no": "pmt_sv_approval 持有本地储值活动审批编号；approval_link 保存外部 OpsKit 审批编号。两套编号分别发放。",
   "pay_order_no": "payment_collection_receipt与payment_collection_stream保存独立PAY服务签发的订单号；必须按environment+pay_order_no关联，不是本地商城订单或本地表的单列外键。",
   "print_fact_no": "订单支付事实由ord_print_fact持有，退款和充值事实由biz_print_fact持有；完整打印引用按sourceType、租户、主体、门店、场景和版本选择来源，不能仅按同名编号跨表join。",
   "trace_no": "营销归因链路追踪与打印操作审计追踪各自由来源系统产生，不能按同号跨域连接。",
@@ -498,7 +499,7 @@ export const NAME_COLLISIONS = {
   "account_no": "mch_payout_account为银行出款账户；sv_account为储值账户。",
   "version_no": "活动版本和权益模板版本各自发号；活动子表指pmt_activity_version，ent_template_version自持权益版本。",
   "resource_no": "共用人员或物理资源在mch_resource；幂等结果与对账差异按各自资源类型解释，不可仅按同名字段关联。；统一扩展：幂等结果和对账差异按对应资源类型解释，不是同一实体。 实际资源段/桶引用tenant/entity内的mch_resource；品牌受众和费用快照保存营销资源与版本，须按其资源类型解释，不能连到人员或物理资源。",
-  "actor_no": "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。mch_pay_service_application按actor_realm区分OPERATOR/MERCHANT，不是任何账号族的通用外键。 零售选品、外部记账、品牌受众及营销命令保存原授权上下文中的操作人审计值，不因同名字段就归入统一账号族。",
+  "actor_no": "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。mch_pay_service_application按actor_realm区分OPERATOR/MERCHANT，不是任何账号族的通用外键。 零售选品、外部记账、品牌受众及营销命令保存原授权上下文中的操作人审计值，不因同名字段就归入统一账号族。 POS 员工 PIN 和恢复挑战按 subject_kind 及 tenant/entity/store 解释 actor_no。",
   "decision_no": "Core订单源决定与旧券迁移永久源决定分别发号。 渠道售后ord_channel_after_sale是另一决定族，仅同族明细按tenant/entity/store/admission限定引用。",
   "reservation_no": "活动资源占用与Pay售卡承诺分别发号，关联必须结合业务协议。",
   "source_decision_no": "Core订单源决定或迁移源决定，由source协议与purpose限定。",
@@ -957,7 +958,9 @@ export const COLLISION_MEMBERS = {
     "pmt_brand_coupon_source",
     "pmt_brand_coupon_command",
     "pmt_brand_marketing_command",
-    "mch_pay_service_application"
+    "mch_pay_service_application",
+    "mch_pos_staff_pin",
+    "mch_pos_pin_recovery"
   ],
   "decision_no": [
     "ord_ent_source_decision",

@@ -61,7 +61,9 @@ export const dashboardMock: DashboardApi = {
   me: () => {
     const a = currentAuth();
     if (!a?.token) fail("未登录", "Not signed in");
-    return wait({ username: a.username, role: a.role, token: "", perms: backendPermsOf(a.role) }, 120);
+    const staff = db.staffs.find((item) => item.username === a.username);
+    return wait({ username: a.username, role: a.role, token: "", perms: backendPermsOf(a.role),
+      staffNo: staff?.staffNo ?? a.username, mustChangePassword: staff?.mustChangePassword }, 120);
   },
   /*
    * mock 的菜单从静态 NAV 造 —— 与真后端返回同形状。

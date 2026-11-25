@@ -95,6 +95,8 @@ class FunctionPointPermAlignmentTest {
         // near-pay /pay-ops/v2 里真有接口判的码（登记文件由 near-pay OpsV2PermissionCoverageTest 保证与注解一致；
         // TDD-支付运营端经网关转发与权限下沉 §9）：功能点能勾，near-pay 那边就有对应动作。
         unimplemented.removeAll(ai.neargo.shop.gateway.PayOpsPermissionCodesTest.nearPayCodes());
+        // 外部工作流还会直接按登记的审批人权限码派发待办。
+        unimplemented.removeAll(ai.neargo.shop.gateway.PayOpsPermissionCodesTest.nearPayApproverCodes());
         unimplemented.removeAll(KNOWN_UNIMPLEMENTED.keySet());
 
         assertThat(unimplemented)

@@ -19088,10 +19088,28 @@
           "ar": "إعدادات الفواتير (النظام الضريبي ونطاقات الأرقام)"
         },
         {
+          "key": "perm.biz:invoice:tax-override",
+          "zh-CN": "自订品项选零税率或免税",
+          "en": "Choose zero-rated or exempt for custom items",
+          "ar": "اختيار نسبة صفرية أو إعفاء للأصناف المخصصة"
+        },
+        {
           "key": "perm.biz:invoice:void",
           "zh-CN": "作废发票与开折让",
           "en": "Void invoices and issue allowances",
           "ar": "إلغاء الفواتير وإصدار إشعارات التخفيض"
+        },
+        {
+          "key": "perm.biz:order:create",
+          "zh-CN": "门店收银建单",
+          "en": "Create store checkout orders",
+          "ar": "إنشاء طلبات الدفع في المتجر"
+        },
+        {
+          "key": "perm.biz:order:reprice",
+          "zh-CN": "收银时改成交价",
+          "en": "Change the sale price at checkout",
+          "ar": "تغيير سعر البيع عند الدفع"
         },
         {
           "key": "perm.biz:order:view",
@@ -31391,6 +31409,204 @@
           "ar": null
         },
         {
+          "key": "apiKeys.access.MANAGE",
+          "zh-CN": "管理",
+          "en": "Manage",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.access.READ_ONLY",
+          "zh-CN": "只读",
+          "en": "Read only",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.accessLabel",
+          "zh-CN": "访问级别",
+          "en": "Access level",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.apply",
+          "zh-CN": "申请 API 密钥",
+          "en": "Apply for an API key",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.changePassword",
+          "zh-CN": "完成初始改密后即可申请 API 密钥。",
+          "en": "Change your initial password before applying for an API key.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.conflict",
+          "zh-CN": "密钥编号或申请信息已冲突。请核对原申请，或生成新密钥。",
+          "en": "This key conflicts with an existing registration. Check the original details or generate a new key.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.created",
+          "zh-CN": "创建于 {date}",
+          "en": "Created {date}",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.days",
+          "zh-CN": "有效天数（1–90）",
+          "en": "Valid days (1–90)",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.description",
+          "zh-CN": "管理本人用于脚本和 API 客户端的密钥。",
+          "en": "Manage your keys for scripts and API clients.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.empty",
+          "zh-CN": "你还没有 API 密钥。",
+          "en": "You have no API keys yet.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.expires",
+          "zh-CN": "到期于 {date}",
+          "en": "Expires {date}",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.inactiveRegistration",
+          "zh-CN": "该密钥已经失效，请在本机生成新密钥。",
+          "en": "This key is no longer active. Generate a new key on your computer.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.label",
+          "zh-CN": "用途",
+          "en": "Purpose",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.loadFailed",
+          "zh-CN": "密钥列表加载失败。",
+          "en": "Could not load your API keys.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.loading",
+          "zh-CN": "正在加载密钥",
+          "en": "Loading keys",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.manageHint",
+          "zh-CN": "此密钥可以调用你当前有权执行的管理操作。",
+          "en": "This key can run management operations that your current account is authorized to perform.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.registerFailed",
+          "zh-CN": "申请失败，请用原信息重试",
+          "en": "Retry with the original enrollment details",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.registered",
+          "zh-CN": "密钥已生效。请在本机验证后使用。",
+          "en": "The key is active. Verify it with the local client before use.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.retry",
+          "zh-CN": "重试",
+          "en": "Retry",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.revoke",
+          "zh-CN": "撤销",
+          "en": "Revoke",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.revokeFailed",
+          "zh-CN": "撤销失败，请重试",
+          "en": "Could not revoke the key",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.revokeHint",
+          "zh-CN": "对应设备和脚本将立即失去此密钥的访问权限。",
+          "en": "Devices and scripts using this key will lose access immediately.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.revokeTitle",
+          "zh-CN": "撤销「{label}」",
+          "en": "Revoke “{label}”",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.revoked",
+          "zh-CN": "密钥已撤销",
+          "en": "Key revoked",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.setup",
+          "zh-CN": "申请信息",
+          "en": "Enrollment details",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.setupHint",
+          "zh-CN": "在已安装本机客户端的电脑上运行以下命令，再粘贴命令输出。",
+          "en": "Run this command on the computer with the local client installed, then paste its output.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.setupInvalid",
+          "zh-CN": "申请信息格式不正确。请粘贴本机客户端输出的内容。",
+          "en": "Invalid enrollment details. Paste the output from the local client.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.setupMismatch",
+          "zh-CN": "申请信息与当前员工账号或运营环境不匹配。请重新生成。",
+          "en": "These details belong to another account or environment. Generate them again.",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.status.ACTIVE",
+          "zh-CN": "有效",
+          "en": "Active",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.status.EXPIRED",
+          "zh-CN": "已到期",
+          "en": "Expired",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.status.REVOKED",
+          "zh-CN": "已撤销",
+          "en": "Revoked",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.submitting",
+          "zh-CN": "正在提交申请",
+          "en": "Submitting application",
+          "ar": null
+        },
+        {
+          "key": "apiKeys.title",
+          "zh-CN": "API 密钥",
+          "en": "API keys",
+          "ar": null
+        },
+        {
           "key": "appealStatus.PENDING",
           "zh-CN": "待裁决",
           "en": "Pending decision",
@@ -33303,6 +33519,18 @@
       ],
       "terms": [
         {
+          "key": "approval.todo.body",
+          "zh-CN": "{0}（{1}）",
+          "en": "{0} ({1})",
+          "ar": "{0} ({1})"
+        },
+        {
+          "key": "approval.todo.title",
+          "zh-CN": "有新的审批待你处理",
+          "en": "A new approval is waiting for you",
+          "ar": "موافقة جديدة بانتظارك"
+        },
+        {
           "key": "auth.identity.role.clerk",
           "zh-CN": "店员",
           "en": "Clerk",
@@ -33361,6 +33589,12 @@
           "zh-CN": "该时段暂未开放预约",
           "en": "That time slot is not open for booking",
           "ar": "هذه الفترة غير متاحة للحجز"
+        },
+        {
+          "key": "err.approval.in_opskit",
+          "zh-CN": "这项审核已改由审批中心处理，请到「审批」页办理",
+          "en": "This review is now handled in the approval center. Please decide it on the Approvals page.",
+          "ar": "تتم معالجة هذه المراجعة الآن في مركز الموافقات. يرجى اتخاذ القرار من صفحة الموافقات."
         },
         {
           "key": "err.auth.email_already_bound",
@@ -33919,6 +34153,12 @@
           "zh-CN": "发票当前状态不允许这项操作",
           "en": "The invoice's current status does not allow this action.",
           "ar": "حالة الفاتورة الحالية لا تسمح بهذا الإجراء."
+        },
+        {
+          "key": "err.invoice.store_item_limit",
+          "zh-CN": "门店常用品项最多 {0} 个，请先删除不用的品项",
+          "en": "A store can have at most {0} preset items; delete unused items first",
+          "ar": "يمكن للمتجر أن يحتوي على {0} عنصرًا محفوظًا كحد أقصى؛ احذف العناصر غير المستخدمة أولًا"
         },
         {
           "key": "err.invoice.void_period_closed",
@@ -35049,6 +35289,18 @@
           "ar": "نوع كيان هذا التاجر لا يسمح بطريقة التوصيل هذه. يرجى اختيار الاستلام أو الشحن."
         },
         {
+          "key": "err.trade.invoice_data_frozen",
+          "zh-CN": "这项开票资料已确定，不能修改；只能补填空着的项目",
+          "en": "This invoice field is already fixed and cannot be changed; only empty fields can be filled",
+          "ar": "بيانات الفاتورة هذه ثابتة ولا يمكن تغييرها؛ يمكن فقط ملء الحقول الفارغة"
+        },
+        {
+          "key": "err.trade.invoice_data_locked",
+          "zh-CN": "这张订单已开立发票，开票资料不能再改；如需更正请作废重开或开折让",
+          "en": "An invoice has been issued for this order, so its invoice data is locked; void and reissue or issue an allowance instead",
+          "ar": "تم إصدار فاتورة لهذا الطلب، لذا بيانات الفاتورة مقفلة؛ ألغِ الفاتورة وأعد إصدارها أو أصدر إشعار خصم"
+        },
+        {
           "key": "err.trade.managed_service_completion_blocked",
           "zh-CN": "受管理的服务订单须由服务执行流程完成",
           "en": "Managed service orders require completion by the service execution flow.",
@@ -35137,6 +35389,36 @@
           "zh-CN": "这些货库存不足：{0}",
           "en": "Not enough stock for: {0}",
           "ar": "المخزون غير كافٍ لهذه الأصناف: {0}"
+        },
+        {
+          "key": "err.trade.store_order_currency_mismatch",
+          "zh-CN": "收款币别与订单币别不同，不能挂到这张订单",
+          "en": "The payment currency differs from the order currency, so it cannot be attached to this order",
+          "ar": "عملة الدفعة تختلف عن عملة الطلب، لذا لا يمكن ربطها بهذا الطلب"
+        },
+        {
+          "key": "err.trade.store_order_payment_locked",
+          "zh-CN": "这笔收款所属的门店订单已付清，不能作废或更正；如需退钱请走退款",
+          "en": "The store order this payment belongs to is already paid, so the payment cannot be voided or corrected; use a refund instead",
+          "ar": "طلب المتجر المرتبط بهذه الدفعة مدفوع بالكامل، لذا لا يمكن إلغاء الدفعة أو تصحيحها؛ استخدم الاسترداد بدلًا من ذلك"
+        },
+        {
+          "key": "err.trade.store_order_state_invalid",
+          "zh-CN": "这张门店订单已付款或已取消，不能进行这个操作",
+          "en": "This store order is already paid or cancelled; the action is not allowed",
+          "ar": "طلب المتجر هذا مدفوع أو ملغى بالفعل؛ لا يمكن تنفيذ هذا الإجراء"
+        },
+        {
+          "key": "err.trade.store_order_store_item_unavailable",
+          "zh-CN": "暂无此门店常用品项，或已停用：请重新选择品项",
+          "en": "This store preset item does not exist or is disabled; choose another item",
+          "ar": "عنصر المتجر المحفوظ هذا غير موجود أو معطّل؛ اختر عنصرًا آخر"
+        },
+        {
+          "key": "err.trade.store_order_total_invalid",
+          "zh-CN": "订单合计不能小于 0：请检查优惠金额",
+          "en": "The order total cannot be negative; check the discount amount",
+          "ar": "لا يمكن أن يكون إجمالي الطلب سالبًا؛ تحقق من مبلغ الخصم"
         },
         {
           "key": "err.trade.store_paused",
@@ -35849,6 +36131,34 @@
       "package": "ai.neargo.shop.invoice.entity"
     },
     {
+      "table": "ivc_invoice_application",
+      "class": "IvcInvoiceApplication",
+      "zh": "",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_invoice_application_event",
+      "class": "IvcInvoiceApplicationEvent",
+      "zh": "",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_invoice_application_revision",
+      "class": "IvcInvoiceApplicationRevision",
+      "zh": "",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_invoice_delivery",
+      "class": "IvcInvoiceDelivery",
+      "zh": "",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
       "table": "ivc_invoice_line",
       "class": "IvcInvoiceLine",
       "zh": "发票明细（V1）。",
@@ -35870,9 +36180,30 @@
       "package": "ai.neargo.shop.invoice.entity"
     },
     {
+      "table": "ivc_store_item",
+      "class": "IvcStoreItem",
+      "zh": "门店常用品项（V15）：品名 + 课税别，POS 输入金额时快选。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_store_setting",
+      "class": "IvcStoreSetting",
+      "zh": "门店开票设定（V15）：自订行默认课税别与开票时机。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
       "table": "ivc_transmission",
       "class": "IvcTransmission",
       "zh": "发票上传任务（V1）。",
+      "module": "invoice",
+      "package": "ai.neargo.shop.invoice.entity"
+    },
+    {
+      "table": "ivc_transmission_attempt",
+      "class": "IvcTransmissionAttempt",
+      "zh": "",
       "module": "invoice",
       "package": "ai.neargo.shop.invoice.entity"
     },
@@ -36731,6 +37062,13 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "ord_invoice_data_fill",
+      "class": "OrdInvoiceDataFill",
+      "zh": "门店零售单建单后补开票资料的稽核（V692，TDD-统一订单与开票资料 AC5）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
       "table": "ord_invoice_request",
       "class": "OrdInvoiceRequest",
       "zh": "开票申请：**平台开给消费者**的销项票（ADR-017 §3.4 条件 2）。",
@@ -36789,7 +37127,7 @@
     {
       "table": "ord_offline_record_event",
       "class": "OrdOfflineRecordEvent",
-      "zh": "App 外收款记录的一步留痕：CREATE / CORRECT / VOID，带前后值、原因与操作人。",
+      "zh": "App 外收款记录的一步留痕：CREATE / CORRECT / VOID / REFUND，带前后值、原因与操作人。",
       "module": "shop-core",
       "package": "ai.neargo.shop.trade.entity"
     },
@@ -36895,6 +37233,13 @@
       "table": "ord_status_log",
       "class": "OrdStatusLog",
       "zh": "订单状态时间线（C-OC-03 / C5）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_store_collection",
+      "class": "OrdStoreCollection",
+      "zh": "挂在门店零售单上的收款码 / 付款链接收款（V695，TDD-统一订单与开票资料 AC7 / AC16）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.trade.entity"
     },
@@ -41124,9 +41469,23 @@
       },
       {
         "host": "BizKey",
+        "name": "INVOICE_DELIVERY",
+        "value": "IVD",
+        "zh": "发票邮件交付编号。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "INVOICE_CARRIER",
         "value": "IVK",
         "zh": "买家常用发票载具",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "INVOICE_STORE_ITEM",
+        "value": "IVS",
+        "zh": "门店常用品项（TDD-统一订单与开票资料 AC11）",
         "module": "shop-base"
       },
       {
@@ -41312,6 +41671,20 @@
         "module": "shop-base"
       },
       {
+        "host": "OtpEntries",
+        "name": "INVOICE_ARTIFACT",
+        "value": "INVOICE_ARTIFACT",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpEntries",
+        "name": "POS_PIN_RECOVERY",
+        "value": "POS_PIN_RECOVERY",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "host": "OtpScenes",
         "name": "LOGIN",
         "value": "LOGIN",
@@ -41343,6 +41716,48 @@
         "host": "OtpScenes",
         "name": "ORDER_PICKUP_CONFIRM",
         "value": "ORDER_PICKUP_CONFIRM",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "INVOICE_ARTIFACT_ACCESS",
+        "value": "INVOICE_ARTIFACT_ACCESS",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "OtpScenes",
+        "name": "POS_PIN_RECOVERY",
+        "value": "POS_PIN_RECOVERY",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "ApprovalApplyException",
+        "name": "STALE",
+        "value": "STALE",
+        "zh": "对象在送审后被改过，或已不在待审态。",
+        "module": "shop-base"
+      },
+      {
+        "host": "ApprovalSubmitRequested",
+        "name": "TYPE",
+        "value": "APPROVAL_SUBMIT_REQUESTED",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "StoreSettings",
+        "name": "ON_PAID",
+        "value": "ON_PAID",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "StoreSettings",
+        "name": "MANUAL",
+        "value": "MANUAL",
         "zh": "",
         "module": "shop-base"
       },
@@ -41722,6 +42137,13 @@
         "name": "INVENTORY",
         "value": "INVENTORY",
         "zh": "库存（进销存）独立服务。",
+        "module": "shop-base"
+      },
+      {
+        "host": "ServiceName",
+        "name": "OPSKIT",
+        "value": "OPSKIT",
+        "zh": "审批与工单服务 OpsKit（独立仓库、独立部署。",
         "module": "shop-base"
       },
       {
@@ -44959,6 +45381,27 @@
         "module": "shop-core"
       },
       {
+        "host": "OrdInvoiceDataFill",
+        "name": "NAME",
+        "value": "NAME",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdInvoiceDataFill",
+        "name": "TAX_CLASS",
+        "value": "TAX_CLASS",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdInvoiceDataFill",
+        "name": "BUYER",
+        "value": "BUYER",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "OrdInvoiceRequest",
         "name": "REQUESTED",
         "value": "REQUESTED",
@@ -44994,6 +45437,20 @@
         "module": "shop-core"
       },
       {
+        "host": "OrdItem",
+        "name": "LINE_SKU",
+        "value": "SKU",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdItem",
+        "name": "LINE_CUSTOM",
+        "value": "CUSTOM",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "OrdOfflineRecord",
         "name": "RECORDED",
         "value": "RECORDED",
@@ -45004,6 +45461,13 @@
         "host": "OrdOfflineRecord",
         "name": "VOIDED",
         "value": "VOIDED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdOfflineRecord",
+        "name": "REFUNDED",
+        "value": "REFUNDED",
         "zh": "",
         "module": "shop-core"
       },
@@ -45025,6 +45489,13 @@
         "host": "OrdOfflineRecordEvent",
         "name": "VOID",
         "value": "VOID",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdOfflineRecordEvent",
+        "name": "REFUND",
+        "value": "REFUND",
         "zh": "",
         "module": "shop-core"
       },
@@ -45484,6 +45955,41 @@
         "module": "shop-core"
       },
       {
+        "host": "InvoiceReadinessPolicy",
+        "name": "NOT_PAID",
+        "value": "NOT_PAID",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "InvoiceReadinessPolicy",
+        "name": "NEEDS_INFO",
+        "value": "NEEDS_INFO",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "InvoiceReadinessPolicy",
+        "name": "READY",
+        "value": "READY",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "InvoiceReadinessPolicy",
+        "name": "ISSUED",
+        "value": "ISSUED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "InvoiceReadinessPolicy",
+        "name": "REFUNDED",
+        "value": "REFUNDED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "PricingManualPlanCompiler",
         "name": "OWNER",
         "value": "SHOP_MANUAL",
@@ -45859,6 +46365,13 @@
         "name": "TYPE",
         "value": "WX_SHIPPING_UPLOAD_REQUESTED",
         "zh": "",
+        "module": "shop-gateway"
+      },
+      {
+        "host": "PayApprovalSupport",
+        "name": "ACTOR",
+        "value": "OPSKIT",
+        "zh": "回调线程上的操作人：审批服务。",
         "module": "shop-gateway"
       },
       {
@@ -46590,6 +47103,27 @@
         "module": "shop-merchant"
       },
       {
+        "host": "ApprovalLinkStore",
+        "name": "PENDING_SUBMIT",
+        "value": "PENDING_SUBMIT",
+        "zh": "",
+        "module": "shop-opskit"
+      },
+      {
+        "host": "ApprovalLinkStore",
+        "name": "PENDING",
+        "value": "PENDING",
+        "zh": "",
+        "module": "shop-opskit"
+      },
+      {
+        "host": "ApprovalLinkStore",
+        "name": "SUBMIT_FAILED",
+        "value": "SUBMIT_FAILED",
+        "zh": "",
+        "module": "shop-opskit"
+      },
+      {
         "host": "OutboxEventBus",
         "name": "PENDING",
         "value": "PENDING",
@@ -46731,6 +47265,15 @@
       }
     ],
     "javaEnums": [
+      {
+        "name": "Access",
+        "values": [
+          "READ_ONLY",
+          "MANAGE"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
       {
         "name": "Access",
         "values": [
@@ -46934,6 +47477,16 @@
         ],
         "zh": "谁触发了这次迁移。",
         "module": "shop-core"
+      },
+      {
+        "name": "Admission",
+        "values": [
+          "SCOPED_READ",
+          "PLATFORM_READ",
+          "PLATFORM_MANAGE"
+        ],
+        "zh": "",
+        "module": "shop-gateway"
       },
       {
         "name": "AfterSaleEvent",
@@ -47695,6 +48248,7 @@
           "PRINT_BLOCKED",
           "PRINT_CONFLICT",
           "PRINT_UNAVAILABLE",
+          "APPROVAL_IN_OPSKIT",
           "BAD_REQUEST",
           "UNAUTHORIZED",
           "TOKEN_EXPIRED",
@@ -47775,6 +48329,13 @@
           "CHECKOUT_RECEIPT_EVIDENCE_INVALID",
           "CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE",
           "MANAGED_SERVICE_COMPLETION_BLOCKED",
+          "STORE_ORDER_STATE_INVALID",
+          "STORE_ORDER_TOTAL_INVALID",
+          "STORE_ORDER_STORE_ITEM_UNAVAILABLE",
+          "INVOICE_DATA_FROZEN",
+          "INVOICE_DATA_LOCKED",
+          "STORE_ORDER_PAYMENT_LOCKED",
+          "STORE_ORDER_CURRENCY_MISMATCH",
           "INVOICE_REGIME_NOT_ENABLED",
           "INVOICE_SOURCE_NOT_READY",
           "INVOICE_NUMBER_EXHAUSTED",
@@ -47789,6 +48350,7 @@
           "INVOICE_GATEWAY_UNSUPPORTED",
           "INVOICE_PROVIDER_UNSUPPORTED",
           "INVOICE_PROVIDER_ACCOUNT_INVALID",
+          "INVOICE_STORE_ITEM_LIMIT",
           "ALREADY_VERIFIED",
           "NOT_THIS_PICKUP_POINT",
           "ORDER_REFUNDED",
@@ -48042,7 +48604,9 @@
         "values": [
           "JOB",
           "BATCH",
-          "SIMULATION"
+          "SIMULATION",
+          "INVOICE_PROOF",
+          "INVOICE_DETAIL"
         ],
         "zh": "",
         "module": "print"
@@ -48746,6 +49310,16 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "Level",
+        "values": [
+          "GENERAL",
+          "IMPORTANT",
+          "FUNDS"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "LimitPath",
         "values": [
           "TOTAL",
@@ -48829,6 +49403,16 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "Method",
+        "values": [
+          "PASSWORD",
+          "PHONE_OTP",
+          "EMAIL_OTP"
+        ],
+        "zh": "",
+        "module": "shop-gateway"
       },
       {
         "name": "MigrationState",
@@ -49105,6 +49689,16 @@
       {
         "name": "Outcome",
         "values": [
+          "REJECTED",
+          "WITHDRAWN",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Outcome",
+        "values": [
           "COMMIT",
           "ABORT"
         ],
@@ -49144,6 +49738,22 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "Outcome",
+        "values": [
+          "SAVED",
+          "MATCH",
+          "WRONG",
+          "LOCKED",
+          "NOT_SET",
+          "CURRENT_REQUIRED",
+          "WEAK",
+          "UNAVAILABLE",
+          "DISABLED"
+        ],
+        "zh": "",
+        "module": "shop-merchant"
       },
       {
         "name": "Outcome",
@@ -50535,6 +51145,16 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
+          "ACTIVE",
+          "EXPIRED",
+          "REVOKED"
+        ],
+        "zh": "",
+        "module": "shop-core"
       },
       {
         "name": "Status",
@@ -52562,7 +53182,8 @@
         "values": [
           "CREATE",
           "CORRECT",
-          "VOID"
+          "VOID",
+          "REFUND"
         ],
         "zh": "留痕动作"
       },
@@ -52582,7 +53203,8 @@
         "client": "b-app",
         "values": [
           "RECORDED",
-          "VOIDED"
+          "VOIDED",
+          "REFUNDED"
         ],
         "zh": "已记 / 已作废（作废是终态，行不删）"
       },
@@ -52597,6 +53219,25 @@
           "FROZEN"
         ],
         "zh": "进件（收款开户）状态：占位 / 审核中 / 已开通 / 被拒 / 冻结。"
+      },
+      {
+        "name": "OpsApiKeyAccess",
+        "client": "ops-web",
+        "values": [
+          "READ_ONLY",
+          "MANAGE"
+        ],
+        "zh": ""
+      },
+      {
+        "name": "OpsApiKeyStatus",
+        "client": "ops-web",
+        "values": [
+          "ACTIVE",
+          "EXPIRED",
+          "REVOKED"
+        ],
+        "zh": ""
       },
       {
         "name": "OrderPointsEarningState",
@@ -53976,6 +54617,16 @@
           "ANY"
         ],
         "zh": "能领号段的期别窗口"
+      },
+      {
+        "name": "SiSourceType",
+        "client": "b-app",
+        "values": [
+          "SUB_ORDER",
+          "PAY_ORDER",
+          "OFFLINE_RECORD"
+        ],
+        "zh": "发票来源类型（TDD-发票模块 §24）：核心子单 / 门店收款支付单 / App 外收款记录"
       },
       {
         "name": "SiStatus",
@@ -57312,7 +57963,7 @@
       "host": "OtpScenes",
       "name": "ALL",
       "type": "Set<String>",
-      "value": "Set.of(LOGIN, PASSWORD_RESET, PHONE_CHANGE, EMAIL_CHANGE, ORDER_PICKUP_CONFIRM)",
+      "value": "Set.of(LOGIN, PASSWORD_RESET, PHONE_CHANGE, EMAIL_CHANGE, ORDER_PICKUP_CONFIRM, INVOICE_ARTIFACT_ACCESS, POS_PIN_RECOVERY)",
       "zh": "",
       "module": "shop-base"
     },
@@ -57714,6 +58365,22 @@
       "type": "String",
       "value": "\"biz:order:view\"",
       "zh": "订单列表与详情、工作台待办。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ORDER_CREATE",
+      "type": "String",
+      "value": "\"biz:order:create\"",
+      "zh": "门店零售单（TDD-统一订单与开票资料）：店员在 POS 给散客建单。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ORDER_REPRICE",
+      "type": "String",
+      "value": "\"biz:order:reprice\"",
+      "zh": "建门店零售单时按不同于商品价的成交价卖（改价）。",
       "module": "shop-base-auth"
     },
     {
@@ -58166,9 +58833,17 @@
     },
     {
       "host": "BizPerms",
+      "name": "INVOICE_TAX_OVERRIDE",
+      "type": "String",
+      "value": "\"biz:invoice:tax-override\"",
+      "zh": "自订行（直接输入金额）选零税率或免税：会少报税，与改价同级，默认只给店长。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(INVOICE_READ, \"查看发票\"), Map.entry(INVOICE_ISSUE, \"开立发票\"), Map.entry(INVOICE_VOID, \"作废发票与开折让\"), Map.entry(INVOICE_SETUP, \"发票设置（税制与号段）\"), Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(SERVICE_TASK_SELF, \"操作本人服务任务\"), Map.entry(SERVICE_TASK_VIEW, \"查看门店服务任务\"), Map.entry(SERVICE_TASK_COORDINATE, \"协调服务任务\"), Map.entry(SERVICE_TASK_APPROVE, \"审核服务调整\"), Map.entry(SERVICE_TASK_CLOSE, \"关闭已结清服务工单\"), Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CASH_RECEIVE, \"确认线下实收\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(MANUAL_CONFIRM, \"人工确认服务收款\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(PAY_COLLECT, \"代客收款（出动态收款码）\"), Map.entry(PAY_REFUND, \"发起原路退款\"), Map.entry(PAY_STATEMENT, \"看本店收款流水\"), Map.entry(PAY_APP_GRANT, \"授权第三方代本店收款或退款\"), Map.entry(PAY_QR, \"生成与停用本店收款码\"), Map.entry(PAY_ORDER_VIEW, \"查看本店收款记录（列表与详情）\"), Map.entry(PAY_OFFLINE_RECORD, \"记录 App 外收款\"), Map.entry(PAY_OFFLINE_MANAGE, \"更正与作废 App 外收款\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(INVOICE_READ, \"查看发票\"), Map.entry(INVOICE_ISSUE, \"开立发票\"), Map.entry(INVOICE_VOID, \"作废发票与开折让\"), Map.entry(INVOICE_SETUP, \"发票设置（税制与号段）\"), Map.entry(INVOICE_TAX_OVERRIDE, \"自订品项选零税率或免税\"), Map.entry(ORDER_CREATE, \"门店收银建单\"), Map.entry(ORDER_REPRICE, \"收银时改成交价\"), Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(SERVICE_TASK_SELF, \"操作本人服务任务\"), Map.entry(SERVICE_TASK_VIEW, \"查看门店服务任务\"), Map.entry(SERVICE_TASK_COORDINATE, \"协调服务任务\"), Map.entry(SERVICE_TASK_APPROVE, \"审核服务调整\"), Map.entry(SERVICE_TASK_CLOSE, \"关闭已结清服务工单\"), Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CASH_RECEIVE, \"确认线下实收\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(MANUAL_CONFIRM, \"人工确认服务收款\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(PAY_COLLECT, \"代客收款（出动态收款码）\"), Map.entry(PAY_REFUND, \"发起原路退款\"), Map.entry(PAY_STATEMENT, \"看本店收款流水\"), Map.entry(PAY_APP_GRANT, \"授权第三方代本店收款或退款\"), Map.entry(PAY_QR, \"生成与停用本店收款码\"), Map.entry(PAY_ORDER_VIEW, \"查看本店收款记录（列表与详情）\"), Map.entry(PAY_OFFLINE_RECORD, \"记录 App 外收款\"), Map.entry(PAY_OFFLINE_MANAGE, \"更正与作废 App 外收款\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -58934,6 +59609,14 @@
     },
     {
       "host": "Perms",
+      "name": "PAY_FEE_PLAN_APPROVE",
+      "type": "String",
+      "value": "\"pay:fee-plan:approve\"",
+      "zh": "near-pay 佣金规则发布的审批人（OpsKit 派待办用，运营端没有对应接口。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "PAY_CHANNEL_ACCOUNT_VIEW",
       "type": "String",
       "value": "\"pay:channel-account:view\"",
@@ -59201,6 +59884,14 @@
       "name": "IAM_STAFF_UPDATE",
       "type": "String",
       "value": "\"iam:staff:update\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "IAM_STAFF_API_KEY_MANAGE",
+      "type": "String",
+      "value": "\"iam:staff:api-key-manage\"",
       "zh": "",
       "module": "shop-base-auth"
     },
@@ -60101,6 +60792,14 @@
       "module": "shop-core"
     },
     {
+      "host": "MerchantEntryApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.merchant_entry\"",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
       "host": "MchEntityApply",
       "name": "TRANSITIONS",
       "type": "Map<String, Set<String>>",
@@ -60285,6 +60984,22 @@
       "module": "shop-core"
     },
     {
+      "host": "InvoiceReadinessPolicy",
+      "name": "FIELD_NAME",
+      "type": "String",
+      "value": "\"name\"",
+      "zh": "对外字段名：与请求 / 响应里的 name、taxType 同名",
+      "module": "shop-core"
+    },
+    {
+      "host": "InvoiceReadinessPolicy",
+      "name": "FIELD_TAX_TYPE",
+      "type": "String",
+      "value": "\"taxType\"",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
       "host": "OrderStatusView",
       "name": "WAIT_PAY",
       "type": "String",
@@ -60379,6 +61094,22 @@
       "value": "java.util.Set.of(SOURCE_SHARE, SOURCE_SCAN, SOURCE_LIST, SOURCE_SEARCH, SOURCE_GOODS)",
       "zh": "",
       "module": "shop-core"
+    },
+    {
+      "host": "MallOfflinePaymentApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.mall_offline_payment\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "MallRefundApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.mall_refund\"",
+      "zh": "",
+      "module": "shop-gateway"
     },
     {
       "host": "PayBizPassThrough",
@@ -60517,6 +61248,14 @@
       "module": "shop-gateway"
     },
     {
+      "host": "OpsKitPassThrough",
+      "name": "PREFIX",
+      "type": "String",
+      "value": "\"/ops/opskit/v1\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
       "host": "PayOpsPassThrough",
       "name": "PREFIX",
       "type": "String",
@@ -60537,6 +61276,46 @@
       "name": "NAME",
       "type": "String",
       "value": "\"settle-batch\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PlatformKeyEnableApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.platform_key_enable\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PointsAdjustmentApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.points_adjustment\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PointsPoolRequestApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.points_pool_request\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "SettlePayoutApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.settle_payout\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "SettleReleaseApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.settle_release\"",
       "zh": "",
       "module": "shop-gateway"
     },
@@ -60733,6 +61512,22 @@
       "module": "shop-merchant"
     },
     {
+      "host": "PlanPaymentApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.plan_offline_payment\"",
+      "zh": "",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "StoreOpeningApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.store_opening\"",
+      "zh": "",
+      "module": "shop-merchant"
+    },
+    {
       "host": "StoredValueFinancialAuthorityService",
       "name": "FINANCIAL",
       "type": "Set<String>",
@@ -60819,6 +61614,14 @@
       "value": "1",
       "zh": "门店资料的结构版本，加在推给 near-pay 的修订号上。",
       "module": "shop-merchant"
+    },
+    {
+      "host": "OpsKitSubmitConsumer",
+      "name": "PROPOSAL_FIELD",
+      "type": "String",
+      "value": "\"proposal\"",
+      "zh": "拟定结果在 OpsKit 实例字段里的键。",
+      "module": "shop-opskit"
     },
     {
       "host": "ReportCsvWriter",
@@ -60921,6 +61724,7 @@
     "maven": {
       "properties": {
         "commerce.version": "0.1.0-SNAPSHOT",
+        "opskit.version": "0.1.0-SNAPSHOT",
         "archunit.version": "1.3.0",
         "inventory.version": "1.0.0-SNAPSHOT",
         "shedlock.version": "6.9.0",
@@ -60938,6 +61742,10 @@
         "ai.neargo.inventory:inventory-client",
         "ai.neargo.inventory:inventory-domain",
         "ai.neargo.inventory:inventory-svc",
+        "ai.neargo.opskit:opskit-approval-client",
+        "ai.neargo.opskit:opskit-commons",
+        "ai.neargo.opskit:opskit-connector",
+        "ai.neargo.opskit:platform-api",
         "cloud.tianai.captcha:tianai-captcha",
         "com.alibaba.nacos:nacos-client",
         "com.google.errorprone:error_prone_annotations",

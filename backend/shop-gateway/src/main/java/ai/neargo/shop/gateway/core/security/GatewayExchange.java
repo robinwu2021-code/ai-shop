@@ -9,6 +9,16 @@ public final class GatewayExchange {
 
     private static final String RESOURCE = GatewayExchange.class.getName() + ".resource";
 
+    private static final String LOCAL_ONLY = GatewayExchange.class.getName() + ".localOnlyCredential";
+
+    public static void markLocalOnly(HttpServletRequest request) {
+        request.setAttribute(LOCAL_ONLY, Boolean.TRUE);
+    }
+
+    public static boolean localOnly(HttpServletRequest request) {
+        return Boolean.TRUE.equals(request.getAttribute(LOCAL_ONLY));
+    }
+
     private GatewayExchange() {
     }
 

@@ -54,7 +54,7 @@ public class PayOpsPermissionCodesTest {
     @Test
     @DisplayName("★★★ OpsKit 审批人用的码也可授予：是运营端常量、有功能点")
     void everyApproverCodeIsGrantable() throws IOException {
-        Set<String> approver = read(APPROVER_CODES, 5);
+        Set<String> approver = nearPayApproverCodes();
         assertThat(missing(approver, ModuleOwnership.codes(Realm.OPERATOR))).as("Perms.java 里缺的审批人码").isEmpty();
         Set<String> points = new HashSet<>(jdbc.queryForList(
                 "SELECT DISTINCT perm_code FROM sys_function_point WHERE perm_code LIKE 'pay:%'", String.class));
@@ -79,6 +79,10 @@ public class PayOpsPermissionCodesTest {
 
     public static Set<String> nearPayCodes() throws IOException {
         return read(CODES, 50);
+    }
+
+    public static Set<String> nearPayApproverCodes() throws IOException {
+        return read(APPROVER_CODES, 5);
     }
 
     private static Set<String> read(String file, int atLeast) throws IOException {

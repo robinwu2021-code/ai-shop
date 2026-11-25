@@ -316,6 +316,7 @@ public final class Perms {
     // ── 员工与权限 ──────────────────────────────────────────────────────────
     public static final String IAM_STAFF_READ = "iam:staff:read";
     public static final String IAM_STAFF_UPDATE = "iam:staff:update";
+    public static final String IAM_STAFF_API_KEY_MANAGE = "iam:staff:api-key-manage";
     public static final String IAM_ROLE_READ = "iam:role:read";
 
     /** 改角色与角色的功能点。**能改它的人能给自己提权** —— 与只读员工列表必须分开。 */

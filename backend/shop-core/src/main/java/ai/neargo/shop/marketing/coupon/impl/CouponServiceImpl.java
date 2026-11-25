@@ -571,12 +571,19 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     public java.util.List<ai.neargo.shop.marketing.coupon.dto.CouponIssueVO> issues(String couponNo) {
-        return DataScopeContext.executeWithoutScope(() ->
-                documentNumbers.load(DocumentType.MARKETING_COUPON_ISSUE, "MKT_LEGACY", "mkt_coupon_issue", issueMapper.selectList(Wrappers.<MktCouponIssue>lambdaQuery()
-                        .eq(couponNo != null && !couponNo.isBlank(),
-                                MktCouponIssue::getCouponNo, couponNo)
-                        .orderByDesc(MktCouponIssue::getId)), MktCouponIssue::getIssueNo, MktCouponIssue::setDocumentNo)).stream()
-                .map(this::toIssueVO).toList();
+        var scope = DataScopeContext.current();
+        var query = Wrappers.<MktCouponIssue>lambdaQuery()
+                .eq(couponNo != null && !couponNo.isBlank(), MktCouponIssue::getCouponNo, couponNo)
+                // 发放记录不持有主体号，由同租户的券模板提供数据域锚点。
+                .exists(scope != null && !scope.all(), """
+                        SELECT 1 FROM mkt_coupon c
+                        WHERE c.coupon_no = mkt_coupon_issue.coupon_no
+                          AND c.tenant_no = mkt_coupon_issue.tenant_no
+                        """)
+                .orderByDesc(MktCouponIssue::getId);
+        return documentNumbers.load(DocumentType.MARKETING_COUPON_ISSUE, "MKT_LEGACY", "mkt_coupon_issue",
+                        issueMapper.selectList(query), MktCouponIssue::getIssueNo, MktCouponIssue::setDocumentNo)
+                .stream().map(this::toIssueVO).toList();
     }
 
     private ai.neargo.shop.marketing.coupon.dto.CouponIssueVO toIssueVO(MktCouponIssue r) {

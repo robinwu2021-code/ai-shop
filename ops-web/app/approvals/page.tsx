@@ -70,7 +70,7 @@ function TodoList() {
   const p = usePaging();
   const q = useQuery({ queryKey: [QUERY_KEY, "todos", p.page, p.size], queryFn: () => api.todos({ page: p.page, size: p.size }), placeholderData: keepPreviousData });
   const columns: Column<TodoRow>[] = [
-    { header: c.colTitle, cell: (r) => <Link className="text-primary-ink hover:underline" href={`/approvals/detail?no=${encodeURIComponent(r.approvalNo ?? "")}`}>{displayTitle(r)}</Link> },
+    { header: c.colTitle, cell: (r) => <Link className="focus-ring text-primary-ink hover:underline" href={`/approvals/detail?no=${encodeURIComponent(r.approvalNo ?? "")}`}>{displayTitle(r)}</Link> },
     { header: c.colProcess, cell: (r) => r.process?.name ?? r.process?.code ?? "—" },
     { header: c.colRequestedAt, cell: (r) => fmtTime(r.createdAtMs) },
     { header: c.colDue, cell: (r) => fmtTime(r.dueAtMs) },
@@ -92,7 +92,7 @@ function InstanceList({ mode }: { mode: "mine" | "failed" }) {
     router.push(no ? `/approvals/detail?no=${encodeURIComponent(no)}` : `/approvals/detail?instance=${encodeURIComponent(r.instanceNo)}`);
   };
   const columns: Column<InstanceRow>[] = [
-    { header: c.colTitle, cell: (r) => <button type="button" className="text-left text-primary-ink hover:underline" onClick={() => void open(r)}>{displayTitle(r)}</button> },
+    { header: c.colTitle, cell: (r) => <button type="button" className="text-left focus-ring text-primary-ink hover:underline" onClick={() => void open(r)}>{displayTitle(r)}</button> },
     { header: c.colProcess, cell: (r) => r.process?.name ?? r.process?.code ?? "—" },
     { header: c.colStatus, cell: (r) => <span className="inline-flex items-center gap-2"><StatusBadge value={r.statusCategory ?? ""} map={catMap} />{r.status?.name ?? r.status?.code}</span> },
     { header: c.colUpdatedAt, cell: (r) => fmtTime(r.updatedAtMs ?? r.createdAtMs) },
@@ -113,7 +113,7 @@ function AllList() {
     placeholderData: keepPreviousData,
   });
   const columns: Column<ApprovalRow>[] = [
-    { header: c.colTitle, cell: (r) => <Link className="text-primary-ink hover:underline" href={`/approvals/detail?no=${encodeURIComponent(r.approvalNo)}`}>{displayTitle(r)}</Link> },
+    { header: c.colTitle, cell: (r) => <Link className="focus-ring text-primary-ink hover:underline" href={`/approvals/detail?no=${encodeURIComponent(r.approvalNo)}`}>{displayTitle(r)}</Link> },
     { header: c.colProcess, cell: (r) => r.process?.name ?? r.process?.code ?? "—" },
     { header: c.colStep, cell: (r) => r.currentStep?.name ?? "—" },
     { header: c.colStatus, cell: (r) => <StatusBadge value={r.status} map={statusMap} /> },

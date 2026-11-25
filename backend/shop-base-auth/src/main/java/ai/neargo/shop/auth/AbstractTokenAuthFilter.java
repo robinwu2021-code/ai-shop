@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -79,53 +80,52 @@ public abstract class AbstractTokenAuthFilter extends OncePerRequestFilter {
         RequestMetaContext.set(ClientMeta.of(req, clientCode(req)));
 
         boolean scopeSet = false;
-        String token = bearer(req);
-        if (token != null) {
-            TokenStore.SessionData d;
-            try {
-                d = tokenStore.get(token).orElse(null);
-            } catch (RuntimeException e) {
-                /*
-                 * **会话存储连不上（Redis 或会话库），不是「没登录」，也不是程序错。**
-                 *
-                 * 当成没登录回 401 最危险：端上对 401 的动作是清掉本地令牌、跳登录页 ——
-                 * 存储抖一下，在线的人全部被踢下线，而他们的会话其实都还在。
-                 * 任它抛出去则是 500，看起来像代码缺陷，重试与告警都按错的方向走。
-                 * 503 说的是实情：这一端暂时判不了身份，稍后再试；别的端用的是自己的存储，不受影响。
-                 */
-                log.error("会话存储不可用，{} 端暂时无法认证 · {} {} · {}", realm, req.getMethod(),
-                        req.getRequestURI(), e.toString());
-                RequestMetaContext.clear();
-                resp.setHeader("Retry-After", "5");
-                ApiAuthEntryPoint.writeError(resp, 503, ErrorCode.INTERNAL_ERROR);
-                return;
-            }
-            /*
-             * **带了令牌却查不到会话 = 已过期/被吊销**，与「没带令牌」不是一回事。
-             *
-             * 打在 request 属性上而不是当场抛：认证失败要由 entry point 统一收口，
-             * 在过滤器里直接写响应会绕开那一层，两处各写一份格式迟早分叉。
-             */
-            if (d == null) {
-                req.setAttribute(TOKEN_EXPIRED_ATTR, Boolean.TRUE);
-            }
-            if (d != null && d.user().realm() == realm) {
-                Authenticated a = authenticate(d.user());
-                var authentication = new UsernamePasswordAuthenticationToken(a.user(), null, a.authorities());
-                authentication.setDetails(token);
+        try {
+            String token = bearer(req);
+            Authentication authentication = token == null ? null : resolveAuthentication(req, token);
+            if (authentication != null) {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                DataScopeContext.set(a.user().dataScope());
+                DataScopeContext.set(((LoginUser) authentication.getPrincipal()).dataScope());
                 scopeSet = true;
             }
-        }
-        try {
             chain.doFilter(req, resp);
+        } catch (AuthenticationStorageUnavailable e) {
+            log.error("认证存储不可用，{} 端暂时无法认证 · {} {} · {}", realm, req.getMethod(),
+                    req.getRequestURI(), e.getCause().getClass().getSimpleName());
+            resp.setHeader("Retry-After", "5");
+            ApiAuthEntryPoint.writeError(resp, 503, ErrorCode.INTERNAL_ERROR);
         } finally {
             RequestMetaContext.clear();
             if (scopeSet) {
                 DataScopeContext.clear();
             }
         }
+    }
+
+    protected Authentication resolveAuthentication(HttpServletRequest req, String token) {
+        TokenStore.SessionData session;
+        try {
+            session = tokenStore.get(token).orElse(null);
+        } catch (RuntimeException e) {
+            throw new AuthenticationStorageUnavailable(e);
+        }
+        if (session == null) {
+            req.setAttribute(TOKEN_EXPIRED_ATTR, Boolean.TRUE);
+            return null;
+        }
+        return session.user().realm() == realm ? authentication(authenticate(session.user()), token) : null;
+    }
+
+    protected static final class AuthenticationStorageUnavailable extends RuntimeException {
+        public AuthenticationStorageUnavailable(RuntimeException cause) {
+            super(cause);
+        }
+    }
+
+    protected final Authentication authentication(Authenticated identity, Object details) {
+        var result = new UsernamePasswordAuthenticationToken(identity.user(), null, identity.authorities());
+        result.setDetails(details);
+        return result;
     }
 
     /** 从 {@code Authorization: Bearer xxx} 里取令牌；没有或为空返回 null。 */

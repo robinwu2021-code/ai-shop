@@ -18,6 +18,7 @@ import javax.sql.DataSource;
 /** 局部Flyway对象不注册为Bean，不接管平台迁移；只显式MIGRATE写表。 */
 public final class CommerceSchemaValidator {
     public static final String HISTORY = "cim_flyway_history";
+    public static final String MIGRATION_LOCATION = "classpath:db/commerce-integration";
     private static final Set<String> TABLES =
             Set.of(
                     "cim_provider",
@@ -423,7 +424,7 @@ public final class CommerceSchemaValidator {
         var flyway =
                 Flyway.configure()
                         .dataSource(selected)
-                        .locations("classpath:db/commerce")
+                        .locations(MIGRATION_LOCATION)
                         .table(HISTORY)
                         .baselineOnMigrate("MIGRATE".equals(mode))
                         .baselineVersion("0")
