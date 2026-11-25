@@ -45,7 +45,7 @@ const form = ref({ phone: "", name: "" });
  * （入驻时建的号，他走 C 端账号登录），于是这一行会渲染成一片空白 ——
  * 唯一那个不可能被停用、权限最大的人，在列表里反而没有标识。
  */
-const nameOf = (s: MerchantStaff) => s.displayName || s.loginPhone || t("staff.owner");
+const nameOf = (s: MerchantStaff) => s.displayName || s.loginPhone || s.loginEmail || s.employeeCode || t("staff.owner");
 
 /** 他在各店的角色，一句话摘要。列表要的是「他大概管什么」，不是完整矩阵 */
 function summary(s: MerchantStaff) {
@@ -70,7 +70,7 @@ const visibleStaff = computed(() => {
   const k = keyword.value.trim();
   return staff.value
     .filter((s) => !activeOnly.value || s.status === "ACTIVE" || s.isOwner)
-    .filter((s) => !k || nameOf(s).includes(k) || s.loginPhone.includes(k));
+    .filter((s) => !k || nameOf(s).includes(k) || s.loginPhone?.includes(k) || s.loginEmail?.includes(k) || s.employeeCode?.includes(k));
 });
 
 /** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */

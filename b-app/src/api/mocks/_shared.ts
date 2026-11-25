@@ -929,8 +929,8 @@ export function logStaff(
   db.staffLogs.unshift({
     targetAccountNo: target.mchAccountNo,
     // 认人用姓名 —— 审计里一列号码，三个月后谁也想不起那是谁
-    actor: owner?.displayName || owner?.loginPhone,
-    targetName: target.displayName || target.loginPhone,
+    actor: owner?.displayName || owner?.loginPhone || undefined,
+    targetName: target.displayName || target.loginPhone || undefined,
     action,
     storeName,
     role,
@@ -1002,7 +1002,7 @@ export function logStaffRole(action: string, roleCode: string, detail: string) {
   const owner = db.staff.find((x) => x.isOwner);
   db.staffLogs.unshift({
     targetAccountNo: "",
-    actor: owner?.displayName || owner?.loginPhone,
+    actor: owner?.displayName || owner?.loginPhone || undefined,
     action,
     role: roleCode as StaffLogRow["role"],
     detail,

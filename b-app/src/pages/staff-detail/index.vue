@@ -23,7 +23,7 @@ const logs = ref<StaffLog[]>([]);
 const busy = ref(false);
 
 /** 老板的 login_phone 是空的（他走 C 端账号登录）—— 别把标题渲染成空白 */
-const nameOf = (s: MerchantStaff) => s.displayName || s.loginPhone || t("staff.owner");
+const nameOf = (s: MerchantStaff) => s.displayName || s.loginPhone || s.loginEmail || s.employeeCode || t("staff.owner");
 
 /** 可授予的角色：**OWNER 不在其中** —— 授出去等于凭空造第二个老板 */
 const grantable = computed(() => roles.value.filter((r) => r.roleCode !== "OWNER"));

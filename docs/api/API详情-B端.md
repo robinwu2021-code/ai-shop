@@ -9975,8 +9975,12 @@ App 外收款合计　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `loginPhone` | `string` | 是 | 员工手机号（11 位）。**它就是登录号** —— 员工用它 + 验证码进 B 端 |
-| `displayName` | `string` | 否 | 备注名（如「小张」）。选填但强烈建议 —— 不填的话列表与审计里都只有一串脱敏尾号，三个人以后就分不清谁是谁。 |
+| `loginPhone` | `string` | 否 | 员工登录手机号，可用邮箱代替。 |
+| `loginEmail` | `string` | 否 | 员工登录邮箱，由员工验证后绑定认证身份。 |
+| `displayName` | `string` | 否 | 员工显示名。 |
+| `employeeCode` | `string` | 否 | 公司内唯一的 4–8 位员工编号。 |
+| `storeNo` | `string` | 否 | 有初始门店角色时同时提交门店和角色。 |
+| `role` | [`StaffRole`](#staffrole) | 否 | 在所选门店授予的角色码。 |
 
 **出参**（`data`）
 
@@ -9986,7 +9990,10 @@ App 外收款合计　🔒
 |---|---|:---:|---|
 | `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
 | `displayName` | `string` | 否 | 姓名（老板自己写的，如「小张」）。**认人靠它** —— 一列号码谁也分不清。为空时端上回落 `loginPhone`。 |
-| `loginPhone` | `string` | 是 | 登录手机号，**完整、不脱敏**。 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）—— 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。 |
+| `loginPhone` | `string,null` | 是 | 登录手机号。仅用邮箱的员工可为空。 |
+| `loginEmail` | `string,null` | 否 | 管理员登记的登录邮箱。 |
+| `employeeCode` | `string,null` | 否 | 主体内唯一的员工编号，保留前导零。 |
+| `emailVerified` | `boolean` | 否 | 员工是否已绑定邮箱登录身份。 |
 | `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
 | `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
 | `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |
@@ -10016,7 +10023,10 @@ App 外收款合计　🔒
 |---|---|:---:|---|
 | `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
 | `displayName` | `string` | 否 | 姓名（老板自己写的，如「小张」）。**认人靠它** —— 一列号码谁也分不清。为空时端上回落 `loginPhone`。 |
-| `loginPhone` | `string` | 是 | 登录手机号，**完整、不脱敏**。 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）—— 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。 |
+| `loginPhone` | `string,null` | 是 | 登录手机号。仅用邮箱的员工可为空。 |
+| `loginEmail` | `string,null` | 否 | 管理员登记的登录邮箱。 |
+| `employeeCode` | `string,null` | 否 | 主体内唯一的员工编号，保留前导零。 |
+| `emailVerified` | `boolean` | 否 | 员工是否已绑定邮箱登录身份。 |
 | `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
 | `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
 | `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |
@@ -10048,7 +10058,10 @@ App 外收款合计　🔒
 |---|---|:---:|---|
 | `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
 | `displayName` | `string` | 否 | 姓名（老板自己写的，如「小张」）。**认人靠它** —— 一列号码谁也分不清。为空时端上回落 `loginPhone`。 |
-| `loginPhone` | `string` | 是 | 登录手机号，**完整、不脱敏**。 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）—— 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。 |
+| `loginPhone` | `string,null` | 是 | 登录手机号。仅用邮箱的员工可为空。 |
+| `loginEmail` | `string,null` | 否 | 管理员登记的登录邮箱。 |
+| `employeeCode` | `string,null` | 否 | 主体内唯一的员工编号，保留前导零。 |
+| `emailVerified` | `boolean` | 否 | 员工是否已绑定邮箱登录身份。 |
 | `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
 | `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
 | `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |
@@ -12986,12 +12999,16 @@ _无字段_
 
 ### AddStaffReq
 
-加员工。只要手机号 —— 不发密码、不建 C 端账号
+加员工。提交手机号或邮箱。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `loginPhone` | `string` | 是 | 员工手机号（11 位）。**它就是登录号** —— 员工用它 + 验证码进 B 端 |
-| `displayName` | `string` | 否 | 备注名（如「小张」）。选填但强烈建议 —— 不填的话列表与审计里都只有一串脱敏尾号，三个人以后就分不清谁是谁。 |
+| `loginPhone` | `string` | 否 | 员工登录手机号，可用邮箱代替。 |
+| `loginEmail` | `string` | 否 | 员工登录邮箱，由员工验证后绑定认证身份。 |
+| `displayName` | `string` | 否 | 员工显示名。 |
+| `employeeCode` | `string` | 否 | 公司内唯一的 4–8 位员工编号。 |
+| `storeNo` | `string` | 否 | 有初始门店角色时同时提交门店和角色。 |
+| `role` | [`StaffRole`](#staffrole) | 否 | 在所选门店授予的角色码。 |
 
 ### AfterSale
 
@@ -15656,7 +15673,10 @@ SKU 组件：一件 SKU 交付哪些东西
 |---|---|:---:|---|
 | `mchAccountNo` | `string` | 是 | 商家账号号。**不叫 staffNo** —— 那个名字被平台运营占着，两者是不同的人 |
 | `displayName` | `string` | 否 | 姓名（老板自己写的，如「小张」）。**认人靠它** —— 一列号码谁也分不清。为空时端上回落 `loginPhone`。 |
-| `loginPhone` | `string` | 是 | 登录手机号，**完整、不脱敏**。 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）—— 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。 |
+| `loginPhone` | `string,null` | 是 | 登录手机号。仅用邮箱的员工可为空。 |
+| `loginEmail` | `string,null` | 否 | 管理员登记的登录邮箱。 |
+| `employeeCode` | `string,null` | 否 | 主体内唯一的员工编号，保留前导零。 |
+| `emailVerified` | `boolean` | 否 | 员工是否已绑定邮箱登录身份。 |
 | `isOwner` | `boolean` | 是 | 老板。**不受门店授权限制**，他的店都归他管 |
 | `status` | [`StaffStatus`](#staffstatus) | 是 | ACTIVE / DISABLED |
 | `roles` | [`StoreRole`](#storerole)\[\] | 是 | 他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权" |

@@ -1178,13 +1178,14 @@ export interface MerchantStaff {
    * 一列号码谁也分不清。为空时端上回落 `loginPhone`。
    */
   displayName?: string;
-  /**
-   * 登录手机号，**完整、不脱敏**。
-   *
-   * 它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）——
-   * 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。
-   */
-  loginPhone: string;
+  /** 登录手机号。仅用邮箱的员工可为空。 */
+  loginPhone: string | null;
+  /** 管理员登记的登录邮箱。 */
+  loginEmail?: string | null;
+  /** 主体内唯一的员工编号，保留前导零。 */
+  employeeCode?: string | null;
+  /** 员工是否已绑定邮箱登录身份。 */
+  emailVerified?: boolean;
   /** 老板。**不受门店授权限制**，他的店都归他管 */
   isOwner: boolean;
   /** ACTIVE / DISABLED */

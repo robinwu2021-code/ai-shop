@@ -739,15 +739,20 @@ export interface SetStoreSlugReq {
   slug: string;
 }
 
-/** 加员工。只要手机号 —— 不发密码、不建 C 端账号 */
+/** 加员工。提交手机号或邮箱。 */
 export interface AddStaffReq {
-  /** 员工手机号（11 位）。**它就是登录号** —— 员工用它 + 验证码进 B 端 */
-  loginPhone: string;
-  /**
-   * 备注名（如「小张」）。选填但强烈建议 ——
-   * 不填的话列表与审计里都只有一串脱敏尾号，三个人以后就分不清谁是谁。
-   */
+  /** 员工登录手机号，可用邮箱代替。 */
+  loginPhone?: string;
+  /** 员工登录邮箱，由员工验证后绑定认证身份。 */
+  loginEmail?: string;
+  /** 员工显示名。 */
   displayName?: string;
+  /** 公司内唯一的 4–8 位员工编号。 */
+  employeeCode?: string;
+  /** 有初始门店角色时同时提交门店和角色。 */
+  storeNo?: string;
+  /** 在所选门店授予的角色码。 */
+  role?: StaffRole;
 }
 
 /**
