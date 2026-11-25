@@ -33,6 +33,15 @@ public final class TaskAcceptanceSchemaVerifier {
 
     /** No cached marker or feature flag may conceal physical drift after a previously valid request. */
     public Installation installation() {
+        return inspect(true);
+    }
+
+    /** Recognizes exact V14 physical changes for the base schema comparison. */
+    public boolean installedStructure() {
+        return inspect(false) == Installation.INSTALLED;
+    }
+
+    private Installation inspect(boolean requireHistory) {
         Connection connection = null;
         try {
             connection = DataSourceUtils.getConnection(source);
@@ -70,8 +79,8 @@ public final class TaskAcceptanceSchemaVerifier {
                     && marker.get("checksum") instanceof Number checksumNumber
                             && checksumNumber.intValue() == descriptor.path("flywayChecksum").asInt());
             require("YES".equals(text(checks.getFirst(), "enforced"))
-                    && ServiceExecutionSchemaVerifier.expression(descriptor.path("check").asString())
-                            .equals(ServiceExecutionSchemaVerifier.expression(text(checks.getFirst(),
+                    && BeautyExecutionSql.expression(descriptor.path("check").asString())
+                            .equals(BeautyExecutionSql.expression(text(checks.getFirst(),
                                     "check_clause"))));
             for (var expected : descriptor.path("triggers")) {
                 var actual = triggers.stream().filter(t -> expected.path("name").asString().equals(text(t,
@@ -80,10 +89,10 @@ public final class TaskAcceptanceSchemaVerifier {
                 require(expected.path("table").asString().equals(text(actual, "event_object_table"))
                         && expected.path("event").asString().equals(text(actual, "event_manipulation"))
                         && "BEFORE".equals(text(actual, "action_timing"))
-                        && ServiceExecutionSchemaVerifier.tokens(expected.path("body").asString())
-                                .equals(ServiceExecutionSchemaVerifier.tokens(text(actual, "action_statement"))));
+                        && BeautyExecutionSql.tokens(expected.path("body").asString())
+                                .equals(BeautyExecutionSql.tokens(text(actual, "action_statement"))));
             }
-            validateHistory(connection, schema, descriptor);
+            if (requireHistory) validateHistory(connection, schema, descriptor);
             validateSlots(connection, schema, descriptor.path("slotTable"));
             return Installation.INSTALLED;
         } catch (Exception damaged) {
@@ -179,8 +188,8 @@ public final class TaskAcceptanceSchemaVerifier {
         table.path("checks").properties().forEach(entry -> {
             var matches = checks.stream().filter(row -> entry.getKey().equals(text(row, "constraint_name"))).toList();
             require(matches.size() == 1 && "YES".equals(text(matches.getFirst(), "enforced"))
-                    && ServiceExecutionSchemaVerifier.expression(entry.getValue().asString()).equals(
-                            ServiceExecutionSchemaVerifier.expression(text(matches.getFirst(), "check_clause"))));
+                    && BeautyExecutionSql.expression(entry.getValue().asString()).equals(
+                            BeautyExecutionSql.expression(text(matches.getFirst(), "check_clause"))));
         });
     }
 

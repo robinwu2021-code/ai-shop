@@ -44,9 +44,9 @@ public final class ServiceExecutionSchemaVerifier {
     private static final String DESCRIPTOR = "META-INF/shop/manual-service-execution-schema.json";
     private static final String MIGRATION = "db/migration/V604__manual_service_execution_authority.sql";
     private static final String START_DESCRIPTOR = "META-INF/shop/service-execution-start-schema.json";
-    private static final String START_MIGRATION = "db/migration/V649__service_execution_start_ack.sql";
+    private static final String START_MIGRATION = "db/migration/V704__service_execution_start_ack.sql";
     private static final String COMPLETION_DESCRIPTOR = "META-INF/shop/service-execution-completion-schema.json";
-    private static final String COMPLETION_MIGRATION = "db/migration/V651__service_execution_completion.sql";
+    private static final String COMPLETION_MIGRATION = "db/migration/V705__service_execution_completion.sql";
     private static final Set<String> TABLES = Set.of(
             "ord_service_execution_unit", "ord_service_execution", "ord_service_execution_action");
     private final DataSource source;
@@ -102,10 +102,10 @@ public final class ServiceExecutionSchemaVerifier {
                     ? history(connection, schema, historyTable, "604")
                     : List.of();
             List<Map<String, Object>> startMarkers = tableExists(connection, schema, historyTable)
-                    ? history(connection, schema, historyTable, "649")
+                    ? history(connection, schema, historyTable, "704")
                     : List.of();
             List<Map<String, Object>> completionMarkers = tableExists(connection, schema, historyTable)
-                    ? history(connection, schema, historyTable, "651") : List.of();
+                    ? history(connection, schema, historyTable, "705") : List.of();
             if (present == 0 && markers.isEmpty() && startMarkers.isEmpty() && completionMarkers.isEmpty()) {
                 return Installation.ABSENT;
             }
@@ -124,7 +124,7 @@ public final class ServiceExecutionSchemaVerifier {
                 require(startMarkers.size() == 1);
                 contract = startDescriptor(contract);
                 var startMarker = startMarkers.getFirst();
-                require("V649__service_execution_start_ack.sql".equals(text(startMarker, "script"))
+                require("V704__service_execution_start_ack.sql".equals(text(startMarker, "script"))
                         && "SQL".equals(text(startMarker, "type")) && success(startMarker.get("success"))
                         && startMarker.get("checksum") instanceof Number checksum
                         && checksum.intValue() == contract.path("flywayChecksum").asInt());
@@ -133,7 +133,7 @@ public final class ServiceExecutionSchemaVerifier {
                 require(startMarkers.size() == 1 && completionMarkers.size() == 1);
                 contract = completionDescriptor(contract);
                 var completionMarker = completionMarkers.getFirst();
-                require("V651__service_execution_completion.sql".equals(text(completionMarker, "script"))
+                require("V705__service_execution_completion.sql".equals(text(completionMarker, "script"))
                         && "SQL".equals(text(completionMarker, "type")) && success(completionMarker.get("success"))
                         && completionMarker.get("checksum") instanceof Number checksum
                         && checksum.intValue() == contract.path("flywayChecksum").asInt());

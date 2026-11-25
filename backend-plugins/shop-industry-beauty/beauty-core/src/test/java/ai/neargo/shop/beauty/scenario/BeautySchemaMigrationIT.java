@@ -1,6 +1,5 @@
 package ai.neargo.shop.beauty.scenario;
 
-import ai.neargo.shop.beauty.config.BeautyMigrationDataSource;
 import ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaVerifier;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -89,7 +88,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         initialize("migrate");
         assertEquals(
-                31,
+                32,
                 count(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE"
                             + " table_schema=DATABASE()"));
@@ -97,6 +96,7 @@ class BeautySchemaMigrationIT {
                 1,
                 count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='1' AND success=1"));
         assertEquals(1, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='11' AND success=1"));
+        assertEquals(1, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='16' AND success=1"));
         assertEquals(ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED,
                 new ServiceExecutionStockIntentSchemaVerifier(source).installation());
         assertEquals(0, count("SELECT COUNT(*) FROM information_schema.tables "
@@ -135,7 +135,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         assertEquals(ServiceExecutionSchemaVerifier.Installation.INSTALLED,
                 new ServiceExecutionSchemaVerifier(source).installation());
-        assertEquals(30, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
+        assertEquals(31, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
                 + " AND table_name LIKE 'bty_%' AND table_name<>'bty_flyway_history'"));
     }
 
@@ -607,8 +607,10 @@ class BeautySchemaMigrationIT {
         initialize("migrate");
         initialize("validate");
         initialize("migrate");
-        assertEquals(
-                intents, jdbc.queryForList("SELECT * FROM bty_service_submission ORDER BY id"));
+        String oldSubmissionColumns = intents.getFirst().keySet().stream()
+                .map(name -> "`" + name + "`")
+                .collect(Collectors.joining(","));
+        assertEquals(intents, jdbc.queryForList("SELECT " + oldSubmissionColumns + " FROM bty_service_submission ORDER BY id"));
         String oldGuardColumns =
                 held.getFirst().keySet().stream()
                         .map(name -> "`" + name + "`")

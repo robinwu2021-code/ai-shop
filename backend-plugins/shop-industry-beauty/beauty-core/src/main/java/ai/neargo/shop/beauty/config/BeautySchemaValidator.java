@@ -2,6 +2,7 @@ package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.common.RuntimeTriggerMetadata;
 import ai.neargo.shop.beauty.policy.TaskStartSchemaVerifier;
+import ai.neargo.shop.beauty.policy.TaskStartSchemaExtension;
 
 import ai.neargo.shop.beauty.policy.TaskAcceptanceSchemaVerifier;
 import ai.neargo.shop.beauty.policy.TaskWorkflowSchemaVerifier;
@@ -160,18 +161,24 @@ public final class BeautySchemaValidator {
         var installation = new ServiceExecutionSchemaVerifier(source).installation();
         var stockInstallation = new ServiceExecutionStockIntentSchemaVerifier(source).installation();
         var direct = new DirectTaskPlanSchemaVerifier(source).installation();
-        var action = new TaskActionSchemaVerifier(source).installation();
-        var acceptance = new TaskAcceptanceSchemaVerifier(source).installation();
+        var actionVerifier = new TaskActionSchemaVerifier(source);
+        var action = actionVerifier.installation();
+        var acceptanceVerifier = new TaskAcceptanceSchemaVerifier(source);
+        var acceptance = acceptanceVerifier.installation();
         var start = new TaskStartSchemaVerifier(source).installation();
         boolean directInstalled = direct == DirectTaskPlanSchemaVerifier.Installation.INSTALLED;
         boolean actionInstalled = action == TaskActionSchemaVerifier.Installation.INSTALLED;
         boolean acceptanceInstalled = acceptance == TaskAcceptanceSchemaVerifier.Installation.INSTALLED;
         boolean startInstalled = start == TaskStartSchemaVerifier.Installation.INSTALLED;
         boolean workflowInstalled = TaskWorkflowSchemaVerifier.installed(source);
-        // Each finite successor is fully verified before removing its exact objects from the frozen base comparison.
-        validateStructure(source, expected, directInstalled, actionInstalled, acceptanceInstalled, startInstalled);
+        // The base comparison excludes only independently verified successor objects.
+        boolean startStructureInstalled = startInstalled || TaskStartSchemaExtension.inspectStructure(source).installation()
+                == TaskStartSchemaExtension.Installation.INSTALLED;
+        boolean acceptanceStructureInstalled = acceptanceInstalled || acceptanceVerifier.installedStructure();
+        boolean actionStructureInstalled = actionInstalled || actionVerifier.installedStructure();
+        validateStructure(source, expected, directInstalled, actionStructureInstalled, acceptanceStructureInstalled, startStructureInstalled);
         validateManualTrigger(source, stockInstallation == ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED,
-                directInstalled, actionInstalled, acceptanceInstalled, startInstalled);
+                directInstalled, actionStructureInstalled, acceptanceStructureInstalled, startStructureInstalled, workflowInstalled);
         if ("migrate".equals(mode)) {
             require(validation.validationSuccessful
                             && installation == ServiceExecutionSchemaVerifier.Installation.INSTALLED
@@ -419,14 +426,28 @@ public final class BeautySchemaValidator {
     }
 
     private static void validateManualTrigger(DataSource source, boolean stockInstalled, boolean directInstalled,
-            boolean actionInstalled, boolean acceptanceInstalled, boolean startInstalled) {
+            boolean actionInstalled, boolean acceptanceInstalled, boolean startInstalled, boolean workflowInstalled) {
         String sql = frozenText(V9, V9_SHA256);
         String expected =
                 sql.substring(sql.indexOf("\nBEGIN\n") + 1, sql.lastIndexOf("$$\nDELIMITER"));
         try (var connection = source.getConnection()) {
             connection.setReadOnly(true);
+            Set<String> verifiedSuccessorTriggers = new HashSet<>();
+            if (stockInstalled) verifiedSuccessorTriggers.addAll(Set.of("trg_bsesi_immutable", "trg_bsesi_no_delete"));
+            if (directInstalled) verifiedSuccessorTriggers.addAll(Set.of("trg_bty_direct_plan_immutable",
+                    "trg_bty_direct_plan_no_delete", "trg_bty_task_direct_plan_fence"));
+            if (actionInstalled) verifiedSuccessorTriggers.addAll(Set.of("trg_bty_task_action_immutable",
+                    "trg_bty_task_action_no_delete"));
+            if (acceptanceInstalled) verifiedSuccessorTriggers.addAll(Set.of("trg_bty_task_accept_immutable",
+                    "trg_bty_task_accept_no_delete"));
+            if (startInstalled) verifiedSuccessorTriggers.addAll(Set.of("trg_bty_task_start_immutable",
+                    "trg_bty_task_start_no_delete"));
+            if (workflowInstalled) verifiedSuccessorTriggers.addAll(Set.of("trg_bty_task_flow_immutable",
+                    "trg_bty_task_flow_no_delete"));
             var rows = RuntimeTriggerMetadata.read(connection, connection.getCatalog(),
-                    RuntimeTriggerMetadata.Scope.BEAUTY_BASE);
+                            RuntimeTriggerMetadata.Scope.BEAUTY_BASE).stream()
+                    .filter(row -> !verifiedSuccessorTriggers.contains(row.get("trigger_name")))
+                    .toList();
             require(rows.size() == 1, "Beauty V9 domain trigger missing or unexpected");
             var row = rows.getFirst();
             require(

@@ -751,23 +751,49 @@ AND p.task_no=t.task_no AND p.deleted=0 AND (p.ended_at IS NULL OR p.ended_at>#{
     /** 可独立执行服务任务；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface ServiceTaskMapper extends BaseMapper<BtyServiceTask> {
         @Select("""
-                SELECT t.task_no, t.work_order_no, t.sku_no, t.status, MIN(a.start_at) AS planned_start_at
-                FROM bty_service_task t JOIN bty_work_order w
-                  ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
-                JOIN bty_appointment_item i
-                  ON i.tenant_no=w.tenant_no AND i.entity_no=w.entity_no AND i.appointment_no=w.appointment_no
-                  AND i.appointment_item_no=t.appointment_item_no AND i.deleted=0
-                JOIN bty_appointment_current c
-                  ON c.tenant_no=i.tenant_no AND c.entity_no=i.entity_no AND c.appointment_no=i.appointment_no
-                  AND c.deleted=0
-                JOIN bty_appointment_assignment a
-                  ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no AND a.appointment_item_no=i.appointment_item_no
-                  AND a.appointment_revision=c.arrangement_revision AND a.deleted=0
-                WHERE t.tenant_no=#{tenant} AND t.entity_no=#{entity} AND w.store_no=#{store}
-                  AND a.personnel_no=#{personnel} AND a.start_at>=#{from} AND a.start_at<#{to}
-                  AND w.deleted=0 AND t.deleted=0 AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision
-                GROUP BY t.task_no,t.work_order_no,t.sku_no,t.status
-                ORDER BY planned_start_at,t.task_no LIMIT 201
+                SELECT assigned.task_no, assigned.work_order_no, assigned.sku_no, assigned.status,
+                       MIN(assigned.start_at) AS planned_start_at
+                FROM (
+                    SELECT t.task_no, t.work_order_no, t.sku_no, t.status, a.start_at
+                    FROM bty_service_task t JOIN bty_work_order w
+                      ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
+                    JOIN bty_appointment_item i
+                      ON i.tenant_no=w.tenant_no AND i.entity_no=w.entity_no AND i.appointment_no=w.appointment_no
+                      AND i.appointment_item_no=t.appointment_item_no AND i.deleted=0
+                    JOIN bty_appointment_current c
+                      ON c.tenant_no=i.tenant_no AND c.entity_no=i.entity_no AND c.appointment_no=i.appointment_no
+                      AND c.deleted=0
+                    JOIN bty_appointment_assignment a
+                      ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no AND a.appointment_item_no=i.appointment_item_no
+                      AND a.appointment_revision=c.arrangement_revision AND a.deleted=0
+                    WHERE t.tenant_no=#{tenant} AND t.entity_no=#{entity} AND w.store_no=#{store}
+                      AND a.personnel_no=#{personnel} AND a.start_at>=#{from} AND a.start_at<#{to}
+                      AND w.deleted=0 AND t.deleted=0 AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision
+                      AND NOT EXISTS (
+                          SELECT 1 FROM bty_service_participation p
+                          WHERE p.tenant_no=t.tenant_no AND p.entity_no=t.entity_no AND p.task_no=t.task_no AND p.deleted=0
+                      )
+                    UNION ALL
+                    SELECT t.task_no, t.work_order_no, t.sku_no, t.status, p.started_at
+                    FROM bty_service_participation p JOIN bty_service_task t
+                      ON t.tenant_no=p.tenant_no AND t.entity_no=p.entity_no AND t.task_no=p.task_no
+                    JOIN bty_work_order w
+                      ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
+                    WHERE p.tenant_no=#{tenant} AND p.entity_no=#{entity} AND w.store_no=#{store}
+                      AND p.personnel_no=#{personnel} AND p.started_at<#{to}
+                      AND (p.ended_at IS NULL OR p.ended_at>=#{from})
+                      AND p.deleted=0 AND w.deleted=0 AND t.deleted=0
+                      AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision
+                      AND (p.ended_at IS NULL OR t.status IN ('DONE','VOIDED') OR (
+                          t.status='PAUSED' AND p.ended_at=(
+                              SELECT MAX(last_segment.ended_at) FROM bty_service_participation last_segment
+                              WHERE last_segment.tenant_no=t.tenant_no AND last_segment.entity_no=t.entity_no
+                                AND last_segment.task_no=t.task_no AND last_segment.deleted=0
+                          )
+                      ))
+                ) assigned
+                GROUP BY assigned.task_no,assigned.work_order_no,assigned.sku_no,assigned.status
+                ORDER BY planned_start_at,task_no LIMIT 201
                 """)
         List<ai.neargo.shop.beauty.dto.AssignedServiceTaskVO> selectAssigned(
                 @Param("tenant") String tenant, @Param("entity") String entity, @Param("store") String store,

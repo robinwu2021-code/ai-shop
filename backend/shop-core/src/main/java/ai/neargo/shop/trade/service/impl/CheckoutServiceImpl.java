@@ -341,7 +341,9 @@ public class CheckoutServiceImpl implements CheckoutService {
         manualPolicy.requireCounterReader(scope, operation);
         return unscoped(
                 () -> {
-                    var op = currentCounter(scope, operation);
+                    var op = requireOperation(operation);
+                    requireScope(op, scope);
+                    requireCounter(op);
                     return counterView(op, requireQuote(op));
                 });
     }

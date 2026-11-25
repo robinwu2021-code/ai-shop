@@ -9,12 +9,22 @@ import java.util.regex.Pattern;
 
 /** Canonical form for the frozen execution schema checks and triggers. */
 final class BeautyExecutionSql {
-    private static final Pattern TOKEN = Pattern.compile("_(?:utf8mb4|utf8|ascii|latin1|binary)\\\\\'[^\'\\\\]*\\\\\'|\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
-                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.-]");
+    private static final String METADATA_LITERAL =
+                "_(?:utf8mb4|utf8|ascii|latin1|binary)"
+                        + "(?:"
+                        + Pattern.quote("\\")
+                        + "){1,2}'[^'\\\\]*(?:"
+                        + Pattern.quote("\\")
+                        + "){1,2}'";
+    private static final Pattern TOKEN =
+                Pattern.compile(
+                        METADATA_LITERAL
+                                + "|"
+                                + "\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
+                                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.-]");
 
     private BeautyExecutionSql() {}
 
-    // Preserve literal bytes and boolean grouping. Only quoting, whitespace and charset introducers normalize.
     static List<String> tokens(String sql) {
         Matcher matcher = TOKEN.matcher(sql);
         List<String> result = new ArrayList<>();
@@ -27,10 +37,10 @@ final class BeautyExecutionSql {
             if (value.isBlank() || value.matches("_(utf8mb4|utf8|ascii|latin1|binary)")) {
                 continue;
             }
-            // MySQL 9 reports charset-prefixed delimiters as escaped quotes in CHECK_CLAUSE.
-            int escaped = value.indexOf("\\'");
-            if (value.startsWith("_") && escaped > 0) {
-                value = "'" + value.substring(escaped + 2, value.length() - 2) + "'";
+            if (value.startsWith("_") && value.indexOf('\'') >= 0) {
+                int first = value.indexOf('\''), end = value.length() - 1;
+                while (end > first && value.charAt(end - 1) == '\\') end--;
+                value = "'" + value.substring(first + 1, end) + "'";
             }
             if (value.startsWith("`")) {
                 value = value.substring(1, value.length() - 1);
@@ -47,7 +57,10 @@ final class BeautyExecutionSql {
         return value;
     }
 
-    /** Finite expression grammar retains AND/OR/BETWEEN precedence while accepting server-added parentheses. */
+    /**
+     * Finite expression grammar retains AND/OR/BETWEEN precedence while accepting server-added
+     * parentheses.
+     */
     private static final class Expression {
         private final List<String> input;
         private int at;
@@ -62,7 +75,7 @@ final class BeautyExecutionSql {
             while (take("or")) {
                 values.add(and());
             }
-            return values.size() == 1 ? values.getFirst() : "or(" + String.join(",", values) + ")";
+            return values.size() == 1 ? values.getFirst() : associative("or", values);
         }
 
         private String and() {
@@ -71,14 +84,14 @@ final class BeautyExecutionSql {
             while (take("and")) {
                 values.add(comparison());
             }
-            return values.size() == 1 ? values.getFirst() : "and(" + String.join(",", values) + ")";
+            return values.size() == 1 ? values.getFirst() : associative("and", values);
         }
 
         private String comparison() {
             if (take("not")) {
                 return "not(" + comparison() + ")";
             }
-            String left = atom();
+            String left = arithmetic();
             if (take("is")) {
                 boolean negated = take("not");
                 expect("null");
@@ -96,18 +109,57 @@ final class BeautyExecutionSql {
                 return (not ? "notin(" : "in(") + left + "," + String.join(",", args) + ")";
             }
             requireValid(!not);
-            if (at < input.size() && Set.of("=", "<>", "!=", "<", ">", "<=", ">=", "regexp")
-                    .contains(input.get(at))) {
+            if (at < input.size()
+                    && Set.of("=", "<=>", "<>", "!=", "<", ">", "<=", ">=", "regexp")
+                            .contains(input.get(at))) {
                 String operation = input.get(at++);
-                String right = atom();
-                // MySQL adds this predicate when it renders the frozen binding guard's boolean COALESCE.
-                if ("<>".equals(operation) && "0".equals(left) && right.startsWith("coalesce(and(")
-                        && right.endsWith(",0)")) {
-                    return right;
+                String right = arithmetic();
+                if (("<>".equals(operation) || "!=".equals(operation))
+                        && ("0".equals(left) && right.startsWith("coalesce(")
+                                || "0".equals(right) && left.startsWith("coalesce("))) {
+                    return booleanTerm("0".equals(left) ? right : left);
                 }
-                return ("!=".equals(operation) ? "<>" : operation) + "(" + left + "," + right + ")";
+                return ("!=".equals(operation)
+                                ? "<>"
+                                : "regexp".equals(operation) ? "regexp_like" : operation)
+                        + "("
+                        + left
+                        + ","
+                        + right
+                        + ")";
             }
             return left;
+        }
+
+        private String arithmetic() {
+            String value = atom();
+            while (at < input.size() && ("+".equals(input.get(at)) || "-".equals(input.get(at)))) {
+                String operation = input.get(at++);
+                value = operation + "(" + value + "," + atom() + ")";
+            }
+            return value;
+        }
+
+        private static String booleanTerm(String value) {
+            return value.startsWith("coalesce(") ? "nonzero(" + value + ")" : value;
+        }
+
+        private static String associative(String operator, List<String> values) {
+            String prefix = operator + "(";
+            return prefix
+                    + String.join(
+                            ",",
+                            values.stream()
+                                    .map(Expression::booleanTerm)
+                                    .map(
+                                            value ->
+                                                    value.startsWith(prefix) && value.endsWith(")")
+                                                            ? value.substring(
+                                                                    prefix.length(),
+                                                                    value.length() - 1)
+                                                            : value)
+                                    .toList())
+                    + ")";
         }
 
         private String atom() {
@@ -120,9 +172,16 @@ final class BeautyExecutionSql {
             String value = input.get(at++);
             requireValid(!List.of(")", ",", "and", "or").contains(value));
             if (take("(")) {
-                List<String> args = arguments();
-                return ("regexp_like".equals(value) && args.size() == 2 ? "regexp" : value)
-                        + "(" + String.join(",", args) + ")";
+                if ("cast".equals(value)) {
+                    // V15 uses the MySQL CAST(... AS JSON) grammar, not comma-separated function
+                    // arguments.
+                    String argument = or();
+                    expect("as");
+                    expect("json");
+                    expect(")");
+                    return "cast-json(" + argument + ")";
+                }
+                return value + "(" + String.join(",", arguments()) + ")";
             }
             return value;
         }

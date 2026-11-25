@@ -117,9 +117,9 @@ public final class TaskWorkflowSchemaVerifier {
             require(
                     "BEFORE".equals(trigger.get("ACTION_TIMING"))
                             && "UPDATE".equals(trigger.get("EVENT_MANIPULATION"))
-                            && ServiceExecutionSchemaVerifier.tokens(expected)
+                            && BeautyExecutionSql.tokens(expected)
                                     .equals(
-                                            ServiceExecutionSchemaVerifier.tokens(
+                                            BeautyExecutionSql.tokens(
                                                     trigger.get("ACTION_STATEMENT").toString())));
             var check =
                     jdbc.queryForMap(
@@ -142,19 +142,19 @@ public final class TaskWorkflowSchemaVerifier {
             require(
                     "BEFORE".equals(deletion.get("ACTION_TIMING"))
                             && "DELETE".equals(deletion.get("EVENT_MANIPULATION"))
-                            && ServiceExecutionSchemaVerifier.tokens(
+                            && BeautyExecutionSql.tokens(
                                             deleteSql.substring(
                                                     deleteSql.indexOf("BEGIN"),
                                                     deleteSql.indexOf("END$$") + 3))
                                     .equals(
-                                            ServiceExecutionSchemaVerifier.tokens(
+                                            BeautyExecutionSql.tokens(
                                                     deletion.get("ACTION_STATEMENT").toString())));
             String expression = sql.substring(sql.indexOf("CHECK (") + 6, sql.indexOf(";\n"));
             require(
                     "YES".equals(check.get("ENFORCED"))
-                            && ServiceExecutionSchemaVerifier.expression(expression)
+                            && BeautyExecutionSql.expression(expression)
                                     .equals(
-                                            ServiceExecutionSchemaVerifier.expression(
+                                            BeautyExecutionSql.expression(
                                                     check.get("CHECK_CLAUSE").toString())));
             return true;
         } catch (Exception corrupt) {

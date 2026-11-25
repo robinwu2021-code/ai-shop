@@ -48,6 +48,15 @@ public final class TaskActionSchemaVerifier {
      * No cached marker or feature flag may conceal physical drift after a previously valid request.
      */
     public Installation installation() {
+        return inspect(true);
+    }
+
+    /** Recognizes exact V13 objects for the base schema comparison. */
+    public boolean installedStructure() {
+        return inspect(false) == Installation.INSTALLED;
+    }
+
+    private Installation inspect(boolean requireSuccessorHistory) {
         Connection connection = null;
         try {
             connection = DataSourceUtils.getConnection(source);
@@ -93,7 +102,8 @@ public final class TaskActionSchemaVerifier {
                 return Installation.ABSENT;
             require(triggers.size() == 2 && checks.size() == 1 && markers.size() == 1);
             JsonNode descriptor = descriptor();
-            var successor = TaskStartSchemaExtension.inspect(source);
+            var successor = requireSuccessorHistory ? TaskStartSchemaExtension.inspect(source)
+                    : TaskStartSchemaExtension.inspectStructure(source);
             require(successor.installation() != TaskStartSchemaExtension.Installation.CORRUPT);
             String expectedCheck =
                     successor.installation() == TaskStartSchemaExtension.Installation.INSTALLED
@@ -115,9 +125,9 @@ public final class TaskActionSchemaVerifier {
                                     == descriptor.path("flywayChecksum").asInt());
             require(
                     "YES".equals(text(checks.getFirst(), "enforced"))
-                            && ServiceExecutionSchemaVerifier.expression(expectedCheck)
+                            && BeautyExecutionSql.expression(expectedCheck)
                                     .equals(
-                                            ServiceExecutionSchemaVerifier.expression(
+                                            BeautyExecutionSql.expression(
                                                     text(checks.getFirst(), "check_clause"))));
             for (var expected : descriptor.path("triggers")) {
                 var actual =
@@ -135,10 +145,10 @@ public final class TaskActionSchemaVerifier {
                                         .asString()
                                         .equals(text(actual, "event_manipulation"))
                                 && "BEFORE".equals(text(actual, "action_timing"))
-                                && ServiceExecutionSchemaVerifier.tokens(
+                                && BeautyExecutionSql.tokens(
                                                 expected.path("body").asString())
                                         .equals(
-                                                ServiceExecutionSchemaVerifier.tokens(
+                                                BeautyExecutionSql.tokens(
                                                         text(actual, "action_statement"))));
             }
             return Installation.INSTALLED;

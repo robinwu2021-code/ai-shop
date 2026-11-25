@@ -15,7 +15,7 @@ import ai.neargo.shop.merchant.service.MerchantRoleService;
 import ai.neargo.shop.merchant.service.impl.MerchantStaffServiceImpl;
 import ai.neargo.shop.merchant.service.impl.MerchantRoleServiceImpl;
 import ai.neargo.shop.merchant.service.impl.StaffAuditLogger;
-import ai.neargo.shop.merchant.service.impl.StoreOwnershipWritePortImpl;
+import ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl;
 import ai.neargo.shop.spi.resource.ResourceOccupationLifecycleContract.Cancellation;
 import ai.neargo.shop.spi.resource.ResourceOccupationLifecycleContract.CancellationOutcome;
 import ai.neargo.shop.spi.resource.ServiceTaskStartAuthorityPort.AcceptedStaffRef;

@@ -141,10 +141,10 @@ public final class DirectTaskPlanSchemaVerifier {
             }
             require(
                     "YES".equals(text(checks.getFirst(), "enforced"))
-                            && ServiceExecutionSchemaVerifier.expression(
+                            && BeautyExecutionSql.expression(
                                             descriptor.path("check").asString())
                                     .equals(
-                                            ServiceExecutionSchemaVerifier.expression(
+                                            BeautyExecutionSql.expression(
                                                     text(checks.getFirst(), "check_clause"))));
             for (var expected : descriptor.path("triggers")) {
                 var actual =
@@ -162,10 +162,10 @@ public final class DirectTaskPlanSchemaVerifier {
                                         .asString()
                                         .equals(text(actual, "event_manipulation"))
                                 && "BEFORE".equals(text(actual, "action_timing"))
-                                && ServiceExecutionSchemaVerifier.tokens(
+                                && BeautyExecutionSql.tokens(
                                                 expected.path("body").asString())
                                         .equals(
-                                                ServiceExecutionSchemaVerifier.tokens(
+                                                BeautyExecutionSql.tokens(
                                                         text(actual, "action_statement"))));
             }
             return Installation.INSTALLED;

@@ -24,6 +24,15 @@ public final class TaskStartSchemaExtension {
     public record Postcondition(Installation installation,JsonNode descriptor) {}
     private TaskStartSchemaExtension() {}
     public static Postcondition inspect(DataSource source) {
+        return inspect(source, 1);
+    }
+
+    /** The base validator recognizes exact V15 objects independently of the earlier execution owners. */
+    public static Postcondition inspectStructure(DataSource source) {
+        return inspect(source, 15);
+    }
+
+    private static Postcondition inspect(DataSource source, int firstVersion) {
         Connection connection=null;
         try {
             connection=DataSourceUtils.getConnection(source);
@@ -73,20 +82,20 @@ public final class TaskStartSchemaExtension {
             for(var expected:d.path("checks").properties()) {
                 var found=all.stream().filter(r -> expected.getKey().equals(text(r,"constraint_name"))).toList();
                 require(found.size()==1 && "YES".equals(text(found.getFirst(),"enforced"))
-                        && ServiceExecutionSchemaVerifier.expression(expected.getValue().asString()).equals(
-                            ServiceExecutionSchemaVerifier.expression(text(found.getFirst(),"check_clause"))));
+                        && BeautyExecutionSql.expression(expected.getValue().asString()).equals(
+                            BeautyExecutionSql.expression(text(found.getFirst(),"check_clause"))));
             }
             for(var expected:d.path("triggers")) {
                 var found=triggers.stream().filter(r -> expected.path("name").asString().equals(text(r,"trigger_name"))).toList();
                 require(found.size()==1 && "BEFORE".equals(text(found.getFirst(),"action_timing"))
                         && "bty_service_submission".equals(text(found.getFirst(),"event_object_table"))
                         && expected.path("event").asString().equals(text(found.getFirst(),"event_manipulation"))
-                        && ServiceExecutionSchemaVerifier.tokens(expected.path("body").asString()).equals(
-                            ServiceExecutionSchemaVerifier.tokens(text(found.getFirst(),"action_statement"))));
+                        && BeautyExecutionSql.tokens(expected.path("body").asString()).equals(
+                            BeautyExecutionSql.tokens(text(found.getFirst(),"action_statement"))));
             }
             var rows=query(connection,"SELECT version,script,type,checksum,success FROM `"+schema+"`.bty_flyway_history WHERE type<>'BASELINE'");
             require(rows.size()==15 || rows.size()==16 && TaskWorkflowSchemaVerifier.installed(source));
-            for(int i=0;i<15;i++) {
+            for(int i=firstVersion-1;i<15;i++) {
                 final String version=Integer.toString(i+1); var expected=d.path("history").get(i);
                 var found=rows.stream().filter(r -> version.equals(text(r,"version"))).toList();
                 require(found.size()==1); var actual=found.getFirst();

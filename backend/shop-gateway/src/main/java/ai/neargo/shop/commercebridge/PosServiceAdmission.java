@@ -24,6 +24,8 @@ class PosServiceAdmission {
     private static final Set<String> BOOKING = Set.of(
             "appointments", "availability", "arrival-challenges", "arrivals", "walk-ins", "reception-exceptions",
             "guest-registrations", "reports", "calendar");
+    private static final Set<String> TASK_MUTATIONS = Set.of(
+            "assignments", "preparations", "accept", "start", "handover-proposals", "workflow");
     private static final Set<String> CATALOG = Set.of("services", "service-definitions", "store-policies");
 
     private final FoundationQueryFacade foundation;
@@ -61,8 +63,15 @@ class PosServiceAdmission {
             if (BOOKING.contains(resource)) return "SVC_BOOKING";
             if (CATALOG.contains(resource)) return "SVC_CATALOG";
             if ((BEAUTY + "work-orders/my-tasks").equals(path)) return "SVC_TASK";
-            if ("work-orders".equals(resource) && path.equals(BEAUTY + resource) && "POST".equals(method)) {
-                return "SVC_TASK";
+            if ("work-orders".equals(resource)) {
+                String[] parts = path.substring(BEAUTY.length()).split("/");
+                if ("POST".equals(method) && parts.length == 1) return "SVC_TASK";
+                if (parts.length >= 5 && "tasks".equals(parts[2])) {
+                    if (parts.length == 5 && "GET".equals(method) && "execution".equals(parts[4])) return "SVC_TASK";
+                    if (parts.length == 5 && "POST".equals(method) && TASK_MUTATIONS.contains(parts[4])) return "SVC_TASK";
+                    if (parts.length == 7 && "POST".equals(method)
+                            && "operations".equals(parts[4]) && "cancel".equals(parts[6])) return "SVC_TASK";
+                }
             }
         }
         if ("POST".equals(method) && path.equals("/biz/service-orders/counter-quotes")) return "SVC_COUNTER_CASH";

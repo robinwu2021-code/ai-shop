@@ -173,6 +173,14 @@ class TaskWorkflowServiceNativeIT extends BeautyExecutionFixture {
             assertThat(activePeople()).isEqualTo(1);
             assertThat(sql.queryForObject("SELECT personnel_no FROM bty_service_participation WHERE ended_at IS NULL", String.class))
                     .isEqualTo("PERSON2");
+            assertThat(call(c, "ServiceTaskMapper", "selectAssigned", "MAIN", "E", "S",
+                    "PERSON", local(BASE), local(BASE.plusSeconds(3600)))).isEqualTo(List.of());
+            var incomingTasks = (List<?>) call(c, "ServiceTaskMapper", "selectAssigned", "MAIN", "E", "S",
+                    "PERSON2", local(BASE), local(BASE.plusSeconds(3600)));
+            assertThat(incomingTasks).hasSize(1);
+            var visibleTask = (ai.neargo.shop.beauty.dto.AssignedServiceTaskVO) incomingTasks.getFirst();
+            assertThat(visibleTask.taskNo()).isEqualTo("TASK");
+            assertThat(visibleTask.status()).isEqualTo("IN_SERVICE");
             assertThat(sql.queryForObject("SELECT handover_from_no FROM bty_service_participation WHERE ended_at IS NULL", String.class))
                     .isNotEqualTo("PART");
 
