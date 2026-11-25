@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "现金收款、角色功能目录与美业日历由独立 ai-shop-bapp 仓库的 handheld-pos 原生 Android 客户端读取。uni-app 遗留客户端不在这批交付范围。",
+  "plan": "docs/technical/TDD-B端门店功能矩阵与方案准入.md",
+  "contract": "docs/api/handheld-pos-service-reads.openapi.json",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/order/service-cash-receipts"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/role-feature-catalog"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/x/beauty/calendar"
+    }
+  ]
+}

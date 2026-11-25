@@ -1,0 +1,131 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "原生 Android POS 门店服务读取接口",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/biz/order/service-cash-receipts": {
+      "get": {
+        "summary": "读取门店服务订单现金收款",
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fromAt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "untilAt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前门店的服务订单现金收款记录"
+          },
+          "403": {
+            "description": "当前身份没有本店所需权限"
+          }
+        }
+      }
+    },
+    "/biz/role-feature-catalog": {
+      "get": {
+        "summary": "读取可授予角色的 POS 功能目录",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roleCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前门店的可授予功能、状态和不可授予原因"
+          },
+          "403": {
+            "description": "当前身份没有本店所需权限"
+          }
+        }
+      }
+    },
+    "/biz/x/beauty/calendar": {
+      "get": {
+        "summary": "读取美业预约资源日历",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "不超过一天的技师、资源、班次和停约视图"
+          },
+          "403": {
+            "description": "当前身份没有本店所需权限"
+          }
+        }
+      }
+    }
+  }
+}
