@@ -141,6 +141,7 @@ public final class ServiceExecutionSchemaVerifier {
             inspect(connection, schema, contract);
             return Installation.INSTALLED;
         } catch (Exception failure) {
+            log.debug("Service execution schema verification failed", failure);
             return Installation.CORRUPT;
         } finally {
             if (connection != null) {
@@ -180,7 +181,7 @@ public final class ServiceExecutionSchemaVerifier {
         try (InputStream stream = descriptors.getFirst().openStream()) {
             contract = JsonMapper.builder().build().readTree(stream);
         }
-        require(contract.path("schemaVersion").asInt() == 1 && contract.path("platformVersion").asInt() == 651
+        require(contract.path("schemaVersion").asInt() == 1 && contract.path("platformVersion").asInt() == 705
                 && "shop-core/primary".equals(contract.path("owner").asString())
                 && contract.path("baseMigrationSha256").asString().equals(base.path("migrationSha256").asString())
                 && contract.path("tables").size() == 3 && contract.path("postTriggers").size() == 9);
@@ -202,7 +203,7 @@ public final class ServiceExecutionSchemaVerifier {
         try (InputStream stream = descriptors.getFirst().openStream()) {
             contract = JsonMapper.builder().build().readTree(stream);
         }
-        require(contract.path("schemaVersion").asInt() == 1 && contract.path("platformVersion").asInt() == 649
+        require(contract.path("schemaVersion").asInt() == 1 && contract.path("platformVersion").asInt() == 704
                 && "shop-core/primary".equals(contract.path("owner").asString())
                 && contract.path("baseMigrationSha256").asString().equals(base.path("migrationSha256").asString())
                 && contract.path("tables").size() == 3 && contract.path("postTriggers").size() == 7);

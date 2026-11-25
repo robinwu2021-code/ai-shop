@@ -91,7 +91,7 @@ public final class ExecutionSchemaSql {
             if (take("not")) {
                 return "not(" + comparison() + ")";
             }
-            String left = atom();
+            String left = arithmetic();
             if (take("is")) {
                 boolean negated = take("not");
                 expect("null");
@@ -112,10 +112,19 @@ public final class ExecutionSchemaSql {
             if (at < input.size() && Set.of("=", "<>", "!=", "<", ">", "<=", ">=", "regexp")
                     .contains(input.get(at))) {
                 String operation = input.get(at++);
-                String right = atom();
+                String right = arithmetic();
                 return ("!=".equals(operation) ? "<>" : operation) + "(" + left + "," + right + ")";
             }
             return left;
+        }
+
+        private String arithmetic() {
+            String value = atom();
+            while (at < input.size() && ("+".equals(input.get(at)) || "-".equals(input.get(at)))) {
+                String operation = input.get(at++);
+                value = operation + "(" + value + "," + atom() + ")";
+            }
+            return value;
         }
 
         private String atom() {

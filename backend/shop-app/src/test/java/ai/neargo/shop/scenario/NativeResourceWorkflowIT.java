@@ -137,7 +137,8 @@ class NativeResourceWorkflowIT {
         sql.execute("INSERT INTO mch_account(entity_no,mch_account_no,is_owner,is_primary,status) VALUES('E','ACCOUNT',1,1,'ACTIVE')");
         try(var c=source.getConnection()) {
             for(var migration:List.of("V592__shared_personnel_foundation.sql","V593__shared_resource_identity.sql",
-                    "V594__shared_schedule_rules.sql","V595__shared_resource_booking_foundation.sql"))
+                    "V594__shared_schedule_rules.sql","V595__shared_resource_booking_foundation.sql",
+                    "V703__merchant_employee_login.sql"))
                 ScriptUtils.executeSqlScript(c,new ClassPathResource("db/migration/"+migration));
         }
         ResourceOccupationNativeFixture.install(source);

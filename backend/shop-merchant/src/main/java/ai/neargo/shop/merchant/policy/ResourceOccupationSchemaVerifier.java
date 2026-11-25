@@ -1,7 +1,6 @@
 package ai.neargo.shop.merchant.policy;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.sql.NativeCheckMetadata;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.ExecutionSchemaHistory;
 import ai.neargo.shop.common.RuntimeTriggerMetadata;
@@ -129,7 +128,8 @@ public final class ResourceOccupationSchemaVerifier {
                 }
             }
             List<Map<String, Object>> markers = tableExists(connection, schema, historyTable)
-                    ? history(connection, schema, historyTable, "621")
+                    ? query(connection, "SELECT version, script, type, checksum, success FROM "
+                            + quoted(schema) + "." + quoted(historyTable) + " WHERE version=?", "621")
                     : List.of();
             JsonNode contract = descriptor();
             int altered = 0;
@@ -316,7 +316,7 @@ public final class ResourceOccupationSchemaVerifier {
                         + " AND c.CONSTRAINT_NAME=t.CONSTRAINT_NAME"
                         + " WHERE t.TABLE_SCHEMA=? AND t.TABLE_NAME=? AND t.CONSTRAINT_TYPE='CHECK'",
                 schema, table.path("name").asString())) {
-            require(actual.put(text(row, "constraint_name"), expression(NativeCheckMetadata.decode(text(row, "check_clause")))) == null);
+            require(actual.put(text(row, "constraint_name"), expression(text(row, "check_clause"))) == null);
         }
         Map<String, String> expected = new TreeMap<>();
         table.path("checks").properties().forEach(entry ->
@@ -343,24 +343,9 @@ public final class ResourceOccupationSchemaVerifier {
                 schema, table);
     }
 
-    private static List<Map<String, Object>> history(Connection connection, String schema,
-            String table, String version) throws SQLException {
-        String columns = historyQuote(connection, "version") + "," + historyQuote(connection, "script")
-                + "," + historyQuote(connection, "type") + "," + historyQuote(connection, "checksum")
-                + "," + historyQuote(connection, "success");
-        return query(connection, "SELECT " + columns + " FROM " + historyQuote(connection, schema)
-                + "." + historyQuote(connection, table) + " WHERE " + historyQuote(connection, "version") + "=?", version);
-    }
-
-    private static String historyQuote(Connection connection, String value) throws SQLException {
-        String quote = connection.getMetaData().getIdentifierQuoteString().strip();
-        require(Set.of("`", "\"").contains(quote));
-        return quote + identifier(value).replace(quote, quote + quote) + quote;
-    }
-
     private static boolean tableExists(Connection connection, String schema, String name) throws SQLException {
         return !query(connection,
-                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND LOWER(TABLE_NAME)=LOWER(?)",
+                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",
                 schema, name).isEmpty();
     }
 
@@ -558,12 +543,6 @@ public final class ResourceOccupationSchemaVerifier {
             return value;
         }
 
-        private String product() {
-            String value = atom();
-            while (take("%")) value = "%(" + value + "," + atom() + ")";
-            return value;
-        }
-
         private String atom() {
             if (take("(")) {
                 String value = or();
@@ -573,12 +552,6 @@ public final class ResourceOccupationSchemaVerifier {
             require(at < input.size());
             String value = input.get(at++);
             require(!List.of(")", ",", "and", "or").contains(value));
-            if ("interval".equals(value)) {
-                require(at + 1 < input.size() && input.get(at).matches("[0-9]+"));
-                String amount = input.get(at++);
-                require("minute".equals(input.get(at++)));
-                return "interval(" + amount + ",minute)";
-            }
             if (take("(")) {
                 if ("cast".equals(value)) {
                     String input = or();
@@ -588,12 +561,7 @@ public final class ResourceOccupationSchemaVerifier {
                     return "cast(" + input + "," + type + ")";
                 }
                 var args = arguments();
-                if ("mod".equals(value) && args.size() == 2) return "%(" + String.join(",", args) + ")";
-                if ("timestampadd".equals(value) && args.size() == 3 && "minute".equals(args.getFirst())) {
-                    return "+(" + args.get(2) + ",interval(" + args.get(1) + ",minute))";
-                }
                 // Only the no-flags two-argument native spelling is equivalent to the REGEXP operator.
-                if ("octet_length".equals(value)) value = "length";
                 String function = "regexp_like".equals(value) && args.size() == 2 ? "regexp" : value;
                 return function + "(" + String.join(",", args) + ")";
             }
