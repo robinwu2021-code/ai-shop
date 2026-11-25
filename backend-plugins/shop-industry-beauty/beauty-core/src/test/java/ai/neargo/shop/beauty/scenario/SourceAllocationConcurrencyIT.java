@@ -3,7 +3,26 @@ package ai.neargo.shop.beauty.scenario;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.beauty.entity.BtyWorkOrderContext;
+import ai.neargo.shop.beauty.mapper.BeautyMappers;
+import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
+import ai.neargo.shop.beauty.service.impl.ServiceExecutionFenceCoordinator;
+import ai.neargo.shop.beauty.service.impl.ServiceSourceBinding;
+import ai.neargo.shop.beauty.service.impl.ServiceSubmissionQuery;
+import ai.neargo.shop.beauty.service.impl.ServiceSubmissionServiceImpl;
+import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
+import ai.neargo.shop.idem.IdempotencyScope;
+import ai.neargo.shop.spi.trade.CheckoutPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
+import java.time.Clock;
+import java.time.ZoneOffset;
+import java.util.Map;
+import org.springframework.transaction.PlatformTransactionManager;
+import tools.jackson.databind.json.JsonMapper;
 import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.shop.auth.ScopeDim;
 import java.math.BigDecimal;
@@ -25,6 +44,77 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
         seed("bty_source_allocation_guard", "guard_no", "G", "source_kind", "STORE_ORDER", "source_no", "ORDER",
                 "source_line_ref", "LINE", "source_revision", 1L, "source_qty", 2, "allocated_qty", 0,
                 "uom", "COUNT", "source_hash", "a".repeat(64));
+    }
+
+    @Test
+    void recordsOneUnpaidProofOnTheOriginalWorkOrderAndRejectsDifferentLines() {
+        workOrder("W", "S");
+        task("T", "W");
+        sql.update("UPDATE bty_service_task SET status='PENDING', started_at=NULL, binding_revision=0 WHERE task_no='T'");
+        var json = JsonMapper.builder().build();
+        var party = new ManualServiceAdmissionPort.CustomerParty("USER", "U", null, 1L);
+        String hash = "a".repeat(64);
+        var operation = new CheckoutPort.OperationRef("BEAUTY", "OP");
+        var task = new ServiceSubmissionServiceImpl.FrozenTask(
+                "T", "T", "SKU", "GOODS", "DV", new BigDecimal("2"), "COUNT", 0, 0,
+                IdempotencyScope.requestHash("{}"), "CLIENT", null);
+        var command = new ServiceSubmissionServiceImpl.Command(
+                3, "MERCHANT", "MCH", "ACTOR", "BAPI-056", hash, hash, "D",
+                1, hash, "USER", "U", "U", null, null, 1, 0, "OP", "PREPARE",
+                "MANUAL_PREPARE", hash, "OFFLINE", null, Map.of(), null, null, null, null,
+                List.of(task), List.of(new CheckoutPort.CheckoutLineReq("CLIENT", "SKU", 2)),
+                "MANUAL_OFFLINE", party, "MERCHANT_RECORDED_IN_PERSON");
+        seed("bty_service_submission", "submission_no", "D", "store_no", "S", "work_order_no", "W",
+                "action", "OPEN", "request_key_hash", "b".repeat(64), "payload_hash", hash,
+                "status", "BOUND", "frozen_command", "{}");
+        seed("bty_service_submission", "submission_no", "SUB", "store_no", "S", "work_order_no", "W",
+                "action", "SUBMIT_SOURCE", "request_key_hash", hash, "payload_hash", hash,
+                "status", "RECOVERING", "frozen_command", json.writeValueAsString(command));
+
+        runner().run(context -> {
+            var orders = context.getBean(BeautyMappers.WorkOrderMapper.class);
+            var tasks = context.getBean(BeautyMappers.ServiceTaskMapper.class);
+            var submissions = context.getBean(BeautyMappers.ServiceSubmissionMapper.class);
+            var root = orders.selectScoped("E", "S", "W");
+            var identity = new BtyWorkOrderContext();
+            identity.setIdentityKind("USER");
+            identity.setIdentityRef("U");
+            var original = new WorkOrderCoordinator.WorkOrderScopeSnapshot(
+                    1, 1, hash, null, null, null, List.of(), List.of());
+            var query = mock(ServiceSubmissionQuery.class);
+            when(query.root("E", "S", "W")).thenReturn(new ServiceSubmissionQuery.Root(
+                    root, identity, original, submissions.selectOpenForWorkOrder("E", "S", "W"),
+                    List.of(tasks.selectById(sql.queryForObject("SELECT id FROM bty_service_task WHERE task_no='T'", Long.class)))));
+            var db = new AppointmentPersistence(null, null, null, null, null, null, null, null, null,
+                    context.getBean(BeautyMappers.ActionLogMapper.class), json,
+                    context.getBean(PlatformTransactionManager.class));
+            var binding = new ServiceSourceBinding(db, query, null, null, orders, tasks, submissions,
+                    null, Clock.fixed(T0.toInstant(ZoneOffset.UTC), ZoneOffset.UTC),
+                    mock(ServiceExecutionFenceCoordinator.class));
+            var lease = db.tx(() -> submissions.selectScopedForUpdate("E", "S", "SUB"));
+            var admission = new ManualServiceAdmissionPort.ManualAdmissionView(operation, "ORDER", "CHILD",
+                    1, 0, "AWAITING_RECEIPT", null, null, null, null, "TWD", null, null,
+                    "AWAITING_RECEIPT", null);
+            java.util.function.Function<String, ManualServiceAdmissionPort.ManualSourceFacts> evidence = sku ->
+                    new ManualServiceAdmissionPort.ManualSourceFacts(operation, "ORDER", "CHILD", party, "E", "S",
+                            "MANUAL_OFFLINE", 1, hash, 1, 0, "AWAITING_RECEIPT", List.of(),
+                            T0.toInstant(ZoneOffset.UTC), 10000L, "TWD", admission, "MERCHANT_RECORDED_IN_PERSON",
+                            new ManualServiceAdmissionPort.ConfirmedUnpaidSource("CONFIRM", hash,
+                                    List.of(new ManualServiceAdmissionPort.ManualSourceLine(
+                                            "LINE", "CLIENT", "GOODS", sku, 2, 0, "COUNT"))));
+            assertThat(binding.recordConfirmedUnpaid(lease, command, evidence.apply("OTHER"), "ACTOR").reason())
+                    .isEqualTo("SOURCE_LINE_MISMATCH");
+            assertThat(binding.recordConfirmedUnpaid(lease, command, evidence.apply("SKU"), "ACTOR").reason())
+                    .isNull();
+            assertThat(binding.recordConfirmedUnpaid(lease, command, evidence.apply("SKU"), "ACTOR").reason())
+                    .isNull();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE aggregate_no='SUB'"
+                    + " AND action='CONFIRMED_UNPAID' AND JSON_UNQUOTE(JSON_EXTRACT(safe_snapshot,'$.workOrderNo'))='W'",
+                    Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT status FROM bty_service_task WHERE task_no='T'", String.class))
+                    .isEqualTo("PENDING");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_trade_binding", Integer.class)).isZero();
+        });
     }
 
     private Object allocate(ApplicationContext context, long version, long sourceRevision, String qty) {

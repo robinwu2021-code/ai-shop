@@ -1388,6 +1388,13 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
             var observed = observations.observeManual(manualCanonical(intent, c, facts), actor);
             access.authorize(intent.getEntityNo(), intent.getStoreNo(), actor, true, false);
             if (observed.facts() != null) verifyManualParty(intent, c, observed.facts());
+            if (observed.facts() != null && observed.facts().confirmedUnpaid() != null
+                    && "MANUAL_PREPARE".equals(c.sourceMode())) {
+                var recorded = bindingService.recordConfirmedUnpaid(leased, c, observed.facts(), actor);
+                return manualView(pending(leased, actor,
+                        recorded.reason() == null ? "CONFIRMED_UNPAID" : recorded.reason()),
+                        c, quote, observed);
+            }
             var result = bindingService.bindManual(leased, c, observed, actor);
             return manualView(
                     result.submission() == null
@@ -1412,8 +1419,8 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
             Command c,
             CounterCheckoutQuote quote,
             ServiceSourceObservation.ManualObserved observed) {
-        var tasksNow =
-                query.root(row.getEntityNo(), row.getStoreNo(), row.getWorkOrderNo()).tasks();
+        var root = query.root(row.getEntityNo(), row.getStoreNo(), row.getWorkOrderNo());
+        var tasksNow = root.tasks();
         var local =
                 db.read(
                         () ->
@@ -1454,6 +1461,11 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                 "BOUND".equals(row.getStatus())
                         ? "BOUND"
                         : row.getFailureCode() == null ? "SOURCE_UNKNOWN" : row.getFailureCode();
+        if ("CONFIRMED_UNPAID".equals(phase)
+                && (observed == null || !bindingService.matchesConfirmedUnpaid(
+                        row, root.order().getScopeRevision(), observed.facts()))) {
+            phase = "SOURCE_UNKNOWN";
+        }
         return new ServiceSubmissionVO(
                 row.getSubmissionNo(),
                 row.getWorkOrderNo(),

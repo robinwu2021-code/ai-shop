@@ -12,7 +12,13 @@ import ai.neargo.shop.beauty.service.WorkOrderService;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
+import ai.neargo.shop.spi.resource.ResourceExecutionEvidencePort;
+import ai.neargo.shop.spi.resource.ResourceOccupationPort;
+import ai.neargo.shop.spi.resource.ResourceQualificationPort;
 import ai.neargo.shop.spi.trade.CheckoutPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionEvidencePort;
+import ai.neargo.shop.spi.trade.ServiceExecutionStartPort;
+import org.mockito.Mockito;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -56,7 +62,12 @@ abstract class SourceFixture extends ReceptionFixture {
 
     @Override
     ApplicationContextRunner business() {
-        var base = super.business();
+        var base = super.business()
+                .withBean(ResourceOccupationPort.class, () -> Mockito.mock(ResourceOccupationPort.class))
+                .withBean(ResourceQualificationPort.class, () -> Mockito.mock(ResourceQualificationPort.class))
+                .withBean(ResourceExecutionEvidencePort.class, () -> Mockito.mock(ResourceExecutionEvidencePort.class))
+                .withBean(ServiceExecutionStartPort.class, () -> Mockito.mock(ServiceExecutionStartPort.class))
+                .withBean(ServiceExecutionEvidencePort.class, () -> Mockito.mock(ServiceExecutionEvidencePort.class));
         if (checkoutAvailable) {
             base = base.withBean(CheckoutPort.class, this::checkout);
         }
@@ -76,6 +87,11 @@ abstract class SourceFixture extends ReceptionFixture {
                                                                 CustomerIdentityPort.class
                                                             },
                                                             (proxy, method, arguments) -> {
+                                                                if ("resolveCounterReference".equals(method.getName())
+                                                                        && arguments[1] instanceof CustomerIdentityPort.CounterReferenceQuery query
+                                                                        && "MEMBER".equals(query.memberNo())) {
+                                                                    return new CustomerIdentityPort.ResolvedCustomer("USR1");
+                                                                }
                                                                 if (method.getName()
                                                                         .equals(
                                                                                 "resolveClaimReference")) {

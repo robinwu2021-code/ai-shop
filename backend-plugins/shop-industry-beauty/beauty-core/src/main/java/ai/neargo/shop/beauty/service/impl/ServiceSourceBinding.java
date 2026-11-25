@@ -5,10 +5,13 @@ import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.entity.BtyServiceTask;
 import ai.neargo.shop.beauty.entity.BtySourceAllocationGuard;
 import ai.neargo.shop.beauty.entity.BtyTradeBinding;
+import ai.neargo.shop.beauty.entity.BtyWorkOrder;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualSourceFacts;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -334,64 +337,9 @@ public final class ServiceSourceBinding {
                     "SOURCE_QUANTITY_EXCEEDED");
             lockedGuards.put(entry.getKey(), guard);
         }
-        var root = orders.selectScopedForUpdate(entity, store, intent.getWorkOrderNo());
-        require(
-                root != null
-                        && root.getScopeRevision() == command.targetScopeRevision()
-                        && !root.getScopeFrozen()
-                        && List.of("OPEN", "IN_SERVICE").contains(root.getStatus()),
-                "SCOPE_CHANGED");
-        var current = query.root(entity, store, root.getWorkOrderNo());
-        require(
-                command.originalDraftNo().equals(current.draft().getSubmissionNo())
-                        && command.originalScopeHash().equals(current.original().scopeHash())
-                        && command.identityKind().equals(current.context().getIdentityKind())
-                        && command.identityRef().equals(current.context().getIdentityRef()),
-                "SCOPE_CHANGED");
-        var lockedTasks = new ArrayList<BtyServiceTask>();
-        for (var task :
-                command.tasks().stream()
-                        .sorted(
-                                Comparator.comparing(
-                                        ServiceSubmissionServiceImpl.FrozenTask::taskNo))
-                        .toList()) {
-            var row = tasks.selectScopedForUpdate(entity, store, task.taskNo());
-            require(
-                    row != null
-                            && root.getWorkOrderNo().equals(row.getWorkOrderNo())
-                            && current.tasks().stream()
-                                    .anyMatch(
-                                            candidate ->
-                                                    candidate.getTaskNo().equals(row.getTaskNo()))
-                            && row.getVersion() == task.revision()
-                            && row.getBindingRevision() == 0
-                            && row.getBindingRevision() == task.bindingRevision()
-                            && "PENDING".equals(row.getStatus())
-                            && row.getStartedAt() == null
-                            && row.getDoneQty().signum() == 0
-                            && row.getVoidedQty().signum() == 0
-                            && task.qty().compareTo(row.getQty()) == 0
-                            && task.uom().equals(row.getUom())
-                            && task.skuNo().equals(row.getSkuNo())
-                            && task.definitionVersionNo().equals(row.getDefinitionVersionNo())
-                            && task.executionHash()
-                                    .equals(
-                                            IdempotencyScope.requestHash(
-                                                    row.getExecutionSnapshot())),
-                    "TASK_CHANGED");
-            executionFences.requireTaskMutableLocked(entity, store, row.getTaskNo());
-            lockedTasks.add(row);
-        }
-        var submission = submissions.selectScopedForUpdate(entity, store, intent.getSubmissionNo());
-        require(
-                submission != null
-                        && "RECOVERING".equals(submission.getStatus())
-                        && submission.getVersion().equals(intent.getVersion())
-                        && submission.getPayloadHash().equals(intent.getPayloadHash())
-                        && db.json
-                                .readTree(submission.getFrozenCommand())
-                                .equals(db.json.readTree(intent.getFrozenCommand())),
-                "SUBMISSION_LEASE_CHANGED");
+        var root = lockRoot(intent, command);
+        var lockedTasks = lockFrozenScope(intent, command, root);
+        var submission = lockLease(intent);
         for (var entry : lockedGuards.entrySet()) {
             var guard = entry.getValue();
             var line = selectedLines.get(entry.getKey());
@@ -502,6 +450,170 @@ public final class ServiceSourceBinding {
                                 lockedTasks.stream().map(BtyServiceTask::getTaskNo).toList())));
         db.actions.insert(action);
         return submissions.selectScopedForUpdate(entity, store, submission.getSubmissionNo());
+    }
+
+    /** Records the checkout owner proof against the original submission and current work order scope. */
+    public Result recordConfirmedUnpaid(BtyServiceSubmission intent,
+            ServiceSubmissionServiceImpl.Command command, ManualSourceFacts facts, String actor) {
+        var proof = facts.confirmedUnpaid();
+        if (proof == null) return new Result(null, "SOURCE_UNKNOWN");
+        if (!"MANUAL_PREPARE".equals(command.sourceMode())
+                || !Objects.equals(command.party(), facts.party())
+                || !intent.getEntityNo().equals(facts.entityNo())
+                || !intent.getStoreNo().equals(facts.storeNo())
+                || !"BEAUTY".equals(facts.operation().caller())
+                || !command.operationNo().equals(facts.operation().operationNo())) {
+            return new Result(null, "SOURCE_IDENTITY_MISMATCH");
+        }
+        if (command.lines().size() != proof.lines().size()
+                || command.lines().stream().anyMatch(line -> proof.lines().stream().noneMatch(source ->
+                        line.clientLineRef().equals(source.clientLineRef()) && line.skuNo().equals(source.skuNo())
+                                && line.quantity() == source.orderedQuantity()))
+                || command.tasks().stream().anyMatch(task -> proof.lines().stream().noneMatch(source ->
+                        source.clientLineRef().equals(task.clientLineRef()) && source.skuNo().equals(task.skuNo())
+                                && source.goodsNo().equals(task.goodsNo()) && source.uom().equals(task.uom())))) {
+            return new Result(null, "SOURCE_LINE_MISMATCH");
+        }
+        try {
+            return new Result(db.tx(() -> {
+                var root = lockRoot(intent, command);
+                var selected = lockFrozenScope(intent, command, root);
+                var submission = lockLease(intent);
+                require(db.json.readValue(submission.getFrozenCommand(), ServiceSubmissionServiceImpl.Command.class)
+                        .equals(command), "SUBMISSION_LEASE_CHANGED");
+                var snapshot = db.json.writeValueAsString(Map.ofEntries(
+                        Map.entry("workOrderNo", root.getWorkOrderNo()),
+                        Map.entry("scopeRevision", root.getScopeRevision()),
+                        Map.entry("operationNo", facts.operation().operationNo()),
+                        Map.entry("orderNo", facts.orderNo()),
+                        Map.entry("subOrderNo", facts.subOrderNo()),
+                        Map.entry("confirmationNo", proof.confirmationNo()),
+                        Map.entry("proofHash", proof.proofHash()),
+                        Map.entry("dueMinor", facts.dueMinor()),
+                        Map.entry("currency", facts.currency()),
+                        Map.entry("taskNos", selected.stream().map(BtyServiceTask::getTaskNo).toList()),
+                        Map.entry("lines", proof.lines())));
+                var prior = confirmedUnpaidAction(submission);
+                if (prior != null) {
+                    require(db.json.readTree(snapshot).equals(db.json.readTree(prior.getSafeSnapshot())), "SOURCE_REVISION_CONFLICT");
+                    return submission;
+                }
+                var action = new BtyActionLog();
+                action.setEntityNo(submission.getEntityNo());
+                action.setStoreNo(submission.getStoreNo());
+                action.setActionNo(BizKey.next("BTAL"));
+                action.setAggregateType("BEAUTY_SOURCE_SUBMISSION");
+                action.setAggregateNo(submission.getSubmissionNo());
+                action.setAction("CONFIRMED_UNPAID");
+                action.setOperatorRef(actor);
+                action.setRequestRef(submission.getSubmissionNo());
+                action.setExpectedRevision(submission.getVersion());
+                action.setResultRevision(submission.getVersion());
+                action.setSafeSnapshot(snapshot);
+                require(db.actions.insert(action) == 1, "SOURCE_OBSERVATION_CHANGED");
+                return submission;
+            }), null);
+        } catch (Blocked blocked) {
+            return new Result(null, blocked.reason);
+        }
+    }
+
+    boolean matchesConfirmedUnpaid(BtyServiceSubmission submission, long scopeRevision, ManualSourceFacts facts) {
+        if (facts == null || facts.confirmedUnpaid() == null) return false;
+        var action = db.read(() -> confirmedUnpaidAction(submission));
+        if (action == null || action.getSafeSnapshot() == null) return false;
+        var snapshot = db.json.readTree(action.getSafeSnapshot());
+        return submission.getWorkOrderNo().equals(snapshot.path("workOrderNo").asString())
+                && scopeRevision == snapshot.path("scopeRevision").asLong()
+                && facts.operation().operationNo().equals(snapshot.path("operationNo").asString())
+                && facts.orderNo().equals(snapshot.path("orderNo").asString())
+                && facts.subOrderNo().equals(snapshot.path("subOrderNo").asString())
+                && facts.confirmedUnpaid().confirmationNo().equals(snapshot.path("confirmationNo").asString())
+                && facts.confirmedUnpaid().proofHash().equals(snapshot.path("proofHash").asString());
+    }
+
+    private BtyActionLog confirmedUnpaidAction(BtyServiceSubmission submission) {
+        return db.actions.selectOne(Wrappers.<BtyActionLog>lambdaQuery()
+                .eq(BtyActionLog::getTenantNo, "MAIN")
+                .eq(BtyActionLog::getEntityNo, submission.getEntityNo())
+                .eq(BtyActionLog::getStoreNo, submission.getStoreNo())
+                .eq(BtyActionLog::getAggregateType, "BEAUTY_SOURCE_SUBMISSION")
+                .eq(BtyActionLog::getAggregateNo, submission.getSubmissionNo())
+                .eq(BtyActionLog::getAction, "CONFIRMED_UNPAID"));
+    }
+
+    private BtyWorkOrder lockRoot(BtyServiceSubmission intent, ServiceSubmissionServiceImpl.Command command) {
+        String entity = intent.getEntityNo(), store = intent.getStoreNo();
+        var root = orders.selectScopedForUpdate(entity, store, intent.getWorkOrderNo());
+        require(
+                root != null
+                        && root.getScopeRevision() == command.targetScopeRevision()
+                        && !root.getScopeFrozen()
+                        && List.of("OPEN", "IN_SERVICE").contains(root.getStatus()),
+                "SCOPE_CHANGED");
+        return root;
+    }
+
+    private List<BtyServiceTask> lockFrozenScope(
+            BtyServiceSubmission intent, ServiceSubmissionServiceImpl.Command command, BtyWorkOrder root) {
+        String entity = intent.getEntityNo(), store = intent.getStoreNo(), workOrderNo = root.getWorkOrderNo();
+        var current = query.root(entity, store, workOrderNo);
+        require(
+                command.originalDraftNo().equals(current.draft().getSubmissionNo())
+                        && command.originalScopeHash().equals(current.original().scopeHash())
+                        && command.identityKind().equals(current.context().getIdentityKind())
+                        && command.identityRef().equals(current.context().getIdentityRef()),
+                "SCOPE_CHANGED");
+        var lockedTasks = new ArrayList<BtyServiceTask>();
+        for (var task :
+                command.tasks().stream()
+                        .sorted(
+                                Comparator.comparing(
+                                        ServiceSubmissionServiceImpl.FrozenTask::taskNo))
+                        .toList()) {
+            var row = tasks.selectScopedForUpdate(entity, store, task.taskNo());
+            require(
+                    row != null
+                            && workOrderNo.equals(row.getWorkOrderNo())
+                            && current.tasks().stream()
+                                    .anyMatch(
+                                            candidate ->
+                                                    candidate.getTaskNo().equals(row.getTaskNo()))
+                            && row.getVersion() == task.revision()
+                            && row.getBindingRevision() == 0
+                            && row.getBindingRevision() == task.bindingRevision()
+                            && "PENDING".equals(row.getStatus())
+                            && row.getStartedAt() == null
+                            && row.getDoneQty().signum() == 0
+                            && row.getVoidedQty().signum() == 0
+                            && task.qty().compareTo(row.getQty()) == 0
+                            && task.uom().equals(row.getUom())
+                            && task.skuNo().equals(row.getSkuNo())
+                            && task.definitionVersionNo().equals(row.getDefinitionVersionNo())
+                            && task.executionHash()
+                                    .equals(
+                                            IdempotencyScope.requestHash(
+                                                    row.getExecutionSnapshot())),
+                    "TASK_CHANGED");
+            executionFences.requireTaskMutableLocked(entity, store, row.getTaskNo());
+            lockedTasks.add(row);
+        }
+        return lockedTasks;
+    }
+
+    private BtyServiceSubmission lockLease(BtyServiceSubmission intent) {
+        String entity = intent.getEntityNo(), store = intent.getStoreNo();
+        var submission = submissions.selectScopedForUpdate(entity, store, intent.getSubmissionNo());
+        require(
+                submission != null
+                        && "RECOVERING".equals(submission.getStatus())
+                        && submission.getVersion().equals(intent.getVersion())
+                        && submission.getPayloadHash().equals(intent.getPayloadHash())
+                        && db.json
+                                .readTree(submission.getFrozenCommand())
+                                .equals(db.json.readTree(intent.getFrozenCommand())),
+                "SUBMISSION_LEASE_CHANGED");
+        return submission;
     }
 
     private long revision(BtySourceAllocationGuard row) {

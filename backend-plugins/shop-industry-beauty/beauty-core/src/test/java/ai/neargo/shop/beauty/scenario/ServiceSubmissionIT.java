@@ -1,6 +1,9 @@
 package ai.neargo.shop.beauty.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.beauty.dto.AppointmentItemReq;
@@ -23,6 +26,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import ai.neargo.shop.spi.trade.CheckoutPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -49,9 +53,82 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Explicit local submission against real beauty scope; external checkout is a counted fixture. */
 class ServiceSubmissionIT extends SourceFixture {
+    @Test
+    void recoveryLinksConfirmedUnpaidOrderAndClearsAvailabilityWhenEvidenceDisappears() {
+        var placed = new AtomicBoolean(false);
+        var held = new AtomicBoolean(true);
+        var counterQuote = new AtomicReference<ManualServiceAdmissionPort.CounterCheckoutQuote>();
+        String hash = "a".repeat(64);
+        var proofHash = new AtomicReference<>(hash);
+        var party = new ManualServiceAdmissionPort.CustomerParty("USER", "USR1", null, (Long) null);
+        var owner = mock(ManualServiceAdmissionPort.class);
+        when(owner.readCounterQuote(any(), any()))
+                .thenAnswer(call -> {
+                    var quote = counterQuote.get();
+                    if (quote == null) throw BizException.of(ErrorCode.NOT_FOUND);
+                    return quote;
+                });
+        when(owner.prepareCounter(any(), any()))
+                .thenAnswer(call -> {
+                    ManualServiceAdmissionPort.PrepareCounterReq request = call.getArgument(1);
+                    var line = request.lines().getFirst();
+                    var quote = new ManualServiceAdmissionPort.CounterCheckoutQuote(new CheckoutPort.CheckoutQuote(
+                            request.operation(), "Q", 1, hash, Instant.now().plusSeconds(300),
+                            "USR1", "E", "S", "TWD", List.of(new CheckoutPort.QuoteLine(
+                                    line.clientLineRef(), "SKU", "G", 1, "COUNT", 10000, 10000, 0, 10000, hash)),
+                            10000, 0, 10000, "OFFLINE", "STORE_VERIFY", "SERVICE_EXECUTION",
+                            List.of(), List.of(), "QUOTED", 1), party, "MERCHANT_RECORDED_IN_PERSON");
+                    counterQuote.set(quote);
+                    return quote;
+                });
+        when(owner.source(any(), any()))
+                .thenAnswer(call -> {
+                    CheckoutPort.SourceLookup request = call.getArgument(1);
+                    boolean created = placed.get();
+                    var quoteLine = counterQuote.get().quote().lines().getFirst();
+                    var view = new ManualServiceAdmissionPort.ManualAdmissionView(request.operation(),
+                            created ? "ORDER" : null, created ? "CHILD" : null, created ? 1 : 0, 0,
+                            "AWAITING_RECEIPT", null, null, null, null, "TWD", null, null, "AWAITING_RECEIPT", null);
+                    var proof = created && held.get() ? new ManualServiceAdmissionPort.ConfirmedUnpaidSource(
+                            "CONFIRM", proofHash.get(), List.of(new ManualServiceAdmissionPort.ManualSourceLine(
+                                    "LINE", quoteLine.clientLineRef(), "G", "SKU", 1, 0, "COUNT"))) : null;
+                    return new ManualServiceAdmissionPort.ManualSourceFacts(request.operation(), view.orderNo(),
+                            view.subOrderNo(), party, "E", "S", "MANUAL_OFFLINE", created ? 1 : 0,
+                            created ? hash : null, view.orderRevision(), 0, "AWAITING_RECEIPT", List.of(),
+                            Instant.now(), created ? 10000L : null, "TWD", view, "MERCHANT_RECORDED_IN_PERSON", proof);
+                });
+
+        business().withBean(ManualServiceAdmissionPort.class, () -> owner).run(context -> {
+            var workOrder = open(context, 1, "OPEN");
+            var request = new SubmitServicesReq(0, workOrder.scopeRevision(),
+                    List.of(new SubmitServicesReq.TaskSelection(workOrder.taskNos().getFirst(), 0, 0)), List.of(),
+                    new SubmitServicesReq.SourceSelection("MANUAL_PREPARE", null, "OFFLINE", null, Map.of(),
+                            null, null, null, null, null, List.of(),
+                            new ManualServiceAdmissionPort.CounterCustomerRef("USER", "MEMBER", null, null)));
+            var service = context.getBean(ServiceSubmissionService.class);
+            var before = service.submitForWorkOrder("E", "S", "A", workOrder.workOrderNo(), request, "SUBMIT");
+            assertThat(before.phase()).isEqualTo("AWAITING_CUSTOMER");
+            placed.set(true);
+            clockAt = Instant.now().plusSeconds(31);
+            var confirmed = service.recoverPending("E", "S", "A", before.submissionNo());
+            assertThat(confirmed.workOrderNo()).isEqualTo(workOrder.workOrderNo());
+            assertThat(confirmed.phase()).isEqualTo("CONFIRMED_UNPAID");
+            assertThat(confirmed.orderNo()).isEqualTo("ORDER");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action='CONFIRMED_UNPAID'",
+                    Integer.class)).isOne();
+            proofHash.set("b".repeat(64));
+            assertThat(service.getSubmission("E", "S", "A", before.submissionNo()).phase()).isEqualTo("SOURCE_UNKNOWN");
+            proofHash.set(hash);
+            held.set(false);
+            assertThat(service.getSubmission("E", "S", "A", before.submissionNo()).phase()).isEqualTo("SOURCE_UNKNOWN");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_trade_binding", Integer.class)).isZero();
+        });
+    }
+
     @Test
     void openDraftDoesNotPurchaseAndExplicitSelectionIsExact() {
         business()
