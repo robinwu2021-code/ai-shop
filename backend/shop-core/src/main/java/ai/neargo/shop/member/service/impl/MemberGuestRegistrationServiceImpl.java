@@ -304,6 +304,26 @@ public class MemberGuestRegistrationServiceImpl implements MemberGuestRegistrati
             var row = guest(scope, guestNo, false); verifyToken(row, token); return fact(row);
         });
     }
+
+    @Override public ai.neargo.shop.spi.member.GuestRegistrationPort.DeskGuest deskGuest(
+            Scope scope, String guestNo, String phone) {
+        requireScope(scope);
+        if (phone != null && !phone.matches("09[0-9]{8}")) throw BizException.of(ErrorCode.BAD_REQUEST);
+        return transaction(() -> {
+            var row = guest(scope, guestNo, false);
+            var stored = row.getContactCipher() == null ? null : crypto.decrypt(row.getTenantNo(), row.getEntityNo(),
+                    row.getStoreNo(), row.getGuestNo(), "contact", row.getContactCipher());
+            var mobile = stored == null ? "" : stored.replaceAll("[+()\\s-]", "");
+            if (mobile.startsWith("8869")) mobile = "0" + mobile.substring(3);
+            var recognized = mobile.matches("09[0-9]{8}");
+            if (phone != null && (!recognized || !MessageDigest.isEqual(
+                    phone.getBytes(StandardCharsets.US_ASCII), mobile.getBytes(StandardCharsets.US_ASCII)))) {
+                throw BizException.of(ErrorCode.FORBIDDEN);
+            }
+            return new ai.neargo.shop.spi.member.GuestRegistrationPort.DeskGuest(fact(row), row.getDisplayName(),
+                    recognized ? mobile.substring(6) : null);
+        });
+    }
     @Override public Claim claim(Scope scope, String guestNo, ClaimCommand command) {
         requireScope(scope);
         if (command == null) { throw BizException.of(ErrorCode.BAD_REQUEST); }

@@ -54,13 +54,20 @@ public final class AppointmentServiceImpl implements AppointmentService {
     private final AppointmentCoordinator coordinator;
     private final ReceptionAccess receptionAccess;
     private final WorkOrderCoordinator workOrders;
+    private final ai.neargo.shop.beauty.policy.ReceptionIdentity receptionIdentity;
     public AppointmentServiceImpl(AppointmentPersistence db, AppointmentAccess access, AppointmentMatching matching,
             AppointmentPreparation preparations, AppointmentCoordinator coordinator,
                     ReceptionAccess receptionAccess,
             WorkOrderCoordinator workOrders) {
+        this(db, access, matching, preparations, coordinator, receptionAccess, workOrders, null);
+    }
+    public AppointmentServiceImpl(AppointmentPersistence db, AppointmentAccess access, AppointmentMatching matching,
+            AppointmentPreparation preparations, AppointmentCoordinator coordinator, ReceptionAccess receptionAccess,
+            WorkOrderCoordinator workOrders, ai.neargo.shop.beauty.policy.ReceptionIdentity receptionIdentity) {
         this.db = db; this.access = access; this.matching = matching;
         this.preparations = preparations; this.coordinator = coordinator; this.receptionAccess = receptionAccess;
         this.workOrders = workOrders;
+        this.receptionIdentity = receptionIdentity;
     }
     @Override
     public WorkOrderVO openWorkOrderFromAppointment(String entity, String store, String actor, String appointment,
@@ -211,7 +218,25 @@ public final class AppointmentServiceImpl implements AppointmentService {
     }
     @Override
     public AppointmentDetailVO getAppointment(String entity, String store, String actor, String number) {
-        return detail(merchantRoot(entity, store, actor, number, false));
+        var root = merchantRoot(entity, store, actor, number, false);
+        var detail = detail(root);
+        var orders = db.read(() -> db.roots.currentWorkOrderNumbers(entity, store, number));
+        AppointmentPersistence.require(orders.size() <= 1);
+        AppointmentDetailVO.DeskCustomer contact = null;
+        if (root.getGuestRef() != null && receptionIdentity != null) {
+            try {
+                var guest = receptionIdentity.deskGuest(entity, store, root.getGuestRef(), null);
+                contact = new AppointmentDetailVO.DeskCustomer(guest.displayName(), guest.phoneLastFour());
+            } catch (BizException unavailable) {
+                if (unavailable.errorCode() != ErrorCode.FORBIDDEN && unavailable.errorCode() != ErrorCode.NOT_FOUND) {
+                    throw unavailable;
+                }
+            } catch (UnsupportedOperationException unsupported) {
+                // Older delegated providers still support booking reads without the desk projection.
+            }
+        }
+        return new AppointmentDetailVO(detail.appointment(), detail.items(), detail.assignments(), detail.availableActions(),
+                contact, orders.isEmpty() ? null : orders.getFirst());
     }
     @Override
     public MyAppointmentDetailVO getMyAppointment(String user, String number) {

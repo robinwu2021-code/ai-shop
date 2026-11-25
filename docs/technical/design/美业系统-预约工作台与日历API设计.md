@@ -44,6 +44,12 @@
 
 ## 三、日历读接口契约
 
+### 原生 POS 日视图的已实现接口
+
+`GET /biz/x/beauty/calendar?from={ISO-8601}&to={ISO-8601}` 读取最长 24 小时的窗口。请求使用会话当前门店及 `X-Store-No`，服务端校验租户、主体、门店、服务预约权益和 `biz:booking:view` 或 `biz:booking:manage`。返回当前店可见的技师、物理资源、班次区间和已停约区间。停约以 `mch_appointment_slot.status=CLOSED` 为准。已存在的预约继续占用日历格，停约提示另行展示。
+
+跨设备接待使用商家预约详情返回的 `deskCustomer` 和 `workOrderNo`。顾客投影按本店顾客权限读取，只含显示名和手机末四位。签到可提交顾客当面提供的手机，由会员域核验原预约关联的直客联系方式。确认后通过既有签到和开工单事务写入，另一台设备按预约编号取得已关联的工单并读取同一笔详情。
+
 ### 3.1 获取窗口快照
 
 `GET /biz/x/beauty/workbench/calendar`

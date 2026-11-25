@@ -1055,6 +1055,7 @@ class BizEndpointPermTest {
                     put("/biz/resources", BizPerms.STORE_ADMIN);
                     put("/biz/schedule-rules", BizPerms.STORE_ADMIN);
                     put("/biz/schedules", BizPerms.STORE_ADMIN);
+                    put("/biz/x/beauty/calendar", BizPerms.BOOKING_VIEW);
                     // 人工服务单与柜台收款（BizManualServiceAdmissionController）：多数是多个码同时要求，
                     // 这里登记最外层的那个；完整条件见各方法的 @PreAuthorize
                     put("/biz/service-orders/counter-quotes", BizPerms.CHECKOUT_PREPARE); // + ORDER_VIEW

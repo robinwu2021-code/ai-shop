@@ -9,6 +9,7 @@ import java.util.List;
 import ai.neargo.shop.spi.member.GuestRegistrationPort.RegisterCommand;
 import ai.neargo.shop.spi.member.GuestRegistrationPort.Registration;
 import ai.neargo.shop.spi.member.GuestRegistrationPort.GuestFact;
+import ai.neargo.shop.spi.member.GuestRegistrationPort.DeskGuest;
 import ai.neargo.shop.spi.member.GuestRegistrationPort.ClaimCommand;
 import ai.neargo.shop.spi.member.GuestRegistrationPort.Claim;
 
@@ -26,5 +27,6 @@ public interface MemberGuestRegistrationService {
     Registration register(Scope scope, RegisterCommand command);
     GuestFact get(Scope scope, String guestNo);
     GuestFact verify(Scope scope, String guestNo, String claimToken);
+    DeskGuest deskGuest(Scope scope, String guestNo, String phone);
     Claim claim(Scope scope, String guestNo, ClaimCommand command);
 }

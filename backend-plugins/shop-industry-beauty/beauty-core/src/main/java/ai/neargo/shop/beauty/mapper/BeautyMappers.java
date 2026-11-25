@@ -240,6 +240,14 @@ public final class BeautyMappers {
                 @Param("storeNo") String storeNo,
                 @Param("appointmentNo") String appointmentNo);
 
+        @Select("""
+                SELECT w.work_order_no FROM bty_work_order w
+                WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo}
+                  AND w.appointment_no=#{appointmentNo} AND w.deleted=0 LIMIT 2
+                """)
+        List<String> currentWorkOrderNumbers(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo);
+
         /** Parent scope is checked before exposing affected task references. */
         @Select(
                 """

@@ -162,6 +162,15 @@ public class InternalGuestRegistrationController {
                             () -> guests.claim(request.scope(), request.guestNo(), request.command())));
         });
     }
+    @PostMapping(GuestRegistrationInternalApi.BASE + "desk-guest")
+    public ResponseEntity<?> deskGuest(@RequestBody GuestRegistrationInternalApi.DeskGuestRequest request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return invoke(given, () -> {
+            require(request != null);
+            return new GuestRegistrationInternalApi.DeskGuestReply(request, delegate(request.scope(),
+                    () -> guests.deskGuest(request.scope(), request.guestNo(), request.phone())));
+        });
+    }
     private ResponseEntity<?> invoke(String given, Supplier<?> operation) {
         try { return InternalServiceResponses.invoke(token, given, operation); }
         catch (RuntimeException unavailable) { return ResponseEntity.status(503).build(); }

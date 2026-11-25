@@ -22,6 +22,7 @@ public interface GuestRegistrationInternalApi {
     @PostExchange(BASE + "register") Registered register(@RequestBody Register request);
     @PostExchange(BASE + "get") Found get(@RequestBody Get request);
     @PostExchange(BASE + "verify") Verified verify(@RequestBody Verify request);
+    @PostExchange(BASE + "desk-guest") DeskGuestReply deskGuest(@RequestBody DeskGuestRequest request);
     @PostExchange(BASE + "claim") Claimed claim(@RequestBody ClaimRequest request);
 
     String COUNTER_CUSTOMER_ENDPOINT = "GUEST_COUNTER_CUSTOMER";
@@ -67,6 +68,12 @@ public interface GuestRegistrationInternalApi {
     record Get(Scope scope, String guestNo) { }
     record Verify(Scope scope, String guestNo, String claimToken) {
         @Override public String toString() { return "Verify[claimToken=REDACTED]"; }
+    }
+    record DeskGuestRequest(Scope scope, String guestNo, String phone) {
+        @Override public String toString() { return "DeskGuestRequest[REDACTED]"; }
+    }
+    record DeskGuestReply(DeskGuestRequest request, GuestRegistrationPort.DeskGuest guest) {
+        @Override public String toString() { return "DeskGuestReply[REDACTED]"; }
     }
     record ClaimRequest(Scope scope, String guestNo, ClaimCommand command) { }
     record Registered(Register request, Registration registration) { }

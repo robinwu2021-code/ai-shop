@@ -140,6 +140,21 @@ class MemberGuestRegistrationIT {
         rejected(() -> as(next, () -> guests.claim(next, result.guestNo(),
                 new ClaimCommand(reference(next, other), result.claimToken(), "claim-1"))), ErrorCode.CONFLICT);
     }
+    @Test void deskPhoneVerificationCrossesDevicesAndStaysInsideTheOriginalStore() {
+        var mobile = new RegisterCommand("0900001234", "QA Desk Guest", true, "desk-reg");
+        var registered = as(scope, () -> guests.register(scope, mobile));
+        var second = scope(manager, "MCH", store);
+        var projection = as(second, () -> guests.deskGuest(second, registered.guestNo(), null));
+        assertThat(projection.phoneLastFour()).isEqualTo("1234");
+        assertThat(projection.displayName()).isEqualTo(mobile.displayName());
+        assertThat(as(second, () -> guests.deskGuest(second, registered.guestNo(), mobile.contact())))
+                .isEqualTo(projection);
+        rejected(() -> as(second, () -> guests.deskGuest(second, registered.guestNo(), "0900009999")),
+                ErrorCode.FORBIDDEN);
+        var foreign = scope(manager, "MCH", store + "2");
+        rejected(() -> as(foreign, () -> guests.deskGuest(foreign, registered.guestNo(), mobile.contact())),
+                ErrorCode.NOT_FOUND);
+    }
     @Test void concurrentClaimsHaveOneRealUserWinnerAndFailureLeavesNoSideEffects() throws Exception {
         var result = as(scope, () -> guests.register(scope, command));
         String first = reference(scope, user), second = reference(scope, other);

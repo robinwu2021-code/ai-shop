@@ -329,13 +329,21 @@ public final class ReceptionCoordinator {
         if (succeeded(prior)) { return arrival(prior); }
         var proof = req.identityProof();
         VerifiedIdentity identity;
-        if (proof.customerRef() != null) {
-            String user = identities.customer(entity, store, proof.customerRef());
+        if (proof.customerRef() != null || proof.memberNo() != null) {
+            String user = proof.customerRef() != null ? identities.customer(entity, store, proof.customerRef())
+                    : identities.customerMember(entity, store, proof.memberNo());
             AppointmentPersistence.require(ownership.owns(root, user));
             identity = new VerifiedIdentity("USER", user);
         } else {
-            AppointmentPersistence.require(proof.guestNo().equals(root.getGuestRef()));
-            identity = identities.verifyGuest(entity, store, proof.guestNo(), proof.claimToken());
+            if (proof.deskPhone() != null) {
+                AppointmentPersistence.require(root.getGuestRef() != null);
+                var guest = identities.deskGuest(entity, store, root.getGuestRef(), proof.deskPhone()).guest();
+                identity = "CLAIMED".equals(guest.state())
+                        ? new VerifiedIdentity("USER", guest.userNo()) : new VerifiedIdentity("GUEST", guest.guestNo());
+            } else {
+                AppointmentPersistence.require(proof.guestNo().equals(root.getGuestRef()));
+                identity = identities.verifyGuest(entity, store, proof.guestNo(), proof.claimToken());
+            }
             AppointmentPersistence.require("GUEST".equals(identity.kind()) || ownership.owns(root,
                     identity.reference()));
         }

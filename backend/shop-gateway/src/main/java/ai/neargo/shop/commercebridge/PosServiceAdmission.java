@@ -23,7 +23,7 @@ class PosServiceAdmission {
     private static final String BEAUTY = "/biz/x/beauty/";
     private static final Set<String> BOOKING = Set.of(
             "appointments", "availability", "arrival-challenges", "arrivals", "walk-ins", "reception-exceptions",
-            "guest-registrations", "reports");
+            "guest-registrations", "reports", "calendar");
     private static final Set<String> CATALOG = Set.of("services", "service-definitions", "store-policies");
 
     private final FoundationQueryFacade foundation;

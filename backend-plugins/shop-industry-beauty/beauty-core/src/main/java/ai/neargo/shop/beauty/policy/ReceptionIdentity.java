@@ -94,6 +94,14 @@ public final class ReceptionIdentity {
         return "CLAIMED".equals(fact.state()) ? new VerifiedIdentity("USER", fact.userNo())
                 : new VerifiedIdentity("GUEST", guestNo);
     }
+    public GuestRegistrationPort.DeskGuest deskGuest(String entity, String store, String guestNo, String phone) {
+        var actor = SecurityUtils.requireUser().userNo();
+        var scope = access.customer(entity, store, actor);
+        var guest = guests.getObject().deskGuest(scope, guestNo, phone);
+        if (!scope.equals(access.customer(entity, store, actor))) throw BizException.of(ErrorCode.FORBIDDEN);
+        validFact(guest.guest(), guestNo);
+        return guest;
+    }
     /** Real consumer proof is checked by its owner under the current consumer namespace. */
     public String consumer(String memberCode) {
         var user = SecurityUtils.requireUser();

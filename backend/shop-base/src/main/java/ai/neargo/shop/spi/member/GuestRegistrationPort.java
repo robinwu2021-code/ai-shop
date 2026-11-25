@@ -100,6 +100,15 @@ public interface GuestRegistrationPort {
         @Override public String toString() { return "Registration[guestNo=" + guestNo + ",claimToken=REDACTED]"; }
     }
     record GuestFact(String guestNo, String state, String userNo, long revision) { }
+
+    /** Store reception read and optional in-person phone comparison. No token or contact is returned. */
+    default DeskGuest deskGuest(Scope scope, String guestNo, String phone) {
+        throw new UnsupportedOperationException("desk guest unavailable");
+    }
+
+    record DeskGuest(GuestFact guest, String displayName, String phoneLastFour) {
+        @Override public String toString() { return "DeskGuest[REDACTED]"; }
+    }
     record ClaimCommand(String verifiedIdentity, String claimToken, String idempotencyKey) {
         @Override public String toString() { return "ClaimCommand[REDACTED]"; }
     }

@@ -114,8 +114,8 @@ public class BeautyAppointmentConfiguration {
     @Bean
     AppointmentServiceImpl appointmentServiceImpl(AppointmentPersistence db, AppointmentAccess access,
             AppointmentMatching matching, AppointmentPreparation preparation, AppointmentCoordinator
-            coordinator, ReceptionAccess receptionAccess, WorkOrderCoordinator workOrders) {
-        return new AppointmentServiceImpl(db, access, matching, preparation, coordinator, receptionAccess, workOrders);
+            coordinator, ReceptionAccess receptionAccess, WorkOrderCoordinator workOrders, ReceptionIdentity identity) {
+        return new AppointmentServiceImpl(db, access, matching, preparation, coordinator, receptionAccess, workOrders, identity);
     }
     @Bean
     AppointmentAvailabilityServiceImpl appointmentAvailabilityServiceImpl(AppointmentMatching matching,

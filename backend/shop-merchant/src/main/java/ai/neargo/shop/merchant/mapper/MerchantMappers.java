@@ -63,6 +63,9 @@ public final class MerchantMappers {
     private MerchantMappers() {
     }
 
+    public record BookingCalendarResource(String resourceNo, String resourceType, String personnelNo,
+            String name, int capacity) { }
+
     /** Exact live access projection; source owners must not reuse session-role snapshots or personnel jobs. */
     @Mapper
     public interface OperatorAccessMapper {
@@ -1165,6 +1168,26 @@ LIMIT 2
         List<String> selectCandidateIds(@Param("tenant") String tenant, @Param("entity") String entity,
                 @Param("store") String store, @Param("at") LocalDateTime at,
                 @Param("publicOnly") boolean publicOnly, @Param("limit") int limit);
+
+        @Select("""
+                SELECT r.resource_no, r.resource_type, p.personnel_no, COALESCE(p.name,r.name) AS name, r.capacity
+                FROM mch_resource r
+                JOIN mch_entity e ON e.tenant_no=r.tenant_no AND e.entity_no=r.entity_no
+                JOIN mch_store s ON s.tenant_no=r.tenant_no AND s.entity_no=r.entity_no AND s.store_no=#{store}
+                LEFT JOIN mch_personnel p ON r.resource_type='STAFF' AND p.tenant_no=r.tenant_no
+                  AND p.entity_no=r.entity_no AND p.personnel_no=r.personnel_no AND p.deleted=0 AND p.status='ACTIVE'
+                WHERE r.tenant_no=#{tenant} AND r.entity_no=#{entity} AND r.deleted=0 AND r.status='ACTIVE'
+                  AND e.deleted=0 AND e.status='ACTIVE' AND e.archived_at IS NULL AND s.deleted=0 AND s.status='ACTIVE'
+                  AND ((r.resource_type IN ('ROOM','SEAT','DEVICE') AND r.store_no=s.store_no)
+                    OR (r.resource_type='STAFF' AND EXISTS (SELECT 1 FROM mch_personnel_store a
+                      WHERE a.tenant_no=p.tenant_no AND a.entity_no=p.entity_no AND a.personnel_no=p.personnel_no
+                        AND a.store_no=s.store_no AND a.deleted=0 AND a.status='ACTIVE'
+                        AND a.valid_from < #{to} AND (a.valid_to IS NULL OR a.valid_to > #{from}))))
+                ORDER BY r.resource_no LIMIT 201
+                """)
+        List<BookingCalendarResource> selectBookingCalendarResources(@Param("tenant") String tenant,
+                @Param("entity") String entity, @Param("store") String store,
+                @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
     }
 
