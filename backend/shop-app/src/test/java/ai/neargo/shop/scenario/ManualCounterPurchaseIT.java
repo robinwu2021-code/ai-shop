@@ -517,6 +517,22 @@ class ManualCounterPurchaseIT extends CheckoutFlowFixture {
             jdbc.update("UPDATE ord_create_intent SET reservation_observation_hash=? WHERE pay_no=?",
                     reservationHash, created.orderNo());
         }
+        var reservationUnavailable = new AtomicBoolean(true);
+        doAnswer(call -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            StockDispositionPort.ReservationLookup request = call.getArgument(0);
+            if (reservationUnavailable.get()) {
+                return new StockDispositionPort.ReservationView(request.original(), request.reservationOperationNo(),
+                        "UNKNOWN", List.of(), "1".repeat(64), testClock.instant(), "STOCK_OWNER_UNAVAILABLE");
+            }
+            return call.callRealMethod();
+        }).when(originalStock).observeReservation(any());
+        var unavailable = asMerchant(() -> manual.source(scope, sourceLookup));
+        assertThat(unavailable.confirmedUnpaid()).isNull();
+        assertThat(unavailable.admissionState()).isEqualTo("AWAITING_RECEIPT");
+        reservationUnavailable.set(false);
+        assertThat(asMerchant(() -> manual.source(scope, sourceLookup)).confirmedUnpaid())
+                .isEqualTo(source.confirmedUnpaid());
         assertThat(DataScopeContext.executeWithoutScope(() -> typedDeclarations.serviceCashReceipts(
                 "MAIN", entity, store, created.orderNo(), null, null, null))).isEmpty();
 

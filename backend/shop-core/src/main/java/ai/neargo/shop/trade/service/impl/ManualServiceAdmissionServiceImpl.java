@@ -515,7 +515,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
             progress(row, true);
         }
         access.requireMerchant(scope, BizPerms.ORDER_VIEW);
-        return unscoped(
+        var snapshot = unscoped(
                 () ->
                         reads.execute(
                                 tx -> {
@@ -605,6 +605,22 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                 null);
                                     }
                                 }));
+        if (snapshot.unpaid() == null) {
+            return snapshot.facts();
+        }
+        boolean reservationStillHeld = reservationStillHeld(snapshot.unpaid().reservation());
+        access.requireMerchant(scope, BizPerms.ORDER_VIEW);
+        return reservationStillHeld ? snapshot.withUnpaidProof() : snapshot.facts();
+    }
+
+    private boolean reservationStillHeld(StockDispositionPort.ReservationView original) {
+        var current = stock.observeReservation(new StockDispositionPort.ReservationLookup(
+                original.original(), original.reservationOperationNo()));
+        return current != null && "RESERVED".equals(current.outcome())
+                && original.original().equals(current.original())
+                && original.reservationOperationNo().equals(current.reservationOperationNo())
+                && original.observationHash().equals(current.observationHash())
+                && original.lines().equals(current.lines());
     }
 
     @Override
@@ -848,7 +864,17 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         }
     }
 
-    private ManualSourceFacts sourceView(
+    private record SourceSnapshot(ManualSourceFacts facts, ManualExecutionSourceReader.UnpaidCounterObservation unpaid) {
+        ManualSourceFacts withUnpaidProof() {
+            return new ManualSourceFacts(facts.operation(), facts.orderNo(), facts.subOrderNo(), facts.party(),
+                    facts.entityNo(), facts.storeNo(), facts.admissionKind(), facts.manualObservationRevision(),
+                    facts.manualObservationHash(), facts.orderRevision(), facts.admissionRevision(),
+                    facts.admissionState(), facts.lines(), facts.observedAt(), facts.dueMinor(), facts.currency(),
+                    facts.declaration(), facts.purchaseAuthority(), unpaid.proof());
+        }
+    }
+
+    private SourceSnapshot sourceView(
             OrdCheckoutOperation op,
             OrdOrder parent,
             OrdManualServiceAdmission declaration,
@@ -859,8 +885,13 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         long revision =
                 op.getManualObservationRevision() == null ? 0 : op.getManualObservationRevision();
         String hash = op.getManualObservationHash();
+        ManualExecutionSourceReader.UnpaidCounterObservation unpaid = null;
         if (verified) {
             var child = snapshot == null ? child(op.getSubOrderNo()) : snapshot.child();
+            if (declaration == null && parent != null) {
+                unpaid = sourceReader.confirmedUnpaid(op, parent, child,
+                        intents.readCommittedCounter(parent.getOrderNo()));
+            }
             var sourceRows =
                     snapshot == null
                             ? mappings.selectList(
@@ -889,11 +920,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
             }
         }
         var admission = view(op, parent, declaration);
-        var confirmedUnpaid = verified && declaration == null && parent != null
-                ? sourceReader.confirmedUnpaid(op, parent, child(op.getSubOrderNo()),
-                        intents.readCommittedCounter(parent.getOrderNo()))
-                : null;
-        return new ManualSourceFacts(
+        var facts = new ManualSourceFacts(
                 new OperationRef(op.getCaller(), op.getOperationNo()),
                 op.getOrderNo(),
                 op.getSubOrderNo(),
@@ -911,8 +938,8 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                 parent == null ? null : parent.getPayAmount(),
                 parent == null ? admission.currency() : parent.getCurrency(),
                 admission,
-                op.getPurchaseAuthority(),
-                confirmedUnpaid);
+                op.getPurchaseAuthority());
+        return new SourceSnapshot(facts, unpaid);
     }
 
     private ManualAdmissionView view(

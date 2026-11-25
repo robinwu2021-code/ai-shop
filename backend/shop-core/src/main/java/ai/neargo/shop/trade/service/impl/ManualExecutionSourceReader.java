@@ -408,7 +408,7 @@ final class ManualExecutionSourceReader {
     }
 
     /** Callers check that no cash declaration exists in the same owner snapshot. */
-    ConfirmedUnpaidSource confirmedUnpaid(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child,
+    UnpaidCounterObservation confirmedUnpaid(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child,
             OrdCreateIntent intent) {
         if (parent == null || child == null || !"BEAUTY".equals(op.getCaller())
                 || !"MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())
@@ -443,11 +443,15 @@ final class ManualExecutionSourceReader {
                     "BEAUTY_CONFIRMED_UNPAID_V2", fingerprint, quote.getQuoteHash(), consent.getVersion(),
                     parent.getPayAmount(), parent.getCurrency(), reservation.reservationOperationNo(),
                     reservation.original().manifestHash(), reservation.observationHash()));
-            return new ConfirmedUnpaidSource(consent.getConfirmationNo(), proof, lines);
+            return new UnpaidCounterObservation(
+                    new ConfirmedUnpaidSource(consent.getConfirmationNo(), proof, lines), reservation);
         } catch (BizException | IllegalArgumentException | tools.jackson.core.JacksonException invalid) {
             return null;
         }
     }
+
+    record UnpaidCounterObservation(
+            ConfirmedUnpaidSource proof, StockDispositionPort.ReservationView reservation) {}
 
     private StockDispositionPort.ReservationView counterReservation(Facts facts, OrdCreateIntent intent) {
         var original = stockOriginal(facts, intent);
