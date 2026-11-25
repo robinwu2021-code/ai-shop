@@ -17,7 +17,12 @@ import java.util.List;
  * @param roles        他在各门店的角色。老板为空 —— 不是"没授权"，是"不需要授权"
  */
 public record StaffVO(String mchAccountNo, String displayName, String loginPhone, boolean isOwner,
-                      String status, List<StoreRoleVO> roles) {
+                      String status, List<StoreRoleVO> roles, String loginEmail, String employeeCode,
+                      boolean emailVerified) {
+    public StaffVO(String mchAccountNo, String displayName, String loginPhone, boolean isOwner,
+                   String status, List<StoreRoleVO> roles) {
+        this(mchAccountNo, displayName, loginPhone, isOwner, status, roles, null, null, false);
+    }
 
     /**
      * @param role 角色码。取值域以 {@link ai.neargo.shop.merchant.entity.MchStoreRole#GRANTABLE}

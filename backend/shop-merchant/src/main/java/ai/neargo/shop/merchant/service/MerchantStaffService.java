@@ -82,6 +82,9 @@ public interface MerchantStaffService {
      */
     StaffVO add(String merchantNo, String loginPhone, String displayName);
 
+    StaffVO addWithLogin(String merchantNo, String loginPhone, String displayName,
+                         String loginEmail, String employeeCode, String storeNo, String role);
+
     /**
      * 停用 / 启用员工。
      *
