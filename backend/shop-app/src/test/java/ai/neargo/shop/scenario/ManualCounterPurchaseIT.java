@@ -505,6 +505,17 @@ class ManualCounterPurchaseIT extends CheckoutFlowFixture {
         var paid = asMerchant(() -> manual.source(scope, sourceLookup));
         assertThat(paid.currency()).isEqualTo("TWD");
         assertThat(paid.declaration()).isEqualTo(admitted);
+        assertThat(DataScopeContext.executeWithoutScope(() -> typedDeclarations.serviceCashReceipts(
+                "MAIN", entity, store, created.orderNo(), null, null, null))).singleElement().satisfies(row -> {
+                    assertThat(row.orderNo()).isEqualTo(created.orderNo());
+                    assertThat(row.subOrderNo()).isEqualTo(created.subOrderNo());
+                    assertThat(row.declarationNo()).isEqualTo(admitted.manualDeclarationNo());
+                    assertThat(row.amountMinor()).isEqualTo(48000L);
+                    assertThat(row.currency()).isEqualTo("TWD");
+                    assertThat(row.status()).isEqualTo("PAID");
+                });
+        assertThat(DataScopeContext.executeWithoutScope(() -> typedDeclarations.serviceCashReceipts(
+                "MAIN", entity, store + "-other", created.orderNo(), null, null, null))).isEmpty();
     }
 
     @Test

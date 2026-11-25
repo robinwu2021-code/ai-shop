@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.mapper;
 
+import ai.neargo.shop.trade.dto.ServiceCashReceiptRow;
 import ai.neargo.shop.trade.entity.OrdManualServiceAdmission;
 import ai.neargo.shop.trade.entity.OrdManualServiceAdmissionAction;
 import ai.neargo.shop.trade.entity.OrdOrder;
@@ -18,6 +19,28 @@ import java.util.List;
 
 /** Every original receipt lookup is scoped; absence is serialized by the existing order root. */
 public interface ManualAdmissionMapper extends BaseMapper<OrdManualServiceAdmission> {
+    /** Read confirmed cash evidence directly from trade, including orders paid without a channel account. */
+    @Select("""
+            <script>
+            SELECT a.id, a.order_no AS orderNo, a.sub_order_no AS subOrderNo, a.declaration_no AS declarationNo,
+                   a.currency, a.declared_minor AS amountMinor, o.paid_at AS paidAt, o.status
+            FROM ord_manual_service_admission a
+            JOIN ord_order o ON o.tenant_no=a.tenant_no AND o.store_no=a.store_no AND o.order_no=a.order_no
+            WHERE a.tenant_no=#{tenant} AND a.entity_no=#{entity} AND a.store_no=#{store}
+              AND a.deleted=0 AND o.deleted=0 AND o.entity_no=#{entity}
+              AND a.caller='BEAUTY' AND a.method='CASH' AND a.phase='ADMITTED' AND o.paid_at IS NOT NULL
+              <if test="orderNo != null"> AND a.order_no=#{orderNo} </if>
+              <if test="fromAt != null"> AND o.paid_at &gt;= #{fromAt} </if>
+              <if test="untilAt != null"> AND o.paid_at &lt; #{untilAt} </if>
+              <if test="before != null"> AND a.id &lt; #{before} </if>
+            ORDER BY a.id DESC LIMIT 50
+            </script>
+            """)
+    List<ServiceCashReceiptRow> serviceCashReceipts(
+            @Param("tenant") String tenant, @Param("entity") String entity, @Param("store") String store,
+            @Param("orderNo") String orderNo, @Param("fromAt") Long fromAt, @Param("untilAt") Long untilAt,
+            @Param("before") Long before);
+
     /** Include deleted or duplicate source facts so return routing cannot silently fall back to legacy retail. */
     @Select("SELECT * FROM ord_manual_service_admission WHERE tenant_no='MAIN' AND order_no=#{order} ORDER BY id")
     List<OrdManualServiceAdmission> stockReturnOriginal(@Param("order") String order);

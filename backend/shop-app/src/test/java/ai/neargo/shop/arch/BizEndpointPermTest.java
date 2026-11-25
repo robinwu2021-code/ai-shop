@@ -1066,6 +1066,7 @@ class BizEndpointPermTest {
                     put("/biz/service-orders/{orderNo}/manual-receipts", BizPerms.CASH_RECEIVE); // + MANUAL_CONFIRM
                     put("/biz/service-orders/{orderNo}/manual-admission", BizPerms.ORDER_VIEW);
                     put("/biz/service-orders/{orderNo}/manual-source", BizPerms.ORDER_VIEW);
+                    put("/biz/order/service-cash-receipts", BizPerms.ORDER_VIEW);
                     // 门店可售目录（商品维护用）
                     put("/biz/store-sales-catalog", BizPerms.GOODS);
                 }

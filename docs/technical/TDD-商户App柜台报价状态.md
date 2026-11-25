@@ -32,3 +32,10 @@
 |---|---|---|
 | AC1–AC3 | `ManualCounterPurchaseIT#counterStateFollowsQuoteAcceptanceAndOrder` | 已写；需原生 MySQL（`COMMERCE_MYSQL_*`），本机缺测试库凭据，未运行 |
 | AC4 | `BizEndpointPermTest` | 已通过 |
+
+## 2026-11-25 · 共用订单读取柜台现金
+
+- 原生 Android 共用订单在渠道流水返回 70082 时仍读取现金记录。柜台服务单以已入账现金声明为准，列表与详情均显示主订单号和实收金额。
+- `GET /biz/order/service-cash-receipts` 在当前主体与门店内查询 `BEAUTY / CASH / ADMITTED` 记录，沿用订单查看权限及配送员金额限制。支持按主订单号查询，列表按稳定游标翻页。
+- 详情展示收款编号、币种和原始实收。线上支付权限和现金写路径保持原约束。
+- 验证通过：后端订单权限测试 12 项、原生 MySQL 柜台收款测试 1 项、Android 订单模块测试 40 项。80 环境使用 Oscar 的美业测试门店在原生 Android 搜索 `OD20261125000001`，详情显示已付款、现金实收 `TWD 100.00` 及原收款编号。回归时渠道流水仍返回 70082。

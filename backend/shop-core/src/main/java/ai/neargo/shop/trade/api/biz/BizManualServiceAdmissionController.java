@@ -6,6 +6,7 @@ import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterConfirmation;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PlaceCounterReq;
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -21,9 +22,14 @@ import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualAdmissionView;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualLookup;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualSourceFacts;
 import ai.neargo.shop.trade.service.ManualServiceAdmissionService;
+import ai.neargo.shop.trade.dto.ServiceCashReceiptRow;
+import ai.neargo.shop.trade.mapper.ManualAdmissionMapper;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+import java.util.List;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -45,8 +51,28 @@ import org.springframework.web.bind.annotation.RestController;
 public class BizManualServiceAdmissionController {
     private final ManualServiceAdmissionService manual;
 
-    public BizManualServiceAdmissionController(ManualServiceAdmissionService manual) {
+    private final ManualAdmissionMapper admissions;
+
+    public BizManualServiceAdmissionController(ManualServiceAdmissionService manual, ManualAdmissionMapper admissions) {
         this.manual = manual;
+        this.admissions = admissions;
+    }
+
+    /** The common POS order page reads cash even when the payment ledger is unavailable for this store. */
+    @GetMapping("/biz/order/service-cash-receipts")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
+    public List<ServiceCashReceiptRow> cashReceipts(
+            @RequestParam(required = false) @Size(max = 64) String orderNo,
+            @RequestParam(required = false) @Positive Long fromAt,
+            @RequestParam(required = false) @Positive Long untilAt,
+            @RequestParam(required = false) @Positive Long before) {
+        var context = BizContext.current();
+        if (context.courierOnlyOrderView()) throw BizException.of(ErrorCode.FORBIDDEN);
+        var tenant = SecurityUtils.requireUser().tenantNo();
+        var entity = BizContext.requireMerchantNo();
+        var store = BizContext.requireStoreNo();
+        return DataScopeContext.executeWithoutScope(
+                () -> admissions.serviceCashReceipts(tenant, entity, store, orderNo, fromAt, untilAt, before));
     }
 
     @PostMapping("/biz/service-orders/counter-quotes")
