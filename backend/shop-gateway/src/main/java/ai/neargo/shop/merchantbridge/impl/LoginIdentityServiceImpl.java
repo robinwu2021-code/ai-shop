@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.function.BiFunction;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -213,7 +214,7 @@ public class LoginIdentityServiceImpl implements LoginIdentityService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
+    @Transactional
     public IdentityChoice resetEmployeePassword(String grant, String principal, String otp,
                                                 String newPassword, Boolean agreed, String market) {
         var proof = auth.verify(new AuthService.LoginCommand(grant, principal, otp,
