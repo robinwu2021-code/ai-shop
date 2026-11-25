@@ -5807,8 +5807,23 @@ components:
           type: "string"
           description: "姓名（老板自己写的，如「小张」）。**认人靠它** —— 一列号码谁也分不清。为空时端上回落 `loginPhone`。"
         loginPhone:
-          type: "string"
-          description: "登录手机号，**完整、不脱敏**。\n\n它**就是这个员工的登录用户名**（手机号 + 验证码，没有密码）—— 老板要能核对「他用哪个号登录」、人换号时要能改，脱敏之后这两件事都做不了。"
+          type:
+            - "string"
+            - "null"
+          description: "登录手机号。仅用邮箱的员工可为空。"
+        loginEmail:
+          type:
+            - "string"
+            - "null"
+          description: "管理员登记的登录邮箱。"
+        employeeCode:
+          type:
+            - "string"
+            - "null"
+          description: "主体内唯一的员工编号，保留前导零。"
+        emailVerified:
+          type: "boolean"
+          description: "员工是否已绑定邮箱登录身份。"
         isOwner:
           type: "boolean"
           description: "老板。**不受门店授权限制**，他的店都归他管"
