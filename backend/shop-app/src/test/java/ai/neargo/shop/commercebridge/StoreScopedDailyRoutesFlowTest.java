@@ -110,6 +110,53 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    void storeActionsFollowTheSelectedStoreAndCurrentRolesOnTheSameSession() throws Exception {
+        String[] owner = newModelOwner("15965020971");
+        String[] other = newModelOwner("15965020972");
+        String staffPhone = "15965020973";
+        String store = owner[1];
+        // This H2 fixture excludes commerce persistence. Keep the actual feature endpoint
+        // on its supported legacy path while exercising selected-store authorization.
+        jdbc.update("update mch_store set commerce_model='LEGACY', business_type_code=null where store_no in (?, ?)",
+                store, other[1]);
+        String featuresPath = "/biz/stores/" + store + "/features";
+
+        JsonNode staff = write(HttpMethod.POST, owner[0], store, "/biz/staff",
+                json.createObjectNode().put("loginPhone", staffPhone));
+        assertEquals(0, staff.path("code").asInt(-1), staff.toString());
+        String staffPath = "/biz/staff/" + staff.path("data").path("mchAccountNo").asText() + "/store";
+        var clerk = json.createObjectNode().put("storeNo", store).put("role", "CLERK");
+        var manager = json.createObjectNode().put("storeNo", store).put("role", "MANAGER");
+        assertEquals(0, write(HttpMethod.POST, owner[0], store, staffPath, clerk).path("code").asInt(-1));
+        assertEquals(0, write(HttpMethod.POST, owner[0], store, staffPath, manager).path("code").asInt(-1));
+        String session = login(staffPhone);
+
+        JsonNode initial = call(session, store, featuresPath);
+        assertEquals(0, initial.path("code").asInt(-1), initial.toString());
+        JsonNode actions = initial.path("data").path("actions");
+        assertEquals("AVAILABLE", actions.path("order.refund.cash").asText());
+        assertEquals("NO_PERMISSION", actions.path("order.refund.channel").asText());
+        assertEquals("AVAILABLE", actions.path("invoice.void").asText());
+        assertEquals("NO_PERMISSION", actions.path("staff.manage").asText());
+        assertNotEquals(0, call(session, other[1], "/biz/stores/" + other[1] + "/features").path("code").asInt());
+        assertNotEquals(0, call(session, store, "/biz/stores/" + other[1] + "/features").path("code").asInt());
+
+        assertEquals(0, write(HttpMethod.POST, owner[0], store, staffPath, manager.put("granted", false))
+                .path("code").asInt(-1));
+        JsonNode after = call(session, store, featuresPath);
+        assertEquals(0, after.path("code").asInt(-1), after.toString());
+        actions = after.path("data").path("actions");
+        assertEquals("NO_PERMISSION", actions.path("order.refund.cash").asText());
+        assertEquals("NO_PERMISSION", actions.path("invoice.void").asText());
+        assertEquals("AVAILABLE", actions.path("invoice.read").asText());
+        assertEquals("AVAILABLE", actions.path("invoice.issue").asText());
+
+        assertEquals(0, write(HttpMethod.POST, owner[0], store, staffPath, clerk.put("granted", false))
+                .path("code").asInt(-1));
+        assertNotEquals(0, call(session, store, featuresPath).path("code").asInt());
+    }
+
+    @Test
     void posPinRecoveryIsScopedToTheEmployeeStoreAndLoginSession() throws Exception {
         String phone = "15965020135";
         String staffPhone = "15965020137";
