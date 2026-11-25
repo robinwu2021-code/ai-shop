@@ -1,0 +1,316 @@
+表,现在所在,支付库行数,处置,阶段,清理后所在库,清理后分组,清理后表名,冗余点或抽象点,并入目标或说明
+ent_usage,支付库,0,改归属,去冗余,,,,卡券不属于支付,会员营销·卡券
+ent_use_intent,支付库,0,改归属,去冗余,,,,卡券不属于支付,会员营销·卡券
+flyway_schema_history,支付库,74,不迁入,去冗余,,,,,迁移历史
+led_account,新建,0,新建,抽象,支付库,账务内核,,,账户：谁、哪种资产（现金科目 / 积分 / 保证金 / 欠款）、各余额桶
+led_entry,新建,0,新建,抽象,支付库,账务内核,,,分录：凭证下每个账户桶的增减与余额
+led_voucher,新建,0,新建,抽象,支付库,账务内核,,,凭证：一次记账，带业务来源与幂等键
+mch_debt,仅shop,0,并入,去冗余,,,,保证金与欠款是现金账,pay_ledger_voucher、pay_ledger_entry（按账户科目记）
+mch_debt_txn,仅shop,0,并入,去冗余,,,,保证金与欠款是现金账,pay_ledger_voucher、pay_ledger_entry（按账户科目记）
+mch_deposit,仅shop,0,并入,去冗余,,,,保证金与欠款是现金账,pay_ledger_voucher、pay_ledger_entry（按账户科目记）
+mch_deposit_txn,仅shop,0,并入,去冗余,,,,保证金与欠款是现金账,pay_ledger_voucher、pay_ledger_entry（按账户科目记）
+mch_pay_service_application,仅shop,0,并入,去冗余,,,,进件申请在 shop 侧另有一份,pay_onboarding
+mch_payment_merchant,仅shop,9,并入,去冗余,,,,支付商户在 shop 侧另有一份,pay_merchant
+mch_payout_account,仅shop,0,保留,,支付库,支付商户、门店与终端,,,
+mig_ume_channel_20261117,支付库,1824,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+mig_ume_merchant_20261117,支付库,744,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+mig_ume_run_20261117,支付库,0,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+mig_ume_run_log_20261117,支付库,0,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+ops_sandbox_unify_count,支付库,149,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+ops_sandbox_unify_dedupe_approval,支付库,14,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+ops_sandbox_unify_dedupe_link,支付库,0,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+ops_sandbox_unify_dedupe_policy,支付库,17,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+ops_sandbox_unify_followup_closed,支付库,14,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+ops_sandbox_unify_guard,支付库,461,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+ops_sandbox_unify_guard_log,支付库,452,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+ops_sandbox_unify_ledger,支付库,18009,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+ord_points_earn_rule,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+ord_points_earn_rule_revision,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+ord_points_integration_policy,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+pay_alert_event,支付库,0,保留,,支付库,审批、告警、异常与对账,,,
+pay_alert_rule,支付库,5,保留,,支付库,审批、告警、异常与对账,,,
+pay_api_nonce,两边,0,保留,,基础能力库,接入应用,,,
+pay_api_request_log,两边,80872,并入,去冗余,,,,接口往来日志三张,pay_channel_call_log（加方向：入站请求、渠道回调、出站调用）
+pay_app,两边,2,保留,,基础能力库,接入应用,,,
+pay_app_application,支付库,1,保留,,基础能力库,接入应用,,,
+pay_app_grant,两边,0,保留,,基础能力库,接入应用,,,
+pay_app_key_challenge,支付库,0,并入,去冗余,,,,一次性防重放值两张,pay_api_nonce
+pay_approval,两边,64,保留,,支付库,审批、告警、异常与对账,,,
+pay_approval_event,支付库,0,并入,去冗余,,,,审批,支付库统一消费去重
+pay_approval_link,支付库,0,并入,去冗余,,,,审批,pay_approval
+pay_approval_policy_revision,支付库,58,保留,,支付库,审批、告警、异常与对账,,,
+pay_approval_task,支付库,92,保留,,支付库,审批、告警、异常与对账,,,
+pay_attempt_inquiry,支付库,89,并入,去冗余,,,,向渠道补查三套,pay_channel_operation_intent（补查是一种渠道操作）
+pay_biz_notify,两边,28,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_biz_notify_attempt,两边,3274,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_callback_log,两边,30,并入,去冗余,,,,接口往来日志三张,pay_channel_call_log（加方向：入站请求、渠道回调、出站调用）
+pay_channel,支付库,17,保留,,支付库,渠道与支付产品,,,
+pay_channel_account_change,新建,0,新建,抽象,支付库,渠道与支付产品,,,渠道账户变更申请：认领、转移、资料修改
+pay_channel_account_claim,支付库,0,并入,抽象,,,,渠道账户的认领、转移、修改各一张,pay_channel_account_change
+pay_channel_account_claim_command,支付库,0,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_channel_account_claim_file,支付库,0,并入,去冗余,,,,加密文件三张同构,pay_entity_profile_file（改为通用加密文件）
+pay_channel_account_transfer,支付库,4,并入,抽象,,,,渠道账户的认领、转移、修改各一张,pay_channel_account_change
+pay_channel_bill,支付库,0,保留,,支付库,渠道与支付产品,,,
+pay_channel_bill_line,支付库,0,保留,,支付库,渠道与支付产品,,,
+pay_channel_call_log,两边,2458,保留,,支付库,渠道与支付产品,,,
+pay_channel_device_binding,支付库,0,并入,抽象,,,,终端与渠道设备的绑定两处,pay_terminal_payment_binding
+pay_channel_endpoint,支付库,10,保留,,支付库,渠道与支付产品,,,
+pay_channel_env_credential,支付库,3,并入,抽象,,,,渠道凭证就是密钥,基础能力库 sec_key、sec_key_version
+pay_channel_env_credential_version,支付库,3,并入,抽象,,,,渠道凭证就是密钥,基础能力库 sec_key、sec_key_version
+pay_channel_execution_ownership,支付库,56,并入,去冗余,,,,交易上下文归属,pay_channel_transaction_context
+pay_channel_followup,两边,45,并入,去冗余,,,,向渠道补查三套,pay_channel_operation_intent（补查是一种渠道操作）
+pay_channel_inquiry_request,支付库,0,并入,去冗余,,,,向渠道补查三套,pay_channel_operation_intent（补查是一种渠道操作）
+pay_channel_lifecycle_log,两边,329,并入,去冗余,,,,状态变更日志两张,pay_merchant_status_log
+pay_channel_observation,支付库,412,保留,,支付库,渠道与支付产品,,,
+pay_channel_operation_intent,支付库,78,保留,,支付库,渠道与支付产品,,,
+pay_channel_product,两边,17,保留,,支付库,渠道与支付产品,,,
+pay_channel_product_market,两边,0,并入,去冗余,,,,产品限额两处,pay_product_currency_limit
+pay_channel_provider_trade_binding,支付库,38,并入,抽象,,,,渠道交易号绑定,pay_channel_transaction_context
+pay_channel_qualification,支付库,23,保留,,支付库,渠道与支付产品,,,
+pay_channel_return_ref,支付库,52,保留,,支付库,渠道与支付产品,,,
+pay_channel_transaction_context,支付库,56,保留,,支付库,渠道与支付产品,,,
+pay_checkout_display_revision,支付库,1,并入,去冗余,,,,发号两张,pay_sequence
+pay_checkout_session,两边,164,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_collection_entry,支付库,13,保留,,支付库,渠道与支付产品,,,
+pay_collection_entry_command,支付库,46,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_collection_entry_product,支付库,24,并入,抽象,,,,收款策略与入口各带明细表,pay_collection_policy_item
+pay_collection_policy,支付库,5,保留,,支付库,渠道与支付产品,,,
+pay_collection_policy_item,新建,0,新建,抽象,支付库,渠道与支付产品,,,收款策略 / 收款入口下开通的产品与支付方式
+pay_collection_policy_method,支付库,1,并入,抽象,,,,收款策略与入口各带明细表,pay_collection_policy_item
+pay_collection_policy_product,支付库,10,并入,抽象,,,,收款策略与入口各带明细表,pay_collection_policy_item
+pay_command,新建,0,新建,,支付库,库内技术件（幂等、发号、事件收发）,,各对象各建一张指令幂等表,统一的请求幂等表
+pay_data_scope_grant,支付库,8,保留,,基础能力库,权限,,,
+pay_document_number,两边,94,保留,,支付库,库内技术件（幂等、发号、事件收发）,,,
+pay_document_sequence,两边,13,并入,去冗余,,,,发号两张,pay_sequence
+pay_ent_command_dedup,支付库,0,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_ent_exception,支付库,0,并入,抽象,,,,异常工单两张,pay_exception
+pay_ent_exception_action,支付库,0,保留,,支付库,审批、告警、异常与对账,,,
+pay_ent_inbox,支付库,0,保留,,支付库,库内技术件（幂等、发号、事件收发）,,,
+pay_ent_outbox,支付库,0,保留,,支付库,库内技术件（幂等、发号、事件收发）,,,
+pay_ent_recon_diff,支付库,0,并入,抽象,,,,对账差异两张,stl_recon_diff
+pay_ent_recon_run,支付库,0,保留,,支付库,审批、告警、异常与对账,,,
+pay_ent_source_fence,支付库,0,保留,,支付库,与卡券的对接,,,
+pay_entity_channel_request,支付库,7,保留,,支付库,进件与主体资料,,,
+pay_entity_profile,支付库,8,保留,,支付库,进件与主体资料,,,
+pay_entity_profile_command,支付库,50,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_entity_profile_contact,支付库,3,保留,,支付库,进件与主体资料,,,
+pay_entity_profile_file,支付库,35,保留,,支付库,进件与主体资料,,,
+pay_entity_profile_supplement,支付库,0,保留,,支付库,进件与主体资料,,,
+pay_exception,两边,0,保留,,支付库,审批、告警、异常与对账,,,
+pay_execution_environment_binding,支付库,1104,保留,,支付库,支付商户、门店与终端,,,
+pay_flyway_history,仅shop,0,不迁入,去冗余,,,,,迁移历史
+pay_icashpay_cancel_dispatch,支付库,0,并入,去冗余,,,,其他渠道专用表可用通用模型,pay_channel_operation_intent
+pay_internal_delivery_ack,支付库,0,并入,去冗余,,,,通知回执,pay_biz_notify_attempt（回执是一次投递的结果）
+pay_jkopay_query_gate,支付库,35,并入,去冗余,,,,其他渠道专用表可用通用模型,pay_channel_operation_intent
+pay_jkopay_recovery_payload,支付库,0,并入,去冗余,,,,其他渠道专用表可用通用模型,pay_raw_payload
+pay_ledger_entry,两边,62,并入,抽象,,,,账：现金、积分、储值各记一套账,led_entry
+pay_ledger_voucher,两边,31,并入,抽象,,,,账：现金、积分、储值各记一套账,led_voucher
+pay_linepay_confirmation,支付库,27,并入,去冗余,,,,LINE Pay 专用表是通用渠道模型之前的实现,pay_channel_observation
+pay_linepay_intent,支付库,32,并入,去冗余,,,,LINE Pay 专用表是通用渠道模型之前的实现,pay_channel_operation_intent
+pay_linepay_redirect,支付库,29,并入,去冗余,,,,LINE Pay 专用表是通用渠道模型之前的实现,pay_channel_return_ref
+pay_linepay_return_ref,支付库,32,并入,去冗余,,,,LINE Pay 专用表是通用渠道模型之前的实现,pay_channel_return_ref
+pay_manager_code,两边,0,并入,去冗余,,,,收款入口多套,pay_collection_entry（二维码、店长码都是收款入口的一种）
+pay_merchant,两边,1631,保留,,支付库,支付商户、门店与终端,,,
+pay_merchant_assisted_profile_draft,支付库,0,并入,去冗余,,,,代填资料,pay_onboarding_draft
+pay_merchant_assisted_profile_receipt,支付库,0,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_merchant_binding,两边,29,并入,去冗余,,,,门店与支付商户的绑定两套,pay_merchant_store_link
+pay_merchant_collection_ack,支付库,26,并入,去冗余,,,,通知回执,pay_biz_notify_attempt（回执是一次投递的结果）
+pay_merchant_creation,支付库,1,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_merchant_membership,支付库,6,并入,抽象,,,,商户成员是授权,基础能力库 pay_data_scope_grant
+pay_merchant_product,两边,1815,保留,,支付库,支付商户、门店与终端,,,
+pay_merchant_profile_revision,支付库,16,并入,抽象,,,,主体资料两处,pay_entity_profile
+pay_merchant_source_event,支付库,714,并入,去冗余,,,,来源同步事件两张,pay_store_sync_event（主体与门店的同步事件合一）
+pay_merchant_source_link,支付库,714,保留,,支付库,支付商户、门店与终端,,,
+pay_merchant_status_log,两边,1148,并入,抽象,,,,状态变更日志是审计,基础能力库 pay_operation_audit
+pay_merchant_store_link,支付库,828,保留,,支付库,支付商户、门店与终端,,,
+pay_newebpay_modification,支付库,0,并入,抽象,,,,渠道账户的认领、转移、修改各一张,pay_channel_account_change
+pay_ngenius_event_inbox,支付库,0,并入,去冗余,,,,其他渠道专用表可用通用模型,pay_callback_log（渠道入站事件）
+pay_onboarding,两边,12,保留,,支付库,进件与主体资料,,,
+pay_onboarding_draft,支付库,9,保留,,支付库,进件与主体资料,,,
+pay_onboarding_draft_command,支付库,42,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_onboarding_file,支付库,17,并入,去冗余,,,,加密文件三张同构,pay_entity_profile_file（改为通用加密文件）
+pay_onboarding_material,两边,71,并入,去冗余,,,,进件材料新旧两套,pay_onboarding_draft + 加密文件表
+pay_onboarding_newebpay_credential,支付库,0,并入,抽象,,,,渠道凭证就是密钥,基础能力库 sec_key、sec_key_version
+pay_onboarding_newebpay_hint,支付库,0,并入,抽象,,,,蓝新进件的专用表,pay_channel_call_log（回调提示）
+pay_onboarding_newebpay_runtime,支付库,0,并入,抽象,,,,蓝新进件的专用表,pay_entity_channel_request（渠道进件请求的运行态）
+pay_onboarding_supplement,支付库,0,并入,去冗余,,,,补件两处,pay_entity_profile_supplement
+pay_onboarding_version,两边,4,保留,,支付库,进件与主体资料,,,
+pay_operation_audit,支付库,17559,保留,,基础能力库,审计,,,
+pay_order,两边,156,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_pending_action,支付库,0,并入,抽象,,,,待审动作就是审批,pay_approval
+pay_permission_mapping,支付库,0,保留,,基础能力库,权限,,,
+pay_platform_collection_head,两边,0,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_platform_collection_profile,两边,0,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_platform_merchant,支付库,757,保留,,支付库,支付商户、门店与终端,,,
+pay_points_funds_authority,支付库,0,保留,,支付库,积分,,,
+pay_pos_acceptance_case,支付库,0,保留,,支付库,支付商户、门店与终端,,,
+pay_pos_acceptance_command,支付库,0,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_pos_acceptance_run,支付库,0,保留,,支付库,支付商户、门店与终端,,,
+pay_pos_action,支付库,0,并入,抽象,,,,终端交易是一种渠道交易,pay_channel_operation_intent
+pay_pos_command_receipt,支付库,0,并入,抽象,,,,终端交易是一种渠道交易,pay_command
+pay_pos_configuration,支付库,0,保留,,支付库,支付商户、门店与终端,,,
+pay_pos_configuration_audit,支付库,0,并入,抽象,,,,状态变更日志是审计,基础能力库 pay_operation_audit
+pay_pos_configuration_command,支付库,0,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_pos_configuration_profile,支付库,0,保留,,支付库,支付商户、门店与终端,,,
+pay_pos_execution,支付库,0,并入,抽象,,,,终端交易是一种渠道交易,pay_channel_transaction_context
+pay_pos_identifier,支付库,0,并入,抽象,,,,终端交易是一种渠道交易,pay_channel_transaction_context
+pay_pos_observation,支付库,0,并入,抽象,,,,终端交易是一种渠道交易,pay_channel_observation
+pay_product_access_method,支付库,21,并入,抽象,,,,支付产品的四张属性表,pay_product_capability
+pay_product_account_mode,支付库,17,并入,抽象,,,,支付产品的四张属性表,pay_product_capability
+pay_product_capability,新建,0,新建,抽象,支付库,渠道与支付产品,,,支付产品的能力项：接入方式、账户模式、币种限额、支付方式（四张属性表合一）
+pay_product_currency_limit,支付库,17,并入,抽象,,,,支付产品的四张属性表,pay_product_capability
+pay_product_payment_method,支付库,18,并入,抽象,,,,支付产品的四张属性表,pay_product_capability
+pay_qr_code,两边,13,并入,去冗余,,,,收款入口多套,pay_collection_entry（二维码、店长码都是收款入口的一种）
+pay_raw_payload,两边,1023207,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_refund,两边,0,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_refund_review_rule,两边,0,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_risk_shadow_log,两边,0,保留,,支付库,审批、告警、异常与对账,,,
+pay_sequence,支付库,33,保留,,支付库,库内技术件（幂等、发号、事件收发）,,,
+pay_setting,两边,0,保留,,基础能力库,系统字典与设置,,,
+pay_source_association_repair,支付库,1,保留,,支付库,支付商户、门店与终端,pay_source_change,,
+pay_source_command,支付库,120,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_source_control,支付库,1577,并入,抽象,,,,来源映射与其当前生效记录,pay_merchant_source_link
+pay_source_store_claim,支付库,0,并入,抽象,,,,来源映射的变更两张,pay_source_association_repair（改名 pay_source_change）
+pay_store_payment_display,支付库,838,并入,抽象,,,,门店可用支付方式是策略的投影,由 pay_collection_policy 计算得出
+pay_store_projection,支付库,791,保留,,支付库,支付商户、门店与终端,,,
+pay_store_sync_event,支付库,2403,并入,抽象,,,,同步事件是入站事件,pay_ent_inbox（支付库统一事件收件箱）
+pay_subscription,支付库,0,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_subscription_bill,支付库,0,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+pay_subscription_charge,支付库,0,并入,抽象,,,,订阅扣款的渠道交易,stl_payment
+pay_subscription_operation,支付库,0,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_subscription_route,支付库,0,并入,抽象,,,,订阅扣款的收款路由,pay_collection_policy
+pay_sv_handoff_history,仅shop,1,退役,去冗余,,,,储值迁移痕迹,一次性交接记录
+pay_terminal,两边,0,保留,,支付库,支付商户、门店与终端,,,
+pay_terminal_batch,两边,0,并入,抽象,,,,终端批结是一种渠道账单,pay_channel_bill
+pay_terminal_config_audit,支付库,0,并入,去冗余,,,,终端配置两套,pay_pos_configuration、pay_pos_configuration_audit
+pay_terminal_config_command,支付库,0,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_terminal_execution_profile,支付库,0,并入,去冗余,,,,终端配置两套,pay_pos_configuration_profile
+pay_terminal_execution_slot,支付库,0,并入,去冗余,,,,终端交易执行两套,pay_pos_execution
+pay_terminal_execution_task,支付库,0,并入,去冗余,,,,终端交易执行两套,pay_pos_execution
+pay_terminal_manager_authorization,支付库,0,并入,去冗余,,,,终端会话两张,pay_terminal_operator_session（店长授权是会话的一种）
+pay_terminal_merchant_command,支付库,0,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_terminal_operator_session,支付库,0,保留,,支付库,支付商户、门店与终端,,,
+pay_terminal_payment_binding,支付库,0,保留,,支付库,支付商户、门店与终端,,,
+pay_terminal_product,支付库,0,并入,去冗余,,,,终端配置两套,pay_pos_configuration_profile
+pay_terminal_retirement_command,支付库,0,并入,去冗余,,,,各对象各建一张指令幂等表,一张支付库统一的请求幂等表（新建 pay_command）
+pay_wallet_authorization,支付库,16,并入,抽象,,,,钱包交互与授权是同一次交互的两步,pay_wallet_interaction
+pay_wallet_authorization_intent,支付库,0,并入,去冗余,,,,钱包授权,pay_wallet_authorization（意向是授权的一个状态）
+pay_wallet_interaction,支付库,17,保留,,支付库,渠道与支付产品,,,
+pay_wallet_merchant_domain,支付库,0,保留,,支付库,渠道与支付产品,,,
+pay_wallet_merchant_identity,支付库,1,保留,,支付库,渠道与支付产品,,,
+pay_yitepay_access_token,支付库,0,并入,去冗余,,,,亿特支付自带一套对账,pay_channel_env_credential
+pay_yitepay_account_profile,支付库,0,并入,抽象,,,,亿特支付的专用表,pay_merchant（渠道商户属性）
+pay_yitepay_allocation,支付库,0,并入,抽象,,,,亿特支付的专用表,pay_channel_operation_intent（分配是一种渠道操作）
+pay_yitepay_balance_snapshot,支付库,0,改归属,抽象,支付库,渠道与支付产品,pay_channel_balance_snapshot,渠道余额快照改为通用,改名为 pay_channel_balance_snapshot
+pay_yitepay_event_inbox,支付库,0,并入,去冗余,,,,其他渠道专用表可用通用模型,pay_callback_log（渠道入站事件）
+pay_yitepay_receipt,支付库,0,并入,抽象,,,,亿特支付的专用表,stl_payment（入金流水）
+pay_yitepay_recon_cursor,支付库,0,并入,去冗余,,,,亿特支付自带一套对账,pay_channel_bill、pay_channel_bill_line、stl_recon_diff
+pay_yitepay_recon_diff,支付库,0,并入,去冗余,,,,亿特支付自带一套对账,pay_channel_bill、pay_channel_bill_line、stl_recon_diff
+pay_yitepay_recon_run,支付库,0,并入,去冗余,,,,亿特支付自带一套对账,pay_channel_bill、pay_channel_bill_line、stl_recon_diff
+pay_yitepay_statement_entry,支付库,0,并入,去冗余,,,,亿特支付自带一套对账,pay_channel_bill、pay_channel_bill_line、stl_recon_diff
+pay_yitepay_trade_order,支付库,0,并入,去冗余,,,,亿特支付自带一套对账,pay_channel_provider_trade_binding
+pay_yitepay_va,支付库,0,并入,抽象,,,,亿特支付的专用表,pay_collection_entry（虚拟账户是一种收款入口）
+pmt_recharge_intent,仅shop,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_template(+version)（充值方案即储值卡模板）
+pmt_recharge_tier,仅shop,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_template(+version)（充值方案即储值卡模板）
+pmt_sv_approval,仅shop,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_template(+version)（充值方案即储值卡模板）
+pmt_sv_release_link,仅shop,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_template(+version)（充值方案即储值卡模板）
+pts_account,仅shop,0,并入,抽象,,,,账：现金、积分、储值各记一套账,led_account
+pts_availability_projection,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+pts_cursor,仅shop,0,并入,去冗余,,,,游标,支付库统一任务游标
+pts_fund_evidence,仅shop,0,保留,,支付库,积分,,,
+pts_fund_pool,仅shop,0,并入,抽象,,,,账：现金、积分、储值各记一套账,led_account
+pts_fund_transfer,仅shop,0,并入,抽象,,,,出款：提现、兑付、清分付款各一张,stl_payout
+pts_grant_position,仅shop,0,并入,抽象,,,,积分头寸三张同构,pts_position
+pts_inbox,仅shop,0,并入,去冗余,,,,事件收发,pay_ent_outbox、pay_ent_inbox（作为支付库统一的事件收发）
+pts_ledger_entry,仅shop,0,并入,抽象,,,,账：现金、积分、储值各记一套账,led_entry
+pts_lifecycle_fact,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+pts_merchant_agreement,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+pts_outbox,仅shop,0,并入,去冗余,,,,事件收发,pay_ent_outbox、pay_ent_inbox（作为支付库统一的事件收发）
+pts_pause_interval,仅shop,0,并入,去冗余,,,,积分启停三张,pts_switch
+pts_payout_ticket,仅shop,0,并入,抽象,,,,出款：提现、兑付、清分付款各一张,stl_payout
+pts_point_type,仅shop,0,保留,,支付库,积分,,,
+pts_pool_flow,仅shop,0,并入,抽象,,,,账：现金、积分、储值各记一套账,led_entry
+pts_pool_request,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+pts_position,新建,0,新建,抽象,支付库,积分,,,积分头寸：发放、核销、退款准备（同构的三张合一，用类型区分）
+pts_receivable,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+pts_record,新建,0,新建,抽象,支付库,积分,,,积分配置与事实记录：协议、规则、开关、充值计划等（同为“类型 + 键 + 状态 + 载荷”）
+pts_redeem_position,仅shop,0,并入,抽象,,,,积分头寸三张同构,pts_position
+pts_refund_preparation,仅shop,0,并入,抽象,,,,积分头寸三张同构,pts_position
+pts_refund_reserve,仅shop,0,并入,抽象,,,,账：现金、积分、储值各记一套账,led_account
+pts_stat_daily,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+pts_statement_build,仅shop,0,并入,去冗余,,,,积分对账单六张,pts_store_statement
+pts_statement_build_item,仅shop,0,并入,抽象,,,,结算单：现金、储值、积分各一套,stl_settlement_line
+pts_statement_confirmation,仅shop,0,并入,去冗余,,,,积分对账单六张,pts_store_statement
+pts_statement_final_fact,仅shop,0,并入,去冗余,,,,积分对账单六张,pts_lifecycle_fact
+pts_statement_source_history,仅shop,0,并入,去冗余,,,,积分对账单六张,pts_statement_line（原 pts_statement_build_item）
+pts_store_statement,仅shop,0,并入,抽象,,,,结算单：现金、储值、积分各一套,stl_settlement
+pts_switch,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+pts_switch_log,仅shop,0,并入,去冗余,,,,积分启停三张,pts_switch
+pts_topup_plan,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+pts_user_account,仅shop,0,退役,去冗余,,,,积分第一代账户,由 pts_account、pts_ledger_entry 取代
+pts_user_adjustment,仅shop,0,并入,抽象,,,,积分的配置与事实记录十二张同形,pts_record
+pts_user_ledger,仅shop,0,退役,去冗余,,,,积分第一代账户,由 pts_account、pts_ledger_entry 取代
+pts_voucher,仅shop,0,并入,抽象,,,,账：现金、积分、储值各记一套账,led_voucher
+sec_access_log,支付库,0,保留,,基础能力库,密钥,,,
+sec_key,支付库,1144,保留,,基础能力库,密钥,,,
+sec_key_event,支付库,4554,保留,,基础能力库,密钥,,,
+sec_key_policy,支付库,8,保留,,基础能力库,密钥,,,
+sec_key_version,支付库,1156,保留,,基础能力库,密钥,,,
+sec_master_key,支付库,2,保留,,基础能力库,密钥,,,
+sec_secret_blob,支付库,1228,保留,,基础能力库,密钥,,,
+stg_ume_active_payment_merchants_20261112,支付库,615,不迁入,去冗余,,,,,一次性迁移 / 整理暂存
+stl_bank_flow,两边,0,并入,抽象,,,,外部流水两张（银行、渠道）,pay_channel_bill_line
+stl_bill,两边,0,并入,抽象,,,,结算单：现金、储值、积分各一套,stl_settlement_line
+stl_bill_refund,两边,0,并入,抽象,,,,结算单：现金、储值、积分各一套,stl_settlement_line
+stl_bill_refund_basis,两边,0,并入,抽象,,,,结算单：现金、储值、积分各一套,stl_settlement_line
+stl_cash_refund_reverse,两边,0,并入,抽象,,,,分账与冲正是一种渠道操作,pay_channel_operation_intent
+stl_channel_message,两边,599768,并入,抽象,,,,渠道报文日志两张,pay_channel_call_log
+stl_fee_rule,两边,0,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+stl_payment,两边,122,保留,,支付库,现金（收款、退款、通知、订阅扣款）,,,
+stl_payment_operation,仅shop,0,并入,去冗余,,,,收款流水的技术守卫,stl_payment
+stl_payment_order_guard,仅shop,0,并入,去冗余,,,,收款流水的技术守卫,stl_payment
+stl_payout,两边,0,保留,,支付库,结算内核,,,
+stl_points_pool,两边,0,退役,去冗余,,,,积分旧资金池,由 pts_fund_pool、pts_refund_reserve 取代
+stl_points_refund_hold,两边,0,退役,去冗余,,,,积分旧资金池,由 pts_fund_pool、pts_refund_reserve 取代
+stl_purchase_invoice,两边,0,改归属,去冗余,,,,发票不属于支付,平台基础·发票
+stl_recon_diff,两边,0,保留,,支付库,审批、告警、异常与对账,,,
+stl_settle_batch,两边,0,并入,抽象,,,,结算单：现金、储值、积分各一套,stl_settlement
+stl_settle_invoice,两边,0,改归属,去冗余,,,,发票不属于支付,平台基础·发票
+stl_settlement,新建,0,新建,抽象,支付库,结算内核,,,结算单：谁应付谁、哪个周期、多少钱、状态（现金结算、储值跨店清分、积分门店对账共用）
+stl_settlement_line,新建,0,新建,抽象,支付库,结算内核,,,结算明细：每一笔来源及其金额构成
+stl_split_intent,两边,0,并入,抽象,,,,分账与冲正是一种渠道操作,pay_channel_operation_intent
+stl_split_log,两边,0,并入,抽象,,,,分账与冲正是一种渠道操作,pay_channel_operation_intent
+stl_withdraw,两边,0,并入,抽象,,,,出款：提现、兑付、清分付款各一张,stl_payout
+sv_account,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_instance（账户与批次即持有的储值卡）
+sv_activity_daily_summary,两边,0,并入,抽象,,,,储值活动日汇总是报表投影,由 stl_settlement_line 统计得出
+sv_clearing_entry,两边,0,并入,抽象,,,,结算单：现金、储值、积分各一套,stl_settlement_line
+sv_customer_identity,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·mbr_member
+sv_customer_issuer_index,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·mbr_member
+sv_entry,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_ledger（本金、赠金的增减）
+sv_financial_membership_change,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·sv_issuer_store_access
+sv_hold_allocation,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_use_allocation（占用与核销分摊）
+sv_issue_policy,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_issue_policy（发行政策与额度）
+sv_issue_policy_version,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_issue_policy（发行政策与额度）
+sv_issue_quota,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_issue_policy（发行政策与额度）
+sv_issue_quota_reservation,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_sale_reservation
+sv_issuer,两边,0,改归属,储值迁出,会员营销库,储值（发行方）,,储值迁到会员营销（储值卡是卡券的一种）,发行方：谁发的卡、哪些门店可发可用
+sv_issuer_store_access,两边,0,改归属,储值迁出,会员营销库,储值（发行方）,,储值迁到会员营销（储值卡是卡券的一种）,发行方：谁发的卡、哪些门店可发可用
+sv_issuer_version,两边,0,改归属,储值迁出,会员营销库,储值（发行方）,,储值迁到会员营销（储值卡是卡券的一种）,发行方：谁发的卡、哪些门店可发可用
+sv_lot,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_instance（账户与批次即持有的储值卡）
+sv_posting_line,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_ledger（本金、赠金的增减）
+sv_recharge,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_grant（一次充值即一次发放）
+sv_recharge_plan,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_template(+version)（充值方案即储值卡模板）
+sv_recharge_plan_version,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_template(+version)（充值方案即储值卡模板）
+sv_release,两边,0,退役,去冗余,,,,储值充值档位多套,旧档位，由 sv_recharge_plan(+version) 取代
+sv_release_tier,两边,0,退役,去冗余,,,,储值充值档位多套,旧档位，由 sv_recharge_plan(+version) 取代
+sv_settlement_bill,两边,0,并入,抽象,,,,结算单：现金、储值、积分各一套,stl_settlement
+sv_settlement_bill_item,两边,0,并入,抽象,,,,结算单：现金、储值、积分各一套,stl_settlement_line
+sv_settlement_event,两边,0,并入,抽象,,,,结算单：现金、储值、积分各一套,stl_settlement
+sv_settlement_payment,两边,0,并入,抽象,,,,出款：提现、兑付、清分付款各一张,stl_payout
+sv_statement,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·由 ent_ledger 查询得出
+sv_user_store_index,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·mbr_member
+sv_voucher,两边,0,并入,储值迁出,,,,储值迁到会员营销（储值卡是卡券的一种）,会员营销·ent_ledger（本金、赠金的增减）
+sys_market,支付库,3,保留,,基础能力库,系统字典与设置,,,
+sys_pay_channel,两边,0,并入,去冗余,,,,渠道定义两套,pay_channel、pay_channel_product
+sys_pay_channel_market,两边,0,并入,去冗余,,,,渠道定义两套,pay_channel、pay_channel_product
+sys_pay_channel_rate,两边,0,并入,去冗余,,,,渠道定义两套,pay_channel、pay_channel_product

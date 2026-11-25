@@ -1,0 +1,1100 @@
+表,现在所在,正式库行数,清理前模块,处置,阶段,清理后模块,目标库,清理后对象组,清理后表名,并入目标或说明,冗余点或抽象点
+_bak_goods_img_20260920,shop 库,0,,不迁入,去冗余,,,,,一次性导入暂存 / 备份,
+approval_link,shop 库,0,平台基础,改归属,抽象,基础能力,基础能力库,审核关联,approval_link,审核关联：业务对象对应审核服务里的哪一张审核单,第二轮业务复核后采纳
+biz_print_fact,shop 库,0,平台基础,保留,,平台服务,平台服务库,打印,biz_print_fact,,
+bty_action_log,shop 库,34,美业,并入,抽象,,,,,基础能力库统一审计,操作记录是审计
+bty_appointment,shop 库,10,美业,改归属,抽象,零售,门店交易库,订单,ord_appointment,预约单：美业预约、餐饮订位共用（时间、顾客、人数、订金）,公用订单：预约单
+bty_appointment_arrangement,shop 库,12,美业,保留,,美业,行业库,预约与到店,bty_appointment_arrangement,,
+bty_appointment_assignment,shop 库,12,美业,并入,抽象,,,,,ord_assignment,按电商、餐饮、美业的业务抽象复核后采纳
+bty_appointment_current,shop 库,10,美业,并入,抽象,,,,,ord_appointment,当前安排是预约的属性
+bty_appointment_item,shop 库,12,美业,改归属,抽象,零售,门店交易库,订单,ord_appointment_item,预约的内容：服务项目、预点菜品,公用订单：预约单
+bty_appointment_operation,shop 库,15,美业,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,操作幂等
+bty_appointment_preparation,shop 库,16,美业,并入,抽象,,,,,bty_appointment_arrangement,预约预览是安排的草稿
+bty_appointment_resource_decision,shop 库,24,美业,并入,抽象,,,,,平台基础库 mch_booking_owner,预约对资源的占用协议三张
+bty_appointment_resource_fence,shop 库,10,美业,并入,抽象,,,,,平台基础库 mch_booking_owner,预约对资源的占用协议三张
+bty_appointment_resource_intent,shop 库,24,美业,并入,抽象,,,,,平台基础库 mch_booking_owner,预约对资源的占用协议三张
+bty_arrival_challenge,shop 库,0,美业,并入,抽象,,,,,账号认证库 auth_ticket（用途 = 到店核验）,按电商、餐饮、美业的业务抽象复核后采纳
+bty_flyway_history,shop 库,12,平台基础,不迁入,去冗余,,,,,新库用新的基线与迁移历史,
+bty_guest_claim_receipt,shop 库,0,美业,并入,抽象,,,,,会员营销库 mbr_guest_registration,访客认领
+bty_reception_operation,shop 库,12,美业,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,操作幂等
+bty_service_definition,shop 库,0,美业,并入,抽象,,,,,prd_goods,公用商品：菜品、服务项目都是商品的行业档案
+bty_service_definition_version,shop 库,0,美业,并入,抽象,,,,,prd_goods_revision（服务项目的版本就是商品修订）,公用商品：菜品、服务项目都是商品的行业档案
+bty_service_execution_fence,shop 库,0,美业,并入,抽象,,,,,ord_execution,美业的执行提交就是零售的服务执行
+bty_service_execution_stock_intent,shop 库,0,美业,退役,去冗余,,,,,库存桥接指令,
+bty_service_participation,shop 库,0,美业,并入,抽象,,,,,ord_assignment,按电商、餐饮、美业的业务抽象复核后采纳
+bty_service_requirement,shop 库,0,美业,并入,抽象,,,,,prd_fulfillment_requirement,按电商、餐饮、美业的业务抽象复核后采纳
+bty_service_step,shop 库,0,美业,保留,,美业,行业库,工单与服务执行,bty_service_step,,
+bty_service_submission,shop 库,9,美业,并入,抽象,,,,,ord_execution,美业的执行提交就是零售的服务执行
+bty_service_task,shop 库,6,美业,并入,抽象,,,,,ord_fulfillment_unit（服务任务即服务执行单元）,公用订单：行业的订单行不再另建
+bty_source_allocation_guard,shop 库,2,美业,并入,抽象,,,,,ord_fulfillment_unit,与订单的绑定三张
+bty_source_observation,shop 库,2,美业,并入,抽象,,,,,ord_fulfillment_unit,与订单的绑定三张
+bty_store_policy,shop 库,0,美业,改归属,抽象,餐饮,行业库,门店经营策略（餐饮、美业共用）,ind_store_policy,门店的行业经营策略：切日、先付后付、可约天数、取消规则,按电商、餐饮、美业的业务抽象复核后采纳
+bty_store_policy_version,shop 库,0,美业,改归属,抽象,餐饮,行业库,门店经营策略（餐饮、美业共用）,ind_config_revision,行业配置的修订：门店经营策略、工位路由、宴会方案,第二轮业务复核后采纳
+bty_trade_binding,shop 库,2,美业,并入,抽象,,,,,ord_fulfillment_unit（服务任务即服务执行单元）,公用订单：行业的订单行不再另建
+bty_work_order,shop 库,6,美业,并入,抽象,,,,,ord_visit,公用订单：到店单
+bty_work_order_context,shop 库,6,美业,并入,抽象,,,,,ord_visit,工单上下文是工单的属性
+cim_account,shop 库,0,零售,并入,抽象,,,,,cim_connection,渠道账号与门店连接
+cim_after_sale_line_link,shop 库,0,零售,并入,抽象,,,,,ord_item,外部单据与本地单据的对应：订单、履约、售后各一套
+cim_after_sale_link,shop 库,0,零售,并入,抽象,,,,,ord_sub_order,外部单据与本地单据的对应：订单、履约、售后各一套
+cim_after_sale_revision,shop 库,0,零售,并入,抽象,,,,,ord_sub_order,外部单据与本地单据的对应：订单、履约、售后各一套
+cim_authorization_revision,shop 库,0,零售,并入,抽象,,,,,基础能力库统一审计,连接、授权、映射各带一张修订表
+cim_availability_publication,shop 库,0,零售,并入,抽象,,,,,任务库 job_log,可售状态发布是一种同步
+cim_catalog_scope,shop 库,0,零售,保留,,零售,门店交易库,渠道连接,cim_catalog_scope,,
+cim_catalog_snapshot,shop 库,0,零售,并入,抽象,,,,,任务库 job_log,目录快照是一次同步的载荷
+cim_catalog_source,shop 库,0,零售,并入,抽象,,,,,cim_catalog_scope（同步范围：含来源、策略与选品）,目录同步的范围、来源、策略、选品各一张
+cim_certificate_handle,shop 库,0,零售,并入,抽象,,,,,基础能力库 sec_secret_blob,渠道凭证是密钥
+cim_connection_revision,shop 库,0,零售,并入,抽象,,,,,基础能力库统一审计,连接配置的修订是审计
+cim_flyway_history,shop 库,0,平台基础,不迁入,去冗余,,,,,新库用新的基线与迁移历史,
+cim_fulfillment_line_link,shop 库,0,零售,并入,抽象,,,,,ord_item,外部单据与本地单据的对应：订单、履约、售后各一套
+cim_fulfillment_link,shop 库,0,零售,并入,抽象,,,,,ord_sub_order,外部单据与本地单据的对应：订单、履约、售后各一套
+cim_inbound_event,shop 库,0,零售,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等） + 原文留存（基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等））,渠道的收发与同步用库内统一机制
+cim_inbound_receipt,shop 库,0,零售,并入,抽象,,,,,基础能力库的公共事件,入站事件与原始回执
+cim_operation,shop 库,0,零售,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）（库内统一事件发件）,渠道的收发与同步用库内统一机制
+cim_operation_attempt,shop 库,0,零售,并入,抽象,,,,,基础能力库的公共事件,出站操作的尝试是操作的状态
+cim_order_line_link,shop 库,0,零售,并入,抽象,,,,,ord_item（外部行号作为订单行属性）,渠道订单就是带渠道来源的订单
+cim_order_link,shop 库,0,零售,并入,抽象,,,,,ord_sub_order（外部单号、渠道来源作为订单属性）,渠道订单就是带渠道来源的订单
+cim_order_revision,shop 库,0,零售,并入,抽象,,,,,ord_sub_order,外部单据的修订并入对应关系
+cim_product_profile,shop 库,0,零售,并入,抽象,,,,,cim_provider,渠道方与其产品档案
+cim_provider,shop 库,0,零售,保留,,零售,门店交易库,渠道连接,cim_provider,,
+cim_redemption_item,shop 库,0,零售,保留,,零售,门店交易库,订单,ord_payment_redemption_item,外部凭证核销明细：一次核销多张凭证,
+cim_redemption_link,shop 库,0,零售,并入,抽象,,,,,ord_payment（外部凭证核销是一种收款方式）,渠道订单就是带渠道来源的订单
+cim_redemption_preview,shop 库,0,零售,并入,抽象,,,,,ord_payment,核销的预览与冲正是核销的状态
+cim_redemption_reversal,shop 库,0,零售,并入,抽象,,,,,ord_payment,核销的预览与冲正是核销的状态
+cim_request_journal,shop 库,0,零售,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,请求幂等
+cim_resource_mapping,shop 库,0,零售,保留,,零售,门店交易库,渠道连接,cim_resource_mapping,,
+cim_resource_mapping_revision,shop 库,0,零售,并入,抽象,,,,,基础能力库统一审计,连接、授权、映射各带一张修订表
+cim_source_notice,shop 库,0,零售,并入,抽象,,,,,基础能力库的公共事件,来源通知是入站事件
+cim_source_withdrawal,shop 库,0,零售,并入,抽象,,,,,基础能力库的公共事件,来源通知三张
+cim_statement,shop 库,0,零售,并入,抽象,,,,,支付库 stl_settlement,渠道对账单是结算单
+cim_statement_line,shop 库,0,零售,并入,抽象,,,,,支付库 stl_settlement_line,渠道对账单是结算单
+cim_store_connection,shop 库,0,零售,保留,,零售,门店交易库,渠道连接,cim_connection,渠道连接：渠道账号、授权、门店连接、收款策略,渠道账号与门店连接
+cim_sync_policy,shop 库,0,零售,并入,抽象,,,,,cim_catalog_scope（同步范围：含来源、策略与选品）,目录同步的范围、来源、策略、选品各一张
+cim_sync_run,shop 库,0,零售,并入,抽象,,,,,任务库 job_log（同步是一次任务运行，结果记在资源映射上）,渠道的收发与同步用库内统一机制
+cim_sync_run_item,shop 库,0,零售,并入,抽象,,,,,任务库 job_log（同步是一次任务运行，结果记在资源映射上）,渠道的收发与同步用库内统一机制
+cim_tax_source_notice,shop 库,0,零售,并入,抽象,,,,,基础能力库的公共事件,来源通知三张
+cmt_community,shop 库,0,零售,保留,,零售,门店交易库,社区团购,cmt_community,,
+cmt_community_apply,shop 库,0,零售,保留,,零售,门店交易库,社区团购,cmt_community_apply,小区提报：通过后建小区,平台基础复核后采纳（2026-11-25）
+cmt_pickup_point,shop 库,0,零售,保留,,零售,门店交易库,社区团购,cmt_pickup_point,,
+cnt_material,shop 库,0,零售,并入,抽象,,,,,cnt_content,内容三张
+cnt_post,shop 库,0,零售,改归属,抽象,会员营销,会员营销库,评价与内容,cnt_content,内容：帖子、问答、素材，用类型区分,评价与内容移出交易库
+cnt_question,shop 库,0,零售,并入,抽象,,,,,cnt_content,内容三张
+cnt_ranking,shop 库,0,零售,并入,抽象,,,,,prd_topic,榜单与专题都是运营位
+commerce_event_inbox,shop 库,47,平台商城,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,库里只存业务数据：事件是公共能力，防重是功能能力
+commerce_expiry_notice,shop 库,0,平台商城,并入,抽象,,,,,notify_message + notify_delivery（向一个人发一条，不是批量推送）,平台基础复核后采纳（2026-11-25）
+commerce_outbox,shop 库,87,平台商城,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,库里只存业务数据：事件是公共能力，防重是功能能力
+commerce_schema_history,shop 库,11,平台商城,不迁入,去冗余,,,,,新库用新的基线与迁移历史,
+core_document_number,shop 库,67,平台基础,改归属,抽象,基础能力,基础能力库,公共发号,core_document_number,单据号登记：已发出的业务单据号及其来源,库里只存业务数据：事件是公共能力，防重是功能能力
+ent_code_token,shop 库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_code_token,,
+ent_grant,shop 库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_grant,,
+ent_instance,shop 库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_instance,,
+ent_issue_batch,shop 库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_issue_batch,,
+ent_issue_policy,shop 库,0,会员营销,并入,抽象,,,,,pmt_quota,额度：活动总量、每人限量、卡券发行量、周期限量各一张
+ent_issue_recipient,shop 库,0,会员营销,并入,抽象,,,,,pmt_quota,额度：活动总量、每人限量、卡券发行量、周期限量各一张
+ent_ledger,shop 库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_ledger,,
+ent_legacy_coupon_issue,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+ent_legacy_coupon_operation,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+ent_migration_alias,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+ent_migration_asset,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+ent_migration_import,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+ent_migration_plan,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+ent_migration_return,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+ent_migration_stage,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+ent_migration_usage,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+ent_owner_registry,shop 库,0,会员营销,退役,抽象,,,,,券与储值迁入卡券后的过渡表,迁移归属登记
+ent_period_bucket,shop 库,0,会员营销,并入,抽象,,,,,pmt_quota,额度：活动总量、每人限量、卡券发行量、周期限量各一张
+ent_sale_reservation,shop 库,0,会员营销,并入,抽象,,,,,pmt_reservation,预留：活动名额与卡券售卖各一张
+ent_template,shop 库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_template,,
+ent_template_version,shop 库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_template_version,,
+ent_usage,shop 库 + 支付库副本,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_usage,使用记录：这一单用了哪项优惠或哪张卡券、抵了多少,
+ent_use_allocation,shop 库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_use_allocation,,
+ent_use_intent,shop 库 + 支付库副本,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_use_intent,,
+ent_use_proposal,shop 库,0,会员营销,并入,抽象,,,,,ent_use_intent,优惠意向与卡券使用提案是同一步
+ent_use_reversal,shop 库,0,会员营销,并入,抽象,,,,,ent_usage,冲正是一条反向的使用记录
+flyway_schema_history,shop 库 + 支付库副本,80,平台基础,不迁入,去冗余,,,,,新库用新的基线与迁移历史,
+fnb_action_log,shop 库,0,餐饮,并入,抽象,,,,,基础能力库统一审计,操作记录是审计
+fnb_banquet_attendance_confirmation,shop 库,0,餐饮,保留,,餐饮,行业库,宴会,fnb_banquet_attendance_confirmation,,
+fnb_banquet_plan,shop 库,0,餐饮,保留,,餐饮,行业库,宴会,fnb_banquet_plan,,
+fnb_banquet_plan_revision,shop 库,0,餐饮,并入,抽象,,,,,ind_config_revision,宴会方案的修订
+fnb_bottle_custody,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,顾客寄存,ord_custody,顾客寄存：存酒、客装产品、没用完的疗程用品，剩多少、何时过期,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_bottle_movement,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,顾客寄存,ord_custody_movement,寄存流水：存入、取用、过期处理,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_bundle,shop 库,0,餐饮,并入,抽象,,,,,prd_sku（组合商品是 SKU 的一种，带配置版本）,套餐与选配归零售商品
+fnb_bundle_choice,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,商品,prd_bundle_choice,套餐可选项,套餐与选配归零售商品
+fnb_bundle_group,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,商品,prd_bundle_group,套餐分组,
+fnb_business_command,shop 库,0,餐饮,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
+fnb_business_day,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,订单,ord_business_day,营业日,交班、日结、离线下单改为门店通用能力
+fnb_business_organization,shop 库,0,餐饮,改归属,抽象,会员营销,会员营销库,会员,mbr_organization,单位客户：团餐单位、企业采购、企业团购,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_business_share_plan,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,订单,ord_split_plan,分摊方案：一张到店单怎么分给几个人付,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_capacity_claim,shop 库,0,餐饮,并入,抽象,,,,,mch_booking_unit,预订改用平台资源预约
+fnb_cart_delivery,shop 库,0,餐饮,并入,抽象,,,,,trd_cart,配送信息是购物车的属性
+fnb_cash_count,shop 库,0,餐饮,并入,抽象,,,,,pay_cash_entry,点钞是一条现金收支
+fnb_cash_entry,shop 库,0,餐饮,改归属,抽象,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_cash_entry,班次内现金收支与点钞,门店营业不是一个独立的域
+fnb_cash_payment_link,shop 库,0,餐饮,并入,抽象,,,,,pay_cash_entry（一笔收款就是一条现金收支）,交班、日结、离线下单改为门店通用能力
+fnb_cash_shift,shop 库,0,餐饮,改归属,抽象,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_cash_shift,收银班次：钱箱现金是现金账,门店营业不是一个独立的域
+fnb_channel_import_guard,shop 库,0,餐饮,并入,去冗余,,,,,ord_sub_order,
+fnb_channel_order_source,shop 库,0,餐饮,并入,去冗余,,,,,ord_sub_order（外部订单来源）,
+fnb_channel_party,shop 库,0,餐饮,并入,去冗余,,,,,一张渠道参与方表（并入 cim_connection）,
+fnb_charge_intent,shop 库,0,餐饮,并入,抽象,,,,,ord_payment,餐饮账单、结账、退货收敛到零售订单
+fnb_check,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,订单,ord_visit,到店单：一次到店消费的容器——餐饮的一桌账单、美业的一次服务工单,公用订单：到店单
+fnb_check_batch_membership,shop 库,0,餐饮,并入,抽象,,,,,ord_visit_line（批次归属可由行归属得出）,餐饮账单、结账、退货收敛到零售订单
+fnb_check_cart,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,订单,trd_cart,购物车头，零售只有车行没有车头,餐饮账单、结账、退货收敛到零售订单
+fnb_check_cart_item,shop 库,0,餐饮,并入,抽象,,,,,trd_cart_item,餐饮账单、结账、退货收敛到零售订单
+fnb_check_freeze,shop 库,0,餐饮,并入,抽象,,,,,ord_visit（冻结是账单的状态）,餐饮账单、结账、退货收敛到零售订单
+fnb_check_line_membership,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,订单,ord_visit_line,订单行属于哪张到店单；并台、转台、拆单要留变更,
+fnb_check_relation,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,订单,ord_visit_relation,到店单之间的合并、拆分关系,并台拆台与订单同事务
+fnb_close_adjustment,shop 库,0,餐饮,并入,抽象,,,,,pay_exception（结后调整是异常处理的一种）,交班、日结、离线下单改为门店通用能力
+fnb_close_balance,shop 库,0,餐饮,并入,抽象,,,,,支付库 stl_settlement_line,门店营业不是一个独立的域
+fnb_close_exception,shop 库,0,餐饮,并入,抽象,,,,,支付库 pay_exception,门店营业不是一个独立的域
+fnb_close_run,shop 库,0,餐饮,并入,抽象,,,,,支付库 stl_settlement（类型 = 日结）,门店营业不是一个独立的域
+fnb_config_revision,shop 库,0,餐饮,并入,抽象,,,,,ind_config_revision,第二轮业务复核后采纳
+fnb_core_line_allocation,shop 库,0,餐饮,并入,抽象,,,,,不再需要：菜品行直接挂 ord_item,餐饮账单、结账、退货收敛到零售订单
+fnb_core_order_binding,shop 库,0,餐饮,并入,抽象,,,,,不再需要：批次即子订单，无须绑定表,餐饮账单、结账、退货收敛到零售订单
+fnb_course,shop 库,0,餐饮,保留,,餐饮,行业库,菜单与菜品,fnb_course,,
+fnb_custody_entry,shop 库,0,餐饮,并入,抽象,,,,,ord_custody_movement,寄存流水两张
+fnb_dining_device,shop 库,0,餐饮,改归属,抽象,平台基础,平台基础库,商户与门店,mch_store_device,门店设备：点餐屏、厨显、离线收银设备及其密钥、租约,门店营业不是一个独立的域
+fnb_dining_entitlement,shop 库,0,餐饮,并入,抽象,,,,,fnb_service_entitlement,人头权益两张
+fnb_dish,shop 库,0,餐饮,并入,抽象,,,,,prd_goods,公用商品：菜品、服务项目都是商品的行业档案
+fnb_dish_option_group,shop 库,0,餐饮,并入,抽象,,,,,prd_spec_usage（使用方 = 商品）,公用规格：选配是不生成 SKU 的规格
+fnb_edge_lease,shop 库,0,餐饮,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
+fnb_external_mapping,shop 库,0,餐饮,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
+fnb_fee_contract_claim,shop 库,0,餐饮,并入,抽象,,,,,ord_price_quote_allocation,餐饮账单、结账、退货收敛到零售订单
+fnb_fee_source_binding,shop 库,0,餐饮,并入,抽象,,,,,ord_price_quote_allocation,餐饮账单、结账、退货收敛到零售订单
+fnb_flyway_history,shop 库,0,平台基础,不迁入,去冗余,,,,,新库用新的基线与迁移历史,
+fnb_guest_session,shop 库,0,餐饮,改归属,抽象,账号认证,账号认证库,会话与登录,guest_session,顾客临时会话：扫桌码后整个用餐过程里的临时身份，含桌码令牌与设备授权,三库说明文档复核后采纳（2026-11-26）
+fnb_identity_authorization,shop 库,0,餐饮,并入,抽象,,,,,guest_session,桌边的临时身份三张
+fnb_identity_operation,shop 库,0,餐饮,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,操作幂等
+fnb_integration_exception,shop 库,0,餐饮,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
+fnb_kds_cursor,shop 库,0,餐饮,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
+fnb_kds_event,shop 库,0,餐饮,保留,,餐饮,行业库,出品与厨房,fnb_kds_event,,
+fnb_kds_subscription,shop 库,0,餐饮,保留,,餐饮,行业库,出品与厨房,fnb_kds_subscription,设备身份以平台基础库 mch_store_device 为准，这里只存设备号与本业务的配置,
+fnb_kds_voice_command,shop 库,0,餐饮,并入,抽象,,,,,fnb_kds_event,出品事件两处
+fnb_kitchen_task,shop 库,0,餐饮,并入,抽象,,,,,ord_execution（出品任务是工位的一次执行）,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_kitchen_ticket,shop 库,0,餐饮,保留,,餐饮,行业库,出品与厨房,fnb_kitchen_ticket,,
+fnb_menu,shop 库,0,餐饮,并入,抽象,,,,,门店交易库 prd_store_catalog（门店目录，带类型与门店）,菜单是门店目录的一种
+fnb_menu_category,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,分类与规格,prd_store_category,门店展示分类：零售货架分类、餐饮菜单分类、美业项目分类共用,公用分类：门店展示分类多处
+fnb_menu_channel_binding,shop 库,0,餐饮,并入,抽象,,,,,cim_resource_mapping,菜单与渠道门店的绑定是渠道资源映射
+fnb_menu_context,shop 库,0,餐饮,并入,抽象,,,,,prd_store_catalog,目录的适用场景是目录的属性
+fnb_menu_exception,shop 库,0,餐饮,并入,抽象,,,,,prd_store_catalog,菜单是门店目录的一种
+fnb_menu_item,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,商品,prd_catalog_item,门店目录的条目：商品、SKU 范围、价格覆盖,菜单是门店目录的一种
+fnb_menu_item_option_group,shop 库,0,餐饮,并入,抽象,,,,,prd_catalog_item,菜单是门店目录的一种
+fnb_menu_item_sku,shop 库,0,餐饮,并入,抽象,,,,,prd_catalog_item,菜单是门店目录的一种
+fnb_menu_schedule,shop 库,0,餐饮,并入,抽象,,,,,prd_store_catalog,目录的生效时段是目录的属性
+fnb_menu_store,shop 库,0,餐饮,并入,抽象,,,,,门店交易库 prd_store_catalog（门店目录，带类型与门店）,菜单是门店目录的一种
+fnb_metric_definition,shop 库,0,餐饮,改归属,抽象,报表,报表库,每日指标,rpt_metric_definition,指标定义：指标的口径、时间基准、版本,指标定义归报表
+fnb_modifier,shop 库,0,餐饮,并入,抽象,,,,,prd_sku + prd_spec_value（加料本身是可售 SKU）,套餐与选配归零售商品
+fnb_modifier_component,shop 库,0,餐饮,并入,抽象,,,,,prd_bundle_choice,套餐与选配归零售商品
+fnb_offline_audit,shop 库,0,餐饮,并入,抽象,,,,,基础能力库统一审计,状态流转是审计
+fnb_offline_challenge,shop 库,0,餐饮,并入,抽象,,,,,mch_store_device（登记中的密钥是它的一个状态）,交班、日结、离线下单改为门店通用能力
+fnb_offline_draft,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,订单,ord_offline_draft,离线草稿单：断网时的订单草稿,交班、日结、离线下单改为门店通用能力
+fnb_offline_line,shop 库,0,餐饮,并入,抽象,,,,,ord_offline_draft（行已在草稿载荷里）,交班、日结、离线下单改为门店通用能力
+fnb_offline_signer,shop 库,0,餐饮,并入,抽象,,,,,mch_store_device（设备密钥是设备的属性）,门店设备多处登记
+fnb_offline_writer,shop 库,0,餐饮,并入,抽象,,,,,mch_store_device,离线写入租约是设备的状态
+fnb_operation_case,shop 库,0,餐饮,并入,抽象,,,,,独立的审核与工单服务,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_option_group,shop 库,0,餐饮,并入,抽象,,,,,prd_spec_dim（用途 = 选配）,公用规格：选配是不生成 SKU 的规格
+fnb_option_group_item,shop 库,0,餐饮,并入,抽象,,,,,prd_spec_value,公用规格：选配是不生成 SKU 的规格
+fnb_order_batch,shop 库,0,餐饮,并入,抽象,,,,,ord_sub_order + ord_sub_order（一次下单就是一张子订单）,餐饮账单、结账、退货收敛到零售订单
+fnb_order_component,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,订单,ord_item_component,订单行的套餐 / 选配明细,餐饮账单、结账、退货收敛到零售订单
+fnb_order_line,shop 库,0,餐饮,并入,抽象,,,,,ord_item（座位、道次等作为行业扩展）,公用订单：行业的订单行不再另建
+fnb_order_modifier,shop 库,0,餐饮,并入,抽象,,,,,ord_item_component,餐饮账单、结账、退货收敛到零售订单
+fnb_production_consumption,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_production_consumption_line,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_queue_notice,shop 库,0,餐饮,并入,抽象,,,,,平台基础库 notify_message,排队通知是一条通知
+fnb_queue_ticket,shop 库,0,餐饮,改归属,抽象,零售,门店交易库,订单,ord_queue_ticket,排队号：取号、叫号、过号，入座后关联到店单；餐饮、美业共用,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_recipe,shop 库,0,餐饮,改归属,抽象,库存,库存库,配方,inv_recipe,配方（物料清单）,配方是物料清单，消耗走库存
+fnb_recipe_adjustment,shop 库,0,餐饮,改归属,抽象,库存,库存库,配方,inv_recipe_adjustment,选配对配方的增减,配方是物料清单，消耗走库存
+fnb_recipe_line,shop 库,0,餐饮,改归属,抽象,库存,库存库,配方,inv_recipe_line,配方行,配方是物料清单，消耗走库存
+fnb_report_run,shop 库,0,餐饮,并入,抽象,,,,,报表库 rpt_build_batch,指标定义与报表运行属于报表模块
+fnb_reservation,shop 库,0,餐饮,并入,抽象,,,,,ord_appointment,公用订单：预约单
+fnb_reservation_preorder,shop 库,0,餐饮,并入,抽象,,,,,ord_appointment_item,公用订单：预约单
+fnb_reservation_table,shop 库,0,餐饮,并入,抽象,,,,,mch_booking_unit（桌台就是资源）,预订改用平台资源预约
+fnb_return,shop 库,0,餐饮,并入,抽象,,,,,ord_after_sale,餐饮账单、结账、退货收敛到零售订单
+fnb_return_amendment,shop 库,0,餐饮,并入,抽象,,,,,ord_after_sale,餐饮账单、结账、退货收敛到零售订单
+fnb_return_item,shop 库,0,餐饮,并入,抽象,,,,,ord_after_sale_item（出品处置作为行业扩展）,公用订单：行业的订单行不再另建
+fnb_return_stock_disposition,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_room_charge_intent,shop 库,0,餐饮,并入,抽象,,,,,ord_payment（挂房账是一种付款方式）,餐饮账单、结账、退货收敛到零售订单
+fnb_sales_quota_claim,shop 库,0,餐饮,并入,抽象,,,,,prd_stock_lock,套餐与选配归零售商品
+fnb_sales_restriction,shop 库,0,餐饮,并入,抽象,,,,,prd_store_sku（限量 / 估清就是门店可售量）,套餐与选配归零售商品
+fnb_scheduled_dispatch,shop 库,0,餐饮,并入,抽象,,,,,fnb_kitchen_ticket,定时出品是出品单的状态
+fnb_seat,shop 库,0,餐饮,保留,,餐饮,行业库,桌台,fnb_seat,,
+fnb_service_attendee,shop 库,0,餐饮,并入,抽象,,,,,ord_visit_attendee,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_service_calendar,shop 库,0,餐饮,并入,抽象,,,,,mch_schedule_rule（营业日历）,预订改用平台资源预约
+fnb_service_entitlement,shop 库,0,餐饮,保留,,餐饮,行业库,堂食服务,fnb_service_entitlement,人头权益：只在一张到店单内有效、用完即弃，不进卡券（与卡券是同一概念，因高频且要和点餐同事务而单独保留）,
+fnb_service_entitlement_event,shop 库,0,餐饮,保留,,餐饮,行业库,堂食服务,fnb_service_entitlement_event,人头权益：只在一张到店单内有效、用完即弃，不进卡券（与卡券是同一概念，因高频且要和点餐同事务而单独保留）,
+fnb_service_event,shop 库,0,餐饮,并入,抽象,,,,,fnb_kds_event,出品事件两处
+fnb_service_form,shop 库,0,餐饮,并入,抽象,,,,,ord_visit（自助餐、团餐是到店单的类型）,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_service_form_batch,shop 库,0,餐饮,并入,抽象,,,,,ord_visit,服务单与批次的关系
+fnb_service_handover,shop 库,0,餐饮,并入,抽象,,,,,ord_assignment,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_service_handover_item,shop 库,0,餐饮,并入,抽象,,,,,ord_assignment,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_service_responsibility,shop 库,0,餐饮,并入,抽象,,,,,ord_assignment,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_service_slot,shop 库,0,餐饮,并入,抽象,,,,,mch_resource_bucket（时段容量）,预订改用平台资源预约
+fnb_settlement,shop 库,0,餐饮,并入,抽象,,,,,不建表（下单结账的防重由应用层做）,餐饮账单、结账、退货收敛到零售订单
+fnb_settlement_item,shop 库,0,餐饮,并入,抽象,,,,,ord_item,餐饮账单、结账、退货收敛到零售订单
+fnb_sku_station,shop 库,0,餐饮,并入,抽象,,,,,prd_fulfillment_requirement,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_station,shop 库,0,餐饮,保留,,餐饮,行业库,出品与厨房,fnb_station,,
+fnb_station_runtime,shop 库,0,餐饮,并入,抽象,,,,,fnb_station,工位运行状态是工位的属性
+fnb_stock_balance,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_command,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_item,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_movement,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_reservation,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_reservation_item,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_sync_config,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_sync_delivery,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_sync_difference,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_sync_item_state,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_sync_mapping,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_stock_sync_reconciliation,shop 库,0,餐饮,退役,去冗余,,,,,餐饮自带的第二套库存账；改走库存库,
+fnb_store_policy,shop 库,0,餐饮,并入,抽象,,,,,ind_store_policy,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_sync_batch,shop 库,0,餐饮,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
+fnb_table,shop 库,0,餐饮,保留,,餐饮,行业库,桌台,fnb_table,,
+fnb_table_area,shop 库,0,餐饮,保留,,餐饮,行业库,桌台,fnb_table_area,,
+fnb_table_occupancy,shop 库,0,餐饮,并入,抽象,,,,,mch_booking（桌台占用就是资源占用，拼桌是占用方式）,按电商、餐饮、美业的业务抽象复核后采纳
+fnb_table_operation,shop 库,0,餐饮,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,操作幂等
+fnb_table_token,shop 库,0,餐饮,并入,抽象,,,,,guest_session,桌边的临时身份三张
+ful_batch,shop 库,0,零售,保留,,零售,门店交易库,社区团购,ful_batch,,
+ful_freight_template,shop 库,0,零售,并入,抽象,,,,,ord_pricing_definition（类型 = 运费）,运费规则是一种计价规则
+ful_group_pickup,shop 库,0,零售,并入,抽象,,,,,ord_fulfillment（类型 = 自提）,团购提货就是一次交付
+ful_shortage_report,shop 库,0,零售,并入,抽象,,,,,ord_after_sale,缺货报告是售后
+ful_verify_log,shop 库,0,零售,并入,抽象,,,,,ord_fulfillment,自提核销是履约记录
+geo_place,shop 库,0,平台基础,保留,,平台服务,平台服务库,地理、媒体、短链与导出,geo_place,,
+geo_poi_cache,shop 库,0,平台基础,保留,,平台服务,平台服务库,地理、媒体、短链与导出,geo_poi_cache,,
+inv_audit,库存库,0,库存,并入,抽象,,,,,基础能力库统一审计,变更历史是审计
+inv_business_profile,库存库,0,库存,并入,抽象,,,,,inv_owner,经营配置是货主的属性
+inv_client_system,库存库,0,库存,并入,抽象,,,,,基础能力库接入应用,接入系统与开放凭证是接入应用
+inv_command,库存库,0,库存,退役,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,库里只存业务数据：事件是公共能力，防重是功能能力
+inv_count_scan,库存库,0,库存,并入,抽象,,,,,inv_document_serial,单据的序列号明细两张
+inv_daily_snapshot,库存库,0,库存,保留,,库存,库存库,余额与流水,inv_daily_snapshot,,
+inv_demand_leaf,库存库,0,库存,保留,,库存,库存库,需求计划,inv_demand_leaf,,
+inv_demand_operation,库存库,0,库存,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各操作各建一张幂等表
+inv_demand_plan,库存库,0,库存,保留,,库存,库存库,需求计划,inv_demand_plan,,
+inv_dispatch_adjust,库存库,0,库存,并入,抽象,,,,,基础能力库统一审计,变更历史是审计
+inv_dispatch_claim,库存库,0,库存,保留,,库存,库存库,分发,inv_dispatch_claim,,
+inv_dispatch_item,库存库,0,库存,保留,,库存,库存库,分发,inv_dispatch_item,,
+inv_dispatch_target,库存库,0,库存,并入,抽象,,,,,inv_document_target,单据的对象引用两张
+inv_document_serial,库存库,0,库存,保留,,库存,库存库,单据,inv_document_serial,,
+inv_document_target,库存库,0,库存,保留,,库存,库存库,单据,inv_document_target,,
+inv_event_consumed,库存库,0,库存,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,库里只存业务数据：事件是公共能力，防重是功能能力
+inv_event_log,库存库,0,库存,并入,去冗余,,,,,基础能力库的公共事件 四张 + 基础能力库的公共事件,
+inv_event_pending,库存库,0,库存,并入,去冗余,,,,,基础能力库的公共事件 四张 + 基础能力库的公共事件,
+inv_event_subscription,库存库,0,库存,并入,去冗余,,,,,基础能力库的公共事件 四张 + 基础能力库的公共事件,
+inv_execution_retention,库存库,0,库存,并入,去冗余,,,,,inv_reservation（占用只留一种）,
+inv_execution_retention_claim,库存库,0,库存,并入,去冗余,,,,,inv_reservation（占用只留一种）,
+inv_food_stock_projection,库存库,0,库存,退役,去冗余,,,,,餐饮不再自带库存账，无需对账,
+inv_food_stock_sync_receipt,库存库,0,库存,退役,去冗余,,,,,餐饮不再自带库存账，无需对账,
+inv_food_stock_sync_session,库存库,0,库存,退役,去冗余,,,,,餐饮不再自带库存账，无需对账,
+inv_inbound_line,库存库,0,库存,保留,,库存,库存库,单据,inv_document_line,库存单据行,出入库单据：入库、出库、调拨、盘点、退货各建一套
+inv_inbound_order,库存库,0,库存,保留,,库存,库存库,单据,inv_document,库存单据：采购、入库、出库、调拨、盘点、退货，用类型区分；采购单到货后转入库,出入库单据：入库、出库、调拨、盘点、退货各建一套
+inv_item,库存库,0,库存,保留,,库存,库存库,主数据,inv_item,,
+inv_item_ref,库存库,0,库存,保留,,库存,库存库,主数据,inv_item_ref,,
+inv_item_valuation_history,库存库,0,库存,并入,抽象,,,,,基础能力库统一审计,变更历史是审计
+inv_ledger,库存库,0,库存,保留,,库存,库存库,余额与流水,inv_ledger,,
+inv_location,库存库,0,库存,保留,,库存,库存库,主数据,inv_location,,
+inv_open_credential,库存库,0,库存,并入,抽象,,,,,基础能力库接入应用,接入系统与开放凭证是接入应用
+inv_outbound_line,库存库,0,库存,并入,抽象,,,,,inv_document_line,出入库单据：入库、出库、调拨、盘点、退货各建一套
+inv_outbound_order,库存库,0,库存,并入,抽象,,,,,inv_document,出入库单据：入库、出库、调拨、盘点、退货各建一套
+inv_outbox,库存库,0,库存,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,库里只存业务数据：事件是公共能力，防重是功能能力
+inv_outbox_delivery,库存库,0,库存,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,库里只存业务数据：事件是公共能力，防重是功能能力
+inv_outbox_operation,库存库,0,库存,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,库里只存业务数据：事件是公共能力，防重是功能能力
+inv_outbox_stream,库存库,0,库存,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,库里只存业务数据：事件是公共能力，防重是功能能力
+inv_owner,库存库,0,库存,保留,,库存,库存库,主数据,inv_owner,,
+inv_paired_transfer,库存库,0,库存,并入,抽象,,,,,inv_document,出入库单据：入库、出库、调拨、盘点、退货各建一套
+inv_production_operation,库存库,0,库存,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各操作各建一张幂等表
+inv_refund_restore,库存库,0,库存,并入,抽象,,,,,inv_document_line,出入库单据：入库、出库、调拨、盘点、退货各建一套
+inv_reservation,库存库,0,库存,保留,,库存,库存库,占用,inv_reservation,,
+inv_reservation_line,库存库,0,库存,保留,,库存,库存库,占用,inv_reservation_line,,
+inv_return_receipt,库存库,0,库存,并入,抽象,,,,,inv_document_line,出入库单据：入库、出库、调拨、盘点、退货各建一套
+inv_serial,库存库,0,库存,保留,,库存,库存库,余额与流水,inv_serial,,
+inv_stock_balance,库存库,0,库存,保留,,库存,库存库,余额与流水,inv_stock_balance,,
+inv_stock_count,库存库,0,库存,并入,抽象,,,,,inv_document,出入库单据：入库、出库、调拨、盘点、退货各建一套
+inv_stock_count_line,库存库,0,库存,并入,抽象,,,,,inv_document_line,出入库单据：入库、出库、调拨、盘点、退货各建一套
+inv_stock_count_operation,库存库,0,库存,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各操作各建一张幂等表
+inv_stock_episode,库存库,0,库存,保留,,库存,库存库,余额与流水,inv_stock_episode,,
+inv_stock_hold,库存库,0,库存,并入,去冗余,,,,,inv_reservation（占用只留一种）,
+inv_stock_lot,库存库,0,库存,保留,,库存,库存库,余额与流水,inv_stock_lot,,
+inv_supplier,库存库,0,库存,保留,,库存,库存库,主数据,inv_supplier,,
+inv_target_ref,库存库,0,库存,保留,,库存,库存库,主数据,inv_target_ref,,
+inv_transfer_order,库存库,0,库存,并入,抽象,,,,,inv_document,出入库单据：入库、出库、调拨、盘点、退货各建一套
+inv_uom,库存库,0,库存,保留,,库存,库存库,主数据,inv_uom,,
+ivc_allowance,shop 库,0,平台基础,保留,,平台服务,平台服务库,发票,ivc_allowance,,
+ivc_buyer_preference,shop 库,0,平台基础,保留,,平台服务,平台服务库,发票,ivc_buyer_preference,,
+ivc_channel_account,shop 库,0,平台基础,保留,,平台服务,平台服务库,发票,ivc_channel_account,,
+ivc_channel_account_revision,shop 库,0,平台基础,并入,抽象,,,,,基础能力库密钥版本（凭据本身）与统一审计（谁在何时核验）,通道账户换凭据的版本
+ivc_channel_application,shop 库,0,平台基础,并入,抽象,,,,,mch_change_request（类型 = 开票通道开通；补材料重提是申请的修订）,开票通道的开通申请是主体的一种变更申请
+ivc_channel_application_event,shop 库,0,平台基础,并入,抽象,,,,,基础能力库统一审计,各处的变更日志都是审计
+ivc_channel_application_revision,shop 库,0,平台基础,并入,抽象,,,,,mch_change_request_revision,平台基础复核后采纳（2026-11-25）
+ivc_channel_route,shop 库,0,平台基础,并入,抽象,,,,,ivc_regime_profile（当前用哪个通道账户）,当前通道是主体税制的一个属性
+ivc_channel_route_event,shop 库,0,平台基础,并入,抽象,,,,,基础能力库统一审计,各处的变更日志都是审计
+ivc_flyway_history,shop 库,20,平台基础,不迁入,去冗余,,,,,新库用新的基线与迁移历史,
+ivc_invoice,shop 库,16,平台基础,保留,,平台服务,平台服务库,发票,ivc_invoice,,
+ivc_invoice_application,shop 库,4,平台基础,保留,,平台服务,平台服务库,发票,ivc_invoice_application,,
+ivc_invoice_application_event,shop 库,8,平台基础,并入,抽象,,,,,基础能力库统一审计,各处的变更日志都是审计
+ivc_invoice_application_revision,shop 库,4,平台基础,保留,,平台服务,平台服务库,发票,ivc_invoice_application_revision,,
+ivc_invoice_delivery,shop 库,4,平台基础,并入,抽象,,,,,notify_message + notify_delivery（发票送达是一条通知的一次发送）,平台基础复核后采纳（2026-11-25）
+ivc_invoice_line,shop 库,15,平台基础,保留,,平台服务,平台服务库,发票,ivc_invoice_line,,
+ivc_number_range,shop 库,3,平台基础,保留,,平台服务,平台服务库,发票,ivc_number_range,,
+ivc_regime_profile,shop 库,1,平台基础,保留,,平台服务,平台服务库,发票,ivc_regime_profile,,
+ivc_store_item,shop 库,0,平台基础,保留,,平台服务,平台服务库,发票,ivc_store_item,,
+ivc_store_setting,shop 库,1,平台基础,并入,抽象,,,,,mch_store（门店设置项：默认课税别、开票时机）,门店开票设定只有两项
+ivc_transmission,shop 库,32,平台基础,保留,,平台服务,平台服务库,发票,ivc_transmission,,
+ivc_transmission_attempt,shop 库,28,平台基础,保留,,平台服务,平台服务库,发票,ivc_transmission_attempt,上传尝试：上传任务的每次执行，记用的通道账户与结果,平台基础复核后采纳（2026-11-25）
+ivc_user_carrier,shop 库,0,平台基础,保留,,平台服务,平台服务库,发票,ivc_user_carrier,买家常用载具：一个买家存多个，跨商家通用,平台基础复核后采纳（2026-11-25）
+job_cursor,新建,0,,新建,抽象,任务,任务库,定时任务,job_cursor,任务游标：每个任务在每个范围（门店、来源）上处理到哪了,各库的任务游标没有落脚的表
+job_definition,任务库,4,任务,保留,,任务,任务库,定时任务,job_definition,任务定义：有哪些定时任务、谁负责、多久跑一次、超时多久、能否手动触发,
+job_flyway_history,任务库,2,任务,不迁入,去冗余,,,,,迁移历史,
+job_log,任务库,708,任务,保留,,任务,任务库,定时任务,job_log,运行记录：每次运行一行，起止、耗时、结果、处理范围与产出,
+job_run,任务库,4,任务,保留,,任务,任务库,定时任务,job_run,任务现状：每个任务一行，最近一次的结果、连续失败次数、下次何时跑、是否正在跑,
+led_account,新建,0,,新建,抽象,账务结算,账务结算库,账务内核,led_account,账户：谁、哪种资产（现金科目 / 积分 / 保证金 / 欠款）、各余额桶；单位客户的挂账应收也是账户的一种,
+led_entry,新建,0,,新建,抽象,账务结算,账务结算库,账务内核,led_entry,分录：凭证下每个账户桶的增减与余额,
+led_voucher,新建,0,,新建,抽象,账务结算,账务结算库,账务内核,led_voucher,凭证：一次记账，带业务来源与幂等键,
+lgs_carrier,shop 库,0,零售,保留,,零售,门店交易库,履约物流,lgs_carrier,,
+lgs_carrier_code,shop 库,0,零售,并入,抽象,,,,,lgs_carrier,承运商编码是承运商属性
+lgs_channel_subscription,shop 库,0,零售,并入,抽象,,,,,lgs_waybill（订阅状态是运单的属性）,物流订阅与运单一对一
+lgs_kd100_sub_attempt,shop 库,0,零售,并入,抽象,,,,,lgs_waybill,订阅尝试是订阅的状态
+lgs_precheck_cache,shop 库,0,零售,并入,抽象,,,,,不落库（缓存）,预检结果是缓存，不落库
+lgs_push_event,shop 库,0,零售,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）（物流回调原文）,运单及其轨迹、取件、推送
+lgs_update_log,shop 库,0,零售,并入,抽象,,,,,基础能力库统一审计,物流更新日志是审计
+lgs_waybill,shop 库,0,零售,保留,,零售,门店交易库,履约物流,lgs_waybill,,
+lgs_waybill_node,shop 库,0,零售,保留,,零售,门店交易库,履约物流,lgs_waybill_node,运单轨迹：一单多条，按运单查,
+lnk_short,shop 库,0,平台基础,保留,,平台服务,平台服务库,地理、媒体、短链与导出,lnk_short,,
+mall_category,shop 库,3,平台商城,保留,,平台商城,平台商城库,商品,mall_category,,
+mall_fulfillment_task,shop 库,6,平台商城,保留,,平台商城,平台商城库,订单,mall_fulfillment_task,,
+mall_offline_action,shop 库,15,平台商城,保留,,平台商城,平台商城库,订单,mall_offline_payment,线下付款：认领、举证与处理动作,线下付款的认领、举证、动作各一张
+mall_offline_cash_refund,shop 库,2,平台商城,并入,抽象,,,,,mall_refund,线下现金退款是退款的一种
+mall_offline_claim,shop 库,2,平台商城,并入,抽象,,,,,mall_offline_payment,线下付款的认领、举证、动作各一张
+mall_offline_evidence,shop 库,11,平台商城,保留,,平台商城,平台商城库,订单,mall_offline_evidence,线下付款凭证：一次付款多份,
+mall_order,shop 库,10,平台商城,保留,,平台商城,平台商城库,订单,mall_order,,
+mall_order_component,shop 库,10,平台商城,保留,,平台商城,平台商城库,订单,mall_order_component,,
+mall_order_item,shop 库,9,平台商城,保留,,平台商城,平台商城库,订单,mall_order_item,,
+mall_payment_ref,shop 库,11,平台商城,保留,,平台商城,平台商城库,订单,mall_payment_ref,,
+mall_product,shop 库,6,平台商城,保留,,平台商城,平台商城库,商品,mall_product,,
+mall_quote,shop 库,17,平台商城,并入,抽象,,,,,mall_order,报价是订单下单前的状态
+mall_refund,shop 库,0,平台商城,保留,,平台商城,平台商城库,订单,mall_refund,,
+mall_refund_item,shop 库,0,平台商城,保留,,平台商城,平台商城库,订单,mall_refund_item,,
+mall_shipment,shop 库,0,平台商城,保留,,平台商城,平台商城库,订单,mall_shipment,,
+mall_sku,shop 库,14,平台商城,保留,,平台商城,平台商城库,商品,mall_sku,,
+mall_sku_component,shop 库,17,平台商城,保留,,平台商城,平台商城库,商品,mall_sku_component,,
+mall_sku_version,shop 库,14,平台商城,保留,,平台商城,平台商城库,商品,mall_sku_version,,
+mbr_brand_audience_snapshot,shop 库,0,会员营销,保留,,会员营销,会员营销库,会员,mbr_brand_audience_snapshot,,
+mbr_customer_profile,新建,0,,新建,抽象,会员营销,会员营销库,会员,mbr_customer_profile,顾客档案：肤质、发质、过敏史、忌口、偏好、每次服务的记录，按门店、按条目,第二轮业务复核后采纳
+mbr_guest_registration,shop 库,12,会员营销,保留,,会员营销,会员营销库,会员,mbr_guest_registration,,
+mbr_identity_ticket,shop 库,0,会员营销,并入,抽象,,,,,平台基础库 auth_ticket,身份票据统一
+mbr_level_rule,新建,0,,新建,抽象,会员营销,会员营销库,会员,mbr_level_rule,会员等级规则：按消费或成长值分级，各级的权益；当前等级记在会员上,第二轮业务复核后采纳
+mbr_member,shop 库,5,会员营销,保留,,会员营销,会员营销库,会员,mbr_member,,
+mbr_member_source,shop 库,3,会员营销,保留,,会员营销,会员营销库,会员,mbr_member_source,,
+mbr_member_store,shop 库,1,会员营销,并入,去冗余,,,,,mbr_member（会员与门店 / 范围的关系只留一张）,
+mbr_member_tag,shop 库,0,会员营销,保留,,会员营销,会员营销库,会员,mbr_member_tag,,
+mbr_reach_log,shop 库,0,会员营销,保留,,会员营销,会员营销库,触达,mbr_reach_log,,
+mbr_reach_task,shop 库,0,会员营销,保留,,会员营销,会员营销库,触达,mbr_reach_task,,
+mbr_scope_legacy_link,shop 库,0,会员营销,退役,去冗余,,,,,过渡,
+mbr_scope_member,shop 库,0,会员营销,并入,抽象,,,,,mbr_member（带范围）,会员主表两种口径
+mbr_segment,shop 库,1,会员营销,保留,,会员营销,会员营销库,会员,mbr_segment,,
+mbr_setting,shop 库,0,会员营销,保留,,会员营销,会员营销库,会员,mbr_setting,,
+mbr_store_profile,shop 库,1,会员营销,保留,,会员营销,会员营销库,会员,mbr_store_profile,,
+mbr_tag,shop 库,1,会员营销,保留,,会员营销,会员营销库,会员,mbr_tag,,
+mbr_tag_merge_log,shop 库,0,会员营销,并入,抽象,,,,,基础能力库统一审计,归因日志是审计
+mch_account,shop 库,777,平台基础,保留,,账号认证,账号认证库,B 端账号,mch_account,,
+mch_admission_policy,shop 库,0,平台基础,并入,抽象,,,,,sys_legal_form,准入限额是主体类型的属性
+mch_appointment_slot,shop 库,1,平台基础,退役,去冗余,,,,,旧预约时段，由 mch_resource / mch_booking_* 取代,
+mch_booking_hold,shop 库,12,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_booking,一次预约：预留、确认占用、释放是它的状态,预约单与资源占用要同事务
+mch_booking_hold_unit,shop 库,72,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_booking_unit,预约占用的资源时段单元,预约单与资源占用要同事务
+mch_booking_owner,shop 库,10,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_booking_owner,资源、班表与预约占用,预约单与资源占用要同事务
+mch_brand,shop 库,2,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_brand,,
+mch_brand_change,shop 库,2,平台基础,并入,抽象,,,,,mch_change_request,入驻、认领、品牌变更都是“变更申请 + 审核”
+mch_brand_financial_activation,shop 库,0,平台基础,并入,抽象,,,,,mch_change_request,入驻、认领、品牌变更都是“变更申请 + 审核”
+mch_brand_financial_change,shop 库,0,平台基础,并入,抽象,,,,,mch_change_request,入驻、认领、品牌变更都是“变更申请 + 审核”
+mch_brand_store_binding,shop 库,0,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_brand_store_binding,,
+mch_change_request_revision,新建,0,,新建,抽象,平台基础,平台基础库,商户与门店,mch_change_request_revision,变更申请的修订：每次补材料重提一版,平台基础复核后采纳（2026-11-25）
+mch_channel_area,shop 库,0,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_channel_scope,履约渠道的范围项：配送区域、自提点,抽象后改名
+mch_channel_pickup,shop 库,0,平台基础,并入,抽象,,,,,mch_channel_scope,履约渠道的范围两张
+mch_debt,shop 库,0,支付,并入,去冗余,,,,,led_voucher、led_entry（按账户科目记）,保证金与欠款是现金账
+mch_debt_txn,shop 库,0,支付,并入,去冗余,,,,,led_voucher、led_entry（按账户科目记）,保证金与欠款是现金账
+mch_deposit,shop 库,0,支付,并入,去冗余,,,,,led_voucher、led_entry（按账户科目记）,保证金与欠款是现金账
+mch_deposit_txn,shop 库,0,支付,并入,去冗余,,,,,led_voucher、led_entry（按账户科目记）,保证金与欠款是现金账
+mch_end_schedule_event,shop 库,17,平台基础,保留,,平台基础,平台基础库,权益(端与行业开通),mch_end_schedule_event,,
+mch_entity,shop 库,751,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_entity,,
+mch_entity_apply,shop 库,16,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_change_request,变更申请：入驻、开店、门店认领、品牌变更、品牌财务变更与开通，用类型区分,入驻、认领、品牌变更都是“变更申请 + 审核”
+mch_entity_community,shop 库,0,平台基础,并入,抽象,,,,,mch_service_area（小区是经营范围的一级）,主体覆盖的小区与经营范围项记的是同一件事
+mch_entity_creation_request,shop 库,5,平台基础,并入,去冗余,,,,,mch_change_request（入驻 / 开店统一为一种申请）,
+mch_entity_plan,shop 库,18,平台商城,并入,去冗余,,,,,sys_industry_plan(+version)（旧 plan 定义）,
+mch_entity_profile_projection,shop 库,6,平台基础,并入,抽象,,,,,mch_entity（支付进件状态与已核准的资料版本）,支付侧审核结果的投影与主体一对一
+mch_fulfillment_channel,shop 库,5,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_fulfillment_channel,,
+mch_login_log,shop 库,430,平台基础,保留,,账号认证,账号认证库,会话与登录,mch_login_log,B 端登录日志,B 端与运营端的认证、角色权限各用一套
+mch_management_command,shop 库,19,平台基础,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,平台基础复核后采纳（2026-11-25）
+mch_management_grant,shop 库,93,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_grant,B 端授权：谁在哪个管理空间、品牌、门店、主体上有什么角色或权限,B 端与运营端的认证、角色权限各用一套
+mch_management_space,shop 库,3,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_management_space,,
+mch_notify_pref,shop 库,0,平台基础,改归属,抽象,平台服务,平台服务库,通知,notify_store_setting,门店通知设置：场景开关,按电商、餐饮、美业的业务抽象复核后采纳
+mch_notify_recipient,shop 库,0,平台基础,改归属,抽象,平台服务,平台服务库,通知,notify_store_recipient,门店通知的接收地址,按电商、餐饮、美业的业务抽象复核后采纳
+mch_operating_entity,shop 库,1,平台基础,并入,抽象,,,,,mch_entity（经营主体与法人主体是同一个对象，用户 2026-11-25 确认）,主体两张
+mch_pay_service_application,shop 库,0,支付,并入,去冗余,,,,,pay_onboarding,进件申请在 shop 侧另有一份
+mch_payment_merchant,shop 库,9,支付,并入,去冗余,,,,,pay_merchant,支付商户在 shop 侧另有一份
+mch_payout_account,shop 库,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,mch_payout_account,,
+mch_personnel,shop 库,1,平台基础,保留,,平台基础,平台基础库,人员,mch_personnel,,
+mch_personnel_account,shop 库,2,平台基础,并入,抽象,,,,,mch_personnel,人员与账号、岗位的关系是人员任职的属性
+mch_personnel_position,shop 库,2,平台基础,保留,,平台基础,平台基础库,人员,mch_personnel_position,人员任职的岗位：一个任职多个岗位,
+mch_personnel_skill,shop 库,0,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_personnel_skill,服务资格：这位人员能做哪个商品、哪个 SKU、什么级别，预约时用来筛可选的技师,三库说明文档复核后采纳（2026-11-26）
+mch_personnel_store,shop 库,2,平台基础,保留,,平台基础,平台基础库,人员,mch_personnel_store,,
+mch_plan_offer,shop 库,4,平台商城,并入,去冗余,,,,,sys_industry_plan(+version)（旧 plan 定义）,
+mch_plan_purchase,shop 库,4,平台商城,并入,去冗余,,,,,mall_order,
+mch_plan_purchase_action,shop 库,4,平台商城,并入,去冗余,,,,,mall_offline_payment / claim / evidence,
+mch_plan_purchase_claim,shop 库,2,平台商城,并入,去冗余,,,,,mall_offline_payment / claim / evidence,
+mch_plan_purchase_evidence,shop 库,8,平台商城,并入,去冗余,,,,,mall_offline_payment / claim / evidence,
+mch_pos_pin_recovery,shop 库,1,平台基础,并入,抽象,,,,,auth_ticket（用途 = PIN 重置）,PIN 是一种登录凭证
+mch_pos_staff_pin,shop 库,1,平台基础,保留,,账号认证,账号认证库,B 端账号,mch_pos_staff_pin,,
+mch_pos_staff_pin_policy,shop 库,1,平台基础,并入,抽象,,,,,mch_entity（开关是主体级的）,平台基础复核后采纳（2026-11-25）
+mch_qualification,shop 库,8,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_qualification,,
+mch_resource,shop 库,3,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_resource,资源、班表与预约占用,预约单与资源占用要同事务
+mch_resource_bucket,shop 库,42,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_resource_bucket,资源、班表与预约占用,预约单与资源占用要同事务
+mch_resource_command,shop 库,24,平台基础,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,平台基础复核后采纳（2026-11-25）
+mch_resource_occupation,shop 库,0,平台基础,并入,抽象,,,,,mch_booking,预留与占用是同一次预约的两个状态
+mch_resource_occupation_bucket,shop 库,0,平台基础,并入,抽象,,,,,由 mch_resource_bucket 计算得出,预留与占用是同一次预约的两个状态
+mch_resource_occupation_segment,shop 库,0,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_booking_segment,预约的分段：换人、换资源,预约单与资源占用要同事务
+mch_resource_occupation_unit,shop 库,0,平台基础,并入,抽象,,,,,mch_booking_unit,预留与占用是同一次预约的两个状态
+mch_role,shop 库,15,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_role,B 端角色：平台预置与商家自定义,B 端与运营端的认证、角色权限各用一套
+mch_role_point,新建,0,,新建,抽象,平台基础,平台基础库,商户与门店,mch_role_point,B 端角色有哪些权限码：一个角色一个权限码一行,B 端与运营端的认证、角色权限各用一套
+mch_schedule_change_log,shop 库,2,平台基础,并入,抽象,,,,,基础能力库统一审计,各处的变更日志都是审计
+mch_schedule_exception,新建,0,,新建,抽象,零售,门店交易库,资源预约,mch_schedule_exception,班表例外：请假、调班、临时歇业、加班,按电商、餐饮、美业的业务抽象复核后采纳
+mch_schedule_rule,shop 库,3,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_schedule_rule,资源、班表与预约占用,预约单与资源占用要同事务
+mch_service_area,shop 库,0,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_service_area,,
+mch_service_area_cell,shop 库,0,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_service_area_cell,,
+mch_session,shop 库,280,平台基础,保留,,账号认证,账号认证库,会话与登录,mch_session,B 端会话（令牌）,B 端与运营端的认证、角色权限各用一套
+mch_staff_log,shop 库,57,平台基础,并入,抽象,,,,,基础能力库统一审计,各处的变更日志都是审计
+mch_store,shop 库,832,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_store,,
+mch_store_audit,shop 库,0,平台基础,退役,抽象,,,,,由独立的审核与工单服务承担，本库不建表,工单与内容审核归审核与工单服务
+mch_store_category,shop 库,3,平台基础,并入,抽象,,,,,门店交易库 prd_store_category,公用分类：门店展示分类多处
+mch_store_end_grant,shop 库,19,平台基础,保留,,平台基础,平台基础库,权益(端与行业开通),mch_store_end_grant,,
+mch_store_entity_claim,shop 库,0,平台基础,并入,抽象,,,,,mch_change_request,入驻、认领、品牌变更都是“变更申请 + 审核”
+mch_store_opening_request,shop 库,2,平台基础,并入,去冗余,,,,,mch_change_request（入驻 / 开店统一为一种申请）,
+mch_store_qrcode_print,shop 库,0,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_store_qrcode_print,门店码印刷登记：线下印了多少张，进成本对账,平台基础复核后采纳（2026-11-25）
+mch_store_role,shop 库,16,平台基础,并入,抽象,,,,,mch_grant（范围 = 门店）,商户角色授权收敛
+mch_subscription_account,shop 库,19,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_account,,
+mch_subscription_conversion,shop 库,0,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_conversion,,
+mch_subscription_conversion_item,shop 库,3,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_conversion_item,,
+mch_subscription_credit_account,shop 库,0,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_credit_account,订阅额度账户：余额与已占，下单时要锁这一行,
+mch_subscription_credit_ledger,shop 库,2,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_credit_ledger,,
+mch_subscription_credit_lot,shop 库,0,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_credit_lot,,
+mch_subscription_migration_map,shop 库,0,平台商城,退役,去冗余,,,,,过渡,
+mch_subscription_period,shop 库,20,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_period,,
+mch_subscription_reservation,shop 库,9,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_reservation,,
+mch_violation,shop 库,0,平台基础,并入,抽象,,,,,risk_event,违规是风控事件
+mig_ume_account_20261117,shop 库,1655,,不迁入,去冗余,,,,,一次性导入暂存 / 备份,
+mig_ume_channel_20261117,支付库,1824,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+mig_ume_merchant_20261117,支付库,744,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+mig_ume_run_20261117,支付库,0,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+mig_ume_run_log_20261117,支付库,0,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+mig_ume_store_20261117,shop 库,815,,不迁入,去冗余,,,,,一次性导入暂存 / 备份,
+mkt_attribution,shop 库,0,会员营销,保留,,会员营销,会员营销库,归因,mkt_attribution,,
+mkt_attribution_log,shop 库,0,会员营销,并入,抽象,,,,,基础能力库统一审计,归因日志是审计
+mkt_attribution_rule,shop 库,0,会员营销,保留,,会员营销,会员营销库,归因,mkt_attribution_rule,,
+mkt_campaign,shop 库,0,会员营销,并入,去冗余,,,,,pmt_activity（作为活动类型）,
+mkt_content_slot,shop 库,0,会员营销,并入,抽象,,,,,门店交易库 prd_topic,运营位归零售的专题
+mkt_counter_campaign_fence,shop 库,3,会员营销,并入,抽象,,,,,基础能力库的公共发号（sys_sequence）,修订计数是发号
+mkt_coupon,shop 库,0,会员营销,退役,去冗余,,,,,旧一代券，正式库全空,
+mkt_coupon_issue,shop 库,0,会员营销,退役,去冗余,,,,,旧一代券，正式库全空,
+mkt_fission_campaign,shop 库,0,会员营销,并入,去冗余,,,,,pmt_activity（作为活动类型）,
+mkt_fission_invite,shop 库,0,会员营销,并入,去冗余,,,,,pmt_activity（作为活动类型）,
+mkt_group_buy,shop 库,0,会员营销,改归属,抽象,会员营销,会员营销库,活动,pmt_group,团：一次开团，成团或失败,按电商、餐饮、美业的业务抽象复核后采纳
+mkt_group_member,shop 库,0,会员营销,改归属,抽象,会员营销,会员营销库,活动,pmt_group_member,团成员：谁参了哪个团,按电商、餐饮、美业的业务抽象复核后采纳
+mkt_quote,shop 库,0,会员营销,改归属,去冗余,零售,门店交易库,询价求购,mkt_quote,询价求购是交易前环节,
+mkt_quote_revision,shop 库,0,会员营销,并入,抽象,,,,,基础能力库统一审计,报价修改历史是审计
+mkt_request,shop 库,0,会员营销,改归属,去冗余,零售,门店交易库,询价求购,mkt_request,询价求购是交易前环节,
+mkt_request_interest,shop 库,0,会员营销,改归属,去冗余,零售,门店交易库,询价求购,mkt_request_interest,询价求购是交易前环节,
+mkt_store_visit,shop 库,0,会员营销,并入,抽象,,,,,mbr_store_view（到店记录，归因也读它）,第二轮业务复核后采纳
+mkt_user_coupon,shop 库,0,会员营销,退役,去冗余,,,,,旧一代券，正式库全空,
+msg_faq,shop 库,0,平台基础,保留,,平台服务,平台服务库,通知,msg_faq,常见问题,
+notify_channel,shop 库,0,平台基础,保留,,平台服务,平台服务库,通知,notify_channel,,
+notify_message,shop 库,170,平台基础,保留,,平台服务,平台服务库,通知,notify_message,,
+notify_push_task,shop 库,0,平台基础,保留,,平台服务,平台服务库,通知,notify_push_task,,
+notify_push_token,shop 库,0,平台基础,保留,,平台服务,平台服务库,通知,notify_push_token,,
+notify_scene_channel,shop 库,0,平台基础,保留,,平台服务,平台服务库,通知,notify_scene_channel,,
+notify_stored_value_task,shop 库,0,平台基础,并入,去冗余,,,,,notify_message + notify_delivery（向一个人发一条，不是批量推送）,平台基础复核后采纳（2026-11-25）
+notify_subscribe,shop 库,0,平台基础,保留,,平台服务,平台服务库,通知,notify_subscribe,,
+notify_template,shop 库,0,平台基础,保留,,平台服务,平台服务库,通知,notify_template,,
+notify_ticket,shop 库,0,平台基础,退役,抽象,,,,,由独立的审核与工单服务承担，本库不建表,工单与内容审核归审核与工单服务
+ops_login_log,shop 库,425,平台基础,保留,,账号认证,账号认证库,会话与登录,ops_login_log,运营端登录日志,B 端与运营端的认证、角色权限各用一套
+ops_sandbox_unify_count,支付库,149,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+ops_sandbox_unify_dedupe_approval,支付库,14,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+ops_sandbox_unify_dedupe_link,支付库,0,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+ops_sandbox_unify_dedupe_policy,支付库,17,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+ops_sandbox_unify_followup_closed,支付库,14,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+ops_sandbox_unify_guard,支付库,461,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+ops_sandbox_unify_guard_log,支付库,452,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+ops_sandbox_unify_ledger,支付库,18009,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+ops_session,shop 库,409,平台基础,保留,,账号认证,账号认证库,会话与登录,ops_session,运营端会话（令牌）,B 端与运营端的认证、角色权限各用一套
+ord_after_sale,shop 库,0,零售,保留,,零售,门店交易库,订单,ord_after_sale,,
+ord_after_sale_item,shop 库,0,零售,保留,,零售,门店交易库,订单,ord_after_sale_item,,
+ord_assignment,新建,0,,新建,抽象,零售,门店交易库,指派与执行,ord_assignment,指派：这张到店单、这个订单行由谁负责；交接就是换一条指派,按电商、餐饮、美业的业务抽象复核后采纳
+ord_card_sale_snapshot,shop 库,0,会员营销,并入,抽象,,,,,ord_item,售卡快照是订单行的扩展
+ord_channel_admission_guard,shop 库,0,零售,并入,抽象,,,,,ord_sub_order,渠道订单的接入与行业订单来源重复
+ord_channel_after_sale,shop 库,0,零售,并入,抽象,,,,,ord_after_sale（带渠道来源）,渠道售后收敛
+ord_channel_after_sale_line,shop 库,0,零售,并入,抽象,,,,,ord_after_sale_item,渠道售后收敛
+ord_channel_fulfillment_evidence,shop 库,0,零售,并入,抽象,,,,,ord_fulfillment,渠道订单的接入与行业订单来源重复
+ord_channel_funding_history,shop 库,0,零售,并入,抽象,,,,,基础能力库统一审计,收款方式变更历史是审计
+ord_channel_import,shop 库,0,零售,并入,抽象,,,,,ord_sub_order,渠道订单的接入与行业订单来源重复
+ord_channel_policy,shop 库,0,零售,并入,抽象,,,,,cim_connection,渠道收款策略是门店连接的属性
+ord_channel_preparation,shop 库,0,零售,并入,抽象,,,,,不建表（下单结账的防重由应用层做）（下单结账操作）,下单与结账过程多张
+ord_channel_quote,shop 库,0,零售,并入,去冗余,,,,,ord_price_quote(+line、allocation)（报价只留一套）,
+ord_checkout_confirmation,shop 库,3,零售,并入,抽象,,,,,不建表（下单结账的防重由应用层做）,结账确认是结账操作的状态
+ord_checkout_line,shop 库,2,零售,并入,抽象,,,,,ord_item,结账过程不单独建表
+ord_checkout_operation,shop 库,3,零售,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,结账过程不单独建表
+ord_checkout_payment_request,shop 库,0,零售,并入,抽象,,,,,ord_payment（待付是收款记录的状态）,下单与结账过程多张
+ord_checkout_quote,shop 库,3,零售,并入,去冗余,,,,,ord_price_quote(+line、allocation)（报价只留一套）,
+ord_commission_rule,新建,0,,新建,抽象,零售,门店交易库,指派与执行,ord_commission_rule,提成规则：导购、服务员、技师按什么算、多少；结算走账务结算库的结算内核,按电商、餐饮、美业的业务抽象复核后采纳
+ord_create_intent,shop 库,3,零售,并入,抽象,,,,,不建表（下单结账的防重由应用层做）（下单结账操作）,下单与结账过程多张
+ord_ent_authorization,shop 库,0,会员营销,并入,抽象,,,,,ord_price_quote_allocation,订单与卡券只需“用了哪张”“卖了哪种”两个关系
+ord_ent_order_use,shop 库,0,会员营销,并入,抽象,,,,,ord_price_quote_allocation,费用应用、人工改价都是报价的分摊
+ord_ent_payment_seal,shop 库,0,会员营销,并入,抽象,,,,,ord_order（应付金额是订单属性）,订单与卡券只需“用了哪张”“卖了哪种”两个关系
+ord_ent_service_order,shop 库,0,会员营销,并入,抽象,,,,,ord_sub_order + ord_sub_order（卡项服务单是一种行业订单）,订单与卡券只需“用了哪张”“卖了哪种”两个关系
+ord_ent_source_decision,shop 库,0,会员营销,并入,抽象,,,,,ord_price_quote_allocation,订单与卡券只需“用了哪张”“卖了哪种”两个关系
+ord_express_pickup,shop 库,0,零售,并入,抽象,,,,,lgs_waybill,运单及其轨迹、取件、推送
+ord_external_certificate_use,shop 库,0,零售,并入,抽象,,,,,ord_payment,核销的预览与冲正是核销的状态
+ord_food_stock_bridge_command,shop 库,0,零售,退役,去冗余,,,,,库存桥接指令,
+ord_industry_amendment,shop 库,0,零售,并入,抽象,,,,,ord_after_sale（类型 = 修改）,订单修改单与售后单都是订单变更
+ord_industry_amendment_line,shop 库,0,零售,并入,抽象,,,,,ord_after_sale_item,订单修改单与售后单都是订单变更
+ord_industry_fee_line_adjustment,shop 库,0,零售,并入,抽象,,,,,ord_after_sale_item,金额调整是修改单的行
+ord_industry_fulfillment,shop 库,0,零售,保留,,零售,门店交易库,履约物流,ord_fulfillment,履约单：一张商家订单的一次交付（发货、自提、堂食上齐、服务完成）,履约复核
+ord_industry_fulfillment_progress,shop 库,0,零售,并入,抽象,,,,,ord_fulfillment_unit（进度由履约单元汇总得出）,履约进度是派生数据
+ord_industry_order_source,shop 库,0,零售,并入,抽象,,,,,ord_sub_order,行业订单来源是子订单的属性
+ord_industry_receivable_adjustment,shop 库,0,零售,并入,抽象,,,,,ord_after_sale_item,金额调整是修改单的行
+ord_invoice_data_fill,shop 库,6,零售,并入,去冗余,,,,,ivc_invoice_application,
+ord_invoice_request,shop 库,0,零售,并入,去冗余,,,,,ivc_invoice_application,
+ord_item,shop 库,26,零售,保留,,零售,门店交易库,订单,ord_item,,
+ord_legacy_coupon_checkout,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+ord_manual_price_adjustment,shop 库,0,零售,并入,抽象,,,,,ord_price_quote_allocation,费用应用、人工改价都是报价的分摊
+ord_manual_price_policy,shop 库,0,零售,并入,抽象,,,,,ord_pricing_definition,人工改价权限是一种计价定义
+ord_manual_service_admission,shop 库,2,零售,并入,抽象,,,,,ord_execution,人工服务准入是服务执行的一种
+ord_manual_service_admission_action,shop 库,4,零售,并入,抽象,,,,,基础能力库统一审计,操作动作记录是审计
+ord_offline_record,shop 库,33,零售,保留,,零售,门店交易库,订单,ord_payment,订单收款记录：线上回执、线下记账、门店代收，用来源区分,一笔订单收到的一笔款：线上回执、线下记账、门店代收各一张
+ord_offline_record_event,shop 库,37,零售,并入,抽象,,,,,基础能力库统一审计,收款记录的修改历史是审计
+ord_order,shop 库,29,零售,保留,,零售,门店交易库,订单,ord_order,,
+ord_payment_resolution,shop 库,0,零售,并入,抽象,,,,,ord_payment,一笔订单收到的一笔款：线上回执、线下记账、门店代收各一张
+ord_points_binding,shop 库,0,零售,并入,抽象,,,,,ord_price_quote_allocation,积分的发放与抵扣记为报价分摊
+ord_points_command,shop 库,0,零售,并入,去冗余,,,,,任务库 job_cursor,
+ord_points_earn_rule,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+ord_points_earn_rule_revision,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+ord_points_integration_policy,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+ord_points_placement,shop 库,0,零售,并入,抽象,,,,,ord_price_quote_allocation,订单与积分只需“这一单发了、用了、退了多少”
+ord_points_recovery_cursor,shop 库,0,零售,并入,去冗余,,,,,任务库 job_cursor,
+ord_points_refund_binding,shop 库,0,零售,并入,抽象,,,,,ord_after_sale,退款义务是退款执行的步骤
+ord_points_refund_execution,shop 库,0,零售,并入,抽象,,,,,ord_refund_obligation（积分退还是退款义务的一种）,订单与积分只需“这一单发了、用了、退了多少”
+ord_points_refund_retry,shop 库,0,零售,并入,去冗余,,,,,任务库 job_cursor,
+ord_points_source_counter,shop 库,0,零售,并入,去冗余,,,,,任务库 job_cursor,
+ord_points_source_fact,shop 库,0,零售,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）（来源事实即出站事件）,订单与积分只需“这一单发了、用了、退了多少”
+ord_points_work_cursor,shop 库,0,零售,并入,去冗余,,,,,任务库 job_cursor,
+ord_price_quote,shop 库,0,零售,保留,,零售,门店交易库,计价,ord_price_quote,,
+ord_price_quote_allocation,shop 库,0,零售,保留,,零售,门店交易库,计价,ord_price_quote_allocation,,
+ord_price_quote_line,shop 库,0,零售,保留,,零售,门店交易库,计价,ord_price_quote_line,,
+ord_pricing_fee_advice,shop 库,0,零售,并入,抽象,,,,,ord_after_sale_item,计价收敛
+ord_pricing_fee_application,shop 库,0,零售,并入,抽象,,,,,ord_price_quote_allocation,费用应用、人工改价都是报价的分摊
+ord_pricing_fee_reconciliation,shop 库,0,零售,并入,抽象,,,,,ord_after_sale_item,计价收敛
+ord_pricing_fee_revision,shop 库,0,零售,并入,抽象,,,,,ord_pricing_definition_revision,计价收敛
+ord_pricing_fee_rule,shop 库,0,零售,并入,抽象,,,,,ord_pricing_definition（类型 = 费用规则）,计价收敛
+ord_pricing_fee_scope,shop 库,0,零售,并入,抽象,,,,,ord_price_quote_allocation,计价收敛
+ord_pricing_funding_source,shop 库,0,零售,并入,抽象,,,,,ord_price_quote_allocation（谁出这笔钱是报价分摊的一部分）,计价收敛
+ord_pricing_template,shop 库,0,零售,改归属,抽象,零售,门店交易库,计价,ord_pricing_definition,计价定义（行业模板与门店配置合一，用范围区分）,计价收敛
+ord_pricing_template_revision,shop 库,0,零售,改归属,抽象,零售,门店交易库,计价,ord_pricing_definition_revision,计价定义的修订,计价收敛
+ord_print_fact,shop 库,0,零售,并入,去冗余,,,,,biz_print_fact,
+ord_refund_coupon_scope,shop 库,0,零售,并入,抽象,,,,,ord_refund_obligation,退券范围是退款义务的一种
+ord_refund_execution,shop 库,0,零售,并入,抽象,,,,,ord_after_sale,退款执行是售后的状态
+ord_refund_obligation,shop 库,0,零售,保留,,零售,门店交易库,订单,ord_refund_obligation,退款义务：一次退款的各项（现金、券、积分、库存），各自重试,
+ord_service_execution,shop 库,0,零售,改归属,抽象,零售,门店交易库,指派与执行,ord_execution,执行：谁（人或工位）在什么时候做了哪一份，开始、完成、凭据,按电商、餐饮、美业的业务抽象复核后采纳
+ord_service_execution_action,shop 库,0,零售,并入,抽象,,,,,基础能力库统一审计,操作动作记录是审计
+ord_service_execution_unit,shop 库,0,零售,保留,,零售,门店交易库,履约物流,ord_fulfillment_unit,履约单元：一个订单行里可以单独交付的一份，记是否已交付,履约复核
+ord_shipment,shop 库,0,零售,并入,去冗余,,,,,lgs_waybill（一个包裹只留一处）,
+ord_status_log,shop 库,6,零售,并入,抽象,,,,,基础能力库统一审计,状态流转是审计
+ord_store_collection,shop 库,0,零售,并入,抽象,,,,,ord_payment,一笔订单收到的一笔款：线上回执、线下记账、门店代收各一张
+ord_store_pricing_config,shop 库,0,零售,并入,抽象,,,,,ord_pricing_definition（范围 = 门店）,计价收敛
+ord_store_pricing_revision,shop 库,0,零售,并入,抽象,,,,,ord_pricing_definition_revision,计价收敛
+ord_sub_order,shop 库,29,零售,保留,,零售,门店交易库,订单,ord_sub_order,,
+ord_visit_attendee,新建,0,,新建,抽象,零售,门店交易库,订单,ord_visit_attendee,同行人：一张到店单上的每个人，成人或儿童、座位、各自的权益,按电商、餐饮、美业的业务抽象复核后采纳
+pay_alert_event,支付库,0,支付,保留,,支付,支付库,审批、告警、异常与对账,pay_alert_event,,
+pay_alert_rule,支付库,5,支付,保留,,支付,支付库,审批、告警、异常与对账,pay_alert_rule,,
+pay_api_nonce,支付库 + shop 遗留副本,0,支付,保留,,基础能力,基础能力库,接入应用,pay_api_nonce,,
+pay_api_request_log,支付库 + shop 遗留副本,80872,支付,并入,去冗余,,,,,pay_channel_call_log（加方向：入站请求、渠道回调、出站调用）,接口往来日志三张
+pay_app,支付库 + shop 遗留副本,2,支付,保留,,基础能力,基础能力库,接入应用,pay_app,,
+pay_app_application,支付库,1,支付,保留,,基础能力,基础能力库,接入应用,pay_app_application,,
+pay_app_grant,支付库 + shop 遗留副本,0,支付,保留,,基础能力,基础能力库,接入应用,pay_app_grant,,
+pay_app_key_challenge,支付库,0,支付,并入,去冗余,,,,,pay_api_nonce,一次性防重放值两张
+pay_approval,支付库 + shop 遗留副本,64,支付,退役,抽象,,,,,由独立的审核与工单服务承担，本库不建表；业务表只存审核单号,第二轮业务复核后采纳
+pay_approval_event,支付库,0,支付,并入,去冗余,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,审批
+pay_approval_link,支付库,0,支付,并入,去冗余,,,,,独立的审核与工单服务,审批
+pay_approval_policy_revision,支付库,58,支付,退役,抽象,,,,,由独立的审核与工单服务承担，本库不建表；业务表只存审核单号,第二轮业务复核后采纳
+pay_approval_task,支付库,92,支付,退役,抽象,,,,,由独立的审核与工单服务承担，本库不建表；业务表只存审核单号,第二轮业务复核后采纳
+pay_attempt_inquiry,支付库,89,支付,并入,去冗余,,,,,pay_channel_operation_intent（补查是一种渠道操作）,向渠道补查三套
+pay_biz_notify,支付库 + shop 遗留副本,28,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_biz_notify,,
+pay_biz_notify_attempt,支付库 + shop 遗留副本,3274,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_biz_notify_attempt,,
+pay_callback_log,支付库 + shop 遗留副本,30,支付,并入,去冗余,,,,,pay_channel_call_log（加方向：入站请求、渠道回调、出站调用）,接口往来日志三张
+pay_channel,支付库,17,支付,保留,,支付,支付库,渠道与支付产品,pay_channel,,
+pay_channel_account_change,新建,0,,新建,抽象,支付,支付库,渠道与支付产品,pay_channel_account_change,渠道账户变更申请：认领、转移、资料修改,
+pay_channel_account_claim,支付库,0,支付,并入,抽象,,,,,pay_channel_account_change,渠道账户的认领、转移、修改各一张
+pay_channel_account_claim_command,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_channel_account_claim_file,支付库,0,支付,并入,去冗余,,,,,pay_entity_profile_file（改为通用加密文件）,加密文件三张同构
+pay_channel_account_transfer,支付库,4,支付,并入,抽象,,,,,pay_channel_account_change,渠道账户的认领、转移、修改各一张
+pay_channel_bill,支付库,0,支付,保留,,支付,支付库,渠道与支付产品,pay_channel_bill,,
+pay_channel_bill_line,支付库,0,支付,保留,,支付,支付库,渠道与支付产品,pay_channel_bill_line,,
+pay_channel_call_log,支付库 + shop 遗留副本,2458,支付,保留,,支付,支付库,渠道与支付产品,pay_channel_call_log,,
+pay_channel_device_binding,支付库,0,支付,并入,抽象,,,,,pay_terminal_payment_binding,终端与渠道设备的绑定两处
+pay_channel_endpoint,支付库,10,支付,保留,,支付,支付库,渠道与支付产品,pay_channel_endpoint,,
+pay_channel_env_credential,支付库,3,支付,并入,抽象,,,,,基础能力库 sec_key、sec_key_version,渠道凭证就是密钥
+pay_channel_env_credential_version,支付库,3,支付,并入,抽象,,,,,基础能力库 sec_key、sec_key_version,渠道凭证就是密钥
+pay_channel_execution_ownership,支付库,56,支付,并入,去冗余,,,,,pay_channel_transaction_context,交易上下文归属
+pay_channel_followup,支付库 + shop 遗留副本,45,支付,并入,去冗余,,,,,pay_channel_operation_intent（补查是一种渠道操作）,向渠道补查三套
+pay_channel_inquiry_request,支付库,0,支付,并入,去冗余,,,,,pay_channel_operation_intent（补查是一种渠道操作）,向渠道补查三套
+pay_channel_lifecycle_log,支付库 + shop 遗留副本,329,支付,并入,去冗余,,,,,基础能力库统一审计,状态变更日志两张
+pay_channel_observation,支付库,412,支付,保留,,支付,支付库,渠道与支付产品,pay_channel_observation,,
+pay_channel_operation_intent,支付库,78,支付,保留,,支付,支付库,渠道与支付产品,pay_channel_operation_intent,,
+pay_channel_product,支付库 + shop 遗留副本,17,支付,保留,,支付,支付库,渠道与支付产品,pay_channel_product,,
+pay_channel_product_market,支付库 + shop 遗留副本,0,支付,并入,去冗余,,,,,pay_product_capability,产品限额两处
+pay_channel_provider_trade_binding,支付库,38,支付,并入,抽象,,,,,pay_channel_transaction_context,渠道交易号绑定
+pay_channel_qualification,支付库,23,支付,保留,,支付,支付库,渠道与支付产品,pay_channel_qualification,,
+pay_channel_return_ref,支付库,52,支付,保留,,支付,支付库,渠道与支付产品,pay_channel_return_ref,,
+pay_channel_transaction_context,支付库,56,支付,保留,,支付,支付库,渠道与支付产品,pay_channel_transaction_context,,
+pay_checkout_display_revision,支付库,1,支付,并入,去冗余,,,,,基础能力库 sys_sequence,发号两张
+pay_checkout_session,支付库 + shop 遗留副本,164,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_checkout_session,,
+pay_collection_entry,支付库,13,支付,保留,,支付,支付库,渠道与支付产品,pay_collection_entry,,
+pay_collection_entry_command,支付库,46,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_collection_entry_product,支付库,24,支付,并入,抽象,,,,,pay_collection_policy_item,收款策略与入口各带明细表
+pay_collection_policy,支付库,5,支付,保留,,支付,支付库,渠道与支付产品,pay_collection_policy,,
+pay_collection_policy_item,新建,0,,新建,抽象,支付,支付库,渠道与支付产品,pay_collection_policy_item,收款策略 / 收款入口下开通的产品与支付方式,
+pay_collection_policy_method,支付库,1,支付,并入,抽象,,,,,pay_collection_policy_item,收款策略与入口各带明细表
+pay_collection_policy_product,支付库,10,支付,并入,抽象,,,,,pay_collection_policy_item,收款策略与入口各带明细表
+pay_data_scope_grant,支付库,8,支付,并入,抽象,,,,,基础能力库 sys_grant,权限统一：运营、商户、支付各一套角色授权
+pay_document_number,支付库 + shop 遗留副本,94,支付,并入,抽象,,,,,基础能力库 core_document_number,库里只存业务数据：事件是公共能力，防重是功能能力
+pay_document_sequence,支付库 + shop 遗留副本,13,支付,并入,去冗余,,,,,基础能力库 sys_sequence,发号两张
+pay_ent_command_dedup,支付库 + shop 遗留副本,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_ent_exception,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,pay_exception,异常工单两张
+pay_ent_exception_action,支付库 + shop 遗留副本,0,支付,改归属,抽象,会员营销,会员营销库,卡券,pay_ent_exception_action,卡券与支付之间的对接、异常处理与对账,按电商、餐饮、美业的业务抽象复核后采纳
+pay_ent_inbox,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,库里只存业务数据：事件是公共能力，防重是功能能力
+pay_ent_outbox,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,库里只存业务数据：事件是公共能力，防重是功能能力
+pay_ent_recon_diff,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_recon_diff,对账差异两张
+pay_ent_recon_run,支付库 + shop 遗留副本,0,支付,改归属,抽象,会员营销,会员营销库,卡券,pay_ent_recon_run,卡券与支付之间的对接、异常处理与对账,按电商、餐饮、美业的业务抽象复核后采纳
+pay_ent_source_fence,支付库 + shop 遗留副本,0,支付,改归属,抽象,会员营销,会员营销库,卡券,pay_ent_source_fence,卡券与支付之间的对接、异常处理与对账,按电商、餐饮、美业的业务抽象复核后采纳
+pay_entity_channel_request,支付库,7,支付,保留,,支付商户,支付商户库,进件与主体资料,pay_entity_channel_request,,
+pay_entity_profile,支付库,8,支付,保留,,支付商户,支付商户库,进件与主体资料,pay_entity_profile,进件用的主体资料：主体与资质以平台基础库为准，这里只存进件用了哪一版和渠道回执,
+pay_entity_profile_command,支付库,50,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_entity_profile_contact,支付库,3,支付,保留,,支付商户,支付商户库,进件与主体资料,pay_entity_profile_contact,,
+pay_entity_profile_file,支付库,35,支付,保留,,支付商户,支付商户库,进件与主体资料,pay_entity_profile_file,,
+pay_entity_profile_supplement,支付库,0,支付,保留,,支付商户,支付商户库,进件与主体资料,pay_entity_profile_supplement,,
+pay_exception,支付库 + shop 遗留副本,0,支付,保留,,支付,支付库,审批、告警、异常与对账,pay_exception,,
+pay_execution_environment_binding,支付库,1104,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_execution_environment_binding,,
+pay_flyway_history,shop 库,0,支付,不迁入,去冗余,,,,,迁移历史,
+pay_icashpay_cancel_dispatch,支付库,0,支付,并入,去冗余,,,,,pay_channel_operation_intent,其他渠道专用表可用通用模型
+pay_internal_delivery_ack,支付库,0,支付,并入,去冗余,,,,,pay_biz_notify_attempt（回执是一次投递的结果）,通知回执
+pay_jkopay_query_gate,支付库,35,支付,并入,去冗余,,,,,pay_channel_operation_intent,其他渠道专用表可用通用模型
+pay_jkopay_recovery_payload,支付库,0,支付,并入,去冗余,,,,,pay_raw_payload,其他渠道专用表可用通用模型
+pay_ledger_entry,支付库 + shop 遗留副本,62,支付,并入,抽象,,,,,led_entry,账：现金、积分、储值各记一套账
+pay_ledger_voucher,支付库 + shop 遗留副本,31,支付,并入,抽象,,,,,led_voucher,账：现金、积分、储值各记一套账
+pay_linepay_confirmation,支付库,27,支付,并入,去冗余,,,,,pay_channel_observation,LINE Pay 专用表是通用渠道模型之前的实现
+pay_linepay_intent,支付库,32,支付,并入,去冗余,,,,,pay_channel_operation_intent,LINE Pay 专用表是通用渠道模型之前的实现
+pay_linepay_redirect,支付库,29,支付,并入,去冗余,,,,,pay_channel_return_ref,LINE Pay 专用表是通用渠道模型之前的实现
+pay_linepay_return_ref,支付库,32,支付,并入,去冗余,,,,,pay_channel_return_ref,LINE Pay 专用表是通用渠道模型之前的实现
+pay_manager_code,支付库 + shop 遗留副本,0,支付,并入,去冗余,,,,,pay_collection_entry（二维码、店长码都是收款入口的一种）,收款入口多套
+pay_merchant,支付库 + shop 遗留副本,1631,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_merchant,,
+pay_merchant_assisted_profile_draft,支付库,0,支付,并入,去冗余,,,,,pay_onboarding_draft,代填资料
+pay_merchant_assisted_profile_receipt,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_merchant_binding,支付库 + shop 遗留副本,29,支付,并入,去冗余,,,,,pay_merchant_store_link,门店与支付商户的绑定两套
+pay_merchant_collection_ack,支付库,26,支付,并入,去冗余,,,,,pay_biz_notify_attempt（回执是一次投递的结果）,通知回执
+pay_merchant_creation,支付库,1,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_merchant_membership,支付库,6,支付,并入,抽象,,,,,基础能力库 基础能力库 sys_grant,商户成员是授权
+pay_merchant_product,支付库 + shop 遗留副本,1815,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_merchant_product,,
+pay_merchant_profile_revision,支付库,16,支付,并入,抽象,,,,,pay_entity_profile,主体资料两处
+pay_merchant_source_event,支付库,714,支付,并入,去冗余,,,,,基础能力库的公共事件（主体与门店的同步事件合一）,来源同步事件两张
+pay_merchant_source_link,支付库,714,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_merchant_source_link,,
+pay_merchant_status_log,支付库 + shop 遗留副本,1148,支付,并入,抽象,,,,,基础能力库 pay_operation_audit,状态变更日志是审计
+pay_merchant_store_link,支付库,828,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_merchant_store_link,,
+pay_newebpay_modification,支付库,0,支付,并入,抽象,,,,,pay_channel_account_change,渠道账户的认领、转移、修改各一张
+pay_ngenius_event_inbox,支付库,0,支付,并入,去冗余,,,,,pay_channel_call_log（渠道入站事件）,其他渠道专用表可用通用模型
+pay_onboarding,支付库 + shop 遗留副本,12,支付,保留,,支付商户,支付商户库,进件与主体资料,pay_onboarding,,
+pay_onboarding_draft,支付库,9,支付,保留,,支付商户,支付商户库,进件与主体资料,pay_onboarding_draft,,
+pay_onboarding_draft_command,支付库,42,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_onboarding_file,支付库,17,支付,并入,去冗余,,,,,pay_entity_profile_file（改为通用加密文件）,加密文件三张同构
+pay_onboarding_material,支付库 + shop 遗留副本,71,支付,并入,去冗余,,,,,pay_onboarding_draft + 加密文件表,进件材料新旧两套
+pay_onboarding_newebpay_credential,支付库,0,支付,并入,抽象,,,,,基础能力库 sec_key、sec_key_version,渠道凭证就是密钥
+pay_onboarding_newebpay_hint,支付库,0,支付,并入,抽象,,,,,pay_channel_call_log（回调提示）,蓝新进件的专用表
+pay_onboarding_newebpay_runtime,支付库,0,支付,并入,抽象,,,,,pay_entity_channel_request（渠道进件请求的运行态）,蓝新进件的专用表
+pay_onboarding_supplement,支付库,0,支付,并入,去冗余,,,,,pay_entity_profile_supplement,补件两处
+pay_onboarding_version,支付库 + shop 遗留副本,4,支付,保留,,支付商户,支付商户库,进件与主体资料,pay_onboarding_version,,
+pay_operation_audit,支付库,17559,支付,保留,,基础能力,基础能力库,审计,pay_operation_audit,,
+pay_order,支付库 + shop 遗留副本,156,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_order,,
+pay_pending_action,支付库,0,支付,并入,抽象,,,,,独立的审核与工单服务,待审动作就是审批
+pay_permission_mapping,支付库,0,支付,并入,抽象,,,,,基础能力库 sys_role_point,权限统一：运营、商户、支付各一套角色授权
+pay_platform_collection_head,支付库 + shop 遗留副本,0,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_platform_collection_head,,
+pay_platform_collection_profile,支付库 + shop 遗留副本,0,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_platform_collection_profile,,
+pay_platform_merchant,支付库,757,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_platform_merchant,,
+pay_points_funds_authority,支付库,0,支付,保留,,账务结算,账务结算库,积分,pay_points_funds_authority,,
+pay_pos_acceptance_case,支付库,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_pos_acceptance_case,,
+pay_pos_acceptance_command,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_pos_acceptance_run,支付库,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_pos_acceptance_run,,
+pay_pos_action,支付库,0,支付,并入,抽象,,,,,pay_channel_operation_intent,终端交易是一种渠道交易
+pay_pos_command_receipt,支付库,0,支付,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,终端交易是一种渠道交易
+pay_pos_configuration,支付库,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_pos_configuration,,
+pay_pos_configuration_audit,支付库,0,支付,并入,抽象,,,,,基础能力库 pay_operation_audit,状态变更日志是审计
+pay_pos_configuration_command,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_pos_configuration_profile,支付库,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_pos_configuration_profile,,
+pay_pos_execution,支付库,0,支付,并入,抽象,,,,,pay_channel_transaction_context,终端交易是一种渠道交易
+pay_pos_identifier,支付库,0,支付,并入,抽象,,,,,pay_channel_transaction_context,终端交易是一种渠道交易
+pay_pos_observation,支付库,0,支付,并入,抽象,,,,,pay_channel_observation,终端交易是一种渠道交易
+pay_product_access_method,支付库,21,支付,并入,抽象,,,,,pay_product_capability,支付产品的四张属性表
+pay_product_account_mode,支付库,17,支付,并入,抽象,,,,,pay_product_capability,支付产品的四张属性表
+pay_product_capability,新建,0,,新建,抽象,支付,支付库,渠道与支付产品,pay_product_capability,支付产品的能力项：接入方式、账户模式、币种限额、支付方式（四张属性表合一）,
+pay_product_currency_limit,支付库,17,支付,并入,抽象,,,,,pay_product_capability,支付产品的四张属性表
+pay_product_payment_method,支付库,18,支付,并入,抽象,,,,,pay_product_capability,支付产品的四张属性表
+pay_qr_code,支付库 + shop 遗留副本,13,支付,并入,去冗余,,,,,pay_collection_entry（二维码、店长码都是收款入口的一种）,收款入口多套
+pay_raw_payload,支付库 + shop 遗留副本,1023207,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_raw_payload,,
+pay_refund,支付库 + shop 遗留副本,0,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_refund,,
+pay_refund_review_rule,支付库 + shop 遗留副本,0,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_refund_review_rule,,
+pay_risk_shadow_log,支付库 + shop 遗留副本,0,支付,保留,,支付,支付库,审批、告警、异常与对账,pay_risk_shadow_log,,
+pay_sequence,支付库,33,支付,并入,抽象,,,,,基础能力库的公共发号（sys_sequence）,库里只存业务数据：事件是公共能力，防重是功能能力
+pay_setting,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,基础能力库 sys_setting,
+pay_source_association_repair,支付库,1,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_source_change,,
+pay_source_command,支付库,120,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_source_control,支付库,1577,支付,并入,抽象,,,,,pay_merchant_source_link,来源映射与其当前生效记录
+pay_source_store_claim,支付库,0,支付,并入,抽象,,,,,pay_source_change（改名 pay_source_change）,来源映射的变更两张
+pay_store_payment_display,支付库,838,支付,并入,抽象,,,,,由 pay_collection_policy 计算得出,门店可用支付方式是策略的投影
+pay_store_projection,支付库,791,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_store_projection,,
+pay_store_sync_event,支付库,2403,支付,并入,抽象,,,,,基础能力库的公共事件（支付库统一事件收件箱）,同步事件是入站事件
+pay_subscription,支付库,0,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_subscription,,
+pay_subscription_bill,支付库,0,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,pay_subscription_bill,,
+pay_subscription_charge,支付库,0,支付,并入,抽象,,,,,stl_payment,订阅扣款的渠道交易
+pay_subscription_operation,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_subscription_route,支付库,0,支付,并入,抽象,,,,,pay_collection_policy,订阅扣款的收款路由
+pay_sv_handoff_history,shop 库,1,支付,退役,去冗余,,,,,一次性交接记录,储值迁移痕迹
+pay_terminal,支付库 + shop 遗留副本,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_terminal,设备身份以平台基础库 mch_store_device 为准，这里只存设备号与本业务的配置,
+pay_terminal_batch,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,pay_channel_bill,终端批结是一种渠道账单
+pay_terminal_config_audit,支付库,0,支付,并入,去冗余,,,,,pay_pos_configuration、基础能力库统一审计,终端配置两套
+pay_terminal_config_command,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_terminal_execution_profile,支付库,0,支付,并入,去冗余,,,,,pay_pos_configuration_profile,终端配置两套
+pay_terminal_execution_slot,支付库,0,支付,并入,去冗余,,,,,pay_channel_transaction_context,终端交易执行两套
+pay_terminal_execution_task,支付库,0,支付,并入,去冗余,,,,,pay_channel_transaction_context,终端交易执行两套
+pay_terminal_manager_authorization,支付库,0,支付,并入,去冗余,,,,,pay_terminal_operator_session（店长授权是会话的一种）,终端会话两张
+pay_terminal_merchant_command,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_terminal_operator_session,支付库,0,支付,改归属,抽象,账号认证,账号认证库,会话与登录,pay_terminal_operator_session,收银员在终端上的会话,第二轮业务复核后采纳
+pay_terminal_payment_binding,支付库,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_terminal_payment_binding,,
+pay_terminal_product,支付库,0,支付,并入,去冗余,,,,,pay_pos_configuration_profile,终端配置两套
+pay_terminal_retirement_command,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
+pay_wallet_authorization,支付库,16,支付,并入,抽象,,,,,pay_wallet_interaction,钱包交互与授权是同一次交互的两步
+pay_wallet_authorization_intent,支付库,0,支付,并入,去冗余,,,,,pay_wallet_interaction（意向是授权的一个状态）,钱包授权
+pay_wallet_interaction,支付库,17,支付,保留,,支付,支付库,渠道与支付产品,pay_wallet_interaction,,
+pay_wallet_merchant_domain,支付库,0,支付,保留,,支付,支付库,渠道与支付产品,pay_wallet_merchant_domain,,
+pay_wallet_merchant_identity,支付库,1,支付,保留,,支付,支付库,渠道与支付产品,pay_wallet_merchant_identity,,
+pay_yitepay_access_token,支付库,0,支付,并入,去冗余,,,,,基础能力库 sec_key,亿特支付自带一套对账
+pay_yitepay_account_profile,支付库,0,支付,并入,抽象,,,,,pay_merchant（渠道商户属性）,亿特支付的专用表
+pay_yitepay_allocation,支付库,0,支付,并入,抽象,,,,,pay_channel_operation_intent（分配是一种渠道操作）,亿特支付的专用表
+pay_yitepay_balance_snapshot,支付库,0,支付,改归属,抽象,支付,支付库,渠道与支付产品,pay_channel_balance_snapshot,改名为 pay_channel_balance_snapshot,渠道余额快照改为通用
+pay_yitepay_event_inbox,支付库,0,支付,并入,去冗余,,,,,pay_channel_call_log（渠道入站事件）,其他渠道专用表可用通用模型
+pay_yitepay_receipt,支付库,0,支付,并入,抽象,,,,,stl_payment（入金流水）,亿特支付的专用表
+pay_yitepay_recon_cursor,支付库,0,支付,并入,去冗余,,,,,pay_channel_bill、pay_channel_bill_line、stl_recon_diff,亿特支付自带一套对账
+pay_yitepay_recon_diff,支付库,0,支付,并入,去冗余,,,,,pay_channel_bill、pay_channel_bill_line、stl_recon_diff,亿特支付自带一套对账
+pay_yitepay_recon_run,支付库,0,支付,并入,去冗余,,,,,pay_channel_bill、pay_channel_bill_line、stl_recon_diff,亿特支付自带一套对账
+pay_yitepay_statement_entry,支付库,0,支付,并入,去冗余,,,,,pay_channel_bill、pay_channel_bill_line、stl_recon_diff,亿特支付自带一套对账
+pay_yitepay_trade_order,支付库,0,支付,并入,去冗余,,,,,pay_channel_transaction_context,亿特支付自带一套对账
+pay_yitepay_va,支付库,0,支付,并入,抽象,,,,,pay_collection_entry（虚拟账户是一种收款入口）,亿特支付的专用表
+payment_collection_receipt,shop 库,28,零售,并入,抽象,,,,,ord_payment,一笔订单收到的一笔款：线上回执、线下记账、门店代收各一张
+payment_collection_scope,shop 库,7,零售,并入,抽象,,,,,任务库 job_cursor,回执游标是任务游标
+payment_collection_source,shop 库,6,零售,并入,抽象,,,,,支付库 pay_merchant_source_link,收款来源绑定在支付侧
+payment_collection_stream,shop 库,44,零售,并入,抽象,,,,,ord_payment,一笔订单收到的一笔款：线上回执、线下记账、门店代收各一张
+pmt_activity,shop 库,6,会员营销,保留,,会员营销,会员营销库,活动,pmt_activity,,
+pmt_activity_audience,shop 库,0,会员营销,并入,抽象,,,,,pmt_activity_scope,活动的适用范围：商品、人群、报名商品各一张
+pmt_activity_budget,shop 库,0,会员营销,保留,,会员营销,会员营销库,额度与预留,pmt_quota,额度：活动或卡券模板的总量、每人限量、周期限量，记已占与已用,额度：活动总量、每人限量、卡券发行量、周期限量各一张
+pmt_activity_goods,shop 库,2,会员营销,并入,抽象,,,,,pmt_activity_scope,活动的适用范围：商品、人群、报名商品各一张
+pmt_activity_participant,shop 库,0,会员营销,并入,抽象,,,,,pmt_quota,额度：活动总量、每人限量、卡券发行量、周期限量各一张
+pmt_activity_reservation,shop 库,0,会员营销,保留,,会员营销,会员营销库,额度与预留,pmt_reservation,预留：下单时先占额度，支付后确认或释放,预留：活动名额与卡券售卖各一张
+pmt_activity_rule,shop 库,4,会员营销,并入,抽象,,,,,pmt_activity_version（规则快照）,活动规则新旧两处
+pmt_activity_scope,shop 库,0,会员营销,保留,,会员营销,会员营销库,活动,pmt_activity_scope,,
+pmt_activity_version,shop 库,0,会员营销,保留,,会员营销,会员营销库,活动,pmt_activity_version,,
+pmt_apply,shop 库,0,会员营销,并入,抽象,,,,,ent_usage（使用记录：活动优惠与卡券共用，用来源区分）,第二轮业务复核后采纳
+pmt_benefit_intent,shop 库,0,会员营销,并入,抽象,,,,,ent_use_intent,优惠意向与卡券使用提案是同一步
+pmt_brand_activity_owner,shop 库,0,会员营销,并入,抽象,,,,,pmt_activity,品牌归属是活动的属性
+pmt_brand_cost_fact,shop 库,0,会员营销,并入,抽象,,,,,支付库 stl_settlement_line,品牌活动成本分摊
+pmt_brand_cost_rule,shop 库,0,会员营销,保留,,会员营销,会员营销库,品牌成本分摊,pmt_brand_cost_rule,,
+pmt_brand_cost_snapshot,shop 库,0,会员营销,并入,抽象,,,,,pmt_brand_cost_rule（规则版本）,品牌活动成本分摊
+pmt_brand_cost_source,shop 库,0,会员营销,保留,,会员营销,会员营销库,品牌成本分摊,pmt_brand_cost_source,,
+pmt_brand_cost_statement,shop 库,0,会员营销,并入,抽象,,,,,支付库 stl_settlement,品牌活动成本分摊
+pmt_brand_coupon_command,shop 库,0,会员营销,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
+pmt_brand_coupon_source,shop 库,0,会员营销,并入,抽象,,,,,ent_template,品牌券来源是卡券模板的属性
+pmt_brand_marketing_command,shop 库,0,会员营销,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
+pmt_command_dedup,shop 库,1,会员营销,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
+pmt_coupon,shop 库,2,会员营销,并入,去冗余,,,,,ent_template(+version)（券是卡券的一种）,
+pmt_coupon_issue,shop 库,2,会员营销,并入,去冗余,,,,,ent_issue_batch,
+pmt_coupon_scope,shop 库,2,会员营销,并入,去冗余,,,,,ent_template(+version)（券是卡券的一种）,
+pmt_effect_projection,shop 库,0,会员营销,并入,抽象,,,,,ent_usage,优惠的使用记录两张
+pmt_enrollment,shop 库,0,会员营销,保留,,会员营销,会员营销库,活动,pmt_enrollment,,
+pmt_enrollment_goods,shop 库,0,会员营销,并入,抽象,,,,,pmt_activity_scope,活动的适用范围：商品、人群、报名商品各一张
+pmt_migration_decision,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+pmt_migration_return,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+pmt_migration_source,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+pmt_pay_coupon_projection,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
+pmt_period,shop 库,0,会员营销,改归属,抽象,零售,门店交易库,社区团购,cmt_period,团购周期：截单时间、提货日,第二轮业务复核后采纳
+pmt_preset_template,shop 库,0,会员营销,保留,,会员营销,会员营销库,活动,pmt_preset_template,,
+pmt_recharge_intent,shop 库,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
+pmt_recharge_tier,shop 库,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
+pmt_sv_approval,shop 库,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
+pmt_sv_release_link,shop 库,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
+pmt_user_coupon,shop 库,0,会员营销,并入,去冗余,,,,,ent_instance,
+prd_category,shop 库,6,零售,保留,,零售,门店交易库,分类与规格,prd_category,,
+prd_category_pay_mode,shop 库,0,零售,并入,抽象,,,,,prd_category,类目支付方式是类目属性
+prd_category_points,shop 库,0,,不迁入,去冗余,,,,,V704 已删,
+prd_category_spec,shop 库,0,零售,保留,,零售,门店交易库,分类与规格,prd_spec_usage,规格维度的使用范围：类目或商家,规格的使用范围：类目与商家各一套
+prd_category_spec_value,shop 库,0,零售,保留,,零售,门店交易库,分类与规格,prd_spec_value_usage,规格值的使用范围与覆盖（与规格维度的使用不是同一粒度）,
+prd_ent_binding_command,shop 库,0,会员营销,退役,去冗余,,,,,技术指令表,
+prd_entitlement_binding,shop 库,0,会员营销,并入,抽象,,,,,prd_goods,卡项商品绑定是商品的行业档案
+prd_entity_category_inv,shop 库,0,会员营销,并入,抽象,,,,,prd_store_category,商户类目是否管库存
+prd_execution_retention,shop 库,0,零售,退役,去冗余,,,,,两套库存间的同步 / 对齐 / 占用；shop 只留 prd_store_stock、prd_stock_lock,
+prd_execution_retention_route,shop 库,0,零售,退役,去冗余,,,,,两套库存间的同步 / 对齐 / 占用；shop 只留 prd_store_stock、prd_stock_lock,
+prd_fulfillment_requirement,新建,0,,新建,抽象,零售,门店交易库,商品,prd_fulfillment_requirement,交付要求：一个商品需要哪类资源、工位或角色，各几个、什么顺序,按电商、餐饮、美业的业务抽象复核后采纳
+prd_goods,shop 库,4,零售,保留,,零售,门店交易库,商品,prd_goods,,
+prd_goods_draft,shop 库,1,零售,并入,抽象,,,,,prd_goods_revision,商品草稿是修订的一个状态
+prd_goods_favorite,shop 库,0,零售,并入,抽象,,,,,平台基础库 mbr_favorite（改为通用收藏）,收藏商品与收藏门店
+prd_goods_profile,新建,0,,并入,抽象,,,,,prd_goods（行业扩展载荷，随修订走版本）,行业档案是商品的扩展内容
+prd_goods_revision,shop 库,3,零售,保留,,零售,门店交易库,商品,prd_goods_revision,,
+prd_merchant_spec,shop 库,0,零售,并入,抽象,,,,,prd_spec_usage,规格的使用范围：类目与商家各一套
+prd_merchant_spec_override,shop 库,0,零售,并入,抽象,,,,,prd_spec_value_usage,规格的使用范围：类目与商家各一套
+prd_merchant_spec_value,shop 库,0,零售,并入,抽象,,,,,prd_spec_value_usage,规格的使用范围：类目与商家各一套
+prd_sell_rule,shop 库,0,零售,并入,抽象,,,,,prd_catalog_item,售卖规则是目录条目的规则
+prd_sku,shop 库,5,零售,保留,,零售,门店交易库,商品,prd_sku,,
+prd_sku_pricing_policy,shop 库,0,零售,并入,抽象,,,,,prd_sku,SKU 的促销资格与税类是 SKU 属性
+prd_spec_dim,shop 库,3,零售,保留,,零售,门店交易库,分类与规格,prd_spec_dim,,
+prd_spec_template,shop 库,0,零售,保留,,零售,门店交易库,分类与规格,prd_spec_template,,
+prd_spec_value,shop 库,9,零售,保留,,零售,门店交易库,分类与规格,prd_spec_value,,
+prd_spu_std,shop 库,0,零售,并入,抽象,,,,,prd_goods,标准商品库是平台名下的商品
+prd_stock_alignment_batch,shop 库,0,零售,退役,去冗余,,,,,两套库存间的同步 / 对齐 / 占用；shop 只留 prd_store_stock、prd_stock_lock,
+prd_stock_alignment_line,shop 库,0,零售,退役,去冗余,,,,,两套库存间的同步 / 对齐 / 占用；shop 只留 prd_store_stock、prd_stock_lock,
+prd_stock_lock,shop 库,2,零售,保留,,零售,门店交易库,商品,prd_stock_lock,,
+prd_stock_restore,shop 库,0,零售,退役,去冗余,,,,,两套库存间的同步 / 对齐 / 占用；shop 只留 prd_store_stock、prd_stock_lock,
+prd_stock_sync_log,shop 库,0,零售,退役,去冗余,,,,,两套库存间的同步 / 对齐 / 占用；shop 只留 prd_store_stock、prd_stock_lock,
+prd_stock_sync_operation,shop 库,0,零售,退役,去冗余,,,,,两套库存间的同步 / 对齐 / 占用；shop 只留 prd_store_stock、prd_stock_lock,
+prd_store_catalog,shop 库,0,零售,保留,,零售,门店交易库,商品,prd_store_catalog,,
+prd_store_catalog_version,shop 库,0,零售,保留,,零售,门店交易库,商品,prd_store_catalog_version,门店目录的发布版本,
+prd_store_goods,shop 库,9,零售,并入,抽象,,,,,prd_catalog_item（默认目录的条目）,门店卖哪些商品两处
+prd_store_price,shop 库,1,零售,保留,,零售,门店交易库,商品,prd_store_sku,门店 SKU：门店价与门店可售量,门店价与门店库存都按门店 + SKU
+prd_store_stock,shop 库,1,零售,并入,抽象,,,,,prd_store_sku,门店价与门店库存都按门店 + SKU
+prd_store_stock_sync,shop 库,0,零售,退役,去冗余,,,,,两套库存间的同步 / 对齐 / 占用；shop 只留 prd_store_stock、prd_stock_lock,
+prd_topic,shop 库,0,零售,改归属,抽象,会员营销,会员营销库,活动,prd_topic,专题与运营位,专题是营销的运营位
+prd_topic_goods,shop 库,0,零售,改归属,抽象,会员营销,会员营销库,活动,prd_topic_goods,专题下的商品,
+prn_action_log,shop 库,92,平台基础,并入,抽象,,,,,基础能力库统一审计,各处的变更日志都是审计
+prn_agent,shop 库,0,平台基础,并入,抽象,,,,,mch_store_device,本地打印代理是一台门店设备
+prn_attempt,shop 库,0,平台基础,保留,,平台服务,平台服务库,打印,prn_attempt,,
+prn_batch,shop 库,0,平台基础,保留,,平台服务,平台服务库,打印,prn_batch,打印批次：一个请求的初打与每次补打，下面拆成多个任务,平台基础复核后采纳（2026-11-25）
+prn_credential_version,shop 库,0,平台基础,并入,抽象,,,,,基础能力库 sec_key、sec_key_version,云打印凭据是密钥
+prn_device,shop 库,0,平台基础,并入,抽象,,,,,prn_printer,打印机两套
+prn_export_task,shop 库,48,平台基础,保留,,平台服务,平台服务库,地理、媒体、短链与导出,sys_export_file,导出文件：各模块共用的导出任务与产出文件,平台基础复核后采纳（2026-11-25）
+prn_incident,shop 库,0,平台基础,并入,抽象,,,,,独立的审核与工单服务,按电商、餐饮、美业的业务抽象复核后采纳
+prn_job,shop 库,0,平台基础,保留,,平台服务,平台服务库,打印,prn_job,,
+prn_operation,shop 库,92,平台基础,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,平台基础复核后采纳（2026-11-25）
+prn_policy_version,shop 库,0,平台基础,并入,抽象,,,,,prn_scene_policy,场景策略内容很小，版本历史归审计
+prn_printer,shop 库,0,平台基础,保留,,平台服务,平台服务库,打印,prn_printer,设备身份以平台基础库 mch_store_device 为准，这里只存设备号与本业务的配置,
+prn_printer_runtime,shop 库,0,平台基础,并入,抽象,,,,,prn_printer,投递状态与打印机一对一
+prn_receipt,shop 库,0,平台基础,并入,抽象,,,,,prn_attempt（投递记录：发送与各来源的回执）,回执是一次投递的结果
+prn_reconcile_cursor,shop 库,0,平台基础,并入,抽象,,,,,任务库 job_cursor,对账游标是任务游标
+prn_request,shop 库,26,平台基础,保留,,平台服务,平台服务库,打印,prn_request,,
+prn_route,shop 库,0,平台基础,并入,抽象,,,,,prn_route_catalog、prn_route_version,打印路由新旧两套
+prn_route_catalog,shop 库,0,平台基础,保留,,平台服务,平台服务库,打印,prn_route_catalog,,
+prn_route_version,shop 库,0,平台基础,保留,,平台服务,平台服务库,打印,prn_route_version,,
+prn_scene_policy,shop 库,0,平台基础,保留,,平台服务,平台服务库,打印,prn_scene_policy,,
+prn_simulation_run,shop 库,43,平台基础,并入,抽象,,,,,prn_request（类型 = 模拟）,模拟打印是不出纸的打印请求
+prn_store_stream,shop 库,2,平台基础,并入,抽象,,,,,基础能力库的公共事件（sys_outbox 等）（按门店连续排序的变更流）,平台基础复核后采纳（2026-11-25）
+prn_template,shop 库,0,平台基础,并入,抽象,,,,,prn_template_catalog、prn_template_version,打印模板新旧两套
+prn_template_catalog,shop 库,0,平台基础,保留,,平台服务,平台服务库,打印,prn_template_catalog,,
+prn_template_version,shop 库,0,平台基础,保留,,平台服务,平台服务库,打印,prn_template_version,,
+pts_account,shop 库,0,支付,并入,抽象,,,,,led_account,账：现金、积分、储值各记一套账
+pts_availability_projection,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+pts_cursor,shop 库,0,支付,并入,去冗余,,,,,任务库 job_cursor,游标
+pts_fund_evidence,shop 库,0,支付,保留,,账务结算,账务结算库,积分,pts_fund_evidence,,
+pts_fund_pool,shop 库,0,支付,并入,抽象,,,,,led_account,账：现金、积分、储值各记一套账
+pts_fund_transfer,shop 库,0,支付,并入,抽象,,,,,stl_payout,出款：提现、兑付、清分付款各一张
+pts_grant_line,shop 库,0,,不迁入,去冗余,,,,,V704 已删,
+pts_grant_position,shop 库,0,支付,并入,抽象,,,,,pts_position,积分头寸三张同构
+pts_inbox,shop 库,0,支付,并入,去冗余,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,事件收发
+pts_ledger_entry,shop 库,0,支付,并入,抽象,,,,,led_entry,账：现金、积分、储值各记一套账
+pts_lifecycle_fact,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+pts_merchant_agreement,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+pts_outbox,shop 库,0,支付,并入,去冗余,,,,,基础能力库的公共事件（基础能力库的公共事件（sys_outbox 等） 等）,事件收发
+pts_pause_interval,shop 库,0,支付,并入,去冗余,,,,,pts_record,积分启停三张
+pts_payout_ticket,shop 库,0,支付,并入,抽象,,,,,stl_payout,出款：提现、兑付、清分付款各一张
+pts_point_type,shop 库,0,支付,保留,,账务结算,账务结算库,积分,pts_point_type,,
+pts_pool_flow,shop 库,0,支付,并入,抽象,,,,,led_entry,账：现金、积分、储值各记一套账
+pts_pool_request,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+pts_position,新建,0,,新建,抽象,账务结算,账务结算库,积分,pts_position,积分头寸：发放、核销、退款准备（同构的三张合一，用类型区分）,
+pts_receivable,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+pts_receivable_allocation,shop 库,0,,不迁入,去冗余,,,,,V704 已删,
+pts_record,新建,0,,新建,抽象,账务结算,账务结算库,积分,pts_record,积分配置与事实记录：协议、规则、开关、充值计划等（同为“类型 + 键 + 状态 + 载荷”）,
+pts_redeem_line,shop 库,0,,不迁入,去冗余,,,,,V704 已删,
+pts_redeem_position,shop 库,0,支付,并入,抽象,,,,,pts_position,积分头寸三张同构
+pts_refund_preparation,shop 库,0,支付,并入,抽象,,,,,pts_position,积分头寸三张同构
+pts_refund_preparation_line,shop 库,0,,不迁入,去冗余,,,,,V704 已删,
+pts_refund_reserve,shop 库,0,支付,并入,抽象,,,,,led_account,账：现金、积分、储值各记一套账
+pts_stat_daily,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+pts_statement_build,shop 库,0,支付,并入,去冗余,,,,,stl_settlement,积分对账单六张
+pts_statement_build_item,shop 库,0,支付,并入,抽象,,,,,stl_settlement_line,结算单：现金、储值、积分各一套
+pts_statement_confirmation,shop 库,0,支付,并入,去冗余,,,,,stl_settlement,积分对账单六张
+pts_statement_final_fact,shop 库,0,支付,并入,去冗余,,,,,pts_record,积分对账单六张
+pts_statement_line,shop 库,0,,不迁入,去冗余,,,,,V704 已删,
+pts_statement_revision,shop 库,0,,不迁入,去冗余,,,,,V704 已删,
+pts_statement_source_history,shop 库,0,支付,并入,去冗余,,,,,stl_settlement_line（原 stl_settlement_line）,积分对账单六张
+pts_store_statement,shop 库,0,支付,并入,抽象,,,,,stl_settlement,结算单：现金、储值、积分各一套
+pts_switch,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+pts_switch_log,shop 库,0,支付,并入,去冗余,,,,,pts_record,积分启停三张
+pts_topup_plan,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+pts_user_account,shop 库,0,支付,退役,去冗余,,,,,由 pts_account、pts_ledger_entry 取代,积分第一代账户
+pts_user_adjustment,shop 库,0,支付,并入,抽象,,,,,pts_record,积分的配置与事实记录十二张同形
+pts_user_ledger,shop 库,0,支付,退役,去冗余,,,,,由 pts_account、pts_ledger_entry 取代,积分第一代账户
+pts_voucher,shop 库,0,支付,并入,抽象,,,,,led_voucher,账：现金、积分、储值各记一套账
+retail_channel_import_guard,shop 库,0,零售,并入,去冗余,,,,,ord_sub_order,
+retail_channel_order_source,shop 库,0,零售,并入,去冗余,,,,,ord_sub_order（外部订单来源）,
+retail_channel_party,shop 库,0,零售,并入,去冗余,,,,,一张渠道参与方表（并入 cim_connection）,
+risk_blacklist,shop 库,0,平台基础,保留,,平台服务,平台服务库,风控与内容审核,risk_blacklist,,
+risk_event,shop 库,0,平台基础,保留,,平台服务,平台服务库,风控与内容审核,risk_event,,
+risk_rule,shop 库,2,平台基础,保留,,平台服务,平台服务库,风控与内容审核,risk_rule,,
+risk_signal_hit,shop 库,0,平台基础,保留,,平台服务,平台服务库,风控与内容审核,risk_signal_hit,,
+rpt_build_batch,报表库,0,报表,保留,,报表,报表库,构建,rpt_build_batch,构建记录：一次日报计算的尝试、结果与耗时,
+rpt_daily_goods,报表库,0,报表,并入,抽象,,,,,rpt_metric_daily（商品销售指标，维度 = 商品）,每日指标三种形态
+rpt_daily_store,报表库,0,报表,并入,抽象,,,,,rpt_metric_daily（门店经营指标）,每日指标三种形态
+rpt_day_publication,报表库,0,报表,保留,,报表,报表库,发布,rpt_day_publication,日报发布头：某门店某天某种口径当前对外的是哪一版，含资金日报,
+rpt_dirty_day,报表库,0,报表,保留,,报表,报表库,构建,rpt_dirty_day,待重算的日子：业务数据晚到或被修改后，哪些天要重算,
+rpt_export_task,报表库,0,报表,并入,抽象,,,,,平台基础库 sys_export_file,导出任务各模块共用
+rpt_flyway_history,报表库,9,报表,不迁入,去冗余,,,,,迁移历史,
+rpt_food_metric_daily,报表库,0,报表,保留,,报表,报表库,每日指标,rpt_metric_daily,每日指标：某门店某天某个指标在某个维度上的值；门店经营、商品销售、餐饮、储值都用它,报表库整理
+rpt_funds_daily,报表库,36,报表,并入,抽象,,,,,rpt_day_publication（口径 = 资金）,发布头两套
+rpt_funds_daily_attempt,报表库,54,报表,并入,抽象,,,,,rpt_build_batch,构建尝试两套
+rpt_funds_daily_refund,报表库,0,报表,保留,,报表,报表库,发布,rpt_funds_daily_refund,资金日报的退款明细：一版多笔,
+rpt_funds_daily_revision,报表库,48,报表,保留,,报表,报表库,发布,rpt_publication_revision,发布版本：每次发布的结果留一版，可追溯当时看到的数字,报表库整理
+rpt_job_watermark,报表库,0,报表,并入,抽象,,,,,rpt_source_checkpoint,位点与水位三张
+rpt_log_daily_dirty,报表库,2,报表,并入,抽象,,,,,rpt_dirty_day,待重算的日子两套
+rpt_log_daily_expectation,报表库,4,报表,保留,,报表,报表库,构建,rpt_daily_expectation,应出的日报：哪一天该出哪份报表、何时就绪、何时截止,报表库整理
+rpt_log_daily_summary,报表库,3,报表,并入,抽象,,,,,rpt_publication_revision,发布版本两套
+rpt_log_event,报表库,156,报表,保留,,报表,报表库,事件摄入,rpt_event,摄入的业务事件：报表计算的原料，归档用分区而不另建表,报表库整理
+rpt_log_event_archive,报表库,0,报表,并入,抽象,,,,,rpt_event（按时间分区归档）,归档是存储方式
+rpt_log_ingest_watermark,报表库,1,报表,并入,抽象,,,,,rpt_source_checkpoint,位点与水位三张
+rpt_log_source_checkpoint,报表库,2,报表,保留,,报表,报表库,事件摄入,rpt_source_checkpoint,摄入位点：从各业务库读事件读到哪了,报表库整理
+rpt_scope_cursor,报表库,0,报表,保留,,报表,报表库,构建,rpt_scope_cursor,构建范围：哪些门店、哪种口径在出日报，排到哪一天,
+rpt_source_manifest,报表库,0,报表,保留,,报表,报表库,构建,rpt_source_manifest,来源清单：一次构建用了各业务库的哪些数据、到哪个时点、是否完整,
+rtl_channel_selection,shop 库,0,零售,并入,抽象,,,,,cim_catalog_scope（同步范围：含来源、策略与选品）,目录同步的范围、来源、策略、选品各一张
+rtl_channel_selection_command,shop 库,0,零售,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,请求幂等
+rtl_channel_selection_draft,shop 库,0,零售,并入,抽象,,,,,cim_catalog_scope,渠道选品的草稿是选品的状态
+rtl_channel_selection_revision,shop 库,0,零售,并入,抽象,,,,,cim_catalog_scope（同步范围：含来源、策略与选品）,目录同步的范围、来源、策略、选品各一张
+rvw_appeal,shop 库,0,零售,改归属,抽象,会员营销,会员营销库,评价与内容,rvw_appeal,评价申诉：商家对一条评价提出申诉，裁决成立则下架,评价与内容移出交易库
+rvw_review,shop 库,0,零售,改归属,抽象,会员营销,会员营销库,评价与内容,rvw_review,评价：评价对象可以是商品、门店或服务人员,评价与内容移出交易库
+rvw_review_like,shop 库,0,零售,改归属,抽象,会员营销,会员营销库,评价与内容,rvw_review_like,评价点赞,评价与内容移出交易库
+sec_access_log,shop 库,0,平台基础,改归属,抽象,基础能力,基础能力库,密钥,sec_access_log,各业务库共用的基础能力,
+sec_flyway_history,shop 库,0,平台基础,不迁入,去冗余,,,,,新库用新的基线与迁移历史,
+sec_key,shop 库,0,平台基础,改归属,抽象,基础能力,基础能力库,密钥,sec_key,各业务库共用的基础能力,
+sec_key_event,shop 库,0,平台基础,改归属,抽象,基础能力,基础能力库,密钥,sec_key_event,各业务库共用的基础能力,
+sec_key_policy,shop 库,0,平台基础,改归属,抽象,基础能力,基础能力库,密钥,sec_key_policy,各业务库共用的基础能力,
+sec_key_version,shop 库,0,平台基础,改归属,抽象,基础能力,基础能力库,密钥,sec_key_version,各业务库共用的基础能力,
+sec_master_key,shop 库,1,平台基础,改归属,抽象,基础能力,基础能力库,密钥,sec_master_key,各业务库共用的基础能力,
+sec_secret_blob,shop 库,7,平台基础,改归属,抽象,基础能力,基础能力库,密钥,sec_secret_blob,各业务库共用的基础能力,
+shedlock,shop 库,5,平台基础,并入,抽象,,,,,任务库 job_run（任务是否正在跑由任务库管）,任务锁归任务库
+shedlock@报表库,报表库,4,报表,并入,抽象,,,,,任务库 job_run（任务是否正在跑由任务库管）,任务锁归任务库
+stg_ume_active_payment_merchants_20261112,支付库,615,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
+stg_ume_active_stores_20261113,shop 库,664,,不迁入,去冗余,,,,,一次性导入暂存 / 备份,
+stg_ume_first_batch_store_accounts_20261113,shop 库,1667,,不迁入,去冗余,,,,,一次性导入暂存 / 备份,
+stg_ume_invoice_accounts,shop 库,2,,不迁入,去冗余,,,,,一次性导入暂存 / 备份,
+stl_bank_flow,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,pay_channel_bill_line,外部流水两张（银行、渠道）
+stl_bill,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement_line,结算单：现金、储值、积分各一套
+stl_bill_refund,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement_line,结算单：现金、储值、积分各一套
+stl_bill_refund_basis,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement_line,结算单：现金、储值、积分各一套
+stl_cash_refund_reverse,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,pay_channel_operation_intent,分账与冲正是一种渠道操作
+stl_channel_message,支付库 + shop 遗留副本,599768,支付,并入,抽象,,,,,pay_channel_call_log,渠道报文日志两张
+stl_fee_rule,支付库 + shop 遗留副本,0,支付,改归属,抽象,账务结算,账务结算库,结算内核,stl_fee_rule,分账费率规则,按电商、餐饮、美业的业务抽象复核后采纳
+stl_payment,支付库 + shop 遗留副本,122,支付,保留,,支付,支付库,现金（收款、退款、通知、订阅扣款）,stl_payment,,
+stl_payment_operation,shop 库,0,支付,并入,去冗余,,,,,stl_payment,收款流水的技术守卫
+stl_payment_order_guard,shop 库,0,支付,并入,去冗余,,,,,stl_payment,收款流水的技术守卫
+stl_payout,支付库 + shop 遗留副本,0,支付,保留,,账务结算,账务结算库,结算内核,stl_payout,,
+stl_points_pool,支付库 + shop 遗留副本,0,支付,退役,去冗余,,,,,由 pts_fund_pool、pts_refund_reserve 取代,积分旧资金池
+stl_points_refund_hold,支付库 + shop 遗留副本,0,支付,退役,去冗余,,,,,由 pts_fund_pool、pts_refund_reserve 取代,积分旧资金池
+stl_purchase_invoice,支付库 + shop 遗留副本,0,支付,保留,,账务结算,账务结算库,结算发票,stl_purchase_invoice,进项票登记：供应商开给平台的发票,平台自己的收票与开票，和门店给顾客开票不是同一个流程
+stl_recon_diff,支付库 + shop 遗留副本,0,支付,保留,,支付,支付库,审批、告警、异常与对账,stl_recon_diff,,
+stl_settle_batch,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement,结算单：现金、储值、积分各一套
+stl_settle_invoice,支付库 + shop 遗留副本,0,支付,保留,,账务结算,账务结算库,结算发票,stl_settle_invoice,结算开票申请：商家就结算款向平台申请开票,平台自己的收票与开票，和门店给顾客开票不是同一个流程
+stl_settlement,新建,0,,新建,抽象,账务结算,账务结算库,结算内核,stl_settlement,结算单：谁应付谁、哪个周期、多少钱、状态（现金结算、储值跨店清分、积分门店对账共用）,
+stl_settlement_line,新建,0,,新建,抽象,账务结算,账务结算库,结算内核,stl_settlement_line,结算明细：每一笔来源及其金额构成,
+stl_split_intent,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,pay_channel_operation_intent,分账与冲正是一种渠道操作
+stl_split_log,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,pay_channel_operation_intent,分账与冲正是一种渠道操作
+stl_withdraw,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_payout,出款：提现、兑付、清分付款各一张
+sv_account,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_instance（账户与批次即持有的储值卡）,储值迁到会员营销（储值卡是卡券的一种）
+sv_activity_daily_summary,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,报表库 rpt_metric_daily（储值活动日汇总是报表）,储值活动日汇总是报表投影
+sv_clearing_entry,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement_line,结算单：现金、储值、积分各一套
+sv_customer_identity,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·mbr_member,储值迁到会员营销（储值卡是卡券的一种）
+sv_customer_issuer_index,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·mbr_member,储值迁到会员营销（储值卡是卡券的一种）
+sv_entry,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_ledger（本金、赠金的增减）,储值迁到会员营销（储值卡是卡券的一种）
+sv_financial_membership_change,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·sv_issuer_store_access,储值迁到会员营销（储值卡是卡券的一种）
+sv_hold_allocation,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_use_allocation（占用与核销分摊）,储值迁到会员营销（储值卡是卡券的一种）
+sv_issue_policy,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·pmt_quota（发行额度）,储值迁到会员营销（储值卡是卡券的一种）
+sv_issue_policy_version,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·pmt_quota（发行额度）,储值迁到会员营销（储值卡是卡券的一种）
+sv_issue_quota,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·pmt_quota（发行额度）,储值迁到会员营销（储值卡是卡券的一种）
+sv_issue_quota_reservation,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·pmt_reservation,储值迁到会员营销（储值卡是卡券的一种）
+sv_issuer,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值发行方,sv_issuer,发行方：谁发的卡、哪些门店可发可用,储值迁到会员营销（储值卡是卡券的一种）
+sv_issuer_store_access,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值发行方,sv_issuer_store_access,发行方：谁发的卡、哪些门店可发可用,储值迁到会员营销（储值卡是卡券的一种）
+sv_issuer_version,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值发行方,sv_issuer_version,发行方：谁发的卡、哪些门店可发可用,储值迁到会员营销（储值卡是卡券的一种）
+sv_lot,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_instance（账户与批次即持有的储值卡）,储值迁到会员营销（储值卡是卡券的一种）
+sv_posting_line,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_ledger（本金、赠金的增减）,储值迁到会员营销（储值卡是卡券的一种）
+sv_recharge,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_grant（一次充值即一次发放）,储值迁到会员营销（储值卡是卡券的一种）
+sv_recharge_plan,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
+sv_recharge_plan_version,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
+sv_release,支付库 + shop 遗留副本,0,支付,退役,去冗余,,,,,旧档位，由 sv_recharge_plan(+version) 取代,储值充值档位多套
+sv_release_tier,支付库 + shop 遗留副本,0,支付,退役,去冗余,,,,,旧档位，由 sv_recharge_plan(+version) 取代,储值充值档位多套
+sv_settlement_bill,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement,结算单：现金、储值、积分各一套
+sv_settlement_bill_item,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement_line,结算单：现金、储值、积分各一套
+sv_settlement_event,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement,结算单：现金、储值、积分各一套
+sv_settlement_payment,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_payout,出款：提现、兑付、清分付款各一张
+sv_statement,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·由 ent_ledger 查询得出,储值迁到会员营销（储值卡是卡券的一种）
+sv_user_store_index,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·mbr_member,储值迁到会员营销（储值卡是卡券的一种）
+sv_voucher,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_ledger（本金、赠金的增减）,储值迁到会员营销（储值卡是卡券的一种）
+sys_api_resource,shop 库,1678,平台基础,改归属,抽象,基础能力,基础能力库,权限,sys_api_resource,各端共用的角色、功能点、接口资源,权限统一：运营、商户、支付各一套角色授权
+sys_api_resource_point,shop 库,1407,平台基础,改归属,抽象,基础能力,基础能力库,权限,sys_api_resource_point,各端共用的角色、功能点、接口资源,权限统一：运营、商户、支付各一套角色授权
+sys_app_version,shop 库,0,平台基础,改归属,抽象,基础能力,基础能力库,系统字典与设置,sys_app_version,各端共用的公共配置,第二轮业务复核后采纳
+sys_audit_log,shop 库,44464,平台基础,并入,抽象,,,,,基础能力库 pay_operation_audit（统一审计）,
+sys_auth_captcha_rate,shop 库,2,平台基础,并入,抽象,,,,,sys_auth_captcha_state,图形验证码的状态与限流
+sys_auth_captcha_state,shop 库,0,平台基础,保留,,账号认证,账号认证库,会话与登录,sys_auth_captcha_state,,
+sys_auth_code,shop 库,0,平台基础,保留,,平台基础,平台基础库,平台规则字典,sys_category_license,,
+sys_banned_word,shop 库,0,平台基础,保留,,平台服务,平台服务库,风控与内容审核,sys_banned_word,,
+sys_business_end,shop 库,4,平台基础,保留,,平台基础,平台基础库,权益(端与行业开通),sys_business_end,,
+sys_business_type,shop 库,3,平台基础,保留,,平台基础,平台基础库,权益(端与行业开通),sys_business_type,,
+sys_channel_category_rule,shop 库,0,平台基础,保留,,平台基础,平台基础库,平台规则字典,sys_channel_category_rule,,
+sys_event_consumed,shop 库,71,平台基础,改归属,抽象,基础能力,基础能力库,公共事件,sys_event_consumed,公共的事件收发：各业务库不再各建一套,库里只存业务数据：事件是公共能力，防重是功能能力
+sys_function,shop 库,18,平台基础,改归属,抽象,基础能力,基础能力库,权限,sys_function,各端共用的角色、功能点、接口资源,权限统一：运营、商户、支付各一套角色授权
+sys_function_point,shop 库,351,平台基础,改归属,抽象,基础能力,基础能力库,权限,sys_function_point,各端共用的角色、功能点、接口资源,权限统一：运营、商户、支付各一套角色授权
+sys_idempotent,shop 库,9,平台基础,退役,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,库里只存业务数据：事件是公共能力，防重是功能能力
+sys_industry,shop 库,7,平台基础,保留,,平台基础,平台基础库,权益(端与行业开通),sys_industry,行业字典：行业自己的属性（能否小微进件、是否强制开积分）,平台基础复核后采纳（2026-11-25）
+sys_industry_plan,shop 库,15,平台商城,保留,,平台商城,平台商城库,plan,sys_industry_plan,,
+sys_industry_plan_version,shop 库,13,平台商城,保留,,平台商城,平台商城库,plan,sys_industry_plan_version,,
+sys_job_run,shop 库,0,平台基础,并入,抽象,,,,,任务库 job_run（现状）与 job_log（每次运行）,定时任务的运行状态两处
+sys_legal_form,shop 库,3,平台基础,保留,,平台基础,平台基础库,平台规则字典,sys_legal_form,,
+sys_market,shop 库,6,平台基础,改归属,抽象,基础能力,基础能力库,系统字典与设置,sys_market,各业务库共用的基础能力,
+sys_media_asset,shop 库,33,平台基础,保留,,平台服务,平台服务库,地理、媒体、短链与导出,sys_media_asset,,
+sys_media_purge_batch,shop 库,0,平台基础,并入,抽象,,,,,任务库 job_log,清理批次是一次任务运行
+sys_merchant_plan_def,shop 库,3,平台商城,并入,去冗余,,,,,sys_industry_plan(+version)（旧 plan 定义）,
+sys_notify_log,shop 库,44,平台基础,保留,,平台服务,平台服务库,通知,notify_delivery,发送记录：一条通知在每个渠道的一次发送，各有成败与服务商回执,平台基础复核后采纳（2026-11-25）
+sys_ops_api_key,shop 库,0,平台基础,改归属,抽象,基础能力,基础能力库,接入应用,sys_ops_api_key,,接口密钥是接入凭证
+sys_ops_staff,shop 库,24,平台基础,保留,,账号认证,账号认证库,运营端账号,sys_ops_staff,,
+sys_outbox,shop 库,3599,平台基础,改归属,抽象,基础能力,基础能力库,公共事件,sys_outbox,公共的事件收发：各业务库不再各建一套,库里只存业务数据：事件是公共能力，防重是功能能力
+sys_outbox_delivery,shop 库,2891,平台基础,改归属,抽象,基础能力,基础能力库,公共事件,sys_outbox_delivery,公共的事件收发：各业务库不再各建一套,库里只存业务数据：事件是公共能力，防重是功能能力
+sys_outbox_operation,shop 库,94,平台基础,改归属,抽象,基础能力,基础能力库,公共事件,sys_outbox_operation,公共的事件收发：各业务库不再各建一套,库里只存业务数据：事件是公共能力，防重是功能能力
+sys_outbox_stream,shop 库,918,平台基础,改归属,抽象,基础能力,基础能力库,公共事件,sys_outbox_stream,公共的事件收发：各业务库不再各建一套,库里只存业务数据：事件是公共能力，防重是功能能力
+sys_pay_channel,支付库 + shop 遗留副本,0,支付,并入,去冗余,,,,,pay_channel、pay_channel_product,渠道定义两套
+sys_pay_channel_market,支付库 + shop 遗留副本,0,支付,并入,去冗余,,,,,pay_channel、pay_channel_product,渠道定义两套
+sys_pay_channel_rate,支付库 + shop 遗留副本,0,支付,并入,去冗余,,,,,pay_channel、pay_channel_product,渠道定义两套
+sys_plan_version_end,shop 库,15,平台商城,保留,,平台商城,平台商城库,plan,sys_plan_version_end,,
+sys_pos_feature_catalog_current,shop 库,1,平台基础,并入,抽象,,,,,sys_pos_feature_catalog_release,功能目录的当前版本是发布记录的一个标记
+sys_pos_feature_catalog_release,shop 库,2,平台基础,改归属,抽象,基础能力,基础能力库,系统字典与设置,sys_pos_feature_catalog_release,各端共用的公共配置,第二轮业务复核后采纳
+sys_region,shop 库,0,平台基础,改归属,抽象,基础能力,基础能力库,系统字典与设置,sys_region,行政区划：各库都要读的字典,三库说明文档复核后采纳（2026-11-26）
+sys_role,shop 库,16,平台基础,改归属,抽象,基础能力,基础能力库,权限,sys_role,运营端的角色、角色权限、授权（B 端另有一套在平台基础库）,权限统一：运营、商户、支付各一套角色授权
+sys_role_member,shop 库,32,平台基础,改归属,抽象,基础能力,基础能力库,权限,sys_grant,运营端的角色、角色权限、授权（B 端另有一套在平台基础库）,权限统一：运营、商户、支付各一套角色授权
+sys_role_point,shop 库,543,平台基础,改归属,抽象,基础能力,基础能力库,权限,sys_role_point,运营端的角色、角色权限、授权（B 端另有一套在平台基础库）,权限统一：运营、商户、支付各一套角色授权
+sys_sequence,shop 库,10,平台基础,改归属,抽象,基础能力,基础能力库,公共发号,sys_sequence,公共发号：各库共用,库里只存业务数据：事件是公共能力，防重是功能能力
+sys_setting,shop 库,0,平台基础,改归属,抽象,基础能力,基础能力库,系统字典与设置,sys_setting,各业务库共用的基础能力,
+sys_store_industry,shop 库,35,平台基础,保留,,平台基础,平台基础库,权益(端与行业开通),sys_store_industry,,
+trd_cart_item,shop 库,0,零售,保留,,零售,门店交易库,订单,trd_cart_item,,
+trd_shipping_upload,shop 库,0,零售,并入,抽象,,,,,lgs_waybill,向渠道上传发货信息是物流订阅的一种
+usr_account,shop 库,754,平台基础,保留,,账号认证,账号认证库,C 端用户,usr_account,,
+usr_account_change_log,shop 库,0,平台基础,并入,抽象,,,,,基础能力库统一审计,各处的变更日志都是审计
+usr_address,shop 库,0,平台基础,改归属,抽象,零售,门店交易库,订单,ord_address,收货地址,按电商、餐饮、美业的业务抽象复核后采纳
+usr_identity,shop 库,1498,平台基础,保留,,账号认证,账号认证库,C 端用户,usr_identity,,
+usr_login_log,shop 库,122,平台基础,保留,,账号认证,账号认证库,会话与登录,usr_login_log,C 端登录日志,B 端与运营端的认证、角色权限各用一套
+usr_login_ticket,shop 库,1,平台基础,保留,,账号认证,账号认证库,会话与登录,auth_ticket,,
+usr_mp_session,shop 库,0,平台基础,并入,去冗余,,,,,usr_session（三端统一会话，已有 subject_kind 列）,
+usr_otp_test_phone,shop 库,0,平台基础,并入,抽象,,,,,usr_test_identity,测试身份两张
+usr_person,shop 库,9,平台基础,保留,,账号认证,账号认证库,C 端用户,usr_person,,
+usr_person_merge_log,shop 库,0,平台基础,并入,抽象,,,,,基础能力库统一审计,各处的变更日志都是审计
+usr_session,shop 库,143,平台基础,保留,,账号认证,账号认证库,会话与登录,usr_session,C 端会话（令牌）,B 端与运营端的认证、角色权限各用一套
+usr_store_favorite,shop 库,0,平台基础,改归属,抽象,会员营销,会员营销库,会员,mbr_favorite,收藏：商品与门店,按电商、餐饮、美业的业务抽象复核后采纳
+usr_store_view,shop 库,0,平台基础,改归属,抽象,会员营销,会员营销库,会员,mbr_store_view,到店足迹,按电商、餐饮、美业的业务抽象复核后采纳
+usr_test_identity,shop 库,9,平台基础,保留,,账号认证,账号认证库,C 端用户,usr_test_identity,,
