@@ -132,6 +132,9 @@ class AppointmentMatchingSearchTest {
         root.setStoreNo("OTHER");
         assertThatThrownBy(() -> service.queryAvailability("E", "S", "actor", query))
                 .isInstanceOfSatisfying(BizException.class, error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        when(db.root("AP")).thenReturn(null);
+        assertThatThrownBy(() -> service.queryAvailability("E", "S", "actor", query))
+                .isInstanceOfSatisfying(BizException.class, error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.NOT_FOUND));
     }
 
     @Test

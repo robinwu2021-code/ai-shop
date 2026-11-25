@@ -37,6 +37,7 @@ public final class AppointmentAvailabilityServiceImpl implements AppointmentAvai
         ResourceCandidatesPort.Replacement replacement = null;
         if (q.replaceAppointmentNo() != null) {
             var root = db.root(q.replaceAppointmentNo());
+            if (root == null) throw BizException.of(ErrorCode.NOT_FOUND);
             if (!entity.equals(root.getEntityNo()) || !store.equals(root.getStoreNo())) {
                 throw BizException.of(ErrorCode.FORBIDDEN);
             }
@@ -74,6 +75,9 @@ public final class AppointmentAvailabilityServiceImpl implements AppointmentAvai
             try {
                 var match = matching.match(scope, publicOnly, q.items(), List.of(), q.requestedPersonnelNo(), at, replacement);
                 complete &= match.complete();
+                var observedAt = Instant.now();
+                if (match.snapshot().assignments().stream().anyMatch(assignment ->
+                        !assignment.startAt().toInstant().isAfter(observedAt))) continue;
                 result.add(new AppointmentPreviewVO(null, OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(1),
                         match.policyVersionNo(), match.startAt(), match.endAt(), match.snapshot().items(),
                         match.snapshot().assignments(), match.snapshot().priceMinor()));
