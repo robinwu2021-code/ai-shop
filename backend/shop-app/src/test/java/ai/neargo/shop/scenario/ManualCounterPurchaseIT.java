@@ -480,14 +480,31 @@ class ManualCounterPurchaseIT extends CheckoutFlowFixture {
         assertThat(quote.quote().currency()).isEqualTo("TWD");
         assertThat(quote.quote().dueMinor()).isEqualTo(48000L);
         var operation = quote.quote().operation();
-        assertThat(asMerchant(() -> manual.source(scope, new SourceLookup(operation, null))).currency())
-                .isEqualTo("TWD");
-        var created = place(accept(quote));
+        var lookupBeforePlacement = new SourceLookup(operation, null);
+        var quoted = asMerchant(() -> manual.source(scope, lookupBeforePlacement));
+        assertThat(quoted.currency()).isEqualTo("TWD");
+        assertThat(quoted.confirmedUnpaid()).isNull();
+        var confirmation = accept(quote);
+        assertThat(asMerchant(() -> manual.source(scope, lookupBeforePlacement)).confirmedUnpaid()).isNull();
+        var created = place(confirmation);
         assertThat(created.phase()).isEqualTo("CREATED");
         var sourceLookup = new SourceLookup(operation, created.subOrderNo());
         var source = asMerchant(() -> manual.source(scope, sourceLookup));
         assertThat(source.currency()).isEqualTo("TWD");
         assertThat(source.dueMinor()).isEqualTo(48000L);
+        assertThat(source.admissionState()).isEqualTo("AWAITING_RECEIPT");
+        assertThat(source.declaration().manualDeclarationNo()).isNull();
+        assertThat(source.confirmedUnpaid()).isNotNull().satisfies(unpaid -> {
+            assertThat(unpaid.confirmationNo()).isEqualTo(confirmation.confirmationNo());
+            assertThat(unpaid.lines()).singleElement().satisfies(line -> {
+                assertThat(line.clientLineRef()).isEqualTo("service-line");
+                assertThat(line.skuNo()).isEqualTo(sku);
+            });
+        });
+        assertThat(asMerchant(() -> manual.source(scope, sourceLookup)).confirmedUnpaid())
+                .isEqualTo(source.confirmedUnpaid());
+        assertThat(DataScopeContext.executeWithoutScope(() -> typedDeclarations.serviceCashReceipts(
+                "MAIN", entity, store, created.orderNo(), null, null, null))).isEmpty();
 
         var at = testClock.instant().truncatedTo(ChronoUnit.MILLIS);
         var wrongCurrency = new ConfirmManualReceipt(operation, "wrong-currency-" + sku,
@@ -505,6 +522,7 @@ class ManualCounterPurchaseIT extends CheckoutFlowFixture {
         var paid = asMerchant(() -> manual.source(scope, sourceLookup));
         assertThat(paid.currency()).isEqualTo("TWD");
         assertThat(paid.declaration()).isEqualTo(admitted);
+        assertThat(paid.confirmedUnpaid()).isNull();
         assertThat(DataScopeContext.executeWithoutScope(() -> typedDeclarations.serviceCashReceipts(
                 "MAIN", entity, store, created.orderNo(), null, null, null))).singleElement().satisfies(row -> {
                     assertThat(row.orderNo()).isEqualTo(created.orderNo());

@@ -954,6 +954,9 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
             }
         }
         var admission = view(op, parent, declaration);
+        var confirmedUnpaid = verified && declaration == null && parent != null
+                ? sourceReader.confirmedUnpaid(op, parent, child(op.getSubOrderNo()))
+                : null;
         return new ManualSourceFacts(
                 new OperationRef(op.getCaller(), op.getOperationNo()),
                 op.getOrderNo(),
@@ -972,7 +975,8 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                 parent == null ? null : parent.getPayAmount(),
                 parent == null ? admission.currency() : parent.getCurrency(),
                 admission,
-                op.getPurchaseAuthority());
+                op.getPurchaseAuthority(),
+                confirmedUnpaid);
     }
 
     private ManualAdmissionView view(

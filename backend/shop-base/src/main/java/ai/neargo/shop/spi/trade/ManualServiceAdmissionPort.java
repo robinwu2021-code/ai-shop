@@ -9,6 +9,7 @@ import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.SourceLookup;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -500,7 +501,18 @@ public interface ManualServiceAdmissionPort {
             Long dueMinor,
             String currency,
             ManualAdmissionView declaration,
-            String purchaseAuthority) {
+            String purchaseAuthority,
+            @JsonInclude(JsonInclude.Include.NON_NULL) ConfirmedUnpaidSource confirmedUnpaid) {
+        public ManualSourceFacts(
+                OperationRef operation, String orderNo, String subOrderNo, CustomerParty party,
+                String entityNo, String storeNo, String admissionKind, long manualObservationRevision,
+                String manualObservationHash, long orderRevision, long admissionRevision,
+                String admissionState, List<ManualSourceLine> lines, Instant observedAt, Long dueMinor,
+                String currency, ManualAdmissionView declaration, String purchaseAuthority) {
+            this(operation, orderNo, subOrderNo, party, entityNo, storeNo, admissionKind,
+                    manualObservationRevision, manualObservationHash, orderRevision, admissionRevision,
+                    admissionState, lines, observedAt, dueMinor, currency, declaration, purchaseAuthority, null);
+        }
         /**
          * Old providers retain the exact M1 source tuple; missing display facts stay explicitly
          * incomplete.
@@ -582,6 +594,12 @@ public interface ManualServiceAdmissionPort {
                 throw invalidResponse();
             }
             lines = List.copyOf(lines);
+            if (confirmedUnpaid != null && (!"AWAITING_RECEIPT".equals(admissionState)
+                    || !"MERCHANT_RECORDED_IN_PERSON".equals(purchaseAuthority)
+                    || !reference(orderNo) || !reference(subOrderNo) || dueMinor == null || dueMinor <= 0
+                    || !supportsCounterCurrency(currency) || declaration == null)) {
+                throw invalidResponse();
+            }
             if ("ADMITTED".equals(admissionState)) {
                 if (!reference(orderNo)
                         || !reference(subOrderNo)
@@ -599,6 +617,24 @@ public interface ManualServiceAdmissionPort {
             var clients = new HashSet<String>();
             for (var line : lines) {
                 if (!ids.add(line.sourceLineNo()) || !clients.add(line.clientLineRef())) {
+                    throw invalidResponse();
+                }
+            }
+        }
+    }
+
+    /** Accepted sale for a placed counter order while its cash receipt is still outstanding. */
+    record ConfirmedUnpaidSource(String confirmationNo, String proofHash, List<ManualSourceLine> lines) {
+        public ConfirmedUnpaidSource {
+            if (!reference(confirmationNo) || proofHash == null || !proofHash.matches("[a-f0-9]{64}")
+                    || lines == null || lines.isEmpty() || lines.size() > 100) {
+                throw invalidResponse();
+            }
+            lines = List.copyOf(lines);
+            var sourceIds = new HashSet<String>();
+            var clientIds = new HashSet<String>();
+            for (var line : lines) {
+                if (!sourceIds.add(line.sourceLineNo()) || !clientIds.add(line.clientLineRef())) {
                     throw invalidResponse();
                 }
             }

@@ -20,6 +20,7 @@ import ai.neargo.shop.trade.order.service.create.CounterOrderPlan.PreparedComman
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.HashSet;
 
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ConfirmedUnpaidSource;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualSourceLine;
 import ai.neargo.shop.trade.entity.OrdCheckoutLine;
@@ -305,40 +306,7 @@ final class ManualExecutionSourceReader {
                     || !OrdSubOrder.SERVICE_EXECUTION.equals(economics.fulfillmentAuthority())) {
                 throw conflict();
             }
-            OrdCheckoutConfirmation consent = confirmations.selectOne(
-                    Wrappers.<OrdCheckoutConfirmation>lambdaQuery()
-                            .eq(OrdCheckoutConfirmation::getTenantNo, "MAIN")
-                            .eq(OrdCheckoutConfirmation::getConfirmationNo, op.getConfirmationNo())
-                            .eq(OrdCheckoutConfirmation::getDeleted, 0));
-            if (consent == null) {
-                throw conflict();
-            }
-            alive(consent);
-            if (!"CONSUMED".equals(consent.getStatus())
-                    || !"ORDINARY_SERVICE_PURCHASE".equals(consent.getPurpose())
-                    || !"MANUAL_OFFLINE".equals(consent.getAdmissionKind())
-                    || !op.getPurchaseAuthority().equals(consent.getPurchaseAuthority())
-                    || !op.getCaller().equals(consent.getCaller())
-                    || !op.getOperationNo().equals(consent.getOperationNo())
-                    || !op.getEntityNo().equals(consent.getEntityNo())
-                    || !op.getStoreNo().equals(consent.getStoreNo())
-                    || !party(op).equals(new CustomerParty(consent.getCustomerKind(), consent.getBuyerNo(),
-                            consent.getGuestNo(), consent.getIdentityRevision()))
-                    || op.getAuthorityNamespaceHash() == null
-                    || !op.getAuthorityNamespaceHash().equals(consent.getAuthorityNamespaceHash())
-                    || !quote.getQuoteNo().equals(consent.getQuoteNo())
-                    || !quote.getRevision().equals(consent.getQuoteRevision())
-                    || !quote.getQuoteHash().equals(consent.getQuoteHash())
-                    || !parent.getOrderNo().equals(consent.getOrderNo())
-                    || !Long.valueOf(economics.dueMinor()).equals(consent.getAmountMinor())
-                    || !economics.currency().equals(consent.getCurrency()) || consent.getAcceptedAt() == null
-                    || consent.getConfirmedAt() == null || consent.getConsumedAt() == null
-                    || !"MERCHANT".equals(consent.getActorRealm())
-                    || !List.of("MCH", "USR").contains(consent.getActorKind())
-                    || consent.getActorNo() == null || consent.getActorNo().isBlank()
-                    || consent.getAccountNo() == null || consent.getAccountNo().isBlank()) {
-                throw conflict();
-            }
+            requireCounterConsent(op, parent, quote);
             long gross = economics.goodsMinor();
             long discount = economics.discountMinor();
             if (discount < 0 || discount >= gross || economics.dueMinor() <= 0
@@ -392,6 +360,84 @@ final class ManualExecutionSourceReader {
             }
         } catch (RuntimeException invalid) {
             throw conflict();
+        }
+    }
+
+    private OrdCheckoutConfirmation requireCounterConsent(
+            OrdCheckoutOperation op, OrdOrder parent, OrdCheckoutQuote quote) {
+        OrdCheckoutConfirmation consent = confirmations.selectOne(
+                Wrappers.<OrdCheckoutConfirmation>lambdaQuery()
+                        .eq(OrdCheckoutConfirmation::getTenantNo, "MAIN")
+                        .eq(OrdCheckoutConfirmation::getConfirmationNo, op.getConfirmationNo())
+                        .eq(OrdCheckoutConfirmation::getDeleted, 0));
+        if (consent == null) {
+            throw conflict();
+        }
+        alive(consent);
+        if (!"CONSUMED".equals(consent.getStatus())
+                || !"ORDINARY_SERVICE_PURCHASE".equals(consent.getPurpose())
+                || !"MANUAL_OFFLINE".equals(consent.getAdmissionKind())
+                || !op.getPurchaseAuthority().equals(consent.getPurchaseAuthority())
+                || !op.getCaller().equals(consent.getCaller())
+                || !op.getOperationNo().equals(consent.getOperationNo())
+                || !op.getEntityNo().equals(consent.getEntityNo())
+                || !op.getStoreNo().equals(consent.getStoreNo())
+                || !party(op).equals(new CustomerParty(consent.getCustomerKind(), consent.getBuyerNo(),
+                        consent.getGuestNo(), consent.getIdentityRevision()))
+                || op.getAuthorityNamespaceHash() == null
+                || !op.getAuthorityNamespaceHash().equals(consent.getAuthorityNamespaceHash())
+                || !quote.getQuoteNo().equals(consent.getQuoteNo())
+                || !quote.getRevision().equals(consent.getQuoteRevision())
+                || !quote.getQuoteHash().equals(consent.getQuoteHash())
+                || !parent.getOrderNo().equals(consent.getOrderNo())
+                || !Objects.equals(parent.getPayAmount(), consent.getAmountMinor())
+                || !Objects.equals(parent.getCurrency(), consent.getCurrency()) || consent.getAcceptedAt() == null
+                || consent.getConfirmedAt() == null || consent.getConsumedAt() == null
+                || !"MERCHANT".equals(consent.getActorRealm())
+                || !List.of("MCH", "USR").contains(consent.getActorKind())
+                || consent.getActorNo() == null || consent.getActorNo().isBlank()
+                || consent.getAccountNo() == null || consent.getAccountNo().isBlank()) {
+            throw conflict();
+        }
+        return consent;
+    }
+
+    /** Callers check that no cash declaration exists in the same owner snapshot. */
+    ConfirmedUnpaidSource confirmedUnpaid(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child) {
+        if (parent == null || child == null || !"BEAUTY".equals(op.getCaller())
+                || !"MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())
+                || !OrdOrder.WAIT_OFFLINE_PAY.equals(parent.getStatus())
+                || !OrdSubOrder.WAIT_PAY.equals(child.getStatus())
+                || parent.getPaidAt() != null || parent.getReceiptProvenance() != null) {
+            return null;
+        }
+        try {
+            var facts = load(op, parent, child);
+            for (var row : List.of(op, parent, child, facts.quote())) {
+                alive(row);
+            }
+            facts.lines().forEach(this::alive);
+            facts.items().forEach(this::alive);
+            var quote = facts.quote();
+            if (!Objects.equals(op.getOrderNo(), parent.getOrderNo())
+                    || !Objects.equals(op.getSubOrderNo(), child.getSubOrderNo())
+                    || !Objects.equals(op.getCurrentQuoteNo(), quote.getQuoteNo())
+                    || !op.getCaller().equals(quote.getCaller())
+                    || !op.getOperationNo().equals(quote.getOperationNo())) {
+                return null;
+            }
+            var consent = requireCounterConsent(op, parent, quote);
+            var lines = facts.lines().stream().map(line -> new ManualSourceLine(
+                    line.getSourceLineNo(), line.getClientLineRef(), line.getGoodsNo(), line.getSkuNo(),
+                    line.getQuantity(), 0, line.getUom())).toList();
+            String fingerprint = sourceHash(op, parent, child, null, facts.lines(), facts.items(),
+                    "CONFIRMED_UNPAID", lines);
+            String proof = CheckoutDigests.hash(json, List.of(
+                    "BEAUTY_CONFIRMED_UNPAID_V1", fingerprint, quote.getQuoteHash(), consent.getVersion(),
+                    parent.getPayAmount(), parent.getCurrency()));
+            return new ConfirmedUnpaidSource(consent.getConfirmationNo(), proof, lines);
+        } catch (BizException invalid) {
+            return null;
         }
     }
 
