@@ -1,5 +1,7 @@
 package ai.neargo.shop.config.obs;
 
+import ai.neargo.shop.common.ApiAccessLogFilter;
+import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -34,9 +36,12 @@ public class ObsConfig {
     public FilterRegistrationBean<ApiAccessLogFilter> apiAccessLogFilter(
             @Value("${shop.obs.access-log:true}") boolean accessLog,
             @Value("${shop.obs.slow-ms:1000}") long slowMs,
-            @Value("${shop.obs.exclude:/actuator/**,/ops/stream}") List<String> exclude) {
-        var reg = new FilterRegistrationBean<>(new ApiAccessLogFilter(accessLog, slowMs, exclude));
+            @Value("${shop.obs.exclude:/actuator/**,/ops/stream}") List<String> exclude,
+            @Value("${shop.services.internal-token:}") String internalToken,
+            @Value("${shop.job.internal-token:}") String jobToken) {
+        var reg = new FilterRegistrationBean<>(new ApiAccessLogFilter(accessLog, slowMs, exclude, internalToken, jobToken));
         reg.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        reg.setDispatcherTypes(DispatcherType.REQUEST, DispatcherType.ASYNC);
         reg.addUrlPatterns("/*");
         return reg;
     }

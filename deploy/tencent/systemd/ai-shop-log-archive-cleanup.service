@@ -1,0 +1,10 @@
+[Unit]
+Description=Clean expired or over-budget ai-shop gzip log archives
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /data/app/ai-shop/ops/clean-log-archives.py --apply
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=-/data/log/ai-shop/shop-app -/data/log/ai-shop/shop-job -/data/log/ai-shop/pay-svc -/data/log/ai-shop/food-server -/data/log/ai-shop/beauty-server -/data/log/ai-shop/ops -/data/log/infra/mysql97

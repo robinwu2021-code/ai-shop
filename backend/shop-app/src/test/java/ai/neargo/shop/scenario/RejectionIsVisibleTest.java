@@ -108,7 +108,7 @@ class RejectionIsVisibleTest {
         String line = String.join(" | ", warns);
         assertThat(line)
                 .as("要认得出是哪个端点被打了：%s", line)
-                .contains("/biz/context");
+                .contains("/biz/SECURITY_REJECTED", "credentialType=CONSUMER");
         assertThat(line)
                 .as("**令牌本身一个字符都不许进日志** —— 进了就等于会话可被重放，"
                         + "而日志会被收集转发：%s", line)

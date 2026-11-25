@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 /**
  * 统一封装：调用方一行 {@link #current()} 即得 {@link CallSource}；进程内与 HTTP 两种形态拿到的是同一份（ADR-045 G9）。
@@ -46,6 +47,13 @@ public final class CallSources {
     public interface Scope extends AutoCloseable {
         @Override
         void close();
+    }
+
+    private static final Pattern TRACE_ID = Pattern.compile(
+            "[0-9a-f]{32}|[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}");
+
+    public static boolean isTraceId(String id) {
+        return id != null && TRACE_ID.matcher(id).matches();
     }
 
     private static final ThreadLocal<Origin> ORIGIN = new ThreadLocal<>();
@@ -89,7 +97,13 @@ public final class CallSources {
 
     /** 在定时任务的来源下跑一段：来源端 JOB、上游接口 = 任务名、操作人 SYSTEM */
     public static <T> T asJob(String jobName, Supplier<T> body) {
-        try (Scope ignored = bind(new Origin(newTraceId(), jobName, JOB, null, null, SYSTEM))) {
+        return asJob(jobName, null, body);
+    }
+
+    /** The worker run id joins job, service and channel records for a single execution. */
+    public static <T> T asJob(String jobName, String runId, Supplier<T> body) {
+        String traceId = isTraceId(runId) ? runId : newTraceId();
+        try (Scope ignored = bind(new Origin(traceId, jobName, JOB, null, null, SYSTEM))) {
             return body.get();
         }
     }

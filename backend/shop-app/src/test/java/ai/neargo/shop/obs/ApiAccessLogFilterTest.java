@@ -1,6 +1,9 @@
 package ai.neargo.shop.obs;
 
-import ai.neargo.shop.config.obs.ApiAccessLogFilter;
+import ai.neargo.shop.common.RequestLogContext;
+import ai.neargo.shop.spi.pay.CallSource;
+import ai.neargo.shop.spi.pay.CallSourceCodec;
+import ai.neargo.shop.common.ApiAccessLogFilter;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -123,16 +126,16 @@ class ApiAccessLogFilterTest {
     }
 
     @Test
-    @DisplayName("★★★ AC3 拿不到模板时号段要脱敏 —— 否则同一接口散成几千行")
+    @DisplayName("★★★ AC3 拿不到模板时只记录固定分类")
     void rawPathIsMaskedWhenTemplateMissing() throws Exception {
         // 认证失败的请求到不了 dispatcher，BEST_MATCHING_PATTERN 为空
-        run(filter(1000), "GET", "/biz/goods/G20260101000000000001", null, 401, null);
+        run(filter(1000), "GET", "/biz/goods/opaque-secret-uuid", null, 401, null);
 
         String line = lines(access).getFirst();
         assertThat(line).as("401 也要记 —— 查「谁在被拒」靠的就是它").contains(" s=401 ");
-        assertThat(line).as("号段要换成 *，不然每个商品一行、聚合不起来")
-                .doesNotContain("G20260101000000000001");
-        assertThat(line).contains(" p=/biz/goods/*");
+        assertThat(line).as("分类不得包含原始路径")
+                .doesNotContain("opaque-secret-uuid");
+        assertThat(line).contains(" p=/biz/SECURITY_REJECTED");
     }
 
     @Test
@@ -165,10 +168,10 @@ class ApiAccessLogFilterTest {
     }
 
     @Test
-    @DisplayName("★★ 带了门店号就记上 —— 排查「哪家店在慢」靠它")
-    void storeHeaderIsRecorded() throws Exception {
+    @DisplayName("★★ 请求头只能参与业务选择，日志只能采信已确认门店")
+    void rawStoreHeaderIsNotLogged() throws Exception {
         run(filter(1000), "GET", "/biz/orders", "/biz/orders", 200, "ST20260101000000000009");
-        assertThat(lines(access).getFirst()).endsWith(" store=ST20260101000000000009");
+        assertThat(lines(access).getFirst()).doesNotContain("ST20260101000000000009");
     }
 
     @Test
@@ -182,19 +185,85 @@ class ApiAccessLogFilterTest {
     }
 
     @Test
-    @DisplayName("★★★ 内部调用（M2.6）：访问行带调用方、来源服务与实例、上游接口与来源端；rid 沿用来源的追踪号 —— 不带 IP 与操作人")
-    void internalCallsCarryTheirSource() throws Exception {
+    void untrustedInternalMetadataIsNotLogged() throws Exception {
         var req = new MockHttpServletRequest("POST", "/internal/core/entitlement/grant");
         req.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/internal/core/entitlement/grant");
-        req.setAttribute(ai.neargo.shop.config.obs.InternalCallFilter.CALLER_ATTRIBUTE, "PAY_SVC");
+        req.setAttribute(ai.neargo.shop.config.obs.InternalCallFilter.CALLER_ATTRIBUTE, "caller-secret");
         req.setAttribute(ai.neargo.shop.config.obs.InternalCallFilter.SOURCE_ATTRIBUTE,
-                new ai.neargo.shop.spi.pay.CallSource("pay-svc", null, "pay-01", "10.0.2.5", "req-pay-77",
-                        "POST /mp/orders/{orderNo}/pay", "APP_C", "223.104.1.1", null, "U-1", null));
+                new ai.neargo.shop.spi.pay.CallSource("service-secret", null, "instance-secret", null,
+                        "trace-secret", "POST /path-secret", "APP_C", null, null, null, null));
         filter(1000).doFilter(req, new MockHttpServletResponse(), (rq, rs) -> { });
 
-        String line = lines(access).getFirst();
-        assertThat(line).contains(" rid=req-pay-77").contains(" caller=PAY_SVC").contains(" src=pay-svc@pay-01")
-                .contains(" origin=APP_C:POST_/mp/orders/{orderNo}/pay");
-        assertThat(line).as("慢日志会被贴进聊天框：不带终端用户 IP 与账号").doesNotContain("223.104").doesNotContain("U-1");
+        assertThat(lines(access).getFirst()).doesNotContain("-secret");
+    }
+
+    @Test
+    void requestIdIsGeneratedAndSharedWithTheResponse() throws Exception {
+        var req = new MockHttpServletRequest("GET", "/ops/stores");
+        req.addHeader("X-Request-Id", "client-chosen-id");
+        var response = new MockHttpServletResponse();
+
+        filter(1000).doFilter(req, response, (rq, rs) -> { });
+
+        String id = response.getHeader("X-Request-Id");
+        assertThat(id).matches("[0-9a-f]{32}");
+        assertThat(lines(access)).singleElement().asString().contains("rid=" + id).doesNotContain("client-chosen-id");
+    }
+
+    @Test
+    void separatesBusinessRejectionFromHttpStatusAndUsesAuthorizedScope() throws Exception {
+        var req = new MockHttpServletRequest("GET", "/biz/stores");
+        req.addHeader("X-Store-No", "UNAUTHORIZED");
+        filter(1000).doFilter(req, new MockHttpServletResponse(), (rq, rs) -> {
+            rq.setAttribute(RequestLogContext.BUSINESS_CODE, 10403);
+            rq.setAttribute(RequestLogContext.STORE_NO, "AUTHORIZED");
+        });
+
+        assertThat(lines(access)).singleElement().asString()
+                .contains("s=200", "bizCode=10403", "outcome=REJECTED", "store=AUTHORIZED")
+                .doesNotContain("store=UNAUTHORIZED");
+    }
+
+    @Test
+    void onlyTrustedInternalAndJobCallsInheritCorrelation() throws Exception {
+        String internalId = "0123456789abcdef0123456789abcdef";
+        String jobId = "1b9769ce-77c2-4da8-974b-9ab0bc44d133";
+        var filter = new ApiAccessLogFilter(true, 1000, List.of(), "test-service-token", "test-job-token");
+        var internal = new MockHttpServletRequest("POST", "/internal/food/order");
+        internal.addHeader("X-Call-Source", CallSourceCodec.encode(
+                new CallSource("shop-app", null, null, null, internalId, null, null, null, null, null, null)));
+        internal.addHeader("X-Internal-Token", "test-service-token");
+        var internalResponse = new MockHttpServletResponse();
+        filter.doFilter(internal, internalResponse, (rq, rs) -> {});
+        assertThat(internalResponse.getHeader("X-Request-Id")).isEqualTo(internalId);
+
+        var forged = new MockHttpServletRequest("POST", "/internal/food/order");
+        forged.addHeader("X-Call-Source", internal.getHeader("X-Call-Source"));
+        forged.addHeader("X-Internal-Token", "invalid-token");
+        var forgedResponse = new MockHttpServletResponse();
+        filter.doFilter(forged, forgedResponse, (rq, rs) -> {});
+        assertThat(forgedResponse.getHeader("X-Request-Id")).isNotEqualTo(internalId);
+
+        var job = new MockHttpServletRequest("POST", "/internal/job/cleanup/run");
+        job.addHeader("X-Request-Id", jobId);
+        job.addHeader("X-Job-Token", "test-job-token");
+        var jobResponse = new MockHttpServletResponse();
+        filter.doFilter(job, jobResponse, (rq, rs) -> {});
+        assertThat(jobResponse.getHeader("X-Request-Id")).isEqualTo(jobId);
+        assertThat(lines(access)).hasSize(3).noneMatch(line -> line.contains("token"));
+    }
+
+    @Test
+    void recordsAsyncCompletionOnlyAfterFinalStatus() throws Exception {
+        var req = new MockHttpServletRequest("GET", "/ops/stores");
+        req.setAsyncSupported(true);
+        var response = new MockHttpServletResponse();
+
+        filter(1000).doFilter(req, response, (rq, rs) -> rq.startAsync(rq, rs));
+        assertThat(lines(access)).isEmpty();
+
+        response.setStatus(503);
+        req.getAsyncContext().complete();
+        assertThat(lines(access)).singleElement().asString().contains(" s=503 ");
     }
 }

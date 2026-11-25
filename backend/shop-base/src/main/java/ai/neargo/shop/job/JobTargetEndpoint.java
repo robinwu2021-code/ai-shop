@@ -154,7 +154,7 @@ public abstract class JobTargetEndpoint {
         LockingTaskExecutor.TaskResult<JobResult> res;
         try {
             res = locks.executeWithLock(
-                    (LockingTaskExecutor.TaskWithResult<JobResult>) () -> CallSources.asJob(handlerName,
+                    (LockingTaskExecutor.TaskWithResult<JobResult>) () -> CallSources.asJob(handlerName, in.runId(),
                             () -> handler.run(in)),
                     new LockConfiguration(Instant.now(), handlerName, lockAtMost, Duration.ZERO));
         } catch (RuntimeException e) {

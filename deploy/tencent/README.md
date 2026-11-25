@@ -547,3 +547,7 @@ bash deploy/tencent/setup-tls-acme.sh '*.ichain.top,ichain.top' dns_ali
 acme.sh 的 `dns_ali` 清理逻辑会误伤**同名的既有 TXT 记录**：`ichain.top` 上一条签发前就
 存在的 `_acme-challenge` 记录被改成了停用（值未变），已手工恢复。之后在这两个域名上签证书，
 跑完用 `python3 deploy/aliyun/alidns.py list <域名>` 检查一遍 `_acme-challenge` 的状态。
+
+## 日志归档到期清理
+
+将 `clean-log-archives.py` 安装到 `/data/app/ai-shop/ops/` 后，先用 `python3 /data/app/ai-shop/ops/clean-log-archives.py` 输出预览清单。核对目录、日期、归档大小及权限后，安装同名 systemd service 和 timer，启用 timer。查看 `systemctl list-timers ai-shop-log-archive-cleanup.timer` 和 `journalctl -u ai-shop-log-archive-cleanup.service` 核对北京时间 04:30 的调度及实际处理计数。回退时停用 timer。该服务与 housekeeping 的全局删除开关独立。独立餐饮及美业进程部署时分别设置 `FOOD_LOG_FILE=/data/log/ai-shop/food-server/food-server.log`、`BEAUTY_LOG_FILE=/data/log/ai-shop/beauty-server/beauty-server.log`，即可接入同一归档清理。

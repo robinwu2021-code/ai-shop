@@ -1,5 +1,6 @@
 package ai.neargo.shop.svc;
 
+import ai.neargo.shop.spi.pay.CallSource;
 import ai.neargo.shop.spi.pay.CallSourceCodec;
 import ai.neargo.shop.spi.pay.CallSources;
 import ai.neargo.shop.spi.pay.InternalHeaders;
@@ -19,8 +20,17 @@ public class CallSourceClientInterceptor implements ClientHttpRequestInterceptor
     @Override
     public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution)
             throws IOException {
-        if (!request.getHeaders().containsHeader(InternalHeaders.CALL_SOURCE)) {
-            request.getHeaders().set(InternalHeaders.CALL_SOURCE, CallSourceCodec.encode(CallSources.current()));
+        String encoded = request.getHeaders().getFirst(InternalHeaders.CALL_SOURCE);
+        CallSource source;
+        if (encoded == null) {
+            source = CallSources.current();
+            request.getHeaders().set(InternalHeaders.CALL_SOURCE, CallSourceCodec.encode(source));
+        } else {
+            source = CallSourceCodec.decode(encoded).orElse(null);
+        }
+        if (source != null && CallSources.isTraceId(source.traceId())
+                && !request.getHeaders().containsHeader("X-Request-Id")) {
+            request.getHeaders().set("X-Request-Id", source.traceId());
         }
         return execution.execute(request, body);
     }

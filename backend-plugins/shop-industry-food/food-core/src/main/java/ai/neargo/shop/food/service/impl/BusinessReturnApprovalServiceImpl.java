@@ -17,10 +17,12 @@ import ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ReturnMapper;
 import ai.neargo.shop.food.mapper.FoodReturnAmendmentMapper;
+import ai.neargo.shop.food.observability.FoodRecoveryLog;
 import ai.neargo.shop.food.policy.BusinessReturnDocuments;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.BusinessReturnApprovalService;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
+import ai.neargo.shop.food.service.FoodMaintenanceService.Report;
 import ai.neargo.shop.spi.trade.IndustryAmendmentSourcePort;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort.Reference;
 import ai.neargo.shop.spi.trade.IndustryOrderAmendmentPort;
@@ -48,6 +50,8 @@ import java.util.function.Supplier;
  * Approval stays pending until both kitchen disposition and the original unpaid debt owner confirm.
  */
 public class BusinessReturnApprovalServiceImpl implements BusinessReturnApprovalService {
+    private final FoodRecoveryLog recoveryLog = new FoodRecoveryLog(
+            LoggerFactory.getLogger(BusinessReturnApprovalServiceImpl.class), "food.return-amendment.recovery");
     private final FoodReturnAmendmentMapper intents;
     private final ReturnMapper returns;
     private final OrderBatchMapper batches;
@@ -355,7 +359,7 @@ public class BusinessReturnApprovalServiceImpl implements BusinessReturnApproval
     }
 
     @Override
-    public int recover(int limit) {
+    public Report recover(int limit) {
         outside();
         if (limit < 1 || limit > 200) throw bad();
         var rows =
@@ -371,18 +375,23 @@ public class BusinessReturnApprovalServiceImpl implements BusinessReturnApproval
                                                                 "UNKNOWN"))
                                                 .orderByAsc(FnbReturnAmendment::getUpdatedAt)
                                                 .last("LIMIT " + limit)));
-        int done = 0;
-        for (var row : rows)
+        int completed = 0;
+        for (var row : rows) {
+            ApprovalVO result;
             try {
-                if (!execute(row).pending()) done++;
-            } catch (RuntimeException unknown) {
-                LoggerFactory.getLogger(getClass())
-                        .warn(
-                                "Business return amendment recovery remains pending: {}",
-                                row.getApprovalNo(),
-                                unknown);
+                result = execute(row);
+            } catch (RuntimeException unresolved) {
+                recoveryLog.failed(row.getApprovalNo(), unresolved);
+                continue;
             }
-        return done;
+            if (result.pending()) {
+                recoveryLog.pending(row.getApprovalNo(), result.status());
+            } else {
+                completed++;
+                recoveryLog.resolved(row.getApprovalNo());
+            }
+        }
+        return new Report(completed, rows.size() - completed);
     }
 
     private ApprovalVO view(FnbReturnAmendment row) {

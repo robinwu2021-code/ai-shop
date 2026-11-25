@@ -36,7 +36,7 @@ public interface ProductionConsumptionService {
         throw new UnsupportedOperationException();
     }
 
-    default int recover(int limit) {
+    default FoodMaintenanceService.Report recover(int limit) {
         throw new UnsupportedOperationException();
     }
 

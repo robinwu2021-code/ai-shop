@@ -1,5 +1,7 @@
 package ai.neargo.shop.config.obs;
 
+import ai.neargo.shop.common.ApiAccessLogFilter;
+import ai.neargo.shop.common.RequestLogContext;
 import ai.neargo.shop.spi.pay.CallSource;
 import ai.neargo.shop.spi.pay.CallSourceCodec;
 import ai.neargo.shop.spi.pay.CallSources;
@@ -47,7 +49,9 @@ public class InternalCallFilter extends OncePerRequestFilter {
             chain.doFilter(req, resp);
             return;
         }
-        try (CallSources.Scope ignored = CallSources.bind(new CallSources.Origin(source.traceId(), source.originApi(),
+        String requestId = RequestLogContext.requestId(req);
+        try (CallSources.Scope ignored = CallSources.bind(new CallSources.Origin(
+                requestId == null ? source.traceId() : requestId, source.originApi(),
                 source.originClient(), source.originIp(), source.originUaDigest(), source.operatorNo()))) {
             chain.doFilter(req, resp);
         }

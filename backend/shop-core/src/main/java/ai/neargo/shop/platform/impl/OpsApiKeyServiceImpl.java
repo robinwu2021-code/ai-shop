@@ -4,6 +4,7 @@ import ai.neargo.auth.store.TokenHash;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.observability.OperationLog;
 import ai.neargo.shop.platform.OpsApiKeyService;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.platform.auth.OperatorIdentityLoader;
@@ -48,6 +49,7 @@ public class OpsApiKeyServiceImpl implements OpsApiKeyService {
 
     @Override
     @Transactional
+    @OperationLog("ops.api_key.register")
     public Metadata registerOwn(UUID keyNo, String label, Access access, int validDays, String hash) {
         String staffNo = SecurityUtils.currentUserNo();
         requireEligibleStaff(staffNo);
@@ -91,6 +93,7 @@ public class OpsApiKeyServiceImpl implements OpsApiKeyService {
 
     @Override
     @Transactional
+    @OperationLog("ops.api_key.revoke")
     public void revoke(String staffNo, UUID keyNo) {
         if (keys.revoke(staffNo, keyNo.toString(), System.currentTimeMillis())) {
             ops.audit("OPS_API_KEY_REVOKE", staffNo + ":" + keyNo, null, true, null, null);

@@ -1,12 +1,13 @@
 package ai.neargo.shop.food.service.impl;
 
-import ai.neargo.shop.food.service.support.FoodStockSyncWorker;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.service.BusinessReturnApprovalService;
 import ai.neargo.shop.food.service.FoodMaintenanceService;
+import ai.neargo.shop.food.service.FoodReturnStockService;
 import ai.neargo.shop.food.service.ProductionConsumptionService;
 import ai.neargo.shop.food.service.ScheduledDiningDispatchService;
+import ai.neargo.shop.food.service.support.FoodStockSyncWorker;
 import java.util.function.Supplier;
 
 /**
@@ -31,8 +32,8 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
         this.amendments = amendments;
     }
 
-    private Supplier<ai.neargo.shop.food.service.FoodReturnStockService> returnStock=()->null;
-    public FoodMaintenanceServiceImpl withReturnStock(Supplier<ai.neargo.shop.food.service.FoodReturnStockService> source) {
+    private Supplier<FoodReturnStockService> returnStock=()->null;
+    public FoodMaintenanceServiceImpl withReturnStock(Supplier<FoodReturnStockService> source) {
         this.returnStock=source;return this;
     }
     private Supplier<FoodStockSyncWorker> stockSync=()->null;
@@ -47,12 +48,15 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
             }
             case QUEUE_NOTICE -> new Report(require(notices, task).runDue(limit), 0);
             case PRODUCTION_RECOVERY -> {
-                int count=require(production,task).recover(limit);var returns=returnStock.get();
-                if(returns!=null)count+=returns.recover(limit);
-                var sync=stockSync.get();var report=sync==null?new Report(0,0):sync.recover(limit);
-                yield new Report(count+report.processed(),report.pending());
+                var consumed = require(production, task).recover(limit);
+                var returns = returnStock.get();
+                var sync = stockSync.get();
+                var disposed = returns == null ? new Report(0, 0) : returns.recover(limit);
+                var delivered = sync == null ? new Report(0, 0) : sync.recover(limit);
+                yield new Report(consumed.processed() + disposed.processed() + delivered.processed(),
+                        consumed.pending() + disposed.pending() + delivered.pending());
             }
-            case RETURN_AMENDMENT_RECOVERY -> new Report(require(amendments, task).recover(limit), 0);
+            case RETURN_AMENDMENT_RECOVERY -> require(amendments, task).recover(limit);
         };
     }
 

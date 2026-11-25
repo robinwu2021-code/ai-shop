@@ -849,6 +849,7 @@ class ArchitectureTest {
     void topLevelPackagesMustBeRegistered() {
         // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
         List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
+                "observability", // Shared operation log annotations used by the host advisor.
                 // gateway：网关层新写的代码（端基类、安全框架适配、三端的端子类；ADR-060）。
                 // 不是业务域：没有自己的业务表，只管「请求怎么进来、谁能进」。搬来的出口仍在 portal 包。
                 "gateway",

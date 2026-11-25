@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
 
+import ai.neargo.job.api.JobStatus;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.beauty.config.BeautyAppointmentConfiguration;
 import ai.neargo.shop.beauty.config.BeautyCatalogConfiguration;
@@ -20,6 +21,7 @@ import ai.neargo.shop.beauty.dto.PreviewAppointmentReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentReq;
 import ai.neargo.shop.beauty.dto.RecordNoShowReq;
+import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.beauty.service.ServiceOperationRecoveryService;
 import ai.neargo.shop.beauty.service.impl.AppointmentRecovery;
@@ -246,7 +248,8 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
         });
     }
     @Test
-    void recoveryReconcilesOriginalWithoutMintingUserThenAwaitsAuthenticatedConfirm() {
+    @ExtendWith(OutputCaptureExtension.class)
+    void recoveryReconcilesOriginalWithoutMintingUserThenAwaitsAuthenticatedConfirm(CapturedOutput output) {
         business().run(context -> {
             owner.authority = context.getBean(ResourceSourceAuthorityPort.class);
             var service = context.getBean(AppointmentService.class);
@@ -257,7 +260,12 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             assertThat(pending.operationState()).isEqualTo("PENDING");
             SecurityContextHolder.clearContext();
             sql.update("UPDATE bty_appointment_operation SET next_retry_at=?", T0);
-            context.getBean(AppointmentRecovery.class).scan();
+            var run = new AppointmentRecoveryJob(context.getBean(AppointmentRecovery.class)).run(null);
+            assertThat(run.status()).isEqualTo(JobStatus.FAILED);
+            assertThat(run.error()).isEqualTo("APPOINTMENT_RECOVERY_PENDING");
+            assertThat(run.detail()).contains("attempted=1 completed=0 pending=1 failed=0");
+            assertThat(output).contains("beauty.appointment.recovery_handoff operationNo="
+                    + pending.operationNo() + " nextAction=AUTHENTICATED_SAME_KEY_REPLAY");
             assertThat(owner.accepts).hasSize(1);
             assertThat(sql.queryForObject("SELECT status FROM bty_appointment", String.class)).isEqualTo("HELD");
             login(LoginUser.consumer("USR1", "customer"));
@@ -634,15 +642,20 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
         business().run(context -> {
             owner.authority = context.getBean(ResourceSourceAuthorityPort.class);
             var service = context.getBean(AppointmentService.class);
-            for (String key : List.of("BROKEN", "LATER")) {
+            for (String key : List.of("BROKEN", "PENDING", "LATER")) {
                 var p = service.previewMyAppointment("USR1", preview(1));
-                owner.loseExecute = true;
+                owner.freezeOnly = "PENDING".equals(key);
+                owner.loseExecute = !owner.freezeOnly;
+                owner.reject = "LATER".equals(key) ? "RESERVE" : null;
                 service.createMyAppointment("USR1", new CreateMyAppointmentReq(p.previewNo(), List.of(), null), key);
             }
             owner.brokenSource = owner.receipts.values().iterator().next().binding().sourceNo();
             sql.update("UPDATE bty_appointment_operation SET next_retry_at='2020-01-01'");
             SecurityContextHolder.clearContext();
-            assertThat(context.getBean(AppointmentRecovery.class).scan()).isEqualTo(1);
+            var run = new AppointmentRecoveryJob(context.getBean(AppointmentRecovery.class)).run(null);
+            assertThat(run.status()).isEqualTo(JobStatus.FAILED);
+            assertThat(run.detail()).contains("attempted=3 completed=1 pending=1 failed=1");
+            assertThat(run.error()).isEqualTo("APPOINTMENT_RECOVERY_FAILED");
             assertThat(output).contains("Appointment recovery deferred operation=", "failure=IllegalStateException")
                     .doesNotContain("unavailable original");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation "
@@ -650,9 +663,9 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                     + "AND next_retry_at>UTC_TIMESTAMP()+INTERVAL 40 SECOND",
                     Integer.class, owner.brokenSource)).isOne();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation "
-                    + "WHERE receipt IS NULL AND accept_payload LIKE '%CONFIRM%'", Integer.class)).isOne();
+                    + "WHERE state='REJECTED'", Integer.class)).isOne();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_resource_fence "
-                    + "WHERE active_intent_no IS NOT NULL", Integer.class)).isOne();
+                    + "WHERE active_intent_no IS NOT NULL", Integer.class)).isEqualTo(2);
         });
     }
 

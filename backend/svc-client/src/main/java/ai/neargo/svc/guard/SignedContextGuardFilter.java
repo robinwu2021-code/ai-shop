@@ -53,11 +53,11 @@ public class SignedContextGuardFilter extends HttpFilter {
                         System.currentTimeMillis());
         if (!result.ok()) {
             if ("enforce".equals(mode)) {
-                log.warn("签名上下文验证不过，已拒绝 {} {} · {}", request.getMethod(), target, result.outcome());
+                log.warn("签名上下文验证不过，已拒绝 {} {} · {}", request.getMethod(), pathPrefix, result.outcome());
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
-            log.warn("签名上下文验证不过（只比对，已放行）{} {} · {}", request.getMethod(), target, result.outcome());
+            log.warn("签名上下文验证不过（只比对，已放行）{} {} · {}", request.getMethod(), pathPrefix, result.outcome());
         }
         try {
             result.context().ifPresent(SignedContextHolder::set);

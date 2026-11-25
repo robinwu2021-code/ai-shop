@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.observability.FoodRecoveryLog;
 import ai.neargo.shop.food.service.support.DiningChannelSourceStore;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -39,6 +40,7 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.ProductionDemandPolicy;
 import ai.neargo.shop.food.policy.PublicationDocuments;
 import ai.neargo.shop.food.policy.RecipePublicationDocuments;
+import ai.neargo.shop.food.service.FoodMaintenanceService.Report;
 import ai.neargo.shop.food.service.ProductionConsumptionService;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts;
@@ -84,6 +86,8 @@ import java.util.function.Supplier;
  * second raw-material issue.
  */
 public class ProductionConsumptionServiceImpl implements ProductionConsumptionService {
+    private final FoodRecoveryLog recoveryLog = new FoodRecoveryLog(
+            LoggerFactory.getLogger(ProductionConsumptionServiceImpl.class), "food.production.recovery");
     private final ProductionConsumptionMapper heads;
     private final ProductionConsumptionLineMapper lines;
     private final OrderBatchMapper batches;
@@ -446,7 +450,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
     }
 
     @Override
-    public int recover(int limit) {
+    public Report recover(int limit) {
         outside();
         if (limit < 1 || limit > 200) throw BizException.of(ErrorCode.BAD_REQUEST);
         // Reserve part of the same budget for the commit-to-first-prepare crash gap.
@@ -467,32 +471,29 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                                                 .orderByAsc(FnbProductionConsumption::getUpdatedAt)
                                                 .last("LIMIT " + pendingBudget)));
         int completed = 0;
-        for (var row : pending)
-            try {
-                var result =
-                        consume(
-                                row.getEntityNo(),
-                                row.getStoreNo(),
-                                "SYSTEM",
-                                row.getSourceEventNo());
-                if (!result.consumptionPending()) completed++;
-            } catch (RuntimeException unresolved) {
-                LoggerFactory.getLogger(ProductionConsumptionServiceImpl.class)
-                        .warn(
-                                "Production event recovery remains unresolved: {}",
-                                row.getSourceEventNo(),
-                                unresolved);
-            }
-        for (var source : missed) {
-            try {
-                var result = consume(source.entityNo(), source.storeNo(), "SYSTEM", source.eventNo());
-                if (!result.consumptionPending()) completed++;
-            } catch (RuntimeException unresolved) {
-                LoggerFactory.getLogger(ProductionConsumptionServiceImpl.class)
-                        .warn("Production source recovery remains unresolved: {}", source.eventNo(), unresolved);
-            }
+        for (var row : pending) {
+            if (recoverEvent(row.getEntityNo(), row.getStoreNo(), row.getSourceEventNo())) completed++;
         }
-        return completed;
+        for (var source : missed) {
+            if (recoverEvent(source.entityNo(), source.storeNo(), source.eventNo())) completed++;
+        }
+        return new Report(completed, pending.size() + missed.size() - completed);
+    }
+
+    private boolean recoverEvent(String entity, String store, String eventNo) {
+        ConsumptionVO result;
+        try {
+            result = consume(entity, store, "SYSTEM", eventNo);
+        } catch (RuntimeException unresolved) {
+            recoveryLog.failed(eventNo, unresolved);
+            return false;
+        }
+        if (result.consumptionPending()) {
+            recoveryLog.pending(eventNo, result.status());
+            return false;
+        }
+        recoveryLog.resolved(eventNo);
+        return true;
     }
 
     @Override

@@ -11,9 +11,14 @@ public final class ReceptionRecoveryJob implements JobHandler {
     public ReceptionRecoveryJob(ReceptionRecovery recovery) { this.recovery = recovery; }
     @Override public String name() { return "beauty-reception-recovery"; }
     @Override public JobResult run(JobInvocation invocation) {
-        try { return JobResult.ok("Reception original operations examined: " + recovery.scan()); }
-        catch (RuntimeException failure) {
-            return JobResult.failed("Reception recovery deferred", "OWNER_UNAVAILABLE");
+        try {
+            var report = recovery.scanReport();
+            String detail = "Reception recovery: " + report.detail();
+            if (report.failed() > 0) { return JobResult.failed(detail, "RECEPTION_RECOVERY_FAILED"); }
+            if (report.pending() > 0) { return JobResult.failed(detail, "RECEPTION_RECOVERY_PENDING"); }
+            return JobResult.ok(detail);
+        } catch (RuntimeException failure) {
+            return JobResult.failed("Reception recovery scan failed", failure.getClass().getSimpleName());
         }
     }
 }

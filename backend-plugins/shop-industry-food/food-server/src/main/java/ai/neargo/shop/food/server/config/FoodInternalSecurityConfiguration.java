@@ -1,13 +1,17 @@
 package ai.neargo.shop.food.server.config;
 
+import ai.neargo.shop.common.ApiAccessLogFilter;
 import ai.neargo.shop.food.scope.FoodScopeCredentials;
 import ai.neargo.shop.svc.InternalHttp;
 import jakarta.servlet.DispatcherType;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -22,6 +26,19 @@ import org.springframework.security.web.access.intercept.AuthorizationFilter;
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
 public class FoodInternalSecurityConfiguration {
+
+    @Bean
+    FilterRegistrationBean<ApiAccessLogFilter> foodAccessLogFilter(
+            @Value("${shop.obs.access-log:true}") boolean accessLog,
+            @Value("${shop.obs.slow-ms:1000}") long slowMs,
+            @Value("${shop.obs.exclude:/actuator/**}") List<String> exclude,
+            @Value("${shop.services.internal-token:}") String token) {
+        var registration = new FilterRegistrationBean<>(new ApiAccessLogFilter(accessLog, slowMs, exclude, token, ""));
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        registration.setDispatcherTypes(DispatcherType.REQUEST, DispatcherType.ASYNC);
+        registration.addUrlPatterns("/*");
+        return registration;
+    }
 
     @Bean
     SecurityFilterChain foodInternalChain(HttpSecurity http,

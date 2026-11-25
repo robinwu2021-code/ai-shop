@@ -99,7 +99,7 @@ public class InProcessJobConfig {
     private static InvokeOutcome invoke(JobHandler handler, JobInvocation invocation) {
         try {
             // 任务里调支付，来源记成这个任务（CallSources.JOB，开发计划 M2.1）
-            JobResult r = CallSources.asJob(handler.name(), () -> handler.run(invocation));
+            JobResult r = CallSources.asJob(handler.name(), invocation.runId(), () -> handler.run(invocation));
             return InvokeOutcome.of(r.status(), r.detail(), r.error(), null);
         } catch (RuntimeException e) {
             // 抛异常与「返回 FAILED」在排查时是两件事，所以 error 里放异常类名。

@@ -5,6 +5,7 @@ import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.trade.dto.OpsAfterSaleVO;
 
 import java.util.List;
+import java.util.Set;
 
 /** 售后（[API 清单 §2.6 / §3.7]）。**子单粒度**：一次售后只针对一个商家。 */
 public interface AfterSaleService {
@@ -230,6 +231,9 @@ public interface AfterSaleService {
      * @param limit       单轮上限。**超出的留待下一轮** —— 积压很多时一次全跑会把退款通道打满
      */
     java.util.List<String> stuckRefundNos(long stuckBefore, int limit);
+
+    /** Confirm persisted refund completion for the current recovery batch. */
+    Set<String> refundedNosForRecovery(List<String> afterSaleNos);
 
     /**
      * 已经退款、而<b>分账没有回退</b>的售后单（不变式 I4）。

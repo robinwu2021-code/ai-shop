@@ -17,9 +17,12 @@ import ai.neargo.shop.food.mapper.FoodReturnAmendmentMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
 import ai.neargo.shop.food.service.impl.CheckCollaborationServiceImpl;
+import ai.neargo.shop.food.service.FoodMaintenanceService.Report;
 import ai.neargo.shop.food.service.impl.BusinessReturnApprovalServiceImpl;
+import ai.neargo.shop.food.service.impl.FoodReturnStockServiceImpl;
 import ai.neargo.shop.food.service.impl.ProductionConsumptionServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.food.FoodLocalStockPort;
 import ai.neargo.shop.spi.inventory.InventoryProductionPort;
 import ai.neargo.shop.spi.inventory.InventoryProductionPort.*;
 import ai.neargo.shop.spi.inventory.InventoryReservationPort;
@@ -221,6 +224,29 @@ public class OrderOperationsAcceptanceTest {
     }
 
     @Test
+    void recoveryCountsKitchenWaitAndOwnerFailureUntilOriginalApprovalCompletes() {
+        var f = new Approval();
+        f.intent.setStatus("WAIT_KITCHEN");
+        f.original.setKitchenStatus("PENDING");
+        when(f.intents.selectList(any())).thenReturn(List.of(f.intent));
+        var pending = new Report(0, 1);
+        assertThat(f.service.recover(10)).isEqualTo(pending);
+        verifyNoInteractions(f.owner);
+
+        f.original.setKitchenStatus("HANDLED");
+        String ownerKey = "RETURN_APPROVAL_V1:" + f.intent.getApprovalNo();
+        when(f.owner.query(f.ref, "A", ownerKey)).thenThrow(new IllegalStateException("owner timeout"));
+        assertThat(f.service.recover(10)).isEqualTo(pending);
+        assertThat(f.intent.getStatus()).isEqualTo("UNKNOWN");
+
+        doReturn(f.receipt()).when(f.owner).query(f.ref, "A", ownerKey);
+        assertThat(f.service.recover(10)).isEqualTo(new Report(1, 0));
+        assertThat(f.original.getStatus()).isEqualTo("APPROVED");
+        verify(f.owner, times(2)).query(f.ref, "A", ownerKey);
+        verify(f.owner, never()).amend(any(), any());
+    }
+
+    @Test
     void approvalRejectsChangedRequestKeyAndActorAndConfirmedReplayDoesNotCallOwner() {
         var f = new Approval();
         f.intent.setStatus("CONFIRMED");
@@ -290,6 +316,7 @@ public class OrderOperationsAcceptanceTest {
             assertThat((Reverse)i.getArgument(0)).isEqualTo(reversal);
             return f.receipt("REVERSED");
         }).when(f.inventory).reverse(any());
+        assertThat(f.service.recover(4)).isEqualTo(new Report(1, 0));
         var done = f.service.reverse("E","S","A","EVENT",req,"reverse");
         assertThat(done.status()).isEqualTo("REVERSED");
         assertThat(done.quantityEvidence()).isEqualTo("INVENTORY_ISSUE_REVERSED");
@@ -300,6 +327,41 @@ public class OrderOperationsAcceptanceTest {
         verify(f.inventory,times(2)).reverse(any());
         verify(f.inventory,never()).consume(any());
         verify(f.inventory,never()).query(any());
+    }
+
+    @Test
+    void returnStockRecoveryReconcilesTheOriginalDispositionWithoutReposting() {
+        var claims = mock(ReturnStockDispositionMapper.class);
+        var stock = mock(FoodLocalStockPort.class);
+        var json = new ObjectMapper();
+        var command = new FoodLocalStockPort.Command("ORIGINAL", HASH, "FOOD", "B1", 1, 1);
+        var scope = new FoodLocalStockPort.Scope("E", "S");
+        var row = new FnbReturnStockDisposition();
+        row.setEntityNo("E");
+        row.setStoreNo("S");
+        row.setReturnNo("R");
+        row.setOperationNo("DISPOSITION");
+        row.setStatus("PENDING");
+        row.setNativeSnapshot(json.writeValueAsString(new FoodReturnStockServiceImpl.NativeCall(
+                command, "RESERVATION", List.of())));
+        when(claims.selectList(any())).thenReturn(List.of(row));
+        when(claims.selectOne(any())).thenReturn(row);
+        when(claims.updateById(row)).thenReturn(1);
+        var service = new FoodReturnStockServiceImpl(claims, null, null, null, null, null,
+                null, null, null, null, null, stock, json, new Transactions());
+
+        when(stock.findCommand(scope, "RETURN", command.operationKey(), command.requestHash()))
+                .thenThrow(new IllegalStateException("stock timeout"));
+        assertThat(service.recover(10)).isEqualTo(new Report(0, 1));
+        assertThat(row.getStatus()).isEqualTo("UNKNOWN");
+        var receipt = new FoodLocalStockPort.Receipt("DOC", "RESERVATION", "FOOD_LOCAL", HASH,
+                "COMPLETED", 1, List.of(), List.of());
+        doReturn(new FoodLocalStockPort.Lookup("COMPLETED", receipt)).when(stock)
+                .findCommand(scope, "RETURN", command.operationKey(), command.requestHash());
+        assertThat(service.recover(10)).isEqualTo(new Report(1, 0));
+        assertThat(row.getStockCommandNo()).isEqualTo("DOC");
+        verify(stock, times(2)).findCommand(scope, "RETURN", command.operationKey(), command.requestHash());
+        verify(stock, never()).returnIssued(any(), any(), any(), any());
     }
 
     /** Regression: an absent reversal must never reissue the original consumption. */
@@ -439,6 +501,7 @@ public class OrderOperationsAcceptanceTest {
         final ObjectMapper json = new ObjectMapper();
         final ApproveReq req = new ApproveReq(0L,"approve return",null);
         final FnbReturnAmendment intent = new FnbReturnAmendment();
+        final FoodReturnAmendmentMapper intents = mock(FoodReturnAmendmentMapper.class);
         final AtomicReference<FnbReturnAmendment> stored = new AtomicReference<>(intent);
         final FnbReturn original = new FnbReturn();
         final FnbOrderBatch replacement = new FnbOrderBatch();
@@ -452,7 +515,6 @@ public class OrderOperationsAcceptanceTest {
             assistant.setCurrentNamespace("order-operations-acceptance");
             com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(assistant, FnbOrderBatch.class);
             com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(assistant, FnbCoreOrderBinding.class);
-            var intents = mock(FoodReturnAmendmentMapper.class);
             var returns = mock(ReturnMapper.class);
             var batches = mock(OrderBatchMapper.class);
             var bindings = mock(CoreOrderBindingMapper.class);

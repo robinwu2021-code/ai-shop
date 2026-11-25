@@ -85,6 +85,23 @@ class FoodMaintenanceJobWiringTest {
     }
 
     @Test
+    void pendingProductionAndReturnAmendmentFailTheirJobRuns() {
+        runner.withPropertyValues("shop.food.enabled=true", "shop.food.deployment=embedded",
+                        "shop.job.enabled=true", "spring.profiles.active=api")
+                .run(context -> {
+                    var recorder = context.getBean(Recorder.class);
+                    recorder.pending = 1;
+                    var handlers = handlers(context);
+                    for (String name : List.of("food-production-recovery", "food-return-amendment-recovery")) {
+                        var result = handlers.get(name).run(null);
+                        assertThat(result.status()).isEqualTo(JobStatus.FAILED);
+                        assertThat(result.detail()).contains("pending=1");
+                        assertThat(result.error()).isEqualTo("FOOD_" + JOBS.get(name) + "_PENDING");
+                    }
+                });
+    }
+
+    @Test
     void noFoodJobsWithoutPlatformJobRuntime() {
         runner.withPropertyValues("shop.food.enabled=true", "shop.food.deployment=embedded",
                         "spring.profiles.active=api,ops")
@@ -122,7 +139,7 @@ class FoodMaintenanceJobWiringTest {
             if (fail) throw new IllegalStateException("owner unavailable");
             assertThat(limit).isBetween(1, 200);
             calls.add(task);
-            return new Report(1, task == Task.SCHEDULED_DISPATCH ? pending : 0);
+            return new Report(1, pending);
         }
     }
 

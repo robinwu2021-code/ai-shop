@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.server.config;
 
+import ai.neargo.shop.common.RequestLogContext;
 import ai.neargo.shop.food.scope.FoodScopeBodyScanner;
 import ai.neargo.shop.food.scope.FoodScopeCredentials;
 import ai.neargo.shop.food.scope.FoodScopeCredentials.Rejected;
@@ -54,8 +55,9 @@ public final class FoodScopeVerificationFilter extends OncePerRequestFilter {
                     FoodScopeCredentials.digest(request.getMethod(), path, body), nowEpochSeconds.getAsLong());
             FoodScopeCredentials.requireBodyMatches(claims, FoodScopeBodyScanner.scan(body));
         } catch (Rejected rejected) {
-            log.warn("food-server 拒绝内部调用 {} {}：{}", request.getMethod(), request.getRequestURI(),
-                    rejected.getMessage());
+            // Both credential checks supply fixed FOOD_SCOPE_* reason codes.
+            log.warn("food.scope.rejected route=/internal/food method={} status={} reasonCode={}",
+                    RequestLogContext.method(request), rejected.status(), rejected.getMessage());
             response.sendError(rejected.status());
             return;
         }

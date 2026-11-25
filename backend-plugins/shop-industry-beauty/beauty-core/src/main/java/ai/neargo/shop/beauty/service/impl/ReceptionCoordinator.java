@@ -26,6 +26,7 @@ import ai.neargo.shop.beauty.service.impl.ReceptionPreparation.WalkInPayload;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.idem.IdempotencyScope;
@@ -42,9 +43,13 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /** Arrival observes owner proof outside locks and commits only local presence/audit facts under the root lock. */
 public final class ReceptionCoordinator {
+    private static final Logger LOG = LoggerFactory.getLogger(ReceptionCoordinator.class);
     private final AppointmentPersistence db;
     private final AppointmentAccess access;
     private final ReceptionAccess receptionAccess;
@@ -482,6 +487,12 @@ public final class ReceptionCoordinator {
     private void publish(BtyAppointment root, BtyReceptionOperation op, long revision, String state) {
         publisher.publish(new BeautyReceptionStateChanged(root.getAppointmentNo(), root.getEntityNo(),
                 root.getStoreNo(), revision, state), new PublishOptions("BEAUTY:RECEPTION:" + op.getOperationNo(), 1));
+        String requestId = MDC.get("requestId");
+        String operationNo = op.getOperationNo();
+        String appointmentNo = root.getAppointmentNo();
+        AfterCommit.run("beauty.reception.state_committed", () -> LOG.info(
+                "beauty.reception.state_committed requestId={} operationNo={} appointmentNo={} state={}",
+                requestId, operationNo, appointmentNo, state));
     }
     private record ExceptionSnapshot(String kind, String proposal, List<String> affectedTaskNos) { }
 }

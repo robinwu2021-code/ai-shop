@@ -45,3 +45,7 @@
 `pay-standalone.locations.example` **未生效**（不以 `.conf` 结尾、没有 server 引用它）。它把直接调支付的四类入口
 （`/open/pay/` 开放 API、`/terminal/pay/` POS、`/pay/callback/` 渠道回调、`/checkout/v1/` 收银台）转给 `pay-svc`（8083）。
 切换的前提、步骤与回滚写在文件头；`NginxEdgeRulesTest#payStandaloneCutoverSnippet` 守着它的形状，并拦「有人提前 include 了它」。
+
+## API 访问日志格式
+
+先将 `ai-shop-access-log.conf` 作为 HTTP 级配置部署到 `/etc/nginx/conf.d/`，再在实际提供 ai-shop 入口的 server 内合入 `access_log /var/log/nginx/ai-shop.access.log ai_shop_safe;`。检查是否有 location 覆盖该设置，以服务器当前站点配置为准。使用 `nginx -t` 检查通过后 reload，再用合成请求核对原始 URL、查询串、Referer 和客户端请求头不落盘。Nginx 错误日志仍由系统配置负责。

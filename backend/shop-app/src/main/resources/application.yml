@@ -804,6 +804,8 @@ inventory:
     reservation-expiry-cron: ${shop.job.inv-reservation-expiry.cron:0 * * * * *}
 
 logging:
+  pattern:
+    level: "%5p rid=%X{requestId:-}"
   level:
     com.zaxxer.hikari: WARN
     com.baomidou.mybatisplus: WARN

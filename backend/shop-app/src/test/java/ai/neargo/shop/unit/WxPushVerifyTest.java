@@ -3,6 +3,9 @@ package ai.neargo.shop.unit;
 import ai.neargo.shop.portal.mp.MpWxCallbackController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -22,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
  * <p>最容易漏的是**排序**：三个值要按字典序排再拼。漏掉排序时，
  * 只要自测用的 token/timestamp/nonce 恰好已经有序，一样能通过。
  */
+@ExtendWith(OutputCaptureExtension.class)
 class WxPushVerifyTest {
 
     private static final String TOKEN = "hxmallToken2026";
@@ -63,9 +67,11 @@ class WxPushVerifyTest {
 
     @Test
     @DisplayName("★★ 签名不符 → 回空串，不回 echostr")
-    void rejectsBadSignature() {
+    void rejectsBadSignature(CapturedOutput logs) {
         MpWxCallbackController c = ctl(TOKEN);
-        assertThat(c.verify("deadbeef", "1788400000", "zzz999", "ECHO")).isEmpty();
+        assertThat(c.verify("signature-marker", "timestamp-marker", "nonce-marker", "echo-marker")).isEmpty();
+        assertThat(logs.getAll()).contains("wx.push.verify reasonCode=INVALID_SIGNATURE count=1")
+                .doesNotContain("signature-marker", "timestamp-marker", "nonce-marker", "echo-marker");
     }
 
     @Test
@@ -91,14 +97,16 @@ class WxPushVerifyTest {
 
     @Test
     @DisplayName("★★★ POST 也要验签 —— 签名不符的事件必须被丢掉，不能进到改状态那一步")
-    void postRejectsBadSignature() {
+    void postRejectsBadSignature(CapturedOutput logs) {
         var events = org.mockito.Mockito.mock(ai.neargo.shop.paybridge.WxPushEventService.class);
         MpWxCallbackController c = new MpWxCallbackController(TOKEN, events);
 
         // 回 success 是给微信看的（别重推），但事件不能被处理
-        assertThat(c.receive("deadbeef", "1700000000", "n1", "{}")).isEqualTo("success");
+        assertThat(c.receive("signature-marker", "timestamp-marker", "nonce-marker", "body-marker")).isEqualTo("success");
         assertThat(c.receive(null, null, null, "{}")).isEqualTo("success");
         org.mockito.Mockito.verify(events, org.mockito.Mockito.never()).onEvent(any());
+        assertThat(logs.getAll()).contains("wx.push.receive reasonCode=INVALID_SIGNATURE count=1")
+                .doesNotContain("signature-marker", "timestamp-marker", "nonce-marker", "body-marker");
     }
 
     @Test
@@ -116,14 +124,16 @@ class WxPushVerifyTest {
 
     @Test
     @DisplayName("★★ 事件处理抛异常不能冒出去 —— 冒出去微信会一直重推")
-    void postSwallowsHandlerFailure() throws Exception {
+    void postSwallowsHandlerFailure(CapturedOutput logs) throws Exception {
         var events = org.mockito.Mockito.mock(ai.neargo.shop.paybridge.WxPushEventService.class);
-        org.mockito.Mockito.when(events.onEvent(any())).thenThrow(new IllegalStateException("boom"));
+        org.mockito.Mockito.when(events.onEvent(any())).thenThrow(new IllegalStateException("exception-message-marker"));
         MpWxCallbackController c = new MpWxCallbackController(TOKEN, events);
         String ts = "1700000000";
         String nonce = "n1";
 
-        assertThat(c.receive(sign(TOKEN, ts, nonce), ts, nonce, "{}")).isEqualTo("success");
+        assertThat(c.receive(sign(TOKEN, ts, nonce), ts, nonce, "body-marker")).isEqualTo("success");
+        assertThat(logs.getAll()).contains("wx.push.receive reasonCode=HANDLER_FAILURE errorType=IllegalStateException count=1")
+                .doesNotContain("exception-message-marker", "body-marker");
     }
 
     private static MpWxCallbackController ctl(String token) {

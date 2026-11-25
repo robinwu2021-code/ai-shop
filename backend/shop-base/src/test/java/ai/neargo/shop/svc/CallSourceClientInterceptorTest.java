@@ -52,6 +52,18 @@ class CallSourceClientInterceptorTest {
     }
 
     @Test
+    void jobContextUsesWorkerRunIdAndForwardsIt() throws Exception {
+        String runId = "1b9769ce-77c2-4da8-974b-9ab0bc44d133";
+        MockClientHttpRequest req = request();
+        var source = CallSources.asJob("pay-order-compensation", runId, CallSources::current);
+        req.getHeaders().set(InternalHeaders.CALL_SOURCE, CallSourceCodec.encode(source));
+        interceptor.intercept(req, new byte[0], (r, b) -> new MockClientHttpResponse());
+
+        assertThat(source.traceId()).isEqualTo(runId);
+        assertThat(req.getHeaders().getFirst("X-Request-Id")).isEqualTo(runId);
+    }
+
+    @Test
     @DisplayName("★★ InternalHttp 造出来的每个客户端都挂着它 —— 不靠各个远程实现自己记得")
     void everyInternalClientHasIt() {
         assertThat(InternalHttp.DEFAULT_INTERCEPTORS).anyMatch(i -> i instanceof CallSourceClientInterceptor);

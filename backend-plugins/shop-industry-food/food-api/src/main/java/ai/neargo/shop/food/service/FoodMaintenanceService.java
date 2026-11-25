@@ -13,7 +13,7 @@ public interface FoodMaintenanceService {
         SCHEDULED_DISPATCH,
         /** 排队叫号通知重发（原通知）。 */
         QUEUE_NOTICE,
-        /** 出品耗用恢复（原耗用事件）。 */
+        /** 出品、冲回、退菜库存处置和库存同步恢复（各自沿用原记录）。 */
         PRODUCTION_RECOVERY,
         /** 退菜改单恢复（原改单意图）。 */
         RETURN_AMENDMENT_RECOVERY
@@ -21,7 +21,7 @@ public interface FoodMaintenanceService {
 
     /**
      * @param processed 本轮推进的条数：预约出餐=完成数；叫号通知=尝试重发数；耗用/改单恢复=到达终态数
-     * @param pending   本轮已领取但仍待重试的条数；预约出餐及本地库存同步可返回未完成数
+     * @param pending   本轮选中但尚未确认完成的条数，包含恢复中捕获的单条异常
      */
     record Report(int processed, int pending) {
         public Report {
@@ -29,5 +29,6 @@ public interface FoodMaintenanceService {
         }
     }
 
+    /** Each production recovery source uses the same per-source limit. */
     Report run(Task task, int limit);
 }

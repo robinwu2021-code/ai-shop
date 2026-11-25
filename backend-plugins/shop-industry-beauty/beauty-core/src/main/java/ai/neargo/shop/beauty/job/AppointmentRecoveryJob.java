@@ -13,8 +13,14 @@ public final class AppointmentRecoveryJob implements JobHandler {
     public AppointmentRecoveryJob(AppointmentRecovery recovery) { this.recovery = recovery; }
     @Override public String name() { return "beauty-appointment-recovery"; }
     @Override public JobResult run(JobInvocation invocation) {
-        try { return JobResult.ok("Appointment original operations examined: " + recovery.scan()); }
-        catch (RuntimeException failure) { return JobResult.failed("Appointment recovery deferred",
-                "OWNER_UNAVAILABLE"); }
+        try {
+            var report = recovery.scanReport();
+            String detail = "Appointment recovery: " + report.detail();
+            if (report.failed() > 0) { return JobResult.failed(detail, "APPOINTMENT_RECOVERY_FAILED"); }
+            if (report.pending() > 0) { return JobResult.failed(detail, "APPOINTMENT_RECOVERY_PENDING"); }
+            return JobResult.ok(detail);
+        } catch (RuntimeException failure) {
+            return JobResult.failed("Appointment recovery scan failed", failure.getClass().getSimpleName());
+        }
     }
 }

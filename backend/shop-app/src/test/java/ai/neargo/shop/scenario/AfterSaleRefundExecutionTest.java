@@ -154,11 +154,13 @@ class AfterSaleRefundExecutionTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_refund_obligation WHERE execution_no=? AND kind='STOCK'",Long.class,"PRF-"+f.as())).isEqualTo(1);
         if(stockFailure) {
             assertThat(jdbc.queryForObject("SELECT state FROM ord_refund_obligation WHERE execution_no=? AND kind='STOCK'",String.class,"PRF-"+f.as())).isEqualTo("UNKNOWN");
+            assertThat(resourceRecovery.recover(f.as())).isFalse();
             org.mockito.Mockito.doReturn(ai.neargo.shop.spi.product.StockPort.RestoreResult.COMPLETED)
                     .when(stock).restoreOriginal(eq("PRF-"+f.as()),eq(f.sub()),anyList());
-            afterSales.resumeRefund(f.as(),"SYSTEM");
+            assertThat(resourceRecovery.recover(f.as())).isTrue();
+            assertThat(resourceRecovery.recover(f.as())).isTrue();
             assertThat(jdbc.queryForObject("SELECT state FROM ord_refund_obligation WHERE execution_no=? AND kind='STOCK'",String.class,"PRF-"+f.as())).isEqualTo("SUCCEEDED");
-            verify(stock,times(2)).restoreOriginal(eq("PRF-"+f.as()),eq(f.sub()),anyList());
+            verify(stock,times(3)).restoreOriginal(eq("PRF-"+f.as()),eq(f.sub()),anyList());
             verify(stock,never()).restore(eq(f.as()),anyList());
         }
         if(lifecycleReturn) {

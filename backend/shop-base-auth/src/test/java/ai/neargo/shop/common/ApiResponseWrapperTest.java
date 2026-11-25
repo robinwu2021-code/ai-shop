@@ -26,6 +26,16 @@ class ApiResponseWrapperTest {
     }
 
     @Test
+    void exposesBusinessCodeWithoutChangingTheEnvelope() {
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/ops/stores");
+        var body = ApiResult.error(10403, "forbidden");
+        var result = wrapper.beforeBodyWrite(body, null, null, null, new ServletServerHttpRequest(req), null);
+
+        assertThat(result).isSameAs(body);
+        assertThat(req.getAttribute(RequestLogContext.BUSINESS_CODE)).isEqualTo(10403);
+    }
+
+    @Test
     @DisplayName("★★★ 支付域独立进程的内部口不包 —— 包了的话对方解出来是字段全 null 的对象，而且不报错")
     void payInternalIsNotWrapped() {
         List<String> body = List.of("FR1");

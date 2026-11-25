@@ -68,22 +68,18 @@ public class JobRunner {
                     outcome.detail(), outcome.error(), outcome.httpStatus());
         }
 
-        if (outcome.status().countsAsFailure()) {
-            log.warn("任务失败 job={} 用时={}ms error={}", def.jobName(), durationMs, outcome.error());
-        }
-        if (nearTimeout(durationMs, def.timeoutSec())) {
-            /*
-             * **在开始超时之前就说。**
-             *
-             * timeout 是写声明的人对「这任务最长跑多久」的估计，而数据量会长。
-             * 等它真的超时才发现，现场是一连串 TIMEOUT（结果未知）——
-             * 而 TIMEOUT 不计入连续失败，页面上也不红，没有人会被提醒。
-             * 用掉一半预算就出声，那时改数字还来得及。
-             */
-            log.warn("任务离超时不远 job={} 用时={}ms 上限={}s —— "
-                            + "要么把 timeoutSec 调大，要么把任务拆小",
-                    def.jobName(), durationMs, def.timeoutSec());
-        }
+        var event = switch (outcome.status()) {
+            case FAILED, UNREACHABLE -> log.atError();
+            case TIMEOUT -> log.atWarn();
+            default -> {
+                if (nearTimeout(durationMs, def.timeoutSec())) {
+                    yield log.atWarn();
+                }
+                yield outcome.status() == JobStatus.SUCCESS && !logEveryRun ? log.atDebug() : log.atInfo();
+            }
+        };
+        event.log("job.run job={} runId={} trigger={} status={} elapsedMs={} httpStatus={} timeoutSec={}",
+                def.jobName(), runId, trigger, outcome.status(), durationMs, outcome.httpStatus(), def.timeoutSec());
     }
 
     /**

@@ -11,6 +11,7 @@ import ai.neargo.shop.food.config.FoodMaintenanceConfiguration;
 import ai.neargo.shop.food.service.BusinessReturnApprovalService;
 import ai.neargo.shop.food.service.FoodMaintenanceService.Report;
 import ai.neargo.shop.food.service.FoodMaintenanceService.Task;
+import ai.neargo.shop.food.service.FoodReturnStockService;
 import ai.neargo.shop.food.service.ProductionConsumptionService;
 import ai.neargo.shop.food.service.ScheduledDiningDispatchService;
 import ai.neargo.shop.food.service.impl.FoodMaintenanceServiceImpl;
@@ -33,24 +34,29 @@ class FoodMaintenanceServiceImplTest {
     void eachTaskReachesItsOriginalOwner() {
         when(dispatch.runDue(100)).thenReturn(new ScheduledDiningDispatchService.Report(4, 3, 1));
         when(notices.runDue(100)).thenReturn(5);
-        when(production.recover(50)).thenReturn(2);
-        when(amendments.recover(50)).thenReturn(1);
+        when(production.recover(50)).thenReturn(new Report(2, 0));
+        when(amendments.recover(50)).thenReturn(new Report(1, 2));
 
         assertThat(service.run(Task.SCHEDULED_DISPATCH, 100)).isEqualTo(new Report(3, 1));
         assertThat(service.run(Task.QUEUE_NOTICE, 100)).isEqualTo(new Report(5, 0));
         assertThat(service.run(Task.PRODUCTION_RECOVERY, 50)).isEqualTo(new Report(2, 0));
-        assertThat(service.run(Task.RETURN_AMENDMENT_RECOVERY, 50)).isEqualTo(new Report(1, 0));
+        assertThat(service.run(Task.RETURN_AMENDMENT_RECOVERY, 50)).isEqualTo(new Report(1, 2));
         verify(dispatch).runDue(100);
         verify(notices).runDue(100);
         verify(production).recover(50);
         verify(amendments).recover(50);
     }
 
-    @Test void existingProductionTaskAlsoRecoversOptionalStockDelivery() {
-        var stock=mock(FoodStockSyncWorker.class);
-        when(production.recover(20)).thenReturn(2);when(stock.recover(20)).thenReturn(new Report(3,1));
-        assertThat(service.withStockSync(()->stock).run(Task.PRODUCTION_RECOVERY,20)).isEqualTo(new Report(5,1));
-        verify(stock).recover(20);
+    @Test
+    void productionAndReturnStockRemainPendingWhenStockDeliveryHasCompleted() {
+        var returnStock = mock(FoodReturnStockService.class);
+        var stockSync = mock(FoodStockSyncWorker.class);
+        when(production.recover(20)).thenReturn(new Report(2, 1));
+        when(returnStock.recover(20)).thenReturn(new Report(1, 2));
+        when(stockSync.recover(20)).thenReturn(new Report(3, 0));
+
+        assertThat(service.withReturnStock(() -> returnStock).withStockSync(() -> stockSync)
+                .run(Task.PRODUCTION_RECOVERY, 20)).isEqualTo(new Report(6, 3));
     }
     @Test
     void missingOwnerFailsOnlyThatTaskAndLimitsAreBounded() {

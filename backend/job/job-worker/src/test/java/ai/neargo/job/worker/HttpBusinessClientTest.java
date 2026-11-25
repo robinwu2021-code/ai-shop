@@ -43,7 +43,7 @@ class HttpBusinessClientTest {
         s.createContext("/", ex -> {
             String req = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             seen.add(ex.getRequestMethod() + " " + ex.getRequestURI().getPath()
-                    + " token=" + ex.getRequestHeaders().getFirst("X-Job-Token") + " body=" + req);
+                    + " token=" + ex.getRequestHeaders().getFirst("X-Job-Token") + " requestId=" + ex.getRequestHeaders().getFirst("X-Request-Id") + " body=" + req);
             if (sleepMs > 0) {
                 try {
                     Thread.sleep(sleepMs);
@@ -88,7 +88,7 @@ class HttpBusinessClientTest {
         assertThat(o.detail()).isEqualTo("跑完了");
         assertThat(o.httpStatus()).isEqualTo(200);
         assertThat(seen).singleElement().satisfies(line -> assertThat(line)
-                .startsWith("POST /internal/job/demo/run token=tk body=")
+                .startsWith("POST /internal/job/demo/run token=tk requestId=run-1 body=")
                 .contains("\"runId\":\"run-1\"", "\"triggerType\":\"MANUAL\"", "\"bizDate\":\"2026-09-24\"",
                         "\"params\":{\"k\":\"v\"}"));
     }

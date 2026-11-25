@@ -60632,6 +60632,46 @@
       "module": "shop-base-auth"
     },
     {
+      "host": "RequestLogContext",
+      "name": "REQUEST_ID_HEADER",
+      "type": "String",
+      "value": "\"X-Request-Id\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "RequestLogContext",
+      "name": "REQUEST_ID",
+      "type": "String",
+      "value": "RequestLogContext.class.getName() + \".id\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "RequestLogContext",
+      "name": "BUSINESS_CODE",
+      "type": "String",
+      "value": "RequestLogContext.class.getName() + \".code\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "RequestLogContext",
+      "name": "STORE_NO",
+      "type": "String",
+      "value": "RequestLogContext.class.getName() + \".storeNo\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "RequestLogContext",
+      "name": "MERCHANT_NO",
+      "type": "String",
+      "value": "RequestLogContext.class.getName() + \".merchantNo\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
       "host": "MediaDeliveryConfig",
       "name": "SERVER",
       "type": "String",

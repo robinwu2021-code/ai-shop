@@ -13,7 +13,9 @@ public final class AppointmentRecovery {
     public AppointmentRecovery(AppointmentPersistence db, AppointmentCoordinator coordinator) {
         this.db = db; this.coordinator = coordinator;
     }
-    public int scan() {
+    public int scan() { return scanReport().completed(); }
+
+    public RecoveryScanResult scanReport() {
         var now = AppointmentPersistence.now();
         // Rescheduled no-op rows move behind older due work even when every row is due at the next minute tick.
         // Filter live leases before LIMIT so unclaimable work cannot consume an entire batch.
@@ -24,17 +26,32 @@ public final class AppointmentRecovery {
                         .or().lt(BtyAppointmentOperation::getLeaseUntil, now))
                 .orderByAsc(BtyAppointmentOperation::getNextRetryAt, BtyAppointmentOperation::getId)
                 .last("LIMIT 50")));
-        int recovered = 0;
+        int attempted = 0, completed = 0, pending = 0, failedCount = 0;
         for (var row : rows) {
             boolean claimed = db.tx(() -> db.operations.claim(row.getEntityNo(), row.getOperationNo(), row.getVersion(),
                     now, now.plusSeconds(30)) == 1);
             if (!claimed) { continue; }
+            attempted++;
             boolean failed = false;
             try {
-                coordinator.recover(db.operation(row.getOperationNo()));
-                recovered++;
+                var original = db.operation(row.getOperationNo());
+                coordinator.recover(original);
+                var current = db.operation(row.getOperationNo());
+                if ("SUCCEEDED".equals(current.getState()) || "REJECTED".equals(current.getState())) {
+                    completed++;
+                } else {
+                    pending++;
+                    if ("RELEASE_REQUIRED".equals(current.getState())
+                            || original.getReceipt() != null && current.getReceipt() == null) {
+                        String nextAction = "RELEASE_REQUIRED".equals(current.getState())
+                                ? "AUTHENTICATED_CANCEL" : "AUTHENTICATED_SAME_KEY_REPLAY";
+                        LOG.info("beauty.appointment.recovery_handoff operationNo={} nextAction={}",
+                                current.getOperationNo(), nextAction);
+                    }
+                }
             } catch (RuntimeException failure) {
                 failed = true;
+                failedCount++;
                 // Do not log owner payloads or actor data. One corrupt original must not block later operations.
                 LOG.warn("Appointment recovery deferred operation={} failure={}", row.getOperationNo(),
                         failure.getClass().getSimpleName());
@@ -50,6 +67,6 @@ public final class AppointmentRecovery {
                 });
             }
         }
-        return recovered;
+        return new RecoveryScanResult(attempted, completed, pending, failedCount);
     }
 }

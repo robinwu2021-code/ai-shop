@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobStatus;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.beauty.dto.AppointmentItemReq;
 import ai.neargo.shop.beauty.dto.CancelAppointmentReq;
@@ -13,6 +14,7 @@ import ai.neargo.shop.beauty.dto.OperationVO;
 import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.ReceiveWalkInReq;
 import ai.neargo.shop.beauty.dto.WalkInVO;
+import ai.neargo.shop.beauty.job.ReceptionRecoveryJob;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.beauty.service.ReceptionService;
 import ai.neargo.shop.beauty.service.ServiceOperationQueryService;
@@ -43,9 +45,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 /** Native source transactions; external directory and resource owner stay explicitly controlled. */
@@ -202,7 +208,10 @@ class WalkInRecoveryIT extends ReceptionFixture {
             };
             owner.brokenSource = second.appointmentNo();
             SecurityContextHolder.clearContext();
-            assertThat(c.getBean(ReceptionRecovery.class).scan()).isEqualTo(2);
+            var run = new ReceptionRecoveryJob(c.getBean(ReceptionRecovery.class)).run(null);
+            assertThat(run.status()).isEqualTo(JobStatus.FAILED);
+            assertThat(run.detail()).contains("attempted=2 completed=0 pending=1 failed=1");
+            assertThat(run.error()).isEqualTo("RECEPTION_RECOVERY_FAILED");
             assertThat(claimedLeases).containsExactly(LocalDateTime.ofInstant(initial.plusSeconds(30), ZoneOffset.UTC),
                     LocalDateTime.ofInstant(initial.plusSeconds(61), ZoneOffset.UTC));
             assertThat(sql.queryForObject("SELECT next_retry_at FROM bty_reception_operation WHERE operation_no=?",
@@ -353,6 +362,20 @@ class WalkInRecoveryIT extends ReceptionFixture {
             assertThat(sql.queryForObject("SELECT hold_no FROM bty_appointment WHERE appointment_no=?", String.class,
                     pending.appointmentNo())).isNotBlank();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_work_order", Integer.class)).isZero();
+        });
+    }
+    @Test void recoveryJobReportsPersistedRejectionAsCompleted() {
+        business().run(c -> {
+            login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
+            owner.reject = "RESERVE";
+            owner.loseExecuteAction = "RESERVE";
+            var pending = c.getBean(ReceptionService.class).receiveWalkIn("E", "S", "A", walkIn(), "RESERVE-REJECT");
+            SecurityContextHolder.clearContext();
+            var run = new ReceptionRecoveryJob(c.getBean(ReceptionRecovery.class)).run(null);
+            assertThat(run.status()).isEqualTo(JobStatus.SUCCESS);
+            assertThat(run.detail()).contains("attempted=1 completed=1 pending=0 failed=0");
+            assertThat(sql.queryForObject("SELECT phase FROM bty_reception_operation WHERE operation_no=?",
+                    String.class, pending.operationNo())).isEqualTo("REJECTED");
         });
     }
     @Test void backgroundReconcilesOnlyAcceptedOriginalCommands() {
@@ -719,7 +742,9 @@ class WalkInRecoveryIT extends ReceptionFixture {
             assertThat(recovered.state()).isEqualTo("SUCCEEDED");
         });
     }
-    @Test void finalScopeAndTypedResultRollBackTogetherThenSecondEmployeeOpens() {
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void finalScopeAndTypedResultRollBackTogetherThenSecondEmployeeOpens(CapturedOutput output) {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
             sql.execute("CREATE TRIGGER fail_draft BEFORE INSERT ON bty_service_submission FOR EACH ROW "
@@ -734,11 +759,20 @@ class WalkInRecoveryIT extends ReceptionFixture {
             }
             var original = sql.queryForMap("SELECT operation_no,phase,result FROM bty_reception_operation");
             assertThat(original.get("phase")).isEqualTo("OPEN_PENDING"); assertThat(original.get("result")).isNull();
+            assertThat(output).contains("beauty.reception.state_committed").doesNotContain("beauty.work_order.opened");
             revokedActor = "A"; login(LoginUser.merchant("B", "second"));
-            var result = c.getBean(ServiceOperationRecoveryService.class)
-                    .recoverOperation("E", "S", "B", (String) original.get("operation_no"));
-            assertThat(result.state()).isEqualTo("SUCCEEDED");
-            assertThat(result.workOrderNo()).isNotBlank();
+            var recovery = c.getBean(ServiceOperationRecoveryService.class);
+            String operationNo = (String) original.get("operation_no");
+            try (var requestId = MDC.putCloseable("requestId", "original-recovery")) {
+                var result = recovery.recoverOperation("E", "S", "B", operationNo);
+                assertThat(result.state()).isEqualTo("SUCCEEDED");
+                assertThat(result.workOrderNo()).isNotBlank();
+                assertThat(recovery.recoverOperation("E", "S", "B", operationNo)).isEqualTo(result);
+                String committed = "beauty.work_order.opened requestId=original-recovery operationNo=" + operationNo
+                        + " appointmentNo=" + result.appointmentNo() + " workOrderNo=" + result.workOrderNo();
+                assertThat(output.getAll().lines().filter(line -> line.contains(committed))).hasSize(1);
+            }
+            assertThat(output).doesNotContain("cr1_", "SCOPE-ATOMIC");
         });
     }
     @Test void defaultStartIncludesEveryBeforeBufferAndOffset() {

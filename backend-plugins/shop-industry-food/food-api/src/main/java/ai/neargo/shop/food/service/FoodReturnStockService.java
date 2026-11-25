@@ -12,5 +12,5 @@ public interface FoodReturnStockService {
     DispositionVO apply(String entity,String store,String returnNo,String actor,Apply input,String key);
     PageData<DispositionVO> list(String entity,String store,String returnNo,int page,int size);
     DispositionVO retry(String entity,String store,String returnNo,String operationNo,String actor);
-    int recover(int limit);
+    FoodMaintenanceService.Report recover(int limit);
 }

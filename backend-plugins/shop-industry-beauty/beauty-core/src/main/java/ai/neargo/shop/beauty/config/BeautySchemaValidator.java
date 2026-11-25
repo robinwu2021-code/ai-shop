@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.policy.ServiceExecutionSchemaVerifier;
+import ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaVerifier;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.output.ValidateResult;
@@ -30,7 +31,11 @@ import javax.sql.DataSource;
 public final class BeautySchemaValidator {
     private static final String HISTORY = "bty_flyway_history";
     private static final String EXTENSION_TABLE = "bty_service_execution_fence";
-    private static final String EXTENSION_SCRIPT = "V10__beauty_service_execution_fence.sql";
+    private static final Map<String, String> EXTENSION_SCRIPTS = Map.of(
+            "10", "V10__beauty_service_execution_fence.sql",
+            "11", "V11__beauty_service_execution_stock_intent.sql");
+    private static final Set<String> EXTENSION_TABLES = Set.of(
+            EXTENSION_TABLE, "bty_service_execution_stock_intent");
     private static final String RESOURCE = "db/industry/beauty/V1__beauty_p1_tables.sql";
     private static final String SHA256 =
             "ac2a539664c42fdb7e4893f1359879fc5affbe4b24f95aae1809cd25f11061a4";
@@ -85,12 +90,12 @@ public final class BeautySchemaValidator {
                 actual.contains(HISTORY) || "migrate".equals(mode),
                 "Beauty history missing; publish migration first");
         require(
-                privateTables.stream().allMatch(table -> expected.containsKey(table) || EXTENSION_TABLE.equals(table)),
+                privateTables.stream().allMatch(table -> expected.containsKey(table) || EXTENSION_TABLES.contains(table)),
                 "Unknown beauty tables; inspect migration ownership");
         // Not a Spring bean: the platform's Flyway and locations remain untouched.
         Flyway flyway =
                 Flyway.configure()
-                        .dataSource(source)
+                        .dataSource("migrate".equals(mode) ? new BeautyMigrationDataSource(source) : source)
                         .locations("classpath:db/industry/beauty")
                         .table(HISTORY)
                         .baselineOnMigrate("migrate".equals(mode))
@@ -111,7 +116,7 @@ public final class BeautySchemaValidator {
         Map<String, String> base = Map.of("1", RESOURCE, "2", V2, "3", V3, "4", V4, "5", V5,
                 "6", V6, "7", V7, "8", V8, "9", V9);
         Set<String> baseSeen = new HashSet<>();
-        MigrationInfo extension = null;
+        Map<String, MigrationInfo> extensions = new HashMap<>();
         boolean baselineSeen = false;
         for (MigrationInfo migration : migrations) {
             require(migration.getVersion() != null, "Versionless beauty history/resolution is unsupported");
@@ -127,44 +132,46 @@ public final class BeautySchemaValidator {
                                 && base.get(version).endsWith("/" + migration.getScript()),
                         "Missing, duplicate or changed base beauty migration: " + version);
             } else {
-                require("10".equals(version) && extension == null
-                                && EXTENSION_SCRIPT.equals(migration.getScript())
+                require(EXTENSION_SCRIPTS.containsKey(version) && !extensions.containsKey(version)
+                                && EXTENSION_SCRIPTS.get(version).equals(migration.getScript())
                                 && Set.of("SUCCESS", "PENDING", "FAILED", "MISSING_SUCCESS", "MISSING_FAILED",
                                         "FUTURE_SUCCESS", "FUTURE_FAILED").contains(state),
                         "Unknown beauty migration identity/state: " + version + "/" + state);
-                extension = migration;
+                extensions.put(version, migration);
             }
         }
         require(baseSeen.equals(base.keySet()), "Beauty base requires successful V1-V9 history");
-        classifyValidation(validation, extension);
+        classifyValidation(validation, extensions);
         // The optional extension never weakens any of the frozen 28 physical base contracts or V9 trigger.
         validateStructure(source, expected);
         validateManualTrigger(source);
         var installation = new ServiceExecutionSchemaVerifier(source).installation();
+        var stockInstallation = new ServiceExecutionStockIntentSchemaVerifier(source).installation();
         if ("migrate".equals(mode)) {
-            require(validation.validationSuccessful && installation == ServiceExecutionSchemaVerifier.Installation.INSTALLED,
-                    "Explicit beauty migration requires the full valid V1-V10 sequence");
-        } else if (extension == null || "PENDING".equals(extension.getState().name())) {
-            // A table without an applied/failed marker is recognized known extension damage, never legacy absence.
-            require(extension != null || !actual.contains(EXTENSION_TABLE)
-                            || installation == ServiceExecutionSchemaVerifier.Installation.CORRUPT,
-                    "Unclassified beauty execution installation");
+            require(validation.validationSuccessful
+                            && installation == ServiceExecutionSchemaVerifier.Installation.INSTALLED
+                            && stockInstallation == ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED,
+                    "Explicit beauty migration requires the full valid V1-V11 sequence");
         }
+        // In validate mode each known optional owner diagnoses its own ABSENT/CORRUPT state.
+        // Its damage cannot authorize execution, nor weaken the mandatory V1-V9 base inspection.
     }
 
-    /** Every isolated Flyway diagnostic maps to the one exact known V10 identity inspected above. */
-    private static void classifyValidation(ValidateResult result, MigrationInfo extension) {
+    /** Every optional diagnostic must match an exact known resolved migration; unknowns still fail. */
+    private static void classifyValidation(ValidateResult result, Map<String, MigrationInfo> extensions) {
         require(result != null, "Beauty Flyway validation returned no result");
         if (result.validationSuccessful) return;
         require(result.errorDetails != null && "VALIDATE_ERROR".equals(result.errorDetails.errorCode.toString()),
                 "Unclassified beauty Flyway summary diagnostic");
-        require(extension != null && result.invalidMigrations != null && !result.invalidMigrations.isEmpty(),
+        require(result.invalidMigrations != null && !result.invalidMigrations.isEmpty(),
                 "Unclassified beauty Flyway validation failure");
         for (var diagnostic : result.invalidMigrations) {
             String path = diagnostic.filepath;
-            require("10".equals(diagnostic.version) && EXTENSION_SCRIPT.equals(extension.getScript())
-                            && (path == null || path.isBlank() || path.replace('\\', '/').endsWith("/" + EXTENSION_SCRIPT)
-                                    || EXTENSION_SCRIPT.equals(path)),
+            var extension = extensions.get(diagnostic.version);
+            String script = EXTENSION_SCRIPTS.get(diagnostic.version);
+            require(extension != null && script != null && script.equals(extension.getScript())
+                            && (path == null || path.isBlank() || path.replace('\\', '/').endsWith("/" + script)
+                                    || script.equals(path)),
                     "Base or unknown beauty migration validation diagnostic");
         }
     }
@@ -398,7 +405,7 @@ public final class BeautySchemaValidator {
                                         + "EVENT_OBJECT_TABLE,ACTION_STATEMENT"
                                         + " FROM information_schema.TRIGGERS WHERE"
                                         + " TRIGGER_SCHEMA=DATABASE() AND EVENT_OBJECT_TABLE LIKE"
-                                        + " 'bty_%' AND EVENT_OBJECT_TABLE<>'bty_service_execution_fence'")) {
+                                        + " 'bty_%' AND EVENT_OBJECT_TABLE NOT IN ('bty_service_execution_fence','bty_service_execution_stock_intent')")) {
             connection.setReadOnly(true);
             int count = 0;
             try (var rows = statement.executeQuery()) {

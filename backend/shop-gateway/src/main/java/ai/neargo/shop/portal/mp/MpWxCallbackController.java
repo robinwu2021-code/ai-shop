@@ -1,5 +1,6 @@
 package ai.neargo.shop.portal.mp;
 
+import ai.neargo.shop.paybridge.WxPushEventService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,10 +49,10 @@ public class MpWxCallbackController {
     private static final Logger log = LoggerFactory.getLogger(MpWxCallbackController.class);
 
     private final String token;
-    private final ai.neargo.shop.paybridge.WxPushEventService events;
+    private final WxPushEventService events;
 
     public MpWxCallbackController(@Value("${shop.wx.push.token:}") String token,
-                                  ai.neargo.shop.paybridge.WxPushEventService events) {
+                                  WxPushEventService events) {
         this.token = token == null ? "" : token.trim();
         this.events = events;
     }
@@ -69,20 +70,21 @@ public class MpWxCallbackController {
                          @RequestParam String nonce,
                          @RequestParam String echostr) {
         if (token.isEmpty()) {
-            log.error("[wxpush] 未配置 shop.wx.push.token —— 拒绝校验（放行等于谁都能冒充微信推事件）");
+            log.error("wx.push.verify reasonCode=TOKEN_NOT_CONFIGURED count=1");
             return "";
         }
-        boolean ok = signatureOf(timestamp, nonce).equalsIgnoreCase(signature);
-        log.info("[wxpush] 校验请求 ts={} nonce={} 结果={}", timestamp, nonce, ok ? "通过" : "签名不符");
-        return ok ? echostr : "";
+        if (!signatureOf(timestamp, nonce).equalsIgnoreCase(signature)) {
+            log.warn("wx.push.verify reasonCode=INVALID_SIGNATURE count=1");
+            return "";
+        }
+        log.info("wx.push.verify result=VERIFIED");
+        return echostr;
     }
 
     /**
-     * 事件推送。**先只落日志并回 {@code success}**。
+     * 事件推送。通过验签后处理事件，沿用 {@code success} 确认。
      *
-     * <p>回 "success" 是微信要求的确认；不回或回错，微信会重推三次然后
-     * 在后台标记失败。事件本身怎么处理，随各自功能接入时再补 ——
-     * 但这个口现在就要能收，否则后台那一步配置过不去。
+     * <p>不回或回错，微信会重推三次然后在后台标记失败。
      */
     @PostMapping("/callback")
     public String receive(@RequestParam(required = false) String signature,
@@ -100,20 +102,20 @@ public class MpWxCallbackController {
          * 没配 token 一律拒：放行等于谁都能冒充微信推事件。
          */
         if (token.isEmpty()) {
-            log.error("[wxpush] 未配置 shop.wx.push.token —— 拒收事件推送");
+            log.error("wx.push.receive reasonCode=TOKEN_NOT_CONFIGURED count=1");
             return "success";   // 回 success 让微信别重推；我们这边当没收到
         }
         if (signature == null || timestamp == null || nonce == null
                 || !signatureOf(timestamp, nonce).equalsIgnoreCase(signature)) {
-            log.warn("[wxpush] 事件推送签名不符，丢弃。ts={} nonce={}", timestamp, nonce);
+            log.warn("wx.push.receive reasonCode=INVALID_SIGNATURE count=1");
             return "success";
         }
         String raw = body == null ? "" : body;
         try {
             events.onEvent(raw);
-        } catch (Exception e) {
-            // 处理失败不要让微信一直重推：事件原文已落日志，补偿走对账而不是重推
-            log.warn("[wxpush] 事件处理失败（已忽略，原文见上一条日志）：{}", e.toString());
+        } catch (RuntimeException e) {
+            // 处理失败仍确认推送，补偿走既有对账。
+            log.warn("wx.push.receive reasonCode=HANDLER_FAILURE errorType={} count=1", e.getClass().getSimpleName());
         }
         return "success";
     }

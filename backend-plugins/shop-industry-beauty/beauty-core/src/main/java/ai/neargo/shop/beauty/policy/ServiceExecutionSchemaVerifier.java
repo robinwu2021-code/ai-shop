@@ -228,6 +228,11 @@ public final class ServiceExecutionSchemaVerifier {
         require(keys.equals(expected) && unique.equals(expectedUnique));
     }
 
+    /** Render the boolean-valued V10 predicates for MySQL without changing the stored migration. */
+    public static String mysqlCheck(String clause) {
+        return clause.startsWith("COALESCE(") ? clause + " = 1" : clause;
+    }
+
     private static void checkConstraints(Connection connection, String schema, JsonNode table) throws SQLException {
         Map<String, String> actual = new TreeMap<>();
         for (var row : query(connection,
@@ -239,8 +244,21 @@ public final class ServiceExecutionSchemaVerifier {
             require(actual.put(text(row, "constraint_name"), expression(text(row, "check_clause"))) == null);
         }
         Map<String, String> expected = new TreeMap<>();
-        table.path("checks").properties().forEach(entry ->
-                expected.put(entry.getKey(), expression(entry.getValue().asString())));
+        table.path("checks").properties().forEach(entry -> {
+            String name = entry.getKey();
+            String check = entry.getValue().asString();
+            String contract = expression(check);
+            // V10's JSON predicates return 0 or 1. MySQL adds or requires an explicit comparison.
+            String physical = actual.get(name);
+            if (name.startsWith("ck_bsef_json_") && expression(mysqlCheck(check)).equals(physical)
+                    || "ck_bsef_binding".equals(name)
+                            && (expression(check + " = 1").equals(physical)
+                                    || expression(check.replace(" AND COALESCE(", " AND 0 <> COALESCE("))
+                                            .equals(physical))) {
+                contract = physical;
+            }
+            expected.put(name, contract);
+        });
         require(actual.equals(expected));
         var enforcementColumn = query(connection,
                 "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='information_schema'"
@@ -334,8 +352,9 @@ public final class ServiceExecutionSchemaVerifier {
     }
 
     // Preserve literal bytes and boolean grouping. Only quoting, whitespace and charset introducers normalize.
-    private static List<String> tokens(String sql) {
-        Pattern token = Pattern.compile("\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
+    static List<String> tokens(String sql) {
+        Pattern token = Pattern.compile("_(?:utf8mb4|utf8|ascii|latin1|binary)\\\\'([^'\\\\]*)\\\\'"
+                + "|\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
                 + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.-]");
         Matcher matcher = token.matcher(sql);
         List<String> result = new ArrayList<>();
@@ -345,6 +364,10 @@ public final class ServiceExecutionSchemaVerifier {
             require(matcher.lookingAt());
             String value = matcher.group();
             offset = matcher.end();
+            if (matcher.group(1) != null) {
+                result.add("'" + matcher.group(1) + "'");
+                continue;
+            }
             if (value.isBlank() || value.matches("_(utf8mb4|utf8|ascii|latin1|binary)")) {
                 continue;
             }
@@ -356,7 +379,7 @@ public final class ServiceExecutionSchemaVerifier {
         return result;
     }
 
-    private static String expression(String sql) {
+    static String expression(String sql) {
         Expression parser = new Expression(tokens(sql));
         String value = parser.or();
         require(parser.at == parser.input.size());
@@ -430,7 +453,9 @@ public final class ServiceExecutionSchemaVerifier {
             String value = input.get(at++);
             require(!List.of(")", ",", "and", "or").contains(value));
             if (take("(")) {
-                return value + "(" + String.join(",", arguments()) + ")";
+                List<String> args = arguments();
+                String function = "regexp_like".equals(value) && args.size() == 2 ? "regexp" : value;
+                return function + "(" + String.join(",", args) + ")";
             }
             return value;
         }

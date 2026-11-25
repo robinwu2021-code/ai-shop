@@ -1,5 +1,6 @@
 package ai.neargo.shop.gateway.core.proxy;
 
+import ai.neargo.shop.common.RequestLogContext;
 import ai.neargo.shop.gateway.core.resource.ApiResource;
 import ai.neargo.shop.svc.ServiceLocator;
 import jakarta.servlet.FilterChain;
@@ -110,8 +111,10 @@ public class PassThroughInvoker extends AbstractServiceInvoker {
                 .timeout(readTimeout)
                 .method(request.getMethod(), body.length == 0
                         ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofByteArray(body));
+        String requestId = RequestLogContext.requestId(request);
         for (String name : requestHeaders) {
-            String value = request.getHeader(name);
+            String value = RequestLogContext.REQUEST_ID_HEADER.equalsIgnoreCase(name) && requestId != null
+                    ? requestId : request.getHeader(name);
             if (value != null && !value.isBlank()) {
                 outbound.header(name, value);
             }

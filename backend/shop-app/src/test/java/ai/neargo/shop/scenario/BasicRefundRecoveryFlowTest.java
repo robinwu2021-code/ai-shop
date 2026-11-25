@@ -12,6 +12,7 @@ import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
 import org.springframework.context.annotation.Import;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.service.AfterSaleService;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -74,6 +75,7 @@ class BasicRefundRecoveryFlowTest {
                 String.class, afterSale)).isEqualTo("PROCESSING");
         assertThat(jdbc.queryForObject("select status from ord_after_sale where after_sale_no=?",
                 String.class, afterSale)).isEqualTo("REFUNDING");
+        assertThat(afterSales.refundedNosForRecovery(List.of(afterSale))).isEmpty();
         assertThat(jdbc.queryForObject("select count(*) from stl_payment where after_sale_no=?"
                 + " and direction='REFUND' and status='SUCCESS'", Integer.class, afterSale)).isZero();
     }
@@ -136,6 +138,7 @@ class BasicRefundRecoveryFlowTest {
         assertThat(ack).isEqualTo("SUCCESS");
         assertThat(jdbc.queryForObject("select status from ord_after_sale where after_sale_no=?", String.class,
                 afterSale)).isEqualTo("REFUNDED");
+        assertThat(afterSales.refundedNosForRecovery(List.of(afterSale))).containsExactly(afterSale);
         refunds.recover("RF-" + afterSale);
         refunds.recover("RF-" + afterSale);
         assertThat(jdbc.queryForObject("select refunded_minor from ord_sub_order where sub_order_no=?",

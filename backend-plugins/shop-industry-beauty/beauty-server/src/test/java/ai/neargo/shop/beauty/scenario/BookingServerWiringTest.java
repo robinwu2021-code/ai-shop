@@ -17,6 +17,7 @@ import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
 import ai.neargo.shop.svc.InternalHttp;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -33,6 +34,7 @@ class BookingServerWiringTest {
                     throw new AssertionError("target lookup while constructing source/executor graph");
                 }, "key"))
                 .withBean(ObjectMapper.class, ObjectMapper::new)
+                .withBean("dataSource", DataSource.class, () -> mock(DataSource.class))
                 .withBean("transactionManager", PlatformTransactionManager.class,
                         () -> mock(PlatformTransactionManager.class))
                 .withBean(ServiceCatalogQueryService.class, () -> mock(ServiceCatalogQueryService.class))
@@ -50,6 +52,7 @@ class BookingServerWiringTest {
                 BeautyMappers.WorkOrderMapper.class, BeautyMappers.WorkOrderContextMapper.class,
                 BeautyMappers.ServiceTaskMapper.class, BeautyMappers.ServiceStepMapper.class,
                 BeautyMappers.ServiceParticipationMapper.class, BeautyMappers.ServiceSubmissionMapper.class,
+                BeautyMappers.ServiceExecutionFenceMapper.class, BeautyMappers.ServiceExecutionStockIntentMapper.class,
                 BeautyMappers.SourceObservationMapper.class, BeautyMappers.SourceAllocationGuardMapper.class,
                 BeautyMappers.TradeBindingMapper.class}) {
             runner = runner.withBean(type, () -> mock(type));

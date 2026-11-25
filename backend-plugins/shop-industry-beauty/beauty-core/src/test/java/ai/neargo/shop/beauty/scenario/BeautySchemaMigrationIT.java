@@ -85,7 +85,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         initialize("migrate");
         assertEquals(
-                30,
+                31,
                 count(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE"
                             + " table_schema=DATABASE()"));
@@ -124,11 +124,14 @@ class BeautySchemaMigrationIT {
 
     @Test
     void installedV10PreservesBaseNineReadiness() throws Exception {
+        baseNine();
         initialize("migrate");
         initialize("validate");
+        assertEquals(1472641557,
+                count("SELECT checksum FROM bty_flyway_history WHERE version='10' AND success=1"));
         assertEquals(ServiceExecutionSchemaVerifier.Installation.INSTALLED,
                 new ServiceExecutionSchemaVerifier(source).installation());
-        assertEquals(29, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
+        assertEquals(30, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
                 + " AND table_name LIKE 'bty_%' AND table_name<>'bty_flyway_history'"));
     }
 
@@ -140,6 +143,8 @@ class BeautySchemaMigrationIT {
                 "DROP TABLE bty_service_execution_fence",
                 "ALTER TABLE bty_service_execution_fence DROP INDEX uk_bsef_task",
                 "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_unit",
+                "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_json_execution_no,"
+                        + " ADD CONSTRAINT ck_bsef_json_execution_no CHECK (execution_no IS NOT NULL)",
                 "DROP TRIGGER trg_bsef_immutable",
                 "ALTER TABLE bty_service_execution_fence MODIFY binding_json LONGTEXT CHARACTER SET utf8mb4"
                         + " COLLATE utf8mb4_unicode_ci NOT NULL"}) {
@@ -170,7 +175,7 @@ class BeautySchemaMigrationIT {
                 "ALTER TABLE bty_work_order DROP COLUMN scope_frozen",
                 "DROP TRIGGER trg_bty_source_observation_domain_guard",
                 "CREATE TABLE bty_unknown_execution(id BIGINT)",
-                "UPDATE bty_flyway_history SET version='11' WHERE version='10'",
+                "UPDATE bty_flyway_history SET version='12' WHERE version='10'",
                 "UPDATE bty_flyway_history SET version=NULL WHERE version='10'"}) {
             isolatedDatabase();
             initialize("migrate");
@@ -400,8 +405,8 @@ class BeautySchemaMigrationIT {
         assertEquals(
                 history,
                 jdbc.queryForList(
-                        "SELECT version,checksum FROM bty_flyway_history WHERE version NOT IN"
-                            + " ('7','8') ORDER BY installed_rank"));
+                        "SELECT version,checksum FROM bty_flyway_history WHERE version IN"
+                            + " ('1','2','3','4','5','6') ORDER BY installed_rank"));
         assertEquals(
                 1,
                 count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='7' AND success=1"));

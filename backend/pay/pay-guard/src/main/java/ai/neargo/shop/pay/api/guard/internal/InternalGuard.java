@@ -85,7 +85,7 @@ public class InternalGuard implements EntryGuard {
         CallSource source = CallSourceCodec.decode(request.getHeader(InternalHeaders.CALL_SOURCE))
                 .orElseGet(InternalGuard::unknown)
                 .withModuleIfAbsent(CallSources.UNKNOWN.equals(caller) ? null : caller);
-        observeSignedContext(request, caller);
+        observeSignedContext(request);
         request.setAttribute(CALLER_ATTRIBUTE, caller);
         request.setAttribute(SOURCE_ATTRIBUTE, source);
         return GuardResult.ok(new PortalPrincipal(PortalFace.INTERNAL, "INTERNAL_CALLER", caller, null, Set.of()));
@@ -95,7 +95,7 @@ public class InternalGuard implements EntryGuard {
      * 比对签名上下文。这一处拿不到请求体，所以只验签名、时间窗、方法与地址。
      * 没带的记 debug（别的调用方还没开始签）；带了但对不上的记 warn —— 那才是打开拒绝之前要逐条看清的。
      */
-    private void observeSignedContext(HttpServletRequest request, String caller) {
+    private void observeSignedContext(HttpServletRequest request) {
         if (signedContext == null) {
             return;
         }
@@ -105,10 +105,9 @@ public class InternalGuard implements EntryGuard {
                 request.getHeader(SignedContextCodec.HEADER_SIGNATURE), request.getMethod(), target, null,
                 System.currentTimeMillis());
         if (result.outcome() == SignedContextVerifier.Outcome.MISSING) {
-            log.debug("内部调用没带签名上下文 caller={} {} {}", caller, request.getMethod(), target);
+            log.debug("event=pay.internal_context_missing route=INTERNAL_PAY");
         } else if (!result.ok()) {
-            log.warn("内部调用的签名上下文对不上（只比对，已放行）caller={} {} {} · {}", caller, request.getMethod(),
-                    target, result.outcome());
+            log.warn("event=pay.internal_context_mismatch route=INTERNAL_PAY reasonCode={}", result.outcome());
         }
     }
 

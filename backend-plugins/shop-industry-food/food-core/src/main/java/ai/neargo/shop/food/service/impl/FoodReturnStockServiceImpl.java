@@ -4,6 +4,8 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.food.entity.*;
 import ai.neargo.shop.food.mapper.FoodMappers.*;
+import ai.neargo.shop.food.observability.FoodRecoveryLog;
+import ai.neargo.shop.food.service.FoodMaintenanceService.Report;
 import ai.neargo.shop.food.service.FoodReturnStockService;
 import ai.neargo.shop.spi.food.FoodLocalStockPort;
 import ai.neargo.shop.spi.food.FoodStockFingerprint;
@@ -17,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Supplier;
 import org.springframework.dao.DuplicateKeyException;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -25,6 +28,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Durable claim -> native atomic disposition -> durable receipt. No network call holds FOOD locks. */
 public final class FoodReturnStockServiceImpl implements FoodReturnStockService {
+    private final FoodRecoveryLog recoveryLog = new FoodRecoveryLog(
+            LoggerFactory.getLogger(FoodReturnStockServiceImpl.class), "food.return-stock.recovery");
     private final ReturnStockDispositionMapper claims;private final ReturnMapper returns;private final ReturnItemMapper returnItems;
     private final ProductionConsumptionMapper production;private final ServiceEventMapper events;private final KitchenTaskMapper tasks;
     private final OrderBatchMapper batches;private final OrderLineMapper lines;private final StockCommandMapper commands;
@@ -156,12 +161,31 @@ public final class FoodReturnStockServiceImpl implements FoodReturnStockService 
                 .eq(FnbReturnStockDisposition::getTenantNo,"MAIN").eq(FnbReturnStockDisposition::getEntityNo,e).eq(FnbReturnStockDisposition::getStoreNo,s)
                 .eq(FnbReturnStockDisposition::getReturnNo,number).orderByAsc(FnbReturnStockDisposition::getId));return PageData.of(p.getRecords().stream().map(this::view).toList(),p.getTotal(),page,size);});
     }
-    @Override public int recover(int limit) {
-        outside();if(limit<1||limit>200)throw bad();int count=0;
-        var pending=DataScopeContext.executeWithoutScope(()->claims.selectList(Wrappers.<FnbReturnStockDisposition>lambdaQuery()
-                .in(FnbReturnStockDisposition::getStatus,List.of("PENDING","UNKNOWN")).orderByAsc(FnbReturnStockDisposition::getUpdatedAt).last("LIMIT "+limit)));
-        for(var row:pending)try{if("COMPLETED".equals(DataScopeContext.executeWithoutScope(()->execute(row)).status()))count++;}catch(RuntimeException retryLater){}
-        return count;
+    @Override
+    public Report recover(int limit) {
+        outside();
+        if (limit < 1 || limit > 200) throw bad();
+        var pending = DataScopeContext.executeWithoutScope(() -> claims.selectList(
+                Wrappers.<FnbReturnStockDisposition>lambdaQuery()
+                        .in(FnbReturnStockDisposition::getStatus, List.of("PENDING", "UNKNOWN"))
+                        .orderByAsc(FnbReturnStockDisposition::getUpdatedAt).last("LIMIT " + limit)));
+        int completed = 0;
+        for (var row : pending) {
+            DispositionVO result;
+            try {
+                result = DataScopeContext.executeWithoutScope(() -> execute(row));
+            } catch (RuntimeException unresolved) {
+                recoveryLog.failed(row.getOperationNo(), unresolved);
+                continue;
+            }
+            if ("COMPLETED".equals(result.status())) {
+                completed++;
+                recoveryLog.resolved(row.getOperationNo());
+            } else {
+                recoveryLog.pending(row.getOperationNo(), result.lastErrorCode());
+            }
+        }
+        return new Report(completed, pending.size() - completed);
     }
     private FnbReturnStockDisposition claim(String e,String s,String number,String operation) {
         var row=claims.selectOne(Wrappers.<FnbReturnStockDisposition>lambdaQuery().eq(FnbReturnStockDisposition::getTenantNo,"MAIN")
