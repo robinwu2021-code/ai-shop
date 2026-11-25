@@ -4,11 +4,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /** Bounded owner-owned candidate enumeration and advisory capacity; admission remains the booking owner. */
 public interface ResourceCandidatesPort {
     List<ResourceFactsPort.ResourceFact> candidates(Query query);
     List<Capacity> capacity(CapacityQuery query);
+    /** Read-only boundary for evaluating several candidate start times in one search. */
+    default <T> T withAdvisoryInspection(Supplier<T> read) { return read.get(); }
     record Query(ResourceBookingPort.Scope scope, boolean publicOnly, Instant at, int limit) {
         public Query {
             if (scope == null || at == null || limit < 1 || limit > 50) {

@@ -29,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,6 +47,11 @@ public final class ResourceOccupationSchemaVerifier {
     private final DataSource source;
     private final String historyTable;
     private final String historySchema;
+    private final ThreadLocal<AdvisoryInspection> advisory = new ThreadLocal<>();
+
+    private static final class AdvisoryInspection {
+        private Installation installation;
+    }
 
     /** Only existing primary datasource and Flyway owner settings are captured; construction performs no IO. */
     public ResourceOccupationSchemaVerifier(@Qualifier("dataSource") DataSource source,
@@ -59,6 +65,23 @@ public final class ResourceOccupationSchemaVerifier {
     /** ABSENT is legal only when neither a V621 marker nor any new owner table exists. */
     public enum Installation {
         ABSENT, UNSUPPORTED, INSTALLED, CORRUPT
+    }
+
+    <T> T withAdvisoryInspection(Supplier<T> read) {
+        if (advisory.get() != null) return read.get();
+        advisory.set(new AdvisoryInspection());
+        try {
+            return read.get();
+        } finally {
+            advisory.remove();
+        }
+    }
+
+    Installation advisoryInstallation() {
+        var inspection = advisory.get();
+        if (inspection == null) return installation();
+        if (inspection.installation == null) inspection.installation = installation();
+        return inspection.installation;
     }
 
     /** Reinspect on every affected use; a previously valid installation never masks later physical drift. */

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -14,10 +15,27 @@ import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 import ai.neargo.shop.merchant.entity.MchResourceBucket;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationMapper;
 import java.time.LocalDateTime;
+import java.sql.SQLException;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 
 /** Exercises the same owner-local guard consumed by booking, advisory and maintenance entry points. */
 class ResourceOccupationGuardTest {
+    @Test
+    void physicalInspectionIsReusedOnlyInsideOneAdvisoryRead() throws Exception {
+        var source = mock(DataSource.class);
+        when(source.getConnection()).thenThrow(new SQLException("fixture"));
+        var verifier = new ResourceOccupationSchemaVerifier(source, "flyway_schema_history", "");
+        var result = verifier.withAdvisoryInspection(() -> {
+            assertThat(verifier.advisoryInstallation()).isEqualTo(ResourceOccupationSchemaVerifier.Installation.CORRUPT);
+            return verifier.advisoryInstallation();
+        });
+        assertThat(result).isEqualTo(ResourceOccupationSchemaVerifier.Installation.CORRUPT);
+        verify(source, times(1)).getConnection();
+        verifier.installation();
+        verify(source, times(2)).getConnection();
+    }
+
     private static final ResourceCommandScopeRow S = new ResourceCommandScopeRow("MAIN", "E", "S");
     private static final LocalDateTime T = LocalDateTime.of(2026, 10, 29, 0, 0);
 

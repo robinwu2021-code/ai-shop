@@ -23,7 +23,19 @@ public final class ResourceOccupationGuard {
 
     /** Inspect once per operation under its existing roots; callers cannot cache across owner operations. */
     public boolean inspect(ResourceCommandScopeRow scope) {
-        var installation = requireCommon(scope);
+        return inspect(scope, schema.installation());
+    }
+
+    public boolean inspectAdvisory(ResourceCommandScopeRow scope) {
+        return inspect(scope, schema.advisoryInstallation());
+    }
+
+    public <T> T withAdvisoryInspection(Supplier<T> read) {
+        return schema.withAdvisoryInspection(read);
+    }
+
+    private boolean inspect(ResourceCommandScopeRow scope, ResourceOccupationSchemaVerifier.Installation installation) {
+        requireCommon(scope, installation);
         if (installation == ResourceOccupationSchemaVerifier.Installation.INSTALLED) {
             if (evidence(() -> rows.countInvalid(scope)) != 0) { fail(); }
             return true;
@@ -34,19 +46,23 @@ public final class ResourceOccupationGuard {
     /** New binaries require the forward common contract before issuing any SQL using its columns. */
     public ResourceOccupationSchemaVerifier.Installation requireCommon(ResourceCommandScopeRow scope) {
         var installation = schema.installation();
+        requireCommon(scope, installation);
+        return installation;
+    }
+
+    private void requireCommon(ResourceCommandScopeRow scope, ResourceOccupationSchemaVerifier.Installation installation) {
         if (installation == ResourceOccupationSchemaVerifier.Installation.ABSENT) {
             throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
         }
         if (installation == ResourceOccupationSchemaVerifier.Installation.CORRUPT) { fail(); }
         if (installation == ResourceOccupationSchemaVerifier.Installation.UNSUPPORTED
                 && evidence(() -> rows.countCommonArtifacts(scope)) != 0) { fail(); }
-        return installation;
     }
 
     /** Pure old identity reads still work before V607; actual usage never becomes an exclusive blocker. */
     public long currentUsed(ResourceCommandScopeRow scope, String resource, LocalDateTime at) {
-        if (schema.installation() == ResourceOccupationSchemaVerifier.Installation.ABSENT) { return 0; }
-        if (!inspect(scope)) { return 0; }
+        var installation = schema.advisoryInstallation();
+        if (installation == ResourceOccupationSchemaVerifier.Installation.ABSENT || !inspect(scope, installation)) { return 0; }
         var start = at.withSecond(0).withNano(0).minusMinutes(at.getMinute() % 5);
         return evidence(() -> Math.addExact(Math.addExact(evidence(() -> rows.projected(scope, resource, start, "OCCUPIED")),
                 evidence(() -> rows.projected(scope, resource, start, "CLEANING"))), evidence(() -> rows.missing(scope, resource, start, start.plusMinutes(5)))));

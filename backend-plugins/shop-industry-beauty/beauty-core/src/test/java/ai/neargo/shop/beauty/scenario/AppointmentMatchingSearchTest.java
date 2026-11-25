@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.beauty.dto.AppointmentAssignmentReq;
 import ai.neargo.shop.beauty.dto.AppointmentItemReq;
+import ai.neargo.shop.beauty.dto.AvailabilityQuery;
 import ai.neargo.shop.beauty.dto.PublicAvailabilityQuery;
 import ai.neargo.shop.beauty.dto.PublicServiceVO;
 import ai.neargo.shop.beauty.dto.PublicStoreVO;
@@ -16,10 +17,15 @@ import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
 import ai.neargo.shop.beauty.dto.ServiceSalesVO;
 import ai.neargo.shop.beauty.entity.BtyServiceRequirement;
+import ai.neargo.shop.beauty.entity.BtyAppointment;
+import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
+import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
 import ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl;
 import ai.neargo.shop.beauty.service.impl.AppointmentMatching;
+import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
+import ai.neargo.shop.beauty.service.impl.AppointmentCoordinator;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
@@ -60,7 +66,7 @@ class AppointmentMatchingSearchTest {
         assertThat(ResourcePlanContract.decode(result.plan()).demands()).hasSize(2);
         // Candidate, personnel, schedule and capacity are read once, independent of search nodes.
         assertThat(reads.get()).isEqualTo(4);
-        var search = new AppointmentAvailabilityServiceImpl(matching, null).queryPublicAvailability(
+        var search = new AppointmentAvailabilityServiceImpl(matching, null, null, null).queryPublicAvailability(
                 new PublicAvailabilityQuery("S", items, at, at.plusMinutes(5)));
         assertThat(search.complete()).isTrue();
         assertThat(search.candidates()).hasSize(1);
@@ -91,10 +97,41 @@ class AppointmentMatchingSearchTest {
     void exhaustiveSmallImpossibleSearchReturnsCompleteEmptyAvailability() {
         var matching = fixture(List.of(staff("R1", "P1")), List.of(rule("A", "STAFF", 2, 60)), List.of(60));
         assertError(matching, List.of(), ErrorCode.CONFLICT);
-        var result = new AppointmentAvailabilityServiceImpl(matching, null).queryPublicAvailability(
+        var result = new AppointmentAvailabilityServiceImpl(matching, null, null, null).queryPublicAvailability(
                 new PublicAvailabilityQuery("S", items, at, at.plusMinutes(5)));
         assertThat(result.candidates()).isEmpty();
         assertThat(result.complete()).isTrue();
+    }
+
+    @Test
+    void startsOutsideTheBookingHorizonDoNotFailAvailabilitySearch() {
+        var result = new AppointmentAvailabilityServiceImpl(asymmetric(), null, null, null).queryPublicAvailability(
+                new PublicAvailabilityQuery("S", items, at.plusDays(8), at.plusDays(8).plusHours(1)));
+        assertThat(result.candidates()).isEmpty();
+        assertThat(result.complete()).isTrue();
+        assertThat(reads.get()).isZero();
+    }
+
+    @Test
+    void rescheduleCreditsOnlyTheScopedOriginalAndUsesTheRequestedInterval() {
+        var access = mock(AppointmentAccess.class);
+        var db = mock(AppointmentPersistence.class);
+        var coordinator = mock(AppointmentCoordinator.class);
+        var root = new BtyAppointment();
+        root.setEntityNo("E");
+        root.setStoreNo("S");
+        root.setStatus("CONFIRMED");
+        when(db.root("AP")).thenReturn(root);
+        when(db.current(root)).thenReturn(new BtyAppointmentCurrent());
+        var replacement = mock(ResourceCandidatesPort.Replacement.class);
+        when(coordinator.replacement(root)).thenReturn(replacement);
+        var service = new AppointmentAvailabilityServiceImpl(asymmetric(), access, db, coordinator);
+        var query = new AvailabilityQuery("S", items, at, at.plusMinutes(30), null, "AP", 30);
+        assertThat(service.queryAvailability("E", "S", "actor", query).candidates()).hasSize(1);
+        assertThat(capacityQuery.replacement()).isSameAs(replacement);
+        root.setStoreNo("OTHER");
+        assertThatThrownBy(() -> service.queryAvailability("E", "S", "actor", query))
+                .isInstanceOfSatisfying(BizException.class, error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.FORBIDDEN));
     }
 
     @Test
@@ -103,7 +140,7 @@ class AppointmentMatchingSearchTest {
         var matching = fixture(resources, List.of(rule("A", "STAFF", 10, 60)),
                 IntStream.range(0, 9).mapToObj(i -> 60).toList());
         assertError(matching, List.of(), ErrorCode.BEAUTY_SEARCH_INCOMPLETE);
-        var result = new AppointmentAvailabilityServiceImpl(matching, null).queryPublicAvailability(
+        var result = new AppointmentAvailabilityServiceImpl(matching, null, null, null).queryPublicAvailability(
                 new PublicAvailabilityQuery("S", items, at, at.plusMinutes(5)));
         assertThat(result.complete()).isFalse();
         assertThat(result.candidates()).isEmpty();
@@ -122,7 +159,7 @@ class AppointmentMatchingSearchTest {
                 rule("B", "ROOM", 100, 60), rule("C", "ROOM", 100, 60)),
                 IntStream.range(0, 49).mapToObj(i -> 60).toList());
         assertError(matching, List.of(), ErrorCode.BEAUTY_SEARCH_INCOMPLETE);
-        var result = new AppointmentAvailabilityServiceImpl(matching, null).queryPublicAvailability(
+        var result = new AppointmentAvailabilityServiceImpl(matching, null, null, null).queryPublicAvailability(
                 new PublicAvailabilityQuery("S", items, at, at.plusMinutes(5)));
         assertThat(result.complete()).isFalse();
         assertThat(result.candidates()).isEmpty();

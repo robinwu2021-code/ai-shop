@@ -54,6 +54,7 @@ class AppointmentIncompleteSearchTest {
         when(facts.service("S", "SKU")).thenReturn(new ServiceCatalogFactsPort.Service(factStore, "SKU", "G",
                 "service", null, 1000, 30, 1L, 2L));
         var candidates = mock(ResourceCandidatesPort.class);
+        when(candidates.withAdvisoryInspection(any())).thenCallRealMethod();
         when(candidates.candidates(any())).thenReturn(IntStream.range(0, 50).mapToObj(i ->
                 new ResourceFactsPort.ResourceFact("R" + i, ResourceFactsPort.Type.STAFF, null, null,
                         "resource", 1, true))
@@ -79,7 +80,7 @@ class AppointmentIncompleteSearchTest {
         var preview = new PreviewMyAppointmentReq("S", List.of(new AppointmentItemReq("SKU", 1)), at, null);
         assertThatThrownBy(() -> appointments.previewMyAppointment("U", preview)).isInstanceOf(BizException.class)
                 .extracting(e -> ((BizException) e).errorCode()).isEqualTo(ErrorCode.BEAUTY_SEARCH_INCOMPLETE);
-        var search = new AppointmentAvailabilityServiceImpl(matching, access).queryPublicAvailability(
+        var search = new AppointmentAvailabilityServiceImpl(matching, access, null, null).queryPublicAvailability(
                 new PublicAvailabilityQuery("S", preview.items(), at, at.plusMinutes(5)));
         assertThat(search.complete()).isFalse(); assertThat(search.candidates()).isEmpty();
     }

@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -70,6 +71,14 @@ public final class AppointmentMatching {
         }
         return new Scope("MAIN", store.entityNo(), store.storeNo());
     }
+    int bookingAheadDays(String storeNo) {
+        return catalog.getPublicStore(storeNo).policy().bookingAheadDays();
+    }
+
+    <T> T withAdvisoryInspection(Supplier<T> read) {
+        return candidates.getObject().withAdvisoryInspection(read);
+    }
+
     public Matched match(Scope scope, boolean publicOnly, List<AppointmentItemReq> requested,
             List<AppointmentAssignmentReq> specified, String requestedPerson, OffsetDateTime startAt) {
         return match(scope, publicOnly, requested, specified, requestedPerson, startAt, null);

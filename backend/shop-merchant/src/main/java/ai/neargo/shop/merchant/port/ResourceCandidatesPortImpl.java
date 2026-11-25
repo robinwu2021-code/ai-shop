@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -45,6 +46,11 @@ public class ResourceCandidatesPortImpl implements ResourceCandidatesPort {
         this.booking = booking;
     }
     @Override
+    public <T> T withAdvisoryInspection(Supplier<T> read) {
+        outside();
+        return occupations.withAdvisoryInspection(read);
+    }
+    @Override
     public List<ResourceFactsPort.ResourceFact> candidates(Query query) {
         outside();
         var s = query.scope();
@@ -61,7 +67,7 @@ public class ResourceCandidatesPortImpl implements ResourceCandidatesPort {
         return DataScopeContext.executeWithoutScope(() -> {
             var scope = owners.selectScope(s.tenantNo(), s.entityNo(), s.storeNo());
             if (scope == null) { throw new IllegalArgumentException("unknown scoped resource owner"); }
-            boolean nativeAvailable = occupations.inspect(scope);
+            boolean nativeAvailable = occupations.inspectAdvisory(scope);
             if (units.hasBookingOrphans(scope)) { throw new IllegalStateException("resource allocation needs repair"); }
             var known = facts.getBatch(new ResourceFactsPort.Query(s.tenantNo(), s.entityNo(), s.storeNo(),
                     query.resourceNos(), query.factAt()));
