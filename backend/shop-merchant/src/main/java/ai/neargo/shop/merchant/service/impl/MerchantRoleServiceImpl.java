@@ -8,8 +8,10 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.RoleVO;
 import ai.neargo.shop.merchant.entity.MchRole;
+import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.merchant.service.MerchantRoleService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -27,12 +29,14 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
 
     private final MchRoleMapper roleMapper;
     private final MchStoreRoleMapper grantMapper;
+    private final MchStoreMapper storeMapper;
     private final StaffAuditLogger audit;
 
     public MerchantRoleServiceImpl(MchRoleMapper roleMapper, MchStoreRoleMapper grantMapper,
-                                   StaffAuditLogger audit) {
+                                   MchStoreMapper storeMapper, StaffAuditLogger audit) {
         this.roleMapper = roleMapper;
         this.grantMapper = grantMapper;
+        this.storeMapper = storeMapper;
         this.audit = audit;
     }
 
@@ -185,10 +189,19 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
                         .orderByAsc(MchRole::getId)));
     }
 
-    /** 角色码 → 有几个人持有（按授权行数去重到人） */
+    /** 角色码 → 本商家有几个人持有（按授权行数去重到人）。预置角色各家共用，必须限定在本商家的门店上。 */
     private Map<String, Long> usageOf(String merchantNo) {
+        List<String> storeNos = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                        .select(MchStore::getStoreNo)
+                        .eq(MchStore::getEntityNo, merchantNo)))
+                .stream().map(MchStore::getStoreNo).toList();
+        if (storeNos.isEmpty()) {
+            return Map.of();
+        }
         List<MchStoreRole> grants = DataScopeContext.executeWithoutScope(() ->
-                grantMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()));
+                grantMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
+                        .in(MchStoreRole::getStoreNo, storeNos)));
         return grants.stream().collect(Collectors.groupingBy(MchStoreRole::getRole,
                 Collectors.mapping(MchStoreRole::getMchAccountNo,
                         Collectors.collectingAndThen(Collectors.toSet(), s -> (long) s.size()))));
