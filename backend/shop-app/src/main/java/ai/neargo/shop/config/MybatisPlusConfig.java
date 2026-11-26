@@ -1,5 +1,6 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.common.config.PayMerchantTableMapper;
 import ai.neargo.shop.common.config.PlatformSqlMapper;
 import ai.neargo.shop.common.config.PlatformTableMapper;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
@@ -65,7 +66,10 @@ import org.springframework.context.annotation.Import;
                 pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce|beauty|invoice|printing|user)\\..*"),
                 // 表在平台基础库的 Mapper 按标记排除（它们和别的库的 Mapper 混在同一个包里），
                 // 由 ModuleMapperScanConfig 按同一个标记收到平台句柄上
-                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformTableMapper.class)})
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformTableMapper.class),
+                // 标记接口本身也继承 BaseMapper、又在本扫描根之下：不排除的话它自己会被注册成一个 Mapper。
+                // 支付商户库的那个标记由 PayDataSourceConfig 收取，这里只负责不把它扫进来
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PayMerchantTableMapper.class)})
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *

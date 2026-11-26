@@ -20,6 +20,11 @@ public final class ModuleDataSources {
      * 这几个模块同在一个库、互相之间有同事务的写，所以共用一个句柄，不各开一个。
      */
     public static final String PLATFORM = "platform";
+    /**
+     * 支付商户库上的模块：支付开通与进件（支付商户、渠道商户号、开通的产品、进件）。
+     * 没绑定时落到支付域现有的那一组（{@code payDataSource} 等），不是主库 —— 见 {@link #unboundTarget}。
+     */
+    public static final String PAY_MERCHANT = "payMerchant";
 
     public static final String INVOICE_TX_MANAGER = "invoiceTxManager";
     public static final String INVOICE_DATA_SOURCE = "invoiceDataSource";
@@ -27,14 +32,29 @@ public final class ModuleDataSources {
     public static final String PRINT_TX_MANAGER = "printTxManager";
     public static final String PRINT_DATA_SOURCE = "printDataSource";
     public static final String PRINT_SQL_SESSION_FACTORY = "printSqlSessionFactory";
+    public static final String PAY_MERCHANT_TX_MANAGER = "payMerchantTxManager";
+    public static final String PAY_MERCHANT_DATA_SOURCE = "payMerchantDataSource";
+    public static final String PAY_MERCHANT_SQL_SESSION_FACTORY = "payMerchantSqlSessionFactory";
     public static final String PLATFORM_TX_MANAGER = "platformTxManager";
     public static final String PLATFORM_DATA_SOURCE = "platformDataSource";
     public static final String PLATFORM_SQL_SESSION_FACTORY = "platformSqlSessionFactory";
 
     /** 守卫测试也读这份清单；常量名与这里的规则对不上会在那里变红。 */
-    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM);
+    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT);
 
     private ModuleDataSources() {
+    }
+
+    /**
+     * 模块没有绑定数据源时，句柄指向谁：{数据源, 工厂, 事务管理器} 三个 bean 名。
+     *
+     * <p>绝大多数模块是主库。支付域例外：它早就有自己的连接池与事务管理器（同一个库、与平台事务隔离），
+     * 从支付域里分出来的模块没绑定时必须仍在支付的事务里，落到主库会让支付的写悄悄并进平台事务。
+     */
+    public static String[] unboundTarget(String module) {
+        return PAY_MERCHANT.equals(module)
+                ? new String[] {"payDataSource", "paySqlSessionFactory", "payTxManager"}
+                : new String[] {"dataSource", "sqlSessionFactory", "transactionManager"};
     }
 
     public static String dataSource(String name) {

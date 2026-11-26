@@ -1,5 +1,8 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.common.config.ModuleDataSourceRegistrar;
+import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.PayMerchantTableMapper;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
@@ -15,7 +18,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.flyway.autoconfigure.FlywayMigrationInitializer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
@@ -61,8 +67,18 @@ import javax.sql.DataSource;
  * {@code @Transactional} 必须点名 {@code payTxManager}，漏一个就红。
  */
 @Configuration
+// 支付商户模块的句柄由注册器给出；单独引入本配置的上下文（测试）也要能拿到
+@Import(ModuleDataSourceRegistrar.class)
 @MapperScan(basePackages = "ai.neargo.shop.pay.mapper",
+        // 表在支付商户库的 Mapper 按标记排除，由下面那个扫描收到支付商户模块的句柄上（ADR-066）；
+        // 模块没绑定时句柄就是 paySqlSessionFactory，和现在一样
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.ASSIGNABLE_TYPE,
+                classes = PayMerchantTableMapper.class),
         sqlSessionFactoryRef = "paySqlSessionFactory")
+@MapperScan(basePackages = "ai.neargo.shop.pay.mapper",
+        markerInterface = PayMerchantTableMapper.class,
+        sqlSessionFactoryRef = ModuleDataSources.PAY_MERCHANT_SQL_SESSION_FACTORY)
 public class PayDataSourceConfig {
 
     /**

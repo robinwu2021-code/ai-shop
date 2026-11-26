@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.mapper.merchant;
 
+import ai.neargo.shop.common.config.PayMerchantTableMapper;
 import ai.neargo.shop.pay.merchant.entity.PayMerchant;
 import ai.neargo.shop.pay.merchant.entity.PayMerchantBinding;
 import ai.neargo.shop.pay.merchant.entity.PayMerchantProduct;
@@ -12,13 +13,13 @@ public final class MerchantMappers {
     private MerchantMappers() {
     }
 
-    public interface PayMerchantMapper extends BaseMapper<PayMerchant> {
+    public interface PayMerchantMapper extends PayMerchantTableMapper<PayMerchant> {
     }
 
-    public interface PayMerchantBindingMapper extends BaseMapper<PayMerchantBinding> {
+    public interface PayMerchantBindingMapper extends PayMerchantTableMapper<PayMerchantBinding> {
     }
 
-    public interface PayMerchantProductMapper extends BaseMapper<PayMerchantProduct> {
+    public interface PayMerchantProductMapper extends PayMerchantTableMapper<PayMerchantProduct> {
     }
 
     public interface PayMerchantStatusLogMapper extends BaseMapper<PayMerchantStatusLog> {

@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -32,7 +33,7 @@ public class PayMerchantBindingServiceImpl implements PayMerchantBindingService 
 
     public PayMerchantBindingServiceImpl(PayMerchantMapper merchants, PayMerchantBindingMapper bindings,
                                          MerchantQueryPort stores,
-                                         @Qualifier("payTxManager") PlatformTransactionManager payTxManager) {
+                                         @Qualifier(ModuleDataSources.PAY_MERCHANT_TX_MANAGER) PlatformTransactionManager payTxManager) {
         this.merchants = merchants;
         this.bindings = bindings;
         this.stores = stores;

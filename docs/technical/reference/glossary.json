@@ -61729,6 +61729,14 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "PAY_MERCHANT",
+      "type": "String",
+      "value": "\"payMerchant\"",
+      "zh": "支付商户库上的模块：支付开通与进件（支付商户、渠道商户号、开通的产品、进件）。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "INVOICE_TX_MANAGER",
       "type": "String",
       "value": "\"invoiceTxManager\"",
@@ -61777,6 +61785,30 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "PAY_MERCHANT_TX_MANAGER",
+      "type": "String",
+      "value": "\"payMerchantTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PAY_MERCHANT_DATA_SOURCE",
+      "type": "String",
+      "value": "\"payMerchantDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PAY_MERCHANT_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"payMerchantSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "PLATFORM_TX_MANAGER",
       "type": "String",
       "value": "\"platformTxManager\"",
@@ -61803,7 +61835,7 @@
       "host": "ModuleDataSources",
       "name": "MODULES",
       "type": "List<String>",
-      "value": "List.of(INVOICE, PRINT, PLATFORM)",
+      "value": "List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT)",
       "zh": "守卫测试也读这份清单。",
       "module": "shop-store-mybatis"
     },
