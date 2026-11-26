@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.policy;
+package ai.neargo.shop.merchant.booking.policy;
 
 import ai.neargo.shop.spi.resource.ResourceFactsPort.ResourceFact;
 import ai.neargo.shop.spi.resource.ResourceFactsPort.Type;
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Real normalization behavior; reflection lets missing production types fail as assertions in the first RED run. */
 class ResourceDemandNormalizerTest {
-    private static final String OWNER = "ai.neargo.shop.merchant.policy.ResourceDemandNormalizer";
+    private static final String OWNER = "ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer";
     private static final Instant START = Instant.parse("2026-10-21T09:00:00Z");
 
     @Test

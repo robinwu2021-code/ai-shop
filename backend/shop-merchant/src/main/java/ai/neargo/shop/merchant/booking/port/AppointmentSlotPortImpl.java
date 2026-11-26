@@ -1,8 +1,8 @@
-package ai.neargo.shop.merchant.port;
+package ai.neargo.shop.merchant.booking.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.merchant.entity.MchAppointmentSlot;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.AppointmentSlotMapper;
+import ai.neargo.shop.merchant.booking.entity.MchAppointmentSlot;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.AppointmentSlotMapper;
 import ai.neargo.shop.spi.user.AppointmentSlotPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;

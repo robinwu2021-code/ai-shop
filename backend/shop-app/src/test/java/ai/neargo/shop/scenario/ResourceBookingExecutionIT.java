@@ -3,9 +3,9 @@ package ai.neargo.shop.scenario;
 import org.springframework.boot.test.context.TestConfiguration;
 
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.merchant.policy.ResourceOccupationSchemaVerifier;
-import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationMapper;
+import ai.neargo.shop.merchant.booking.policy.ResourceOccupationSchemaVerifier;
+import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceOccupationMapper;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 import org.mockito.Mockito;
 
@@ -20,12 +20,12 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Demand;
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Interval;
-import ai.neargo.shop.merchant.policy.ResourcePlanCodec;
-import ai.neargo.shop.merchant.port.ResourceBookingPortImpl;
-import ai.neargo.shop.merchant.port.ResourceCandidatesPortImpl;
-import ai.neargo.shop.merchant.port.ResourceFactsPortImpl;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer.Demand;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer.Interval;
+import ai.neargo.shop.merchant.booking.policy.ResourcePlanCodec;
+import ai.neargo.shop.merchant.booking.port.ResourceBookingPortImpl;
+import ai.neargo.shop.merchant.booking.port.ResourceCandidatesPortImpl;
+import ai.neargo.shop.merchant.booking.port.ResourceFactsPortImpl;
 import ai.neargo.shop.merchant.service.ResourceAdmissionService.Qualification;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Accept;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Action;
@@ -102,7 +102,7 @@ class ResourceBookingExecutionIT {
     @TestConfiguration(proxyBeanMethods = false)
     @org.springframework.context.annotation.Import({ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class,
             ai.neargo.shop.common.config.PlatformJdbcConfiguration.class})
-    @MapperScan("ai.neargo.shop.merchant.mapper")
+    @MapperScan({"ai.neargo.shop.merchant.mapper", "ai.neargo.shop.merchant.booking.mapper"})
     static class Mappers {
     }
 
@@ -173,10 +173,10 @@ class ResourceBookingExecutionIT {
             return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                     Mappers.class, ResourceBookingPortImpl.class, ResourceCandidatesPortImpl.class,
                     ResourceFactsPortImpl.class, Class.forName("ai.neargo.shop.merchant.config.PersonnelDataScopeRegistration"),
-                    Class.forName("ai.neargo.shop.merchant.service.impl.ResourceCommandServiceImpl"),
-                    Class.forName("ai.neargo.shop.merchant.service.impl.ResourceAdmissionServiceImpl"),
-                    Class.forName("ai.neargo.shop.merchant.service.impl.ResourceSourceAuthorizationServiceImpl"),
-                    Class.forName("ai.neargo.shop.merchant.service.impl.ResourceBookingServiceImpl"))
+                    Class.forName("ai.neargo.shop.merchant.booking.impl.ResourceCommandServiceImpl"),
+                    Class.forName("ai.neargo.shop.merchant.booking.impl.ResourceAdmissionServiceImpl"),
+                    Class.forName("ai.neargo.shop.merchant.booking.impl.ResourceSourceAuthorizationServiceImpl"),
+                    Class.forName("ai.neargo.shop.merchant.booking.impl.ResourceBookingServiceImpl"))
                     .withBean(AuditMetaObjectHandler.class).withBean(Clock.class, () -> clock)
                     .withBean(IdentifierGenerator.class, () -> new DefaultIdentifierGenerator(1, 1))
                     .withBean(ObjectMapper.class, JsonMapper::new)

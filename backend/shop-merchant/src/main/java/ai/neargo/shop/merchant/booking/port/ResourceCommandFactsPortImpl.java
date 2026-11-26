@@ -1,6 +1,6 @@
-package ai.neargo.shop.merchant.port;
+package ai.neargo.shop.merchant.booking.port;
 
-import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -18,9 +18,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Component
 public class ResourceCommandFactsPortImpl implements ResourceCommandFactsPort {
     private final ResourceOccupationGuard occupations;
-    private final MerchantMappers.ResourceCommandMapper commands;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceCommandMapper commands;
     private final MerchantOperatorAccessPort access;
-    public ResourceCommandFactsPortImpl(ResourceOccupationGuard occupations, MerchantMappers.ResourceCommandMapper commands,
+    public ResourceCommandFactsPortImpl(ResourceOccupationGuard occupations, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceCommandMapper commands,
             MerchantOperatorAccessPort access) {
         this.occupations = occupations;
         this.commands = commands;

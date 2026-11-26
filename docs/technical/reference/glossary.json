@@ -36380,28 +36380,28 @@
       "class": "MchAppointmentSlot",
       "zh": "门店的预约时段与名额。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_booking_hold",
       "class": "MchBookingHold",
       "zh": "资源集合持有凭证。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_booking_hold_unit",
       "class": "MchBookingHoldUnit",
       "zh": "资源持有分配历史明细。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_booking_owner",
       "class": "MchBookingOwner",
       "zh": "稳定资源仲裁归属。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_channel_area",
@@ -36534,7 +36534,7 @@
       "class": "MchPersonnelSkill",
       "zh": "项目服务资格。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_personnel_store",
@@ -36555,49 +36555,49 @@
       "class": "MchResource",
       "zh": "人员或物理资源的稳定主档。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_bucket",
       "class": "MchResourceBucket",
       "zh": "跨店统一容量仲裁桶。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_command",
       "class": "MchResourceCommand",
       "zh": "资源持久命令与结果。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_occupation",
       "class": "MchResourceOccupation",
       "zh": "Permanent actual-resource evidence; lifecycle changes never release original identity.",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_occupation_bucket",
       "class": "MchResourceOccupationBucket",
       "zh": "Permanent actual-resource evidence; lifecycle changes never release original identity.",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_occupation_segment",
       "class": "MchResourceOccupationSegment",
       "zh": "Permanent actual-resource evidence; lifecycle changes never release original identity.",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_occupation_unit",
       "class": "MchResourceOccupationUnit",
       "zh": "Permanent actual-resource evidence; lifecycle changes never release original identity.",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_role",
@@ -36611,14 +36611,14 @@
       "class": "MchScheduleChangeLog",
       "zh": "班表调整历史。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_schedule_rule",
       "class": "MchScheduleRule",
       "zh": "资源周班表规则。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_service_area",
@@ -46438,6 +46438,20 @@
         "module": "shop-inventory"
       },
       {
+        "host": "MchAppointmentSlot",
+        "name": "OPEN",
+        "value": "OPEN",
+        "zh": "可约",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchAppointmentSlot",
+        "name": "CLOSED",
+        "value": "CLOSED",
+        "zh": "停约。",
+        "module": "shop-merchant"
+      },
+      {
         "host": "StoreVO",
         "name": "OTHER",
         "value": "OTHER",
@@ -46456,20 +46470,6 @@
         "name": "DISABLED",
         "value": "DISABLED",
         "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchAppointmentSlot",
-        "name": "OPEN",
-        "value": "OPEN",
-        "zh": "可约",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchAppointmentSlot",
-        "name": "CLOSED",
-        "value": "CLOSED",
-        "zh": "停约。",
         "module": "shop-merchant"
       },
       {

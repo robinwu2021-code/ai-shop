@@ -1,16 +1,16 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.booking.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
-import ai.neargo.shop.merchant.entity.MchResource;
+import ai.neargo.shop.merchant.booking.entity.MchResource;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelSkillMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.ScheduleRuleMapper;
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer;
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Demand;
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Plan;
-import ai.neargo.shop.merchant.policy.ScheduleWindowAssembler;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.PersonnelSkillMapper;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleRuleMapper;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer.Demand;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer.Plan;
+import ai.neargo.shop.merchant.booking.policy.ScheduleWindowAssembler;
 import ai.neargo.shop.merchant.service.ResourceAdmissionService;
 import ai.neargo.shop.merchant.service.ResourceCommandService;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Execution;

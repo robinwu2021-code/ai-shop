@@ -1,9 +1,9 @@
-package ai.neargo.shop.merchant.port;
+package ai.neargo.shop.merchant.booking.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
-import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceMapper;
+import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper;
 import ai.neargo.shop.spi.resource.ResourceFactsPort;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;

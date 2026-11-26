@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.policy;
+package ai.neargo.shop.merchant.booking.policy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -11,8 +11,8 @@ import static org.mockito.Mockito.when;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
-import ai.neargo.shop.merchant.entity.MchResourceBucket;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationMapper;
+import ai.neargo.shop.merchant.booking.entity.MchResourceBucket;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceOccupationMapper;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 

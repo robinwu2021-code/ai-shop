@@ -84,7 +84,7 @@
       "datasource": "PRIMARY",
       "mode": "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS",
       "capability": "resource-actual-occupation",
-      "guardClass": "ai.neargo.shop.merchant.policy.ResourceOccupationSchemaVerifier",
+      "guardClass": "ai.neargo.shop.merchant.booking.policy.ResourceOccupationSchemaVerifier",
       "absentTables": [
         "mch_resource_occupation",
         "mch_resource_occupation_unit",

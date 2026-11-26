@@ -1,8 +1,8 @@
-package ai.neargo.shop.merchant.port;
+package ai.neargo.shop.merchant.booking.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.ScheduleRuleMapper;
-import ai.neargo.shop.merchant.policy.ScheduleWindowAssembler;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleRuleMapper;
+import ai.neargo.shop.merchant.booking.policy.ScheduleWindowAssembler;
 import ai.neargo.shop.spi.schedule.ScheduleWindowsPort;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;

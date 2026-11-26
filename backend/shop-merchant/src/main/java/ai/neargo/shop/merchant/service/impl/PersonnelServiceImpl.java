@@ -1,7 +1,7 @@
 package ai.neargo.shop.merchant.service.impl;
 
 import ai.neargo.shop.common.config.ModuleDataSources;
-import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -30,9 +30,9 @@ import ai.neargo.shop.merchant.entity.MchPersonnel;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchPersonnelAccount;
 import ai.neargo.shop.merchant.entity.MchPersonnelPosition;
-import ai.neargo.shop.merchant.entity.MchPersonnelSkill;
+import ai.neargo.shop.merchant.booking.entity.MchPersonnelSkill;
 import ai.neargo.shop.merchant.entity.MchPersonnelStore;
-import ai.neargo.shop.merchant.entity.MchResource;
+import ai.neargo.shop.merchant.booking.entity.MchResource;
 import ai.neargo.shop.merchant.entity.MchStaffLog;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
@@ -69,10 +69,10 @@ public class PersonnelServiceImpl implements PersonnelService {
     private final MerchantMappers.PersonnelMapper people;
     private final MerchantMappers.PersonnelStoreMapper assignments;
     private final MerchantMappers.PersonnelPositionMapper positions;
-    private final MerchantMappers.PersonnelSkillMapper skills;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.PersonnelSkillMapper skills;
     private final MerchantMappers.PersonnelAccountMapper links;
-    private final MerchantMappers.ResourceMapper resources;
-    private final MerchantMappers.BookingOwnerMapper parents;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents;
     private final MerchantMappers.MchAccountMapper accounts;
     private final MerchantMappers.MchStaffLogMapper audit;
     private final MerchantStaffService staff;
@@ -86,8 +86,8 @@ public class PersonnelServiceImpl implements PersonnelService {
 
     public PersonnelServiceImpl(ResourceOccupationGuard occupations, MerchantMappers.PersonnelMapper people,
             MerchantMappers.PersonnelStoreMapper assignments, MerchantMappers.PersonnelPositionMapper positions,
-            MerchantMappers.PersonnelSkillMapper skills, MerchantMappers.PersonnelAccountMapper links,
-            MerchantMappers.ResourceMapper resources, MerchantMappers.BookingOwnerMapper parents,
+            ai.neargo.shop.merchant.booking.mapper.BookingMappers.PersonnelSkillMapper skills, MerchantMappers.PersonnelAccountMapper links,
+            ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents,
             MerchantMappers.MchAccountMapper accounts, MerchantMappers.MchStaffLogMapper audit,
             MerchantStaffService staff, GoodsQueryPort products, IdempotencyService idempotency,
             @Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource source, ObjectMapper json,

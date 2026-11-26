@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.policy;
+package ai.neargo.shop.merchant.booking.policy;
 
 import ai.neargo.shop.spi.resource.ResourceFactsPort.ResourceFact;
 import ai.neargo.shop.spi.resource.ResourceFactsPort.Type;

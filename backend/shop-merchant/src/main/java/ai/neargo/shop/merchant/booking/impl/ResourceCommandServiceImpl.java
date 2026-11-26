@@ -1,18 +1,18 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.booking.impl;
 
-import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
-import ai.neargo.shop.merchant.entity.MchBookingHold;
-import ai.neargo.shop.merchant.entity.MchBookingOwner;
-import ai.neargo.shop.merchant.entity.MchResourceCommand;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.BookingHoldMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.BookingOwnerMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceCommandMapper;
+import ai.neargo.shop.merchant.booking.entity.MchBookingHold;
+import ai.neargo.shop.merchant.booking.entity.MchBookingOwner;
+import ai.neargo.shop.merchant.booking.entity.MchResourceCommand;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingHoldMapper;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceCommandMapper;
 import ai.neargo.shop.merchant.service.ResourceCommandService;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;

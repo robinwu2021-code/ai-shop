@@ -443,7 +443,7 @@ class PersonnelMaintenanceIT {
     @TestConfiguration(proxyBeanMethods = false)
     @org.springframework.context.annotation.Import({ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class,
             ai.neargo.shop.common.config.PlatformJdbcConfiguration.class})
-    @MapperScan("ai.neargo.shop.merchant.mapper")
+    @MapperScan({"ai.neargo.shop.merchant.mapper", "ai.neargo.shop.merchant.booking.mapper"})
     static class Mappers {
         @Bean
         IdempotencyService idempotency(SqlSessionFactory factory, ObjectMapper json) {

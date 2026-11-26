@@ -16,7 +16,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.config.MybatisPlusConfig;
 import ai.neargo.shop.merchant.service.ResourceCommandService;
-import ai.neargo.shop.merchant.service.impl.ResourceCommandServiceImpl;
+import ai.neargo.shop.merchant.booking.impl.ResourceCommandServiceImpl;
 import ai.neargo.shop.spi.resource.ResourcePlanContract;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
 import java.lang.reflect.InvocationTargetException;
@@ -48,7 +48,7 @@ class ResourceRecoveryFactsIT {
     @TestConfiguration(proxyBeanMethods = false)
     @org.springframework.context.annotation.Import({ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class,
             ai.neargo.shop.common.config.PlatformJdbcConfiguration.class})
-    @MapperScan("ai.neargo.shop.merchant.mapper")
+    @MapperScan({"ai.neargo.shop.merchant.mapper", "ai.neargo.shop.merchant.booking.mapper"})
     static class Mappers { }
     private Class<?> required(String name) {
         return assertDoesNotThrow(() -> Class.forName(name));
@@ -95,7 +95,7 @@ class ResourceRecoveryFactsIT {
         return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                 mapperConfiguration, ResourceCommandServiceImpl.class,
                 required("ai.neargo.shop.merchant.port.MerchantOperatorAccessPortImpl"),
-                required("ai.neargo.shop.merchant.port.ResourceCommandFactsPortImpl"))
+                required("ai.neargo.shop.merchant.booking.port.ResourceCommandFactsPortImpl"))
                 .withBean(AuditMetaObjectHandler.class).withPropertyValues("spring.datasource.url=" + url,
                         "spring.datasource.username=root", "spring.datasource.password=");
     }

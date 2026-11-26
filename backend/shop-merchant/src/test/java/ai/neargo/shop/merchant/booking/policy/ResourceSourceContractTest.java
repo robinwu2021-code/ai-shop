@@ -1,11 +1,11 @@
-package ai.neargo.shop.merchant.policy;
+package ai.neargo.shop.merchant.booking.policy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Demand;
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Interval;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer.Demand;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer.Interval;
 import ai.neargo.shop.merchant.service.ResourceAdmissionService.Qualification;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 /** Real strict contract/codec tests; no source state or permission is simulated as business acceptance. */
 class ResourceSourceContractTest {
-    private static final String CODEC = "ai.neargo.shop.merchant.policy.ResourcePlanCodec";
+    private static final String CODEC = "ai.neargo.shop.merchant.booking.policy.ResourcePlanCodec";
     private static final String PORT = "ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort";
     private static final Instant START = Instant.parse("2026-10-21T10:00:00Z");
     private static final String JSON = "{\"schemaVersion\":1,\"demands\":[{\"resourceNo\":\"R\","

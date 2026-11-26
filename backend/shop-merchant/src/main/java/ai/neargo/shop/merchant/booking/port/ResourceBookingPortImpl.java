@@ -1,11 +1,11 @@
-package ai.neargo.shop.merchant.port;
+package ai.neargo.shop.merchant.booking.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
-import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.ResourceBookingService;
 import ai.neargo.shop.merchant.service.ResourceCommandService;
@@ -22,13 +22,13 @@ public class ResourceBookingPortImpl implements ResourceBookingPort {
     private final ResourceOccupationGuard occupations;
     private final ResourceCommandService commands;
     private final ResourceBookingService bookings;
-    private final MerchantMappers.BookingHoldMapper holds;
-    private final MerchantMappers.BookingOwnerMapper owners;
-    private final MerchantMappers.ResourceCommandMapper journal;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingHoldMapper holds;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper owners;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceCommandMapper journal;
 
     public ResourceBookingPortImpl(ResourceOccupationGuard occupations, ResourceCommandService commands, ResourceBookingService bookings,
-            MerchantMappers.BookingHoldMapper holds, MerchantMappers.BookingOwnerMapper owners,
-            MerchantMappers.ResourceCommandMapper journal) {
+            ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingHoldMapper holds, ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper owners,
+            ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceCommandMapper journal) {
         this.occupations = occupations;
         this.commands = commands;
         this.bookings = bookings;

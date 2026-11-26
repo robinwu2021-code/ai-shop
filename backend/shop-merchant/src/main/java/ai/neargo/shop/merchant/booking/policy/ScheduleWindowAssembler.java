@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.policy;
+package ai.neargo.shop.merchant.booking.policy;
 
 import ai.neargo.shop.merchant.dto.ScheduleRuleFactRow;
 import ai.neargo.shop.spi.schedule.ScheduleWindowsPort.Query;

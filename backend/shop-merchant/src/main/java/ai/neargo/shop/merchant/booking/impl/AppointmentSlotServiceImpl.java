@@ -1,12 +1,12 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.booking.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.merchant.entity.MchAppointmentSlot;
+import ai.neargo.shop.merchant.booking.entity.MchAppointmentSlot;
 import ai.neargo.shop.merchant.entity.MchStore;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.AppointmentSlotMapper;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.AppointmentSlotMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.AppointmentSlotService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;

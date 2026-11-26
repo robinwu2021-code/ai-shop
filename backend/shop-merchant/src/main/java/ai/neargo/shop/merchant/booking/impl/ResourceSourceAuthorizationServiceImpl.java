@@ -1,8 +1,8 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.booking.impl;
 
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.merchant.policy.ResourcePlanCodec;
-import ai.neargo.shop.merchant.policy.ResourcePlanCodec.FrozenPlan;
+import ai.neargo.shop.merchant.booking.policy.ResourcePlanCodec;
+import ai.neargo.shop.merchant.booking.policy.ResourcePlanCodec.FrozenPlan;
 import ai.neargo.shop.merchant.service.ResourceCommandService;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Execution;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Receipt;

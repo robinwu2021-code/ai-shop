@@ -1,6 +1,6 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.booking.impl;
 
-import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -19,7 +19,7 @@ import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.merchant.dto.ResourceQuery;
 import ai.neargo.shop.merchant.dto.ResourceVO;
 import ai.neargo.shop.merchant.dto.SaveResourceReq;
-import ai.neargo.shop.merchant.entity.MchResource;
+import ai.neargo.shop.merchant.booking.entity.MchResource;
 import ai.neargo.shop.merchant.entity.MchStaffLog;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.ResourceService;
@@ -47,9 +47,9 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class ResourceServiceImpl implements ResourceService {
     private final ResourceOccupationGuard occupations;
-    private final MerchantMappers.ResourceMapper resources;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources;
     private final MerchantMappers.PersonnelMapper people;
-    private final MerchantMappers.BookingOwnerMapper parents;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents;
     private final MerchantMappers.MchStaffLogMapper audit;
     private final IdempotencyService idempotency;
     private final ObjectMapper json;
@@ -58,8 +58,8 @@ public class ResourceServiceImpl implements ResourceService {
     private final TransactionTemplate reads;
     private final OutboxPublisher publisher;
 
-    public ResourceServiceImpl(ResourceOccupationGuard occupations, MerchantMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
-            MerchantMappers.BookingOwnerMapper parents, MerchantMappers.MchStaffLogMapper audit,
+    public ResourceServiceImpl(ResourceOccupationGuard occupations, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
+            ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents, MerchantMappers.MchStaffLogMapper audit,
             IdempotencyService idempotency, ObjectMapper json, @Qualifier("dataSource") DataSource source,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,

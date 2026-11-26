@@ -1,10 +1,10 @@
-package ai.neargo.shop.merchant.port;
+package ai.neargo.shop.merchant.booking.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
-import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
-import ai.neargo.shop.merchant.entity.MchBookingHoldUnit;
-import ai.neargo.shop.merchant.entity.MchResourceBucket;
+import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.booking.entity.MchBookingHoldUnit;
+import ai.neargo.shop.merchant.booking.entity.MchResourceBucket;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
@@ -24,17 +24,17 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Component
 public class ResourceCandidatesPortImpl implements ResourceCandidatesPort {
     private final ResourceOccupationGuard occupations;
-    private final MerchantMappers.ResourceMapper resources;
-    private final MerchantMappers.ResourceBucketMapper buckets;
-    private final MerchantMappers.BookingHoldUnitMapper units;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceBucketMapper buckets;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingHoldUnitMapper units;
     private final ResourceFactsPort facts;
-    private final MerchantMappers.BookingOwnerMapper owners;
-    private final MerchantMappers.BookingHoldMapper holds;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper owners;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingHoldMapper holds;
     private final ResourceBookingPort booking;
-    public ResourceCandidatesPortImpl(ResourceOccupationGuard occupations, MerchantMappers.ResourceMapper resources,
-            MerchantMappers.ResourceBucketMapper buckets, MerchantMappers.BookingHoldUnitMapper units,
-            ResourceFactsPort facts, MerchantMappers.BookingOwnerMapper owners,
-            MerchantMappers.BookingHoldMapper holds, ResourceBookingPort booking) {
+    public ResourceCandidatesPortImpl(ResourceOccupationGuard occupations, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources,
+            ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceBucketMapper buckets, ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingHoldUnitMapper units,
+            ResourceFactsPort facts, ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper owners,
+            ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingHoldMapper holds, ResourceBookingPort booking) {
         this.occupations = occupations;
         this.resources = resources;
         this.buckets = buckets;

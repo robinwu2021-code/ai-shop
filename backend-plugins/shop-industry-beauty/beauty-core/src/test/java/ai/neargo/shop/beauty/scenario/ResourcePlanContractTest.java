@@ -31,7 +31,7 @@ class ResourcePlanContractTest {
         assertThat(ResourcePlanContract.hash(frozen))
                 .isEqualTo(IdempotencyScope.requestHash("RESOURCE_PLAN_V1", frozen));
         assertThat(ResourcePlanContract.decode(frozen).demands().get(1).intervals()).containsExactlyElementsOf(bed);
-        assertThatThrownBy(() -> Class.forName("ai.neargo.shop.merchant.policy.ResourcePlanCodec"))
+        assertThatThrownBy(() -> Class.forName("ai.neargo.shop.merchant.booking.policy.ResourcePlanCodec"))
                 .isInstanceOf(ClassNotFoundException.class);
     }
 

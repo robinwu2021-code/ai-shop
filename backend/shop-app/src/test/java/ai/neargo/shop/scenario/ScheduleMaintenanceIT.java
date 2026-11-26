@@ -20,7 +20,7 @@ import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
-import ai.neargo.shop.merchant.port.ScheduleWindowsPortImpl;
+import ai.neargo.shop.merchant.booking.port.ScheduleWindowsPortImpl;
 import ai.neargo.shop.spi.schedule.ScheduleWindowsPort;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
@@ -303,7 +303,7 @@ class ScheduleMaintenanceIT {
     @TestConfiguration(proxyBeanMethods = false)
     @org.springframework.context.annotation.Import({ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class,
             ai.neargo.shop.common.config.PlatformJdbcConfiguration.class})
-    @MapperScan(basePackageClasses = MerchantMappers.class)
+    @MapperScan(basePackageClasses = {MerchantMappers.class, ai.neargo.shop.merchant.booking.mapper.BookingMappers.class})
     static class Mappers {
         @Bean
         IdempotencyService idempotency(SqlSessionFactory factory, ObjectMapper json) {

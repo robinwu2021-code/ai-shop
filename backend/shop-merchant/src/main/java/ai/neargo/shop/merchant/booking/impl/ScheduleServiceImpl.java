@@ -1,6 +1,6 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.booking.impl;
 
-import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -20,9 +20,9 @@ import ai.neargo.shop.merchant.dto.ScheduleQuery;
 import ai.neargo.shop.merchant.dto.ScheduleRuleVO;
 import ai.neargo.shop.merchant.dto.ScheduleVO;
 import ai.neargo.shop.merchant.entity.MchPersonnelStore;
-import ai.neargo.shop.merchant.entity.MchResource;
-import ai.neargo.shop.merchant.entity.MchScheduleChangeLog;
-import ai.neargo.shop.merchant.entity.MchScheduleRule;
+import ai.neargo.shop.merchant.booking.entity.MchResource;
+import ai.neargo.shop.merchant.booking.entity.MchScheduleChangeLog;
+import ai.neargo.shop.merchant.booking.entity.MchScheduleRule;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.ScheduleService;
 import ai.neargo.shop.spi.schedule.ScheduleChanged;
@@ -53,12 +53,12 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class ScheduleServiceImpl implements ScheduleService {
     private final ResourceOccupationGuard occupations;
-    private final MerchantMappers.ResourceMapper resources;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources;
     private final MerchantMappers.PersonnelMapper people;
     private final MerchantMappers.PersonnelStoreMapper assignments;
-    private final MerchantMappers.ScheduleRuleMapper rules;
-    private final MerchantMappers.ScheduleChangeLogMapper changes;
-    private final MerchantMappers.BookingOwnerMapper parents;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleRuleMapper rules;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleChangeLogMapper changes;
+    private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents;
     private final ScheduleWindowsPort windows;
     private final IdempotencyService idempotency;
     private final ObjectMapper json;
@@ -67,9 +67,9 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final TransactionTemplate reads;
     private final OutboxPublisher publisher;
 
-    public ScheduleServiceImpl(ResourceOccupationGuard occupations, MerchantMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
-            MerchantMappers.PersonnelStoreMapper assignments, MerchantMappers.ScheduleRuleMapper rules,
-            MerchantMappers.ScheduleChangeLogMapper changes, MerchantMappers.BookingOwnerMapper parents,
+    public ScheduleServiceImpl(ResourceOccupationGuard occupations, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
+            MerchantMappers.PersonnelStoreMapper assignments, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleRuleMapper rules,
+            ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleChangeLogMapper changes, ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents,
             ScheduleWindowsPort windows, IdempotencyService idempotency, ObjectMapper json,
             @Qualifier("dataSource") DataSource source,
             @Qualifier("transactionManager") PlatformTransactionManager manager,

@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelPositionMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelSkillMapper;
+import ai.neargo.shop.merchant.booking.mapper.BookingMappers.PersonnelSkillMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelStoreMapper;
 import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
 import java.time.Instant;

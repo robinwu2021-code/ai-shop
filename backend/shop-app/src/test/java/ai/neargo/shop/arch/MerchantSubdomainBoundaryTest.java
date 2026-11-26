@@ -32,10 +32,15 @@ class MerchantSubdomainBoundaryTest {
             "/merchant/plan/", List.of("EntityPlanMapper", "PlanDefMapper"),
             "/merchant/funds/", List.of("AdmissionPolicyMapper", "DebtMapper", "DebtTxnMapper", "DepositMapper",
                     "DepositTxnMapper"),
-            "/merchant/paymerchant/", List.of("MchPaymentMapper", "PayoutAccountMapper"));
+            "/merchant/paymerchant/", List.of("MchPaymentMapper", "PayoutAccountMapper"),
+            "/merchant/booking/", List.of("BookingMappers"));
 
-    /** 开发库造数直接写字典表，是有意的例外。 */
-    private static final List<String> SEEDERS = List.of("DevSeeder.java");
+    /**
+     * 有意的例外：开发库造数直接写字典表；人员服务与人员事实端口在同一个事务里写人员与他的资源、
+     * 服务资格（平台基础库 + 门店交易库），是评审里登记的跨库点，拆事务时从这里删掉。
+     */
+    private static final List<String> SEEDERS = List.of("DevSeeder.java", "PersonnelServiceImpl.java",
+            "PersonnelFactsPortImpl.java");
 
     @Test
     @DisplayName("拆出去的子域只能经入口访问：包外不得引用它的 Mapper")
