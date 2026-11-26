@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.trade.entitlement.entity.OrdCardSaleSnapshot;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntAuthorization;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntSourceDecision;
@@ -42,27 +43,27 @@ public final class TradeMappers {
 
     private TradeMappers() {}
 
-    public interface ChannelPolicyMapper extends BaseMapper<OrdChannelPolicy> {}
+    public interface ChannelPolicyMapper extends TradeTableMapper<OrdChannelPolicy> {}
 
-    public interface ChannelAdmissionGuardMapper extends BaseMapper<OrdChannelAdmissionGuard> {}
+    public interface ChannelAdmissionGuardMapper extends TradeTableMapper<OrdChannelAdmissionGuard> {}
 
     public interface ChannelFundingHistoryMapper extends BaseMapper<OrdChannelFundingHistory> {}
 
-    public interface ChannelImportMapper extends BaseMapper<OrdChannelImport> {}
+    public interface ChannelImportMapper extends TradeTableMapper<OrdChannelImport> {}
 
-    public interface ChannelQuoteMapper extends BaseMapper<OrdChannelQuote> {}
+    public interface ChannelQuoteMapper extends TradeTableMapper<OrdChannelQuote> {}
 
     public interface ChannelPreparationMapper extends BaseMapper<OrdChannelPreparation> {}
 
-    public interface IndustryOrderSourceMapper extends BaseMapper<OrdIndustryOrderSource> {}
+    public interface IndustryOrderSourceMapper extends TradeTableMapper<OrdIndustryOrderSource> {}
 
-    public interface PricingFundingSourceMapper extends BaseMapper<OrdPricingFundingSource> {}
+    public interface PricingFundingSourceMapper extends TradeTableMapper<OrdPricingFundingSource> {}
 
-    public interface CartItemMapper extends BaseMapper<TrdCartItem> {}
+    public interface CartItemMapper extends TradeTableMapper<TrdCartItem> {}
 
-    public interface OrderMapper extends BaseMapper<OrdOrder> {}
+    public interface OrderMapper extends TradeTableMapper<OrdOrder> {}
 
-    public interface SubOrderMapper extends BaseMapper<OrdSubOrder> {
+    public interface SubOrderMapper extends TradeTableMapper<OrdSubOrder> {
 
         /**
          * 给预约名额的释放<b>打幂等标记</b>：只有影响到 1 行的那次才有资格去减 booked。
@@ -83,17 +84,17 @@ public final class TradeMappers {
         int markAppointmentReleased(@Param("subOrderNo") String subOrderNo, @Param("at") long at);
     }
 
-    public interface OrderItemMapper extends BaseMapper<OrdItem> {}
+    public interface OrderItemMapper extends TradeTableMapper<OrdItem> {}
 
     public interface InvoiceDataFillMapper extends BaseMapper<OrdInvoiceDataFill> {}
 
     public interface StoreCollectionMapper extends BaseMapper<OrdStoreCollection> {}
 
-    public interface EntitlementAuthorizationMapper extends BaseMapper<OrdEntAuthorization> {}
+    public interface EntitlementAuthorizationMapper extends TradeTableMapper<OrdEntAuthorization> {}
 
-    public interface EntitlementSourceDecisionMapper extends BaseMapper<OrdEntSourceDecision> {}
+    public interface EntitlementSourceDecisionMapper extends TradeTableMapper<OrdEntSourceDecision> {}
 
-    public interface CardSaleSnapshotMapper extends BaseMapper<OrdCardSaleSnapshot> {
+    public interface CardSaleSnapshotMapper extends TradeTableMapper<OrdCardSaleSnapshot> {
         @Select(
                 "SELECT DISTINCT s.order_no FROM ord_card_sale_snapshot s JOIN ord_order o ON"
                     + " o.tenant_no=s.tenant_no AND o.order_no=s.order_no WHERE"
@@ -147,7 +148,7 @@ public final class TradeMappers {
 
     public interface StatusLogMapper extends BaseMapper<OrdStatusLog> {}
 
-    public interface AfterSaleMapper extends BaseMapper<OrdAfterSale> {}
+    public interface AfterSaleMapper extends TradeTableMapper<OrdAfterSale> {}
 
     public interface InvoiceRequestMapper extends BaseMapper<OrdInvoiceRequest> {}
 
@@ -179,11 +180,11 @@ public final class TradeMappers {
         Long peek(@Param("name") String name);
     }
 
-    public interface PriceQuoteMapper extends BaseMapper<OrdPriceQuote> {}
+    public interface PriceQuoteMapper extends TradeTableMapper<OrdPriceQuote> {}
 
-    public interface PriceQuoteLineMapper extends BaseMapper<OrdPriceQuoteLine> {}
+    public interface PriceQuoteLineMapper extends TradeTableMapper<OrdPriceQuoteLine> {}
 
-    public interface PriceQuoteAllocationMapper extends BaseMapper<OrdPriceQuoteAllocation> {}
+    public interface PriceQuoteAllocationMapper extends TradeTableMapper<OrdPriceQuoteAllocation> {}
 
     public interface PricingTemplateMapper extends BaseMapper<OrdPricingTemplate> {}
 

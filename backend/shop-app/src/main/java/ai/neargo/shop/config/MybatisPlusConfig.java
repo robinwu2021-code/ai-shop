@@ -3,6 +3,8 @@ package ai.neargo.shop.config;
 import ai.neargo.shop.common.config.PlatformSqlMapper;
 import ai.neargo.shop.common.config.PlatformTableMapper;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
+import ai.neargo.shop.common.config.TradeSqlMapper;
+import ai.neargo.shop.common.config.TradeTableMapper;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -65,7 +67,9 @@ import org.springframework.context.annotation.Import;
                 pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce|beauty|invoice|printing|user)\\..*"),
                 // 表在平台基础库的 Mapper 按标记排除（它们和别的库的 Mapper 混在同一个包里），
                 // 由 ModuleMapperScanConfig 按同一个标记收到平台句柄上
-                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformTableMapper.class)})
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformTableMapper.class),
+                // 门店交易库的同理（ADR-067）
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class)})
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *
@@ -88,7 +92,8 @@ import org.springframework.context.annotation.Import;
         "ai.neargo.shop.promotion.mapper", "ai.neargo.shop.paybridge.mapper",
         "ai.neargo.shop.invbridge.mapper"},
         annotationClass = org.apache.ibatis.annotations.Mapper.class,
-        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformSqlMapper.class),
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
+                classes = {PlatformSqlMapper.class, TradeSqlMapper.class}),
         sqlSessionFactoryRef = "sqlSessionFactory")
 public class MybatisPlusConfig {
 }

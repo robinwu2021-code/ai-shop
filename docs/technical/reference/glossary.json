@@ -61729,6 +61729,14 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "TRADE",
+      "type": "String",
+      "value": "\"trade\"",
+      "zh": "门店交易库上的交易模块：商品、门店目录与可售、收银与下单、订单与售后、履约、渠道、预约与资源。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "INVOICE_TX_MANAGER",
       "type": "String",
       "value": "\"invoiceTxManager\"",
@@ -61801,9 +61809,33 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "TRADE_TX_MANAGER",
+      "type": "String",
+      "value": "\"tradeTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "TRADE_DATA_SOURCE",
+      "type": "String",
+      "value": "\"tradeDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "TRADE_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"tradeSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "MODULES",
       "type": "List<String>",
-      "value": "List.of(INVOICE, PRINT, PLATFORM)",
+      "value": "List.of(INVOICE, PRINT, PLATFORM, TRADE)",
       "zh": "守卫测试也读这份清单。",
       "module": "shop-store-mybatis"
     },
@@ -61812,6 +61844,14 @@
       "name": "PLATFORM_JDBC_TEMPLATE",
       "type": "String",
       "value": "\"platformJdbcTemplate\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "PlatformJdbcConfiguration",
+      "name": "TRADE_JDBC_TEMPLATE",
+      "type": "String",
+      "value": "\"tradeJdbcTemplate\"",
       "zh": "",
       "module": "shop-store-mybatis"
     },

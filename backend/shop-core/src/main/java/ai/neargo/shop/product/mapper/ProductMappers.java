@@ -1,5 +1,6 @@
 package ai.neargo.shop.product.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.entity.PrdExecutionRetention;
 import ai.neargo.shop.product.entity.PrdGoods;
@@ -24,10 +25,10 @@ public final class ProductMappers {
     private ProductMappers() {
     }
 
-    public interface SkuPricingPolicyMapper extends BaseMapper<PrdSkuPricingPolicy> {
+    public interface SkuPricingPolicyMapper extends TradeTableMapper<PrdSkuPricingPolicy> {
     }
 
-    public interface StoreCatalogMapper extends BaseMapper<PrdStoreCatalog> {
+    public interface StoreCatalogMapper extends TradeTableMapper<PrdStoreCatalog> {
         /** Serialize checkout with publication on the same platform catalog head. */
         @Select("SELECT * FROM prd_store_catalog WHERE tenant_no='MAIN' "
                 + "AND entity_no=#{entity} AND store_no=#{store} AND deleted=0 FOR UPDATE")
@@ -42,13 +43,13 @@ public final class ProductMappers {
                 @Param("at") LocalDateTime at);
     }
 
-    public interface StoreCatalogVersionMapper extends BaseMapper<PrdStoreCatalogVersion> { }
+    public interface StoreCatalogVersionMapper extends TradeTableMapper<PrdStoreCatalogVersion> { }
 
-    public interface GoodsMapper extends BaseMapper<PrdGoods> {
+    public interface GoodsMapper extends TradeTableMapper<PrdGoods> {
     }
 
     /** 门店线上可售规则（V346）。稀疏，只改不删 */
-    public interface SellRuleMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdSellRule> {
+    public interface SellRuleMapper extends TradeTableMapper<ai.neargo.shop.product.entity.PrdSellRule> {
     }
 
     /** 门店库存同步开关与期初对齐（V346）。每店一行 */
@@ -61,10 +62,10 @@ public final class ProductMappers {
 
     /** 主体按类目的「记不记库存」（V345）。稀疏，只改不删 */
     public interface EntityCategoryInvMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdEntityCategoryInv> {
+            extends TradeTableMapper<ai.neargo.shop.product.entity.PrdEntityCategoryInv> {
     }
 
-    public interface SpecTemplateMapper extends BaseMapper<PrdSpecTemplate> {
+    public interface SpecTemplateMapper extends TradeTableMapper<PrdSpecTemplate> {
     }
 
     /** 商品收藏（V343）。取消要真删，理由同 CategorySpecMapper：软删行占着唯一键，再收藏就撞 */
@@ -83,16 +84,16 @@ public final class ProductMappers {
     // 商家侧的「套用模板」读的是这几张表组装出来的结果，契约形状不变。
 
     public interface SpecDimMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdSpecDim> {
+            extends TradeTableMapper<ai.neargo.shop.product.entity.PrdSpecDim> {
     }
 
     public interface SpecValueMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdSpecValue> {
+            extends TradeTableMapper<ai.neargo.shop.product.entity.PrdSpecValue> {
     }
 
     /** 商家对平台规格的覆盖（V213）。整份替换时要真删，理由同 CategorySpecMapper */
     public interface MerchantSpecOverrideMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdMerchantSpecOverride> {
+            extends TradeTableMapper<ai.neargo.shop.product.entity.PrdMerchantSpecOverride> {
 
         @org.apache.ibatis.annotations.Delete(
                 "DELETE FROM prd_merchant_spec_override "
@@ -102,7 +103,7 @@ public final class ProductMappers {
     }
 
     public interface CategorySpecMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdCategorySpec> {
+            extends TradeTableMapper<ai.neargo.shop.product.entity.PrdCategorySpec> {
 
         /**
          * <b>真删</b>这个类目的全部绑定。
@@ -125,7 +126,7 @@ public final class ProductMappers {
     }
 
     public interface CategorySpecValueMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdCategorySpecValue> {
+            extends TradeTableMapper<ai.neargo.shop.product.entity.PrdCategorySpecValue> {
 
         /** 同上：{@code uk_cat_spec_value} 同样不含 deleted，软删会挡住重新插入 */
         @org.apache.ibatis.annotations.Delete(
@@ -134,19 +135,19 @@ public final class ProductMappers {
     }
 
     public interface MerchantSpecMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdMerchantSpec> {
+            extends TradeTableMapper<ai.neargo.shop.product.entity.PrdMerchantSpec> {
     }
 
     public interface MerchantSpecValueMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdMerchantSpecValue> {
+            extends TradeTableMapper<ai.neargo.shop.product.entity.PrdMerchantSpecValue> {
     }
 
     /** 类目 × 支付方式（四层判定的第 ① 层）。**没有行即放行**。 */
     public interface CategoryPayModeMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdCategoryPayMode> {
+            extends TradeTableMapper<ai.neargo.shop.product.entity.PrdCategoryPayMode> {
     }
 
-    public interface GoodsDraftMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdGoodsDraft> {
+    public interface GoodsDraftMapper extends TradeTableMapper<ai.neargo.shop.product.entity.PrdGoodsDraft> {
         /**
          * 物理删（发布成功 / 内容与线上相同 / 商家丢弃草稿）。
          * 不用逻辑删：uk_goods_draft(goods_no) 不含 deleted，软删会挡住重建 —— V195 的坑。
@@ -156,7 +157,7 @@ public final class ProductMappers {
     }
 
     public interface GoodsRevisionMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdGoodsRevision> {
+            extends TradeTableMapper<ai.neargo.shop.product.entity.PrdGoodsRevision> {
 
         /**
          * 下一个版本号。**用 MAX+1 而不是 count+1**：行不会删，但逻辑删过的行
@@ -168,7 +169,7 @@ public final class ProductMappers {
         int nextRevisionNo(@org.apache.ibatis.annotations.Param("goodsNo") String goodsNo);
     }
 
-    public interface SkuMapper extends BaseMapper<PrdSku> {
+    public interface SkuMapper extends TradeTableMapper<PrdSku> {
 
         /** Current complete accounting identities, including every market and retired identity. */
         @Select("SELECT * FROM prd_sku WHERE tenant_no='MAIN' AND sku_no=#{skuNo} ORDER BY id FOR UPDATE")
@@ -315,7 +316,7 @@ public final class ProductMappers {
      * <p>刻意写成两套而不是抽象成一套：库存扣减是这个系统里最不该「聪明」的地方，
      * 一个泛化的 updateStock(table, key...) 读起来永远要先想「这次走的是哪张表」。
      */
-    public interface StoreStockMapper extends BaseMapper<PrdStoreStock> {
+    public interface StoreStockMapper extends TradeTableMapper<PrdStoreStock> {
         @Select("SELECT * FROM prd_store_stock WHERE tenant_no='MAIN' AND sku_no=#{skuNo} ORDER BY id FOR UPDATE")
         List<PrdStoreStock> lockSkuStoresCurrent(@Param("skuNo") String skuNo);
 
@@ -388,7 +389,7 @@ public final class ProductMappers {
      * 门店级售价。**没有原子扣减那套** —— 价格不是被并发争抢的资源，
      * 它只被商家改，读的人只读。
      */
-    public interface StorePriceMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdStorePrice> {
+    public interface StorePriceMapper extends TradeTableMapper<ai.neargo.shop.product.entity.PrdStorePrice> {
     }
 
     public interface TopicMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdTopic> {
@@ -398,10 +399,10 @@ public final class ProductMappers {
     }
 
     /** 门店级上架关系。只有增删改查，没有原子扣减那套 —— 它不是并发争抢的资源 */
-    public interface StoreGoodsMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdStoreGoods> {
+    public interface StoreGoodsMapper extends TradeTableMapper<ai.neargo.shop.product.entity.PrdStoreGoods> {
     }
 
-    public interface StockLockMapper extends BaseMapper<PrdStockLock> {
+    public interface StockLockMapper extends TradeTableMapper<PrdStockLock> {
         /**
          * Complete original rows, including settled rows, share one deterministic owner lock order.
          */
@@ -504,13 +505,13 @@ public final class ProductMappers {
 
     }
 
-    public interface CategoryMapper extends BaseMapper<PrdCategory> {
+    public interface CategoryMapper extends TradeTableMapper<PrdCategory> {
     }
 
     /**
      * 平台标准品。<b>跨商家共享的主数据，不注册数据域</b> —— 与 prd_category 同类：
      * 它不属于任何一家商家，按商家维度过滤它只会让所有人都搜不到。
      */
-    public interface SpuStdMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdSpuStd> {
+    public interface SpuStdMapper extends TradeTableMapper<ai.neargo.shop.product.entity.PrdSpuStd> {
     }
 }

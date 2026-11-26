@@ -1,13 +1,13 @@
 package ai.neargo.shop.trade.order.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
 import org.apache.ibatis.annotations.Select;
 
 /** 订单域持久化：沿用原表、平台工厂及SQL语义。 */
-public interface StoreOrderMapper extends BaseMapper<OrdSubOrder> {
+public interface StoreOrderMapper extends TradeTableMapper<OrdSubOrder> {
 
     /**
      * 给预约名额的释放<b>打幂等标记</b>：只有影响到 1 行的那次才有资格去减 booked。

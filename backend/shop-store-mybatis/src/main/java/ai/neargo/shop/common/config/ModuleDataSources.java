@@ -20,6 +20,11 @@ public final class ModuleDataSources {
      * 这几个模块同在一个库、互相之间有同事务的写，所以共用一个句柄，不各开一个。
      */
     public static final String PLATFORM = "platform";
+    /**
+     * 门店交易库上的交易模块：商品、门店目录与可售、收银与下单、订单与售后、履约、渠道、预约与资源。
+     * 这些子模块同在一个库、下单等事务里互相写，共用一个句柄。哪些 Mapper 归它，看 {@link TradeTableMapper}。
+     */
+    public static final String TRADE = "trade";
 
     public static final String INVOICE_TX_MANAGER = "invoiceTxManager";
     public static final String INVOICE_DATA_SOURCE = "invoiceDataSource";
@@ -30,9 +35,12 @@ public final class ModuleDataSources {
     public static final String PLATFORM_TX_MANAGER = "platformTxManager";
     public static final String PLATFORM_DATA_SOURCE = "platformDataSource";
     public static final String PLATFORM_SQL_SESSION_FACTORY = "platformSqlSessionFactory";
+    public static final String TRADE_TX_MANAGER = "tradeTxManager";
+    public static final String TRADE_DATA_SOURCE = "tradeDataSource";
+    public static final String TRADE_SQL_SESSION_FACTORY = "tradeSqlSessionFactory";
 
     /** 守卫测试也读这份清单；常量名与这里的规则对不上会在那里变红。 */
-    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM);
+    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM, TRADE);
 
     private ModuleDataSources() {
     }
