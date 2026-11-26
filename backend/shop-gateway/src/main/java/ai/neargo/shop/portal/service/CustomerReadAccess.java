@@ -1,5 +1,4 @@
 package ai.neargo.shop.portal.service;
-import ai.neargo.shop.report.customer.CustomerReportingService;
 
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.PermChecker;

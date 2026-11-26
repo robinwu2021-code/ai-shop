@@ -2,8 +2,8 @@ package ai.neargo.shop.portal.ops;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.portal.service.CustomerReadAccess;
-import ai.neargo.shop.report.customer.CustomerReportingService;
-import ai.neargo.shop.report.customer.CustomerReportingService.OperatingEntity;
+import ai.neargo.shop.portal.service.CustomerReportingService;
+import ai.neargo.shop.portal.service.CustomerReportingService.OperatingEntity;
 import jakarta.validation.constraints.Size;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
