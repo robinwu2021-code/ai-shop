@@ -38,6 +38,9 @@ shop:
       # 「publish 之后会不会真的交给泵」由 OutboxEventBusPumpTest 覆盖。
       enabled: false
   notify:
+    # 提交后再发的通知（AfterCommitNotifications）：测试里让提交线程等投递做完，断言才确定
+    after-commit:
+      wait: true
     # 商家自带渠道凭据的落库加密密钥（NotifyCredCipher）。32 个零字节的 base64 ——
     # 测试世界不需要真随机，需要的是**确定**：没它 upsert 会在「绝不明文落库」那一行拒掉，
     # 而 WeComOrderAlertFlowTest 要先把商家的企微群存进库才能验整条链路。

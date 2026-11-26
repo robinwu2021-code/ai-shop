@@ -55,7 +55,11 @@ class WaybillProgressTest {
     private List<DomainEvent> published() {
         ArgumentCaptor<DomainEvent> c = ArgumentCaptor.forClass(DomainEvent.class);
         verify(events, atLeast(0)).publish(c.capture());
-        return c.getAllValues();
+        ArgumentCaptor<DomainEvent> n = ArgumentCaptor.forClass(DomainEvent.class);
+        verify(events, atLeast(0)).notifyAfterCommit(n.capture());
+        var all = new java.util.ArrayList<DomainEvent>(c.getAllValues());
+        all.addAll(n.getAllValues());
+        return all;
     }
 
     private List<LogisticsEvents.WaybillProgressed> progressed() {

@@ -67,6 +67,11 @@
 在分类时记作无人消费，但餐饮目录消费者 `FoodCatalogSourceEventConsumer` 直接处理它，分类有误。
 原来“发布失败则业务回滚”的测试，失败点改挂在同一事务里紧挨着的审计写入上。
 
+**D 类已改（2026-11-26）。** 10 处只发通知的发布改走 `OutboxEventBus#notifyAfterCommit`：不写发件箱，
+由 `AfterCommitNotifications` 在提交后、在后台线程交给支持它的消费者（`NotificationConsumer`、`PrintNotifyBridge`），
+失败只记日志不重投，回滚则不发。必须换线程：提交回调里本线程的数据库资源还绑着已提交的事务，直接写库会静默丢失。
+测试配置 `shop.notify.after-commit.wait=true` 让提交线程等投递做完。混合类里的通知部分还没拆。
+
 **顺带发现的问题**
 
 | 现象 | 例子 |

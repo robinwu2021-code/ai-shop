@@ -53,6 +53,23 @@ public class OutboxEventBus {
     @Autowired(required = false)
     public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
 
+    private AfterCommitNotifications notifications;
+
+    @Autowired(required = false)
+    public void setNotifications(AfterCommitNotifications notifications) { this.notifications = notifications; }
+
+    /**
+     * 只发通知、丢一次可以接受的事件：不落发件箱，提交后交给通知消费者（见 {@link AfterCommitNotifications}）。
+     * 下游要写别的库或调外部系统且必须做成的，用 {@link #publish(DomainEvent)}。
+     */
+    public void notifyAfterCommit(DomainEvent event) {
+        if (notifications == null) {
+            publish(event);
+            return;
+        }
+        notifications.publish(event);
+    }
+
     /** Only obsolete failed targets are skipped; successful and in-flight targets are preserved. */
     public void supersedeFailed(String aggregateType, String aggregateId, java.util.Set<String> handlers,
                                 String reason) {
