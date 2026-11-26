@@ -56,6 +56,13 @@
 可以先做、不依赖任何决定的：合并两份 `SeqMapper`；`OpsServiceImpl` 的审计改走端口（行为不变）；
 新增“公共能力表只经唯一实现访问”的守卫，以现状为基线，只准变短。
 
+已做（2026-11-26）：
+
+| 项 | 结果 |
+|---|---|
+| 两份 `SeqMapper` | `TradeMappers` 里那份没有调用方，删掉；号段只剩 `trade.order.mapper.SeqMapper` |
+| 审计写入 | `sys_audit_log` 的写入从 `OpsServiceImpl` 收进 `AuditLogPortImpl`，运营后台反过来转调端口；仍在调用方事务内，行为不变。原来 `AuditLogPortImpl → OpsServiceImpl` 的依赖环随之消失 |
+
 ## §3 待你定
 
 | # | 问题 | 建议 |
