@@ -898,6 +898,12 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "b-app:MallOfflineClaimStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["SUBMITTED", "REVIEWING", "CONFIRMED", "MISMATCHED", "DECLINED"],
     note: "商家线下付款申报状态，同 ops-web:MallOfflineClaimStatus；申报不是到账，DECLINED 后用新申报号重报" },
   { decl: "ops-web:MallUnusedRefundPolicy", dom: "commerce", shape: "CLASS", verdict: "OK", note: "SKU 未使用数字权益的退款口径；已使用部分固定 MANUAL_ONLY" },
+  // 接口资源（TDD-网关层与统一权限，V679 sys_api_resource）：运营端「接口资源」页签
+  { decl: "ops-web:ApiResourceAccess", dom: "core", shape: "CLASS", verdict: "OK", note: "接口的权限要求类别 PUBLIC/LOGIN/POINT/DEFER，对应 sys_api_resource.access" },
+  { decl: "ops-web:ApiResourceAdjustableAccess", dom: "core", shape: "CLASS", verdict: "OK", note: "ApiResourceAccess 去掉 PUBLIC 的子集：运营在库里能调整成的类别，不能调成公开" },
+  { decl: "ops-web:ApiResourceSource", dom: "core", shape: "CLASS", verdict: "OK", note: "接口资源来源 SCAN 扫描登记 / MANUAL 人工录入，对应 sys_api_resource.source" },
+  { decl: "ops-web:ApiResourceStatus", dom: "core", shape: "STATUS", verdict: "OK", words: ["ENABLED", "DISABLED"],
+    note: "接口资源启停，对应 sys_api_resource.status" },
 // 元器件的端上枚举（shared:Elec*）2026-09-30 随小程序迁到独立项目 ai-hxkey，登记在那边；
   // 这里只留运营端（ops-web:Elec*）的那几条 —— 运营端仍在 ai-shop。
 ];
