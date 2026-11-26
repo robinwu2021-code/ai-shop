@@ -3,7 +3,6 @@
 commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/JdbcEndAccessRepository.java
 commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/JdbcSubscriptionRepository.java
 commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/subscription/MchStoreEndGrantRepository.java
-shop-core/src/main/java/ai/neargo/shop/media/CoreMediaRefs.java
 shop-core/src/main/java/ai/neargo/shop/platform/auth/OpsApiKeyStore.java
 shop-core/src/main/java/ai/neargo/shop/platform/entity/SysOpsStaff.java
 shop-core/src/main/java/ai/neargo/shop/promotion/approval/EnrollmentApprovalSubject.java
@@ -15,9 +14,7 @@ shop-gateway/src/main/java/ai/neargo/shop/paybridge/PayMerchantComparator.java
 shop-gateway/src/main/java/ai/neargo/shop/paybridge/PaymentCollectionProjection.java
 shop-gateway/src/main/java/ai/neargo/shop/paybridge/PaymentCollectionSourceBootstrap.java
 shop-gateway/src/main/java/ai/neargo/shop/paybridge/impl/PaymentCollectionServiceImpl.java
-shop-gateway/src/main/java/ai/neargo/shop/payclient/PayBizSessionVerifier.java
 shop-gateway/src/main/java/ai/neargo/shop/payclient/PaymentReadRouter.java
-shop-merchant/src/main/java/ai/neargo/shop/media/MerchantMediaRefs.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/AppointmentSlotServiceImpl.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ResourceBookingServiceImpl.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ResourceServiceImpl.java

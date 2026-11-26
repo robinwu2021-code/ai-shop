@@ -1,4 +1,6 @@
-package ai.neargo.shop.payclient;
+package ai.neargo.shop.merchantbridge;
+
+import ai.neargo.shop.payclient.PayBizException;
 
 import ai.neargo.auth.store.TokenHash;
 import ai.neargo.shop.auth.LoginUser;
@@ -8,7 +10,12 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
-/** Fresh, typed account authentication; no local store or payment membership is inferred. */
+/**
+ * Fresh, typed account authentication; no local store or payment membership is inferred.
+ *
+ * <p>只读平台基础库的 B 端会话与两类账号，连接由装配处给平台句柄的 {@code authJdbcClient}；
+ * 所以放在平台句柄下的包里，而不是支付客户端里（TDD-平台基础库换表 §2 第 1 步）。
+ */
 public final class PayBizSessionVerifier {
   private final JdbcClient jdbc;
 

@@ -6,7 +6,7 @@ import ai.neargo.shop.auth.RequestMetaFilter;
 import ai.neargo.shop.gateway.biz.PayBizPassThrough;
 import ai.neargo.shop.pay.client.BizOnboardingForwarder;
 import ai.neargo.shop.payclient.PayBizAuthenticationFilter;
-import ai.neargo.shop.payclient.PayBizSessionVerifier;
+import ai.neargo.shop.merchantbridge.PayBizSessionVerifier;
 import ai.neargo.shop.payclient.PayBizSourceDelegation;
 import ai.neargo.shop.payclient.PaySourceLinkApi;
 import ai.neargo.shop.merchant.paysync.StoreSyncProperties;
