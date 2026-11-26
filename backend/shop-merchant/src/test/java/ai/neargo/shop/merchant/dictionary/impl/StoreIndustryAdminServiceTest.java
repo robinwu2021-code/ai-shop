@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.dictionary.impl;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;

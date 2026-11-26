@@ -7,6 +7,7 @@ import ai.neargo.commerce.api.subscription.*;
 import ai.neargo.commerce.persistence.*;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.*;
+import ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysStoreIndustryMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
 import ai.neargo.shop.merchant.port.MerchantPortImpl;
 import ai.neargo.shop.merchant.service.*;

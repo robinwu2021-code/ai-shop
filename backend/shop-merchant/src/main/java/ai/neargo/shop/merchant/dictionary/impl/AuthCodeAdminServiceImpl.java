@@ -1,9 +1,9 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.dictionary.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.merchant.entity.SysAuthCode;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper;
+import ai.neargo.shop.merchant.dictionary.entity.SysAuthCode;
+import ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysAuthCodeMapper;
 import ai.neargo.shop.merchant.service.AuthCodeAdminService;
 import ai.neargo.shop.spi.product.CategoryUsagePort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;

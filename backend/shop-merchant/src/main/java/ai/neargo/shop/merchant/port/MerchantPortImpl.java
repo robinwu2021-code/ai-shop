@@ -1214,23 +1214,20 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         });
     }
 
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.SysStoreIndustryMapper industryMapper;
+    private ai.neargo.shop.merchant.dictionary.DictionaryCatalog dictionary;
 
     /** 行业表（V643）；setter 注入，不动构造函数 */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setIndustryMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.SysStoreIndustryMapper industryMapper) {
-        this.industryMapper = industryMapper;
+    void setDictionary(ai.neargo.shop.merchant.dictionary.DictionaryCatalog dictionary) {
+        this.dictionary = dictionary;
     }
 
     @Override
     public List<IndustryRow> industries() {
-        if (industryMapper == null) {
+        if (dictionary == null) {
             return List.of();
         }
-        return DataScopeContext.executeWithoutScope(() -> industryMapper.selectList(
-                        Wrappers.<ai.neargo.shop.merchant.entity.SysStoreIndustry>lambdaQuery()
-                                        .orderByAsc(ai.neargo.shop.merchant.entity.SysStoreIndustry::getIndustryCode)
-                                .orderByAsc(ai.neargo.shop.merchant.entity.SysStoreIndustry::getSort)))
+        return DataScopeContext.executeWithoutScope(dictionary::storeIndustries)
                 .stream()
                 .map(r -> new IndustryRow(r.getIndustryCode(),
                         r.getSubIndustryCode() == null || r.getSubIndustryCode().isEmpty() ? null

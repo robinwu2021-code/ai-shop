@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.dictionary.impl;
 
 import ai.neargo.commerce.api.catalog.CatalogFacade;
 import ai.neargo.commerce.api.common.ActorContext;

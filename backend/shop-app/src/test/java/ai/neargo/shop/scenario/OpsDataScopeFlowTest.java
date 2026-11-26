@@ -2,14 +2,14 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.OtpStore;
-import ai.neargo.shop.merchant.entity.MchViolation;
+import ai.neargo.shop.merchant.violation.MchViolation;
 import ai.neargo.shop.marketing.group.entity.MktGroupBuy;
 import ai.neargo.shop.marketing.group.mapper.GroupMappers.GroupBuyMapper;
 import ai.neargo.shop.product.review.entity.RvwReview;
 import ai.neargo.shop.product.review.mapper.ReviewMappers.ReviewMapper;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.ViolationMapper;
+import ai.neargo.shop.merchant.violation.ViolationMapper;
 import ai.neargo.shop.promotion.entity.PmtActivity;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
 import ai.neargo.shop.pay.entity.StlWithdraw;

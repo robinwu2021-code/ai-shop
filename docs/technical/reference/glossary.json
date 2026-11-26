@@ -36681,7 +36681,7 @@
       "class": "MchViolation",
       "zh": "商家违规与处置记录。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.violation"
     },
     {
       "table": "mkt_attribution",
@@ -38487,7 +38487,7 @@
       "class": "SysAuthCode",
       "zh": "类目授权码。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.dictionary.entity"
     },
     {
       "table": "sys_banned_word",
@@ -38669,7 +38669,7 @@
       "class": "SysStoreIndustry",
       "zh": "平台行业与子行业（V643，TDD-子行业与能力端验收）。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.dictionary.entity"
     },
     {
       "table": "trd_cart_item",
@@ -47054,27 +47054,6 @@
         "module": "shop-merchant"
       },
       {
-        "host": "MchViolation",
-        "name": "BREACH",
-        "value": "BREACH",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchViolation",
-        "name": "SUSPEND",
-        "value": "SUSPEND",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchViolation",
-        "name": "STORE_OFFLINE",
-        "value": "STORE_OFFLINE",
-        "zh": "门店强制下线：作用在 storeNo 那家店上，不动主体。",
-        "module": "shop-merchant"
-      },
-      {
         "host": "ReachRule",
         "name": "LEVEL_COMMUNITY",
         "value": "COMMUNITY",
@@ -47100,6 +47079,27 @@
         "name": "FROM_CONFIG",
         "value": "CONFIG",
         "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchViolation",
+        "name": "BREACH",
+        "value": "BREACH",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchViolation",
+        "name": "SUSPEND",
+        "value": "SUSPEND",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchViolation",
+        "name": "STORE_OFFLINE",
+        "value": "STORE_OFFLINE",
+        "zh": "门店强制下线：作用在 storeNo 那家店上，不动主体。",
         "module": "shop-merchant"
       },
       {

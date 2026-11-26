@@ -804,9 +804,6 @@ public final class MerchantMappers {
     public interface MchStoreMapper extends PlatformTableMapper<MchStore> {
     }
 
-    /** 平台行业与子行业（V643） */
-    public interface SysStoreIndustryMapper extends BaseMapper<ai.neargo.shop.merchant.entity.SysStoreIndustry> {
-    }
 
     /** 商家子账号：账号 ↔ 主体的成员关系。**身份来源**（取代 mch_entity.owner_user_no）。 */
     public interface MchAccountMapper extends PlatformTableMapper<MchAccount> {
@@ -864,13 +861,7 @@ public final class MerchantMappers {
     public interface MchPaymentMapper extends BaseMapper<MchPaymentMerchant> {
     }
 
-    /** 类目授权码主数据。 */
-    public interface SysAuthCodeMapper extends BaseMapper<ai.neargo.shop.merchant.entity.SysAuthCode> {
-    }
 
-    /** 违规与处置记录。 */
-    public interface ViolationMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchViolation> {
-    }
 
     /** 店招与公告的人审队列。 */
     public interface StoreAuditMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchStoreAudit> {
