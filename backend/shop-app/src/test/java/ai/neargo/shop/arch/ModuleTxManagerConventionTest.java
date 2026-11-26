@@ -54,7 +54,8 @@ class ModuleTxManagerConventionTest {
                     String[] lines = Files.readString(file, StandardCharsets.UTF_8).split("\n");
                     for (int i = 0; i < lines.length; i++) {
                         String line = lines[i].trim();
-                        boolean declared = line.startsWith("@Transactional");
+                        // 也认 `@Override @Transactional` 这种写在同一行的；注释里提到它不算
+                        boolean declared = line.startsWith("@") && line.contains("@Transactional");
                         boolean injected = line.contains("@Qualifier(\"transactionManager\")");
                         if (!declared && !injected) {
                             continue;
