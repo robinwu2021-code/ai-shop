@@ -82,14 +82,12 @@ class PlatformTableAccessTest {
                     }
                 }
             }
-            // 平台 Mapper 绑的是平台句柄的工厂，注入到哪里都走新库、数据域照常；只有和非平台事务混用时
-            // （在主库事务里写平台表、或依赖平台行锁）换库后才会出错
+            // 平台 Mapper 绑的是平台句柄的工厂，注入到哪里都走新库、数据域照常，只读不会出错。
+            // 会出错的是在非平台事务里经它写平台表或给平台行加锁：换库后那一步不在这个事务里，原子性和锁都没了
             boolean foreignTransaction = (code.contains("@Transactional") || code.contains("TransactionTemplate"))
                     && !code.contains("PLATFORM_TX_MANAGER");
-            for (String mapper : mappers) {
-                if (!hit && foreignTransaction && code.matches("(?s).*\\b" + mapper + "\\b.*")) {
-                    hit = true;
-                }
+            if (!hit && foreignTransaction) {
+                hit = writesOrLocksThroughPlatformMapper(code, mappers);
             }
             if (hit) {
                 actual.add(path);
@@ -111,6 +109,30 @@ class PlatformTableAccessTest {
                 String.join("\n  ", added)).isEmpty();
         assertThat(gone).as("这些已经不越界了，从 known-platform-table-access.txt 删掉：\n  %s", String.join("\n  ", gone))
                 .isEmpty();
+    }
+
+    /** 字段或参数类型是平台 Mapper 的变量，调用了写方法、加锁方法，或者查询带了 FOR UPDATE / FOR SHARE。 */
+    static boolean writesOrLocksThroughPlatformMapper(String code, Set<String> mappers) {
+        Set<String> names = new java.util.HashSet<>();
+        var declared = Pattern.compile("\\b(\\w+Mapper)\\s+(\\w+)\\s*[;,)=]").matcher(code);
+        while (declared.find()) {
+            if (mappers.contains(declared.group(1))) {
+                names.add(declared.group(2));
+            }
+        }
+        for (String name : names) {
+            var call = Pattern.compile("\\b" + Pattern.quote(name) + "\\s*\\.\\s*(\\w+)\\s*\\(([^;]*);").matcher(code);
+            while (call.find()) {
+                String method = call.group(1);
+                if (method.startsWith("insert") || method.startsWith("update") || method.startsWith("delete")
+                        || method.toLowerCase(java.util.Locale.ROOT).contains("lock")
+                        || method.contains("ForUpdate") || call.group(2).contains("FOR UPDATE")
+                        || call.group(2).contains("FOR SHARE")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static List<Path> sources() throws IOException {
