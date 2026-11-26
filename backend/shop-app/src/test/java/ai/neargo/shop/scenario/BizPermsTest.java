@@ -153,4 +153,25 @@ class BizPermsTest {
         }
     }
 
+    @Test
+    @DisplayName("★ App 里还没有入口的码：角色页不下发，但仍可持有 —— 存量角色照常保存")
+    void codesWithoutAppEntryAreHiddenButStillAssignable() {
+        // TDD-B端角色页收起未接入App的权限码：收的是界面，不是后端校验
+        for (String hidden : Set.of(BizPerms.ORDER_CREATE, BizPerms.BOOKING_VIEW, BizPerms.SERVICE_TASK_SELF,
+                BizPerms.PRICING_CONFIG_READ, BizPerms.PAY_ORDER_VIEW, BizPerms.PAY_OFFLINE_RECORD,
+                BizPerms.ENT_USE, BizPerms.CASH_RECEIVE, BizPerms.REPORT_EXPORT)) {
+            assertThat(BizPerms.selectableCodes()).as(hidden + " 不该出现在角色页").doesNotContain(hidden);
+            assertThat(BizPerms.assignableCodes()).as(hidden + " 仍可由自定义角色持有").contains(hidden);
+        }
+        // App 里有入口的照常下发
+        assertThat(BizPerms.selectableCodes()).contains(BizPerms.GOODS, BizPerms.FINANCE, BizPerms.PAY_COLLECT,
+                BizPerms.INVOICE_ISSUE, BizPerms.SV_RECHARGE_RECEIVE, BizPerms.PRINT_EXTRA);
+        // 可见列表只会比可持有列表小，不会多出码来
+        assertThat(BizPerms.assignableCodes()).containsAll(BizPerms.selectableCodes());
+        assertThat(BizPerms.assignableCodes().size() - BizPerms.selectableCodes().size()).isEqualTo(28);
+        // 预置角色不受影响：店员照样能建单、看预约
+        assertThat(BizPerms.can(Set.of(BizPerms.CLERK), BizPerms.ORDER_CREATE)).isTrue();
+        assertThat(BizPerms.can(Set.of(BizPerms.CLERK), BizPerms.BOOKING_VIEW)).isTrue();
+    }
+
 }
