@@ -54,7 +54,7 @@ class MultiEntityIdentityFlowTest {
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

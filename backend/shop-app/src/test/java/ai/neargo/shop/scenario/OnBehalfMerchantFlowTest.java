@@ -3,7 +3,7 @@ package ai.neargo.shop.scenario;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.service.SelfOperatedService;
 import ai.neargo.shop.platform.OpsService;

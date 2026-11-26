@@ -521,7 +521,6 @@ class BizFoundationAccessMysqlTest {
                             null,
                             null,
                             null,
-                            null,
                             (ai.neargo.shop.merchant.service.PayMerchantMirror) entityNo -> {},
                             new org.springframework.beans.factory.support.StaticListableBeanFactory().getBeanProvider(ai.neargo.shop.spi.pay.PayMerchantReadSwitch.class),
                             new org.springframework.beans.factory.support.StaticListableBeanFactory().getBeanProvider(ai.neargo.shop.spi.pay.PayMerchantQueryPort.class));

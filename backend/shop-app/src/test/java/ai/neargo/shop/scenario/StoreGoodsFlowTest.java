@@ -48,7 +48,7 @@ class StoreGoodsFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
 
 
     private MockMvc mvc() {

@@ -52,7 +52,7 @@ class StoreStockFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
     /** 判据取子单上的履约门店 —— OrderVO 不带它，从接口外面看不出单落在哪家店 */
     @Autowired
     private StoreOrderMapper subOrderMapper;

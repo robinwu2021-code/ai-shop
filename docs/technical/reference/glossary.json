@@ -36471,7 +36471,7 @@
       "class": "MchEntityPlan",
       "zh": "主体的增值包订阅（P-11.2，V150）。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.plan.entity"
     },
     {
       "table": "mch_fulfillment_channel",
@@ -38578,7 +38578,7 @@
       "class": "SysMerchantPlanDef",
       "zh": "增值包档位定义（P-11.2.3，V150）。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.plan.entity"
     },
     {
       "table": "sys_notify_log",
@@ -46557,69 +46557,6 @@
         "module": "shop-merchant"
       },
       {
-        "host": "MchEntityPlan",
-        "name": "FREE",
-        "value": "FREE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "PRO",
-        "value": "PRO",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "CHAIN",
-        "value": "CHAIN",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "ACTIVE",
-        "value": "ACTIVE",
-        "zh": "正常生效",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "GRACE",
-        "value": "GRACE",
-        "zh": "到期后的宽限期：**能力全部保留**。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "EXPIRED",
-        "value": "EXPIRED",
-        "zh": "宽限期也过了：降级到 FREE，但**不关店**",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "BY_SELF_PAID",
-        "value": "SELF_PAID",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "BY_PLATFORM",
-        "value": "PLATFORM",
-        "zh": "平台授予（谈下来的连锁客户不走自助付费）——**催收要跳过这一类**",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "BY_TRIAL",
-        "value": "TRIAL",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
         "host": "MchFulfillmentChannel",
         "name": "SCOPE_ALL",
         "value": "ALL",
@@ -47051,6 +46988,69 @@
         "name": "OWNER_CODE",
         "value": "OWNER",
         "zh": "老板不在这张表里 —— 把它当角色授给别人等于凭空造一个第二老板",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "FREE",
+        "value": "FREE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "PRO",
+        "value": "PRO",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "CHAIN",
+        "value": "CHAIN",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "ACTIVE",
+        "value": "ACTIVE",
+        "zh": "正常生效",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "GRACE",
+        "value": "GRACE",
+        "zh": "到期后的宽限期：**能力全部保留**。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "EXPIRED",
+        "value": "EXPIRED",
+        "zh": "宽限期也过了：降级到 FREE，但**不关店**",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "BY_SELF_PAID",
+        "value": "SELF_PAID",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "BY_PLATFORM",
+        "value": "PLATFORM",
+        "zh": "平台授予（谈下来的连锁客户不走自助付费）——**催收要跳过这一类**",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "BY_TRIAL",
+        "value": "TRIAL",
+        "zh": "",
         "module": "shop-merchant"
       },
       {

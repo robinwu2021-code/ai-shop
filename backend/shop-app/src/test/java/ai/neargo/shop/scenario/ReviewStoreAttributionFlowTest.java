@@ -2,7 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.CashReceiptFixture;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;

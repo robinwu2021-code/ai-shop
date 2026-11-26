@@ -9,9 +9,11 @@ import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysStoreIndustryMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.PlanDefMapper;
 import ai.neargo.shop.merchant.port.MerchantPortImpl;
 import ai.neargo.shop.merchant.service.*;
-import ai.neargo.shop.merchant.service.impl.MerchantPlanServiceImpl;
+import ai.neargo.shop.merchant.plan.impl.MerchantPlanServiceImpl;
 import ai.neargo.shop.merchant.service.impl.StoreAdminServiceImpl;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantAdminPort.QuickStartCommand;
@@ -206,8 +208,9 @@ class CommerceStoreCreationFlowTest {
                                     null,
                                     sessions.getMapper(ServiceAreaMapper.class),
                                     null,
-                                    sessions.getMapper(EntityPlanMapper.class),
-                                    sessions.getMapper(PlanDefMapper.class),
+                                    new ai.neargo.shop.merchant.plan.impl.EntityPlanProvisionerImpl(
+                                            sessions.getMapper(EntityPlanMapper.class),
+                                            sessions.getMapper(PlanDefMapper.class)),
                                     null,
                                     null,
                                     null,

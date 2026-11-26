@@ -51,7 +51,7 @@ class StoreLevelAccessFlowTest {
     @Autowired
     private ObjectMapper json;
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
     @Autowired
     private JdbcTemplate jdbc;
     @Autowired

@@ -62,7 +62,7 @@ class StoreScopedVisibilityFlowTest {
     private ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
 
     @Autowired
     private ai.neargo.shop.spi.user.MerchantQueryPort merchantQuery;

@@ -11,8 +11,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.merchant.entity.MchEntityPlan;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper;
+import ai.neargo.shop.merchant.plan.entity.MchEntityPlan;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
 import ai.neargo.shop.pay.channel.TestPayGateway;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponSaveCmd;
 import ai.neargo.shop.promotion.service.CouponService;

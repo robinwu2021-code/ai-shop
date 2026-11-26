@@ -53,7 +53,7 @@ class PointsOrderLiveCreationTest {
     @Autowired ai.neargo.shop.trade.service.OrderService orderService;
     @Autowired ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger;
     @Autowired ai.neargo.shop.trade.order.points.OrderPointsOutboxConsumer sourceFactsConsumer;
-    @Autowired ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper plans;
+    @Autowired ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper plans;
     @MockitoBean PointsRedeemPort redeem;
     @MockitoBean PointsOrderTermsPort terms;
 

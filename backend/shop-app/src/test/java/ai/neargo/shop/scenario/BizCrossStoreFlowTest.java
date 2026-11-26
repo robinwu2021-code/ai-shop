@@ -58,7 +58,7 @@ class BizCrossStoreFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
 
     @Autowired
     private ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper pickupMapper;

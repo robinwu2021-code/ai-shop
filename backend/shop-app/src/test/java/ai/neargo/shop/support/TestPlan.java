@@ -1,8 +1,8 @@
 package ai.neargo.shop.support;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.merchant.entity.MchEntityPlan;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper;
+import ai.neargo.shop.merchant.plan.entity.MchEntityPlan;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;

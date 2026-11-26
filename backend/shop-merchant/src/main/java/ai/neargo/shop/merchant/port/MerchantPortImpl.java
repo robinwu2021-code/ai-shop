@@ -102,8 +102,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             ai.neargo.shop.merchant.service.DebtService> debtServiceProvider;
     private final tools.jackson.databind.ObjectMapper json;
     /** 主体激活时建 FREE 订阅行（V150）—— 与 ensureDefaultStore 同一类动作 */
-    private final ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper entityPlanMapper;
-    private final ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper planDefMapper;
+    private final ai.neargo.shop.merchant.plan.EntityPlanProvisioner planProvisioner;
     /** 门店送货方式（方案 v4）—— 可见性与下单闸的取数口 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper;
@@ -128,8 +127,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             ai.neargo.shop.merchant.service.MerchantGovernService governService,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper,
-                            ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper entityPlanMapper,
-                            ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper planDefMapper,
+                            ai.neargo.shop.merchant.plan.EntityPlanProvisioner planProvisioner,
                             ai.neargo.shop.merchant.service.MerchantAuthCodeService authCodeService,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
@@ -157,8 +155,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.reachMatcher = reachMatcher;
         this.geoProps = geoProps;
         this.authCodeService = authCodeService;
-        this.entityPlanMapper = entityPlanMapper;
-        this.planDefMapper = planDefMapper;
+        this.planProvisioner = planProvisioner;
         this.qualificationMapper = qualificationMapper;
         this.governService = governService;
         this.json = json;
@@ -1797,38 +1794,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         DataScopeContext.executeWithoutScope(() -> staffMapper.insert(staff));
     }
 
-    /**
-     * 建 FREE 订阅行（V150）。
-     *
-     * <p><b>与 {@link #ensureDefaultStore} 是同一类动作</b>：主体一激活就该有的东西。
-     * 迁移里的回填只覆盖迁移那一刻的存量，**新入驻的商家没人给它建行** ——
-     * 漏了这一步的症状不是报错，是额度一路落到配置兜底：
-     * 测试环境那个兜底是 3，于是新商家能开三家店，而他明明是 FREE。
-     * （实测抓到：三条额度用例同时红。）
-     */
+    /** 主体一激活就该有默认订阅；套餐属于平台商城，这里只调它的入口。 */
     private void ensureFreePlan(String merchantNo) {
-        boolean exists = DataScopeContext.executeWithoutScope(() ->
-                entityPlanMapper.exists(Wrappers.<ai.neargo.shop.merchant.entity.MchEntityPlan>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchEntityPlan::getEntityNo, merchantNo)));
-        if (exists) {
-            return;
-        }
-        var def = DataScopeContext.executeWithoutScope(() ->
-                planDefMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.SysMerchantPlanDef>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.SysMerchantPlanDef::getPlanCode,
-                                ai.neargo.shop.merchant.entity.MchEntityPlan.FREE)
-                        .last("limit 1")));
-        var row = new ai.neargo.shop.merchant.entity.MchEntityPlan();
-        row.setEntityNo(merchantNo);
-        row.setPlanCode(ai.neargo.shop.merchant.entity.MchEntityPlan.FREE);
-        // 档位定义缺失时给 1/0 —— 与 FREE 的种子逐字一致，不去读那个会被改的配置
-        row.setStoreQuota(def == null || def.getStoreQuota() == null ? 1 : def.getStoreQuota());
-        row.setStaffQuota(def == null || def.getStaffQuota() == null ? 0 : def.getStaffQuota());
-        row.setCrossStoreStats(def != null && Boolean.TRUE.equals(def.getCrossStoreStats()));
-        row.setStatus(ai.neargo.shop.merchant.entity.MchEntityPlan.ACTIVE);
-        row.setGrantedBy(ai.neargo.shop.merchant.entity.MchEntityPlan.BY_SELF_PAID);
-        row.setTrialUsed(false);
-        DataScopeContext.executeWithoutScope(() -> entityPlanMapper.insert(row));
+        planProvisioner.ensureFreePlan(merchantNo);
     }
 
     /** 建默认门店。一主体恰好一个，删不掉 —— 它是单店商家的全部。 */

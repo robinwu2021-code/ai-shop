@@ -1,10 +1,10 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.plan.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.merchant.entity.MchEntityPlan;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper;
+import ai.neargo.shop.merchant.plan.entity.MchEntityPlan;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
 import ai.neargo.shop.merchant.service.MerchantPlanService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,13 +29,13 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
     @org.springframework.beans.factory.annotation.Autowired
     public void setOwnership(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership) {this.ownership=ownership;}
     private final EntityPlanMapper planMapper;
-    private final ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper defMapper;
+    private final ai.neargo.shop.merchant.plan.mapper.PlanMappers.PlanDefMapper defMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper accountMapper;
 
     public MerchantPlanServiceImpl(EntityPlanMapper planMapper,
-                                   ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper defMapper,
+                                   ai.neargo.shop.merchant.plan.mapper.PlanMappers.PlanDefMapper defMapper,
                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper,
                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper accountMapper) {
@@ -261,10 +261,10 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
 
     @Override
     public List<PlanDefVO> defs() {
-        List<ai.neargo.shop.merchant.entity.SysMerchantPlanDef> rows =
+        List<ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef> rows =
                 DataScopeContext.executeWithoutScope(() -> defMapper.selectList(
-                        Wrappers.<ai.neargo.shop.merchant.entity.SysMerchantPlanDef>lambdaQuery()
-                                .orderByAsc(ai.neargo.shop.merchant.entity.SysMerchantPlanDef::getSort)));
+                        Wrappers.<ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef>lambdaQuery()
+                                .orderByAsc(ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef::getSort)));
         /*
          * 带上「有几家在用」：改档位定义的人必须看得到这个数 ——
          * 它是「只影响新订阅」那句话的具体量（已订阅的 N 家不受影响）。
@@ -496,10 +496,10 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
         return toSave;
     }
 
-    private ai.neargo.shop.merchant.entity.SysMerchantPlanDef findDef(String planCode) {
+    private ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef findDef(String planCode) {
         return DataScopeContext.executeWithoutScope(() -> defMapper.selectOne(
-                Wrappers.<ai.neargo.shop.merchant.entity.SysMerchantPlanDef>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.SysMerchantPlanDef::getPlanCode, planCode)
+                Wrappers.<ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef::getPlanCode, planCode)
                         .last("limit 1")));
     }
 
@@ -591,7 +591,7 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
      *
      * @return null = 现在不能试用（已用过 / 已经是付费档 / 没有可试用的档位）
      */
-    private ai.neargo.shop.merchant.entity.SysMerchantPlanDef trialTargetOf(PlanVO v, MchEntityPlan row) {
+    private ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef trialTargetOf(PlanVO v, MchEntityPlan row) {
         if (row == null || Boolean.TRUE.equals(row.getTrialUsed())) {
             return null;
         }
@@ -606,11 +606,11 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
     }
 
     /** 在售档位，按 sort 升序。三处（档位对比 / 试用目标 / 授予下拉）共用同一个序。 */
-    private List<ai.neargo.shop.merchant.entity.SysMerchantPlanDef> enabledDefs() {
+    private List<ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef> enabledDefs() {
         return DataScopeContext.executeWithoutScope(() ->
-                defMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.SysMerchantPlanDef>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.SysMerchantPlanDef::getEnabled, true)
-                        .orderByAsc(ai.neargo.shop.merchant.entity.SysMerchantPlanDef::getSort)));
+                defMapper.selectList(Wrappers.<ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef::getEnabled, true)
+                        .orderByAsc(ai.neargo.shop.merchant.plan.entity.SysMerchantPlanDef::getSort)));
     }
 
     private int countActiveStores(String merchantNo) {

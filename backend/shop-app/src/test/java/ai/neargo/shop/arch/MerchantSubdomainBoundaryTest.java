@@ -28,7 +28,8 @@ class MerchantSubdomainBoundaryTest {
     /** 子域的包路径片段 → 包外不许出现的 Mapper 名。 */
     private static final Map<String, List<String>> SUBDOMAINS = Map.of(
             "/merchant/dictionary/", List.of("SysAuthCodeMapper", "SysStoreIndustryMapper"),
-            "/merchant/violation/", List.of("ViolationMapper"));
+            "/merchant/violation/", List.of("ViolationMapper"),
+            "/merchant/plan/", List.of("EntityPlanMapper", "PlanDefMapper"));
 
     /** 开发库造数直接写字典表，是有意的例外。 */
     private static final List<String> SEEDERS = List.of("DevSeeder.java");
