@@ -78,7 +78,7 @@ class BizIdentityNativeMysqlTest {
                 mock(PersonService.class),
                 mock(FissionPort.class),
                 otpService);
-            var ticketService = new LoginTicketServiceImpl(db.jdbc, db.manager, Duration.ofMinutes(5));
+            var ticketService = new LoginTicketServiceImpl(db.jdbc.getDataSource(), db.manager, Duration.ofMinutes(5));
             identities = new LoginIdentityServiceImpl(auth, ticketService, tokens, mock(LoginAuditor.class),
                     db.mybatis.getMapper(MchAccountMapper.class), db.mybatis.getMapper(MchEntityMapper.class),
                     db.mybatis.getMapper(MchStoreMapper.class), db.mybatis.getMapper(MchStoreRoleMapper.class),
@@ -299,7 +299,7 @@ class BizIdentityNativeMysqlTest {
                     f.db.manager.rollback(status);
                 }
             };
-            var tickets = new LoginTicketServiceImpl(f.db.jdbc, controlled, Duration.ofMinutes(5));
+            var tickets = new LoginTicketServiceImpl(f.db.jdbc.getDataSource(), controlled, Duration.ofMinutes(5));
             LoginIdentityService service = new LoginIdentityServiceImpl(f.auth, tickets, cache, mock(LoginAuditor.class),
                     f.db.mybatis.getMapper(MchAccountMapper.class), f.db.mybatis.getMapper(MchEntityMapper.class),
                     f.db.mybatis.getMapper(MchStoreMapper.class), f.db.mybatis.getMapper(MchStoreRoleMapper.class),

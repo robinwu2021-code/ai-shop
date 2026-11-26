@@ -61721,6 +61721,14 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "PLATFORM",
+      "type": "String",
+      "value": "\"platform\"",
+      "zh": "平台基础库上的模块：登录与账号、商户与门店、门店设置与设备、员工与权限。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "INVOICE_TX_MANAGER",
       "type": "String",
       "value": "\"invoiceTxManager\"",
@@ -61769,9 +61777,33 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "PLATFORM_TX_MANAGER",
+      "type": "String",
+      "value": "\"platformTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PLATFORM_DATA_SOURCE",
+      "type": "String",
+      "value": "\"platformDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PLATFORM_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"platformSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "MODULES",
       "type": "List<String>",
-      "value": "List.of(INVOICE, PRINT)",
+      "value": "List.of(INVOICE, PRINT, PLATFORM)",
       "zh": "守卫测试也读这份清单。",
       "module": "shop-store-mybatis"
     },

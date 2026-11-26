@@ -191,7 +191,7 @@ public final class StoreEntityClaimLocalLauncher {
             var messages = new org.springframework.context.support.ResourceBundleMessageSource();
             messages.setBasename("i18n/messages"); messages.setDefaultEncoding("UTF-8");
             var identities = new ai.neargo.shop.merchantbridge.impl.LoginIdentityServiceImpl(
-                    f.auth, new ai.neargo.shop.user.service.impl.LoginTicketServiceImpl(f.db.jdbc, f.db.manager, Duration.ofMinutes(5)),
+                    f.auth, new ai.neargo.shop.user.service.impl.LoginTicketServiceImpl(f.db.jdbc.getDataSource(), f.db.manager, Duration.ofMinutes(5)),
                     f.tokens, mock(ai.neargo.shop.auth.LoginAuditor.class),
                     f.db.mybatis.getMapper(MchAccountMapper.class), f.db.mybatis.getMapper(MchEntityMapper.class),
                     f.db.mybatis.getMapper(MchStoreMapper.class), f.db.mybatis.getMapper(MchStoreRoleMapper.class),

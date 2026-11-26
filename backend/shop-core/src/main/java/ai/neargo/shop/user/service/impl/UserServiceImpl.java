@@ -1,5 +1,6 @@
 package ai.neargo.shop.user.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.spi.trade.OpenOrderPort;
 import ai.neargo.shop.common.OtpStore;
@@ -181,7 +182,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public UserVO bindCommunity(String communityNo, String pickupNo) {
         boolean withPickup = pickupNo != null && !pickupNo.isBlank();
         /*
@@ -223,7 +224,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public UserVO updateProfile(String nickname, String avatar) {
         UsrAccount user = currentUser();
         // 传 null 表示「不改这个字段」，而不是「清空」——端上只提交改动的那个
@@ -271,7 +272,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public UserVO bindPhone(String phone, String code) {
         if (!otpStore.verifyAndConsume(phone, code)) {
             /*

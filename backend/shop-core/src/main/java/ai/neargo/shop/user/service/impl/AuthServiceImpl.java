@@ -1,5 +1,6 @@
 package ai.neargo.shop.user.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.otp.OtpEntries;
 import ai.neargo.shop.common.otp.OtpScenes;
 import ai.neargo.shop.common.otp.service.OtpSendService;
@@ -336,7 +337,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public UsrAccount enterVerified(VerifiedPrincipal principal, Boolean agreed, String marketCode) {
         return enterVerified(principal, new LoginCommand(
                 IdentityType.EMAIL.equals(principal.type()) ? GRANT_EMAIL_OTP : GRANT_PHONE_OTP,
@@ -380,7 +381,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public LoginResult login(LoginCommand cmd) {
         /*
          * 密码登录**单独一条路，不进 findOrCreate** —— 那个方法的语义是「登录即注册」，
@@ -428,7 +429,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public WxPhoneLoginResult loginByWxPhone(String currentToken, WxPhoneLoginCommand req) {
         var session = tokenStore.get(currentToken).filter(s -> s.user().realm() == Realm.CONSUMER)
                 .orElseThrow(UnauthorizedException::new);
@@ -582,7 +583,7 @@ public class AuthServiceImpl implements AuthService {
      * 而重设密码的正路本来就是「用验证码登录进来再设」。
      */
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void setPassword(String userNo, String rawPassword) {
         String raw = rawPassword == null ? "" : rawPassword;
         // 长度下限在服务端也要判：端上的校验挡不住直接打接口的人
@@ -622,7 +623,7 @@ public class AuthServiceImpl implements AuthService {
      * 只按那一个查，于是同一个人换个入口就变成新账号。
      */
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String ensureAccountByPhone(String phone) {
         if (phone == null || !phone.matches("\\d{11}")) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

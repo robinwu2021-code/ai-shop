@@ -50,7 +50,7 @@ import org.springframework.context.annotation.Import;
          *
          *   beauty    —— 与商品订单共主库，由美业条件配置及结构校验后注册。
          *
-         *   invoice / printing —— 可在配置里选数据源的模块（ADR-066），由
+         *   invoice / printing / user —— 可在配置里选数据源的模块（ADR-066），由
          *                ModuleMapperScanConfig 绑到各自的句柄；不配时句柄就是主库工厂。
          *
          * 漏掉哪一个，那个域的 Mapper 都会被注册到平台工厂上。
@@ -60,7 +60,7 @@ import org.springframework.context.annotation.Import;
          */
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.REGEX,
-                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce|beauty|invoice|printing)\\..*"))
+                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce|beauty|invoice|printing|user)\\..*"))
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *

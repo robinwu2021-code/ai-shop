@@ -25,5 +25,8 @@ import org.springframework.context.annotation.Import;
         sqlSessionFactoryRef = "sqlSessionFactory")
 @MapperScan(basePackages = "ai.neargo.shop.printing", markerInterface = BaseMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.PRINT_SQL_SESSION_FACTORY)
+// C 端账号域（登录与账号的一部分）在平台基础库；会话与登录日志不走 Mapper，见 LoginAuditConfig#authJdbcClient
+@MapperScan(basePackages = "ai.neargo.shop.user", markerInterface = BaseMapper.class,
+        sqlSessionFactoryRef = ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
 public class ModuleMapperScanConfig {
 }

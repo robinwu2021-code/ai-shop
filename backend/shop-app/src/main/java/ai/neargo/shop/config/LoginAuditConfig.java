@@ -1,5 +1,7 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.auth.store.LoginEvent;
 import ai.neargo.auth.store.LoginLogDao;
 import ai.neargo.auth.store.LoginLogWriter;
@@ -25,13 +27,14 @@ import java.util.Map;
 public class LoginAuditConfig {
 
     /**
-     * 三张会话表与三张日志表都在平台库。
+     * 三张会话表与三张日志表都在平台基础库，走平台模块的数据源句柄（ADR-066）；
+     * 没绑定时句柄就是主库。会话清理、支付侧的会话校验用的也是这一个。
      *
      * <p>将来某一端拆去独立库时，只需给那一端换一个 {@link JdbcClient} ——
      * DAO 一行不改，这正是把它做成构造参数的理由。
      */
     @Bean
-    JdbcClient authJdbcClient(DataSource dataSource) {
+    JdbcClient authJdbcClient(@Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource dataSource) {
         return JdbcClient.create(dataSource);
     }
 

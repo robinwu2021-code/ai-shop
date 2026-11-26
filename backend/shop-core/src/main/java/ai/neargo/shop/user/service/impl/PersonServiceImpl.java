@@ -1,5 +1,6 @@
 package ai.neargo.shop.user.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -238,7 +239,7 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void deregister(String userNo) {
         findByUser(userNo).ifPresent(p -> {
             /*
@@ -287,7 +288,7 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void merge(String fromPersonNo, String toPersonNo, String reason,
                       int affectedMembers, String operatorNo) {
         if (fromPersonNo == null || fromPersonNo.equals(toPersonNo)) {
@@ -320,7 +321,7 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void changePhone(String userNo, String newPhone) {
         String hash = crypto.hash(newPhone);
         if (userNo == null || userNo.isBlank() || hash == null) {

@@ -30,6 +30,7 @@ class ModuleTxManagerConventionTest {
 
     /** 模块源码根 → 必须点名的常量。 */
     private static final Map<String, String> MODULE_SOURCES = Map.of(
+            "shop-core/src/main/java/ai/neargo/shop/user", "ModuleDataSources.PLATFORM_TX_MANAGER",
             "invoice/invoice-domain/src/main/java/ai/neargo/shop/invoice", "ModuleDataSources.INVOICE_TX_MANAGER",
             "shop-core/src/main/java/ai/neargo/shop/printing", "ModuleDataSources.PRINT_TX_MANAGER");
 
@@ -41,7 +42,7 @@ class ModuleTxManagerConventionTest {
             "PrintingConfiguration.java", "@Qualifier(\"transactionManager\") PlatformTransactionManager manager) {");
 
     @Test
-    @DisplayName("发票、打印的事务必须点名本模块的事务管理器句柄")
+    @DisplayName("发票、打印、C 端账号的事务必须点名本模块的事务管理器句柄")
     void module_transactions_name_their_own_manager() throws IOException {
         List<String> wrong = new ArrayList<>();
         int total = 0;
@@ -84,6 +85,11 @@ class ModuleTxManagerConventionTest {
                 .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.INVOICE));
         assertThat(ModuleDataSources.PRINT_TX_MANAGER).isEqualTo(ModuleDataSources.txManager(ModuleDataSources.PRINT));
         assertThat(ModuleDataSources.PRINT_DATA_SOURCE).isEqualTo(ModuleDataSources.dataSource(ModuleDataSources.PRINT));
+        assertThat(ModuleDataSources.PLATFORM_TX_MANAGER).isEqualTo(ModuleDataSources.txManager(ModuleDataSources.PLATFORM));
+        assertThat(ModuleDataSources.PLATFORM_DATA_SOURCE)
+                .isEqualTo(ModuleDataSources.dataSource(ModuleDataSources.PLATFORM));
+        assertThat(ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
+                .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.PLATFORM));
         assertThat(ModuleDataSources.PRINT_SQL_SESSION_FACTORY)
                 .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.PRINT));
     }

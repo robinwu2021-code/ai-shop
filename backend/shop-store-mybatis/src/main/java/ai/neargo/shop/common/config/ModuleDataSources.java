@@ -15,6 +15,11 @@ public final class ModuleDataSources {
     public static final String INVOICE = "invoice";
     /** 打印模块（{@code ai.neargo.shop.printing}）。 */
     public static final String PRINT = "print";
+    /**
+     * 平台基础库上的模块：登录与账号、商户与门店、门店设置与设备、员工与权限。
+     * 这几个模块同在一个库、互相之间有同事务的写，所以共用一个句柄，不各开一个。
+     */
+    public static final String PLATFORM = "platform";
 
     public static final String INVOICE_TX_MANAGER = "invoiceTxManager";
     public static final String INVOICE_DATA_SOURCE = "invoiceDataSource";
@@ -22,9 +27,12 @@ public final class ModuleDataSources {
     public static final String PRINT_TX_MANAGER = "printTxManager";
     public static final String PRINT_DATA_SOURCE = "printDataSource";
     public static final String PRINT_SQL_SESSION_FACTORY = "printSqlSessionFactory";
+    public static final String PLATFORM_TX_MANAGER = "platformTxManager";
+    public static final String PLATFORM_DATA_SOURCE = "platformDataSource";
+    public static final String PLATFORM_SQL_SESSION_FACTORY = "platformSqlSessionFactory";
 
     /** 守卫测试也读这份清单；常量名与这里的规则对不上会在那里变红。 */
-    public static final List<String> MODULES = List.of(INVOICE, PRINT);
+    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM);
 
     private ModuleDataSources() {
     }

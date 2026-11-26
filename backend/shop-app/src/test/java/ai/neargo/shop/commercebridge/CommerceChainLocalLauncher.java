@@ -175,7 +175,7 @@ public final class CommerceChainLocalLauncher {
         createFromMigration(fixture, "V622__management_command_journal.sql", "mch_management_command");
         migrate(fixture, "V645__merchant_login_ticket.sql");
         var tickets = new ai.neargo.shop.user.service.impl.LoginTicketServiceImpl(
-                fixture.db.jdbc, fixture.db.manager, java.time.Duration.ofMinutes(5));
+                fixture.db.jdbc.getDataSource(), fixture.db.manager, java.time.Duration.ofMinutes(5));
         var messages = new org.springframework.context.support.ResourceBundleMessageSource();
         messages.setBasename("i18n/messages");
         messages.setDefaultEncoding("UTF-8");

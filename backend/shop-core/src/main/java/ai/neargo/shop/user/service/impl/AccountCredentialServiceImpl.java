@@ -1,5 +1,8 @@
 package ai.neargo.shop.user.service.impl;
 
+import javax.sql.DataSource;
+import org.springframework.beans.factory.annotation.Qualifier;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Masks;
@@ -49,17 +52,18 @@ public class AccountCredentialServiceImpl implements AccountCredentialService {
 
     public AccountCredentialServiceImpl(UserMapper users, IdentityMapper identities, OtpSendService otp,
                                         TestIdentityService testIdentities, PersonService persons,
-                                        AuthService auth, JdbcTemplate jdbc,
+                                        AuthService auth,
+                                        @Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource dataSource,
                                         @Value("${shop.sms.mock-prefixes:}") String mockPrefixes,
                                         @Value("${shop.mail.stub:true}") boolean mailStub,
                                         @Value("${shop.mail.otp-stub-allowed:false}") boolean stubOtpAllowed) {
+        this.jdbc = new JdbcTemplate(dataSource);
         this.users = users;
         this.identities = identities;
         this.otp = otp;
         this.testIdentities = testIdentities;
         this.persons = persons;
         this.auth = auth;
-        this.jdbc = jdbc;
         this.mockPrefixes = mockPrefixes == null ? List.of() : Arrays.stream(mockPrefixes.split(","))
                 .map(String::trim).filter(s -> !s.isEmpty()).toList();
         this.mailStub = mailStub;
@@ -89,7 +93,7 @@ public class AccountCredentialServiceImpl implements AccountCredentialService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String changePhone(String userNo, String currentCode, String newPhone, String newCode, String clientIp) {
         if (newPhone == null || !newPhone.matches("\\+?\\d{6,20}") || blank(currentCode) || blank(newCode)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -121,7 +125,7 @@ public class AccountCredentialServiceImpl implements AccountCredentialService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String bindEmail(String userNo, String email, String code, String currentCode, String clientIp) {
         if (blank(email) || blank(code)) throw BizException.of(ErrorCode.BAD_REQUEST);
         String normalized = EmailOtpService.normalize(email);

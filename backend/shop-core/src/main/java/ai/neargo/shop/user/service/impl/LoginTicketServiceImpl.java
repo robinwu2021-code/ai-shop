@@ -1,5 +1,8 @@
 package ai.neargo.shop.user.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+import javax.sql.DataSource;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.auth.store.TokenHash;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -26,10 +29,12 @@ public class LoginTicketServiceImpl implements LoginTicketService {
     private final Duration ttl;
     private final SecureRandom random = new SecureRandom();
 
-    public LoginTicketServiceImpl(JdbcTemplate jdbc, PlatformTransactionManager manager,
+    public LoginTicketServiceImpl(@Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource dataSource,
+                                  @Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager manager,
                                   @Value("${shop.auth.login-ticket.ttl:PT5M}") Duration ttl) {
         if (ttl.isNegative() || ttl.isZero()) throw new IllegalArgumentException("login-ticket ttl must be positive");
-        this.jdbc = jdbc;
+        // 票据表与会话表同在平台基础库：手写 SQL 和事务都走这个模块的句柄
+        this.jdbc = new JdbcTemplate(dataSource);
         this.transactions = new TransactionTemplate(manager);
         // Credential entry is its own atomic unit, never an earlier caller's RR snapshot.
         this.transactions.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
