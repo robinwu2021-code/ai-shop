@@ -31,6 +31,7 @@ import ai.neargo.shop.beauty.entity.BtyTradeBinding;
 import ai.neargo.shop.beauty.entity.BtyWorkOrder;
 import ai.neargo.shop.beauty.entity.BtyWorkOrderContext;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 import org.apache.ibatis.annotations.Mapper;
@@ -89,7 +90,7 @@ public final class BeautyMappers {
     }
 
     /** Locks an authorized existing head; first creation is arbitrated by its scoped business unique key. */
-    public interface ServiceDefinitionMapper extends BaseMapper<BtyServiceDefinition> {
+    public interface ServiceDefinitionMapper extends TradeTableMapper<BtyServiceDefinition> {
         @Select(
                 """
                 SELECT * FROM bty_service_definition
@@ -134,18 +135,18 @@ public final class BeautyMappers {
     }
 
     /** Published execution snapshots are immutable; application code uses append and scoped reads only. */
-    public interface ServiceDefinitionVersionMapper extends BaseMapper<BtyServiceDefinitionVersion> {
+    public interface ServiceDefinitionVersionMapper extends TradeTableMapper<BtyServiceDefinitionVersion> {
     }
 
     /** Requirements belong to an authorized definition version, checked by the publishing transaction. */
-    public interface ServiceRequirementMapper extends BaseMapper<BtyServiceRequirement> {
+    public interface ServiceRequirementMapper extends TradeTableMapper<BtyServiceRequirement> {
     }
     /** Critical actions are appended with the aggregate transaction; they are not mutable operational state. */
     public interface ActionLogMapper extends BaseMapper<BtyActionLog> {
     }
 
     /** 预约单；业务事务先锁预约根，再处理项目及安排历史。 */
-    public interface AppointmentMapper extends BaseMapper<BtyAppointment> {
+    public interface AppointmentMapper extends TradeTableMapper<BtyAppointment> {
         /** 报表（BAPI-119）：窗口内按状态计数；start_at 以 UTC 存 */
         @Select(
                 """
@@ -512,11 +513,11 @@ public final class BeautyMappers {
     }
 
     /** 预约项目行；写入前由业务事务锁定已授权预约根。 */
-    public interface AppointmentItemMapper extends BaseMapper<BtyAppointmentItem> {
+    public interface AppointmentItemMapper extends TradeTableMapper<BtyAppointmentItem> {
     }
 
     /** 预约确认人员安排历史；按显式安排版本追加，不覆盖旧行。 */
-    public interface AppointmentAssignmentMapper extends BaseMapper<BtyAppointmentAssignment> {
+    public interface AppointmentAssignmentMapper extends TradeTableMapper<BtyAppointmentAssignment> {
         /** 显式父链范围读取；不会按当前人员反推历史安排。 */
         @Select(
                 """
@@ -538,7 +539,7 @@ public final class BeautyMappers {
     }
 
     /** 服务工单；调用者在本域短事务按根→任务→子行锁序操作。 */
-    public interface WorkOrderMapper extends BaseMapper<BtyWorkOrder> {
+    public interface WorkOrderMapper extends TradeTableMapper<BtyWorkOrder> {
         /** Binding changes the aggregate revision but never silently changes its service scope. */
         @Update(
                 """
@@ -718,7 +719,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
     }
 
     /** 可独立执行服务任务；调用者在本域短事务按根→任务→子行锁序操作。 */
-    public interface ServiceTaskMapper extends BaseMapper<BtyServiceTask> {
+    public interface ServiceTaskMapper extends TradeTableMapper<BtyServiceTask> {
         /**
          * Every child proves the complete live root and optional original appointment-item parent.
          */
@@ -934,7 +935,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
     }
 
     /** 实际服务人员参与段；调用者在本域短事务按根→任务→子行锁序操作。 */
-    public interface ServiceParticipationMapper extends BaseMapper<BtyServiceParticipation> {
+    public interface ServiceParticipationMapper extends TradeTableMapper<BtyServiceParticipation> {
         /** A task number alone cannot authorize rows from a foreign or deleted parent. */
         @Select(
                 """
@@ -1502,9 +1503,9 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
 
 
     /** Persistent server previews; bytes must not be accepted from a public binding. */
-    public interface AppointmentPreparationMapper extends BaseMapper<BtyAppointmentPreparation> { }
-    public interface AppointmentArrangementMapper extends BaseMapper<BtyAppointmentArrangement> { }
-    public interface AppointmentCurrentMapper extends BaseMapper<BtyAppointmentCurrent> {
+    public interface AppointmentPreparationMapper extends TradeTableMapper<BtyAppointmentPreparation> { }
+    public interface AppointmentArrangementMapper extends TradeTableMapper<BtyAppointmentArrangement> { }
+    public interface AppointmentCurrentMapper extends TradeTableMapper<BtyAppointmentCurrent> {
         @Select(
                 """
                 SELECT c.* FROM bty_appointment_current c JOIN bty_appointment a
@@ -1658,7 +1659,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
     }
 
     /** Scoped reception persistence; authorization remains in services. */
-    public interface WorkOrderContextMapper extends BaseMapper<BtyWorkOrderContext> {
+    public interface WorkOrderContextMapper extends TradeTableMapper<BtyWorkOrderContext> {
         @Select(
                 """
                 SELECT * FROM bty_work_order_context WHERE tenant_no='MAIN' AND entity_no=#{entityNo}

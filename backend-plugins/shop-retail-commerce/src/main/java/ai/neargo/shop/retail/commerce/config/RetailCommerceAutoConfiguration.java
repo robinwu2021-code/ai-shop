@@ -1,6 +1,7 @@
 package ai.neargo.shop.retail.commerce.config;
 
 import ai.neargo.shop.commerce.service.ChannelCatalogAuthorityService;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.retail.commerce.mapper.RetailSelectionMapper;
 import ai.neargo.shop.retail.commerce.mapper.impl.RetailSelectionMapperImpl;
 import ai.neargo.shop.retail.commerce.port.OriginalRetailCatalogAvailability;
@@ -53,8 +54,8 @@ public class RetailCommerceAutoConfiguration {
     @Bean
     @ConditionalOnBean({DataSource.class, PlatformTransactionManager.class, ObjectMapper.class})
     RetailSelectionMapperImpl retailSelectionRepository(
-            DataSource dataSource,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource dataSource,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json) {
         return new RetailSelectionMapperImpl(new JdbcTemplate(dataSource), manager, json);
     }
@@ -93,8 +94,8 @@ public class RetailCommerceAutoConfiguration {
         ObjectMapper.class
     })
     RetailSelectionManagementService retailSelectionManagementService(
-            DataSource dataSource,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource dataSource,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json,
             RetailSelectionMapper selections,
             RetailSelectionService publication) {

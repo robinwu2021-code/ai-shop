@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.OfflineDraftMapper;
 import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.DiningIdentityService;
@@ -44,7 +45,7 @@ public class FoodOfflineDraftAutoConfiguration {
             CheckCartService carts,
             ObjectMapper json,
             ObjectProvider<Clock> clocks,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new OfflineDraftServiceImpl(
                 mapper, identities, carts, json, clocks.getIfAvailable(Clock::systemUTC), manager);
     }

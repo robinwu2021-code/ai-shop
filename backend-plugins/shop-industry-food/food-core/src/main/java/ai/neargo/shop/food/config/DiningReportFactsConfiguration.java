@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.FoodMappers.BusinessDayMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
@@ -34,7 +35,7 @@ public class DiningReportFactsConfiguration {
     @Bean @ConditionalOnMissingBean(DiningReportFactsService.class)
     DiningReportFactsService diningReportFactsService(BusinessDayMapper days,StorePolicyMapper policies,
             OrderBatchMapper batches,CoreOrderBindingMapper bindings,OrderLineMapper lines,StoreCardQueryPort stores,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new DiningReportFactsPortAdapter(days,policies,batches,bindings,lines,stores,manager);
     }
 }

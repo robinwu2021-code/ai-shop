@@ -1,5 +1,7 @@
 package ai.neargo.shop.beauty.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.TradeTableMapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -9,7 +11,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -18,7 +22,11 @@ import javax.sql.DataSource;
 /** Beauty owns mapper activation, while the platform retains the primary factory and transaction manager. */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBeautyEnabled
+// 美业的预约、工单、服务任务、服务定义在门店交易库（ADR-067）：按标记收到交易句柄；门店策略（行业库）与设计里还没去处的表留在原模板
+@MapperScan(basePackages = "ai.neargo.shop.beauty.mapper", markerInterface = TradeTableMapper.class,
+        sqlSessionTemplateRef = "beautyTradeSqlSessionTemplate")
 @MapperScan(basePackages = "ai.neargo.shop.beauty.mapper", markerInterface = BaseMapper.class,
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class),
         sqlSessionTemplateRef = "beautySqlSessionTemplate")
 public class BeautyPersistenceConfiguration {
     @Bean
@@ -48,6 +56,23 @@ public class BeautyPersistenceConfiguration {
                 || primary.getDataSource() != source) {
             throw new IllegalStateException(
                     "Beauty requires the platform primary factory and transaction manager");
+        }
+        return new SqlSessionTemplate(factory);
+    }
+
+    @Bean
+    SqlSessionTemplate beautyTradeSqlSessionTemplate(
+            @Qualifier(ModuleDataSources.TRADE_SQL_SESSION_FACTORY) SqlSessionFactory factory,
+            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
+            BeautySchemaReady schema) {
+        // 与主库模板同一条要求：工厂、数据源、事务管理器必须是同一个库（交易句柄未绑定时就是主库）
+        if (!"9".equals(schema.version())
+                || factory.getConfiguration().getEnvironment().getDataSource() != source
+                || !(manager instanceof DataSourceTransactionManager trade)
+                || trade.getDataSource() != source) {
+            throw new IllegalStateException(
+                    "Beauty trade mappers require one trade factory, datasource and transaction manager");
         }
         return new SqlSessionTemplate(factory);
     }

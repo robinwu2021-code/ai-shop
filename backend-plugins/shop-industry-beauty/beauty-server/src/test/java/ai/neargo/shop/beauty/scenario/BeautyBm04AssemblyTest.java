@@ -166,6 +166,7 @@ class BeautyBm04AssemblyTest {
         var runner =
                 new ApplicationContextRunner()
                         .withUserConfiguration(
+                                BeautyModuleHandles.class,
                                 BeautyAppointmentConfiguration.class,
                                 BeautyMerchantClientConfiguration.class,
                                 BeautyCheckoutClientConfiguration.class,

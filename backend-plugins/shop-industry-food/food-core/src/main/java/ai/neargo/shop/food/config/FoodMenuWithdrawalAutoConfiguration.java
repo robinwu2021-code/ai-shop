@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuMapper;
@@ -37,7 +38,7 @@ public class FoodMenuWithdrawalAutoConfiguration {
             ConfigRevisionMapper revisions,
             ActionLogMapper actions,
             ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new MenuWithdrawalSourceServiceImpl(
                 menus, stores, revisions, actions, json, manager, Clock.systemUTC());
     }

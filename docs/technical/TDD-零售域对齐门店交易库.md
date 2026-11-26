@@ -1,6 +1,6 @@
 # TDD-零售域对齐门店交易库
 
-状态：已确认 Q1、Q2、Q3 · 第一段：交易句柄与 Mapper 归属已实现；商品包、商户域资源预约与门店分类、交易包、履约与求购报价的事务点名已实现；资源占用结构校验缺陷已修；其余子模块未做
+状态：已确认 Q1、Q2、Q3 · 第一段：交易句柄与 Mapper 归属已实现；商品包、商户域资源预约与门店分类、交易包、履约与求购报价的事务点名已实现；零售、渠道（主流程）、美业、餐饮插件已接；资源占用结构校验缺陷已修；其余子模块未做
 档位：2 · 依据：数据库设计方案 `库/05-门店交易库.md`、`库/06-行业库.md` · 产出：本篇 + [对照表](零售域-旧表新表对照.md) + [ADR-067](ADR/ADR-067-门店交易库按耦合簇换表与行业插件公用部分并回.md)
 关联需求（行为基线，本次不改需求）：[PRD-商品规格与发布](../requirements/PRD-商品规格与发布.md) · [PRD-品牌商品库与门店商品](../requirements/PRD-品牌商品库与门店商品.md) · [PRD-统一订单与开票资料](../requirements/PRD-统一订单与开票资料.md) · [PRD-统一销售渠道接入](../requirements/PRD-统一销售渠道接入.md) · [PRD-支付方式与预约预定](../requirements/PRD-支付方式与预约预定.md)
 关联设计：[ADR-066 业务模块按配置选数据源](ADR/ADR-066-业务模块按配置选数据源.md) · [TDD-多数据源与发票打印对齐新库](TDD-多数据源与发票打印对齐新库.md) · [TDD-商户门店与员工权限对齐平台基础库](TDD-商户门店与员工权限对齐平台基础库.md) · [TDD-多行业统一业务架构-零售餐饮美业](TDD-多行业统一业务架构-零售餐饮美业.md)
@@ -432,6 +432,62 @@
 
 验证（2026-11-26，本机，H2）：引用这几个包的 46 个测试类加守卫、架构、Mapper 冒烟，445 个测试 0 失败、15 跳过；上一提交上同样 0 失败。
 
+### 第一段 · 提交七：零售插件（shop-retail-commerce）接交易句柄
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `RetailCommerceAutoConfiguration` | 渠道选品的手写 SQL 与事务：数据源、事务管理器点名 `tradeDataSource`、`tradeTxManager`（原来数据源按类型注入、拿到的是主库） |
+| 修改 | `RetailChannelOrderAutoConfiguration` | 渠道单来源、导入守卫、渠道方的 Mapper 扫描改绑 `tradeSqlSessionFactory`；渠道入单服务的事务管理器点名 trade |
+| 修改 | `RetailChannelMappers` | 3 个 Mapper 改继承 `TradeTableMapper` |
+
+为什么要打标记：`shop-app` 的全局扫描排除名单里没有 `ai.neargo.shop.retail`，插件在类路径上时这 3 个 Mapper 会先被全局扫描注册到主库工厂，插件自己的扫描就不生效了。打标记后全局扫描排除它们，只由插件的条件配置注册——和餐饮、美业、渠道插件「只由自身启用条件注册」的做法一致。
+行为差异：插件在类路径上但没启用时，这 3 个 Mapper 不再被注册；仓库里只有插件自己用它们（已查）。
+
+验证（2026-11-26，本机）：插件自带 11 个测试类 54 个测试全过（`-P commerce-embedded,retail-commerce-embedded`）；带插件、`shop.retail.commerce.enabled=true` 启动完整上下文跑 `MapperSmokeTest` 通过。
+**没验证**：渠道入单那组配置还要求渠道集成启用（`shop.commerce.enabled`），而渠道集成要它自己的迁移历史，本机没有；所以「插件 Mapper 实际落在交易工厂上」没有在完整上下文里看到。仓库里没有带零售插件启动整个应用的测试。
+
+### 第一段 · 提交八：渠道插件（shop-commerce-integration）主流程接交易句柄
+
+用户 2026-11-26：先解决主流程（平台订单导入）；**商品发布不应在任务库**；**密钥部分统一调用平台 API**。
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `commerce-core/.../mapper/CommerceMappers.java`、`AvailabilityPublicationMapper.java` | 11 个 Mapper 改继承 `TradeTableMapper`：账号、门店连接、资源映射、同步范围（含目录来源、同步策略）、渠道订单、订单行关联、订单修订，以及商品发布、目录快照 |
+| 修改 | `commerce-core/.../config/CommerceCoreAutoConfiguration.java` | Mapper 扫描一分为二：带交易标记的绑 `tradeSqlSessionFactory`，其余仍绑主库；命令执行器 `CommerceCommands` 与目录授权服务的事务管理器点名 trade |
+| 新增 | `commerce-core/src/test/.../scenario/CommerceModuleHandles.java` | 测试上下文引入模块句柄注册器；3 处组装上下文的地方加上它 |
+
+留在主库：请求流水（`cim_request_journal`）、对外操作与尝试、回调收件与回执、授权/连接/映射修订、来源通知与撤回、同步运行、对账、证书句柄、平台与平台产品；统计服务（跨交易表和技术表联查）；表结构校验与迁移（`CommerceSchemaValidator` 仍对主库）。
+
+**换库前要拆**：`CommerceCommands` 在同一事务里先写请求流水、再写业务表——请求流水留主库，绑定后两者不再同事务（§8-Q6 的幂等能力缺口）。统计服务的联查跨两个库。
+
+**设计修正（只记录，未改设计文档）**：
+- 商品发布 `cim_availability_publication`、目录快照 `cim_catalog_snapshot` 设计里归任务库（`job_log`），用户定**不进任务库**，随渠道留在门店交易库。设计里要补表（或并进 `chn_catalog_scope`）。
+- 证书句柄 `cim_certificate_handle` 与平台授权凭据：统一调用平台的密钥 API，渠道不再存密钥相关的表或句柄。现在 `SecretVaultChannelCertificateAdapter` 是进程内 `SecretVault.seal`，做到授权与证书那块时改成调平台 API。
+
+验证（2026-11-26，本机，H2，`-P commerce-embedded,retail-commerce-embedded`）：渠道插件 4 个模块 300 个测试，改动后失败 4 个，改动前失败 3 个（相同的 3 个：`CommerceArchitectureTest` 一个、`SourceNoticeRecoveryTest` 一个、`InternalChannelCatalogAuthorityApiTest` 一个）。
+多出的 `SourceNoticeRecoveryTest#reenablingFollowsOriginalHeadAfterDisabledNotificationsAndKeepsAnEventOnlyTimer` 单独跑时改动前后各 3 次全过，是整套跑时依时间的不稳定用例。没有在完整应用里验证（渠道插件要自己的迁移历史，本机没有）。
+
+### 第一段 · 提交九：美业、餐饮插件接交易句柄
+
+做法与渠道插件相同：交易表的 Mapper 打 `TradeTableMapper`，插件持久化配置里再加一个交易句柄上的模板和一条扫描；原模板只收其余的 Mapper。新模板沿用原模板的启动校验——工厂、数据源、事务管理器必须是同一个库。
+
+| 插件 | Mapper | 事务与数据源 | 留在主库 |
+|---|---|---|---|
+| 美业 | 30 个里 13 个打交易标记（预约、预约内容与修订、预约当前指针与准备、指派、参与、工单与上下文、服务任务、服务定义与版本、服务需求） | 预约持久化、服务目录、服务定义、工单计费、服务执行结构校验点名 trade | 门店策略与版本（行业库）、服务步骤（待定）、来源观察、库存意图校验、事件发布器、设计里没去处的表 |
+| 餐饮 | 89 个里 47 个打交易标记（7 个 Mapper 文件） | 23 个文件：配置里各业务 bean 与服务类的事务管理器、数据源点名 trade，裸 `@Transactional` 与 `"transactionManager"` 字面量同样改 | 库存同步与物料（库存退役）、KDS 与工位运行（行业库）、服务权益（行业库）、桌台、用餐会话、工位、门店经营策略、生产耗用、持久化与表结构校验、事件发布器与服务端出箱 |
+
+分档依据：按每个类用到的 Mapper 与手写 SQL 的表统计。餐饮有 25 个类同时碰交易表与行业表（账单、点单、菜单、厨房任务、订位等），以交易为主的接到 trade，**换库前要拆**；多数手写 SQL 走同一个 `FoodBusinessOperationsMapper`（同时读写两边的表），它的数据源随交易。
+被测试纠正的一处：`StoreOperationServiceImpl` 起初归了交易，`StoreOperationServiceTest` 报「没有 `tradeTxManager`」后核对——它主要管门店经营策略（行业库），营业日历只是顺带，整类改回主库。
+
+测试基建：美业的 3 个装配测试（`BeautyPersistenceWiringTest`、`BookingServerWiringTest`、`BeautyBm04AssemblyTest`）引入新建的 `BeautyModuleHandles`（模块句柄注册器），和渠道插件一样。
+美业是单独的 Maven 工程，从本地仓库读 `shop-store-mybatis`；为不覆盖共用的 `~/.m2`，验证时把本分支的基础模块装进 scratchpad 里的临时仓库（`-Dmaven.repo.local=<临时> -Dmaven.repo.local.tail=~/.m2/repository`）。
+
+验证（2026-11-26，本机，H2；每项都在上一提交上用同一命令对照，失败用例逐个比对）：
+- 美业插件 5 个模块 269 个测试：失败 1 个，与改动前相同。
+- 餐饮插件 5 个模块（`-P food-embedded,food-verify`）约 1650 个测试：0 失败，与改动前相同。
+- `shop-app` 带餐饮、渠道、零售插件（`-P food-embedded,food-verify,commerce-embedded,food-commerce-embedded,retail-commerce-embedded`，`shop.food.enabled=true`）跑 `food-embedded-test` 加守卫、架构、Mapper 冒烟：失败 52 个，与改动前完全相同——都是原生 MySQL 测试与「缺餐饮迁移历史」（`fnb_flyway_history`），外加 `ArchitectureTest` 原有的 4 个。
+- **没验证**：带美业或餐饮启动整个应用。两个插件都要自己的迁移历史，而它们的迁移脚本只能在 MySQL 上跑；守卫测试没有覆盖插件目录（配置类里按 bean 分了两边，整文件规则套不上）。
+
 ### 偏差说明
 
 - `tradeJdbcTemplate` 放进了已有的 `PlatformJdbcConfiguration`，而不是 §2.2 写的新类 `TradeJdbcConfiguration`：主库那个 `JdbcTemplate` 的 `@Primary` 声明在这个类里，模块的模板放在一处更不容易漏。类名以后可改成 `ModuleJdbcConfiguration`。
@@ -451,6 +507,10 @@
 | 2026-11-26 | 修资源占用结构校验在 MySQL 上永远判损坏的缺陷与场景测试夹具，资源、班表场景测试 201/202 通过 |
 | 2026-11-26 | 第一段提交五实现（交易包 66 个文件点名交易句柄） |
 | 2026-11-26 | 第一段提交六实现（履约、自提点、求购报价），与提交五一起提交 |
+| 2026-11-26 | 第一段提交七实现（零售插件接交易句柄） |
+| 2026-11-26 | 用户定：商品发布不进任务库；密钥统一调平台 API |
+| 2026-11-26 | 第一段提交八实现（渠道插件主流程） |
+| 2026-11-26 | 第一段提交九实现（美业、餐饮插件），与七、八一起提交 |
 
 ## §8 待确认
 

@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.BottleCustodyMappers.CustodyMapper;
 import ai.neargo.shop.food.mapper.BottleCustodyMappers.MovementMapper;
 import ai.neargo.shop.food.service.BottleCustodyService;
@@ -42,7 +43,7 @@ public class BottleCustodyAutoConfiguration {
             ai.neargo.shop.food.spi.FoodMaterialSource materials,
             ObjectMapper json,
             ObjectProvider<Clock> clocks,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new BottleCustodyServiceImpl(
                 custodies,
                 movements,

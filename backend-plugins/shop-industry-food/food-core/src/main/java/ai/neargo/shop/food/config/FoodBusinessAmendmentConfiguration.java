@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
@@ -46,7 +47,7 @@ public class FoodBusinessAmendmentConfiguration {
             IndustryAmendmentSourcePort source,
             ObjectProvider<IndustryOrderAmendmentPort> owner,
             ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new BusinessReturnApprovalServiceImpl(
                 intents, returns, batches, bindings, carts, source, owner, json, manager);
     }

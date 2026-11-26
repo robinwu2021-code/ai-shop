@@ -1,9 +1,9 @@
 package ai.neargo.shop.food.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.food.dto.BusinessShareContracts.MembershipScope;
 import ai.neargo.shop.food.entity.FnbBusinessSharePlan;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Current service membership takes precedence over the immutable originating check of each batch.
  */
-public interface BusinessSharePlanMapper extends BaseMapper<FnbBusinessSharePlan> {
+public interface BusinessSharePlanMapper extends TradeTableMapper<FnbBusinessSharePlan> {
     @Select(
             "SELECT b.batch_no FROM fnb_order_batch b WHERE b.tenant_no='MAIN' AND b.deleted=0 AND"
                 + " b.entity_no=#{entity} AND b.store_no=#{store} AND (EXISTS (SELECT 1 FROM"

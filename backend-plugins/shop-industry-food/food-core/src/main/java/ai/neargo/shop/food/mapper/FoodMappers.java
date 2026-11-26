@@ -1,4 +1,5 @@
 package ai.neargo.shop.food.mapper;
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.food.dto.ProductionContracts.ListQuery;
 import ai.neargo.shop.food.entity.FnbProductionConsumptionLine;
 import ai.neargo.shop.food.entity.FnbProductionConsumption;
@@ -82,7 +83,7 @@ public final class FoodMappers {
     private FoodMappers() {
     }
 
-    public interface CheckCartMapper extends BaseMapper<FnbCheckCart> {
+    public interface CheckCartMapper extends TradeTableMapper<FnbCheckCart> {
         @Select("SELECT COUNT(*) FROM fnb_order_batch WHERE tenant_no='MAIN' AND entity_no=#{entity} "
                 + "AND cart_no=#{cart} AND deleted=0 AND status IN "
                 + "('PREPARED','PLACING','UNKNOWN','BOUND','ACCEPTED','CANCEL_PENDING')")
@@ -102,7 +103,7 @@ public final class FoodMappers {
                 + "AND (status<>'CLOSED' OR financial_status IS NULL OR financial_status<>'NONE')")
         long localReturnCount(@Param("entity") String entity, @Param("batch") String batch);
     }
-    public interface SettlementItemMapper extends BaseMapper<FnbSettlementItem> {
+    public interface SettlementItemMapper extends TradeTableMapper<FnbSettlementItem> {
         @Select("SELECT COUNT(*) FROM fnb_settlement_item i JOIN fnb_settlement s ON s.tenant_no=i.tenant_no "
                 + "AND s.entity_no=i.entity_no AND s.settlement_no=i.settlement_no WHERE i.tenant_no='MAIN' "
                 + "AND i.entity_no=#{entity} AND s.store_no=#{store} AND i.payment_root_no=#{root} "
@@ -113,14 +114,14 @@ public final class FoodMappers {
     }
     public interface ChargeIntentMapper extends BaseMapper<FnbChargeIntent> { }
 
-    public interface OrderBatchMapper extends BaseMapper<FnbOrderBatch> { }
+    public interface OrderBatchMapper extends TradeTableMapper<FnbOrderBatch> { }
     public interface CoreOrderBindingMapper extends BaseMapper<FnbCoreOrderBinding> { }
-    public interface OrderLineMapper extends BaseMapper<FnbOrderLine> { }
-    public interface CoreLineAllocationMapper extends BaseMapper<FnbCoreLineAllocation> { }
-    public interface OrderComponentMapper extends BaseMapper<FnbOrderComponent> { }
-    public interface OrderModifierMapper extends BaseMapper<FnbOrderModifier> { }
+    public interface OrderLineMapper extends TradeTableMapper<FnbOrderLine> { }
+    public interface CoreLineAllocationMapper extends TradeTableMapper<FnbCoreLineAllocation> { }
+    public interface OrderComponentMapper extends TradeTableMapper<FnbOrderComponent> { }
+    public interface OrderModifierMapper extends TradeTableMapper<FnbOrderModifier> { }
 
-    public interface CheckCartItemMapper extends BaseMapper<FnbCheckCartItem> {
+    public interface CheckCartItemMapper extends TradeTableMapper<FnbCheckCartItem> {
         @Select("SELECT * FROM fnb_check_cart_item WHERE entity_no=#{entity} AND cart_no=#{cart} "
                 + "AND source_line_ref=#{source} FOR UPDATE")
         FnbCheckCartItem history(@Param("entity") String entity, @Param("cart") String cart,
@@ -139,18 +140,18 @@ public final class FoodMappers {
         int replaceDraftRows(@Param("entity") String entity, @Param("recipe") String recipe);
     }
 
-    public interface MenuCategoryMapper extends BaseMapper<FnbMenuCategory> {
+    public interface MenuCategoryMapper extends TradeTableMapper<FnbMenuCategory> {
         @Delete("DELETE FROM fnb_menu_category WHERE entity_no=#{entity} AND menu_no=#{menu}")
         int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
     }
 
-    public interface MenuItemMapper extends BaseMapper<FnbMenuItem> {
+    public interface MenuItemMapper extends TradeTableMapper<FnbMenuItem> {
         @Delete("DELETE FROM fnb_menu_item WHERE entity_no=#{entity} AND category_no IN (SELECT categor"
                 + "y_no FROM fnb_menu_category WHERE entity_no=#{entity} AND menu_no=#{menu})")
         int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
     }
 
-    public interface MenuItemSkuMapper extends BaseMapper<FnbMenuItemSku> {
+    public interface MenuItemSkuMapper extends TradeTableMapper<FnbMenuItemSku> {
         @Delete("DELETE FROM fnb_menu_item_sku WHERE entity_no=#{entity} AND menu_item_no IN (SELECT me"
                 + "nu_item_no FROM fnb_menu_item WHERE entity_no=#{entity} AND category_no IN (SELECT cat"
                 + "egory_no FROM fnb_menu_category WHERE entity_no=#{entity} AND menu_no=#{menu}))")
@@ -162,7 +163,7 @@ public final class FoodMappers {
                 @Param("recipe") String recipe, @Param("sku") String sku);
     }
 
-    public interface MenuItemOptionGroupMapper extends BaseMapper<FnbMenuItemOptionGroup> {
+    public interface MenuItemOptionGroupMapper extends TradeTableMapper<FnbMenuItemOptionGroup> {
         @Delete("DELETE FROM fnb_menu_item_option_group WHERE entity_no=#{entity} AND menu_item_no IN ("
                 + "SELECT menu_item_no FROM fnb_menu_item WHERE entity_no=#{entity} AND category_no IN (S"
                 + "ELECT category_no FROM fnb_menu_category WHERE entity_no=#{entity} AND menu_no=#{menu}"
@@ -174,17 +175,17 @@ public final class FoodMappers {
         long availableGroup(@Param("entity") String entity, @Param("group") String group);
     }
 
-    public interface MenuScheduleMapper extends BaseMapper<FnbMenuSchedule> {
+    public interface MenuScheduleMapper extends TradeTableMapper<FnbMenuSchedule> {
         @Delete("DELETE FROM fnb_menu_schedule WHERE entity_no=#{entity} AND menu_no=#{menu}")
         int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
     }
-    public interface MenuExceptionMapper extends BaseMapper<FnbMenuException> {
+    public interface MenuExceptionMapper extends TradeTableMapper<FnbMenuException> {
         @Delete("DELETE FROM fnb_menu_exception WHERE entity_no=#{entity} AND menu_no=#{menu}")
         int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
     }
 
-    public interface MenuMapper extends BaseMapper<FnbMenu> { }
-    public interface MenuStoreMapper extends BaseMapper<FnbMenuStore> { }
+    public interface MenuMapper extends TradeTableMapper<FnbMenu> { }
+    public interface MenuStoreMapper extends TradeTableMapper<FnbMenuStore> { }
 
     public interface RecipeMapper extends BaseMapper<FnbRecipe> { }
     public interface RecipeLineMapper extends BaseMapper<FnbRecipeLine> {
@@ -192,27 +193,27 @@ public final class FoodMappers {
         int replaceDraftRows(@Param("entity") String entity, @Param("recipe") String recipe);
     }
 
-    public interface BundleMapper extends BaseMapper<FnbBundle> { }
-    public interface BundleGroupMapper extends BaseMapper<FnbBundleGroup> {
+    public interface BundleMapper extends TradeTableMapper<FnbBundle> { }
+    public interface BundleGroupMapper extends TradeTableMapper<FnbBundleGroup> {
         // Only the locked mutable definition is replaceable; never a frozen publication.
         @Delete("DELETE FROM fnb_bundle_group WHERE entity_no=#{entity} AND bundle_sku_no=#{sku}")
         int replaceDraftRows(@Param("entity") String entity, @Param("sku") String sku);
     }
-    public interface BundleChoiceMapper extends BaseMapper<FnbBundleChoice> {
+    public interface BundleChoiceMapper extends TradeTableMapper<FnbBundleChoice> {
         @Delete("DELETE FROM fnb_bundle_choice WHERE entity_no=#{entity} AND group_no IN "
                 + "(SELECT group_no FROM fnb_bundle_group WHERE entity_no=#{entity} AND bundle_sku_no=#{sku})")
         int replaceDraftRows(@Param("entity") String entity, @Param("sku") String sku);
     }
 
-    public interface DishOptionGroupMapper extends BaseMapper<FnbDishOptionGroup> {
+    public interface DishOptionGroupMapper extends TradeTableMapper<FnbDishOptionGroup> {
         // Only the authorized current-store working association is replaced, never another store's binding.
         @Delete("DELETE FROM fnb_dish_option_group WHERE entity_no=#{entity} "
                 + "AND group_no=#{group} AND goods_no=#{goods}")
         int removeDraftBinding(@Param("entity") String entity, @Param("group") String group,
                 @Param("goods") String goods);
     }
-    public interface OptionGroupMapper extends BaseMapper<FnbOptionGroup> { }
-    public interface OptionGroupItemMapper extends BaseMapper<FnbOptionGroupItem> {
+    public interface OptionGroupMapper extends TradeTableMapper<FnbOptionGroup> { }
+    public interface OptionGroupItemMapper extends TradeTableMapper<FnbOptionGroupItem> {
         // Working rows are replaceable; execution/history must use complete immutable revision snapshots.
         @Delete("DELETE FROM fnb_option_group_item WHERE entity_no=#{entity} AND group_no=#{group}")
         int replaceDraftRows(@Param("entity") String entity, @Param("group") String group);
@@ -245,20 +246,20 @@ public final class FoodMappers {
         int append(FnbConfigRevision row);
     }
 
-    public interface ModifierMapper extends BaseMapper<FnbModifier> { }
-    public interface ModifierComponentMapper extends BaseMapper<FnbModifierComponent> {
+    public interface ModifierMapper extends TradeTableMapper<FnbModifier> { }
+    public interface ModifierComponentMapper extends TradeTableMapper<FnbModifierComponent> {
         // Replace only the editable composition, never a published revision or transaction fact.
         @Delete("DELETE FROM fnb_modifier_component WHERE entity_no=#{entity} AND combo_no=#{combo}")
         int replaceDraftRows(@Param("entity") String entity, @Param("combo") String combo);
     }
 
-    public interface DishMapper extends BaseMapper<FnbDish> { }
+    public interface DishMapper extends TradeTableMapper<FnbDish> { }
 
     public interface TableTokenMapper extends BaseMapper<FnbTableToken> { }
 
     public interface GuestSessionMapper extends BaseMapper<FnbGuestSession> { }
 
-    public interface CheckMapper extends BaseMapper<FnbCheck> {
+    public interface CheckMapper extends TradeTableMapper<FnbCheck> {
         // Presence is intentionally fail-closed, including historical or anomalously deleted facts.
         @Select("SELECT (SELECT COUNT(*) FROM fnb_order_batch WHERE entity_no=#{entity} AND check_no=#{check})"
                 +"+(SELECT COUNT(*) FROM fnb_check_batch_membership WHERE entity_no=#{entity} AND check_no=#{check})"
@@ -268,13 +269,13 @@ public final class FoodMappers {
                 +"+(SELECT COUNT(*) FROM fnb_check_cart WHERE entity_no=#{entity} AND check_no=#{check} AND (status IS NULL OR status<>'CLOSED'))")
         long tradeFacts(@Param("entity") String entity,@Param("check") String check);
     }
-    public interface TableOccupancyMapper extends BaseMapper<FnbTableOccupancy> {
+    public interface TableOccupancyMapper extends TradeTableMapper<FnbTableOccupancy> {
         @Select("SELECT * FROM fnb_table_occupancy WHERE entity_no=#{entity} AND table_no=#{table} AND ended_at IS NULL ORDER BY occupancy_no")
         List<FnbTableOccupancy> activeForTable(@Param("entity") String entity,@Param("table") String table);
         @Select("SELECT * FROM fnb_table_occupancy WHERE entity_no=#{entity} AND check_no=#{check} AND ended_at IS NULL ORDER BY occupancy_no")
         List<FnbTableOccupancy> activeForCheck(@Param("entity") String entity,@Param("check") String check);
     }
-    public interface SeatMapper extends BaseMapper<FnbSeat> {
+    public interface SeatMapper extends TradeTableMapper<FnbSeat> {
         @Select("SELECT * FROM fnb_seat WHERE entity_no=#{entity} AND check_no=#{check} ORDER BY seat_no")
         List<FnbSeat> history(@Param("entity") String entity,@Param("check") String check);
         @Update("UPDATE fnb_seat SET label=#{label},guest_ref=NULL,deleted=#{deleted},version=version+1,"
@@ -291,12 +292,12 @@ public final class FoodMappers {
         long externalOrPendingForCheck(@Param("entity") String entity,@Param("check") String check);
     }
 
-    public interface ReservationMapper extends BaseMapper<FnbReservation> { }
+    public interface ReservationMapper extends TradeTableMapper<FnbReservation> { }
 
     public interface ActionLogMapper extends BaseMapper<FnbActionLog> {
     }
 
-    public interface ServiceCalendarMapper extends BaseMapper<FnbServiceCalendar> {
+    public interface ServiceCalendarMapper extends TradeTableMapper<FnbServiceCalendar> {
     }
 
     public interface StorePolicyMapper extends BaseMapper<FnbStorePolicy> {
@@ -325,17 +326,17 @@ public final class FoodMappers {
                 + "AND t.area_no=#{area} AND o.ended_at IS NULL")
         long liveOccupancies(@Param("entity") String entity, @Param("store") String store, @Param("area") String area);
     }
-    public interface MenuContextMapper extends BaseMapper<FnbMenuContext> {
+    public interface MenuContextMapper extends TradeTableMapper<FnbMenuContext> {
         @Delete("DELETE FROM fnb_menu_context WHERE entity_no=#{entity} AND menu_no=#{menu}")
         int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
     }
-    public interface MenuChannelBindingMapper extends BaseMapper<FnbMenuChannelBinding> { }
+    public interface MenuChannelBindingMapper extends TradeTableMapper<FnbMenuChannelBinding> { }
     public interface StationMapper extends BaseMapper<FnbStation> {
         @Select("SELECT id FROM fnb_store_policy WHERE entity_no=#{entity} AND store_no=#{store} "
                 + "AND deleted=0 ORDER BY id FOR UPDATE")
         List<Long> lockStore(@Param("entity") String entity, @Param("store") String store);
     }
-    public interface SkuStationMapper extends BaseMapper<FnbSkuStation> {
+    public interface SkuStationMapper extends TradeTableMapper<FnbSkuStation> {
         @Select("SELECT * FROM fnb_sku_station WHERE entity_no=#{entity} AND store_no=#{store} "
                 + "AND sku_no=#{sku} ORDER BY id FOR UPDATE")
         List<FnbSkuStation> lockRoutes(@Param("entity") String entity, @Param("store") String store,
@@ -402,13 +403,13 @@ public final class FoodMappers {
                 @Param("actor") String actor);
     }
 
-    public interface SalesRestrictionMapper extends BaseMapper<FnbSalesRestriction> { }
-    public interface SalesQuotaClaimMapper extends BaseMapper<FnbSalesQuotaClaim> { }
+    public interface SalesRestrictionMapper extends TradeTableMapper<FnbSalesRestriction> { }
+    public interface SalesQuotaClaimMapper extends TradeTableMapper<FnbSalesQuotaClaim> { }
     public interface ReturnMapper extends BaseMapper<FnbReturn> { }
     public interface ReturnItemMapper extends BaseMapper<FnbReturnItem> { }
 
     public interface CourseMapper extends BaseMapper<FnbCourse> { }
-    public interface KitchenTaskMapper extends BaseMapper<FnbKitchenTask> {
+    public interface KitchenTaskMapper extends TradeTableMapper<FnbKitchenTask> {
         @Select("<script>SELECT b.batch_no FROM fnb_kitchen_task t "
                 + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
                 + "JOIN fnb_order_batch b ON b.tenant_no=k.tenant_no AND b.entity_no=k.entity_no AND b.batch_no=k.batch_no "
@@ -467,7 +468,7 @@ public final class FoodMappers {
         List<ProductionSource> unconsumed(@Param("limit") int limit);
     }
 
-    public interface BusinessDayMapper extends BaseMapper<FnbBusinessDay> { }
+    public interface BusinessDayMapper extends TradeTableMapper<FnbBusinessDay> { }
     public interface CloseRunMapper extends BaseMapper<FnbCloseRun> { }
     public interface CloseBalanceMapper extends BaseMapper<FnbCloseBalance> { }
     public interface CloseExceptionMapper extends BaseMapper<FnbCloseException> { }
@@ -501,6 +502,6 @@ public final class FoodMappers {
                 @Param("offset") long offset,@Param("size") int size);
     }
     public interface ProductionConsumptionLineMapper extends BaseMapper<FnbProductionConsumptionLine> { }
-    public interface QueueTicketMapper extends BaseMapper<FnbQueueTicket> { }
+    public interface QueueTicketMapper extends TradeTableMapper<FnbQueueTicket> { }
     public interface ReturnStockDispositionMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbReturnStockDisposition> {}
 }

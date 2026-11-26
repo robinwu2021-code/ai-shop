@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.dto.SalesQuotaClaimSource;
 import ai.neargo.shop.food.dto.SalesQuotaClaimVO;
 import ai.neargo.shop.food.entity.FnbSalesQuotaClaim;
@@ -40,7 +41,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * Sales admission only. The caller freezes the batch and these references in this same FOOD transaction.
  * Store-policy locks serialize rule creation, then ordered restriction locks serialize every quota counter.
  */
-@Transactional(transactionManager = "transactionManager", propagation = Propagation.MANDATORY)
+@Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.MANDATORY)
 public class SalesQuotaClaimServiceImpl implements SalesQuotaClaimService {
     private final SalesRestrictionMapper restrictions;
     private final StorePolicyMapper policies;

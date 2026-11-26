@@ -27,6 +27,7 @@ import ai.neargo.shop.commerce.entity.CimSyncPolicy;
 import ai.neargo.shop.commerce.entity.CimSyncRun;
 import ai.neargo.shop.commerce.entity.CimSyncRunItem;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 import org.apache.ibatis.annotations.Insert;
@@ -43,11 +44,11 @@ public final class CommerceMappers {
 
     public interface FulfillmentLineLinkMapper extends BaseMapper<CimFulfillmentLineLink> {}
 
-    public interface OrderLineLinkMapper extends BaseMapper<CimOrderLineLink> {}
+    public interface OrderLineLinkMapper extends TradeTableMapper<CimOrderLineLink> {}
 
-    public interface OrderLinkMapper extends BaseMapper<CimOrderLink> {}
+    public interface OrderLinkMapper extends TradeTableMapper<CimOrderLink> {}
 
-    public interface OrderRevisionMapper extends BaseMapper<CimOrderRevision> {}
+    public interface OrderRevisionMapper extends TradeTableMapper<CimOrderRevision> {}
 
     public interface SourceNoticeMapper extends BaseMapper<CimSourceNotice> {}
 
@@ -59,9 +60,9 @@ public final class CommerceMappers {
 
     public interface ProductProfileMapper extends BaseMapper<CimProductProfile> {}
 
-    public interface AccountMapper extends BaseMapper<CimAccount> {}
+    public interface AccountMapper extends TradeTableMapper<CimAccount> {}
 
-    public interface StoreConnectionMapper extends BaseMapper<CimStoreConnection> {
+    public interface StoreConnectionMapper extends TradeTableMapper<CimStoreConnection> {
         /**
          * Two complete matches are enough to reject ambiguity without choosing an arbitrary
          * profile.
@@ -94,19 +95,19 @@ public final class CommerceMappers {
 
     public interface OperationAttemptMapper extends BaseMapper<CimOperationAttempt> {}
 
-    public interface CatalogScopeMapper extends BaseMapper<CimCatalogScope> {}
+    public interface CatalogScopeMapper extends TradeTableMapper<CimCatalogScope> {}
 
-    public interface CatalogSourceMapper extends BaseMapper<CimCatalogSource> {}
+    public interface CatalogSourceMapper extends TradeTableMapper<CimCatalogSource> {}
 
-    public interface SyncPolicyMapper extends BaseMapper<CimSyncPolicy> {}
+    public interface SyncPolicyMapper extends TradeTableMapper<CimSyncPolicy> {}
 
-    public interface CatalogSnapshotMapper extends BaseMapper<CimCatalogSnapshot> {}
+    public interface CatalogSnapshotMapper extends TradeTableMapper<CimCatalogSnapshot> {}
 
     public interface SyncRunMapper extends BaseMapper<CimSyncRun> {}
 
     public interface SyncRunItemMapper extends BaseMapper<CimSyncRunItem> {}
 
-    public interface ResourceMappingMapper extends BaseMapper<CimResourceMapping> {}
+    public interface ResourceMappingMapper extends TradeTableMapper<CimResourceMapping> {}
 
     public interface ResourceMappingRevisionMapper extends BaseMapper<CimResourceMappingRevision> {}
 

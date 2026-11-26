@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.service.QueueService;
 import ai.neargo.shop.food.service.CheckService;
@@ -44,7 +45,7 @@ public class FoodOperationsConfiguration {
             FoodMappers.OrderComponentMapper components,FoodMappers.ConfigRevisionMapper revisions,
             FoodMappers.KitchenTicketMapper tickets,FoodMappers.KitchenTaskMapper tasks,
             FoodMappers.ServiceEventMapper events,FoodMappers.CourseMapper courses,FoodMappers.CheckMapper checks,
-            IdempotencyService idem,ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager,
+            IdempotencyService idem,ObjectMapper json,@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             FoodMappers.CoreOrderBindingMapper bindings, FoodMappers.CoreLineAllocationMapper allocations) {
         return new KitchenTaskServiceImpl(batches,lines,components,revisions,tickets,tasks,events,courses,checks,
@@ -58,7 +59,7 @@ public class FoodOperationsConfiguration {
             FoodMappers.SettlementItemMapper settlementItems,FoodMappers.CoreOrderBindingMapper bindings,
             FoodMappers.ReturnMapper returns,FoodMappers.KitchenTicketMapper tickets,FoodMappers.KitchenTaskMapper tasks,
             FoodMappers.ServiceEventMapper events,ObjectProvider<StoreCardQueryPort> stores,IdempotencyService idem,ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new BusinessCloseServiceImpl(days,runs,balances,exceptions,adjustments,policies,batches,lines,
                 settlements,settlementItems,bindings,returns,tickets,tasks,events,numbers -> stores.getObject().cards(numbers),idem,json,manager);
     }
@@ -66,7 +67,7 @@ public class FoodOperationsConfiguration {
     FoodPrintDocumentAssembler foodPrintDocumentAssembler(FoodMappers.OrderBatchMapper batches,
             FoodMappers.OrderLineMapper lines,FoodMappers.CoreLineAllocationMapper allocations,
             FoodMappers.ReturnMapper returns,FoodMappers.ReturnItemMapper items,FoodMappers.CheckMapper checks,
-            KitchenTaskService kitchen,@Qualifier("transactionManager") PlatformTransactionManager manager) {
+            KitchenTaskService kitchen,@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new FoodPrintDocumentAssembler(batches,lines,allocations,returns,items,checks,kitchen,manager);
     }
     @Bean @ConditionalOnMissingBean(FoodPrintService.class)
@@ -90,7 +91,7 @@ public class FoodOperationsConfiguration {
     KitchenReturnService kitchenReturnService(FoodMappers.ReturnMapper returns,FoodMappers.ReturnItemMapper items,
             FoodMappers.OrderBatchMapper batches,FoodMappers.OrderLineMapper lines,
             FoodMappers.CoreLineAllocationMapper allocations,FoodMappers.ActionLogMapper actions,
-            KitchenTaskService kitchen,ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager,
+            KitchenTaskService kitchen,ObjectMapper json,@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             FoodMappers.KitchenTicketMapper tickets,FoodMappers.OrderComponentMapper components) {
         return new KitchenReturnServiceImpl(returns,items,batches,lines,allocations,actions,kitchen,json,manager,
                 tickets,components);
@@ -101,7 +102,7 @@ public class FoodOperationsConfiguration {
             FoodMappers.ActionLogMapper actions,StoreOperationService operations,CheckService checks,
             ObjectProvider<StoreCardQueryPort> stores,IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher outbox,ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new QueueServiceImpl(tickets,policies,actions,operations,checks,numbers -> stores.getObject().cards(numbers),idem,outbox,json,manager);
     }
     @Bean @ConditionalOnMissingBean(DiningPickupVerificationService.class)

@@ -1,9 +1,9 @@
 package ai.neargo.shop.food.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.food.dto.ListDiningBatchesQuery;
 import ai.neargo.shop.food.entity.FnbOrderBatch;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -16,7 +16,7 @@ import java.util.List;
  * One canonical filter is shared by count/page; batched detail reads are bounded and use the same
  * read snapshot.
  */
-public interface DiningBatchQueryMapper extends BaseMapper<FnbOrderBatch> {
+public interface DiningBatchQueryMapper extends TradeTableMapper<FnbOrderBatch> {
     String ANY_MEMBERSHIP =
             "SELECT 1 FROM fnb_check_batch_membership am WHERE am.tenant_no=b.tenant_no AND"
                     + " am.entity_no=b.entity_no AND am.batch_no=b.batch_no AND am.deleted=0 AND"

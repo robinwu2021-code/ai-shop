@@ -33,7 +33,7 @@ import javax.sql.DataSource;
 class ChannelAuthorizationTest {
     private ApplicationContextRunner runner() {
         return new ApplicationContextRunner()
-                .withUserConfiguration(PrimaryPersistenceConfiguration.class)
+                .withUserConfiguration(PrimaryPersistenceConfiguration.class, CommerceModuleHandles.class)
                 .withConfiguration(AutoConfigurations.of(CommerceCoreAutoConfiguration.class))
                 .withPropertyValues(
                         "shop.commerce.enabled=true",

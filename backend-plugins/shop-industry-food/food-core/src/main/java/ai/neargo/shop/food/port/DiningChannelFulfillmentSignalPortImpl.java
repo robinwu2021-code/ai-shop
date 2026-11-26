@@ -3,6 +3,7 @@ package ai.neargo.shop.food.port;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.food.dto.DiningChannelFulfillmentFacts;
 import ai.neargo.shop.food.dto.KitchenContracts.CustodyReceiptVO;
@@ -68,8 +69,7 @@ public class DiningChannelFulfillmentSignalPortImpl implements DiningChannelFulf
     }
 
     @Override
-    @Transactional(
-            transactionManager = "transactionManager",
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER,
             readOnly = true,
             isolation = Isolation.REPEATABLE_READ)
     public Signal resolve(DiningServiceEvent event) {

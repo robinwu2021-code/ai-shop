@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
@@ -30,7 +31,7 @@ public class DiningKitchenReportFactsConfiguration {
             KitchenTicketMapper tickets,
             OrderBatchMapper batches,
             OrderLineMapper lines,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new DiningKitchenReportFactsPortAdapter(
                 days, events, tasks, tickets, batches, lines, manager);
     }

@@ -2,6 +2,7 @@ package ai.neargo.shop.food.service.support;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
 import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
 
@@ -11,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 
 /** Reservation owner holds the appointment lock before local draft/capacity release. */
-@Transactional(transactionManager = "transactionManager", propagation = Propagation.MANDATORY)
+@Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.MANDATORY)
 public class ReservationPreorderLifecycle {
     private final FoodBusinessOperationsMapper mapper;
     private final ServiceSlotLifecycle slots;

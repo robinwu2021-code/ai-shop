@@ -32,7 +32,7 @@ import javax.sql.DataSource;
 class ChannelFoundationPersistenceTest {
     private ApplicationContextRunner runner() {
         return new ApplicationContextRunner()
-                .withUserConfiguration(PrimaryPersistenceConfiguration.class)
+                .withUserConfiguration(PrimaryPersistenceConfiguration.class, CommerceModuleHandles.class)
                 .withConfiguration(AutoConfigurations.of(CommerceCoreAutoConfiguration.class))
                 .withPropertyValues(
                         "shop.commerce.enabled=true",
