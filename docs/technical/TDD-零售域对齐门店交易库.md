@@ -1,6 +1,6 @@
 # TDD-零售域对齐门店交易库
 
-状态：已确认 Q1、Q2、Q3 · 第一段提交一（交易句柄与 Mapper 归属）已实现 · 事务点名按子模块逐个做，未做
+状态：已确认 Q1、Q2、Q3 · 第一段：交易句柄与 Mapper 归属已实现；商品包、商户域资源预约与门店分类的事务点名已实现；资源占用结构校验缺陷已修；其余子模块未做
 档位：2 · 依据：数据库设计方案 `库/05-门店交易库.md`、`库/06-行业库.md` · 产出：本篇 + [对照表](零售域-旧表新表对照.md) + [ADR-067](ADR/ADR-067-门店交易库按耦合簇换表与行业插件公用部分并回.md)
 关联需求（行为基线，本次不改需求）：[PRD-商品规格与发布](../requirements/PRD-商品规格与发布.md) · [PRD-品牌商品库与门店商品](../requirements/PRD-品牌商品库与门店商品.md) · [PRD-统一订单与开票资料](../requirements/PRD-统一订单与开票资料.md) · [PRD-统一销售渠道接入](../requirements/PRD-统一销售渠道接入.md) · [PRD-支付方式与预约预定](../requirements/PRD-支付方式与预约预定.md)
 关联设计：[ADR-066 业务模块按配置选数据源](ADR/ADR-066-业务模块按配置选数据源.md) · [TDD-多数据源与发票打印对齐新库](TDD-多数据源与发票打印对齐新库.md) · [TDD-商户门店与员工权限对齐平台基础库](TDD-商户门店与员工权限对齐平台基础库.md) · [TDD-多行业统一业务架构-零售餐饮美业](TDD-多行业统一业务架构-零售餐饮美业.md)
@@ -331,6 +331,74 @@
 - 绑定状态（`trade` 指向另一个数据源）没有端到端测试；13 个 `Resource*IT`、`Schedule*IT` 需要专用测试库，本机没配，没跑。
 - 餐饮、美业、渠道插件的 Mapper 由各自的条件配置注册，本次没动，随 §2.5 并回时接。
 
+### 第一段 · 提交二：商品包的事务点名交易句柄
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `shop-core` product 包 22 个类 | 85 处事务点名 `tradeTxManager`：裸 `@Transactional`、写死 `"transactionManager"` 的注解与 `@Qualifier`（`TransactionTemplate` 用） |
+| 修改 | `shop-app/.../arch/ModuleTxManagerConventionTest.java` | 守卫加入 product 包与名单 `PRODUCT_NOT_TRADE`；句柄常量规则加 trade |
+
+逐类分档（按类里用到的 Mapper 的表）：
+
+| 档 | 类 | 处理 |
+|---|---|---|
+| 只碰交易库 | `OpsCategoryPolicyController`、`CatalogPriceSourcePortImpl`、`DishOfferQueryPortImpl`、`GoodsCatalogQueryPortImpl`、`RetailProductSourcePortImpl`、`SpecValueCatalogQueryPortImpl`、`StockPortImpl`、`CardProductBindingServiceImpl`、`CategoryServiceImpl`、`GoodsPricingPolicyServiceImpl`、`InvManagedServiceImpl`、`MerchantGoodsServiceImpl`、`PlatformProductServiceImpl`、`SkuIdentityServiceImpl`、`SpecLibraryServiceImpl`、`SpuStdServiceImpl`、`StockDispositionServiceImpl`、`StoreServiceImpl`（只经交易端口） | 点名 trade |
+| 以交易库为主，顺带写「先留原表」 | `CardProductBindingWriter`（`prd_ent_binding_command`）、`ExecutionStockRetentionServiceImpl`（`prd_execution_retention`、`prd_stock_restore`）、`OriginalStockRestoreServiceImpl`（`prd_stock_restore`）、`StockSyncServiceImpl`（`prd_store_stock_sync`、`prd_stock_sync_log`） | 点名 trade；**换库前要拆**：这几张表设计要取消但代码在用，要么设计补进 `n_trade`，要么改成各自提交 |
+| 别的库 | `ReviewServiceImpl`、`GoodsFavoriteServiceImpl`、`TopicServiceImpl`（会员营销库） | 留主库，写进守卫名单 |
+| 换库前要重写 | `StoreSalesCatalogServiceImpl`：结账时在调用方事务里锁门店目录，断言调用方事务持有主库数据源，并在同一事务里登记目录发布事件 | 留主库，写进守卫名单；随 S2 按 §2.4 T2、T4 重写 |
+
+`MerchantGoodsServiceImpl`、`InvManagedServiceImpl`、`SkuIdentityServiceImpl` 在事务里发事件（主库 `sys_outbox`）：未绑定时与业务同一事务，行为不变；绑定前按 §2.10 改成提交后直接调用。
+
+验证（2026-11-26，本机，H2）：引用商品包的 shop-app 测试加守卫，`mvn -o -pl shop-app -am test -Dtest=<54 个类>,ModuleTxManagerConventionTest,MapperSmokeTest,ModuleDataSourceRegistrarTest` →
+本机能跑的 36 个测试类 242 个测试，0 失败、41 跳过（原生 MySQL 前提不满足时自行跳过）。另 6 个类失败，**都是本机没有原生 MySQL 环境**，与本次改动无关：
+`StoreOrderMysqlTest`（缺 `COMMERCE_MYSQL_URL`）、`ManualCounterRecoveryIT`（缺 `MANUAL_INVENTORY_MYSQL_URL`）、`ManualStockDispositionIT`（缺 `CHECKOUT_NATIVE_MYSQL_URL`）、`ManualCounterDiscountIT`（断言库是 MySQL）、`StoreSalesCatalogIT`（缺测试库地址）、`ManualServiceFinancialIsolationIT`（H2 没有 `json_valid`）。没有在原生 MySQL 上验证。
+
+### 第一段 · 提交三：商户域里的资源预约、班表、门店分类点名交易句柄
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `shop-merchant` 8 个类 | `ResourceServiceImpl`、`ResourceCommandServiceImpl`、`ResourceBookingServiceImpl`、`ResourceAdmissionServiceImpl`、`ResourceSourceAuthorizationServiceImpl`、`ScheduleServiceImpl`、`ResourceOccupationSchemaVerifier`、`StoreCategoryServiceImpl`：事务管理器与数据源一起点名 `tradeTxManager`、`tradeDataSource`（这几个类用数据源判断「调用方事务是否持有本库连接」、构造事件发布器、校验表结构，三者必须同一个库） |
+| 修改 | `ModuleTxManagerConventionTest` | 商户域新增名单 `MERCHANT_TRADE`：这 8 个类必须点名交易句柄，不再算「留主库」 |
+
+留在主库：`AppointmentSlotServiceImpl`（`mch_appointment_slot` 设计里没有去向，在下单事务里占用；随订单收敛到 `rsv_resource_bucket`）。
+
+换库前要拆（已在 §2.4 T13、T4）：资源、班表服务在同一事务里对平台基础库的人员、门店加锁（`lockScope`、`lockScopedPersonnel`）；
+同一事务里还写 `mch_booking_owner`、`mch_resource_command`、`mch_schedule_change_log`、`mch_staff_log`（前两张「先留原表」，后两张设计没有去向或归统一审计）；
+资源、班表、预约的事件经主库事件表登记，绑定后发布器的「事务与事件表同库」校验会直接报错——这是有意让它在绑定时响亮失败，按 §2.10 改成提交后直接调用之后才能绑定。
+
+验证（2026-11-26，本机，H2）：`ModuleTxManagerConventionTest` 2/2、`MapperSmokeTest` 2/2、`ArchitectureTest` 27（1 跳过）、`SchemaGeneratorTest` 6/6、`ResourceDemandNormalizerTest` 15/15、`ResourceSourceContractTest` 16/16 通过。
+10 个资源、班表场景测试在本机 MySQL 9.7.4 上跑（root 空口令，各测试自建随机库；系统属性 `*.test.admin-url=jdbc:mysql://127.0.0.1:3306/mysql?...`、`*.test.root=<工作树根>`）：
+202 个测试，55 通过、147 失败。**同一命令在 v2 原始代码（0ac15d771）和上一提交（c765aacea）上跑，失败的是完全相同的 147 个用例**（逐个比对用例名），所以失败与本次改动无关，是 v2 上已有的测试夹具欠账：
+
+| 原因 | 次数 | 涉及 |
+|---|---:|---|
+| 夹具只装了 V592、V595，没装资源占用的前向结构（V607 起），`ResourceOccupationSchemaVerifier` 判为 ABSENT，抛 `RESOURCE_DEPENDENCY_UNAVAILABLE` | 122+3 | `ResourceAdmissionPersistenceIT`、`ResourceBookingExecutionIT`、`ResourceCommandPersistenceIT`、`ResourceSourceAuthorizationIT`、`ResourceRecoveryFactsIT` |
+| 共用的 `schema-test.sql` 里有 H2 专用的 `CREATE ALIAS ... SHA2`，在 MySQL 上语法错误 | 22 | `ResourceMaintenanceIT`、`ScheduleMaintenanceIT` |
+| 其他断言 | 1 | `ActualResourceExecutionIT` |
+
+全部通过的：`ResourceFactsPersistenceIT` 19/19、`ScheduleWindowsPersistenceIT` 23/23。结论：这一步没有引入新的失败。
+
+### 第一段 · 提交四：资源占用结构校验在 MySQL 上永远判「损坏」，及场景测试夹具
+
+上面 147 个失败查下来，**大头不是夹具，是业务代码的缺陷**：
+
+| # | 问题 | 位置 | 改法 |
+|---|---|---|---|
+| F1 | MySQL（8.0.16 起，含 9.7）存 CHECK 约束时会改写原文：引号转义成 `\'`、`MOD(x,5)` 变 `x % 5`、`TIMESTAMPADD(MINUTE,5,a)` 变 `a + interval 5 minute`、嵌套 `(a OR b) OR c` 拍平。`ResourceOccupationSchemaVerifier` 拿 `information_schema` 的文本去比描述文件里的原文，分词器不认 `\`、`%`、`*`，比不上就吞掉异常判 `CORRUPT` —— **在 MySQL 上资源占用的结构校验永远不通过**，资源命令一律报 `RESOURCE_DEPENDENCY_UNAVAILABLE` | `shop-merchant/.../policy/ResourceOccupationSchemaVerifier.java` | 比对前还原一层转义（`renderedCheck`）；分词认 `* / %`；规范化时 `%` 记作 `mod`、`+ interval n unit` 记作 `timestampadd`、同类 AND/OR 拍平。只影响 MySQL 分支，H2 分支不走这段。新增单测 `ResourceOccupationSchemaVerifierCheckClauseTest`（含「真正不同的约束仍判不同」） |
+| F2 | 维护类场景测试把 H2 夹具 `schema-test.sql` 灌进 MySQL，夹具里有 H2 专用写法：`CREATE ALIAS`、`IS JSON [OBJECT]`、`H2_JSON_LENGTH`、`IN` 改写成的 `CASE … THEN TRUE`，以及 V655 一条读自身目标表的 DELETE | `shop-app/src/test/.../infra/ResourceOccupationNativeFixture.java` 新增 `forMysql`；`ResourceMaintenanceIT`、`ScheduleMaintenanceIT`、`PersonnelMaintenanceIT` 改用它 | 按 `gen-test-schema.py` 的改写逐条还原；V655 那条只动运营菜单授权，这几个测试用不到，加载时跳过 |
+| F3 | 测试本身过时：`ActualResourceExecutionIT` 查 Flyway 历史的 `607`（占用迁移已改号为 V621，V607 现在是别的迁移）；`ResourceBookingExecutionIT` 一条 INSERT 漏了 `created_by`/`updated_by`，在报唯一键冲突之前先报「无默认值」 | 两个测试文件 | 改成 `621`；INSERT 补两列 |
+
+**线上影响（未核实）**：生产是 MySQL 9.7.2，改写规则与 9.7.4 相同的话，线上的资源占用结构校验也永远判「损坏」。线上是否装了 V621、美业预约是否走这条校验，本次没有核实。
+
+验证（2026-11-26，本机 MySQL 9.7.4）：10 个资源、班表场景测试 **202 个里 201 通过**（改前 55）；资源相关单测与契约测试、守卫、Mapper 冒烟、`H2FixtureProjectionTest` 全过。剩下的：
+
+| 测试 | 情况 |
+|---|---|
+| `ResourceBookingExecutionIT#candidateCapacityUsesEffectiveServiceTimeInsteadOfLookback` | 断言「容量查询为空」，实际返回资源 B 在回看窗口里的时段。是业务口径问题（容量该不该从人员生效时间算起、是否适用于非人员资源），没改，待定 |
+| `PersonnelMaintenanceIT` 13 个里 2 个 | 测试里手搭的 `MerchantStaffServiceImpl` 缺 `StoreOwnershipWritePort`（实现类后来加了 setter 注入）；属平台基础库员工那一块的测试，没改 |
+
+本机 MySQL 留下约 1380 个测试自建的随机库（`resource_*`、`booking_*`、`schedule_*`、`personnel_*`、`beauty_*`），这些测试结束时不删自己的库，没有清理。
+
 ### 偏差说明
 
 - `tradeJdbcTemplate` 放进了已有的 `PlatformJdbcConfiguration`，而不是 §2.2 写的新类 `TradeJdbcConfiguration`：主库那个 `JdbcTemplate` 的 `@Primary` 声明在这个类里，模块的模板放在一处更不容易漏。类名以后可改成 `ModuleJdbcConfiguration`。
@@ -345,6 +413,9 @@
 | 2026-11-26 | 用户定 Q3：状态取值改短 |
 | 2026-11-26 | 用户定 Q2：交易不用事件，提交后直接调用；积分暂不接 |
 | 2026-11-26 | 第一段提交一实现（交易句柄与 71 个 Mapper 的归属）并提交到 retail-align |
+| 2026-11-26 | 第一段提交二实现（商品包 22 个类的事务点名交易句柄） |
+| 2026-11-26 | 第一段提交三实现（商户域资源预约、班表、门店分类 8 个类点名交易句柄） |
+| 2026-11-26 | 修资源占用结构校验在 MySQL 上永远判损坏的缺陷与场景测试夹具，资源、班表场景测试 201/202 通过 |
 
 ## §8 待确认
 

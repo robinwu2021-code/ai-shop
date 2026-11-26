@@ -302,9 +302,9 @@ class ResourceBookingExecutionIT {
             sql.update("UPDATE mch_resource_occupation_segment SET actual_end_at='2026-10-21 09:10:00',close_command_no='END'");
             sql.update("UPDATE mch_resource_occupation SET state='ENDED',ended_at='2026-10-21 09:10:00',revision=revision+1");
             assertThatThrownBy(() -> sql.update("INSERT INTO mch_resource_occupation_unit "
-                    + "(tenant_no,entity_no,created_at,updated_at,occupation_unit_no,occupation_no,start_command_no,logical_demand_no,"
+                    + "(tenant_no,entity_no,created_at,created_by,updated_at,updated_by,occupation_unit_no,occupation_no,start_command_no,logical_demand_no,"
                     + "origin,reservation_unit_no,hold_no,booking_owner_no,source_line_ref,allocation_revision,source_bucket_no,qty,consumed_at) "
-                    + "SELECT tenant_no,entity_no,NOW(),NOW(),'REUSE',occupation_no,start_command_no,logical_demand_no,"
+                    + "SELECT tenant_no,entity_no,NOW(),created_by,NOW(),updated_by,'REUSE',occupation_no,start_command_no,logical_demand_no,"
                     + "origin,reservation_unit_no,hold_no,booking_owner_no,source_line_ref,allocation_revision,source_bucket_no,qty,consumed_at "
                     + "FROM mch_resource_occupation_unit ORDER BY id LIMIT 1"))
                     .isInstanceOf(RuntimeException.class).hasMessageContaining("uk_rcu_original");

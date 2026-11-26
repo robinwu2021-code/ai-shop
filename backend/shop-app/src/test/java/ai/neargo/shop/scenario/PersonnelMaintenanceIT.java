@@ -97,7 +97,7 @@ class PersonnelMaintenanceIT {
         String schema = Files.readString(Path.of(System.getProperty("personnel-maintenance.test.root"),
                 "backend/shop-app/src/test/resources/schema-test.sql"));
         schema = ResourceOccupationNativeFixture.beforeNativeUpgrade(schema);
-        schema = schema.replaceAll("\\b([A-Za-z_]\\w*) IS JSON\\b", "JSON_VALID($1)");
+        schema = ResourceOccupationNativeFixture.forMysql(schema);
         new ResourceDatabasePopulator(new ByteArrayResource(schema.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
                 .execute(source);
         ResourceOccupationNativeFixture.install(source);

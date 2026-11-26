@@ -64,6 +64,33 @@ public final class ResourceOccupationNativeFixture {
         }
     }
 
+    /**
+     * schema-test.sql is the H2 fixture: drop its H2-only function aliases and map the H2 spellings back to MySQL
+     * before loading it into a native database.
+     */
+    public static String forMysql(String fixture) {
+        // gen-test-schema.py rewrites `x IN (...)` as a CASE ... THEN TRUE chain for H2; MySQL rejects that in CHECK
+        Matcher cases = Pattern.compile("\\(CASE (\\w+)((?: WHEN (?:'(?:[^']|'')*'|-?[0-9]+) THEN TRUE)+)"
+                + " ELSE CASE WHEN \\1 IS NULL THEN NULL ELSE FALSE END END\\)").matcher(fixture);
+        StringBuilder restored = new StringBuilder();
+        while (cases.find()) {
+            List<String> values = new ArrayList<>();
+            Matcher value = Pattern.compile(" WHEN ('(?:[^']|'')*'|-?[0-9]+) THEN TRUE").matcher(cases.group(2));
+            while (value.find()) { values.add(value.group(1)); }
+            cases.appendReplacement(restored,
+                    Matcher.quoteReplacement("(" + cases.group(1) + " IN (" + String.join(",", values) + "))"));
+        }
+        cases.appendTail(restored);
+        // H2 spelling of V655's ops-menu grant cleanup reads its own target table, which MySQL refuses;
+        // it only touches operator menu grants, which resource / schedule / personnel fixtures never read
+        fixture = restored.toString().replaceAll(
+                "(?s)DELETE FROM sys_role_point WHERE point_code IN \\('OPS_SYSTEM__TAB_INDUSTRY'.*?;\\s*\n", "");
+        return fixture.replaceAll("(?m)^CREATE ALIAS IF NOT EXISTS \\w+ FOR \"[^\"]*\";\\s*$", "")
+                .replaceAll("\\b([A-Za-z_]\\w*) IS JSON (OBJECT|ARRAY)\\b", "JSON_TYPE($1)='$2'")
+                .replaceAll("\\b([A-Za-z_]\\w*) IS JSON\\b", "JSON_VALID($1)")
+                .replace("H2_JSON_LENGTH(", "JSON_LENGTH(");
+    }
+
     /** Native maintenance fixtures must use the genuine pre-upgrade common CREATEs, then run forward Flyway. */
     public static String beforeNativeUpgrade(String fixture) throws Exception {
         String original;
