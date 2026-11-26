@@ -1,6 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.policy.ExecutionStockRetentionGuard;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -51,12 +52,12 @@ public class OriginalStockRestoreServiceImpl implements OriginalStockRestoreServ
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void restore(String purpose, String original, List<SkuQty> items) {
         restoreLocked(purpose, original, null, null, items);
     }
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void restore(String purpose, Original original, String confirmationOperationNo, List<SkuQty> items) {
         StockDispositionContract.requireOperation(original, confirmationOperationNo);
         if (!List.of("PLATFORM", "DUAL").contains(original.authority())) throw BizException.of(ErrorCode.CONFLICT);

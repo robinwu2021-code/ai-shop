@@ -1,6 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.dto.CategorySpecVO;
 import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.dto.SpecTemplateVO;
@@ -641,7 +642,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public SpecDimVO saveDim(SaveDimCommand cmd) {
         String name = SpecNormalizer.label(cmd.name());
         if (name == null || name.isBlank()) {
@@ -689,7 +690,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public SpecDimVO archiveDim(String dimNo, boolean archived) {
         PrdSpecDim row = DataScopeContext.executeWithoutScope(() ->
                 dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
@@ -706,7 +707,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public SpecValueVO saveValue(SaveValueCommand cmd) {
         PrdSpecDim dim = DataScopeContext.executeWithoutScope(() ->
                 dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
@@ -752,7 +753,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public SpecValueVO archiveValue(String valueNo, boolean archived) {
         PrdSpecValue row = mustValue(valueNo);
         if (archived) {
@@ -764,7 +765,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public SpecValueVO promoteValue(String valueNo) {
         PrdSpecValue row = mustValue(valueNo);
         // 编号不变是这一步的全部意义：已经按它建好的商品不用重建
@@ -775,7 +776,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public int mergeValues(String intoValueNo, List<String> fromValueNos) {
         PrdSpecValue keep = mustValue(intoValueNo);
         List<String> from = fromValueNos == null ? List.of() : fromValueNos.stream()
@@ -946,7 +947,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void saveCategoryBindings(String categoryNo, List<BindingCommand> bindings) {
         if (categoryNo == null || categoryNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1000,7 +1001,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     // ---------------------------------------------------------------- 商家侧自定义
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public SpecValueVO addMerchantValue(String merchantNo, String dimNo, String label,
                                         java.math.BigDecimal numericValue) {
         PrdSpecDim dim = DataScopeContext.executeWithoutScope(() ->
@@ -1090,7 +1091,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void saveOverrides(String merchantNo, String categoryNo,
                               List<OverrideCommand> dims) {
         if (merchantNo == null || merchantNo.isBlank() || categoryNo == null || categoryNo.isBlank()) {
@@ -1448,7 +1449,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             java.util.regex.Pattern.compile("\"name\"\\s*:\\s*\"([^\"]+)\"");
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public SpecDimVO renameMerchantDim(String merchantNo, String dimNo, String name) {
         PrdSpecDim dim = requireMine(merchantNo, dimNo);
         String norm = SpecNormalizer.label(name);
@@ -1474,7 +1475,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public SpecDimVO archiveMerchantDim(String merchantNo, String dimNo, boolean archived) {
         PrdSpecDim dim = requireMine(merchantNo, dimNo);
         if (archived) {
@@ -1498,7 +1499,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public SpecDimVO addMerchantDim(String merchantNo, String name, List<String> labels, String usageType) {
         String norm = SpecNormalizer.label(name);
         if (norm == null || norm.isBlank() || BANNED_DIM_NAMES.contains(norm)) {

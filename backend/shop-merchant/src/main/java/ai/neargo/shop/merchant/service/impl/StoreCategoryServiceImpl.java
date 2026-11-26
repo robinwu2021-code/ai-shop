@@ -3,6 +3,7 @@ package ai.neargo.shop.merchant.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.entity.MchStoreCategory;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreCategoryMapper;
 import ai.neargo.shop.merchant.service.StoreCategoryService;
@@ -60,7 +61,7 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<StoreCategoryVO> replace(String merchantNo, String storeNo, List<Item> items) {
         if (storeNo == null || storeNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -132,7 +133,7 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void initForNewStore(String merchantNo, String storeNo,
                                 List<String> categoryNos, String copyFromStoreNo) {
         List<String> nos = categoryNos == null ? List.of() : categoryNos;

@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.common.pricing.TaxClass;
 import ai.neargo.shop.idem.IdempotencyService;
@@ -48,7 +49,7 @@ public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService 
     private final IdempotencyService idempotency;
     private final TransactionTemplate transactions;
     public GoodsPricingPolicyServiceImpl(GoodsMapper goods, SkuMapper skus, SkuPricingPolicyMapper policies,
-            IdempotencyService idempotency, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            IdempotencyService idempotency, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.goods = goods; this.skus = skus; this.policies = policies; this.idempotency = idempotency;
         this.transactions = new TransactionTemplate(manager);
     }
@@ -110,7 +111,7 @@ public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService 
         return PolicyVO.from(policy(scope, ref, row(scope, ref)));
     }
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public Snapshot resolve(Scope scope, List<SkuRef> requested) {
         List<SkuRef> refs;
         try { refs = GoodsPricingPolicyFacts.request(scope, requested); }

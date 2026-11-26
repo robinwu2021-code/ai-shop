@@ -3,6 +3,7 @@ package ai.neargo.shop.product.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSellRule;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -70,7 +71,7 @@ public class StockSyncServiceImpl implements StockSyncService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public PrdSellRule saveRule(String storeNo, String scopeType, String scopeRef, String ruleType, int param,
                                 String operator) {
         if (storeNo == null || !SCOPES.contains(scopeType) || !RULES.contains(ruleType)
@@ -129,7 +130,7 @@ public class StockSyncServiceImpl implements StockSyncService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public PrdStoreStockSync markAligned(String entityNo, String storeNo, String mode, String operator) {
         if (!PrdStoreStockSync.ALIGN_MALL.equals(mode) && !PrdStoreStockSync.ALIGN_COUNT.equals(mode)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -144,7 +145,7 @@ public class StockSyncServiceImpl implements StockSyncService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public PrdStoreStockSync setEnabled(String entityNo, String storeNo, boolean enabled, String operator) {
         PrdStoreStockSync s = ensure(entityNo, storeNo, operator);
         if (enabled && s.getAlignedAt() == null) {
@@ -213,7 +214,7 @@ public class StockSyncServiceImpl implements StockSyncService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public Result applyQuota(String entityNo, String storeNo, String skuNo, int qty, int available,
                              String sourceRef, String operator) {
         return write(entityNo, storeNo, skuNo, Math.max(0, available),
@@ -221,7 +222,7 @@ public class StockSyncServiceImpl implements StockSyncService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public Result apply(String entityNo, String storeNo, String skuNo, int available, String sourceRef,
                         String operator) {
         PrdSku sku = DataScopeContext.executeWithoutScope(() -> skuMapper.selectOne(

@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.MerchantTaxSnapshot;
 import ai.neargo.shop.common.pricing.MoneyMinor;
 import ai.neargo.shop.product.entity.PrdGoods;
@@ -64,7 +65,7 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
             MerchantQueryPort merchants,
             MarketPort markets,
             PricingTaxSettingPort taxes,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this(
                 skus,
                 goods,

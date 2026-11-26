@@ -3,6 +3,7 @@ package ai.neargo.shop.product.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.entity.PrdEntityCategoryInv;
@@ -176,7 +177,7 @@ public class InvManagedServiceImpl implements InvManagedService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void saveCategory(String entityNo, String categoryNo, boolean managed, String operator) {
         PrdEntityCategoryInv row = DataScopeContext.executeWithoutScope(() ->
                 categoryInvMapper.selectOne(Wrappers.<PrdEntityCategoryInv>lambdaQuery()
@@ -237,7 +238,7 @@ public class InvManagedServiceImpl implements InvManagedService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void saveGoodsMode(PrdGoods g, String mode, String operator) {
         if (!MODES.contains(mode)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

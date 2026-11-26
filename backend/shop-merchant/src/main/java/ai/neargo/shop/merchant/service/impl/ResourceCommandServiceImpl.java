@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -49,8 +50,8 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
 
     public ResourceCommandServiceImpl(ResourceOccupationGuard occupations, BookingOwnerMapper owners, ResourceCommandMapper commands,
             BookingHoldMapper holds,
-            @Qualifier("dataSource") DataSource dataSource,
-            @Qualifier("transactionManager") PlatformTransactionManager transactionManager) {
+            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource dataSource,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager transactionManager) {
         this.occupations = occupations;
         this.owners = owners;
         this.commands = commands;

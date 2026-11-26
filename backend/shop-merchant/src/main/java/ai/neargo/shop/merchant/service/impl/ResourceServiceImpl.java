@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 
@@ -60,8 +61,8 @@ public class ResourceServiceImpl implements ResourceService {
 
     public ResourceServiceImpl(ResourceOccupationGuard occupations, MerchantMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
             MerchantMappers.BookingOwnerMapper parents, MerchantMappers.MchStaffLogMapper audit,
-            IdempotencyService idempotency, ObjectMapper json, @Qualifier("dataSource") DataSource source,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            IdempotencyService idempotency, ObjectMapper json, @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
             @Value("${shop.resource.publication.archive-only:false}") boolean archiveOnly,
             @Value("${shop.outbox.maintenance:false}") boolean maintenance) {

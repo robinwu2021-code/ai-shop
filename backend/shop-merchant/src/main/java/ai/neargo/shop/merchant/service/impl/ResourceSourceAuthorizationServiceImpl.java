@@ -1,6 +1,7 @@
 package ai.neargo.shop.merchant.service.impl;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.policy.ResourcePlanCodec;
 import ai.neargo.shop.merchant.policy.ResourcePlanCodec.FrozenPlan;
 import ai.neargo.shop.merchant.service.ResourceCommandService;
@@ -35,7 +36,7 @@ public class ResourceSourceAuthorizationServiceImpl implements ResourceSourceAut
 
     public ResourceSourceAuthorizationServiceImpl(ResourceCommandService commands,
             List<ResourceSourceAuthorityPort> authorities, ObjectProvider<Clock> clocks,
-            @Qualifier("dataSource") DataSource dataSource) {
+            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource dataSource) {
         this.commands = commands;
         this.dataSource = dataSource;
         this.clock = clocks.getIfAvailable(Clock::systemUTC);

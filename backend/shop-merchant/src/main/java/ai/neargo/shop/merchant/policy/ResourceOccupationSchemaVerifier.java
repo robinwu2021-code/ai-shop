@@ -2,6 +2,7 @@ package ai.neargo.shop.merchant.policy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.datasource.DataSourceUtils;
@@ -43,7 +44,7 @@ public final class ResourceOccupationSchemaVerifier {
     private final String historySchema;
 
     /** Only existing primary datasource and Flyway owner settings are captured; construction performs no IO. */
-    public ResourceOccupationSchemaVerifier(@Qualifier("dataSource") DataSource source,
+    public ResourceOccupationSchemaVerifier(@Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source,
             @Value("${spring.flyway.table:flyway_schema_history}") String historyTable,
             @Value("${spring.flyway.default-schema:}") String historySchema) {
         this.source = Objects.requireNonNull(source, "source");

@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -71,8 +72,8 @@ public class ScheduleServiceImpl implements ScheduleService {
             MerchantMappers.PersonnelStoreMapper assignments, MerchantMappers.ScheduleRuleMapper rules,
             MerchantMappers.ScheduleChangeLogMapper changes, MerchantMappers.BookingOwnerMapper parents,
             ScheduleWindowsPort windows, IdempotencyService idempotency, ObjectMapper json,
-            @Qualifier("dataSource") DataSource source,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
             @Value("${shop.schedule.publication.archive-only:false}") boolean archiveOnly,
             @Value("${shop.outbox.maintenance:false}") boolean maintenance) {

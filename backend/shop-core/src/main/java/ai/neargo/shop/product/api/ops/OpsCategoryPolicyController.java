@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PayModes;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.entity.PrdCategoryPayMode;
 import ai.neargo.shop.product.mapper.ProductMappers.CategoryPayModeMapper;
@@ -91,7 +92,7 @@ public class OpsCategoryPolicyController {
      */
     @PostMapping("/ops/category-pay-modes/{categoryNo}")
     @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_UPDATE + "')")
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<CategoryPayModeVO> saveCategoryPayMode(@PathVariable String categoryNo,
                                                        @RequestBody PayModeReq req) {
         boolean allow = Boolean.TRUE.equals(req.offlineAllowed());

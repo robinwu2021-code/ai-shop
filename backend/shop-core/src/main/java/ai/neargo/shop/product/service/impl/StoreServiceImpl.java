@@ -1,5 +1,6 @@
 package ai.neargo.shop.product.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.service.GoodsService;
 import ai.neargo.shop.product.service.StoreService;
 
@@ -262,7 +263,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ReorderResultVO reorderFrom(String orderNo) {
         String userNo = SecurityUtils.currentUserNo();
         // Port 内部已做归属校验：别人的订单号查不出东西（订单号是可枚举的）
@@ -301,7 +302,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public RebuyResultVO rebuy(String merchantNo) {
         List<FrequentItemVO> items = frequentItems(merchantNo);
         int added = 0;

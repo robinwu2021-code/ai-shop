@@ -1,6 +1,7 @@
 package ai.neargo.shop.product.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.entity.PrdSpecDim;
 import ai.neargo.shop.product.entity.PrdSpecValue;
 import ai.neargo.shop.product.mapper.ProductMappers.SpecDimMapper;
@@ -25,7 +26,7 @@ public class SpecValueCatalogQueryPortImpl implements SpecValueCatalogQueryPort 
     }
 
     @Override
-    @Transactional(transactionManager="transactionManager", readOnly=true, isolation=Isolation.REPEATABLE_READ)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly=true, isolation=Isolation.REPEATABLE_READ)
     public List<SpecValueFact> getValues(String entity, List<String> numbers) {
         SpecValueCatalogQueryPort.validateLookup(entity, numbers);
         return DataScopeContext.executeWithoutScope(() -> {

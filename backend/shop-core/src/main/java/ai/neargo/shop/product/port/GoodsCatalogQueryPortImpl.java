@@ -3,6 +3,7 @@ package ai.neargo.shop.product.port;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
@@ -62,7 +63,7 @@ public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
     @Autowired
     public GoodsCatalogQueryPortImpl(GoodsMapper goods, SkuMapper skus,
             ObjectProvider<MediaReferenceQueryPort> media, ObjectProvider<CatalogPriceSourcePort> markets,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this(goods, skus, media::getIfAvailable, markets::getIfAvailable, manager, Clock.systemUTC());
     }
 
@@ -293,7 +294,7 @@ public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true,
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true,
             isolation = Isolation.REPEATABLE_READ)
     public SkuIdentityFact getSku(String entity, String store, String number) {
         key(entity); key(store); key(number);
@@ -315,7 +316,7 @@ public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public GoodsFact getGoods(String entityNo, String storeNo, String goodsNo) {
         key(entityNo); key(storeNo); key(goodsNo);
         return DataScopeContext.executeWithoutScope(() -> {
@@ -337,7 +338,7 @@ public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers) {
         key(entity); key(store);
         if (numbers == null || numbers.isEmpty() || numbers.size() > 256
