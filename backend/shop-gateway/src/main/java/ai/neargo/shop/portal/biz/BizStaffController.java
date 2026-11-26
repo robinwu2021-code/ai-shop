@@ -156,7 +156,8 @@ public class BizStaffController {
     public List<PermOption> rolePerms() {
         // 模块没装的权限码不给勾：勾了也没有入口可用（TDD-网关层与统一权限 §2.6）
         FunctionRegistry functions = registry.getIfAvailable();
-        return BizPerms.assignableCodes().stream()
+        // App 里还没有入口的码也不给勾（TDD-B端角色页收起未接入App的权限码）；建、改角色的校验仍按 assignableCodes
+        return BizPerms.selectableCodes().stream()
                 .filter(c -> functions == null || functions.registered(Realm.MERCHANT, c))
                 .sorted()
                 .map(c -> new PermOption(c, BizPerms.LABELS.get(c)))

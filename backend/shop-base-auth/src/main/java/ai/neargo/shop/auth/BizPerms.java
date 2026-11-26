@@ -315,6 +315,29 @@ public final class BizPerms {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    /**
+     * App 里<b>还没有入口</b>的权限码：页面与组件里都没有对它们的判断，勾了在 App 里看不出任何变化。
+     *
+     * <p>只影响角色页的勾选项（{@link #selectableCodes()}）；{@link #assignableCodes()} 不变 ——
+     * 服务任务的码没有任何预置角色带，存量自定义角色也已经带着预约、服务任务的码，后端拒收会让它们改不了。
+     * App 接入对应功能后，从这里删掉那一行即可（TDD-B端角色页收起未接入App的权限码）。
+     */
+    private static final Set<String> NO_APP_ENTRY = Set.of(
+            BOOKING_VIEW, BOOKING_MANAGE,
+            SERVICE_TASK_SELF, SERVICE_TASK_VIEW, SERVICE_TASK_COORDINATE, SERVICE_TASK_APPROVE, SERVICE_TASK_CLOSE,
+            PRICING_CONFIG_READ, PRICING_CONFIG_UPDATE, PRICING_CONFIG_PUBLISH, PRICING_TAX_READ, PRICING_TAX_UPDATE,
+            PAY_ORDER_VIEW, PAY_OFFLINE_RECORD, PAY_OFFLINE_MANAGE,
+            ENT_USE, ENT_ISSUE, ENT_READ, ENT_TEMPLATE_READ, ENT_TEMPLATE_WRITE, ENT_TEMPLATE_PUBLISH, ENT_ISSUE_MANAGE,
+            CASH_RECEIVE, CHECKOUT_PREPARE, MANUAL_CONFIRM,
+            REPORT_EXPORT);
+
+    /** 角色页下发的勾选项：可持有的码里去掉 App 还没有入口的。 */
+    public static Set<String> selectableCodes() {
+        return assignableCodes().stream()
+                .filter(c -> !NO_APP_ENTRY.contains(c))
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
     private BizPerms() {
     }
 
