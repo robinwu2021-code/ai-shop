@@ -749,23 +749,6 @@ public final class MerchantMappers {
         int purgeAreas(@Param("areaNos") java.util.Collection<String> areaNos);
     }
 
-    /** 商家资质。按 expire_at 扫到期，所以那一列有索引。 */
-    public interface AdmissionPolicyMapper
-            extends BaseMapper<ai.neargo.shop.merchant.entity.MchAdmissionPolicy> {
-    }
-
-    public interface DebtMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDebt> {
-    }
-
-    public interface DebtTxnMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDebtTxn> {
-    }
-
-    public interface DepositMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDeposit> {
-    }
-
-    public interface DepositTxnMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDepositTxn> {
-    }
-
     public interface QualificationMapper extends PlatformTableMapper<MchQualification> {
     }
 

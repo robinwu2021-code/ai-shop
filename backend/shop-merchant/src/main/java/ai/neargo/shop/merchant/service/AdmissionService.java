@@ -1,6 +1,6 @@
 package ai.neargo.shop.merchant.service;
 
-import ai.neargo.shop.merchant.entity.MchAdmissionPolicy;
+import ai.neargo.shop.merchant.funds.entity.MchAdmissionPolicy;
 import java.util.List;
 
 /**

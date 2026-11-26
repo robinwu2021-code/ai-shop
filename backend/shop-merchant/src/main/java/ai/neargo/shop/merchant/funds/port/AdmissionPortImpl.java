@@ -1,13 +1,13 @@
-package ai.neargo.shop.merchant.port;
+package ai.neargo.shop.merchant.funds.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.merchant.entity.MchAdmissionPolicy;
-import ai.neargo.shop.merchant.entity.MchDeposit;
+import ai.neargo.shop.merchant.funds.entity.MchAdmissionPolicy;
+import ai.neargo.shop.merchant.funds.entity.MchDeposit;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.AdmissionPolicyMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.DepositMapper;
+import ai.neargo.shop.merchant.funds.mapper.FundsMappers.AdmissionPolicyMapper;
+import ai.neargo.shop.merchant.funds.mapper.FundsMappers.DepositMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.spi.user.AdmissionPort;

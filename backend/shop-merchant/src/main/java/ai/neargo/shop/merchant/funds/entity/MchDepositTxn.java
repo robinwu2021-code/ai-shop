@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.entity;
+package ai.neargo.shop.merchant.funds.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;

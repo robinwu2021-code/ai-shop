@@ -36373,7 +36373,7 @@
       "class": "MchAdmissionPolicy",
       "zh": "准入策略：按 legal_form 档位配置，不按商户配置。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.funds.entity"
     },
     {
       "table": "mch_appointment_slot",
@@ -36422,28 +36422,28 @@
       "class": "MchDebt",
       "zh": "商家欠款账户：退款追不回来时先记在账上，从后续货款里扣。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.funds.entity"
     },
     {
       "table": "mch_debt_txn",
       "class": "MchDebtTxn",
       "zh": "欠款流水。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.funds.entity"
     },
     {
       "table": "mch_deposit",
       "class": "MchDeposit",
       "zh": "保证金账户，一商户一行。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.funds.entity"
     },
     {
       "table": "mch_deposit_txn",
       "class": "MchDepositTxn",
       "zh": "保证金流水。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.funds.entity"
     },
     {
       "table": "mch_entity",
@@ -46473,76 +46473,6 @@
         "module": "shop-merchant"
       },
       {
-        "host": "MchDebtTxn",
-        "name": "INCUR",
-        "value": "INCUR",
-        "zh": "产生：退款追不回来",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDebtTxn",
-        "name": "OFFSET",
-        "value": "OFFSET",
-        "zh": "从后续货款里抵扣",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDebtTxn",
-        "name": "DEPOSIT",
-        "value": "DEPOSIT",
-        "zh": "从保证金里抵扣",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDebtTxn",
-        "name": "WRITE_OFF",
-        "value": "WRITE_OFF",
-        "zh": "核销：认了这笔收不回来。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDebtTxn",
-        "name": "SRC_REFUND",
-        "value": "REFUND",
-        "zh": "源头类型：退款追偿",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDepositTxn",
-        "name": "PAY",
-        "value": "PAY",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDepositTxn",
-        "name": "REFUND",
-        "value": "REFUND",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDepositTxn",
-        "name": "FREEZE",
-        "value": "FREEZE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDepositTxn",
-        "name": "UNFREEZE",
-        "value": "UNFREEZE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDepositTxn",
-        "name": "DEDUCT",
-        "value": "DEDUCT",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
         "host": "MchEntity",
         "name": "PENDING_LICENSE",
         "value": "PENDING_LICENSE",
@@ -46988,6 +46918,76 @@
         "name": "OWNER_CODE",
         "value": "OWNER",
         "zh": "老板不在这张表里 —— 把它当角色授给别人等于凭空造一个第二老板",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDebtTxn",
+        "name": "INCUR",
+        "value": "INCUR",
+        "zh": "产生：退款追不回来",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDebtTxn",
+        "name": "OFFSET",
+        "value": "OFFSET",
+        "zh": "从后续货款里抵扣",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDebtTxn",
+        "name": "DEPOSIT",
+        "value": "DEPOSIT",
+        "zh": "从保证金里抵扣",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDebtTxn",
+        "name": "WRITE_OFF",
+        "value": "WRITE_OFF",
+        "zh": "核销：认了这笔收不回来。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDebtTxn",
+        "name": "SRC_REFUND",
+        "value": "REFUND",
+        "zh": "源头类型：退款追偿",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDepositTxn",
+        "name": "PAY",
+        "value": "PAY",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDepositTxn",
+        "name": "REFUND",
+        "value": "REFUND",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDepositTxn",
+        "name": "FREEZE",
+        "value": "FREEZE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDepositTxn",
+        "name": "UNFREEZE",
+        "value": "UNFREEZE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDepositTxn",
+        "name": "DEDUCT",
+        "value": "DEDUCT",
+        "zh": "",
         "module": "shop-merchant"
       },
       {
@@ -61576,14 +61576,6 @@
       "module": "shop-merchant"
     },
     {
-      "host": "MchAdmissionPolicy",
-      "name": "UNLIMITED",
-      "type": "long",
-      "value": "0L",
-      "zh": "0 表示「不限 / 免缴」，三个额度字段共用这一约定。",
-      "module": "shop-merchant"
-    },
-    {
       "host": "MchPaymentMerchant",
       "name": "ENTITY_LEVEL",
       "type": "String",
@@ -61645,6 +61637,14 @@
       "type": "java.util.Set<String>",
       "value": "java.util.Set.of(MANAGER, CLERK, PICKER, COURIER, CS)",
       "zh": "预置的可授予角色。",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "MchAdmissionPolicy",
+      "name": "UNLIMITED",
+      "type": "long",
+      "value": "0L",
+      "zh": "0 表示「不限 / 免缴」，三个额度字段共用这一约定。",
       "module": "shop-merchant"
     },
     {

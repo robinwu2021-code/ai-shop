@@ -2,7 +2,7 @@ package ai.neargo.shop.merchant.api.ops;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.merchant.entity.MchAdmissionPolicy;
+import ai.neargo.shop.merchant.funds.entity.MchAdmissionPolicy;
 import ai.neargo.shop.merchant.service.AdmissionService;
 import ai.neargo.shop.merchant.service.AdmissionService.DepositVO;
 import ai.neargo.shop.merchant.service.AdmissionService.PayQuotaVO;

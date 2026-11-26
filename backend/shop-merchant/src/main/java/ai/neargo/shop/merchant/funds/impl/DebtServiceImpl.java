@@ -1,12 +1,12 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.funds.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
-import ai.neargo.shop.merchant.entity.MchDebt;
-import ai.neargo.shop.merchant.entity.MchDebtTxn;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.DebtMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.DebtTxnMapper;
-import ai.neargo.shop.merchant.entity.MchDepositTxn;
+import ai.neargo.shop.merchant.funds.entity.MchDebt;
+import ai.neargo.shop.merchant.funds.entity.MchDebtTxn;
+import ai.neargo.shop.merchant.funds.mapper.FundsMappers.DebtMapper;
+import ai.neargo.shop.merchant.funds.mapper.FundsMappers.DebtTxnMapper;
+import ai.neargo.shop.merchant.funds.entity.MchDepositTxn;
 import ai.neargo.shop.merchant.service.AdmissionService;
 import ai.neargo.shop.merchant.service.DebtService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;

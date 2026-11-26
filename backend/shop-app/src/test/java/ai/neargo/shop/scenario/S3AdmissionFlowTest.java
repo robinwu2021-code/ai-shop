@@ -2,8 +2,8 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.merchant.entity.MchAdmissionPolicy;
-import ai.neargo.shop.merchant.entity.MchDepositTxn;
+import ai.neargo.shop.merchant.funds.entity.MchAdmissionPolicy;
+import ai.neargo.shop.merchant.funds.entity.MchDepositTxn;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.service.AdmissionService;

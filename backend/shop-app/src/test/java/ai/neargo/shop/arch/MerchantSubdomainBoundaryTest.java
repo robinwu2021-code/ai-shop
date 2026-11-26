@@ -29,7 +29,9 @@ class MerchantSubdomainBoundaryTest {
     private static final Map<String, List<String>> SUBDOMAINS = Map.of(
             "/merchant/dictionary/", List.of("SysAuthCodeMapper", "SysStoreIndustryMapper"),
             "/merchant/violation/", List.of("ViolationMapper"),
-            "/merchant/plan/", List.of("EntityPlanMapper", "PlanDefMapper"));
+            "/merchant/plan/", List.of("EntityPlanMapper", "PlanDefMapper"),
+            "/merchant/funds/", List.of("AdmissionPolicyMapper", "DebtMapper", "DebtTxnMapper", "DepositMapper",
+                    "DepositTxnMapper"));
 
     /** 开发库造数直接写字典表，是有意的例外。 */
     private static final List<String> SEEDERS = List.of("DevSeeder.java");
