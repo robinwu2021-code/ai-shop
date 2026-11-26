@@ -1,4 +1,4 @@
-package ai.neargo.shop.portal.service;
+package ai.neargo.shop.report.customer;
 
 import ai.neargo.shop.common.PageData;
 import java.util.List;

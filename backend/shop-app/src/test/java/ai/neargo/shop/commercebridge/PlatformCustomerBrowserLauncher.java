@@ -11,7 +11,7 @@ import ai.neargo.shop.platform.perm.mapper.PermMappers.*;
 import ai.neargo.shop.portal.ops.OpsCustomerController;
 import ai.neargo.shop.portal.ops.OpsOperatingEntityController;
 import ai.neargo.shop.portal.service.*;
-import ai.neargo.shop.portal.service.impl.CustomerReportingServiceImpl;
+import ai.neargo.shop.report.customer.impl.CustomerReportingServiceImpl;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import java.nio.charset.StandardCharsets;

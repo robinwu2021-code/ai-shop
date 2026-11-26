@@ -17,7 +17,6 @@ shop-gateway/src/main/java/ai/neargo/shop/paybridge/PaymentCollectionSourceBoots
 shop-gateway/src/main/java/ai/neargo/shop/paybridge/impl/PaymentCollectionServiceImpl.java
 shop-gateway/src/main/java/ai/neargo/shop/payclient/PayBizSessionVerifier.java
 shop-gateway/src/main/java/ai/neargo/shop/payclient/PaymentReadRouter.java
-shop-gateway/src/main/java/ai/neargo/shop/portal/service/impl/CustomerReportingServiceImpl.java
 shop-merchant/src/main/java/ai/neargo/shop/media/MerchantMediaRefs.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/AppointmentSlotServiceImpl.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ResourceBookingServiceImpl.java
@@ -28,4 +27,5 @@ shop-merchant/src/main/java/ai/neargo/shop/merchant/funds/impl/AdmissionServiceI
 shop-merchant/src/main/java/ai/neargo/shop/merchant/paymerchant/impl/MerchantPaymentServiceImpl.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/paymerchant/impl/PayoutAccountServiceImpl.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/plan/impl/EntityPlanPurchaseServiceImpl.java
+shop-report/src/main/java/ai/neargo/shop/report/customer/impl/CustomerReportingServiceImpl.java
 shop-store-mybatis/src/main/java/ai/neargo/shop/archive/impl/ArchiveServiceImpl.java
