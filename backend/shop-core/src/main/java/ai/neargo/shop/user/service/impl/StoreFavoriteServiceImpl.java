@@ -1,6 +1,5 @@
 package ai.neargo.shop.user.service.impl;
 
-import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.user.service.StoreFavoriteService;
 
 import ai.neargo.shop.spi.marketing.AttributionPort;
@@ -58,7 +57,7 @@ public class StoreFavoriteServiceImpl implements StoreFavoriteService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
+    @Transactional
     public List<StoreBriefVO> toggle(String merchantNo) {
         String userNo = SecurityUtils.currentUserNo();
         var store = storeDirectory.resolve(merchantNo)

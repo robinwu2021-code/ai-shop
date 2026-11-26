@@ -57,7 +57,9 @@ class ModuleTxManagerConventionTest {
             // 平台商城库、基础能力库
             "EntityPlanPurchaseServiceImpl.java", "PlanPaymentApprovalSubject.java", "AuthCodeAdminServiceImpl.java",
             "StoreIndustryAdminServiceImpl.java", "StoreOpeningApprovalSubject.java",
-            "StoreDirectoryPortImpl.java", "StoreOwnershipWritePortImpl.java");
+            "StoreDirectoryPortImpl.java", "StoreOwnershipWritePortImpl.java",
+            // C 端账号包里：收货地址（门店交易库）、收藏（会员营销库）
+            "AddressServiceImpl.java", "StoreFavoriteServiceImpl.java");
 
     /** 有意用主库事务管理器的地方：文件名 → 该行必须包含的片段。 */
     private static final Map<String, String> PRIMARY_ON_PURPOSE = Map.of(
@@ -73,7 +75,7 @@ class ModuleTxManagerConventionTest {
             try (var files = Files.walk(root)) {
                 for (Path file : files.filter(p -> p.toString().endsWith(".java"))
                         .filter(p -> !p.toString().contains(PRIMARY_PACKAGE))
-                        .filter(p -> !(p.toString().contains("/shop/merchant/")
+                        .filter(p -> !((p.toString().contains("/shop/merchant/") || p.toString().contains("/shop/user/"))
                                 && MERCHANT_NOT_PLATFORM.contains(p.getFileName().toString()))).toList()) {
                     String[] lines = Files.readString(file, StandardCharsets.UTF_8).split("\n");
                     for (int i = 0; i < lines.length; i++) {

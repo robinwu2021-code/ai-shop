@@ -28,8 +28,10 @@ import org.springframework.context.annotation.Import;
         sqlSessionFactoryRef = "sqlSessionFactory")
 @MapperScan(basePackages = "ai.neargo.shop.printing", markerInterface = BaseMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.PRINT_SQL_SESSION_FACTORY)
-// C 端账号域（登录与账号的一部分）在平台基础库；会话与登录日志不走 Mapper，见 LoginAuditConfig#authJdbcClient
-@MapperScan(basePackages = "ai.neargo.shop.user", markerInterface = BaseMapper.class,
+// C 端账号包里只有账号、凭证、人档、小程序会话四个 Mapper 的表在平台基础库，按标记收；
+// 同包的收货地址（门店交易库）、收藏与到店（会员营销库）、测试身份等仍由全局扫描绑主库。
+// 会话与登录日志不走 Mapper，见 LoginAuditConfig#authJdbcClient
+@MapperScan(basePackages = "ai.neargo.shop.user", markerInterface = PlatformTableMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
 // 商户域里表在平台基础库的 Mapper：按标记收，不按包（同一个包里还有别的库的 Mapper）
 @MapperScan(basePackages = "ai.neargo.shop.merchant.mapper", markerInterface = PlatformTableMapper.class,
