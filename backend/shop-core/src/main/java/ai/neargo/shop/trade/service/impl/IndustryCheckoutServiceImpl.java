@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -84,7 +85,7 @@ public class IndustryCheckoutServiceImpl implements IndustryCheckoutService {
             ObjectProvider<OrdinaryPaymentInitiationPort> initiationProviders,
             ObjectProvider<InventoryReservationPort> inventoryProviders, OrderService orders,
             PaymentResolutionService resolutions,
-            @Qualifier("transactionManager") PlatformTransactionManager transactionManager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager transactionManager) {
         this.bindings = bindings;
         this.payments = payments;
         this.subOrders = subOrders;

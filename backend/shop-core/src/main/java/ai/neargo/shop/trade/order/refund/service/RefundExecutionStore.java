@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.refund.service;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
 import ai.neargo.shop.trade.order.mapper.RefundExecutionMapper;
 
@@ -54,7 +55,7 @@ public class RefundExecutionStore {
     /**
      * Commit a durable conflict before the caller rejects it, without retaining Core locks at IO.
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public OrdRefundExecution currentSource(String no) {
         return lockSource(no);
     }
@@ -104,7 +105,7 @@ public class RefundExecutionStore {
         return row;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public OrdRefundExecution claim(String no) {
         OrdRefundExecution row = lockSource(no);
         if (row != null && "REFUND_EXECUTION_CONFLICT".equals(row.getErrorCode())) {
@@ -123,7 +124,7 @@ public class RefundExecutionStore {
         return row;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public void cashReady(String no) {
         OrdRefundExecution row = lockSource(no);
         if (row != null
@@ -157,7 +158,7 @@ public class RefundExecutionStore {
                 && "REVERSE_UNCONFIRMED".equals(row.getErrorCode());
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public void resources(String no, String status, String error) {
         var row = lockSource(no);
         if (row == null || "REFUND_EXECUTION_CONFLICT".equals(row.getErrorCode())) {

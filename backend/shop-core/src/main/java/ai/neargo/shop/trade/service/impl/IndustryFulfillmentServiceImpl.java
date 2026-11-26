@@ -5,6 +5,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Fulfillments;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts;
@@ -146,7 +147,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
             TradeStatusWriter writer,
             OutboxEventBus events,
             ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             StatusCasMapper locks) {
         this.journal = journal;
         this.sources = sources;

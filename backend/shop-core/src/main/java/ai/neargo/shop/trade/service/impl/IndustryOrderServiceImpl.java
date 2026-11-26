@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -203,7 +204,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
             AttributionPort attribution,
             PurchaseLimitGuard purchaseLimits,
             CloseRuleService closeRules,
-            @Qualifier("transactionManager") PlatformTransactionManager transactionManager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager transactionManager) {
         this.intents = intents;
         this.bindings = bindings;
         this.payments = payments;

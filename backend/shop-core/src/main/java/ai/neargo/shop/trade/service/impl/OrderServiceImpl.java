@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -1657,7 +1658,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 ()->pointsPlacement.resume(orderNo));
     }
 
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public OrderVO createCoreFor(String userNo,CreateOrderCommand cmd,String idempotencyKey,Integer payMinutes) {
         String hash=createRequestHasher.hash(cmd);
         var result=idempotency.execute(idempotencyKey,"POST /mp/order",userNo,hash,OrderVO.class,
@@ -1667,7 +1668,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         return result;
     }
 
-    @Override @Transactional(readOnly=true)
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly=true)
     public OrderVO readCreated(EntitlementContext ctx,String checkoutNo,String userNo) {
         var fact=legacyCheckoutJournal.resolve(ctx,checkoutNo);
         var decision=legacyCheckoutJournal.decision(ctx,checkoutNo).orElseThrow(()->BizException.of(ErrorCode.CONFLICT));
@@ -1676,7 +1677,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         return detailOf(decision.orderNo(),userNo,"MP");
     }
 
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public OrderVO createBound(String userNo,CreateOrderCommand cmd,String idempotencyKey,Integer payMinutes,
                                LegacyCouponBoundOrderService.Binding binding) {
         if(binding==null) throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -2240,7 +2241,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public OrderVO createConfirmedFor(
             String buyerNo,
             CreateOrderCommand command,
@@ -3915,7 +3916,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public OrderVO cancel(String orderNo, String reason) {
         // 端上可能传子单号（订单列表上点取消）：解析成主单，一次支付整体取消
         OrdOrder order = resolveOrder(orderNo);
@@ -3931,7 +3932,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void cancelByPlatform(String orderNo, String reason, String operatorNo) {
         /*
          * 代客取消（TDD-订单状态机 AC15）。此前走通用人工干预，只把**子单**改成 CANCELLED：
@@ -3945,7 +3946,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public CancellationImpact cancellationImpact(String orderNo) {
         return paymentImpact.preview(orderNo);
     }
@@ -4030,7 +4031,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public int closeExpiredOrders(long now) {
         creationRecovery.recoverAbandoned(now);
         List<OrdOrder> expired = orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
@@ -4130,7 +4131,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
     /** 按单号关一笔待支付的单。已经不是待支付就当没事发生 —— 对账每轮都可能再撞到它 */
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void closeUnpaid(String orderNo, String reason) {
         OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));

@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.port;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -47,7 +48,7 @@ public class IndustryReportFactsPortAdapter implements IndustryReportFactsServic
     private final TransactionTemplate read;
     public IndustryReportFactsPortAdapter(IndustryOrderSourceMapper bindings,PaymentMapper orders,StoreOrderMapper subs,
             IndustryOrderAmendmentMapper amendments,MerchantScopeFactsPort scopes,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.bindings=bindings; this.orders=orders; this.subs=subs; this.amendments=amendments; this.scopes=scopes;
         read=new TransactionTemplate(manager); read.setReadOnly(true);
         read.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);

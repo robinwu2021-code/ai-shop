@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.entitlement.DecisionRef.DecisionType;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.SourceDecisionPort.SourceDecision;
@@ -61,7 +62,7 @@ public class PricingFundingSourceServiceImpl implements PricingFundingSourceServ
     public PricingFundingSourceServiceImpl(PriceQuoteMapper quotes, PricingFundingSourceMapper sources,
             PricingQuoteService quoteService, PricingPreparationService preparations,
             EntitlementSourceDecisionService decisions,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this(quotes, sources, quoteService, preparations, decisions, manager, Clock.systemUTC());
     }
 

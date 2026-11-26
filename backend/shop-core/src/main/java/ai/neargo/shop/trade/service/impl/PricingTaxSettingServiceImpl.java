@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.common.pricing.TaxSettingDefinition;
 import ai.neargo.shop.event.OutboxEventBus;
@@ -65,7 +66,7 @@ public class PricingTaxSettingServiceImpl implements PricingTaxSettingService {
             SettingPort settings,
             AuditLogPort audit,
             IdempotencyService idempotency,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json) {
         this.settings = settings;
         this.audit = audit;

@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.TaxClass;
 import ai.neargo.shop.numbering.DocumentSource;
 import ai.neargo.shop.numbering.DocumentType;
@@ -92,7 +93,7 @@ public class StoreOrderServiceImpl implements StoreOrderService {
             StoreOwnershipWritePort ownership,
             @Qualifier("coreDocumentNumberCoordinator") DocumentNumberCoordinator numbers,
             ObjectProvider<InvoicePort> invoices,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             StoreOrderSettlementService settlements) {
         this.orders = orders;
         this.subOrders = subOrders;

@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.fulfillment.dto.ArrivalBatchVO;
 import ai.neargo.shop.fulfillment.dto.OverdueRuleVO;
 import ai.neargo.shop.fulfillment.dto.RedeemStatVO;
@@ -85,7 +86,7 @@ public class DispatchServiceImpl implements DispatchService {
     // ---------------------------------------------------------------- 到货批次（5.1.1）
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<ArrivalBatchVO> batches(String communityNo, String pickupNo, String status,
                                         String keyword) {
         Map<String, PickupDirectoryPort.PickupRow> directory = pickupDirectory.list(communityNo)
@@ -178,7 +179,7 @@ public class DispatchServiceImpl implements DispatchService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ArrivalBatchVO setBatchStatus(String batchNo, String status, String operatorNo) {
         FulBatch b = DataScopeContext.executeWithoutScope(() ->
                 batchMapper.selectOne(Wrappers.<FulBatch>lambdaQuery()
@@ -320,7 +321,7 @@ public class DispatchServiceImpl implements DispatchService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public OverdueRuleVO saveOverdueRule(String action, int graceHours, int maxPostpone,
                                          String operatorNo) {
         if (!OverdueRuleVO.POSTPONE.equals(action) && !OverdueRuleVO.VOID.equals(action)) {

@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.service.impl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.PricingFeeEngine;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.common.pricing.PricingUnit;
@@ -53,7 +54,7 @@ public class PricingFeeRuleServiceImpl
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager")
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public Rule save(Scope scope, String actor, String no, SaveReq req, String key) {
         PricingSourceFacts.key(actor);
         PricingSourceFacts.key(no);
@@ -157,7 +158,7 @@ public class PricingFeeRuleServiceImpl
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.MANDATORY)
     public void applyPlan(
             Scope scope, String actor, String order, String sub, String quote, Plan plan) {
         if (plan == null || plan.fees().isEmpty()) return;
@@ -307,7 +308,7 @@ public class PricingFeeRuleServiceImpl
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.MANDATORY)
     public void completeAdjustment(
             Scope scope, String app, long target, String hash, String actor, String key) {
         var row = one(mapper.adjustment(scope.entityNo(), scope.storeNo(), app, hash, true));
@@ -327,7 +328,7 @@ public class PricingFeeRuleServiceImpl
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.MANDATORY)
     public void reconcileOnAmendment(
             IndustryFulfillmentPort.Reference ref, String amendment, String sourceHash) {
         var evidence = one(mapper.amendmentSource(ref, amendment, sourceHash));

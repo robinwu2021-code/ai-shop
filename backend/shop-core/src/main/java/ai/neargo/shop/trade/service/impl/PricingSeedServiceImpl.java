@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -37,7 +38,7 @@ public class PricingSeedServiceImpl implements PricingSeedService {
     private final PricingSeedValidator validator = new PricingSeedValidator();
 
     public PricingSeedServiceImpl(PricingTemplateMapper templates, IdempotencyService idempotency,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.templates = templates;
         this.idempotency = idempotency;
         this.transactions = new TransactionTemplate(manager);

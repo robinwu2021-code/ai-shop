@@ -5,6 +5,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderFacts;
@@ -46,7 +47,7 @@ public final class IndustryChannelOrderPolicyServiceImpl
             ChannelPolicyMapper policies,
             MerchantScopeFactsPort owners,
             IdempotencyService idempotency,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.policies = policies;
         this.owners = owners;
         this.idempotency = idempotency;

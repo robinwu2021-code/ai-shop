@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.refund.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
@@ -61,7 +62,7 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
     public RefundPreparationServiceImpl(AfterSaleMapper afterSales, StatusCasMapper locks, PaymentMapper payments,
             CreateIntentMapper intents, RefundableQuery query, RefundExecutionStore store, AfterSaleLineStore afterSaleLines, RefundFinancialOwnerService financialOwner, OriginalRefundEvidenceService originalEvidence,
             SettlePort settle, ObjectMapper json, StoreOrderMapper children,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations,
             ai.neargo.shop.spi.platform.PlatformSwitchPort flags,
             @org.springframework.beans.factory.annotation.Value("${shop.refund.closure.enabled:false}") boolean closureEnabled) {

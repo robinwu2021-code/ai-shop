@@ -7,6 +7,7 @@ import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.product.StockDispositionContract;
 import ai.neargo.shop.spi.product.StockDispositionPort;
@@ -147,7 +148,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
             ObjectMapper json,
             CheckoutClock clock,
             OutboxEventBus events,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ServiceExecutionFenceCoordinator executionFences) {
         this.checkout = checkout;
         this.executionFences = executionFences;

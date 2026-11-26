@@ -6,6 +6,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.trade.dto.AuthorizationCommand;
 import ai.neargo.shop.trade.dto.AuthorizationView;
@@ -38,7 +39,7 @@ public class EntitlementServiceAuthorizationServiceImpl implements EntitlementSe
         this.orders = orders; this.authorizations = authorizations; this.features = features; this.json = json;
     }
     @Override public boolean supports(String tenant, String no) { return orders.find(tenant, no) != null; }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void stage(String tenant, String no, SourceRef source, String previewRef, String selection,
                        long amount, String currency, Instant expiresAt) {
         DataScopeContext.executeWithoutScope(() -> {
@@ -78,7 +79,7 @@ public class EntitlementServiceAuthorizationServiceImpl implements EntitlementSe
         auth.setCreatedBy(row.getUserNo()); auth.setUpdatedBy(row.getUserNo());
         if (authorizations.insert(auth) != 1) conflict();
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public AuthorizationView confirm(String tenant, String user, String no, AuthorizationCommand c) {
         return DataScopeContext.executeWithoutScope(() -> confirmUnscoped(tenant, user, no, c));
     }

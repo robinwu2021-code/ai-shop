@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.MerchantTaxSnapshot;
 import ai.neargo.shop.common.pricing.MoneyMinor;
 import ai.neargo.shop.common.pricing.PriceTaxMode;
@@ -103,7 +104,7 @@ public class IndustryOrderAmendmentServiceImpl implements IndustryOrderAmendment
             IndustryOrderAmendmentMapper persistence,
             TradeStatusWriter writer,
             OutboxEventBus events,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json,
             IndustryOrderSourceMapper sources,
             PaymentMapper orders,

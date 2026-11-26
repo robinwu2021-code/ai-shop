@@ -1,6 +1,6 @@
 # TDD-零售域对齐门店交易库
 
-状态：已确认 Q1、Q2、Q3 · 第一段：交易句柄与 Mapper 归属已实现；商品包、商户域资源预约与门店分类的事务点名已实现；资源占用结构校验缺陷已修；其余子模块未做
+状态：已确认 Q1、Q2、Q3 · 第一段：交易句柄与 Mapper 归属已实现；商品包、商户域资源预约与门店分类、交易包、履约与求购报价的事务点名已实现；资源占用结构校验缺陷已修；其余子模块未做
 档位：2 · 依据：数据库设计方案 `库/05-门店交易库.md`、`库/06-行业库.md` · 产出：本篇 + [对照表](零售域-旧表新表对照.md) + [ADR-067](ADR/ADR-067-门店交易库按耦合簇换表与行业插件公用部分并回.md)
 关联需求（行为基线，本次不改需求）：[PRD-商品规格与发布](../requirements/PRD-商品规格与发布.md) · [PRD-品牌商品库与门店商品](../requirements/PRD-品牌商品库与门店商品.md) · [PRD-统一订单与开票资料](../requirements/PRD-统一订单与开票资料.md) · [PRD-统一销售渠道接入](../requirements/PRD-统一销售渠道接入.md) · [PRD-支付方式与预约预定](../requirements/PRD-支付方式与预约预定.md)
 关联设计：[ADR-066 业务模块按配置选数据源](ADR/ADR-066-业务模块按配置选数据源.md) · [TDD-多数据源与发票打印对齐新库](TDD-多数据源与发票打印对齐新库.md) · [TDD-商户门店与员工权限对齐平台基础库](TDD-商户门店与员工权限对齐平台基础库.md) · [TDD-多行业统一业务架构-零售餐饮美业](TDD-多行业统一业务架构-零售餐饮美业.md)
@@ -399,6 +399,39 @@
 
 本机 MySQL 留下约 1380 个测试自建的随机库（`resource_*`、`booking_*`、`schedule_*`、`personnel_*`、`beauty_*`），这些测试结束时不删自己的库，没有清理。
 
+### 第一段 · 提交五：交易包（收银与下单、订单与售后、履约、渠道入单、计价）点名交易句柄
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `shop-core` trade 包 66 个文件 | 事务点名 `tradeTxManager`：裸 `@Transactional`、`@Transactional("transactionManager")`、`value = "transactionManager"`、`TransactionTemplate` 的 `@Qualifier`；用数据源的 6 处（`CheckoutQuoteGuard`、`PricingFeeRuleMapper`、`IndustryOrderAmendmentMapper`、`FoodStockBridgeJournal`、`ServiceExecutionSchemaVerifier` 等）同时改用 `tradeDataSource` |
+| 修改 | `ModuleTxManagerConventionTest` | 守卫加入 trade 包与路径名单 `TRADE_NOT_TRADE` |
+
+留在主库（守卫名单）：`order/points/**`（积分这一轮不接，§2.11）、`order/printing/**`（打印事实归平台服务库）、`PointsRefundResourceServiceImpl`、`InvoiceRequestServiceImpl`（开票申请归发票）、`SeqSegmentSource`（`sys_sequence`，基础能力库）。
+
+分档依据（脚本按类里用到的 Mapper 归属统计，85 个带事务或数据源的类）：只碰已标记交易表的 17 个；以交易表为主、顺带碰「设计里没去向的交易表」的 37 个——这些表是 `ord_create_intent`、`ord_checkout_operation`/`confirmation`/`payment_request`、`ord_status_log`、`ord_offline_record`、`ord_payment_resolution`、`ord_store_collection`、`ord_express_pickup`、`ord_channel_*` 账本、`ord_service_execution_action`、`ord_legacy_coupon_checkout` 等，它们本身是交易的一部分（§8-Q4 建议补进 `n_trade`），所以这些类按交易处理；
+没有 Mapper、只经端口或手写 SQL 的 19 个，按读写的表判；积分、打印、开票、序号段归别处。
+
+验证（2026-11-26，本机，H2）：守卫 2/2、`ArchitectureTest` 27（1 跳过）、`MapperSmokeTest` 2/2 通过。引用 trade 包的 shop-app 测试 217 个类、1500 个测试：114 个失败、215 个跳过。
+**同一命令在上一提交（5c6acb203）上跑，失败的是完全相同的 114 个用例**（逐个比对用例名）。它们全部来自 8 个只能连原生 MySQL 的测试类，本机没配：
+`StoreOrderMysqlTest`（缺 `COMMERCE_MYSQL_URL`）、`ManualCounterRecoveryIT`（缺 `MANUAL_INVENTORY_MYSQL_URL`）、`ManualCounterIdentityIT`、`ManualCounterDiscountIT`、`ManualCounterPurchaseIT`、`ManualServiceAdmissionIT`、`ManualCounterPrivacyIT`（断言库是 MySQL）、`ManualServiceFinancialIsolationIT`（H2 没有 `json_valid`）。
+这 8 个恰好覆盖柜台收银与手工服务单的事务路径，**这一步的这几条路径没有经过原生 MySQL 验证**。
+
+换库前要拆（在 §2.4 已列的之外）：积分类在订单事务里以 `MANDATORY` 加入（`OrderPointsSourceOrdersImpl` 等），绑定后它们开在主库，会报「没有事务」——积分接回时一起处理；打印事实同样以 `MANDATORY` 加入订单事务（T6）。
+
+### 第一段 · 提交六：履约、自提点、求购报价点名交易句柄（按类或按方法）
+
+| 文件 | 处理 | 依据 |
+|---|---|---|
+| `fulfillment/service/impl/DispatchServiceImpl`、`PickupServiceImpl`、`fulfillment/port/GroupPickupPortImpl` | 整类点名 trade | 到货批次、核销、团购自提都是交易表（缺货上报设计并入售后） |
+| `fulfillment/service/impl/LogisticsServiceImpl` | 只有 `saveFreightTemplate`、`archiveFreightTemplate` 点名 trade | 运费模板并入计价定义；运单、轨迹、承运商归平台服务库，其余方法留主库 |
+| `community/service/impl/CommunityAdminServiceImpl` | 只有 `setPickupStatus`、`decidePickup` 点名 trade | 只碰自提点；小区、地址库归平台服务库，入驻申请归审核服务 |
+| `marketing/group/impl/GroupServiceImpl` | `createRequest`、`toggleInterest`、`choose`、`quote`、`revise`、`opsRevisePrice` 点名 trade | 只碰求购、报价；拼团与团成员归会员营销库，`confirmRequest`、`markBreach`、`auditGroup` 两边都写，留主库，**换库前要拆** |
+| `ModuleTxManagerConventionTest` | 守卫加入 fulfillment 包（物流类除外） | 按方法分的三个类不在守卫里 |
+
+`PeriodServiceImpl`（团购周期）没有事务注解，经 `PeriodMapper` 已随交易句柄。
+
+验证（2026-11-26，本机，H2）：引用这几个包的 46 个测试类加守卫、架构、Mapper 冒烟，445 个测试 0 失败、15 跳过；上一提交上同样 0 失败。
+
 ### 偏差说明
 
 - `tradeJdbcTemplate` 放进了已有的 `PlatformJdbcConfiguration`，而不是 §2.2 写的新类 `TradeJdbcConfiguration`：主库那个 `JdbcTemplate` 的 `@Primary` 声明在这个类里，模块的模板放在一处更不容易漏。类名以后可改成 `ModuleJdbcConfiguration`。
@@ -416,6 +449,8 @@
 | 2026-11-26 | 第一段提交二实现（商品包 22 个类的事务点名交易句柄） |
 | 2026-11-26 | 第一段提交三实现（商户域资源预约、班表、门店分类 8 个类点名交易句柄） |
 | 2026-11-26 | 修资源占用结构校验在 MySQL 上永远判损坏的缺陷与场景测试夹具，资源、班表场景测试 201/202 通过 |
+| 2026-11-26 | 第一段提交五实现（交易包 66 个文件点名交易句柄） |
+| 2026-11-26 | 第一段提交六实现（履约、自提点、求购报价），与提交五一起提交 |
 
 ## §8 待确认
 

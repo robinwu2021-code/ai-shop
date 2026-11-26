@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.invoice.InvoicePort;
 import ai.neargo.shop.spi.pay.PaidCollectionPort;
@@ -63,7 +64,7 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
 
     public StoreOrderSettlementServiceImpl(OrderMapper orders, SubOrderMapper subOrders, RecordMapper offline,
             StoreCollectionMapper collections, OutboxEventBus events, ObjectProvider<PaidCollectionPort> paidCollections,
-            ObjectProvider<InvoicePort> invoices, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            ObjectProvider<InvoicePort> invoices, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.orders = orders;
         this.subOrders = subOrders;
         this.offline = offline;

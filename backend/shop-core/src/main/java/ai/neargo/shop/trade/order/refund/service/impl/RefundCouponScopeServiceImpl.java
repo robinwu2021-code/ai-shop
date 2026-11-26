@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.order.refund.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.mapper.RefundObligationMapper;
@@ -26,7 +27,7 @@ public class RefundCouponScopeServiceImpl implements RefundCouponScopeService {
     public RefundCouponScopeServiceImpl(RefundObligationMapper obligations,StoreOrderMapper children,ObjectMapper json) {
         this.obligations=obligations; this.children=children; this.json=json;
     }
-    @Override @Transactional(propagation=Propagation.MANDATORY)
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation=Propagation.MANDATORY)
     public void freeze(String orderNo,String couponNo,CouponPort.Allocation allocation) {
         DataScopeContext.executeWithoutScope(() -> {
             var all=children.selectList(Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getOrderNo,orderNo));

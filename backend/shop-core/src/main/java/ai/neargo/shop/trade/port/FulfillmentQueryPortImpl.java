@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.port;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
 import ai.neargo.shop.trade.order.statemachine.Actor;
@@ -135,7 +136,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public boolean complete(String subOrderNo, String operatorNo, String label) {
         OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
@@ -207,7 +208,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.transaction.annotation.Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<String> markArrived(List<String> subOrderNos, String pickupNo, String operatorNo) {
         if (subOrderNos == null || subOrderNos.isEmpty()) {
             return List.of();
@@ -257,7 +258,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.transaction.annotation.Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void reportException(String subOrderNo, String operatorNo, String label) {
         OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()

@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Identity;
 import ai.neargo.shop.trade.entity.OrdIndustryOrderSource;
 import ai.neargo.shop.trade.mapper.TradeMappers.IndustryOrderSourceMapper;
@@ -29,7 +30,7 @@ public class IndustryTransactionRecoveryServiceImpl implements IndustryTransacti
 
     public IndustryTransactionRecoveryServiceImpl(IndustryOrderSourceMapper sources, CreateIntentMapper intents,
             IndustryOrderService orders, IndustryCheckoutService checkout,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.sources=sources; this.intents=intents; this.orders=orders; this.checkout=checkout;
         this.transactions=new TransactionTemplate(manager);
     }

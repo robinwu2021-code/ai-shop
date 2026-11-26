@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.media.ReceiptEvidencePort;
 import ai.neargo.shop.spi.media.ReceiptEvidencePort.ReceiptEvidence;
 import ai.neargo.shop.spi.media.ReceiptEvidencePort.ReceiptEvidenceQuery;
@@ -88,7 +89,7 @@ public class OfflineReceiptServiceImpl implements OfflineReceiptService {
             PaymentOperationPort payments,
             ObjectMapper json,
             CheckoutClock clock,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.access = access;
         this.operations = operations;
         this.requests = requests;

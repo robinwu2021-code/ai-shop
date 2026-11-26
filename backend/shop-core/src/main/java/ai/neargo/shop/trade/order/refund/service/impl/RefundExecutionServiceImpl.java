@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.order.refund.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.points.PointsRefundPort;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.settle.SettlePort.RefundEvidence;
@@ -37,7 +38,7 @@ import java.util.Map;
 
 /** Holds source capacity without calling a bank; all source changes commit in the platform transaction. */
 @Service("orderPointsRefundExecutionService")
-@Transactional("transactionManager")
+@Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
 public class RefundExecutionServiceImpl implements RefundExecutionService {
     private final RefundExecutionMapper store;
     private final RefundLedgerMapper ledgerStore;

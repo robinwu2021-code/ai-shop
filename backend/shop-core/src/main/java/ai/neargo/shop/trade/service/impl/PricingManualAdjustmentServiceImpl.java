@@ -7,6 +7,7 @@ import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.MoneyMinor;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.idem.IdempotencyService;
@@ -76,7 +77,7 @@ public class PricingManualAdjustmentServiceImpl implements PricingManualAdjustme
     public PricingManualAdjustmentServiceImpl(PolicyMapper policies,AdjustmentMapper adjustments,
             ObjectProvider<BizIdentityResolver> identities,PricingPreparationService preparations,
             PricingQuoteService quotes,PricingQuoteAssembler assembler,IdempotencyService idem,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this(policies,adjustments,Objects.requireNonNullElse(identities.getIfUnique(),BizIdentityResolver.NONE),
                 preparations,quotes,assembler,idem,manager,Clock.systemUTC());
     }

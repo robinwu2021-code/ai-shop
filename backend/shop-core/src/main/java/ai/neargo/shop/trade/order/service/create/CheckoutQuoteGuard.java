@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort;
@@ -57,7 +58,7 @@ public class CheckoutQuoteGuard {
             CouponPort coupons,
             ObjectMapper json,
             CheckoutClock clock,
-            @Qualifier("dataSource") DataSource source) {
+            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source) {
         this.operations = operations;
         this.quotes = quotes;
         this.confirmations = confirmations;

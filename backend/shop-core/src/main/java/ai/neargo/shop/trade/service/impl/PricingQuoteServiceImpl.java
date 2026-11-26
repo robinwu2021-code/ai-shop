@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -59,7 +60,7 @@ public class PricingQuoteServiceImpl implements PricingQuoteService {
     public PricingQuoteServiceImpl(PriceQuoteMapper quotes, PriceQuoteLineMapper lines,
             PriceQuoteAllocationMapper allocations, StorePricingConfigMapper configs,
             StorePricingRevisionMapper revisions, IdempotencyService idempotency, PricingQuoteAssembler assembler,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this(quotes, lines, allocations, configs, revisions, idempotency, assembler, manager, Clock.systemUTC());
     }
 

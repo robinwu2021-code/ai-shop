@@ -5,6 +5,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.ExpressCompanies;
 import ai.neargo.shop.common.StoreMarkets;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.spi.trade.ShippingUploadPort;
@@ -48,7 +49,7 @@ public class OrderShippingServiceImpl implements OrderShippingService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public ShipResult ship(String subOrderNo, ShipCommand command, OrderActor actor) {
         OrdSubOrder order = read.findOrder(subOrderNo);
         if (order == null || actor == null || !actor.owns(order)) {
@@ -72,7 +73,7 @@ public class OrderShippingServiceImpl implements OrderShippingService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public ShipResult correctByPlatform(String subOrderNo, String expectedShipmentNo, ShipCommand command,
                                         String operatorNo, String reason) {
         OrdSubOrder order = read.findOrder(subOrderNo);

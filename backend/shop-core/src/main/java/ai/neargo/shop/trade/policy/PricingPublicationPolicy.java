@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.policy;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -75,7 +76,7 @@ public class PricingPublicationPolicy {
 
     public PricingPublicationPolicy(PricingTemplateMapper templates, PricingTemplateRevisionMapper templateRevisions,
             StorePricingConfigMapper stores, StorePricingRevisionMapper storeRevisions, IdempotencyService idempotency,
-            OutboxEventBus events, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            OutboxEventBus events, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json) {
         this.templates = templates;
         this.templateRevisions = templateRevisions;

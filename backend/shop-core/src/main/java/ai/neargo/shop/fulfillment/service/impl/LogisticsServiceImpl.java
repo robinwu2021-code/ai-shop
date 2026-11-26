@@ -5,6 +5,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.IsoTime;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.fulfillment.dto.CarrierConfigVO;
 import ai.neargo.shop.fulfillment.dto.FreightTemplateVO;
 import ai.neargo.shop.fulfillment.entity.FulCarrier;
@@ -374,7 +375,7 @@ public class LogisticsServiceImpl implements LogisticsService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public FreightTemplateVO saveFreightTemplate(FreightTemplateCmd cmd, String operatorNo) {
         if (cmd.name() == null || cmd.name().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -424,7 +425,7 @@ public class LogisticsServiceImpl implements LogisticsService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public FreightTemplateVO archiveFreightTemplate(String templateNo, String operatorNo) {
         FulFreightTemplate row = requireTemplate(templateNo);
         // 默认模板归档不了：归档之后新商家没有模板可用

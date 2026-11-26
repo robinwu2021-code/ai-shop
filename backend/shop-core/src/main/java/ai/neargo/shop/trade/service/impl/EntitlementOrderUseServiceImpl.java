@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.SourceRef;
@@ -81,7 +82,7 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
         var row = unscoped(() -> uses.find(tenant, operation));
         return row == null || !entity.equals(row.getEntityNo()) ? null : view(row);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public OrderEntitlementUseView stage(EntitlementContext ctx, UseCommand c) {
         if (c.assetKind() != AssetKind.ORDER_COUPON || !"CORE".equals(c.sourceRef().sourceSystem())
                 || !"ORDER_USE".equals(c.sourceRef().sourceType())) unavailable();
@@ -121,7 +122,7 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
         events.publish(new UsePrepared(ctx.tenantNo(), c.entityNo(), c.operationNo()));
         return view(row);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void apply(EntitlementContext ctx, UseFact fact) {
         var c = fact.command();
         if (c == null || !(fact.operation().status() == State.HELD || fact.operation().status() == State.COMMITTED)) {
@@ -186,7 +187,7 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
         row.setStatus("APPLIED"); update(row, ctx.actorNo());
         costs.captureCoupon(ctx.tenantNo(), c.operationNo(), fact);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public OrdOrder sealForPayment(String tenant, String no) {
         var order = lockOrder(tenant, no);
         if (!OrdOrder.WAIT_PAY.equals(order.getStatus())) conflict();
@@ -203,7 +204,7 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
         seal.setOrderNo(no); seal.setPayAmount(order.getPayAmount()); seal.setCurrency(order.getCurrency());
         changed(unscoped(() -> seals.insert(seal))); return order;
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void decideForTerminalOrder(String tenant, String no) {
         var order = lockOrder(tenant, no);
         var row = byOrder(tenant, no, true);
@@ -220,7 +221,7 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
         row.setStatus(paid ? "COMMIT_DECIDED" : "CANCEL_DECIDED"); update(row, "ORDER");
         events.publish(new UseDecided(tenant, c.entityNo(), c.operationNo()));
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void acknowledge(EntitlementContext ctx, String entity, HoldView result) {
         var known = require(ctx.tenantNo(), entity, result.operationNo());
         lockOrder(ctx.tenantNo(), known.getOrderNo());

@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.policy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -45,7 +46,7 @@ public final class ServiceExecutionSchemaVerifier {
     private final String historySchema;
 
     /** Only existing primary datasource and Flyway owner settings are captured; construction performs no IO. */
-    public ServiceExecutionSchemaVerifier(@Qualifier("dataSource") DataSource source,
+    public ServiceExecutionSchemaVerifier(@Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source,
             @Value("${spring.flyway.table:flyway_schema_history}") String historyTable,
             @Value("${spring.flyway.default-schema:}") String historySchema) {
         this.source = Objects.requireNonNull(source, "source");

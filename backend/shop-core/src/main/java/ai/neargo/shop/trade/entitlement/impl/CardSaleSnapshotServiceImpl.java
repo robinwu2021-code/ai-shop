@@ -4,6 +4,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.trade.service.EntitlementSourceDecisionService;
@@ -37,7 +38,7 @@ public class CardSaleSnapshotServiceImpl implements CardSaleSnapshotService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<CardSaleSnapshotPlan.Snapshot> capture(CardSaleSnapshotPlan.OrderFacts order,
                                                         List<CardSaleSnapshotPlan.SaleLine> lines) {
         var plan = CardSaleSnapshotPlan.expand(order, lines);
@@ -60,7 +61,7 @@ public class CardSaleSnapshotServiceImpl implements CardSaleSnapshotService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public int recordPaidFromOrder(String orderNo) {
         OrdOrder order = orders.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
@@ -74,7 +75,7 @@ public class CardSaleSnapshotServiceImpl implements CardSaleSnapshotService {
     }
 
     @Override
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.MANDATORY)
     public int recordCancelledFromOrder(String orderNo) {
         return DataScopeContext.executeWithoutScope(() -> {
             var order = orders.selectOne(Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getTenantNo, TENANT)

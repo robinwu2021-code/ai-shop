@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.trade.service.CloseRuleService;
 import org.slf4j.Logger;
@@ -79,7 +80,7 @@ public class CloseRuleServiceImpl implements CloseRuleService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public CloseRuleVO save(int unpaidMinutes, int remindBeforeMinutes,
                             boolean autoRefundOnLateCallback, String operatorNo) {
         if (unpaidMinutes < MIN_UNPAID_MINUTES || unpaidMinutes > MAX_UNPAID_MINUTES) {

@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.order.refund.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.marketing.CouponPort;
@@ -42,7 +43,7 @@ public class RefundResourceServiceImpl implements RefundResourceService {
     public RefundResourceServiceImpl(RefundExecutionStore executions, StockPort stock, StoreOrderMapper children,
             ObjectProvider<CouponPort> coupons, ObjectProvider<PlatformSwitchPort> switches, ObjectMapper json,
             @Value("${shop.inventory.stock-authority:PLATFORM}") String authority,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.executions = executions;
         this.stock = stock;
         this.children = children;
