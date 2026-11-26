@@ -57,8 +57,8 @@ export interface SiAllowance {
 export type SiStatus = "ISSUED" | "VOIDED" | "REVOKING" | "REVOKED";
 /** 折让单状态：作废后累计折让回退、证明单不再出纸 */
 export type SiAllowanceStatus = "ACTIVE" | "VOIDED";
-/** HELD = 账号问题暂停（核验账号后自动恢复）；NEEDS_REVIEW = 服务商拒收，待人工处理后重传 */
-export type SiUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED" | "HELD" | "NEEDS_REVIEW";
+/** HELD = 账号问题暂停（核验账号后自动恢复）；REVIEW = 服务商拒收，待人工处理后重传 */
+export type SiUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED" | "HELD" | "REVIEW";
 /** 开票通道：本地桩 / 财政部 Turnkey（与后端 InvoiceGateway#code 一致）。 */
 /** 号段来源：MANUAL 商家登记 / PROVIDER 加值中心配给 */
 export type SiRangeOwner = "MANUAL" | "PROVIDER";

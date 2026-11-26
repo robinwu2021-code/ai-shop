@@ -110,7 +110,7 @@ public final class InvoiceMappers {
         @Select("SELECT entity_no AS entityNo,"
                 + " SUM(CASE WHEN status IN ('PENDING','SENDING','FAILED') THEN 1 ELSE 0 END) AS pending,"
                 + " SUM(CASE WHEN status='HELD' THEN 1 ELSE 0 END) AS held,"
-                + " SUM(CASE WHEN status='NEEDS_REVIEW' THEN 1 ELSE 0 END) AS needsReview,"
+                + " SUM(CASE WHEN status='REVIEW' THEN 1 ELSE 0 END) AS needsReview,"
                 + " SUM(CASE WHEN report_deadline_at <= #{now} THEN 1 ELSE 0 END) AS overdue,"
                 + " SUM(CASE WHEN report_warn_at <= #{now} AND report_deadline_at > #{now} THEN 1 ELSE 0 END) AS dueSoon"
                 + " FROM ivc_transmission WHERE tenant_no=#{tenant} AND status<>'SENT' GROUP BY entity_no")

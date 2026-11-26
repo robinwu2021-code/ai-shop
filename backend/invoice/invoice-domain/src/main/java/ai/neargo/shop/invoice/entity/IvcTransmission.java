@@ -1,5 +1,7 @@
 package ai.neargo.shop.invoice.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -28,11 +30,12 @@ public class IvcTransmission {
     private String messageType;
     private String refNo;
     private String payload;
-    /** PENDING / SENDING / SENT / FAILED / HELD（账号问题暂停）/ NEEDS_REVIEW（被拒，待人工） */
+    /** PENDING / SENDING / SENT / FAILED / HELD（账号问题暂停）/ REVIEW（被拒，待人工） */
     private String status;
-    private Integer attempts;
+    // 新库的非空列不带默认值（旧表有）：初值写在实体上，插入时由代码给出。
+    private Integer attempts = 0;
     /** Monotonic execution fence, including claims that did not report a result. */
-    private Long attemptSequence;
+    private Long attemptSequence = 0L;
     private LocalDateTime nextAttemptAt;
     private String lastError;
     private String gatewayRef;
@@ -41,7 +44,13 @@ public class IvcTransmission {
     /** 法定上报期限（V8） */
     private LocalDateTime reportDeadlineAt;
     /** 已告警级别（V8）：0 未告警 / 1 已预警 / 2 已逾期或已送达 */
-    private Integer deadlineLevel;
+    private Integer deadlineLevel = 0;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /** 创建人；不显式给就由公共字段填充器写当前操作人 */
+    @TableField(fill = FieldFill.INSERT)
+    private String createdBy;
+    /** 更新人 */
+    @TableField(fill = FieldFill.INSERT)
+    private String updatedBy;
 }

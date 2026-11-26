@@ -236,7 +236,7 @@ public final class InvoiceDtos {
     /** 运营端上传任务查询：status 为任务状态；overdue=true 只看已过法定期限未送达的。 */
     public record OpsTransmissionQuery(
             @Size(max = 64) String entityNo,
-            @Pattern(regexp = "PENDING|SENDING|SENT|FAILED|HELD|NEEDS_REVIEW") String status,
+            @Pattern(regexp = "PENDING|SENDING|SENT|FAILED|HELD|REVIEW") String status,
             Boolean overdue,
             @Min(1) Integer page,
             @Min(1) @Max(100) Integer size) {}
@@ -330,7 +330,7 @@ public final class InvoiceDtos {
             long allowedMinor,
             String status,
             String voidReason,
-            /** 开立报文上传状态：PENDING / SENDING / SENT / FAILED / HELD / NEEDS_REVIEW */
+            /** 开立报文上传状态：PENDING / SENDING / SENT / FAILED / HELD / REVIEW */
             String uploadStatus,
             /** 开立报文的法定上报期限；已送达后仍保留（看当时是否按期） */
             LocalDateTime uploadDeadlineAt,

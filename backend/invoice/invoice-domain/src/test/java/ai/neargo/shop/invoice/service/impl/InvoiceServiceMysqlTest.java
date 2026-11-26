@@ -148,10 +148,19 @@ import tools.jackson.databind.json.JsonMapper;
  * {@code jdbc:mysql://127.0.0.1:3308/?…}），每次建一个随机库、跑完删掉；没配置时跳过。
  */
 @SpringJUnitConfig(InvoiceServiceMysqlTest.Config.class)
-@TestPropertySource(properties = {"shop.invoice.regimes.TW_EGUI.default-gateway=TEST",
+@TestPropertySource(properties = {"shop.modules.invoice.datasource=service",
+        "shop.invoice.regimes.TW_EGUI.default-gateway=TEST",
         "shop.invoice.channel.environment=TEST", "shop.invoice.delivery.enabled=true",
         "shop.invoice.delivery.public-origin=https://invoice.example.test/shop-api-v2", "shop.mail.stub=false"})
 class InvoiceServiceMysqlTest {
+
+    /** 发票绑到另一个库：注册器在建 bean 定义时就要读到地址，所以走动态属性。 */
+    @org.springframework.test.context.DynamicPropertySource
+    static void serviceDatabase(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        registry.add("shop.datasources.service.url", Db::serviceUrl);
+        registry.add("shop.datasources.service.username", () -> Db.USER);
+        registry.add("shop.datasources.service.password", () -> Db.PASS);
+    }
 
     static final Scope SCOPE = new Scope("T1", "E1", "S1", "U1");
     static final String KEY_HEX = "0123456789ABCDEF0123456789ABCDEF";
@@ -175,7 +184,10 @@ class InvoiceServiceMysqlTest {
     @Autowired MailPort deliveryMail;
     @Autowired InvoiceChannelService invoiceChannels;
     @Autowired OutboxEventBus events;
+    /** 主库：旧迁移建的表，这里只用其中留在主库的那几张。 */
     @Autowired JdbcTemplate jdbc;
+    /** 发票库：设计的建表语句 + 补充脚本。 */
+    @Autowired @Qualifier("svc") JdbcTemplate svc;
     @Autowired InvoiceMapper invoiceRows;
     @Autowired ai.neargo.shop.invoice.service.InvoiceOpsService ops;
     @Autowired ai.neargo.shop.invoice.mapper.InvoiceMappers.AllowanceMapper allowanceRows;
@@ -184,12 +196,13 @@ class InvoiceServiceMysqlTest {
 
     @BeforeEach
     void reset() {
-        for (var t : List.of("ivc_invoice_delivery", "ivc_transmission_attempt", "ivc_channel_route_event", "ivc_channel_route", "ivc_channel_account_revision",
-                "ivc_channel_account", "ivc_channel_application_event", "ivc_channel_application_revision",
-                "ivc_channel_application", "ivc_invoice_application_event", "ivc_invoice_application_revision",
-                "ivc_invoice_application", "ivc_invoice_line", "ivc_allowance", "ivc_transmission", "ivc_invoice", "ivc_buyer_preference",
-                "ivc_user_carrier", "ivc_store_item", "ivc_store_setting",
-                "ivc_number_range", "ivc_regime_profile")) jdbc.update("DELETE FROM " + t);
+        for (var t : List.of("ivc_invoice_delivery", "ivc_channel_route_event", "ivc_channel_account_revision",
+                "ivc_channel_application_event", "ivc_channel_application_revision", "ivc_channel_application",
+                "ivc_invoice_application_event")) jdbc.update("DELETE FROM " + t);
+        for (var t : List.of("ivc_transmission_attempt", "ivc_channel_account", "ivc_invoice_application_revision",
+                "ivc_invoice_application", "ivc_invoice_line", "ivc_allowance", "ivc_transmission", "ivc_invoice",
+                "ivc_buyer_preference", "ivc_user_carrier", "ivc_store_item", "ivc_store_setting",
+                "ivc_number_range", "ivc_regime_profile")) svc.update("DELETE FROM " + t);
         sources.byNo.clear();
         sources.orders.clear();
         gateway.fail.set(false);
@@ -389,7 +402,7 @@ class InvoiceServiceMysqlTest {
         assertEquals(SCOPE.actorNo(), oldHistory.getLast().actorNo());
 
         assertTrue(secondProvider.seen.isEmpty());
-        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE ref_no=?"
+        assertEquals(2, svc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE ref_no=?"
                 + " AND gateway_code='PROV' AND channel_account_no=?", Integer.class, firstInvoice.invoiceNo(), first));
         assertEquals("VOIDED", invoices.voidInvoice(secondEntity, secondInvoice.invoiceNo(), "TEST VOID").status());
         assertEquals(1, transmissions.transmitNow(secondEntity, secondInvoice.invoiceNo()));
@@ -444,9 +457,81 @@ class InvoiceServiceMysqlTest {
         var linked = invoices.get(scope, issued.invoiceNo());
         assertEquals(request.applicationNo(), linked.applicationNo());
         assertEquals(2, linked.applicationRevisionNo());
-        assertEquals("創勢科技股份有限公司", jdbc.queryForObject(
+        assertEquals("創勢科技股份有限公司", svc.queryForObject(
                 "SELECT buyer_name FROM ivc_invoice WHERE invoice_no=?", String.class, issued.invoiceNo()));
         return issued;
+    }
+
+    /** S3：发票绑到自己的库之后，开票、折让的业务行一行都不落在主库的旧表里。 */
+    @Test
+    void issue_does_not_touch_primary_database() {
+        sources.paid("SO1", 105_000);
+        var receipt = issue("SO1");
+        invoices.allowance(SCOPE, receipt.invoiceNo(), 30_000, "退貨");
+
+        assertEquals(1, count("ivc_invoice"));
+        assertEquals(1, count("ivc_allowance"));
+        for (var table : List.of("ivc_invoice", "ivc_invoice_line", "ivc_allowance", "ivc_transmission",
+                "ivc_number_range", "ivc_regime_profile")) {
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class), "主库的 " + table);
+        }
+        // 「打印事实已就绪」在发票提交之后才发：证明联、交易明细、折让证明单各一条
+        verify(events, times(3)).publish(any(BusinessPrintFactReady.class));
+    }
+
+    /** 发票回滚时不留下任何事件：先提交、后发事件。 */
+    @Test
+    void print_fact_event_is_not_published_when_issue_rolls_back() {
+        sources.paid("SO1", 105_000);
+        svc.update("UPDATE ivc_number_range SET status='EXHAUSTED'");
+        assertCode(ErrorCode.INVOICE_NUMBER_EXHAUSTED, () -> issue("SO1"));
+        verify(events, times(0)).publish(any(BusinessPrintFactReady.class));
+    }
+
+    /** 申请事件在主库、提交后才记。事件丢了，同一把键的重试按业务状态回原结果，不重复开票。 */
+    @Test
+    void application_replay_falls_back_to_business_state_when_history_is_lost() {
+        sources.paid("SO1", 10_500);
+        var buyer = new BuyerReq("50765634", "創勢科技股份有限公司", null, null, null);
+        var request = invoiceApplications.submit(SCOPE, new SubmitApplicationReq("SUB_ORDER", "SO1", buyer), "k-submit");
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_invoice_application_event", Integer.class),
+                "事件记在主库");
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_invoice_application", Integer.class),
+                "申请本身不在主库");
+
+        jdbc.update("DELETE FROM ivc_invoice_application_event");
+        assertEquals(request.applicationNo(), invoiceApplications.submit(SCOPE,
+                new SubmitApplicationReq("SUB_ORDER", "SO1", buyer), "k-submit").applicationNo());
+        assertCode(ErrorCode.CONFLICT, () -> invoiceApplications.submit(SCOPE, new SubmitApplicationReq("SUB_ORDER",
+                "SO1", new BuyerReq("12345675", "另一個買方", null, null, null)), "k-other"));
+
+        var issued = invoiceApplications.issue(SCOPE, request.applicationNo(), new IssueApplicationReq(1), "k-issue");
+        jdbc.update("DELETE FROM ivc_invoice_application_event");
+        assertEquals(issued.invoiceNo(), invoiceApplications.issue(SCOPE, request.applicationNo(),
+                new IssueApplicationReq(1), "k-issue").invoiceNo());
+        assertEquals(1, count("ivc_invoice"));
+        assertEquals(SCOPE.actorNo(), svc.queryForObject(
+                "SELECT operator_no FROM ivc_invoice_application WHERE application_no=?", String.class,
+                request.applicationNo()));
+    }
+
+    /** 路由并在税制行上；路由事件、账户历史版记在主库。 */
+    @Test
+    void channel_route_lives_on_the_regime_profile_and_history_stays_in_primary() {
+        String rangeNo = svc.queryForObject("SELECT range_no FROM ivc_number_range LIMIT 1", String.class);
+        String accountNo = bindChannel(SCOPE, "PROV", "12345675", "OFFICE-OLD", rangeNo, 0L, false);
+
+        assertEquals(accountNo, svc.queryForObject(
+                "SELECT active_account_no FROM ivc_regime_profile WHERE entity_no=?", String.class, SCOPE.entityNo()));
+        assertEquals("TEST", svc.queryForObject(
+                "SELECT environment FROM ivc_regime_profile WHERE entity_no=?", String.class, SCOPE.entityNo()));
+        assertEquals(1, svc.queryForObject("SELECT current_revision FROM ivc_channel_account WHERE account_no=?",
+                Integer.class, accountNo));
+        assertEquals(32, accountNo.length(), "账户号列是 32 位");
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_channel_route_event", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_channel_account_revision", Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_channel_account", Integer.class));
+        assertEquals(1, invoiceChannels.routes(SCOPE).size());
     }
 
     @Test
@@ -459,19 +544,19 @@ class InvoiceServiceMysqlTest {
         for (int i = 0; i < n; i++) sources.paid("C" + i, 10_000);
         var numbers = concurrently(n, i -> issue("C" + i).fiscalNumber());
         assertEquals(n, new HashSet<>(numbers).size());
-        var all = jdbc.queryForList("SELECT fiscal_number FROM ivc_invoice ORDER BY fiscal_number", String.class);
+        var all = svc.queryForList("SELECT fiscal_number FROM ivc_invoice ORDER BY fiscal_number", String.class);
         assertEquals(n + 3, all.size());
         assertEquals("AB00000015", all.getLast(), "no gaps: 15 numbers, 15 invoices");
-        assertEquals(16, jdbc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class));
+        assertEquals(16, svc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class));
     }
 
     @Test
     void ac2ExhaustedRangeRejectsWithoutCreatingAnInvoice() {
-        jdbc.update("UPDATE ivc_number_range SET next_no=50");
+        svc.update("UPDATE ivc_number_range SET next_no=50");
         sources.paid("SO1", 1_000);
         sources.paid("SO2", 1_000);
         assertEquals("AB00000050", issue("SO1").fiscalNumber());
-        assertEquals("EXHAUSTED", jdbc.queryForObject("SELECT status FROM ivc_number_range", String.class));
+        assertEquals("EXHAUSTED", svc.queryForObject("SELECT status FROM ivc_number_range", String.class));
         assertCode(ErrorCode.INVOICE_NUMBER_EXHAUSTED, () -> issue("SO2"));
         assertEquals(1, count("ivc_invoice"));
     }
@@ -482,7 +567,7 @@ class InvoiceServiceMysqlTest {
         var results = concurrently(6, i -> issue("SO1").invoiceNo());
         assertEquals(1, new HashSet<>(results).size());
         assertEquals(1, count("ivc_invoice"));
-        assertEquals(2, jdbc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class));
+        assertEquals(2, svc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class));
         assertEquals(1, count("ivc_transmission"));
     }
 
@@ -493,7 +578,7 @@ class InvoiceServiceMysqlTest {
                 () -> invoices.issue(SCOPE, "SUB_ORDER", "SO1", new Buyer("12345678", null, null, null, null)));
         assertCode(ErrorCode.INVOICE_BUYER_INVALID,
                 () -> invoices.issue(SCOPE, "SUB_ORDER", "SO1", new Buyer(null, null, "3J0002", "/ABC+123", "8585")));
-        assertEquals(1, jdbc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class));
+        assertEquals(1, svc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class));
     }
 
     @Test
@@ -503,13 +588,13 @@ class InvoiceServiceMysqlTest {
         assertCode(ErrorCode.INVOICE_SOURCE_NOT_READY, () -> issue("BAD"));
         sources.paid("SO1", 105_000);
         var r = invoices.issue(SCOPE, "SUB_ORDER", "SO1", new Buyer("22099131", "台積", null, null, null));
-        var row = jdbc.queryForMap("SELECT sales_minor, tax_minor, total_minor, buyer_type FROM ivc_invoice"
+        var row = svc.queryForMap("SELECT sales_minor, tax_minor, total_minor, buyer_type FROM ivc_invoice"
                 + " WHERE invoice_no=?", r.invoiceNo());
         assertEquals(100_000L, ((Number) row.get("sales_minor")).longValue());
         assertEquals(5_000L, ((Number) row.get("tax_minor")).longValue());
         assertEquals(105_000L, ((Number) row.get("total_minor")).longValue());
         assertEquals("B2B", row.get("buyer_type"));
-        assertEquals(105_000L, jdbc.queryForObject(
+        assertEquals(105_000L, svc.queryForObject(
                 "SELECT SUM(amount_minor) FROM ivc_invoice_line WHERE invoice_no=?", Long.class, r.invoiceNo()));
     }
 
@@ -527,7 +612,7 @@ class InvoiceServiceMysqlTest {
         assertEquals(30_000, vo.freeTaxSalesMinor());
         assertEquals(List.of("TAXABLE", "ZERO", "EXEMPT"),
                 vo.lines().stream().map(l -> l.taxType()).toList());
-        String payload = jdbc.queryForObject("SELECT payload FROM ivc_transmission WHERE ref_no=?", String.class,
+        String payload = svc.queryForObject("SELECT payload FROM ivc_transmission WHERE ref_no=?", String.class,
                 r.invoiceNo());
         assertTrue(payload.matches("(?s).*\"TaxType\":\\s*\"9\".*"), payload);
         assertTrue(payload.matches("(?s).*\"ZeroTaxSalesAmount\":\\s*200.*"), payload);
@@ -576,7 +661,7 @@ class InvoiceServiceMysqlTest {
     }
 
     private String payloadOf(String invoiceNo) {
-        return jdbc.queryForObject("SELECT payload FROM ivc_transmission WHERE message_type='ISSUE' AND ref_no=?",
+        return svc.queryForObject("SELECT payload FROM ivc_transmission WHERE message_type='ISSUE' AND ref_no=?",
                 String.class, invoiceNo);
     }
 
@@ -620,7 +705,7 @@ class InvoiceServiceMysqlTest {
         var first = issue("SO1");
         var voided = invoices.voidInvoice(SCOPE, first.invoiceNo(), "開錯統編");
         assertEquals("VOIDED", voided.status());
-        assertEquals(1, jdbc.queryForObject(
+        assertEquals(1, svc.queryForObject(
                 "SELECT COUNT(*) FROM ivc_transmission WHERE message_type='VOID' AND ref_no=?", Integer.class,
                 first.invoiceNo()));
         var ref = InvoicePrintSourceFactsPortImpl.ref(row(first.invoiceNo()));
@@ -634,7 +719,7 @@ class InvoiceServiceMysqlTest {
     void ac10PreviousPeriodCannotBeVoided() {
         sources.paid("SO1", 1_000);
         var r = issue("SO1");
-        jdbc.update("UPDATE ivc_invoice SET period_code='11410' WHERE invoice_no=?", r.invoiceNo());
+        svc.update("UPDATE ivc_invoice SET period_code='11410' WHERE invoice_no=?", r.invoiceNo());
         assertCode(ErrorCode.INVOICE_VOID_PERIOD_CLOSED, () -> invoices.voidInvoice(SCOPE, r.invoiceNo(), "x"));
     }
 
@@ -647,7 +732,7 @@ class InvoiceServiceMysqlTest {
         assertEquals(1_400, after.allowances().getFirst().taxMinor(), "300 元含稅中的稅額 = 300 − round(285.71)");
         assertCode(ErrorCode.INVOICE_ALLOWANCE_EXCEEDED, () -> invoices.allowance(SCOPE, r.invoiceNo(), 80_000, "x"));
         assertEquals(1, count("ivc_allowance"));
-        assertEquals(r.fiscalNumber() + "01", jdbc.queryForObject(
+        assertEquals(r.fiscalNumber() + "01", svc.queryForObject(
                 "SELECT fiscal_allowance_number FROM ivc_allowance", String.class), "对外折让单号 = 发票号码 + 序号");
         assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.voidInvoice(SCOPE, r.invoiceNo(), "x"));
     }
@@ -658,9 +743,9 @@ class InvoiceServiceMysqlTest {
                 null, null, "OFFICE-1", "pos-user", "pos-secret", null, null));
         assertEquals("OFFICE-1", profile.providerAccountCode());
         assertTrue(profile.providerCredentialConfigured());
-        var row = jdbc.queryForMap("SELECT * FROM ivc_regime_profile WHERE entity_no='E1'");
+        var row = svc.queryForMap("SELECT * FROM ivc_regime_profile WHERE entity_no='E1'");
         assertFalse(row.values().stream().anyMatch(v -> String.valueOf(v).contains("pos-secret")), "密码不落业务表");
-        jdbc.update("UPDATE ivc_regime_profile SET qr_key_ref=NULL");
+        svc.update("UPDATE ivc_regime_profile SET qr_key_ref=NULL");
 
         var office = setup.verifyProvider(SCOPE);
         assertTrue(office.qrKeyStored(), "服务商回的 QR 金钥存进 secret");
@@ -671,7 +756,7 @@ class InvoiceServiceMysqlTest {
         assertEquals("PROVIDER", range.allocationOwner());
         assertEquals(12_345_600, range.startNo());
         assertEquals(range.rangeNo(), setup.fetchProviderRange(SCOPE, period).rangeNo(), "同一段取回两次只入库一次");
-        assertEquals(1, jdbc.queryForObject(
+        assertEquals(1, svc.queryForObject(
                 "SELECT COUNT(*) FROM ivc_number_range WHERE allocation_owner='PROVIDER' AND apply_id='APPLY-1'",
                 Integer.class));
 
@@ -680,7 +765,7 @@ class InvoiceServiceMysqlTest {
         provider.seen.clear();
         assertEquals(1, transmissions.transmitDue(10));
         assertEquals("pos-secret", provider.seen.getFirst().secret(), "上传时现解账号");
-        assertEquals("P-" + r.invoiceNo(), jdbc.queryForObject(
+        assertEquals("P-" + r.invoiceNo(), svc.queryForObject(
                 "SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?", String.class, r.invoiceNo()));
     }
 
@@ -780,7 +865,7 @@ class InvoiceServiceMysqlTest {
         assertEquals("TW_EGUI", followed.regimeCode());
         assertEquals("TEST", followed.gatewayCode());
         assertEquals("DEFAULT", followed.gatewaySource());
-        assertEquals(null, jdbc.queryForObject("SELECT gateway_code FROM ivc_regime_profile", String.class),
+        assertEquals(null, svc.queryForObject("SELECT gateway_code FROM ivc_regime_profile", String.class),
                 "跟随默认存空值：默认一换，它就跟着换");
         assertCode(ErrorCode.INVOICE_GATEWAY_UNSUPPORTED, () -> setup.saveProfile(SCOPE, new RegimeProfileReq(
                 "TW_EGUI", "12345675", "示例營業人", "NOPE", null, null, null, null, null, null, null, null)));
@@ -794,9 +879,9 @@ class InvoiceServiceMysqlTest {
         assertEquals("DEFAULT", setup.profile(SCOPE).orElseThrow().gatewaySource(), "空串 = 改回跟随默认");
         sources.paid("SO2", 1_000);
         var second = issue("SO2");
-        assertEquals("PROV", jdbc.queryForObject("SELECT gateway_code FROM ivc_transmission WHERE ref_no=?",
+        assertEquals("PROV", svc.queryForObject("SELECT gateway_code FROM ivc_transmission WHERE ref_no=?",
                 String.class, first.invoiceNo()), "开出的票冻结在当时的供应商");
-        assertEquals("TEST", jdbc.queryForObject("SELECT gateway_code FROM ivc_transmission WHERE ref_no=?",
+        assertEquals("TEST", svc.queryForObject("SELECT gateway_code FROM ivc_transmission WHERE ref_no=?",
                 String.class, second.invoiceNo()));
         provider.seen.clear();
         transmissions.checkWithProvider(SCOPE, first.invoiceNo());
@@ -811,7 +896,7 @@ class InvoiceServiceMysqlTest {
         sources.paid("SO1", 105_000);
         var r = issue("SO1");
         invoices.allowance(SCOPE, r.invoiceNo(), 30_000, "退一杯");
-        jdbc.update("UPDATE ivc_transmission SET report_deadline_at = UTC_TIMESTAMP(3) - INTERVAL 1 MINUTE"
+        svc.update("UPDATE ivc_transmission SET report_deadline_at = UTC_TIMESTAMP(3) - INTERVAL 1 MINUTE"
                 + " WHERE message_type = 'ISSUE'");
 
         var all = ops.sellers("T1", null, new OpsSellerQuery(null, null, null, null, null)).records();
@@ -827,7 +912,7 @@ class InvoiceServiceMysqlTest {
                 "E1 剩 49 < 50，E2 没号段");
         assertEquals(List.of("E2"), entities(new OpsSellerQuery("PROV", null, null, null, null)));
         assertEquals(List.of("E2"), entities(new OpsSellerQuery(null, null, "53212539", null, null)));
-        jdbc.update("UPDATE ivc_regime_profile SET provider_held_at = UTC_TIMESTAMP(3), provider_hold_reason = 'x'"
+        svc.update("UPDATE ivc_regime_profile SET provider_held_at = UTC_TIMESTAMP(3), provider_hold_reason = 'x'"
                 + " WHERE entity_no = 'E2'");
         assertEquals(List.of("E2"), entities(new OpsSellerQuery(null, "HELD", null, null, null)));
         assertEquals(1, ops.sellers("T1", null, new OpsSellerQuery(null, null, null, 2, 1)).records().size(), "分页");
@@ -866,7 +951,7 @@ class InvoiceServiceMysqlTest {
         var r2 = issue("SO2");
         provider.sendCode = "S1";   // 上传回「失败」→ 待人工；实际上鲸跃已收到
         transmissions.transmitDue(10);
-        assertEquals("NEEDS_REVIEW", invoices.get(SCOPE, r2.invoiceNo()).uploadStatus());
+        assertEquals("REVIEW", invoices.get(SCOPE, r2.invoiceNo()).uploadStatus());
 
         var check = transmissions.checkWithProvider(SCOPE, r2.invoiceNo());
         assertEquals(List.of("ISSUE"), check.reconciled(), "鲸跃已有这张票：补记已送达");
@@ -904,13 +989,13 @@ class InvoiceServiceMysqlTest {
         assertArrayEquals(new int[] {1, 0}, setup.watchRanges(now, Duration.ZERO), "50 < 60：提醒");
         assertArrayEquals(new int[] {0, 0}, setup.watchRanges(now, Duration.ZERO), "同期同级只提醒一次");
 
-        jdbc.update("UPDATE ivc_number_range SET next_no = end_no + 1, status = 'EXHAUSTED'");
+        svc.update("UPDATE ivc_number_range SET next_no = end_no + 1, status = 'EXHAUSTED'");
         assertArrayEquals(new int[] {1, 0}, setup.watchRanges(now, Duration.ZERO), "用尽再提醒一次");
         assertArrayEquals(new int[] {0, 0}, setup.watchRanges(now, Duration.ZERO));
 
         setup.addRange(SCOPE, new NumberRangeReq("TW_EGUI", period, "AB", 51, 200, null));
         assertArrayEquals(new int[] {0, 0}, setup.watchRanges(now, Duration.ZERO));
-        assertEquals(null, jdbc.queryForObject("SELECT range_alert_key FROM ivc_regime_profile", String.class),
+        assertEquals(null, svc.queryForObject("SELECT range_alert_key FROM ivc_regime_profile", String.class),
                 "补足后清掉，下次跌破重新提醒");
 
         var end = TwPeriods.periodEnd(period);
@@ -932,17 +1017,17 @@ class InvoiceServiceMysqlTest {
         var end = TwPeriods.periodEnd(period);
         assertArrayEquals(new int[] {0, 1}, setup.watchRanges(end.minus(Duration.ofHours(1)), Duration.ofDays(5)),
                 "期末前自动领下期");
-        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_number_range WHERE period_code = ?"
+        assertEquals(1, svc.queryForObject("SELECT COUNT(*) FROM ivc_number_range WHERE period_code = ?"
                 + " AND allocation_owner = 'PROVIDER'", Integer.class, TwPeriods.periodOf(end)), "下期号段已入库");
 
         int calls = provider.seen.size();
-        jdbc.update("UPDATE ivc_number_range SET next_no = end_no + 1, status = 'EXHAUSTED' WHERE period_code = ?",
+        svc.update("UPDATE ivc_number_range SET next_no = end_no + 1, status = 'EXHAUSTED' WHERE period_code = ?",
                 period);
-        jdbc.update("UPDATE ivc_regime_profile SET provider_held_at = UTC_TIMESTAMP(3), range_alert_key = NULL");
+        svc.update("UPDATE ivc_regime_profile SET provider_held_at = UTC_TIMESTAMP(3), range_alert_key = NULL");
         assertArrayEquals(new int[] {1, 0}, setup.watchRanges(now, Duration.ZERO), "账号暂停中：只提醒");
         assertEquals(calls, provider.seen.size(), "暂停中不打服务商");
 
-        jdbc.update("UPDATE ivc_regime_profile SET provider_held_at = NULL, range_alert_key = NULL");
+        svc.update("UPDATE ivc_regime_profile SET provider_held_at = NULL, range_alert_key = NULL");
         provider.failCode = "exist";
         assertArrayEquals(new int[] {1, 0}, setup.watchRanges(now, Duration.ZERO), "领号失败转提醒");
         assertEquals(calls + 1, provider.seen.size());
@@ -963,7 +1048,7 @@ class InvoiceServiceMysqlTest {
 
         invoices.voidInvoice(SCOPE, r1.invoiceNo(), "開錯");
         assertEquals(1, transmissions.transmitNow(SCOPE, r1.invoiceNo()), "作废当场送出");
-        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE ref_no=? AND status<>'SENT'",
+        assertEquals(0, svc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE ref_no=? AND status<>'SENT'",
                 Integer.class, r1.invoiceNo()));
 
         assertEquals(1, transmissions.transmitDue(10), "定时任务只剩另一张");
@@ -977,14 +1062,14 @@ class InvoiceServiceMysqlTest {
         assertTrue(invoices.get(SCOPE, r.invoiceNo()).uploadDeadlineAt() != null);
         assertArrayEquals(new int[] {0, 0}, transmissions.checkDeadlines(100));
 
-        jdbc.update("UPDATE ivc_transmission SET report_warn_at = UTC_TIMESTAMP(3) - INTERVAL 1 MINUTE");
+        svc.update("UPDATE ivc_transmission SET report_warn_at = UTC_TIMESTAMP(3) - INTERVAL 1 MINUTE");
         assertArrayEquals(new int[] {1, 0}, transmissions.checkDeadlines(100));
         assertArrayEquals(new int[] {0, 0}, transmissions.checkDeadlines(100), "同一级只报一次");
         var soon = transmissions.backlog(SCOPE);
         assertEquals(1, soon.pending());
         assertEquals(1, soon.dueSoon());
 
-        jdbc.update("UPDATE ivc_transmission SET report_deadline_at = UTC_TIMESTAMP(3) - INTERVAL 1 MINUTE");
+        svc.update("UPDATE ivc_transmission SET report_deadline_at = UTC_TIMESTAMP(3) - INTERVAL 1 MINUTE");
         assertArrayEquals(new int[] {0, 1}, transmissions.checkDeadlines(100));
         assertArrayEquals(new int[] {0, 0}, transmissions.checkDeadlines(100));
         var late = transmissions.backlog(SCOPE);
@@ -1003,13 +1088,14 @@ class InvoiceServiceMysqlTest {
         sources.paid("SO1", 1_000);
         var b2b = invoices.issue(SCOPE, "SUB_ORDER", "SO1", new Buyer("12345675", "示例買方", null, null, null));
         assertEquals(168, hoursToDeadline(b2b.invoiceNo()), "B2B 7 日");
-        jdbc.update("UPDATE ivc_transmission SET report_warn_at = UTC_TIMESTAMP(3) - INTERVAL 2 DAY,"
+        svc.update("UPDATE ivc_transmission SET report_warn_at = UTC_TIMESTAMP(3) - INTERVAL 2 DAY,"
                 + " report_deadline_at = UTC_TIMESTAMP(3) - INTERVAL 1 DAY");
         assertArrayEquals(new int[] {0, 1}, transmissions.checkDeadlines(100), "直接跨过两级只报逾期");
     }
 
     private long hoursToDeadline(String invoiceNo) {
-        return jdbc.queryForObject("SELECT TIMESTAMPDIFF(HOUR, created_at, report_deadline_at) FROM ivc_transmission"
+        // 新库的 created_at 只到秒（会四舍五入），按秒差取整到小时
+        return svc.queryForObject("SELECT ROUND(TIMESTAMPDIFF(SECOND, created_at, report_deadline_at) / 3600) FROM ivc_transmission"
                 + " WHERE ref_no=?", Long.class, invoiceNo);
     }
 
@@ -1025,7 +1111,7 @@ class InvoiceServiceMysqlTest {
         assertEquals(0, after.allowedMinor(), "累计折让回退");
         assertEquals("VOIDED", after.allowances().getFirst().status());
         assertEquals("開錯", after.allowances().getFirst().voidReason());
-        String payload = jdbc.queryForObject("SELECT payload FROM ivc_transmission WHERE message_type='ALLOWANCE_VOID'"
+        String payload = svc.queryForObject("SELECT payload FROM ivc_transmission WHERE message_type='ALLOWANCE_VOID'"
                 + " AND ref_no=?", String.class, allowanceNo);
         var g0501 = JsonMapper.builder().build().readTree(payload);
         assertEquals("G0501", g0501.path("mig").asText());
@@ -1050,7 +1136,7 @@ class InvoiceServiceMysqlTest {
         var r = issue("SO1");
         String allowanceNo = invoices.allowance(SCOPE, r.invoiceNo(), 30_000, "退一杯").allowances().getFirst()
                 .allowanceNo();
-        jdbc.update("UPDATE ivc_allowance SET created_at = DATE_SUB(created_at, INTERVAL 70 DAY)");
+        svc.update("UPDATE ivc_allowance SET created_at = DATE_SUB(created_at, INTERVAL 70 DAY)");
         assertCode(ErrorCode.INVOICE_VOID_PERIOD_CLOSED,
                 () -> invoices.voidAllowance(SCOPE, r.invoiceNo(), allowanceNo, "x"));
         assertCode(ErrorCode.INVOICE_NOT_FOUND, () -> invoices.voidAllowance(SCOPE, r.invoiceNo(), "NOPE", "x"));
@@ -1067,7 +1153,7 @@ class InvoiceServiceMysqlTest {
         assertEquals(0, transmissions.transmitDue(10));
         assertEquals(1, provider.sends.get(), "第一张认证失败后，同主体的第二张不再打到服务商");
         assertEquals(2, countStatus("HELD"));
-        assertEquals("prov invalid", jdbc.queryForObject(
+        assertEquals("prov invalid", svc.queryForObject(
                 "SELECT provider_hold_reason FROM ivc_regime_profile WHERE entity_no='E1'", String.class));
         assertEquals("HELD", invoices.get(SCOPE, first.invoiceNo()).uploadStatus());
 
@@ -1091,7 +1177,7 @@ class InvoiceServiceMysqlTest {
         var r = issue("SO1");
         provider.sendCode = "M1";
         transmissions.transmitDue(10);
-        assertEquals("NEEDS_REVIEW", invoices.get(SCOPE, r.invoiceNo()).uploadStatus());
+        assertEquals("REVIEW", invoices.get(SCOPE, r.invoiceNo()).uploadStatus());
         transmissions.transmitDue(10);
         assertEquals(1, provider.sends.get(), "被拒的报文不自动重发");
 
@@ -1105,7 +1191,7 @@ class InvoiceServiceMysqlTest {
         var r2 = issue("SO2");
         provider.sendCode = "error";
         transmissions.transmitDue(10);
-        var row = jdbc.queryForMap("SELECT status, next_attempt_at > UTC_TIMESTAMP(3) AS later FROM ivc_transmission"
+        var row = svc.queryForMap("SELECT status, next_attempt_at > UTC_TIMESTAMP(3) AS later FROM ivc_transmission"
                 + " WHERE ref_no=?", r2.invoiceNo());
         assertEquals("FAILED", row.get("status"), "服务商系统错误仍按退避重试");
         assertEquals(1L, ((Number) row.get("later")).longValue());
@@ -1147,14 +1233,14 @@ class InvoiceServiceMysqlTest {
     @Test
     void p2BlankRangesAreReportedOncePerRangeAndRetriedOnFailure() {
         useProvider();
-        jdbc.update("UPDATE ivc_number_range SET next_no=21");      // AB 1–50 用掉 1–20
+        svc.update("UPDATE ivc_number_range SET next_no=21");      // AB 1–50 用掉 1–20
         var after = TwPeriods.periodEnd(period).plus(Duration.ofHours(1));   // 下一期开始后：上一期 = period
 
         provider.trackFailCode = "S030";
         assertEquals(0, setup.reportBlankRanges(after));
-        assertEquals("S030", jdbc.queryForObject("SELECT blank_report_error FROM ivc_number_range", String.class),
+        assertEquals("S030", svc.queryForObject("SELECT blank_report_error FROM ivc_number_range", String.class),
                 "失败记原因");
-        assertEquals(null, jdbc.queryForObject("SELECT blank_reported_at FROM ivc_number_range", Object.class));
+        assertEquals(null, svc.queryForObject("SELECT blank_reported_at FROM ivc_number_range", Object.class));
 
         provider.trackFailCode = null;
         assertEquals(1, setup.reportBlankRanges(after));
@@ -1165,7 +1251,7 @@ class InvoiceServiceMysqlTest {
         assertEquals("12345675", report.sellerTaxId());
         assertEquals(List.of(new ai.neargo.shop.invoice.gateway.TrackCapability.TrackRange("07", "AB", 21, 50)),
                 report.ranges(), "只报未用的 21–50");
-        assertEquals(null, jdbc.queryForObject("SELECT blank_report_error FROM ivc_number_range", String.class));
+        assertEquals(null, svc.queryForObject("SELECT blank_report_error FROM ivc_number_range", String.class));
 
         assertEquals(0, setup.reportBlankRanges(after), "同一段不重复上报");
         assertEquals(0, setup.reportBlankRanges(Instant.now()), "当期还没结束：上一期没有号段");
@@ -1194,7 +1280,7 @@ class InvoiceServiceMysqlTest {
 
     /** 每次查进度前把注销中的发票 updated_at 拨回，模拟「距上次检查已超过间隔」。 */
     private int[] checkRevocationsNow() {
-        jdbc.update("UPDATE ivc_invoice SET updated_at = DATE_SUB(updated_at, INTERVAL 1 HOUR) WHERE status='REVOKING'");
+        svc.update("UPDATE ivc_invoice SET updated_at = DATE_SUB(updated_at, INTERVAL 1 HOUR) WHERE status='REVOKING'");
         return transmissions.checkRevocations(Instant.now(), TEN_MIN, DAY, FIVE_DAYS);
     }
 
@@ -1220,7 +1306,7 @@ class InvoiceServiceMysqlTest {
         assertEquals("REVOKING", v.status());
         assertEquals("買方填錯", v.revocation().reason());
         assertFalse(v.revocable());
-        var payload = jdbc.queryForObject("SELECT payload FROM ivc_transmission WHERE message_type='REVOKE' AND ref_no=?",
+        var payload = svc.queryForObject("SELECT payload FROM ivc_transmission WHERE message_type='REVOKE' AND ref_no=?",
                 String.class, no);
         assertTrue(payload.contains("F0701") && payload.contains("買方填錯"), payload);   // JSON 列会重排空白
 
@@ -1250,7 +1336,7 @@ class InvoiceServiceMysqlTest {
         useProvider();
         var no = issuedAndSent("SO1");
         var fiscal = invoices.get(SCOPE, no).fiscalNumber();
-        int nextBefore = jdbc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class);
+        int nextBefore = svc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class);
         invoices.revoke(SCOPE, no, "買方填錯");
         assertArrayEquals(new int[] {0, 0, 0}, checkRevocationsNow(), "注销报文还没送达：不查");
         transmissions.transmitDue(10);
@@ -1260,7 +1346,7 @@ class InvoiceServiceMysqlTest {
         assertArrayEquals(new int[] {1, 0, 0}, checkRevocationsNow());
         assertEquals(fiscal + "@" + TwPeriods.local(Instant.now()).toLocalDate(), provider.revokeChecks.getLast());
         assertEquals("REVOKED", invoices.get(SCOPE, no).status());
-        assertEquals(null, jdbc.queryForObject("SELECT active_fiscal_key FROM ivc_invoice WHERE invoice_no=?", String.class, no));
+        assertEquals(null, svc.queryForObject("SELECT active_fiscal_key FROM ivc_invoice WHERE invoice_no=?", String.class, no));
 
         var fresh = invoices.reissue(SCOPE, no, new Buyer("53212539", "示例買方股份有限公司", null, null, null));
         assertEquals(fiscal, fresh.fiscalNumber(), "同号重开");
@@ -1269,11 +1355,11 @@ class InvoiceServiceMysqlTest {
         assertEquals("B2B", fresh.buyerType());
         assertEquals(no, fresh.revocation().revisedFromInvoiceNo());
         assertEquals(fresh.invoiceNo(), invoices.get(SCOPE, no).revocation().revisedToInvoiceNo());
-        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE message_type='ISSUE' AND ref_no=?",
+        assertEquals(1, svc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE message_type='ISSUE' AND ref_no=?",
                 Integer.class, fresh.invoiceNo()));
-        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_invoice WHERE fiscal_number=?", Integer.class, fiscal));
+        assertEquals(2, svc.queryForObject("SELECT COUNT(*) FROM ivc_invoice WHERE fiscal_number=?", Integer.class, fiscal));
         assertCode(ErrorCode.INVOICE_STATE_INVALID, () -> invoices.reissue(SCOPE, no, null));
-        assertEquals(nextBefore, jdbc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class),
+        assertEquals(nextBefore, svc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class),
                 "重开不取新号");
     }
 
@@ -1292,8 +1378,8 @@ class InvoiceServiceMysqlTest {
         assertTrue(back.revocable());
 
         invoices.revoke(SCOPE, no, "第二次");
-        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE message_type='REVOKE'", Integer.class));
-        assertEquals("PENDING", jdbc.queryForObject("SELECT status FROM ivc_transmission WHERE message_type='REVOKE'", String.class));
+        assertEquals(1, svc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE message_type='REVOKE'", Integer.class));
+        assertEquals("PENDING", svc.queryForObject("SELECT status FROM ivc_transmission WHERE message_type='REVOKE'", String.class));
         provider.sendCode = "S040";
         transmissions.transmitDue(10);
         var rejected = invoices.get(SCOPE, no);
@@ -1309,7 +1395,7 @@ class InvoiceServiceMysqlTest {
         var fiscal = invoices.get(SCOPE, no).fiscalNumber();
         invoices.revoke(SCOPE, no, "x");
         transmissions.transmitDue(10);
-        jdbc.update("UPDATE ivc_invoice SET revoke_requested_at = DATE_SUB(revoke_requested_at, INTERVAL 2 DAY)");
+        svc.update("UPDATE ivc_invoice SET revoke_requested_at = DATE_SUB(revoke_requested_at, INTERVAL 2 DAY)");
         assertArrayEquals(new int[] {0, 0, 1}, checkRevocationsNow(), "注销中超过 24 小时");
         assertArrayEquals(new int[] {0, 0, 0}, checkRevocationsNow(), "只提醒一次");
 
@@ -1328,7 +1414,7 @@ class InvoiceServiceMysqlTest {
                 "已注销未重开的号码作空白上报：" + spans);
         assertEquals(0, setup.reportBlankRanges(end.plus(Duration.ofHours(1))), "只报一次");
 
-        jdbc.update("UPDATE ivc_invoice SET period_code='11002' WHERE invoice_no=?", no);
+        svc.update("UPDATE ivc_invoice SET period_code='11002' WHERE invoice_no=?", no);
         assertCode(ErrorCode.INVOICE_VOID_PERIOD_CLOSED, () -> invoices.reissue(SCOPE, no, null));
     }
 
@@ -1343,9 +1429,9 @@ class InvoiceServiceMysqlTest {
         var e = assertThrows(BizException.class, () -> issue("SO1"));
         assertEquals(ErrorCode.INVOICE_PROVIDER_UNSUPPORTED, e.errorCode());
         assertEquals(List.of("PROV", "zero-rated invoices are not supported"), List.of(e.args()));
-        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_invoice", Integer.class));
-        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission", Integer.class));
-        assertEquals(1, jdbc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class), "号码没占用");
+        assertEquals(0, svc.queryForObject("SELECT COUNT(*) FROM ivc_invoice", Integer.class));
+        assertEquals(0, svc.queryForObject("SELECT COUNT(*) FROM ivc_transmission", Integer.class));
+        assertEquals(1, svc.queryForObject("SELECT next_no FROM ivc_number_range", Integer.class), "号码没占用");
         provider.preflightReason = null;
         assertEquals("AB00000001", issue("SO1").fiscalNumber(), "放行后同一号码照常开出");
     }
@@ -1381,7 +1467,7 @@ class InvoiceServiceMysqlTest {
         assertEquals(ErrorCode.INVOICE_PROVIDER_UNSUPPORTED, e.errorCode());
         assertTrue(provider.seen.isEmpty(), "窗口外不打服务商");
 
-        jdbc.update("UPDATE ivc_regime_profile SET qr_key_ref=NULL");
+        svc.update("UPDATE ivc_regime_profile SET qr_key_ref=NULL");
         provider.rangeQrKey = KEY_HEX;
         setup.fetchProviderRange(SCOPE, period);
         assertFalse(setup.profile(SCOPE).orElseThrow().qrKeyConfigured(), "默认商家手填：领号回传的不当金钥");
@@ -1434,7 +1520,7 @@ class InvoiceServiceMysqlTest {
     }
 
     private int countStatus(String status) {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE status=?", Integer.class, status);
+        return svc.queryForObject("SELECT COUNT(*) FROM ivc_transmission WHERE status=?", Integer.class, status);
     }
 
     @Test
@@ -1460,13 +1546,13 @@ class InvoiceServiceMysqlTest {
         var r = issue("SO1");
         gateway.fail.set(true);
         assertEquals(0, transmissions.transmitDue(10));
-        var failed = jdbc.queryForMap("SELECT status, attempts, next_attempt_at > UTC_TIMESTAMP(3) AS later,"
+        var failed = svc.queryForMap("SELECT status, attempts, next_attempt_at > UTC_TIMESTAMP(3) AS later,"
                 + " last_error FROM ivc_transmission WHERE ref_no=?", r.invoiceNo());
         assertEquals("FAILED", failed.get("status"));
         assertEquals(1, ((Number) failed.get("attempts")).intValue());
         assertEquals(1L, ((Number) failed.get("later")).longValue());
         gateway.fail.set(false);
-        jdbc.update("UPDATE ivc_transmission SET next_attempt_at=UTC_TIMESTAMP(3) - INTERVAL 1 SECOND");
+        svc.update("UPDATE ivc_transmission SET next_attempt_at=UTC_TIMESTAMP(3) - INTERVAL 1 SECOND");
         assertEquals(1, transmissions.transmitDue(10));
         assertEquals("SENT", invoices.get(SCOPE, r.invoiceNo()).uploadStatus());
         assertEquals(1, gateway.payloads.size(), "same payload, sent once successfully");
@@ -1499,7 +1585,7 @@ class InvoiceServiceMysqlTest {
                 assertEquals("STARTED", committed.outcome(), "journal must commit before network");
                 assertEquals(1L, committed.attemptIndex());
                 assertEquals(SCOPE.actorNo(), committed.actorNo());
-                jdbc.update("UPDATE ivc_transmission SET updated_at=UTC_TIMESTAMP(3) - INTERVAL 11 MINUTE WHERE ref_no=?",
+                svc.update("UPDATE ivc_transmission SET updated_at=UTC_TIMESTAMP(3) - INTERVAL 11 MINUTE WHERE ref_no=?",
                         invoice.invoiceNo());
                 assertEquals(1, transmissions.transmitDue(10));
             } finally {
@@ -1512,9 +1598,9 @@ class InvoiceServiceMysqlTest {
         assertEquals(List.of("UNKNOWN", "ACCEPTED"), attempts.stream().map(a -> a.outcome()).toList());
         assertEquals("STALE_CLAIM", attempts.getFirst().safeCode());
         assertEquals(attempts.getFirst().payloadHash(), attempts.getLast().payloadHash());
-        assertEquals("G-NEW", jdbc.queryForObject("SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?",
+        assertEquals("G-NEW", svc.queryForObject("SELECT gateway_ref FROM ivc_transmission WHERE ref_no=?",
                 String.class, invoice.invoiceNo()));
-        assertEquals(1, jdbc.queryForObject("SELECT attempts FROM ivc_transmission WHERE ref_no=?",
+        assertEquals(1, svc.queryForObject("SELECT attempts FROM ivc_transmission WHERE ref_no=?",
                 Integer.class, invoice.invoiceNo()));
         assertCode(ErrorCode.INVOICE_NOT_FOUND, () -> transmissionAudit.list(
                 new Scope(SCOPE.tenantNo(), SCOPE.entityNo(), "OTHER", SCOPE.actorNo()), invoice.invoiceNo()));
@@ -1522,7 +1608,7 @@ class InvoiceServiceMysqlTest {
 
     @Test
     void ac14NoRegimeMeansNoInvoice() {
-        jdbc.update("UPDATE ivc_regime_profile SET status='SUSPENDED'");
+        svc.update("UPDATE ivc_regime_profile SET status='SUSPENDED'");
         sources.paid("SO1", 1_000);
         assertCode(ErrorCode.INVOICE_REGIME_NOT_ENABLED, () -> issue("SO1"));
     }
@@ -1713,7 +1799,7 @@ class InvoiceServiceMysqlTest {
     }
 
     private int count(String table) {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class);
+        return svc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class);
     }
 
     private static InvoiceSourcePort.Line line(String name, long amount) {
@@ -1763,8 +1849,8 @@ class InvoiceServiceMysqlTest {
         assertEquals(new StoreSettingsVO(null, "LATER"), storeSetup.settings(SCOPE), "清空默认税别要真的写 NULL");
         assertEquals(new StoreSettingsVO(null, "MANUAL"), storeSetup.settings(new Scope("T1", "E1", "S2", "U1")),
                 "门店级：别店不受影响");
-        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM ivc_store_setting", Integer.class));
-        assertThrows(DataAccessException.class, () -> jdbc.update("UPDATE ivc_store_setting SET invoice_timing='NOW'"));
+        assertEquals(1, svc.queryForObject("SELECT COUNT(*) FROM ivc_store_setting", Integer.class));
+        assertThrows(DataAccessException.class, () -> svc.update("UPDATE ivc_store_setting SET invoice_timing='NOW'"));
     }
 
     @Test
@@ -1801,6 +1887,22 @@ class InvoiceServiceMysqlTest {
         static final String PASS = System.getenv("COMMERCE_MYSQL_PASSWORD");
         static DataSource ds;
         static boolean created;
+        static String serviceUrl;
+
+        /** 发票库：设计的建表语句（V1）+ 补充脚本（V2），与主库是两个 schema。 */
+        static synchronized String serviceUrl() {
+            if (serviceUrl != null) return serviceUrl;
+            dataSource();
+            String schema = SCHEMA + "_svc";
+            new JdbcTemplate(new DriverManagerDataSource(URL, USER, PASS)).execute("CREATE DATABASE " + schema);
+            String url = URL.replace("/?", "/" + schema + "?");
+            var populator = new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+                    new org.springframework.core.io.ClassPathResource("db/n_service/V1__ivc_design.sql"),
+                    new org.springframework.core.io.ClassPathResource("db/n_service/V2__ivc_supplement.sql"));
+            populator.execute(new DriverManagerDataSource(url, USER, PASS));
+            serviceUrl = url;
+            return url;
+        }
 
         static synchronized DataSource dataSource() {
             if (ds != null) return ds;
@@ -1837,6 +1939,9 @@ class InvoiceServiceMysqlTest {
     static void dropSchema() {
         if (Db.created)
             new JdbcTemplate(new DriverManagerDataSource(Db.URL, Db.USER, Db.PASS)).execute("DROP DATABASE " + Db.SCHEMA);
+        if (Db.serviceUrl != null)
+            new JdbcTemplate(new DriverManagerDataSource(Db.URL, Db.USER, Db.PASS))
+                    .execute("DROP DATABASE " + Db.SCHEMA + "_svc");
     }
 
     static final class Sources implements InvoiceSourcePort {
@@ -2035,10 +2140,14 @@ class InvoiceServiceMysqlTest {
 
     @Configuration
     @EnableTransactionManagement
-    @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", sqlSessionFactoryRef = "sqlSessionFactory")
+    @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper",
+            sqlSessionFactoryRef = ai.neargo.shop.common.config.ModuleDataSources.INVOICE_SQL_SESSION_FACTORY)
+    @MapperScan(basePackages = "ai.neargo.shop.invoice.legacy", sqlSessionFactoryRef = "sqlSessionFactory",
+            markerInterface = com.baomidou.mybatisplus.core.mapper.BaseMapper.class)
     @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class, InvoiceTransmissionJournal.class, InvoiceStoreSetupServiceImpl.class, InvoiceGateways.class, InvoiceGatewayPolicy.class,
             InvoiceRegimes.class, TwEguiRegime.class, InvoicePrintSourceFactsPortImpl.class,
             InvoiceChannelServiceImpl.class, InvoiceApplicationServiceImpl.class, InvoiceDeliveryServiceImpl.class,
+            ai.neargo.shop.invoice.legacy.InvoiceHistory.class,
             ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class})
     static class Config {
         @Bean PrintQueryService deliveryPrintQuery() { return mock(PrintQueryService.class); }
@@ -2046,26 +2155,50 @@ class InvoiceServiceMysqlTest {
         @Bean OtpSendService deliveryOtp() { return mock(OtpSendService.class); }
         @Bean MailPort deliveryMail() { return mock(MailPort.class); }
         @Bean
+        @Primary
         DataSource dataSource() {
             return Db.dataSource();
         }
 
+        /** 发票库的工厂由注册器建，它要这两样（平台里由主库装配提供）。 */
         @Bean
-        SqlSessionFactory sqlSessionFactory(DataSource ds) throws Exception {
-            var factory = new MybatisSqlSessionFactoryBean();
-            factory.setDataSource(ds);
+        MybatisPlusInterceptor mybatisPlusInterceptor() {
             var interceptor = new MybatisPlusInterceptor();
             interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+            return interceptor;
+        }
+
+        @Bean
+        com.baomidou.mybatisplus.autoconfigure.MybatisPlusProperties mybatisPlusProperties() {
+            var properties = new com.baomidou.mybatisplus.autoconfigure.MybatisPlusProperties();
+            var configuration = new com.baomidou.mybatisplus.autoconfigure.MybatisPlusProperties.CoreConfiguration();
+            configuration.setMapUnderscoreToCamelCase(true);
+            properties.setConfiguration(configuration);
+            return properties;
+        }
+
+        @Bean
+        @Primary
+        SqlSessionFactory sqlSessionFactory(DataSource ds, MybatisPlusInterceptor interceptor) throws Exception {
+            var factory = new MybatisSqlSessionFactoryBean();
+            factory.setDataSource(ds);
             factory.setPlugins(interceptor);
             return factory.getObject();
         }
 
         @Bean
+        @Primary
         PlatformTransactionManager transactionManager(DataSource ds) {
             return new DataSourceTransactionManager(ds);
         }
 
         @Bean
+        JdbcTemplate svc(@Qualifier(ai.neargo.shop.common.config.ModuleDataSources.INVOICE_DATA_SOURCE) DataSource ds) {
+            return new JdbcTemplate(ds);
+        }
+
+        @Bean
+        @Primary
         JdbcTemplate jdbcTemplate(DataSource ds) {
             return new JdbcTemplate(ds);
         }

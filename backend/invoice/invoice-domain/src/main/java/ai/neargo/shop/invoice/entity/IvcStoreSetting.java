@@ -1,5 +1,7 @@
 package ai.neargo.shop.invoice.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -22,7 +24,11 @@ public class IvcStoreSetting {
     private String defaultTaxType;
     /** ON_PAID / MANUAL / LATER */
     private String invoiceTiming;
+    @TableField(fill = FieldFill.INSERT)
     private String updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /** 创建人；不显式给就由公共字段填充器写当前操作人 */
+    @TableField(fill = FieldFill.INSERT)
+    private String createdBy;
 }

@@ -18,7 +18,8 @@ import ai.neargo.shop.invoice.entity.IvcInvoiceApplication;
 import ai.neargo.shop.invoice.entity.IvcInvoiceApplicationEvent;
 import ai.neargo.shop.invoice.entity.IvcInvoiceApplicationRevision;
 import ai.neargo.shop.invoice.mapper.InvoiceApplicationMappers.ApplicationMapper;
-import ai.neargo.shop.invoice.mapper.InvoiceApplicationMappers.EventMapper;
+import ai.neargo.shop.invoice.legacy.InvoiceApplicationEventMapper;
+import ai.neargo.shop.invoice.legacy.InvoiceHistory;
 import ai.neargo.shop.invoice.mapper.InvoiceApplicationMappers.RevisionMapper;
 import ai.neargo.shop.invoice.service.InvoiceApplicationService;
 import ai.neargo.shop.invoice.service.InvoiceService;
@@ -35,8 +36,8 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -51,16 +52,19 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
 
     private final ApplicationMapper applications;
     private final RevisionMapper revisions;
-    private final EventMapper events;
+    private final InvoiceApplicationEventMapper events;
+    private final InvoiceHistory history;
     private final InvoiceService invoices;
     private final Map<String, InvoiceSourcePort> sources;
     private final ObjectMapper json;
 
-    public InvoiceApplicationServiceImpl(ApplicationMapper applications, RevisionMapper revisions, EventMapper events,
+    public InvoiceApplicationServiceImpl(ApplicationMapper applications, RevisionMapper revisions,
+            InvoiceApplicationEventMapper events, InvoiceHistory history,
             InvoiceService invoices, List<InvoiceSourcePort> sources, ObjectMapper json) {
         this.applications = applications;
         this.revisions = revisions;
         this.events = events;
+        this.history = history;
         this.invoices = invoices;
         this.sources = sources.stream().flatMap(source -> source.sourceTypes().stream()
                 .map(type -> Map.entry(type, source))).collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -83,13 +87,14 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
         reserved.setStatus(SUBMITTED);
         reserved.setCreatedBy(scope.actorNo());
         reserved.setCreatedAt(now);
-        reserved.setUpdatedAt(now);
         applications.reserve(reserved);
         var app = require(scoped(scope).eq("source_type", request.sourceType()).eq("source_no", request.sourceNo())
                 .last("FOR UPDATE"));
         var prior = replay(scope, app, command);
         if (prior != null) return view(app, prior);
         if (!reserved.getApplicationNo().equals(app.getApplicationNo())) {
+            // 事件在主库、提交后才记，可能缺失：同一来源、同一买方的重复提交按业务状态回原申请
+            if (SUBMITTED.equals(app.getStatus()) && sameBuyer(app, buyer(request.buyer()))) return view(app);
             throw BizException.of(ErrorCode.CONFLICT);
         }
         appendRevision(scope, app, buyer(request.buyer()), now);
@@ -142,6 +147,8 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
         var now = now();
         app.setCurrentRevision(Math.incrementExact(app.getCurrentRevision()));
         app.setStatus(SUBMITTED);
+        app.setRejectReason(null);
+        app.setUpdatedBy(scope.actorNo());
         app.setUpdatedAt(now);
         appendRevision(scope, app, buyer(request.buyer()), now);
         applications.updateById(app);
@@ -168,9 +175,13 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
         var prior = replay(scope, app, command);
         if (prior != null) return view(app, prior);
         requireRevision(app, request.expectedRevision());
+        if (target.equals(app.getStatus())) return view(app);
         requireSubmitted(app);
         var now = now();
         app.setStatus(target);
+        app.setRejectReason(REJECTED.equals(target) ? request.reason() : null);
+        app.setOperatorNo(scope.actorNo());
+        app.setUpdatedBy(scope.actorNo());
         app.setUpdatedAt(now);
         applications.updateById(app);
         appendEvent(scope, app, command, SUBMITTED, request.reason(), now);
@@ -185,6 +196,7 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
         var prior = replay(scope, app, command);
         if (prior != null) return receipt(scope, prior.getRelatedInvoiceNo());
         requireRevision(app, request.expectedRevision());
+        if (ISSUED.equals(app.getStatus())) return receipt(scope, app.getIssuedInvoiceNo());
         requireSubmitted(app);
         var version = revisions.selectOne(revisionScope(app).eq("revision_no", app.getCurrentRevision()));
         var buyer = new Buyer(version.getBuyerTaxId(), version.getBuyerName(), version.getCarrierType(),
@@ -194,6 +206,9 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
         var now = now();
         app.setStatus(ISSUED);
         app.setIssuedInvoiceNo(result.invoiceNo());
+        app.setIssuedAt(now);
+        app.setOperatorNo(scope.actorNo());
+        app.setUpdatedBy(scope.actorNo());
         app.setUpdatedAt(now);
         applications.updateById(app);
         appendEvent(scope, app, command, SUBMITTED, null, now);
@@ -264,12 +279,18 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
         event.setCommandPayloadHash(command.payloadHash());
         event.setRelatedInvoiceNo(app.getIssuedInvoiceNo());
         event.setOccurredAt(now);
-        try {
-            events.insert(event);
-        } catch (DuplicateKeyException e) {
-            // Concurrent reuse of a scoped key on another source must roll back all business writes.
-            throw BizException.of(ErrorCode.CONFLICT);
-        }
+        // 事件表在主库：申请提交之后再记。同一把键被并发用在另一个来源上时，这里只会少一条事件，
+        // 不再能回滚业务；两边的业务写各自靠来源唯一键与版本号保护。
+        history.afterCommit("application." + command.action(), () -> events.insert(event));
+    }
+
+    private boolean sameBuyer(IvcInvoiceApplication app, Buyer buyer) {
+        var version = revisions.selectOne(revisionScope(app).eq("revision_no", app.getCurrentRevision()));
+        return version != null && Objects.equals(version.getBuyerTaxId(), buyer.taxId())
+                && Objects.equals(version.getBuyerName(), buyer.name())
+                && Objects.equals(version.getCarrierType(), buyer.carrierType())
+                && Objects.equals(version.getCarrierId(), buyer.carrierId())
+                && Objects.equals(version.getDonateCode(), buyer.donateCode());
     }
 
     private IvcInvoiceApplication lock(Scope scope, String applicationNo) {

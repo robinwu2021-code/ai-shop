@@ -31,7 +31,7 @@
               <text v-if="check.reconciled.length"> {{ t("salesInvoice.reconciled") }}</text>
             </view>
           </view>
-          <view v-if="inv.uploadStatus === 'NEEDS_REVIEW'" class="sh-mt-sm">
+          <view v-if="inv.uploadStatus === 'REVIEW'" class="sh-mt-sm">
             <text class="sh-hint txt-quiet">{{ t("salesInvoice.reviewHint") }}</text>
             <view v-if="merchant.can('biz:invoice:issue')" class="sh-btn sh-btn--soft sh-btn--sm sh-mt-sm"
               :class="busy ? 'is-disabled' : ''" @tap="retransmit">{{ t("salesInvoice.retransmit") }}</view>
@@ -151,7 +151,7 @@ const overdue = computed(() => {
   return !!d && inv.value?.uploadStatus !== "SENT" && Date.parse(d.endsWith("Z") ? d : `${d}Z`) < Date.now();
 });
 const check = ref<SiProviderCheck | null>(null);
-const uploadTrouble = computed(() => ["FAILED", "HELD", "NEEDS_REVIEW"].includes(inv.value?.uploadStatus ?? ""));
+const uploadTrouble = computed(() => ["FAILED", "HELD", "REVIEW"].includes(inv.value?.uploadStatus ?? ""));
 const canPrint = computed(() => issued.value && !!inv.value?.printMark && canSubmitPrint.value);
 const canPrintDetail = computed(() => issued.value && canSubmitPrint.value);
 // 补印要先在打印中心找到这张证明联的任务（biz:print:read），再对它补印（biz:print:reprint）

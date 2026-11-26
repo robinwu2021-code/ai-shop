@@ -23666,16 +23666,16 @@
           "ar": "متوقف مؤقتاً"
         },
         {
-          "key": "salesInvoice.upload.NEEDS_REVIEW",
-          "zh-CN": "待人工处理",
-          "en": "Needs attention",
-          "ar": "يحتاج إلى معالجة"
-        },
-        {
           "key": "salesInvoice.upload.PENDING",
           "zh-CN": "待上传",
           "en": "Waiting to upload",
           "ar": "بانتظار الرفع"
+        },
+        {
+          "key": "salesInvoice.upload.REVIEW",
+          "zh-CN": "待人工处理",
+          "en": "Needs attention",
+          "ar": "يحتاج إلى معالجة"
         },
         {
           "key": "salesInvoice.upload.SENDING",
@@ -52108,7 +52108,7 @@
           "SENT",
           "FAILED",
           "HELD",
-          "NEEDS_REVIEW"
+          "REVIEW"
         ],
         "zh": "上传任务状态（与后端 ivc_transmission.status 逐字一致）"
       },
@@ -54658,7 +54658,7 @@
           "SENT",
           "FAILED",
           "HELD",
-          "NEEDS_REVIEW"
+          "REVIEW"
         ],
         "zh": "HELD = 账号问题暂停（核验账号后自动恢复）。"
       },

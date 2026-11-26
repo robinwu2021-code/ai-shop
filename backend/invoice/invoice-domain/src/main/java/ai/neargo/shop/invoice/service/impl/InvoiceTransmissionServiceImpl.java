@@ -64,7 +64,8 @@ public class InvoiceTransmissionServiceImpl implements InvoiceTransmissionServic
 
     private static final Logger log = LoggerFactory.getLogger(InvoiceTransmissionServiceImpl.class);
     static final String HELD = "HELD";
-    static final String NEEDS_REVIEW = "NEEDS_REVIEW";
+    /** 状态列是 10 位，库里与接口上的取值都是 REVIEW（原 NEEDS_REVIEW）。 */
+    static final String NEEDS_REVIEW = "REVIEW";
 
     private final TransmissionMapper transmissions;
     private final RegimeProfileMapper profiles;

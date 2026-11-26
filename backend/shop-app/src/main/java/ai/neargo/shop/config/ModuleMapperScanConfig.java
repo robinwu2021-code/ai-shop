@@ -18,8 +18,11 @@ import org.springframework.context.annotation.Import;
  */
 @Configuration(proxyBeanMethods = false)
 @Import(ModuleDataSourceRegistrar.class)
-@MapperScan(basePackages = "ai.neargo.shop.invoice", markerInterface = BaseMapper.class,
+@MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", markerInterface = BaseMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.INVOICE_SQL_SESSION_FACTORY)
+// 发票留在主库的那几张表（申请事件、邮件投递）：包名就是归属，见 invoice.legacy 的说明
+@MapperScan(basePackages = "ai.neargo.shop.invoice.legacy", markerInterface = BaseMapper.class,
+        sqlSessionFactoryRef = "sqlSessionFactory")
 @MapperScan(basePackages = "ai.neargo.shop.printing", markerInterface = BaseMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.PRINT_SQL_SESSION_FACTORY)
 public class ModuleMapperScanConfig {

@@ -1,6 +1,6 @@
 # TDD-多数据源与发票打印对齐新库
 
-状态：已确认（2026-11-26 用户：「可以，按建议」）· 提交一已实现 · 提交二（发票）进行中 · 打印另行提交
+状态：已确认（2026-11-26 用户：「可以，按建议」）· 提交一、提交二（发票）已实现 · 打印另行提交，未做
 关联需求：[PRD-发票开立与打印](../requirements/PRD-发票开立与打印.md) §7 · [ADR-066](ADR/ADR-066-业务模块按配置选数据源.md)
 设计依据：数据库设计方案（工作树 `ai-shop-slim`，分支 `docs/db-split-plan`，未提交）的
 `02-命名与字段规范.md`、`库/12-平台服务库.md`、`schema/ddl/12-n_service.sql`
@@ -158,6 +158,29 @@ shop:
 另外，申请命令的防重现在靠 `ivc_invoice_application_event` 上的唯一键（同一命令键只记一次）。
 按“防重是应用层的事”，改成靠申请上的 `current_revision` 比对（接口本来就要求带 `expectedRevision`）加业务唯一键。
 
+### 2.4.1 提交二（发票）的实施清单
+
+用户确认后的落地做法。发票切换后**必须**绑定到新结构的库，不再能在旧表上运行。
+
+| # | 做什么 | 位置 |
+|---|---|---|
+| 1 | Mapper 分两处：`invoice.mapper` 绑发票句柄（13 张 ＋ `ivc_store_setting`）；新包 `invoice.legacy` 绑主库（申请事件、邮件投递、通道申请三张、账户历史版、路由事件） | `ModuleMapperScanConfig`、`invoice/legacy/*` |
+| 2 | 历史记录（申请事件、路由事件、账户历史版）改为发票事务提交之后写主库；写失败只记日志，不影响已提交的业务 | `invoice/legacy/InvoiceHistory` |
+| 3 | 申请命令的重放：先查事件（主库）；事件缺失时按业务状态兜底——同来源同买方的重复提交回原申请，已开立的重复开立回原发票 | `InvoiceApplicationServiceImpl` |
+| 4 | 路由并进 `ivc_regime_profile`（`active_account_no`、`route_version`、`environment`）；一行只有一个环境的路由 | `InvoiceChannelServiceImpl` |
+| 5 | 通道账户只留当前版：`sec_key_id` 存服务商凭据引用，`qr_sec_key_id`（补充字段）存 QR 金钥引用，`review_no` 存开通申请号，卖方名称取自税制行，核验时间取账户的更新时间 | 同上 |
+| 6 | 通道申请的提交、补件、审核只碰主库三张表，用主库事务；核验并绑定分三段：读申请 → 发票库事务里建或更新账户 → 主库事务里记历史版、置为已绑定 | 同上 |
+| 7 | 开票、折让的“打印事实已就绪”事件改为发票事务提交后再发（打印还在主库，T1 的“同事务直调”等打印切库后再做） | `InvoiceServiceImpl` |
+| 8 | 邮件投递整段用主库事务，跨库只读发票 | `InvoiceDeliveryServiceImpl` |
+| 9 | 上传任务状态 `NEEDS_REVIEW` → `REVIEW`，后端、运营端、商户端、共享契约、接口文档一起改 | 各端 |
+| 10 | 编号长度：通道申请号、账户号由 35 位收到 32 位 | `InvoiceChannelServiceImpl#number` |
+| 11 | 实体补 `createdBy`、`updatedBy` | `invoice/entity/*` |
+| 12 | 测试：`InvoiceServiceMysqlTest` 用两个库（主库跑旧迁移，发票库用设计的建表语句 ＋ 补充脚本）；shop-app 的 H2 测试给发票单独一个内存库 | 测试资源 |
+| 13 | 默认配置把发票绑到 `service`，地址与口令不带默认值，漏配启动失败 | `application.yml` |
+
+补充脚本 `n_service-ivc-supplement.sql`（放测试资源，同时就是给 61 的修改建议，**未在 61 执行**）：
+F1 里发票三处唯一索引；`ivc_channel_account.qr_sec_key_id`；新表 `ivc_store_setting`。
+
 ### 2.5 打印：27 张旧表的去向
 
 **甲 · 新库里有对应的表（10 张）**
@@ -237,6 +260,17 @@ shop:
 | `ivc_invoice.source_no`、`carrier_id` 64 → 32 | 会员载具号是登录账号，可能超过 32 |
 | `prn_printer.physical_key` 192 → 128 | 要查现有最大长度 |
 
+**F4 · 落地发票时新发现的（2026-11-26）**
+
+| 项 | 问题 | 本次怎么处理 |
+|---|---|---|
+| 非空列丢了默认值 | 旧表有默认值、新表是非空无默认的 15 列：`ivc_transmission` 的 `attempts`、`attempt_sequence`、`deadline_level`；`ivc_invoice` 的 `zero_tax_sales_minor`、`free_tax_sales_minor`、`allowed_minor`、`revoke_alerted`；`ivc_allowance.status`；`ivc_number_range.allocation_owner`；`ivc_store_item` 的 `sort`、`enabled`；`ivc_user_carrier.is_default`；`ivc_regime_profile` 的 `auto_issue`、`range_low_water`、`auto_fetch_ranges`（后三个新表可空） | 初值写在实体上，由代码给出。建议设计把默认值加回去 |
+| CHECK 约束全部没有了 | 号段上下界、发票金额等式（已折让 ≤ 总计）、折让金额、快照是合法 JSON、门店设置的取值 | 代码里本来就有对应的条件更新与校验，没有新增；库这一层的兜底没了 |
+| `created_at` 只到秒 | 旧表是毫秒；MySQL 写入时四舍五入 | 业务计时用的是各自的毫秒列，不受影响；测试里按创建时间算时长的一处改成取整 |
+| 编号长度 | 通道申请号、账户号原来 35 位，新列 32 位 | 生成规则改成 32 位 |
+| 路由只有一行 | 路由并进税制行后一行只能有一个环境；旧表每个环境一行 | 一个库只服务一个环境时没有区别；同一个库里同时放测试与正式路由不再支持 |
+| 路由的更新时间 | 取的是税制行的更新时间，改卖方名称也会变 | 记录，未处理 |
+
 ### 2.8 线上数据怎么过来（本次不做）
 
 1. 结构：甲类表在新库已建；F1、F2 的补充经用户授权后执行。
@@ -244,6 +278,8 @@ shop:
    并表的（如打印机三合一）按业务编号对齐后合并。
 3. 切换：停写窗口内搬完、核对行数与金额合计，再把模块绑定指到新库；回退就是解除绑定。
 4. 乙类表在各自归属的模块对齐之前留在主库，不搬。
+5. 部署前置：每个环境要有 `n_service`（含补充脚本），并配 `SHOP_SERVICE_DB_URL`、`SHOP_SERVICE_DB_USER`、
+   `SHOP_SERVICE_DB_PASS`；漏配启动失败。e2e 的配置（`application-e2e.yml`）这次没有补，跑 e2e 前要加。
 
 ## §3 选型
 
@@ -278,10 +314,10 @@ shop:
 | M3 | `ModuleDataSourceRegistrarTest#modules_on_same_name_share_transaction` | ✅ |
 | M4 | `ModuleTxManagerConventionTest#module_transactions_name_their_own_manager` | ✅ |
 | M5 | `ModuleDataSourceRegistrarTest#bound_factory_keeps_interceptors_and_fill` | ✅ |
-| S1 | `InvoiceServiceMysqlTest`（改为主库与 `n_service` 两个库） | |
-| S2 | `PrintDatabaseAcceptanceTest`（MySQL，`n_service`） | |
-| S3 | `InvoiceServiceMysqlTest#issue_does_not_touch_primary_database` 等 | |
-| S4 | `ServiceSchemaAlignmentTest`（实体字段对建表语句） | |
+| S1 | `InvoiceServiceMysqlTest`（主库与发票库两个库，64 个用例，其中 60 个是切换前就有的） | ✅ |
+| S2 | 打印未切，另行提交 | — |
+| S3 | `InvoiceServiceMysqlTest#issue_does_not_touch_primary_database`、`#print_fact_event_is_not_published_when_issue_rolls_back`、`#application_replay_falls_back_to_business_state_when_history_is_lost`、`#channel_route_lives_on_the_regime_profile_and_history_stays_in_primary` | ✅ |
+| S4 | `ServiceSchemaAlignmentTest#every_entity_field_is_a_column_and_every_common_field_is_mapped`、`#status_values_fit_ten_characters` | ✅ |
 
 提交一的输出（2026-11-26，本机 MySQL 9.7.4 + H2；`mvn -o -pl shop-app -am test -Dtest=…`，BUILD SUCCESS）：
 
@@ -303,6 +339,29 @@ printbridge.PrintRecoveryConfigurationTest         全绿
 M1「行为不变」的证据是上面发票、打印的既有测试在未绑定状态下全部通过；没有跑 shop-app 全量。
 M4 是读源码的守卫：改之前发票、打印里有 60 多处未点名的事务，逐处改完后变绿。
 
+提交二（发票）的输出（2026-11-26，本机 MySQL 9.7.4 两个库 + H2 两个内存库，BUILD SUCCESS）：
+
+```
+invoice.service.impl.InvoiceServiceMysqlTest       tests=64 err=0 skip=0 fail=0   （主库 + 发票库）
+invoice.ServiceSchemaAlignmentTest                 tests=2  err=0 skip=0 fail=0
+invoice.InvoiceBoundaryTest                        tests=1  err=0 skip=0 fail=0
+arch.ModuleTxManagerConventionTest / MapperSmokeTest / ArchitectureTest / SchemaParityTest /
+infra.SchemaDriftTest / arch.BizRoleSeedTest / NoSecretDefaultInConfigTest / InvoiceOptionalTest /
+arch.ConditionalBeanWiringTest / InventoryDisabledContextTest / MpEndpointAuthTest / BackendI18nParityTest   全绿
+invoicebridge.* 四个（15 条）/ scenario.InvoiceCapableAxisFlowTest                                         全绿
+打印（未切库，回归）：PrintDatabaseAcceptanceTest 13、PrintEnabledAssemblyTest、BusinessPrintSourceFlowTest、
+PrintOrderSoftwareFlowTest、PrintRecoveryConfigurationTest                                                全绿
+```
+
+没跑成的：`trade.StoreOrderMysqlTest`（23 条）要本机有一份带 V691 结构的模板库，前置条件不满足，
+在装配阶段中止。它里面的发票是替身，不走真实的发票代码。
+没跑的：shop-app 全量、e2e、前端的类型检查（工作树里没有装前端依赖，`vue-tsc` 与 `tsc` 只报缺模块）。
+
+闸门：`check-generated-docs`、`check-v2-docs`、`gen-ui-catalog --check`、`check-i18n-orphan`、
+`check-app-orphan`、`check-ops-contract`、`check-app-contract`、`gen-service-test-schema --check` 通过。
+`check-sql-portability` 红 21 个文件，都是存量，新加的建表文件不在其中。
+`check-shared-guards` 红 1 条：`ops-web/lib/platform-nav.test.ts` 的导航翻译，与本次改动的文件无关，没有处理。
+
 ## §6 对账二 · 设计 → 实现
 
 ### 提交一
@@ -316,6 +375,27 @@ M4 是读源码的守卫：改之前发票、打印里有 60 多处未点名的�
 | 多改了 `application.yml`（只加注释样例）与三份生成物 | 配置项要有出处；常量清单与文档索引由生成器重跑 |
 | `PrintingConfiguration` 里登记事件事务的那一处仍用主库事务管理器 | 事件表在主库；守卫里登记为有意的例外 |
 
+### 提交二（发票）
+
+与 §2.4.1 实施清单的差异：
+
+| 差异 | 说明 |
+|---|---|
+| 通道账户没有改成实体与 Mapper，仍是手写 SQL | 语句从 26 条减到发票库 8 条、主库 12 条，改成实体不减少风险；留到通道申请接审核服务时一起做 |
+| 新增 `backend/scripts/gen-service-test-schema.py` 与产物 `schema-service-test.sql` | 现有的 `gen-test-schema.py` 认不出设计建表语句的写法（0 张表）；另写了一个只做这件事的小生成器，带 `--check` |
+| 建表语句副本去掉了表尾的 `ENGINE / CHARSET / COLLATE` | SQL 可移植性闸门不许新文件写死排序规则；库默认就是同一个 |
+| 代码仍显式写 `updated_at` | 上传任务的认领靠应用时钟比较 `updated_at`，交给数据库自动更新会混进数据库时钟；列的类型按规范 |
+| 公共字段填充只在插入时填创建人、更新人 | 平台的更新填充用的是本机时区的时间，会顶掉上面那条里的应用时钟 |
+| 邮件投递的三个写方法是两层事务 | 外层发票事务只为拿住发票行锁，里层主库事务写投递表；清单里只写了「用主库事务」 |
+| 申请命令重放的兜底多做了两处 | 驳回、取消在已是目标状态时回原申请；清单只写了提交与开立 |
+
+行为上的变化（接口不变，语义变了）：
+
+- 同一把防重键被并发用在两个不同来源上时，原来第二个整笔回滚；现在两边的业务各自成立，只是第二条事件记不进去。
+- 已开立的申请再开立（版本号对）回原发票，原来回「状态不对」。
+- 「核验并绑定」中途失败可能留下已换凭据但未绑定的账户，重做即可（§2.4.1 第 6 条）。
+- 开票取数时的订单行锁不再跨到开票事务里（T2）；直接开票（不经申请）没有来源指纹比对，与退款并发时仍可能开出金额过期的票。**这一条没有新增保护，是遗留风险。**
+
 ### 偏差说明
 
 - 具名数据源的名字不能和模块同名（如把数据源叫 `invoice`）：句柄名会撞。注册器启动时拒绝，设计里原先没写。
@@ -327,6 +407,7 @@ M4 是读源码的守卫：改之前发票、打印里有 60 多处未点名的�
 |---|---|
 | 2026-11-26 | 设计稿写完，等用户确认 §8 |
 | 2026-11-26 | 用户确认按建议：Q0 取 A；Q1、Q2、Q4 先留主库原表；Q3 补 `ivc_store_setting`；Q5 打印并发模型另出设计；Q6 接受；Q8 提交二先做发票，打印单独提交。Q7（改 61 上的表）没有单独授权，本次不动 61 |
+| 2026-11-26 | 提交二（发票）已实现。闸门与扫描面见下一行；`n_service` 的补充脚本没有在 61 执行 |
 | 2026-11-26 | 提交一已实现。闸门：`check-v2-docs`、`check-controller-cohesion`、`check-inventory-independence`、`check-generated-docs` 通过；`check-sql-portability` 红 21 个文件，都是存量 SQL，本次没有改任何 SQL。扫描面：`backend/` 下受影响模块的指定测试类，没有跑全量 |
 
 ## §8 待确认

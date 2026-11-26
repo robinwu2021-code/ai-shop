@@ -33,6 +33,9 @@ class ModuleTxManagerConventionTest {
             "invoice/invoice-domain/src/main/java/ai/neargo/shop/invoice", "ModuleDataSources.INVOICE_TX_MANAGER",
             "shop-core/src/main/java/ai/neargo/shop/printing", "ModuleDataSources.PRINT_TX_MANAGER");
 
+    /** 发票留在主库的那部分（申请事件、邮件投递、通道申请）的入口：这个包里用主库事务是本意。 */
+    private static final String PRIMARY_PACKAGE = "/invoice/legacy/";
+
     /** 有意用主库事务管理器的地方：文件名 → 该行必须包含的片段。 */
     private static final Map<String, String> PRIMARY_ON_PURPOSE = Map.of(
             "PrintingConfiguration.java", "@Qualifier(\"transactionManager\") PlatformTransactionManager manager) {");
@@ -45,7 +48,8 @@ class ModuleTxManagerConventionTest {
         for (var module : MODULE_SOURCES.entrySet()) {
             Path root = BACKEND.resolve(module.getKey());
             try (var files = Files.walk(root)) {
-                for (Path file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                for (Path file : files.filter(p -> p.toString().endsWith(".java"))
+                        .filter(p -> !p.toString().contains(PRIMARY_PACKAGE)).toList()) {
                     String[] lines = Files.readString(file, StandardCharsets.UTF_8).split("\n");
                     for (int i = 0; i < lines.length; i++) {
                         String line = lines[i].trim();

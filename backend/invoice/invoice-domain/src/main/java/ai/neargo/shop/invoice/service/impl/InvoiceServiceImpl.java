@@ -9,6 +9,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.invoice.legacy.InvoiceHistory;
 import ai.neargo.shop.invoice.dto.InvoiceDtos;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.AllowanceVO;
 import ai.neargo.shop.invoice.dto.InvoiceDtos.InvoiceLineVO;
@@ -87,6 +88,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final Map<String, InvoiceSourcePort> sources = new HashMap<>();
     private final ObjectProvider<SecretVault> vault;
     private final OutboxEventBus events;
+    private final InvoiceHistory history;
     private final ObjectMapper json;
     private final InvoiceGatewayPolicy policy;
     private final InvoiceGateways gateways;
@@ -99,7 +101,7 @@ public class InvoiceServiceImpl implements InvoiceService {
             InvoiceLineMapper lines, AllowanceMapper allowances, TransmissionMapper transmissions,
             BuyerPreferenceMapper preferences,
             InvoiceRegimes regimes, List<InvoiceSourcePort> sourcePorts, ObjectProvider<SecretVault> vault,
-            OutboxEventBus events, ObjectMapper json, InvoiceGatewayPolicy policy, InvoiceGateways gateways) {
+            OutboxEventBus events, InvoiceHistory history, ObjectMapper json, InvoiceGatewayPolicy policy, InvoiceGateways gateways) {
         this.policy = policy;
         this.gateways = gateways;
         this.profiles = profiles;
@@ -116,6 +118,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                     throw new IllegalStateException("Duplicate invoice source type: " + type);
         this.vault = vault;
         this.events = events;
+        this.history = history;
         this.json = json;
     }
 
@@ -293,8 +296,8 @@ public class InvoiceServiceImpl implements InvoiceService {
         enqueue(inv, profile, "ISSUE", inv.getInvoiceNo(), regime.message("ISSUE", inv, rows, null));
         // 打印中心按门店的场景策略决定是否自动出纸：证明联只在应印时唤醒，交易明细每张都唤醒
         if ("Y".equals(inv.getPrintMark()))
-            events.publish(new BusinessPrintFactReady(inv.getInvoiceNo(), InvoicePrintSourceFactsPortImpl.ref(inv)));
-        events.publish(new BusinessPrintFactReady(inv.getInvoiceNo(), InvoicePrintSourceFactsPortImpl.detailRef(inv)));
+            publishAfterCommit(new BusinessPrintFactReady(inv.getInvoiceNo(), InvoicePrintSourceFactsPortImpl.ref(inv)));
+        publishAfterCommit(new BusinessPrintFactReady(inv.getInvoiceNo(), InvoicePrintSourceFactsPortImpl.detailRef(inv)));
         return receipt(inv);
     }
 
@@ -541,7 +544,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                 a.getCreatedAt().toInstant(ZoneOffset.UTC), inv, regime.allowanceProof(inv, a), List.of()));
         a.setPrintSnapshotHash(PrintHashes.sha256(a.getPrintSnapshot()));
         allowances.insert(a);
-        events.publish(new BusinessPrintFactReady(a.getAllowanceNo(), InvoicePrintSourceFactsPortImpl.ref(inv, a)));
+        publishAfterCommit(new BusinessPrintFactReady(a.getAllowanceNo(), InvoicePrintSourceFactsPortImpl.ref(inv, a)));
         enqueue(inv, null, "ALLOWANCE", a.getAllowanceNo(),
                 regime.message("ALLOWANCE", inv, List.of(), a));
         return view(require(scope, invoiceNo), true);
@@ -805,5 +808,16 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     private static String blankToNull(String s) {
         return s == null || s.isBlank() ? null : s.trim();
+    }
+
+    /**
+     * 「打印事实已就绪」在发票提交之后再发。
+     *
+     * <p>事件表在主库，发票在自己的库，写不进同一个事务。先发后提交会在发票回滚时留下一条
+     * 指向不存在的发票的事件；先提交后发，最坏是这条事件丢了 —— 发票本身不受影响，
+     * 证明联可以从发票详情手动打印，打印对账任务也会按来源补齐。
+     */
+    private void publishAfterCommit(BusinessPrintFactReady event) {
+        history.afterCommit("invoice.print_fact_ready", () -> events.publish(event));
     }
 }

@@ -21,7 +21,8 @@ import ai.neargo.shop.common.otp.service.OtpSendService.SendCommand;
 import ai.neargo.shop.common.otp.service.OtpSendService.VerifyCommand;
 import ai.neargo.shop.invoice.entity.IvcInvoice;
 import ai.neargo.shop.invoice.entity.IvcInvoiceDelivery;
-import ai.neargo.shop.invoice.mapper.InvoiceDeliveryMapper;
+import ai.neargo.shop.invoice.legacy.InvoiceDeliveryMapper;
+import ai.neargo.shop.invoice.legacy.InvoiceHistory;
 import ai.neargo.shop.invoice.mapper.InvoiceMappers.InvoiceMapper;
 import ai.neargo.shop.invoice.service.InvoiceDeliveryService;
 import ai.neargo.shop.print.api.ExportSourceType;
@@ -66,6 +67,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
 
     private final InvoiceMapper invoices;
     private final InvoiceDeliveryMapper deliveries;
+    private final InvoiceHistory history;
     private final SecretVault vault;
     private final PrintQueryService printing;
     private final PrintExportFacade exports;
@@ -74,7 +76,8 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     private final String origin;
     private final boolean mailStub;
 
-    public InvoiceDeliveryServiceImpl(InvoiceMapper invoices, InvoiceDeliveryMapper deliveries, SecretVault vault,
+    public InvoiceDeliveryServiceImpl(InvoiceMapper invoices, InvoiceDeliveryMapper deliveries,
+            InvoiceHistory history, SecretVault vault,
             PrintQueryService printing, PrintExportFacade exports, ObjectProvider<MailPort> mailProvider, OtpSendService otp,
             @Value("${shop.invoice.delivery.public-origin}") String origin,
             @Value("${shop.mail.stub:true}") boolean mailStub) {
@@ -86,6 +89,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
         this.origin = origin.replaceAll("/+$", "");
         this.invoices = invoices;
         this.deliveries = deliveries;
+        this.history = history;
         this.vault = vault;
         this.printing = printing;
         this.exports = exports;
@@ -102,45 +106,53 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
                 slice.getTotal(), slice.getCurrent(), slice.getSize());
     }
 
+    /*
+     * 投递表在主库，发票在发票库。下面三个写方法都是两层：外层发票事务只为拿住发票行锁
+     * （同一张发票的投递串行），里层主库事务写投递表。里层先提交，外层随后释放锁。
+     */
     @Override
     @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public Delivery enqueue(Scope scope, String invoiceNo, String exportNo, String email, String reason, String key) {
-        var invoice = invoice(scope, invoiceNo, true);
-        String address = OtpKeys.normalize(EMAIL, email);
-        String requestHash = PrintHashes.sha256("SEND\n" + exportNo + "\n" + address + "\n" + reason);
-        var prior = replay(scope, invoiceNo, key, requestHash);
-        if (prior != null) return view(prior);
-        readyInvoice(invoice);
-        if (deliveries.selectCount(scoped(scope, invoiceNo).isNull("parent_delivery_no")) != 0) throw badState();
-        var template = attachmentTemplate(InvoiceDocumentServiceImpl.sourceType(invoice));
-        var row = create(scope, invoice, exportNo, template, null, Masks.email(address), reason, key, requestHash);
-        row.setRecipientSecretRef(vault.seal(new KeyOwner(SecretNamespace.PLATFORM, OWNER_TYPE, row.getId()),
-                address.getBytes(StandardCharsets.UTF_8)).blobId());
-        deliveries.updateById(row);
-        return view(row);
+        return history.primary().execute(tx -> {
+            var invoice = invoice(scope, invoiceNo, true);
+            String address = OtpKeys.normalize(EMAIL, email);
+            String requestHash = PrintHashes.sha256("SEND\n" + exportNo + "\n" + address + "\n" + reason);
+            var prior = replay(scope, invoiceNo, key, requestHash);
+            if (prior != null) return view(prior);
+            readyInvoice(invoice);
+            if (deliveries.selectCount(scoped(scope, invoiceNo).isNull("parent_delivery_no")) != 0) throw badState();
+            var template = attachmentTemplate(InvoiceDocumentServiceImpl.sourceType(invoice));
+            var row = create(scope, invoice, exportNo, template, null, Masks.email(address), reason, key, requestHash);
+            row.setRecipientSecretRef(vault.seal(new KeyOwner(SecretNamespace.PLATFORM, OWNER_TYPE, row.getId()),
+                    address.getBytes(StandardCharsets.UTF_8)).blobId());
+            deliveries.updateById(row);
+            return view(row);
+        });
     }
 
     @Override
     @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public Delivery resend(Scope scope, String invoiceNo, String deliveryNo, String reason,
             boolean acknowledgeUnknown, String key) {
-        var invoice = invoice(scope, invoiceNo, true);
-        String requestHash = PrintHashes.sha256("RESEND\n" + deliveryNo + "\n" + acknowledgeUnknown + "\n" + reason);
-        var prior = replay(scope, invoiceNo, key, requestHash);
-        if (prior != null) return view(prior);
-        readyInvoice(invoice);
-        var parent = deliveries.selectOne(scoped(scope, invoiceNo).eq("delivery_no", deliveryNo));
-        if (parent == null || !Set.of("ACCEPTED", "FAILED", "UNKNOWN").contains(parent.getStatus())
-                || ("UNKNOWN".equals(parent.getStatus()) && !acknowledgeUnknown)
-                || deliveries.selectCount(scoped(scope, invoiceNo).in("status", "PENDING", "SENDING")) != 0) {
-            throw badState();
-        }
-        var template = attachmentTemplate(documentType(parent.getTemplateVersion()));
-        var row = create(scope, invoice, parent.getExportNo(), template, parent.getDeliveryNo(),
-                parent.getRecipientMask(), reason, key, requestHash);
-        row.setRecipientSecretRef(parent.getRecipientSecretRef());
-        deliveries.updateById(row);
-        return view(row);
+        return history.primary().execute(tx -> {
+            var invoice = invoice(scope, invoiceNo, true);
+            String requestHash = PrintHashes.sha256("RESEND\n" + deliveryNo + "\n" + acknowledgeUnknown + "\n" + reason);
+            var prior = replay(scope, invoiceNo, key, requestHash);
+            if (prior != null) return view(prior);
+            readyInvoice(invoice);
+            var parent = deliveries.selectOne(scoped(scope, invoiceNo).eq("delivery_no", deliveryNo));
+            if (parent == null || !Set.of("ACCEPTED", "FAILED", "UNKNOWN").contains(parent.getStatus())
+                    || ("UNKNOWN".equals(parent.getStatus()) && !acknowledgeUnknown)
+                    || deliveries.selectCount(scoped(scope, invoiceNo).in("status", "PENDING", "SENDING")) != 0) {
+                throw badState();
+            }
+            var template = attachmentTemplate(documentType(parent.getTemplateVersion()));
+            var row = create(scope, invoice, parent.getExportNo(), template, parent.getDeliveryNo(),
+                    parent.getRecipientMask(), reason, key, requestHash);
+            row.setRecipientSecretRef(parent.getRecipientSecretRef());
+            deliveries.updateById(row);
+            return view(row);
+        });
     }
 
     private IvcInvoiceDelivery create(Scope scope, IvcInvoice invoice, String exportNo, String template, String parentNo,
@@ -265,17 +277,19 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     @Override
     @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public String download(String token, String code, String ip) {
-        var row = verifiedLink(token);
-        if (!otp.verifyAndConsume(new VerifyCommand(OtpScenes.INVOICE_ARTIFACT_ACCESS, EMAIL, recipient(row),
-                row.getDeliveryNo(), code), new OtpContext(OtpEntries.INVOICE_ARTIFACT, ip, null))) {
-            throw BizException.of(ErrorCode.OTP_INVALID);
-        }
-        var scope = scopeOf(row);
-        readyInvoice(invoice(scope, row.getInvoiceNo(), true));
-        var url = exports.download(row.getExportNo(), printActor(scope)).url();
-        deliveries.update(null, new UpdateWrapper<IvcInvoiceDelivery>().eq("id", row.getId())
-                .isNull("opened_at").set("opened_at", now()));
-        return url.isAbsolute() ? url.toASCIIString() : origin + url;
+        return history.primary().execute(tx -> {
+            var row = verifiedLink(token);
+            if (!otp.verifyAndConsume(new VerifyCommand(OtpScenes.INVOICE_ARTIFACT_ACCESS, EMAIL, recipient(row),
+                    row.getDeliveryNo(), code), new OtpContext(OtpEntries.INVOICE_ARTIFACT, ip, null))) {
+                throw BizException.of(ErrorCode.OTP_INVALID);
+            }
+            var scope = scopeOf(row);
+            readyInvoice(invoice(scope, row.getInvoiceNo(), true));
+            var url = exports.download(row.getExportNo(), printActor(scope)).url();
+            deliveries.update(null, new UpdateWrapper<IvcInvoiceDelivery>().eq("id", row.getId())
+                    .isNull("opened_at").set("opened_at", now()));
+            return url.isAbsolute() ? url.toASCIIString() : origin + url;
+        });
     }
 
     private IvcInvoiceDelivery verifiedLink(String token) {

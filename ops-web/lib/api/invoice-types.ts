@@ -8,7 +8,7 @@
 export type EInvoiceGatewaySource = "MERCHANT" | "DEFAULT";
 export type EInvoiceProblem = "HELD" | "OVERDUE" | "REVIEW" | "BACKLOG" | "LOW_RANGE";
 /** 上传任务状态（与后端 ivc_transmission.status 逐字一致） */
-export type EInvoiceUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED" | "HELD" | "NEEDS_REVIEW";
+export type EInvoiceUploadStatus = "PENDING" | "SENDING" | "SENT" | "FAILED" | "HELD" | "REVIEW";
 
 export interface EInvoiceSeller {
   entityNo: string;

@@ -1224,7 +1224,7 @@
     "/biz/invoices/{invoiceNo}/retransmissions": {
       "post": {
         "summary": "重传待人工处理的上传",
-        "description": "权限 `biz:invoice:issue`；门店取 `X-Store-No`。把这张发票（含其折让）状态为 NEEDS_REVIEW 的上传任务放回待发，报文不变原样再发；没有可重传的任务回 26008。账号问题造成的 HELD 不走这里 —— 核验账号通过即自动恢复。",
+        "description": "权限 `biz:invoice:issue`；门店取 `X-Store-No`。把这张发票（含其折让）状态为 REVIEW 的上传任务放回待发，报文不变原样再发；没有可重传的任务回 26008。账号问题造成的 HELD 不走这里 —— 核验账号通过即自动恢复。",
         "parameters": [
           {
             "name": "X-Store-No",
@@ -1544,7 +1544,7 @@
                 "SENT",
                 "FAILED",
                 "HELD",
-                "NEEDS_REVIEW"
+                "REVIEW"
               ]
             }
           },
@@ -2025,7 +2025,7 @@
           },
           "uploadStatus": {
             "type": "string",
-            "description": "开立报文上传状态：PENDING / SENDING / SENT / FAILED（可重试，退避中）/ HELD（账号认证失败，主体上传已暂停，核验账号后自动恢复）/ NEEDS_REVIEW（服务商拒收，待人工处理后重传）"
+            "description": "开立报文上传状态：PENDING / SENDING / SENT / FAILED（可重试，退避中）/ HELD（账号认证失败，主体上传已暂停，核验账号后自动恢复）/ REVIEW（服务商拒收，待人工处理后重传）"
           },
           "lines": {
             "type": "array",

@@ -105,6 +105,21 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  # 业务模块按配置选数据源（ADR-066）。先定义具名数据源，再把模块绑上去；绑到同一个名字的模块共用
+  # 连接池、可以同事务。模块不写绑定就是主库。绑定了没定义的名字、或定义了却没写 url，启动失败。
+  #
+  # 发票已经切到平台服务库的新表（TDD-多数据源与发票打印对齐新库 §2.4），**必须**绑到 service：
+  # 主库里的旧发票表结构不同，不绑定不会报启动错，而是跑到开票那一行才报「没有这一列」。
+  # 地址与口令不带默认值，漏配就启动失败。打印还在主库，等它对齐后再绑。
+  datasources:
+    service:
+      url: ${SHOP_SERVICE_DB_URL}
+      username: ${SHOP_SERVICE_DB_USER}
+      password: ${SHOP_SERVICE_DB_PASS}
+      max-pool-size: ${SHOP_SERVICE_DB_POOL:8}
+  modules:
+    invoice:
+      datasource: service
   trade:
     channel:
       # New external receivable admission is opt-in; this does not enable a supplier or local cash acknowledgement.
@@ -782,21 +797,6 @@ shop:
 #
 # **不动 `org.springframework.boot.tomcat`**：「Tomcat started on port 8081」那行是启动地标，
 # 出事时用来判断"进程到底起没起来"，不是噪音。规范说的"Tomcat 降 WARN"指的是容器内部。
-
-# 业务模块按配置选数据源（ADR-066）。默认什么都不写：发票、打印都在主库，行为与没有这套配置时一样。
-# 要让模块连别的库：先定义一个具名数据源，再把模块绑上去；绑到同一个名字的模块共用连接池、可以同事务。
-# 口令不带默认值，漏配就启动失败。绑定了没定义的名字、或定义了却没写 url，同样启动失败。
-#
-# shop:
-#   datasources:
-#     service:
-#       url: jdbc:mysql://127.0.0.1:3306/n_service?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
-#       username: ${SHOP_SERVICE_DB_USER}
-#       password: ${SHOP_SERVICE_DB_PASS}
-#       max-pool-size: 8
-#   modules:
-#     invoice: { datasource: service }
-#     print:   { datasource: service }
 
 # 进销存独立服务的领域包读 inventory.*（ADR-046）。商城过渡期内嵌，部署、测试与菜单开关
 # （sys_function_point.gated_by）认的仍是 shop.inventory.* —— 在这里一对一桥接，存量配置一个字都不用改。

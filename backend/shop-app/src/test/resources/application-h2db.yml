@@ -44,6 +44,15 @@ spring:
 # 试过 `INIT=RUNSCRIPT FROM 'classpath:…'`：H2 2.4 上它**静默建 0 张表**，
 # 不报错也不建表 —— 单独跑一个 JDBC 连接验过。别再用它。
 shop:
+  # 发票绑到平台服务库（ADR-066）：测试里是另一个内存库（svc ≠ shop），表由
+  # schema-service-test.sql 建（gen-service-test-schema.py 从设计的建表语句生成）。
+  # 用 INIT=RUNSCRIPT 而不是 sql.init：sql.init 只认主库那一个数据源。脚本幂等，每个新连接重放一次。
+  datasources:
+    service:
+      url: "jdbc:h2:mem:svc;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema-service-test.sql'"
+      username: sa
+      password: ""
+      driver-class-name: org.h2.Driver
   # 支付 v4 迁移（db/pay）是 MySQL 方言，与平台迁移一样不在 H2 上跑；测试建表走 schema-test.sql
   pay:
     flyway:

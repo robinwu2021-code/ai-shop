@@ -38,7 +38,7 @@
       </view>
       <view class="sh-row sh-row--between sh-mt-xs">
         <text class="txt-caption txt-quiet sh-num">{{ r.sourceNo }}</text>
-        <text class="txt-caption" :class="['FAILED', 'HELD', 'NEEDS_REVIEW'].includes(r.uploadStatus) ? 'is-danger' : 'txt-quiet'">{{ t(`salesInvoice.upload.${r.uploadStatus}`) }}</text>
+        <text class="txt-caption" :class="['FAILED', 'HELD', 'REVIEW'].includes(r.uploadStatus) ? 'is-danger' : 'txt-quiet'">{{ t(`salesInvoice.upload.${r.uploadStatus}`) }}</text>
       </view>
     </view>
     <view v-if="rows.length < total" class="sh-btn sh-btn--soft sh-mt-md" @tap="more">{{ t("salesInvoice.more") }}</view>

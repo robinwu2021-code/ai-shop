@@ -1,5 +1,7 @@
 package ai.neargo.shop.invoice.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -22,7 +24,14 @@ public class IvcUserCarrier {
     private String carrierType;
     private String carrierId;
     private String label;
-    private Boolean isDefault;
+    // 新库的非空列不带默认值（旧表有）：初值写在实体上，插入时由代码给出。
+    private Boolean isDefault = false;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /** 创建人；不显式给就由公共字段填充器写当前操作人 */
+    @TableField(fill = FieldFill.INSERT)
+    private String createdBy;
+    /** 更新人 */
+    @TableField(fill = FieldFill.INSERT)
+    private String updatedBy;
 }

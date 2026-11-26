@@ -1,5 +1,7 @@
 package ai.neargo.shop.invoice.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -56,12 +58,13 @@ public class IvcInvoice {
     private String currency;
     private Long salesMinor;
     /** 零税率销售额 */
-    private Long zeroTaxSalesMinor;
+    // 新库的非空列不带默认值（旧表有）：初值写在实体上，插入时由代码给出。
+    private Long zeroTaxSalesMinor = 0L;
     /** 免税销售额 */
-    private Long freeTaxSalesMinor;
+    private Long freeTaxSalesMinor = 0L;
     private Long taxMinor;
     private Long totalMinor;
-    private Long allowedMinor;
+    private Long allowedMinor = 0L;
     private String taxType;
     private Integer taxRateBp;
     /** ISSUED / VOIDED / REVOKING 注销中 / REVOKED 已注销（V13） */
@@ -73,7 +76,7 @@ public class IvcInvoice {
     private LocalDateTime revokedAt;
     private String revokeError;
     /** 0 未告警 / 1 注销超时已告警 / 2 期末未重开已告警 */
-    private Integer revokeAlerted;
+    private Integer revokeAlerted = 0;
     private String revisedFromInvoiceNo;
     private String revisedToInvoiceNo;
     /** 已注销未重开的号码期末作空白号码上报的时间（V13） */
@@ -86,7 +89,11 @@ public class IvcInvoice {
     /** 交易明细冻结内容（V4） */
     private String detailSnapshot;
     private String detailSnapshotHash;
+    @TableField(fill = FieldFill.INSERT)
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /** 更新人 */
+    @TableField(fill = FieldFill.INSERT)
+    private String updatedBy;
 }

@@ -22,7 +22,7 @@ import { E_INVOICE_COPY } from "./copy";
 
 const READ = "finance:invoice:read", VERIFY = "finance:invoice:verify";
 const PROBLEMS: readonly EInvoiceProblem[] = ["HELD", "OVERDUE", "REVIEW", "BACKLOG", "LOW_RANGE"];
-const UPLOAD: readonly EInvoiceUploadStatus[] = ["PENDING", "SENDING", "SENT", "FAILED", "HELD", "NEEDS_REVIEW"];
+const UPLOAD: readonly EInvoiceUploadStatus[] = ["PENDING", "SENDING", "SENT", "FAILED", "HELD", "REVIEW"];
 const GATEWAYS = ["STUB", "TURNKEY", "CETUSTEK", "UNIVERSALEC"] as const;
 /** 供应商能力（后端 ProviderCapability） */
 const can = (r: { capabilities?: string[] }, capability: string) => !!r.capabilities?.includes(capability);
@@ -145,7 +145,7 @@ function Transmissions({ c, verify }: { c: Copy; verify: boolean }) {
     { header: c.deadline, cell: (r) => <span className={r.overdue ? "text-destructive" : ""}>{r.reportDeadlineAt ?? "—"}</span> },
     {
       header: c.actions, cell: (r) => verify ? <div className="flex gap-2">
-        {r.status === "NEEDS_REVIEW" && <Button size="sm" variant="outline" disabled={busy}
+        {r.status === "REVIEW" && <Button size="sm" variant="outline" disabled={busy}
           onClick={() => run(() => api.eInvoiceRetransmit(r.invoiceNo), () => `${r.invoiceNo}: ${c.retransmitted}`, () => void q.refetch())}>{c.retransmit}</Button>}
         {can(r, "QUERY_STATUS") && r.status !== "SENT" && <Button size="sm" variant="outline" disabled={busy}
           onClick={() => run(() => api.eInvoiceProviderCheck(r.invoiceNo), (k) => `${r.invoiceNo}: ${c.checkResult} ${k.verdict} (${k.providerState})${k.reconciled.length ? ` · ${c.reconciled}` : ""}`, () => void q.refetch())}>{c.providerCheck}</Button>}
@@ -189,7 +189,7 @@ function Invoices({ c, verify }: { c: Copy; verify: boolean }) {
     { header: c.upload, cell: (r) => <span className={r.uploadStatus && !["SENT", "PENDING", "SENDING"].includes(r.uploadStatus) ? "text-destructive" : ""}>{r.uploadStatus ?? "—"}</span> },
     {
       header: c.actions, cell: (r) => verify ? <div className="flex gap-2">
-        {r.uploadStatus === "NEEDS_REVIEW" && <Button size="sm" variant="outline" disabled={busy}
+        {r.uploadStatus === "REVIEW" && <Button size="sm" variant="outline" disabled={busy}
           onClick={() => run(() => api.eInvoiceRetransmit(r.invoiceNo), () => `${r.fiscalNumber}: ${c.retransmitted}`, () => void q.refetch())}>{c.retransmit}</Button>}
         <Button size="sm" variant="outline" disabled={busy}
           onClick={() => run(() => api.eInvoiceProviderCheck(r.invoiceNo), (k) => `${r.fiscalNumber}: ${c.checkResult} ${k.verdict} (${k.providerState})${k.reconciled.length ? ` · ${c.reconciled}` : ""}`, () => void q.refetch())}>{c.providerCheck}</Button>
