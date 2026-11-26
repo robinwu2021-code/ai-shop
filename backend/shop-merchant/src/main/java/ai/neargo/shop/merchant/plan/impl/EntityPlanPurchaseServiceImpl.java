@@ -16,7 +16,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
-/** Frozen entity purchases; all ledger/media calls run outside the business transaction. */
+/**
+ * Frozen entity purchases; all ledger/media calls run outside the business transaction.
+ *
+ * <p><b>待退役，并入商城</b>（2026-11-26 用户定，商城会话处理）：见本包的 {@code package-info}。不在本分支改写。
+ */
 public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseService {
   private static final String TENANT = "MAIN";
   private final JdbcTemplate db;
