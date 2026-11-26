@@ -549,8 +549,6 @@ class ManualCounterDiscountIT extends CheckoutFlowFixture {
         assertThat(jdbc.queryForList("SELECT sku_no,stock,locked_stock FROM prd_sku WHERE sku_no IN (?,?)"
                 + " ORDER BY sku_no", first.quote().lines().get(0).skuNo(), first.quote().lines().get(1).skuNo()))
                 .isEqualTo(stockBefore);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=?"
-                + " AND event_type='MANUAL_SERVICE_RECEIPT_RECORDED'", Long.class, firstOrder.orderNo())).isZero();
 
         var after = actual.prepare(actual.twoLineRequest("balanced-after", actual.guest()));
         var afterOrder = actual.place(actual.accept(after));

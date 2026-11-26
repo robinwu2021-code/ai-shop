@@ -538,7 +538,7 @@ class FoodServerPrimaryDatabaseTest {
                                                 sql.queryForObject(
                                                         "SELECT COUNT(*) FROM sys_outbox",
                                                         Integer.class))
-                                        .isEqualTo(6);
+                                        .isEqualTo(3);
                                 assertThat(
                                                 sql.queryForObject(
                                                         "SELECT COUNT(*) FROM sys_idempotent",
@@ -705,7 +705,7 @@ class FoodServerPrimaryDatabaseTest {
                                                 sql.queryForObject(
                                                         "SELECT COUNT(*) FROM sys_outbox",
                                                         Integer.class))
-                                        .isEqualTo(11);
+                                        .isEqualTo(3);
                                 assertThat(
                                                 sql.queryForObject(
                                                         "SELECT COUNT(*) FROM sys_idempotent",

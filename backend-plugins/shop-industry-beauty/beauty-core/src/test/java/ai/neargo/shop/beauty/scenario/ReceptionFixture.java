@@ -13,10 +13,9 @@ import ai.neargo.shop.beauty.dto.MyAppointmentVO;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentReq;
 import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.ReceptionIdentityProof;
+import ai.neargo.shop.beauty.entity.BtyActionLog;
+import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.AppointmentService;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
@@ -46,18 +45,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
@@ -83,24 +78,14 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
     boolean roomQuantities;
     boolean occupied;
     boolean otherOccupied;
-    boolean failOutbox;
+    /** Fails the audit row written in the same transaction as a reception state change. */
+    boolean failAudit;
     long quotePrice = 1000;
     Long goodsRevision = 7L;
+    static final Set<String> FAILING_ACTIONS = Set.of("CHECKED_IN", "RECEPTION_EXCEPTION_REQUESTED",
+            "WORK_ORDER_OPENED");
     final OffsetDateTime start = OffsetDateTime.now(ZoneOffset.UTC).plusDays(1)
             .truncatedTo(ChronoUnit.DAYS).plusHours(10);
-
-    @Configuration(proxyBeanMethods = false)
-    static class OutboxRoute {
-        @Bean
-        UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper mapper) {
-            var facade = new UnifiedOutboxFacade(mapper);
-            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, mapper), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:BEAUTY_APPOINTMENT_OPERATION_COMPLETED",
-                    "PLATFORM:BEAUTY_RECEPTION_STATE_CHANGED",
-                    "PLATFORM:BEAUTY_SERVICE_DEFINITION_VERSION_PUBLISHED"));
-            return facade;
-        }
-    }
 
     @BeforeEach
     void database() throws Exception {
@@ -136,7 +121,7 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
     }
     ApplicationContextRunner business() {
         return runner().withUserConfiguration(BeautyCatalogConfiguration.class, BeautyAppointmentConfiguration.class,
-                        BeautyWriteGuardConfiguration.class, OutboxRoute.class)
+                        BeautyWriteGuardConfiguration.class)
                 .withBean(ObjectMapper.class, () -> json)
                 .withBean(ResourceBookingPort.class, () -> owner)
                 .withBean(CustomerIdentityPort.class, () -> new CustomerIdentityPort() {
@@ -213,15 +198,14 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
                             "A", q.startAt(), q.endAt(), List.of("RULE"))).toList();
                 }).withInitializer(application -> application.getBeanFactory().addBeanPostProcessor(
                         new BeanPostProcessor() {
+                            private final BeanPostProcessor audit = BeautyFailureInjection.afterCall(
+                                    BeautyMappers.ActionLogMapper.class, "insert",
+                                    row -> failAudit && row instanceof BtyActionLog log
+                                            && FAILING_ACTIONS.contains(log.getAction()),
+                                    () -> { throw new IllegalStateException("reception-audit-rollback"); });
                             @Override public Object postProcessAfterInitialization(Object bean, String name) {
                                 if ("beautyReceptionClock".equals(name)) { return receptionClock; }
-                                if (!"beautyOutboxPublisher".equals(name)) { return bean; }
-                                OutboxPublisher delegate = (OutboxPublisher) bean;
-                                return (OutboxPublisher) (event, options) -> {
-                                    var receipt = delegate.publish(event, options);
-                                    if (failOutbox) { throw new IllegalStateException("reception-outbox-rollback"); }
-                                    return receipt;
-                                };
+                                return audit.postProcessAfterInitialization(bean, name);
                             }
                         }));
     }

@@ -34,7 +34,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ContextConsumer;
-import tools.jackson.databind.ObjectMapper;
 
 class TableConfigurationTest extends FoodWriteGuardFixture {
     Fixture fixture(AssertableApplicationContext c) {
@@ -184,25 +183,8 @@ class TableConfigurationTest extends FoodWriteGuardFixture {
             assertThat(f.sql().queryForObject("SELECT deleted FROM fnb_table",Integer.class)).isOne();
             code(() -> s.createTable("E","A","actor",req("AREA1","T1"),"reuse"),ErrorCode.CONFLICT);
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_table",Integer.class)).isOne();
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isEqualTo(3);
-        });
-    }
-    @Test void preservesAuditSnapshots() {
-        run(c -> {
-            var f=fixture(c);var s=c.getBean(TableService.class);var a=create(s,"T1");
-            s.saveTable("E","A",a.tableNo(),"actor",new SaveTableReq("AREA2","六人桌",6,2,0L),"edit");
-            s.setStatusTable("E","A",a.tableNo(),"actor",state("DISABLED",1),"off");
-            s.archiveTable("E","A",a.tableNo(),"actor",new ArchiveTableReq(2L,"归档原因"),"archive");
-            var json=c.getBean(ObjectMapper.class);
-            var events=f.sql().queryForList("SELECT payload FROM sys_outbox ORDER BY id",String.class)
-                    .stream().map(json::readTree).toList();
-            assertThat(events).hasSize(4);assertThat(events.get(0).get("before").isNull()).isTrue();
-            assertThat(events.get(1).get("before").get("capacity").asInt()).isEqualTo(4);
-            assertThat(events.get(1).get("after").get("areaNo").asString()).isEqualTo("AREA2");
-            assertThat(events.get(3).get("action").asString()).isEqualTo("ARCHIVE_TABLE");
-            assertThat(events.get(3).get("reason").asString()).isEqualTo("归档原因");
-            for(var e:events) assertThat(f.sql().queryForObject("SELECT operator_no FROM fnb_action_log WHERE action_no=?",
-                    String.class,e.get("operationNo").asString())).isEqualTo("actor");
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log WHERE object_type='TABLE'",
+                    Integer.class)).isEqualTo(3);
         });
     }
     @Test void rejectsFutureVersionAcrossDiscoveryStatusChange() {
@@ -259,16 +241,16 @@ class TableConfigurationTest extends FoodWriteGuardFixture {
             var f=fixture(c);c.getBean(StorePolicyPublicationTest.Signals.class).afterFlush.set(true);
             assertThatThrownBy(() -> create(c.getBean(TableService.class),"T1"))
                     .isInstanceOf(IllegalStateException.class).hasMessage("after-policy-event-flush");
-            for(String t:List.of("fnb_table","fnb_action_log","sys_outbox","sys_idempotent"))
+            for(String t:List.of("fnb_table","fnb_action_log","sys_idempotent"))
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM "+t,Integer.class)).as(t).isZero();
         });
     }
-    @Test void failedEditStatusAndArchiveRollBackFlushedEvent() {
+    @Test void failedEditStatusAndArchiveRollBackFlushedAudit() {
         for(String action:List.of("edit","status","archive")) {
             run(c -> {
                 var f=fixture(c);var service=c.getBean(TableService.class);var row=create(service,"T1");
                 if(action.equals("archive")) row=service.setStatusTable("E","A",row.tableNo(),"actor",state("DISABLED",0),"off").table();
-                var before=row;int events=f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class);
+                var before=row;int audits=f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log",Integer.class);
                 c.getBean(StorePolicyPublicationTest.Signals.class).afterFlush.set(true);
                 assertThatThrownBy(() -> {
                     switch(action) {
@@ -278,8 +260,8 @@ class TableConfigurationTest extends FoodWriteGuardFixture {
                     }
                 }).isInstanceOf(IllegalStateException.class).hasMessage("after-policy-event-flush");
                 assertThat(service.getTable("E","A",before.tableNo()).table()).isEqualTo(before);
-                for(String table:List.of("sys_outbox","sys_idempotent","fnb_action_log"))
-                    assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isEqualTo(events);
+                for(String table:List.of("sys_idempotent","fnb_action_log"))
+                    assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isEqualTo(audits);
             });
         }
     }
@@ -347,7 +329,7 @@ class TableConfigurationTest extends FoodWriteGuardFixture {
     private void assertNoActiveTableUnderDisabledArea(Fixture f) {
         assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_table t JOIN fnb_table_area a ON t.area_no=a.area_no"
                 + " WHERE t.deleted=0 AND t.status='ACTIVE' AND a.status='DISABLED'",Integer.class)).isZero();
-        assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isGreaterThan(0);
+        assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log",Integer.class)).isGreaterThan(0);
     }
     private List<Object> race(Callable<?> left,Callable<?> right) throws Exception {
         var barrier=new CyclicBarrier(2);

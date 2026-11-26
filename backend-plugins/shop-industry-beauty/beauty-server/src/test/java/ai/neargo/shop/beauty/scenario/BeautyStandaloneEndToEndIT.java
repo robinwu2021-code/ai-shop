@@ -36,7 +36,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
-/** Real TCP client -> standalone security/controller/service -> disposable MySQL, with production archive config. */
+/** Real TCP client -> standalone security/controller/service -> disposable MySQL. */
 class BeautyStandaloneEndToEndIT {
     @Test
     void policyAndDefinitionUseSameDurableContractsAcrossStandaloneHttp() throws Exception {
@@ -56,8 +56,7 @@ class BeautyStandaloneEndToEndIT {
                                 "G", 9900, 60)))
                 .run("--server.port=0", "--server.address=127.0.0.1", "--shop.beauty.enabled=true",
                         "--spring.datasource.url=" + source.getUrl(), "--spring.datasource.username=root",
-                        "--spring.datasource.password=", "--shop.services.internal-token=" + token,
-                        "--spring.config.import=classpath:beauty-publication-archive.yml"))) {
+                        "--spring.datasource.password=", "--shop.services.internal-token=" + token))) {
             int port = ((WebServerApplicationContext) context).getWebServer().getPort();
             String url = "http://127.0.0.1:" + port;
             var http = new InternalHttp(service -> Optional.of(url), token);
@@ -90,8 +89,6 @@ class BeautyStandaloneEndToEndIT {
                     .containsExactly("REMOTE-ACTOR");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE operator_ref='REMOTE-ACTOR'",
                     Integer.class)).isEqualTo(2);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE status='ARCHIVED'", Integer.class))
-                    .isEqualTo(2);
             var unauthorized = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(url
                     + BeautyPolicyInternalApi.READ_PATH)).header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("{}") ).build(), HttpResponse.BodyHandlers.discarding());

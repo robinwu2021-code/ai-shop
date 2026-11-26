@@ -25,9 +25,7 @@ import ai.neargo.shop.common.pricing.PricingCapabilities;
 import ai.neargo.shop.common.pricing.PricingRuleCatalog;
 import ai.neargo.shop.common.pricing.PricingConfigCompiler;
 import ai.neargo.shop.common.pricing.SystemConstraints;
-import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.trade.PricingConfigPublished;
 import ai.neargo.shop.trade.dto.PricingConfigCommands;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.Context;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.ResetReq;
@@ -66,7 +64,6 @@ public class PricingPublicationPolicy {
     private final StorePricingConfigMapper stores;
     private final StorePricingRevisionMapper storeRevisions;
     private final IdempotencyService idempotency;
-    private final OutboxEventBus events;
     private final TransactionTemplate transactions;
     private final ObjectMapper json;
     private final PricingConfigCompiler compiler = new PricingConfigCompiler();
@@ -75,14 +72,13 @@ public class PricingPublicationPolicy {
 
     public PricingPublicationPolicy(PricingTemplateMapper templates, PricingTemplateRevisionMapper templateRevisions,
             StorePricingConfigMapper stores, StorePricingRevisionMapper storeRevisions, IdempotencyService idempotency,
-            OutboxEventBus events, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectMapper json) {
         this.templates = templates;
         this.templateRevisions = templateRevisions;
         this.stores = stores;
         this.storeRevisions = storeRevisions;
         this.idempotency = idempotency;
-        this.events = events;
         this.transactions = new TransactionTemplate(manager);
         this.json = json;
     }
@@ -374,8 +370,6 @@ public class PricingPublicationPolicy {
             storeRevisions.insert(row);
         }
         change(c, head, template ? effective : patch, templateRevision, no, template);
-        events.publish(new PricingConfigPublished(c.tenantNo(), head.draft().no(), no, hash,
-                template ? null : c.entityNo(), template ? null : c.storeNo(), c.actorNo(), template));
         return revision(c, head.draft().no(), no, template);
     }
 

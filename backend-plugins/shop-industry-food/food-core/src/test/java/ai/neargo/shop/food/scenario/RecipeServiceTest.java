@@ -8,8 +8,6 @@ import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.CreateRecipeReq;
 import ai.neargo.shop.food.dto.ListRecipesQuery;
 import ai.neargo.shop.food.dto.OptionItemInput;
@@ -37,7 +35,6 @@ import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -59,7 +56,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
-/** Real primary tables and atomic outbox verify editable recipes without any stock command. */
+/** Real primary tables and atomic audit verify editable recipes without any stock command. */
 class RecipeServiceTest extends FoodWriteGuardFixture {
     void run(BiConsumer<AssertableApplicationContext, Fixture> action) {
         runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Recipes.class).run(c -> {
@@ -118,8 +115,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                             "BASE_ONLY", "INTEGER_ONLY",
                             MaterialCatalogFacts.definitionHash("MILK", entity, "Milk", "KG", 1, "OWN")));
             var service = new RecipeServiceImpl(c.getBean(RecipeMapper.class), c.getBean(RecipeLineMapper.class),
-                    c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class),
-                    c.getBean("foodOutboxPublisher", OutboxPublisher.class), c.getBean(ObjectMapper.class),
+                    c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class), c.getBean(ObjectMapper.class),
                     c.getBean(PlatformTransactionManager.class), source.goods, materials,
                     c.getBean(RecipeAdjustmentMapper.class), c.getBean(OptionGroupItemMapper.class),
                     c.getBean(OptionGroupMapper.class), source.currencies);
@@ -156,7 +152,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
             assertThat(s.getRecipe("E", "A", first.recipeNo()).recipe()).isEqualTo(result);
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_recipe_line WHERE conversion_ref IS NOT NULL",
                     Integer.class)).isZero();
-            for (String table : List.of("sys_idempotent", "sys_outbox", "fnb_action_log")) {
+            for (String table : List.of("sys_idempotent", "fnb_action_log")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class))
                         .as(table).isEqualTo(2);
             }
@@ -177,7 +173,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                     line("invented", "MILK", "1", "KG")), "bad-id"), ErrorCode.CONFLICT);
             assertThat(s.getRecipe("E", "A", id).recipe().version()).isZero();
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_recipe_line", Integer.class)).isZero();
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isOne();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log WHERE object_type='RECIPE'", Integer.class)).isOne();
         });
     }
 
@@ -216,14 +212,14 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
         });
     }
 
-    @Test void outboxFailureRollsBackHeadLinesAuditAndIdempotencyAndAllowsSameKeyRetry() {
+    @Test void auditFailureRollsBackHeadLinesAuditAndIdempotencyAndAllowsSameKeyRetry() {
         run((c, f) -> {
             var s = c.getBean(RecipeService.class);
             var state = c.getBean(State.class);
             state.fail.set(true);
             assertThatThrownBy(() -> s.createRecipe("E", "A", "actor", create("TEA", "DEFAULT"), "create"))
                     .isInstanceOf(IllegalStateException.class);
-            for (String table : List.of("fnb_recipe", "sys_idempotent", "sys_outbox", "fnb_action_log")) {
+            for (String table : List.of("fnb_recipe", "sys_idempotent", "fnb_action_log")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isZero();
             }
             state.fail.set(false);
@@ -281,7 +277,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                         .containsExactlyInAnyOrder("OK", "CONFLICT");
             } catch (Exception failure) { throw new AssertionError(failure); }
             assertThat(service.getRecipe("E", "A", id).recipe().version()).isEqualTo(1);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(2);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log WHERE object_type='RECIPE'", Integer.class)).isEqualTo(2);
         });
     }
 
@@ -341,11 +337,11 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
             var clear = service.replaceDefinition("E", "A", id, "actor", adjusted(json, 3, input, "[]"), "clear");
             assertThat(clear.recipe().version()).isEqualTo(4);
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_recipe_adjustment", Integer.class)).isZero();
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(5);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log WHERE object_type='RECIPE'", Integer.class)).isEqualTo(5);
         });
     }
 
-    @Test void adjustmentScopeUnitsActionsAndIdsFailWithoutMutationAndOutboxFailureRollsBack() {
+    @Test void adjustmentScopeUnitsActionsAndIdsFailWithoutMutationAndAuditFailureRollsBack() {
         run((c, f) -> {
             var service = c.getBean(RecipeService.class);
             var json = c.getBean(ObjectMapper.class);
@@ -374,7 +370,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                     .isInstanceOf(IllegalStateException.class);
             assertThat(service.getRecipe("E", "A", id).recipe().version()).isEqualTo(1);
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_recipe_adjustment", Integer.class)).isZero();
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(2);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log WHERE object_type='RECIPE'", Integer.class)).isEqualTo(2);
         });
     }
 
@@ -470,7 +466,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
             var sources = new OptionGroupServiceTest.Sources();
             var groups = new OptionGroupServiceImpl(c.getBean(OptionGroupMapper.class),
                     c.getBean(OptionGroupItemMapper.class), c.getBean(ActionLogMapper.class),
-                    c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
+                    c.getBean(IdempotencyService.class),
                     c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
                     template.getMapper(DishMapper.class), template.getMapper(DishOptionGroupMapper.class),
                     template.getMapper(ModifierMapper.class), sources, sources);
@@ -552,7 +548,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
             var b = new MapperFactoryBean<>(OptionGroupMapper.class); b.setSqlSessionTemplate(t); return b;
         }
         @Bean RecipeService recipeService(RecipeMapper heads, RecipeLineMapper lines, ActionLogMapper actions,
-                IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher outbox,
+                IdempotencyService idem,
                 ObjectMapper json, PlatformTransactionManager manager, State state, RecipeAdjustmentMapper adjustments,
                 OptionGroupItemMapper items, OptionGroupMapper groups) {
             var catalog = mock(GoodsCatalogQueryPort.class);
@@ -571,12 +567,8 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                         "牛奶", "KG", 1, "OWN", "BASE_ONLY", "INTEGER_ONLY",
                         MaterialCatalogFacts.definitionHash("MILK", owner, "牛奶", "KG", 1, "OWN"))) : List.of();
             };
-            OutboxPublisher checked = (event, options) -> {
-                var receipt = outbox.publish(event, options);
-                if (state.fail.get()) throw new IllegalStateException("after-recipe-outbox");
-                return receipt;
-            };
-            return new RecipeServiceImpl(heads, lines, actions, idem, checked, json, manager, catalog, materials,
+            ActionLogMapper checked = FoodAuditFault.failAfterInsert(actions, state.fail::get, "after-recipe-audit");
+            return new RecipeServiceImpl(heads, lines, checked, idem, json, manager, catalog, materials,
                     adjustments, items, groups);
         }
     }

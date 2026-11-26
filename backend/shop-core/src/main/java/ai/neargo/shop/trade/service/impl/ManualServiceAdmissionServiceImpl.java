@@ -7,7 +7,6 @@ import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.product.StockDispositionContract;
 import ai.neargo.shop.spi.product.StockDispositionPort;
 import ai.neargo.shop.spi.product.StockDispositionPort.CurrentState;
@@ -23,8 +22,6 @@ import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutScope;
 import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
 import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.SourceLookup;
-import ai.neargo.shop.spi.trade.ManualServiceAdmissionEvents.ManualServiceAdmissionChanged;
-import ai.neargo.shop.spi.trade.ManualServiceAdmissionEvents.ManualServiceReceiptRecorded;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionInternalApi;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionInternalApi.Scoped;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
@@ -124,7 +121,6 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
     private final ManualExecutionSourceReader sourceReader;
     private final ServiceExecutionFenceCoordinator executionFences;
     private final CheckoutClock clock;
-    private final OutboxEventBus events;
     private final TransactionTemplate writes;
     private final TransactionTemplate reads;
 
@@ -146,7 +142,6 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
             StockDispositionPort stock,
             ObjectMapper json,
             CheckoutClock clock,
-            OutboxEventBus events,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ServiceExecutionFenceCoordinator executionFences) {
         this.checkout = checkout;
@@ -168,7 +163,6 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         this.json = json;
         this.sourceReader = new ManualExecutionSourceReader(json, quotes, confirmations, mappings, items, declarations);
         this.clock = clock;
-        this.events = events;
         writes = new TransactionTemplate(manager);
         writes.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         reads = new TransactionTemplate(manager);
@@ -408,11 +402,6 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                     "WAIT_PAY",
                                                     "FULFILLING",
                                                     actor.actorNo());
-                                            events.publish(
-                                                    new ManualServiceReceiptRecorded(
-                                                            row.getOrderNo(),
-                                                            row.getDeclarationNo(),
-                                                            row.getAdmissionRevision()));
                                             return row;
                                         }));
         progress(declaration, true);
@@ -710,12 +699,6 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                     : null);
                                     changed(declarations.advanceAdmission(current, expected));
                                     action(current, "ADMISSION_CHANGED");
-                                    events.publish(
-                                            new ManualServiceAdmissionChanged(
-                                                    current.getOrderNo(),
-                                                    current.getDeclarationNo(),
-                                                    current.getAdmissionRevision(),
-                                                    admissionState(current)));
                                     return true;
                                 }));
     }
@@ -764,12 +747,6 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         // Keep the last genuine stock observation exactly; contamination is no stock outcome.
         changed(declarations.advanceAdmission(current, expected));
         action(current, "ADMISSION_CHANGED");
-        events.publish(
-                new ManualServiceAdmissionChanged(
-                        current.getOrderNo(),
-                        current.getDeclarationNo(),
-                        current.getAdmissionRevision(),
-                        "SUSPENDED"));
         return true;
     }
 

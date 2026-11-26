@@ -4,8 +4,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
 import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled;
 import ai.neargo.shop.food.dto.ArchiveTableReq;
@@ -34,8 +32,6 @@ import ai.neargo.shop.food.service.TableService;
 import ai.neargo.shop.food.mapper.ReservationTableMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.TableAreaChanged;
-import ai.neargo.shop.spi.food.TableChanged;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -64,7 +60,6 @@ public class TableServiceImpl implements TableService {
     private final TableAreaMapper areas;
     private final ActionLogMapper actions;
     private final IdempotencyService idempotency;
-    private final OutboxPublisher publisher;
     private final TransactionTemplate transaction;
     private final TransactionTemplate tableTransaction;
     private final TableMapper tables;
@@ -72,21 +67,18 @@ public class TableServiceImpl implements TableService {
 
     public TableServiceImpl(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
             IdempotencyService idempotency,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        this(areas, tables, actions, idempotency, publisher, manager, null);
+        this(areas, tables, actions, idempotency, manager, null);
     }
     @Autowired
     public TableServiceImpl(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
-            IdempotencyService idempotency, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            IdempotencyService idempotency, @Qualifier("transactionManager") PlatformTransactionManager manager,
             ReservationTableMapper reservationTables) {
         this.reservationTables = reservationTables;
         this.areas = areas;
         this.tables = tables;
         this.actions = actions;
         this.idempotency = idempotency;
-        this.publisher = publisher;
         this.transaction = new TransactionTemplate(manager);
         this.transaction.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
         this.tableTransaction = new TransactionTemplate(manager);
@@ -226,9 +218,6 @@ public class TableServiceImpl implements TableService {
         audit.setBeforeRef(before == null ? null : snapshot(before));
         audit.setAfterRef(snapshot(view(row)));
         actions.insert(audit);
-        publisher.publish(new TableAreaChanged(row.getEntityNo(), row.getStoreNo(), row.getAreaNo(), action,
-                row.getVersion(), audit.getActionNo(), before, view(row), reason),
-                new PublishOptions("FOOD_AREA:" + row.getAreaNo(), 1));
     }
 
     private static String snapshot(TableAreaVO row) {
@@ -491,9 +480,6 @@ public class TableServiceImpl implements TableService {
         audit.setBeforeRef(before == null ? null : tableSnapshot(before));
         audit.setAfterRef(tableSnapshot(after));
         actions.insert(audit);
-        publisher.publish(new TableChanged(row.getEntityNo(), row.getStoreNo(), row.getTableNo(), action,
-                row.getVersion(), audit.getActionNo(), before, after, reason),
-                new PublishOptions("FOOD_TABLE:" + row.getTableNo(), 1));
         return audit.getActionNo();
     }
 

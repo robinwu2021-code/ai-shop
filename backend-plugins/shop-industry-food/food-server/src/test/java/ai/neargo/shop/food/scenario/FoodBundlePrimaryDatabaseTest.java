@@ -158,7 +158,7 @@ class FoodBundlePrimaryDatabaseTest {
                         for (String table : List.of("fnb_bundle", "fnb_bundle_group", "fnb_bundle_choice")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isOne();
                         }
-                        for (String table : List.of("fnb_action_log", "sys_outbox", "sys_idempotent")) {
+                        for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(2);
                         }
                         assertThat(bridgeFailure.get()).isNull();

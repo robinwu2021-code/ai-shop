@@ -5,8 +5,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.SalesRestrictionReq;
 import ai.neargo.shop.food.dto.SalesRestrictionQuery;
 import ai.neargo.shop.food.dto.SalesRestrictionVO;
@@ -22,7 +20,6 @@ import ai.neargo.shop.food.policy.MenuDefinitionPolicy;
 import ai.neargo.shop.food.policy.SalesRestrictionPolicy;
 import ai.neargo.shop.food.service.SalesRestrictionService;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.SalesRestrictionChanged;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -49,7 +46,6 @@ public class SalesRestrictionServiceImpl implements SalesRestrictionService {
     private final StorePolicyMapper policies;
     private final ActionLogMapper actions;
     private final IdempotencyService idem;
-    private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final Clock clock;
     private final GoodsCatalogQueryPort goods;
@@ -57,10 +53,10 @@ public class SalesRestrictionServiceImpl implements SalesRestrictionService {
     private final TransactionTemplate read;
 
     public SalesRestrictionServiceImpl(SalesRestrictionMapper rows, StorePolicyMapper policies, ActionLogMapper actions,
-            IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json, PlatformTransactionManager manager,
+            IdempotencyService idem, ObjectMapper json, PlatformTransactionManager manager,
             Clock clock, GoodsCatalogQueryPort goods) {
         this.rows = rows; this.policies = policies; this.actions = actions; this.idem = idem;
-        this.publisher = publisher; this.json = json; this.clock = clock; this.goods = goods;
+        this.json = json; this.clock = clock; this.goods = goods;
         write = new TransactionTemplate(manager);
         write.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
         read = new TransactionTemplate(manager); read.setReadOnly(true);
@@ -258,8 +254,6 @@ public class SalesRestrictionServiceImpl implements SalesRestrictionService {
                 FoodCommandFingerprint.scope("SALES_RESTRICTION", entity, store), key));
         if (before != null) audit.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(before)));
         audit.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(after))); actions.insert(audit);
-        publisher.publish(new SalesRestrictionChanged(entity, store, after.restrictionNo(), action,
-                audit.getActionNo(), after), new PublishOptions("FOOD_SALES_RESTRICTION:" + after.restrictionNo(), 1));
     }
     private static LocalDateTime utc(Instant instant) {
         return instant == null ? null : LocalDateTime.ofInstant(instant, ZoneOffset.UTC);

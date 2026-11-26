@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.CartResultVO;
 import ai.neargo.shop.food.dto.CartVO;
@@ -106,7 +105,6 @@ class DiningDeliveryServiceTest {
                         carts,
                         template.getMapper(CheckCartMapper.class),
                         template.getMapper(DiningDeliveryMapper.class),
-                        mock(OutboxPublisher.class),
                         JsonMapper.builder().build(),
                         new DataSourceTransactionManager(source),
                         Clock.fixed(Instant.parse("2026-10-24T00:00:00Z"), ZoneOffset.UTC));

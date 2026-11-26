@@ -173,8 +173,6 @@ class PersonnelMaintenanceIT {
                     + "AND resource_type='STAFF' AND store_no IS NULL AND capacity=1", Integer.class)).isOne();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_personnel_account WHERE entity_no='E'",
                     Integer.class)).isZero();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE "
-                    + "event_type='MERCHANT_PERSONNEL_CHANGED' AND status='ARCHIVED'", Integer.class)).isOne();
         });
     }
     @Test
@@ -299,19 +297,6 @@ class PersonnelMaintenanceIT {
             assertThat(facts.getFirst().qualifications()).isEmpty();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_resource WHERE entity_no='E'", Integer.class))
                     .isOne();
-        });
-    }
-    @Test
-    void publicationFailureRollsBackPersonEmploymentResourceAndIdempotency() {
-        runner().withPropertyValues("shop.personnel.publication.archive-only=false").run(context -> {
-            assertThatThrownBy(() -> create(context, "FAIL")).isInstanceOf(IllegalStateException.class);
-            for (String table : List.of("mch_personnel", "mch_personnel_store", "mch_personnel_position",
-                    "mch_personnel_skill", "mch_resource", "mch_staff_log")) {
-                assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE entity_no='E'", Integer.class))
-                        .isZero();
-            }
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent WHERE idem_key='FAIL'", Integer.class))
-                    .isZero();
         });
     }
     @Test

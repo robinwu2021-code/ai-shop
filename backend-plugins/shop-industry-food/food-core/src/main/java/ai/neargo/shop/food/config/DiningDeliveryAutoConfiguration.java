@@ -2,7 +2,6 @@ package ai.neargo.shop.food.config;
 
 import ai.neargo.common.data.scope.DataScopeRegistrar;
 import ai.neargo.shop.auth.ScopeDim;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.mapper.DiningDeliveryMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper;
 import ai.neargo.shop.food.service.CheckCartService;
@@ -32,11 +31,10 @@ public class DiningDeliveryAutoConfiguration {
             CheckCartService carts,
             CheckCartMapper cartRows,
             DiningDeliveryMapper addresses,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher outbox,
             ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new DiningDeliveryServiceImpl(
-                carts, cartRows, addresses, outbox, json, manager, Clock.systemUTC());
+                carts, cartRows, addresses, json, manager, Clock.systemUTC());
     }
 
     @Bean

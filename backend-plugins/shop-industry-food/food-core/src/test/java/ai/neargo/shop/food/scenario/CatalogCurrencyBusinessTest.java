@@ -114,9 +114,9 @@ class CatalogCurrencyBusinessTest {
         }
     }
 
-    static ModifierServiceImpl modifiers(AssertableApplicationContext c, Sources source, OutboxPublisher outbox) {
+    static ModifierServiceImpl modifiers(AssertableApplicationContext c, Sources source, ActionLogMapper actions) {
         return new ModifierServiceImpl(c.getBean(ModifierMapper.class), c.getBean(ModifierComponentMapper.class),
-                c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class), outbox,
+                actions, c.getBean(IdempotencyService.class),
                 c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
                 source.currencies);
     }
@@ -186,7 +186,7 @@ class CatalogCurrencyBusinessTest {
     @Test void standaloneForeignAddonAndComboPublishWithoutAnExistingMenuAndHistorySurvivesOwnerOutage() {
         new ConfigRevisionServiceTest().run((c, f) -> {
             var source = new Sources();
-            var service = modifiers(c, source, c.getBean("foodOutboxPublisher", OutboxPublisher.class));
+            var service = modifiers(c, source, c.getBean(ActionLogMapper.class));
             var pubs = publications(c, source);
             var child = service.createModifier("E", "A", "actor", addon(), "child");
             var childPublication = pubs.publishModifier("E", "A", child.configNo(), "actor", publish(0), "pc");
@@ -214,7 +214,7 @@ class CatalogCurrencyBusinessTest {
             c.getBean(ConfigRevisionService.class).publishModifier("E", "A", child.configNo(), "actor",
                     publish(0), "legacy-publication");
             var source = new Sources();
-            var service = modifiers(c, source, c.getBean("foodOutboxPublisher", OutboxPublisher.class));
+            var service = modifiers(c, source, c.getBean(ActionLogMapper.class));
             var combo = service.createModifier("E", "A", "actor", new CreateModifierReq("Combo", "COMBO", "SKU",
                     List.of(new ModifierComponentInput(child.configNo(), BigDecimal.ONE))), "foreign-parent");
             assertThatThrownBy(() -> publications(c, source).publishModifier("E", "A", combo.configNo(), "actor",
@@ -226,7 +226,7 @@ class CatalogCurrencyBusinessTest {
     @Test void marketChangeBlocksRepublishWithoutChangingOriginalBytesOrAppendCount() {
         new ConfigRevisionServiceTest().run((c, f) -> {
             var source = new Sources();
-            var mod = modifiers(c, source, c.getBean("foodOutboxPublisher", OutboxPublisher.class));
+            var mod = modifiers(c, source, c.getBean(ActionLogMapper.class));
             var pub = publications(c, source);
             var number = mod.createModifier("E", "A", "actor", addon(), "create").configNo();
             var first = pub.publishModifier("E", "A", number, "actor", publish(0), "publish");
@@ -246,7 +246,7 @@ class CatalogCurrencyBusinessTest {
     @Test void corruptForeignIdentityFailsBeforeWritingAnything() {
         new ConfigRevisionServiceTest().run((c, f) -> {
             var source = new Sources(); source.corrupt = true;
-            var service = modifiers(c, source, c.getBean("foodOutboxPublisher", OutboxPublisher.class));
+            var service = modifiers(c, source, c.getBean(ActionLogMapper.class));
             assertThatThrownBy(() -> service.createModifier("E", "A", "actor", addon(), "bad"))
                     .isInstanceOf(BizException.class);
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_modifier", Integer.class)).isZero();
@@ -254,18 +254,14 @@ class CatalogCurrencyBusinessTest {
         });
     }
 
-    @Test void expiryDuringOutboxWorkRollsBackBusinessAuditIdempotencyAndOutbox() {
+    @Test void expiryAfterAuditWriteRollsBackBusinessAuditAndIdempotency() {
         new ConfigRevisionServiceTest().run((c, f) -> {
             var source = new Sources();
-            var outbox = c.getBean("foodOutboxPublisher", OutboxPublisher.class);
-            var service = modifiers(c, source, (event, options) -> {
-                var receipt = outbox.publish(event, options);
-                source.clock.at = AT.plusSeconds(31);
-                return receipt;
-            });
+            var service = modifiers(c, source, FoodAuditFault.afterInsert(c.getBean(ActionLogMapper.class),
+                    () -> source.clock.at = AT.plusSeconds(31)));
             assertThatThrownBy(() -> service.createModifier("E", "A", "actor", addon(), "expired"))
                     .isInstanceOf(BizException.class);
-            for (String table : List.of("fnb_modifier", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
+            for (String table : List.of("fnb_modifier", "fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isZero();
             }
         });

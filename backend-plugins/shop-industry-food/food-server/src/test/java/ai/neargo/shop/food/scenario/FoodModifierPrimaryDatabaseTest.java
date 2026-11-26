@@ -140,7 +140,7 @@ class FoodModifierPrimaryDatabaseTest {
                         var sql = new JdbcTemplate(c.getBean(DataSource.class));
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_modifier", Integer.class)).isEqualTo(2);
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_modifier_component", Integer.class)).isOne();
-                        for (String table : List.of("fnb_action_log", "sys_outbox", "sys_idempotent")) {
+                        for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class))
                                     .as(table).isEqualTo(3);
                         }

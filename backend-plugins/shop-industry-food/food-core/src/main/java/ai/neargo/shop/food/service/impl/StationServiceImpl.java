@@ -5,8 +5,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.dto.StationContracts.CreateStationReq;
 import ai.neargo.shop.food.dto.StationContracts.GetStationVO;
@@ -25,7 +23,6 @@ import ai.neargo.shop.food.mapper.FoodMappers.StationMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.StationService;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.StationChanged;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -49,17 +46,16 @@ public class StationServiceImpl implements StationService {
     private final SkuStationMapper routes;
     private final ActionLogMapper actions;
     private final IdempotencyService idem;
-    private final OutboxPublisher outbox;
     private final ObjectMapper json;
     private final GoodsCatalogQueryPort catalog;
     private final TransactionTemplate write;
     private final TransactionTemplate read;
 
     public StationServiceImpl(StationMapper heads, SkuStationMapper routes, ActionLogMapper actions,
-            IdempotencyService idem, OutboxPublisher outbox, ObjectMapper json,
+            IdempotencyService idem, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog) {
         this.heads=heads; this.routes=routes; this.actions=actions; this.idem=idem;
-        this.outbox=outbox; this.json=json; this.catalog=catalog;
+        this.json=json; this.catalog=catalog;
         write=new TransactionTemplate(manager);
         write.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
         read=new TransactionTemplate(manager); read.setReadOnly(true);
@@ -212,8 +208,6 @@ public class StationServiceImpl implements StationService {
         audit.setRequestNo(FoodCommandFingerprint.hash(FoodCommandFingerprint.scope(action,entity,store),key));
         if(before!=null) audit.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(before)));
         audit.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(after))); actions.insert(audit);
-        outbox.publish(new StationChanged(entity,store,number,action,version,audit.getActionNo(),after),
-                new PublishOptions("FOOD_STATION:"+store+":"+number,1));
         return audit.getActionNo();
     }
     public static ReplaceStationRoutesReq normalize(ReplaceStationRoutesReq req) {

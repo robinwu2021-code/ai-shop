@@ -17,11 +17,8 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.MybatisPages;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.beauty.BeautyDefinitionVersionPublished;
 import ai.neargo.shop.spi.product.ServiceProductFactsPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -47,7 +44,6 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
     private final BeautyMappers.ServiceRequirementMapper requirements;
     private final BeautyMappers.ActionLogMapper actions;
     private final IdempotencyService idempotency;
-    private final OutboxPublisher publisher;
     private final ObjectProvider<ServiceProductFactsPort> products;
     private final TransactionTemplate transactions;
     private final DataSource source;
@@ -55,7 +51,7 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
 
     public ServiceDefinitionServiceImpl(BeautyMappers.ServiceDefinitionMapper definitions,
             BeautyMappers.ServiceDefinitionVersionMapper versions, BeautyMappers.ServiceRequirementMapper requirements,
-            BeautyMappers.ActionLogMapper actions, IdempotencyService idempotency, OutboxPublisher publisher,
+            BeautyMappers.ActionLogMapper actions, IdempotencyService idempotency,
             ObjectProvider<ServiceProductFactsPort> products, PlatformTransactionManager manager,
             DataSource source, ObjectMapper json) {
         this.definitions = definitions;
@@ -63,7 +59,6 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
         this.requirements = requirements;
         this.actions = actions;
         this.idempotency = idempotency;
-        this.publisher = publisher;
         this.products = products;
         this.transactions = new TransactionTemplate(manager);
         this.source = source;
@@ -187,9 +182,6 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
         action.setSafeSnapshot(json.writeValueAsString(Map.of("definitionVersionNo", versionNo, "hash", snapshot)));
         action.setRequestRef(IdempotencyScope.requestHash(key));
         actions.insert(action);
-        publisher.publish(new BeautyDefinitionVersionPublished(head.getDefinitionNo(), entity, store, versionNo,
-                revision, snapshot),
-                new PublishOptions("BEAUTY:DEFINITION:" + IdempotencyScope.requestHash(entity, store, req.skuNo()), 1));
         return new ServiceDefinitionVersionVO(head.getDefinitionNo(), versionNo, revision, snapshot);
     }
 

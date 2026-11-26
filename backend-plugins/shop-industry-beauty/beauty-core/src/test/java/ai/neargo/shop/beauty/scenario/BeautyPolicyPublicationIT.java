@@ -9,14 +9,9 @@ import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
-import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
-import ai.neargo.shop.event.OutboxConsumer;
-import ai.neargo.shop.event.SysOutbox;
 import com.zaxxer.hikari.HikariDataSource;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -26,8 +21,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
@@ -44,7 +37,6 @@ class BeautyPolicyPublicationIT {
     private BeautySchemaMigrationIT fixture;
     private JdbcTemplate sql;
     private final ObjectMapper json = new ObjectMapper();
-    private static final String EVENT = "BEAUTY_STORE_POLICY_VERSION_PUBLISHED";
 
     private Class<?> required(String name) {
         return assertDoesNotThrow(() -> Class.forName("ai.neargo.shop.beauty." + name));
@@ -101,14 +93,14 @@ class BeautyPolicyPublicationIT {
 
     private void emptyBusiness() {
         for (String table : List.of("bty_store_policy", "bty_store_policy_version", "bty_action_log",
-                "sys_idempotent", "sys_outbox", "sys_outbox_stream", "sys_outbox_delivery")) {
+                "sys_idempotent")) {
             assertThat(count(table)).as(table).isZero();
         }
     }
 
     @Test
     void publicationReusesTransactionConnectionWithSingleConnectionPool() {
-        runner().withUserConfiguration(Routed.class).run(context -> {
+        runner().run(context -> {
             HikariDataSource pool = context.getBean(DataSource.class).unwrap(HikariDataSource.class);
             pool.setMaximumPoolSize(1);
             pool.setMinimumIdle(0);
@@ -116,19 +108,18 @@ class BeautyPolicyPublicationIT {
             pool.getHikariPoolMXBean().softEvictConnections();
             publish(context, "ONE_CONNECTION", 0, 7);
             assertThat(count("bty_store_policy_version")).isOne();
-            assertThat(count("sys_outbox")).isOne();
         });
     }
 
     @Test
-    void commitsOneImmutableVersionAuditAndEventAndReplaysOriginalResult() {
-        runner().withUserConfiguration(Routed.class).run(context -> {
+    void commitsOneImmutableVersionAndAuditAndReplaysOriginalResult() {
+        runner().run(context -> {
             assertThat(context).hasNotFailed();
             Object first = publish(context, "K", 0, 7);
             assertThat(json.writeValueAsString(publish(context, "K", 0, 7)))
                     .isEqualTo(json.writeValueAsString(first));
             for (String table : List.of("bty_store_policy", "bty_store_policy_version", "bty_action_log",
-                    "sys_idempotent", "sys_outbox")) { assertThat(count(table)).as(table).isOne(); }
+                    "sys_idempotent")) { assertThat(count(table)).as(table).isOne(); }
             assertThat(sql.queryForObject("SELECT operator_ref FROM bty_action_log", String.class)).isEqualTo("ACTOR");
             assertThat(sql.queryForObject("SELECT created_by FROM bty_store_policy_version", String.class))
                     .isEqualTo("ACTOR");
@@ -139,7 +130,7 @@ class BeautyPolicyPublicationIT {
 
     @Test
     void rejectsChangedPayloadAndStaleRevisionWithoutChangingHistory() {
-        runner().withUserConfiguration(Routed.class).run(context -> {
+        runner().run(context -> {
             publish(context, "K", 0, 7);
             assertThatThrownBy(() -> publish(context, "K", 0, 8)).isInstanceOf(BizException.class);
             assertThatThrownBy(() -> publish(context, "OTHER", 0, 8)).isInstanceOf(BizException.class);
@@ -152,21 +143,8 @@ class BeautyPolicyPublicationIT {
     }
 
     @Test
-    void missingSourceOrFormalRouteRollsBackEverything() {
+    void failureBeforeOuterCommitRollsBackAllRows() {
         runner().run(context -> {
-            assertThat(context).hasNotFailed();
-            assertThatThrownBy(() -> publish(context, "K", 0, 7)).isInstanceOf(IllegalStateException.class);
-            emptyBusiness();
-        });
-        runner().withUserConfiguration(Unrouted.class).run(context -> {
-            assertThatThrownBy(() -> publish(context, "K", 0, 7)).isInstanceOf(IllegalStateException.class);
-            emptyBusiness();
-        });
-    }
-
-    @Test
-    void failureAfterActualOutboxFlushRollsBackAllRows() {
-        runner().withUserConfiguration(Routed.class).run(context -> {
             var tx = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
             assertThatThrownBy(() -> tx.execute(status -> {
                 publish(context, "K", 0, 7);
@@ -174,22 +152,20 @@ class BeautyPolicyPublicationIT {
                     @Override
                     public void beforeCommit(boolean readOnly) {
                         JdbcTemplate transactionSql = new JdbcTemplate(context.getBean(DataSource.class));
-                        assertThat(transactionSql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class))
-                                .isOne();
                         assertThat(transactionSql.queryForObject("SELECT COUNT(*) FROM bty_action_log", Integer.class))
                                 .isOne();
-                        throw new IllegalStateException("after-outbox-flush");
+                        throw new IllegalStateException("before-outer-commit");
                     }
                 });
                 return null;
-            })).hasMessage("after-outbox-flush");
+            })).hasMessage("before-outer-commit");
             emptyBusiness();
         });
     }
 
     @Test
     void sameKeyCannotRevealResultToAnotherActor() {
-        runner().withUserConfiguration(Routed.class).run(context -> {
+        runner().run(context -> {
             publish(context, "K", 0, 7);
             var idem = context.getBean(IdempotencyService.class);
             var tx = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
@@ -203,7 +179,7 @@ class BeautyPolicyPublicationIT {
 
     @Test
     void strictKeysRejectBypassButRetailLegacyExecutorRemainsCompatible() {
-        runner().withUserConfiguration(Routed.class).run(context -> {
+        runner().run(context -> {
             assertThatThrownBy(() -> publish(context, " ", 0, 7)).isInstanceOf(BizException.class);
             emptyBusiness();
             var idem = context.getBean(IdempotencyService.class);
@@ -215,7 +191,7 @@ class BeautyPolicyPublicationIT {
 
     @Test
     void concurrentInitialPublicationHasOneWinnerAndNoOrphans() {
-        runner().withUserConfiguration(Routed.class).run(context -> {
+        runner().run(context -> {
             CountDownLatch start = new CountDownLatch(1);
             try (var pool = Executors.newFixedThreadPool(2)) {
                 var first = pool.submit(() -> race(context, start, "A"));
@@ -224,7 +200,7 @@ class BeautyPolicyPublicationIT {
                 assertThat(first.get(15, TimeUnit.SECONDS) + second.get(15, TimeUnit.SECONDS)).isEqualTo(1);
             }
             for (String table : List.of("bty_store_policy", "bty_store_policy_version", "bty_action_log",
-                    "sys_idempotent", "sys_outbox")) { assertThat(count(table)).as(table).isOne(); }
+                    "sys_idempotent")) { assertThat(count(table)).as(table).isOne(); }
         });
     }
 
@@ -236,63 +212,5 @@ class BeautyPolicyPublicationIT {
             return 1;
         } catch (BizException conflict) { return 0; }
         finally { SecurityContextHolder.clearContext(); }
-    }
-
-    @Test
-    void explicitPublicationArchiveWorksWithoutSwitchingTheHostLegacySource() {
-        runner().withPropertyValues("shop.beauty.publication.archive-only=true")
-                .withBean(OutboxConsumer.class, () -> new OutboxConsumer() {
-                    @Override
-                    public boolean supports(String eventType) { return "UNRELATED_LEGACY_EVENT".equals(eventType); }
-                    @Override
-                    public void consume(SysOutbox event) { throw new AssertionError("not a beauty consumer"); }
-                }).run(context -> {
-            assertThat(context).hasNotFailed();
-            assertDoesNotThrow(() -> publish(context, "ARCHIVE_WITH_LEGACY", 0, 7));
-            assertThat(sql.queryForObject("SELECT status FROM sys_outbox", String.class)).isEqualTo("ARCHIVED");
-            assertThat(context.getEnvironment().getProperty("shop.outbox.sources.platform.mode", "LEGACY"))
-                    .isEqualTo("LEGACY");
-            assertThat(count("bty_store_policy_version")).isOne();
-        });
-    }
-
-    @Test
-    void explicitArchiveRejectsADeclaredBusinessConsumerAndRollsBackPublication() {
-        runner().withPropertyValues("shop.beauty.publication.archive-only=true")
-                .withBean(OutboxConsumer.class, () -> new OutboxConsumer() {
-                    @Override
-                    public boolean supports(String eventType) { return EVENT.equals(eventType); }
-                    @Override
-                    public void consume(SysOutbox event) {
-                        throw new AssertionError("must not be archived or invoked");
-                    }
-                }).run(context -> {
-                    assertThatThrownBy(() -> publish(context, "CONSUMER_CONFLICT", 0, 7))
-                            .isInstanceOf(IllegalStateException.class).hasMessageContaining("consumer");
-                    assertThat(count("bty_store_policy_version")).isZero();
-                    assertThat(count("sys_outbox")).isZero();
-                });
-    }
-
-    @Configuration(proxyBeanMethods = false)
-    static class Routed {
-        @Bean
-        UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper json) {
-            var facade = new UnifiedOutboxFacade(json);
-            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            // Test route only; no production readiness claim.
-            facade.setArchiveOnly(Set.of("PLATFORM:" + EVENT, "PLATFORM:BEAUTY_SERVICE_DEFINITION_VERSION_PUBLISHED"));
-            return facade;
-        }
-    }
-
-    @Configuration(proxyBeanMethods = false)
-    static class Unrouted {
-        @Bean
-        UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper json) {
-            var facade = new UnifiedOutboxFacade(json);
-            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            return facade;
-        }
     }
 }

@@ -25,7 +25,6 @@ import ai.neargo.shop.beauty.service.ServiceSubmissionService;
 import ai.neargo.shop.beauty.service.WorkOrderBillService;
 import ai.neargo.shop.beauty.service.WorkOrderService;
 import ai.neargo.shop.beauty.spi.BeautyReceptionInternalApi;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.security.InternalReply;
 import ai.neargo.shop.spi.trade.CheckoutPort;
 import ai.neargo.shop.svc.InternalHttp;
@@ -195,11 +194,7 @@ class BeautyBm04AssemblyTest {
                                 () -> mock(PlatformTransactionManager.class))
                         .withBean(
                                 ServiceCatalogQueryService.class,
-                                () -> mock(ServiceCatalogQueryService.class))
-                        .withBean(
-                                "beautyOutboxPublisher",
-                                OutboxPublisher.class,
-                                () -> mock(OutboxPublisher.class));
+                                () -> mock(ServiceCatalogQueryService.class));
         for (Class type :
                 new Class[] {
                     BeautyMappers.AppointmentMapper.class,

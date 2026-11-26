@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.CreateOptionGroupReq;
 import ai.neargo.shop.food.dto.ListOptionGroupsQuery;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
@@ -23,7 +21,6 @@ import ai.neargo.shop.food.service.impl.OptionGroupServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -36,7 +33,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
-/** Exercises real primary Mappers and the original idempotency/audit/outbox transaction. */
+/** Exercises real primary Mappers and the original idempotency/audit transaction. */
 class OptionGroupServiceTest extends FoodWriteGuardFixture {
     Fixture fixture(AssertableApplicationContext c) {
         var f = prepare(c);
@@ -74,7 +71,7 @@ class OptionGroupServiceTest extends FoodWriteGuardFixture {
             assertThat(group.data().publishedRevisionNo()).isNull();
             assertThatThrownBy(() -> service.createOptionGroup("E", "A", "actor", req("冰度", "1", "2"), "new"))
                     .isInstanceOf(BizException.class);
-            for (String table : List.of("fnb_option_group", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
+            for (String table : List.of("fnb_option_group", "fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isOne();
             }
             assertThat(f.sql().queryForObject("SELECT object_no FROM fnb_action_log", String.class))
@@ -134,14 +131,14 @@ class OptionGroupServiceTest extends FoodWriteGuardFixture {
         });
     }
 
-    @Test void publisherFailureRollsBackGroupAuditOutboxAndReplayTogether() {
+    @Test void auditFailureRollsBackGroupAuditAndReplayTogether() {
         runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Groups.class).run(c -> {
             var f = fixture(c);
             c.getBean(Failure.class).enabled.set(true);
             assertThatThrownBy(() -> c.getBean(OptionGroupService.class)
                     .createOptionGroup("E", "A", "actor", req("糖度", "0", "1"), "rollback"))
                     .isInstanceOf(RuntimeException.class);
-            for (String table : List.of("fnb_option_group", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
+            for (String table : List.of("fnb_option_group", "fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isZero();
             }
         });
@@ -200,16 +197,12 @@ class OptionGroupServiceTest extends FoodWriteGuardFixture {
             var f = new MapperFactoryBean<>(OptionGroupItemMapper.class); f.setSqlSessionTemplate(t); return f;
         }
         @Bean OptionGroupService optionGroupService(OptionGroupMapper groups, OptionGroupItemMapper items,
-                ActionLogMapper actions, IdempotencyService idem,
-                @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+                ActionLogMapper actions, IdempotencyService idem, ObjectMapper json,
                 PlatformTransactionManager manager, Failure failure, DishMapper dishes, DishOptionGroupMapper bindings,
                 ModifierMapper modifiers, Sources sources) {
-            OutboxPublisher checked = (event, options) -> {
-                var receipt = publisher.publish(event, options);
-                if (failure.enabled.get()) throw new IllegalStateException("after-group-publish");
-                return receipt;
-            };
-            return new OptionGroupServiceImpl(groups, items, actions, idem, checked, json, manager,
+            ActionLogMapper checked = FoodAuditFault.failAfterInsert(actions, failure.enabled::get,
+                    "after-group-audit");
+            return new OptionGroupServiceImpl(groups, items, checked, idem, json, manager,
                     dishes, bindings, modifiers, sources, sources);
         }
     }

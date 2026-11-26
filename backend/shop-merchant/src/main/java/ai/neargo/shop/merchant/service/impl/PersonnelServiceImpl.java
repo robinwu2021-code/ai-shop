@@ -9,11 +9,6 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
-import ai.neargo.shop.event.OutboxConsumer;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
-import ai.neargo.shop.event.outbox.runtime.PlatformPublicationPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.merchant.dto.AssignPersonnelReq;
@@ -37,7 +32,6 @@ import ai.neargo.shop.merchant.entity.MchStaffLog;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.merchant.service.PersonnelService;
-import ai.neargo.shop.spi.personnel.PersonnelChanged;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -47,12 +41,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import javax.sql.DataSource;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -80,7 +71,6 @@ public class PersonnelServiceImpl implements PersonnelService {
     private final IdempotencyService idempotency;
     private final DataSource source;
     private final ObjectMapper json;
-    private final OutboxPublisher publisher;
     private final TransactionTemplate writes;
     private final TransactionTemplate reads;
 
@@ -91,10 +81,7 @@ public class PersonnelServiceImpl implements PersonnelService {
             MerchantMappers.MchAccountMapper accounts, MerchantMappers.MchStaffLogMapper audit,
             MerchantStaffService staff, GoodsQueryPort products, IdempotencyService idempotency,
             @Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource source, ObjectMapper json,
-            @Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager manager,
-            ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
-            @Value("${shop.personnel.publication.archive-only:false}") boolean archiveOnly,
-            @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
+            @Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager manager) {
         this.occupations = occupations;
         this.people = people;
         this.assignments = assignments;
@@ -115,8 +102,6 @@ public class PersonnelServiceImpl implements PersonnelService {
         reads = new TransactionTemplate(manager);
         reads.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
         reads.setReadOnly(true);
-        publisher = PlatformPublicationPublisher.create(facades::getIfAvailable, manager, () -> source, json,
-                consumers::orderedStream, Set.of("MERCHANT_PERSONNEL_CHANGED"), archiveOnly, maintenance);
     }
 
     @Override
@@ -469,8 +454,6 @@ public class PersonnelServiceImpl implements PersonnelService {
         detail.putAll(extra);
         row.setDetail(json.writeValueAsString(detail));
         audit.insert(row);
-        publisher.publish(new PersonnelChanged(person.getPersonnelNo(), person.getEntityNo(), store, action,
-                person.getVersion(), ref), new PublishOptions("PERSONNEL:" + person.getPersonnelNo(), 1));
     }
     private PersonnelVO view(MchPersonnel person, String store) {
         var rows = assignments.selectList(Wrappers.<MchPersonnelStore>lambdaQuery()

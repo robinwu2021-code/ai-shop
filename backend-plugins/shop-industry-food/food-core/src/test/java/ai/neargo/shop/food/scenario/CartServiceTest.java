@@ -22,8 +22,6 @@ import ai.neargo.shop.common.BizException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.AuthorizeCartSessionReq;
 import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.CartResultVO;
@@ -85,7 +83,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
-/** Actual owner, cart, audit, idempotency and outbox rows exercise the shared-draft boundary. */
+/** Actual owner, cart, audit and idempotency rows exercise the shared-draft boundary. */
 class CartServiceTest extends FoodWriteGuardFixture {
     static final Instant NOW = Instant.parse("2026-10-22T04:00:00Z");
     record State(Fixture f, CheckCartServiceImpl service, AtomicBoolean outage, AtomicBoolean fail) { }
@@ -137,19 +135,13 @@ class CartServiceTest extends FoodWriteGuardFixture {
                     return read("E",s,new CatalogQuery("H5",fulfillment,null));
                 }
             };
-            var outbox = c.getBean("foodOutboxPublisher",OutboxPublisher.class);
-            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of(
-                    "PLATFORM:FOOD_CART_CHANGED","PLATFORM:FOOD_DINING_SESSION_CHANGED"));
             var service = new CheckCartServiceImpl(template.getMapper(CheckCartMapper.class),
                     template.getMapper(CheckCartItemMapper.class),template.getMapper(CheckMapper.class),
                     template.getMapper(GuestSessionMapper.class),template.getMapper(SeatMapper.class),
                     template.getMapper(TableOccupancyMapper.class),template.getMapper(TableAreaMapper.class),
-                    template.getMapper(TableMapper.class),c.getBean(ActionLogMapper.class),
-                    c.getBean(IdempotencyService.class),(event,options) -> {
-                        var result=outbox.publish(event,options);
-                        if(fail.get()) throw new IllegalStateException("after-cart-publish");
-                        return result;
-                    },catalog,numbers -> Map.of("A",new StoreCard("A","Store","E",null,"ACTIVE",true,
+                    template.getMapper(TableMapper.class),
+                    FoodAuditFault.failAfterInsert(c.getBean(ActionLogMapper.class),fail::get,"after-cart-audit"),
+                    c.getBean(IdempotencyService.class),catalog,numbers -> Map.of("A",new StoreCard("A","Store","E",null,"ACTIVE",true,
                             null,null,null,null,0,0)),c.getBean(ObjectMapper.class),
                     c.getBean(PlatformTransactionManager.class),Clock.fixed(NOW,ZoneOffset.UTC));
             test.accept(new State(f,service,outage,fail));
@@ -318,10 +310,10 @@ class CartServiceTest extends FoodWriteGuardFixture {
                     .isInstanceOf(BizException.class);
         });
     }
-    @Test void failedOutboxRollsBackCartVersionRowsAuditAndReceipt() {
+    @Test void failedAuditRollsBackCartVersionRowsAndReceipt() {
         run(t -> {
             String cart=cart(t);
-            var tables=List.of("fnb_check_cart_item","fnb_action_log","sys_idempotent","sys_outbox");
+            var tables=List.of("fnb_check_cart_item","fnb_action_log","sys_idempotent");
             var before=tables.stream().map(x -> t.f.sql().queryForObject("SELECT COUNT(*) FROM "+x,
                     Long.class)).toList();
             t.fail.set(true);

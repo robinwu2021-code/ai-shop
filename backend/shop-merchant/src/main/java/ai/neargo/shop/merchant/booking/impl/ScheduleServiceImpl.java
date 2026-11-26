@@ -7,11 +7,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
-import ai.neargo.shop.event.OutboxConsumer;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
-import ai.neargo.shop.event.outbox.runtime.PlatformPublicationPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
@@ -25,7 +20,6 @@ import ai.neargo.shop.merchant.booking.entity.MchScheduleChangeLog;
 import ai.neargo.shop.merchant.booking.entity.MchScheduleRule;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.ScheduleService;
-import ai.neargo.shop.spi.schedule.ScheduleChanged;
 import ai.neargo.shop.spi.schedule.ScheduleWindowsPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.Instant;
@@ -37,9 +31,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import javax.sql.DataSource;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -65,17 +57,13 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final DataSource source;
     private final TransactionTemplate writes;
     private final TransactionTemplate reads;
-    private final OutboxPublisher publisher;
 
     public ScheduleServiceImpl(ResourceOccupationGuard occupations, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
             MerchantMappers.PersonnelStoreMapper assignments, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleRuleMapper rules,
             ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleChangeLogMapper changes, ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents,
             ScheduleWindowsPort windows, IdempotencyService idempotency, ObjectMapper json,
             @Qualifier("dataSource") DataSource source,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
-            @Value("${shop.schedule.publication.archive-only:false}") boolean archiveOnly,
-            @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.occupations = occupations;
         this.resources = resources;
         this.people = people;
@@ -92,8 +80,6 @@ public class ScheduleServiceImpl implements ScheduleService {
         reads = new TransactionTemplate(manager);
         reads.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
         reads.setReadOnly(true);
-        publisher = PlatformPublicationPublisher.create(facades::getIfAvailable, manager, () -> source, json,
-                consumers::orderedStream, Set.of("MERCHANT_SCHEDULE_CHANGED"), archiveOnly, maintenance);
     }
 
     @Override
@@ -195,9 +181,6 @@ public class ScheduleServiceImpl implements ScheduleService {
                     change.setCreatedBy(actor);
                     change.setUpdatedBy(actor);
                     one(changes.insert(change));
-                    publisher.publish(new ScheduleChanged(resource.getResourceNo(), entity, store, ruleNo,
-                            request.expectedRevision() + 1, IdempotencyScope.requestHash(key)),
-                            new PublishOptions("RESOURCE:" + resource.getResourceNo(), 1));
                     return new ScheduleRuleVO(ruleNo, resource.getResourceNo(), request.expectedRevision() + 1,
                             request.status());
                 });

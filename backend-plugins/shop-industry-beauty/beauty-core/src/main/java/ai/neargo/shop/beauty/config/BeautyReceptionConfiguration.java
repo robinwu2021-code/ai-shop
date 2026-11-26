@@ -23,7 +23,6 @@ import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
 import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
 import ai.neargo.shop.beauty.service.impl.WorkOrderQuery;
 import ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
@@ -82,10 +81,9 @@ public class BeautyReceptionConfiguration {
             BeautyMappers.ReceptionOperationMapper operations) { return new ReceptionPreparation(db, operations); }
     @Bean GuestRegistrationServiceImpl guestRegistrationServiceImpl(AppointmentPersistence db, ReceptionAccess access,
             ReceptionIdentity identity, ReceptionPreparation preparations, ObjectProvider<GuestRegistrationPort> owner,
-            BeautyMappers.ReceptionOperationMapper operations, BeautyMappers.GuestClaimReceiptMapper receipts,
-            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher) {
+            BeautyMappers.ReceptionOperationMapper operations, BeautyMappers.GuestClaimReceiptMapper receipts) {
         return new GuestRegistrationServiceImpl(db, access, identity, preparations, owner, operations,
-                receipts, publisher);
+                receipts);
     }
     @Bean Clock beautyReceptionClock() { return Clock.systemUTC(); }
     @Bean WorkOrderPreparation workOrderPreparation(AppointmentPersistence db, AppointmentCoordinator appointments,
@@ -107,10 +105,9 @@ public class BeautyReceptionConfiguration {
             BeautyMappers.ReceptionOperationMapper receptionRows, BeautyMappers.WorkOrderMapper orders,
             BeautyMappers.WorkOrderContextMapper contexts, BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ServiceSubmissionMapper submissions,
-            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher,
             @Qualifier("beautyReceptionClock") Clock clock) {
         return new WorkOrderCoordinator(db, access, receptionAccess, identities, ownership, operations, preparation,
-                reassignment, appointments, receptionRows, orders, contexts, tasks, submissions, publisher, clock);
+                reassignment, appointments, receptionRows, orders, contexts, tasks, submissions, clock);
     }
 
     @Bean
@@ -156,12 +153,11 @@ public class BeautyReceptionConfiguration {
             ReceptionAccess receptionAccess, ReceptionIdentity identities, CustomerOwnership ownership,
             ReceptionPreparation preparations, AppointmentCoordinator appointments,
             BeautyMappers.ReceptionOperationMapper operations, BeautyMappers.ArrivalChallengeMapper challenges,
-            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher,
             @Qualifier("beautyReceptionClock") Clock clock, ReceptionReassignment reassignment,
             AppointmentMatching matching, AppointmentPreparation appointmentPreparation,
             WorkOrderCoordinator workOrders) {
         return new ReceptionCoordinator(db, access, receptionAccess, identities, ownership, preparations,
-                appointments, operations, challenges, publisher, clock, reassignment,
+                appointments, operations, challenges, clock, reassignment,
                 matching, appointmentPreparation, workOrders);
     }
 

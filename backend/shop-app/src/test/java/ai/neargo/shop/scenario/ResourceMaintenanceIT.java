@@ -59,7 +59,7 @@ class ResourceMaintenanceIT {
     }
     @BeforeEach
     void database() throws Exception {
-        required("service.impl.ResourceServiceImpl");
+        required("booking.impl.ResourceServiceImpl");
         String admin = System.getProperty("resource-maintenance.test.admin-url");
         database = "resource_maintenance_" + UUID.randomUUID().toString().replace("-", "");
         new JdbcTemplate(new DriverManagerDataSource(admin, "root", ""))
@@ -92,7 +92,7 @@ class ResourceMaintenanceIT {
     }
     private ApplicationContextRunner runner() {
         return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
-                required("service.impl.ResourceServiceImpl"), ResourceFactsPortImpl.class, Mappers.class)
+                required("booking.impl.ResourceServiceImpl"), ResourceFactsPortImpl.class, Mappers.class)
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
                         "spring.datasource.password=", "shop.resource.publication.archive-only=true");
@@ -140,8 +140,6 @@ class ResourceMaintenanceIT {
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_resource", Integer.class)).isOne();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_staff_log WHERE action='RESOURCE_SAVED'",
                     Integer.class)).isOne();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE "
-                    + "event_type='MERCHANT_RESOURCE_CHANGED' AND status='ARCHIVED'", Integer.class)).isOne();
             assertThatThrownBy(() -> save(ctx, body(null, 0, "ROOM", 3, "ACTIVE"), "CREATE"))
                     .isInstanceOf(BizException.class);
         });
@@ -238,15 +236,6 @@ class ResourceMaintenanceIT {
                     .isInstanceOf(BizException.class);
             assertThat(sql.queryForObject("SELECT version FROM mch_resource", Long.class)).isOne();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_staff_log", Integer.class)).isOne();
-        });
-    }
-    @Test
-    void strictPublicationFailureRollsBackResourceAuditAndKey() {
-        runner().withPropertyValues("shop.resource.publication.archive-only=false").run(ctx -> {
-            assertThatThrownBy(() -> create(ctx)).isInstanceOf(RuntimeException.class);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_resource", Integer.class)).isZero();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_staff_log", Integer.class)).isZero();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isZero();
         });
     }
     @Test

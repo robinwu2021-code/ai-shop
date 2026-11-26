@@ -8,11 +8,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
-import ai.neargo.shop.event.OutboxConsumer;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
-import ai.neargo.shop.event.outbox.runtime.PlatformPublicationPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.product.entity.PrdStoreCatalog;
@@ -20,7 +15,6 @@ import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.product.service.StoreSalesCatalogService;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
-import ai.neargo.shop.spi.product.StoreCatalogVersionPublished;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort.Definition;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort.Entry;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort.PublishReq;
@@ -30,7 +24,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -47,7 +40,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.sql.DataSource;
 
@@ -63,15 +55,11 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
     private final ObjectMapper json;
     private final TransactionTemplate writes;
     private final TransactionTemplate reads;
-    private final OutboxPublisher publisher;
 
     public StoreSalesCatalogServiceImpl(ProductMappers.StoreCatalogMapper heads,
             ProductMappers.StoreCatalogVersionMapper versions, StoreDirectoryPort stores, GoodsQueryPort quotes,
             IdempotencyService idempotency, @Qualifier("dataSource") DataSource source, ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
-            @Value("${shop.catalog.publication.archive-only:false}") boolean archiveOnly,
-            @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.heads = heads;
         this.versions = versions;
         this.stores = stores;
@@ -84,8 +72,6 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
         reads = new TransactionTemplate(manager);
         reads.setReadOnly(true);
         reads.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
-        publisher = PlatformPublicationPublisher.create(facades::getIfAvailable, manager, () -> source, json,
-                consumers::orderedStream, Set.of("PRODUCT_STORE_CATALOG_VERSION_PUBLISHED"), archiveOnly, maintenance);
     }
 
     @Autowired
@@ -254,8 +240,6 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
         version.setFrozenPayload(payload);
         version.setSnapshotHash(hash);
         versions.insert(version);
-        publisher.publish(new StoreCatalogVersionPublished(head.getCatalogNo(), entity, store, next, revision, hash),
-                new PublishOptions("PRODUCT:CATALOG:" + IdempotencyScope.requestHash(entity, store), 1));
         return snapshot(head, version);
     }
 

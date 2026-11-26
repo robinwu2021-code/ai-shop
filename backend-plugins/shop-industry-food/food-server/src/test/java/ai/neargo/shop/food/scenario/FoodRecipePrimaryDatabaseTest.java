@@ -250,7 +250,7 @@ class FoodRecipePrimaryDatabaseTest {
                         for (String table : List.of("fnb_recipe", "fnb_recipe_line")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isOne();
                         }
-                        for (String table : List.of("fnb_action_log", "sys_outbox", "sys_idempotent")) {
+                        for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(2);
                         }
                         sql.update("INSERT INTO fnb_option_group(entity_no,created_at,created_by,updated_at,updated_by,"

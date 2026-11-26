@@ -452,7 +452,6 @@ class PrintDatabaseAcceptanceTest {
                 context.getBean(ai.neargo.shop.printing.mapper.PrintMappers.JobMapper.class),
                 context.getBean(ai.neargo.shop.printing.mapper.PrintMappers.AttemptMapper.class),
                 JsonMapper.builder().build(),Clock.systemUTC(),
-                org.mockito.Mockito.mock(ai.neargo.shop.event.outbox.OutboxPublisher.class),
                 context.getBean(PlatformTransactionManager.class));
     }
 

@@ -9,11 +9,6 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
-import ai.neargo.shop.event.OutboxConsumer;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.PlatformPublicationPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.merchant.dto.ResourceQuery;
@@ -23,7 +18,6 @@ import ai.neargo.shop.merchant.booking.entity.MchResource;
 import ai.neargo.shop.merchant.entity.MchStaffLog;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.ResourceService;
-import ai.neargo.shop.spi.resource.ResourceChanged;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.time.LocalDateTime;
@@ -31,9 +25,7 @@ import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Set;
 import javax.sql.DataSource;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -56,15 +48,11 @@ public class ResourceServiceImpl implements ResourceService {
     private final DataSource source;
     private final TransactionTemplate writes;
     private final TransactionTemplate reads;
-    private final OutboxPublisher publisher;
 
     public ResourceServiceImpl(ResourceOccupationGuard occupations, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
             ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents, MerchantMappers.MchStaffLogMapper audit,
             IdempotencyService idempotency, ObjectMapper json, @Qualifier("dataSource") DataSource source,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
-            @Value("${shop.resource.publication.archive-only:false}") boolean archiveOnly,
-            @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.occupations = occupations;
         this.resources = resources;
         this.people = people;
@@ -78,8 +66,6 @@ public class ResourceServiceImpl implements ResourceService {
         reads = new TransactionTemplate(manager);
         reads.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
         reads.setReadOnly(true);
-        publisher = PlatformPublicationPublisher.create(facades::getIfAvailable, manager, () -> source, json,
-                consumers::orderedStream, Set.of("MERCHANT_RESOURCE_CHANGED"), archiveOnly, maintenance);
     }
 
     @Override
@@ -191,8 +177,6 @@ public class ResourceServiceImpl implements ResourceService {
         log.setDetail(json.writeValueAsString(Map.of("resourceNo", row.getResourceNo(), "revision", row.getVersion(),
                 "capacity", row.getCapacity(), "status", row.getStatus(), "requestRef", ref)));
         one(audit.insert(log));
-        publisher.publish(new ResourceChanged(row.getResourceNo(), row.getEntityNo(), row.getStoreNo(),
-                "RESOURCE_SAVED", row.getVersion(), ref), new PublishOptions("RESOURCE:" + row.getResourceNo(), 1));
     }
     private ResourceVO view(MchResource row) {
         return new ResourceVO(row.getResourceNo(), row.getResourceType(), row.getStoreNo(), row.getPersonnelNo(),

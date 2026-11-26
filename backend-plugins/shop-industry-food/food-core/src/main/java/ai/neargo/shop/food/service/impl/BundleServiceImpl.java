@@ -6,8 +6,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.BundleChoiceInput;
 import ai.neargo.shop.food.dto.BundleConfigVO;
 import ai.neargo.shop.food.dto.BundleGroupInput;
@@ -29,7 +27,6 @@ import ai.neargo.shop.food.policy.BundleDefinitionPolicy;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.BundleChanged;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -52,27 +49,26 @@ public class BundleServiceImpl implements BundleService {
     private final BundleChoiceMapper choices;
     private final ActionLogMapper actions;
     private final IdempotencyService idem;
-    private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final GoodsCatalogQueryPort catalog;
     private final TransactionTemplate write;
     private final TransactionTemplate read;
 
     public BundleServiceImpl(BundleMapper heads, BundleGroupMapper groups, BundleChoiceMapper choices,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, IdempotencyService idem, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog) {
-        this(heads, groups, choices, actions, idem, publisher, json, manager, catalog, (entity, store) ->
+        this(heads, groups, choices, actions, idem, json, manager, catalog, (entity, store) ->
                 CatalogCurrencySession.legacy(catalog, entity, store));
     }
 
     /** Currency-aware wiring keeps legacy construction and original command semantics available. */
     public BundleServiceImpl(BundleMapper heads, BundleGroupMapper groups, BundleChoiceMapper choices,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, IdempotencyService idem, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog,
             CatalogCurrencyService currencies) {
         this.currencies = currencies;
         this.heads = heads; this.groups = groups; this.choices = choices; this.actions = actions;
-        this.idem = idem; this.publisher = publisher; this.json = json; this.catalog = catalog;
+        this.idem = idem; this.json = json; this.catalog = catalog;
         write = new TransactionTemplate(manager);
         // Missing SKU/choice predicates must be range-locked as well as existing heads.
         write.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
@@ -264,8 +260,6 @@ public class BundleServiceImpl implements BundleService {
         audit.setRequestNo(FoodCommandFingerprint.hash(FoodCommandFingerprint.scope(action, entity, store), key));
         if (before != null) audit.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(before)));
         audit.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(after))); actions.insert(audit);
-        publisher.publish(new BundleChanged(entity, store, after.configNo(), action, after.version(),
-                audit.getActionNo(), after), new PublishOptions("FOOD_BUNDLE:" + after.configNo(), 1));
     }
 
     private static void context(String entity, String store, String actor, String key) {

@@ -38,9 +38,6 @@ import ai.neargo.shop.spi.trade.PricingSourceRef;
 import ai.neargo.shop.spi.trade.PricingConfigEvidencePort;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 import ai.neargo.shop.trade.service.impl.PricingRuntimeConfigServiceImpl;
-import ai.neargo.shop.event.OutboxEventBus;
-import ai.neargo.shop.event.OutboxPump;
-import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.Context;
@@ -68,7 +65,6 @@ class PricingConfigServiceTest {
     private static String definition;
     private static DriverManagerDataSource dataSource;
     private static SqlSessionTemplate session;
-    private static OutboxEventBus events;
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     @BeforeAll
@@ -90,22 +86,17 @@ class PricingConfigServiceTest {
         jdbc.execute("CREATE TABLE sys_idempotent(id BIGINT AUTO_INCREMENT PRIMARY KEY,idem_key VARCHAR(128),"
                 + "endpoint VARCHAR(128),user_no VARCHAR(64),request_hash CHAR(64),result_json LONGTEXT,"
                 + "created_at DATETIME,expire_at DATETIME,UNIQUE(idem_key,endpoint)) ENGINE=InnoDB");
-        jdbc.execute("CREATE TABLE sys_outbox(id BIGINT AUTO_INCREMENT PRIMARY KEY,event_no VARCHAR(64) UNIQUE,"
-                + "aggregate_type VARCHAR(32),aggregate_id VARCHAR(64),event_type VARCHAR(64),payload LONGTEXT,"
-                + "status VARCHAR(16),retry_count INT,created_at DATETIME) ENGINE=InnoDB");
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         for (var mapper : List.of(TradeMappers.PricingTemplateMapper.class,
                 TradeMappers.PricingTemplateRevisionMapper.class, TradeMappers.StorePricingConfigMapper.class,
-                TradeMappers.StorePricingRevisionMapper.class, SysIdempotentMapper.class, SysOutboxMapper.class)) {
+                TradeMappers.StorePricingRevisionMapper.class, SysIdempotentMapper.class)) {
             config.addMapper(mapper);
         }
         var factory = new MybatisSqlSessionFactoryBean();
         factory.setDataSource(dataSource);
         factory.setConfiguration(config);
         session = new SqlSessionTemplate(factory.getObject());
-        events = new OutboxEventBus(session.getMapper(SysOutboxMapper.class), JSON,
-                new DefaultListableBeanFactory().getBeanProvider(OutboxPump.class));
         var policy = buildPolicy(new IdempotencyService(session.getMapper(SysIdempotentMapper.class), JSON));
         templates = new PricingTemplateServiceImpl(policy);
         stores = new StorePricingConfigServiceImpl(policy);
@@ -117,7 +108,7 @@ class PricingConfigServiceTest {
     @BeforeEach
     void reset() {
         for (String table : List.of("ord_store_pricing_revision", "ord_store_pricing_config",
-                "ord_pricing_template_revision", "ord_pricing_template", "sys_idempotent", "sys_outbox")) {
+                "ord_pricing_template_revision", "ord_pricing_template", "sys_idempotent")) {
             jdbc.execute("DELETE FROM " + table);
         }
     }
@@ -256,7 +247,6 @@ class PricingConfigServiceTest {
         assertThat(jdbc.queryForObject("SELECT schema_version FROM ord_pricing_template_revision WHERE revision_no=?",
                 Integer.class, revision.revisionNo())).isEqualTo(2);
         assertThat(revision.previousRevisionNo()).isNull();
-        assertThat(count("sys_outbox")).isEqualTo(1);
     }
 
     @Test
@@ -271,7 +261,6 @@ class PricingConfigServiceTest {
             assertThat(first.get(10, TimeUnit.SECONDS) + second.get(10, TimeUnit.SECONDS)).isEqualTo(1);
         }
         assertThat(count("ord_pricing_template_revision")).isEqualTo(1);
-        assertThat(count("sys_outbox")).isEqualTo(1);
         assertThat(count("sys_idempotent")).isEqualTo(2); // create plus winning publish only.
     }
 
@@ -288,23 +277,6 @@ class PricingConfigServiceTest {
         assertThat(count("ord_pricing_template_revision")).isEqualTo(1);
     }
 
-    @Test
-    void failedOutboxInsertionRollsBackRevisionPointerAndIdempotency() {
-        var draft = create();
-        var req = request(draft);
-        jdbc.execute("CREATE TRIGGER reject_pricing_event BEFORE INSERT ON sys_outbox FOR EACH ROW "
-                + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='injected test failure'");
-        try {
-            assertThatThrownBy(() -> templates.publish(platform(), draft.no(), req, "FAIL1"))
-                    .isInstanceOf(RuntimeException.class);
-        } finally {
-            jdbc.execute("DROP TRIGGER reject_pricing_event");
-        }
-        assertThat(count("ord_pricing_template_revision")).isZero();
-        assertThat(templates.getDraft(platform(), draft.no()).activeRevisionNo()).isNull();
-        assertThat(count("sys_idempotent")).isEqualTo(1);
-        assertThat(templates.publish(platform(), draft.no(), req, "FAIL1").revision()).isEqualTo(1);
-    }
 
     @Test
     void staleDraftAndPointerAndPreviewCannotPublish() {
@@ -423,7 +395,6 @@ class PricingConfigServiceTest {
         var result = assertDoesNotThrow(() -> retried.publish(platform(), draft.no(), req, "RACE1"));
         assertThat(result).isEqualTo(original.get());
         assertThat(count("ord_pricing_template_revision")).isEqualTo(1);
-        assertThat(count("sys_outbox")).isEqualTo(1);
     }
 
     @Test
@@ -482,16 +453,6 @@ class PricingConfigServiceTest {
                 .isInstanceOf(BizException.class);
     }
 
-    @Test
-    void newAuditEventHasExplicitUnifiedArchiveRouteUntilThereIsACacheConsumer() throws Exception {
-        var yaml = new org.springframework.beans.factory.config.YamlPropertiesFactoryBean();
-        yaml.setResources(new org.springframework.core.io.FileSystemResource(
-                "../shop-app/src/main/resources/application.yml"));
-        assertThat(yaml.getObject().entrySet().stream()
-                .filter(e -> e.getKey().toString().startsWith("shop.outbox.archive-only["))
-                .map(java.util.Map.Entry::getValue).toList())
-                .contains("PLATFORM:PRICING_CONFIG_PUBLISHED");
-    }
 
     @Test
     void draftNormalizationMustNotHideDuplicateJsonFieldsFromCompiler() {
@@ -570,7 +531,7 @@ class PricingConfigServiceTest {
         return new PricingPublicationPolicy(session.getMapper(TradeMappers.PricingTemplateMapper.class),
                 session.getMapper(TradeMappers.PricingTemplateRevisionMapper.class),
                 session.getMapper(TradeMappers.StorePricingConfigMapper.class),
-                session.getMapper(TradeMappers.StorePricingRevisionMapper.class), idempotency, events,
+                session.getMapper(TradeMappers.StorePricingRevisionMapper.class), idempotency,
                 new DataSourceTransactionManager(dataSource), JSON);
     }
 

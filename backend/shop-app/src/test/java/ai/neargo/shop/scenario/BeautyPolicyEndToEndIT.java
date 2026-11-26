@@ -112,7 +112,7 @@ class BeautyPolicyEndToEndIT {
                             .header("Idempotency-Key", "BAD-STORE").header("X-Store-No", "FOREIGN")
                             .contentType("application/json").content(body)).andExpect(status().isForbidden());
                     for (String table : List.of("bty_store_policy", "bty_store_policy_version", "bty_action_log",
-                            "sys_idempotent", "sys_outbox")) {
+                            "sys_idempotent")) {
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class))
                                 .as(table).isOne();
                     }
@@ -149,7 +149,6 @@ class BeautyPolicyEndToEndIT {
         @Bean UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper json) {
             var facade = new UnifiedOutboxFacade(json);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:BEAUTY_STORE_POLICY_VERSION_PUBLISHED")); // Test only.
             return facade;
         }
         @Bean SecurityFilterChain chain(HttpSecurity http, MemoryTokenStore tokens) throws Exception {

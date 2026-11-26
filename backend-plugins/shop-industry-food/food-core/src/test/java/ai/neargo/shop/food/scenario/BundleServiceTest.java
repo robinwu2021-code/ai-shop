@@ -8,8 +8,6 @@ import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.BundleChoiceInput;
 import ai.neargo.shop.food.dto.BundleGroupInput;
 import ai.neargo.shop.food.dto.CreateBundleReq;
@@ -25,7 +23,6 @@ import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
@@ -84,8 +81,7 @@ class BundleServiceTest extends FoodWriteGuardFixture {
             var source = new CatalogCurrencyBusinessTest.Sources();
             var service = new BundleServiceImpl(c.getBean(BundleMapper.class), c.getBean(BundleGroupMapper.class),
                     c.getBean(BundleChoiceMapper.class), c.getBean(ActionLogMapper.class),
-                    c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
-                    c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
+                    c.getBean(IdempotencyService.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
                     source.currencies);
             service.createBundle("E", "A", "actor", new CreateBundleReq("MEAL"), "foreign-create");
             var result = service.replaceDefinition("E", "A", "MEAL", "actor", fixed(0), "foreign-definition");
@@ -117,7 +113,7 @@ class BundleServiceTest extends FoodWriteGuardFixture {
                             choice("C2", "G1", "DRINK", "ADD_SKU", "0", "1", "0")));
             s.replaceDefinition("E", "A", "MEAL", "actor", req, "selectable");
             assertThat(s.getBundle("E", "A", "MEAL").config().data().choices()).hasSize(2);
-            for (String t : List.of("sys_idempotent", "sys_outbox", "fnb_action_log")) {
+            for (String t : List.of("sys_idempotent", "fnb_action_log")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + t, Integer.class)).as(t).isEqualTo(3);
             }
         });
@@ -197,7 +193,7 @@ class BundleServiceTest extends FoodWriteGuardFixture {
             code(() -> s.listBundles("E","A",new ListBundlesQuery(0,101)), ErrorCode.BAD_REQUEST);
         });
     }
-    @Test void outboxFailureRollsBackAllWorkingRowsAndCounters() {
+    @Test void auditFailureRollsBackAllWorkingRowsAndCounters() {
         run((c,f) -> {
             var s = c.getBean(BundleService.class);
             s.createBundle("E","A","actor",new CreateBundleReq("MEAL"),"a");
@@ -209,7 +205,7 @@ class BundleServiceTest extends FoodWriteGuardFixture {
             var v=s.getBundle("E","A","MEAL").config();
             assertThat(v.version()).isEqualTo(1); assertThat(v.data().configVersion()).isEqualTo(1);
             assertThat(v.data().choices()).hasSize(1);
-            for (String t:List.of("sys_outbox","sys_idempotent","fnb_action_log"))
+            for (String t:List.of("sys_idempotent","fnb_action_log"))
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM "+t,Integer.class)).as(t).isEqualTo(2);
             assertThatThrownBy(() -> f.tx().execute(tx -> s.createBundle("E","A","actor",new CreateBundleReq("X"),"x")))
                     .isInstanceOf(IllegalStateException.class);
@@ -268,7 +264,6 @@ class BundleServiceTest extends FoodWriteGuardFixture {
         }
         @Bean BundleService bundleService(BundleMapper heads,BundleGroupMapper groups,BundleChoiceMapper choices,
                 ActionLogMapper actions, IdempotencyService idem,
-                @Qualifier("foodOutboxPublisher") OutboxPublisher outbox,
                 ObjectMapper json,PlatformTransactionManager manager,State state) {
             var catalog=mock(GoodsCatalogQueryPort.class);
             when(catalog.getSku(anyString(),anyString(),anyString())).thenAnswer(i -> {
@@ -280,11 +275,7 @@ class BundleServiceTest extends FoodWriteGuardFixture {
                         "FOREIGN".equals(sku)?"OTHER":i.getArgument(0),
                         "WRONG_STORE".equals(sku)?"OTHER":i.getArgument(1),0);
             });
-            OutboxPublisher checked=(event,options) -> {
-                var receipt=outbox.publish(event,options);
-                if(state.fail.get()) throw new IllegalStateException("after-bundle-outbox");
-                return receipt;
-            };
+            ActionLogMapper checked=FoodAuditFault.failAfterInsert(actions,state.fail::get,"after-bundle-audit");
             PlatformTransactionManager synchronizedStart = new PlatformTransactionManager() {
                 @Override public TransactionStatus getTransaction(TransactionDefinition definition) {
                     if (state.start != null
@@ -297,7 +288,7 @@ class BundleServiceTest extends FoodWriteGuardFixture {
                 @Override public void commit(TransactionStatus status) { manager.commit(status); }
                 @Override public void rollback(TransactionStatus status) { manager.rollback(status); }
             };
-            return new BundleServiceImpl(heads,groups,choices,actions,idem,checked,json,synchronizedStart,catalog);
+            return new BundleServiceImpl(heads,groups,choices,checked,idem,json,synchronizedStart,catalog);
         }
     }
 }

@@ -5,11 +5,6 @@ import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizKey;
-import ai.neargo.shop.event.OutboxConsumer;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
-import ai.neargo.shop.event.outbox.runtime.PlatformPublicationPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.merchant.dto.ResourceBookingAllocationRow;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 import ai.neargo.shop.merchant.booking.entity.MchBookingHold;
@@ -38,7 +33,6 @@ import ai.neargo.shop.merchant.service.ResourceCommandService.Scope;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Status;
 import ai.neargo.shop.merchant.service.ResourceSourceAuthorizationService;
 import ai.neargo.shop.merchant.service.ResourceSourceAuthorizationService.Authorization;
-import ai.neargo.shop.spi.resource.ResourceBookingChanged;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort.State;
 import java.time.Clock;
 import java.time.Instant;
@@ -53,10 +47,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -79,7 +71,6 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
     private final BookingHoldUnitMapper units;
     private final TransactionTemplate writes;
     private final Clock clock;
-    private final OutboxPublisher publisher;
     private final ObjectMapper json;
 
     public ResourceBookingServiceImpl(ResourceOccupationGuard occupations, ResourceCommandService commands, ResourceSourceAuthorizationService sources,
@@ -87,10 +78,7 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
             ResourceBucketMapper buckets, ResourceCommandMapper journal, BookingHoldMapper holds,
             BookingHoldUnitMapper units,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
-            @Qualifier("dataSource") DataSource dataSource, ObjectProvider<Clock> clocks, ObjectMapper json,
-            ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
-            @Value("${shop.resource.publication.archive-only:false}") boolean archiveOnly,
-            @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
+            ObjectProvider<Clock> clocks, ObjectMapper json) {
         this.occupations = occupations;
         this.commands = commands;
         this.sources = sources;
@@ -105,8 +93,6 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
         this.json = json;
         writes = new TransactionTemplate(manager);
         writes.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
-        publisher = PlatformPublicationPublisher.create(facades::getIfAvailable, manager, () -> dataSource, json,
-                consumers::orderedStream, Set.of("RESOURCE_BOOKING_CHANGED"), archiveOnly, maintenance);
     }
 
     @Override
@@ -305,9 +291,6 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
         String head = action == Action.RELEASE || action == Action.EXPIRE ? null : next.getHoldNo();
         String result = json.writeValueAsString(Map.of("holdNo", next.getHoldNo(), "status", next.getStatus(),
                 "ownerRevision", execution.owner().ownerVersion() + 1));
-        publisher.publish(new ResourceBookingChanged(original.ownerNo(), scope.entityNo(), scope.storeNo(),
-                original.commandNo(), next.getHoldNo(), action.name(), execution.owner().ownerVersion() + 1),
-                new PublishOptions("RESOURCE_BOOKING:" + original.ownerNo(), 1));
         return commands.completeSuccess(execution, head, result);
     }
 

@@ -410,13 +410,6 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
         assertThat(retained.attempts()).hasSize(1);
         assertThat(retained.attempts().getFirst().attemptNo()).isEqualTo(claim.attemptNo());
         assertThat(retained.attempts().getFirst().status()).isEqualTo("SENT");
-        assertThat(
-                        sql.queryForObject(
-                                "SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=?"
-                                        + " AND event_type='PRINT_JOB_CHANGED'",
-                                Integer.class,
-                                claim.jobNo()))
-                .isPositive();
         // The mock device explicitly reports no paper was printed. This releases the real
         // device fence without claiming physical print success between test orders.
         var failed = owner.acknowledge(scope, assignedDevice,

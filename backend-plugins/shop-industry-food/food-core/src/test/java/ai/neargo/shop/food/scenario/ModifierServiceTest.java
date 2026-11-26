@@ -8,8 +8,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.scenario.OptionGroupServiceTest.Groups;
 import ai.neargo.shop.food.dto.CreateModifierReq;
 import ai.neargo.shop.food.dto.UpdateModifierReq;
@@ -24,7 +22,6 @@ import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -74,7 +71,7 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
             assertThat(view.data().name()).isEqualTo("珍珠");
             assertThat(view.data().salesSkuNo()).isEqualTo("SKU");
             assertThat(view.data().components()).isEmpty();
-            for (String table : List.of("fnb_modifier", "fnb_action_log", "sys_outbox", "sys_idempotent")) {
+            for (String table : List.of("fnb_modifier", "fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isOne();
             }
         });
@@ -182,7 +179,7 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
         });
     }
 
-    @Test void publisherFailureRollsBackWorkingChildrenHeadAuditAndReplay() {
+    @Test void auditFailureRollsBackWorkingChildrenHeadAuditAndReplay() {
         run((c,f) -> {
             var s = c.getBean(ModifierService.class);
             var a = s.createModifier("E", "A", "actor", addon(null), "a");
@@ -196,7 +193,7 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
                     .isEqualByComparingTo("1");
             assertThat(f.sql().queryForObject("SELECT version FROM fnb_modifier WHERE modifier_no=?",
                     Long.class, combo.configNo())).isZero();
-            for (String table : List.of("fnb_action_log", "sys_idempotent", "sys_outbox")) {
+            for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isEqualTo(2);
             }
         });
@@ -247,8 +244,7 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
             var m = new MapperFactoryBean<>(ModifierComponentMapper.class); m.setSqlSessionTemplate(t); return m;
         }
         @Bean ModifierService modifiers(ModifierMapper heads, ModifierComponentMapper components,
-                ActionLogMapper actions, IdempotencyService idem,
-                @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+                ActionLogMapper actions, IdempotencyService idem, ObjectMapper json,
                 PlatformTransactionManager manager, Fail fail) {
             var catalog = mock(GoodsCatalogQueryPort.class);
             when(catalog.getSku(anyString(),
@@ -260,12 +256,8 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
                         "FOREIGN".equals(sku) ? "OTHER" : i.getArgument(0),
                         "WRONG_STORE".equals(sku) ? "OTHER" : i.getArgument(1), 0);
             });
-            OutboxPublisher checked = (event, options) -> {
-                var receipt = publisher.publish(event, options);
-                if (fail.enabled.get()) throw new IllegalStateException("after-modifier-publish");
-                return receipt;
-            };
-            return new ModifierServiceImpl(heads, components, actions, idem, checked, json, manager, catalog);
+            ActionLogMapper checked = FoodAuditFault.failAfterInsert(actions, fail.enabled::get, "after-modifier-audit");
+            return new ModifierServiceImpl(heads, components, checked, idem, json, manager, catalog);
         }
     }
 }

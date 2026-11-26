@@ -214,8 +214,6 @@ final class ManualCounterDiscountFixture {
         assertThat(flow.jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id IN (?,?)"
                 + " AND event_type IN ('ORDER_PAID','SUB_ORDER_PAID')", Long.class,
                 created.orderNo(), created.subOrderNo())).isZero();
-        assertThat(flow.jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=?"
-                + " AND event_type='MANUAL_SERVICE_RECEIPT_RECORDED'", Long.class, created.orderNo())).isEqualTo(1);
     }
 
     /**

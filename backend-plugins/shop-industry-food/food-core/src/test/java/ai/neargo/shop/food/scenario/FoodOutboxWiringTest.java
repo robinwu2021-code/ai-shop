@@ -37,8 +37,8 @@ class FoodOutboxWiringTest extends FoodWriteGuardFixture {
         public String eventType() { return "FOOD_GUARD_FIXTURE_CREATED"; }
     }
     record ArchivedProbe(String aggregateId) implements DomainEvent {
-        public String aggregateType(){return "FOOD_TABLE";}
-        public String eventType(){return "FOOD_TABLE_CHANGED";}
+        public String aggregateType(){return "FOOD_DISH";}
+        public String eventType(){return "FOOD_DISH_CHANGED";}
     }
     @Test void ordinaryMaintenanceDoesNotNeedOrWriteAnOutbox() {
         runner().run(context->{
@@ -223,7 +223,7 @@ class FoodOutboxWiringTest extends FoodWriteGuardFixture {
             var facade=new UnifiedOutboxFacade(json);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM,source,tx,json),List.of(new OutboxHandler(){
                 public String handlerId(){return "actual-subscriber";}
-                public boolean supports(String type){return "FOOD_TABLE_CHANGED".equals(type);}
+                public boolean supports(String type){return "FOOD_DISH_CHANGED".equals(type);}
                 public DeliveryResult handle(OutboxEnvelope event){return DeliveryResult.sent();}
             }));return facade;
         }

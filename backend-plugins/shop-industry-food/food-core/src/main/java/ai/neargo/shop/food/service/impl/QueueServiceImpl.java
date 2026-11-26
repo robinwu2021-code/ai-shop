@@ -5,8 +5,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.CheckVO;
 import ai.neargo.shop.food.dto.GetPolicyQuery;
 import ai.neargo.shop.food.dto.OpenCheckReq;
@@ -29,7 +27,6 @@ import ai.neargo.shop.food.lifecycle.QueueNotificationLifecycle;
 import ai.neargo.shop.food.service.QueueService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.DiningQueueChanged;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -73,7 +70,6 @@ public class QueueServiceImpl implements QueueService {
     private final CheckService checks;
     private final StoreCardQueryPort stores;
     private final IdempotencyService idem;
-    private final OutboxPublisher outbox;
     private final ObjectMapper json;
     private final TransactionTemplate tx;
 
@@ -85,7 +81,6 @@ public class QueueServiceImpl implements QueueService {
             CheckService checks,
             StoreCardQueryPort stores,
             IdempotencyService idem,
-            OutboxPublisher outbox,
             ObjectMapper json,
             PlatformTransactionManager manager) {
         this.tickets = tickets;
@@ -95,7 +90,6 @@ public class QueueServiceImpl implements QueueService {
         this.checks = checks;
         this.stores = stores;
         this.idem = idem;
-        this.outbox = outbox;
         this.json = json;
         tx = new TransactionTemplate(manager);
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -521,18 +515,6 @@ public class QueueServiceImpl implements QueueService {
                     row.getVersion(),
                     row.getContactRef(),
                     actor);
-        outbox.publish(
-                new DiningQueueChanged(
-                        row.getEntityNo(),
-                        row.getStoreNo(),
-                        row.getTicketNo(),
-                        row.getBusinessDate(),
-                        row.getStatus(),
-                        row.getPartySize(),
-                        row.getCheckNo(),
-                        actor,
-                        row.getVersion()),
-                new PublishOptions("FOOD_QUEUE:" + row.getTicketNo(), 1));
     }
 
     private QueueVO view(FnbQueueTicket row) {

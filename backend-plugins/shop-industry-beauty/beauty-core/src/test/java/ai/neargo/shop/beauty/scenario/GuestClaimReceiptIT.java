@@ -8,56 +8,40 @@ import ai.neargo.shop.beauty.config.BeautyWriteGuardConfiguration;
 import ai.neargo.shop.beauty.dto.ClaimGuestReq;
 import ai.neargo.shop.beauty.dto.MyAppointmentQuery;
 import ai.neargo.shop.beauty.dto.RegisterGuestReq;
+import ai.neargo.shop.beauty.entity.BtyActionLog;
+import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.beauty.service.GuestRegistrationService;
 import ai.neargo.shop.beauty.service.ReceptionService;
 import ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import java.util.List;
-import java.util.Set;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Real MySQL/transactions/outbox; controlled member fixture. The host IT consumes real tickets. */
+/** Real MySQL/transactions; controlled member fixture. The host IT consumes real tickets. */
 class GuestClaimReceiptIT extends BeautyExecutionFixture {
     private final ObjectMapper json = new ObjectMapper();
     private final ControlledGuest owner = new ControlledGuest();
     private final ClaimGuestReq claim = new ClaimGuestReq("cr1_" + "c".repeat(43), "t".repeat(43));
     private boolean allowed = true;
     private boolean proofValid = true;
-    private boolean failOutbox;
+    private boolean failAudit;
     private String target = "U1";
-    @Configuration(proxyBeanMethods = false)
-    static class OutboxRoute {
-        @Bean UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper json) {
-            var facade = new UnifiedOutboxFacade(json);
-            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:BEAUTY_RECEPTION_STATE_CHANGED"));
-            return facade;
-        }
-    }
     @BeforeEach void database() throws Exception {
         initialize("BtyReceptionOperation", "BtyGuestClaimReceipt", "BtyArrivalChallenge", "BtyWorkOrderContext");
         new ResourceDatabasePopulator(new ClassPathResource("platform-write-fixture.sql")).execute(database.source);
@@ -73,7 +57,7 @@ class GuestClaimReceiptIT extends BeautyExecutionFixture {
     }
     private ApplicationContextRunner business() {
         return runner().withUserConfiguration(BeautyCatalogConfiguration.class, BeautyAppointmentConfiguration.class,
-                        BeautyWriteGuardConfiguration.class, OutboxRoute.class)
+                        BeautyWriteGuardConfiguration.class)
                 .withBean(ObjectMapper.class, () -> json)
                 .withBean(GuestRegistrationPort.class, () -> owner)
                 .withBean(MerchantOperatorAccessPort.class, () -> q -> {
@@ -90,40 +74,31 @@ class GuestClaimReceiptIT extends BeautyExecutionFixture {
                         return new ResolvedCustomer(target);
                     }
                 }).withInitializer(application -> application.getBeanFactory().addBeanPostProcessor(
-                        new BeanPostProcessor() {
-                            @Override public Object postProcessAfterInitialization(Object bean, String name) {
-                                if (!"beautyOutboxPublisher".equals(name)) { return bean; }
-                                OutboxPublisher delegate = (OutboxPublisher) bean;
-                                return (OutboxPublisher) (event, options) -> {
-                                    var receipt = delegate.publish(event, options);
-                                    if (failOutbox) { throw new IllegalStateException("receipt-outbox-rollback"); }
-                                    return receipt;
-                                };
-                            }
-                        }));
+                        BeautyFailureInjection.afterCall(BeautyMappers.ActionLogMapper.class, "insert",
+                                row -> failAudit && row instanceof BtyActionLog log
+                                        && "GUEST_CLAIM_RECEIPT_RECORDED".equals(log.getAction()),
+                                () -> { throw new IllegalStateException("receipt-audit-rollback"); })));
     }
     private void outside() { assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse(); }
     private int count(String table) { return sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class); }
     @Test void sharedClaimCommitThenLocalRollbackRecoversReceiptWithCurrentEmployee() {
         business().run(c -> {
             var service = c.getBean(GuestRegistrationServiceImpl.class);
-            failOutbox = true;
+            failAudit = true;
             assertThatThrownBy(() -> service.claimGuest("E", "S", "A", "GUE1", claim, "K"))
-                    .hasMessage("receipt-outbox-rollback");
+                    .hasMessage("receipt-audit-rollback");
             assertThat(owner.fact.state()).isEqualTo("CLAIMED");
             assertThat(count("bty_reception_operation")).isOne();
-            assertThat(count("bty_guest_claim_receipt")).isZero(); assertThat(count("sys_outbox")).isZero();
+            assertThat(count("bty_guest_claim_receipt")).isZero();
             String number = sql.queryForObject("SELECT operation_no FROM bty_reception_operation", String.class);
             String payload = sql.queryForObject("SELECT frozen_payload FROM bty_reception_operation", String.class);
             assertThat(payload).contains("GUE1", "U1").doesNotContain("cr1_", "tttt", "contact");
-            failOutbox = false; proofValid = false; login("B");
+            failAudit = false; proofValid = false; login("B");
             var result = service.recoverClaim("E", "S", "B", number);
             assertThat(result.operationNo()).isEqualTo(number); assertThat(result.userNo()).isEqualTo("U1");
             assertThat(owner.lastActor).isEqualTo("B"); assertThat(owner.claimCalls).isOne();
             assertThat(service.recoverClaim("E", "S", "B", number)).isEqualTo(result);
-            assertThat(count("bty_guest_claim_receipt")).isOne(); assertThat(count("sys_outbox")).isOne();
-            assertThat(sql.queryForObject("SELECT payload FROM sys_outbox", String.class))
-                    .contains("GUE1").doesNotContain("U1", "cr1_", "claimToken", "contact", "frozenPlan");
+            assertThat(count("bty_guest_claim_receipt")).isOne();
             allowed = false;
             assertThatThrownBy(() -> service.recoverClaim("E", "S", "B", number)).isInstanceOf(BizException.class);
         });
@@ -197,7 +172,6 @@ class GuestClaimReceiptIT extends BeautyExecutionFixture {
             assertThat(service.issueArrivalChallenge("E", "S", "A", "K")).isEqualTo(first);
             assertThat(service.issueArrivalChallenge("E", "S", "A", "OTHER").code()).isNotEqualTo(first.code());
             assertThat(count("bty_reception_operation")).isZero(); assertThat(count("bty_action_log")).isZero();
-            assertThat(count("sys_outbox")).isZero();
             login("B"); assertThat(service.issueArrivalChallenge("E", "S", "B", "K").code()).isNotEqualTo(first.code());
             assertThatThrownBy(() -> service.issueArrivalChallenge("E", "OTHER", "B", "K"))
                     .isInstanceOf(BizException.class);

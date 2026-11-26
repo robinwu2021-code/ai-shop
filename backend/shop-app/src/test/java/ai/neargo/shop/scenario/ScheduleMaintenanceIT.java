@@ -62,7 +62,7 @@ class ScheduleMaintenanceIT {
     }
     @BeforeEach
     void database() throws Exception {
-        required("service.impl.ScheduleServiceImpl");
+        required("booking.impl.ScheduleServiceImpl");
         String admin = System.getProperty("schedule-maintenance.test.admin-url");
         database = "schedule_maintenance_" + UUID.randomUUID().toString().replace("-", "");
         new JdbcTemplate(new DriverManagerDataSource(admin, "root", ""))
@@ -97,7 +97,7 @@ class ScheduleMaintenanceIT {
     }
     private ApplicationContextRunner runner() {
         return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
-                required("service.impl.ScheduleServiceImpl"), required("service.impl.PersonnelServiceImpl"),
+                required("booking.impl.ScheduleServiceImpl"), required("service.impl.PersonnelServiceImpl"),
                 ScheduleWindowsPortImpl.class, Mappers.class)
                 .withBean(MerchantStaffService.class, () -> mock(MerchantStaffService.class))
                 .withBean(GoodsQueryPort.class, () -> mock(GoodsQueryPort.class))
@@ -158,8 +158,6 @@ class ScheduleMaintenanceIT {
             assertThat(view.get("windows").get(0).get("startAt").asText()).isEqualTo("2026-10-22T10:00:00Z");
             assertThat(view.get("resourceRevisions").get("R").asLong()).isEqualTo(2);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_schedule_change_log", Integer.class)).isOne();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE "
-                    + "event_type='MERCHANT_SCHEDULE_CHANGED' AND status='ARCHIVED'", Integer.class)).isOne();
             assertThatThrownBy(() -> save(ctx, "S", body.replace("600", "610"), "CREATE"))
                     .isInstanceOf(BizException.class);
         });
@@ -231,17 +229,6 @@ class ScheduleMaintenanceIT {
             sql.update("UPDATE mch_resource SET open_occupation_no='OPEN'");
             assertThatThrownBy(() -> save(ctx, "S", body, "OCCUPIED")).isInstanceOf(BizException.class);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_schedule_rule", Integer.class)).isZero();
-            assertThat(sql.queryForObject("SELECT version FROM mch_resource", Long.class)).isOne();
-        });
-    }
-    @Test
-    void strictPublishFailureRollsBackRuleHistoryAuditAndRevision() {
-        runner().withPropertyValues("shop.schedule.publication.archive-only=false").run(ctx -> {
-            assertThatThrownBy(() -> save(ctx, "S", body("R", null, 1, 600, 660, "ACTIVE"), "FAIL"))
-                    .isInstanceOf(RuntimeException.class);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_schedule_rule", Integer.class)).isZero();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_schedule_change_log", Integer.class)).isZero();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isZero();
             assertThat(sql.queryForObject("SELECT version FROM mch_resource", Long.class)).isOne();
         });
     }

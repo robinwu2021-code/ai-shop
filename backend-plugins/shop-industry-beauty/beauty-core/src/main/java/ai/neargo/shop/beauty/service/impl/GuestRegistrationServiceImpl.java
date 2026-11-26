@@ -15,10 +15,7 @@ import ai.neargo.shop.beauty.service.GuestRegistrationService;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.spi.beauty.BeautyReceptionStateChanged;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.ObjectProvider;
@@ -33,13 +30,11 @@ public final class GuestRegistrationServiceImpl implements GuestRegistrationServ
     private final ObjectProvider<GuestRegistrationPort> owner;
     private final BeautyMappers.ReceptionOperationMapper operations;
     private final BeautyMappers.GuestClaimReceiptMapper receipts;
-    private final OutboxPublisher publisher;
     public GuestRegistrationServiceImpl(AppointmentPersistence db, ReceptionAccess access, ReceptionIdentity identities,
             ReceptionPreparation preparations, ObjectProvider<GuestRegistrationPort> owner,
-            BeautyMappers.ReceptionOperationMapper operations, BeautyMappers.GuestClaimReceiptMapper receipts,
-            OutboxPublisher publisher) {
+            BeautyMappers.ReceptionOperationMapper operations, BeautyMappers.GuestClaimReceiptMapper receipts) {
         this.db = db; this.access = access; this.identities = identities; this.preparations = preparations;
-        this.owner = owner; this.operations = operations; this.receipts = receipts; this.publisher = publisher;
+        this.owner = owner; this.operations = operations; this.receipts = receipts;
     }
     @Override
     public GuestRegistrationVO registerGuest(String entity, String store, String actor, RegisterGuestReq req,
@@ -149,8 +144,6 @@ public final class GuestRegistrationServiceImpl implements GuestRegistrationServ
             log.setExpectedRevision(0L); log.setResultRevision(fact.revision());
             log.setSafeSnapshot("{\"state\":\"CLAIMED\"}"); log.setRequestRef(op.getOperationNo());
             db.actions.insert(log);
-            publisher.publish(new BeautyReceptionStateChanged(fact.guestNo(), op.getEntityNo(), op.getStoreNo(),
-                    fact.revision(), "CLAIMED"), new PublishOptions("BEAUTY:RECEPTION:" + op.getOperationNo(), 1));
             return result;
         });
     }

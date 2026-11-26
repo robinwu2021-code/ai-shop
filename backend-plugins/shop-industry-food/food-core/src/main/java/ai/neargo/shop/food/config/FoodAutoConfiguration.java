@@ -261,10 +261,10 @@ public class FoodAutoConfiguration {
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(StationService.class)
     StationService stationService(StationMapper stations, SkuStationMapper routes, ActionLogMapper actions,
-            IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            IdempotencyService idem, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> goods) {
-        return new StationServiceImpl(stations, routes, actions, idem, publisher, json, manager, lazyGoods(goods));
+        return new StationServiceImpl(stations, routes, actions, idem, json, manager, lazyGoods(goods));
     }
 
     @Bean
@@ -272,10 +272,10 @@ public class FoodAutoConfiguration {
     @ConditionalOnMissingBean(SalesRestrictionService.class)
     SalesRestrictionService salesRestrictionService(SalesRestrictionMapper rows, StorePolicyMapper policies,
             ActionLogMapper actions, IdempotencyService idem,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> goods) {
-        return new SalesRestrictionServiceImpl(rows, policies, actions, idem, publisher, json, manager,
+        return new SalesRestrictionServiceImpl(rows, policies, actions, idem, json, manager,
                 Clock.systemUTC(), lazyGoods(goods));
     }
 
@@ -284,10 +284,10 @@ public class FoodAutoConfiguration {
     @ConditionalOnMissingBean(MenuChannelBindingService.class)
     MenuChannelBindingService menuChannelBindingService(MenuChannelBindingMapper bindings, MenuMapper menus,
             MenuStoreMapper stores, ActionLogMapper actions, IdempotencyService idem,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<MenuChannelAuthorityPort> authority) {
-        return new MenuChannelBindingServiceImpl(bindings, menus, stores, actions, idem, publisher, json, manager,
+        return new MenuChannelBindingServiceImpl(bindings, menus, stores, actions, idem, json, manager,
                 authority::getIfAvailable);
     }
 
@@ -315,12 +315,11 @@ public class FoodAutoConfiguration {
     @ConditionalOnMissingBean(RecipeService.class)
     RecipeService recipeService(RecipeMapper heads, RecipeLineMapper lines, ActionLogMapper actions,
             RecipeAdjustmentMapper adjustments, OptionGroupItemMapper optionItems, OptionGroupMapper optionGroups,
-            IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
-            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            IdempotencyService idem, ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> catalogs, ai.neargo.shop.food.spi.FoodMaterialSource materials,
             CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
-        return new RecipeServiceImpl(heads, lines, actions, idem, publisher, json, manager, catalog,
+        return new RecipeServiceImpl(heads, lines, actions, idem, json, manager, catalog,
                 materials.port(),
                 adjustments, optionItems, optionGroups, currencies);
     }
@@ -330,12 +329,12 @@ public class FoodAutoConfiguration {
     @ConditionalOnMissingBean(BundleService.class)
     BundleService bundleService(BundleMapper heads, BundleGroupMapper groups, BundleChoiceMapper choices,
             ActionLogMapper actions, IdempotencyService idem,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> catalogs,
             CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
-        return new BundleServiceImpl(heads, groups, choices, actions, idem, publisher, json, manager,
+        return new BundleServiceImpl(heads, groups, choices, actions, idem, json, manager,
                 catalog, currencies);
     }
 
@@ -344,12 +343,12 @@ public class FoodAutoConfiguration {
     @ConditionalOnMissingBean(ModifierService.class)
     ModifierService modifierService(ModifierMapper heads, ModifierComponentMapper components,
             ActionLogMapper actions, IdempotencyService idem,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> catalogs,
             CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
-        return new ModifierServiceImpl(heads, components, actions, idem, publisher, json, manager, catalog, currencies);
+        return new ModifierServiceImpl(heads, components, actions, idem, json, manager, catalog, currencies);
     }
 
     @Bean
@@ -357,13 +356,13 @@ public class FoodAutoConfiguration {
     @ConditionalOnMissingBean(OptionGroupService.class)
     OptionGroupService optionGroupService(OptionGroupMapper groups, OptionGroupItemMapper items,
             ActionLogMapper actions, IdempotencyService idem,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
+            ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager, DishMapper dishes,
             DishOptionGroupMapper bindings, ModifierMapper modifiers, ObjectProvider<GoodsCatalogQueryPort> catalogs,
             ObjectProvider<SpecValueCatalogQueryPort> specs,
             CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsMetadataQueryPortImpl(catalogs);
-        return new OptionGroupServiceImpl(groups, items, actions, idem, publisher, json, manager,
+        return new OptionGroupServiceImpl(groups, items, actions, idem, json, manager,
                 dishes, bindings, modifiers, catalog,
                 (entity, numbers) -> specs.getObject().getValues(entity, numbers), currencies);
     }
@@ -398,9 +397,8 @@ public class FoodAutoConfiguration {
     @ConditionalOnMissingBean(TableService.class)
     TableService tableService(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
             IdempotencyService idem, ReservationTableMapper reservationTables,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new TableServiceImpl(areas, tables, actions, idem, publisher, manager, reservationTables);
+        return new TableServiceImpl(areas, tables, actions, idem, manager, reservationTables);
     }
 
     @Bean
@@ -409,10 +407,9 @@ public class FoodAutoConfiguration {
     DiningSessionService diningSessionService(TableAreaMapper areas, TableMapper tables,
             TableTokenMapper tokens,
             GuestSessionMapper sessions, ActionLogMapper actions,
-            IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            IdempotencyService idem, @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new DiningSessionServiceImpl(
-                areas,tables,tokens,sessions,actions,idem,publisher,manager);
+                areas,tables,tokens,sessions,actions,idem,manager);
     }
 
     @Bean
@@ -497,11 +494,11 @@ public class FoodAutoConfiguration {
     CheckCartService checkCartService(CheckCartMapper carts, CheckCartItemMapper items, CheckMapper checks,
             GuestSessionMapper sessions, SeatMapper seats, TableOccupancyMapper occupancies,
             TableAreaMapper areas, TableMapper tables, ActionLogMapper actions, IdempotencyService idem,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, CatalogService catalog,
+            CatalogService catalog,
             ObjectProvider<StoreCardQueryPort> stores, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new CheckCartServiceImpl(carts,items,checks,sessions,seats,occupancies,areas,tables,actions,idem,
-                publisher,catalog,numbers -> stores.getObject().cards(numbers),json,manager,Clock.systemUTC());
+                catalog,numbers -> stores.getObject().cards(numbers),json,manager,Clock.systemUTC());
     }
 
     @Bean
@@ -526,10 +523,9 @@ public class FoodAutoConfiguration {
     ReservationService reservationService(ReservationMapper mapper, ReservationTableMapper reservationTables,
             TableAreaMapper areas, TableMapper tables, TableOccupancyMapper occupancy, ActionLogMapper actions,
             CheckService checks, StoreOperationService policies, IdempotencyService idem, ObjectMapper json,
-            ObjectProvider<StoreCardQueryPort> stores, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            ObjectProvider<StoreCardQueryPort> stores, @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new ReservationServiceImpl(mapper, reservationTables, areas, tables, occupancy, actions,
-                checks, policies, idem, json, numbers -> stores.getObject().cards(numbers), publisher, manager);
+                checks, policies, idem, json, numbers -> stores.getObject().cards(numbers), manager);
     }
 
     @Bean

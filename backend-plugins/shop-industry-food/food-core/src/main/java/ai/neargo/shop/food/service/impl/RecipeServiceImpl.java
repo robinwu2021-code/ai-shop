@@ -6,8 +6,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.CreateRecipeReq;
 import ai.neargo.shop.food.dto.ListRecipesQuery;
 import ai.neargo.shop.food.dto.RecipeAdjustmentInput;
@@ -33,7 +31,6 @@ import ai.neargo.shop.food.policy.RecipeAdjustmentPolicy;
 import ai.neargo.shop.food.policy.RecipeDefinitionPolicy;
 import ai.neargo.shop.food.service.RecipeService;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.RecipeChanged;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort.MaterialFact;
@@ -69,7 +66,6 @@ public class RecipeServiceImpl implements RecipeService {
     private final OptionGroupItemMapper optionItems;
     private final OptionGroupMapper optionGroups;
     private final IdempotencyService idem;
-    private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final GoodsCatalogQueryPort catalog;
     private final MaterialCatalogQueryPort materials;
@@ -81,7 +77,6 @@ public class RecipeServiceImpl implements RecipeService {
             RecipeLineMapper lines,
             ActionLogMapper actions,
             IdempotencyService idem,
-            OutboxPublisher publisher,
             ObjectMapper json,
             PlatformTransactionManager manager,
             GoodsCatalogQueryPort catalog,
@@ -89,7 +84,7 @@ public class RecipeServiceImpl implements RecipeService {
             RecipeAdjustmentMapper adjustments,
             OptionGroupItemMapper optionItems,
             OptionGroupMapper optionGroups) {
-        this(heads, lines, actions, idem, publisher, json, manager, catalog, materials, adjustments,
+        this(heads, lines, actions, idem, json, manager, catalog, materials, adjustments,
                 optionItems, optionGroups, (entity, store) -> CatalogCurrencySession.legacy(catalog, entity,
                 store));
     }
@@ -100,7 +95,6 @@ public class RecipeServiceImpl implements RecipeService {
             RecipeLineMapper lines,
             ActionLogMapper actions,
             IdempotencyService idem,
-            OutboxPublisher publisher,
             ObjectMapper json,
             PlatformTransactionManager manager,
             GoodsCatalogQueryPort catalog,
@@ -117,7 +111,6 @@ public class RecipeServiceImpl implements RecipeService {
         this.adjustments = adjustments;
         this.optionItems = optionItems;
         this.optionGroups = optionGroups;
-        this.publisher = publisher;
         this.json = json;
         this.catalog = catalog;
         this.materials = materials;
@@ -565,16 +558,6 @@ public class RecipeServiceImpl implements RecipeService {
             audit.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(before)));
         audit.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(after)));
         actions.insert(audit);
-        publisher.publish(
-                new RecipeChanged(
-                        entity,
-                        store,
-                        after.recipeNo(),
-                        action,
-                        after.version(),
-                        audit.getActionNo(),
-                        after),
-                new PublishOptions("FOOD_RECIPE:" + after.recipeNo(), 1));
     }
 
     private static void context(String entity, String store, String actor, String key) {

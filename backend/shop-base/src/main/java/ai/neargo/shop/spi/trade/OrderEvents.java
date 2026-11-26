@@ -32,38 +32,6 @@ public final class OrderEvents {
         }
     }
 
-    /**
-     * A channel receivable was admitted; this event grants no local payment or settlement
-     * authority.
-     */
-    public record ChannelOrderAccepted(
-            String orderNo,
-            String subOrderNo,
-            String entityNo,
-            String storeNo,
-            String sourceSystem,
-            String sourceNo,
-            long sourceVersion,
-            String acceptanceReceiptRef,
-            String currency,
-            long merchantReceivableMinor)
-            implements DomainEvent {
-        @Override
-        public String aggregateType() {
-            return AGG_ORDER;
-        }
-
-        @Override
-        public String aggregateId() {
-            return orderNo;
-        }
-
-        @Override
-        public String eventType() {
-            return "CHANNEL_ORDER_ACCEPTED";
-        }
-    }
-
     /** 支付成功。消费方：settle(生成结算单) · fulfillment(建履约任务) · message。 */
     public record OrderPaid(String orderNo, String userNo, long payAmount, String payChannel)
             implements DomainEvent {

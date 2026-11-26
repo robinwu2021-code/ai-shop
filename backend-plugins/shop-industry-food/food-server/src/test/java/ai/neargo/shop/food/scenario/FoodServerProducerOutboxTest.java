@@ -73,8 +73,8 @@ class FoodServerProducerOutboxTest {
             tx.executeWithoutResult(status -> facade.publisher("PLATFORM").publish(
                     new Event("T","DINING_SERVICE_EVENT"),new PublishOptions("FOOD_KITCHEN_TASK:T",1)));
             tx.executeWithoutResult(status -> facade.publisher("PLATFORM").publish(
-                    new Event("Q","DINING_QUEUE_CHANGED"),new PublishOptions("FOOD_QUEUE:Q",1)));
-            assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type='DINING_QUEUE_CHANGED'",
+                    new Event("Q","FOOD_DISH_CHANGED"),new PublishOptions("FOOD_DISH:Q",1)));
+            assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type='FOOD_DISH_CHANGED'",
                     String.class)).isEqualTo("ARCHIVED");
             assertThat(jdbc.queryForList("SELECT handler_id FROM sys_outbox_delivery",String.class))
                     .containsExactly("food-kds-business-events-v1");
@@ -84,7 +84,7 @@ class FoodServerProducerOutboxTest {
     @Test void actualProducerPersistsFactAndRemainingDeliveryDeclarations() {
         runner().run(context -> {
             FoodServerProducerAssertions.verify(context);
-            assertThat(FoodOutboxRouting.ARCHIVE_ONLY).hasSize(19);
+            assertThat(FoodOutboxRouting.ARCHIVE_ONLY).hasSize(6);
             assertThat(FoodOutboxRouting.DELIVERY_TARGETS).hasSize(5)
                     .doesNotContainKey("DINING_STATION_RUNTIME_CHANGED");
             var facade=context.getBean(UnifiedOutboxFacade.class);
@@ -99,9 +99,9 @@ class FoodServerProducerOutboxTest {
                 }
             });
             var jdbc=new JdbcTemplate(context.getBean(DataSource.class));
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox",Long.class)).isEqualTo(24);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox",Long.class)).isEqualTo(11);
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE status='ARCHIVED'",Long.class))
-                    .isEqualTo(19);
+                    .isEqualTo(6);
             for(String fact:FoodOutboxRouting.ARCHIVE_ONLY) {
                 String type=fact.substring("PLATFORM:".length());
                 assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type=?",String.class,type))
