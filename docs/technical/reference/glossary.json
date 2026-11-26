@@ -61704,6 +61704,78 @@
       "module": "shop-report"
     },
     {
+      "host": "ModuleDataSources",
+      "name": "INVOICE",
+      "type": "String",
+      "value": "\"invoice\"",
+      "zh": "发票模块（ai.neargo.shop.invoice）。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PRINT",
+      "type": "String",
+      "value": "\"print\"",
+      "zh": "打印模块（ai.neargo.shop.printing）。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "INVOICE_TX_MANAGER",
+      "type": "String",
+      "value": "\"invoiceTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "INVOICE_DATA_SOURCE",
+      "type": "String",
+      "value": "\"invoiceDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "INVOICE_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"invoiceSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PRINT_TX_MANAGER",
+      "type": "String",
+      "value": "\"printTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PRINT_DATA_SOURCE",
+      "type": "String",
+      "value": "\"printDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PRINT_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"printSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "MODULES",
+      "type": "List<String>",
+      "value": "List.of(INVOICE, PRINT)",
+      "zh": "守卫测试也读这份清单。",
+      "module": "shop-store-mybatis"
+    },
+    {
       "host": "OutboxDispatcher",
       "name": "MAX_ATTEMPTS",
       "type": "int",

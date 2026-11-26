@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.dispatch.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.event.OutboxEventBus;
@@ -58,7 +59,7 @@ public class PrintReceiptServiceImpl implements PrintReceiptService {
             PrintActionAppender au,
             PrintJsonCodec c,
             OutboxEventBus e,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.PRINT_TX_MANAGER) PlatformTransactionManager manager,
             PrnRequestMapper requests) {
         this.requests = requests;
         receipts = r;
@@ -73,7 +74,7 @@ public class PrintReceiptServiceImpl implements PrintReceiptService {
         tx = new TransactionTemplate(manager);
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public ReceiptAck ingest(VerifiedPrintReceipt r) {
         audit.lock(r.scope());
         var old =
@@ -131,7 +132,7 @@ public class PrintReceiptServiceImpl implements PrintReceiptService {
         return new PrintWorkReport(ids.size(), done, failed, ids.size() == budget.maxItems());
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public void applyNow(PrintScope scope, String no) {
         var r = receipts.selectOne(PrintSupport.<PrnReceipt>owned(scope).eq("receipt_no", no));
         require(r != null, "print.notFound");
@@ -302,7 +303,7 @@ public class PrintReceiptServiceImpl implements PrintReceiptService {
         return json.freeze(p.getNotificationPolicy() == null ? "{}" : p.getNotificationPolicy());
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public void refreshBatchProjection(PrintScope scope, String batchNo) {
         audit.lock(scope);
         refreshBatch(scope, batchNo);

@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.export;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.print.api.*;
@@ -29,7 +30,7 @@ public class PrintExportRecoveryJob {
         exports = e;
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public PrintWorkReport recover(PrintWorkerBudget budget) {
         var due =
                 exports.selectList(

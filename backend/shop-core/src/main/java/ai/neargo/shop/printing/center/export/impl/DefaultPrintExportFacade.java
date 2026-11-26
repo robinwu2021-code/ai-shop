@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.export.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.printing.*;
 
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
@@ -37,7 +38,7 @@ import java.util.*;
 public class DefaultPrintExportFacade implements PrintExportFacade {
 
     @Autowired private ObjectProvider<PrintExportWorker> artifactWorker;
-    @Autowired @Qualifier("transactionManager") private PlatformTransactionManager transactionManager;
+    @Autowired @Qualifier(ModuleDataSources.PRINT_TX_MANAGER) private PlatformTransactionManager transactionManager;
 
     private final PrnExportTaskMapper exports;
     private final PrnSimulationRunMapper simulations;

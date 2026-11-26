@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.audit;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.print.api.*;
@@ -24,7 +25,7 @@ public class PrintActionAppender {
         logs = l;
     }
 
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER, propagation = Propagation.MANDATORY)
     public PrnStoreStream lock(PrintScope scope) {
         deviceGate.lockStore(scope);
         var stream =
@@ -39,7 +40,7 @@ public class PrintActionAppender {
         return stream;
     }
 
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER, propagation = Propagation.MANDATORY)
     public long appendInCurrentTransaction(PrintScope scope, PrintAction a) {
         var stream = lock(scope);
         long seq = stream.getLastSequence() + 1;

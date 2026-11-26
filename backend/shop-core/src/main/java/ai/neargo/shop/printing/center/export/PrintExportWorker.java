@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.export;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.printing.*;
 
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
@@ -38,7 +39,7 @@ public class PrintExportWorker {
             PrintPdfPort p,
             PrintArtifactStorePort s,
             PrintJsonCodec j,
-            @Qualifier("transactionManager") PlatformTransactionManager m) {
+            @Qualifier(ModuleDataSources.PRINT_TX_MANAGER) PlatformTransactionManager m) {
         exports = e;
         pdf = p;
         store = s;

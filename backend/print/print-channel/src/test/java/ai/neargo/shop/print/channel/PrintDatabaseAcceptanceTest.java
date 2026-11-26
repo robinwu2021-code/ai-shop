@@ -55,6 +55,7 @@ class PrintDatabaseAcceptanceTest {
 
     @Configuration
     @EnableTransactionManagement
+    @org.springframework.context.annotation.Import(ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class)
     @MapperScan(
             basePackageClasses = {PrintMappers.class, ai.neargo.shop.printing.mapper.PrintMappers.class,
                     SysOutboxMapper.class},

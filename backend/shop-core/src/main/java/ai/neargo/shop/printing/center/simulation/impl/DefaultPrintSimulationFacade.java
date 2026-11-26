@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.simulation.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.common.PageData;
@@ -36,7 +37,7 @@ import java.util.*;
 public class DefaultPrintSimulationFacade implements PrintSimulationFacade {
 
     @Autowired private ObjectProvider<SimulationRunner> artifactWorker;
-    @Autowired @Qualifier("transactionManager") private PlatformTransactionManager transactionManager;
+    @Autowired @Qualifier(ModuleDataSources.PRINT_TX_MANAGER) private PlatformTransactionManager transactionManager;
 
     private final PrintExportFacade exports;
     private final PrnSimulationRunMapper simulations;

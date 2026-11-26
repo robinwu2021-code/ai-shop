@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.service;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.print.api.*;
@@ -58,7 +59,7 @@ public class PrintTestJobFactory {
         this.json = json;
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public PrintSubmission create(String printerNo, Long expected, String pattern, PrintActor a) {
         require(Set.of("STANDARD", "ALIGNMENT").contains(pattern), "print.testPatternRejected");
         var scope = scope(a);

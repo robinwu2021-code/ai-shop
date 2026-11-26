@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.secret.api.KeyOwner;
 import ai.neargo.secret.api.SecretNamespace;
 import ai.neargo.secret.api.SecretVault;
@@ -40,6 +41,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import javax.sql.DataSource;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -67,11 +70,13 @@ public class InvoiceChannelServiceImpl implements InvoiceChannelService {
     private final ObjectMapper json;
     private final String environment;
 
-    public InvoiceChannelServiceImpl(JdbcTemplate jdbc, RegimeProfileMapper profiles, InvoiceGatewayPolicy gatewayPolicy,
+    public InvoiceChannelServiceImpl(@Qualifier(ModuleDataSources.INVOICE_DATA_SOURCE) DataSource dataSource,
+            RegimeProfileMapper profiles, InvoiceGatewayPolicy gatewayPolicy,
             InvoiceGateways gateways, InvoiceRegimes regimes, InvoiceProviderAccounts credentials,
             ObjectProvider<SecretVault> vault, ObjectMapper json,
             @Value("${shop.invoice.channel.environment:}") String environment) {
-        this.jdbc = jdbc;
+        // 通道表是手写 SQL，必须和发票的 Mapper 落在同一个库、同一个事务里
+        this.jdbc = new JdbcTemplate(dataSource);
         this.profiles = profiles;
         this.gatewayPolicy = gatewayPolicy;
         this.gateways = gateways;
@@ -83,7 +88,7 @@ public class InvoiceChannelServiceImpl implements InvoiceChannelService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public ApplicationView submit(Scope scope, SubmitCommand command, String idempotencyKey) {
         requireEnvironment();
         gatewayPolicy.requireSelectable(command.regimeCode(), command.channelCode());
@@ -114,7 +119,7 @@ public class InvoiceChannelServiceImpl implements InvoiceChannelService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public ApplicationView revise(Scope scope, String applicationNo, ReviseCommand command) {
         var app = current(scope, applicationNo, true).view();
         if (!"NEEDS_INFO".equals(app.status())) throw state();
@@ -128,7 +133,7 @@ public class InvoiceChannelServiceImpl implements InvoiceChannelService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public ApplicationView review(Scope scope, String applicationNo, ReviewCommand command) {
         var app = current(scope, applicationNo, true).view();
         requireRevision(app, command.expectedRevision());
@@ -149,13 +154,13 @@ public class InvoiceChannelServiceImpl implements InvoiceChannelService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public AccountView verifyAndBind(Scope scope, String applicationNo, int expectedRevision) {
         return verifyAndBind(scope, applicationNo, expectedRevision, null);
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public AccountView verifyAndBind(Scope scope, String applicationNo, int expectedRevision, ChannelCredentials input) {
         var app = current(scope, applicationNo, false).view();
         requireRevision(app, expectedRevision);
@@ -233,7 +238,7 @@ public class InvoiceChannelServiceImpl implements InvoiceChannelService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public RouteView activate(Scope scope, ActivateCommand command) {
         requireEnvironment();
         var snapshot = account(scope, command.accountNo());

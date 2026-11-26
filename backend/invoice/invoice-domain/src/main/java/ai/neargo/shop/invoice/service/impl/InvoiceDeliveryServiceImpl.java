@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.common.otp.service.OtpSendService.Channel.EMAIL;
 
 import ai.neargo.secret.api.KeyOwner;
@@ -102,7 +103,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public Delivery enqueue(Scope scope, String invoiceNo, String exportNo, String email, String reason, String key) {
         var invoice = invoice(scope, invoiceNo, true);
         String address = OtpKeys.normalize(EMAIL, email);
@@ -120,7 +121,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public Delivery resend(Scope scope, String invoiceNo, String deliveryNo, String reason,
             boolean acknowledgeUnknown, String key) {
         var invoice = invoice(scope, invoiceNo, true);
@@ -262,7 +263,7 @@ public class InvoiceDeliveryServiceImpl implements InvoiceDeliveryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public String download(String token, String code, String ip) {
         var row = verifiedLink(token);
         if (!otp.verifyAndConsume(new VerifyCommand(OtpScenes.INVOICE_ARTIFACT_ACCESS, EMAIL, recipient(row),

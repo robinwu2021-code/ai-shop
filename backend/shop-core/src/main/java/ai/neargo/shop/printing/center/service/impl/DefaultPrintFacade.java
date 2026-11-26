@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.print.api.*;
@@ -131,7 +132,7 @@ public class DefaultPrintFacade
                 });
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public PrintSubmission submit(PrintIntent intent, PrintActor actor) {
         var ref = intent.factRef();
         access(new PrintScope(ref.tenantNo(), ref.entityNo(), ref.storeNo()), actor, Set.of());
@@ -139,7 +140,7 @@ public class DefaultPrintFacade
         return generate(intent, actor, false);
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public PrintSubmission onFact(PrintFactRef ref) {
         var actor =
                 new PrintActor(

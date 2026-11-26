@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.monitor;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.print.api.*;
@@ -42,7 +43,7 @@ public class PrintReconcileJob {
         audit = a;
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public PrintMaintenanceReport reconcile(PrintMaintenanceCommand command) {
         require(
                 command.limit() >= 1

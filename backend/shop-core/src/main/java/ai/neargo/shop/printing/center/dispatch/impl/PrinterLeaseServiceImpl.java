@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.dispatch.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.print.api.*;
@@ -58,7 +59,7 @@ public class PrinterLeaseServiceImpl implements PrinterLeaseService {
         this.audit = audit;
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public PreparedPrintAttempt prepare(PrintScope scope, String printerNo, String worker) {
         audit.lock(scope);
         var canonicalDevice = deviceGate.lock(scope, printerNo);
@@ -185,7 +186,7 @@ public class PrinterLeaseServiceImpl implements PrinterLeaseService {
                 dispatch, p.getConnectionType(), token, instant(runtime.getLeaseUntil()));
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public void releaseIfCurrent(PrintScope scope, String printerNo, String attemptNo, long epoch) {
         deviceGate.releaseIfCurrent(scope,printerNo,attemptNo,epoch);
     }

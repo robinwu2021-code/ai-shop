@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.monitor.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.printing.*;
 
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
@@ -71,7 +72,7 @@ public class PrintMaintenanceServiceImpl implements PrintMaintenanceService {
             PrintReconcileJob rc,
             PrintJsonCodec codec,
             List<PrintDeviceProbePort> probes,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.PRINT_TX_MANAGER) PlatformTransactionManager manager) {
         attempts = at;
         jobs = j;
         printers = p;

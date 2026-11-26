@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -67,7 +68,7 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public ApplicationView submit(Scope scope, SubmitApplicationReq request, String key) {
         var command = command("SUBMIT", key, List.of(request.sourceType(), request.sourceNo(), buyer(request.buyer())));
         var now = now();
@@ -128,7 +129,7 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public ApplicationView revise(Scope scope, String applicationNo, ReviseApplicationReq request, String key) {
         var app = lock(scope, applicationNo);
         var command = command("REVISE", key, List.of(applicationNo, request.expectedRevision(), buyer(request.buyer()),
@@ -149,13 +150,13 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public ApplicationView reject(Scope scope, String applicationNo, ChangeApplicationStateReq request, String key) {
         return changeState(scope, applicationNo, request, key, "REJECT", REJECTED);
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public ApplicationView cancel(Scope scope, String applicationNo, ChangeApplicationStateReq request, String key) {
         return changeState(scope, applicationNo, request, key, "CANCEL", CANCELLED);
     }
@@ -177,7 +178,7 @@ public class InvoiceApplicationServiceImpl implements InvoiceApplicationService 
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public InvoiceReceipt issue(Scope scope, String applicationNo, IssueApplicationReq request, String key) {
         var app = lock(scope, applicationNo);
         var command = command("ISSUE", key, List.of(applicationNo, request));

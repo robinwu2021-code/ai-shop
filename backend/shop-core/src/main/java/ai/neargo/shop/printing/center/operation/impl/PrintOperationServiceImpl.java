@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.operation.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.print.api.*;
@@ -28,7 +29,7 @@ public class PrintOperationServiceImpl implements PrintOperationService {
         json = j;
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public PrintOperation execute(
             PrintActor actor, String type, String hash, Supplier<PrintOperation> action) {
         require(

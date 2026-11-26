@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -46,7 +47,7 @@ public class InvoiceStoreSetupServiceImpl implements InvoiceStoreSetupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public StoreSettingsVO saveSettings(Scope scope, StoreSettingsReq request) {
         var row = lockSetting(scope);
         // 「清空默认税别」要显式 set null：updateById 默认跳过 null 字段
@@ -63,7 +64,7 @@ public class InvoiceStoreSetupServiceImpl implements InvoiceStoreSetupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public StoreItemVO addItem(Scope scope, StoreItemReq request) {
         lockSetting(scope);
         if (items.selectCount(itemsOf(scope)) >= MAX_STORE_ITEMS)
@@ -80,7 +81,7 @@ public class InvoiceStoreSetupServiceImpl implements InvoiceStoreSetupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public StoreItemVO updateItem(Scope scope, String storeItemNo, StoreItemReq request) {
         var row = items.selectOne(itemsOf(scope).eq("store_item_no", storeItemNo).last("FOR UPDATE"));
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);

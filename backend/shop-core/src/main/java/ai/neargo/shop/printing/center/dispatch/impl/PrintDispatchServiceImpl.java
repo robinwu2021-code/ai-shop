@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.dispatch.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.print.api.*;
@@ -50,7 +51,7 @@ public class PrintDispatchServiceImpl implements PrintDispatchService {
             PrintReceiptService rc,
             PrintJsonCodec c,
             PrintSourceRegistry s,
-            @Qualifier("transactionManager") PlatformTransactionManager m) {
+            @Qualifier(ModuleDataSources.PRINT_TX_MANAGER) PlatformTransactionManager m) {
         printers = p;
         attempts = a;
         jobs = j;

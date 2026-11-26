@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.monitor.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.event.OutboxEventBus;
@@ -47,7 +48,7 @@ public class PrintIncidentServiceImpl implements PrintIncidentService {
         audit = a;
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public String open(PrintIncidentCommand c) {
         audit.lock(c.scope());
         String key = PrintHashes.sha256(c.type() + ":" + c.targetType() + ":" + c.targetNo());
@@ -88,7 +89,7 @@ public class PrintIncidentServiceImpl implements PrintIncidentService {
         return i.getIncidentNo();
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public void resolveByEvidence(PrintScope s, String no, FrozenJson proof) {
         audit.lock(s);
         var i =

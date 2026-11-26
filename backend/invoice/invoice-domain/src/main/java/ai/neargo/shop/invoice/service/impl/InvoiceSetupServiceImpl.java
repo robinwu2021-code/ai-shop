@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.secret.api.KeyOwner;
 import ai.neargo.secret.api.SecretNamespace;
 import ai.neargo.secret.api.SecretVault;
@@ -113,7 +114,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public RegimeProfileVO saveProfile(Scope scope, RegimeProfileReq req) {
         var regime = regimes.require(req.regimeCode() == null || req.regimeCode().isBlank()
                 ? policy.defaultRegime() : req.regimeCode());
@@ -181,7 +182,7 @@ public class InvoiceSetupServiceImpl implements InvoiceSetupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public NumberRangeVO addRange(Scope scope, NumberRangeReq req) {
         var regime = regimes.require(req.regimeCode());
         regime.validateRange(req.periodCode(), req.track(), req.startNo(), req.endNo());

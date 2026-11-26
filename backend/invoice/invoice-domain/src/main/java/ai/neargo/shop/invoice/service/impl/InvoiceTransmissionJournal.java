@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.invoice.entity.IvcAllowance;
@@ -43,7 +44,7 @@ public class InvoiceTransmissionJournal implements InvoiceTransmissionAuditServi
 
     InvoiceTransmissionJournal(InvoiceTransmissionAuditMapper audit, TransmissionMapper transmissions,
             InvoiceMapper invoices, AllowanceMapper allowances,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.INVOICE_TX_MANAGER) PlatformTransactionManager manager) {
         this.audit = audit;
         this.transmissions = transmissions;
         this.invoices = invoices;

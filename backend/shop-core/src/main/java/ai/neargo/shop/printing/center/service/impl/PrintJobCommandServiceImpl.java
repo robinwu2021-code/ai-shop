@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
 import ai.neargo.shop.print.api.*;
@@ -343,7 +344,7 @@ public class PrintJobCommandServiceImpl implements PrintJobCommandService {
                 });
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PRINT_TX_MANAGER)
     public PrintMaintenanceReport applyControl(PrintControlFact fact) {
         audit.lock(fact.scope());
         int changed = 0, held = 0;

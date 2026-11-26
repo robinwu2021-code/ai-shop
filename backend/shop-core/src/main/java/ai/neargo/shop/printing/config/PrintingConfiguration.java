@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.event.outbox.runtime.OutboxTransactions;
@@ -26,6 +27,7 @@ import tools.jackson.databind.ObjectMapper;
 public class PrintingConfiguration {
     @Bean("printingOutboxPublisher")
     OutboxPublisher printingOutboxPublisher(ObjectProvider<UnifiedOutboxFacade> facades,
+            // 事件表在主库，登记的是主库的事务管理器，不随打印模块换库
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         OutboxTransactions.register(manager);
         return (event,options) -> {
@@ -48,7 +50,7 @@ public class PrintingConfiguration {
     PrintService printService(DeviceMapper devices,TemplateMapper templates,RouteMapper routes,
             JobMapper jobs,AttemptMapper attempts,ObjectMapper json,
             @Qualifier("printingOutboxPublisher") OutboxPublisher events,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.PRINT_TX_MANAGER) PlatformTransactionManager manager) {
         return new PrintServiceImpl(devices,templates,routes,jobs,attempts,json,Clock.systemUTC(),events,manager);
     }
 }

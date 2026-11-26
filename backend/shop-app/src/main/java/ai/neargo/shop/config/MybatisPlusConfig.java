@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Import;
  * —— 表现为「总数 100 条但只能翻 3 页」，且不报错。
  */
 @Configuration
-@Import(PrimaryPersistenceConfiguration.class)
+@Import({PrimaryPersistenceConfiguration.class, ModuleMapperScanConfig.class})
 /*
  * ⚠️ **进销存的 Mapper 必须排除在外**。
  *
@@ -50,6 +50,9 @@ import org.springframework.context.annotation.Import;
          *
          *   beauty    —— 与商品订单共主库，由美业条件配置及结构校验后注册。
          *
+         *   invoice / printing —— 可在配置里选数据源的模块（ADR-066），由
+         *                ModuleMapperScanConfig 绑到各自的句柄；不配时句柄就是主库工厂。
+         *
          * 漏掉哪一个，那个域的 Mapper 都会被注册到平台工厂上。
          * inventory 漏了会报「表不存在」；**pay 漏了什么都不会报** ——
          * 库是同一个，查询照常能跑，只是事务隔离静默失效，
@@ -57,7 +60,7 @@ import org.springframework.context.annotation.Import;
          */
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.REGEX,
-                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce|beauty)\\..*"))
+                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce|beauty|invoice|printing)\\..*"))
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *

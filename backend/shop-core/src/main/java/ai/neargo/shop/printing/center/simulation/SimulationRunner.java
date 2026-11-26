@@ -1,5 +1,6 @@
 package ai.neargo.shop.printing.center.simulation;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import static ai.neargo.shop.printing.center.simulation.SimulationModels.*;
 import static ai.neargo.shop.printing.center.support.PrintSupport.*;
 
@@ -39,7 +40,7 @@ public class SimulationRunner {
             SimulationFixtures f,
             PrintStatePolicy p,
             PrintJsonCodec j,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.PRINT_TX_MANAGER) PlatformTransactionManager manager,
             SimulatedDispatch simulated) {
         this.simulated = simulated;
         simulations = s;

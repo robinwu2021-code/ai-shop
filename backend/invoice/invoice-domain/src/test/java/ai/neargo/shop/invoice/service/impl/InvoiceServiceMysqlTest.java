@@ -2038,7 +2038,8 @@ class InvoiceServiceMysqlTest {
     @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", sqlSessionFactoryRef = "sqlSessionFactory")
     @Import({InvoiceServiceImpl.class, InvoiceSetupServiceImpl.class, InvoiceProviderAccounts.class, InvoiceOpsServiceImpl.class, InvoiceBuyerServiceImpl.class, InvoiceTransmissionServiceImpl.class, InvoiceTransmissionJournal.class, InvoiceStoreSetupServiceImpl.class, InvoiceGateways.class, InvoiceGatewayPolicy.class,
             InvoiceRegimes.class, TwEguiRegime.class, InvoicePrintSourceFactsPortImpl.class,
-            InvoiceChannelServiceImpl.class, InvoiceApplicationServiceImpl.class, InvoiceDeliveryServiceImpl.class})
+            InvoiceChannelServiceImpl.class, InvoiceApplicationServiceImpl.class, InvoiceDeliveryServiceImpl.class,
+            ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class})
     static class Config {
         @Bean PrintQueryService deliveryPrintQuery() { return mock(PrintQueryService.class); }
         @Bean PrintExportFacade deliveryExports() { return mock(PrintExportFacade.class); }

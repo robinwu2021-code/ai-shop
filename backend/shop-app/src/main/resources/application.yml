@@ -783,6 +783,21 @@ shop:
 # **不动 `org.springframework.boot.tomcat`**：「Tomcat started on port 8081」那行是启动地标，
 # 出事时用来判断"进程到底起没起来"，不是噪音。规范说的"Tomcat 降 WARN"指的是容器内部。
 
+# 业务模块按配置选数据源（ADR-066）。默认什么都不写：发票、打印都在主库，行为与没有这套配置时一样。
+# 要让模块连别的库：先定义一个具名数据源，再把模块绑上去；绑到同一个名字的模块共用连接池、可以同事务。
+# 口令不带默认值，漏配就启动失败。绑定了没定义的名字、或定义了却没写 url，同样启动失败。
+#
+# shop:
+#   datasources:
+#     service:
+#       url: jdbc:mysql://127.0.0.1:3306/n_service?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
+#       username: ${SHOP_SERVICE_DB_USER}
+#       password: ${SHOP_SERVICE_DB_PASS}
+#       max-pool-size: 8
+#   modules:
+#     invoice: { datasource: service }
+#     print:   { datasource: service }
+
 # 进销存独立服务的领域包读 inventory.*（ADR-046）。商城过渡期内嵌，部署、测试与菜单开关
 # （sys_function_point.gated_by）认的仍是 shop.inventory.* —— 在这里一对一桥接，存量配置一个字都不用改。
 # 商城切流（M8）后内嵌装配删除，这一段随之删除。

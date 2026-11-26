@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.secret.api.SecretNamespace;
 import ai.neargo.secret.api.SecretRef;
 import ai.neargo.secret.api.SecretVault;
@@ -119,13 +120,13 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo, Buyer buyer) {
         return issue(scope, sourceType, sourceNo, (profile, source) -> buyer, null, null);
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public InvoiceReceipt issueFromApplication(Scope scope, String sourceType, String sourceNo, Buyer buyer,
             String applicationNo, int revision, String expectedSourceFingerprint) {
         return issue(scope, sourceType, sourceNo, (profile, source) -> buyer, null,
@@ -298,7 +299,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public void rememberBuyer(Scope scope, String sourceType, String sourceNo, Buyer buyer) {
         var profile = activeProfile(scope);
         regimes.require(profile.getRegimeCode()).validateBuyer(buyer, profile);
@@ -341,7 +342,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public Optional<InvoiceReceipt> issueIfAutomatic(Scope scope, String sourceType, String sourceNo) {
         var profile = profiles.selectOne(new QueryWrapper<IvcRegimeProfile>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("status", "ACTIVE").last("LIMIT 1"));
@@ -426,7 +427,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public InvoiceVO voidInvoice(Scope scope, String invoiceNo, String reason) {
         var inv = require(scope, invoiceNo);
         if (!"ISSUED".equals(inv.getStatus()) || inv.getAllowedMinor() > 0)
@@ -449,7 +450,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public InvoiceVO revoke(Scope scope, String invoiceNo, String reason) {
         var inv = require(scope, invoiceNo);
         if (!"ISSUED".equals(inv.getStatus()) || inv.getAllowedMinor() > 0)
@@ -490,7 +491,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public InvoiceVO reissue(Scope scope, String invoiceNo, Buyer buyer) {
         var original = require(scope, invoiceNo);
         if (!"REVOKED".equals(original.getStatus()) || original.getRevisedToInvoiceNo() != null)
@@ -509,7 +510,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public InvoiceVO allowance(Scope scope, String invoiceNo, long amountMinor, String reason) {
         var inv = require(scope, invoiceNo);
         if (!"ISSUED".equals(inv.getStatus())) throw BizException.of(ErrorCode.INVOICE_STATE_INVALID);
@@ -551,7 +552,7 @@ public class InvoiceServiceImpl implements InvoiceService {
      * 折让证明单作废后不再出纸（打印守卫按折让状态拦）。
      */
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public InvoiceVO voidAllowance(Scope scope, String invoiceNo, String allowanceNo, String reason) {
         var inv = require(scope, invoiceNo);
         var a = allowances.selectOne(new QueryWrapper<IvcAllowance>().eq("tenant_no", inv.getTenantNo())

@@ -1,5 +1,6 @@
 package ai.neargo.shop.invoice.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -55,7 +56,7 @@ public class InvoiceBuyerServiceImpl implements InvoiceBuyerService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public CarrierVO saveCarrier(String tenantNo, String userNo, SaveCarrierReq req) {
         // 手机条码 / 自然人凭证的格式是财政部定的，与商家无关，所以不经主体税制、直接按台湾规则校验
         TwBuyerRules.validate(new Buyer(null, null, req.carrierType(), req.carrierId(), null), null);
@@ -89,7 +90,7 @@ public class InvoiceBuyerServiceImpl implements InvoiceBuyerService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.INVOICE_TX_MANAGER)
     public void deleteCarrier(String tenantNo, String userNo, String carrierNo) {
         if (carriers.delete(mine(tenantNo, userNo).eq("carrier_no", carrierNo)) != 1)
             throw BizException.of(ErrorCode.INVOICE_NOT_FOUND);

@@ -79,6 +79,23 @@ public class PrimaryPersistenceConfiguration {
                                         ObjectProvider<ISqlInjector> sqlInjector,
                                         ObjectProvider<IdentifierGenerator> identifierGenerator)
             throws Exception {
+        GlobalConfig globalConfig = properties.getGlobalConfig();
+        return buildSqlSessionFactory(dataSource, properties, globalConfig, interceptor,
+                metaObjectHandler, sqlInjector, identifierGenerator);
+    }
+
+    /**
+     * 主库工厂与模块数据源工厂共用的同一段装配（{@link ModuleDataSourceRegistrar}）。
+     *
+     * <p>抽出来是为了让第二个库不可能漏东西：拦截器、填充器、方言、驼峰都只在这里写一次。
+     * 模块工厂传进来的 {@code globalConfig} 必须是自己的实例 —— 它记着所属的工厂，共用会互相顶掉。
+     */
+    static SqlSessionFactory buildSqlSessionFactory(DataSource dataSource, MybatisPlusProperties properties,
+                                                    GlobalConfig globalConfig, MybatisPlusInterceptor interceptor,
+                                                    ObjectProvider<MetaObjectHandler> metaObjectHandler,
+                                                    ObjectProvider<ISqlInjector> sqlInjector,
+                                                    ObjectProvider<IdentifierGenerator> identifierGenerator)
+            throws Exception {
         MybatisSqlSessionFactoryBean bean = new MybatisSqlSessionFactoryBean();
         bean.setDataSource(dataSource);
         // Only actual H2 fixtures omit native lock-order optimizer hints.
@@ -107,7 +124,6 @@ public class PrimaryPersistenceConfiguration {
          * 另两个（SQL 注入器、主键生成器）当前没有自定义实现，
          * 但仍然按 ObjectProvider 取：将来谁加了一个，不必回头改这里。
          */
-        GlobalConfig globalConfig = properties.getGlobalConfig();
         metaObjectHandler.ifAvailable(globalConfig::setMetaObjectHandler);
         sqlInjector.ifAvailable(globalConfig::setSqlInjector);
         identifierGenerator.ifAvailable(globalConfig::setIdentifierGenerator);
