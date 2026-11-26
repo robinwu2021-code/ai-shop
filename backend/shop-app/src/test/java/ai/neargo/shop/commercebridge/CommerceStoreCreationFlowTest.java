@@ -9,6 +9,7 @@ import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysStoreIndustryMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
+import ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
 import ai.neargo.shop.merchant.plan.mapper.PlanMappers.PlanDefMapper;
 import ai.neargo.shop.merchant.port.MerchantPortImpl;
@@ -197,7 +198,7 @@ class CommerceStoreCreationFlowTest {
                                     creation,
                                     sessions.getMapper(MchEntityMapper.class),
                                     null,
-                                    sessions.getMapper(MchPaymentMapper.class),
+                                    new ai.neargo.shop.merchant.paymerchant.impl.CollectingMerchantsImpl(sessions.getMapper(MchPaymentMapper.class)),
                                     org.mockito.Mockito.mock(MerchantStoreService.class),
                                     null,
                                     master,
@@ -240,7 +241,7 @@ class CommerceStoreCreationFlowTest {
                                     org.mockito.Mockito.mock(StoreCategoryService.class),
                                     sessions.getMapper(MchStoreMapper.class),
                                     sessions.getMapper(MchStoreRoleMapper.class),
-                                    sessions.getMapper(MchPaymentMapper.class),
+                                    new ai.neargo.shop.merchant.paymerchant.impl.CollectingMerchantsImpl(sessions.getMapper(MchPaymentMapper.class)),
                                     plans,
                                     sessions.getMapper(MchEntityMapper.class),
                                     org.mockito.Mockito.mock(StoreLinkService.class),

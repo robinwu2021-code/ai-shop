@@ -148,15 +148,15 @@ class StoreSettleFlowTest {
     // ---------------------------------------------------------------- F01 · 按渠道解析收款号（Review R01）
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper paymentMapper;
+    private ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper paymentMapper;
 
     /** 直插一行 ACTIVE 收款号：渠道与门店维度由测试点名，不走进件接口 */
     private String activeAccount(String merchantNo, String storeNo, String channel, String payMerchantNo) {
-        var pm = new ai.neargo.shop.merchant.entity.MchPaymentMerchant();
+        var pm = new ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant();
         pm.setEntityNo(merchantNo);
-        pm.setStoreNo(storeNo == null ? ai.neargo.shop.merchant.entity.MchPaymentMerchant.ENTITY_LEVEL : storeNo);
+        pm.setStoreNo(storeNo == null ? ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant.ENTITY_LEVEL : storeNo);
         pm.setPayChannel(channel);
-        pm.setApplyStatus(ai.neargo.shop.merchant.entity.MchPaymentMerchant.ACTIVE);
+        pm.setApplyStatus(ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant.ACTIVE);
         pm.setPayMerchantNo(payMerchantNo);
         pm.setSubMchid("SUB-" + payMerchantNo);
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(pm));

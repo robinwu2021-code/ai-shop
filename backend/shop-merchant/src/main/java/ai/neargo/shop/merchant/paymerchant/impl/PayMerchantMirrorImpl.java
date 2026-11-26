@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.paymerchant.impl;
 
 import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.shop.spi.pay.PayMerchantMirrorPort;

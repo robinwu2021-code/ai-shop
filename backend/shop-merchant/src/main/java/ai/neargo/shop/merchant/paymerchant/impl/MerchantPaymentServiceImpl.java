@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.paymerchant.impl;
 
 import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -13,9 +13,9 @@ import ai.neargo.shop.spi.pay.PayChannelMasterPort;
 import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.shop.merchant.dto.PaymentApplymentVO;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.service.MerchantPaymentService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;

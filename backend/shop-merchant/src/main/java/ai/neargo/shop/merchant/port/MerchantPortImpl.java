@@ -17,9 +17,9 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
-import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.paymerchant.CollectingMerchants;
 import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import java.util.List;
 import java.util.function.Consumer;
@@ -82,7 +82,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
     private final MchEntityCommunityMapper merchantCommunityMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
-    private final MchPaymentMapper merchantPaymentMapper;
+    private final CollectingMerchants collectingMerchants;
     private final ai.neargo.shop.merchant.service.MerchantStoreService merchantStoreService;
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
@@ -116,7 +116,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private String defaultStoreCurrentLock = " FOR SHARE";
 
     public MerchantPortImpl(MerchantStoreCreation commerce, MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
-                            MchPaymentMapper merchantPaymentMapper,
+                            CollectingMerchants collectingMerchants,
                             ai.neargo.shop.merchant.service.MerchantStoreService merchantStoreService,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
@@ -166,7 +166,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.communityQueryPort = communityQueryPort;
         this.merchantCommunityMapper = merchantCommunityMapper;
         this.serviceAreaMapper = serviceAreaMapper;
-        this.merchantPaymentMapper = merchantPaymentMapper;
+        this.collectingMerchants = collectingMerchants;
         this.merchantMapper = merchantMapper;
         this.merchantStoreService = merchantStoreService;
     }
@@ -1020,12 +1020,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                     || "AGGREGATED".equals(entity.getFundsMode()))) {
                 return Optional.empty();
             }
-            MchPaymentMerchant payment = merchantPaymentMapper.selectOne(
-                    Wrappers.<MchPaymentMerchant>lambdaQuery()
-                            .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                            .eq(MchPaymentMerchant::getPayMerchantNo, store.getPayMerchantNo())
-                            .eq(MchPaymentMerchant::getPayChannel, channel)
-                            .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE));
+            MchPaymentMerchant payment = collectingMerchants
+                    .activeByPayMerchantNo(merchantNo, store.getPayMerchantNo(), channel).orElse(null);
             if (payment == null || payment.getSubMchid() == null || payment.getSubMchid().isBlank()
                     || payment.getVersion() == null || payment.getVersion() < 0) {
                 return Optional.empty();
@@ -1081,8 +1077,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         boolean anyChannel = channel == null || channel.isBlank() || CHANNEL_FREE_PAY_CHANNELS.contains(channel);
         String store = storeNo == null ? "" : storeNo;
         List<MchPaymentMerchant> candidates = DataScopeContext.executeWithoutScope(() ->
-                        merchantPaymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                                .eq(MchPaymentMerchant::getEntityNo, merchantNo)))
+                        collectingMerchants.all(merchantNo))
                 .stream()
                 .filter(p -> !activeOnly || MchPaymentMerchant.ACTIVE.equals(p.getApplyStatus()))
                 .filter(p -> anyChannel || channel.equals(p.getPayChannel()))
@@ -1302,24 +1297,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return payRouteOf(merchantNo, storeNo, payChannel, false)
                     .flatMap(r -> legacyRowOf(merchantNo, r.payMerchantNo())).orElse(null);
         }
-        return DataScopeContext.executeWithoutScope(() -> {
-            if (storeNo != null && !storeNo.isBlank()) {
-                MchPaymentMerchant own = merchantPaymentMapper.selectOne(
-                        Wrappers.<MchPaymentMerchant>lambdaQuery()
-                                .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                                .eq(MchPaymentMerchant::getStoreNo, storeNo)
-                                .eq(MchPaymentMerchant::getPayChannel, payChannel)
-                                .last("LIMIT 1"));
-                if (own != null) {
-                    return own;
-                }
-            }
-            return merchantPaymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                    .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                    .eq(MchPaymentMerchant::getStoreNo, MchPaymentMerchant.ENTITY_LEVEL)
-                    .eq(MchPaymentMerchant::getPayChannel, payChannel)
-                    .last("LIMIT 1"));
-        });
+        return DataScopeContext.executeWithoutScope(() ->
+                collectingMerchants.forStoreAndChannel(merchantNo, storeNo, payChannel).orElse(null));
     }
 
     @Override
@@ -1882,8 +1861,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      */
     private void ensurePayment(String merchantNo, String subject, String settleAccountType) {
         boolean exists = DataScopeContext.executeWithoutScope(() ->
-                merchantPaymentMapper.exists(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                        .eq(MchPaymentMerchant::getEntityNo, merchantNo)));
+                collectingMerchants.exists(merchantNo));
         if (exists) {
             return;
         }
@@ -1903,7 +1881,10 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         p.setSettleAccountType(settleAccountType != null && !settleAccountType.isBlank()
                 ? settleAccountType : masterDataPort.settleAccountType(canonical));
         p.setAppliedAt(System.currentTimeMillis());
-        DataScopeContext.executeWithoutScope(() -> merchantPaymentMapper.insert(p));
+        DataScopeContext.executeWithoutScope(() -> {
+            collectingMerchants.insert(p);
+            return null;
+        });
         payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
     }
 
@@ -1988,9 +1969,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                     .collect(java.util.stream.Collectors.toSet());
         }
         return DataScopeContext.executeWithoutScope(() ->
-                merchantPaymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                        .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                        .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)))
+                collectingMerchants.active(merchantNo))
                 .stream()
                 /*
                  * 门店级进件只在**问的就是那家店**时算数；主体级（store_no 为空）
@@ -2135,12 +2114,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 也不用「失败重读重试」：这里常在支付回调的事务里调用，REPEATABLE READ 下重读拿到的还是旧快照。
          * 版本号照样 +1，别处按版本做的乐观并发不受影响。
          */
-        int updated = merchantPaymentMapper.update(null, Wrappers.<MchPaymentMerchant>lambdaUpdate()
-                .setSql("quota_used_minor = CASE WHEN quota_period = {0} THEN COALESCE(quota_used_minor, 0) + {1} ELSE {1} END",
-                        period, amountMinor)
-                .set(MchPaymentMerchant::getQuotaPeriod, period)
-                .setSql("version = COALESCE(version, 0) + 1")
-                .eq(MchPaymentMerchant::getId, pm.getId()));
+        int updated = collectingMerchants.addQuotaUsed(pm.getId(), period, amountMinor);
         if (updated != 1) {
             // 行在读与写之间被删了：宁可让这次回调失败重推，也不要静默少记
             throw new IllegalStateException("额度累加未落库：payment merchant id=" + pm.getId());
@@ -2188,9 +2162,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     /** 新模型解析出的号 → 旧行（资料、额度仍在旧行上，双写期两边一致） */
     private Optional<MchPaymentMerchant> legacyRowOf(String merchantNo, String payMerchantNo) {
-        return Optional.ofNullable(DataScopeContext.executeWithoutScope(() -> merchantPaymentMapper.selectOne(
-                Wrappers.<MchPaymentMerchant>lambdaQuery().eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                        .eq(MchPaymentMerchant::getPayMerchantNo, payMerchantNo).last("LIMIT 1"))));
+        return DataScopeContext.executeWithoutScope(() ->
+                collectingMerchants.firstByPayMerchantNo(merchantNo, payMerchantNo));
     }
 
     /** 能力 / 额度用的收款记录：与结算取号同一条解析（{@link #accountOf}），不限状态（F02 · R02） */

@@ -5,7 +5,7 @@ import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdOrder;
@@ -59,7 +59,7 @@ class OrderPayMethodTest {
     @Autowired
     private StoreOrderMapper subOrderMapper;
     @Autowired
-    private MerchantMappers.MchPaymentMapper paymentMapper;
+    private ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper paymentMapper;
 
     /** 判据来自装配：装了能力实现才算接得上，与通道表的 enabled 位是两件事（W2：路由表退役，改问能力注册表） */
     @Autowired

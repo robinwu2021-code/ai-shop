@@ -8,12 +8,12 @@ import ai.neargo.shop.merchant.funds.entity.MchAdmissionPolicy;
 import ai.neargo.shop.merchant.funds.entity.MchDeposit;
 import ai.neargo.shop.merchant.funds.entity.MchDepositTxn;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.funds.mapper.FundsMappers.AdmissionPolicyMapper;
 import ai.neargo.shop.merchant.funds.mapper.FundsMappers.DepositMapper;
 import ai.neargo.shop.merchant.funds.mapper.FundsMappers.DepositTxnMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.paymerchant.CollectingMerchants;
 import ai.neargo.shop.merchant.service.AdmissionService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.List;
@@ -28,12 +28,12 @@ public class AdmissionServiceImpl implements AdmissionService {
     private final DepositMapper depositMapper;
     private final DepositTxnMapper txnMapper;
     private final MchEntityMapper merchantMapper;
-    private final MchPaymentMapper paymentMapper;
+    private final CollectingMerchants collectingMerchants;
 
     public AdmissionServiceImpl(AdmissionPolicyMapper policyMapper, DepositMapper depositMapper,
                                 DepositTxnMapper txnMapper, MchEntityMapper merchantMapper,
-                                MchPaymentMapper paymentMapper) {
-        this.paymentMapper = paymentMapper;
+                                CollectingMerchants collectingMerchants) {
+        this.collectingMerchants = collectingMerchants;
         this.policyMapper = policyMapper;
         this.depositMapper = depositMapper;
         this.txnMapper = txnMapper;
@@ -199,12 +199,8 @@ public class AdmissionServiceImpl implements AdmissionService {
         if (quotaLimitMinor < 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        MchPaymentMerchant pm = paymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                .eq(MchPaymentMerchant::getStoreNo,
-                        storeNo == null || storeNo.isBlank()
-                                ? MchPaymentMerchant.ENTITY_LEVEL : storeNo)
-                .last("LIMIT 1"));
+        MchPaymentMerchant pm = collectingMerchants.firstForStore(merchantNo,
+                storeNo == null || storeNo.isBlank() ? MchPaymentMerchant.ENTITY_LEVEL : storeNo).orElse(null);
         if (pm == null) {
             // 没有收款记录就没有额度可设 —— 静默建一条会造出一个没进过件的收款号
             throw BizException.of(ErrorCode.NOT_FOUND);
@@ -213,14 +209,12 @@ public class AdmissionServiceImpl implements AdmissionService {
         // 让运营能改它等于让人可以把账做平
         pm.setQuotaLimitMinor(quotaLimitMinor);
         pm.setUpdatedBy(operator);
-        paymentMapper.updateById(pm);
+        collectingMerchants.update(pm);
     }
 
     @Override
     public List<PayQuotaVO> payQuotas(String merchantNo) {
-        return paymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                        .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                        .orderByAsc(MchPaymentMerchant::getStoreNo))
+        return collectingMerchants.allByStore(merchantNo)
                 .stream()
                 .map(pm -> new PayQuotaVO(
                         pm.getStoreNo() == null ? MchPaymentMerchant.ENTITY_LEVEL : pm.getStoreNo(),

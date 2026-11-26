@@ -1,7 +1,7 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.service.AdmissionService;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;

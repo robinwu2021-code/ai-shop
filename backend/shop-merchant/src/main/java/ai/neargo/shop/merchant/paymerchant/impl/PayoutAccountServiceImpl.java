@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.paymerchant.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -6,7 +6,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Masks;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchPayoutAccount;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPayoutAccount;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.PayoutAccountCipher;
 import ai.neargo.shop.merchant.service.PayoutAccountService;
@@ -29,7 +29,7 @@ public class PayoutAccountServiceImpl implements PayoutAccountService {
 
     private static final Logger log = LoggerFactory.getLogger(PayoutAccountServiceImpl.class);
 
-    private final MerchantMappers.PayoutAccountMapper accounts;
+    private final ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.PayoutAccountMapper accounts;
     private final MerchantMappers.MchEntityMapper entities;
     private final PayoutAccountCipher cipher;
 
@@ -46,7 +46,7 @@ public class PayoutAccountServiceImpl implements PayoutAccountService {
         return port != null && port.enabled(APPROVAL_TYPE) ? port : null;
     }
 
-    public PayoutAccountServiceImpl(MerchantMappers.PayoutAccountMapper accounts,
+    public PayoutAccountServiceImpl(ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.PayoutAccountMapper accounts,
                                     MerchantMappers.MchEntityMapper entities,
                                     PayoutAccountCipher cipher) {
         this.accounts = accounts;

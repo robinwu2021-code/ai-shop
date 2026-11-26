@@ -268,9 +268,9 @@ class BizFoundationAccessMysqlTest {
                             new ai.neargo.shop.spi.pay.PayApplymentGateway.ApplymentResult(
                                     "APPLYING", null, null));
             var service =
-                    new ai.neargo.shop.merchant.service.impl.MerchantPaymentServiceImpl(
+                    new ai.neargo.shop.merchant.paymerchant.impl.MerchantPaymentServiceImpl(
                             f.mybatis.getMapper(
-                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper
+                                    ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper
                                             .class),
                             f.mybatis.getMapper(MchEntityMapper.class),
                             mock(ai.neargo.shop.spi.platform.MasterDataPort.class),

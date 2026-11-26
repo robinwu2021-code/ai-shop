@@ -1,7 +1,7 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.merchant.entity.MchPayoutAccount;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.PayoutAccountMapper;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPayoutAccount;
+import ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.PayoutAccountMapper;
 import ai.neargo.shop.merchant.service.PayoutAccountCipher;
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.entity.StlPayout;

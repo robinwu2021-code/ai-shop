@@ -26,8 +26,8 @@ import ai.neargo.shop.merchant.entity.MchBookingHold;
 import ai.neargo.shop.merchant.entity.MchBookingHoldUnit;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
-import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
-import ai.neargo.shop.merchant.entity.MchPayoutAccount;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPayoutAccount;
 import ai.neargo.shop.merchant.entity.MchPersonnel;
 import ai.neargo.shop.merchant.entity.MchPersonnelAccount;
 import ai.neargo.shop.merchant.entity.MchPersonnelPosition;
@@ -840,9 +840,6 @@ public final class MerchantMappers {
             extends BaseMapper<ai.neargo.shop.merchant.entity.MchStaffLog> {
     }
 
-    /** 商家支付进件：每通道一条。分账回调只带 sub_mchid，靠 idx_mp_sub_mchid 反查商家。 */
-    public interface MchPaymentMapper extends BaseMapper<MchPaymentMerchant> {
-    }
 
 
 
@@ -852,14 +849,6 @@ public final class MerchantMappers {
 
 
 
-    /**
-     * 供应商收款账户（V358，ADR-011）。
-     *
-     * <p>只做单表 CRUD —— 「同一主体只能有一个 ACTIVE」那条约束在 Service，
-     * 不在这里：它要跨行判断并改另一行的状态，放 Mapper 就绕过了状态机。
-     */
-    public interface PayoutAccountMapper extends BaseMapper<MchPayoutAccount> {
-    }
 
 
     /** Shared personnel master; login accounts are optional independent associations. */
