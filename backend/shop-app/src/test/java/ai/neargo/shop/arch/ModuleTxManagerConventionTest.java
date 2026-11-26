@@ -32,6 +32,8 @@ class ModuleTxManagerConventionTest {
     private static final Map<String, String> MODULE_SOURCES = Map.of(
             "shop-core/src/main/java/ai/neargo/shop/user", "ModuleDataSources.PLATFORM_TX_MANAGER",
             "shop-merchant/src/main/java/ai/neargo/shop/merchant", "ModuleDataSources.PLATFORM_TX_MANAGER",
+            // 网关里 B 端登录与身份、换号注销、PIN 找回、门店换主体：读写的都是平台基础库的表
+            "shop-gateway/src/main/java/ai/neargo/shop/merchantbridge", "ModuleDataSources.PLATFORM_TX_MANAGER",
             "invoice/invoice-domain/src/main/java/ai/neargo/shop/invoice", "ModuleDataSources.INVOICE_TX_MANAGER",
             "shop-core/src/main/java/ai/neargo/shop/printing", "ModuleDataSources.PRINT_TX_MANAGER");
 

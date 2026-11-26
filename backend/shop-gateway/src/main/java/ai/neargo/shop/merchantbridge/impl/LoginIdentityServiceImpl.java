@@ -1,4 +1,5 @@
 package ai.neargo.shop.merchantbridge.impl;
+import ai.neargo.shop.common.config.ModuleDataSources;
 
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.auth.store.TokenHash;
@@ -214,7 +215,7 @@ public class LoginIdentityServiceImpl implements LoginIdentityService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public IdentityChoice resetEmployeePassword(String grant, String principal, String otp,
                                                 String newPassword, Boolean agreed, String market) {
         var proof = auth.verify(new AuthService.LoginCommand(grant, principal, otp,

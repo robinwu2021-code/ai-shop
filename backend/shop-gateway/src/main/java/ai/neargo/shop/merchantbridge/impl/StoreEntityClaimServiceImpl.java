@@ -1,4 +1,7 @@
 package ai.neargo.shop.merchantbridge.impl;
+import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import ai.neargo.shop.merchantbridge.StoreRelinkLocalPolicy;
 
@@ -56,7 +59,7 @@ public class StoreEntityClaimServiceImpl implements StoreEntityClaimService {
     private final MerchantPlanService plans;
     private final ObjectMapper json;
     private final boolean enabled;
-    public StoreEntityClaimServiceImpl(JdbcTemplate jdbc,PlatformTransactionManager manager,StoreRelinkLocalPolicy policy,
+    public StoreEntityClaimServiceImpl(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc,@Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager manager,StoreRelinkLocalPolicy policy,
             ObjectProvider<StoreRelinkFacade> subscriptions,ObjectProvider<PaySourceLinkApi> pay,StoreSnapshotReader snapshots,
             StoreSyncProperties sync,ObjectProvider<StoreSyncPublisher> publishers,MerchantEntityService entities,OpsService ops,MerchantPlanService plans,ObjectMapper json,
             @Value("${shop.merchant.store-claim.enabled:false}") boolean enabled) {

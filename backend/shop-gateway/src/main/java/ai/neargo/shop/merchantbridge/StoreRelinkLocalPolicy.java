@@ -1,4 +1,6 @@
 package ai.neargo.shop.merchantbridge;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import org.springframework.beans.factory.annotation.Value;
 
@@ -30,7 +32,7 @@ public class StoreRelinkLocalPolicy {
     private boolean inventoryEnabled;
     @Value("${shop.inventory.enabled:false}")
     private boolean inventoryBridgeEnabled;
-    public StoreRelinkLocalPolicy(JdbcTemplate jdbc, StoreRelinkHostFactsPort history,
+    public StoreRelinkLocalPolicy(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc, StoreRelinkHostFactsPort history,
             ObjectProvider<StoreRelinkFacade> subscriptions,List<StoreRelinkIndustryFactsPort> industries,MerchantPlanService plans) {
         this.jdbc=jdbc;this.history=history;this.subscriptions=subscriptions;this.industries=industries;this.plans=plans;
     }

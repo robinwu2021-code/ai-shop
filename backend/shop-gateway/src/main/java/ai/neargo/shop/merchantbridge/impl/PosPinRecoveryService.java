@@ -1,4 +1,7 @@
 package ai.neargo.shop.merchantbridge.impl;
+import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import ai.neargo.auth.store.TokenHash;
 import ai.neargo.shop.auth.LoginUser;
@@ -39,7 +42,7 @@ public class PosPinRecoveryService {
     private final AuthService auth;
     private final OtpSendService otp;
 
-    public PosPinRecoveryService(JdbcTemplate db, PosStaffPinService pins, MerchantAccountService accounts,
+    public PosPinRecoveryService(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate db, PosStaffPinService pins, MerchantAccountService accounts,
                                  AuthService auth, OtpSendService otp) {
         this.db = db;
         this.pins = pins;
@@ -64,7 +67,7 @@ public class PosPinRecoveryService {
         return methods;
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public Challenge challenge(Scope scope, LoginUser user, String session, Method method, String ip) {
         if (!methods(scope, user).contains(method)) throw BizException.of(ErrorCode.FORBIDDEN);
         String sessionHash = TokenHash.of(session);
@@ -135,7 +138,7 @@ public class PosPinRecoveryService {
         return issued == 1 ? new Proof("VERIFIED", reset, expiry, null) : new Proof("EXPIRED", null, null, null);
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public Result reset(Scope scope, String session, String token, String newPin) {
         if (!pins.enabled(scope)) return Result.of(Outcome.DISABLED);
         if (PosStaffPinService.weak(newPin)) return Result.of(Outcome.WEAK);

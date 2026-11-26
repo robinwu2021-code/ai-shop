@@ -1,4 +1,5 @@
 package ai.neargo.shop.merchantbridge.impl;
+import ai.neargo.shop.common.config.ModuleDataSources;
 
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -62,7 +63,7 @@ public class MerchantAccountServiceImpl implements MerchantAccountService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public Account changePhone(LoginUser user, String currentToken, String currentCode, String newPhone,
                                String newCode, String clientIp) {
         String userNo = personal(user);
@@ -73,7 +74,7 @@ public class MerchantAccountServiceImpl implements MerchantAccountService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public Account bindEmail(LoginUser user, String currentToken, String email, String code, String currentCode,
                              String clientIp) {
         String userNo = personal(user);
@@ -96,7 +97,7 @@ public class MerchantAccountServiceImpl implements MerchantAccountService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void deregister(LoginUser user, String code, String clientIp) {
         String userNo = personal(user);
         credentials.verifyCurrent(userNo, code);
