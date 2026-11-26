@@ -97,7 +97,7 @@ class ScheduleWindowsPersistenceIT {
     private ApplicationContextRunner runner() {
         return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
                 Mappers.class, required("merchant.config.PersonnelDataScopeRegistration"),
-                required("merchant.port.ScheduleWindowsPortImpl")).withBean(AuditMetaObjectHandler.class)
+                required("merchant.booking.port.ScheduleWindowsPortImpl")).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
                         "spring.datasource.password=");
     }
@@ -445,7 +445,7 @@ class ScheduleWindowsPersistenceIT {
     @SuppressWarnings("unchecked")
     void actualEntityInsertUsesAuditAndRuleAndHistorySubjectScopes() {
         runner().run(context -> {
-            var bean = new BeanWrapperImpl(required("merchant.entity.MchScheduleChangeLog"));
+            var bean = new BeanWrapperImpl(required("merchant.booking.entity.MchScheduleChangeLog"));
             bean.setPropertyValue("entityNo", "E");
             bean.setPropertyValue("changeNo", "C");
             bean.setPropertyValue("resourceNo", "R");
@@ -455,9 +455,9 @@ class ScheduleWindowsPersistenceIT {
             bean.setPropertyValue("affectedRefs", "[]");
             bean.setPropertyValue("reason", "PRIVATE_REASON");
             var history = (BaseMapper<Object>) context.getBean(
-                    required("merchant.mapper.MerchantMappers$ScheduleChangeLogMapper"));
+                    required("merchant.booking.mapper.BookingMappers$ScheduleChangeLogMapper"));
             var rules = (BaseMapper<Object>) context.getBean(
-                    required("merchant.mapper.MerchantMappers$ScheduleRuleMapper"));
+                    required("merchant.booking.mapper.BookingMappers$ScheduleRuleMapper"));
             assertThat(DataScopeContext.executeWithoutScope(() -> history.insert(bean.getWrappedInstance()))).isOne();
             assertThat(sql.queryForObject("SELECT created_by FROM mch_schedule_change_log", String.class))
                     .isEqualTo("ACTOR");

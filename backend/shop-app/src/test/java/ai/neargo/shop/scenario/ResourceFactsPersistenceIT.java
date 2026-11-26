@@ -96,7 +96,7 @@ class ResourceFactsPersistenceIT {
     private ApplicationContextRunner runner() {
         return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                 Mappers.class, required("merchant.config.PersonnelDataScopeRegistration"),
-                required("merchant.port.ResourceFactsPortImpl")).withBean(AuditMetaObjectHandler.class)
+                required("merchant.booking.port.ResourceFactsPortImpl")).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
                         "spring.datasource.password=");
     }
@@ -373,7 +373,7 @@ class ResourceFactsPersistenceIT {
     @SuppressWarnings("unchecked")
     void actualMapperInsertUsesAuditAndSubjectScopeRestoresAfterTrustedLookup() {
         runner().run(context -> {
-            var bean = new BeanWrapperImpl(required("merchant.entity.MchResource"));
+            var bean = new BeanWrapperImpl(required("merchant.booking.entity.MchResource"));
             bean.setPropertyValue("entityNo", "E");
             bean.setPropertyValue("resourceNo", "NEW");
             bean.setPropertyValue("resourceType", "DEVICE");
@@ -382,7 +382,7 @@ class ResourceFactsPersistenceIT {
             bean.setPropertyValue("capacity", 1);
             bean.setPropertyValue("status", "ACTIVE");
             var mapper = (BaseMapper<Object>) context.getBean(
-                    required("merchant.mapper.MerchantMappers$ResourceMapper"));
+                    required("merchant.booking.mapper.BookingMappers$ResourceMapper"));
             assertThat(DataScopeContext.executeWithoutScope(() -> mapper.insert(bean.getWrappedInstance()))).isOne();
             assertThat(sql.queryForObject("SELECT created_by FROM mch_resource WHERE resource_no='NEW'", String.class))
                     .isEqualTo("ACTOR");
