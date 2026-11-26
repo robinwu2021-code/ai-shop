@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.approval;
 
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
@@ -29,7 +31,7 @@ public class StoreSignApprovalSubject implements ApprovalSubject {
     private final MerchantGovernService govern;
     private final AuditLogPort audit;
 
-    public StoreSignApprovalSubject(JdbcTemplate db, MerchantGovernService govern, AuditLogPort audit) {
+    public StoreSignApprovalSubject(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate db, MerchantGovernService govern, AuditLogPort audit) {
         this.db = db;
         this.govern = govern;
         this.audit = audit;

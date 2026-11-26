@@ -1,5 +1,8 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
@@ -25,7 +28,7 @@ public class EntityCreationServiceImpl implements EntityCreationService {
     private final MerchantEntityService entities;
     private final MasterDataPort master;
 
-    public EntityCreationServiceImpl(JdbcTemplate jdbc, ObjectMapper json, MerchantAdminPort merchants,
+    public EntityCreationServiceImpl(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc, ObjectMapper json, MerchantAdminPort merchants,
                                     MerchantEntityService entities, MasterDataPort master) {
         this.jdbc = jdbc;
         this.json = json;
@@ -40,13 +43,13 @@ public class EntityCreationServiceImpl implements EntityCreationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public Result create(LoginUser user, String requestNo, String name, String legalForm) {
         return create(user,requestNo,name,legalForm,null);
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public Result create(LoginUser user,String requestNo,String name,String legalForm,String initialProfileHash) {
         personal(user);
         var accounts = jdbc.queryForList("SELECT market FROM usr_account WHERE tenant_no=? AND user_no=? "

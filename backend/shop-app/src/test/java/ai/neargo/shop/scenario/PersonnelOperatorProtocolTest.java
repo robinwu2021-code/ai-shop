@@ -187,7 +187,7 @@ class PersonnelOperatorProtocolTest {
                     .withBean(MerchantMappers.OperatorAccessMapper.class, () -> accessMapper)
                     .withBean(MerchantMappers.PersonnelAccountMapper.class, () -> links)
                     .withBean(
-                            "transactionManager",
+                            ai.neargo.shop.common.config.ModuleDataSources.PLATFORM_TX_MANAGER,
                             PlatformTransactionManager.class,
                             () -> mock(PlatformTransactionManager.class))
                     .withPropertyValues("shop.beauty.enabled=" + mode.equals("beauty-embedded"))

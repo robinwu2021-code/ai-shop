@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -74,7 +75,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public ResultVO create(CreateCommand cmd, String operatorNo) {
         var policy=contacts.instancePolicy();
         String phone=policy.recordOnly() || cmd.phone()==null ? cmd.phone() : cmd.phone().trim();
@@ -199,7 +200,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreVO addStore(AddStoreCommand cmd, String operatorNo) {
         String name = cmd.name() == null ? "" : cmd.name().trim();
         if (cmd.merchantNo() == null || cmd.merchantNo().isBlank() || name.isEmpty()) {

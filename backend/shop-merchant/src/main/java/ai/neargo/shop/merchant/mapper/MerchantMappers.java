@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.mapper;
 
+import ai.neargo.shop.common.config.PlatformSqlMapper;
+import ai.neargo.shop.common.config.PlatformTableMapper;
 import ai.neargo.shop.merchant.dto.OperatorAccessRow;
 import ai.neargo.shop.merchant.dto.OperatorPersonnelFactRow;
 import ai.neargo.shop.merchant.dto.ResourceCommandFactRow;
@@ -65,7 +67,7 @@ public final class MerchantMappers {
 
     /** Exact live access projection; source owners must not reuse session-role snapshots or personnel jobs. */
     @Mapper
-    public interface OperatorAccessMapper {
+    public interface OperatorAccessMapper extends PlatformSqlMapper {
         @Select("""
                 SELECT a.mch_account_no AS account_no,
                   (a.is_owner=1 OR EXISTS (
@@ -581,7 +583,7 @@ public final class MerchantMappers {
                 @Param("actor") String actor, @Param("at") LocalDateTime at);
     }
 
-    public interface MchEntityMapper extends BaseMapper<MchEntity> {
+    public interface MchEntityMapper extends PlatformTableMapper<MchEntity> {
         /** Financial history remains scoped but readable after soft deletion; MP data-scope still applies. */
         @org.apache.ibatis.annotations.Select("SELECT entity_no FROM mch_entity WHERE tenant_no='MAIN' AND entity_no=#{entityNo}")
         String financialVisibleEntity(@org.apache.ibatis.annotations.Param("entityNo") String entityNo);
@@ -635,7 +637,7 @@ public final class MerchantMappers {
     }
 
     /** 商家覆盖的社区：C 端「本社区可见商家」的反查索引所在。 */
-    public interface MchEntityCommunityMapper extends BaseMapper<MchEntityCommunity> {
+    public interface MchEntityCommunityMapper extends PlatformTableMapper<MchEntityCommunity> {
 
         /**
          * 复活一条被逻辑删掉的覆盖关系。
@@ -665,7 +667,7 @@ public final class MerchantMappers {
      * 商家地理覆盖项（ADR-013）。**物理删除**，不走 MyBatis-Plus 的逻辑删除 ——
      * 见 {@link ai.neargo.shop.merchant.entity.MchServiceArea} 的说明。
      */
-    public interface ServiceAreaMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchServiceArea> {
+    public interface ServiceAreaMapper extends PlatformTableMapper<ai.neargo.shop.merchant.entity.MchServiceArea> {
 
         /**
          * 物理删掉一条覆盖项。
@@ -691,12 +693,12 @@ public final class MerchantMappers {
      * 但注意日常「关一路」是 {@code enabled=0} 不是删行，删行只发生在门店被删时。
      */
     public interface FulfillmentChannelMapper
-            extends BaseMapper<ai.neargo.shop.merchant.entity.MchFulfillmentChannel> {
+            extends PlatformTableMapper<ai.neargo.shop.merchant.entity.MchFulfillmentChannel> {
     }
 
     /** 自提路 × 取货点（P1 启用）。 */
     public interface ChannelPickupMapper
-            extends BaseMapper<ai.neargo.shop.merchant.entity.MchChannelPickup> {
+            extends PlatformTableMapper<ai.neargo.shop.merchant.entity.MchChannelPickup> {
 
         /**
          * **物理删**这一店这一路的取货点引用。不用 {@code delete(wrapper)}：实体继承了带 deleted 的基类，
@@ -714,7 +716,7 @@ public final class MerchantMappers {
      * 这里只管写入与级联清理。
      */
     public interface ServiceAreaCellMapper
-            extends BaseMapper<ai.neargo.shop.merchant.entity.MchServiceAreaCell> {
+            extends PlatformTableMapper<ai.neargo.shop.merchant.entity.MchServiceAreaCell> {
 
         /**
          * **物理删**这些范围项的全部网格行。多边形项被删或几何改了（指纹变 = 新项）时同事务调用；
@@ -728,7 +730,7 @@ public final class MerchantMappers {
     }
 
     public interface ChannelAreaMapper
-            extends BaseMapper<ai.neargo.shop.merchant.entity.MchChannelArea> {
+            extends PlatformTableMapper<ai.neargo.shop.merchant.entity.MchChannelArea> {
 
         /** **物理删**这一店这一路的范围子集引用。理由同 {@link ChannelPickupMapper#purge} */
         @org.apache.ibatis.annotations.Delete(
@@ -764,7 +766,7 @@ public final class MerchantMappers {
     public interface DepositTxnMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDepositTxn> {
     }
 
-    public interface QualificationMapper extends BaseMapper<MchQualification> {
+    public interface QualificationMapper extends PlatformTableMapper<MchQualification> {
     }
 
     /** 门店（mch_store）。V44 起一主体可有多行。 */
@@ -799,7 +801,7 @@ public final class MerchantMappers {
                    @Param("sort") int sort);
     }
 
-    public interface MchStoreMapper extends BaseMapper<MchStore> {
+    public interface MchStoreMapper extends PlatformTableMapper<MchStore> {
     }
 
     /** 平台行业与子行业（V643） */
@@ -807,7 +809,7 @@ public final class MerchantMappers {
     }
 
     /** 商家子账号：账号 ↔ 主体的成员关系。**身份来源**（取代 mch_entity.owner_user_no）。 */
-    public interface MchAccountMapper extends BaseMapper<MchAccount> {
+    public interface MchAccountMapper extends PlatformTableMapper<MchAccount> {
         /** Personnel account linking and suspension serialize on the existing canonical membership row. */
         @Select("SELECT * FROM mch_account WHERE tenant_no='MAIN' AND entity_no=#{entity} "
                 + "AND mch_account_no=#{account} AND deleted=0 FOR UPDATE")
@@ -817,7 +819,7 @@ public final class MerchantMappers {
     }
 
     /** 子账号在各门店的角色（每店一个角色）。 */
-    public interface MchStoreRoleMapper extends BaseMapper<MchStoreRole> {
+    public interface MchStoreRoleMapper extends PlatformTableMapper<MchStoreRole> {
 
         /**
          * 复活一条被逻辑删的授权。
@@ -847,7 +849,7 @@ public final class MerchantMappers {
      * <p>⚠️ 查询一律 {@code entity_no IN (当前商家, '*')} —— 少了 `'*'` 预置角色全没，
      * 少了当前商家自定义角色全没，两种漏法都表现为「权限突然变少」。
      */
-    public interface MchRoleMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchRole> {
+    public interface MchRoleMapper extends PlatformTableMapper<ai.neargo.shop.merchant.entity.MchRole> {
     }
 
     /**
@@ -893,7 +895,7 @@ public final class MerchantMappers {
 
 
     /** Shared personnel master; login accounts are optional independent associations. */
-    public interface PersonnelMapper extends BaseMapper<MchPersonnel> {
+    public interface PersonnelMapper extends PlatformTableMapper<MchPersonnel> {
         /** Parent CAS serializes every employment, account and status maintenance command. */
         @Update("UPDATE mch_personnel SET status=#{status},version=version+1,updated_at=#{at},updated_by=#{actor} "
                 + "WHERE tenant_no='MAIN' AND entity_no=#{entity} AND personnel_no=#{personnel} "
@@ -941,7 +943,7 @@ public final class MerchantMappers {
     }
 
     /** Current optional account link; mutations require a future owner workflow and audit. */
-    public interface PersonnelAccountMapper extends BaseMapper<MchPersonnelAccount> {
+    public interface PersonnelAccountMapper extends PlatformTableMapper<MchPersonnelAccount> {
         /** Effective joins preserve every candidate so overlapping assignments fail closed at the owner. */
         @Select(
                 """
@@ -978,7 +980,7 @@ LIMIT 2
     }
 
     /** Bounded effective employment projection; overlapping rows remain visible for explicit ambiguity rejection. */
-    public interface PersonnelStoreMapper extends BaseMapper<MchPersonnelStore> {
+    public interface PersonnelStoreMapper extends PlatformTableMapper<MchPersonnelStore> {
         /** Canonical parent identity and all effective employments let the owner reject ambiguity. */
         @Select("""
                 <script>
@@ -1004,7 +1006,7 @@ LIMIT 2
     }
 
     /** Batch positions only for the already authorized employment rows in the same snapshot. */
-    public interface PersonnelPositionMapper extends BaseMapper<MchPersonnelPosition> {
+    public interface PersonnelPositionMapper extends PlatformTableMapper<MchPersonnelPosition> {
         /** Read only authorized assignment IDs; the parent supplies the stable grouping identity. */
         @Select("""
                 <script>

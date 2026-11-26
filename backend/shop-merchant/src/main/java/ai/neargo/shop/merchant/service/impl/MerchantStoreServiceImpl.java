@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -141,7 +142,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private static final int BANNER_URL_MAX = 512;
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreProfileVO saveBanner(String merchantNo, String storeNo, String bannerUrl) {
         lockOwnership(merchantNo, storeNo);
         MchStore store = row(merchantNo, storeNo);
@@ -161,7 +162,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreProfileVO saveAnnouncement(String merchantNo, String storeNo, String announcement, Long until,
                                            List<String> alsoStoreNos) {
         lockOwnership(merchantNo, storeNo);
@@ -222,7 +223,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreProfileVO dropRecentAnnouncement(String merchantNo, String storeNo, String text) {
         lockOwnership(merchantNo, storeNo);
         MchStore store = row(merchantNo, storeNo);
@@ -238,13 +239,13 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreProfileVO save(String merchantNo, SaveCommand cmd) {
         return save(merchantNo, null, cmd);
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreProfileVO save(String merchantNo, String storeNo, SaveCommand cmd) {
         lockOwnership(merchantNo, storeNo);
         /*
@@ -677,7 +678,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
      * 先前只有入驻审核会调它、一家店只调一次，所以一直没现形。
      */
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void syncCommunities(String merchantNo, List<String> communityNos) {
         ownership.lockEntityAndCheck("MAIN", merchantNo);
         if (communityNos == null) {

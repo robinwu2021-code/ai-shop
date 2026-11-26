@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.api.ops;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.common.BizException;
@@ -53,7 +54,7 @@ public class OpsStoreBasicsController {
 
     @PutMapping("/ops/stores/{storeNo}/basics")
     @PreAuthorize("@perm.can('" + Perms.STORE_PAGE_AUDIT + "')")
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreVO update(@PathVariable String storeNo, @Valid @RequestBody BasicsReq req) {
         MchStore s = DataScopeContext.executeWithoutScope(() -> stores.selectOne(Wrappers.<MchStore>lambdaQuery()
                 .eq(MchStore::getStoreNo, storeNo).last("limit 1")));

@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.reach;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.geo.GeoPolygon;
 import ai.neargo.shop.geo.ReachGeoProps;
@@ -44,7 +45,7 @@ public class ServiceAreaCells {
      *
      * @return 写入的 cell 行数
      */
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public int rebuild(MchServiceArea polygonRow, GeoPolygon polygon) {
         purge(List.of(polygonRow.getAreaNo()));
         List<S2Cover.Cell> cells = S2Cover.cover(polygon,
@@ -77,7 +78,7 @@ public class ServiceAreaCells {
      *
      * @return 重算成功的范围项数
      */
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public int rebuildAll() {
         List<MchServiceArea> polygons = DataScopeContext.executeWithoutScope(() ->
                 areaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()

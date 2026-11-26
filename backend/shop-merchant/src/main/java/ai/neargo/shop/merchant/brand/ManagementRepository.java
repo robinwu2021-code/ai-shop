@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.brand;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
 import ai.neargo.shop.common.*;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,7 +22,7 @@ public class ManagementRepository {
  final JdbcTemplate jdbc;
  final TransactionTemplate transactions;
  final ObjectMapper json;
- public ManagementRepository(JdbcTemplate jdbc,@Qualifier("transactionManager") PlatformTransactionManager tx,ObjectMapper json) {
+ public ManagementRepository(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc,@Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager tx,ObjectMapper json) {
   this.jdbc=jdbc;this.transactions=new TransactionTemplate(tx);this.json=json;
  }
  public <T> T write(Supplier<T> action) {

@@ -59,6 +59,8 @@ class PersonnelFactsPersistenceIT {
     private String url;
 
     @TestConfiguration(proxyBeanMethods = false)
+    @org.springframework.context.annotation.Import({ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class,
+            ai.neargo.shop.common.config.PlatformJdbcConfiguration.class})
     @MapperScan("ai.neargo.shop.merchant.mapper")
     static class Mappers {
     }

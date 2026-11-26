@@ -1,8 +1,10 @@
 package ai.neargo.shop.merchant.port;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.spi.member.MemberOperatingScopePort;import ai.neargo.shop.common.*;import org.springframework.jdbc.core.JdbcTemplate;import org.springframework.stereotype.Component;import java.util.*;
 @Component
 public class MemberOperatingScopePortImpl implements MemberOperatingScopePort {
- private final JdbcTemplate jdbc;public MemberOperatingScopePortImpl(JdbcTemplate jdbc){this.jdbc=jdbc;}
+ private final JdbcTemplate jdbc;public MemberOperatingScopePortImpl(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc){this.jdbc=jdbc;}
  @Override public Scope resolve(String tenant,String entity,String store){return read(tenant,entity,store,false);}
  private Scope read(String tenant,String entity,String store,boolean current){
   if(!jdbc.queryForList("SELECT binding_no FROM mch_brand_store_binding WHERE tenant_no=? AND store_no=? AND status='PREPARING' AND deleted=0 LIMIT 1",tenant,store).isEmpty())throw BizException.of(ErrorCode.CONFLICT);

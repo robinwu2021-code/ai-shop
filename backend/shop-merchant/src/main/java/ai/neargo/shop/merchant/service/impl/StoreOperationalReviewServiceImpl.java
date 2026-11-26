@@ -1,5 +1,8 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchStore;
@@ -26,12 +29,12 @@ public class StoreOperationalReviewServiceImpl implements StoreOperationalReview
     private final AuditLogPort audit;
     /** 审批出口（TDD-OpsKit审批对接 §1.4）：启用 OpsKit 且登记了 shop.store_opening 时，「提交」即送审，生效由执行节点触发 decide。 */
     private final ObjectProvider<ApprovalPort> approvals;
-    public StoreOperationalReviewServiceImpl(JdbcTemplate db, MchStoreMapper stores,
+    public StoreOperationalReviewServiceImpl(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate db, MchStoreMapper stores,
             StoreOwnershipWritePort ownership, AuditLogPort audit) {
         this(db,stores,ownership,audit,null);
     }
     @Autowired
-    public StoreOperationalReviewServiceImpl(JdbcTemplate db, MchStoreMapper stores,
+    public StoreOperationalReviewServiceImpl(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate db, MchStoreMapper stores,
             StoreOwnershipWritePort ownership, AuditLogPort audit, ObjectProvider<ApprovalPort> approvals) {
         this.db=db;this.stores=stores;this.ownership=ownership;this.audit=audit;this.approvals=approvals;
     }
@@ -53,7 +56,7 @@ public class StoreOperationalReviewServiceImpl implements StoreOperationalReview
             (r,i)->new ReviewVO(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getObject(6,Long.class),r.getObject(7,Long.class)),tenant,no).getFirst();
     }
     @Override public ReviewVO read(String no) {scoped(no);return view("MAIN",no);}
-    @Override @Transactional public ReviewVO submit(String no) {
+    @Override @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER) public ReviewVO submit(String no) {
         var store=scoped(no);ownership.lockAndCheck("MAIN",store.getEntityNo(),no);
         int changed=db.update("UPDATE mch_store SET status='PENDING_OPEN',operational_review='PENDING',operational_source=NULL,operational_order_no=NULL,operational_decided_at=NULL,operational_submitted_at=?,version=version+1,updated_at=NOW() WHERE tenant_no='MAIN' AND store_no=? AND deleted=0 AND ((status='ACTIVE' AND operational_review IS NULL) OR (status='PENDING_OPEN' AND operational_review='REJECTED'))",System.currentTimeMillis(),no);
         var result=view("MAIN",no);
@@ -62,7 +65,7 @@ public class StoreOperationalReviewServiceImpl implements StoreOperationalReview
         if(changed==1) { audit.record("STORE_OPERATIONAL_SUBMITTED",no,"提交门店经营开通审核",true); submitForApproval(no); }
         return result;
     }
-    @Override @Transactional public ReviewVO decide(String no,boolean approved,String reason) {
+    @Override @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER) public ReviewVO decide(String no,boolean approved,String reason) {
         var store=scoped(no);ownership.lockAndCheck("MAIN",store.getEntityNo(),no);
         var state=approved?"APPROVED":"REJECTED";
         int changed=db.update("UPDATE mch_store SET status=?,operational_review=?,operational_source='MANUAL',operational_decided_at=?,version=version+1,updated_at=NOW() WHERE tenant_no='MAIN' AND store_no=? AND status='PENDING_OPEN' AND operational_review='PENDING' AND deleted=0",
@@ -72,7 +75,7 @@ public class StoreOperationalReviewServiceImpl implements StoreOperationalReview
         if(changed==1) audit.record("STORE_OPERATIONAL_"+state,no,reason,true);
         return result;
     }
-    @Override @Transactional(propagation=Propagation.MANDATORY)
+    @Override @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER, propagation=Propagation.MANDATORY)
     public void activatePaid(String tenant,String entity,String no,String model,String order,long purchasedAt,long at) {
         if(!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Paid activation requires fulfillment transaction");
         // The frozen order already established authority. This exact conditional write never lifts

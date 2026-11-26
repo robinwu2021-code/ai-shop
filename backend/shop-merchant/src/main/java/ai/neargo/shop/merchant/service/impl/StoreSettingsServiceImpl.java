@@ -1,4 +1,5 @@
 package ai.neargo.shop.merchant.service.impl;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -44,7 +45,7 @@ public class StoreSettingsServiceImpl implements StoreSettingsService {
         ownership.lockAndCheck("MAIN",entity,store);
         if(!Objects.equals(load(entity,store).sectionVersions().get(section),expected)) throw BizException.of(ErrorCode.CONFLICT);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public View basic(String entity,String store,String expected,String name,String address,String detail) {
         requireVersion(entity,store,"BASIC",expected);
         updated(DataScopeContext.executeWithoutScope(()->stores.update(null,Wrappers.<MchStore>lambdaUpdate()
@@ -53,7 +54,7 @@ public class StoreSettingsServiceImpl implements StoreSettingsService {
         mirror.changed(entity);
         return load(entity,store);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public View contact(String entity,String store,String expected,String name,String phone) {
         requireVersion(entity,store,"CONTACT",expected);
         updated(DataScopeContext.executeWithoutScope(()->stores.update(null,Wrappers.<MchStore>lambdaUpdate()
@@ -61,7 +62,7 @@ public class StoreSettingsServiceImpl implements StoreSettingsService {
             .set(MchStore::getContactName,name.trim()).set(MchStore::getContactPhone,phone.trim()))));
         return load(entity,store);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public View hours(String entity,String store,String expected,String hours) {
         requireVersion(entity,store,"HOURS",expected);
         updated(DataScopeContext.executeWithoutScope(()->stores.update(null,Wrappers.<MchStore>lambdaUpdate()

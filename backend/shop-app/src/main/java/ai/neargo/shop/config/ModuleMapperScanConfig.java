@@ -2,6 +2,9 @@ package ai.neargo.shop.config;
 
 import ai.neargo.shop.common.config.ModuleDataSourceRegistrar;
 import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import ai.neargo.shop.common.config.PlatformSqlMapper;
+import ai.neargo.shop.common.config.PlatformTableMapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.Configuration;
@@ -17,7 +20,7 @@ import org.springframework.context.annotation.Import;
  * <p>发票模块可以不打进包（{@code -Dinvoice.exclude}），扫描一个不存在的包不会报错。
  */
 @Configuration(proxyBeanMethods = false)
-@Import(ModuleDataSourceRegistrar.class)
+@Import({ModuleDataSourceRegistrar.class, PlatformJdbcConfiguration.class})
 @MapperScan(basePackages = "ai.neargo.shop.invoice.mapper", markerInterface = BaseMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.INVOICE_SQL_SESSION_FACTORY)
 // 发票留在主库的那几张表（申请事件、邮件投递）：包名就是归属，见 invoice.legacy 的说明
@@ -27,6 +30,11 @@ import org.springframework.context.annotation.Import;
         sqlSessionFactoryRef = ModuleDataSources.PRINT_SQL_SESSION_FACTORY)
 // C 端账号域（登录与账号的一部分）在平台基础库；会话与登录日志不走 Mapper，见 LoginAuditConfig#authJdbcClient
 @MapperScan(basePackages = "ai.neargo.shop.user", markerInterface = BaseMapper.class,
+        sqlSessionFactoryRef = ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
+// 商户域里表在平台基础库的 Mapper：按标记收，不按包（同一个包里还有别的库的 Mapper）
+@MapperScan(basePackages = "ai.neargo.shop.merchant.mapper", markerInterface = PlatformTableMapper.class,
+        sqlSessionFactoryRef = ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
+@MapperScan(basePackages = "ai.neargo.shop.merchant.mapper", markerInterface = PlatformSqlMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
 public class ModuleMapperScanConfig {
 }

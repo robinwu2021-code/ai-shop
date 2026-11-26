@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -44,7 +45,7 @@ public class StoreShipSettingServiceImpl implements StoreShipSettingService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public ShipSettingVO save(String entityNo, String storeNo, ShipSettingCmd cmd) {
         MchStore s = owned(entityNo, storeNo);
         String name = blankToNull(cmd.senderName());

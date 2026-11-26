@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.mapper;
 
+import ai.neargo.shop.common.config.PlatformSqlMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -21,7 +22,7 @@ import java.util.List;
  * 祖先集或 token 为空时用 {@code 1=0} 短路：空 {@code IN ()} 在两种库上都是语法错。
  */
 @Mapper
-public interface ReachMatchMapper {
+public interface ReachMatchMapper extends PlatformSqlMapper {
 
     /** 行政级（按祖先码）与聚落级（按小区号/父聚落号）的命中行 */
     @Select("""

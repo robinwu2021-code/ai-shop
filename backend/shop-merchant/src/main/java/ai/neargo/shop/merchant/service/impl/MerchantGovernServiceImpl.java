@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -220,7 +221,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public MerchantProfileVO setStatus(String merchantNo, String status, String remark, String operatorNo) {
         MchEntity m = require(merchantNo);
         if (!TRANSITIONS.getOrDefault(m.getStatus(), Set.of()).contains(status)) {
@@ -236,7 +237,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public MerchantProfileVO setVerified(String merchantNo, boolean verified, String operatorNo) {
         MchEntity m = require(merchantNo);
         if (verified) {
@@ -274,7 +275,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public ViolationVO recordViolation(String merchantNo, String storeNo, String type, String action,
                                        String detail, String operatorNo) {
         if (detail == null || detail.isBlank()) {
@@ -536,7 +537,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreGovernVO restoreStore(String storeNo, String operatorNo) {
         MchStore s = requireStore(storeNo);
         if (!MchStore.SUSPENDED.equals(s.getStatus())) {
@@ -783,7 +784,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public MerchantProfileVO setFundsMode(String merchantNo, String mode, String operatorNo) {
         if (!ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_AGGREGATED.equals(mode)
                 && !ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_DIRECT.equals(mode)) {
@@ -935,7 +936,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreAuditVO decideStoreAudit(String auditNo, boolean pass, String reason, String operatorNo) {
         if (!pass && (reason == null || reason.isBlank())) {
             // 驳回原因原样出现在商家 B 端 —— 不写的话商家不知道该改什么，只会原样再提一次
@@ -1089,7 +1090,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public QualificationVO saveQualification(String merchantNo, SaveQualificationCommand cmd,
                                              String operatorNo) {
         if (cmd.qualType() == null || cmd.qualType().isBlank()
@@ -1144,7 +1145,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public QualificationVO createQualification(String merchantNo, SaveQualificationCommand cmd,
                                                String operatorNo) {
         if (cmd.qualNo() != null && !cmd.qualNo().isBlank()) {
@@ -1162,7 +1163,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public QualificationVO revokeQualification(String qualNo, String operatorNo) {
         MchQualification q = DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectOne(
                 Wrappers.<MchQualification>lambdaQuery()
@@ -1177,7 +1178,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public java.util.Set<String> expireOverdueQualifications() {
         long now = System.currentTimeMillis();
         java.util.Set<String> affected = new java.util.LinkedHashSet<>();

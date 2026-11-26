@@ -301,6 +301,8 @@ class ScheduleMaintenanceIT {
         });
     }
     @TestConfiguration(proxyBeanMethods = false)
+    @org.springframework.context.annotation.Import({ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class,
+            ai.neargo.shop.common.config.PlatformJdbcConfiguration.class})
     @MapperScan(basePackageClasses = MerchantMappers.class)
     static class Mappers {
         @Bean

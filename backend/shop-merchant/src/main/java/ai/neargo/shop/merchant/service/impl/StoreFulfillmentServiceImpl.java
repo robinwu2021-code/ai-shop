@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Fulfillments;
@@ -118,7 +119,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public FulfillmentVO save(String merchantNo, String storeNo, List<ChannelCmd> channels) {
         lockOwnership(merchantNo, storeNo);
         if (channels == null || channels.isEmpty()) {
@@ -363,7 +364,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void setLocked(String storeNo, String channel, boolean locked) {
         if (storeNo == null || storeNo.isBlank() || !CONFIGURABLE.contains(channel)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

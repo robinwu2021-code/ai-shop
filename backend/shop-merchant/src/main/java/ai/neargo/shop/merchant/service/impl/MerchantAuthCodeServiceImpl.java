@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchEntity;
@@ -45,7 +46,7 @@ public class MerchantAuthCodeServiceImpl implements MerchantAuthCodeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public SetResult setCodes(String merchantNo, List<String> codes, String reason) {
         // 改的是「这家店能上架什么」，没有理由的改动事后无法复盘
         if (reason == null || reason.isBlank()) {

@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -143,7 +144,7 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String issue(String merchantNo, String storeNo, String operatorNo) {
         requireStore(merchantNo, storeNo);
         // 幂等交给 ensureForStore：已经有码就原样返回，重复点不会把码换掉
@@ -151,7 +152,7 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String reissue(String merchantNo, String storeNo, String reason, String operatorNo) {
         if (reason == null || reason.isBlank()) {
             /*

@@ -61808,6 +61808,14 @@
       "module": "shop-store-mybatis"
     },
     {
+      "host": "PlatformJdbcConfiguration",
+      "name": "PLATFORM_JDBC_TEMPLATE",
+      "type": "String",
+      "value": "\"platformJdbcTemplate\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
       "host": "OutboxDispatcher",
       "name": "MAX_ATTEMPTS",
       "type": "int",

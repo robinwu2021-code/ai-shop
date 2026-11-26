@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.port;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.common.BizException;
@@ -39,7 +40,7 @@ public class PersonnelOperatorFactsPortImpl implements PersonnelOperatorFactsPor
             MerchantOperatorAccessPort access,
             OperatorAccessMapper accessMapper,
             PersonnelAccountMapper links,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager manager,
             ObjectProvider<Clock> clocks) {
         this.access = access;
         this.accessMapper = accessMapper;

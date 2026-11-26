@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.TokenStore;
@@ -189,7 +190,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void renameSelf(String principal, String displayName) {
         String name = displayName == null ? "" : displayName.trim();
         // 显示名不是登录凭证，但它会出现在订单/审计里：空的没意义，超长会撑破列表
@@ -218,7 +219,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StaffVO add(String merchantNo, String loginPhone, String displayName) {
         ownership.lockEntityAndCheck("MAIN", merchantNo);
         /*
@@ -266,7 +267,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StaffVO addWithLogin(String merchantNo, String loginPhone, String displayName,
                                 String loginEmail, String employeeCode, String storeNo, String role) {
         ownership.lockEntityAndCheck("MAIN", merchantNo);
@@ -327,7 +328,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StaffVO setStatus(String merchantNo, String mchAccountNo, boolean active) {
         ownership.lockEntityAndCheck("MAIN", merchantNo);
         MchAccount a = require(merchantNo, mchAccountNo);
@@ -387,7 +388,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StaffVO grantStore(String merchantNo, String mchAccountNo, String storeNo,
                               String role, boolean granted) {
         MchAccount a = require(merchantNo, mchAccountNo);
@@ -578,7 +579,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void followLoginPhone(String userNo, String oldPhone, String newPhone) {
         List<MchAccount> owners = DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(
                 Wrappers.<MchAccount>lambdaQuery().eq(MchAccount::getUserNo, userNo).eq(MchAccount::getIsOwner, true)));
@@ -615,7 +616,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void retireAccount(String userNo, String phone) {
         List<String> stores = ownedStoreNos(userNo);
         List<MchAccount> rows = new java.util.ArrayList<>(DataScopeContext.executeWithoutScope(() ->

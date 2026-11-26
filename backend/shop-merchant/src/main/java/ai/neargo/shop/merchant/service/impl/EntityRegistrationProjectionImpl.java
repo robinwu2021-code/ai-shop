@@ -1,5 +1,8 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.service.EntityRegistrationProjection;
@@ -24,7 +27,7 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
   private final StoreOwnershipWritePort ownership;
 
   public EntityRegistrationProjectionImpl(
-      JdbcTemplate jdbc,
+      @Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc,
       MasterDataPort master,
       ObjectMapper json,
       StoreOwnershipWritePort ownership) {
@@ -35,7 +38,7 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
   }
 
   @Override
-  @Transactional
+  @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
   public void lockLegacyWrite(String tenant, String entity) {
     ownership.lockEntityExclusiveAndCheck(tenant, entity);
   }
@@ -51,7 +54,7 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
   }
 
   @Override
-  @Transactional
+  @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
   public void observe(String tenant, String entity, String actor, String request) {
     ownership.lockEntityExclusiveAndCheck(tenant, entity);
     jdbc.update(
@@ -98,7 +101,7 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
   }
 
   @Override
-  @Transactional
+  @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
   public void apply(Target target, Approved facts, long targetRevision) {
     String tenant = target.tenantNo();
     ownership.lockEntityExclusiveAndCheck(tenant, facts.entityNo());

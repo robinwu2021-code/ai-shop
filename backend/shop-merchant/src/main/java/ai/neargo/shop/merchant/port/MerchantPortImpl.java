@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.port;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -174,7 +175,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Autowired
-    public void setDefaultStoreReadDataSource(@Qualifier("dataSource") DataSource dataSource) {
+    public void setDefaultStoreReadDataSource(@Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource dataSource) {
         defaultStoreCurrentLock = new JdbcTemplate(dataSource).execute((ConnectionCallback<String>) connection ->
                 "H2".equals(connection.getMetaData().getDatabaseProductName()) ? " FOR UPDATE" : " FOR SHARE");
     }
@@ -985,7 +986,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true,
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER, readOnly = true,
             isolation = Isolation.REPEATABLE_READ)
     public Optional<PaymentRoute> paymentRouteOf(String merchantNo, String storeNo, String channel) {
         if (merchantNo == null || merchantNo.isBlank() || storeNo == null || storeNo.isBlank()
@@ -1328,7 +1329,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public int saveQualifications(String merchantNo, java.util.List<QualificationItem> items) {
         if (items == null || items.isEmpty()) {
             return 0;
@@ -1383,13 +1384,13 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String activate(ActivateCommand cmd) {
         return activate(cmd, false);
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String activateSelfOperated(ActivateCommand cmd) {
         return activate(cmd, true);
     }
@@ -1535,7 +1536,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public QuickStartResult quickStart(QuickStartCommand cmd) {
         String ownerUserNo = cmd.ownerUserNo();
         String entityName = cmd.entityName() == null ? cmd.storeName() : cmd.entityName().trim();
@@ -1607,7 +1608,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String createPendingEntity(String ownerUserNo, String name, String legalForm, String market) {
         requireEntityQuota(ownerUserNo, true);
         MchEntity entity = pendingEntity(ownerUserNo, name, legalForm, market);
@@ -2088,7 +2089,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      * 评分整份盖掉，不做增量 —— 口径见 {@link ai.neargo.shop.spi.user.MerchantRatingPort}。
      */
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void updateRating(String merchantNo, ai.neargo.shop.spi.user.MerchantRatingPort.Rating r) {
         MchEntity m = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
@@ -2146,7 +2147,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void accruePayQuota(String merchantNo, String storeNo, String channel, long amountMinor) {
         if (amountMinor <= 0) {
             return;

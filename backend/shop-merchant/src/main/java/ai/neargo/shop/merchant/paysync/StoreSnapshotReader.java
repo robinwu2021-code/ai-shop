@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.paysync;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -33,7 +35,7 @@ public class StoreSnapshotReader {
 
     private final JdbcTemplate jdbc;
 
-    public StoreSnapshotReader(DataSource dataSource) {
+    public StoreSnapshotReader(@Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource dataSource) {
         this.jdbc = new JdbcTemplate(dataSource);
     }
 

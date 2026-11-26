@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -39,7 +40,7 @@ public class StoreCodeServiceImpl implements StoreCodeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String acodeBase64(String merchantNo, String storeNo) {
         /*
          * **码图跟着码走**（V298）。此前这里读写 mch_entity.acode_base64，
@@ -144,13 +145,13 @@ public class StoreCodeServiceImpl implements StoreCodeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String ensureFor(String merchantNo) {
         return ensureForStore(merchantNo, null);
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public String ensureForStore(String merchantNo, String storeNo) {
         MchStore store = storeOf(merchantNo, storeNo);
         if (store == null) {

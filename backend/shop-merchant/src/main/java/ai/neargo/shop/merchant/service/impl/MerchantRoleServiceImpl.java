@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.common.BizException;
@@ -44,7 +45,7 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public RoleVO create(String merchantNo, String name, List<String> perms) {
         String clean = requireName(name);
         Set<String> codes = requirePerms(perms);
@@ -63,7 +64,7 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public RoleVO update(String merchantNo, String roleCode, String name, List<String> perms) {
         MchRole r = requireCustom(merchantNo, roleCode);
         String clean = requireName(name);
@@ -85,7 +86,7 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void delete(String merchantNo, String roleCode) {
         MchRole r = requireCustom(merchantNo, roleCode);
         long inUse = usageOf(merchantNo).getOrDefault(roleCode, 0L);

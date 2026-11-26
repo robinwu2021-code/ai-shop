@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.port;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelPositionMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelSkillMapper;
@@ -30,7 +32,8 @@ public class PersonnelFactsPortImpl implements PersonnelFactsPort {
     private final TransactionTemplate snapshot;
 
     public PersonnelFactsPortImpl(PersonnelStoreMapper stores, PersonnelPositionMapper positions,
-            PersonnelSkillMapper skills, PlatformTransactionManager transactionManager) {
+            PersonnelSkillMapper skills,
+            @Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager transactionManager) {
         this.stores = stores;
         this.positions = positions;
         this.skills = skills;

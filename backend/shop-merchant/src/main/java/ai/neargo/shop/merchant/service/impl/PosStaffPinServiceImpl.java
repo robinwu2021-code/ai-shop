@@ -1,5 +1,8 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.auth.PasswordHasher;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -24,7 +27,7 @@ public class PosStaffPinServiceImpl implements PosStaffPinService {
     private final PasswordHasher hasher;
     private final SecretKeySpec pepper;
 
-    public PosStaffPinServiceImpl(JdbcTemplate db, PasswordHasher hasher,
+    public PosStaffPinServiceImpl(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate db, PasswordHasher hasher,
                               @Value("${shop.pos-pin.pepper:}") String configuredPepper) {
         this.db = db;
         this.hasher = hasher;
@@ -57,7 +60,7 @@ public class PosStaffPinServiceImpl implements PosStaffPinService {
                 """, Boolean.class, scope.tenant(), scope.entity()).stream().anyMatch(Boolean.TRUE::equals);
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     @Override
     public void setEnabled(Scope scope, boolean enabled) {
         if (enabled && pepper == null) throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
@@ -67,7 +70,7 @@ public class PosStaffPinServiceImpl implements PosStaffPinService {
                 """, scope.tenant(), scope.entity(), enabled, enabled);
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     @Override
     public Result save(Scope scope, String newPin, String currentPin) {
         if (!enabled(scope)) return Result.of(Outcome.DISABLED);
@@ -93,7 +96,7 @@ public class PosStaffPinServiceImpl implements PosStaffPinService {
         return Result.of(Outcome.SAVED);
     }
 
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     @Override
     public Result verify(Scope scope, String pin) {
         if (!enabled(scope)) return Result.of(Outcome.DISABLED);
@@ -101,7 +104,7 @@ public class PosStaffPinServiceImpl implements PosStaffPinService {
     }
 
     /** Called only after a scoped recovery grant has been consumed in the caller's transaction. */
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     @Override
     public Result reset(Scope scope, String newPin) {
         if (!enabled(scope)) return Result.of(Outcome.DISABLED);

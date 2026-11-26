@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -89,8 +90,8 @@ public class PersonnelServiceImpl implements PersonnelService {
             MerchantMappers.ResourceMapper resources, MerchantMappers.BookingOwnerMapper parents,
             MerchantMappers.MchAccountMapper accounts, MerchantMappers.MchStaffLogMapper audit,
             MerchantStaffService staff, GoodsQueryPort products, IdempotencyService idempotency,
-            @Qualifier("dataSource") DataSource source, ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource source, ObjectMapper json,
+            @Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager manager,
             ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
             @Value("${shop.personnel.publication.archive-only:false}") boolean archiveOnly,
             @Value("${shop.outbox.maintenance:false}") boolean maintenance) {

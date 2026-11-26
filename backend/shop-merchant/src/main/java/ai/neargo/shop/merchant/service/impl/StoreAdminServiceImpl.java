@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -96,13 +97,13 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreVO create(String merchantNo, String name, String address) {
         return create(merchantNo, new CreateCommand(name, address, null, null, null));
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreVO create(String merchantNo, CreateCommand cmd) {
         ownership.lockEntityAndCheck("MAIN",merchantNo);
         String name = cmd.name();
@@ -191,7 +192,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreVO rename(String merchantNo, String storeNo, String name, String address) {
         MchStore s = require(merchantNo, storeNo);
         if (name != null && !name.isBlank()) {
@@ -205,7 +206,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreVO setSlug(String merchantNo, String storeNo, String rawSlug) {
         MchStore s = require(merchantNo, storeNo);
         String slug = StoreSlugs.normalize(rawSlug);
@@ -244,7 +245,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreVO setStatus(String merchantNo, String storeNo, boolean active) {
         MchStore s = require(merchantNo, storeNo);
         /*
@@ -277,7 +278,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreVO setDefault(String merchantNo, String storeNo) {
         MchStore target = require(merchantNo, storeNo);
         // 停用的店不能当默认店：默认店是「找不到具体门店时去哪」的答案，
@@ -301,7 +302,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public StoreVO setPayment(String merchantNo, String storeNo, String payMerchantNo) {
         MchStore s = require(merchantNo, storeNo);
 

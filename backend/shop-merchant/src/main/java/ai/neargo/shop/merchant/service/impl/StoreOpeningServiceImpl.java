@@ -1,5 +1,8 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -19,13 +22,13 @@ public class StoreOpeningServiceImpl implements StoreOpeningService {
     private final MerchantAdminPort merchants;
     private final StoreAdminService stores;
     private final StoreCreationAccessService access;
-    public StoreOpeningServiceImpl(JdbcTemplate jdbc, ObjectMapper json, MerchantAdminPort merchants,
+    public StoreOpeningServiceImpl(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc, ObjectMapper json, MerchantAdminPort merchants,
                                    StoreAdminService stores, StoreCreationAccessService access) {
         this.jdbc=jdbc; this.json=json; this.merchants=merchants; this.stores=stores; this.access=access;
     }
     private static String actor(LoginUser user) { return user.subjectKind().name()+":"+user.userNo(); }
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public Receipt open(LoginUser user, String requestNo, String entityNo, String sourceStoreNo,
                         MerchantAdminPort.QuickStartCommand command) {
         String digest=StoreContentVersion.hash(json.writeValueAsString(new Intent(entityNo,sourceStoreNo,command)));

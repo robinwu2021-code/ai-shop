@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -37,7 +38,7 @@ public class StorePaySettingServiceImpl implements StorePaySettingService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public PaySettingVO save(String entityNo, String storeNo, Boolean offlinePayEnabled, Boolean codEnabled) {
         MchStore store = owned(entityNo, storeNo);
         if (admission.isPresent()) {
