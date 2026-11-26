@@ -61,7 +61,9 @@ C 端账号包（`ai.neargo.shop.user`）之前整包绑到了平台句柄，但
 
 ### 第 1 步的工作清单（2026-11-26 基线）
 
-`PlatformTableAccessTest` 扫出 37 个源文件不在平台句柄下、却直接访问平台表，存在 `backend/known-platform-table-access.txt`，只准变短：
+`PlatformTableAccessTest` 扫出不在平台句柄下、却直接访问平台表的源文件，存在 `backend/known-platform-table-access.txt`，只准变短。
+基线 37 个；随后修正了判定：注入平台 Mapper 本身走平台句柄（数据域照常），只读不会读错库，只有和非平台事务混用才算越界，
+因此 8 个只读的文件不再计入，现为 29 个。下表是基线时的分布：
 
 | 归属 | 文件数 | 例子 | 做法 |
 |---|---:|---|---|

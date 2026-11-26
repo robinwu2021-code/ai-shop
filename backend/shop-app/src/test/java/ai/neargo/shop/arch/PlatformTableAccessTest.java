@@ -21,7 +21,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>平台的代码改成新表、绑到新库之后，凡是不经平台句柄直接查平台表的地方都会去主库读旧表 ——
  * 不报错，读到的是另一份数据。所以换表前要把这些地方清掉。这条守卫列出它们：不在平台句柄下的代码里，
- * 手写 SQL 提到平台表，或者直接注入平台的 Mapper。结果与 {@code backend/known-platform-table-access.txt}
+ * 手写 SQL 提到平台表；或者注入平台的 Mapper、同时又开着非平台的事务（平台 Mapper 本身走平台句柄，
+ * 单纯读取不会读错库，混在别的事务里写或加锁才会失去原子性）。结果与 {@code backend/known-platform-table-access.txt}
  * 比，只准变短。
  *
  * <p>「在平台句柄下」：商户核心（{@code shop-merchant} 去掉拆出去的子域包）、C 端账号包、会话存储两个模块、
@@ -81,8 +82,12 @@ class PlatformTableAccessTest {
                     }
                 }
             }
+            // 平台 Mapper 绑的是平台句柄的工厂，注入到哪里都走新库、数据域照常；只有和非平台事务混用时
+            // （在主库事务里写平台表、或依赖平台行锁）换库后才会出错
+            boolean foreignTransaction = (code.contains("@Transactional") || code.contains("TransactionTemplate"))
+                    && !code.contains("PLATFORM_TX_MANAGER");
             for (String mapper : mappers) {
-                if (!hit && code.matches("(?s).*\\b" + mapper + "\\b.*")) {
+                if (!hit && foreignTransaction && code.matches("(?s).*\\b" + mapper + "\\b.*")) {
                     hit = true;
                 }
             }
