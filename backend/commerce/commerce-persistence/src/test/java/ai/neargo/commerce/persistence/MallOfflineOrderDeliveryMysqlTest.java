@@ -4,7 +4,10 @@ import static ai.neargo.commerce.persistence.MallOrderConcurrencyMysqlTest.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import ai.neargo.commerce.api.catalog.ProductKind;
+import ai.neargo.commerce.api.catalog.SkuComponent;
 import ai.neargo.commerce.api.common.*;
+import ai.neargo.commerce.api.fulfillment.*;
 import ai.neargo.commerce.api.mall.*;
 import ai.neargo.commerce.api.offline.*;
 import ai.neargo.commerce.api.port.*;
@@ -12,11 +15,12 @@ import ai.neargo.commerce.core.access.EndScheduleService;
 import ai.neargo.commerce.core.fulfillment.CommerceFulfillmentService;
 import ai.neargo.commerce.core.mall.DefaultMallFacade;
 import ai.neargo.commerce.core.offline.DefaultOfflinePurchaseFacade;
+import ai.neargo.commerce.core.query.DefaultMallQueryFacade;
 import ai.neargo.commerce.core.spi.Period;
 import ai.neargo.commerce.core.subscription.SubscriptionService;
 
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
@@ -25,8 +29,10 @@ import java.util.*;
 
 class MallOfflineOrderDeliveryMysqlTest {
     @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    void confirmedTransferFulfillsOriginalOrder(boolean hardware) {
+    @CsvSource({"HARDWARE,false", "PLAN,false", "BUNDLE,false", "BUNDLE,true"})
+    void confirmedTransferFulfillsOriginalOrder(ProductKind kind, boolean delayGrant) {
+        boolean hardware = kind != ProductKind.PLAN;
+        boolean plan = kind != ProductKind.HARDWARE;
         try (var mall = new MysqlDatabase();
                 var foundation = new MysqlDatabase();
                 var platform = new MysqlDatabase()) {
@@ -55,22 +61,21 @@ class MallOfflineOrderDeliveryMysqlTest {
             f.facade.savePlan(f.ops, f.plan("PRO", "pro-1", List.of("BASE", "POS_USE")));
             f.facade.savePlan(f.ops, f.plan("CHAIN", "chain-1", List.of("BASE", "POS_USE", "KDS")));
             f.product();
-            var sku =
-                    hardware
-                            ? f.sku(
-                                    "sku-1",
-                                    List.of(
-                                            f.component(
-                                                    null,
-                                                    ComponentKind.HARDWARE,
-                                                    null,
-                                                    null,
-                                                    "device",
-                                                    null,
-                                                    1,
-                                                    1,
-                                                    false)))
-                            : f.sku();
+            var components = new ArrayList<SkuComponent>();
+            if (plan) components.addAll(f.sku().components());
+            if (hardware)
+                components.add(
+                        f.component(
+                                null,
+                                ComponentKind.HARDWARE,
+                                null,
+                                null,
+                                "device",
+                                null,
+                                2,
+                                1,
+                                false));
+            var sku = f.sku("sku-1", components);
             f.facade.saveSku(f.ops, sku);
             f.facade.publishIndustry(f.ops, f.publication(List.of("sku-1"), 7));
             var clock = Clock.systemUTC();
@@ -86,9 +91,8 @@ class MallOfflineOrderDeliveryMysqlTest {
             ActorAuthorizationPort auth =
                     (a, s, cap) -> new AuthorizationDecision(true, "OWNER", Optional.empty());
             var events = new JdbcCommerceEventPersistence(mall.ds);
-            var subs =
-                    new JdbcSubscriptionRepository(
-                            mall.ds, f.ids, new JdbcEndActivation(mall.ds, platform.ds, f.ids));
+            var activation = new JdbcEndActivation(mall.ds, platform.ds, f.ids);
+            var subs = new JdbcSubscriptionRepository(mall.ds, f.ids, activation);
             var schedule = new EndScheduleService(subs, f.uow, events, f.ids, clock);
             f.uow.required(
                     () -> {
@@ -155,7 +159,20 @@ class MallOfflineOrderDeliveryMysqlTest {
                                     hardware ? Optional.of(address) : Optional.empty(),
                                     STORE));
             var target = new OrderQuery(STORE, order.orderNo());
-            var bridge = new MallFulfillmentMysqlTest.Bridge();
+            var bridge =
+                    new MallFulfillmentMysqlTest.Bridge() {
+                        boolean lostResponse = true;
+
+                        public InventoryOutcome ship(InventoryCommand c) {
+                            var sent = super.ship(c);
+                            if (lostResponse) {
+                                lostResponse = false;
+                                throw new IllegalStateException(
+                                        "lost warehouse response after dispatch");
+                            }
+                            return sent;
+                        }
+                    };
             var ops = new JdbcFulfillmentRepository(mall.ds, true);
             var payments =
                     new CommerceFulfillmentService(
@@ -280,6 +297,11 @@ class MallOfflineOrderDeliveryMysqlTest {
                         new ai.neargo.commerce.api.fulfillment.FulfillmentQuery(
                                 STORE.tenantNo(), order.orderNo()));
             }
+            if (delayGrant) {
+                platform.jdbc.execute(
+                        "CREATE TRIGGER grant_down BEFORE INSERT ON mch_store_end_grant FOR EACH"
+                            + " ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='grant unavailable'");
+            }
             var result = offline.confirm(f.ops, review);
             assertEquals("APPLIED", result.status());
             assertEquals(result, offline.confirm(f.ops, review));
@@ -298,15 +320,112 @@ class MallOfflineOrderDeliveryMysqlTest {
                             order.orderNo()));
             assertEquals(hardware ? 1 : 0, bridge.reserves);
             assertEquals(0, bridge.ships);
+            String grants =
+                    "SELECT COUNT(*) FROM mch_store_end_grant WHERE tenant_no=? AND store_no=? AND"
+                        + " end_code='POS' AND entitlement_code='POS_USE' AND state IN"
+                        + " ('ACTIVE','SCHEDULED')";
             assertEquals(
-                    hardware ? 0 : 1,
+                    plan && !delayGrant ? 1 : 0,
                     platform.jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM mch_store_end_grant WHERE tenant_no=? AND"
-                                + " store_no=? AND end_code='POS' AND entitlement_code='POS_USE'"
-                                + " AND state IN ('ACTIVE','SCHEDULED')",
-                            Integer.class,
-                            STORE.tenantNo(),
-                            STORE.storeNo()));
+                            grants, Integer.class, STORE.tenantNo(), STORE.storeNo()));
+            if (hardware) {
+                var queries =
+                        new DefaultMallQueryFacade(
+                                orders,
+                                ops,
+                                new JdbcRefundRepository(mall.ds, f.ids, subs, true),
+                                accounts,
+                                f.uow,
+                                stores,
+                                auth);
+                var item = queries.order(f.ops, target).hardwareItems().getFirst();
+                assertEquals("device", item.hardwareSkuNo());
+                assertEquals(2, item.quantity());
+                var part = item.orderComponentNo();
+                var first =
+                        new HardwareShipmentCommand(
+                                STORE.tenantNo(),
+                                order.orderNo(),
+                                part,
+                                "first",
+                                "carrier",
+                                "track-1",
+                                1,
+                                f.ops.principalNo());
+                payments.confirmShipment(first);
+                assertEquals(
+                        AsyncStatus.PENDING,
+                        queries.order(BUYER, target).shipments().getFirst().status());
+                var second =
+                        new HardwareShipmentCommand(
+                                STORE.tenantNo(),
+                                order.orderNo(),
+                                part,
+                                "second",
+                                "carrier",
+                                "track-2",
+                                1,
+                                f.ops.principalNo());
+                assertEquals(
+                        "SHIPMENT_UNKNOWN",
+                        assertThrows(MallException.class, () -> payments.confirmShipment(second))
+                                .code());
+                payments.recover(new FulfillmentQuery(STORE.tenantNo(), order.orderNo()));
+                payments.confirmShipment(first);
+                assertEquals(1, bridge.ships);
+                assertEquals("PARTIAL", queries.order(BUYER, target).summary().fulfillmentStatus());
+                payments.confirmShipment(second);
+                payments.confirmShipment(second);
+                var detail = queries.order(BUYER, target);
+                assertEquals("COMPLETED", detail.summary().fulfillmentStatus());
+                assertEquals(
+                        List.of("track-1", "track-2"),
+                        detail.shipments().stream()
+                                .map(MallOrderDetailView.Shipment::trackingNo)
+                                .toList());
+                assertEquals(
+                        List.of("first", "second"),
+                        detail.shipments().stream()
+                                .map(MallOrderDetailView.Shipment::requestOperationNo)
+                                .toList());
+                assertTrue(
+                        detail.shipments().stream()
+                                .allMatch(
+                                        x ->
+                                                part.equals(x.orderComponentNo())
+                                                        && "carrier".equals(x.carrierCode())
+                                                        && x.quantity() == 1
+                                                        && x.status() == AsyncStatus.SUCCEEDED));
+                assertEquals(2, bridge.ships);
+                assertEquals(
+                        2,
+                        mall.jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM mall_shipment WHERE order_no=? AND"
+                                    + " status='SHIPPED'",
+                                Integer.class,
+                                order.orderNo()));
+                if (delayGrant) {
+                    platform.jdbc.execute("DROP TRIGGER grant_down");
+                    mall.jdbc.update(
+                            "UPDATE mall_fulfillment_task SET next_retry_at=0 WHERE"
+                                + " task_type='END_ACTIVATION' AND status='PENDING'");
+                    assertEquals(0, activation.retryPendingAll(10));
+                }
+                if (plan) {
+                    payments.recover(new FulfillmentQuery(STORE.tenantNo(), order.orderNo()));
+                    assertEquals(
+                            1,
+                            platform.jdbc.queryForObject(
+                                    grants, Integer.class, STORE.tenantNo(), STORE.storeNo()));
+                    assertEquals(
+                            1,
+                            mall.jdbc.queryForObject(
+                                    "SELECT COUNT(*) FROM mch_subscription_period WHERE"
+                                        + " source_type='ORDER'",
+                                    Integer.class));
+                    assertEquals(2, bridge.ships);
+                }
+            }
         }
     }
 }

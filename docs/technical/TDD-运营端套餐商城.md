@@ -160,7 +160,7 @@
 
 新单的作废动作使用同一商城表的 `VOID` 记录，操作人、动作号、原付款尝试和银行对账凭证一并冻结。商户库的 `CLOSING` 记录供恢复任务继续解除主体购买占用。运营在原订单上查实收和已退金额，有差额或在途退款时须先完成退款。主体套餐详情与商城订单详情使用同一个补证入口，按门店、订单、原核款动作追加资料。切换时已由旧库受理的作废动作继续按旧动作号恢复。
 
-目标表与事务边界见 [商城库字段设计](design/数据库设计/字段/04-平台商城库.md)。第 2 项已有 [平台门店授权测试](../../backend/commerce/commerce-persistence/src/test/java/ai/neargo/commerce/persistence/PlatformEndActivationMysqlTest.java)。目标库建表顺序见 [商城库初始化](../../backend/commerce/commerce-persistence/src/main/resources/db/mall/README.md)。
+目标表与事务边界见 [商城库字段设计](design/数据库设计/字段/04-平台商城库.md)。普通门店的纯硬件与硬件加套餐订单已验证分批发货、仓库回执丢失后按原操作查回，以及平台授权恢复后按原 plan 开通。运营发货使用订单详情的 `hardwareItems[].orderComponentNo`，门店从原订单的成功发货记录读取承运商、运单号和数量。见 [组合履约用例](../../backend/commerce/commerce-persistence/src/test/java/ai/neargo/commerce/persistence/MallOfflineOrderDeliveryMysqlTest.java)。第 2 项已有 [平台门店授权测试](../../backend/commerce/commerce-persistence/src/test/java/ai/neargo/commerce/persistence/PlatformEndActivationMysqlTest.java)。目标库建表顺序见 [商城库初始化](../../backend/commerce/commerce-persistence/src/main/resources/db/mall/README.md)。
 
 #### 主体套餐归属与交易交接
 

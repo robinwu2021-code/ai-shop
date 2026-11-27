@@ -121,16 +121,32 @@ function ShipmentsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string
   const allow = useCan();
   const orderNo = d.summary!.order!.orderNo!;
   const refresh = useRefreshOrder(storeNo, orderNo);
-  const hardware = (d.quote?.components ?? d.summary?.order?.components ?? []).filter((x) => x.kind === "HARDWARE");
-  const [form, setForm] = React.useState({ componentNo: hardware[0]?.componentNo ?? "", carrierCode: "", trackingNo: "", quantity: "1" });
+  const hardware = d.hardwareItems ?? [];
+  const [form, setForm] = React.useState({ componentNo: hardware[0]?.orderComponentNo ?? "", carrierCode: "", trackingNo: "", quantity: "1" });
   const [opNo, setOpNo] = React.useState(() => newOpNo("SHIP"));
+  const qc = useQueryClient();
+  // Recovery may finish an earlier submission after the initial response was lost.
+  React.useEffect(() => {
+    if (d.shipments?.some(s => s.requestOperationNo === opNo && s.status === "SUCCEEDED")) {
+      setOpNo(newOpNo("SHIP"));
+      setForm(f => ({ ...f, trackingNo: "", quantity: "1" }));
+    }
+  }, [d.shipments, opNo]);
   const ship = useMutation({
     mutationFn: () => api.shipMallOrder(storeNo, orderNo, { orderComponentNo: form.componentNo, operationNo: opNo,
       carrierCode: form.carrierCode.trim(), trackingNo: form.trackingNo.trim(), quantity: Number(form.quantity) }),
-    onSuccess: () => { refresh(); setOpNo(newOpNo("SHIP")); setForm((f) => ({ ...f, trackingNo: "", quantity: "1" })); notify.success(c.toastShipped); },
+    onSuccess: (detail) => {
+      qc.setQueryData(["mall-order", storeNo, orderNo], detail);
+      refresh();
+      if (detail.shipments?.find(x => x.requestOperationNo === opNo)?.status !== "SUCCEEDED") {
+        notify.info(c.shipPending);
+        return;
+      }
+      notify.success(c.toastShipped);
+    },
   });
   if (!hardware.length) return null;
-  const shipped = (no?: string) => (d.shipments ?? []).filter((s) => s.orderComponentNo === no && s.status !== "FAILED").reduce((a, s) => a + (s.quantity ?? 0), 0);
+  const shipped = (no?: string) => (d.shipments ?? []).filter((s) => s.orderComponentNo === no && s.status === "SUCCEEDED").reduce((a, s) => a + (s.quantity ?? 0), 0);
   const columns: Column<MallShipment>[] = [
     { header: c.colComponent, cell: (x) => <code className="txt-caption">{x.orderComponentNo}</code> },
     { header: c.colCarrier, cell: (x) => x.carrierCode },
@@ -139,21 +155,27 @@ function ShipmentsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string
     { header: c.colStatus, cell: (x) => <StatusBadge map={asyncMap(c)} value={x.status ?? "PENDING"} /> },
   ];
   const paid = d.summary?.paymentStatus === "PAID";
-  const valid = form.componentNo && form.carrierCode.trim() && form.trackingNo.trim() && Number(form.quantity) >= 1;
+  const quantity = Number(form.quantity);
+  const item = hardware.find(h => h.orderComponentNo === form.componentNo);
+  const pending = d.shipments?.find(s => s.orderComponentNo === form.componentNo && s.status !== "SUCCEEDED");
+  const valid = item && form.carrierCode.trim() && form.trackingNo.trim() && Number.isSafeInteger(quantity)
+    && quantity > 0 && quantity <= item.quantity - shipped(item.orderComponentNo)
+    && (!pending || (pending.requestOperationNo === opNo && pending.carrierCode === form.carrierCode.trim()
+      && pending.trackingNo === form.trackingNo.trim() && pending.quantity === quantity));
   return (
     <DrawerSection title={c.secShipments} desc={c.secShipmentsDesc}>
       <p className="mb-2 txt-caption text-muted-foreground">
-        {hardware.map((h) => fill(c.shippedOf, { no: h.componentNo ?? "", done: shipped(h.componentNo), total: h.quantity ?? 0 })).join(" · ")}
+        {hardware.map((h) => fill(c.shippedOf, { no: h.hardwareSkuNo, done: shipped(h.orderComponentNo), total: h.quantity })).join(" · ")}
       </p>
       <DataTable columns={columns} rows={d.shipments} error={src.error} onRetry={src.onRetry} rowKey={(x) => x.operationNo ?? ""} empty={c.shipmentsEmpty} />
-      {allow("commerce:mall:shipment:write") && paid && (
+      {allow("commerce:mall:shipment:write") && paid && hardware.some(h => shipped(h.orderComponentNo) < h.quantity) && (
         <div className="mt-3 grid gap-2 md:grid-cols-5">
-          <Select aria-label={c.colComponent} value={form.componentNo} onChange={(e) => setForm((f) => ({ ...f, componentNo: e.target.value }))}>
-            {hardware.map((h) => <option key={h.componentNo} value={h.componentNo}>{h.componentNo}</option>)}
+          <Select disabled={ship.isPending} aria-label={c.colComponent} value={form.componentNo} onChange={(e) => { setOpNo(newOpNo("SHIP")); setForm(f => ({ ...f, componentNo: e.target.value, trackingNo: "", quantity: "1" })); }}>
+            {hardware.map((h) => <option key={h.orderComponentNo} value={h.orderComponentNo}>{h.hardwareSkuNo} · {h.orderComponentNo}</option>)}
           </Select>
-          <Input aria-label={c.colCarrier} placeholder={c.colCarrier} value={form.carrierCode} onChange={(e) => setForm((f) => ({ ...f, carrierCode: e.target.value }))} />
-          <Input aria-label={c.colTracking} placeholder={c.colTracking} value={form.trackingNo} onChange={(e) => setForm((f) => ({ ...f, trackingNo: e.target.value }))} />
-          <Input aria-label={c.colQty} inputMode="numeric" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} />
+          <Input disabled={ship.isPending} aria-label={c.colCarrier} placeholder={c.colCarrier} value={form.carrierCode} onChange={(e) => setForm((f) => ({ ...f, carrierCode: e.target.value }))} />
+          <Input disabled={ship.isPending} aria-label={c.colTracking} placeholder={c.colTracking} value={form.trackingNo} onChange={(e) => setForm((f) => ({ ...f, trackingNo: e.target.value }))} />
+          <Input disabled={ship.isPending} aria-label={c.colQty} inputMode="numeric" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} />
           <Button disabled={!valid} loading={ship.isPending} onClick={() => ship.mutate()}>{c.btnShip}</Button>
         </div>
       )}

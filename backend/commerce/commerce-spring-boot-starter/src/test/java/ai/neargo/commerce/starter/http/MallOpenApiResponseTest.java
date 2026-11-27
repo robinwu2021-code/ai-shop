@@ -58,7 +58,7 @@ class MallOpenApiResponseTest {
                                         "tracking",
                                         1,
                                         AsyncStatus.PENDING,
-                                        null)),
+                                        null, "request-1")),
                         List.of(
                                 new RefundView(
                                         "refund",
@@ -69,7 +69,8 @@ class MallOpenApiResponseTest {
                                         "REQUESTED",
                                         "digest",
                                         null)),
-                        List.of(new MallOrderDetailView.Line("product", "sku", "sku-1", "套餐", 1)));
+                        List.of(new MallOrderDetailView.Line("product", "sku", "sku-1", "套餐", 1)),
+                        List.of(new MallOrderDetailView.HardwareItem("component", "device", 2)));
         var queries =
                 (MallQueryFacade)
                         java.lang.reflect.Proxy.newProxyInstance(

@@ -92,6 +92,7 @@ export interface MallOrderRow {
   refund: string;
   payable: MallMoney;
   components: MallQuoteComponent[];
+  hardwareItems: { orderComponentNo: string; hardwareSkuNo: string; quantity: number }[];
   createdAt: number;
   quote: MallQuoteView;
   shippingAddress: MallShippingAddress | null;
@@ -108,7 +109,7 @@ interface Subscription { entitlementVersion: number; sources: MallEntitlementSou
 
 interface ProfileRow { terms: MallOfflineCollectionTerms; enabled: boolean }
 
-interface QuoteRow { view: MallQuoteView; usedBy: string | null; currency: string; lines: { skuVersionNo: string; quantity: number }[] }
+interface QuoteRow { hardware: { hardwareSkuNo: string; quantity: number }[]; view: MallQuoteView; usedBy: string | null; currency: string; lines: { skuVersionNo: string; quantity: number }[] }
 
 export interface MallState {
   deployments: MallDeploymentOption[];
@@ -170,7 +171,7 @@ function seedOrder(
 ): MallOrderRow {
   const quote = quoteOf(storeNo, components, at);
   return {
-    storeNo, orderNo, createdAt: at, components, payable: quote.payable!, quote, shippingAddress,
+    storeNo, orderNo, createdAt: at, components, hardwareItems: [], payable: quote.payable!, quote, shippingAddress,
     status: axes.status, payment: axes.payment, fulfillment: axes.fulfillment, refund: axes.refund ?? "NONE",
     attempts: [], shipments: [], refunds: [], offline,
   };
@@ -296,10 +297,11 @@ export function seedMall(): MallState {
   o2.offline!.evidence["EV-1002-1"] = { purpose: "BUYER_RECEIPT", url: SAMPLE_RECEIPT };
 
   // 3. 含硬件的已付单：待发货
-  const hw: MallQuoteComponent = { componentNo: "OC-HW-1003", kind: "HARDWARE", listAmount: twd("1980000"), dealAmount: twd("1980000"),
+  const hw: MallQuoteComponent = { componentNo: "SC-2", kind: "HARDWARE", listAmount: twd("1980000"), dealAmount: twd("1980000"),
     creditAmount: twd("0"), cashAmount: twd("1980000"), cycleDays: 0, quantity: 2 };
   const o3 = seedOrder("TW-STORE-001", "MO-1003", T0 - 3 * DAY, [hw], { status: "FULFILLING", payment: "PAID", fulfillment: "PENDING" }, null,
     { recipient: "王小明（样例）", phone: "0900-000-000", countryCode: "TW", region: null, city: "台北市", addressLine: "信义路样例 1 号", postalCode: "110" });
+  o3.hardwareItems.push({ orderComponentNo: "OC-HW-1003", hardwareSkuNo: "HW-POS-01", quantity: 2 });
   o3.attempts.push({ attemptNo: "PA-1003", channel: "INTERNAL", payMethod: "DEV", amount: o3.payable, status: "SUCCEEDED",
     paymentNo: "PAY-1003", paidAt: iso(T0 - 3 * DAY + 60_000), errorCode: null, paidAtPrecisionMs: 1 });
 
@@ -706,15 +708,15 @@ export function ship(storeNo: string, orderNo: string, v: { orderComponentNo: st
   const prior = o.shipments.find((x) => x.operationNo === v.operationNo);
   if (prior) { need(prior.fingerprint === fp, "IDEMPOTENCY_CONFLICT"); return o; }
   need(o.payment === "PAID", "FULFILLMENT_UNAVAILABLE");
-  const c = o.components.find((x) => x.componentNo === v.orderComponentNo);
-  need(c && c.kind === "HARDWARE", "INVALID_REQUEST");
+  const c = o.hardwareItems.find(x => x.orderComponentNo === v.orderComponentNo);
+  need(c, "INVALID_REQUEST");
   const shipped = o.shipments.filter((x) => x.orderComponentNo === v.orderComponentNo && x.status !== "FAILED")
     .reduce((a, x) => a + (x.quantity ?? 0), 0);
   need(Number.isInteger(v.quantity) && v.quantity >= 1 && v.quantity <= (c!.quantity ?? 0) - shipped, "INVALID_REQUEST");
   o.shipments.push({ operationNo: v.operationNo, orderComponentNo: v.orderComponentNo, carrierCode: v.carrierCode,
     trackingNo: v.trackingNo, quantity: v.quantity, status: "SUCCEEDED", errorCode: null, fingerprint: fp });
-  const done = o.components.filter((x) => x.kind === "HARDWARE").every((h) =>
-    o.shipments.filter((x) => x.orderComponentNo === h.componentNo && x.status === "SUCCEEDED").reduce((a, x) => a + (x.quantity ?? 0), 0) >= (h.quantity ?? 0));
+  const done = o.hardwareItems.every((h) =>
+    o.shipments.filter((x) => x.orderComponentNo === h.orderComponentNo && x.status === "SUCCEEDED").reduce((a, x) => a + (x.quantity ?? 0), 0) >= (h.quantity ?? 0));
   o.fulfillment = done ? "COMPLETED" : "PARTIAL";
   if (done && o.refund === "NONE") o.status = "COMPLETED";
   return o;
@@ -868,6 +870,7 @@ export function assistedQuote(storeNo: string, v: { lines: { skuVersionNo: strin
   const profile = s.profiles[v.currency];
   need(profile && profile.enabled, "OFFLINE_UNAVAILABLE");
   const components: MallQuoteComponent[] = [];
+  const hardware: QuoteRow["hardware"] = [];
   const seen = new Set<string>();
   for (const line of v.lines) {
     need(!seen.has(line.skuVersionNo), "INVALID_REQUEST");
@@ -889,6 +892,7 @@ export function assistedQuote(storeNo: string, v: { lines: { skuVersionNo: strin
       const share = i === comps.length - 1 || wsum === BigInt(0) ? left : (BigInt(total) * weights[i]!) / wsum;
       left -= share;
       const m = { currency: v.currency, minor: share.toString() };
+      if (c.kind === "HARDWARE") hardware.push({ hardwareSkuNo: c.hardwareSkuNo!, quantity: line.quantity * (c.unitCount ?? 1) });
       components.push({ componentNo: nextNo("QC"), kind: c.kind, listAmount: m, dealAmount: m, creditAmount: zero(v.currency),
         cashAmount: m, cycleDays: c.periodDays ?? 0, quantity: line.quantity * (c.unitCount ?? 1) });
     });
@@ -897,7 +901,7 @@ export function assistedQuote(storeNo: string, v: { lines: { skuVersionNo: strin
   const view: MallQuoteView = { quoteNo: nextNo("Q"), store: { tenantNo: "MAIN", storeNo }, total, credit: zero(v.currency), payable: total,
     components, entitlementVersion: subscriptionOf(storeNo).entitlementVersion, balanceVersion: 1,
     expiresAt: iso(Date.now() + 15 * 60_000), creditBreakdown: null };
-  s.quotes[view.quoteNo!] = { view, usedBy: null, currency: v.currency, lines: v.lines };
+  s.quotes[view.quoteNo!] = { view, hardware, usedBy: null, currency: v.currency, lines: v.lines };
   return view;
 }
 
@@ -924,6 +928,7 @@ export function assistedPlace(storeNo: string, v: { quoteNo: string; idempotency
   const orderNo = nextNo("MO");
   const order: MallOrderRow = {
     storeNo, orderNo, status: "AWAITING_PAYMENT", payment: "UNPAID", fulfillment: hasHardware ? "WAIT_INVENTORY" : "PENDING", refund: "NONE",
+    hardwareItems: q.hardware.map(h => ({ ...h, orderComponentNo: nextNo("OC") })),
     payable: q.view.payable!, components: q.view.components!, createdAt: Date.now(), quote: q.view,
     shippingAddress: hasHardware ? v.shippingAddress : null, attempts: [], shipments: [], refunds: [],
     offline: { instructions: null, claims: [], evidence: {}, actions: {} }, idempotencyKey: v.idempotencyKey,

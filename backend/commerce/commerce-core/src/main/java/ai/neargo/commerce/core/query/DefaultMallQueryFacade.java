@@ -187,7 +187,8 @@ public final class DefaultMallQueryFacade implements MallQueryFacade {
                                             result == null ? AsyncStatus.PENDING : result.status(),
                                             result == null
                                                     ? null
-                                                    : result.errorCode().orElse(null)));
+                                                    : result.errorCode().orElse(null),
+                                            s.operationNo()));
                         }
                     }
                     return new MallOrderDetailView(
@@ -199,7 +200,13 @@ public final class DefaultMallQueryFacade implements MallQueryFacade {
                             refunds.forOrder(order).stream()
                                     .map(RefundSnapshot.State::view)
                                     .toList(),
-                            lines(order));
+                            lines(order),
+                            orders.components(query.store(), order.orderNo()).stream()
+                                    .filter(p -> p.snapshot().allocation().component().kind() == ComponentKind.HARDWARE)
+                                    .map(p -> new MallOrderDetailView.HardwareItem(p.orderComponentNo(),
+                                            p.snapshot().allocation().component().hardwareSkuNo(),
+                                            p.snapshot().allocation().cycles().size()))
+                                    .toList());
                 });
     }
 }
