@@ -384,18 +384,19 @@ mbr_member,shop 库,5,会员营销,保留,,会员营销,会员营销库,会员,m
 mbr_member_source,shop 库,3,会员营销,保留,,会员营销,会员营销库,会员,mbr_member_source,,
 mbr_member_store,shop 库,1,会员营销,并入,去冗余,,,,,mbr_member（会员与门店 / 范围的关系只留一张）,
 mbr_member_tag,shop 库,0,会员营销,保留,,会员营销,会员营销库,会员,mbr_member_tag,,
-mbr_reach_log,shop 库,0,会员营销,保留,,会员营销,会员营销库,触达,mbr_reach_log,,
+mbr_reach_log,shop 库,0,会员营销,并入,抽象,,,,,平台服务库 notify_delivery（触达的每一次发送就是一条通知的发送记录）,对照手持收银机功能清单
 mbr_reach_task,shop 库,0,会员营销,保留,,会员营销,会员营销库,触达,mbr_reach_task,,
 mbr_scope_legacy_link,shop 库,0,会员营销,退役,去冗余,,,,,过渡,
 mbr_scope_member,shop 库,0,会员营销,并入,抽象,,,,,mbr_member（带范围）,会员主表两种口径
 mbr_segment,shop 库,1,会员营销,保留,,会员营销,会员营销库,会员,mbr_segment,,
-mbr_setting,shop 库,0,会员营销,保留,,会员营销,会员营销库,会员,mbr_setting,,
+mbr_setting,shop 库,0,会员营销,并入,抽象,,,,,平台基础库 mch_store_setting（设置域“会员”）,对照手持收银机功能清单
 mbr_store_profile,shop 库,1,会员营销,保留,,会员营销,会员营销库,会员,mbr_store_profile,,
 mbr_tag,shop 库,1,会员营销,保留,,会员营销,会员营销库,会员,mbr_tag,,
 mbr_tag_merge_log,shop 库,0,会员营销,并入,抽象,,,,,基础能力库统一审计,归因日志是审计
 mch_account,shop 库,777,平台基础,保留,,平台基础,平台基础库,B 端账号,mch_account,B 端账号：登录凭据的主体，记属于哪个主体、是不是老板；启用或停用管的是能不能登录,账号与人员恢复成两张
 mch_admission_policy,shop 库,0,平台基础,并入,抽象,,,,,支付商户库 pay_admission_policy,独立复核后采纳
 mch_appointment_slot,shop 库,1,平台基础,退役,去冗余,,,,,旧预约时段，由 mch_resource / mch_booking_* 取代,
+mch_attendance,新建,0,,新建,抽象,平台基础,平台基础库,商户与门店,mch_attendance,打卡记录：员工每次上班、下班打卡，在哪家店、哪台设备、是否异常,对照手持收银机功能清单
 mch_booking_hold,shop 库,12,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_booking,一次预约：预留、确认占用、释放是它的状态,预约单与资源占用要同事务
 mch_booking_hold_unit,shop 库,72,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_booking_unit,预约占用的资源时段单元,预约单与资源占用要同事务
 mch_booking_owner,shop 库,10,平台基础,并入,抽象,,,,,mch_booking（占用上直接记为哪张预约单或到店单、是否当前有效）,门店交易库清理（独立复核 13 条）
@@ -420,6 +421,8 @@ mch_entity_creation_request,shop 库,5,平台基础,并入,去冗余,,,,,独立�
 mch_entity_plan,shop 库,18,平台商城,并入,去冗余,,,,,sys_industry_plan(+version)（旧 plan 定义）,
 mch_entity_profile_projection,shop 库,6,平台基础,并入,抽象,,,,,mch_entity（支付进件状态与已核准的资料版本）,支付侧审核结果的投影与主体一对一
 mch_fulfillment_channel,shop 库,5,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_store_fulfillment,门店履约方式：这家店开了哪些（自提、配送、快递、堂食、到店服务）及各自的配置,平台基础库主数据设计优化
+mch_hq_release,新建,0,,新建,抽象,平台基础,平台基础库,商户与门店,mch_hq_release,总部下发：总部把一批商品、价格或设置的改动发给门店的一次下发,对照手持收银机功能清单
+mch_hq_release_store,新建,0,,新建,抽象,平台基础,平台基础库,商户与门店,mch_hq_release_store,下发的门店：一次下发发到了哪些店，各店是待套用、已套用还是已拒绝,对照手持收银机功能清单
 mch_login_log,shop 库,430,平台基础,保留,,平台基础,平台基础库,会话与登录,mch_login_log,B 端登录日志,B 端与运营端的认证、角色权限各用一套
 mch_management_command,shop 库,19,平台基础,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,平台基础复核后采纳（2026-11-25）
 mch_management_grant,shop 库,93,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_grant,B 端授权：谁在哪个管理空间、品牌、门店、主体上有什么角色或权限,B 端与运营端的认证、角色权限各用一套
@@ -468,6 +471,7 @@ mch_store_entity_claim,shop 库,0,平台基础,并入,抽象,,,,,独立的审核
 mch_store_opening_request,shop 库,2,平台基础,并入,去冗余,,,,,独立的审核与工单服务（含通过后的执行编排）,
 mch_store_qrcode_print,shop 库,0,平台基础,退役,抽象,,,,,由独立的审核与工单服务承担，本库不建表（印刷是一张运营工单）,平台基础库主数据设计优化
 mch_store_role,shop 库,16,平台基础,并入,抽象,,,,,mch_grant（范围 = 门店）,商户角色授权收敛
+mch_store_setting,新建,0,,新建,抽象,平台基础,平台基础库,商户与门店,mch_store_setting,门店设置：门店级的开关与参数，按设置域分——PIN 策略、自动锁屏、开票时机与列印偏好、会员设置、库存同步模式等,对照手持收银机功能清单
 mch_subscription_account,shop 库,19,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_account,,
 mch_subscription_conversion,shop 库,0,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_conversion,,
 mch_subscription_conversion_item,shop 库,3,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_conversion_item,,
@@ -477,6 +481,7 @@ mch_subscription_credit_lot,shop 库,0,平台商城,保留,,平台商城,平台�
 mch_subscription_migration_map,shop 库,0,平台商城,退役,去冗余,,,,,过渡,
 mch_subscription_period,shop 库,20,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_period,,
 mch_subscription_reservation,shop 库,9,平台商城,保留,,平台商城,平台商城库,订阅,mch_subscription_reservation,,
+mch_trusted_device,新建,0,,新建,抽象,平台基础,平台基础库,商户与门店,mch_trusted_device,受信任装置：这个账号信任哪些设备；新设备登录要先验证，通过后记在这里,对照手持收银机功能清单
 mch_violation,shop 库,0,平台基础,并入,抽象,,,,,risk_event,违规是风控事件
 mig_ume_account_20261117,shop 库,1655,,不迁入,去冗余,,,,,一次性导入暂存 / 备份,
 mig_ume_channel_20261117,支付库,1824,支付,不迁入,去冗余,,,,,一次性迁移 / 整理暂存,
@@ -726,9 +731,9 @@ pay_platform_collection_head,支付库 + shop 遗留副本,0,支付,保留,,支�
 pay_platform_collection_profile,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,pay_platform_collection_head（每行就是一版，带版本号、状态、生效起止）,规则与定义一张表、每行一版
 pay_platform_merchant,支付库,757,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_platform_merchant,,
 pay_points_funds_authority,支付库,0,支付,保留,,账务结算,账务结算库,积分,pay_points_funds_authority,,
-pay_pos_acceptance_case,支付库,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_pos_acceptance_case,,
+pay_pos_acceptance_case,支付库,0,支付,退役,抽象,,,,,由独立的审核与工单服务承担（验收用例是工单的检查项），本库不建表,对照手持收银机功能清单
 pay_pos_acceptance_command,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
-pay_pos_acceptance_run,支付库,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_pos_acceptance_run,,
+pay_pos_acceptance_run,支付库,0,支付,退役,抽象,,,,,由独立的审核与工单服务承担（终端上线前的验收是一张工单），本库不建表,对照手持收银机功能清单
 pay_pos_action,支付库,0,支付,并入,抽象,,,,,pay_channel_operation_intent,终端交易是一种渠道交易
 pay_pos_command_receipt,支付库,0,支付,并入,抽象,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,终端交易是一种渠道交易
 pay_pos_configuration,支付库,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_pos_configuration,,
@@ -764,7 +769,7 @@ pay_subscription_charge,支付库,0,支付,并入,抽象,,,,,stl_payment,订阅�
 pay_subscription_operation,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
 pay_subscription_route,支付库,0,支付,并入,抽象,,,,,pay_collection_policy,订阅扣款的收款路由
 pay_sv_handoff_history,shop 库,1,支付,退役,去冗余,,,,,一次性交接记录,储值迁移痕迹
-pay_terminal,支付库 + shop 遗留副本,0,支付,保留,,支付商户,支付商户库,支付商户、门店与终端,pay_terminal,设备身份以平台基础库 mch_store_device 为准，这里只存设备号与本业务的配置,
+pay_terminal,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,平台基础库 mch_store_device（设备本身：序列号、型号、激活、所在门店）；支付侧的身份在 pay_terminal_payment_binding,对照手持收银机功能清单
 pay_terminal_batch,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,pay_channel_bill,终端批结是一种渠道账单
 pay_terminal_config_audit,支付库,0,支付,并入,去冗余,,,,,pay_pos_configuration、基础能力库统一审计,终端配置两套
 pay_terminal_config_command,支付库,0,支付,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,各对象各建一张指令幂等表
