@@ -435,7 +435,7 @@ class ArchitectureTest {
     @Test
     @DisplayName("领域 Service 必须是接口，实现类叫 *ServiceImpl")
     void serviceMustBeInterface() {
-        // 只约束业务域：common 里的横切服务（IdempotencyService 等）没有多实现的可能，
+        // 只约束业务域：common 里的横切服务（RequestIdempotencyPortImpl 等）没有多实现的可能，
         // 强行拆接口只会多一层无意义的间接
         domainServiceRule().check(classes);
     }

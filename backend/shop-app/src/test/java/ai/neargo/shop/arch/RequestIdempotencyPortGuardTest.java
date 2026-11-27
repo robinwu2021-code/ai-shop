@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p>调用方依赖旧类 {@code IdempotencyService}（迁移期的转发器），回执表随基础能力换库时就得逐个改调用方；只依赖端口则一行不动。
  * 扫描后端与插件全部模块的 {@code src/main/java}，与 {@code backend/known-idempotency-service-refs.txt} 比，只准变短；
- * 名单清空时删掉转发器（实现是 {@code idem.port.RequestIdempotencyPortImpl}）。
+ * 名单已于 2026-11-27 清空、转发器已删（实现是 {@code idem.port.RequestIdempotencyPortImpl}）；守卫留着防止旧类再出现。
  */
 class RequestIdempotencyPortGuardTest {
 
