@@ -24,7 +24,7 @@ import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdGoodsDraft;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdSpecTemplate;
-import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SpecTemplateMapper;
@@ -142,8 +142,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     /** 标准品：引用建品时用它把类目与 optionCode 拉回权威值 */
     private final ai.neargo.shop.product.service.SpuStdService spuStdService;
 
-    /** 门店级库存。**只有商家显式设置过才有行** —— 见 saveStoreStock 的说明 */
-    private final ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;
+    /** 门店 SKU（门店价 + 店级库存，一店一 SKU 一行；两半各自可空，见 PrdStoreSku） */
+    private final ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storeSkuMapper;
 
     /**
      * 改库存走它，不自己 update。
@@ -169,8 +169,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     /** 记不记库存的唯一判据；投影事件带上它，进销存据此决定建不建物料 */
     private final ai.neargo.shop.product.service.InvManagedService invManaged;
 
-    /** 门店级售价。**无行回退主体价**（与库存的「无行视为 0」相反，见 PrdStorePrice） */
-    private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
 
     /** 规格库（V195）：类目级规格从这里来，SKU 的值编号也靠它反查 */
     private final ai.neargo.shop.product.service.SpecLibraryService specLibrary;
@@ -189,10 +187,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             ai.neargo.shop.spi.user.AdmissionPort admissionPort,
             ai.neargo.shop.product.service.CategoryService categoryService,
             ai.neargo.shop.product.service.SpuStdService spuStdService,
-            ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper,
+            ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storeSkuMapper,
             ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
             ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort,
-            ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper,
             ai.neargo.shop.product.service.SpecLibraryService specLibrary,
             ai.neargo.shop.event.OutboxEventBus events,
             ai.neargo.shop.spi.pay.MarketPort marketPort,
@@ -206,10 +203,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.marketPort = marketPort;
         this.invManaged = invManaged;
         this.specLibrary = specLibrary;
-        this.storePriceMapper = storePriceMapper;
         this.storeCategoryPort = storeCategoryPort;
         this.events = events;
-        this.storeStockMapper = storeStockMapper;
+        this.storeSkuMapper = storeSkuMapper;
         this.storeGoodsMapper = storeGoodsMapper;
         this.categoryService = categoryService;
         this.spuStdService = spuStdService;
@@ -810,25 +806,26 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         .map(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo)
                         .collect(java.util.stream.Collectors.toSet());
 
-        List<PrdStoreStock> stockRows =
+        List<PrdStoreSku> stockRows =
                 skuNos.isEmpty()
                         ? List.of()
                         : DataScopeContext.executeWithoutScope(
                                 () ->
-                                        storeStockMapper.selectList(
-                                                Wrappers.<PrdStoreStock>lambdaQuery()
-                                                        .in(PrdStoreStock::getSkuNo, skuNos)));
+                                        storeSkuMapper.selectList(
+                                                Wrappers.<PrdStoreSku>lambdaQuery()
+                                                        .in(PrdStoreSku::getSkuNo, skuNos)
+                                                        .isNotNull(PrdStoreSku::getSellableQty)));
         Set<String> managedSkus =
                 stockRows.stream()
-                        .map(PrdStoreStock::getSkuNo)
+                        .map(PrdStoreSku::getSkuNo)
                         .collect(java.util.stream.Collectors.toSet());
         Map<String, Integer> stockAtStore =
                 stockRows.stream()
                         .filter(r -> storeNo.equals(r.getStoreNo()))
                         .collect(
                                 java.util.stream.Collectors.toMap(
-                                        PrdStoreStock::getSkuNo,
-                                        r -> Math.max(nz(r.getStock()) - nz(r.getLockedStock()), 0),
+                                        PrdStoreSku::getSkuNo,
+                                        r -> Math.max(nz(r.getSellableQty()) - nz(r.getLockedQty()), 0),
                                         (a, b) -> a));
         return new StoreProjection(managedGoods, onSaleAtStore, managedSkus, stockAtStore);
     }
@@ -2262,9 +2259,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 }
             }
             for (String sku : removals) {
-                var stores = storeStockMapper.lockSkuStoresCurrent(sku);
+                var stores = storeSkuMapper.lockSkuStoresCurrent(sku);
                 if (stores.stream().anyMatch(row -> !entity.equals(row.getEntityNo())
-                        || (row.getLockedStock() != null && row.getLockedStock() != 0))) throw BizException.of(
+                        || (row.getLockedQty() != null && row.getLockedQty() != 0))) throw BizException.of(
                             ErrorCode.CONFLICT);
             }
             return null;
@@ -2306,19 +2303,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (skuNos.isEmpty()) {
             return;
         }
-        List<PrdStoreStock> rows =
+        List<PrdStoreSku> rows =
                 DataScopeContext.executeWithoutScope(
                         () ->
-                                storeStockMapper.selectList(
-                                        Wrappers.<PrdStoreStock>lambdaQuery()
-                                                .in(PrdStoreStock::getSkuNo, skuNos)));
+                                storeSkuMapper.selectList(
+                                        Wrappers.<PrdStoreSku>lambdaQuery()
+                                                .in(PrdStoreSku::getSkuNo, skuNos)
+                                                .isNotNull(PrdStoreSku::getSellableQty)));
         if (rows.isEmpty()) {
             // 这件商品还没有任何门店库存行 = 没启用分店库存，什么都不用做
             return;
         }
         Set<String> stores =
                 rows.stream()
-                        .map(PrdStoreStock::getStoreNo)
+                        .map(PrdStoreSku::getStoreNo)
                         .collect(
                                 java.util.stream.Collectors.toCollection(
                                         java.util.LinkedHashSet::new));
@@ -2331,13 +2329,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 if (have.contains(skuNo + "@" + storeNo)) {
                     continue;
                 }
-                PrdStoreStock row = new PrdStoreStock();
-                row.setStoreNo(storeNo);
-                row.setSkuNo(skuNo);
-                row.setEntityNo(merchantNo);
-                row.setStock(0);
-                row.setLockedStock(0);
-                DataScopeContext.executeWithoutScope(() -> storeStockMapper.insert(row));
+                DataScopeContext.executeWithoutScope(() -> {
+                    storeSkuMapper.startStoreStock(merchantNo, storeNo, skuNo, homeMarket);
+                    return null;
+                });
             }
         }
     }
@@ -3379,23 +3374,11 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (!exists) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        PrdStoreStock row =
-                DataScopeContext.executeWithoutScope(
-                        () ->
-                                storeStockMapper.selectOne(
-                                        Wrappers.<PrdStoreStock>lambdaQuery()
-                                                .eq(PrdStoreStock::getStoreNo, storeNo)
-                                                .eq(PrdStoreStock::getSkuNo, skuNo)));
-        if (row == null) {
-            // 这家店还没有这一行 —— 先建出来（Port 的 setOnHand 只改不建）
-            PrdStoreStock toInsert = new PrdStoreStock();
-            toInsert.setStoreNo(storeNo);
-            toInsert.setSkuNo(skuNo);
-            toInsert.setEntityNo(merchantNo);
-            toInsert.setLockedStock(0);
-            toInsert.setStock(0);
-            DataScopeContext.executeWithoutScope(() -> storeStockMapper.insert(toInsert));
-        }
+        // 这家店还没有店级库存 —— 先建出来（Port 的 setOnHand 只改不建）；只设过门店价的店补上库存列
+        DataScopeContext.executeWithoutScope(() -> {
+            storeSkuMapper.startStoreStock(merchantNo, storeNo, skuNo, homeMarket);
+            return null;
+        });
         /*
          * **接入进销存、且本店开了同步的货，改的是「线上放多少」，不是实物**（§8）。
          * 实物只由单据改；这里直接写商城库存的话，下一次进货 / 盘点的写回会把它盖掉 ——
@@ -3548,20 +3531,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         var existing =
                 DataScopeContext.executeWithoutScope(
                         () ->
-                                storePriceMapper.selectOne(
+                                storeSkuMapper.selectOne(
                                         Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStorePrice>
+                                                .<ai.neargo.shop.product.entity.PrdStoreSku>
                                                         lambdaQuery()
                                                 .eq(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getStoreNo,
                                                         storeNo)
                                                 .eq(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getSkuNo,
                                                         skuNo)
                                                 .eq(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getMarket,
                                                         homeMarket)));
         /*
@@ -3571,9 +3554,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 「改成和总部一样」只能靠他自己抄一遍数字，而抄错没有任何一处会拦。
          */
         if (price == null) {
-            if (existing != null) {
+            if (existing != null && existing.getPrice() != null) {
+                /*
+                 * 只清价格那两列，不删行：门店价与店级库存同在 prd_store_sku 一行，
+                 * 删行会把这家店的库存一起删掉。没有店级库存的行清完价就是空壳，顺手删掉。
+                 */
                 DataScopeContext.executeWithoutScope(
-                        () -> storePriceMapper.deleteById(existing.getId()));
+                        () -> existing.getSellableQty() == null
+                                ? storeSkuMapper.deleteById(existing.getId())
+                                : storeSkuMapper.update(null, Wrappers.<PrdStoreSku>lambdaUpdate()
+                                        .eq(PrdStoreSku::getId, existing.getId())
+                                        .set(PrdStoreSku::getPrice, null)
+                                        .set(PrdStoreSku::getOriginPrice, null)));
                 events.publish(
                         new CatalogSourceChanged(
                                 merchantNo, storeNo, goodsNo, "STORE_PRICE_CHANGED"));
@@ -3584,18 +3576,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (existing == null) {
-            var row = new ai.neargo.shop.product.entity.PrdStorePrice();
+            var row = new ai.neargo.shop.product.entity.PrdStoreSku();
             row.setStoreNo(storeNo);
             row.setSkuNo(skuNo);
             row.setEntityNo(merchantNo);
             row.setMarket(homeMarket);
             row.setPrice(price);
             row.setOriginPrice(originPrice);
-            DataScopeContext.executeWithoutScope(() -> storePriceMapper.insert(row));
+            DataScopeContext.executeWithoutScope(() -> storeSkuMapper.insert(row));
         } else {
-            existing.setPrice(price);
-            existing.setOriginPrice(originPrice);
-            DataScopeContext.executeWithoutScope(() -> storePriceMapper.updateById(existing));
+            // 显式 set：划线价传空要能清掉（updateById 会跳过空字段）；只改价格两列，库存列不碰
+            DataScopeContext.executeWithoutScope(() -> storeSkuMapper.update(null,
+                    Wrappers.<PrdStoreSku>lambdaUpdate().eq(PrdStoreSku::getId, existing.getId())
+                            .set(PrdStoreSku::getPrice, price)
+                            .set(PrdStoreSku::getOriginPrice, originPrice)));
         }
         events.publish(
                 new CatalogSourceChanged(merchantNo, storeNo, goodsNo, "STORE_PRICE_CHANGED"));
@@ -3612,20 +3606,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         for (var r :
                 DataScopeContext.executeWithoutScope(
                         () ->
-                                storePriceMapper.selectList(
+                                storeSkuMapper.selectList(
                                         Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStorePrice>
+                                                .<ai.neargo.shop.product.entity.PrdStoreSku>
                                                         lambdaQuery()
                                                 .eq(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getStoreNo,
                                                         storeNo)
                                                 .eq(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getMarket,
                                                         homeMarket)
                                                 .in(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getSkuNo,
                                                         skuNos)))) {
             if (r.getPrice() != null) {
@@ -3641,9 +3635,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 && !skuNo.isBlank()
                 && DataScopeContext.executeWithoutScope(
                                 () ->
-                                        storeStockMapper.selectCount(
-                                                Wrappers.<PrdStoreStock>lambdaQuery()
-                                                        .eq(PrdStoreStock::getSkuNo, skuNo)))
+                                        storeSkuMapper.selectCount(
+                                                Wrappers.<PrdStoreSku>lambdaQuery()
+                                                        .eq(PrdStoreSku::getSkuNo, skuNo)
+                                                        .isNotNull(PrdStoreSku::getSellableQty)))
                         > 0;
     }
 
@@ -3657,18 +3652,19 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 || (storeNos != null && storeNos.isEmpty())) {
             return java.util.Map.of();
         }
-        List<PrdStoreStock> rows =
+        List<PrdStoreSku> rows =
                 DataScopeContext.executeWithoutScope(
                         () ->
-                                storeStockMapper.selectList(
-                                        Wrappers.<PrdStoreStock>lambdaQuery()
-                                                .eq(PrdStoreStock::getEntityNo, merchantNo)
+                                storeSkuMapper.selectList(
+                                        Wrappers.<PrdStoreSku>lambdaQuery()
+                                                .eq(PrdStoreSku::getEntityNo, merchantNo)
+                                                .isNotNull(PrdStoreSku::getSellableQty)
                                                 .in(
                                                         storeNos != null,
-                                                        PrdStoreStock::getStoreNo,
+                                                        PrdStoreSku::getStoreNo,
                                                         storeNos == null ? List.of() : storeNos)));
         java.util.Map<String, Integer> out = new java.util.LinkedHashMap<>();
-        for (PrdStoreStock r : rows) {
+        for (PrdStoreSku r : rows) {
             if (r.getStoreNo() == null || r.getStoreNo().isBlank()) {
                 continue;
             }
@@ -3677,7 +3673,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * 20 件全被未付款的单锁着，货架上就是空的 —— 只看 stock 的话
              * 商家在「缺货 0」的页面上眼看着卖不出去。
              */
-            int available = nzi(r.getStock()) - nzi(r.getLockedStock());
+            int available = nzi(r.getSellableQty()) - nzi(r.getLockedQty());
             if (available <= 0) {
                 out.merge(r.getStoreNo(), 1, Integer::sum);
             }
@@ -4453,12 +4449,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                                     s.saleUnit()))
                             .toList();
         }
-        Map<String, PrdStoreStock> byStore =
+        Map<String, PrdStoreSku> byStore =
                 DataScopeContext.executeWithoutScope(
                                 () ->
-                                        storeStockMapper.selectList(
-                                                Wrappers.<PrdStoreStock>lambdaQuery()
-                                                        .in(PrdStoreStock::getSkuNo, skuNos)))
+                                        storeSkuMapper.selectList(
+                                                Wrappers.<PrdStoreSku>lambdaQuery()
+                                                        .in(PrdStoreSku::getSkuNo, skuNos)
+                                                        .isNotNull(PrdStoreSku::getSellableQty)))
                         .stream()
                         .collect(
                                 java.util.stream.Collectors.toMap(
@@ -4468,7 +4465,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         // 这些 SKU 里有没有任何一个启用了分店库存 —— 判据与 StockPortImpl 保持一致
         java.util.Set<String> perStore =
                 byStore.values().stream()
-                        .map(PrdStoreStock::getSkuNo)
+                        .map(PrdStoreSku::getSkuNo)
                         .collect(java.util.stream.Collectors.toSet());
         if (perStore.isEmpty()) {
             return skus;
@@ -4479,16 +4476,16 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                             if (!perStore.contains(sku.skuNo())) {
                                 return sku;
                             }
-                            PrdStoreStock row = byStore.get(sku.skuNo() + "@" + storeNo);
+                            PrdStoreSku row = byStore.get(sku.skuNo() + "@" + storeNo);
                             /*
                              * 这家店没有行 = 0，不是回退总量 —— 与下单侧同一口径。
                              * 两处口径不一致的话，会出现「页面显示有货、下单说库存不足」。
                              */
-                            int stock = row == null || row.getStock() == null ? 0 : row.getStock();
+                            int stock = row == null || row.getSellableQty() == null ? 0 : row.getSellableQty();
                             int locked =
-                                    row == null || row.getLockedStock() == null
+                                    row == null || row.getLockedQty() == null
                                             ? 0
-                                            : row.getLockedStock();
+                                            : row.getLockedQty();
                             int available = Math.max(stock - locked, 0);
                             return new GoodsVO.SkuVO(
                                     sku.skuNo(),

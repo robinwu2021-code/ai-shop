@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <h2>默认不生效</h2>
  * 只有 {@code shop.inventory.stock-authority=INVENTORY} 时才装配。
  * 默认值是 {@code PLATFORM}，此时本类整个不存在，交易域拿到的仍是
- * {@code StockPortImpl}（写 {@code prd_sku} / {@code prd_store_stock}）——
+ * {@code StockPortImpl}（写 {@code prd_sku} / {@code prd_store_sku}）——
  * **代码合进来当天，一个字节的行为都不变**。
  *
  * <h2>切换的前提是 G3，不是「代码写好了」</h2>

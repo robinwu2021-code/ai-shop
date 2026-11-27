@@ -6,7 +6,7 @@ import java.util.List;
  * 存量库存搬运：平台库 → 进销存库。
  *
  * <h2>为什么它在 shop-app 而不在任何一个域里</h2>
- * 它是**唯一被允许同时认识两边**的东西：读平台的 {@code prd_sku} / {@code prd_store_stock}，
+ * 它是**唯一被允许同时认识两边**的东西：读平台的 {@code prd_sku} / {@code prd_store_sku}，
  * 写进销存的物料与余额。放进 {@code shop-inventory} 会让那个域反过来依赖平台
  * （独立交付时整段没法编译）；放进 {@code shop-core} 会让商品域知道进销存的存在。
  * 装配层是它唯一正确的位置 —— 也正因为它特殊，才单独一个包，一眼看得出来。

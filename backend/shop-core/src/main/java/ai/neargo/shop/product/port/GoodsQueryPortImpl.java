@@ -48,7 +48,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
     private final CampaignPort campaignPort;
 
     /** 门店价：取价入口唯一的覆盖层来源 */
-    private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
+    private final ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storePriceMapper;
 
     /** 门店级上下架：这一列此前在买家链路上**没有任何读者**，见 {@link #storeOffSale} */
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
@@ -56,7 +56,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
     private final ai.neargo.shop.product.service.StoreStockReader storeStockReader;
 
     public GoodsQueryPortImpl(SkuMapper skuMapper, GoodsMapper goodsMapper, ObjectMapper json,
-                              ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper,
+                              ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storePriceMapper,
                               ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
                               CampaignPort campaignPort,
                               ai.neargo.shop.product.service.StoreStockReader storeStockReader) {
@@ -181,12 +181,12 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          * 一次查完再按主体过滤，而不是按店逐次查：一单最多几家商家，
          * 而「多查几行再丢掉」比「多打几次库」便宜得多。
          */
-        List<ai.neargo.shop.product.entity.PrdStorePrice> rows =
+        List<ai.neargo.shop.product.entity.PrdStoreSku> rows =
                 DataScopeContext.executeWithoutScope(() -> storePriceMapper.selectList(
-                        Wrappers.<ai.neargo.shop.product.entity.PrdStorePrice>lambdaQuery()
-                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, skuNos)
-                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo, storeNos)
-                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, homeMarket)));
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreSku>lambdaQuery()
+                                .in(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo, skuNos)
+                                .in(ai.neargo.shop.product.entity.PrdStoreSku::getStoreNo, storeNos)
+                                .eq(ai.neargo.shop.product.entity.PrdStoreSku::getMarket, homeMarket)));
         Map<String, Long> out = new HashMap<>();
         for (var r : rows) {
             // 只认「这家主体这一单要走的那家店」的行：别的店的价不该串进来
@@ -396,13 +396,13 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         if (storeOfSku.isEmpty()) {
             return Map.of();
         }
-        List<ai.neargo.shop.product.entity.PrdStorePrice> rows =
+        List<ai.neargo.shop.product.entity.PrdStoreSku> rows =
                 DataScopeContext.executeWithoutScope(() -> storePriceMapper.selectList(
-                        Wrappers.<ai.neargo.shop.product.entity.PrdStorePrice>lambdaQuery()
-                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, storeOfSku.keySet())
-                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo,
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreSku>lambdaQuery()
+                                .in(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo, storeOfSku.keySet())
+                                .in(ai.neargo.shop.product.entity.PrdStoreSku::getStoreNo,
                                         new java.util.HashSet<>(storeOfSku.values()))
-                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, homeMarket)));
+                                .eq(ai.neargo.shop.product.entity.PrdStoreSku::getMarket, homeMarket)));
         Map<String, Long> out = new HashMap<>();
         for (var r : rows) {
             if (r.getPrice() != null && r.getStoreNo().equals(storeOfSku.get(r.getSkuNo()))) {

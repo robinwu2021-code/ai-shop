@@ -71,7 +71,7 @@ public class GoodsServiceImpl implements GoodsService {
     /** 买家在哪儿能看到什么 —— 查询时现算（方案-商品可见性改查询时关联） */
     private final GoodsVisibility visibility;
     /** 门店售价覆盖层 —— 买家侧展示要与下单取价（GoodsQueryPortImpl.snapshot）同一个数 */
-    private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
+    private final ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storePriceMapper;
 
     public GoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
                             MerchantQueryPort merchantPort, ObjectMapper json,
@@ -80,7 +80,7 @@ public class GoodsServiceImpl implements GoodsService {
                             ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
                             ai.neargo.shop.product.service.StoreStockReader storeStockReader,
                             GoodsVisibility visibility,
-                            ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper) {
+                            ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storePriceMapper) {
         this.storePriceMapper = storePriceMapper;
         this.visibility = visibility;
         this.storeGoodsMapper = storeGoodsMapper;
@@ -937,13 +937,13 @@ public class GoodsServiceImpl implements GoodsService {
         }
         // ★ 买家侧读门店价同样是公共目录查询，显式豁免数据域（见类注释）
         return DataScopeContext.executeWithoutScope(() -> storePriceMapper.selectList(
-                        Wrappers.<ai.neargo.shop.product.entity.PrdStorePrice>lambdaQuery()
-                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo, storeNo)
-                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, homeMarket)
-                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, skuNos)))
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreSku>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdStoreSku::getStoreNo, storeNo)
+                                .eq(ai.neargo.shop.product.entity.PrdStoreSku::getMarket, homeMarket)
+                                .in(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo, skuNos)))
                 .stream().filter(r -> r.getPrice() != null)
-                .collect(Collectors.toMap(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo,
-                        ai.neargo.shop.product.entity.PrdStorePrice::getPrice, (a, b) -> a));
+                .collect(Collectors.toMap(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo,
+                        ai.neargo.shop.product.entity.PrdStoreSku::getPrice, (a, b) -> a));
     }
 
     private GoodsVO.SkuVO toSkuVO(PrdSku s, Long flashPrice, Long storePrice) {

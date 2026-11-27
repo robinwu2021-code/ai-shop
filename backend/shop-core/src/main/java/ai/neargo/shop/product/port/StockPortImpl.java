@@ -6,10 +6,10 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStockLock;
-import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper;
 import ai.neargo.shop.product.policy.ExecutionStockRetentionGuard;
 import ai.neargo.shop.product.service.OriginalStockRestoreService;
 import ai.neargo.shop.spi.product.OriginalStockReturnPort;
@@ -64,12 +64,12 @@ public class StockPortImpl implements StockPort, ReservationOwner {
 
     private final SkuMapper skuMapper;
     private final StockLockMapper lockMapper;
-    private final StoreStockMapper storeStockMapper;
+    private final StoreSkuMapper storeStockMapper;
     /** 店级可售量的唯一一份判据（覆盖层规则）—— 与买家侧详情读的是同一处 */
     private final ai.neargo.shop.product.service.StoreStockReader storeStockReader;
 
     public StockPortImpl(SkuMapper skuMapper, StockLockMapper lockMapper,
-                         StoreStockMapper storeStockMapper,
+                         StoreSkuMapper storeStockMapper,
                          ai.neargo.shop.product.service.StoreStockReader storeStockReader) {
         this.skuMapper = skuMapper;
         this.lockMapper = lockMapper;
@@ -429,10 +429,10 @@ public class StockPortImpl implements StockPort, ReservationOwner {
         if (hasStoreStock(skuNo)) {
             // 分店库存：lock 按门店扣、不走预售。加购时不知道哪家店履约，取最能卖的那家
             return DataScopeContext.executeWithoutScope(() ->
-                    storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
-                            .eq(PrdStoreStock::getSkuNo, skuNo)))
+                    storeStockMapper.selectList(Wrappers.<PrdStoreSku>lambdaQuery()
+                            .eq(PrdStoreSku::getSkuNo, skuNo).isNotNull(PrdStoreSku::getSellableQty)))
                     .stream()
-                    .mapToInt(s -> nz(s.getStock()) - nz(s.getLockedStock()))
+                    .mapToInt(s -> nz(s.getSellableQty()) - nz(s.getLockedQty()))
                     .max().stream().map(n -> Math.max(n, 0)).findFirst().orElse(0);
         }
         ai.neargo.shop.product.entity.PrdSku sku = DataScopeContext.executeWithoutScope(() ->
@@ -460,10 +460,11 @@ public class StockPortImpl implements StockPort, ReservationOwner {
         return v == null ? 0 : v;
     }
 
+    /** 有没有任意一家店的店级库存。看列不看行：只设过门店价的店也有一行（见 {@link PrdStoreSku}）。 */
     private boolean hasStoreStock(String skuNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                storeStockMapper.selectCount(Wrappers.<PrdStoreStock>lambdaQuery()
-                        .eq(PrdStoreStock::getSkuNo, skuNo))) > 0;
+                storeStockMapper.selectCount(Wrappers.<PrdStoreSku>lambdaQuery()
+                        .eq(PrdStoreSku::getSkuNo, skuNo).isNotNull(PrdStoreSku::getSellableQty))) > 0;
     }
 
     private static void checked(PrdStockLock lock, int affected) {

@@ -2,9 +2,9 @@ package ai.neargo.shop.product.service;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -15,13 +15,15 @@ import java.util.Map;
 /**
  * 「这家店这个 SKU 还能卖几件」——<b>覆盖层规则的唯一一份实现</b>。
  *
- * <p>规则（与 {@code PrdStoreStock} / {@code PrdStoreGoods} 的类注释逐字相同）：
+ * <p>规则（与 {@code PrdStoreSku} / {@code PrdStoreGoods} 的类注释逐字相同）：
  * <ul>
- *   <li>这个 SKU 一条店级行都没有 → 走主体总量，行为与单店时代相同
- *   <li>一旦有了任意一条 → 该 SKU 整体转为按店管理，<b>没有行的店视为 0</b>
+ *   <li>这个 SKU 没有任何一家店的店级库存（{@code sellable_qty} 全空）→ 走主体总量，行为与单店时代相同
+ *   <li>一旦有了任意一家 → 该 SKU 整体转为按店管理，<b>没有店级库存的店视为 0</b>
  * </ul>
+ * 门店交易库里门店价与店级库存同在 {@code prd_store_sku} 一行，只设过价的店也有行 ——
+ * 所以判据一律是 {@code sellable_qty IS NOT NULL}，不看行在不在。
  *
- * <p><b>判据是「有没有行」而不是「这家店有没有行」</b>：后者会让商家给 A 店设了库存之后，
+ * <p><b>判据是「这个 SKU 有没有店级库存」而不是「这家店有没有」</b>：后者会让商家给 A 店设了库存之后，
  * B 店因为没有行而回退到主体总量，变成事实上的无限供应。前者是「你开始分店管了，
  * 那每家店都得设」—— 少卖可恢复，超卖不可恢复。
  *
@@ -38,18 +40,18 @@ import java.util.Map;
 public class StoreStockReader {
 
     private final SkuMapper skuMapper;
-    private final StoreStockMapper storeStockMapper;
+    private final StoreSkuMapper storeStockMapper;
 
-    public StoreStockReader(SkuMapper skuMapper, StoreStockMapper storeStockMapper) {
+    public StoreStockReader(SkuMapper skuMapper, StoreSkuMapper storeStockMapper) {
         this.skuMapper = skuMapper;
         this.storeStockMapper = storeStockMapper;
     }
 
-    /** 这个 SKU 是不是已经按店管理（有任意一条店级行）。 */
+    /** 这个 SKU 是不是已经按店管理（有任意一家店的店级库存）。 */
     public boolean managedByStore(String skuNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                storeStockMapper.selectCount(Wrappers.<PrdStoreStock>lambdaQuery()
-                        .eq(PrdStoreStock::getSkuNo, skuNo))) > 0;
+                storeStockMapper.selectCount(Wrappers.<PrdStoreSku>lambdaQuery()
+                        .eq(PrdStoreSku::getSkuNo, skuNo).isNotNull(PrdStoreSku::getSellableQty))) > 0;
     }
 
     /**
@@ -89,18 +91,18 @@ public class StoreStockReader {
          * 「这个 SKU 有没有被按店管理」，只查本店的话分不出
          * 「没按店管理」与「按店管理但本店没设」，而这两者的答案相反（主体总量 vs 0）。
          */
-        List<PrdStoreStock> rows = new java.util.ArrayList<>();
+        List<PrdStoreSku> rows = new java.util.ArrayList<>();
         for (List<String> chunk : chunks(skuNos)) {
             rows.addAll(DataScopeContext.executeWithoutScope(() ->
-                    storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
-                            .in(PrdStoreStock::getSkuNo, chunk))));
+                    storeStockMapper.selectList(Wrappers.<PrdStoreSku>lambdaQuery()
+                            .in(PrdStoreSku::getSkuNo, chunk).isNotNull(PrdStoreSku::getSellableQty))));
         }
         Map<String, Integer> here = new HashMap<>();
         java.util.Set<String> managed = new java.util.HashSet<>();
-        for (PrdStoreStock r : rows) {
+        for (PrdStoreSku r : rows) {
             managed.add(r.getSkuNo());
             if (storeNo.equals(r.getStoreNo())) {
-                here.put(r.getSkuNo(), Math.max(nz(r.getStock()) - (minusLocked ? nz(r.getLockedStock()) : 0), 0));
+                here.put(r.getSkuNo(), Math.max(nz(r.getSellableQty()) - (minusLocked ? nz(r.getLockedQty()) : 0), 0));
             }
         }
         for (String skuNo : managed) {

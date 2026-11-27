@@ -238,11 +238,11 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
         assertThat(jdbc.queryForList("SELECT id,stock,locked_stock FROM prd_sku WHERE sku_no=? ORDER BY id",
             sku)).isEqualTo(before);
         platformStock.release("floor-" + sku);
-        jdbc.update("INSERT INTO prd_store_stock(entity_no,store_no,sku_no,stock,locked_stock,created_at," +
+        jdbc.update("INSERT INTO prd_store_sku(entity_no,store_no,sku_no,sellable_qty,locked_qty,created_at," +
             "updated_at) VALUES (?,?,?,5,0,NOW(),NOW())", entity, store, sku);
         platformStock.lock("store-floor-" + sku, List.of(new StockPort.SkuQty(sku, 2, store)));
         assertThatThrownBy(() -> platformStock.setOnHand(sku, store, 1, "OTHER")).isInstanceOf(BizException.class);
-        assertThat(jdbc.queryForObject("SELECT stock FROM prd_store_stock WHERE sku_no=? AND store_no=?",
+        assertThat(jdbc.queryForObject("SELECT sellable_qty FROM prd_store_sku WHERE sku_no=? AND store_no=?",
             Integer.class, sku, store)).isEqualTo(5);
     }
 
@@ -491,7 +491,7 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
     })
     void checkedFrozenReturnRejectsCorruptPhysicalOriginalWithoutClaimsMarkerOrOutbox(String mismatch) {
         if ("POOL_OWNER".equals(mismatch)) {
-            jdbc.update("INSERT INTO prd_store_stock(entity_no,store_no,sku_no,stock,locked_stock,created_at," +
+            jdbc.update("INSERT INTO prd_store_sku(entity_no,store_no,sku_no,sellable_qty,locked_qty,created_at," +
                 "updated_at)"
                     + " VALUES (?,?,?,100,0,NOW(),NOW())", entity, store, sku);
         }
@@ -502,13 +502,13 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
         var afterSale = savedReturnCase(flow.original(), "negative-" + mismatch);
         var beforeStocks = stockRows(frozen.orderNo());
         var beforeBalances = balances();
-        var beforePools = jdbc.queryForList("SELECT * FROM prd_store_stock WHERE sku_no=? ORDER BY id", sku);
+        var beforePools = jdbc.queryForList("SELECT * FROM prd_store_sku WHERE sku_no=? ORDER BY id", sku);
         var beforeClaims = claims(frozen.orderNo());
         var beforeOutbox = returnEvents(frozen.orderNo(), afterSale.getAfterSaleNo());
         assertThatThrownBy(() -> invokeReturn(afterSale, flow.original(), 1)).isInstanceOf(BizException.class);
         assertThat(stockRows(frozen.orderNo())).isEqualTo(beforeStocks);
         assertThat(balances()).isEqualTo(beforeBalances);
-        assertThat(jdbc.queryForList("SELECT * FROM prd_store_stock WHERE sku_no=? ORDER BY id",
+        assertThat(jdbc.queryForList("SELECT * FROM prd_store_sku WHERE sku_no=? ORDER BY id",
             sku)).isEqualTo(beforePools);
         assertThat(claims(frozen.orderNo())).isEqualTo(beforeClaims);
         assertThat(jdbc.queryForObject("SELECT stock_restored FROM ord_after_sale WHERE after_sale_no=?", Integer.class,
@@ -931,7 +931,7 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
             case "OWNER" -> jdbc.update("UPDATE prd_sku SET entity_no='other-entity' WHERE sku_no=?", sku);
             case "DELETED_ROW" -> jdbc.update("UPDATE prd_stock_lock SET deleted=1 WHERE lock_no=?", order);
             case "VERSION" -> jdbc.update("UPDATE prd_stock_lock SET version=-1 WHERE lock_no=?", order);
-            case "POOL_OWNER" -> jdbc.update("UPDATE prd_store_stock SET entity_no='other-entity' WHERE sku_no=?", sku);
+            case "POOL_OWNER" -> jdbc.update("UPDATE prd_store_sku SET entity_no='other-entity' WHERE sku_no=?", sku);
             case "FULFILLMENT" -> jdbc.update(
                 "UPDATE prd_stock_lock SET fulfillment_ref='other-fulfillment' WHERE lock_no=?", order);
             case "EXTRA" -> {

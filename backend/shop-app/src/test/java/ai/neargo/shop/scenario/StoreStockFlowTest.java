@@ -438,15 +438,15 @@ class StoreStockFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;
+    private ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storeStockMapper;
 
     private int storeStock(String bizToken, String storeNo, String skuNo) {
         var row = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                 storeStockMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.product.entity.PrdStoreStock>lambdaQuery()
-                        .eq(ai.neargo.shop.product.entity.PrdStoreStock::getStoreNo, storeNo)
-                        .eq(ai.neargo.shop.product.entity.PrdStoreStock::getSkuNo, skuNo)));
-        return row == null ? -1 : row.getStock();
+                        .<ai.neargo.shop.product.entity.PrdStoreSku>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStoreSku::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo, skuNo)));
+        return row == null || row.getSellableQty() == null ? -1 : row.getSellableQty();
     }
 
     private void setStoreStock(String token, String storeNo, String goodsNo, String skuNo, int stock)

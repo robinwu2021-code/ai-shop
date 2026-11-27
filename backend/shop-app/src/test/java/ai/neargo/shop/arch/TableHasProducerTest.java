@@ -96,7 +96,7 @@ class TableHasProducerTest {
         for (String t : List.of("cmt_community_apply", "cnt_post", "inv_uom",
                 "mch_channel_area", "mch_channel_pickup", "notify_scene_channel",
                 "notify_template", "prd_merchant_spec", "prd_merchant_spec_value",
-                "prd_store_goods", "prd_store_price")) {
+                "prd_store_goods")) {
             NO_PRODUCER.put(t, "未核实 —— 闸门立起来时就在库里。"
                     + "动到这个域时顺手确认：是主数据（挪进 SEEDED）、"
                     + "有意让范围（写明），还是真的漏了写入路径");

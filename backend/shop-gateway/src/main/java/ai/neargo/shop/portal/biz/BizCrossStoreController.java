@@ -260,7 +260,7 @@ public class BizCrossStoreController {
      * @param repeatBuyers 其中下过 ≥2 单的
      * @param repeatRate   {@code repeatBuyers / buyers}，0–1。<b>分母为 0 时是 0</b>，
      *                     不是除零、不是 null —— 一家还没开张的店该显示 0%
-     * @param outOfStockSkus 该店 {@code prd_store_stock} 里可用量（stock − locked）≤ 0 的 SKU 数。
+     * @param outOfStockSkus 该店 {@code prd_store_sku} 里可用量（sellable_qty − locked_qty）≤ 0 的 SKU 数。
      *                     <b>只数已启用分店库存的 SKU</b>：一条店级行都没有的 SKU 走主体总量，
      *                     不算这家店缺货
      */

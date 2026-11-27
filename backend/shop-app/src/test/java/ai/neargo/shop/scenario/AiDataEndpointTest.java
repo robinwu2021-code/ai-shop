@@ -9,7 +9,7 @@ import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 import ai.neargo.shop.portal.internal.AiDataEndpoint;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
@@ -72,7 +72,7 @@ class AiDataEndpointTest {
     @Autowired
     private ProductMappers.GoodsMapper goodsMapper;
     @Autowired
-    private ProductMappers.StoreStockMapper storeStockMapper;
+    private ProductMappers.StoreSkuMapper storeStockMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -297,12 +297,12 @@ class AiDataEndpointTest {
         String skuNo = goods(c, goodsNo, "AI取数·店级库存商品", 500L, 10);
 
         // 只给分店设店级行 —— 判据是「这个 SKU 有没有行」，不是「这家店有没有行」
-        PrdStoreStock row = new PrdStoreStock();
+        PrdStoreSku row = new PrdStoreSku();
         row.setEntityNo(c.merchantNo);
         row.setStoreNo(branch);
         row.setSkuNo(skuNo);
-        row.setStock(7);
-        row.setLockedStock(0);
+        row.setSellableQty(7);
+        row.setLockedQty(0);
         storeStockMapper.insert(row);
 
         assertThat(sku(c.merchantNo, branch, skuNo).get("stock").asLong())

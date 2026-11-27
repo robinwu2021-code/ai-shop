@@ -8,13 +8,13 @@ import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSellRule;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStockSyncLog;
-import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.entity.PrdStoreStockSync;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SellRuleMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StockSyncLogMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StoreStockSyncMapper;
 import ai.neargo.shop.product.service.StockSyncService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -37,13 +37,20 @@ public class StockSyncServiceImpl implements StockSyncService {
     private final SellRuleMapper ruleMapper;
     private final StoreStockSyncMapper syncMapper;
     private final StockSyncLogMapper logMapper;
-    private final StoreStockMapper storeStockMapper;
+    private final StoreSkuMapper storeStockMapper;
     private final SkuMapper skuMapper;
     private final MerchantQueryPort merchants;
     private final GoodsMapper goodsMapper;
+    /** 本市场：新建店级库存行写在这个市场上（按部署配置，正式环境 TW；没配回落 CN，与 StoreMarkets 一致）。 */
+    private String homeMarket = "CN";
+
+    @org.springframework.beans.factory.annotation.Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(java.util.Locale.ROOT);
+    }
 
     public StockSyncServiceImpl(SellRuleMapper ruleMapper, StoreStockSyncMapper syncMapper,
-                                StockSyncLogMapper logMapper, StoreStockMapper storeStockMapper,
+                                StockSyncLogMapper logMapper, StoreSkuMapper storeStockMapper,
                                 SkuMapper skuMapper, MerchantQueryPort merchants, GoodsMapper goodsMapper) {
         this.goodsMapper = goodsMapper;
         this.ruleMapper = ruleMapper;
@@ -176,9 +183,9 @@ public class StockSyncServiceImpl implements StockSyncService {
 
     @Override
     public Sellable sellableOf(String storeNo, String skuNo) {
-        PrdStoreStock row = storeRow(storeNo, skuNo);
+        PrdStoreSku row = storeRow(storeNo, skuNo);
         if (row != null) {
-            return new Sellable("STORE", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock()), ver(row.getVersion()));
+            return new Sellable("STORE", nz(row.getSellableQty()) - nz(row.getLockedQty()), nz(row.getLockedQty()), ver(row.getVersion()));
         }
         if (hasStoreStock(skuNo)) {
             // 这个 SKU 已按店管、本店没设过 —— 本店线上卖 0（StockPortImpl 的口径）
@@ -195,15 +202,16 @@ public class StockSyncServiceImpl implements StockSyncService {
     public java.util.Map<String, Sellable> sellablesOf(String storeNo, java.util.Collection<String> skuNos) {
         if (skuNos.isEmpty()) return java.util.Map.of();
         var stockRows = DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectList(
-                Wrappers.<PrdStoreStock>lambdaQuery().in(PrdStoreStock::getSkuNo, skuNos)));
+                Wrappers.<PrdStoreSku>lambdaQuery().in(PrdStoreSku::getSkuNo, skuNos)
+                        .isNotNull(PrdStoreSku::getSellableQty)));
         var skuRows = DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(
                 Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, skuNos)));
         java.util.Set<String> storeManaged = new java.util.HashSet<>();
         java.util.Map<String, Sellable> result = new java.util.LinkedHashMap<>();
-        for (PrdStoreStock row : stockRows) {
+        for (PrdStoreSku row : stockRows) {
             storeManaged.add(row.getSkuNo());
             if (java.util.Objects.equals(storeNo, row.getStoreNo())) {
-                result.put(row.getSkuNo(), new Sellable("STORE", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock()), ver(row.getVersion())));
+                result.put(row.getSkuNo(), new Sellable("STORE", nz(row.getSellableQty()) - nz(row.getLockedQty()), nz(row.getLockedQty()), ver(row.getVersion())));
             }
         }
         for (PrdSku row : skuRows) {
@@ -309,29 +317,29 @@ public class StockSyncServiceImpl implements StockSyncService {
         return g == null ? null : g.getCategoryNo();
     }
 
-    private PrdStoreStock storeRow(String storeNo, String skuNo) {
+    /** 这家店的店级库存行；只设过门店价（没有店级库存）的行不算。 */
+    private PrdStoreSku storeRow(String storeNo, String skuNo) {
         return DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectOne(
-                Wrappers.<PrdStoreStock>lambdaQuery()
-                        .eq(PrdStoreStock::getStoreNo, storeNo)
-                        .eq(PrdStoreStock::getSkuNo, skuNo).last("limit 1")));
+                Wrappers.<PrdStoreSku>lambdaQuery()
+                        .eq(PrdStoreSku::getStoreNo, storeNo)
+                        .eq(PrdStoreSku::getSkuNo, skuNo)
+                        .isNotNull(PrdStoreSku::getSellableQty).last("limit 1")));
     }
 
     private boolean hasStoreStock(String skuNo) {
         Long n = DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectCount(
-                Wrappers.<PrdStoreStock>lambdaQuery().eq(PrdStoreStock::getSkuNo, skuNo)));
+                Wrappers.<PrdStoreSku>lambdaQuery().eq(PrdStoreSku::getSkuNo, skuNo)
+                        .isNotNull(PrdStoreSku::getSellableQty)));
         return n != null && n > 0;
     }
 
     private void insertStoreRow(String entityNo, String storeNo, String skuNo, int stock, String operator) {
-        PrdStoreStock row = new PrdStoreStock();
-        row.setStoreNo(storeNo);
-        row.setSkuNo(skuNo);
-        row.setEntityNo(entityNo);
-        row.setStock(stock);
-        row.setLockedStock(0);
-        row.setCreatedBy(operator);
-        row.setUpdatedBy(operator);
-        DataScopeContext.executeWithoutScope(() -> storeStockMapper.insert(row));
+        // 一店一 SKU 一行：只设过门店价的店补上库存列，再设成目标数
+        DataScopeContext.executeWithoutScope(() -> {
+            storeStockMapper.startStoreStock(entityNo, storeNo, skuNo, homeMarket);
+            storeStockMapper.setStock(storeNo, skuNo, stock);
+            return null;
+        });
     }
 
     private static int nz(Integer v) {

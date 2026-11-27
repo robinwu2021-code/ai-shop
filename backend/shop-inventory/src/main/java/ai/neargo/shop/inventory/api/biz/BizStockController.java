@@ -153,7 +153,7 @@ public class BizStockController {
      * 按**平台 SKU** 反查这件货在进销存的账 —— 商品域与本域之间唯一的一条可见通路。
      *
      * <p><b>为什么要有它。</b>商家在商品页看到的「库存 1000」是平台侧的数
-     *（{@code prd_sku.stock} / {@code prd_store_stock}），而进销存这本账是另一个数。
+     *（{@code prd_sku.stock} / {@code prd_store_sku}），而进销存这本账是另一个数。
      * 两处都叫「库存」，界面上却没有任何地方说明它们的关系 —— 商家没法回答
      * 「哪个是对的」。这条接口让商品页能把两个数摆在一起。
      *

@@ -16,11 +16,11 @@ import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStockLock;
-import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +55,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
     private final ReservationService reservations;
     private final SkuMapper skuMapper;
     private final GoodsMapper goodsMapper;
-    private final StoreStockMapper storeStockMapper;
+    private final StoreSkuMapper storeStockMapper;
     private final InboundOrderMapper inboundOrderMapper;
     private final InventoryAclService acl;
     private final InboundService inbound;
@@ -64,7 +64,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
     public InventoryBackfillServiceImpl(LocationService locations,
                                         StockLockMapper lockMapper, ReservationService reservations,
                                         SkuMapper skuMapper, GoodsMapper goodsMapper,
-                                        StoreStockMapper storeStockMapper,
+                                        StoreSkuMapper storeStockMapper,
                                         InboundOrderMapper inboundOrderMapper,
                                         InventoryAclService acl, InboundService inbound,
                                         StockQueryService query) {
@@ -278,9 +278,10 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
         for (PrdSku sku : bySku.values()) {
             String entityNo = sku.getEntityNo();
 
-            List<PrdStoreStock> storeRows = DataScopeContext.executeWithoutScope(() ->
-                    storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
-                            .eq(PrdStoreStock::getSkuNo, sku.getSkuNo())));
+            List<PrdStoreSku> storeRows = DataScopeContext.executeWithoutScope(() ->
+                    storeStockMapper.selectList(Wrappers.<PrdStoreSku>lambdaQuery()
+                            .eq(PrdStoreSku::getSkuNo, sku.getSkuNo())
+                            .isNotNull(PrdStoreSku::getSellableQty)));
 
             /*
              * **只算不写的时候，一行主数据都不许建。**
@@ -332,17 +333,17 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                             sku.getSkuNo(), entityNo, nz(sku.getStock()), nz(sku.getLockedStock()));
                 }
             } else {
-                for (PrdStoreStock st : storeRows) {
+                for (PrdStoreSku st : storeRows) {
                     String locationId = dryRun ? null : acl.locationIdOf(entityNo, st.getStoreNo());
                     int r = moveOne(ownerId, entityNo, st.getStoreNo(), sku.getSkuNo(), itemId,
-                            locationId, nz(st.getStock()), nz(st.getLockedStock()), dryRun, diffs);
+                            locationId, nz(st.getSellableQty()), nz(st.getLockedQty()), dryRun, diffs);
                     moved += r == 1 ? 1 : 0;
                     skipped += r == 0 ? 1 : 0;
                     pending += r == -1 ? 1 : 0;
                     if (r == -1) {
                         log.warn("[对差] 待搬·门店级 sku={} store={} qty={} held={}",
                                 sku.getSkuNo(), st.getStoreNo(),
-                                nz(st.getStock()), nz(st.getLockedStock()));
+                                nz(st.getSellableQty()), nz(st.getLockedQty()));
                     }
                 }
             }

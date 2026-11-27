@@ -9,7 +9,7 @@ import ai.neargo.shop.product.entity.PrdSpecTemplate;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdStoreCatalog;
 import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
-import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -248,7 +248,7 @@ public final class ProductMappers {
                 """)
         int setStock(@Param("skuNo") String skuNo, @Param("stock") int stock);
 
-        /** 写回，主体级库存那一档（没有按店库存行、主体只有一家店时）。口径同 StoreStockMapper#syncSellable */
+        /** 写回，主体级库存那一档（没有按店库存行、主体只有一家店时）。口径同 StoreSkuMapper#syncSellable */
         @Update("""
                 UPDATE prd_sku SET stock = #{target} + locked_stock, version = version + 1
                 WHERE sku_no = #{skuNo} AND deleted = 0 AND #{target} >= 0
@@ -300,87 +300,116 @@ public final class ProductMappers {
     }
 
     /**
-     * 门店级库存。三条 SQL 与 {@link SkuMapper} 的那三条**逐字同构** ——
-     * 同一套「条件写在 WHERE 里、靠影响行数判断」的原子扣减手法，
-     * 只是换了张表加了个 store_no。
+     * 门店 SKU（{@code prd_store_sku}，门店价与店级库存并成的一张表）。
+     *
+     * <p>库存那几条 SQL 与 {@link SkuMapper} 的<b>逐字同构</b> —— 同一套「条件写在 WHERE 里、靠影响行数判断」的
+     * 原子扣减手法，只是换了张表加了个 store_no。每条都带 {@code sellable_qty IS NOT NULL}：
+     * 只设过门店价的店也有一行，但它没有店级库存，不能让它「影响 1 行」冒充扣减成功。
      *
      * <p>刻意写成两套而不是抽象成一套：库存扣减是这个系统里最不该「聪明」的地方，
      * 一个泛化的 updateStock(table, key...) 读起来永远要先想「这次走的是哪张表」。
+     * 门店价没有原子扣减那套 —— 价格不是被并发争抢的资源，它只被商家改，读的人只读。
      */
-    public interface StoreStockMapper extends ProductTableMapper<PrdStoreStock> {
-        @Select("SELECT * FROM prd_store_stock WHERE tenant_no='MAIN' AND sku_no=#{skuNo} ORDER BY id FOR UPDATE")
-        List<PrdStoreStock> lockSkuStoresCurrent(@Param("skuNo") String skuNo);
+    public interface StoreSkuMapper extends ProductTableMapper<PrdStoreSku> {
+        @Select("SELECT * FROM prd_store_sku WHERE tenant_no='MAIN' AND sku_no=#{skuNo} AND sellable_qty IS NOT NULL"
+                + " AND deleted = 0 ORDER BY id FOR UPDATE")
+        List<PrdStoreSku> lockSkuStoresCurrent(@Param("skuNo") String skuNo);
 
         @Update("""
-                UPDATE prd_store_stock SET locked_stock = locked_stock + #{qty}, version = version + 1
-                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
-                  AND stock - locked_stock >= #{qty}
+                UPDATE prd_store_sku SET locked_qty = locked_qty + #{qty}, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND sellable_qty IS NOT NULL
+                  AND sellable_qty - locked_qty >= #{qty}
                 """)
         int lockStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                       @Param("qty") int qty);
 
         @Update("""
-                UPDATE prd_store_stock SET locked_stock = locked_stock - #{qty}, version = version + 1
-                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
-                  AND locked_stock >= #{qty}
+                UPDATE prd_store_sku SET locked_qty = locked_qty - #{qty}, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND sellable_qty IS NOT NULL
+                  AND locked_qty >= #{qty}
                 """)
         int releaseStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                          @Param("qty") int qty);
 
         @Update("""
-                UPDATE prd_store_stock SET stock = stock - #{qty}, locked_stock = locked_stock - #{qty},
-                                           version = version + 1
-                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
-                  AND locked_stock >= #{qty} AND stock >= #{qty}
+                UPDATE prd_store_sku SET sellable_qty = sellable_qty - #{qty}, locked_qty = locked_qty - #{qty},
+                                         version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND sellable_qty IS NOT NULL
+                  AND locked_qty >= #{qty} AND sellable_qty >= #{qty}
                 """)
         int confirmStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                          @Param("qty") int qty);
 
-        /** 店级退货入库。理由与 {@code SkuMapper.restoreStock} 相同：只加 stock。 */
+        /** 店级退货入库。理由与 {@code SkuMapper.restoreStock} 相同：只加总量。 */
         @Update("""
-                UPDATE prd_store_stock SET stock = stock + #{qty}, version = version + 1
-                 WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                UPDATE prd_store_sku SET sellable_qty = sellable_qty + #{qty}, version = version + 1
+                 WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND sellable_qty IS NOT NULL
                 """)
         int restoreStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                          @Param("qty") int qty);
 
-        /** 手改门店库存：设成这个数，`locked_stock` 不动（同主体级那条） */
-        /** 与主体级 {@link SkuMapper#setStock} 同一条：不许改到锁定量以下。 */
+        /** 手改门店库存：设成这个数，{@code locked_qty} 不动；与主体级 {@link SkuMapper#setStock} 同一条：不许改到锁定量以下。 */
         @Update("""
-                UPDATE prd_store_stock SET stock = #{stock}, version = version + 1
-                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND #{stock} >= 0
-                  AND #{stock} >= COALESCE(locked_stock, 0)
+                UPDATE prd_store_sku SET sellable_qty = #{stock}, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND sellable_qty IS NOT NULL
+                  AND #{stock} >= 0 AND #{stock} >= COALESCE(locked_qty, 0)
                 """)
         int setStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                      @Param("stock") int stock);
 
         /**
-         * 写回（TDD §18.1）：让线上可卖 = {@code target}。**一条 SQL 里用当下的 locked_stock 算**，
+         * 写回（TDD §18.1）：让线上可卖 = {@code target}。<b>一条 SQL 里用当下的 locked_qty 算</b>，
          * 不先读后写 —— 读与写之间有订单锁定的话，先读后写会把那笔锁定算丢。
          * 不走 {@link #setStock}：那条路被 {@code StockPort.setOnHand} 用，会发镜像回进销存。
          */
         @Update("""
-                UPDATE prd_store_stock SET stock = #{target} + locked_stock, version = version + 1
-                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND #{target} >= 0
+                UPDATE prd_store_sku SET sellable_qty = #{target} + locked_qty, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND sellable_qty IS NOT NULL
+                  AND #{target} >= 0
                 """)
         int syncSellable(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                          @Param("target") int target);
 
         /** 手动规则的写回：线上可卖超过 {@code cap} 才压到 cap，否则不动（只降不升） */
         @Update("""
-                UPDATE prd_store_stock SET stock = #{cap} + locked_stock, version = version + 1
-                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
-                  AND #{cap} >= 0 AND stock - locked_stock > #{cap}
+                UPDATE prd_store_sku SET sellable_qty = #{cap} + locked_qty, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND sellable_qty IS NOT NULL
+                  AND #{cap} >= 0 AND sellable_qty - locked_qty > #{cap}
                 """)
         int capSellable(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                         @Param("cap") int cap);
-    }
 
-    /**
-     * 门店级售价。**没有原子扣减那套** —— 价格不是被并发争抢的资源，
-     * 它只被商家改，读的人只读。
-     */
-    public interface StorePriceMapper extends ProductTableMapper<ai.neargo.shop.product.entity.PrdStorePrice> {
+        @Update("""
+                UPDATE prd_store_sku SET sellable_qty = 0, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND market = #{market} AND deleted = 0
+                  AND sellable_qty IS NULL
+                """)
+        int fillStoreStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
+                           @Param("market") String market);
+
+        /**
+         * 让这家店的这个 SKU 进入店级库存（库存 0、锁量 0）。<b>一店一 SKU 一行</b>：
+         * 已有行（只设过门店价）就补上库存列，没有行才插；已经是店级库存的什么都不动。
+         * 调用方自己负责数据域（多数在 {@code executeWithoutScope} 里）。
+         */
+        default void startStoreStock(String entityNo, String storeNo, String skuNo, String market) {
+            if (fillStoreStock(storeNo, skuNo, market) > 0) {
+                return;
+            }
+            boolean exists = selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers.<PrdStoreSku>lambdaQuery()
+                    .eq(PrdStoreSku::getStoreNo, storeNo).eq(PrdStoreSku::getSkuNo, skuNo)
+                    .eq(PrdStoreSku::getMarket, market)) > 0;
+            if (!exists) {
+                PrdStoreSku row = new PrdStoreSku();
+                row.setStoreNo(storeNo);
+                row.setSkuNo(skuNo);
+                row.setEntityNo(entityNo);
+                row.setMarket(market);
+                row.setSellableQty(0);
+                row.setLockedQty(0);
+                insert(row);
+            }
+        }
     }
 
     public interface TopicMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdTopic> {

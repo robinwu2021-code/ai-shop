@@ -8,7 +8,7 @@ import lombok.Setter;
 /**
  * 门店级上架关系：这家店卖不卖这件货。
  *
- * <p><b>与 {@link PrdStoreStock} 逐字同一套语义</b>：
+ * <p><b>与 {@link PrdStoreSku} 逐字同一套语义</b>：
  * <ul>
  *   <li>某商品一条店级行都没有 → 走 {@code prd_goods.on_sale}，行为与单店时代相同
  *   <li>一旦有了任意一条 → 该商品整体转为店级管理，<b>没有行的店视为未上架</b>

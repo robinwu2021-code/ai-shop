@@ -99,6 +99,7 @@
 
 - 一次性脚本 `scripts/migrate-product-to-n-trade.py`：从 `ai_shop_ume` 读、按 §2.3 的并入与改名规则转换、写 `n_trade` / `n_member`。可重复执行（按业务号覆盖），先在演练库 `ai_shop_ume_rehearsal` 上跑。
 - 市场：旧库 SKU、门店价的 `market` 为 `CN` 的改为 `TW`（正式库 5 个 SKU 里 4 个是 `CN`，来源是代码原先写死的「本市场」；新库默认值与代码的本市场都按部署配置为 `TW`，见 [列默认值补回方案](design/门店交易库-列默认值补回方案.md) §3）。
+- 合表的搬法：`prd_store_price` 与 `prd_store_stock` 按 门店 + SKU 合成一行（库存行没有市场列，取本市场）；类目付款方式只搬 `allowed=0` 的行进 `disallowed_pay_modes`；SKU 定价策略、卡类权益绑定按 SKU 写进本市场那一行（权益绑定的 `status` 非 ACTIVE 或已删的，SKU 置 `DISABLED`）。
 - 对账：逐表比行数，商品、SKU、门店价与库存逐行比关键字段；对账报告存进上线记录。
 - 搬迁在切换窗口里与交易一起做，搬完旧表只读、不删。
 
@@ -164,6 +165,13 @@
 - **2-a 类目付款方式**：`prd_category_pay_mode` → `prd_category.disallowed_pay_modes`（JSON 数组，只记禁止的，空为 NULL 即全部放行；语义与原表「没有行即放行」一致）。读写集中在 `CategoryPayModePolicy`；`OpsCategoryPolicyController`、`PayModeServiceImpl` 改读类目表；删 `PrdCategoryPayMode` 与其 Mapper。运营端接口出参不变（`configured` 恒等于 `!offlineAllowed`）。基线 −1。
 - **2-b SKU 定价策略**：`prd_sku_pricing_policy` → `prd_sku.tax_class` / `promotion_eligible`，写在本市场那一行。原表的 `store_no` 维度不丢：服务本来就要求商品归属这家门店（`goods.store_no`），一个 SKU 只属一家店。策略编号改用 `sku_no`；版本复用该行乐观锁 `version`，未配时对外为 0。行为差异：同一 SKU 的其他修改（改价、条码）也会让在途的策略编辑冲突重来。`taxClasses` 的门店过滤改为经 `prd_goods.store_no`。删 `PrdSkuPricingPolicy` 与其 Mapper、数据范围登记；`PrivateOwnerDataScopeTest` 改为校验 `prd_sku` 同样拒绝仅位置授权。`BizKey.SKU_PRICING_POLICY` 暂留（术语表由它生成），再无写入方。
 - **2-b 卡类权益绑定**：`prd_entitlement_binding` → `prd_sku.entitlement_version_no` / `entitlement_rule_snapshot` / `entitlement_units`；币种从冻结的规则快照里取（写入时已校验与市场币种一致）。原表的 `status`（代码只写 ACTIVE）与「停用绑定」改为停用 SKU（`prd_sku.status = DISABLED`），同样不能借此退回旧的无权益卖法。专用防重表 `prd_ent_binding_command`（不在新库设计）改走公共的 `RequestIdempotencyPort`。基线 −4。
+- **2-c 门店价 + 店级库存**：`prd_store_price`、`prd_store_stock` → `prd_store_sku`（一店一 SKU 一市场一行），实体 `PrdStoreSku`、`StoreSkuMapper` 取代原来两套。列映射：`stock` → `sellable_qty`、`locked_stock` → `locked_qty`，口径不变（总量含已锁，可卖 = `sellable_qty - locked_qty`），扣减 SQL 逐条照搬。合表带来的语义要点：
+  - 两半各自可空、回退方向相反（门店价空回退主体价；店级库存空 = 这家店没有，按 SKU 判是否按店管理）。**一律看列不看行**：`hasStoreStock` / `managedByStore` / 可售量读取都加 `sellable_qty IS NOT NULL`，扣减类 SQL 也带这个条件，避免只设过价的行「影响 1 行」冒充成功。
+  - 写入：建店级库存走 `StoreSkuMapper.startStoreStock`（有行补列、无行才插，市场取本市场）；取消门店价只清价格两列，行上有店级库存时不删行；改价显式 set（划线价传空能清掉）。
+  - 价格来源的 `storePrice` 版本沿用原约定：行在就记它的版本（价格回退时也记，缺版本直接报错）。合表后店级库存的变动也会让这个版本变 —— 它只作留痕、不做比对，`prd_sku` 的版本本来就随锁库存变。
+  - 数据域：旧库门店价登记了 MERCHANT、店级库存没登记；合表后按库存那半不登记（扣减路径多处直接调 Mapper，登记后漏一处豁免就是「有货却下单失败」）。
+  - 本批不动 `prd_sku.stock`（主体级库存，过渡列）：去掉它意味着单店商家也要按店记库存，属于业务口径变化，另列一步。
+  - 基线 −2，另有 2 条 R5（invbridge 回填）随类名改写，仍属第 4 步。
 - 公共防重表 `sys_idempotent` 目前在主库、不与商品事务同库（定价策略原本就是如此）；它属于公共能力，随防重服务化处理，不进门店交易库。
 
 ### 偏差说明

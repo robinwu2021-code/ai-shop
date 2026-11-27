@@ -9,8 +9,8 @@ import java.util.Optional;
  * <p>一律只看<b>本商户</b>（{@code entity_no}）的商品；他人商户的商品号 / SKU 号当作不存在（{@link Optional#empty()}），
  * 不区分「不存在」与「不是你的」—— 后者会泄露别家有这个号。
  *
- * <p>库存按门店口径：某 SKU 只要有任意一条 {@code prd_store_stock} 行就整体转为店级管理，没有行的店视为 0
- * （与 {@code PrdStoreStock} 的模型一致）；没传门店时用 SKU 总量。可售 = 库存 − 锁定。
+ * <p>库存按门店口径：某 SKU 只要有任意一条 {@code prd_store_sku} 店级库存（sellable_qty 非空）就整体转为店级管理，没有行的店视为 0
+ * （与 {@code PrdStoreSku} 的模型一致）；没传门店时用 SKU 总量。可售 = 库存 − 锁定。
  * 金额一律为分。设计：{@code docs/technical/TDD-AI取数接口.md}。
  */
 public interface AiGoodsService {

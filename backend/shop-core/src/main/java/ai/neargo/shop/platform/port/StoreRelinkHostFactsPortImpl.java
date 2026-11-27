@@ -82,7 +82,7 @@ public class StoreRelinkHostFactsPortImpl implements StoreRelinkHostFactsPort {
         }
         // Product data is not moved by N1. Even drafts, deleted goods and zero stock
         // retain the old entity owner; a sibling's entity-wide catalog also blocks retirement.
-        for (String table : List.of("prd_goods", "prd_store_stock", "prd_store_goods", "prd_store_price")) {
+        for (String table : List.of("prd_goods", "prd_store_sku", "prd_store_goods")) {
             trades |= Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM " + table
                     + " WHERE tenant_no=:tenant AND (entity_no=:entity OR store_no=:store))", scope, Boolean.class));
         }

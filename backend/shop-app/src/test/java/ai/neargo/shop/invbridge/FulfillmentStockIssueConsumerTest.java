@@ -95,7 +95,7 @@ class FulfillmentStockIssueConsumerTest {
         setup(2,true); child.setStatus(OrdSubOrder.REFUNDED); parent.setPaidAt(null);
         var sku=mock(ai.neargo.shop.product.mapper.ProductMappers.SkuMapper.class);
         var locks=mock(ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper.class);
-        var stores=mock(ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper.class);
+        var stores=mock(ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper.class);
         // The original owner reads only ALLOCATED locks: an already issued/released original has none.
         when(locks.lockFulfillmentCurrent("SUB-1")).thenReturn(List.of());
         var original=new ai.neargo.shop.product.port.StockPortImpl(sku,locks,stores,
