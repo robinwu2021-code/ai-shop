@@ -180,6 +180,27 @@ export interface MallQuoteRequest {
   currency: string;
 }
 
+/** 门店当前订阅的并发校验信息。 */
+export interface MallSubscriptionVersion {
+  /** 权益归属门店 */
+  storeNo: string;
+  /** 升级报价使用的当前权益版本 */
+  entitlementVersion: number | null;
+}
+
+export interface MallUpgradeQuoteRequest {
+  /** 已选 SKU 的套餐方案版本 */
+  targetPlanVersionNo: string;
+  /** 门店选中的已发布 SKU 版本 */
+  targetSkuVersionNo: string;
+  /** 本次升级报价请求号 */
+  operationNo: string;
+  /** 门店当前权益版本，用于防止按过期权益折算 */
+  expectedEntitlementVersion: number;
+  /** 报价币种 */
+  currency: string;
+}
+
 /** 收货地址（含硬件时必填） */
 export interface MallShippingAddress {
   /** 收件人 */
@@ -382,6 +403,10 @@ export interface MallApi {
   mMallRefund(storeNo: string, orderNo: string, body: MallRefundRequest): Promise<MallRefundResult>;
   /** 本店能买的商品 */
   mMallStorefront(storeNo: string): Promise<MallStorefront>;
+  /** 查询当前门店权益版本以申请升级报价 */
+  mMallSubscriptionVersion(storeNo: string): Promise<MallSubscriptionVersion>;
+  /** 按所选版本和门店现有权益折算升级报价 */
+  mMallOfflineUpgradeQuote(storeNo: string, body: MallUpgradeQuoteRequest): Promise<MallQuote>;
   /** 线下转账报价：只取部署配置的收款档案 */
   mMallOfflineQuote(storeNo: string, body: MallQuoteRequest): Promise<MallQuote>;
   /** 按报价下单 */

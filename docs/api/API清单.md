@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1270 个接口**：后端已实现 1013（80%）· 前端在调 1087
+**合计 1272 个接口**：后端已实现 1014（80%）· 前端在调 1089
 
 ---
 
@@ -332,7 +332,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **506** 个接口 ｜ 后端已实现 **398**（79%）｜ 前端在调 **504**
+共 **508** 个接口 ｜ 后端已实现 **399**（79%）｜ 前端在调 **506**
 
 ### activities（4）
 
@@ -1155,7 +1155,7 @@
 | GET | `/biz/stored-value/plans/{planNo}` | 储值方案详情 | — | `SvPlan` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/stored-value/plans/{planNo}/status` | 启停门店储值方案 | `SvPlanStatusReq` | `SvPlan` | 🔒 | ✅ | ✅ |
 
-### stores（49）
+### stores（51）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1190,6 +1190,7 @@
 | POST | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions` | 平台商城：发出付款指引（幂等） | — | `MallOfflineInstructions` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions` | 平台商城：查看付款指引 | — | `MallOfflineInstructions` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/stores/{storeNo}/mall/offline/quotes` | 平台商城：线下转账报价 | `MallQuoteRequest` | `MallQuote` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/upgrade-quotes` | 平台商城：线下套餐升级报价 | `MallUpgradeQuoteRequest` | `MallQuote` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/stores/{storeNo}/mall/orders` | 平台商城：按报价下单 | `MallPlaceRequest` | `MallOrder` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{storeNo}/mall/orders` | 平台商城：本店的商城订单 | — | `数组` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{storeNo}/mall/orders/{orderNo}` | 平台商城：订单详情 | — | `MallOrderDetail` | 🔒 | ⬜ | ✅ |
@@ -1207,6 +1208,7 @@
 | GET | `/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}` | 储值收支详情 | — | `SvRecord` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/stored-value/issuers` | 门店可用发行方 | — | `StoreIssuerOptions` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/stored-value/recharge-options` | 会员可用储值方案 | — | `SvIssuerRechargeOptions` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/subscription` | 平台商城：查询本店订阅版本 | — | `MallSubscriptionVersion` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/mine` | 我能进的所有门店（按证照分组） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### upload（1）

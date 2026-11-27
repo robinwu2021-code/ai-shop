@@ -17,6 +17,8 @@
         </view>
         <view class="sh-mt-md">
           <sh-kv between :label="String(t('bizMall.checkout.total'))"><text class="sh-num">{{ mallMoney(quote.total) }}</text></sh-kv>
+          <text v-if="upgrade" class="sh-hint txt-quiet">{{ t("bizMall.checkout.upgradeHint") }}</text>
+          <sh-kv v-if="upgrade" between :label="String(t('bizMall.checkout.upgradeCredit'))"><text>{{ mallMoney(quote.credit) }}</text></sh-kv>
           <sh-kv between :label="String(t('bizMall.checkout.payable'))"><text class="txt-strong sh-num">{{ mallMoney(quote.payable) }}</text></sh-kv>
         </view>
         <text class="sh-hint txt-quiet">{{ t("bizMall.checkout.expiresAt", { time: mallTime(quote.expiresAt) }) }}</text>
@@ -80,6 +82,7 @@ const currency = ref("");
 const name = ref("");
 const quote = ref<MallQuote | null>(null);
 const quoting = ref(true);
+const upgrade = ref(false);
 const routeLoaded = ref(false);
 let quoteRequest = 0;
 const quoteError = ref("");
@@ -95,6 +98,7 @@ const ready = computed(() =>
 async function requote() {
   const request = ++quoteRequest;
   quote.value = null;
+  upgrade.value = false;
   quoteError.value = "";
   quoting.value = true;
   if (!routeLoaded.value || !merchant.storeNo) return;
@@ -107,9 +111,26 @@ async function requote() {
     return;
   }
   try {
-    const result = await api.mMallOfflineQuote(store.value, {
+    const targetStore = store.value;
+    const result = await api.mMallOfflineQuote(targetStore, {
       lines: [{ skuVersionNo: sku.value, quantity: quantity.value }],
       currency: currency.value,
+    }).catch(async (error: unknown) => {
+      if (!(error instanceof Error) || error.message !== "UPGRADE_REQUIRED" || quantity.value !== 1) throw error;
+      const [catalog, subscription] = await Promise.all([
+        api.mMallStorefront(targetStore), api.mMallSubscriptionVersion(targetStore),
+      ]);
+      if (request !== quoteRequest || merchant.storeNo !== targetStore) throw error;
+      const selected = catalog.products?.flatMap(product => product.skus ?? [])
+        .find(item => item.sku?.skuVersionNo === sku.value)?.sku;
+      const plans = selected?.components?.filter(component => component.kind === "PLAN") ?? [];
+      if (catalog.store?.storeNo !== targetStore || subscription.storeNo !== targetStore ||
+          subscription.entitlementVersion == null || plans.length !== 1 || !plans[0]?.planVersionNo) throw error;
+      upgrade.value = true;
+      return api.mMallOfflineUpgradeQuote(targetStore, {
+        targetSkuVersionNo: sku.value, targetPlanVersionNo: plans[0].planVersionNo,
+        expectedEntitlementVersion: subscription.entitlementVersion, operationNo: idempotencyKey(), currency: currency.value,
+      });
     });
     if (request === quoteRequest && store.value === merchant.storeNo) quote.value = result;
   } catch (e) {

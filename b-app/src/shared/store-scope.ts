@@ -85,6 +85,8 @@ export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
   mSellRules: "BizStockSyncController → 路径带门店号，这家店的线上可售规则",
   mOfflineSales: "BizOfflineSaleController → 路径带门店号，只列这家店出货库位上的线下卖出",
   mMallStorefront: "CommerceStorefrontHttpController → 路径带门店号，按这家店的经营类型列可买商品",
+  mMallSubscriptionVersion: "按当前门店读取订阅权益版本",
+  mMallOfflineUpgradeQuote: "按当前门店和所选 SKU 计算升级报价",
   mMallOfflineQuote: "CommerceOfflineBuyerHttpController → 路径带门店号，报价归这家店",
   mMallPlaceOrder: "CommerceBuyerMallHttpController → 路径带门店号，订单与权益归这家店",
   mMallOrders: "CommerceBuyerMallHttpController → 路径带门店号，只列这家店的商城订单",

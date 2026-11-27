@@ -12531,6 +12531,29 @@ mSvStoreSummary　🔒
 | `expiresAt` | `string` | 否 | 过期时间（ISO） |
 
 
+#### POST `/biz/stores/{storeNo}/mall/offline/upgrade-quotes`
+
+平台商城：线下套餐升级报价　🔒
+
+**入参**
+
+请求体：[`MallUpgradeQuoteRequest`](#mallupgradequoterequest)
+
+**出参**（`data`）
+
+类型：[`MallQuote`](#mallquote)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 否 | 报价号；下单时带上 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `total` | [`MallMoney`](#mallmoney) | 否 | 商品总额 |
+| `credit` | [`MallMoney`](#mallmoney) | 否 | 抵扣 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付现金 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `expiresAt` | `string` | 否 | 过期时间（ISO） |
+
+
 #### POST `/biz/stores/{storeNo}/mall/orders`
 
 平台商城：按报价下单　🔒
@@ -13011,6 +13034,17 @@ _无字段_
 |---|---|:---:|---|
 | `issuerOptions` | [`StoreIssuerOptions`](#storeissueroptions) | 是 | Issuer choices and their current recharge/redemption availability. |
 | `plans` | [`SvPlanPage`](#svplanpage) | 是 | Recharge plans available for the selected store and customer. |
+
+
+#### GET `/biz/stores/{storeNo}/subscription`
+
+平台商城：查询本店订阅版本　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallSubscriptionVersion`](#mallsubscriptionversion)
 
 
 #### GET `/biz/stores/mine`
