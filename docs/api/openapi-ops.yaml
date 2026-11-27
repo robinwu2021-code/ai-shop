@@ -13662,6 +13662,7 @@ components:
       enum:
         - "STORE"
         - "SYSTEM"
+        - "ENTITY"
       description: "业务端作用域"
     MallReleaseStatus:
       type: "string"
@@ -14026,6 +14027,7 @@ components:
         - "END_ACCESS"
         - "HARDWARE"
         - "BUNDLE"
+        - "SERVICE"
       description: "商品种类"
     MallComponentKind:
       type: "string"
@@ -14471,7 +14473,7 @@ components:
           description: "每单上限"
         expectedVersion:
           type: "number"
-          description: "乐观锁：新 SKU 传 0；否则带 SKU 定义的 version"
+          description: "新版本传 0；编辑草稿传该版本的 version"
         reason:
           type: "string"
           description: "审计原因"
@@ -14497,10 +14499,10 @@ components:
           description: "幂等操作号"
         expectedVersion:
           type: "number"
-          description: "SKU 定义行版本"
+          description: "草稿版本行的 version"
         expectedSkuVersion:
           type: "number"
-          description: "SKU 版本行版本"
+          description: "SKU 定义行的 version"
         reason:
           type: "string"
           description: "审计原因"
@@ -15082,6 +15084,11 @@ components:
         quantity:
           type: "number"
           description: "数量"
+        deviceSerials:
+          type: "array"
+          items:
+            type: "string"
+          description: "按序列号出货时，一件设备对应一个序列号"
       required:
         - "orderComponentNo"
         - "operationNo"
@@ -17135,6 +17142,27 @@ components:
     EntityPlanOffer:
       type: "object"
       properties:
+        catalog:
+          anyOf:
+            - type: "object"
+              properties:
+                skuNo:
+                  type: "string"
+                skuVersionNo:
+                  type: "string"
+                planVersionNo:
+                  type: "string"
+                entitlementCodes:
+                  type: "array"
+                  items:
+                    type: "string"
+              required:
+                - "skuNo"
+                - "skuVersionNo"
+                - "planVersionNo"
+                - "entitlementCodes"
+              additionalProperties: false
+            - type: "null"
         offerNo:
           type: "string"
           description: "主体套餐销售报价编号。"
@@ -17180,6 +17208,8 @@ components:
     EntityPlanOfferEdit:
       type: "object"
       properties:
+        skuVersionNo:
+          type: "string"
         offerNo:
           type: "string"
           description: "要新增或更新的销售报价编号。"
@@ -17317,6 +17347,9 @@ components:
     EntityPlanPurchase:
       type: "object"
       properties:
+        mallOffline:
+          type: "boolean"
+          description: "该订单的收款资料可按门店号和原商城订单号查询。"
         orderNo:
           type: "string"
           description: "主体套餐购买订单号。"
@@ -17334,7 +17367,7 @@ components:
           description: "下单时冻结的销售报价及额度快照。"
         status:
           type: "string"
-          description: "购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。"
+          description: "购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示退款完成，REFUND_PENDING 和 REFUND_REVIEW 分别表示门店撤权待完成和主体额度待人工复核。"
         purchaseSource:
           type: "string"
           description: "创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。"
@@ -29875,6 +29908,85 @@ paths:
     post:
       operationId: "declineEntityPlanPurchase"
       summary: "declineEntityPlanPurchase"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "o"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{e}/{o}/refund-review":
+    get:
+      operationId: "entityPlanRefundReview"
+      summary: "entityPlanRefundReview"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "o"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "closeEntityPlanRefundReview"
+      summary: "closeEntityPlanRefundReview"
       tags:
         - "merchant"
       responses:
