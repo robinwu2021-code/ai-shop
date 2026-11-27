@@ -309,7 +309,7 @@
 没做的：字典组 55 处（支付渠道主数据、区划、主体类型、市场、计量单位、商城行业、渠道接入方）是 1b 的延续，量大，单独做；
 删 `WxUploadedConsumer` 要先在生产确认存量 `WX_SHIPPING_UPLOADED` 已投完（发件箱里没有这个类型的待投递行）；
 删 `pay_setting`、`pay_document_number`、`pay_document_sequence` 要等 V706 上线并核对后另写迁移。
-**顺带发现**：`OpsStaffWriteFlowTest.disableKicksLiveSession` 现红：停用账号时 `OpsApiKeyStore.revokeAll` 走密钥库摘要验证，测试环境没配 `shop.secret.env`（1h 引入，已告知会话乙）。
+**顺带发现**：`OpsStaffWriteFlowTest.disableKicksLiveSession` 现红：停用账号时 `OpsApiKeyStore.revokeAll` 走密钥库摘要验证，测试环境没配 `shop.secret.env`（1h 引入）。**已修（2987d6ab2）**：没配时摘要凭据的列出、吊销、验证当作没有凭据，签发与登记仍拒绝；复跑 8/8。
 
 **第 2 阶段：等决定后做**
 
