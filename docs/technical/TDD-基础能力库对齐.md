@@ -292,10 +292,10 @@
 | 1b | 字典收敛 | **已做（2026-11-27，10ead5ef7）**：`spi.dict.DictionaryPort` 一个端口，唯一实现 `DictionaryPortImpl` 按类型汇集三个来源；行业实为两个概念（经营类型树、进件行业），`cim_provider` 是销售渠道方、不并；三个旧端口方法与四处渠道常量别名删掉，见下方“1b 字典” | 中 |
 | 1c | 设置收敛 | **已做（2026-11-27，77d04fc9c）**：结算、提现改经 `SettingPort` 读写 `sys_setting`，删 `PaySettingService`/`PaySetting`；pay-svc 桩清单加回 `SettingPort`。`pay_setting` 不再读写、未删表；上线前查生产 `sys_setting` 有无 V285 前的四个旧键 | 小 |
 | 1d | 发号仓储 | **已做（2026-11-27，44d906f85）**：仓储不再按归属切表，CORE/PAY 共用 `sys_sequence` + `core_document_number`（支付数据源与主库同一个库，只分事务，所以不跨库）；订单号段 `SeqSegmentSource` 改调仓储 `claimSegment`，删第二份 `SeqMapper` 与 `SysSequence`。**新增迁移 V706**（见下）。「三种按范围计数」逐个核过，只有订单号段是重复的发号，已收；另三处不属发号：`ord_points_source_counter`（积分来源事实的流序号，属事件组）、`mkt_counter_campaign_fence`（营销活动并发围栏，靠同事务行锁，不能挪进独立事务的发号）、`pay_sequence` / `pay_checkout_display_revision`（本仓库没有读写代码，只在库里） | 中 |
-| 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准）。**暂停（2026-11-27）**：门店审核已走 `ApprovalPort`；支付两人复核可并入但与 OpsKit“可本人审批”冲突；储值活动审批与改价是商户侧审批，`ApprovalPort` 承载不了。方案与步骤见下方“1e 审批”，等 §3 Q12–Q14 | 中 |
+| 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准）。**部分完成（2026-11-27，a24af565d 等）**：运营侧 `ApprovalPort`（门店审核、退款两人复核），店内 `LightApprovalPort` + `sys_approval`（改价）；储值活动审批随储值迁出，等 §3 Q17。见下方“1e 审批” | 中 |
 | 1f | 撤中转 | **已做（2026-11-27，69b2bedd8）**：PAY 权益中转、NearPay 接收端、进销存回写按原事件号经 `OutboxEventBus.forward` 直发中间件；餐饮包装含路由决定未删，见下方“1f 撤中转” | 中 |
 | 1g | 接口级防重迁移 | `sys_idempotent` / `IdempotencyService` 的 50 个使用文件按域分批改用统一防重，每批一提交。**已做（2026-11-27）**：Q11 定 A，统一端口 `RequestIdempotencyPort`；端口与主干 18e27062a、美业 2821a4f2f、餐饮 288d997c9、删转发器 260735a0b，做法见下方“1g” | 大 |
-| 1h | 开放应用 | 三套应用凭据（`pay_app`、`inv_open_credential`、`sys_ops_api_key`）收敛；若设计已定归密钥库，则做迁移接口，不在本库落表。**暂停（2026-11-27）**：设计确认应用身份进基础能力库 `sys_open_app`、凭据进密钥库 `sec_key`；统一凭据接口与迁移路径见下方“1h 开放应用”，等 §3 Q15、Q16（密钥库只存可还原材料，库存与运营两套只存哈希） | 中 |
+| 1h | 开放应用 | 三套应用凭据（`pay_app`、`inv_open_credential`、`sys_ops_api_key`）收敛；若设计已定归密钥库，则做迁移接口，不在本库落表。**部分完成（2026-11-27）**：统一凭据接口 `CredentialVerifier` 与摘要档已做，运营接口密钥已改走密钥库；库存开放凭证等 §3 Q18；`pay_app` → `sys_open_app` 随基础能力库换库（Q2）。见下方“1h 开放应用” | 中 |
 | 1i | 审计提交后写 | **已做（2026-11-27，267f86839）**：`AuditLogPortImpl` 提交后在后台线程写 `sys_audit_log`，回滚不写、失败只记日志；只动统一审计，各域操作日志不动（D4 未定，不影响） | 小 |
 
 建议分组：会话甲 1a、1c、1i、1d；会话乙 1b、1e、1h；会话丙 1f、1g。
@@ -424,7 +424,7 @@
 
 #### 1e 审批（会话乙，2026-11-27）
 
-档位：设计（本节只写方案与待定；代码等 Q12–Q14）。
+档位：1（新表 `sys_approval`、`ord_manual_price_adjustment` 删四列、新内部端点；V705 带 DDL，166 需 root 先执行）。Q12–Q14 已按建议定（2026-11-27）。
 
 **四条审批逐条看**（设计：重审批走独立的审批与工单服务 OpsKit，业务表只存审批单号；店内快速审批是基础能力库的轻量审批 `sys_approval`）：
 
@@ -438,23 +438,40 @@
 **结论**：“以 `ApprovalPort` 为准收成一个端口”只对运营侧审批成立（门店审核已是，支付两人复核可以并进来）。
 储值活动审批与改价是商户侧审批，要么 OpsKit 支持商户侧审批人，要么由轻量审批承接 —— 后者就是第二个端口，与“一个端口”冲突。
 
-**支付两人复核并入 `ApprovalPort` 的步骤**（Q12 定了再做）：
+**支付两人复核并入 `ApprovalPort`**（已做，a24af565d）：
 
 1. 支付侧 `RefundService` 加“审批结果回写”（按退款单号放行或驳回，幂等，与 `review` 共用状态迁移），`PayOpsInternalApi` 加对应内部端点（独立部署时网关经它调）。
 2. 网关加 `PayRefundReviewApprovalSubject` 与补送任务（同 `SettleApprovalSubmitter`：待复核却没有审批单的，重新送）。
 3. 主题启用后，退款建单不再开 `pay_approval`；未启用时保持现状。存量 PENDING 的 `pay_approval` 走完旧流程后，删 `ApprovalService` 与 `pay_approval`。
 
+落地要点：支付读审批服务自己的两个开关（`RefundReviewRouting`，`shop.opskit.enabled` + `enabled-subjects` 含 `shop.pay_refund_review`），不另设开关；
+`ApprovalSubject.separateApprovers()` 新增（默认否），退款复核为是，`OpsKitProcessRegistrar` 据此登记 `selfApproval=false, crossStepExclusive=true`；
+送审提交人 = 退款申请人；审批未通过（驳回、撤回、放弃）一律驳回退款 —— 待复核的退款不能无限挂着；回写对重投幂等（放行后已执行也算已生效）。
+内部端点 `POST /internal/pay/ops/refunds/{payRefundNo}/approval-outcome`（独立部署时网关经它调）。
+
+**轻量审批端口**（已做，5793cfc9d）：`spi.approval.LightApprovalPort`，唯一实现 `platform.port.LightApprovalPortImpl`，表 `sys_approval`（V705，字段照基础能力库字段设计，
+另加“租户 + 对象 + 修订”唯一键作送审幂等）。每个方法一条写语句、不依赖调用方事务：业务库与本表可能不同库，业务回滚留下的审批单读不到业务对象，不会误放行。
+审批人不得是申请人；过期不批；同一人同一结果可重放。
+
+**改价改走轻量审批**（已做，5793cfc9d）：`ord_manual_price_adjustment` 删 `status`、`approval_mode`、`approved_by`、`approved_at`（V705，线上 0 行），
+实体上这四个改成非持久字段，读出时由服务从审批单填上（`OWNER_ORIGINATED` ↔ `AUTO`，`OWNER_REVIEW` ↔ `MANUAL`），计价快照与校验照旧。
+店主自己改价 = 自动批准；店员改价 = 待店主批。改价行批准后不再改写。
+
+**储值活动审批：不并入 `sys_approval`**（与 Q13 的建议不同，偏差）：设计清单里 `pmt_sv_approval`、`pmt_sv_release_link` 归“储值迁到会员营销”，
+并入 `ent_template(+version)` —— 活动审批会变成卡模板版本的发布状态，不是独立的审批单；而且它的列表按管理层、范围类型、品牌筛选，`sys_approval` 没有这些列。
+所以它随储值迁出一起处理（另一条线），本项不动。见 §3 Q17。
+
 **待定**：
 
 | # | 问题 | 建议 |
 |---|---|---|
-| Q12 | OpsKit 审批默认“一律可以本人审批”，而支付退款复核要求申请人、一审、二审三人互不相同。退款复核切到 OpsKit 时，OpsKit 要不要强制同一流程内不同人 | 要：资金类（三级）在 OpsKit 流程上设“审批人不得为提交人且两步不同人”；做不到就退款复核暂不切 |
-| Q13 | 储值活动审批（商户管理层批）归哪 | 归轻量审批 `sys_approval`，与改价一起；不走 OpsKit |
-| Q14 | 轻量审批要不要和 `ApprovalPort` 合成一个接口 | 不合：两者的审批人、节奏、存储都不同；`ApprovalPort` 管运营侧，另设轻量审批端口管店内。若坚持一个端口，就在 `ApprovalPort` 上加“同步裁决”一族方法，由两个实现按主题分派 |
+| Q12 | OpsKit 审批默认“一律可以本人审批”，而支付退款复核要求申请人、一审、二审三人互不相同。退款复核切到 OpsKit 时，OpsKit 要不要强制同一流程内不同人（**已定 2026-11-27：照建议**） | 要：资金类（三级）在 OpsKit 流程上设“审批人不得为提交人且两步不同人”；做不到就退款复核暂不切 |
+| Q13 | 储值活动审批（商户管理层批）归哪（**已定 2026-11-27：照建议；落地见上方偏差与 Q17**） | 归轻量审批 `sys_approval`，与改价一起；不走 OpsKit |
+| Q14 | 轻量审批要不要和 `ApprovalPort` 合成一个接口（**已定 2026-11-27：照建议，Q12、Q13 同**） | 不合：两者的审批人、节奏、存储都不同；`ApprovalPort` 管运营侧，另设轻量审批端口管店内。若坚持一个端口，就在 `ApprovalPort` 上加“同步裁决”一族方法，由两个实现按主题分派 |
 
 #### 1h 开放应用（会话乙，2026-11-27）
 
-档位：设计（本节只写方案与待定；代码等 Q15、Q16）。
+档位：1（密钥模块 `sec_key_version` 加列，`db/secret` V3；运营接口密钥改存密钥库）。Q15、Q16 已按建议定（2026-11-27）。
 
 **设计归属**（[基础能力库表说明](design/数据库设计/库/02-基础能力库.md) §2、清单复核 §“接入应用、密钥与支付运营权限的归属”、`db-split-manifest.csv`）：
 
@@ -490,6 +507,24 @@
 | Q15 | API Key 类凭据（库存开放凭证、运营接口密钥）进密钥库时只存摘要还是存可还原材料 | 只存摘要：`sec_key` 加一档 `StorageTier.DIGEST`，`materialOf` 对它拒绝；泄露库也拿不到可用密钥 |
 | Q16 | 运营接口密钥 `ownerId` 是数字，而运营账号键是 `staff_no` 字符串；`KeyOwner.ownerId` 用运营账号的数字主键还是改成字符串 | 用 `sys_ops_staff.id`；`KeyOwner` 不改 |
 
+**已做（2026-11-27，601e6a1b8）：运营接口密钥改走密钥库**
+
+- 统一接口 `ai.neargo.secret.api.CredentialVerifier`（实现 `secret-core` 的 `DigestCredentialVerifier`）：`issue`（返回一次性明文）、
+  `register`（只交摘要的自助登记，幂等）、`verify(namespace, 出示串)`、`list(owner)`、`revoke`、`revokeAll`。
+  摘要 = 含前缀整串 UTF-8 的 SHA-256 小写十六进制（与 `TokenHash` 一致）；用途固定 `KeyPurpose.INBOUND_API_KEY`（新增 `Usage.API_KEY`）。
+- 存储档 `StorageTier.DIGEST`（Q15）：`KeyRegistry.materialOf` 对它抛 `WRONG_USAGE`。`db/secret` V3：`sec_key_version` 加 `material_digest`、
+  `credential_key`、`label`、`scope` 与两个唯一键，`ck_sec_key_version_1` 放宽为“密文、公开材料、摘要至少一个”；凭据号存 `external_key_id`。
+- 所有者 `KeyOwner(PLATFORM, "OPS_STAFF", sys_ops_staff.id)`（Q16）。同一账号可同时有多把：每把是所有者那把 `sec_key` 下一个 DIGEST 版本、各自 ACTIVE，
+  不占“一把密钥一个 ACTIVE 版本”的名额。
+- `OpsApiKeyServiceImpl`、`OpsApiKeyStore` 改走接口；认证仍核运营账号状态（ACTIVE、未删、不需改密）。对外端点与 JSON 不变。
+  `sys_ops_api_key` 停写停读（线上 0 行），删表留后续迁移。
+- **部署前提**：运营接口密钥依赖密钥模块，进程须配 `shop.secret.env`（DIGEST 档不需要主密钥）；未配时 `oak_` 认证会 500。上线前确认。
+- `scripts/gen-test-schema.py` 支持 `ALTER TABLE … DROP CONSTRAINT`（V3 要在 H2 上直接跑，`DROP CHECK` 不通用）。
+
+**未做：库存开放凭证**（等 Q18）。`inventory-svc` 独立部署时没有密钥模块（无依赖、无 `sec_*` 数据源，密钥模块是库不是服务）；
+且模型不对齐：库存所有者是可空字符串（系统凭证按 `system_code` 选业主）而 `KeyOwner.ownerId` 是数字，凭证是 `appKey` + `appSecret` 一对并带 scopes/capabilities，哈希用 BCrypt 不能按摘要查。
+`inv_open_credential`、`OpenApiCredentialServiceImpl`、`ServicePlatformServiceImpl` 原样未动。
+
 ## §3 待你定
 
 | # | 问题 | 建议 |
@@ -505,11 +540,13 @@
 | Q8 | 报表脏日丢一次能否靠每日重算兜底 | 有重算就降到 ②，十几个事件的跨库部分随之变少 |
 | Q9 | 是否引入 MQ（已定 RabbitMQ 4）；生产由谁部署（.80 / UME 166 目前没有） | 引入，按 §1.5 默认 `local`；见 ADR-067（提案，待确认）。部署负责人待定 |
 | Q11 | **已定 A（2026-11-27）**，见 §2.2 1g；清理按 S8 修正为不加。接口级防重（1g）怎么统一：A. 做成基础能力的一个端口（语义即 §2.2 1g 的 S1–S8），回执存基础能力库一张请求回执表、24 小时清理，设计 §6.9 的“不建表”改为“不在业务库建表”，调用方迁移只是换端口；B. 照设计定稿逐接口加业务唯一键、重复时重读业务数据重建响应 | A：约 100 处调用机械可分批、对外语义不变；B 要约 40 个接口所在文件各加迁移与测试，原始响应重放与 24 小时语义消失，餐饮/美业要各模块做 |
-| Q12 | 1e：退款两人复核切到 OpsKit 时，OpsKit 要不要强制“审批人不得为提交人、两步不同人”（支付现行规则；OpsKit 默认可本人审批） | 要；做不到就退款复核暂不切 |
-| Q13 | 1e：储值活动审批（商户管理层批）归哪 | 归轻量审批 `sys_approval`，与改价一起，不走 OpsKit |
-| Q14 | 1e：轻量审批（店内、商户侧）要不要和 `ApprovalPort` 合成一个接口 | 不合，另设轻量审批端口；坚持一个就给 `ApprovalPort` 加“同步裁决”一族、按主题分派两个实现 |
-| Q15 | 1h：API Key 类凭据（库存开放凭证、运营接口密钥）进密钥库只存摘要还是可还原材料 | 只存摘要：`sec_key` 加 `StorageTier.DIGEST`，`materialOf` 对它拒绝 |
-| Q16 | 1h：运营接口密钥的所有者用 `sys_ops_staff.id`（`KeyOwner.ownerId` 是数字）还是改 `KeyOwner` 收字符串 | 用 `sys_ops_staff.id`，`KeyOwner` 不改 |
+| Q17 | 1e：储值活动审批按设计清单随储值迁到会员营销、并成卡模板版本的发布状态（不进 `sys_approval`），是否认可 | 认可；Q13 的“归轻量审批”作废。若仍要进 `sys_approval`，需给它加管理层与范围列（偏离字段设计） |
+| Q12 | 1e：退款两人复核切到 OpsKit 时，OpsKit 要不要强制“审批人不得为提交人、两步不同人”（支付现行规则；OpsKit 默认可本人审批） | **已定（2026-11-27）**：要 |
+| Q13 | 1e：储值活动审批（商户管理层批）归哪 | **已定（2026-11-27）**：归轻量审批；但见 Q17 |
+| Q14 | 1e：轻量审批（店内、商户侧）要不要和 `ApprovalPort` 合成一个接口 | **已定（2026-11-27）**：不合，另设 `LightApprovalPort` |
+| Q15 | 1h：API Key 类凭据（库存开放凭证、运营接口密钥）进密钥库只存摘要还是可还原材料 | **已定（2026-11-27）**：只存摘要 |
+| Q16 | 1h：运营接口密钥的所有者用 `sys_ops_staff.id`（`KeyOwner.ownerId` 是数字）还是改 `KeyOwner` 收字符串 | **已定（2026-11-27）**：用 `sys_ops_staff.id` |
+| Q18 | 1h：库存独立服务 `inventory-svc` 的凭据怎么接密钥库：给它装一套指向同一密钥库的 secret 数据源，还是经 shop-app 的内部验证端点；库存所有者映射成什么 | 装 secret 数据源（密钥库本就是共享库，验证在本地少一跳）；所有者用 `inv_owner` 数字主键，系统凭证用 `owner_type=INVENTORY_SYSTEM`；`appKey` 作凭据号、capabilities 进 scope；存量 BCrypt 凭证 0 行，重新签发 |
 | Q10 | 商户来单通知（`SUB_ORDER_PAID`）改成提交后发、不落发件箱，接受“提交后、发送前进程崩溃漏一次” | **已定（2026-11-27）**：统一走 MQ，来单属 MQ 直发 |
 
 ## §5 对账三 · 实现 → 需求
