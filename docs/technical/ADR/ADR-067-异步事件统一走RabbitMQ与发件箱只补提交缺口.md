@@ -60,6 +60,14 @@
 8. **所有消费者按事件号幂等**（RabbitMQ 是至少一次）。通知的外部通道要按“事件号 + 通道 + 收件人”去重，
    去重记录用统一防重能力，不在业务库建技术表。
 
+9. **中间件统一封装，可无缝替换**（用户 2026-11-27 要求）。业务代码、发件箱、提交后通知、订阅编排只认
+   `ai.neargo.shop.event.broker` 里与厂商无关的接口：`MessageBroker`（`publish` / `subscribe`）、`BrokerMessage`、
+   `BrokerSubscription`（`ordered` = 同一聚合逐条按序）、`BrokerException`。接口注释里写明实现必须满足的五条语义
+   （同步确认、至少一次、订阅彼此独立、保序订阅、启动时建资源），换实现时逐条对照。
+   RabbitMQ 是其中一个实现，所有 AMQP 代码只在 `ai.neargo.shop.event.rabbit` 包；守卫 `BrokerIsolationTest`
+   扫描后端全部模块的 `src/main/java`，AMQP/RabbitMQ 的 import 出现在别处即失败。
+   换 MQ 或换成别的异步方案 = 新写一个实现包 + 一个按 `shop.events.transport` 取值装配的配置类，其余代码不动。
+
 ## 被否掉的方案
 
 | 方案 | 为什么不选 |
@@ -114,5 +122,10 @@
    **只切了通知类**；清单 A7–A13（有兜底作业的）仍走发件箱，待兜底作业逐个核实后再切。
    开发机没有 RabbitMQ（无 Homebrew/Docker/Erlang），连真 broker 的 `RabbitNotificationIT` 以环境变量 `SHOP_RABBITMQ_IT_*` 开启，
    在能连 RabbitMQ 的机器上跑。
-4. 发件箱中转改发 RabbitMQ，消费者改订阅，按域逐个切。
+4. 发件箱中转改发中间件，消费者改订阅，按域逐个切。
+   **已做（2026-11-27）**：`OutboxDispatcher` 遇到 `shop.events.outbox-event-types` 名单里的类型，改调 `MessageBroker.publish`，
+   中间件确认才标已发，没确认走原有退避重投；`BrokerSubscriptions` 把必达消费者按“名单 ∩ 它支持的类型”登记成保序订阅，
+   收到后带事件号、调用来源调原 `consume`。RabbitMQ 下保序订阅 = 一致性哈希交换机（按头 `x-aggregate-id`）+ N 条单活分区队列
+   （默认 4），**服务端需启用 `rabbitmq_consistent_hash_exchange` 插件**。名单默认为空，即全部仍进程内投递，按域逐个加；
+   与统一投递模式（ADR-039）同开会在启动时拒绝。发布同时校验发布确认与不可路由退回：没有订阅能收的消息算发布失败。
 5. 撤中转（清单 §〇 C 类）。

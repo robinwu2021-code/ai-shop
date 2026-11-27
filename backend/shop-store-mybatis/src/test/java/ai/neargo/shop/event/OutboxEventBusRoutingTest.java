@@ -97,6 +97,57 @@ class OutboxEventBusRoutingTest {
     }
 
     @Test
+    @DisplayName("名单里的发件箱事件改由中间件投递：中间件确认才标已发，不再进程内调消费者；没确认就退避重投")
+    void relayedTypesGoThroughBroker() {
+        List<String> called = new java.util.ArrayList<>();
+        OutboxConsumer durable = new OutboxConsumer() {
+            @Override public boolean supports(String t) { return true; }
+            @Override public void consume(SysOutbox e) { called.add(e.getEventType()); }
+        };
+        var dispatcher = new OutboxDispatcher(mapper, List.of(durable),
+                mock(org.springframework.transaction.PlatformTransactionManager.class));
+        var broker = mock(ai.neargo.shop.event.broker.MessageBroker.class);
+        var props = new ai.neargo.shop.event.broker.BrokerProperties();
+        props.setOutboxEventTypes(Set.of("ORDER_PAID"));
+        dispatcher.setBroker(broker);
+        dispatcher.setBrokerProperties(props);
+
+        SysOutbox paid = row(1L, "ORDER_PAID");
+        when(mapper.selectById(1L)).thenReturn(paid);
+        assertThat(dispatcher.dispatchOne(1L).sent()).isTrue();
+        verify(broker).publish(ai.neargo.shop.event.broker.BrokerMessage.of(paid));
+        assertThat(called).isEmpty();
+        assertThat(paid.getStatus()).isEqualTo(SysOutbox.SENT);
+
+        SysOutbox other = row(2L, "SKU_UPSERTED");
+        when(mapper.selectById(2L)).thenReturn(other);
+        assertThat(dispatcher.dispatchOne(2L).sent()).isTrue();
+        assertThat(called).containsExactly("SKU_UPSERTED");
+
+        SysOutbox down = row(3L, "ORDER_PAID");
+        when(mapper.selectById(3L)).thenReturn(down);
+        org.mockito.Mockito.doThrow(new ai.neargo.shop.event.broker.BrokerException("down"))
+                .when(broker).publish(ai.neargo.shop.event.broker.BrokerMessage.of(down));
+        var outcome = dispatcher.dispatchOne(3L);
+        assertThat(outcome.sent()).isFalse();
+        assertThat(outcome.retryAfter()).isNotNull();
+        assertThat(down.getStatus()).isEqualTo(SysOutbox.PENDING);
+    }
+
+    private static SysOutbox row(long id, String type) {
+        SysOutbox e = new SysOutbox();
+        e.setId(id);
+        e.setEventNo("EV-" + id);
+        e.setAggregateType("ORDER");
+        e.setAggregateId("O-" + id);
+        e.setEventType(type);
+        e.setPayload("{}");
+        e.setStatus(SysOutbox.PENDING);
+        e.setRetryCount(0);
+        return e;
+    }
+
+    @Test
     @DisplayName("发件箱投递跳过通知类消费者")
     void dispatcherSkipsAfterCommitConsumers() {
         OutboxConsumer notify = consumer(true, "M");

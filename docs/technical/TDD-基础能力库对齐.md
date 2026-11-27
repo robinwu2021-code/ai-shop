@@ -73,7 +73,9 @@
 
 **外部通道已去重（2026-11-27，ADR-067 第 2 步）。** `EventIdempotency.firstSend(通道, 收件人)` 在 `sys_event_consumed` 记 `send:<通道>:<收件人>`（`REQUIRES_NEW` 单独提交，外部调用不进数据库事务）；事件号由提交后通知与发件箱投递经 `DeliveryContext` 设上，运营端测试发送等不在投递里的调用直接放行。接在 `WxSubscribeSender`、`PushSender` 的统一出口和 `NotificationConsumer` 的短信、邮件、企微群、收件人物流短信处。
 
-**RabbitMQ 传输已接（2026-11-27，ADR-067 第 3 步）。** `shop.events.transport=local|rabbitmq`（默认 `local`）；`rabbitmq` 下通知类事件提交后发到交换机 `shop.events`，各通知消费者在自己的仲裁队列收，超投递上限进死信。连接配置在 `application.yml` 的 `shop.events.rabbitmq`，地址/虚拟主机/账号有默认值，口令只从 `SHOP_RABBITMQ_PASSWORD` 来。真 broker 集成测试 `RabbitNotificationIT` 待在服务器侧跑。
+**RabbitMQ 传输已接（2026-11-27，ADR-067 第 3 步）。** `shop.events.transport=local|rabbitmq`（默认 `local`）；`rabbitmq` 下通知类事件提交后发到交换机 `shop.events`，各通知消费者在自己的仲裁队列收，超投递上限进死信。连接配置在 `application.yml` 的 `shop.events.rabbitmq`，地址/虚拟主机/账号有默认值，口令只从 `SHOP_RABBITMQ_PASSWORD` 来。真 broker 集成测试待在服务器侧跑。
+
+**中间件统一封装 + 发件箱改发中间件（2026-11-27，ADR-067 决策 9 与第 4 步）。** 与厂商无关的 `event.broker.MessageBroker` 接口，RabbitMQ 实现关在 `event.rabbit` 包（守卫 `BrokerIsolationTest`）。发件箱按 `shop.events.outbox-event-types` 名单逐类改发中间件（默认空），必达消费者以保序订阅收；真 broker 测试 `RabbitMessageBrokerIT` 覆盖两种订阅、按聚合保序、死信与无人订阅即失败，需在能连 RabbitMQ 的机器上跑。
 由 `AfterCommitNotifications` 在提交后、在后台线程交给支持它的消费者（`NotificationConsumer`、`PrintNotifyBridge`），
 失败只记日志不重投，回滚则不发。必须换线程：提交回调里本线程的数据库资源还绑着已提交的事务，直接写库会静默丢失。
 测试配置 `shop.notify.after-commit.wait=true` 让提交线程等投递做完。混合类里的通知部分还没拆。

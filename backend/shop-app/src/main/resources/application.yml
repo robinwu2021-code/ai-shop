@@ -306,6 +306,10 @@ shop:
   # 切到 rabbitmq 而漏配口令启动即失败。
   events:
     transport: ${SHOP_EVENTS_TRANSPORT:local}
+    # 发件箱里改由中间件投递的事件类型，按域逐个加（ADR-067 第 4 步）；不在名单里的照旧进程内投递。
+    # 名单里的事件，必达消费者以“保序订阅”收（RabbitMQ 下按聚合号分区，需服务端启用 rabbitmq_consistent_hash_exchange）。
+    # 例：outbox-event-types: [SKU_UPSERTED, SKU_RETIRED]
+    outbox-event-types: []
     rabbitmq:
       host: ${SHOP_RABBITMQ_HOST:192.168.3.200}
       port: ${SHOP_RABBITMQ_PORT:5673}

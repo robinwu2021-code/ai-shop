@@ -24,10 +24,8 @@ public class RabbitEventsProperties {
     private int deliveryLimit = 5;
     /** 每条队列的消费线程数。 */
     private int concurrency = 1;
-    /** 发送失败的本地重试次数（含第一次）。 */
-    private int sendAttempts = 3;
-    /** 两次重试之间等多久（毫秒）。 */
-    private long sendBackoffMillis = 500;
+    /** 保序订阅的分区数：同一聚合号固定进一个分区，分区数即这类订阅的并发上限。 */
+    private int partitions = 4;
 
     public String getHost() { return host; }
     public void setHost(String host) { this.host = host; }
@@ -49,10 +47,8 @@ public class RabbitEventsProperties {
     public void setDeliveryLimit(int deliveryLimit) { this.deliveryLimit = deliveryLimit; }
     public int getConcurrency() { return concurrency; }
     public void setConcurrency(int concurrency) { this.concurrency = concurrency; }
-    public int getSendAttempts() { return sendAttempts; }
-    public void setSendAttempts(int sendAttempts) { this.sendAttempts = sendAttempts; }
-    public long getSendBackoffMillis() { return sendBackoffMillis; }
-    public void setSendBackoffMillis(long sendBackoffMillis) { this.sendBackoffMillis = sendBackoffMillis; }
+    public int getPartitions() { return partitions; }
+    public void setPartitions(int partitions) { this.partitions = partitions; }
 
     /** 漏配直接失败，不带着空口令去连。 */
     void validate() {
