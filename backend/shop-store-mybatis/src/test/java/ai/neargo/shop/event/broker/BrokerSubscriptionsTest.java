@@ -151,7 +151,7 @@ class BrokerSubscriptionsTest {
     }
 
     @Test
-    @DisplayName("通知类没声明 eventTypes、或统一投递模式下开中间件中转：启动即失败")
+    @DisplayName("通知类没声明 eventTypes、或统一模式开了名单却没有门面：启动即失败")
     void misconfigurationFailsFast() {
         assertThatThrownBy(() -> orchestration(new FakeBroker(), new BrokerProperties(), new MockEnvironment(),
                 consumer("print-notify", true, Set.of(), "PRINT_X")).start())
@@ -160,6 +160,6 @@ class BrokerSubscriptionsTest {
         props.setOutboxEventTypes(Set.of("ORDER_PAID"));
         assertThatThrownBy(() -> orchestration(new FakeBroker(), props,
                 new MockEnvironment().withProperty("shop.outbox.sources.platform.mode", "unified")).start())
-                .hasMessageContaining("unified");
+                .as("统一模式开了名单却没有 PLATFORM 门面").hasMessageContaining("PLATFORM");
     }
 }

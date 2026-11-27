@@ -53,11 +53,14 @@ final class RabbitTopology {
         List<Declarable> all = new ArrayList<>(List.of(events, dlx, dlq,
                 BindingBuilder.bind(dlq).to(dlx).with(s.name())));
         TreeSet<String> types = new TreeSet<>(s.eventTypes());
+        // 定向投递（统一模式按“事件 × 处理者”）：路由键 @订阅名，只到这一个订阅
+        String direct = EventMessages.TARGET_PREFIX + s.name();
         if (!s.ordered()) {
             all.add(workQueue(base, s.name(), p, false));
             for (String t : types) {
                 all.add(new Binding(base, Binding.DestinationType.QUEUE, events.getName(), t, null));
             }
+            all.add(new Binding(base, Binding.DestinationType.QUEUE, events.getName(), direct, null));
             return new Declarables(all);
         }
         CustomExchange hash = new CustomExchange(base + ".hash", "x-consistent-hash", true, false,
@@ -66,6 +69,7 @@ final class RabbitTopology {
         for (String t : types) {
             all.add(new Binding(hash.getName(), Binding.DestinationType.EXCHANGE, events.getName(), t, null));
         }
+        all.add(new Binding(hash.getName(), Binding.DestinationType.EXCHANGE, events.getName(), direct, null));
         for (int i = 0; i < partitions(p); i++) {
             String name = partitionQueue(s.name(), i, p);
             all.add(workQueue(name, s.name(), p, true));
