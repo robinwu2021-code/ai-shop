@@ -1186,7 +1186,7 @@ public class OpsServiceImpl implements OpsService {
          * 照常操作 —— 而停用他的那个人以为立刻生效了。
          */
         if (!enabled) {
-            apiKeys.revokeAll(staffNo, System.currentTimeMillis());
+            apiKeys.revokeAll(staffNo, "staff disabled");
             tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staffNo);
         }
         audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用", true,
@@ -1422,7 +1422,7 @@ public class OpsServiceImpl implements OpsService {
          * 不踢的话拿着旧 token 的人照样在线，改密等于没改。
          */
         tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staff.getStaffNo());
-        apiKeys.revokeAll(staff.getStaffNo(), System.currentTimeMillis());
+        apiKeys.revokeAll(staff.getStaffNo(), "password changed");
         audit("STAFF_PASSWORD", staff.getStaffNo(), "自助改密", true, null, null);
     }
 
@@ -1498,7 +1498,7 @@ public class OpsServiceImpl implements OpsService {
         staffMapper.updateById(staff);
         // 忘记密码的常见动机就是「怀疑被人用了」，不踢的话拿着旧 token 的人照样在线
         tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staffNo);
-        apiKeys.revokeAll(staffNo, System.currentTimeMillis());
+        apiKeys.revokeAll(staffNo, "password reset");
         audit("STAFF_PASSWORD_RESET", staffNo, "经邮件重置", true, null, null);
     }
 

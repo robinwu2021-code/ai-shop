@@ -55,6 +55,12 @@
             <artifactId>shop-base-auth</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 运营接口密钥进密钥库（TDD-基础能力库对齐 §2.2「1h 开放应用」）：只用契约包，实现由宿主装配 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>secret-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
