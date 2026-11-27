@@ -71,4 +71,22 @@ public class PayClientConfig {
         return new RemotePaymentPort(http.client(ServiceName.PAY, PaymentInternalApi.class, PAY_READ_TIMEOUT),
                 credentials, ServiceName.PAY);
     }
+
+    /**
+     * 普通订单（C 端 {@code /mp/order/{no}/pay}）在独立形态下走 near-pay：发起支付与确认支付都用远程实现，
+     * 由 {@link ai.neargo.shop.paybridge.port.SettlePortImpl} 取用。下单人编号从订单表读（near-pay 按「订单号 + 下单人」核对）。
+     */
+    @Bean
+    ai.neargo.shop.paybridge.port.SettlePortImpl.StandalonePayments standalonePayments(
+            ai.neargo.shop.spi.settle.OrdinaryPaymentInitiationPort initiation,
+            ai.neargo.shop.spi.settle.OrdinaryPaymentPort payments,
+            ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orders) {
+        return new ai.neargo.shop.paybridge.port.SettlePortImpl.StandalonePayments(initiation, payments,
+                orderNo -> ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+                    var order = orders.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                            .<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                            .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, orderNo).last("LIMIT 1"));
+                    return order == null ? null : order.getUserNo();
+                }));
+    }
 }
