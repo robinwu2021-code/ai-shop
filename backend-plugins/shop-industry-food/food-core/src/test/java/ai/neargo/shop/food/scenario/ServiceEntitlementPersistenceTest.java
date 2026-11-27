@@ -183,6 +183,7 @@ public class ServiceEntitlementPersistenceTest {
                         new ServiceFormMapper(ds),
                         operations,
                         manager,
+                        manager,
                         revisions,
                         materials,
                         markets,

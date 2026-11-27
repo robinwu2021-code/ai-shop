@@ -1,6 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
 import ai.neargo.shop.food.service.support.BusinessCommandJournal;
+import ai.neargo.shop.food.service.support.CommandBusinessKey;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -21,6 +22,7 @@ import ai.neargo.shop.food.service.DiningReturnService;
 import ai.neargo.shop.food.service.QueueService;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -40,6 +42,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
     private final FoodBusinessOperationsMapper mapper;
     private final FoodIndustryOperationsMapper industry;
     private final TransactionTemplate tx;
+    private final TransactionTemplate industryTx;
     private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final DiningOrderService orders;
@@ -50,6 +53,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
             FoodBusinessOperationsMapper mapper,
             FoodIndustryOperationsMapper industry,
             PlatformTransactionManager manager,
+            PlatformTransactionManager industryManager,
             RequestIdempotencyPort idem,
             ObjectMapper json,
             DiningOrderService orders,
@@ -59,6 +63,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
         this.industry = industry;
         journal = new BusinessCommandJournal(mapper, json);
         tx = new TransactionTemplate(manager);
+        industryTx = new TransactionTemplate(industryManager);
         this.idem = idem;
         this.json = json;
         this.orders = orders;
@@ -72,6 +77,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
         return tx.execute(t -> evidence(e, s, source, false));
     }
 
+    /** 加锁只用于交易事务里的工单（来源与工单同在交易句柄）；交接不跨库加锁。 */
     private Evidence evidence(String e, String s, Source source, boolean lock) {
         if (source == null) bad();
         valid(source.kind(), source.sourceNo());
@@ -111,6 +117,9 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
                 owner);
     }
 
+    // 服务交接是行业库的事实（ADR-068）：交接、交接明细、服务责任在行业事务里写，不用永久命令回执，
+    // 交接单号由请求键派生、在行业表上唯一，重放时按单号查回（TDD-餐饮域迁移新库 §8-Q1）。
+    // 来源（账单、批次、订位、排队、预点单）在交易库，只读一次、按来源摘要比对，不跨库加锁。
     @Override
     public HandoverVO propose(String e, String s, String a, HandoverReq req, String key) {
         valid(e, s, a, key);
@@ -120,52 +129,58 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
                 || req.sources().size() > 100
                 || a.equals(req.receiverNo())) bad();
         valid(req.receiverNo(), req.reason());
-        return tx.execute(
-                t ->
-                        journal.execute(
-                                key,
-                                FoodCommandFingerprint.scope("PROPOSE_SERVICE_HANDOVER", e, s),
-                                a,
-                                FoodCommandFingerprint.hash(json.writeValueAsString(req)),
-                                HandoverVO.class,
-                                () -> {
-                                    var sources = ordered(req.sources());
-                                    var facts = new ArrayList<Evidence>();
-                                    for (var source : sources) {
-                                        var ev = evidence(e, s, source, true);
-                                        if (ev.terminal()
-                                                || ev.currentOwner() != null
-                                                        && !a.equals(ev.currentOwner())) conflict();
-                                        facts.add(ev);
-                                    }
-                                    String no = BizKey.next("FHOV");
-                                    String hash =
-                                            FoodCommandFingerprint.hash(
-                                                    json.writeValueAsString(facts));
-                                    industry.businessOperationsInsertServiceHandover(
-                                            e,
-                                            s,
-                                            no,
-                                            a,
-                                            req.receiverNo(),
-                                            hash,
-                                            req.reason(),
-                                            a,
-                                            a);
-                                    for (var ev : facts)
-                                        industry.businessOperationsInsertServiceHandoverItem(
-                                                e,
-                                                s,
-                                                BizKey.next("FHIT"),
-                                                no,
-                                                ev.source().kind(),
-                                                ev.source().sourceNo(),
-                                                ev.sourceHash(),
-                                                a,
-                                                a);
-                                    audit(e, s, a, no, "HANDOVER_PROPOSE", req.reason(), key, hash);
-                                    return handover(e, s, no);
-                                }));
+        var sources = ordered(req.sources());
+        String no =
+                CommandBusinessKey.derive("FHOV", "PROPOSE_SERVICE_HANDOVER", e, s, a, key);
+        var existing = industry.businessOperationsSelectServiceHandover(e, s, no, false);
+        if (!existing.isEmpty()) return proposedAgain(e, s, a, no, req, sources);
+        var facts = new ArrayList<Evidence>();
+        for (var source : sources) {
+            var ev = evidence(e, s, source, false);
+            if (ev.terminal() || ev.currentOwner() != null && !a.equals(ev.currentOwner()))
+                conflict();
+            facts.add(ev);
+        }
+        String hash = FoodCommandFingerprint.hash(json.writeValueAsString(facts));
+        try {
+            industryTx.executeWithoutResult(
+                    t -> {
+                        industry.businessOperationsInsertServiceHandover(
+                                e, s, no, a, req.receiverNo(), hash, req.reason(), a, a);
+                        for (var ev : facts)
+                            industry.businessOperationsInsertServiceHandoverItem(
+                                    e,
+                                    s,
+                                    BizKey.next("FHIT"),
+                                    no,
+                                    ev.source().kind(),
+                                    ev.source().sourceNo(),
+                                    ev.sourceHash(),
+                                    a,
+                                    a);
+                    });
+        } catch (DuplicateKeyException concurrent) {
+            // 同一请求并发重放：另一路已建成，按单号查回。
+            return proposedAgain(e, s, a, no, req, sources);
+        }
+        audit(e, s, a, no, "HANDOVER_PROPOSE", req.reason(), key, hash);
+        return handover(e, s, no);
+    }
+
+    /** 重放：查回的交接必须就是这次请求提议的那一个，否则同键异参，按冲突拒绝。 */
+    private HandoverVO proposedAgain(
+            String e, String s, String a, String no, HandoverReq req, List<Source> sources) {
+        var row = handoverRow(e, s, no, false);
+        var items = industry.businessOperationsSelectServiceHandoverItem(e, no);
+        var stored =
+                items.stream()
+                        .map(i -> new Source(i.text("source_kind"), i.text("source_no")))
+                        .toList();
+        if (!a.equals(row.text("from_actor"))
+                || !req.receiverNo().equals(row.text("receiver_no"))
+                || !req.reason().equals(row.text("reason"))
+                || !sources.equals(stored)) conflict();
+        return handover(e, s, no);
     }
 
     @Override
@@ -190,101 +205,80 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
         return decision(e, s, a, no, req, key, false);
     }
 
+    // 接收与取消以交接单本身为业务键：已经是目标状态、且由同一人决定的，按重放返回当前结果。
+    // 接收后账单上的服务员是交易库里的冗余，行业提交后再写（只在不同时才改，可重复）；
+    // 重放接收时再补一次，客户端重试即可修复上次没写成的冗余。
     private HandoverVO decision(
             String e, String s, String a, String no, DecisionReq req, String key, boolean accept) {
         valid(e, s, a, no, key);
         if (req == null) bad();
         valid(req.reason());
-        return tx.execute(
-                t ->
-                        journal.execute(
-                                key,
-                                FoodCommandFingerprint.scope(
-                                        accept
-                                                ? "ACCEPT_SERVICE_HANDOVER"
-                                                : "CANCEL_SERVICE_HANDOVER",
+        String target = accept ? "ACCEPTED" : "CANCELLED";
+        var initial = handoverRow(e, s, no, false);
+        if (!a.equals(initial.get(accept ? "receiver_no" : "from_actor")))
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        var items = industry.businessOperationsSelectServiceHandoverItem(e, no);
+        if (target.equals(initial.text("status")) && a.equals(initial.text("decided_by"))) {
+            if (accept) assignChecks(e, s, a, items);
+            return handover(e, s, no);
+        }
+        var snapshots = new ArrayList<Evidence>();
+        for (var item : items)
+            snapshots.add(
+                    evidence(
+                            e,
+                            s,
+                            new Source((String) item.text("source_kind"), (String) item.text("source_no")),
+                            false));
+        industryTx.executeWithoutResult(
+                t -> {
+                    var row = handoverRow(e, s, no, true);
+                    if (number(row) != req.version() || !"PROPOSED".equals(row.text("status")))
+                        conflict();
+                    if (accept)
+                        for (int i = 0; i < items.size(); i++) {
+                            var ev = snapshots.get(i);
+                            if (!ev.sourceHash().equals(items.get(i).text("source_hash"))
+                                    || ev.currentOwner() != null
+                                            && !row.text("from_actor").equals(ev.currentOwner()))
+                                conflict();
+                            var old =
+                                    industry.businessOperationsSelectServiceResponsibility2(
+                                            e, s, ev.source().kind(), ev.source().sourceNo());
+                            if (old.isEmpty())
+                                industry.businessOperationsInsertServiceResponsibility(
                                         e,
-                                        s),
-                                a,
-                                FoodCommandFingerprint.hash(no, json.writeValueAsString(req)),
-                                HandoverVO.class,
-                                () -> {
-                                    var initial = handoverRow(e, s, no, false);
-                                    var items =
-                                            industry.businessOperationsSelectServiceHandoverItem(
-                                                    e, no);
-                                    var snapshots = new ArrayList<Evidence>();
-                                    for (var item : items)
-                                        snapshots.add(
-                                                evidence(
-                                                        e,
-                                                        s,
-                                                        new Source(
-                                                                (String) item.text("source_kind"),
-                                                                (String) item.text("source_no")),
-                                                        true));
-                                    var row = handoverRow(e, s, no, true);
-                                    if (number(row) != req.version()
-                                            || !"PROPOSED".equals(row.text("status"))) conflict();
-                                    if (!a.equals(row.get(accept ? "receiver_no" : "from_actor")))
-                                        throw BizException.of(ErrorCode.FORBIDDEN);
-                                    if (accept)
-                                        for (int i = 0; i < items.size(); i++) {
-                                            var ev = snapshots.get(i);
-                                            if (!ev.sourceHash()
-                                                            .equals(
-                                                                    items.get(i)
-                                                                            .text("source_hash"))
-                                                    || ev.currentOwner() != null
-                                                            && !row.text("from_actor")
-                                                                    .equals(ev.currentOwner()))
-                                                conflict();
-                                            var old =
-                                                    industry
-                                                            .businessOperationsSelectServiceResponsibility2(
-                                                                    e,
-                                                                    s,
-                                                                    ev.source().kind(),
-                                                                    ev.source().sourceNo());
-                                            if (old.isEmpty())
-                                                industry
-                                                        .businessOperationsInsertServiceResponsibility(
-                                                                e,
-                                                                s,
-                                                                BizKey.next("FRSP"),
-                                                                ev.source().kind(),
-                                                                ev.source().sourceNo(),
-                                                                a,
-                                                                no,
-                                                                a,
-                                                                a);
-                                            else
-                                                industry
-                                                        .businessOperationsUpdateServiceResponsibility(
-                                                                a,
-                                                                no,
-                                                                a,
-                                                                e,
-                                                                s,
-                                                                ev.source().kind(),
-                                                                ev.source().sourceNo());
-                                            if ("CHECK".equals(ev.source().kind()))
-                                                mapper.businessOperationsUpdateCheck(
-                                                        a, a, e, s, ev.source().sourceNo());
-                                        }
-                                    industry.businessOperationsUpdateServiceHandover(
-                                            accept ? "ACCEPTED" : "CANCELLED", a, a, e, no);
-                                    audit(
-                                            e,
-                                            s,
-                                            a,
-                                            no,
-                                            accept ? "HANDOVER_ACCEPT" : "HANDOVER_CANCEL",
-                                            req.reason(),
-                                            key,
-                                            (String) row.text("source_hash"));
-                                    return handover(e, s, no);
-                                }));
+                                        s,
+                                        BizKey.next("FRSP"),
+                                        ev.source().kind(),
+                                        ev.source().sourceNo(),
+                                        a,
+                                        no,
+                                        a,
+                                        a);
+                            else
+                                industry.businessOperationsUpdateServiceResponsibility(
+                                        a, no, a, e, s, ev.source().kind(), ev.source().sourceNo());
+                        }
+                    industry.businessOperationsUpdateServiceHandover(target, a, a, e, no);
+                });
+        if (accept) assignChecks(e, s, a, items);
+        audit(
+                e,
+                s,
+                a,
+                no,
+                accept ? "HANDOVER_ACCEPT" : "HANDOVER_CANCEL",
+                req.reason(),
+                key,
+                (String) initial.text("source_hash"));
+        return handover(e, s, no);
+    }
+
+    private void assignChecks(String e, String s, String a, List<FoodBusinessOperationRow> items) {
+        for (var item : items)
+            if ("CHECK".equals(item.text("source_kind")))
+                mapper.businessOperationsUpdateCheck(a, a, e, s, item.text("source_no"));
     }
 
     @Override

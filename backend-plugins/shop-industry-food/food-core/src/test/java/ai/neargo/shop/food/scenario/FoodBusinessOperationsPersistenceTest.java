@@ -131,6 +131,7 @@ public class FoodBusinessOperationsPersistenceTest {
                         mapper,
                         new FoodIndustryOperationsMapper(ds),
                         manager,
+                        manager,
                         mock(RequestIdempotencyPort.class),
                         json,
                         mock(DiningOrderService.class),
@@ -220,6 +221,38 @@ public class FoodBusinessOperationsPersistenceTest {
                                                         "reserve")))
                 .isInstanceOf(BizException.class);
         assertThat(db.queryForObject("SELECT COUNT(*) FROM fnb_capacity_claim", Integer.class))
+                .isEqualTo(1);
+    }
+
+    /** 业务键回查（TDD-餐饮域迁移新库 §8-Q1）：交接单号由请求键派生，不靠永久命令回执。 */
+    @Test
+    void handoverReplaysByDerivedNumberAndRejectsSameKeyWithOtherContent() {
+        var req = new HandoverReq("B", List.of(new Source("CHECK", "CHECK")), "next employee");
+        var first = ops.propose("E", "S", "A", req, "handover-replay");
+        assertThat(ops.propose("E", "S", "A", req, "handover-replay")).isEqualTo(first);
+        assertThatThrownBy(
+                        () ->
+                                ops.propose(
+                                        "E",
+                                        "S",
+                                        "A",
+                                        new HandoverReq(
+                                                "B",
+                                                List.of(new Source("CHECK", "CHECK")),
+                                                "other reason"),
+                                        "handover-replay"))
+                .isInstanceOf(BizException.class);
+        assertThat(
+                        db.queryForObject(
+                                "SELECT COUNT(*) FROM fnb_service_handover", Integer.class))
+                .isEqualTo(1);
+        var accept = new DecisionReq(0, "accept");
+        var accepted = ops.accept("E", "S", "B", first.handoverNo(), accept, "accept-1");
+        assertThat(ops.accept("E", "S", "B", first.handoverNo(), accept, "accept-2"))
+                .isEqualTo(accepted);
+        assertThat(
+                        db.queryForObject(
+                                "SELECT COUNT(*) FROM fnb_service_responsibility", Integer.class))
                 .isEqualTo(1);
     }
 

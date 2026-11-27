@@ -200,6 +200,14 @@ P1 之后，餐饮只能跑在「`industry` 绑定到按 `n_industry` 建的库�
 - 新增 `IndustryFollowUp.afterTradeCommit`：W 类的行业写入延后到交易提交后。
 - 测试：food-core 754 个通过（54 个要 MySQL 的跳过，与基线相同）。
 
+### 已完成：行业为主命令改业务键回查（2026-11-27）
+
+- 新增 `CommandBusinessKey.derive`：业务单号 = 前缀 + `K` + 「操作、主体、门店、操作人、请求键」摘要的前 20 位。
+- 交接三条命令、权益消耗去掉永久命令回执；权益发放、延长、宴会方案、到场确认按「到店单为主」处理（见下表）。
+- 新增测试 `FoodBusinessOperationsPersistenceTest#handoverReplaysByDerivedNumberAndRejectsSameKeyWithOtherContent`；
+  消耗的重放由已有的 `ServiceEntitlementPersistenceTest#exactOriginalFoodLineConsumesOnceAcrossKeysAndCannotExceedCanonicalPersonQuota` 覆盖。
+- 测试：food-core 755 个通过（54 个要 MySQL 的跳过）。
+
 ### 事务拆分记录
 
 | 服务 | 类 | 处理 |
@@ -209,11 +217,13 @@ P1 之后，餐饮只能跑在「`industry` 绑定到按 `n_industry` 建的库�
 | `ServiceSlotServiceImpl#bindOrder` | W | 建定时出品单改到交易提交后；`ScheduledDiningDispatchServiceImpl#runDue` 每轮先按已绑定的时段占用（`boundScheduledBatches`，近 1 天）补建，建单按批次号可重复 |
 | `ScheduledDiningDispatchServiceImpl` | 行业 | 认领与完结定时出品单改用 `industryTxManager` |
 | `BusinessCloseServiceImpl` | R | 未决交接改从行业 Mapper 读 |
-| `BusinessOperationsServiceImpl`（交接）、`ServiceEntitlementServiceImpl`（权益、宴会） | W，**待定** | 语句已归位，事务仍是一个交易事务（未绑定时与原来等价）。命令回执 `fnb_business_command` 与业务写在同一事务里，行业为主的命令怎么保证重放，见 §8-Q1 |
+| `BusinessOperationsServiceImpl` 交接提议、接收、取消 | 行业为主 | 去掉命令回执，在行业事务里写；交接单号由请求键派生（`CommandBusinessKey`），重放按单号查回，同键异参拒绝；接收、取消以交接单本身为键，已是目标状态且同一人决定的按重放返回。来源只读、按摘要比对，不跨库加锁。账单上的服务员（交易冗余）在行业提交后写，只在不同时才改，重放接收时再补一次 |
+| `ServiceEntitlementServiceImpl#consume` | 行业为主 | 去掉命令回执，在行业事务里锁权益、扣量、记事件；「批次 + 点菜行」为业务键，换不换请求键都查回首次结果；到店单、账单、点菜行只读 |
+| `ServiceEntitlementServiceImpl` 发放、延长、宴会方案、到场确认 | 到店单为主 | 仍是交易事务 + 交易侧命令回执（回执与到店单同库同事务）。交易侧的校验与写（推进到店单版本、时段占用）先做，行业库的写放在最后、用行业事务单独提交，然后交易提交；行业单号由请求键派生，已写过就跳过。残余窗口：行业已提交而交易提交本身失败，留下一条孤立的行业行，客户端用同一请求键重试即接上 |
 
 ## §8 待定
 
-- **Q1 行业为主的命令，永久命令回执放哪。** `BusinessCommandJournal` 要求回执与业务写在同一事务里，回执表 `fnb_business_command` 现在在交易句柄上。
+- **Q1 行业为主的命令，永久命令回执放哪。** ✅ 2026-11-27 用户定：**业务键回查**（下面的 ①）。已用于交接与权益消耗，见 §6。原问题： `BusinessCommandJournal` 要求回执与业务写在同一事务里，回执表 `fnb_business_command` 现在在交易句柄上。
   交接、权益、宴会、厨显、桌台编辑这些命令的业务写在行业库，回执就不能和它同事务。备选：
   ① 回执退役，改「公共幂等短期认领 + 业务键回查」：命令的业务单号由请求键确定性派生（如交接单号），重放时按业务单号查回结果（对齐 ADR-068 第 4 条与「业务库不建技术件」）；
   ② 行业库里也放一份回执表（与「业务库不建技术件」冲突）；

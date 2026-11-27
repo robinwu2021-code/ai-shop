@@ -953,12 +953,14 @@ public class FoodBusinessOperationsMapper {
         return db.update(
                 "UPDATE fnb_check SET"
                     + " service_employee_no=?,version=version+1,updated_by=?,updated_at=UTC_TIMESTAMP(3)"
-                    + " WHERE entity_no=? AND store_no=? AND check_no=?",
+                    + " WHERE entity_no=? AND store_no=? AND check_no=? AND"
+                    + " (service_employee_no IS NULL OR service_employee_no<>?)",
                 a,
                 a2,
                 e,
                 s,
-                sourceNo);
+                sourceNo,
+                a);
     }
 
     public List<FoodBusinessOperationRow> businessOperationsSelectOperationCase(

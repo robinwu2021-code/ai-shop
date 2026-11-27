@@ -117,13 +117,14 @@ public class FoodBusinessOperationsConfiguration {
             FoodBusinessOperationsMapper mapper,
             FoodIndustryOperationsMapper industry,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager industryManager,
             RequestIdempotencyPort idem,
             ObjectMapper json,
             DiningOrderService orders,
             DiningReturnService returns,
             QueueService queues) {
         return new BusinessOperationsServiceImpl(
-                mapper, industry, manager, idem, json, orders, returns, queues);
+                mapper, industry, manager, industryManager, idem, json, orders, returns, queues);
     }
 
     @Bean

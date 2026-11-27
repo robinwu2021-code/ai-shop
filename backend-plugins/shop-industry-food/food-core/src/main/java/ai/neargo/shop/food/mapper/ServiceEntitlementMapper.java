@@ -114,6 +114,26 @@ public final class ServiceEntitlementMapper {
                 line);
     }
 
+    /** 按事件号查回：延长等由请求键派生事件号的命令，用它判断这次请求是否已经写过。 */
+    public List<FoodBusinessOperationRow> eventByNo(String e, String s, String no) {
+        return rows(
+                "SELECT * FROM fnb_service_entitlement_event WHERE entity_no=? AND store_no=? AND"
+                        + " event_no=?",
+                e,
+                s,
+                no);
+    }
+
+    /** 按确认号查回：到场确认号由请求键派生。 */
+    public List<FoodBusinessOperationRow> confirmationByNo(String e, String s, String no) {
+        return rows(
+                "SELECT * FROM fnb_banquet_attendance_confirmation WHERE entity_no=? AND"
+                        + " store_no=? AND confirmation_no=?",
+                e,
+                s,
+                no);
+    }
+
     public void event(
             String e,
             String s,

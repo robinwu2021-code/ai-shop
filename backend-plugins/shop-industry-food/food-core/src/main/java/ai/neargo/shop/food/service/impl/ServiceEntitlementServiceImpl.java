@@ -1,7 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.common.pricing.SourceQuantityUnits;
@@ -29,6 +28,7 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.MenuSourcePolicy;
 import ai.neargo.shop.food.policy.PublicationDocuments;
 import ai.neargo.shop.food.service.CheckCartService;
+import ai.neargo.shop.food.service.support.CommandBusinessKey;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.ServiceEntitlementService;
 import ai.neargo.shop.food.service.ServiceSlotService;
@@ -44,6 +44,7 @@ import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 import ai.neargo.shop.spi.trade.PricingSourceRef;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -74,6 +75,7 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
     private final FoodBusinessOperationsMapper operations;
     private final BusinessCommandJournal journal;
     private final TransactionTemplate tx;
+    private final TransactionTemplate industryTx;
     private final ConfigRevisionService revisions;
     private final MaterialCatalogQueryPort materials;
     private final CatalogPriceSourcePort markets;
@@ -89,6 +91,7 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
             ServiceFormMapper forms,
             FoodBusinessOperationsMapper operations,
             PlatformTransactionManager manager,
+            PlatformTransactionManager industryManager,
             ConfigRevisionService revisions,
             MaterialCatalogQueryPort materials,
             CatalogPriceSourcePort markets,
@@ -111,6 +114,7 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
         this.json = json;
         this.clock = clock;
         tx = new TransactionTemplate(manager);
+        industryTx = new TransactionTemplate(industryManager);
         journal = new BusinessCommandJournal(operations, json);
     }
 
@@ -184,8 +188,17 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                                                     .text("status")));
                     quoteScope(e, s, current, quote, true);
                     require(owner.menu().validUntil().toInstant().isAfter(clock.instant()));
-                    String no = BizKey.next("FSEN");
+                    // 到店单为主：交易侧先校验并推进到店单版本，行业库的权益最后写、写完交易才提交。
+                    // 权益号由请求键派生，提交失败后重试得到同一个号，已写过就不再写。
+                    require(forms.advance(e, s, formNo, req.formVersion(), actor) == 1);
+                    String no =
+                            CommandBusinessKey.derive(
+                                    "FSEN", "GRANT_SERVICE_ENTITLEMENT", e, s, actor, key);
                     String hash = PricingSnapshotHash.of(List.of(formNo, req.attendeeNo(), owner));
+                    if (!mapper.entitlement(e, s, no, false).isEmpty())
+                        return view(one(mapper.entitlement(e, s, no, false)));
+                    return industryTx.execute(
+                            industry -> {
                     mapper.grant(
                             e,
                             s,
@@ -204,12 +217,12 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                             PricingSnapshotHash.of(quote.quote()),
                             hash,
                             actor);
-                    require(forms.advance(e, s, formNo, req.formVersion(), actor) == 1);
                     var result = view(one(mapper.entitlement(e, s, no, false)));
                     mapper.event(
                             e,
                             s,
-                            BizKey.next("FSEE"),
+                            CommandBusinessKey.derive(
+                                    "FSEE", "GRANT_SERVICE_ENTITLEMENT_EVENT", e, s, actor, key),
                             formNo,
                             no,
                             "GRANT",
@@ -222,102 +235,105 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                             actor,
                             req.reason());
                     return result;
+                            });
                 });
     }
 
+    // 消耗是权益（行业库）上的事：在行业事务里锁权益、扣数量、记事件，不用永久命令回执。
+    // 一行点菜只能扣一次，「批次 + 点菜行」就是业务键：重放（换不换请求键都一样）查回首次结果；
+    // 到店单、账单、点菜行在交易库，只读一次，不跨库加锁。
     @Override
     public Entitlement consume(
             String e, String s, String actor, String no, Consume req, String key) {
         require(req != null);
         scope(e, s, actor);
         text(req.reason());
+        textKey(key);
         CartInputPolicy.key(req.batchNo());
         CartInputPolicy.key(req.foodLineNo());
-        var replay =
-                replay(e, s, actor, "CONSUME_SERVICE_ENTITLEMENT", no, req, key, Entitlement.class);
-        if (replay != null) return replay;
         var before = one(mapper.entitlement(e, s, no, false));
         String formNo = before.text("form_no");
-        return command(
-                e,
-                s,
-                actor,
-                "CONSUME_SERVICE_ENTITLEMENT",
-                no,
-                req,
-                key,
-                Entitlement.class,
-                () -> {
-                    var form = lockedForm(e, s, formNo);
-                    activeBuffet(form);
-                    var entitlement = one(mapper.entitlement(e, s, no, true));
-                    var prior = mapper.eventByLine(e, s, req.batchNo(), req.foodLineNo());
-                    if (!prior.isEmpty()) {
-                        var event = one(prior);
+        var prior = consumed(no, actor, mapper.eventByLine(e, s, req.batchNo(), req.foodLineNo()));
+        if (prior != null) return prior;
+        var form = one(forms.form(e, s, formNo, false));
+        activeBuffet(form);
+        require("IN".equals(attendee(e, s, formNo, before.text("attendee_no"), false).text("status")));
+        open(one(forms.check(e, s, form.text("check_no"), false)));
+        var line = one(forms.line(e, s, req.batchNo(), req.foodLineNo()));
+        require(
+                "ACCEPTED".equals(line.text("batch_status"))
+                        && before.text("goods_no").equals(line.text("goods_no"))
+                        && before.text("sku_no").equals(line.text("sku_no"))
+                        && SourceQuantityUnits.same(before.text("unit"), line.text("unit")));
+        var owners =
+                forms.batchLineOwners(e, s, req.batchNo()).stream()
+                        .filter(l -> req.foodLineNo().equals(l.text("food_line_no")))
+                        .toList();
+        require(
+                owners.size() == 1
+                        && form.text("check_no").equals(owners.getFirst().text("current_check_no")));
+        require(formNo.equals(one(forms.batchBinding(e, s, req.batchNo())).text("form_no")));
+        BigDecimal quantity = line.decimal("qty");
+        quantity(quantity);
+        try {
+            return industryTx.execute(
+                    status -> {
+                        var entitlement = one(mapper.entitlement(e, s, no, true));
+                        var again =
+                                consumed(
+                                        no,
+                                        actor,
+                                        mapper.eventByLine(e, s, req.batchNo(), req.foodLineNo()));
+                        if (again != null) return again;
+                        version(entitlement, req.entitlementVersion());
                         require(
-                                no.equals(event.text("entitlement_no"))
-                                        && actor.equals(event.text("actor_no")));
-                        return json.readValue(
-                                        event.text("evidence_snapshot"), ConsumptionEvidence.class)
-                                .result();
-                    }
-                    version(entitlement, req.entitlementVersion());
-                    require(
-                            "IN"
-                                            .equals(
-                                                    attendee(
-                                                                    e,
-                                                                    s,
-                                                                    formNo,
-                                                                    entitlement.text("attendee_no"),
-                                                                    true)
-                                                            .text("status"))
-                                    && !clock.instant().isBefore(entitlement.instant("valid_from"))
-                                    && clock.instant()
-                                            .isBefore(entitlement.instant("valid_until")));
-                    var check = one(forms.check(e, s, form.text("check_no"), true));
-                    open(check);
-                    var line = one(forms.line(e, s, req.batchNo(), req.foodLineNo()));
-                    require(
-                            "ACCEPTED".equals(line.text("batch_status"))
-                                    && entitlement.text("goods_no").equals(line.text("goods_no"))
-                                    && entitlement.text("sku_no").equals(line.text("sku_no"))
-                                    && SourceQuantityUnits.same(
-                                            entitlement.text("unit"), line.text("unit")));
-                    var owners =
-                            forms.batchLineOwners(e, s, req.batchNo()).stream()
-                                    .filter(l -> req.foodLineNo().equals(l.text("food_line_no")))
-                                    .toList();
-                    require(
-                            owners.size() == 1
-                                    && form.text("check_no")
-                                            .equals(owners.getFirst().text("current_check_no")));
-                    var binding = one(forms.batchBinding(e, s, req.batchNo()));
-                    require(formNo.equals(binding.text("form_no")));
-                    BigDecimal quantity = line.decimal("qty");
-                    quantity(quantity);
-                    require(
-                            mapper.consume(e, s, no, req.entitlementVersion(), quantity, actor)
-                                    == 1);
-                    var result = view(one(mapper.entitlement(e, s, no, false)));
-                    mapper.event(
-                            e,
-                            s,
-                            BizKey.next("FSEE"),
-                            formNo,
-                            no,
-                            "CONSUME",
-                            quantity,
-                            req.batchNo(),
-                            req.foodLineNo(),
-                            entitlement.text("quote_no"),
-                            entitlement.text("quote_hash"),
-                            json.writeValueAsString(
-                                    new ConsumptionEvidence(line.snapshot(), result)),
-                            actor,
-                            req.reason());
-                    return result;
-                });
+                                !clock.instant().isBefore(entitlement.instant("valid_from"))
+                                        && clock.instant()
+                                                .isBefore(entitlement.instant("valid_until")));
+                        require(
+                                mapper.consume(
+                                                e,
+                                                s,
+                                                no,
+                                                req.entitlementVersion(),
+                                                quantity,
+                                                actor)
+                                        == 1);
+                        var result = view(one(mapper.entitlement(e, s, no, false)));
+                        mapper.event(
+                                e,
+                                s,
+                                CommandBusinessKey.derive(
+                                        "FSEE", "CONSUME_SERVICE_ENTITLEMENT", e, s, actor, key),
+                                formNo,
+                                no,
+                                "CONSUME",
+                                quantity,
+                                req.batchNo(),
+                                req.foodLineNo(),
+                                entitlement.text("quote_no"),
+                                entitlement.text("quote_hash"),
+                                json.writeValueAsString(
+                                        new ConsumptionEvidence(line.snapshot(), result)),
+                                actor,
+                                req.reason());
+                        return result;
+                    });
+        } catch (DuplicateKeyException concurrent) {
+            // 同一请求并发重放：另一路已经记了事件，查回它。
+            var replayed =
+                    consumed(no, actor, mapper.eventByLine(e, s, req.batchNo(), req.foodLineNo()));
+            require(replayed != null);
+            return replayed;
+        }
+    }
+
+    /** 这一行点菜已经扣过：必须是同一项权益、同一个操作人，返回当时的结果。 */
+    private Entitlement consumed(String no, String actor, List<FoodBusinessOperationRow> prior) {
+        if (prior.isEmpty()) return null;
+        var event = one(prior);
+        require(no.equals(event.text("entitlement_no")) && actor.equals(event.text("actor_no")));
+        return json.readValue(event.text("evidence_snapshot"), ConsumptionEvidence.class).result();
     }
 
     @Override
@@ -370,7 +386,11 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                             current.instant("ends_at").equals(slot.startsAt())
                                     && req.validUntil().equals(slot.endsAt())
                                     && Set.of("PERSON", "ORDER").contains(slot.unit()));
-                    String event = BizKey.next("FSEE");
+                    // 到店单为主：时段占用、到店单延长先在交易侧做；行业库的权益延长与事件最后写。
+                    // 事件号由请求键派生，提交失败后重试不会再延长一次。
+                    String event =
+                            CommandBusinessKey.derive(
+                                    "FSEE", "EXTEND_SERVICE_ENTITLEMENT", e, s, actor, key);
                     var claim =
                             slots.reserve(
                                     e,
@@ -404,12 +424,6 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                                             local(req.validUntil()),
                                             actor)
                                     == 1);
-                    mapper.extendEntitlements(
-                            e,
-                            s,
-                            formNo,
-                            local(current.instant("ends_at")),
-                            local(req.validUntil()));
                     var receipt =
                             new ExtensionReceipt(
                                     event,
@@ -419,21 +433,32 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                                     used.claimNo(),
                                     quote.quote().quoteNo(),
                                     Math.addExact(req.formVersion(), 1));
-                    mapper.event(
-                            e,
-                            s,
-                            event,
-                            formNo,
-                            null,
-                            "EXTEND",
-                            BigDecimal.valueOf(current.number("actual_persons")),
-                            null,
-                            null,
-                            quote.quote().quoteNo(),
-                            PricingSnapshotHash.of(quote.quote()),
-                            json.writeValueAsString(Arrays.asList(receipt, used, quote)),
-                            actor,
-                            req.reason());
+                    if (mapper.eventByNo(e, s, event).isEmpty())
+                        industryTx.executeWithoutResult(
+                                industry -> {
+                                    mapper.extendEntitlements(
+                                            e,
+                                            s,
+                                            formNo,
+                                            local(current.instant("ends_at")),
+                                            local(req.validUntil()));
+                                    mapper.event(
+                                            e,
+                                            s,
+                                            event,
+                                            formNo,
+                                            null,
+                                            "EXTEND",
+                                            BigDecimal.valueOf(current.number("actual_persons")),
+                                            null,
+                                            null,
+                                            quote.quote().quoteNo(),
+                                            PricingSnapshotHash.of(quote.quote()),
+                                            json.writeValueAsString(
+                                                    Arrays.asList(receipt, used, quote)),
+                                            actor,
+                                            req.reason());
+                                });
                     return receipt;
                 });
     }
@@ -508,8 +533,17 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                                                                     .validUntil()
                                                                     .toInstant()
                                                                     .isAfter(clock.instant())));
+                    // 到店单为主：先推进到店单版本，宴会方案修订（行业库）最后写；方案号由请求键派生。
+                    require(forms.advance(e, s, formNo, req.formVersion(), actor) == 1);
+                    String no =
+                            CommandBusinessKey.derive(
+                                    "FBPL", "REVISE_BANQUET_PLAN", e, s, actor, key);
+                    var written = mapper.plan(e, s, formNo, no);
+                    if (!written.isEmpty())
+                        return json.readValue(
+                                        one(written).text("plan_snapshot"), PlanEnvelope.class)
+                                .plan();
                     long revision = mapper.nextPlanRevision(e, s, formNo);
-                    String no = BizKey.next("FBPL");
                     String hash =
                             PricingSnapshotHash.of(
                                     List.of(
@@ -531,20 +565,22 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                                     dishes,
                                     hash,
                                     Math.addExact(req.formVersion(), 1));
-                    mapper.plan(
-                            e,
-                            s,
-                            formNo,
-                            no,
-                            revision,
-                            result.currency(),
-                            req.intendedBudgetMinor(),
-                            req.plannedPersons(),
-                            json.writeValueAsString(new PlanEnvelope(result, market, owners)),
-                            hash,
-                            actor,
-                            req.reason());
-                    require(forms.advance(e, s, formNo, req.formVersion(), actor) == 1);
+                    industryTx.executeWithoutResult(
+                            industry ->
+                                    mapper.plan(
+                                            e,
+                                            s,
+                                            formNo,
+                                            no,
+                                            revision,
+                                            result.currency(),
+                                            req.intendedBudgetMinor(),
+                                            req.plannedPersons(),
+                                            json.writeValueAsString(
+                                                    new PlanEnvelope(result, market, owners)),
+                                            hash,
+                                            actor,
+                                            req.reason()));
                     return result;
                 });
     }
@@ -618,8 +654,16 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                     require(!roster.isEmpty() && roster.size() == current.number("actual_persons"));
                     String rosterHash = PricingSnapshotHash.of(roster);
                     String quoteHash = PricingSnapshotHash.of(quote.quote());
-                    String no = BizKey.next("FBAC");
+                    // 到店单为主：先推进到店单版本，到场确认（行业库）最后写；确认号由请求键派生，
+                    // 提交失败后重试时已写过就不再写。
+                    require(forms.advance(e, s, formNo, req.formVersion(), actor) == 1);
+                    String no =
+                            CommandBusinessKey.derive(
+                                    "FBAC", "CONFIRM_BANQUET_ATTENDANCE", e, s, actor, key);
                     long next = Math.addExact(req.formVersion(), 1);
+                    if (mapper.confirmationByNo(e, s, no).isEmpty())
+                        industryTx.executeWithoutResult(
+                                industry ->
                     mapper.confirmation(
                             e,
                             s,
@@ -634,8 +678,7 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                             quoteHash,
                             json.writeValueAsString(quote),
                             actor,
-                            req.reason());
-                    require(forms.advance(e, s, formNo, req.formVersion(), actor) == 1);
+                            req.reason()));
                     return new AttendanceConfirmation(
                             no,
                             formNo,
