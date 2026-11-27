@@ -84,6 +84,21 @@
 - 撤回代价低：传输切回 `local` 即可；发件箱表与投递器始终保留。
 - 守卫要加：发布入口只有 `publish`；每个事件类型的走法与清单一致（以现状为基线的守卫测试）。
 
+## 部署与连接（2026-11-27 用户提供）
+
+| 项 | 值 |
+|---|---|
+| 地址 | `192.168.3.200:5673`，AMQP 0-9-1，内网 TCP |
+| 虚拟主机 | `neargo` |
+| 应用账号 | `neargo_app` |
+| 口令 | 不进仓库。放在运维机的应用凭据文件（`…/env/ume/rabbitmq/192.168.3.200-5673-neargo-app.env` 的 `RABBITMQ_PASSWORD`），部署时注入环境变量 |
+
+应用侧配置只读环境变量、不写默认值：`SHOP_RABBITMQ_HOST`、`SHOP_RABBITMQ_PORT`、`SHOP_RABBITMQ_VHOST`、
+`SHOP_RABBITMQ_USERNAME`、`SHOP_RABBITMQ_PASSWORD`；`shop.events.transport=rabbitmq` 时漏配即启动失败，`local` 时不读。
+
+2026-11-27 从开发机探测 `192.168.3.200:5673` 不通，凭据文件也不在这台机器上：联调需要在能访问该网段的机器上做，
+或经跳板机转发。本机集成测试用本机单机 RabbitMQ。节点数（是否 3 节点集群）待确认，关系到仲裁队列能否真正复制。
+
 ## 实施顺序
 
 1. 发布入口收成 `publish` + 按必达消费者决定落不落发件箱（`local` 传输，与 MQ 无关）。
