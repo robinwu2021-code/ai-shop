@@ -7,6 +7,8 @@ import ai.neargo.shop.paybridge.PaymentCollectionProperties;
 import ai.neargo.shop.paybridge.PaymentCollectionSecurity;
 import ai.neargo.shop.paybridge.PaymentCollectionService;
 import ai.neargo.shop.paybridge.PaymentCollectionWork;
+import ai.neargo.shop.spi.pay.PaidCollectionPort.PaidCollection;
+import ai.neargo.shop.trade.service.StoreOrderSettlementService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,20 +21,27 @@ import java.util.Objects;
 
 import javax.sql.DataSource;
 
-/** Receipt and the existing enabled platform notification work commit atomically. */
+/**
+ * Receipt and the existing enabled platform notification work commit atomically.
+ *
+ * <p>收款码（{@code BIZ_COLLECT}）挂门店零售单与回执同库：同一事务里直接调，不经发件箱。
+ * 挂不上（不是本店零售单、币别不符、已挂过）只返回 false，不影响回执。
+ */
 public final class PaymentCollectionServiceImpl implements PaymentCollectionService {
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transaction;
     private final OutboxEventBus events;
     private final PaymentCollectionProperties properties;
+    private final StoreOrderSettlementService settlements;
 
     public PaymentCollectionServiceImpl(
             DataSource ds, PlatformTransactionManager manager, OutboxEventBus events,
-            PaymentCollectionProperties properties) {
+            PaymentCollectionProperties properties, StoreOrderSettlementService settlements) {
         jdbc = new JdbcTemplate(ds);
         transaction = new TransactionTemplate(manager);
         this.events = events;
         this.properties = properties;
+        this.settlements = settlements;
     }
 
     @Override
@@ -82,6 +91,11 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                             binding.get("store_no"),
                             binding.get("entity_no"),
                             receipt);
+                    if ("BIZ_COLLECT".equals(fact.bizType())) {
+                        settlements.attachCollection(new PaidCollection(fact.payOrderNo(),
+                                (String) binding.get("store_no"), fact.bizNo(), fact.currency(),
+                                fact.paidMinor(), fact.payChannel()));
+                    }
                     events.publish(new PaymentCollectionWork(receipt));
                     return new Accepted(fact.eventId(), hash, "APPLIED", receipt);
                 });

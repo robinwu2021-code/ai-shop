@@ -108,7 +108,7 @@ POST /biz/store-orders
 - `POST /biz/payment/offline-records/{recordNo}/void`、`…/correct`：所挂门店零售单已付清 → `20029 STORE_ORDER_PAYMENT_LOCKED`；未付清放行并重算（更正成更大金额可就此付清）。
 - `POST /biz/payment/collection`（`bizNo` = 子单号）：支付单成功后挂单。**事实来源**：内嵌形态 = 回调 / 三个对账器补单都经 `OrderServiceImpl#markPaid(PYO…)`，
   原先直接跳过，现在先经新 spi `PaidCollectionPort`（支付域实现，读 `pay_order`：`biz_type=BIZ_COLLECT`、已成功、`paid_minor`、门店号）取事实再挂；
-  独立形态（near-pay，v2 现状）= 已验签收款推送 `PaymentCollectionFact` → `MERCHANT_COLLECTION_RECEIVED` → `StoreOrderCollectionConsumer`（`shop.payment-collections.enabled=true` 时装配）。
+  独立形态（near-pay，v2 现状）= 已验签收款推送 `PaymentCollectionFact` → `PaymentCollectionServiceImpl.receive` 在写回执的同一事务里直接挂单（`shop.payment-collections.enabled=true` 时装配；2026-11-27 前经 `MERCHANT_COLLECTION_RECEIVED` → `StoreOrderCollectionConsumer`）。
   金额一律取支付域确认的实收；同一支付单只挂一次（`ord_store_collection` 唯一键）；别店、币别不符、不是门店零售单 → 不挂（记日志）；付清 / 取消后才到的钱照记、不转状态。
 
 **付清**（`StoreOrderSettlementServiceImpl#settle`，子单行锁 + 读已提交）：同币别加总 ≥ `pay_amount` →

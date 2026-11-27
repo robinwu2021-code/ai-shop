@@ -98,6 +98,25 @@ class WxShippingSourceIsolationFlowTest {
         }
     }
 
+    /** 上传成功与运单记“已上传”同库同事务：不再经发件箱绕一圈，也不等投递。 */
+    @Test
+    void successfulUploadMarksWaybillInSameTransaction() {
+        String sub = OrderLogisticsFixture.seed(jdbc, ledger, true);
+        ship(sub, "J");
+        drain();
+        WxShippingPort ok = new WxShippingPort() {
+            public boolean enabled() { return true; }
+            public Result upload(Command command) { return Result.ok(); }
+        };
+        ReflectionTestUtils.setField(uploads, "shipping", ok);
+        try { uploads.upload(row(sub), "物流商品", number(sub, "J"), "STO", "LG-OPENID"); }
+        finally { ReflectionTestUtils.setField(uploads, "shipping", original); }
+        assertThat(jdbc.queryForObject("SELECT wx_uploaded_at FROM lgs_waybill WHERE biz_ref=?",
+                Long.class, sub)).isNotNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE event_type='WX_SHIPPING_UPLOADED' "
+                + "AND aggregate_id=?", Integer.class, "O-" + sub)).isZero();
+    }
+
     @Test
     void paymentWithTwoStoresResolvesEveryCurrentPackage() {
         String sub = OrderLogisticsFixture.seed(jdbc, ledger, true);

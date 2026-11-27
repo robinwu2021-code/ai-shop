@@ -4,11 +4,12 @@ import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.OutboxEventBus;
-import ai.neargo.shop.spi.trade.OrderEvents;
+import ai.neargo.shop.spi.logistics.WaybillWxUploadPort;
 import ai.neargo.shop.spi.trade.WxShippingPort;
 import ai.neargo.shop.trade.entity.TrdShippingUpload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -28,14 +29,17 @@ public class WxShippingUploadService {
     private final WxShippingPort shipping;
     private final OutboxEventBus events;
     private final ObjectMapper json;
+    private final ObjectProvider<WaybillWxUploadPort> waybills;
 
     public WxShippingUploadService(ShippingUploadQueue queue, ShippingUploadSources sources,
-                                   WxShippingPort shipping, OutboxEventBus events, ObjectMapper json) {
+                                   WxShippingPort shipping, OutboxEventBus events, ObjectMapper json,
+                                   ObjectProvider<WaybillWxUploadPort> waybills) {
         this.queue = queue;
         this.sources = sources;
         this.shipping = shipping;
         this.events = events;
         this.json = json;
+        this.waybills = waybills;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
@@ -104,8 +108,10 @@ public class WxShippingUploadService {
             return false;
         }
         if (response.success()) {
-            events.publish(new OrderEvents.WxShippingUploaded(row.getOrderNo(), row.getOutTradeNo(),
-                    System.currentTimeMillis(), frozen == null ? List.of() : frozen.shipments()));
+            // 上传台账与运单同库：同一事务里直接记“已上传”，不经发件箱
+            long at = System.currentTimeMillis();
+            waybills.ifAvailable(w -> w.markUploaded(row.getOutTradeNo(), at,
+                    frozen == null ? List.of() : frozen.shipments()));
         }
         return outcome.giveUp();
     }
