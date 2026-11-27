@@ -291,6 +291,9 @@ public final class FoodMappers {
                 +"+(SELECT COUNT(*) FROM fnb_return WHERE entity_no=#{entity} AND check_no=#{check})"
                 +"+(SELECT COUNT(*) FROM fnb_check_cart WHERE entity_no=#{entity} AND check_no=#{check} AND (status IS NULL OR status<>'CLOSED'))")
         long tradeFacts(@Param("entity") String entity,@Param("check") String check);
+        /** 账单下的到店单号：堂食权益按到店单挂在行业库的人头权益上。 */
+        @Select("SELECT form_no FROM fnb_service_form WHERE entity_no=#{entity} AND check_no=#{check}")
+        List<String> formNos(@Param("entity") String entity,@Param("check") String check);
     }
     public interface TableOccupancyMapper extends IndustryTableMapper<FnbTableOccupancy> {
         @Select("SELECT * FROM fnb_table_occupancy WHERE entity_no=#{entity} AND table_no=#{table} AND ended_at IS NULL ORDER BY occupancy_no")

@@ -56,7 +56,7 @@ public final class FoodSchemaValidator {
         boolean separateIndustry = source != industry;
         if (mode == FoodProperties.MigrationMode.VALIDATE) source = readOnly(source);
         Map<String, Set<String>> expected = expectedColumns();
-        expected.keySet().removeAll(FoodIndustryTables.RENAMED.keySet());
+        expected.keySet().removeAll(FoodIndustryTables.retired());
         Map<String, Set<String>> before = columns(source);
         require(before.containsKey("prd_goods"), "missing primary fact: prd_goods");
         require(before.containsKey("ord_order"), "missing primary fact: ord_order");
@@ -72,7 +72,7 @@ public final class FoodSchemaValidator {
                 n -> !n.startsWith("fnb_")
                         || n.equals(HISTORY)
                         || expected.containsKey(n)
-                        || FoodIndustryTables.RENAMED.containsKey(n));
+                        || FoodIndustryTables.retired().contains(n));
         require(unknown.isEmpty(), "unknown food tables: " + unknown);
         // Local object, deliberately NOT a Spring Flyway bean. No platform
         // locations/baseline/repair.

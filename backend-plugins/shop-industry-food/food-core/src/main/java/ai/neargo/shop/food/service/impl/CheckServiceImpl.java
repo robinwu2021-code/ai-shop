@@ -1279,7 +1279,9 @@ public class CheckServiceImpl implements CheckService {
     private void noTradeFacts(FnbCheck row) {
         if (!("PREPAY".equals(row.getPayMode()) || "POSTPAY".equals(row.getPayMode()))
                 || checks.tradeFacts(row.getEntityNo(), row.getCheckNo()) > 0
-                || industry.diningEntitlementFacts(row.getEntityNo(), row.getCheckNo()) > 0
+                || industry.buffetEntitlements(
+                                row.getEntityNo(), checks.formNos(row.getEntityNo(), row.getCheckNo()), false)
+                        > 0
                 || operations.externalOrPendingForCheck(row.getEntityNo(), row.getCheckNo()) > 0)
             throw BizException.of(ErrorCode.CONFLICT);
     }

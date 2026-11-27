@@ -239,7 +239,8 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
                                             conflict();
                                     }
                                     // 堂食权益在行业库：只读判断，不跨库加锁。
-                                    if (industry.checkCollaborationCountDiningEntitlement(e, check)
+                                    if (industry.buffetEntitlements(
+                                                    e, mapper.formNosForCheck(e, check), true)
                                             > 0) conflict();
                                     var tables =
                                             industry.checkCollaborationSelectOccupiedTables(e, check);

@@ -88,7 +88,7 @@ class PhysicalTableMoveTest extends FoodWriteGuardFixture {
                 "allocation",f.sql().queryForList("SELECT * FROM fnb_core_line_allocation"),
                 "settlement",f.sql().queryForList("SELECT * FROM fnb_settlement_item"),
                 "returns",f.sql().queryForList("SELECT * FROM fnb_return"),
-                "entitlements",f.sql().queryForList("SELECT * FROM fnb_dining_entitlement"));
+                "entitlements",f.sql().queryForList("SELECT * FROM fnb_service_entitlement"));
     }
     @Test void sameOrderPostpayTransferAndCombinePreserveRealBindings() {
         run(c -> {

@@ -28,14 +28,6 @@ public class FoodIndustryOperationsMapper {
         return rows.stream().map(FoodBusinessOperationRow::new).toList();
     }
 
-    public Long checkCollaborationCountDiningEntitlement(String e, String check) {
-        return db.queryForObject(
-                "SELECT COUNT(*) FROM fnb_dining_entitlement WHERE entity_no=? AND check_no=? AND"
-                        + " status='ACTIVE' AND deleted=0",
-                Long.class,
-                e,
-                check);
-    }
 
     public int checkCollaborationUpdateTable(String actor, String e, String store, String tableNo) {
         return db.update(
@@ -287,14 +279,23 @@ public class FoodIndustryOperationsMapper {
                         until));
     }
 
-    /** 账单上的堂食权益（不论状态）：账单释放前要求为零。 */
-    public long diningEntitlementFacts(String e, String check) {
+    /**
+     * 这些到店单上的放题类人头权益数（堂食权益已并入 fnb_service_entitlement，TDD §2.5）。
+     * {@code activeOnly} 为真时只数生效中的。到店单号由交易库按账单取。
+     */
+    public long buffetEntitlements(String e, java.util.Collection<String> forms, boolean activeOnly) {
+        if (forms.isEmpty()) return 0;
+        String marks = String.join(",", java.util.Collections.nCopies(forms.size(), "?"));
+        var args = new java.util.ArrayList<Object>();
+        args.add(e);
+        args.addAll(forms);
         Long count =
                 db.queryForObject(
-                        "SELECT COUNT(*) FROM fnb_dining_entitlement WHERE entity_no=? AND check_no=?",
+                        "SELECT COUNT(*) FROM fnb_service_entitlement WHERE entity_no=? AND"
+                                + " entitlement_kind='BUFFET' AND form_no IN (" + marks + ")"
+                                + (activeOnly ? " AND status='ACTIVE'" : ""),
                         Long.class,
-                        e,
-                        check);
+                        args.toArray());
         return count == null ? 0 : count;
     }
 

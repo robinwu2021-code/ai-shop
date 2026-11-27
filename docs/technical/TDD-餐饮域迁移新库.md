@@ -315,7 +315,8 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - **P1-4 启动校验（过渡版）**：新增 `FoodIndustryTables`（行业句柄负责的表，唯一来源）；`FoodSchemaValidator` 在行业句柄单独绑库时不再要求主库有这些表，改在行业库检查它们的列与唯一键。未绑定时行为不变。
 - **P1-6 新库测试**：`FoodIndustryDatabaseTest`（本机 MySQL，`FOOD_TEST_DISPOSABLE`）：主库按餐饮旧迁移建表后删掉行业表，行业库按 V1、V2 新建，行业句柄绑到它；验证上下文能启动、行业句柄下全部注解 Mapper 按实体全字段在行业库上查询成功。已通过。
 - **P1-2 改名**：寄存 `fnb_bottle_custody` → `fnb_custody`、`fnb_bottle_movement` → `fnb_custody_movement`（实体表名、校验器、测试）。按旧表最终结构比对出设计漏掉的流水防重列 `key_hash`、`request_hash` 与唯一键，`V2` 补回。`FoodIndustryTables.RENAMED` 登记旧名，校验器不再要求、也不当作未知表。其余同构表的列与唯一键已逐一比对，只差 `V2` 已补的三处。
-- 待做：P1-3 九组合并、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本。
+- **P1-3 合并 ①：堂食权益 → 人头权益**。旧表 `fnb_dining_entitlement` 代码从未写入，只在放台检查与账单事实检查里计数（结果恒为 0）。并入后改为：交易库按账单取到店单号，行业库数这些到店单上 `entitlement_kind='BUFFET'` 的人头权益（放台检查只数 `status='ACTIVE'`）。旧代码不写放题类权益，行为不变。`FoodIndustryTables.MERGED` 登记退役的旧表；`V2` 删掉该表。测试 `CheckServiceTest`、`PhysicalTableMoveTest` 改按新模型造数据。
+- 待做：P1-3 其余八组合并、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本。
 
 ### 事务拆分记录
 

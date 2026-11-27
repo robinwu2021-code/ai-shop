@@ -403,32 +403,6 @@ CREATE TABLE `fnb_store_policy` (
   CONSTRAINT `fnb_store_policy_chk_1` CHECK ((`cutover_minute` between 0 and 1439))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='é—¨åº—è¥ä¸šç­–ç•¥';
 
-CREATE TABLE `fnb_dining_entitlement` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'BaseEntityè‡ªå¢žç‰©ç†ä¸»é”®ï¼Œä¸å¯¹å¤–ä¸è¿›URL',
-  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT 'æ²¿ç”¨BaseEntityï¼Œä¸€æœŸMAINï¼›ä¸æ˜¯entity_noï¼Œä¸å¦å¯ç§Ÿæˆ·ä½“ç³»',
-  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'å½“å‰ä¸»ä½“æˆ–ä¸šåŠ¡å‘ç”Ÿæ—¶ä¸»ä½“å¿«ç…§ï¼Œä¸ç­‰äºŽè´¦å·å’Œæ”¯ä»˜å•†æˆ·å·',
-  `created_at` datetime(3) NOT NULL COMMENT 'æ²¿ç”¨MetaObjectHandleråŠçŽ°æœ‰LocalDateTimeæŒä¹…åŒ–çº¦å®š',
-  `created_by` varchar(32) NOT NULL COMMENT 'å½“å‰è®¤è¯ä¸šåŠ¡é”®ï¼›æŒ‰çŽ°æœ‰å¡«å……è§„åˆ™ï¼Œä½œä¸šSYSTEM',
-  `updated_at` datetime(3) NOT NULL COMMENT 'æ²¿ç”¨å…¬å…±å¡«å……',
-  `updated_by` varchar(32) NOT NULL COMMENT 'æ²¿ç”¨å…¬å…±å¡«å……',
-  `version` bigint NOT NULL DEFAULT '0' COMMENT 'BaseEntityä¹è§‚é”',
-  `deleted` int NOT NULL DEFAULT '0' COMMENT 'BaseEntityé€»è¾‘åˆ é™¤ï¼›ç­¾æ ¸å’Œäº‹å®žè¡¨ç¦æ­¢ä¸šåŠ¡å½’æ¡£è¦†ç›–åŽ†å²',
-  `entitlement_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'æƒç›Š',
-  `check_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'å°è´¦',
-  `core_order_ref` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'æ¶ˆè´¹è®¢å•',
-  `person_class` varchar(16) NOT NULL COMMENT 'ADULT/CHILD/OTHER',
-  `persons` int NOT NULL COMMENT 'äººæ•°',
-  `starts_at` datetime(3) NOT NULL COMMENT 'å…¥åœº',
-  `expires_at` datetime(3) NOT NULL COMMENT 'åˆ°æœŸ',
-  `rule_snapshot` json NOT NULL COMMENT 'é¢‘æŽ§å®½é™ä¸Žè´¹ç”¨è§„åˆ™',
-  `status` varchar(16) NOT NULL COMMENT 'ACTIVE/EXPIRED/CLOSED',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_food_1` (`entitlement_no`),
-  KEY `ix_food_audit` (`entity_no`,`created_at`,`id`),
-  KEY `ix_food_ref_1` (`entity_no`,`check_no`,`id`),
-  CONSTRAINT `fnb_dining_entitlement_chk_1` CHECK ((`persons` > 0))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='è‡ªåŠ©æ”¾é¢˜æƒç›Š';
-
 CREATE TABLE `fnb_scheduled_dispatch` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN',

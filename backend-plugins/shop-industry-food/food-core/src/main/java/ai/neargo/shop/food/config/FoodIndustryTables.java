@@ -43,7 +43,6 @@ public final class FoodIndustryTables {
                     "fnb_config_revision",
                     "fnb_banquet_plan_revision",
                     "fnb_store_policy",
-                    "fnb_dining_entitlement",
                     "fnb_scheduled_dispatch",
                     "fnb_service_event",
                     "fnb_service_handover",
@@ -58,4 +57,14 @@ public final class FoodIndustryTables {
             java.util.Map.of(
                     "fnb_bottle_custody", "fnb_custody",
                     "fnb_bottle_movement", "fnb_custody_movement");
+
+    /** 合并掉的旧表（TDD §2.5）：并入行业库的新表后退役。主库里可能还留着，校验器不再要求、也不当作未知表。 */
+    public static final Set<String> MERGED = Set.of("fnb_dining_entitlement");
+
+    /** 主库里不再要求的旧表：改名的与合并掉的。 */
+    public static Set<String> retired() {
+        var all = new java.util.HashSet<String>(RENAMED.keySet());
+        all.addAll(MERGED);
+        return Set.copyOf(all);
+    }
 }

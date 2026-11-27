@@ -1299,4 +1299,13 @@ public class FoodBusinessOperationsMapper {
                         store,
                         cart));
     }
+
+    /** 账单下的到店单号（门店交易库）。 */
+    public List<String> formNosForCheck(String e, String check) {
+        return db.queryForList(
+                "SELECT form_no FROM fnb_service_form WHERE entity_no=? AND check_no=?",
+                String.class,
+                e,
+                check);
+    }
 }

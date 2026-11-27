@@ -82,8 +82,12 @@ class CheckServiceTest extends FoodWriteGuardFixture {
                 +"kind VARCHAR(24),check_no VARCHAR(32),target_check_no VARCHAR(32),request_key VARCHAR(64),request_hash CHAR(64),"
                 +"expected_versions "+jsonType+",target_scope "+jsonType+",resource_operation_ref VARCHAR(64),status VARCHAR(24),reason VARCHAR(255),"
                 +"UNIQUE(store_no,kind,request_key))");
-        for(String name:List.of("fnb_order_batch","fnb_check_batch_membership","fnb_settlement_item","fnb_return","fnb_dining_entitlement"))
+        for(String name:List.of("fnb_order_batch","fnb_check_batch_membership","fnb_settlement_item","fnb_return"))
             f.sql().execute("CREATE TABLE "+name+" (entity_no VARCHAR(32),check_no VARCHAR(32),deleted INT DEFAULT 0)");
+        // 堂食权益已并入人头权益（TDD §2.5）：按到店单挂在账单下，放题类才算。
+        f.sql().execute("CREATE TABLE fnb_service_form (entity_no VARCHAR(32),check_no VARCHAR(32),form_no VARCHAR(32))");
+        f.sql().execute("CREATE TABLE fnb_service_entitlement (entity_no VARCHAR(32),form_no VARCHAR(32),"
+                +"entitlement_kind VARCHAR(16),status VARCHAR(10))");
         f.sql().execute("CREATE TABLE fnb_check_cart(entity_no VARCHAR(32),check_no VARCHAR(32),status VARCHAR(16))");
         c.getBean(StoreOperationService.class).createPolicy("E","A","actor",new CreatePolicyReq("UTC",0,
                 Instant.parse("2026-01-01T00:00:00Z"),payMode,List.of(),null,0L),"policy");
@@ -223,11 +227,15 @@ class CheckServiceTest extends FoodWriteGuardFixture {
     }
     @Test void tradeFactsAndDraftsBlockClearAndSeatEditsWithoutMutatingHistory() {
         for(String payMode:List.of("PREPAY","POSTPAY"))
-        for(String fact:List.of("fnb_order_batch","fnb_check_batch_membership","fnb_settlement_item","fnb_return","fnb_dining_entitlement","fnb_check_cart")) {
+        for(String fact:List.of("fnb_order_batch","fnb_check_batch_membership","fnb_settlement_item","fnb_return","buffet_entitlement","fnb_check_cart")) {
             run(c -> {
                 var f=fixture(c,payMode);var t=table(c,"T1");var target=table(c,"T2");var s=c.getBean(CheckService.class);
                 var check=s.openCheck("E","A","actor",new OpenCheckReq(List.of(t.tableNo()),2,payMode,null,List.of(new TableVersionReq(t.tableNo(),t.version())),"EXCLUSIVE",List.of(),null),"open").check();
                 var occ=s.getCheck("E","A",check.checkNo()).occupancies().getFirst();
+                if(fact.equals("buffet_entitlement")) {
+                    f.sql().update("INSERT INTO fnb_service_form(entity_no,check_no,form_no) VALUES('E',?,'FORM1')",check.checkNo());
+                    f.sql().update("INSERT INTO fnb_service_entitlement(entity_no,form_no,entitlement_kind,status) VALUES('E','FORM1','BUFFET','ACTIVE')");
+                } else
                 f.sql().update("INSERT INTO "+fact+"(entity_no,check_no"+(fact.equals("fnb_check_cart")?",status":"")+") VALUES('E',?"+(fact.equals("fnb_check_cart")?",'OPEN'":"")+")",check.checkNo());
                 DiningSessionTest.code(() -> s.clearCheck("E","A",check.checkNo(),"actor",
                         new ClearCheckReq(0L,"离店",null,List.of(occ.occupancyNo())),"clear"),ErrorCode.CONFLICT);
