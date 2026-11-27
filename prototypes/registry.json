@@ -3581,6 +3581,51 @@
      "route": "/pages/subscription-credit-ledger/index"
     }
    ]
+  },
+  {
+   "slug": "b-home-by-industry",
+   "file": "b-home-by-industry.html",
+   "title": "B 端工作台：纯支付 / 零售 / 餐饮 / 服务业四版对比",
+   "kind": "pages",
+   "clients": [
+    "b-app"
+   ],
+   "status": "在建",
+   "date": "2026-11-14",
+   "summary": "现状 + 四业态首页；骨架固定，按门店经营类型换主角、待办格、今日读数、业态模块与底部 Tab，附逐格对比表。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "工作台现状",
+     "client": "b-app",
+     "route": "pages/home/index"
+    },
+    {
+     "id": "s02",
+     "title": "纯支付首页",
+     "client": "b-app",
+     "route": "pages/home/index"
+    },
+    {
+     "id": "s03",
+     "title": "零售首页",
+     "client": "b-app",
+     "route": "pages/home/index"
+    },
+    {
+     "id": "s04",
+     "title": "餐饮首页",
+     "client": "b-app",
+     "route": "pages/home/index"
+    },
+    {
+     "id": "s05",
+     "title": "服务业首页",
+     "client": "b-app",
+     "route": "pages/home/index"
+    }
+   ]
   }
  ],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"

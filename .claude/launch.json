@@ -144,6 +144,72 @@
         "ai-shop-checkout-h5"
       ],
       "port": 5177
+    },
+    {
+      "_comment": "商城 Task8 联调（会话私有）：codex/commerce-foundation 的 jar 副本，独立库 ai_shop_commerce、独立端口，不碰共享的 ai_shop 与 8081/8082。",
+      "name": "commerce-api",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "/private/tmp/claude-501/-Users-workingowl-work-ai-shop/335c22f6-fe79-45a4-a263-6c9f36ec8a07/scratchpad/run/start.sh",
+        "api",
+        "8091"
+      ],
+      "port": 8091,
+      "autoPort": false
+    },
+    {
+      "_comment": "商城 Task8 联调（会话私有）：codex/commerce-foundation 的 jar 副本，独立库 ai_shop_commerce、独立端口，不碰共享的 ai_shop 与 8081/8082。",
+      "name": "commerce-ops",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "/private/tmp/claude-501/-Users-workingowl-work-ai-shop/335c22f6-fe79-45a4-a263-6c9f36ec8a07/scratchpad/run/start.sh",
+        "ops",
+        "8092"
+      ],
+      "port": 8092,
+      "autoPort": false
+    },
+    {
+      "_comment": "会话私有：空目录副本库 ai_shop_commerce_seed 上的运营端，用来模拟 166 首次跑商城种子脚本。",
+      "name": "commerce-ops-seed",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-c",
+        "DB=ai_shop_commerce_seed exec /bin/zsh /private/tmp/claude-501/-Users-workingowl-work-ai-shop/335c22f6-fe79-45a4-a263-6c9f36ec8a07/scratchpad/run/start-seed.sh ops 8093"
+      ],
+      "port": 8093,
+      "autoPort": false
+    },
+    {
+      "_comment": "商城联调（会话私有）：ai-shop-integ 工作树的运营端，连 commerce-ops（8092）。3191 由 start.sh 的 shop.cors.extra-origins 放行，不占共享的 3100。",
+      "name": "commerce-ops-web",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "cd /Users/workingowl/work/ai-shop-integ/ops-web && PORT=3191 NEXT_PUBLIC_USE_MOCK=0 NEXT_PUBLIC_API_BASE=http://localhost:8092 npm run dev"
+      ],
+      "port": 3191,
+      "autoPort": false
+    },
+    {
+      "_comment": "付款链接联调（会话私有）：ai-shop-integ 的顾客端收银台 H5，/checkout/v1 代理到 commerce-api（8091）。模拟器经 http://10.0.2.2:5177 打开；commerce-api 的 shop.pay.checkout.base-url 指向它。",
+      "name": "commerce-checkout-h5",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "cd /Users/workingowl/work/ai-shop-integ/checkout-h5 && CHECKOUT_API=http://localhost:8091 npx vite --port 5177 --host 0.0.0.0 --strictPort"
+      ],
+      "port": 5177,
+      "autoPort": false
+    },
+    {
+      "name": "nearpay-ops-web-entchan-mock",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "cd /Users/workingowl/work/near-pay-entchan/ops-web && NEXT_PUBLIC_DATA_SOURCE=mock npx next dev --webpack --port 3107"
+      ],
+      "port": 3107
     }
   ]
 }

@@ -1,7 +1,58 @@
-# ai-shop 项目执行入口
+# ai-shop · 会话须知
 
-- 新会话先读取一次根目录 [MEMORY.md](MEMORY.md)，按其中的长期约定执行；不要在同一任务中重复加载已读且未变化的资料。
-- 代码与文档分档沿用 [.claude/skills/ai-shop-dev-standards/SKILL.md](.claude/skills/ai-shop-dev-standards/SKILL.md)。
-- 输入校验、异常处理、简洁实现和验证次数的唯一规范正文在 [Java规范§八](.claude/skills/ai-shop-dev-standards/references/java.md#八简洁实现框架校验与增量验证2026-10-30-用户确认)，不要在其他设计文档复制一套规则。
-- 本项目用户确认的增量验证约定优先于通用技能模板中的额外防御、强制消融、重复测试或无关全量检查要求；用户后续明确指令继续优先。
-- 保持原有领域/包/类命名、权限、业务规则及数据库原子语义。共享工作区只改、提交本次任务的文件，不覆盖其他会话改动。
+> 只写**每个会话都必须遵守、且靠记性会漏**的几条。其余约定在 `docs/` 里，不复制到这儿。
+
+## 流程走 superpowers，文档与分档看 `ai-shop-dev-standards`
+
+动手前 brainstorming → writing-plans → test-driven-development → verification-before-completion。
+写代码前先看 `.Codex/skills/ai-shop-dev-standards/SKILL.md`：**按「契约动没动」分三档** ——
+改文案不写文档，动了端点/库表/权限码/i18n/配置就必须先有 TDD（计划写进 TDD §2，不写 `docs/plans/`），
+三份产物三处对账。Java 另见它的 `references/java.md`。
+
+## 改了界面，就要更新界面清单
+
+三端所有页面有一份唯一索引：`docs/technical/design/ui-catalog.json`
+（可视化版：[三端界面清单](https://claude.ai/code/artifact/7438f613-7e28-4093-b244-bd80fb13aaa5)）。
+
+**下面任何一件事做完，都要重跑生成器并把 JSON 一起提交：**
+
+- 新增 / 删除页面（`b-app|c-app/src/pages.json`）
+- 改页面标题（`pages.json` 或 `<sh-scaffold title-key>` 指向的词条）
+- 运营端加菜单或子功能（`ops-web/lib/nav.ts`）
+- 画了新的界面原型（真源放 `prototypes/<slug>.html`，在 `prototypes/registry.json` 登记，
+  再跑 `python3 scripts/gen-proto-index.py`；路由还没建的屏会自动列成「原型」行，
+  页面落地后什么都不用删，它会自动从 `pages.json` 里出现）
+
+```bash
+python3 scripts/gen-ui-catalog.py          # 重新生成
+python3 scripts/gen-ui-catalog.py --check  # 只校验（pre-push 会自动跑）
+```
+
+**`pre-push` 里有闸门**：清单与代码对不上就推不上去，并会直接列出差在哪一条
+（新增 / 删除 / 改名）。它是纯读文件，几十毫秒，不要因为「这次只改了一行」而跳过。
+
+原型稿也在清单里：每条目的「原型」链接直接跳到设计稿对应那一屏，
+「预览」链接跳本机 dev server 的那一页。**新画的原型要挂锚点**：每屏 `<figure id="sNN">`，
+在 `prototypes/registry.json` 的 `screens[]` 里写上 `client` 与 `route`，清单才点得进去。
+原型的唯一入口是 `prototypes/index.html`（发布版 [原型总览](https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9)；`prototypes/README.md` 有三条规矩：样式只在 `proto.css`、
+每屏一个锚点、状态写在登记表里）。
+
+## 改了 `.vue`，跑的是 `vue-tsc` 不是 `tsc`
+
+`npx tsc --noEmit` **不检查 `.vue`** —— SFC 里的 script 与模板它一行都看不到。
+于是「空输出」被当成「类型通过」，而那恰恰是最容易相信的一种假信号：
+你确实跑了工具，工具确实没报错。
+
+```bash
+cd b-app && npx vue-tsc --noEmit    # c-app 同理；两端加起来不到 5 秒（元器件小程序已迁到 ../ai-hxkey）
+```
+
+`pre-push` 第九道闸跑的就是它。**挂上去当天就抓到一个已经在 HEAD 里的缺陷**：
+两个页面把 `showModal` 换成 `confirm()` 时留了 `content:`，而 `ConfirmOptions`
+没有这个字段 —— 说明文字被静默丢掉（盘点看不到差异件数、收货看不到数量和去向），
+而页面照跑、H5 照构建、零报错。
+
+## 共享工作区
+
+这个目录常有多个会话同时在改。提交前 `git diff HEAD -- <file>` 自己读一遍，
+只提交自己认得的行；`git add <目录>` 与 `git checkout <共享文件>` 都会伤到别人。

@@ -1337,3 +1337,32 @@ a{color:inherit}
 .brand-sv .store-switch{font:inherit;font-size:10.4px;background:transparent;border:0;color:var(--sh-sub);padding:0;min-height:35.2px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6.4px}
 .brand-sv .check-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:35.2px;margin-bottom:9.6px;font-size:11.2px}.brand-sv .check-row input{width:19.2px;height:19.2px;min-height:0;padding:0;accent-color:var(--sh-primary)}
 .brand-sv #settlement-content,.brand-sv #member-results{display:flex;flex-direction:column;gap:8px}
+
+/* ── 首页按业态（b-home-by-industry）：主角块 / 快捷格 / 桌台迷你格 / 业态标 ── */
+.hm-hero{background:var(--sh-card);border-radius:13px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.hm-hero .l{font-size:10.5px;color:var(--sh-sub);display:flex;justify-content:space-between}
+.hm-hero .n{font-size:26px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.hm-hero .s{font-size:10.5px;color:var(--sh-sub)}
+.hm-hero.tint{background:var(--sh-primary-tint)}
+.hm-hero.tint .n{color:var(--sh-primary-text)}
+.hm-acts{display:flex;gap:8px}
+.hm-acts .btn{flex:1}
+.hm-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--sh-card);border-radius:13px;padding:10px 4px}
+.hm-quick span{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--sh-ink)}
+.hm-quick span i{width:30px;height:30px;border-radius:10px;background:var(--sh-primary-tint);color:var(--sh-primary-text);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;font-weight:600}
+.hm-tables{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.hm-tables i{aspect-ratio:1;border-radius:6px;background:var(--sh-faint);font-style:normal;font-size:9px;display:flex;align-items:center;justify-content:center;color:var(--sh-sub)}
+.hm-tables i.eat{background:var(--sh-primary-tint);color:var(--sh-primary-text);font-weight:600}
+.hm-tables i.pay{background:var(--sh-warning-tint);color:var(--sh-warning-text);font-weight:600}
+.hm-tables i.clean{background:var(--sh-success-tint);color:var(--sh-success-text)}
+.hm-legend{display:flex;gap:10px;font-size:9.5px;color:var(--sh-sub)}
+.hm-legend b{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px;vertical-align:-1px;background:var(--sh-faint)}
+.hm-legend b.eat{background:var(--sh-primary-tint)}.hm-legend b.pay{background:var(--sh-warning-tint)}.hm-legend b.clean{background:var(--sh-success-tint)}
+.hm-sec{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;font-weight:600}
+.hm-sec em{font-style:normal;font-size:10px;color:var(--sh-sub);font-weight:400}
+.hm-ind{font-size:9.5px;font-weight:600;border-radius:5px;padding:1px 5px;margin-left:4px;background:var(--sh-faint);color:var(--sh-sub);vertical-align:1px}
+table.spec.hm-cmp td:first-child{white-space:normal;width:110px}
+table.spec.hm-cmp{max-width:none}
+table.spec.hm-cmp td.same{color:var(--muted)}
+.card .stats{padding:4px 0}
+.hm-hero .group{padding:0}
