@@ -20,6 +20,7 @@ import ai.neargo.shop.food.dto.ServiceFormContracts.VersionReq;
 import ai.neargo.shop.food.dto.ServiceSlotContracts.ClaimReq;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.mapper.ServiceFormMapper;
 import ai.neargo.shop.food.policy.CartInputPolicy;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
@@ -52,6 +53,8 @@ import java.util.function.Supplier;
 public class ServiceFormServiceImpl implements ServiceFormService {
     private final ServiceFormMapper mapper;
     private final FoodBusinessOperationsMapper operations;
+    /** 订位、时段容量、菜单发布修订在行业库（ADR-068 修订二）。 */
+    private final FoodIndustryOperationsMapper industry;
     private final TransactionTemplate tx;
     private final BusinessCommandJournal journal;
     private final ServiceSlotService slots;
@@ -64,6 +67,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
     public ServiceFormServiceImpl(
             ServiceFormMapper mapper,
             FoodBusinessOperationsMapper operations,
+            FoodIndustryOperationsMapper industry,
             PlatformTransactionManager manager,
             ServiceSlotService slots,
             ServiceSlotLifecycle capacity,
@@ -73,6 +77,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
             Clock clock) {
         this.mapper = mapper;
         this.operations = operations;
+        this.industry = industry;
         this.tx = new TransactionTemplate(manager);
         this.slots = slots;
         this.capacity = capacity;
@@ -148,7 +153,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
                                     if (request.reservationNo() != null) {
                                         var reservation =
                                                 one(
-                                                        mapper.reservation(
+                                                        industry.serviceFormReservation(
                                                                 e,
                                                                 store,
                                                                 request.reservationNo(),
@@ -253,7 +258,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
                                     if (row.text("reservation_no") != null) {
                                         var source =
                                                 one(
-                                                        mapper.reservation(
+                                                        industry.serviceFormReservation(
                                                                 e,
                                                                 store,
                                                                 row.text("reservation_no"),
@@ -337,7 +342,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
                                     if (row.text("reservation_no") != null) {
                                         var source =
                                                 one(
-                                                        mapper.reservation(
+                                                        industry.serviceFormReservation(
                                                                 e,
                                                                 store,
                                                                 row.text("reservation_no"),
@@ -394,7 +399,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
                                                     request.checkNo(),
                                                     request.checkVersion())
                                             != 1) conflict();
-                                    var claims = operations.capacityBySource(e, store, no);
+                                    var claims = industry.capacityBySource(e, store, no);
                                     if (!claims.isEmpty()) {
                                         var claim = claims.getFirst();
                                         slots.transition(
@@ -514,7 +519,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
                                         }));
         if (!"CANCELLING".equals(get(e, store, no).status())) return get(e, store, no);
         if (intention.reservationNo() != null) {
-            var source = one(mapper.reservation(e, store, intention.reservationNo(), false));
+            var source = one(industry.serviceFormReservation(e, store, intention.reservationNo(), false));
             if (!target.equals(source.text("status"))) {
                 var transition = new TransitionReq(source.number("version"), request.reason());
                 if ("NO_SHOW".equals(target))
@@ -538,7 +543,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
                                     transition,
                                     "SERVICE_FORM_CANCEL:" + no);
             }
-            var actual = one(mapper.reservation(e, store, intention.reservationNo(), false));
+            var actual = one(industry.serviceFormReservation(e, store, intention.reservationNo(), false));
             if (!target.equals(actual.text("status"))) conflict();
         }
         return tx.execute(
@@ -752,7 +757,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
         }
         CartInputPolicy.key(no);
         CartInputPolicy.key(revision);
-        var row = one(mapper.menu(e, revision));
+        var row = one(industry.serviceFormMenuRevision(e, revision));
         if (!no.equals(row.text("config_no"))
                 || !PublicationDocuments.hash(json, row.text("definition_snapshot"))
                         .equals(row.text("content_hash"))) conflict();

@@ -57,7 +57,7 @@ public class ScheduledDiningDispatchServiceImpl implements ScheduledDiningDispat
             throw new IllegalStateException("Dispatch owner calls cannot hold a FOOD transaction");
         var now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
         // 补建：时段占用已在交易库绑定批次，但提交后建定时出品单那一步没成功（建单按批次号可重复）。
-        for (var bound : mapper.boundScheduledBatches(now.minusDays(1), now, limit))
+        for (var bound : industry.boundScheduledBatches(now.minusDays(1), now, limit))
             industry.createScheduledDispatch(
                     bound.text("entity_no"),
                     bound.text("store_no"),

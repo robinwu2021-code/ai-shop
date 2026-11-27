@@ -233,7 +233,7 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
                                             > 0) conflict();
                                     for (var row : lines) {
                                         String line = (String) row.get("food_line_no");
-                                        if (mapper.checkCollaborationCountKitchenTask(e, line) > 0)
+                                        if (industry.checkCollaborationCountKitchenTask(e, line) > 0)
                                             conflict();
                                         if (mapper.checkCollaborationCountReturnItem(e, line) > 0)
                                             conflict();
@@ -242,10 +242,10 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
                                     if (industry.checkCollaborationCountDiningEntitlement(e, check)
                                             > 0) conflict();
                                     var tables =
-                                            mapper.checkCollaborationSelectOccupiedTables(e, check);
-                                    if (mapper.checkCollaborationCountTableOccupancy(e, check) > 0)
+                                            industry.checkCollaborationSelectOccupiedTables(e, check);
+                                    if (industry.checkCollaborationCountTableOccupancy(e, check) > 0)
                                         conflict();
-                                    mapper.checkCollaborationUpdateTableOccupancy(actor, e, check);
+                                    industry.checkCollaborationUpdateTableOccupancy(actor, e, check);
                                     for (var row : tables) released.add(row.text("table_no"));
                                     mapper.checkCollaborationUpdateGuestSession(
                                             actor, e, store, check);

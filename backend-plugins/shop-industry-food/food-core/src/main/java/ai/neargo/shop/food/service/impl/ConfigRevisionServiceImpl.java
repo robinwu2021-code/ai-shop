@@ -120,6 +120,13 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
     private final StationPublicationSource stations;
     private final Supplier<MenuChannelAuthorityPort> channelAuthority;
     private final MenuChannelBindingMapper channelBindings;
+    /** 门店上架的菜单（交易库）；排他菜单冲突检查先取菜单号再查行业库的发布修订。 */
+    private ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper menuStores;
+
+    public ConfigRevisionServiceImpl withMenuStores(ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper menuStores) {
+        this.menuStores = menuStores;
+        return this;
+    }
 
     public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
             ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
@@ -459,7 +466,9 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
             OffsetDateTime effective) {
         var candidate = json.readValue(document, MenuPublicationSnapshot.class).menu();
         if (candidate.definition().config().exclusiveGroup() == null) return;
-        var timeline = revisions.menuTimeline(entity, store).stream().filter(r -> inStore(r, store)).toList();
+        var menus = menuStores.activeMenuNos(entity, store);
+        var timeline = menus.isEmpty() ? List.<FnbConfigRevision>of()
+                : revisions.menuTimeline(entity, menus).stream().filter(r -> inStore(r, store)).toList();
         if (timeline.size() > 10000) throw BizException.of(ErrorCode.CONFLICT);
         var start = effective.toLocalDateTime();
         var end = timeline.stream().filter(r -> number.equals(r.getConfigNo()) && r.getEffectiveAt().isAfter(start))

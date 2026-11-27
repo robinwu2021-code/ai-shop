@@ -251,6 +251,15 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - 出品服务的事务管理器改为 `industryTxManager`。
 - 测试：food-core 755 个通过（54 个要 MySQL 的跳过）。
 
+### 已完成：业务域的表改挂行业句柄（2026-11-27，修订二第 ① 步）
+
+- 注解 Mapper `TableOccupancyMapper`、`TableOperationMapper`、`ReservationMapper`、`ReservationTableMapper`、`ServiceCalendarMapper` 改挂行业句柄。
+- `FoodBusinessOperationsMapper`（交易句柄）里碰占台、时段与容量、订位、制作任务的 25 条语句搬到 `FoodIndustryOperationsMapper`；`ServiceFormMapper` 里的订位、菜单发布修订查询同样搬过去。
+- 菜单发布的排他冲突检查原把发布修订（行业库）与菜单、门店上架（交易库）联表：拆成交易库 `MenuStoreMapper#activeMenuNos` 取菜单号，行业库按菜单号查修订。
+- 按新划分重扫：注解 Mapper 里句柄与表的归属一致。
+- 测试：food-core 755 个通过（54 个要 MySQL 的跳过）。
+- 未完成：下列服务里业务域写与订单域写仍在一个交易事务里（未绑定时与原来等价），按 §2.7 第 ②③ 步改成补偿流程：开台、换台、并台、清台（`CheckServiceImpl`）、扫码会话（`DiningSessionServiceImpl`）、订位（`ReservationServiceImpl`）、时段容量的占用与确认（`ServiceSlotServiceImpl`，在下单与接单事务里调用）、结账放台（`CheckCollaborationServiceImpl`）。
+
 ### 事务拆分记录
 
 | 服务 | 类 | 处理 |

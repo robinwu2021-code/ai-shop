@@ -86,7 +86,8 @@ class CatalogPublicationServiceTest {
                     c.getBean("foodOutboxPublisher", OutboxPublisher.class), c.getBean(ObjectMapper.class),
                     c.getBean(PlatformTransactionManager.class), goods, (e, ids) -> List.of(),
                     Clock.fixed(Instant.parse("2026-10-21T08:00:00Z"), ZoneOffset.UTC), null, null, null,
-                    null, station, () -> null);
+                    null, station, () -> null)
+                    .withMenuStores(org.mockito.Mockito.mock(ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper.class));
             var req = new PublishConfigReq(0L, OffsetDateTime.parse("2026-10-21T08:00:00Z"), null);
             var first = service.publishStation("E", "A", "ST", "actor", req, "station-publish");
             var content = service.getRevision("E", "A", first.publication().revisionNo());
@@ -243,6 +244,8 @@ class CatalogPublicationServiceTest {
             var template=c.getBean(SqlSessionTemplate.class);
             if(!template.getConfiguration().hasMapper(MenuChannelBindingMapper.class))
                 template.getConfiguration().addMapper(MenuChannelBindingMapper.class);
+            if(!template.getConfiguration().hasMapper(ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper.class))
+                template.getConfiguration().addMapper(ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper.class);
             var deps=new ArrayList<MenuPublicationSnapshot.Dependency>();
             if(dependency) {
                 var group=new PublicationSnapshot(1,"OPTION_GROUP","GROUP",0,null,
@@ -304,7 +307,8 @@ class CatalogPublicationServiceTest {
                     c.getBean(RequestIdempotencyPort.class),c.getBean("foodOutboxPublisher",OutboxPublisher.class),json,
                     c.getBean(PlatformTransactionManager.class),goods,(e,ids) -> List.of(),
                     Clock.fixed(ConfigRevisionServiceTest.NOW.toInstant(),ZoneOffset.UTC),null,null,null,menus,null,
-                    () -> authority,template.getMapper(MenuChannelBindingMapper.class));
+                    () -> authority,template.getMapper(MenuChannelBindingMapper.class))
+                    .withMenuStores(template.getMapper(ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper.class));
             test.accept(new HistoricalMenu(service,f.sql(),disable,json,revisions,menus));
         });
     }

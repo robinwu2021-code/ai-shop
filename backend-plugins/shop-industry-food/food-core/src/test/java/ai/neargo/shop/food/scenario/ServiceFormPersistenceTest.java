@@ -125,6 +125,7 @@ public class ServiceFormPersistenceTest {
                 new ServiceFormServiceImpl(
                         new ServiceFormMapper(ds),
                         mapper,
+                        new FoodIndustryOperationsMapper(ds),
                         manager,
                         slot,
                         slot,

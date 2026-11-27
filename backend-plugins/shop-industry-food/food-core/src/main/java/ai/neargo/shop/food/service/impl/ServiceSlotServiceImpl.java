@@ -60,7 +60,7 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
             String e, String store, String actor, String source, BigDecimal quantity) {
         requirePrimary();
         quantity(quantity);
-        var claims = mapper.capacityBySource(e, store, source);
+        var claims = industry.capacityBySource(e, store, source);
         if (claims.size() != 1) conflict();
         var row = claims.getFirst();
         var slot = slot(e, store, row.text("slot_no"), true);
@@ -68,15 +68,15 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
         BigDecimal delta = quantity.subtract(row.decimal("quantity"));
         if (delta.signum() > 0 && !clock.instant().isBefore(slot.instant("order_cutoff_at")))
             conflict();
-        if (mapper.changeReservedCapacity(e, row.text("slot_no"), delta, actor) != 1
-                || mapper.resizeReservedCapacity(
+        if (industry.changeReservedCapacity(e, row.text("slot_no"), delta, actor) != 1
+                || industry.resizeReservedCapacity(
                                 e, store, source, quantity, row.number("version"), actor)
                         != 1) conflict();
     }
 
     @Override
     public void assertScheduledCart(String e, String store, String cart, Instant scheduledAt) {
-        var claims = mapper.capacityBySource(e, store, cart);
+        var claims = industry.capacityBySource(e, store, cart);
         if (claims.size() != 1
                 || !Set.of("RESERVED", "CONSUMED").contains(claims.getFirst().text("status")))
             conflict();
@@ -93,7 +93,7 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
         if (scheduledAt == null
                 || !scheduledAt.isAfter(clock.instant())
                 || scheduledAt.getNano() % 1_000_000 != 0) bad();
-        var matches = mapper.scheduledOrderSlots(e, store, local(scheduledAt));
+        var matches = industry.scheduledOrderSlots(e, store, local(scheduledAt));
         if (matches.size() != 1) conflict();
         return reserve(
                 e,
@@ -106,7 +106,7 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
     @Override
     public void releaseCart(String e, String store, String actor, String cart) {
         requirePrimary();
-        var claims = mapper.capacityBySource(e, store, cart);
+        var claims = industry.capacityBySource(e, store, cart);
         if (claims.isEmpty()) return;
         if (claims.size() != 1) conflict();
         var row = claims.getFirst();
@@ -125,7 +125,7 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
     @Override
     public void bindOrder(String e, String store, String actor, String cart, String batch) {
         requirePrimary();
-        var claims = mapper.capacityBySource(e, store, cart);
+        var claims = industry.capacityBySource(e, store, cart);
         if (claims.isEmpty()) return;
         if (claims.size() != 1) conflict();
         var row = claims.getFirst();
@@ -144,7 +144,7 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                     row.number("version"),
                     "CONSUME",
                     "SLOT_ACCEPT_" + batch);
-        if (mapper.bindCapacityBatch(e, store, cart, batch, actor) != 1) conflict();
+        if (industry.bindCapacityBatch(e, store, cart, batch, actor) != 1) conflict();
         // 定时出品单在行业库：交易提交后再建（按批次号可重复执行）；漏建由定时出品任务按已绑定时段补。
         LocalDateTime dispatchAt =
                 local(slot(e, store, row.text("slot_no"), false).instant("dispatch_at"));
@@ -155,7 +155,7 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
     @Override
     public void releaseOrder(String e, String store, String actor, String batch) {
         requirePrimary();
-        var claims = mapper.capacityByBatch(e, store, batch);
+        var claims = industry.capacityByBatch(e, store, batch);
         if (claims.isEmpty()) return;
         if (claims.size() != 1) conflict();
         var row = claims.getFirst();
@@ -177,9 +177,9 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
         // Capacity already dispatched remains consumed; cancellation cannot undo the production
         // window.
         if (!clock.instant().isBefore(serviceSlot.instant("dispatch_at"))) return;
-        if (mapper.releaseConsumedCapacity(e, row.text("slot_no"), row.decimal("quantity"), actor)
+        if (industry.releaseConsumedCapacity(e, row.text("slot_no"), row.decimal("quantity"), actor)
                         != 1
-                || mapper.markCapacityReleased(e, row.text("claim_no"), actor) != 1) conflict();
+                || industry.markCapacityReleased(e, row.text("claim_no"), actor) != 1) conflict();
     }
 
     private static void requirePrimary() {
@@ -213,7 +213,7 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                     var stores = industry.serviceSlotSelectStorePolicy(e, s);
                     if (stores.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
                     String no = BizKey.next("FSLT");
-                    mapper.serviceSlotInsertServiceSlot(
+                    industry.serviceSlotInsertServiceSlot(
                             e,
                             s,
                             no,
@@ -260,7 +260,7 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                 ClaimVO.class,
                 () -> {
                     var row = slot(e, s, req.slotNo(), true);
-                    var old = mapper.serviceSlotSelectCapacityClaim(e, s, req.sourceNo());
+                    var old = industry.serviceSlotSelectCapacityClaim(e, s, req.sourceNo());
                     if (!old.isEmpty()) {
                         var c = old.getFirst();
                         if (!req.slotNo().equals(c.text("slot_no"))
@@ -276,10 +276,10 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                                     .compareTo(decimal(row, "capacity"))
                             > 0) conflict();
                     String no = BizKey.next("FCAP");
-                    mapper.serviceSlotInsertCapacityClaim(
+                    industry.serviceSlotInsertCapacityClaim(
                             e, s, no, req.slotNo(), req.sourceNo(), req.quantity(), a, a);
-                    mapper.serviceSlotUpdateServiceSlot(req.quantity(), a, e, req.slotNo());
-                    return claim(one(mapper.serviceSlotSelectCapacityClaim2(e, no)));
+                    industry.serviceSlotUpdateServiceSlot(req.quantity(), a, e, req.slotNo());
+                    return claim(one(industry.serviceSlotSelectCapacityClaim2(e, no)));
                 });
     }
 
@@ -295,22 +295,22 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                 FoodCommandFingerprint.hash(no, Long.toString(expected)),
                 ClaimVO.class,
                 () -> {
-                    var before = one(mapper.serviceSlotSelectCapacityClaim3(e, s, no));
+                    var before = one(industry.serviceSlotSelectCapacityClaim3(e, s, no));
                     slot(e, s, (String) before.text("slot_no"), true);
-                    var row = one(mapper.serviceSlotSelectCapacityClaim4(e, s, no));
+                    var row = one(industry.serviceSlotSelectCapacityClaim4(e, s, no));
                     String target = "CONSUME".equals(action) ? "CONSUMED" : "RELEASED";
                     if (target.equals(row.text("status"))) return claim(row);
                     if (number(row, "version") != expected
                             || !"RESERVED".equals(row.text("status"))) conflict();
                     BigDecimal qty = decimal(row, "quantity");
-                    mapper.serviceSlotUpdateServiceSlot2(
+                    industry.serviceSlotUpdateServiceSlot2(
                             qty,
                             "CONSUME".equals(action) ? qty : BigDecimal.ZERO,
                             a,
                             e,
                             row.text("slot_no"),
                             qty);
-                    mapper.serviceSlotUpdateCapacityClaim(target, a, e, no);
+                    industry.serviceSlotUpdateCapacityClaim(target, a, e, no);
                     return new ClaimVO(
                             no,
                             (String) row.text("slot_no"),
@@ -323,14 +323,14 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
 
     @Override
     public boolean dispatchDue(String e, String s, String source) {
-        var rows = mapper.serviceSlotSelectCapacityClaim5(e, s, source);
+        var rows = industry.serviceSlotSelectCapacityClaim5(e, s, source);
         return rows.size() == 1
                 && "CONSUMED".equals(rows.getFirst().text("status"))
                 && !clock.instant().isBefore(time(rows.getFirst(), "dispatch_at"));
     }
 
     private FoodBusinessOperationRow slot(String e, String s, String no, boolean lock) {
-        return one(mapper.serviceSlotSelectServiceSlot(e, s, no, lock));
+        return one(industry.serviceSlotSelectServiceSlot(e, s, no, lock));
     }
 
     private static ClaimVO claim(FoodBusinessOperationRow r) {

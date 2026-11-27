@@ -92,13 +92,14 @@ public class FoodBusinessOperationsConfiguration {
     @ConditionalOnMissingBean(ReservationPreorderService.class)
     ReservationPreorderService reservationPreorderService(
             FoodBusinessOperationsMapper mapper,
+            FoodIndustryOperationsMapper industry,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             RequestIdempotencyPort idem,
             CheckCartService carts,
             DiningOrderService orders,
             ObjectMapper json) {
         return new ReservationPreorderServiceImpl(
-                mapper, manager, idem, carts, orders, json, Clock.systemUTC());
+                mapper, industry, manager, idem, carts, orders, json, Clock.systemUTC());
     }
 
     @Bean
@@ -181,6 +182,7 @@ public class FoodBusinessOperationsConfiguration {
     ServiceFormServiceImpl serviceFormService(
             ServiceFormMapper mapper,
             FoodBusinessOperationsMapper operations,
+            FoodIndustryOperationsMapper industry,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ServiceSlotService slots,
             ServiceSlotLifecycle capacity,
@@ -190,6 +192,7 @@ public class FoodBusinessOperationsConfiguration {
         return new ServiceFormServiceImpl(
                 mapper,
                 operations,
+                industry,
                 manager,
                 slots,
                 capacity,

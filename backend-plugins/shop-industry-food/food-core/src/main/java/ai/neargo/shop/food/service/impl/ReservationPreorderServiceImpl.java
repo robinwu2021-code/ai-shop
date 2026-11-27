@@ -14,6 +14,7 @@ import ai.neargo.shop.food.dto.ReservationPreorderContracts.PreorderVO;
 import ai.neargo.shop.food.dto.ReservationPreorderContracts.SaveReq;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.DiningOrderService;
@@ -41,6 +42,8 @@ import java.util.Set;
 public class ReservationPreorderServiceImpl implements ReservationPreorderService {
     private final BusinessCommandJournal journal;
     private final FoodBusinessOperationsMapper mapper;
+    /** 订位在行业库（ADR-068 修订二）；预点菜在交易库。 */
+    private final FoodIndustryOperationsMapper industry;
     private final TransactionTemplate tx;
     private final RequestIdempotencyPort idem;
     private final CheckCartService carts;
@@ -50,6 +53,7 @@ public class ReservationPreorderServiceImpl implements ReservationPreorderServic
 
     public ReservationPreorderServiceImpl(
             FoodBusinessOperationsMapper mapper,
+            FoodIndustryOperationsMapper industry,
             PlatformTransactionManager manager,
             RequestIdempotencyPort idem,
             CheckCartService carts,
@@ -57,6 +61,7 @@ public class ReservationPreorderServiceImpl implements ReservationPreorderServic
             ObjectMapper json,
             Clock clock) {
         this.mapper = mapper;
+        this.industry = industry;
         journal = new BusinessCommandJournal(mapper, json);
         tx = new TransactionTemplate(manager);
         this.idem = idem;
@@ -290,7 +295,7 @@ public class ReservationPreorderServiceImpl implements ReservationPreorderServic
     }
 
     private FoodBusinessOperationRow reservation(String e, String s, String no, boolean lock) {
-        return one(mapper.reservationPreorderSelectReservation(e, s, no, lock));
+        return one(industry.reservationPreorderSelectReservation(e, s, no, lock));
     }
 
     private FoodBusinessOperationRow preorder(

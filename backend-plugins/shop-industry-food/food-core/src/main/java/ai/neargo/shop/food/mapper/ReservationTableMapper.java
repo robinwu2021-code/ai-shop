@@ -1,6 +1,6 @@
 package ai.neargo.shop.food.mapper;
 
-import ai.neargo.shop.common.config.TradeTableMapper;
+import ai.neargo.shop.common.config.IndustryTableMapper;
 import ai.neargo.shop.food.entity.FnbReservationTable;
 import java.time.LocalDateTime;
 import org.apache.ibatis.annotations.Param;
@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Select;
 
 /** Queries must run after the existing area/table lock, shared by every occupancy writer. */
-public interface ReservationTableMapper extends TradeTableMapper<FnbReservationTable> {
+public interface ReservationTableMapper extends IndustryTableMapper<FnbReservationTable> {
     @Delete("DELETE FROM fnb_reservation_table WHERE tenant_no='MAIN' AND entity_no=#{entity} "
             + "AND store_no=#{store} AND reservation_no=#{reservation}")
     int clear(@Param("entity") String entity,@Param("store") String store,@Param("reservation") String reservation);

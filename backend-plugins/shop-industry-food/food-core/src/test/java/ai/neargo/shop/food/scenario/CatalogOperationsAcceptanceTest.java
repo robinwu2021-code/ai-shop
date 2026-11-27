@@ -199,7 +199,8 @@ class CatalogOperationsAcceptanceTest extends FoodWriteGuardFixture {
             var reservation = reservations(c).create("E", "A", "actor", request, "reservation");
             var line = new OrderLineInput("line-1", "menu", "item", "revision", "goods", "sku", BigDecimal.ONE,
                     null, null, List.of(), List.of());
-            var preorders = new ReservationPreorderServiceImpl(new FoodBusinessOperationsMapper(f.source()), manager(c),
+            var preorders = new ReservationPreorderServiceImpl(new FoodBusinessOperationsMapper(f.source()),
+                    new FoodIndustryOperationsMapper(f.source()), manager(c),
                     c.getBean(RequestIdempotencyPort.class), mock(CheckCartService.class, call -> { throw new AssertionError("Draft must not write cart"); }),
                     mock(DiningOrderService.class, call -> { throw new AssertionError("Draft must not place order"); }), json(c),
                     Clock.fixed(request.startAt().minusSeconds(3600), ZoneOffset.UTC));

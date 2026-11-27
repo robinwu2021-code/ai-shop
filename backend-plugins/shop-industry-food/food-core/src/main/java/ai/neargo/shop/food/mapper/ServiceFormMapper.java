@@ -53,28 +53,6 @@ public class ServiceFormMapper {
                         no));
     }
 
-    public List<FoodBusinessOperationRow> menu(String e, String revision) {
-        return rows(
-                db.queryForList(
-                        "SELECT config_no,definition_snapshot,content_hash,status FROM"
-                                + " fnb_config_revision WHERE entity_no=? AND revision_no=? AND"
-                                + " config_kind='MENU' AND status IN ('EFFECTIVE','SCHEDULED')",
-                        e,
-                        revision));
-    }
-
-    public List<FoodBusinessOperationRow> reservation(
-            String e, String store, String no, boolean lock) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_reservation WHERE entity_no=? AND store_no=? AND"
-                                + " reservation_no=? AND deleted=0"
-                                + (lock ? " FOR UPDATE" : ""),
-                        e,
-                        store,
-                        no));
-    }
-
     public List<FoodBusinessOperationRow> check(String e, String store, String no, boolean lock) {
         return rows(
                 db.queryForList(

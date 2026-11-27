@@ -216,7 +216,7 @@ public class FoodAutoConfiguration {
             ObjectProvider<MenuChannelAuthorityPort> channelAuthority,
             @Value("${shop.food.menu-publication-enabled:false}") boolean menuPublicationEnabled,
             @Value("${shop.food.station-publication-enabled:false}") boolean stationPublicationEnabled,
-            CatalogCurrencyService currencies) {
+            CatalogCurrencyService currencies, MenuStoreMapper menuStores) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(goods);
         return new ConfigRevisionServiceImpl(revisions, modifiers, components, groups, items, actions, idem,
                 publisher, json, manager, catalog, (entity, numbers) -> specs.getObject().getValues(entity, numbers),
@@ -240,7 +240,7 @@ public class FoodAutoConfiguration {
                 }, dishes, recipeBindings, groups, bundles, recipeHeads, channelBindings, json) : null,
                 stationPublicationEnabled
                         ? new StationPublicationSource(stationHeads, stationRoutes, () -> true) : null,
-                channelAuthority::getIfAvailable, channelBindings, currencies);
+                channelAuthority::getIfAvailable, channelBindings, currencies).withMenuStores(menuStores);
     }
 
     @Bean

@@ -246,15 +246,6 @@ public class FoodBusinessOperationsMapper {
                 check);
     }
 
-    public Long checkCollaborationCountKitchenTask(String e, String line) {
-        return db.queryForObject(
-                "SELECT COUNT(*) FROM fnb_kitchen_task WHERE entity_no=? AND food_line_no=? AND"
-                        + " deleted=0 AND status NOT IN ('SERVED','VOIDED')",
-                Long.class,
-                e,
-                line);
-    }
-
     public Long checkCollaborationCountReturnItem(String e, String line) {
         return db.queryForObject(
                 "SELECT COUNT(*) FROM fnb_return_item i JOIN fnb_return r ON"
@@ -264,37 +255,6 @@ public class FoodBusinessOperationsMapper {
                 Long.class,
                 e,
                 line);
-    }
-
-    public List<FoodBusinessOperationRow> checkCollaborationSelectOccupiedTables(
-            String e, String check) {
-        return rows(
-                db.queryForList(
-                        // 只读占台（门店交易库）；桌台在行业库，不再联表。账单号已按门店校验过。
-                        "SELECT o.table_no FROM fnb_table_occupancy o WHERE o.entity_no=? AND"
-                            + " o.check_no=? AND o.ended_at IS NULL AND o.deleted=0 ORDER BY"
-                            + " o.table_no FOR UPDATE",
-                        e,
-                        check));
-    }
-
-    public Long checkCollaborationCountTableOccupancy(String e, String check) {
-        return db.queryForObject(
-                "SELECT COUNT(*) FROM fnb_table_occupancy WHERE entity_no=? AND check_no=? AND"
-                        + " ended_at IS NULL AND resource_claim_no IS NOT NULL",
-                Long.class,
-                e,
-                check);
-    }
-
-    public int checkCollaborationUpdateTableOccupancy(String actor, String e, String check) {
-        return db.update(
-                "UPDATE fnb_table_occupancy SET"
-                    + " ended_at=UTC_TIMESTAMP(3),version=version+1,updated_by=?,updated_at=UTC_TIMESTAMP(3)"
-                    + " WHERE entity_no=? AND check_no=? AND ended_at IS NULL AND deleted=0",
-                actor,
-                e,
-                check);
     }
 
     public int checkCollaborationUpdateGuestSession(
@@ -766,18 +726,6 @@ public class FoodBusinessOperationsMapper {
                 no);
     }
 
-    public List<FoodBusinessOperationRow> reservationPreorderSelectReservation(
-            String e, String s, String no, boolean lock) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_reservation WHERE entity_no=? AND store_no=? AND"
-                                + " reservation_no=? AND deleted=0"
-                                + (lock ? " FOR UPDATE" : ""),
-                        e,
-                        s,
-                        no));
-    }
-
     public List<FoodBusinessOperationRow> reservationPreorderSelectReservationPreorder(
             String e, String s, String reservation, String no, boolean lock) {
         return rows(
@@ -788,163 +736,6 @@ public class FoodBusinessOperationsMapper {
                         e,
                         s,
                         reservation,
-                        no));
-    }
-
-    public int serviceSlotInsertServiceSlot(
-            String e,
-            String s,
-            String no,
-            LocalDateTime value4,
-            LocalDateTime value5,
-            LocalDateTime value6,
-            LocalDateTime value7,
-            BigDecimal capacity,
-            String unit,
-            String a,
-            String a2) {
-        return db.update(
-                "INSERT INTO fnb_service_slot"
-                    + " (entity_no,store_no,slot_no,starts_at,ends_at,order_cutoff_at,dispatch_at,capacity,reserved_qty,consumed_qty,unit,status,created_at,updated_at,created_by,updated_by)"
-                    + " VALUES"
-                    + " (?,?,?,?,?,?,?,?,0,0,?,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?)",
-                e,
-                s,
-                no,
-                value4,
-                value5,
-                value6,
-                value7,
-                capacity,
-                unit,
-                a,
-                a2);
-    }
-
-    public List<FoodBusinessOperationRow> serviceSlotSelectCapacityClaim(
-            String e, String s, String sourceNo) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_capacity_claim WHERE entity_no=? AND store_no=? AND"
-                                + " source_no=? FOR UPDATE",
-                        e,
-                        s,
-                        sourceNo));
-    }
-
-    public int serviceSlotInsertCapacityClaim(
-            String e,
-            String s,
-            String no,
-            String slotNo,
-            String sourceNo,
-            BigDecimal quantity,
-            String a,
-            String a2) {
-        return db.update(
-                "INSERT INTO fnb_capacity_claim"
-                    + " (entity_no,store_no,claim_no,slot_no,source_no,quantity,status,created_at,updated_at,created_by,updated_by)"
-                    + " VALUES (?,?,?,?,?,?,'RESERVED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?)",
-                e,
-                s,
-                no,
-                slotNo,
-                sourceNo,
-                quantity,
-                a,
-                a2);
-    }
-
-    public int serviceSlotUpdateServiceSlot(
-            BigDecimal quantity, String a, String e, String slotNo) {
-        return db.update(
-                "UPDATE fnb_service_slot SET"
-                    + " reserved_qty=reserved_qty+?,version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by=?"
-                    + " WHERE entity_no=? AND slot_no=?",
-                quantity,
-                a,
-                e,
-                slotNo);
-    }
-
-    public List<FoodBusinessOperationRow> serviceSlotSelectCapacityClaim2(String e, String no) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_capacity_claim WHERE entity_no=? AND claim_no=?",
-                        e,
-                        no));
-    }
-
-    public List<FoodBusinessOperationRow> serviceSlotSelectCapacityClaim3(
-            String e, String s, String no) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_capacity_claim WHERE entity_no=? AND store_no=? AND"
-                                + " claim_no=?",
-                        e,
-                        s,
-                        no));
-    }
-
-    public List<FoodBusinessOperationRow> serviceSlotSelectCapacityClaim4(
-            String e, String s, String no) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_capacity_claim WHERE entity_no=? AND store_no=? AND"
-                                + " claim_no=? FOR UPDATE",
-                        e,
-                        s,
-                        no));
-    }
-
-    public int serviceSlotUpdateServiceSlot2(
-            BigDecimal qty, BigDecimal value2, String a, String e, String slotNo, BigDecimal qty2) {
-        return db.update(
-                "UPDATE fnb_service_slot SET"
-                    + " reserved_qty=reserved_qty-?,consumed_qty=consumed_qty+?,version=version+1,updated_by=?,updated_at=UTC_TIMESTAMP(3)"
-                    + " WHERE entity_no=? AND slot_no=? AND reserved_qty>=?",
-                qty,
-                value2,
-                a,
-                e,
-                slotNo,
-                qty2);
-    }
-
-    public int serviceSlotUpdateCapacityClaim(String target, String a, String e, String no) {
-        return db.update(
-                "UPDATE fnb_capacity_claim SET"
-                    + " status=?,version=version+1,updated_by=?,updated_at=UTC_TIMESTAMP(3) WHERE"
-                    + " entity_no=? AND claim_no=?",
-                target,
-                a,
-                e,
-                no);
-    }
-
-    public List<FoodBusinessOperationRow> serviceSlotSelectCapacityClaim5(
-            String e, String s, String source) {
-        return rows(
-                db.queryForList(
-                        "SELECT c.status,s.dispatch_at FROM fnb_capacity_claim c JOIN"
-                                + " fnb_service_slot s ON s.entity_no=c.entity_no AND"
-                                + " s.slot_no=c.slot_no WHERE c.entity_no=? AND c.store_no=? AND"
-                                + " (c.source_no=? OR c.batch_no=?)",
-                        e,
-                        s,
-                        source,
-                        source));
-    }
-
-    public List<FoodBusinessOperationRow> serviceSlotSelectServiceSlot(
-            String e, String s, String no, boolean lock) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_service_slot WHERE entity_no=? AND store_no=? AND"
-                                + " slot_no=? AND deleted=0"
-                                + (lock ? " FOR UPDATE" : ""),
-                        e,
-                        s,
                         no));
     }
 
@@ -1100,38 +891,6 @@ public class FoodBusinessOperationsMapper {
                         key));
     }
 
-    public List<FoodBusinessOperationRow> scheduledOrderSlots(
-            String e, String store, LocalDateTime starts) {
-        return rows(
-                db.queryForList(
-                        "SELECT slot_no FROM fnb_service_slot WHERE entity_no=? AND store_no=? AND"
-                            + " starts_at=? AND unit='ORDER' AND status='OPEN' AND deleted=0 ORDER"
-                            + " BY slot_no FOR UPDATE",
-                        e,
-                        store,
-                        starts));
-    }
-
-    public List<FoodBusinessOperationRow> capacityBySource(String e, String store, String source) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_capacity_claim WHERE entity_no=? AND store_no=? AND"
-                                + " source_no=?",
-                        e,
-                        store,
-                        source));
-    }
-
-    public List<FoodBusinessOperationRow> capacityByBatch(String e, String store, String batch) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_capacity_claim WHERE entity_no=? AND store_no=? AND"
-                                + " batch_no=?",
-                        e,
-                        store,
-                        batch));
-    }
-
     public List<FoodBusinessOperationRow> capacityOriginalBatch(
             String e, String store, String batch) {
         return rows(
@@ -1141,61 +900,6 @@ public class FoodBusinessOperationsMapper {
                         e,
                         store,
                         batch));
-    }
-
-    /**
-     * 已绑定批次、计划出品时间落在窗口内的时段占用：定时出品单（行业库）在交易提交后才建，
-     * 定时出品任务用它补建漏掉的。
-     */
-    public List<FoodBusinessOperationRow> boundScheduledBatches(
-            LocalDateTime since, LocalDateTime until, int limit) {
-        return rows(
-                db.queryForList(
-                        "SELECT c.entity_no,c.store_no,c.batch_no,s.dispatch_at FROM"
-                            + " fnb_capacity_claim c JOIN fnb_service_slot s ON"
-                            + " s.entity_no=c.entity_no AND s.slot_no=c.slot_no WHERE c.batch_no IS"
-                            + " NOT NULL AND c.status='CONSUMED' AND s.dispatch_at>=? AND"
-                            + " s.dispatch_at<=? ORDER BY s.dispatch_at,c.id LIMIT ?",
-                        since,
-                        until,
-                        limit));
-    }
-
-    public int bindCapacityBatch(
-            String e, String store, String source, String batch, String actor) {
-        return db.update(
-                "UPDATE fnb_capacity_claim SET"
-                    + " batch_no=?,version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by=? WHERE"
-                    + " entity_no=? AND store_no=? AND source_no=? AND (batch_no IS NULL OR"
-                    + " batch_no=?)",
-                batch,
-                actor,
-                e,
-                store,
-                source,
-                batch);
-    }
-
-    public int releaseConsumedCapacity(String e, String slot, BigDecimal qty, String actor) {
-        return db.update(
-                "UPDATE fnb_service_slot SET"
-                    + " consumed_qty=consumed_qty-?,version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by=?"
-                    + " WHERE entity_no=? AND slot_no=? AND consumed_qty>=?",
-                qty,
-                actor,
-                e,
-                slot,
-                qty);
-    }
-
-    public int markCapacityReleased(String e, String claim, String actor) {
-        return db.update(
-                "UPDATE fnb_capacity_claim SET"
-                    + " status='RELEASED',version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by=?"
-                    + " WHERE entity_no=? AND claim_no=? AND status='CONSUMED'",
-                actor,
-                e,
-                claim);
     }
 
     public List<FoodBusinessOperationRow> reservationActivePreorders(
@@ -1453,40 +1157,6 @@ public class FoodBusinessOperationsMapper {
                         e,
                         store,
                         check));
-    }
-
-    public int resizeReservedCapacity(
-            String e,
-            String store,
-            String source,
-            BigDecimal quantity,
-            long version,
-            String actor) {
-        return db.update(
-                "UPDATE fnb_capacity_claim SET"
-                    + " quantity=?,version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by=? WHERE"
-                    + " entity_no=? AND store_no=? AND source_no=? AND version=? AND"
-                    + " status='RESERVED'",
-                quantity,
-                actor,
-                e,
-                store,
-                source,
-                version);
-    }
-
-    public int changeReservedCapacity(String e, String slot, BigDecimal delta, String actor) {
-        return db.update(
-                "UPDATE fnb_service_slot SET"
-                    + " reserved_qty=reserved_qty+?,version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by=?"
-                    + " WHERE entity_no=? AND slot_no=? AND reserved_qty+?>=0 AND"
-                    + " reserved_qty+consumed_qty+?<=capacity",
-                delta,
-                actor,
-                e,
-                slot,
-                delta,
-                delta);
     }
 
     public Long activeServiceForms(String entity, String store, String check) {

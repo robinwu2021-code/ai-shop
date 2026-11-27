@@ -67,6 +67,7 @@ public class ReservationPreorderAcceptanceTest {
         }
         carts = new CartBoundary(); orders = new OrderBoundary();
         service = new ReservationPreorderServiceImpl(new FoodBusinessOperationsMapper(source),
+                new ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper(source),
                 new DataSourceTransactionManager(source), mock(RequestIdempotencyPort.class), carts.port, orders.port,
                 json, Clock.fixed(NOW, ZoneOffset.UTC));
     }

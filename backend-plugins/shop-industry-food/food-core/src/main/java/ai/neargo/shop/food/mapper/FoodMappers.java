@@ -204,7 +204,13 @@ public final class FoodMappers {
     }
 
     public interface MenuMapper extends TradeTableMapper<FnbMenu> { }
-    public interface MenuStoreMapper extends TradeTableMapper<FnbMenuStore> { }
+    public interface MenuStoreMapper extends TradeTableMapper<FnbMenuStore> {
+        /** 门店上架的、未停用的菜单号：菜单在交易库，菜单发布修订在行业库，两边各查一次（不联表）。 */
+        @Select("SELECT DISTINCT ms.menu_no FROM fnb_menu_store ms JOIN fnb_menu m ON m.entity_no=ms.entity_no "
+                + "AND m.menu_no=ms.menu_no AND m.deleted=0 AND m.status!='DISABLED' "
+                + "WHERE ms.entity_no=#{entity} AND ms.store_no=#{store} AND ms.deleted=0")
+        List<String> activeMenuNos(@Param("entity") String entity, @Param("store") String store);
+    }
 
     public interface RecipeMapper extends BaseMapper<FnbRecipe> { }
     public interface RecipeLineMapper extends BaseMapper<FnbRecipeLine> {
@@ -240,15 +246,14 @@ public final class FoodMappers {
     /** No generic update/delete API is exposed for publication facts. */
     public interface ConfigRevisionMapper {
         // Fetch only timeline metadata; materialize large immutable JSON only for intersecting effective windows.
-        @Select("SELECT r.revision_no,r.entity_no,r.config_kind,r.config_no,r.revision,r.effective_at,"
+        // 菜单号由交易库的 MenuStoreMapper#activeMenuNos 给出，这里只查行业库的发布修订。
+        @Select("<script>SELECT r.revision_no,r.entity_no,r.config_kind,r.config_no,r.revision,r.effective_at,"
                 + "r.status,r.scope_store_nos FROM fnb_config_revision r "
-                + "JOIN fnb_menu_store ms ON ms.entity_no=r.entity_no AND ms.menu_no=r.config_no "
-                + "AND ms.store_no=#{store} AND ms.deleted=0 "
-                + "JOIN fnb_menu m ON m.entity_no=r.entity_no AND m.menu_no=r.config_no "
-                + "AND m.deleted=0 AND m.status!='DISABLED' "
                 + "WHERE r.entity_no=#{entity} AND r.config_kind='MENU' AND r.deleted=0 "
-                + "AND r.status!='CANCELLED' ORDER BY r.config_no,r.effective_at,r.revision")
-        List<FnbConfigRevision> menuTimeline(@Param("entity") String entity, @Param("store") String store);
+                + "AND r.status!='CANCELLED' AND r.config_no IN "
+                + "<foreach collection='menus' item='m' open='(' separator=',' close=')'>#{m}</foreach> "
+                + "ORDER BY r.config_no,r.effective_at,r.revision</script>")
+        List<FnbConfigRevision> menuTimeline(@Param("entity") String entity, @Param("menus") Collection<String> menus);
 
         @Select("SELECT * FROM fnb_config_revision WHERE entity_no=#{entity} AND config_kind=#{kind} "
                 + "AND config_no=#{number} AND deleted=0 ORDER BY revision DESC")
@@ -287,7 +292,7 @@ public final class FoodMappers {
                 +"+(SELECT COUNT(*) FROM fnb_check_cart WHERE entity_no=#{entity} AND check_no=#{check} AND (status IS NULL OR status<>'CLOSED'))")
         long tradeFacts(@Param("entity") String entity,@Param("check") String check);
     }
-    public interface TableOccupancyMapper extends TradeTableMapper<FnbTableOccupancy> {
+    public interface TableOccupancyMapper extends IndustryTableMapper<FnbTableOccupancy> {
         @Select("SELECT * FROM fnb_table_occupancy WHERE entity_no=#{entity} AND table_no=#{table} AND ended_at IS NULL ORDER BY occupancy_no")
         List<FnbTableOccupancy> activeForTable(@Param("entity") String entity,@Param("table") String table);
         @Select("SELECT * FROM fnb_table_occupancy WHERE entity_no=#{entity} AND check_no=#{check} AND ended_at IS NULL ORDER BY occupancy_no")
@@ -303,19 +308,19 @@ public final class FoodMappers {
                 @Param("version") long version,@Param("label") String label,@Param("deleted") int deleted,
                 @Param("actor") String actor,@Param("at") LocalDateTime at);
     }
-    public interface TableOperationMapper extends BaseMapper<FnbTableOperation> {
+    public interface TableOperationMapper extends IndustryTableMapper<FnbTableOperation> {
         // Intent facts cannot be ignored just because a projection was logically archived.
         @Select("SELECT COUNT(*) FROM fnb_table_operation WHERE entity_no=#{entity} AND (check_no=#{check} OR target_check_no=#{check}) "
                 +"AND (resource_operation_ref IS NOT NULL OR status IS NULL OR status NOT IN ('APPLIED','FAILED'))")
         long externalOrPendingForCheck(@Param("entity") String entity,@Param("check") String check);
     }
 
-    public interface ReservationMapper extends TradeTableMapper<FnbReservation> { }
+    public interface ReservationMapper extends IndustryTableMapper<FnbReservation> { }
 
     public interface ActionLogMapper extends BaseMapper<FnbActionLog> {
     }
 
-    public interface ServiceCalendarMapper extends TradeTableMapper<FnbServiceCalendar> {
+    public interface ServiceCalendarMapper extends IndustryTableMapper<FnbServiceCalendar> {
     }
 
     public interface StorePolicyMapper extends IndustryTableMapper<FnbStorePolicy> {
