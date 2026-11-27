@@ -14,7 +14,36 @@ public record MallOrderDetailView(
         List<Shipment> shipments,
         List<RefundView> refunds,
         List<Line> lines,
-        List<HardwareItem> hardwareItems) {
+        List<HardwareItem> hardwareItems,
+        List<DeliveredSource> deliveredSources) {
+    public record DeliveredSource(
+            String orderComponentNo,
+            String periodNo,
+            String planVersionNo,
+            List<String> entitlementCodes,
+            String lifecycle) {}
+
+    public MallOrderDetailView(
+            Summary summary,
+            QuoteView quote,
+            ShippingAddress shippingAddress,
+            List<PaymentAttempt> paymentAttempts,
+            List<Shipment> shipments,
+            List<RefundView> refunds,
+            List<Line> lines,
+            List<HardwareItem> hardwareItems) {
+        this(
+                summary,
+                quote,
+                shippingAddress,
+                paymentAttempts,
+                shipments,
+                refunds,
+                lines,
+                hardwareItems,
+                List.of());
+    }
+
     public record HardwareItem(String orderComponentNo, String hardwareSkuNo, int quantity) {}
 
     public MallOrderDetailView(Summary summary, QuoteView quote, ShippingAddress shippingAddress,

@@ -14,7 +14,29 @@ public record RefundPreviewView(
         boolean requiresManualReview,
         List<String> sourcePeriodNos,
         Instant expiresAt,
-        String approvalDigest) {
+        String approvalDigest,
+        HardwareRefund hardware) {
+    public RefundPreviewView(
+            String refundNo,
+            String orderNo,
+            Money cashLimit,
+            Money creditLimit,
+            boolean requiresManualReview,
+            List<String> sourcePeriodNos,
+            Instant expiresAt,
+            String approvalDigest) {
+        this(
+                refundNo,
+                orderNo,
+                cashLimit,
+                creditLimit,
+                requiresManualReview,
+                sourcePeriodNos,
+                expiresAt,
+                approvalDigest,
+                null);
+    }
+
     public RefundPreviewView {
         sourcePeriodNos = List.copyOf(sourcePeriodNos);
     }

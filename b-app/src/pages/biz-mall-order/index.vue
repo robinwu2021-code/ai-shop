@@ -33,6 +33,8 @@
         </view>
       </view>
 
+      <MallAfterSale v-if="paid" :key="merchant.storeNo + orderNo" :store-no="merchant.storeNo" :order-no="orderNo" :detail="detail" @updated="load" />
+
       <!-- 付款：只在资金维度还没结清时出现。申报≠到账，运营核到款后这一块整块消失 -->
       <view v-if="awaitingTransfer" class="sh-card">
         <text class="txt-strong">{{ t("bizMall.pay.title") }}</text>
@@ -104,6 +106,7 @@
 // **申报不是到账**：申报后订单仍是「待付款」，运营在运营端核到款（录入实际到账）才变「已付款」，
 // 权益与发货才开始；运营拒了这份申报，商家看到「未通过」后可重报。
 // 凭证按后端要求逐张「预留 → 传原始字节」，全部传完才申报；中途失败整份不报，免得报出没有凭证的申报。
+import MallAfterSale from "./MallAfterSale.vue";
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";

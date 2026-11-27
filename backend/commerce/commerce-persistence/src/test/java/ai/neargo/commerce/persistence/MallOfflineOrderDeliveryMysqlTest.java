@@ -162,6 +162,25 @@ class MallOfflineOrderDeliveryMysqlTest {
             var bridge =
                     new MallFulfillmentMysqlTest.Bridge() {
                         boolean lostResponse = true;
+                        final Map<String, PaymentRefundCommand> commands = new HashMap<>();
+                        final Map<String, VerifiedRefundFact> paidOut = new HashMap<>();
+
+                        public PaymentRefundOutcome refund(PaymentRefundCommand cmd) {
+                            assertNull(commands.putIfAbsent(cmd.refundNo(), cmd));
+                            throw new IllegalStateException("response lost after refund accepted");
+                        }
+
+                        public PaymentRefundOutcome queryRefund(PaymentRefundQuery query) {
+                            var fact = paidOut.get(query.refundNo());
+                            return fact == null
+                                    ? null
+                                    : new PaymentRefundOutcome(
+                                            query.refundNo(),
+                                            AsyncStatus.SUCCEEDED,
+                                            Optional.of(fact.providerRefundNo()),
+                                            Optional.empty(),
+                                            fact);
+                        }
 
                         public InventoryOutcome ship(InventoryCommand c) {
                             var sent = super.ship(c);
@@ -193,6 +212,30 @@ class MallOfflineOrderDeliveryMysqlTest {
             var visible = new java.util.concurrent.atomic.AtomicBoolean(hardware);
             var money =
                     new OfflineCollectionPort() {
+                        public void payout(RefundPayout payout) {
+                            var c = bridge.commands.get(payout.refundNo());
+                            assertEquals(c.orderNo(), payout.orderNo());
+                            assertEquals(c.amount(), payout.actualAmount());
+                            bridge.paidOut.putIfAbsent(
+                                    c.refundNo(),
+                                    new VerifiedRefundFact(
+                                            c.tenantNo(),
+                                            "event-" + c.refundNo(),
+                                            c.orderNo(),
+                                            c.refundNo(),
+                                            c.store(),
+                                            c.paymentAttemptNo(),
+                                            c.originalPaymentNo(),
+                                            c.platformMerchantNo(),
+                                            c.originalPaid(),
+                                            c.amount(),
+                                            payout.bankReference(),
+                                            AsyncStatus.SUCCEEDED,
+                                            true,
+                                            payout.paidOutAt(),
+                                            payout.evidenceReference()));
+                        }
+
                         public ManualResult confirm(ManualPayment cmd) {
                             assertEquals(order.orderNo(), cmd.original().orderNo());
                             assertEquals(order.payable(), cmd.actualAmount());
@@ -229,6 +272,19 @@ class MallOfflineOrderDeliveryMysqlTest {
                             return key;
                         }
                     };
+            var refundRepo = new JdbcRefundRepository(mall.ds, f.ids, subs, true);
+            var refunds =
+                    new ai.neargo.commerce.core.fulfillment.CommerceRefundService(
+                            orders,
+                            refundRepo,
+                            ops,
+                            subs,
+                            accounts,
+                            schedule,
+                            f.uow,
+                            auth,
+                            bridge,
+                            clock);
             var offline =
                     new DefaultOfflinePurchaseFacade(
                             orders,
@@ -240,7 +296,7 @@ class MallOfflineOrderDeliveryMysqlTest {
                             auth,
                             trade,
                             payments,
-                            null,
+                            refunds,
                             money,
                             media,
                             clock,
@@ -374,6 +430,34 @@ class MallOfflineOrderDeliveryMysqlTest {
                 payments.confirmShipment(first);
                 assertEquals(1, bridge.ships);
                 assertEquals("PARTIAL", queries.order(BUYER, target).summary().fulfillmentStatus());
+                assertEquals(
+                        "REFUND_LIMIT",
+                        assertThrows(
+                                        MallException.class,
+                                        () ->
+                                                refunds.preview(
+                                                        BUYER,
+                                                        new RefundPreviewCommand(
+                                                                STORE,
+                                                                order.orderNo(),
+                                                                "too-many",
+                                                                List.of(),
+                                                                new HardwareRefund(part, 2))))
+                                .code());
+                assertEquals(
+                        "INVALID_SOURCE",
+                        assertThrows(
+                                        MallException.class,
+                                        () ->
+                                                refunds.preview(
+                                                        BUYER,
+                                                        new RefundPreviewCommand(
+                                                                STORE,
+                                                                order.orderNo(),
+                                                                "foreign",
+                                                                List.of(),
+                                                                new HardwareRefund("foreign", 1))))
+                                .code());
                 payments.confirmShipment(second);
                 payments.confirmShipment(second);
                 var detail = queries.order(BUYER, target);
@@ -425,6 +509,121 @@ class MallOfflineOrderDeliveryMysqlTest {
                                     Integer.class));
                     assertEquals(2, bridge.ships);
                 }
+                long total = 0;
+                for (String selection : List.of("hardware", plan ? "plan" : "last-hardware")) {
+                    String refundNo = "refund-" + selection;
+                    var current = queries.order(BUYER, target);
+                    boolean device = !"plan".equals(selection);
+                    boolean lastUnit = "last-hardware".equals(selection);
+                    var hw = device ? new HardwareRefund(part, 1) : null;
+                    List<String> periods =
+                            device
+                                    ? List.of()
+                                    : List.of(current.deliveredSources().getFirst().periodNo());
+                    var preview =
+                            refunds.preview(
+                                    BUYER,
+                                    new RefundPreviewCommand(
+                                            STORE, order.orderNo(), refundNo, periods, hw));
+                    var cmd =
+                            new RefundCommand(
+                                    STORE,
+                                    order.orderNo(),
+                                    refundNo,
+                                    preview.cashLimit(),
+                                    "after-sale",
+                                    periods,
+                                    hw);
+                    var requested = refunds.request(BUYER, cmd);
+                    assertEquals(requested, refunds.request(BUYER, cmd));
+                    var reviewed =
+                            refunds.reviewQuote(
+                                    f.ops,
+                                    new RefundReviewQuoteCommand(
+                                            STORE,
+                                            order.orderNo(),
+                                            refundNo,
+                                            requested.requestDigest(),
+                                            "review-" + selection));
+                    var price = reviewed.preview();
+                    var approval =
+                            new RefundApprovalCommand(
+                                    STORE,
+                                    order.orderNo(),
+                                    refundNo,
+                                    price.approvalDigest(),
+                                    price.cashLimit(),
+                                    price.creditLimit(),
+                                    "matched original component",
+                                    reviewed.reviewQuoteNo());
+                    refunds.approve(f.ops, approval);
+                    var q = new RefundQuery(STORE.tenantNo(), order.orderNo(), refundNo);
+                    assertTrue(price.cashLimit().minor() > 0);
+                    assertEquals(AsyncStatus.UNKNOWN, refunds.recover(q).status());
+                    assertEquals(AsyncStatus.UNKNOWN, refunds.recover(q).status());
+                    var key = offline.reserveEvidence(f.ops, target, "REFUND_PROOF").assetKey();
+                    offline.upload(f.ops, target, key, bytes);
+                    var payout =
+                            new OfflinePurchaseFacade.RefundPayoutCommand(
+                                    target,
+                                    refundNo,
+                                    price.cashLimit(),
+                                    paidAt,
+                                    "buyer",
+                                    "bank-" + selection,
+                                    key);
+                    var done = offline.confirmRefundPayout(f.ops, payout);
+                    assertEquals(AsyncStatus.SUCCEEDED, done.status());
+                    String versions =
+                            "SELECT COALESCE(SUM(version),0) FROM mch_subscription_period WHERE"
+                                + " source_type='ORDER'";
+                    var version = mall.jdbc.queryForObject(versions, Long.class);
+                    assertEquals(done, offline.confirmRefundPayout(f.ops, payout));
+                    assertEquals(done, refunds.recover(q));
+                    assertEquals(version, mall.jdbc.queryForObject(versions, Long.class));
+                    assertEquals(lastUnit ? "REFUNDED" : "PARTIAL", queries.order(BUYER, target).summary().refundStatus());
+                    total += price.cashLimit().minor();
+                    assertEquals(
+                            total,
+                            mall.jdbc.queryForObject(
+                                    "SELECT cash_refunded_minor FROM mall_order WHERE order_no=?",
+                                    Long.class,
+                                    order.orderNo()));
+                    assertEquals(
+                            lastUnit ? 2 : 1,
+                            mall.jdbc.queryForObject(
+                                    "SELECT SUM(quantity) FROM mall_refund_item WHERE"
+                                        + " order_component_no=? AND rights_action='NONE' AND"
+                                        + " status='SUCCEEDED'",
+                                    Integer.class,
+                                    part));
+                    assertEquals(
+                            "REFUND_LIMIT",
+                            assertThrows(
+                                            MallException.class,
+                                            () ->
+                                                    refunds.preview(
+                                                            BUYER,
+                                                            new RefundPreviewCommand(
+                                                                    STORE,
+                                                                    order.orderNo(),
+                                                                    "excess",
+                                                                    List.of(),
+                                                                    new HardwareRefund(part, 2))))
+                                    .code());
+                    assertEquals(
+                            device && plan ? 1 : 0,
+                            platform.jdbc.queryForObject(
+                                    grants, Integer.class, STORE.tenantNo(), STORE.storeNo()));
+                    assertEquals(2, bridge.ships);
+                    if (plan) {
+                        var source = queries.order(BUYER, target).deliveredSources().getFirst();
+                        assertEquals(List.of("POS_USE"), source.entitlementCodes());
+                        assertEquals(device ? "NORMAL" : "REFUNDED", source.lifecycle());
+                    }
+                }
+                assertEquals(2, bridge.paidOut.size());
+                if (!plan) assertEquals(order.payable().minor(), total);
             }
         }
     }

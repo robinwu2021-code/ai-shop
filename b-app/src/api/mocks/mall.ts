@@ -98,6 +98,15 @@ export const mallMock: MallApi = {
     const prefix = `${storeNo || currentStoreNo()}:`;
     return [...orders.entries()].filter(([key]) => key.startsWith(prefix)).map(([, d]) => d.summary!).reverse();
   },
+  // Local checkout stops at submitted payment. Only paid orders qualify for refunds.
+  async mMallRefundPreview(storeNo, orderNo) {
+    if (!orders.has(k(storeNo || currentStoreNo(), orderNo))) throw new Error("NOT_FOUND");
+    throw new Error("INVALID_STATE");
+  },
+  async mMallRefund(storeNo, orderNo) {
+    if (!orders.has(k(storeNo || currentStoreNo(), orderNo))) throw new Error("NOT_FOUND");
+    throw new Error("INVALID_STATE");
+  },
   async mMallOrder(storeNo, orderNo) {
     const d = orders.get(k(storeNo || currentStoreNo(), orderNo));
     if (!d) throw new Error("NOT_FOUND");

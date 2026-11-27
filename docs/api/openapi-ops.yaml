@@ -14898,6 +14898,23 @@ components:
     MallRefundView:
       type: "object"
       properties:
+        hardware:
+          anyOf:
+            - type: "object"
+              properties:
+                orderComponentNo:
+                  type: "string"
+                quantity:
+                  type: "number"
+              required:
+                - "orderComponentNo"
+                - "quantity"
+              additionalProperties: false
+            - type: "null"
+        sourcePeriodNos:
+          type: "array"
+          items:
+            type: "string"
         refundNo:
           type: "string"
           description: "退款号"
@@ -14978,6 +14995,31 @@ components:
     MallOrderDetailView:
       type: "object"
       properties:
+        deliveredSources:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              orderComponentNo:
+                type: "string"
+              periodNo:
+                type: "string"
+              planVersionNo:
+                type:
+                  - "string"
+                  - "null"
+              entitlementCodes:
+                type: "array"
+                items:
+                  type: "string"
+              lifecycle:
+                type: "string"
+            required:
+              - "orderComponentNo"
+              - "periodNo"
+              - "entitlementCodes"
+              - "lifecycle"
+            additionalProperties: false
         hardwareItems:
           type: "array"
           items:

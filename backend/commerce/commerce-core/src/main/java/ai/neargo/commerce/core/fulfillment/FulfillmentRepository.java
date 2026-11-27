@@ -76,8 +76,8 @@ public interface FulfillmentRepository {
 
     void paid(Order order, VerifiedPaymentFact fact, String attemptNo);
 
-    /** Persisted approved ordinary digital-only refund scope; never late whole-order refunds. */
-    default boolean digitalOnlyRefund(Order order) {
+    /** Whether reviewed refund scopes permit dispatch of outstanding hardware. */
+    default boolean allowsRemainingShipment(Order order) {
         return false;
     }
 

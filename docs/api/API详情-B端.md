@@ -12473,6 +12473,7 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | `string` | 否 | — |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
 | `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
@@ -12493,6 +12494,7 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | `string` | 否 | — |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
 | `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
@@ -12580,10 +12582,115 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `hardwareItems` | `object`（见下）\[\] | 否 | — |
+| `deliveredSources` | `object`（见下）\[\] | 否 | — |
+| `refunds` | [`MallRefundResult`](#mallrefundresult)\[\] | 否 | — |
+| `lines` | `object`（见下）\[\] | 否 | 按购买时版本冻结的商品明细 |
 | `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
 | `quote` | [`MallQuote`](#mallquote) | 否 | 冻结报价 |
 | `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
 | `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 硬件发货 |
+
+`hardwareItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `hardwareSkuNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
+
+`deliveredSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `periodNo` | `string` | 是 | — |
+| `planVersionNo` | `string` | 否 | — |
+| `entitlementCodes` | `string`\[\] | 是 | — |
+| `lifecycle` | `string` | 是 | — |
+
+`lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `productNo` | `string` | 是 | — |
+| `skuNo` | `string` | 是 | — |
+| `skuVersionNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
+
+
+#### POST `/biz/stores/{storeNo}/mall/orders/{orderNo}/refund-previews`
+
+平台商城：组件退款预览　🔒
+
+**入参**
+
+请求体：[`MallRefundSelection`](#mallrefundselection)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `hardware` | `object`（见下） | 否 | — |
+| `sourcePeriodNos` | `string`\[\] | 是 | — |
+
+`hardware` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`MallRefundPreview`](#mallrefundpreview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cashLimit` | [`MallMoney`](#mallmoney) | 是 | — |
+
+
+#### POST `/biz/stores/{storeNo}/mall/orders/{orderNo}/refunds`
+
+平台商城：申请组件退款　🔒
+
+**入参**
+
+请求体：[`MallRefundRequest`](#mallrefundrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `hardware` | `object`（见下） | 否 | — |
+| `sourcePeriodNos` | `string`\[\] | 是 | — |
+| `reason` | `string` | 是 | — |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 是 | — |
+
+`hardware` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`MallRefundResult`](#mallrefundresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `reviewStatus` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `hardware` | `object`（见下） | 否 | — |
+| `sourcePeriodNos` | `string`\[\] | 否 | — |
+
+`hardware` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
 
 
 #### GET `/biz/stores/{storeNo}/mall/products`
@@ -14584,6 +14691,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `collectionMethod` | `string` | 否 | — |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
 | `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
@@ -14606,14 +14714,44 @@ Delivery state of an inventory/order synchronization event.
 
 ### MallOrderDetail
 
-订单详情
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `hardwareItems` | `object`（见下）\[\] | 否 | — |
+| `deliveredSources` | `object`（见下）\[\] | 否 | — |
+| `refunds` | [`MallRefundResult`](#mallrefundresult)\[\] | 否 | — |
+| `lines` | `object`（见下）\[\] | 否 | 按购买时版本冻结的商品明细 |
 | `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
 | `quote` | [`MallQuote`](#mallquote) | 否 | 冻结报价 |
 | `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
 | `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 硬件发货 |
+
+`hardwareItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `hardwareSkuNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
+
+`deliveredSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `periodNo` | `string` | 是 | — |
+| `planVersionNo` | `string` | 否 | — |
+| `entitlementCodes` | `string`\[\] | 是 | — |
+| `lifecycle` | `string` | 是 | — |
+
+`lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `productNo` | `string` | 是 | — |
+| `skuNo` | `string` | 是 | — |
+| `skuVersionNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
 
 ### MallOrderStatus
 
@@ -14639,6 +14777,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `title` | `string,null` | 否 | 下单时的首行商品标题 |
 | `order` | [`MallOrder`](#mallorder) | 否 | 订单 |
 | `paymentStatus` | `string` | 否 | 资金维度：UNPAID / PAYING / PAYMENT_UNKNOWN / CANCEL_PENDING / PAID / CLOSED |
 | `fulfillmentStatus` | `string` | 否 | 权益 / 交付维度 |
@@ -14732,6 +14871,72 @@ Delivery state of an inventory/order synchronization event.
 |---|---|:---:|---|
 | `available` | `boolean` | 否 | 在线支付是否可买 |
 | `reasons` | `string`\[\] | 否 | 不可买的原因码 |
+| `paymentOptions` | `object`（见下）\[\] | 否 | — |
+
+`paymentOptions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `channel` | `string` | 是 | — |
+| `payMethod` | `string` | 是 | — |
+| `currency` | `string` | 是 | — |
+
+### MallRefundPreview
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cashLimit` | [`MallMoney`](#mallmoney) | 是 | — |
+
+### MallRefundRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `hardware` | `object`（见下） | 否 | — |
+| `sourcePeriodNos` | `string`\[\] | 是 | — |
+| `reason` | `string` | 是 | — |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 是 | — |
+
+`hardware` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
+
+### MallRefundResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `reviewStatus` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `hardware` | `object`（见下） | 否 | — |
+| `sourcePeriodNos` | `string`\[\] | 否 | — |
+
+`hardware` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
+
+### MallRefundSelection
+
+订单详情
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `hardware` | `object`（见下） | 否 | — |
+| `sourcePeriodNos` | `string`\[\] | 是 | — |
+
+`hardware` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
 
 ### MallShipment
 
@@ -14830,6 +15035,7 @@ SKU 组件：一件 SKU 交付哪些东西
 |---|---|:---:|---|
 | `sku` | [`MallSku`](#mallsku) | 否 | SKU 版本内容 |
 | `readiness` | [`MallReadiness`](#mallreadiness) | 否 | 在线支付口径的可购买判断 |
+| `offlineReadiness` | [`MallReadiness`](#mallreadiness) \| `null` | 否 | 门店可用的线下收款方式。 |
 
 ### ManagementAudit
 

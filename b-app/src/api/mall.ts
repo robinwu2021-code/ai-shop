@@ -259,7 +259,18 @@ export interface MallShipment {
 }
 
 /** 订单详情 */
+export interface MallRefundSelection {
+  refundNo: string;
+  hardware?: { orderComponentNo: string; quantity: number };
+  sourcePeriodNos: string[];
+}
+export interface MallRefundPreview { cashLimit: MallMoney }
+export interface MallRefundResult { refundNo: string; reviewStatus: string; status: string; hardware?: { orderComponentNo: string; quantity: number }; sourcePeriodNos?: string[] }
+export interface MallRefundRequest extends MallRefundSelection { reason: string; cashAmount: MallMoney }
 export interface MallOrderDetail {
+  hardwareItems?: { orderComponentNo: string; hardwareSkuNo: string; quantity: number }[];
+  deliveredSources?: { orderComponentNo: string; periodNo: string; planVersionNo?: string; entitlementCodes: string[]; lifecycle: string }[];
+  refunds?: MallRefundResult[];
   /** 按购买时版本冻结的商品明细 */
   lines?: { productNo: string; skuNo: string; skuVersionNo: string; title: string; quantity: number }[];
   /** 概览与三维状态 */
@@ -339,6 +350,8 @@ export interface MallEvidenceUploaded {
 }
 
 export interface MallApi {
+  mMallRefundPreview(storeNo: string, orderNo: string, body: MallRefundSelection): Promise<MallRefundPreview>;
+  mMallRefund(storeNo: string, orderNo: string, body: MallRefundRequest): Promise<MallRefundResult>;
   /** 本店能买的商品 */
   mMallStorefront(storeNo: string): Promise<MallStorefront>;
   /** 线下转账报价：只取部署配置的收款档案 */

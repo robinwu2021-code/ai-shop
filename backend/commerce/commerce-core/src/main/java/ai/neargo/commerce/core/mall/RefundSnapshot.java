@@ -43,6 +43,9 @@ public final class RefundSnapshot {
             long credit,
             boolean manual) {}
 
+    public record Hardware(
+            HardwareRefund selection, int shipped, int alreadyRefunded, long cashLimit) {}
+
     public record Preview(
             String refundNo,
             String orderNo,
@@ -57,7 +60,41 @@ public final class RefundSnapshot {
             boolean late,
             String digest,
             String previousRefund,
-            List<PendingTask> pendingTasks) {
+            List<PendingTask> pendingTasks,
+            Hardware hardware) {
+        public Preview(
+                String refundNo,
+                String orderNo,
+                StoreRef store,
+                String currency,
+                String buyerNo,
+                long createdAt,
+                long expiresAt,
+                List<Source> sources,
+                Map<String, List<AccessSegment>> history,
+                Payment payment,
+                boolean late,
+                String digest,
+                String previousRefund,
+                List<PendingTask> pendingTasks) {
+            this(
+                    refundNo,
+                    orderNo,
+                    store,
+                    currency,
+                    buyerNo,
+                    createdAt,
+                    expiresAt,
+                    sources,
+                    history,
+                    payment,
+                    late,
+                    digest,
+                    previousRefund,
+                    pendingTasks,
+                    null);
+        }
+
         public Preview(
                 String refundNo,
                 String orderNo,
@@ -97,6 +134,7 @@ public final class RefundSnapshot {
         }
 
         public long cashLimit() {
+            if (hardware != null) return hardware.cashLimit();
             return late
                     ? payment.fact().paid().minor()
                     : Math.addExact(
@@ -116,11 +154,13 @@ public final class RefundSnapshot {
                     orderNo,
                     new Money(currency, cashLimit()),
                     new Money(currency, creditLimit()),
-                    sources.stream().anyMatch(Source::manual)
+                    hardware != null
+                            || sources.stream().anyMatch(Source::manual)
                             || pendingTasks.stream().anyMatch(PendingTask::manual),
                     sources.stream().map(x -> x.period().no()).toList(),
                     Instant.ofEpochMilli(expiresAt),
-                    digest);
+                    digest,
+                    hardware == null ? null : hardware.selection());
         }
     }
 
@@ -190,7 +230,11 @@ public final class RefundSnapshot {
                     },
                     new Money(preview.currency(), approvedCash),
                     new Money(preview.currency(), restoredCredit),
-                    status, requestDigest, reviewQuoteNo);
+                    status,
+                    requestDigest,
+                    reviewQuoteNo,
+                    preview.hardware() == null ? null : preview.hardware().selection(),
+                    preview.view().sourcePeriodNos());
         }
     }
 }

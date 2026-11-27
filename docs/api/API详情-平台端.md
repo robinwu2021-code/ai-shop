@@ -724,6 +724,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `hardware` | `object`（见下） \| `null` | 否 | — |
+| `sourcePeriodNos` | `string`\[\] | 否 | — |
 | `refundNo` | `string` | 否 | 退款号 |
 | `orderNo` | `string` | 否 | 订单号 |
 | `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
@@ -852,12 +854,32 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `deliveredSources` | `object`（见下）\[\] | 否 | — |
+| `hardwareItems` | `object`（见下）\[\] | 否 | — |
 | `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
 | `quote` | [`MallQuoteView`](#mallquoteview) | 否 | 冻结报价 |
 | `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
 | `paymentAttempts` | [`MallPaymentAttempt`](#mallpaymentattempt)\[\] | 否 | 付款尝试 |
 | `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 发货 |
 | `refunds` | [`MallRefundView`](#mallrefundview)\[\] | 否 | 退款 |
+
+`deliveredSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `periodNo` | `string` | 是 | — |
+| `planVersionNo` | `string,null` | 否 | — |
+| `entitlementCodes` | `string`\[\] | 是 | — |
+| `lifecycle` | `string` | 是 | — |
+
+`hardwareItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `hardwareSkuNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
 
 
 #### POST `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/approve`
@@ -879,6 +901,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `hardware` | `object`（见下） \| `null` | 否 | — |
+| `sourcePeriodNos` | `string`\[\] | 否 | — |
 | `refundNo` | `string` | 否 | 退款号 |
 | `orderNo` | `string` | 否 | 订单号 |
 | `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
@@ -908,6 +932,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `hardware` | `object`（见下） \| `null` | 否 | — |
+| `sourcePeriodNos` | `string`\[\] | 否 | — |
 | `refundNo` | `string` | 否 | 退款号 |
 | `orderNo` | `string` | 否 | 订单号 |
 | `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
@@ -960,12 +986,32 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `deliveredSources` | `object`（见下）\[\] | 否 | — |
+| `hardwareItems` | `object`（见下）\[\] | 否 | — |
 | `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
 | `quote` | [`MallQuoteView`](#mallquoteview) | 否 | 冻结报价 |
 | `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
 | `paymentAttempts` | [`MallPaymentAttempt`](#mallpaymentattempt)\[\] | 否 | 付款尝试 |
 | `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 发货 |
 | `refunds` | [`MallRefundView`](#mallrefundview)\[\] | 否 | 退款 |
+
+`deliveredSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `periodNo` | `string` | 是 | — |
+| `planVersionNo` | `string,null` | 否 | — |
+| `entitlementCodes` | `string`\[\] | 是 | — |
+| `lifecycle` | `string` | 是 | — |
+
+`hardwareItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `hardwareSkuNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
 
 
 #### GET `/ops/biz-mall/products`
@@ -16846,12 +16892,32 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `deliveredSources` | `object`（见下）\[\] | 否 | — |
+| `hardwareItems` | `object`（见下）\[\] | 否 | — |
 | `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
 | `quote` | [`MallQuoteView`](#mallquoteview) | 否 | 冻结报价 |
 | `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
 | `paymentAttempts` | [`MallPaymentAttempt`](#mallpaymentattempt)\[\] | 否 | 付款尝试 |
 | `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 发货 |
 | `refunds` | [`MallRefundView`](#mallrefundview)\[\] | 否 | 退款 |
+
+`deliveredSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `periodNo` | `string` | 是 | — |
+| `planVersionNo` | `string,null` | 否 | — |
+| `entitlementCodes` | `string`\[\] | 是 | — |
+| `lifecycle` | `string` | 是 | — |
+
+`hardwareItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `hardwareSkuNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
 
 ### MallOrderStatus
 
@@ -17086,6 +17152,8 @@ Plan 版本行；status=PUBLISHED 之后只读
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `hardware` | `object`（见下） \| `null` | 否 | — |
+| `sourcePeriodNos` | `string`\[\] | 否 | — |
 | `refundNo` | `string` | 否 | 退款号 |
 | `orderNo` | `string` | 否 | 订单号 |
 | `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
@@ -17111,6 +17179,7 @@ Plan 版本行；status=PUBLISHED 之后只读
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `requestOperationNo` | `string,null` | 否 | — |
 | `operationNo` | `string` | 否 | 操作号 |
 | `orderComponentNo` | `string` | 否 | 订单组件号 |
 | `carrierCode` | `string` | 否 | 承运商 |
