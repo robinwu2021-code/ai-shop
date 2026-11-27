@@ -17,7 +17,7 @@ const DEV_SEEDER = join(
 describe("演示种子账号", () => {
   it("★★★ 名单与 DevSeeder.java 逐条相等", () => {
     const src = readFileSync(DEV_SEEDER, "utf8");
-    const fromJava = [...src.matchAll(/seedStaff\(staffMapper,\s*roleMemberMapper,\s*"([a-z]+)"/g)]
+    const fromJava = [...src.matchAll(/seedStaff\(staffMapper,\s*staffRoles,\s*"([a-z]+)"/g)]
       .map((m) => m[1]!);
 
     // 对照量：解析失效时不能静默通过 —— 一个都没扫到与「后端删光了种子」长得一样
