@@ -42,7 +42,8 @@ public class OpsKitProcessRegistrar {
     }
 
     /**
-     * 按等级生成默认流程（审核需求清单 §8）：一律可以本人审批、多步也允许同一人（用户 2026-11-23 定）。
+     * 按等级生成默认流程（审核需求清单 §8）：默认可以本人审批、多步也允许同一人（用户 2026-11-23 定）；
+     * 业务声明 {@link ApprovalSubject#separateApprovers()} 的，提交人不得审批、各步不同人（Q12）。
      * <ul>
      *   <li>一级：审核（72 小时）→ 生效</li>
      *   <li>二级：审核（24 小时）→ 复核（仅当送审字段 {@code recheck=true}）→ 生效</li>
@@ -65,7 +66,7 @@ public class OpsKitProcessRegistrar {
                 "code", s.processCode(),
                 "name", Map.of("zh", s.processName()),
                 "steps", List.copyOf(steps),
-                "rules", Map.of("selfApproval", true, "crossStepExclusive", false),
+                "rules", Map.of("selfApproval", !s.separateApprovers(), "crossStepExclusive", s.separateApprovers()),
                 "note", "业务登记的默认流程（" + label(level) + "）");
     }
 

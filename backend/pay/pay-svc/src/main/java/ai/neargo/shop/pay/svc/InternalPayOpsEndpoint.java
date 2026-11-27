@@ -55,6 +55,11 @@ public class InternalPayOpsEndpoint {
         return run(() -> ops.reviewRefund(payRefundNo, Boolean.TRUE.equals(req.approve()), req.reason(), req.operatorNo()));
     }
 
+    @PostMapping(PayOpsInternalApi.PREFIX + "/refunds/{payRefundNo}/approval-outcome")
+    public PortResult<?> applyRefundApproval(@PathVariable String payRefundNo, @RequestBody OperatorReq req) {
+        return run(() -> ops.applyRefundApproval(payRefundNo, Boolean.TRUE.equals(req.approve()), req.reason()));
+    }
+
     @GetMapping(PayOpsInternalApi.PREFIX + "/exceptions")
     public PortResult<?> exceptions(@RequestParam(required = false) String status, @RequestParam int limit) {
         return run(() -> ops.exceptions(status, limit));
