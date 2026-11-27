@@ -85,11 +85,34 @@ class OutboxEventBusRoutingTest {
     }
 
     @Test
-    @DisplayName("没有任何消费者：照旧落库，存档语义不变")
-    void noConsumerStillPersists() {
+    @DisplayName("没有任何消费者：不落库（R10.1，只存档行无人读）")
+    void noConsumerIsNotPersisted() {
         bus(consumer(true, "N")).publish(new Evt("X"));
         verify(notifications, never()).publish(any(), any());
+        verify(mapper, never()).insert(any(SysOutbox.class));
+    }
+
+    @Test
+    @DisplayName("本进程没有消费者但在中间件名单里（别的进程订阅）：照样落库")
+    void relayedTypeWithoutLocalConsumerIsPersisted() {
+        var b = bus(consumer(true, "N"));
+        var props = new ai.neargo.shop.event.broker.BrokerProperties();
+        props.setOutboxEventTypes(Set.of("X"));
+        b.setBrokerProperties(props);
+        b.publish(new Evt("X"));
         verify(mapper).insert(any(SysOutbox.class));
+    }
+
+    @Test
+    @DisplayName("统一模式下有登记的投递目标（另一个进程执行的处理者）：照样交给统一发件箱")
+    void unifiedProducerTargetIsPersisted() {
+        var b = bus(consumer(true, "N"));
+        var facade = mock(ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade.class);
+        when(facade.enabled("PLATFORM")).thenReturn(true);
+        when(facade.hasDelivery("PLATFORM", "X")).thenReturn(true);
+        b.setUnified(facade);
+        b.publish(new Evt("X"));
+        verify(facade).publish(org.mockito.ArgumentMatchers.eq("PLATFORM"), any(DomainEvent.class));
     }
 
     @Test
