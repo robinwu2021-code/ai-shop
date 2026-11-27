@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.SysOutbox;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -117,7 +118,7 @@ class NearPayStoreSyncTest {
             ctx.getEnvironment().getPropertySources().addFirst(new org.springframework.core.env.MapPropertySource("t", Map.of(
                     "shop.nearpay.store-sync.enabled", "true", "shop.nearpay.store-sync.base-url", "http://127.0.0.1:18093",
                     "shop.nearpay.store-sync.credential", "cred", "shop.services.internal-token", "tok")));
-            ctx.registerBean(javax.sql.DataSource.class, () -> mock(javax.sql.DataSource.class));
+            ctx.registerBean(ModuleDataSources.PLATFORM_DATA_SOURCE, javax.sql.DataSource.class, () -> mock(javax.sql.DataSource.class));
             ctx.registerBean(ai.neargo.shop.event.OutboxEventBus.class, () -> mock(ai.neargo.shop.event.OutboxEventBus.class));
             ctx.register(StoreSyncConfiguration.class, StoreSnapshotReader.class, NearPayStoreSyncConsumer.class);
             ctx.refresh();
