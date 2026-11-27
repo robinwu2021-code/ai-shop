@@ -101,7 +101,7 @@ public class AfterCommitNotifications implements DisposableBean {
                 .filter(c -> c.afterCommitOnly() && c.supports(envelope.getEventType()))
                 .forEach(c -> {
                     try {
-                        c.consume(envelope);
+                        DeliveryContext.run(envelope.getEventNo(), () -> c.consume(envelope));
                     } catch (RuntimeException e) {
                         log.warn("提交后通知失败，不重投 {} {} {}", c.getClass().getSimpleName(),
                                 envelope.getEventType(), envelope.getAggregateId(), e);

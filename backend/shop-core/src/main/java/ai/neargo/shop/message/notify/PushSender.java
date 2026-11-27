@@ -1,5 +1,7 @@
 package ai.neargo.shop.message.notify;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.idem.EventIdempotency;
 import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -33,6 +35,12 @@ public class PushSender {
 
     private final PushRouter router;
     private final PushTokenMapper tokenMapper;
+
+    /** 按“事件号 + 通道 + 收件人”去重（ADR-067 决策 8）；不在事件投递里时放行。 */
+    private EventIdempotency sends;
+
+    @Autowired(required = false)
+    public void setSends(EventIdempotency sends) { this.sends = sends; }
 
     public PushSender(PushRouter router, PushTokenMapper tokenMapper) {
         this.router = router;
@@ -97,6 +105,9 @@ public class PushSender {
                      String title, String body, String link, String level) {
         if (receiverNo == null || receiverNo.isBlank()) {
             return 0;
+        }
+        if (sends != null && !sends.firstSend("PUSH:" + level, receiverType + ":" + receiverNo)) {
+            return 0;   // 同一事件已推过这个人（重投）
         }
         List<MsgPushToken> tokens = DataScopeContext.executeWithoutScope(() ->
                 tokenMapper.selectList(Wrappers.<MsgPushToken>lambdaQuery()

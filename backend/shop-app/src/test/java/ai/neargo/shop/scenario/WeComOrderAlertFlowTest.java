@@ -124,13 +124,8 @@ class WeComOrderAlertFlowTest {
                 "ST-" + entityNo, "U-BUYER-WCA-3", 900L));
         drainOutbox();
 
-        // Inspect this delivery, since unrelated scenario events can remain in retry backoff.
-        // SENT and zero retries fail if the webhook exception escapes the notification consumer.
-        SysOutbox delivered = outboxMapper.findByEventNo(eventNo);
-        assertThat(delivered).as("来单事件必须真正落库并投递").isNotNull();
-        assertThat(delivered.getStatus()).as("群发炸了不该让这条事件重投").isEqualTo(SysOutbox.SENT);
-        assertThat(delivered.getRetryCount()).as("群发失败不得增加事件重试次数").isZero();
-        assertThat(delivered.getLastError()).isNull();
+        // 来单只有通知类消费者（报表未开）：提交后直接通知，不落发件箱，也就谈不上被群发失败拖进重投（ADR-067）
+        assertThat(outboxMapper.findByEventNo(eventNo)).as("只有通知消费者的事件不落发件箱").isNull();
         assertThat(inbox(o.userNo())).as("站内信该照样进来").isNotEmpty();
         assertThat(pushStub.sent().stream()
                 .anyMatch(p -> "cid-wca-3".equals(p.clientId())))

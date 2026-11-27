@@ -1,5 +1,7 @@
 package ai.neargo.shop.message.notify;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.idem.EventIdempotency;
 import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -35,6 +37,12 @@ public class WxSubscribeSender {
     private final WxSubscribePort port;
     private final UserIdentityPort identityPort;
     private final SubscribeMapper subscribeMapper;
+
+    /** 按“事件号 + 通道 + 收件人”去重（ADR-067 决策 8）；不在事件投递里时放行。 */
+    private EventIdempotency sends;
+
+    @Autowired(required = false)
+    public void setSends(EventIdempotency sends) { this.sends = sends; }
 
     public WxSubscribeSender(WxSubscribePort port, UserIdentityPort identityPort,
                              SubscribeMapper subscribeMapper) {
@@ -151,6 +159,10 @@ public class WxSubscribeSender {
         var openId = identityPort.wxOpenIdMp(userNo);
         if (openId.isEmpty()) {
             return false;   // 没从小程序登录过，没有可发的地址
+        }
+        if (sends != null && !sends.firstSend("WXSUB:" + scene, userNo)) {
+            log.debug("[wxsub] 同一事件已发过，跳过 userNo={} scene={}", userNo, scene);
+            return false;   // 重投：不再扣额度、不再发
         }
         if (!consumeQuota(userNo, templateId)) {
             log.debug("[wxsub] 无额度跳过 userNo={} scene={}", userNo, scene);

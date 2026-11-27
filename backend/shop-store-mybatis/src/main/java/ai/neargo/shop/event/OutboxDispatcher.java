@@ -159,7 +159,7 @@ public class OutboxDispatcher {
             if (consumer.supports(event.getEventType())) {
                 // 消费里调支付，来源记成这个事件类型（CallSources.OUTBOX，开发计划 M2.1）
                 CallSources.asOutbox(event.getEventType(), () -> {
-                    consumer.consume(event);
+                    DeliveryContext.run(event.getEventNo(), () -> consumer.consume(event));
                     return null;
                 });
             }

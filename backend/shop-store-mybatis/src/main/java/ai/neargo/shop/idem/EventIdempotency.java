@@ -1,5 +1,6 @@
 package ai.neargo.shop.idem;
 
+import ai.neargo.shop.event.DeliveryContext;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -55,6 +56,40 @@ public class EventIdempotency {
      * @param action  业务动作
      * @return true=这次真的执行了；false=之前已经执行过，本次跳过
      */
+    /**
+     * 外部通道（微信订阅、App 推送、短信、邮件、企微群…）发送前调：同一事件、同一通道、同一收件人只发一次
+     * （ADR-067 决策 8；MQ 与发件箱都是至少一次投递）。
+     *
+     * <p>事件号取自 {@link DeliveryContext}；不在事件投递里（运营端测试发送等）直接放行。
+     * <b>标记单独提交</b>（{@code REQUIRES_NEW}）：外部调用不进数据库事务，也不随调用方回滚 ——
+     * 通道发送失败本来就只留痕不重试，标记留着正好防止重投时再发一遍。
+     *
+     * @param channel   通道，可带场景，如 {@code WXSUB:MCH_NEW_ORDER}
+     * @param recipient 收件人（用户号、手机号、门店号…）
+     * @return true = 第一次，去发；false = 这个事件已经给这个人发过这个通道
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean firstSend(String channel, String recipient) {
+        String eventNo = DeliveryContext.eventNo();
+        if (eventNo == null || eventNo.isBlank() || recipient == null || recipient.isBlank()) {
+            return true;
+        }
+        String handler = "send:" + channel + ":" + recipient;
+        if (handler.length() > 128) {
+            handler = "send:" + Integer.toHexString(handler.hashCode()) + ":" + handler.substring(handler.length() - 100);
+        }
+        SysEventConsumed row = new SysEventConsumed();
+        row.setEventNo(eventNo);
+        row.setHandler(handler);
+        row.setConsumedAt(LocalDateTime.now());
+        try {
+            mapper.insert(row);
+            return true;
+        } catch (DuplicateKeyException e) {
+            return false;
+        }
+    }
+
     @Transactional(propagation = Propagation.REQUIRED)
     public boolean once(String eventNo, String handler, Runnable action) {
         if (eventNo == null || eventNo.isBlank() || handler == null || handler.isBlank()) {
