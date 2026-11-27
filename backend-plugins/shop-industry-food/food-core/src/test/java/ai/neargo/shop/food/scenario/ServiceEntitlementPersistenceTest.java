@@ -44,7 +44,7 @@ import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.impl.ServiceEntitlementServiceImpl;
 import ai.neargo.shop.food.service.impl.ServiceSlotServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.product.CatalogPriceSourceFacts;
@@ -175,7 +175,7 @@ public class ServiceEntitlementPersistenceTest {
         var manager = new DataSourceTransactionManager(ds);
         tx = new TransactionTemplate(manager);
         var operations = new FoodBusinessOperationsMapper(ds);
-        slots = new ServiceSlotServiceImpl(operations, mock(IdempotencyService.class), CLOCK, json);
+        slots = new ServiceSlotServiceImpl(operations, mock(RequestIdempotencyPort.class), CLOCK, json);
         service =
                 new ServiceEntitlementServiceImpl(
                         new ServiceEntitlementMapper(ds),

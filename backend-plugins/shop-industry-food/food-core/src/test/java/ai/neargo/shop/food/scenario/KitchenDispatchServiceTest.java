@@ -14,7 +14,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
 import ai.neargo.shop.food.service.impl.KitchenTaskServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ class KitchenDispatchServiceTest {
         when(manager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
         return new KitchenTaskServiceImpl(batches,mock(OrderLineMapper.class),mock(OrderComponentMapper.class),
                 revisions,tickets,tasks,mock(ServiceEventMapper.class),mock(CourseMapper.class),mock(CheckMapper.class),
-                mock(IdempotencyService.class),new ObjectMapper(),manager,mock(OutboxPublisher.class));
+                mock(RequestIdempotencyPort.class),new ObjectMapper(),manager,mock(OutboxPublisher.class));
     }
     @Test void denyDispatchBeforeActualAcceptanceEvenWithAcceptedTimestamp() {
         var service=service(); var row=batch("BOUND");

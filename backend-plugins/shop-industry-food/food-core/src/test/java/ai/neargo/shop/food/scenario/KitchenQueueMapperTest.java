@@ -11,7 +11,7 @@ import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderLine;
 import ai.neargo.shop.food.mapper.FoodMappers;
 import ai.neargo.shop.food.service.impl.KitchenTaskServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -74,7 +74,7 @@ class KitchenQueueMapperTest extends FoodWriteGuardFixture {
                     c.getBean(FoodMappers.OrderLineMapper.class),mock(FoodMappers.OrderComponentMapper.class),
                     mock(FoodMappers.ConfigRevisionMapper.class),c.getBean(FoodMappers.KitchenTicketMapper.class),mapper,
                     mock(FoodMappers.ServiceEventMapper.class),mock(FoodMappers.CourseMapper.class),mock(FoodMappers.CheckMapper.class),
-                    mock(IdempotencyService.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class),
+                    mock(RequestIdempotencyPort.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class),
                     mock(OutboxPublisher.class));
             assertThat(kitchen.queue("E","S",null,null)).extracting(t -> t.taskNo())
                     .containsExactly("REMAKE_ACTIVE","NEW_COLD","NEW_HOT");

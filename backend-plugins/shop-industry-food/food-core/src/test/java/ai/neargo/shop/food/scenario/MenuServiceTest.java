@@ -37,7 +37,7 @@ import ai.neargo.shop.food.policy.MenuCompositionSource;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import ai.neargo.shop.food.service.impl.MenuServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -145,7 +145,7 @@ class MenuServiceTest extends FoodWriteGuardFixture {
             };
             var service = new MenuServiceImpl(template.getMapper(MenuMapper.class),
                     template.getMapper(MenuStoreMapper.class), template.getMapper(StorePolicyMapper.class),
-                    c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class), (event, options) -> {
+                    c.getBean(ActionLogMapper.class), c.getBean(RequestIdempotencyPort.class), (event, options) -> {
                         var receipt = outbox.publish(event, options);
                         if (fail.get()) throw new IllegalStateException("after-menu-outbox");
                         return receipt;
@@ -175,7 +175,7 @@ class MenuServiceTest extends FoodWriteGuardFixture {
             var source = new CatalogCurrencyBusinessTest.Sources();
             var service = new MenuServiceImpl(t.getMapper(MenuMapper.class), t.getMapper(MenuStoreMapper.class),
                     t.getMapper(StorePolicyMapper.class), c.getBean(ActionLogMapper.class),
-                    c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
+                    c.getBean(RequestIdempotencyPort.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
                     c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
                     Clock.fixed(Instant.parse("2026-10-21T12:00:00Z"), ZoneOffset.UTC),
                     t.getMapper(MenuScheduleMapper.class), t.getMapper(MenuExceptionMapper.class),

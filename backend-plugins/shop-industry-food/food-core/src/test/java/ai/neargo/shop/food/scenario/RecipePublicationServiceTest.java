@@ -25,7 +25,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.RecipeMapper;
 import ai.neargo.shop.food.policy.RecipePublicationSource;
 import ai.neargo.shop.food.service.RecipeService;
 import ai.neargo.shop.food.service.impl.ConfigRevisionServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
@@ -105,7 +105,7 @@ class RecipePublicationServiceTest {
             var publisher = new ConfigRevisionServiceImpl(template.getMapper(ConfigRevisionMapper.class),
                     template.getMapper(ModifierMapper.class), template.getMapper(ModifierComponentMapper.class),
                     c.getBean(OptionGroupMapper.class), c.getBean(OptionGroupItemMapper.class),
-                    c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class), checked,
+                    c.getBean(ActionLogMapper.class), c.getBean(RequestIdempotencyPort.class), checked,
                     c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), goods,
                     new OptionGroupServiceTest.Sources(), Clock.fixed(NOW.toInstant(), ZoneOffset.UTC), null,
                     new RecipePublicationSource(c.getBean(RecipeMapper.class), c.getBean(RecipeLineMapper.class),

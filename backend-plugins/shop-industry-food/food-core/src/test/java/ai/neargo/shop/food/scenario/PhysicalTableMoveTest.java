@@ -20,7 +20,7 @@ import ai.neargo.shop.food.mapper.ReservationTableMapper;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.impl.CheckServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.time.Instant;
 import java.sql.Timestamp;
 import java.util.List;
@@ -64,7 +64,7 @@ class PhysicalTableMoveTest extends FoodWriteGuardFixture {
         return new CheckServiceImpl(c.getBean(CheckMapper.class),c.getBean(TableAreaMapper.class),
                 c.getBean(TableMapper.class),c.getBean(TableOccupancyMapper.class),c.getBean(SeatMapper.class),
                 c.getBean(TableOperationMapper.class),c.getBean(GuestSessionMapper.class),c.getBean(ActionLogMapper.class),
-                c.getBean(StoreOperationService.class),c.getBean(IdempotencyService.class),
+                c.getBean(StoreOperationService.class),c.getBean(RequestIdempotencyPort.class),
                 c.getBean("foodOutboxPublisher",OutboxPublisher.class),c.getBean(ObjectMapper.class),
                 c.getBean(PlatformTransactionManager.class),c.getBean(ReservationTableMapper.class));
     }

@@ -21,7 +21,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.ModifierService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -44,14 +44,14 @@ public class ModifierServiceImpl implements ModifierService {
     private final ModifierMapper heads;
     private final ModifierComponentMapper components;
     private final ActionLogMapper actions;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final GoodsCatalogQueryPort catalog;
     private final TransactionTemplate write;
     private final TransactionTemplate read;
 
     public ModifierServiceImpl(ModifierMapper heads, ModifierComponentMapper components, ActionLogMapper actions,
-            IdempotencyService idem, ObjectMapper json,
+            RequestIdempotencyPort idem, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog) {
         this(heads, components, actions, idem, json, manager, catalog, (entity, store) ->
                 CatalogCurrencySession.legacy(catalog, entity, store));
@@ -59,7 +59,7 @@ public class ModifierServiceImpl implements ModifierService {
 
     /** Currency-aware wiring keeps legacy construction and original command semantics available. */
     public ModifierServiceImpl(ModifierMapper heads, ModifierComponentMapper components, ActionLogMapper actions,
-            IdempotencyService idem, ObjectMapper json,
+            RequestIdempotencyPort idem, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog,
             CatalogCurrencyService currencies) {
         this.currencies = currencies;

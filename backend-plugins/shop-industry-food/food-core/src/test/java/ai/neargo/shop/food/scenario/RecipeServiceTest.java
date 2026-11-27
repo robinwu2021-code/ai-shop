@@ -28,7 +28,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.RecipeMapper;
 import ai.neargo.shop.food.service.RecipeService;
 import ai.neargo.shop.food.service.impl.OptionGroupServiceImpl;
 import ai.neargo.shop.food.service.impl.RecipeServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
@@ -115,7 +115,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                             "BASE_ONLY", "INTEGER_ONLY",
                             MaterialCatalogFacts.definitionHash("MILK", entity, "Milk", "KG", 1, "OWN")));
             var service = new RecipeServiceImpl(c.getBean(RecipeMapper.class), c.getBean(RecipeLineMapper.class),
-                    c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class), c.getBean(ObjectMapper.class),
+                    c.getBean(ActionLogMapper.class), c.getBean(RequestIdempotencyPort.class), c.getBean(ObjectMapper.class),
                     c.getBean(PlatformTransactionManager.class), source.goods, materials,
                     c.getBean(RecipeAdjustmentMapper.class), c.getBean(OptionGroupItemMapper.class),
                     c.getBean(OptionGroupMapper.class), source.currencies);
@@ -466,7 +466,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
             var sources = new OptionGroupServiceTest.Sources();
             var groups = new OptionGroupServiceImpl(c.getBean(OptionGroupMapper.class),
                     c.getBean(OptionGroupItemMapper.class), c.getBean(ActionLogMapper.class),
-                    c.getBean(IdempotencyService.class),
+                    c.getBean(RequestIdempotencyPort.class),
                     c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
                     template.getMapper(DishMapper.class), template.getMapper(DishOptionGroupMapper.class),
                     template.getMapper(ModifierMapper.class), sources, sources);
@@ -548,7 +548,7 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
             var b = new MapperFactoryBean<>(OptionGroupMapper.class); b.setSqlSessionTemplate(t); return b;
         }
         @Bean RecipeService recipeService(RecipeMapper heads, RecipeLineMapper lines, ActionLogMapper actions,
-                IdempotencyService idem,
+                RequestIdempotencyPort idem,
                 ObjectMapper json, PlatformTransactionManager manager, State state, RecipeAdjustmentMapper adjustments,
                 OptionGroupItemMapper items, OptionGroupMapper groups) {
             var catalog = mock(GoodsCatalogQueryPort.class);

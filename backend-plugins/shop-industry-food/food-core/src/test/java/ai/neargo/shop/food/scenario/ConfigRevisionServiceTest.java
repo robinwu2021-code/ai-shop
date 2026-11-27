@@ -29,7 +29,7 @@ import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.ModifierService;
 import ai.neargo.shop.food.service.OptionGroupService;
 import ai.neargo.shop.food.service.impl.ConfigRevisionServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort;
 import java.math.BigDecimal;
@@ -292,7 +292,7 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
         }
         @Bean ConfigRevisionService revisionsService(ConfigRevisionMapper revisions, ModifierMapper modifiers,
                 ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
-                ActionLogMapper actions, IdempotencyService idem,
+                ActionLogMapper actions, RequestIdempotencyPort idem,
                 @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
                 PlatformTransactionManager manager, OptionGroupServiceTest.Sources specs, Controls control) {
             var goods = mock(GoodsCatalogQueryPort.class);

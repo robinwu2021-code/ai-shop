@@ -33,7 +33,7 @@ import ai.neargo.shop.food.policy.PublicationDocuments;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.impl.ConfigRevisionServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.time.Clock;
 import java.time.Instant;
@@ -234,7 +234,7 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
         @Bean ConfigRevisionService publications(ConfigRevisionMapper revisions,ModifierMapper modifiers,
                 ModifierComponentMapper components,OptionGroupMapper groups,OptionGroupItemMapper items,
                 BundleMapper bundles,BundleGroupMapper bundleGroups,BundleChoiceMapper choices,ActionLogMapper actions,
-                IdempotencyService idem,@Qualifier("foodOutboxPublisher") OutboxPublisher outbox,ObjectMapper json,
+                RequestIdempotencyPort idem,@Qualifier("foodOutboxPublisher") OutboxPublisher outbox,ObjectMapper json,
                 PlatformTransactionManager manager,OptionGroupServiceTest.Sources specs,Sources control) {
             var goods=mock(GoodsCatalogQueryPort.class);
             when(goods.getSku(anyString(),anyString(),anyString())).thenAnswer(i -> {

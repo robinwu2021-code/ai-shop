@@ -5,7 +5,8 @@ import ai.neargo.shop.event.outbox.PublishReceipt;
 import ai.neargo.shop.spi.food.FoodOutboxRouting;
 import ai.neargo.shop.event.outbox.runtime.OutboxTransactions;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.mapper.MapperFactoryBean;
@@ -35,9 +36,9 @@ public class FoodWriteGuardConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(IdempotencyService.class)
-    IdempotencyService idempotencyService(SysIdempotentMapper mapper, ObjectMapper json) {
-        return new IdempotencyService(mapper, json);
+    @ConditionalOnMissingBean(RequestIdempotencyPort.class)
+    RequestIdempotencyPort requestIdempotency(SysIdempotentMapper mapper, ObjectMapper json) {
+        return new RequestIdempotencyPortImpl(mapper, json);
     }
 
     /** No legacy fallback: the existing unified PLATFORM source must be registered by its owner. */

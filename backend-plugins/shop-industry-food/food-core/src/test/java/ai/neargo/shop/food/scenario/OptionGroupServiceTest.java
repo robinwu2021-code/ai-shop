@@ -18,7 +18,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
 import ai.neargo.shop.food.service.OptionGroupService;
 import ai.neargo.shop.food.service.impl.OptionGroupServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -197,7 +197,7 @@ class OptionGroupServiceTest extends FoodWriteGuardFixture {
             var f = new MapperFactoryBean<>(OptionGroupItemMapper.class); f.setSqlSessionTemplate(t); return f;
         }
         @Bean OptionGroupService optionGroupService(OptionGroupMapper groups, OptionGroupItemMapper items,
-                ActionLogMapper actions, IdempotencyService idem, ObjectMapper json,
+                ActionLogMapper actions, RequestIdempotencyPort idem, ObjectMapper json,
                 PlatformTransactionManager manager, Failure failure, DishMapper dishes, DishOptionGroupMapper bindings,
                 ModifierMapper modifiers, Sources sources) {
             ActionLogMapper checked = FoodAuditFault.failAfterInsert(actions, failure.enabled::get,

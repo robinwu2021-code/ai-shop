@@ -18,7 +18,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.SkuStationMapper;
 import ai.neargo.shop.food.service.StationService;
 import ai.neargo.shop.food.policy.StationPublicationSource;
 import ai.neargo.shop.food.service.impl.StationServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -161,7 +161,7 @@ class StationServiceTest extends FoodWriteGuardFixture {
             var b=new MapperFactoryBean<>(SkuStationMapper.class); b.setSqlSessionTemplate(t); return b;
         }
         @Bean StationService stationService(StationMapper heads,SkuStationMapper routes,ActionLogMapper actions,
-                IdempotencyService idem,ObjectMapper json,PlatformTransactionManager manager,State state) {
+                RequestIdempotencyPort idem,ObjectMapper json,PlatformTransactionManager manager,State state) {
             var catalog=mock(GoodsCatalogQueryPort.class);
             when(catalog.getSku(anyString(),anyString(),anyString())).thenAnswer(i -> {
                 assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();

@@ -50,7 +50,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.SettlementMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.BusinessCloseService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.trade.IndustryOrderPort;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
@@ -119,7 +119,7 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
     private final KitchenTaskMapper tasks;
     private final ServiceEventMapper events;
     private final StoreCardQueryPort stores;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final TransactionTemplate tx;
 
@@ -140,7 +140,7 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
             KitchenTaskMapper tasks,
             ServiceEventMapper events,
             StoreCardQueryPort stores,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager) {
         this.days = days;

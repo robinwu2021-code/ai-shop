@@ -26,7 +26,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.BundleMapper;
 import ai.neargo.shop.food.policy.BundleDefinitionPolicy;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.BundleService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -48,14 +48,14 @@ public class BundleServiceImpl implements BundleService {
     private final BundleGroupMapper groups;
     private final BundleChoiceMapper choices;
     private final ActionLogMapper actions;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final GoodsCatalogQueryPort catalog;
     private final TransactionTemplate write;
     private final TransactionTemplate read;
 
     public BundleServiceImpl(BundleMapper heads, BundleGroupMapper groups, BundleChoiceMapper choices,
-            ActionLogMapper actions, IdempotencyService idem, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog) {
         this(heads, groups, choices, actions, idem, json, manager, catalog, (entity, store) ->
                 CatalogCurrencySession.legacy(catalog, entity, store));
@@ -63,7 +63,7 @@ public class BundleServiceImpl implements BundleService {
 
     /** Currency-aware wiring keeps legacy construction and original command semantics available. */
     public BundleServiceImpl(BundleMapper heads, BundleGroupMapper groups, BundleChoiceMapper choices,
-            ActionLogMapper actions, IdempotencyService idem, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog,
             CatalogCurrencyService currencies) {
         this.currencies = currencies;

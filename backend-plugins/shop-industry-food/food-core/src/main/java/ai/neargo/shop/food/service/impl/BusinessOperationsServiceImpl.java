@@ -18,7 +18,7 @@ import ai.neargo.shop.food.service.BusinessOperationsService;
 import ai.neargo.shop.food.service.DiningOrderService;
 import ai.neargo.shop.food.service.DiningReturnService;
 import ai.neargo.shop.food.service.QueueService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -38,7 +38,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
     private final BusinessCommandJournal journal;
     private final FoodBusinessOperationsMapper mapper;
     private final TransactionTemplate tx;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final DiningOrderService orders;
     private final DiningReturnService returns;
@@ -47,7 +47,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
     public BusinessOperationsServiceImpl(
             FoodBusinessOperationsMapper mapper,
             PlatformTransactionManager manager,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             DiningOrderService orders,
             DiningReturnService returns,

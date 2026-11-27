@@ -18,7 +18,7 @@ import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
 import ai.neargo.shop.food.service.CheckCollaborationService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.trade.IndustryOrderPort;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Allocation;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Result;
@@ -60,13 +60,13 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
     private final BusinessCommandJournal journal;
     private final FoodBusinessOperationsMapper mapper;
     private final CheckBusinessGuardService guard;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
 
     public CheckCollaborationServiceImpl(
             FoodBusinessOperationsMapper mapper,
             CheckBusinessGuardService guard,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager) {
         this.tx = new TransactionTemplate(manager);

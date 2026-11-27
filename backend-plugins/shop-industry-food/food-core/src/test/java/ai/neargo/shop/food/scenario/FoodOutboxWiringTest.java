@@ -12,7 +12,7 @@ import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import javax.sql.DataSource;
 import java.util.List;
 import java.util.Set;
@@ -71,7 +71,7 @@ class FoodOutboxWiringTest extends FoodWriteGuardFixture {
         runner().withUserConfiguration(Unified.class).run(context -> {
             var fixture = prepare(context);
             var publisher = context.getBean("foodOutboxPublisher", OutboxPublisher.class);
-            var idem = context.getBean(IdempotencyService.class);
+            var idem = context.getBean(RequestIdempotencyPort.class);
             var source = context.getBean(SourceMapper.class);
             login("trusted-actor");
             assertThatThrownBy(() -> fixture.tx().execute(status -> idem.execute("key", "FOOD:fixture:E:A",
@@ -116,7 +116,7 @@ class FoodOutboxWiringTest extends FoodWriteGuardFixture {
         runner().withUserConfiguration(Unified.class).run(context -> {
             var fixture = prepare(context);
             var publisher = context.getBean("foodOutboxPublisher", OutboxPublisher.class);
-            var idem = context.getBean(IdempotencyService.class);
+            var idem = context.getBean(RequestIdempotencyPort.class);
             var source = context.getBean(SourceMapper.class);
             login("trusted-actor");
             for (int retry = 0; retry < 2; retry++) fixture.tx().execute(status -> idem.execute(
@@ -158,7 +158,7 @@ class FoodOutboxWiringTest extends FoodWriteGuardFixture {
     @Test void disabledAndSkeletonModesRegisterNoWriteGuards() {
         for (String property : new String[] {"shop.food.enabled=false", "shop.food.migration.mode=off"}) {
             runner().withPropertyValues(property).run(context -> assertThat(context).hasNotFailed()
-                    .doesNotHaveBean(IdempotencyService.class).doesNotHaveBean("foodOutboxPublisher"));
+                    .doesNotHaveBean(RequestIdempotencyPort.class).doesNotHaveBean("foodOutboxPublisher"));
         }
     }
     private static void login(String actor) {

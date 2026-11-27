@@ -58,7 +58,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper;
 import ai.neargo.shop.food.service.CatalogService;
 import ai.neargo.shop.food.service.impl.CheckCartServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import java.math.BigDecimal;
@@ -141,7 +141,7 @@ class CartServiceTest extends FoodWriteGuardFixture {
                     template.getMapper(TableOccupancyMapper.class),template.getMapper(TableAreaMapper.class),
                     template.getMapper(TableMapper.class),
                     FoodAuditFault.failAfterInsert(c.getBean(ActionLogMapper.class),fail::get,"after-cart-audit"),
-                    c.getBean(IdempotencyService.class),catalog,numbers -> Map.of("A",new StoreCard("A","Store","E",null,"ACTIVE",true,
+                    c.getBean(RequestIdempotencyPort.class),catalog,numbers -> Map.of("A",new StoreCard("A","Store","E",null,"ACTIVE",true,
                             null,null,null,null,0,0)),c.getBean(ObjectMapper.class),
                     c.getBean(PlatformTransactionManager.class),Clock.fixed(NOW,ZoneOffset.UTC));
             test.accept(new State(f,service,outage,fail));

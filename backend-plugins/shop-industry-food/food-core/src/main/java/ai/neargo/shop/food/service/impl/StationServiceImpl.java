@@ -22,7 +22,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.SkuStationMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StationMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.StationService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -45,14 +45,14 @@ public class StationServiceImpl implements StationService {
     private final StationMapper heads;
     private final SkuStationMapper routes;
     private final ActionLogMapper actions;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final GoodsCatalogQueryPort catalog;
     private final TransactionTemplate write;
     private final TransactionTemplate read;
 
     public StationServiceImpl(StationMapper heads, SkuStationMapper routes, ActionLogMapper actions,
-            IdempotencyService idem, ObjectMapper json,
+            RequestIdempotencyPort idem, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog) {
         this.heads=heads; this.routes=routes; this.actions=actions; this.idem=idem;
         this.json=json; this.catalog=catalog;

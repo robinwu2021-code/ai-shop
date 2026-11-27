@@ -30,7 +30,7 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.RecipeAdjustmentPolicy;
 import ai.neargo.shop.food.policy.RecipeDefinitionPolicy;
 import ai.neargo.shop.food.service.RecipeService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort.MaterialFact;
@@ -65,7 +65,7 @@ public class RecipeServiceImpl implements RecipeService {
     private final RecipeAdjustmentMapper adjustments;
     private final OptionGroupItemMapper optionItems;
     private final OptionGroupMapper optionGroups;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final GoodsCatalogQueryPort catalog;
     private final MaterialCatalogQueryPort materials;
@@ -76,7 +76,7 @@ public class RecipeServiceImpl implements RecipeService {
             RecipeMapper heads,
             RecipeLineMapper lines,
             ActionLogMapper actions,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager,
             GoodsCatalogQueryPort catalog,
@@ -94,7 +94,7 @@ public class RecipeServiceImpl implements RecipeService {
             RecipeMapper heads,
             RecipeLineMapper lines,
             ActionLogMapper actions,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager,
             GoodsCatalogQueryPort catalog,

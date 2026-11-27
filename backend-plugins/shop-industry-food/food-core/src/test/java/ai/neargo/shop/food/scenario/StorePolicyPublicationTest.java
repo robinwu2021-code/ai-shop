@@ -19,7 +19,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.ServiceCalendarMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.impl.StoreOperationServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -279,7 +279,7 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
         }
         @Bean StoreOperationService publication(StorePolicyMapper policies, ActionLogMapper actions,
             ServiceCalendarMapper calendars,
-                IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+                RequestIdempotencyPort idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
                 ObjectMapper json, PlatformTransactionManager manager, Signals signals, DataSource source) {
             OutboxPublisher checked = (event, options) -> {
                 var receipt = publisher.publish(event, options);

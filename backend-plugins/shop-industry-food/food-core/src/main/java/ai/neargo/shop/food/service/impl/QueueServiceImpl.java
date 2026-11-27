@@ -26,7 +26,7 @@ import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.lifecycle.QueueNotificationLifecycle;
 import ai.neargo.shop.food.service.QueueService;
 import ai.neargo.shop.food.service.StoreOperationService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -69,7 +69,7 @@ public class QueueServiceImpl implements QueueService {
     private final StoreOperationService policies;
     private final CheckService checks;
     private final StoreCardQueryPort stores;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final TransactionTemplate tx;
 
@@ -80,7 +80,7 @@ public class QueueServiceImpl implements QueueService {
             StoreOperationService policies,
             CheckService checks,
             StoreCardQueryPort stores,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager) {
         this.tickets = tickets;

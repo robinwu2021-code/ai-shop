@@ -23,7 +23,7 @@ import ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler;
 import ai.neargo.shop.food.service.impl.BusinessCloseServiceImpl;
 import ai.neargo.shop.food.service.impl.KitchenTaskServiceImpl;
 import ai.neargo.shop.food.service.impl.FoodPrintServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.printing.PrintPort;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 import org.springframework.beans.factory.ObjectProvider;
@@ -45,7 +45,7 @@ public class FoodOperationsConfiguration {
             FoodMappers.OrderComponentMapper components,FoodMappers.ConfigRevisionMapper revisions,
             FoodMappers.KitchenTicketMapper tickets,FoodMappers.KitchenTaskMapper tasks,
             FoodMappers.ServiceEventMapper events,FoodMappers.CourseMapper courses,FoodMappers.CheckMapper checks,
-            IdempotencyService idem,ObjectMapper json,@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
+            RequestIdempotencyPort idem,ObjectMapper json,@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             FoodMappers.CoreOrderBindingMapper bindings, FoodMappers.CoreLineAllocationMapper allocations) {
         return new KitchenTaskServiceImpl(batches,lines,components,revisions,tickets,tasks,events,courses,checks,
@@ -58,7 +58,7 @@ public class FoodOperationsConfiguration {
             FoodMappers.OrderBatchMapper batches,FoodMappers.OrderLineMapper lines,FoodMappers.SettlementMapper settlements,
             FoodMappers.SettlementItemMapper settlementItems,FoodMappers.CoreOrderBindingMapper bindings,
             FoodMappers.ReturnMapper returns,FoodMappers.KitchenTicketMapper tickets,FoodMappers.KitchenTaskMapper tasks,
-            FoodMappers.ServiceEventMapper events,ObjectProvider<StoreCardQueryPort> stores,IdempotencyService idem,ObjectMapper json,
+            FoodMappers.ServiceEventMapper events,ObjectProvider<StoreCardQueryPort> stores,RequestIdempotencyPort idem,ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new BusinessCloseServiceImpl(days,runs,balances,exceptions,adjustments,policies,batches,lines,
                 settlements,settlementItems,bindings,returns,tickets,tasks,events,numbers -> stores.getObject().cards(numbers),idem,json,manager);
@@ -100,7 +100,7 @@ public class FoodOperationsConfiguration {
     @Bean @ConditionalOnMissingBean(QueueService.class)
     QueueService queueService(FoodMappers.QueueTicketMapper tickets,FoodMappers.StorePolicyMapper policies,
             FoodMappers.ActionLogMapper actions,StoreOperationService operations,CheckService checks,
-            ObjectProvider<StoreCardQueryPort> stores,IdempotencyService idem,
+            ObjectProvider<StoreCardQueryPort> stores,RequestIdempotencyPort idem,
             ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new QueueServiceImpl(tickets,policies,actions,operations,checks,numbers -> stores.getObject().cards(numbers),idem,json,manager);

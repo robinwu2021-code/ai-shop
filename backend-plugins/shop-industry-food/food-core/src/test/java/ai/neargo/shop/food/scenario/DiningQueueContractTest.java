@@ -34,7 +34,7 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.impl.QueueServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 import ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard;
 import java.time.LocalDate;
@@ -160,7 +160,7 @@ class DiningQueueContractTest {
                     new StoreOperationPolicyResultVO("P","Asia/Shanghai",240,"PREPAY",List.of(),0));
             when(stores.cards(any())).thenReturn(Map.of("S",new StoreCard("S","Store","E",null,
                     "ACTIVE",true,null,null,null,null,0,0)));
-            var idem=mock(IdempotencyService.class);
+            var idem=mock(RequestIdempotencyPort.class);
             doAnswer(call -> ((Supplier<?>)call.getArgument(5)).get()).when(idem)
                     .execute(anyString(),anyString(),anyString(),anyString(),any(),any());
             service=new QueueServiceImpl(tickets,policyRows,actions,policies,checks,stores,idem,

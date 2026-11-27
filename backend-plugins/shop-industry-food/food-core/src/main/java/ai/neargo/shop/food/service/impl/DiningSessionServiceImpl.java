@@ -27,7 +27,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.TableResourceLocks;
 import ai.neargo.shop.food.service.DiningSessionService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -62,13 +62,13 @@ public class DiningSessionServiceImpl implements DiningSessionService {
     private final TableTokenMapper tokens;
     private final GuestSessionMapper sessions;
     private final ActionLogMapper actions;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final TransactionTemplate tx;
     private final TableResourceLocks locks;
     private static final SecureRandom RANDOM=new SecureRandom();
 
     public DiningSessionServiceImpl(TableAreaMapper areas,TableMapper tables,TableTokenMapper tokens,
-            GuestSessionMapper sessions,ActionLogMapper actions,IdempotencyService idem,
+            GuestSessionMapper sessions,ActionLogMapper actions,RequestIdempotencyPort idem,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.tables=tables;this.tokens=tokens;this.sessions=sessions;this.actions=actions;
         this.idem=idem;this.locks=new TableResourceLocks(areas,tables);

@@ -24,7 +24,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
 import ai.neargo.shop.food.service.DiningSessionService;
 import ai.neargo.shop.food.service.TableService;
 import ai.neargo.shop.food.service.impl.DiningSessionServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -263,7 +263,7 @@ class DiningSessionTest extends FoodWriteGuardFixture {
                 TableTokenMapper tokens,
                 GuestSessionMapper guests,
                 ActionLogMapper actions,
-                IdempotencyService idem,
+                RequestIdempotencyPort idem,
                 PlatformTransactionManager manager,
                 StorePolicyPublicationTest.Signals signals) {
             ActionLogMapper checked=FoodAuditFault.afterInsert(actions,() -> {

@@ -19,7 +19,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.MenuChannelBindingService;
 import ai.neargo.shop.food.spi.MenuChannelAuthorityPort;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.Optional;
@@ -39,13 +39,13 @@ public class MenuChannelBindingServiceImpl implements MenuChannelBindingService 
     private final MenuMapper menus;
     private final MenuStoreMapper stores;
     private final ActionLogMapper actions;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final Supplier<MenuChannelAuthorityPort> authority;
     private final TransactionTemplate write;
     private final TransactionTemplate read;
     public MenuChannelBindingServiceImpl(MenuChannelBindingMapper bindings,MenuMapper menus,MenuStoreMapper stores,
-            ActionLogMapper actions,IdempotencyService idem,ObjectMapper json,
+            ActionLogMapper actions,RequestIdempotencyPort idem,ObjectMapper json,
             PlatformTransactionManager manager,Supplier<MenuChannelAuthorityPort> authority) {
         this.bindings=bindings; this.menus=menus; this.stores=stores; this.actions=actions;
         this.idem=idem; this.json=json; this.authority=authority;

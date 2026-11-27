@@ -11,7 +11,7 @@ import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
 import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.DiningOrderService;
 import ai.neargo.shop.food.service.impl.ReservationPreorderServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -67,7 +67,7 @@ public class ReservationPreorderAcceptanceTest {
         }
         carts = new CartBoundary(); orders = new OrderBoundary();
         service = new ReservationPreorderServiceImpl(new FoodBusinessOperationsMapper(source),
-                new DataSourceTransactionManager(source), mock(IdempotencyService.class), carts.port, orders.port,
+                new DataSourceTransactionManager(source), mock(RequestIdempotencyPort.class), carts.port, orders.port,
                 json, Clock.fixed(NOW, ZoneOffset.UTC));
     }
     private static OrderLineInput line(BigDecimal qty) {

@@ -19,7 +19,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.BundleGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BundleChoiceMapper;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.service.impl.BundleServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.math.BigDecimal;
 import java.util.List;
@@ -81,7 +81,7 @@ class BundleServiceTest extends FoodWriteGuardFixture {
             var source = new CatalogCurrencyBusinessTest.Sources();
             var service = new BundleServiceImpl(c.getBean(BundleMapper.class), c.getBean(BundleGroupMapper.class),
                     c.getBean(BundleChoiceMapper.class), c.getBean(ActionLogMapper.class),
-                    c.getBean(IdempotencyService.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
+                    c.getBean(RequestIdempotencyPort.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
                     source.currencies);
             service.createBundle("E", "A", "actor", new CreateBundleReq("MEAL"), "foreign-create");
             var result = service.replaceDefinition("E", "A", "MEAL", "actor", fixed(0), "foreign-definition");
@@ -263,7 +263,7 @@ class BundleServiceTest extends FoodWriteGuardFixture {
             var b=new MapperFactoryBean<>(BundleChoiceMapper.class); b.setSqlSessionTemplate(t); return b;
         }
         @Bean BundleService bundleService(BundleMapper heads,BundleGroupMapper groups,BundleChoiceMapper choices,
-                ActionLogMapper actions, IdempotencyService idem,
+                ActionLogMapper actions, RequestIdempotencyPort idem,
                 ObjectMapper json,PlatformTransactionManager manager,State state) {
             var catalog=mock(GoodsCatalogQueryPort.class);
             when(catalog.getSku(anyString(),anyString(),anyString())).thenAnswer(i -> {
