@@ -4,7 +4,8 @@ import { reactive } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 import "./component-setup";
 
-const api = vi.hoisted(() => ({ mMallOfflineQuote: vi.fn(), mMallPlaceOrder: vi.fn() }));
+const api = vi.hoisted(() => ({ mMallOfflineQuote: vi.fn(), mMallPlaceOrder: vi.fn(),
+  mMallStorefront: vi.fn(), mMallSubscriptionVersion: vi.fn(), mMallOfflineUpgradeQuote: vi.fn() }));
 const merchant = reactive({ storeNo: "", can: () => true });
 let load: (query: Record<string, string>) => void;
 vi.mock("@/api", () => ({ api }));
@@ -37,6 +38,28 @@ it("等待门店恢复再按链接报价，切店后迟到的报价不能用于�
   const submit = page.get(".sh-btn");
   merchant.storeNo = "B";
   await submit.trigger("tap");
+  expect(api.mMallPlaceOrder).not.toHaveBeenCalled();
+  page.unmount();
+});
+
+it("普通报价要求升档时，按本店权益版本和原 SKU 请求升级报价，等待门店确认", async () => {
+  vi.clearAllMocks();
+  merchant.storeNo = "A";
+  api.mMallOfflineQuote.mockRejectedValueOnce(new Error("UPGRADE_REQUIRED"));
+  api.mMallStorefront.mockResolvedValueOnce({ store: { storeNo: "A" }, products: [{ skus: [
+    { sku: { skuVersionNo: "V1", components: [{ kind: "PLAN", planVersionNo: "old" }] } },
+    { sku: { skuVersionNo: "V2", components: [{ kind: "PLAN", planVersionNo: "chain" }] } },
+  ] }] });
+  api.mMallSubscriptionVersion.mockResolvedValueOnce({ storeNo: "A", entitlementVersion: 5 });
+  api.mMallOfflineUpgradeQuote.mockResolvedValueOnce({ quoteNo: "upgrade" });
+  const page = mount(Checkout, { global: { stubs: { "sh-scaffold": { template: "<div><slot/></div>" } } } });
+  load({ store: "A", sku: "V2", currency: "CNY", quantity: "1" });
+  await flushPromises();
+  expect(api.mMallOfflineUpgradeQuote).toHaveBeenCalledExactlyOnceWith("A", {
+    targetSkuVersionNo: "V2", targetPlanVersionNo: "chain", expectedEntitlementVersion: 5,
+    currency: "CNY", operationNo: expect.any(String),
+  });
+  expect(page.text()).toContain("bizMall.checkout.upgradeHint");
   expect(api.mMallPlaceOrder).not.toHaveBeenCalled();
   page.unmount();
 });

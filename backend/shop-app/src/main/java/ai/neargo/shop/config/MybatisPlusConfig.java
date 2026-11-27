@@ -1,5 +1,6 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.common.config.CommonTableMapper;
 import ai.neargo.shop.common.config.PayMerchantTableMapper;
 import ai.neargo.shop.common.config.PlatformSqlMapper;
 import ai.neargo.shop.common.config.PlatformTableMapper;
@@ -72,6 +73,8 @@ import org.springframework.context.annotation.Import;
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformTableMapper.class),
                 // 门店交易库的同理（ADR-068）
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class),
+                // 基础能力库的同理：由 ModuleMapperScanConfig 收到 common 句柄上
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = CommonTableMapper.class),
                 // 行业库的同理：由各行业插件的持久化配置收到行业句柄上
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = IndustryTableMapper.class),
 

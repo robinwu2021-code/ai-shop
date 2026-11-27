@@ -7,6 +7,8 @@ const p = (path: string, storeNo: string, orderNo?: string) =>
 
 export const mallHttp: MallApi = {
   mMallStorefront: (storeNo) => http.get(p(E.mMallStorefront.path, storeNo)),
+  mMallSubscriptionVersion: (storeNo) => http.get(p(E.mMallSubscriptionVersion.path, storeNo)),
+  mMallOfflineUpgradeQuote: (storeNo, body) => http.post(p(E.mMallOfflineUpgradeQuote.path, storeNo), body),
   mMallOfflineQuote: (storeNo, body) => http.post(p(E.mMallOfflineQuote.path, storeNo), body),
   mMallPlaceOrder: (storeNo, body) => http.post(p(E.mMallPlaceOrder.path, storeNo), body),
   mMallOrders: (storeNo) => http.get(p(E.mMallOrders.path, storeNo)),

@@ -106,8 +106,9 @@ class BeautyBm04AssemblyTest {
                                 "V600__checkout_payment_operation.sql",
                                 "ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745"));
         for (var entry : frozen.entrySet()) {
+            // 结账两条是主库迁移（原 V53x/V54x，已改号为 V599/V600），其余是美业自己的迁移
             String prefix =
-                    entry.getKey().startsWith("V53") || entry.getKey().startsWith("V54")
+                    entry.getKey().contains("__checkout_")
                             ? "backend/shop-app/src/main/resources/db/migration/"
                             : "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/";
             assertThat(

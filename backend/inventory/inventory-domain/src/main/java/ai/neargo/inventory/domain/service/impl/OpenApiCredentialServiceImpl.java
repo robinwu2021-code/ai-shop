@@ -1,124 +1,106 @@
 package ai.neargo.inventory.domain.service.impl;
 
-import ai.neargo.inventory.domain.support.SecretHasher;
-import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.api.InventoryError;
-import ai.neargo.inventory.domain.entity.InvOpenCredential;
-import ai.neargo.inventory.domain.mapper.InventoryMappers.OpenCredentialMapper;
-import ai.neargo.inventory.domain.service.OpenApiCredentialService;
-import ai.neargo.inventory.domain.support.InvKeys;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.domain.config.ConditionalOnInventory;
+import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
+import ai.neargo.inventory.domain.service.OpenApiCredentialService;
+import ai.neargo.inventory.domain.support.InvEnums;
+import ai.neargo.inventory.domain.support.InvKeys;
+import ai.neargo.secret.api.CredentialVerifier.Credential;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
 
-/** 凭证校验实现。 */
+/**
+ * 开放接口凭证：存在密钥库（只存摘要，Q18），{@code inv_open_credential} 停读停写。
+ *
+ * <p>{@code credentialId} 与 {@code appKey} 是同一个值（密钥库的凭据号）。{@code lastUsedAt} 密钥库不按张记，恒为空。
+ */
 @ConditionalOnInventory
 @Service
 public class OpenApiCredentialServiceImpl implements OpenApiCredentialService {
 
-    private final OpenCredentialMapper credentialMapper;
-    private final SecretHasher hasher;
+    /** 开放接口没带签发人（运营端与控制台的签发口都没传），记成系统 */
+    private static final String OPERATOR = "SYSTEM";
+    /** 不给 scopes 时的缺省，与停用前的 {@code inv_open_credential.scopes} 列默认一致 */
+    private static final String DEFAULT_SCOPES = "read";
 
-    public OpenApiCredentialServiceImpl(OpenCredentialMapper credentialMapper, SecretHasher hasher) {
-        this.credentialMapper = credentialMapper;
-        this.hasher = hasher;
+    private final InventoryCredentials credentials;
+    private final OwnerMapper ownerMapper;
+
+    public OpenApiCredentialServiceImpl(InventoryCredentials credentials, OwnerMapper ownerMapper) {
+        this.credentials = credentials;
+        this.ownerMapper = ownerMapper;
     }
 
     @Override
     public String ownerOf(String appKey, String appSecret, String requiredScope) {
-        if (appKey == null || appSecret == null) {
-            throw InventoryException.of(InventoryError.UNAUTHORIZED);
-        }
-        InvOpenCredential c = credentialMapper.selectOne(
-                Wrappers.<InvOpenCredential>lambdaQuery().eq(InvOpenCredential::getAppKey, appKey));
         /*
          * 四种失败一个错码：key 不存在 / secret 不对 / 已吊销 / 已过期。
          *
          * 分开报的话，「key 不存在」与「密码错了」两个不同的错就等于一个探测接口 ——
          * 对方可以拿它枚举出哪些 key 是真的。
          */
-        boolean ok = c != null
-                && "ACTIVE".equals(c.getStatus())
-                && (c.getExpiresAt() == null || c.getExpiresAt().isAfter(LocalDateTime.now()))
-                && hasher.matches(appSecret, c.getAppSecretHash())
-                && scopeAllows(c.getScopes(), requiredScope);
-        if (!ok) {
-            throw InventoryException.of(InventoryError.UNAUTHORIZED);
-        }
-        // 「这把钥匙半年没人用了」的唯一依据。**失败不记** —— 否则被暴力试的 key 看着很活跃
-        c.setLastUsedAt(LocalDateTime.now());
-        credentialMapper.updateById(c);
-        return c.getOwnerId();
-    }
-
-    private static boolean scopeAllows(String scopes, String required) {
-        if (required == null || required.isBlank()) {
-            return true;
-        }
-        for (String s : scopes.split(",")) {
-            if (s.trim().equals(required)) {
-                return true;
-            }
-        }
-        return false;
+        return credentials.verify(appKey, appSecret)
+                .filter(c -> c.owner() != null && c.scope().allows(requiredScope))
+                .map(c -> c.owner().getOwnerId())
+                .orElseThrow(() -> InventoryException.of(InventoryError.UNAUTHORIZED));
     }
 
     @Override
-    @Transactional(transactionManager = "invTransactionManager")
     public Issued issue(String ownerId, String name, String scopes, LocalDateTime expiresAt) {
+        InvOwner owner = ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery().eq(InvOwner::getOwnerId, ownerId));
+        if (owner == null) {
+            throw InventoryException.of(InventoryError.NOT_FOUND, "owner");
+        }
         /*
-         * key 与 secret 都用 InvKeys 生成 —— **不用自增也不用可猜的前缀**：
-         * 可枚举的 appKey 会把「四种失败一个错码」那条防线变成摆设，
-         * 对方不必枚举 key，直接按序号试就行。
+         * key 用 InvKeys 生成 —— **不用自增也不用可猜的前缀**：
+         * 可枚举的 appKey 会把「四种失败一个错码」那条防线变成摆设。secret 由密钥模块生成。
          */
-        String key = "AK" + InvKeys.next(InvKeys.CREDENTIAL);
-        String secret = InvKeys.secret();
-
-        InvOpenCredential row = new InvOpenCredential();
-        row.setCredentialId(InvKeys.next(InvKeys.CREDENTIAL));
-        row.setOwnerId(ownerId);
-        row.setAppKey(key);
-        // **只存哈希**。明文只在返回值里出现这一次，库里找不回来
-        row.setAppSecretHash(hasher.encode(secret));
-        row.setName(name);
-        row.setScopes(scopes);
-        row.setStatus("ACTIVE");
-        row.setExpiresAt(expiresAt);
-        credentialMapper.insert(row);
-
-        return new Issued(row.getCredentialId(), key, secret);
+        String appKey = "AK" + InvKeys.next(InvKeys.CREDENTIAL);
+        String secret = credentials.issue(InventoryCredentials.keyOf(owner), appKey, name,
+                new CredentialScope(scopes == null ? DEFAULT_SCOPES : scopes, Set.of(), owner.getOwnerId(), null),
+                expiresAt, OPERATOR);
+        return new Issued(appKey, appKey, secret);
     }
 
     @Override
     public List<Listed> list(String ownerId) {
-        return credentialMapper.selectList(Wrappers.<InvOpenCredential>lambdaQuery()
-                        .eq(InvOpenCredential::getOwnerId, ownerId)
-                        // 新的在前：运营多数时候要看的是刚发的那一把
-                        .orderByDesc(InvOpenCredential::getId))
-                .stream()
-                .map(c -> new Listed(c.getCredentialId(), c.getAppKey(), c.getName(),
-                        c.getScopes(), c.getStatus(), c.getExpiresAt(),
-                        c.getLastUsedAt(), c.getCreatedAt()))
-                .toList();
+        InvOwner owner = ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery().eq(InvOwner::getOwnerId, ownerId));
+        if (owner == null) {
+            return List.of();
+        }
+        return credentials.list(owner).stream().map(OpenApiCredentialServiceImpl::listed).toList();
     }
 
     @Override
-    @Transactional(transactionManager = "invTransactionManager")
     public void revoke(String credentialId) {
-        // **不删行**：删了之后「这把钥匙什么时候被谁停的」没人答得上来
-        credentialMapper.update(null, Wrappers.<InvOpenCredential>lambdaUpdate()
-                .eq(InvOpenCredential::getCredentialId, credentialId)
-                .set(InvOpenCredential::getStatus, "REVOKED"));
+        // **不删**：密钥库里置吊销，「什么时候停的」仍查得到
+        credentials.find(credentialId).ifPresent(c -> credentials.revoke(c, OPERATOR));
     }
 
     @Override
     public String ownerIdOfCredential(String credentialId) {
-        InvOpenCredential c = credentialId == null ? null : credentialMapper.selectOne(
-                Wrappers.<InvOpenCredential>lambdaQuery().eq(InvOpenCredential::getCredentialId, credentialId));
-        return c == null ? null : c.getOwnerId();
+        return credentials.find(credentialId)
+                .filter(c -> c.owner() != null)
+                .map(c -> c.owner().getOwnerId())
+                .orElse(null);
+    }
+
+    private static Listed listed(Credential c) {
+        return new Listed(c.credentialNo(), c.credentialNo(), c.label(), CredentialScope.parse(c.scope()).scopes(),
+                c.revokedAt() == null ? InvEnums.CredentialStatus.ACTIVE : InvEnums.CredentialStatus.REVOKED,
+                local(c.expiresAt()), null, local(c.issuedAt()));
+    }
+
+    private static LocalDateTime local(Instant instant) {
+        return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
     }
 }

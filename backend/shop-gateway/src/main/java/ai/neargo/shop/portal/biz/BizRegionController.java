@@ -1,6 +1,5 @@
 package ai.neargo.shop.portal.biz;
 
-import ai.neargo.shop.platform.entity.SysRegion;
 import ai.neargo.shop.platform.AddressHints;
 import ai.neargo.shop.platform.GeoService;
 import ai.neargo.shop.platform.RegionService;
@@ -234,7 +233,7 @@ public class BizRegionController {
     @GetMapping("/biz/regions/path")
     public List<RegionService.RegionVO> path(@RequestParam String code) {
         return regionService.path(code).stream()
-                .filter(r -> !SysRegion.LEVEL_VILLAGE.equals(r.level()))
+                .filter(r -> !RegionService.LEVEL_VILLAGE.equals(r.level()))
                 .toList();
     }
 
@@ -287,8 +286,8 @@ public class BizRegionController {
          * 不压的话端上看到 ›，点进去却是空的，像坏了。
          */
         return regionService.children(parent, true, null).stream()
-                .filter(r -> !SysRegion.LEVEL_VILLAGE.equals(r.level()))
-                .map(r -> SysRegion.LEVEL_STREET.equals(r.level())
+                .filter(r -> !RegionService.LEVEL_VILLAGE.equals(r.level()))
+                .map(r -> RegionService.LEVEL_STREET.equals(r.level())
                         ? new RegionService.RegionVO(r.regionCode(), r.parentCode(), r.level(),
                                 r.name(), r.enabled(), false, r.source(), r.pending(),
                                 r.auditStatus(), r.rejectReason(), r.latE6(), r.lngE6(), r.rural())
@@ -308,7 +307,7 @@ public class BizRegionController {
                                                     @RequestParam(required = false) String keyword) {
         String kw = keyword == null ? "" : keyword.trim();
         return regionService.children(street, true, null).stream()
-                .filter(r -> SysRegion.LEVEL_VILLAGE.equals(r.level()))
+                .filter(r -> RegionService.LEVEL_VILLAGE.equals(r.level()))
                 .filter(r -> kw.isEmpty() || r.name().contains(kw))
                 .limit(50)
                 .toList();

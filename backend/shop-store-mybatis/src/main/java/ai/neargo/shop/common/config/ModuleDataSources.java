@@ -37,6 +37,12 @@ public final class ModuleDataSources {
      */
     public static final String INDUSTRY = "industry";
 
+    /**
+     * 基础能力库上的公共能力：权限（运营端角色、功能点、接口资源），以及随后收进来的审计、设置、发号、字典、审批、开放应用
+     * （TDD-基础能力库对齐 Q2：独立句柄，未绑定时指向主库）。哪些 Mapper 归它，看 {@link CommonTableMapper}。
+     */
+    public static final String COMMON = "common";
+
     public static final String INVOICE_TX_MANAGER = "invoiceTxManager";
     public static final String INVOICE_DATA_SOURCE = "invoiceDataSource";
     public static final String INVOICE_SQL_SESSION_FACTORY = "invoiceSqlSessionFactory";
@@ -55,9 +61,12 @@ public final class ModuleDataSources {
     public static final String INDUSTRY_TX_MANAGER = "industryTxManager";
     public static final String INDUSTRY_DATA_SOURCE = "industryDataSource";
     public static final String INDUSTRY_SQL_SESSION_FACTORY = "industrySqlSessionFactory";
+    public static final String COMMON_TX_MANAGER = "commonTxManager";
+    public static final String COMMON_DATA_SOURCE = "commonDataSource";
+    public static final String COMMON_SQL_SESSION_FACTORY = "commonSqlSessionFactory";
 
     /** 守卫测试也读这份清单；常量名与这里的规则对不上会在那里变红。 */
-    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, INDUSTRY);
+    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, INDUSTRY, COMMON);
 
     private ModuleDataSources() {
     }

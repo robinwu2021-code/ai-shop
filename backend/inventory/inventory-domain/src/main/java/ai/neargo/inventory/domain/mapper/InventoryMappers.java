@@ -21,7 +21,6 @@ import ai.neargo.inventory.domain.entity.InvItem;
 import ai.neargo.inventory.domain.entity.InvItemRef;
 import ai.neargo.inventory.domain.entity.InvLedger;
 import ai.neargo.inventory.domain.entity.InvLocation;
-import ai.neargo.inventory.domain.entity.InvOpenCredential;
 import ai.neargo.inventory.domain.entity.InvOutboundLine;
 import ai.neargo.inventory.domain.entity.InvOutboundOrder;
 import ai.neargo.inventory.domain.entity.InvOutbox;
@@ -300,9 +299,6 @@ public final class InventoryMappers {
     // ── 派生与对外 ────────────────────────────────────────────────────────
     /** 日快照。**派生数据**：删光重跑一遍就回来了，所以重跑是它的正常工作方式。 */
     public interface DailySnapshotMapper extends BaseMapper<InvDailySnapshot> {}
-
-    /** Open API 凭证。{@code app_secret} 只存 bcrypt 哈希。 */
-    public interface OpenCredentialMapper extends BaseMapper<InvOpenCredential> {}
 
     public interface ClientSystemMapper extends BaseMapper<InvClientSystem> {}
 

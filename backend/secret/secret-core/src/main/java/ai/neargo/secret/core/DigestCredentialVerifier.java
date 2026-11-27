@@ -105,6 +105,23 @@ public class DigestCredentialVerifier implements CredentialVerifier {
     }
 
     @Override
+    public Optional<Credential> find(SecretNamespace namespace, String ownerType, String credentialNo) {
+        if (!settings.envConfigured()) {
+            return Optional.empty();
+        }
+        SecKeyVersion v = db.versions().selectOne(Wrappers.<SecKeyVersion>lambdaQuery()
+                .eq(SecKeyVersion::getCredentialKey, credentialKey(namespace, ownerType, credentialNo)));
+        if (v == null) {
+            return Optional.empty();
+        }
+        SecKey key = db.keys().selectById(v.getSecKeyId());
+        if (!settings.requireEnv().equals(key.getEnv())) {
+            return Optional.empty();
+        }
+        return Optional.of(toCredential(ownerOf(key), v));
+    }
+
+    @Override
     public List<Credential> list(KeyOwner owner) {
         SecKey key = keyOf(owner);
         if (key == null) {
@@ -235,7 +252,11 @@ public class DigestCredentialVerifier implements CredentialVerifier {
     }
 
     private static String credentialKey(KeyOwner owner, String credentialNo) {
-        return owner.namespace().name() + "|" + owner.ownerType() + "|" + credentialNo;
+        return credentialKey(owner.namespace(), owner.ownerType(), credentialNo);
+    }
+
+    private static String credentialKey(SecretNamespace namespace, String ownerType, String credentialNo) {
+        return namespace.name() + "|" + ownerType + "|" + credentialNo;
     }
 
     private static KeyOwner ownerOf(SecKey key) {

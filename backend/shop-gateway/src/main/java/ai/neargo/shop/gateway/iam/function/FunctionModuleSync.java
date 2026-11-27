@@ -1,5 +1,7 @@
 package ai.neargo.shop.gateway.iam.function;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.gateway.core.config.GatewayEndSwitch;
 import ai.neargo.shop.gateway.core.end.GatewayEndRuntimes;
@@ -34,7 +36,8 @@ public class FunctionModuleSync {
     private final ObjectProvider<GatewayEndRuntimes> runtimes;
     private final Environment environment;
 
-    public FunctionModuleSync(ObjectProvider<DataSource> dataSource, ObjectProvider<GatewayEndRuntimes> runtimes,
+    /** 功能点表在基础能力库：本进程直连时走 {@code common} 句柄（TDD-基础能力库对齐 2a） */
+    public FunctionModuleSync(@Qualifier(ModuleDataSources.COMMON_DATA_SOURCE) ObjectProvider<DataSource> dataSource, ObjectProvider<GatewayEndRuntimes> runtimes,
                               Environment environment) {
         this.dataSource = dataSource;
         this.runtimes = runtimes;
@@ -79,13 +82,13 @@ public class FunctionModuleSync {
 
     private JdbcClient jdbc() {
         GatewayEndRuntimes ends = runtimes.getIfAvailable();
-        DataSource main = dataSource.getIfAvailable();
+        DataSource common = dataSource.getIfAvailable();
         if (ends != null) {
             var own = ends.jdbc(Realm.OPERATOR);
             if (own.isPresent()) {
                 return own.get();
             }
         }
-        return main == null ? null : JdbcClient.create(main);
+        return common == null ? null : JdbcClient.create(common);
     }
 }

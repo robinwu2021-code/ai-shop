@@ -167,6 +167,25 @@ class DigestCredentialVerifierTest {
                 .satisfies(e -> assertThat(((SecretException) e).reason()).isEqualTo(Reason.ENV_NOT_CONFIGURED));
     }
 
+    @Test
+    @DisplayName("★★ 按凭据号找归属（吊销前核对是谁的）：含已吊销；别的归属类型、别的环境、未知号都为空")
+    void findsACredentialByItsNumber() {
+        verifier.issue(credential(STAFF_7, "k-1"), "oak_");
+        verifier.revoke(STAFF_7, "k-1", "ops-bob", null);
+
+        assertThat(verifier.find(SecretNamespace.PLATFORM, "OPS_STAFF", "k-1"))
+                .hasValueSatisfying(c -> {
+                    assertThat(c.owner()).isEqualTo(STAFF_7);
+                    assertThat(c.scope()).isEqualTo("READ_ONLY");
+                    assertThat(c.revokedAt()).isNotNull();
+                });
+        assertThat(verifier.find(SecretNamespace.PLATFORM, "OTHER", "k-1")).isEmpty();
+        assertThat(verifier.find(SecretNamespace.INVENTORY, "OPS_STAFF", "k-1")).isEmpty();
+        assertThat(verifier.find(SecretNamespace.PLATFORM, "OPS_STAFF", "k-9")).isEmpty();
+        assertThat(f.restartAs("PRODUCTION").start().credentials().find(SecretNamespace.PLATFORM, "OPS_STAFF", "k-1"))
+                .as("别的环境").isEmpty();
+    }
+
     private static void assertDuplicate(Runnable call) {
         assertThatThrownBy(call::run).isInstanceOf(SecretException.class)
                 .satisfies(e -> assertThat(((SecretException) e).reason()).isEqualTo(Reason.DUPLICATE));

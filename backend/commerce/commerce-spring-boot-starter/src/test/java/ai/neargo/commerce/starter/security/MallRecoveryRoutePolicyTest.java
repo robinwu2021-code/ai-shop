@@ -52,7 +52,11 @@ class MallRecoveryRoutePolicyTest {
             assertEquals(CommerceRoutePolicy.Lane.BOOTSTRAP, route.lane());
             assertEquals(CommerceRoutePolicy.PROCUREMENT_DUTY, route.capability());
         }
-        assertEquals(CommerceRoutePolicy.Lane.BOOTSTRAP, policy.match("POST", "/biz/stores/S/mall/offline/quotes").lane());
+        for (String path : java.util.List.of("quotes", "upgrade-quotes")) {
+            var route = policy.match("POST", "/biz/stores/S/mall/offline/" + path);
+            assertEquals(CommerceRoutePolicy.Lane.BOOTSTRAP, route.lane());
+            assertEquals(CommerceRoutePolicy.PROCUREMENT_DUTY, route.capability());
+        }
         for (String path : java.util.List.of("instructions", "evidence", "evidence/content", "claims"))
             assertEquals(CommerceRoutePolicy.Lane.BOOTSTRAP,
                     policy.match("POST", "/biz/stores/S/mall/offline/orders/o.1/" + path).lane());

@@ -1,5 +1,6 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.common.config.CommonTableMapper;
 import ai.neargo.shop.common.config.ModuleDataSourceRegistrar;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
@@ -49,5 +50,8 @@ import org.springframework.context.annotation.Import;
 @MapperScan(basePackages = {"ai.neargo.shop.trade.order.mapper", "ai.neargo.shop.trade.mapper"},
         markerInterface = TradeSqlMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.TRADE_SQL_SESSION_FACTORY)
+// 基础能力库的 Mapper（TDD-基础能力库对齐 2a）：按标记收。先是权限，其余公共能力收敛后同样打标记
+@MapperScan(basePackages = "ai.neargo.shop.platform", markerInterface = CommonTableMapper.class,
+        sqlSessionFactoryRef = ModuleDataSources.COMMON_SQL_SESSION_FACTORY)
 public class ModuleMapperScanConfig {
 }

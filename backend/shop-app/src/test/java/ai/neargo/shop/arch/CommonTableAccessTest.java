@@ -60,7 +60,10 @@ class CommonTableAccessTest {
     static {
         GROUPS.put("权限", new Group(List.of("sys_api_resource", "sys_api_resource_point", "sys_function",
                 "sys_function_point", "sys_role", "sys_role_member", "sys_role_point"),
-                List.of("shop-core/src/main/java/ai/neargo/shop/platform/perm/")));
+                List.of("shop-core/src/main/java/ai/neargo/shop/platform/perm/",
+                        // 网关的接口资源登记与功能点模块回填，直连时走 common 句柄（TDD-基础能力库对齐 2a）
+                        "shop-gateway/src/main/java/ai/neargo/shop/gateway/iam/resource/JdbcResourceStore.java",
+                        "shop-gateway/src/main/java/ai/neargo/shop/gateway/iam/function/FunctionModuleSync.java")));
         GROUPS.put("开放应用", new Group(List.of("pay_app", "pay_app_grant", "inv_open_credential"), List.of()));
         GROUPS.put("事件", new Group(List.of("sys_outbox", "sys_outbox_stream", "sys_outbox_delivery",
                 "pay_biz_notify_attempt", "sys_outbox_operation", "sys_event_consumed", "pay_approval_event",
@@ -73,11 +76,27 @@ class CommonTableAccessTest {
         GROUPS.put("字典", new Group(List.of("pay_channel", "pay_channel_product", "sys_pay_channel",
                 "sys_pay_channel_market", "cim_product_profile", "cim_provider", "inv_uom", "sys_auth_code",
                 "sys_business_type", "sys_industry", "sys_legal_form", "sys_market", "sys_region", "sys_store_industry"),
-                // 端口 DictionaryPort 的唯一实现与它按类型汇集的来源（TDD-基础能力库对齐 §2.2 1b）
+                // 读：端口 DictionaryPort 的唯一实现与它按类型汇集的来源（TDD-基础能力库对齐 §2.2 1b）。
+                // 写：每张旧表各有一个属主维护（运营端增删改），「写归属主、读走端口」。区划 66 万行只能按层级懒加载，
+                // 不走 items()，由 RegionService 专管。基础能力库落地后来源换成 sys_dict_item，属主随之换成一个维护入口
                 List.of("shop-core/src/main/java/ai/neargo/shop/platform/port/DictionaryPortImpl.java",
                         "shop-core/src/main/java/ai/neargo/shop/platform/port/OnboardIndustryDictionarySource.java",
                         "shop-merchant/src/main/java/ai/neargo/shop/merchant/port/StoreIndustryDictionarySource.java",
-                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/port/PayChannelDictionarySource.java")));
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/port/PayChannelDictionarySource.java",
+                        // 进件行业 sys_industry、主体类型 sys_legal_form、区划 sys_region
+                        "shop-core/src/main/java/ai/neargo/shop/platform/impl/IndustryServiceImpl.java",
+                        "shop-core/src/main/java/ai/neargo/shop/platform/impl/MasterDataServiceImpl.java",
+                        "shop-core/src/main/java/ai/neargo/shop/platform/RegionService.java",
+                        "shop-core/src/main/java/ai/neargo/shop/platform/impl/RegionServiceImpl.java",
+                        // 类目授权码 sys_auth_code、经营类型 sys_store_industry
+                        "shop-merchant/src/main/java/ai/neargo/shop/merchant/dictionary/",
+                        // 支付渠道 sys_pay_channel(+_market)、支付产品 pay_channel_product、市场 sys_market
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/master/",
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/port/PayChannelMasterPortImpl.java",
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/catalog/DbChannelProductCatalog.java",
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/config/ChannelPipelineConfiguration.java",
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/mapper/ChannelMappers.java",
+                        "pay/pay-domain/src/main/java/ai/neargo/shop/pay/market/impl/MarketServiceImpl.java")));
         GROUPS.put("审批", new Group(List.of("approval_link", "sys_approval", "pay_terminal_manager_authorization",
                 "ord_manual_price_adjustment"),
                 List.of("shop-opskit/src/main/java/ai/neargo/shop/approval/opskit/ApprovalLinkStore.java",
@@ -99,7 +118,13 @@ class CommonTableAccessTest {
     private static final List<String> NOT_ACCESS = List.of(
             "shop-app/src/main/java/ai/neargo/shop/config/DataScopeRegistration.java", "/src/main/java/db/migration/");
 
-    private static final Pattern IDENT = Pattern.compile("\\b([a-z]+_[a-z_]+)\\b");
+    /**
+     * 旧表名同时是业务表的列名：{@code pay_channel} 是订单、收款记录上的「付款渠道」列，出现在 {@code @TableField}、
+     * 取列值的地方都不是访问那张旧表（旧表本身本仓库没有读写代码）。
+     */
+    private static final Set<String> COLUMN_NAMED = Set.of("pay_channel");
+    private static final Pattern TABLE_REF = Pattern.compile(
+            "(?i)\\b(?:from|join|into|update|table)\\s+`?([a-z]+_[a-z_]+)\\b");
     private static final Pattern LITERAL = Pattern.compile("(?s)\"\"\"(.*?)\"\"\"|\"((?:[^\"\\\\\\n]|\\\\.)*)\"");
     private static final Pattern TABLE_NAME = Pattern.compile("@TableName\\(\\s*(?:value\\s*=\\s*)?\"(\\w+)\"[^)]*\\)");
     private static final Pattern PACKAGE = Pattern.compile("(?m)^package\\s+([\\w.]+);");
@@ -158,14 +183,24 @@ class CommonTableAccessTest {
                 declared.add(decl.group(1));
             }
             Set<String> groups = new TreeSet<>();
+            // 字面量里的表名：整个字面量就是表名（表名常量、拼 SQL 用的表名），或者在 SQL 的表位置上
+            // （FROM/JOIN/INTO/UPDATE/TABLE 之后）。旧表名又是业务表列名的（见 COLUMN_NAMED），只认表位置。
+            // 相邻字面量拼成一段再看，"... FROM " + "sys_region" 这种拆行写法也认得
+            StringBuilder sql = new StringBuilder();
             Matcher literal = LITERAL.matcher(c);
             while (literal.find()) {
-                Matcher ident = IDENT.matcher(literal.group(1) != null ? literal.group(1) : literal.group(2));
-                while (ident.find()) {
-                    String group = tableGroup.get(ident.group(1));
-                    if (group != null) {
-                        groups.add(group);
-                    }
+                String text = literal.group(1) != null ? literal.group(1) : literal.group(2);
+                String group = COLUMN_NAMED.contains(text.trim()) ? null : tableGroup.get(text.trim());
+                if (group != null) {
+                    groups.add(group);
+                }
+                sql.append(text).append(' ');
+            }
+            Matcher ref = TABLE_REF.matcher(sql);
+            while (ref.find()) {
+                String group = tableGroup.get(ref.group(1));
+                if (group != null) {
+                    groups.add(group);
                 }
             }
             Matcher word = Pattern.compile("\\b([A-Z]\\w*)\\b").matcher(c);

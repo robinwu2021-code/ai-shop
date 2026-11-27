@@ -4,7 +4,6 @@ import ai.neargo.shop.pay.channel.PayFundsOperations;
 import ai.neargo.shop.pay.channel.PayFundsOperations.Operation;
 import ai.neargo.shop.pay.channel.PayFundsOperations.Receipt;
 import ai.neargo.shop.pay.channel.PayFundsOperations.Request;
-import ai.neargo.shop.pay.channel.entity.SysPayChannel;
 import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 
@@ -33,8 +32,8 @@ public class PayPointsFundsAdapter implements PointsFundsGateway {
             return NONE;
         }
         try {
-            SysPayChannel channel = master.find(context.channel()).orElse(null);
-            if (channel == null || !Boolean.TRUE.equals(channel.getEnabled())) {
+            var channel = master.brief(context.channel()).orElse(null);
+            if (channel == null || !channel.enabled()) {
                 return NONE;
             }
             PayFundsOperations gateway = nativeGateway(context);
@@ -64,11 +63,11 @@ public class PayPointsFundsAdapter implements PointsFundsGateway {
         Request request = nativeRequest(command);
         PayFundsOperations gateway;
         try {
-            SysPayChannel channel = master.find(command.context().channel()).orElse(null);
-            if (channel == null || !Boolean.TRUE.equals(channel.getEnabled())) {
+            var channel = master.brief(command.context().channel()).orElse(null);
+            if (channel == null || !channel.enabled()) {
                 return failed(command, "POINTS_CHANNEL_UNAVAILABLE");
             }
-            if (!command.currency().equals(channel.getCurrency())) {
+            if (!command.currency().equals(channel.currency())) {
                 return failed(command, "POINTS_CURRENCY_UNSUPPORTED");
             }
             gateway = nativeGateway(command.context());

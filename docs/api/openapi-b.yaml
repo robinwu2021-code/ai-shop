@@ -37819,6 +37819,68 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/stores/{storeNo}/subscription":
+    get:
+      operationId: "mMallSubscriptionVersion"
+      summary: "平台商城：查询本店订阅版本"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallSubscriptionVersion"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{storeNo}/mall/offline/upgrade-quotes":
+    post:
+      operationId: "mMallOfflineUpgradeQuote"
+      summary: "平台商城：线下套餐升级报价"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallQuote"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MallUpgradeQuoteRequest"
   "/biz/stores/{storeNo}/mall/offline/quotes":
     post:
       operationId: "mMallOfflineQuote"

@@ -39,6 +39,12 @@ public interface CredentialVerifier {
     /** 按出示的凭据找它属于谁：未知、已吊销、已过期、不属于本命名空间或本环境一律为空，不区分是哪一种 */
     Optional<Verified> verify(SecretNamespace namespace, String presented);
 
+    /**
+     * 按凭据号找一张（含已吊销、已过期）：调用方只拿到凭据号、要先核对它归谁时用（如按号吊销前确认属于本业主）。
+     * 凭据号在同一命名空间同一归属类型下唯一；别的环境的、未知的为空。
+     */
+    Optional<Credential> find(SecretNamespace namespace, String ownerType, String credentialNo);
+
     /** 一个所有者的全部凭据（含已吊销、已过期），新的在前；没有任何材料 */
     List<Credential> list(KeyOwner owner);
 

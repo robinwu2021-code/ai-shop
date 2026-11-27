@@ -9344,6 +9344,18 @@
           "ar": "الإجمالي"
         },
         {
+          "key": "bizMall.checkout.upgradeCredit",
+          "zh-CN": "套餐升级抵扣",
+          "en": "Plan upgrade credit",
+          "ar": "رصيد ترقية الباقة"
+        },
+        {
+          "key": "bizMall.checkout.upgradeHint",
+          "zh-CN": "升级后，原套餐剩余期限将按报价折算抵扣。",
+          "en": "Upgrading converts the remaining term of your current plan into credit at the quoted value.",
+          "ar": "عند الترقية تُحتسب المدة المتبقية من باقتك الحالية كرصيد وفق عرض السعر."
+        },
+        {
           "key": "bizMall.claim.bankReference",
           "zh-CN": "转账备注 / 账号末五码",
           "en": "Transfer note / last 5 digits",
