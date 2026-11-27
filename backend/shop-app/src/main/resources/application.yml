@@ -60,25 +60,15 @@ spring:
       - ai.neargo.common.security.SessionStoreAutoConfiguration
       - ai.neargo.common.data.DataAutoConfiguration
 
-  datasource:
-    url: jdbc:mysql://127.0.0.1:3306/ai_shop?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
-    username: ${SHOP_DB_USER:shop}
-    # 不带默认值（安全规范 §3.2，NoSecretDefaultInConfigTest）：漏配就启动失败，而不是静默用一个人人知道的口令。
-    # 本机运行先 export SHOP_DB_PASS；测试走 h2db profile 自带空口令
-    password: ${SHOP_DB_PASS}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+  # 旧库（主库 spring.datasource 与主库迁移 spring.flyway）的配置已删除（用户 2026-11-27：业务不再访问旧库）。
+  # 仍依赖它的代码见 docs/technical/design/旧库调用清单.md：没迁完之前，生产与本机都会在启动时报缺主库数据源。
+  # 测试走 h2db profile 自带的内存库，不受影响。
 
   # ⚠️ 建表只走 Flyway。sql.init 每次启动重跑、ALTER 不幂等、无版本记录，
   # 且 continue-on-error 会吞掉真错误（TDD-backend §2.1-4）。
   sql:
     init:
       mode: never
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: 0
-    validate-on-migrate: true
 
   data:
     redis:
@@ -106,7 +96,8 @@ management:
 
 shop:
   # 业务模块按配置选数据源（ADR-066）。先定义具名数据源，再把模块绑上去；绑到同一个名字的模块共用
-  # 连接池、可以同事务。模块不写绑定就是主库。绑定了没定义的名字、或定义了却没写 url，启动失败。
+  # 连接池、可以同事务。模块不写绑定就落到主库——主库配置已删，所以没绑新库的模块起不来，这是有意的。
+  # 绑定了没定义的名字、或定义了却没写 url，启动失败。
   #
   # 发票已经切到平台服务库的新表（TDD-多数据源与发票打印对齐新库 §2.4），**必须**绑到 service：
   # 主库里的旧发票表结构不同，不绑定不会报启动错，而是跑到开票那一行才报「没有这一列」。
