@@ -269,6 +269,8 @@
 
 ### 2.2 执行计划（2026-11-27，v2 @ 6957a7251）
 
+> **2026-11-27 重整**：第 1 阶段 9 项与 2a 已完成；还剩的事项连同状态统一列在 [基础能力功能清单 §〇 任务总表](基础能力功能清单.md)（R1–R20），以那张表为准。
+
 按依赖分四个阶段。第 1 阶段不等任何决定、各项互不相干，可并行；第 2 阶段等决定；第 3 阶段在服务器上；第 4 阶段归各业务模块。
 状态与落点见 [基础能力功能清单](基础能力功能清单.md)。
 
@@ -315,7 +317,7 @@
 
 | # | 事项 | 依赖 | 产出 |
 |---|---|---|---|
-| 2a | 权限：`common` 句柄与 `CommonTableMapper`；`platform/perm` 7 张表与网关 `iam` 接入；拆运营角色双写；强制下线改提交后吊销 | D2、D3 | §2 第 1 步 |
+| 2a | 权限：`common` 句柄与 `CommonTableMapper`；`platform/perm` 7 张表与网关 `iam` 接入；拆运营角色双写；强制下线改提交后吊销。**已做（2026-11-27）**：6e1b04fd6 句柄与接入、ebbed63c6 角色只在 `sys_role_member`（新增迁移 V721）、9b9740747 强制下线不开 common 事务；见下方「2a 权限」 | D2、D3 | §2 第 1 步 |
 | 2b | 事件收敛：待投递表随业务库；删 `Source` 枚举与 `inv_` 前缀；支付权益、积分、商城内核三套并入 | D1 | §2 第 5 步；需先改设计文档 |
 | 2c | 审计并入范围按 D4 落地 | D4 | — |
 
@@ -446,6 +448,22 @@
 - **不动的 19 处**：渠道接入插件 13（`cim_provider`/`cim_product_profile`，插件工程自管，1b 已判为另一字典类型）；商城 `sys_business_type` 2（商城库，商城新代码已读 `sys_dict_item`）；
   支付产品的三个读方 `RouteSelectionPolicy`、`PayMerchantBackfillImpl`、`OnboardingServiceImpl`（商户产品按 `pay_channel_product.id` 关联，并进 `sys_dict_item` 前要先定产品编码与引用方式，属支付设计）；
   `OpsPayChannelAppServiceImpl`（运营端渠道维护拿实体组装视图，改视图要一并改维护接口）。
+
+#### 2a 权限（会话甲，2026-11-27）
+
+档位：1（新增库表迁移 V721、新增配置项 `shop.modules.common.datasource`；端点、权限码、i18n 不动）。
+
+- **句柄**：`ModuleDataSources.COMMON`，三个 bean 名 `commonDataSource`/`commonSqlSessionFactory`/`commonTxManager`，另有 `commonJdbcTemplate`。
+  不配 `shop.modules.common.datasource` 时都是主库的别名，行为与之前一个字节不差。标记 `CommonTableMapper`：全局扫描排除，`ModuleMapperScanConfig` 按标记收进 common 工厂。
+- **权限表接入**：`PermMappers` 五个 Mapper 打标记；`PermConfigServiceImpl`、网关 `JdbcResourceStore` 的事务点名 `COMMON_TX_MANAGER`（`ModuleTxManagerConventionTest` 加了这两处）；
+  `JdbcResourceStore`、`FunctionModuleSync` 直连时取 common 数据源（网关按端配置了自己的库时仍用那个，不变）。
+- **拆角色双写**：新增 `platform.perm.OpsStaffRoles`，是运营账号角色唯一的读写入口（`sys_role_member`，按授予顺序）。读方 `OpsServiceImpl`（登录、me、账号列表、启停、免二次验证、数据域）、
+  `OperatorIdentityLoader`、`StaffIdentityResolver`、`OpsStaffPortImpl` 全部改读它；写方 `setStaffRole`、`setStaffRoles`、`createStaff`、`DevSeeder` 只写它，`sys_ops_staff.roles` 停写（列不删）。
+- **库表变更 V721**：`V721__align_ops_role_members.sql` 在切换前把 `sys_role_member`（OPS 端、未删除）对齐到 `sys_ops_staff.roles`：JSON 里有而成员表没有的补上（`granted_by='V721'`），
+  成员表有而 JSON 没有的逻辑删除；JSON 不合法或为空按无角色。此前判权以 JSON 为准，对齐后每个人的权限与切换前相同；多出来、只影响菜单的成员行会被撤掉。
+  已在本机 MySQL 9.7.4 临时库实跑。**迁移号**：另一条分支 `origin/codex/v2-member-marketing` 自用了 V706–V720，其中 V706 与 v2 上的 V706 撞号，它合入 v2 时要改号；本条取 V721 以免再撞。
+- **强制下线**：`forceLogoutRole` 在基础能力库只读成员，写的是平台基础库的运营会话，审计已提交后写（1i），所以不再开 common 事务。
+- **未做（K3）**：建号、改角色仍在同一个主库事务里先写账号（平台基础库）、再写角色（基础能力库）。两库未分开绑定时这是一个事务，行为不变；分开绑定前要拆，见 §1.2。
 
 #### 1e 审批（会话乙，2026-11-27）
 

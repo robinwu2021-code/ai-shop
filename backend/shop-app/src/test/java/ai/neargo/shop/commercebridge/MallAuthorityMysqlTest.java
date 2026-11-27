@@ -1,5 +1,7 @@
 package ai.neargo.shop.commercebridge;
 
+import ai.neargo.shop.platform.perm.OpsStaffRoles;
+import ai.neargo.shop.platform.perm.mapper.PermMappers;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.auth.store.*;
@@ -95,6 +97,10 @@ class MallAuthorityMysqlTest {
                         + " sys_ops_staff(staff_no,username,password,real_name,roles,created_at,updated_at)"
                         + " VALUES"
                         + " ('OPS1','operator','unused','Operator','[\"MALL_OPS\"]',NOW(),NOW())");
+            // 角色在 sys_role_member（TDD-基础能力库对齐 2a）
+            f.jdbc.update(
+                    "INSERT INTO sys_role_member(end_code,subject_no,role_code,created_at,updated_at)"
+                        + " VALUES ('OPS','OPS1','MALL_OPS',NOW(),NOW())");
             f.jdbc.update(
                     "INSERT INTO sys_role(role_code,name,end_code,created_at,updated_at) VALUES"
                         + " ('MALL_OPS','Mall','OPS',NOW(),NOW())");
@@ -113,7 +119,8 @@ class MallAuthorityMysqlTest {
                             f.mybatis.getMapper(FunctionPointMapper.class),
                             f.mybatis.getMapper(RoleMapper.class),
                             60000);
-            var loader = new OperatorIdentityLoader(f.mybatis.getMapper(StaffMapper.class), perms);
+            var loader = new OperatorIdentityLoader(f.mybatis.getMapper(StaffMapper.class), perms,
+                    new OpsStaffRoles(f.mybatis.getMapper(PermMappers.RoleMemberMapper.class)));
             IdentityLoader<LoginUser> strict =
                     new IdentityLoader<>() {
                         public Optional<LoginUser> load(String no) {

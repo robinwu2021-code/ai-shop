@@ -1,5 +1,6 @@
 package ai.neargo.shop.commercebridge;
 
+import ai.neargo.shop.platform.perm.OpsStaffRoles;
 import ai.neargo.auth.store.*;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.auth.store.DbTokenStore;
@@ -72,7 +73,8 @@ public final class ChannelAccountClaimHostLocalLauncher {
             permissions=new RolePermResolver(f.db.mybatis.getMapper(PermMappers.RolePointMapper.class),
                     f.db.mybatis.getMapper(PermMappers.FunctionPointMapper.class),f.db.mybatis.getMapper(PermMappers.RoleMapper.class),0);
             var staff=f.db.mybatis.getMapper(PlatformMappers.StaffMapper.class);
-            loader=new OperatorIdentityLoader(staff,permissions);live=new StaffIdentityResolver(staff,permissions,0);
+            var roles=new OpsStaffRoles(f.db.mybatis.getMapper(PermMappers.RoleMemberMapper.class));
+            loader=new OperatorIdentityLoader(staff,permissions,roles);live=new StaffIdentityResolver(staff,permissions,roles,0);
             var profile=SessionProfiles.OPERATOR;var jdbc=JdbcClient.create(f.db.ds);
             sessions=new AuthCache<>(f.db.schema+".n2.ops.session",String.class,DbTokenStore.CachedSession.class,profile.cacheTtl(),100);
             identities=new AuthCache<>(f.db.schema+".n2.ops.identity",String.class,LoginUser.class,profile.identityTtl(),100);
@@ -92,6 +94,7 @@ public final class ChannelAccountClaimHostLocalLauncher {
     private static void seedOperator(BizLoginStoreNativeMysqlTest.LoginFixture f) {
         f.db.jdbc.update("INSERT INTO sys_ops_staff(staff_no,username,password,real_name,roles,status,created_at,updated_at) VALUES(?,?,?,?,?,'ACTIVE',NOW(),NOW())",
                 OPERATOR,OPERATOR+"@local.test",UUID.randomUUID().toString(),"Local controlled operator","[\""+ROLE+"\"]");
+        f.db.jdbc.update("INSERT INTO sys_role_member(end_code,subject_no,role_code,created_at,updated_at) VALUES('OPS',?,?,NOW(),NOW())",OPERATOR,ROLE);
         f.db.jdbc.update("INSERT INTO sys_role(role_code,name,end_code,wildcard,created_at,updated_at) VALUES(?,'Local channel claims','OPS',0,NOW(),NOW())",ROLE);
         for(String permission:List.of("pay:channel-account:view","pay:channel-account:manage","pay:channel-account:approve")) {
             String point="N2_"+permission.substring(permission.lastIndexOf(':')+1).toUpperCase(Locale.ROOT);
