@@ -269,9 +269,11 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
                     .isInstanceOf(IllegalStateException.class);
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isZero();
             assertThat(f.sql().queryForObject("SELECT version FROM fnb_modifier", Long.class)).isZero();
-            for (String table : List.of("fnb_action_log", "sys_outbox", "sys_idempotent")) {
+            for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isOne();
             }
+            // 草稿写不再发事件（cf7eea13b 删了只存档的 *_CHANGED），失败的发布也已回滚：发件箱一条都没有
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
         });
     }
     private static void code(Runnable action, ErrorCode expected) {

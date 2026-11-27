@@ -161,8 +161,10 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
             var v=c.getBean(BundleService.class).getBundle("E","A","MEAL").config();
             assertThat(v.version()).isEqualTo(1); assertThat(v.data().configVersion()).isEqualTo(1);
             assertThat(v.data().publishedRevisionNo()).isNull();
-            for(String t:List.of("sys_idempotent","sys_outbox","fnb_action_log"))
+            for(String t:List.of("sys_idempotent","fnb_action_log"))
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM "+t,Integer.class)).as(t).isEqualTo(2);
+            // 草稿写不再发事件（cf7eea13b 删了只存档的 *_CHANGED），失败的发布也已回滚：发件箱一条都没有
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isZero();
         });
     }
     @Test void disabledWriterStillReadsAndReplaysButDoesNotStartNewPublication() {
