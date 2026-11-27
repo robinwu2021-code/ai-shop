@@ -30,10 +30,10 @@ class ActivityMarketingSummaryServiceTest {
 
     @Test void preservesCurrencyBucketsAndRestrictedStoreScope() {
         var actor = new ActivityActor("T1", "M1", "STAFF", Set.of("S1"));
-        when(effects.summary(eq("T1"), eq("M1"), eq(List.of("S1")), any(), any())).thenReturn(List.of(
+        when(effects.summary(eq("T1"), eq("M1"), eq(List.of("S1")), eq("A1"), any(), any())).thenReturn(List.of(
                 new EffectTotal("CNY", new BigDecimal("200"), 2L),
                 new EffectTotal("USD", new BigDecimal("30"), 1L)));
-        var result = service.summarize(actor, null, from, to);
+        var result = service.summarize(actor, null, "A1", from, to);
         assertThat(result.metrics()).containsExactly(
                 new ActivityMarketingSummaryService.Metric("ORDER_DISCOUNT", "CNY", 200, 2),
                 new ActivityMarketingSummaryService.Metric("ORDER_DISCOUNT", "USD", 30, 1));
@@ -42,13 +42,13 @@ class ActivityMarketingSummaryServiceTest {
     @Test void noStorePermissionReturnsNoMerchantWideTotals() {
         assertThat(service.summarize(new ActivityActor("T1", "M1", "STAFF", Set.of()), null, from, to)
                 .metrics()).isEmpty();
-        verify(effects, never()).summary(any(), any(), any(), any(), any());
+        verify(effects, never()).summary(any(), any(), any(), any(), any(), any());
     }
 
     @Test void rejectsOtherStoreAndInvalidTimeRange() {
         var actor = new ActivityActor("T1", "M1", "STAFF", Set.of("S1"));
         assertThatThrownBy(() -> service.summarize(actor, "S2", from, to)).isInstanceOf(BizException.class);
         assertThatThrownBy(() -> service.summarize(actor, null, to, from)).isInstanceOf(BizException.class);
-        verify(effects, never()).summary(any(), any(), any(), any(), any());
+        verify(effects, never()).summary(any(), any(), any(), any(), any(), any());
     }
 }

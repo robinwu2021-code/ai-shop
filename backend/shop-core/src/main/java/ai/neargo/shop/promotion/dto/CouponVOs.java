@@ -26,7 +26,7 @@ public final class CouponVOs {
     }
 
     /**
-     * @param maxExposureMinor 最大敞口 = 发行量 × 单张最大优惠。
+     * @param maxExposureMinor 最大敞口，发券版本累计的已发敞口加上剩余发行量按当前单张最大优惠的敞口。
      *                         <b>建券页要显示它</b> —— 商家填「1000 张 × 20 元」时
      *                         心里想的是「发 1000 张」，不是「最多赔两万」
      * @param usedTimes  已核销次数（下单抵扣与到店核销都算，已回退的不算）。次卡按次、其余一张一次

@@ -516,6 +516,9 @@ import type { ReachScene } from "@shared/types";
 
 interface MockReachRow { memberNo: string; opened: boolean; orderedMinor: number | null; orderedAt: number | null }
 interface MockReachTask {
+  deliveryStatus?: "SCHEDULED" | "CANCELLED" | "SENT";
+  scheduledAt?: number; scheduleZone?: string;
+
   taskNo: string; scene: ReachScene; title: string; body: string; audienceDesc: string;
   sentAt: number; matched: number; skips: Array<{ reason: string; count: number }>; rows: MockReachRow[];
 }
@@ -559,9 +562,10 @@ export function reachTaskView(t: MockReachTask, withMembers: boolean) {
   const all = allMockMembers();
   const ordered = t.rows.filter((r) => r.orderedMinor != null);
   return {
+    deliveryStatus: t.deliveryStatus, scheduledAt: t.scheduledAt, scheduleZone: t.scheduleZone,
     taskNo: t.taskNo, scene: t.scene, title: t.title, body: t.body, audienceDesc: t.audienceDesc,
     sentAt: t.sentAt, statsUntil: t.sentAt + REACH_WINDOW, settled: Date.now() > t.sentAt + REACH_WINDOW,
-    matched: t.matched, sent: t.rows.length, pushed: t.rows.filter((r) => hasDeviceMock(r.memberNo)).length, skipped: t.matched - t.rows.length, skips: t.skips,
+    matched: t.matched, sent: t.rows.length, pushed: t.rows.filter((r) => hasDeviceMock(r.memberNo)).length, skipped: t.skips.reduce((n,s) => n + s.count, 0), skips: t.skips,
     opened: t.rows.filter((r) => r.opened).length, ordered: ordered.length,
     orderedAmountMinor: ordered.reduce((s, r) => s + (r.orderedMinor ?? 0), 0),
     orderedMembers: withMembers ? ordered.map((r) => {

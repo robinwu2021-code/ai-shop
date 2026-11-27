@@ -3,6 +3,10 @@ package ai.neargo.shop.scenario;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.promotion.entity.PmtCoupon;
+import ai.neargo.shop.promotion.dto.CouponVOs.CouponSaveCmd;
+import ai.neargo.shop.promotion.service.CouponAllocService;
+import ai.neargo.shop.promotion.service.CouponService;
+import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.CouponMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.CouponScopeMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.UserCouponMapper;
@@ -29,9 +33,44 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class CouponStoreScopeTest {
 
     @Autowired private CouponPort couponPort;
+    @Autowired private CouponService merchantCoupons;
+    @Autowired private CouponAllocService checkout;
+    @Autowired private JdbcTemplate jdbc;
     @Autowired private CouponMapper coupons;
     @Autowired private UserCouponMapper held;
     @Autowired private CouponScopeMapper scopes;
+
+    @Test
+    void editPreservesIssuedWalletPriceAndOriginalCheckoutScope() {
+        int n = PmtCouponFixture.next();
+        String entity = "M-VER-" + n;
+        String store = "S-VER-" + n;
+        String buyer = "U-VER-" + n;
+        StoreOwnerFixture.store(jdbc, entity, store);
+        var root = merchantCoupons.save(entity, center(null, "首版", 100L, "ALL", List.of()), "OP");
+        var first = merchantCoupons.receive(buyer, root.couponNo());
+
+        merchantCoupons.save(entity, center(root.couponNo(), "门店版", 250L, "STORE", List.of(store)), "OP");
+        var second = merchantCoupons.receive(buyer, root.couponNo());
+        var outside = List.of(new CouponPort.MerchantAmount(entity, 8000, "OTHER"));
+        assertThat(checkout.quoteOrdinary(buyer, first.userCouponNo(), outside).totalDiscount()).isEqualTo(100);
+        assertThat(merchantCoupons.held(buyer)).filteredOn(v -> v.userCouponNo().equals(first.userCouponNo()))
+                .singleElement().satisfies(v -> assertThat(v.coupon().benefitValue()).isEqualTo(100));
+        assertThat(merchantCoupons.myCoupons(buyer)).filteredOn(v -> v.userCouponNo().equals(first.userCouponNo()))
+                .singleElement().satisfies(v -> assertThat(v.title()).isEqualTo("首版"));
+
+        merchantCoupons.save(entity, center(root.couponNo(), "第三版", 500L, "ALL", List.of()), "OP");
+        assertThat(checkout.allocate(buyer, second.userCouponNo(),
+                List.of(new CouponPort.MerchantAmount(entity, 8000, store))).totalDiscount()).isEqualTo(250);
+        assertThatThrownBy(() -> checkout.allocate(buyer, second.userCouponNo(), outside))
+                .isInstanceOf(BizException.class).hasMessage(ErrorCode.COUPON_NOT_APPLICABLE.name());
+    }
+
+    private static CouponSaveCmd center(String no, String title, long amount, String scope, List<String> refs) {
+        return new CouponSaveCmd(no, title, PmtCoupon.CASH, amount, null, null, 0L, null,
+                scope, refs, null, PmtCoupon.RELATIVE, null, null, 7,
+                PmtCoupon.ISSUE_CENTER, PmtCoupon.REDEEM_ORDER, 1, 10, 2, null);
+    }
 
     @Test
     @DisplayName("★★★ 门店券：只减指定门店出货的那一组；别家店出货的单当场拒")

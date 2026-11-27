@@ -55,6 +55,27 @@ class LegacyCouponIssuanceAssessorTest {
         assertThat(overflow.blockers()).contains("ISSUANCE_EXPOSURE_OVERFLOW");
         assertThat(overflow.lifetimeIssuedExposureMinor()).isNull();
     }
+    @Test void multipleIssuedVersionsReconcileSourceExposureAndRequireAnOriginalCap() {
+        var manifest=body();
+        var root=(ObjectNode)manifest.path("template");
+        root.put("templateVersionNo","V2").put("issuedExposureMinor",899);
+        ((ObjectNode)manifest.path("instances").get(0)).put("templateVersionNo","V1");
+        ((ObjectNode)manifest.path("instances").get(1)).put("templateVersionNo","V2");
+        var assessor=new LegacyCouponIssuanceAssessor();
+        var old=new LegacyCouponMigrationNormalizer.InstancePlan("I1",false,"UNUSED",3,at,at.plusSeconds(100),rule(100));
+        var current=new LegacyCouponMigrationNormalizer.InstancePlan("I2",false,"UNUSED",3,at,at.plusSeconds(100),rule(200));
+        assertThat(assessor.assess(manifest,rule(200),List.of(old,current),at).blockers()).contains("ISSUED_EXPOSURE_MISMATCH");
+        root.put("issuedExposureMinor",900);
+        var complete=assessor.assess(manifest,rule(200),List.of(old,current),at);
+        assertThat(complete.blockers()).isEmpty();
+        assertThat(complete.lifetimeIssuedExposureMinor()).isEqualTo(900);
+        var unbounded=new EntitlementDefinition("old","ORDER_COUPON","MERCHANT","CNY","PERCENT",9000L,null,null,
+                null,null,"COUNT",3,null,null,null,List.of("TARGETED"));
+        var missing=new LegacyCouponMigrationNormalizer.InstancePlan("I1",false,"UNUSED",3,at,at.plusSeconds(100),unbounded);
+        assertThat(assessor.assess(manifest,rule(200),List.of(missing,current),at).blockers())
+                .contains("FINITE_ISSUANCE_EXPOSURE_UNAVAILABLE");
+    }
+
     @Test void historicalRecipientCountsCannotBeResetToBypassPerUserLimits() {
         var body=body();
         ((ObjectNode)body.path("template")).put("perUserLimit",1);

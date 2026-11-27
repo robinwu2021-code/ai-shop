@@ -41,7 +41,7 @@ public class LegacyCouponTemplateManagementServiceImpl implements LegacyCouponTe
     public Snapshot save(CatalogScope scope,Reference ref,DefinitionChange change,String key) {
         verify(scope,ref);var d=change.definition();rules.validate(d);
         if(!"ORDER_COUPON".equals(d.kind()) || !"MERCHANT".equals(d.funder()) || !"CNY".equals(d.currency())
-                || !"COUNT".equals(d.usageModel()) || !"ALL".equals(d.redemptionScope().mode())
+                || !"COUNT".equals(d.usageModel()) || !java.util.Set.of("ALL","STORES").contains(d.redemptionScope().mode())
                 || !java.util.Set.of("CASH","PERCENT").contains(d.benefitMode()) || (d.minQty()!=null && d.minQty()>1))
             throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if(d.totalUnits()==null || d.totalUnits()<=0 || ("PERCENT".equals(d.benefitMode()) && d.benefitCapMinor()==null)

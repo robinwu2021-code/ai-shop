@@ -77,11 +77,22 @@ public class LegacyCouponUseWriter {
         }
         if(original.outcome()!=Outcome.COMMIT) conflict();
         settleLocked(ctx,row,fact,original);
+        boolean partial = reversal.reason() == ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.ReverseReason.PARTIAL_REFUND;
         if(!"COMMITTED".equals(row.getStatus()) || !Objects.equals(row.getSourceOrderNo(),reversal.orderNo())
-                || row.getDiscountMinor()!=reversal.discountMinor() || !row.getCurrency().equals(reversal.currency())
+                || (partial ? row.getDiscountMinor()<reversal.discountMinor() : row.getDiscountMinor()!=reversal.discountMinor()) || !row.getCurrency().equals(reversal.currency())
                 || !row.getEconomicHash().equals(reversal.economicHash())
                 || !row.getCheckoutNo().equals(reversal.checkoutNo()) || !row.getOperationNo().equals(reversal.operationNo())
                 || !command.decisionNo().equals(reversal.decisionNo())) conflict();
+        if (partial) {
+            if (row.getPartialReturnSnapshot() != null) {
+                var previous = json.readValue(row.getPartialReturnSnapshot(), Reversal.class);
+                if (!reversal.parts().containsAll(previous.parts())) conflict();
+            }
+            row.setPartialReturnSnapshot(json.writeValueAsString(reversal));
+            update(ctx,row);
+            usageRecorder.record(ctx,row,false);
+            return view(row,json);
+        }
         var asset=asset(ctx,row);
         var origin=ledger.selectOne(Wrappers.<ai.neargo.shop.pay.entitlement.entity.EntLedger>lambdaQuery()
                 .eq(ai.neargo.shop.pay.entitlement.entity.EntLedger::getTenantNo,ctx.tenantNo())

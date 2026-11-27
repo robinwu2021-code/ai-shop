@@ -23,8 +23,7 @@ public class InternalEntitlementMigrationPlanEndpoint {
     @PostMapping(PayInternalPaths.MIGRATION_PLAN)
     public ResponseEntity<?> plan(@RequestBody PayMigrationRequests.Plan request,
             @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String supplied) {
-        return InternalServiceResponses.invoke(token,supplied,()->plans.prepare(request.scope(),request.command().stageNo(),
-                request.command().reason(),request.requestKey()));
+        return InternalServiceResponses.invoke(token,supplied,()->plans.prepare(request.scope(),request.command(),request.requestKey()));
     }
     @PostMapping(PayInternalPaths.MIGRATION_PLAN_PREPARED)
     public ResponseEntity<?> prepared(@RequestBody PayMigrationRequests.PlanGet request,

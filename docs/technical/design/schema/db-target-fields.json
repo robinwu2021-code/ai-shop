@@ -1688,26 +1688,26 @@
 [
 "grant_no",
 "varchar(64)",
-"发放号；一次充值也是一次发放，充值号即发放号",
+"发放号",
 "原有"
 ],
 [
 "grant_type",
 "varchar(16)",
-"发放类型：ISSUE 赠送发放（定向 / 活动 / 领取）/ PAID_CARD 付费购卡 / RECHARGE 储值充值",
-"并入自 sv_recharge"
+"ISSUE 赠送发放（定向、活动、领取）/ PAID_CARD 付费购卡",
+"新增"
+],
+[
+"source_type",
+"varchar(24)",
+"BATCH 批量 / CLAIM 领取 / ORDER 订单 / ACTIVITY 活动",
+"新增"
 ],
 [
 "batch_no",
 "varchar(64)",
 "所属批次号，单发为空",
 "原有"
-],
-[
-"source_type",
-"varchar(24)",
-"来源业务类型：BATCH 批量 / CLAIM 领取 / ORDER 订单 / ACTIVITY 活动 / PLAN 储值方案",
-"并入自 sv_recharge"
 ],
 [
 "source_no",
@@ -1724,20 +1724,8 @@
 [
 "template_version_no",
 "varchar(64)",
-"发放所用卡券模板版本号（储值即储值卡方案版本）",
+"发放所用卡券模板版本号",
 "原有"
-],
-[
-"activity_no",
-"varchar(64)",
-"关联活动号",
-"并入自 sv_recharge"
-],
-[
-"activity_version_no",
-"varchar(64)",
-"关联活动版本号",
-"并入自 sv_recharge"
 ],
 [
 "user_no",
@@ -1752,57 +1740,15 @@
 "原有"
 ],
 [
-"store_no",
-"varchar(64)",
-"实际办理门店",
-"并入自 sv_recharge"
-],
-[
-"store_name",
-"varchar(100)",
-"办理门店名快照",
-"并入自 sv_recharge"
-],
-[
-"issuer_no",
-"varchar(64)",
-"储值：发行方号",
-"并入自 sv_recharge"
-],
-[
-"issuer_version_no",
-"varchar(64)",
-"储值：发行方版本号（结算与清分口径）",
-"并入自 sv_recharge"
-],
-[
-"collection_entity_no",
-"varchar(64)",
-"储值：收款主体",
-"并入自 sv_recharge"
-],
-[
-"settlement_entity_no",
-"varchar(64)",
-"储值：结算责任主体",
-"并入自 sv_recharge"
-],
-[
 "reservation_no",
 "varchar(64)",
 "活动参与预留号（pmt_reservation）",
 "原有"
 ],
 [
-"quota_reservation_no",
-"varchar(64)",
-"发行额度预留号（pmt_reservation）",
-"并入自 sv_recharge"
-],
-[
 "paid_fact_ref",
 "varchar(64)",
-"付费购卡或线上充值的支付事实号",
+"付费购卡的支付事实号",
 "原有"
 ],
 [
@@ -1810,78 +1756,6 @@
 "int",
 "本次发放的卡券张数",
 "原有"
-],
-[
-"currency",
-"varchar(8)",
-"币种",
-"并入自 sv_recharge"
-],
-[
-"principal_minor",
-"bigint",
-"储值：应实收本金",
-"并入自 sv_recharge"
-],
-[
-"bonus_minor",
-"bigint",
-"储值：赠金",
-"并入自 sv_recharge"
-],
-[
-"collection_method",
-"varchar(16)",
-"储值线下收款方式：CASH 现金 / TRANSFER 转账",
-"并入自 sv_recharge"
-],
-[
-"actual_amount_minor",
-"bigint",
-"储值：人工确认的实际收款额",
-"并入自 sv_recharge"
-],
-[
-"receipt_ref",
-"varchar(128)",
-"收款凭据引用（文件编号），不对消费者展示",
-"并入自 sv_recharge"
-],
-[
-"receipt_digest",
-"char(64)",
-"收款凭据摘要，防同一凭据重复入账",
-"并入自 sv_recharge"
-],
-[
-"operator_no",
-"varchar(64)",
-"经办人",
-"并入自 sv_recharge"
-],
-[
-"received_by",
-"varchar(64)",
-"确认收款的有权人员",
-"并入自 sv_recharge"
-],
-[
-"received_at",
-"datetime(3)",
-"实收确认时间",
-"并入自 sv_recharge"
-],
-[
-"confirmation_note",
-"varchar(500)",
-"人工核验备注，不返回消费者",
-"并入自 sv_recharge"
-],
-[
-"expires_at",
-"datetime(3)",
-"未实收的截止时间",
-"并入自 sv_recharge"
 ],
 [
 "prepared_snapshot",
@@ -1892,7 +1766,7 @@
 [
 "status",
 "varchar(16)",
-"状态：PREPARED 已准备 / WAIT_COLLECTION 待收款 / RECEIVED 已收款 / COMMITTED 已发放到账 / ABORTED 已终止 / CANCELLED 未收款取消 / REJECTED 驳回 / EXCEPTION 异常",
+"状态：PREPARED 已准备 / COMMITTED 已发放 / ABORTED 已终止 / REJECTED 驳回 / EXCEPTION 异常",
 "原有"
 ],
 [
@@ -1904,7 +1778,7 @@
 [
 "committed_at",
 "datetime(3)",
-"实际发放 / 到账时间",
+"实际发放时间",
 "原有"
 ],
 [
@@ -1912,28 +1786,15 @@
 "varchar(64)",
 "跳过或失败原因码",
 "原有"
-],
-[
-"cancellation_reason",
-"varchar(500)",
-"未实收取消原因",
-"并入自 sv_recharge"
-],
-[
-"cancelled_at",
-"datetime(3)",
-"未实收取消时间",
-"并入自 sv_recharge"
 ]
 ],
 "keys": [
 "发放号唯一",
 "来源类型 + 来源单号 + 模板版本唯一（同一来源同一利益项只发一次）",
 "批次号索引",
-"用户 + 发放时间索引",
-"收款凭据摘要唯一（非空时）"
+"用户 + 发放时间索引"
 ],
-"remark": "sv_recharge 的充值单并入为 grant_type=RECHARGE 的发放行，customer_no 统一用 user_no；原 request_id、payload_hash 为幂等技术件未保留。"
+"remark": "券和次卡发放由本表记录；充值来源、收款确认和到账状态由 sv_recharge 持有。"
 },
 "ent_instance": {
 "fields": [
@@ -1946,7 +1807,7 @@
 [
 "instance_no",
 "varchar(64)",
-"持有卡券号（一张券、一张次卡或一笔储值批次）",
+"持有卡券号（一张券或一张次卡）",
 "原有"
 ],
 [
@@ -1980,40 +1841,10 @@
 "原有"
 ],
 [
-"store_no",
-"varchar(64)",
-"归属 / 办理门店；储值为充值门店",
-"并入自 sv_lot"
-],
-[
 "kind",
 "varchar(24)",
-"类别：ORDER_COUPON 优惠券 / STORE_EXCHANGE 兑换券 / PAID_CARD 次卡 / STORED_VALUE 储值",
+"类别：ORDER_COUPON 优惠券 / STORE_EXCHANGE 兑换券 / PAID_CARD 次卡",
 "原有"
-],
-[
-"issuer_no",
-"varchar(64)",
-"储值：发行方号",
-"并入自 sv_account"
-],
-[
-"issuer_version_no",
-"varchar(64)",
-"储值：发行方版本号",
-"并入自 sv_account"
-],
-[
-"collection_entity_no",
-"varchar(64)",
-"储值：收款主体",
-"并入自 sv_lot"
-],
-[
-"settlement_entity_no",
-"varchar(64)",
-"储值：结算责任主体",
-"并入自 sv_lot"
 ],
 [
 "status",
@@ -2040,36 +1871,6 @@
 "原有"
 ],
 [
-"currency",
-"varchar(8)",
-"储值币种",
-"并入自 sv_account"
-],
-[
-"principal_minor",
-"bigint",
-"储值：本金余额",
-"并入自 sv_account"
-],
-[
-"bonus_minor",
-"bigint",
-"储值：赠金余额",
-"并入自 sv_account"
-],
-[
-"held_principal_minor",
-"bigint",
-"储值：本金冻结额",
-"并入自 sv_account"
-],
-[
-"held_bonus_minor",
-"bigint",
-"储值：赠金冻结额",
-"并入自 sv_account"
-],
-[
 "order_no",
 "varchar(64)",
 "线上抵扣占用它的订单号，取消订单按此退回",
@@ -2078,7 +1879,7 @@
 [
 "effective_from",
 "datetime(3)",
-"实际起算时间；首用激活前为空；储值为入账时间",
+"实际起算时间；首用激活前为空",
 "原有"
 ],
 [
@@ -2122,10 +1923,9 @@
 "持有卡券号唯一",
 "发放号 + 第几张唯一",
 "用户 + 类别 + 状态索引（券包）",
-"用户 + 发行方 + 状态索引（储值余额汇总）",
 "订单号索引"
 ],
-"remark": "储值按「每笔充值一张实例」落行（即原 sv_lot），原 sv_account 的账户余额由同一用户同一发行方的实例汇总得出，不再单存账户行；若前台需要稳定的储值账户号，需另议是否保留账户头。到店核销码改由 ent_code_token 承担，不再存 redeem_code。"
+"remark": "到店核销码由 ent_code_token 承担。储值余额在 sv_account，充值余额批次在 sv_lot。"
 },
 "ent_issue_batch": {
 "fields": [
@@ -2268,13 +2068,13 @@
 [
 "entry_no",
 "varchar(64)",
-"流水号（原储值凭证号并入此列）",
+"流水号",
 "原有"
 ],
 [
 "instance_no",
 "varchar(64)",
-"卡券实例号（储值为批次实例）",
+"卡券实例号",
 "原有"
 ],
 [
@@ -2286,14 +2086,14 @@
 [
 "biz_type",
 "varchar(24)",
-"业务类型：GRANT 发放 / RECHARGE 充值入账 / HOLD 预占 / USE 核销 / CONSUME 储值消费 / RELEASE 释放 / REVERSE 回补 / EXPIRE 过期 / FREEZE 冻结",
+"业务类型：GRANT 发放 / HOLD 预占 / USE 核销 / RELEASE 释放 / REVERSE 回补 / EXPIRE 过期 / FREEZE 冻结",
 "原有"
 ],
 [
 "biz_no",
 "varchar(64)",
 "来源业务单号：发放号、使用意图号、回补号",
-"并入自 sv_voucher"
+"原 biz_key"
 ],
 [
 "units_delta",
@@ -2320,36 +2120,6 @@
 "原有"
 ],
 [
-"currency",
-"varchar(8)",
-"储值币种",
-"新增"
-],
-[
-"principal_delta",
-"bigint",
-"储值本金变化",
-"并入自 sv_voucher"
-],
-[
-"bonus_delta",
-"bigint",
-"储值赠金变化",
-"并入自 sv_voucher"
-],
-[
-"after_principal_minor",
-"bigint",
-"记账后本金余额",
-"并入自 sv_voucher"
-],
-[
-"after_bonus_minor",
-"bigint",
-"记账后赠金余额",
-"并入自 sv_voucher"
-],
-[
 "bucket_key",
 "varchar(64)",
 "每日计数分配引用（pmt_quota 的周期行）",
@@ -2373,7 +2143,7 @@
 "实例号 + 记账序号唯一",
 "业务类型 + 来源业务单号 + 实例号唯一（每个动作只记一笔）"
 ],
-"remark": "sv_statement 是展示投影，由本表加 ent_usage 查询得出，不建表；sv_posting_line 的「顾客请求权 / 商家义务」借贷分录属结算口径，应在账务结算库按本表流水生成，不在此重复。biz_key 改由 biz_type + biz_no + instance_no 唯一表达。"
+"remark": "此表记录券与次卡变化；储值金额先记 sv_voucher，再以 sv_entry 追到每个批次。"
 },
 "ent_template": {
 "fields": [
@@ -2594,12 +2364,6 @@
 "并入自 ent_template_version"
 ],
 [
-"redemption_scope",
-"json",
-"可用范围：门店、类目、商品、服务项目",
-"并入自 pmt_coupon_scope"
-],
-[
 "allowed_issue_modes",
 "json",
 "允许的发放方式：CENTER 领券中心 / TARGETED 定向 / ACTIVITY 活动发 / PAID_ORDER 付费购买 / CODE 发码",
@@ -2654,52 +2418,107 @@
 "租户 + 模板号 + 状态索引，取当前生效版",
 "主体 + 类别 + 状态索引"
 ],
-"remark": "每行一版后，原 current_version_no、draft_snapshot 由 status 行取代；发行量、每人限领、预算移到 pmt_quota。redemption_scope 若需反查「这个商品能用哪些券」，应拆成范围明细表，清单里没有。pmt_recharge_intent 是一次储值的来源单，按性质属于 ent_grant 而非模板，此处未搬；pmt_sv_release_link 的发布链路只留审核单号与结果。"
+"remark": "当前版本和草稿由版本状态表达。发行量、每人限领和预算在 pmt_quota，适用范围在 pmt_activity_scope，所有者为 ENT_TEMPLATE。储值充值事实进入 sv_recharge；发布审核单号和结果保留于模板。"
 },
-"ent_template_scope": {
+"ent_use_reversal": {
 "fields": [
 [
-"template_no",
+"tenant_no",
+"varchar(32)",
+"租户",
+"原有"
+],
+[
+"reverse_no",
 "varchar(64)",
-"卡券模板",
-"新增"
+"反向操作号",
+"原有"
 ],
 [
-"version_no",
-"int",
-"模板的哪一版",
-"新增"
+"usage_no",
+"varchar(64)",
+"原成功使用明细",
+"原有"
 ],
 [
-"scope_type",
+"payload_hash",
+"char(64)",
+"原命令摘要",
+"原有"
+],
+[
+"command_snapshot",
+"json",
+"不可变回补来源与决策",
+"原有"
+],
+[
+"origin_operation_no",
+"varchar(64)",
+"原成功使用",
+"原有"
+],
+[
+"instance_no",
+"varchar(64)",
+"原用户券",
+"原有"
+],
+[
+"source_type",
 "varchar(16)",
-"范围类型：GOODS 商品 / SKU / CATEGORY 类目 / STORE 门店 / ALL 全部",
-"新增"
+"来源类型 ORDER_CANCEL / AFTER_SALE",
+"V711"
 ],
 [
-"target_no",
+"source_no",
 "varchar(64)",
-"范围对象的编号；全部时为空",
-"新增"
+"订单取消取订单号，售后退款取售后号",
+"V711"
 ],
 [
-"include",
-"tinyint",
-"1 = 适用，0 = 排除",
-"新增"
+"after_sale_no",
+"varchar(64)",
+"权威售后号，订单取消时为空",
+"原有"
 ],
 [
-"sort_no",
+"source_decision_no",
+"varchar(64)",
+"源补偿决策",
+"原有"
+],
+[
+"units",
 "int",
-"顺序",
-"新增"
+"本次恢复使用次数",
+"原有"
+],
+[
+"discount_minor",
+"bigint",
+"原优惠的本次回补归属",
+"原有"
+],
+[
+"occurred_at",
+"datetime(3)",
+"实际应用时间",
+"原有"
+],
+[
+"source_stage",
+"varchar(16)",
+"同一售后已记金额，延后整单退结时另记 CLOSURE",
+"V719"
 ]
 ],
 "keys": [
-"模板 + 版本 + 范围类型 + 对象唯一",
-"范围类型 + 对象，反查某个商品能用哪些券"
-],
-"remark": "取代模板上原来那段适用范围的内容。"
+"租户 + 冲回号唯一",
+"租户 + 来源类型 + 来源号 + 原操作号 + 实例号 + 来源阶段唯一",
+"租户 + 原核销号索引",
+"恢复次数和冲回金额均非负"
+]
 },
 "ent_usage": {
 "fields": [
@@ -2716,15 +2535,9 @@
 "原有"
 ],
 [
-"usage_type",
-"varchar(16)",
-"记录类型：USE 使用 / REVERSAL 回补（订单取消或售后恢复）",
-"并入自 ent_use_reversal"
-],
-[
 "promo_type",
 "varchar(16)",
-"优惠来源：ACTIVITY 活动优惠 / ENTITLEMENT 卡券（券、次卡、储值）",
+"优惠来源：ACTIVITY 活动优惠 / ENTITLEMENT 卡券（券、次卡）",
 "并入自 pmt_apply"
 ],
 [
@@ -2743,25 +2556,13 @@
 "instance_no",
 "varchar(64)",
 "使用的卡券实例号，ENTITLEMENT 时有值",
-"并入自 ent_use_reversal"
+"权益实例关联"
 ],
 [
 "operation_no",
 "varchar(64)",
 "原使用意图号",
 "原有"
-],
-[
-"origin_usage_no",
-"varchar(64)",
-"REVERSAL 时指向的原使用记录",
-"并入自 ent_use_reversal"
-],
-[
-"after_sale_no",
-"varchar(64)",
-"REVERSAL 时对应的售后单号",
-"并入自 ent_use_reversal"
 ],
 [
 "user_no",
@@ -2790,7 +2591,7 @@
 [
 "asset_kind",
 "varchar(24)",
-"资产类别：ORDER_COUPON / STORE_EXCHANGE / PAID_CARD / STORED_VALUE，活动优惠为空",
+"资产类别：ORDER_COUPON / STORE_EXCHANGE / PAID_CARD，活动优惠为空",
 "原有"
 ],
 [
@@ -2808,13 +2609,13 @@
 [
 "units",
 "int",
-"核销次数（回补为恢复次数）",
+"原核销次数",
 "原有"
 ],
 [
 "amount_minor",
 "bigint",
-"抵扣金额：储值支付额或优惠额，兑换类为 0",
+"抵扣金额：优惠额，兑换类为 0",
 "原有"
 ],
 [
@@ -2862,7 +2663,7 @@
 [
 "status",
 "varchar(16)",
-"状态：COMMITTED 已生效 / REVERTED 已被回补",
+"订单券核销状态：COMMITTED、PARTIAL_REVERSED、REVERSED；活动优惠保留原撤销状态",
 "原有"
 ],
 [
@@ -2911,7 +2712,7 @@
 "allocation_no",
 "varchar(64)",
 "分摊号",
-"并入自 sv_hold_allocation"
+"原有"
 ],
 [
 "operation_no",
@@ -2922,7 +2723,7 @@
 [
 "instance_no",
 "varchar(64)",
-"被使用的卡券实例号（储值为批次实例）",
+"被使用的卡券实例号",
 "原有"
 ],
 [
@@ -2954,18 +2755,6 @@
 "bigint",
 "优惠券本次折扣额",
 "原有"
-],
-[
-"principal_minor",
-"bigint",
-"储值本次占用本金",
-"并入自 sv_hold_allocation"
-],
-[
-"bonus_minor",
-"bigint",
-"储值本次占用赠金",
-"并入自 sv_hold_allocation"
 ],
 [
 "items_allocation",
@@ -3008,7 +2797,7 @@
 [
 "intent_type",
 "varchar(16)",
-"意图类型：PREVIEW 预览 / QUOTE 报价 / USE 核销 / CLAIM 领取",
+"预览、报价或核销；领取按发放来源处理",
 "并入自 ent_use_proposal"
 ],
 [
@@ -3050,7 +2839,7 @@
 [
 "asset_kind",
 "varchar(24)",
-"资产类别：ORDER_COUPON 优惠券 / STORE_EXCHANGE 兑换券 / PAID_CARD 次卡 / STORED_VALUE 储值",
+"资产类别：ORDER_COUPON 优惠券 / STORE_EXCHANGE 兑换券 / PAID_CARD 次卡",
 "原有"
 ],
 [
@@ -3062,7 +2851,7 @@
 [
 "command_snapshot",
 "json",
-"冻结的核销 / 预览 / 领取命令及来源事实",
+"冻结的核销或预览命令及来源事实",
 "原有"
 ],
 [
@@ -3100,14 +2889,38 @@
 "varchar(64)",
 "成功后的使用记录号",
 "原有"
+],
+[
+"source_key",
+"char(64)",
+"原使用来源",
+"原有"
+],
+[
+"active_source_key",
+"char(64)",
+"在途来源互斥，释放时清空",
+"原有"
+],
+[
+"settled_source_key",
+"char(64)",
+"已确认来源唯一",
+"原有"
+],
+[
+"payload_hash",
+"char(64)",
+"重复操作内容摘要",
+"原有"
 ]
 ],
 "keys": [
-"意图号唯一",
-"来源类型 + 来源单号 + 意图类型索引（同一来源在途意图互斥）",
+"租户 + 意图号唯一",
+"租户分别与 source_key、active_source_key、settled_source_key 组成三个唯一键",
 "状态 + 超时时刻索引"
 ],
-"remark": "active_source_key / settled_source_key / payload_hash 等互斥与幂等摘要属技术件未保留，同源互斥改由来源类型 + 来源单号 + 状态在服务内判断；CLAIM 类意图（原 pmt_benefit_intent）实际是发放来源，与核销共表是按清单定的。"
+"remark": "领取或发放事实归 ent_grant；批次来源归 ent_issue_batch。使用互斥与请求摘要随原意向保留。"
 },
 "fnb_banquet_attendance_confirmation": {
 "fields": [
@@ -11644,9 +11457,9 @@
 ]
 ],
 "keys": [
-"版本号唯一",
-"规则号 + 版本号唯一",
-"租户 + 范围类型 + 范围编号 + 状态索引，取当前生效版本"
+"租户 + 版本号唯一",
+"租户 + 规则号 + 版本号索引",
+"租户 + 范围类型 + 范围编号 + 状态 + 生效起点索引"
 ],
 "remark": "等级档位放 levels_json：每版的档位随版本整体定格、不单独改状态，故不拆表；会员上记 grade_code 与 level_rule_version_no。"
 },
@@ -11667,7 +11480,7 @@
 [
 "scope_type",
 "varchar(16)",
-"会员范围类型：ENTITY 按主体 / BRAND 按品牌 / STORE 按门店（某店自己的往来与分层）",
+"运营身份范围：ENTITY 主体、BRAND 品牌、STORE 独立门店",
 "并入自 mbr_scope_member"
 ],
 [
@@ -11699,12 +11512,6 @@
 "varchar(64)",
 "首次进来的门店号，冗余自来源明细，列表不回表",
 "原有"
-],
-[
-"is_first_store",
-"tinyint",
-"STORE 范围行：这家店是否是他首次进来的门店",
-"并入自 mbr_member_store"
 ],
 [
 "first_order_at",
@@ -11745,7 +11552,7 @@
 [
 "level",
 "varchar(16)",
-"经营分层：NEW 新客 / REGULAR 常客 / LOYAL 忠诚 / SLEEPING 沉睡；STORE 范围行是该店自己的分层",
+"该身份的经营分层：NEW 新客、REGULAR 常客、LOYAL 忠诚、SLEEPING 沉睡",
 "原有"
 ],
 [
@@ -11820,7 +11627,7 @@
 "租户 + 范围类型 + 范围编号 + 人档号唯一（同一人在同一范围下只有一个会员身份）",
 "主体 + 分层、主体 + 最近下单时间索引，用于分层筛选与列表"
 ],
-"remark": "会员与门店 / 品牌范围的关系合成这一张，靠 scope_type 区分，原 mbr_member_store 的门店行变为 scope_type=STORE 的行；sv_customer_identity 的人档与账号绑定由平台人档承担，不再在此存 customer_no / user_no。"
+"remark": "范围身份按租户、范围和人档唯一。多店主体的门店消费与门店分层在 mbr_store_profile，按原会员号可追溯；按来源重算沿用原主体和门店口径。"
 },
 "mbr_member_source": {
 "fields": [
@@ -12229,11 +12036,43 @@
 "varchar(32)",
 "租户号",
 "原有"
+],
+[
+"delivery_status",
+"varchar(16)",
+"任务投递状态",
+"新增"
+],
+[
+"scheduled_at",
+"bigint",
+"预约到期时间戳",
+"新增"
+],
+[
+"schedule_zone",
+"varchar(64)",
+"创建预约时的门店时区",
+"新增"
+],
+[
+"request_key",
+"varchar(64)",
+"同主体预约重试键",
+"新增"
+],
+[
+"request_hash",
+"char(64)",
+"同键请求内容校验",
+"新增"
 ]
 ],
 "keys": [
 "任务号唯一",
-"主体 + 发送时间索引"
+"主体 + 发送时间索引",
+"主体 + 请求键唯一",
+"任务状态 + 到期时间索引"
 ]
 },
 "mbr_segment": {
@@ -12372,11 +12211,79 @@
 "datetime(3)",
 "在本店最近一次接受服务的时间",
 "原有"
+],
+[
+"member_no",
+"varchar(64)",
+"往来所属原主体会员号，仅有门店私有资料时可空",
+"并入自 mbr_member_store"
+],
+[
+"entity_no",
+"varchar(64)",
+"该会员所属主体",
+"并入自 mbr_member_store"
+],
+[
+"legacy_member_store_id",
+"bigint",
+"历史 mbr_member_store 行号，供回溯",
+"并入自 mbr_member_store"
+],
+[
+"first_order_at",
+"bigint",
+"该店首单时间，毫秒",
+"并入自 mbr_member_store"
+],
+[
+"last_order_at",
+"bigint",
+"该店末单时间，毫秒",
+"并入自 mbr_member_store"
+],
+[
+"order_count",
+"int",
+"该店累计订单数",
+"并入自 mbr_member_store"
+],
+[
+"total_spent_minor",
+"bigint",
+"该店累计消费，最小货币单位",
+"并入自 mbr_member_store"
+],
+[
+"d90_order_count",
+"int",
+"该店近 90 天订单数",
+"并入自 mbr_member_store"
+],
+[
+"d90_spent_minor",
+"bigint",
+"该店近 90 天消费，最小货币单位",
+"并入自 mbr_member_store"
+],
+[
+"level",
+"varchar(16)",
+"在该店的经营分层",
+"并入自 mbr_member_store"
+],
+[
+"is_first_store",
+"tinyint",
+"该店是否为首次来源门店",
+"并入自 mbr_member_store"
 ]
 ],
 "keys": [
-"门店档案号唯一",
-"门店 + 顾客人档号唯一"
+"租户 + 门店档案号唯一",
+"租户 + 门店 + 顾客人档号唯一",
+"租户 + 原会员号 + 门店唯一",
+"租户 + 原门店往来行号唯一"
 ]
 },
 "mbr_store_view": {
@@ -17793,6 +17700,12 @@
 "varchar(128)",
 "外部渠道售后行号",
 "并入自 ord_channel_after_sale_line"
+],
+[
+"coupon_return_minor",
+"bigint",
+"该售后结案退件对应的原券折抵分",
+"新增"
 ]
 ],
 "keys": [
@@ -19500,6 +19413,12 @@
 "json",
 "行业扩展：餐饮的座位号、道次、口味/套餐版本；美业的服务时长；卡项的模板版本与权益规则快照等",
 "并入自 fnb_order_line"
+],
+[
+"coupon_share_minor",
+"bigint",
+"原订单行承担的券折抵分，历史缺证为空",
+"新增"
 ]
 ],
 "keys": [
@@ -19906,6 +19825,24 @@
 "bigint",
 "应付金额封存时间（毫秒时间戳）：收银发起支付时封存，封存后禁止改价",
 "并入自 ord_ent_payment_seal"
+],
+[
+"pos_activity_facts_version",
+"int",
+"POS 成交来源契约版本，历史单可空",
+"新增"
+],
+[
+"pos_member_no",
+"varchar(64)",
+"下单时选定并核对的会员号",
+"新增"
+],
+[
+"pos_member_at_payment",
+"boolean",
+"支付时点的会员资格",
+"新增"
 ]
 ],
 "keys": [
@@ -20734,6 +20671,12 @@
 "datetime(3)",
 "预占权益或出资的过期时间",
 "并入自 ord_pricing_funding_source"
+],
+[
+"order_item_id",
+"bigint",
+"确认成交后绑定原交易行，承接 POS 活动分摊",
+"新增"
 ]
 ],
 "keys": [
@@ -29376,60 +29319,71 @@
 "原有"
 ],
 [
-"activity_no",
+"owner_type",
+"varchar(16)",
+"ACTIVITY 活动 / ENT_TEMPLATE 卡券模板 / ENROLLMENT 活动报名",
+"新增"
+],
+[
+"owner_no",
 "varchar(64)",
-"活动号",
-"并入自 pmt_activity_goods"
+"所属活动、卡券模板或报名的业务编号",
+"归并活动号、模板号和报名号"
 ],
 [
 "version_no",
 "varchar(64)",
-"活动版本号，范围随版本定格",
+"所属对象的版本标识，按不透明字符串存取和匹配",
 "原有"
-],
-[
-"enrollment_no",
-"varchar(64)",
-"报名单号；商家报名平台活动时报的商品范围才有值",
-"并入自 pmt_enrollment_goods"
-],
-[
-"entity_no",
-"varchar(64)",
-"商家主体号",
-"并入自 pmt_activity_goods"
 ],
 [
 "scope_dimension",
 "varchar(16)",
-"范围维度：TARGET 适用对象（门店、商品、类目）/ AUDIENCE 适用人群",
+"TARGET 适用对象 / AUDIENCE 适用人群",
 "并入自 pmt_activity_audience"
 ],
 [
 "scope_kind",
 "varchar(24)",
-"范围类型：TARGET 下为 STORE 门店 / GOODS 商品 / CATEGORY 类目 / ALL 全部；AUDIENCE 下为 TAG 标签 / LEVEL 会员分层 / SOURCE 来源 / SEGMENT 人群 / NON_MEMBER 非本店会员",
-"原有"
+"按所属类型和范围维度限定，见下表",
+"扩展原字段"
 ],
 [
 "ref_no",
-"varchar(64)",
-"范围对象编号：门店号、商品号、类目号、标签号、分层、人群号；ALL 固定为 *",
+"varchar(128)",
+"范围对象引用；ALL 固定为 `*`，BRAND_STORES 引用不可变的范围来源",
 "原有"
 ],
 [
+"included",
+"tinyint",
+"默认 1 = 纳入；卡券模板范围可取 0 = 排除",
+"新增"
+],
+[
+"sort_no",
+"int",
+"同一对象版本内的展示顺序，默认 0",
+"新增"
+],
+[
 "rule_snapshot",
-"text",
-"SEGMENT 行的人群条件快照；为空按人群号当场计算",
+"json",
+"仅 SEGMENT 可填写分群条件快照",
 "并入自 pmt_activity_audience"
+],
+[
+"activity_version_no",
+"varchar(64)",
+"报名当时可核实的平台活动发布版本，其他所属类型或无发布版本时为空",
+"新增"
 ]
 ],
 "keys": [
-"版本号 + 维度 + 范围类型 + 对象编号唯一",
-"范围类型 + 对象编号索引，反查某商品在哪些活动里",
-"报名单号索引"
+"租户 + 所属类型 + 所属对象 + 版本 + 维度 + 范围类型 + 对象引用唯一",
+"租户 + 维度 + 范围类型 + 对象引用 + 所属类型建索引，供反查"
 ],
-"remark": "人群维度一行都没有表示对所有人生效。"
+"remark": "TARGET 全部用 ALL 与 `*` 明确表达。没有 AUDIENCE 行表示人群不限。BRAND_STORES 只引用不可变的品牌范围来源，保留当时的门店范围，使用时按该来源求值。合并前须逐项对账已发布版本与发放快照。[首批测试结构](../../../../../backend/shop-app/src/test/resources/db/member-marketing/V1__marketing_scope.sql)"
 },
 "pmt_activity_version": {
 "fields": [
@@ -29778,6 +29732,12 @@
 "varchar(32)",
 "租户号",
 "原有"
+],
+[
+"scope_version_no",
+"varchar(64)",
+"当前选品的报名提交修订号，历史未记录修订的报名沿用原商品明细",
+"新增"
 ]
 ],
 "keys": [
@@ -30269,7 +30229,7 @@
 ],
 [
 "source_type",
-"varchar(24)",
+"varchar(64)",
 "来源业务类型：ORDER 订单 / RECHARGE 充值 / CLAIM 领取",
 "新增"
 ],
@@ -30392,12 +30352,24 @@
 "varchar(64)",
 "来源侧的确认或取消决定号",
 "并入自 ent_sale_reservation"
+],
+[
+"source_key",
+"char(64)",
+"按完整业务来源及利益项区分重放",
+"原有"
+],
+[
+"payload_hash",
+"char(64)",
+"检测同一操作身份下的参数变化",
+"原有"
 ]
 ],
 "keys": [
-"预留号唯一",
-"来源类型 + 来源单号 + 活动 / 模板唯一（同一来源同一利益项只占一次）",
-"状态 + 截止时间索引，超时核查"
+"租户 + 预留号唯一",
+"租户 + 预留类型 + 稳定来源摘要唯一，支持同单不同利益项",
+"按预留类型、状态、截止时间和行号扫描待恢复记录"
 ]
 },
 "prd_bundle_choice": {
@@ -39133,6 +39105,253 @@
 ],
 "remark": "订单行的退款依据快照（stl_bill_refund_basis 的账户快照、原支付路由）没有单独的列，按需要可放扩展 JSON；渠道账单行原有 amounts_json 多金额结构，同样建议收成扩展 JSON。列很宽，按 line_type 只用其中一部分。"
 },
+"sv_account": {
+"fields": [
+[
+"tenant_no",
+"varchar(32)",
+"租户号",
+"原有"
+],
+[
+"account_no",
+"varchar(64)",
+"稳定账户号",
+"原有"
+],
+[
+"user_no",
+"varchar(64)",
+"已绑定用户引用，可空",
+"原有"
+],
+[
+"customer_no",
+"varchar(64)",
+"储值顾客引用，可空以兼容旧账户",
+"原有"
+],
+[
+"entity_no",
+"varchar(64)",
+"经营主体",
+"原有"
+],
+[
+"store_no",
+"varchar(64)",
+"账户归属门店，历史账户可空",
+"原有"
+],
+[
+"issuer_no",
+"varchar(64)",
+"发行方号，历史账户可空",
+"原有"
+],
+[
+"issuer_version_no",
+"varchar(64)",
+"账户记录的发行方版本",
+"原有"
+],
+[
+"currency",
+"varchar(8)",
+"币种",
+"原有"
+],
+[
+"status",
+"varchar(16)",
+"ACTIVE 正常 / FROZEN 冻结",
+"原有"
+],
+[
+"principal_minor",
+"bigint",
+"本金余额",
+"原有"
+],
+[
+"bonus_minor",
+"bigint",
+"赠金余额",
+"原有"
+],
+[
+"held_principal_minor",
+"bigint",
+"本金冻结额",
+"原有"
+],
+[
+"held_bonus_minor",
+"bigint",
+"赠金冻结额",
+"原有"
+],
+[
+"account_seq",
+"bigint",
+"账户记账序号",
+"原有"
+]
+],
+"keys": [
+"租户 + 账户号唯一。门店账户现行唯一键按租户 + 用户或顾客 + 主体 + 门店 + 币种建立。保留历史空门店账户的核对语义。余额变动锁定账户，保证本金与赠金各自的余额不低于对应冻结额"
+]
+},
+"sv_hold_allocation": {
+"fields": [
+[
+"tenant_no",
+"varchar(32)",
+"租户号",
+"原有"
+],
+[
+"operation_no",
+"varchar(64)",
+"统一使用意向号",
+"原有"
+],
+[
+"lot_no",
+"varchar(64)",
+"原充值批次号",
+"原有"
+],
+[
+"principal_minor",
+"bigint",
+"本次冻结本金",
+"原有"
+],
+[
+"bonus_minor",
+"bigint",
+"本次冻结赠金",
+"原有"
+],
+[
+"items_allocation",
+"json",
+"原批次的服务行分摊；新记录含行号、总额、本金和赠金，历史行可仅有总额",
+"原有"
+],
+[
+"issuer_no",
+"varchar(64)",
+"发行方，可空以兼容历史",
+"原有"
+],
+[
+"allocation_no",
+"varchar(64)",
+"分配业务号，可空以兼容历史",
+"原有"
+],
+[
+"release_no",
+"varchar(64)",
+"发行发布号，可空以兼容历史",
+"原有"
+]
+],
+"keys": [
+"租户 + 使用意向号 + 批次号唯一",
+"本金、赠金分别非负；状态由 ent_use_intent 维护"
+]
+},
+"sv_posting_line": {
+"fields": [
+[
+"tenant_no",
+"varchar(32)",
+"租户号",
+"原有"
+],
+[
+"voucher_no",
+"varchar(64)",
+"储值凭证号",
+"原有"
+],
+[
+"line_no",
+"int",
+"凭证内稳定行号",
+"原有"
+],
+[
+"pool",
+"varchar(16)",
+"本金 PRINCIPAL 或赠金 BONUS",
+"原有"
+],
+[
+"book",
+"varchar(32)",
+"客户请求权 CUSTOMER_CLAIM 或商家义务 MERCHANT_OBLIGATION",
+"原有"
+],
+[
+"side",
+"varchar(8)",
+"借 DEBIT 或贷 CREDIT",
+"原有"
+],
+[
+"amount_minor",
+"bigint",
+"正数，单位为分",
+"原有"
+]
+],
+"keys": [
+"租户 + 凭证号 + 行号唯一",
+"行号和金额为正数；每张凭证的本金、赠金各自借贷平衡"
+]
+},
+"sv_entry": {
+"fields": [
+[
+"tenant_no",
+"varchar(32)",
+"租户号",
+"原有"
+],
+[
+"voucher_no",
+"varchar(64)",
+"所属入账凭证",
+"原有"
+],
+[
+"lot_no",
+"varchar(64)",
+"对应余额批次",
+"原有"
+],
+[
+"principal_delta",
+"bigint",
+"该批次本金变化",
+"原有"
+],
+[
+"bonus_delta",
+"bigint",
+"该批次赠金变化",
+"原有"
+]
+],
+"keys": [
+"租户 + 凭证号 + 批次号唯一",
+"租户 + 批次号索引。各分录汇总与凭证金额一致，同事务落账"
+]
+},
 "sv_issuer": {
 "fields": [
 [
@@ -39261,7 +39480,7 @@
 "发行方号 + 版本号唯一",
 "范围类型 + 范围编号 + 状态索引，取当前生效版"
 ],
-"remark": "原 write_mode、configuration_key、content_hash 含义偏技术，未保留；已发生的充值与核销通过 ent_grant / ent_instance 的 issuer_version_no 记下用的是哪一版。"
+"remark": "原 write_mode、configuration_key、content_hash 含义偏技术，未保留；已发生的充值和余额批次通过 sv_recharge / sv_lot 的 issuer_version_no 固定当时版本，消费可由批次分录追溯。"
 },
 "sv_issuer_store_access": {
 "fields": [
@@ -39356,6 +39575,498 @@
 "门店 + 状态索引"
 ],
 "remark": "门店的加入与退出不另存变更表：每次变更结束旧行、新开一行，变更单号与方向记在新行上。"
+},
+"sv_lot": {
+"fields": [
+[
+"tenant_no",
+"varchar(32)",
+"租户号",
+"原有"
+],
+[
+"lot_no",
+"varchar(64)",
+"批次号",
+"原有"
+],
+[
+"account_no",
+"varchar(64)",
+"储值账户号",
+"原有"
+],
+[
+"recharge_no",
+"varchar(64)",
+"来源充值号",
+"原有"
+],
+[
+"activity_version_no",
+"varchar(64)",
+"冻结的活动版本，可空",
+"原有"
+],
+[
+"plan_version_no",
+"varchar(64)",
+"冻结的门店方案版本，可空",
+"原有"
+],
+[
+"recharge_store_no",
+"varchar(64)",
+"办理门店",
+"原有"
+],
+[
+"issuer_no",
+"varchar(64)",
+"发行方号",
+"原有"
+],
+[
+"issuer_version_no",
+"varchar(64)",
+"发行方版本",
+"原有"
+],
+[
+"release_no",
+"varchar(64)",
+"生效发行批号",
+"原有"
+],
+[
+"tier_no",
+"varchar(64)",
+"充值档位号",
+"原有"
+],
+[
+"collection_entity_no",
+"varchar(64)",
+"收款主体",
+"原有"
+],
+[
+"settlement_entity_no",
+"varchar(64)",
+"结算责任主体",
+"原有"
+],
+[
+"principal_minor",
+"bigint",
+"批次本金余额",
+"原有"
+],
+[
+"bonus_minor",
+"bigint",
+"批次赠金余额",
+"原有"
+],
+[
+"held_principal_minor",
+"bigint",
+"批次本金冻结",
+"原有"
+],
+[
+"held_bonus_minor",
+"bigint",
+"批次赠金冻结",
+"原有"
+],
+[
+"scope_snapshot",
+"json",
+"入账时冻结的使用约定与范围",
+"原有"
+],
+[
+"credited_at",
+"datetime(3)",
+"入账时间",
+"原有"
+]
+],
+"keys": [
+"租户 + 批次号、租户 + 充值号各自唯一",
+"账户 + 入账时间 + 批次号供分配排序。本金和赠金余额分别不低于冻结额。发行版本调整后，保留老批次适用范围"
+]
+},
+"sv_recharge": {
+"fields": [
+[
+"tenant_no",
+"varchar(32)",
+"租户号",
+"原有"
+],
+[
+"recharge_no",
+"varchar(64)",
+"充值号",
+"原有"
+],
+[
+"request_id",
+"varchar(64)",
+"创建幂等键",
+"原有"
+],
+[
+"payload_hash",
+"char(64)",
+"校验重复请求内容",
+"原有"
+],
+[
+"source_kind",
+"varchar(16)",
+"ACTIVITY 活动 / PLAN 门店方案 / ISSUER_RELEASE 发行批次",
+"原有"
+],
+[
+"reservation_no",
+"varchar(64)",
+"活动参与预留引用",
+"原有"
+],
+[
+"activity_no",
+"varchar(64)",
+"活动号",
+"原有"
+],
+[
+"activity_version_no",
+"varchar(64)",
+"活动版本",
+"原有"
+],
+[
+"plan_no",
+"varchar(64)",
+"门店方案号",
+"原有"
+],
+[
+"plan_version_no",
+"varchar(64)",
+"门店方案版本",
+"原有"
+],
+[
+"user_no",
+"varchar(64)",
+"已绑定的受益用户，可空",
+"原有"
+],
+[
+"customer_no",
+"varchar(64)",
+"储值顾客引用",
+"原有"
+],
+[
+"entity_no",
+"varchar(64)",
+"经营主体",
+"原有"
+],
+[
+"store_no",
+"varchar(64)",
+"办理门店",
+"原有"
+],
+[
+"store_name",
+"varchar(100)",
+"办理门店名称快照",
+"原有"
+],
+[
+"issuer_no",
+"varchar(64)",
+"发行方号",
+"原有"
+],
+[
+"issuer_version_no",
+"varchar(64)",
+"发行方版本",
+"原有"
+],
+[
+"release_no",
+"varchar(64)",
+"生效发行批号",
+"原有"
+],
+[
+"tier_no",
+"varchar(64)",
+"充值档位号",
+"原有"
+],
+[
+"collection_entity_no",
+"varchar(64)",
+"收款主体",
+"原有"
+],
+[
+"settlement_entity_no",
+"varchar(64)",
+"结算责任主体",
+"原有"
+],
+[
+"quota_reservation_no",
+"varchar(64)",
+"发行额度预留引用",
+"原有"
+],
+[
+"currency",
+"varchar(8)",
+"币种",
+"原有"
+],
+[
+"principal_minor",
+"bigint",
+"应实收本金",
+"原有"
+],
+[
+"bonus_minor",
+"bigint",
+"约定赠金",
+"原有"
+],
+[
+"status",
+"varchar(24)",
+"WAIT_COLLECTION 待收款 / SUBMITTED 已提交 / RECEIVED 已实收 / CREDITED 已到账 / CANCELLED 已取消 / REJECTED 已驳回",
+"原有"
+],
+[
+"collection_method",
+"varchar(16)",
+"CASH 现金 / TRANSFER 转账",
+"原有"
+],
+[
+"actual_amount_minor",
+"bigint",
+"实收本金",
+"原有"
+],
+[
+"receipt_ref",
+"varchar(128)",
+"私有收款凭据引用",
+"原有"
+],
+[
+"receipt_digest",
+"char(64)",
+"收款凭据摘要",
+"原有"
+],
+[
+"received_receipt_key",
+"char(64)",
+"已确认实收的收款方式加凭据摘要去重键",
+"原有"
+],
+[
+"operator_no",
+"varchar(64)",
+"经办人员",
+"原有"
+],
+[
+"received_by",
+"varchar(64)",
+"实收确认人",
+"原有"
+],
+[
+"received_at",
+"datetime(3)",
+"实收确认时间",
+"原有"
+],
+[
+"credited_at",
+"datetime(3)",
+"到账时间",
+"原有"
+],
+[
+"expires_at",
+"datetime(3)",
+"未收款到期时间",
+"原有"
+],
+[
+"permit_snapshot",
+"json",
+"授权资格及权益范围快照",
+"原有"
+],
+[
+"source_snapshot",
+"json",
+"原始业务来源快照",
+"原有"
+],
+[
+"received_decision_snapshot",
+"json",
+"实收确认结论",
+"原有"
+],
+[
+"confirmation_note",
+"varchar(500)",
+"内部核验备注",
+"原有"
+],
+[
+"cancellation_reason",
+"varchar(500)",
+"取消原因",
+"原有"
+],
+[
+"cancelled_at",
+"datetime(3)",
+"取消时间",
+"原有"
+]
+],
+"keys": [
+"租户 + 充值号、租户 + 请求键、租户 + 非空活动预留各自唯一",
+"租户 + 主体 + 非空实收凭据键唯一",
+"状态 + 实收时间支持入账恢复。保留各来源校验和实收、到账的状态约束。[来源约束](../../../../../backend/shop-app/src/main/resources/db/migration/V574__stored_value_brand_release_provenance.sql) · [实收生命周期](../../../../../backend/shop-app/src/main/resources/db/migration/V501__stored_value_receipt_lifecycle.sql)"
+]
+},
+"sv_voucher": {
+"fields": [
+[
+"tenant_no",
+"varchar(32)",
+"租户号",
+"原有"
+],
+[
+"voucher_no",
+"varchar(64)",
+"凭证号",
+"原有"
+],
+[
+"account_no",
+"varchar(64)",
+"所属账户",
+"原有"
+],
+[
+"account_seq",
+"bigint",
+"账户内账序",
+"原有"
+],
+[
+"issuer_no",
+"varchar(64)",
+"发行方号",
+"原有"
+],
+[
+"biz_type",
+"varchar(24)",
+"RECHARGE 充值到账 / CONSUME 消费扣账 / REFUND 消费整退",
+"原有"
+],
+[
+"biz_no",
+"varchar(64)",
+"对应充值号、消费意图号或整笔退款号",
+"原有"
+],
+[
+"origin_voucher_no",
+"varchar(64)",
+"原消费凭证号，整退必填",
+"新增"
+],
+[
+"usage_no",
+"varchar(64)",
+"原储值核销号，整退必填",
+"新增"
+],
+[
+"source_decision_no",
+"varchar(64)",
+"交易侧退款决定号，整退必填",
+"新增"
+],
+[
+"after_sale_no",
+"varchar(64)",
+"退款来源业务号，整退必填",
+"新增"
+],
+[
+"payload_hash",
+"char(64)",
+"重放时校验入账业务内容",
+"原有"
+],
+[
+"principal_delta",
+"bigint",
+"本金变化",
+"原有"
+],
+[
+"bonus_delta",
+"bigint",
+"赠金变化",
+"原有"
+],
+[
+"after_principal_minor",
+"bigint",
+"记账后本金余额",
+"原有"
+],
+[
+"after_bonus_minor",
+"bigint",
+"记账后赠金余额",
+"原有"
+],
+[
+"occurred_at",
+"datetime(3)",
+"业务发生时间",
+"原有"
+]
+],
+"keys": [
+"租户 + 凭证号、租户 + 业务类型 + 来源业务号、租户 + 账户号 + 账序各自唯一。账后余额非负，凭证为不可变账务事实。整退凭证须具备以下关联：原消费凭证、原核销、交易决定和来源业务号。租户 + 业务类型 + 原凭证号唯一"
+]
 },
 "sys_agreement_consent": {
 "fields": [
@@ -42399,6 +43110,38 @@
 "令牌摘要唯一",
 "按用户号查活跃会话的索引",
 "按过期时间清理的索引"
+]
+},
+"mbr_reach_recipient": {
+"fields": [
+[
+"task_no",
+"varchar(64)",
+"预约任务号",
+"新增"
+],
+[
+"member_no",
+"varchar(64)",
+"到期入选会员号",
+"新增"
+],
+[
+"outcome",
+"varchar(24)",
+"待处理、已投递或跳过原因",
+"新增"
+],
+[
+"reach_no",
+"varchar(64)",
+"实际投递号，可空",
+"新增"
+]
+],
+"keys": [
+"任务号 + 会员号为主键",
+"任务号 + 处理结果 + 会员号索引"
 ]
 }
 }

@@ -8,10 +8,13 @@ import lombok.Setter;
 /** Core-owned activity facts; pay assets remain outside this persistence boundary. */
 @Getter
 @Setter
-@TableName("pmt_activity_participant")
+@TableName("pmt_quota")
 public class PmtActivityParticipant extends BaseEntity {
+    private String targetType;
+    private String targetNo;
+    private String quotaDimension;
     private String activityNo;
     private String userNo;
-    private Integer heldCount;
-    private Integer usedCount;
+    private Long quotaHeld;
+    private Long quotaUsed;
 }

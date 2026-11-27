@@ -222,6 +222,11 @@ const returnedLines = computed(() => {
   if (!r) return [] as string[];
   const out: string[] = [];
   if (r.couponTitle) out.push(String(t("order.returned.coupon", { name: r.couponTitle })));
+  if (r.couponReturn) {
+    const { sourceType, discountMinor, decidedAt } = r.couponReturn;
+    const key = sourceType === "ORDER_CANCEL" ? "order.returned.cancelCoupon" : "order.returned.refundCoupon";
+    out.push(String(t(key, { amount: money(discountMinor), time: datetime(decidedAt) })));
+  }
   if (r.pointsReturned) out.push(String(t("order.returned.points", { n: r.pointsReturned })));
   if (r.pointsClawedBack) out.push(String(t("order.returned.clawback", { n: r.pointsClawedBack })));
   return out;
@@ -783,14 +788,14 @@ onPullDownRefresh(async () => {
         <text class="txt-caption">{{ $t("confirm.discount") }}</text>
         <text class="txt-caption amt__v sh-num is-danger">-{{ money(order.amount.discountMinor) }}</text>
       </view>
-      <!-- 减的是什么，直接写在下面（TDD-C端优惠依据）。后端取不到名字的条目不会下发 -->
+      <!-- 原订单冻结的优惠及本店分摊 -->
       <view
         v-for="(d, k) in order.discountLines ?? []"
         :key="k"
         class="amt sh-row sh-row--between sh-row--top"
       >
         <text class="txt-caption sh-muted">
-          {{ $t(d.kind === "COUPON" ? "confirm.fromCoupon" : "confirm.fromActivity", { name: d.name }) }}
+          {{ d.kind === "COUPON" && !d.name ? $t("confirm.couponDiscount") : $t(d.kind === "COUPON" ? "confirm.fromCoupon" : "confirm.fromActivity", { name: d.name }) }}
         </text>
         <text class="txt-caption amt__v sh-num sh-muted">-{{ money(d.amountMinor) }}</text>
       </view>

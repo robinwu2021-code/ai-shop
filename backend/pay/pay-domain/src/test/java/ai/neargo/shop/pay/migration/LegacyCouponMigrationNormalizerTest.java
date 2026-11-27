@@ -45,6 +45,22 @@ class LegacyCouponMigrationNormalizerTest {
         assertThat(item.effectiveUntil()).isEqualTo(Instant.ofEpochMilli(1800000000001L));
         assertThat(item.historicalDefinition().validity().startAt()).isEqualTo(item.effectiveFrom());
     }
+    @Test void editedOrStoreScopedVersionCannotImportAsTheCurrentUnrestrictedRule() {
+        var manifest = (tools.jackson.databind.node.ObjectNode) source();
+        var head = (tools.jackson.databind.node.ObjectNode) manifest.path("template");
+        var held = (tools.jackson.databind.node.ObjectNode) manifest.path("instances").get(0);
+        head.put("scopeType", "STORE").put("templateVersionNo", "V2");
+        held.put("templateVersionNo", "V1");
+        var result = new LegacyCouponMigrationNormalizer().normalize("MS1", manifest, cn, Instant.now());
+        assertThat(result.status()).isEqualTo("BLOCKED");
+        assertThat(result.blockers()).contains("ISSUED_RULE_VERSION_MISMATCH", "VERSIONED_SCOPE_CONVERSION_REQUIRED",
+                "VERSIONED_ORDER_CONVERSION_REQUIRED");
+        head.put("scopeType", "ALL").put("minQty", 0);
+        held.put("templateVersionNo", "V2");
+        assertThat(new LegacyCouponMigrationNormalizer().normalize("MS1", manifest, cn, Instant.now()).status())
+                .isEqualTo("NORMALIZED");
+    }
+
     @Test void uncertainCurrencyAndOverlappingSourcesAreBlockedRatherThanAssumedOrMerged() {
         var body=(tools.jackson.databind.node.ObjectNode)source();
         ((tools.jackson.databind.node.ObjectNode)body.path("assessmentFacts")).put("peerTemplateCount",1);

@@ -51,6 +51,8 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
     static final String CHANNEL_MIXED = "MIXED";
     static final String CHANNEL_COLLECT = "COLLECT";
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.spi.member.PosSaleMemberPort posMembers;
     private final OrderMapper orders;
     private final SubOrderMapper subOrders;
     private final RecordMapper offline;
@@ -197,6 +199,8 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
         long now = System.currentTimeMillis();
         int changed = unscoped(() -> orders.update(null, new UpdateWrapper<OrdOrder>().eq("tenant_no", "MAIN")
                 .eq("order_no", order.getOrderNo()).eq("status", OrdOrder.WAIT_PAY)
+                .set(order.getPosActivityFactsVersion() != null, "pos_member_at_payment",
+                        order.getPosMemberNo() != null && posMembers.active("MAIN",sub.getEntityNo(),sub.getStoreNo(),order.getPosMemberNo()))
                 .set("status", OrdOrder.PAID).set("paid_at", now).set("pay_channel", channel)
                 .setSql("version=version+1")));
         if (changed != 1) throw BizException.of(ErrorCode.STORE_ORDER_STATE_INVALID);

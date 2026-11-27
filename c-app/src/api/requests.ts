@@ -512,7 +512,7 @@ export interface StoredValueIssuerRecordsQuery {
 /** Opaque server-issued issuer selection reference; never a caller-supplied issuer identifier. */
 issuerRef:string;
 /** Requested stored-value record classification; ALL disables the classification filter. */
-type?:'ALL'|'RECHARGE'|'REDEMPTION';
+type?:'ALL'|'RECHARGE'|'REDEMPTION'|'REFUND';
 /** Inclusive first business date in YYYY-MM-DD format. */
 startDate?:string;
 /** Inclusive final business date in YYYY-MM-DD format. */

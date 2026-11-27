@@ -462,6 +462,8 @@ for (const [key, ep] of Object.entries(endpoints)) {
 
   const reqType = REQUEST_TYPES[key];
   const params = [...pathParams];
+  if (key === "receiveCoupon") params.push({ name: "Idempotency-Key", in: "header", required: false,
+    description: "商家 PMT 券领取请求键，按用户与券模板区分。", schema: { type: "string", maxLength: 64 } });
   if (ep.method === "GET" && reqType) params.push(...queryParams(reqType));
 
   const op = {

@@ -12634,7 +12634,7 @@ Current store records of selected wallet　🔒
 | `customerRef` | path | `string` | 是 | — |
 | `issuerRef` | query | `string` | 是 | — |
 | `accountRef` | query | `string` | 是 | — |
-| `type` | query | `ALL` \| `RECHARGE` \| `REDEMPTION` | 是 | 类型筛选，取值见对应枚举 |
+| `type` | query | `ALL` \| `RECHARGE` \| `REDEMPTION` \| `REFUND` | 是 | 类型筛选，取值见对应枚举 |
 | `startDate` | query | `string` | 否 | — |
 | `endDate` | query | `string` | 否 | — |
 | `cursor` | query | `string` | 否 | — |
@@ -12810,7 +12810,7 @@ _无字段_
 |---|---|---|:---:|---|
 | `storeNo` | path | `string` | 是 | — |
 | `storeNo` | query | `string` | 是 | — |
-| `type` | query | `ALL` \| `RECHARGE` \| `REDEMPTION` | 是 | 类型筛选，取值见对应枚举 |
+| `type` | query | `ALL` \| `RECHARGE` \| `REDEMPTION` \| `REFUND` | 是 | 类型筛选，取值见对应枚举 |
 | `startDate` | query | `string` | 否 | — |
 | `endDate` | query | `string` | 否 | — |
 | `accountRef` | query | `string` | 否 | — |
@@ -12846,7 +12846,7 @@ _无字段_
 | `recordNo` | `string` | 是 | Internal stored-value record reference; use documentNo for human display. |
 | `maskedName` | `string` | 是 | Customer name masked for the current operator's access level. |
 | `maskedPhone` | `string` | 是 | Customer phone number masked for the current operator's access level. |
-| `type` | `RECHARGE` \| `REDEMPTION` | 是 | Record, target or calculation classification used to interpret this object. |
+| `type` | `RECHARGE` \| `REDEMPTION` \| `REFUND` | 是 | Record, target or calculation classification used to interpret this object. |
 | `title` | `string` | 是 | Human-readable title of the stored-value business record. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
 | `storeName` | `string` | 是 | Store display name captured for the record or selection. |
@@ -19490,7 +19490,7 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `recordNo` | `string` | 是 | Internal stored-value record reference; use documentNo for human display. |
 | `maskedName` | `string` | 是 | Customer name masked for the current operator's access level. |
 | `maskedPhone` | `string` | 是 | Customer phone number masked for the current operator's access level. |
-| `type` | `RECHARGE` \| `REDEMPTION` | 是 | Record, target or calculation classification used to interpret this object. |
+| `type` | `RECHARGE` \| `REDEMPTION` \| `REFUND` | 是 | Record, target or calculation classification used to interpret this object. |
 | `title` | `string` | 是 | Human-readable title of the stored-value business record. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
 | `storeName` | `string` | 是 | Store display name captured for the record or selection. |

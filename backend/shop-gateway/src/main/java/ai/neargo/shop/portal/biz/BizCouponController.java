@@ -1,6 +1,8 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponIssueVO;
@@ -17,6 +19,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -78,9 +82,11 @@ public class BizCouponController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping("/biz/coupons/{couponNo}/issue")
-    public CouponIssueVO issue(@PathVariable String couponNo, @RequestBody IssueReq req) {
+    public CouponIssueVO issue(@PathVariable String couponNo, @RequestBody IssueReq req,
+            @RequestHeader(value = "Idempotency-Key", required = false)
+            @Pattern(regexp = "\\S(?:.{0,62}\\S)?") String requestKey) {
         return couponService.issue(BizContext.requireMerchantNo(), couponNo, req.segmentNo(),
-                req.audiences(), SecurityUtils.currentUserNo());
+                req.audiences(), SecurityUtils.currentUserNo(), requestKey, Boolean.TRUE.equals(req.reachableOnly()));
     }
 
     /** 发放记录。留痕的消费方 —— 没有它，记了也没人看得到 */
@@ -130,6 +136,11 @@ public class BizCouponController {
      * @param segmentNo 旧入参：一个人群号或预设键（@SLEEPING …）。旧版 App 还在传
      * @param audiences 新入参：受众项（取或）。给了就以它为准
      */
-    public record IssueReq(String segmentNo, List<AudienceItem> audiences) {
+    public record IssueReq(String segmentNo, List<AudienceItem> audiences, Boolean reachableOnly) {
+        public IssueReq {
+            if (audiences != null && audiences.isEmpty() && (segmentNo == null || segmentNo.isBlank())) {
+                throw BizException.of(ErrorCode.MEMBER_AUDIENCE_REQUIRED);
+            }
+        }
     }
 }

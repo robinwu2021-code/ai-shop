@@ -1,3 +1,5 @@
+import type { ScheduledReachReq } from "./requests";
+import type { ScheduledReachResult } from "./response-types";
 import type {SalesInvoiceApi} from "./sales-invoice";
 import type {StoredValueFinanceApi} from "./stored-value-finance";
 import type { PayApi } from "./pay";
@@ -1970,7 +1972,7 @@ export interface MerchantApi extends SalesInvoiceApi,ManagementApi,IssuerApi,Sto
    * 不显示的话商家会以为人群里每个人都收到了。
    * 超预算时整批拒绝（不部分发放），这时抛错而不是返回一个「发了一半」的结果。
    */
-  mIssueCoupon(couponNo: string, segmentNo: string | null, audiences?: AudienceItem[]): Promise<CouponIssueBatch>;
+  mIssueCoupon(couponNo: string, segmentNo: string | null, audiences?: AudienceItem[], requestKey?: string, reachableOnly?: boolean): Promise<CouponIssueBatch>;
 
   mCouponIssues(couponNo?: string): Promise<CouponIssueBatch[]>;
 
@@ -2042,6 +2044,8 @@ export interface MerchantApi extends SalesInvoiceApi,ManagementApi,IssuerApi,Sto
   }): Promise<ReachResult>;
 
   /** 「发出去的」消息（原型 m19），新的在前。券的批次走 {@link mCouponIssues} */
+  mScheduleReach(payload: ScheduledReachReq, requestKey: string): Promise<ScheduledReachResult>;
+  mCancelReach(taskNo: string): Promise<void>;
   mReachTasks(page?: number): Promise<ReachTask[]>;
 
   /** 一次触达的效果（原型 m20）：发出 · 来了 · 成单，下单的人，没来的人数 */

@@ -44,8 +44,9 @@ class RetailMemberIdleRuleFlowTest {
                 + "last_order_at,joined_at,created_at,updated_at) VALUES (?,?,?,'ACTIVE','ORDER','REGULAR',"
                 + "?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", member, entity, "P-" + member,
                 now - TimeUnit.DAYS.toMillis(1), now);
-        jdbc.update("INSERT INTO mbr_member_store(member_no,entity_no,store_no,level,last_order_at,"
-                + "created_at,updated_at) VALUES (?,?,?,'REGULAR',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
-                member, entity, store, now - TimeUnit.DAYS.toMillis(localDays));
+        jdbc.update("INSERT INTO mbr_store_profile(member_no,entity_no,store_no,level,last_order_at,"
+                + "tenant_no,store_profile_no,customer_no,first_seen_at,created_at,updated_at,created_by,updated_by)"
+                + " VALUES (?,?,?,'REGULAR',?,'MAIN',?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'TEST','TEST')",
+                member, entity, store, now - TimeUnit.DAYS.toMillis(localDays), member, "P-" + member);
     }
 }

@@ -689,6 +689,8 @@ class BizEndpointPermTest {
                     // 试算给看会员的人（店员）；真发要 campaign —— 给几百人推消息不是店员该按的
                     put("/biz/member-reach/plan", BizPerms.CUSTOMER);
                     put("/biz/member-reach/send", BizPerms.CAMPAIGN);
+                    put("/biz/member-reach/schedule", BizPerms.CAMPAIGN);
+                    put("/biz/member-reach/task/{taskNo}/cancel", BizPerms.CAMPAIGN);
                     put("/biz/member-reach/task", BizPerms.CUSTOMER);
                     put("/biz/member-reach/task/{taskNo}", BizPerms.CUSTOMER);
                     // 只改公告：与整份门面同一个码 —— 它写的是同一张表的同一家店
@@ -868,6 +870,7 @@ class BizEndpointPermTest {
                     put(
                             "/biz/stored-value/consumptions/orders/{orderNo}/cancel",
                             BizPerms.SV_CONSUME_CREATE);
+                    put("/biz/stored-value/consumptions/order/{orderNo}/refund", BizPerms.PAY_REFUND);
                     put("/biz/stored-value/consumptions/resolve", BizPerms.SV_CONSUME_CREATE);
 
                     // The syntax parser also recognizes fully qualified mapping/permission

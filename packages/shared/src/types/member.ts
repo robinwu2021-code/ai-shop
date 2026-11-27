@@ -115,6 +115,8 @@ export interface MemberSourceItem {
   occurredAt: number;
 }
 export interface MemberDetail {
+  gradeCode?: string | null;
+  levelRuleVersionNo?: string | null;
   /** 会员本身 */
   member: Member;
   /** 他在各门店的往来。单店主体没有这一段 */
@@ -148,6 +150,9 @@ export interface MemberLastReach {
  * 数字还会涨；不写的话商家第二天看到 2 单就判定这次失败了。
  */
 export interface ReachTask {
+  deliveryStatus?: "SCHEDULED" | "SENDING" | "SENT" | "CANCELLED";
+  scheduledAt?: number | null;
+  scheduleZone?: string | null;
   /** 批次号 */
   taskNo: string;
   /** `NOTICE` / `WAKEUP` / `COUPON` */
@@ -282,6 +287,8 @@ export interface MyMembership {
  * 实际上两份指标一直都在算，**切回来一个数都不少**。
  */
 export interface MemberSetting {
+  activeGradeVersionNo?: string | null;
+  gradeThresholds?: { code: string; minOrders: number }[];
   /** `ENTITY` 按主体（默认）/ `STORE` 按门店 */
   memberScope: string;
   /** 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 */

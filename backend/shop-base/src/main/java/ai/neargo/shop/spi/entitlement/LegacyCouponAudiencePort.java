@@ -6,8 +6,15 @@ import java.util.List;
 public interface LegacyCouponAudiencePort {
     Fact resolve(EntitlementContext context,Query query);
     record Query(EntitlementOwnerRegistryPort.SourceIdentity source,String batchNo,String planHash,String entityNo,
-                 String mode,String segmentNo,List<AudienceItem> audiences,String userKey,int count,boolean platformActor) {
+                 String mode,String segmentNo,List<AudienceItem> audiences,String userKey,int count,boolean platformActor,
+                 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) Boolean reachableOnly) {
+        public Query(EntitlementOwnerRegistryPort.SourceIdentity source,String batchNo,String planHash,String entityNo,
+                     String mode,String segmentNo,List<AudienceItem> audiences,String userKey,int count,boolean platformActor) {
+            this(source,batchNo,planHash,entityNo,mode,segmentNo,audiences,userKey,count,platformActor,null);
+        }
         public Query {
+            reachableOnly = Boolean.TRUE.equals(reachableOnly) ? Boolean.TRUE : null;
+            ContractChecks.require(reachableOnly == null || ("TARGETED".equals(mode) && userKey == null && !platformActor));
             ContractChecks.present(source);ContractChecks.id(batchNo);ContractChecks.hash(planHash);ContractChecks.id(entityNo);
             ContractChecks.require(source.sourceKind()==EntitlementOwnerRegistryPort.SourceKind.TEMPLATE
                     && source.sourceSystem()!=EntitlementOwnerRegistryPort.SourceSystem.PAY);

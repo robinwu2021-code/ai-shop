@@ -1,6 +1,8 @@
 package ai.neargo.shop.member.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -57,6 +59,12 @@ public class MbrMember extends BaseEntity {
     private Integer d90OrderCount;
     private Long d90SpentMinor;
     private String level;
+
+    /** 独立定级批次写入。常规会员更新不能覆盖并发核定的版本。 */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String gradeCode;
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String levelRuleVersionNo;
 
     /** 买家在店铺页关掉了这家店的消息。商家看得到状态，看不到原因 */
     private Integer reachOptOut;

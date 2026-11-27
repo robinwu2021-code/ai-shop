@@ -46,6 +46,8 @@ class CouponCenterFlowTest {
     private ObjectMapper json;
     @Autowired
     private CouponService couponService;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     /** 本类建的券用完即停：进行中的「顾客领取」券会出现在别的用例的领券中心里 */
     private final List<String> created = new ArrayList<>();
@@ -79,6 +81,12 @@ class CouponCenterFlowTest {
         JsonNode got = doPost("/mp/coupon/" + couponNo + "/receive", token, "{}");
         assertThat(got.get("code").asInt()).as(got.toString()).isZero();
         String userCouponNo = got.get("data").get("userCouponNo").asString();
+
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM pmt_user_coupon u JOIN pmt_coupon c ON c.coupon_no=u.coupon_no
+                WHERE u.user_coupon_no=? AND u.template_version_no=c.template_version_no
+                  AND c.issued_exposure_minor=500 AND u.issue_no IS NULL
+                """, Integer.class, userCouponNo)).isEqualTo(1);
 
         assertThat(find(doGet("/mp/coupon", token).get("data"), "couponNo", couponNo).get("received").asBoolean())
                 .as("领满了要显示「已领」，否则他会一直点").isTrue();

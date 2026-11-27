@@ -10,5 +10,6 @@ public interface UnifiedOrderActivityPricingService {
 
     List<CampaignPort.AppliedActivity> candidates(String userNo, List<CampaignPort.MerchantAmount> groups);
     boolean commit(String userNo, String orderNo, CampaignPort.AppliedActivity selected);
+    boolean commitPos(String userNo, String orderNo, CampaignPort.AppliedActivity selected, String currency);
     boolean release(PmtApply row);
 }

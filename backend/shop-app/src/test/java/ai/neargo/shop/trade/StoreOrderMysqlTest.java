@@ -43,6 +43,9 @@ import ai.neargo.shop.spi.product.GoodsQueryPort.SkuSnapshot;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import ai.neargo.shop.spi.user.UserQueryPort;
+import ai.neargo.shop.spi.marketing.PosActivityPort;
+import ai.neargo.shop.spi.member.PosSaleMemberPort;
+import ai.neargo.shop.trade.mapper.PosActivitySaleMapper;
 import ai.neargo.shop.trade.mapper.OfflineRecordMappers.EventMapper;
 import ai.neargo.shop.trade.mapper.OfflineRecordMappers.RecordMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.IndustryOrderSourceMapper;
@@ -125,6 +128,9 @@ class StoreOrderMysqlTest {
     static final Scope MANAGER = new Scope("E1", "S1", "U2", true, true);
     static final BuyerCmd CARRIER = new BuyerCmd("CARRIER", null, null, "3J0002", "/ABC+123", null);
 
+    @Autowired PosActivityPort activities;
+    @Autowired PosSaleMemberPort members;
+    @Autowired PosActivitySaleMapper saleFacts;
     @Autowired StoreOrderService orders;
     @Autowired SubOrderInvoiceSourcePortImpl invoiceSource;
     @Autowired FakeInvoices invoices;
@@ -400,6 +406,32 @@ class StoreOrderMysqlTest {
                 new OfflineRecordService.CorrectCmd(900, "TWD", "CASH", null, "改", corrected.version())));
         assertEquals("RECORDED|1000", jdbc.queryForObject("SELECT CONCAT_WS('|',status,amount_minor) "
                 + "FROM ord_offline_record WHERE record_no=?", String.class, small.recordNo()));
+    }
+
+    @Test
+    void posQuoteLinesPaymentMembershipAndRepeatedCashRefundUseOriginalOrder() {
+        when(members.requireUser("MAIN","E1","S1","M1")).thenReturn("U-M1");
+        when(members.active("MAIN","E1","S1","M1")).thenReturn(true);
+        when(activities.apply(any(),any(),any(),any(),any(),any(),any(),any(),org.mockito.ArgumentMatchers.anyLong(),any()))
+                .thenReturn(new PosActivityPort.Use("USE-POS","AV1",new long[]{2500,0},true));
+        var cmd=new CreateCmd("K-EFFECT","POS-EFFECT","POS","TWD",
+                List.of(sku("SKU-A",1,2500),custom(1,500,"包裝","TAXABLE")),
+                List.of(new AdjustmentCmd("ACTIVITY",null,-200,"ACT-POS")),null,null,1,"M1");
+        var order=orders.create(CLERK,cmd);
+        assertEquals(order.orderNo(),orders.create(CLERK,cmd).orderNo());
+        assertEquals(1,count("SELECT COUNT(*) FROM ord_pos_activity_line WHERE apply_no='USE-POS' AND activity_version_no='AV1' AND discount_minor=200"));
+        var receipt=pay(order,2800);
+        var facts=saleFacts.lines("MAIN","E1","S1","ACT-POS",0,Long.MAX_VALUE,java.time.LocalDateTime.now().plusYears(1))
+                .stream().filter(l->order.subOrderNo().equals(l.subNo())).toList();
+        assertEquals(2,facts.size());
+        assertTrue(facts.getFirst().memberAtPayment());
+        assertEquals(2800L,facts.stream().mapToLong(PosActivitySaleMapper.Line::paid).sum());
+        assertEquals(200L,facts.stream().mapToLong(PosActivitySaleMapper.Line::discount).sum());
+        var refund=new OfflineRecordService.RefundCmd(2800,"整單退",receipt.version());
+        cash.refundCash(cashScope(),receipt.recordNo(),refund);
+        cash.refundCash(cashScope(),receipt.recordNo(),refund);
+        assertTrue(saleFacts.lines("MAIN","E1","S1","ACT-POS",0,Long.MAX_VALUE,java.time.LocalDateTime.now().plusYears(1))
+                .stream().filter(l->order.subOrderNo().equals(l.subNo())).allMatch(PosActivitySaleMapper.Line::cashReturned));
     }
 
     @Test
@@ -697,7 +729,7 @@ class StoreOrderMysqlTest {
         static final String PASS = System.getenv("COMMERCE_MYSQL_PASSWORD");
         static final List<String> TABLES = List.of("ord_order", "ord_sub_order", "ord_item",
                 "ord_industry_order_source", "ord_price_quote_line", "prd_sku_pricing_policy", "mch_role",
-                "ord_offline_record", "ord_offline_record_event", "sys_outbox");
+                "ord_offline_record", "ord_offline_record_event", "sys_outbox", "pmt_apply", "ord_after_sale", "ord_after_sale_item");
         static DataSource ds;
         static boolean created;
 
@@ -716,7 +748,12 @@ class StoreOrderMysqlTest {
             created = true;
             ds = new DriverManagerDataSource(URL.replace("/?", "/" + SCHEMA + "?"), USER, PASS);
             var jdbc = new JdbcTemplate(ds);
-            for (var table : TABLES) {
+            var tables = new ArrayList<>(TABLES);
+            boolean hasInvoiceLines = root.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=? AND table_name='ord_invoice_data_fill'",Long.class,TEMPLATE) == 1;
+            boolean hasCollections = root.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=? AND table_name='ord_store_collection'",Long.class,TEMPLATE) == 1;
+            if (hasInvoiceLines) tables.add("ord_invoice_data_fill");
+            if (hasCollections) tables.add("ord_store_collection");
+            for (var table : tables) {
                 // SHOW CREATE TABLE 保留 CHECK 原名（CREATE TABLE … LIKE 会改成 _chk_N，V693 的 DROP CHECK 就找不到）
                 String ddl = root.queryForMap("SHOW CREATE TABLE " + TEMPLATE + "." + table).get("Create Table")
                         .toString();
@@ -727,10 +764,12 @@ class StoreOrderMysqlTest {
                     + " ('*','CLERK','店员','[\"biz:invoice:read\"]',1,'MAIN',NOW(),NOW())");
             for (var migration : List.of("V692__store_order_invoice_data.sql", "V693__store_order_walk_in_party.sql",
                     "V694__store_order_role_permissions.sql", "V694__store_order_role_permissions.sql",
-                    "V695__store_order_settlement.sql")) {
+                    "V695__store_order_settlement.sql", "V715__pos_activity_sale_facts.sql", "V718__coupon_order_line_refund_share.sql")) {
+                if (hasInvoiceLines && migration.startsWith("V692") || hasCollections && migration.startsWith("V695")) continue;
                 String sql = new ClassPathResource("db/migration/" + migration).getContentAsString(StandardCharsets.UTF_8);
                 for (var statement : sql.replaceAll("(?m)^--.*$", "").split(";"))
-                    if (!statement.isBlank()) jdbc.execute(statement);
+                    if (!statement.isBlank() && !(migration.startsWith("V718")
+                            && statement.strip().startsWith("ALTER TABLE ent_legacy_coupon_operation"))) jdbc.execute(statement);
             }
             jdbc.update("INSERT INTO prd_sku_pricing_policy(policy_no,tenant_no,entity_no,store_no,goods_no,sku_no,"
                     + "promotion_eligible,tax_class,created_at,created_by,updated_at,updated_by,version,deleted) VALUES"
@@ -814,7 +853,11 @@ class StoreOrderMysqlTest {
     @MapperScan(basePackageClasses = {OrderMapper.class, GoodsMapper.class, SysOutboxMapper.class},
             markerInterface = BaseMapper.class,
             sqlSessionFactoryRef = "sqlSessionFactory")
+    @MapperScan(basePackageClasses = PosActivitySaleMapper.class, annotationClass = org.apache.ibatis.annotations.Mapper.class,
+            sqlSessionFactoryRef = "sqlSessionFactory")
     static class Config {
+        @Bean PosActivityPort posActivityPort() { return mock(PosActivityPort.class); }
+        @Bean PosSaleMemberPort posSaleMemberPort() { return mock(PosSaleMemberPort.class); }
         @Bean
         DataSource dataSource() throws Exception {
             return Db.dataSource();

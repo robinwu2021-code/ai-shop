@@ -221,8 +221,9 @@ class EntitlementRuntimeInternalApiRoundTripTest {
         var at=Instant.parse("2026-10-20T00:00:00Z");
         var plan=new ai.neargo.shop.pay.migration.dto.MigrationPlanViews.PlanView("MP1","MS1","M1","B1","PLANNED",
                 "a".repeat(64),"b".repeat(64),3,1,2,at,false,0);
-        when(migrationPlans.prepare(scope,"MS1","fixed plan","K1")).thenReturn(plan);
-        var command=new ai.neargo.shop.pay.migration.dto.MigrationPlanViews.PlanCommand("MS1","fixed plan");
+        var command=new ai.neargo.shop.pay.migration.dto.MigrationPlanViews.PlanCommand("MS1","fixed plan",
+                ai.neargo.shop.pay.migration.dto.MigrationPlanViews.Cohort.UNUSED_MERCHANT_COUPONS);
+        when(migrationPlans.prepare(scope,command,"K1")).thenReturn(plan);
         var request=new ai.neargo.shop.pay.client.PayMigrationRequests.Plan(scope,command,"K1");
         var get=new ai.neargo.shop.pay.client.PayMigrationRequests.PlanGet(scope,"MP1");
         when(migrationPlans.get(scope,"MP1")).thenReturn(plan);when(migrationPlans.verify(scope,"MP1")).thenReturn(plan);

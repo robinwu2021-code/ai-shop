@@ -80,6 +80,31 @@ class BizMemberSessionFlowTest {
     }
 
     @Test
+    void emptyExplicitAudienceCannotBroadenToAllMembers() throws Exception {
+        String token = merchant();
+        var segment = call("POST", "/biz/member-segments", token,
+                "{\"name\":\"未命中人群\",\"rule\":{\"page\":1,\"size\":0}}").get("data").get("segmentNo").asString();
+        var request = json.createObjectNode().put("segmentNo", segment).put("scene", "NOTICE")
+                .put("title", "测试").put("body", "测试");
+        var plan = call("POST", "/biz/member-reach/plan", token, request.toString());
+        assertThat(plan.get("code").asInt()).isZero();
+        assertThat(plan.get("data").get("matched").asInt()).isZero();
+        request.remove("segmentNo");
+        request.putArray("audiences");
+        for (var action : java.util.List.of("plan", "send")) {
+            assertThat(call("POST", "/biz/member-reach/" + action, token, request.toString())
+                    .get("code").asInt()).isNotZero();
+        }
+        request.remove("audiences");
+        request.put("segmentNo", "SG-MISSING");
+        assertThat(call("POST", "/biz/member-reach/send", token, request.toString()).get("code").asInt()).isNotZero();
+        var tasks = call("GET", "/biz/member-reach/task", token, null);
+        assertThat(tasks.get("code").asInt()).isZero();
+        assertThat(tasks.get("data").isArray()).isTrue();
+        assertThat(tasks.get("data").size()).isZero();
+    }
+
+    @Test
     @DisplayName("★★★ 新建的标签在列表里看得见；同名再建返回同一个，不是 500")
     void tagCreatedIsListedAndDuplicateReturnsSame() throws Exception {
         String token = merchant();

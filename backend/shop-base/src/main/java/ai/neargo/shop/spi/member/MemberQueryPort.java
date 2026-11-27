@@ -18,7 +18,11 @@ public interface MemberQueryPort {
      *
      * @param segmentNo 存下来的人群；或预设人群 {@code @ALL} / {@code @NEW} / {@code @REGULAR} / {@code @LOYAL} / {@code @SLEEPING}（按分层现筛，发券页 s18 的前四行）
      */
-    SegmentAudience resolveSegment(String entityNo, String segmentNo);
+    default SegmentAudience resolveSegment(String entityNo, String segmentNo) {
+        return resolveSegment(entityNo, segmentNo, null);
+    }
+
+    SegmentAudience resolveSegment(String entityNo, String segmentNo, String scene);
 
     /**
      * 一组受众项此刻命中谁（活动 / 发券 / 发消息共用的那一块「发给谁」）。

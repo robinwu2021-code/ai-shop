@@ -7,6 +7,9 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.member.dto.MemberVOs;
 import ai.neargo.shop.member.dto.MemberVOs.MemberDetailVO;
+import ai.neargo.shop.member.dto.MemberVOs.GradeThreshold;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import ai.neargo.shop.member.dto.MemberVOs.MemberQuery;
 import ai.neargo.shop.member.dto.MemberVOs.MemberSourceVO;
 import ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO;
@@ -34,7 +37,9 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -84,6 +89,7 @@ public class MemberServiceImpl implements MemberService {
     private final ai.neargo.shop.member.mapper.MemberMappers.MemberTagMapper memberTagMapper;
     /** 分层口径的唯一来源：下单即时算与每日重算读同一份，见 {@code LevelPolicy} */
     private final ai.neargo.shop.member.service.MemberLevelService levelService;
+    private final ObjectMapper json;
     private final ReachAttribution reachAttribution;
     private final ai.neargo.shop.member.mapper.MemberMappers.ReachLogMapper reachLogMapper;
 
@@ -98,7 +104,8 @@ public class MemberServiceImpl implements MemberService {
                                      ai.neargo.shop.spi.marketing.AttributionPort> attributionPort,
                              ai.neargo.shop.member.service.MemberLevelService levelService,
                              ReachAttribution reachAttribution,
-                             ai.neargo.shop.member.mapper.MemberMappers.ReachLogMapper reachLogMapper) {
+                             ai.neargo.shop.member.mapper.MemberMappers.ReachLogMapper reachLogMapper, ObjectMapper json) {
+        this.json = json;
         this.reachAttribution = reachAttribution;
         this.reachLogMapper = reachLogMapper;
         this.attributionPort = attributionPort;
@@ -180,8 +187,8 @@ public class MemberServiceImpl implements MemberService {
                 System.currentTimeMillis()));
         memberMapper.updateById(m);
 
-        applyStore(m, storeNo, amountMinor, paidAt, fresh);
         syncScope(m,storeNo,"SYSTEM",null);
+        applyStore(m, storeNo, amountMinor, paidAt, fresh);
         if (byScan) {
             /*
              * 扫码那一下单独记一行，且它才是 isFirst。
@@ -459,7 +466,7 @@ public class MemberServiceImpl implements MemberService {
      * 筛选条件 → 查询。<b>列表、人群试算、发放共用这一处</b> ——
      * 三处各写一遍，同一群人会算出三个数，而商家分不清哪个对。
      *
-     * <p><b>按门店筛时走的是门店行</b>（{@code mbr_member_store}）：
+     * <p><b>按门店筛时走的是门店行</b>（{@code mbr_store_profile}）：
      * 「南门店的沉睡老客」问的是他在南门店的往来，不是他在整个主体的往来。
      */
     private LambdaQueryWrapper<MbrMember> baseQuery(String entityNo, MemberQuery q) {
@@ -635,16 +642,16 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
-    public MemberSettingVO settings(String entityNo) {
+    public MemberSettingVO settings(String tenantNo, String entityNo) {
         MbrSetting s = settingRow(entityNo);
-        return settingVO(
+        return settingVO(tenantNo, entityNo,
                 s == null || s.getMemberScope() == null ? MbrSetting.ENTITY : s.getMemberScope(),
                 s == null || s.getAutoJoinOnOrder() == null || s.getAutoJoinOnOrder() == 1);
     }
 
     @Override
     @Transactional
-    public MemberSettingVO saveSettings(String entityNo, String memberScope,
+    public MemberSettingVO saveSettings(String tenantNo, String entityNo, String memberScope,
                                         Boolean autoJoinOnOrder) {
         MbrSetting s = settingRow(entityNo);
         if (s == null) {
@@ -662,7 +669,7 @@ public class MemberServiceImpl implements MemberService {
             s.setAutoJoinOnOrder(autoJoinOnOrder ? 1 : 0);
         }
         settingMapper.updateById(s);
-        return settingVO(s.getMemberScope(), nz(s.getAutoJoinOnOrder()) == 1);
+        return settingVO(tenantNo, entityNo, s.getMemberScope(), nz(s.getAutoJoinOnOrder()) == 1);
     }
 
     private MbrSetting settingRow(String entityNo) {
@@ -699,7 +706,8 @@ public class MemberServiceImpl implements MemberService {
         return Optional.of(new MemberDetailVO(vo(m), stores, sources,
                 tagService.tagsOf(entityNo, memberNo),
                 last == null ? null : new ai.neargo.shop.member.dto.MemberVOs.LastReach(last.getTaskNo(),
-                        last.getScene(), nz(last.getSentAt()), last.getOpenedAt(), last.getOrderedAt())));
+                        last.getScene(), nz(last.getSentAt()), last.getOpenedAt(), last.getOrderedAt()),
+                m.getGradeCode(), m.getLevelRuleVersionNo()));
     }
 
     @Override
@@ -747,21 +755,27 @@ public class MemberServiceImpl implements MemberService {
         if (storeNo == null || storeNo.isBlank()) {
             return;
         }
+        String tenant = m.getTenantNo() != null ? m.getTenantNo() : memberMapper.selectById(m.getId()).getTenantNo();
         MbrMemberStore s = storeMapper.selectOne(Wrappers.<MbrMemberStore>lambdaQuery()
-                .eq(MbrMemberStore::getMemberNo, m.getMemberNo())
-                .eq(MbrMemberStore::getStoreNo, storeNo).last("limit 1"));
-        if (s == null) {
+                .eq(MbrMemberStore::getTenantNo, tenant)
+                .eq(MbrMemberStore::getCustomerNo, m.getPersonNo())
+                .eq(MbrMemberStore::getStoreNo, storeNo).last("FOR UPDATE"));
+        boolean newProfile = s == null;
+        if (newProfile) {
             s = new MbrMemberStore();
+            s.setTenantNo(tenant);
+            s.setStoreProfileNo(BizKey.next(BizKey.STORE_MEMBER_PROFILE));
+            s.setCustomerNo(m.getPersonNo());
+            s.setStoreNo(storeNo);
+            s.setFirstSeenAt(LocalDateTime.ofInstant(Instant.ofEpochMilli(paidAt), ZoneOffset.UTC));
+        }
+        if (s.getMemberNo() == null) {
             s.setMemberNo(m.getMemberNo());
             s.setEntityNo(m.getEntityNo());
-            s.setStoreNo(storeNo);
-            s.setOrderCount(0);
-            s.setTotalSpentMinor(0L);
-            s.setD90OrderCount(0);
-            s.setD90SpentMinor(0L);
             s.setIsFirstStore(firstEver ? 1 : 0);
             s.setFirstOrderAt(paidAt);
-            storeMapper.insert(s);
+        } else if (!s.getMemberNo().equals(m.getMemberNo()) || !m.getEntityNo().equals(s.getEntityNo())) {
+            throw BizException.of(ErrorCode.CONFLICT);
         }
         s.setLastOrderAt(paidAt);
         s.setOrderCount(nz(s.getOrderCount()) + 1);
@@ -772,7 +786,11 @@ public class MemberServiceImpl implements MemberService {
         }
         s.setLevel(levelService.policy().levelOf(s.getD90OrderCount(), s.getLastOrderAt(),
                 System.currentTimeMillis()));
-        storeMapper.updateById(s);
+        if (newProfile) {
+            storeMapper.insert(s);
+        } else if (storeMapper.updateById(s) != 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
     }
 
     /**
@@ -830,10 +848,14 @@ public class MemberServiceImpl implements MemberService {
         return last == null ? null : last.at();
     }
 
-    private MemberSettingVO settingVO(String memberScope, boolean autoJoin) {
+    private MemberSettingVO settingVO(String tenantNo, String entityNo, String memberScope, boolean autoJoin) {
         var p = levelService.policy();
+        var grade = settingMapper.activeGradeVersion(tenantNo, entityNo, LocalDateTime.now(ZoneOffset.UTC));
+        List<GradeThreshold> thresholds = grade == null ? List.of()
+                : json.readValue(grade.levelsJson(), new TypeReference<>() {});
         return new MemberSettingVO(memberScope, autoJoin,
-                p.sleepDays(), p.loyalD90Orders(), p.regularD90Orders(), levelComputedAt());
+                p.sleepDays(), p.loyalD90Orders(), p.regularD90Orders(), levelComputedAt(),
+                grade == null ? null : grade.versionNo(), thresholds);
     }
 
     private MemberVO vo(MbrMember m) {

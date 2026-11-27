@@ -32,7 +32,8 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | C07 | POST | /biz/card-product-bindings | ProductEntitlementBinding | BindingView | biz:goods | 引用已发布pay模板，商品售价仍由商品API保存 |
 | C08 | POST | /biz/member-code/resolve | MemberResolveCommand | CustomerReference | biz:customer | 统一会员域接入契约，若已有等价URL则复用 |
 | C09 | POST | /mp/orders/{orderNo}/entitlement-authorizations | {orderRevision,quoteRef,selectionDigest,requestKey} | {authorizationRef,status,expiresAt} | 登录本人 | 只确认服务端预存的可信pay报价意图；同键原样重放，改价/改选/过期拒绝 |
-| C10 | GET | /biz/marketing-summary | storeNo?,from,to | MarketingSummary | biz:campaign | 目标统一看板，迁移已有摘要入口时保留别名 |
+| C10a | GET | /biz/activities/{activityNo}/effect | storeNo,from,through,zone | POS 每币种每日与窗口 N/R/D/M 和五指标 | biz:campaign | 完成付款按门店营业日归属，成功退款回到原单，历史来源不足返回 covered=false |
+| C10 | GET | /biz/marketing-summary | storeNo?,activityNo?,from,to | MarketingSummary | biz:campaign | 目标统一看板，迁移已有摘要入口时保留别名 |
 | C11 | POST | /mp/member-code | 无，C会话本人 | MemberCodeView | 消费者登录 | JB-010统一会员码签发，不是储值专用码 |
 
 ## 三、支付服务权益与储值入口
@@ -65,7 +66,7 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | P22 | POST | /biz/stored-value/consumptions | StoredValueConsumeCommand | OperationView | pay:sv:consume:create | 绑定真实服务订单与本人授权 |
 | P23 | GET | /mp/stored-value/stores | cursor?,size | CursorPage<StoreItem> | 登录本人 | 有成功储值历史门店 |
 | P24 | GET | /mp/stored-value/consumptions | entityNo,storeNo?,cursor?,size | CursorPage<UsageItem> | 登录本人 | 本主体本人储值使用历史，可按门店筛选 |
-| P25 | GET | /mp/entitlement-usage/{usageNo} | entityNo? | UsageDetail | 登录本人 | 本人统一核销详情 |
+| P25 | GET | /mp/entitlement-usage/{usageNo} | entityNo? | UsageDetail | 登录本人 | 本人统一核销详情，reversals 逐笔返回来源类型、来源号、冲回优惠额、恢复次数及时间；仅释放占用时无核销 |
 | P25a | GET | /mp/entitlements/{instanceNo}/usage | entityNo?,cursor?,size=20 (1-50) | CursorPage<UsageItem> | Login owner | Full history; signed user/asset scoped cursor; occurredAt/usageNo DESC |
 | P25b | GET | /mp/entitlement-usage | entityNo?,cursor?,size=20 (1-50) | CursorPage<UsageItem> | 登录本人 | 统一核销历史，包含无活跃实例的归档记录；不返回未知的逐笔余次 |
 | P26 | GET | /biz/entitlement-usage | storeNo?,assetKind?,from?,to?,page,size | PageData<UsageItem> | pay:ent:read | 只授权主体门店 |
@@ -422,7 +423,7 @@ C03/C04/C06及活动详情沿原URL，以`model=unified`选择新Handler；缺�
 
 core内部POST `/internal/core/promotion/participation/{reserve,confirm,release,query}`使用ActivityParticipationInternal共享DTO和X-Internal-Token；未配置或错误token拒绝。context不是业务凭据，reserve核验来源拥有者事实，confirm/release核验可信终态、同租户及完整原命令绑定。未接pay来源提供者明确不可用；UNKNOWN不按TTL释放。此为JB-041的core子集，不代表pay远程协议已完成。
 
-GET `/biz/marketing-summary?from=ISO-UTC&to=ISO-UTC&storeNo=...`返回币种分组及ORDER优惠额/事件数，最长366天，按可信员工门店过滤。旧`/biz/marketing/summary`保留，不把缺币种历史金额混合统计。C端账单/核销与pay业务接口留在第二阶段。
+GET `/biz/marketing-summary?from=ISO-UTC&to=ISO-UTC&storeNo=...`返回币种分组及ORDER优惠额/事件数，最长366天，按可信员工门店过滤；可选 activityNo 同时限定订单及 Pay 投影事件。旧`/biz/marketing/summary`保留，不把缺币种历史金额混合统计。C端账单/核销与pay业务接口留在第二阶段。
 
 46项预置目录展示真实readiness与missingCapabilities；统一可执行预置仅AP009/AP010、MAIN/CNY固定CUT。其他预置返回PRESET_EXECUTOR等诊断；仅开部署开关或目录行不能绕过执行器校验。服务端资格证据核验商家、行业、门店，冻结人群条件与规则随已发布版本读取。
 
@@ -981,7 +982,7 @@ P25a 在详情 recentUsage（最近 20 条）之外提供完整分页。消费�
 
 | 方法 | 支付内部路径 | 请求 | 返回 |
 |---|---|---|---|
-| POST | /internal/pay/entitlement/migration/plan | PayMigrationRequests.Plan(scope,PlanCommand(stageNo,reason),requestKey) | PlanView |
+| POST | /internal/pay/entitlement/migration/plan | PayMigrationRequests.Plan(scope,PlanCommand(stageNo,reason,cohort?),requestKey) | PlanView |
 | POST | /internal/pay/entitlement/migration/plan/get | PlanGet(scope,planNo) | PlanView |
 | POST | /internal/pay/entitlement/migration/plan/verify | PlanGet(scope,planNo) | PlanView |
 
@@ -1110,6 +1111,7 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 | P94 | GET | /biz/stored-value/brand-capability | - | Capability | management login | P3 key/receipt and P5 schema readiness |
 | P95 | GET | /biz/stored-value/consumptions/orders/{orderNo} | storeNo | ServiceView | pay:sv:consume:create | Owned original in current store |
 | P96 | POST | /biz/stored-value/consumptions/orders/{orderNo}/cancel | storeNo | Operation | pay:sv:consume:create | Cancel original service; never refund a committed use |
+| P96a | POST | /biz/stored-value/consumptions/order/{orderNo}/refund | storeNo | ServiceOrderRefund | mch:pay:refund | 已确认纯储值消费按原凭证整退 |
 | P97 | GET | /biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts | - | List<AvailableAccount> | pay:sv:account:read | Separate wallets; no automatic opening |
 | P98 | GET | /biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records | issuerRef,accountRef,type,dates,cursor,size | CursorPage<RecordView> | pay:sv:account:read | Only actual execution store records |
 | P99 | POST | /biz/management/brands/{brandNo}/stored-value/issuer/activation | Activate + Idempotency-Key | Ack | management and issuer configuration authority | Frozen full brand membership snapshot |
@@ -1168,3 +1170,19 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 | P137 | GET | /biz/management/stored-value/financial-brand-changes/{changeNo} | 金融品牌变更状态与暂存标记 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
 | P138 | POST | /biz/management/stored-value/financial-brand-changes/{changeNo}/resumptions | 按原单恢复，不新建资金操作 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
 | P139 | GET | /biz/management/stores/{storeNo}/stored-value/financial-brand-change-original | managementNo/commandKey → 原请求定位，未建单返回 original=null | Core/BFF → Merchant | managementAccess.authenticated；实际操作人和门店授权 | P6 closure |
+
+首批商家券迁移计划传 `cohort=UNUSED_MERCHANT_COUPONS`。按冻结快照核验整族券的来源、模板版本及零核销记录；省略该字段沿用已有计划契约。门店限定单发行版改传 `UNUSED_STORE_COUPONS`；同族使用多个有据发行版时传 `UNUSED_VERSIONED_COUPONS`。指定范围由 Core 冻结清单提供，报价只向命中门店分摊。多版本批次按原实例确认核销规则及累计敞口。商家定向发放与 PMT 领券中心的领取入口接受可选 `Idempotency-Key`，同一次操作重试应复用原键。详见[首批商家自发券的实施范围](design/数据库设计/库/07-会员营销库.md#首批商家自发券的实施范围)。
+
+首批券整单返还后，订单详情的 `returned.couponReturn` 返回 `sourceType`、本子单原分摊的 `discountMinor` 与毫秒时间 `decidedAt`。收到 Pay 已返券回执后展示。本人核销详情按原核销号返回逐笔 `reversals`，其中 `occurredAt` 是实际回补时间。
+
+### 纯储值服务单整退
+
+商家使用 `POST /biz/stored-value/consumptions/order/{orderNo}/refund`，请求体为 `{"storeNo":"…"}`，权限为 `mch:pay:refund` 并校验原单门店。金额来自已完成的纯储值消费，响应含 refundNo、status、amountMinor。相同服务单重试取原退款结果，交易侧按 REFUND_PENDING、REFUNDED 跟踪。按行部分退及充值退资待确认。
+
+### 商家定向发券的可达筛选
+
+`POST /biz/coupons/{couponNo}/issue` 接受可选布尔值 `reachableOnly`。省略或传 false 沿用原有受众限制。传 true 时，在发券处理时重新核对 COUPON 场景的频控及站内营销日限，同时排除非活跃、退订及无账号的会员。具备站内信资格的会员即使没有推送设备也可以获券。发券单独记批次，不消耗消息额度；实际投递再核对当时的资格。相同请求键重放原批次，同键更换筛选条件返回冲突。V12 的定向入口应明确传 segmentNo 或有效的 audiences。
+
+### 已迁商家券的逐行售后
+
+V718–V719 复用原买家售后申请和现金退款确认。按行退款的子单须处于待履约状态，商品行均未发货，渠道须支持部分退，原券行优惠之和须对平子单商家优惠；其他优惠及积分按既有退款范围处理。三件合抵 100 分时逐件退回 33、33、34 分，分别关联原核销和售后号。部分退回金额时返券次数为 0，原订单退结时恢复 1 次。若同一售后的行退款已入账后才完成整单退结，追加 CLOSURE 分录，保留先前 RETURN 分录，两笔相加后原券额及恢复次数均有上限。

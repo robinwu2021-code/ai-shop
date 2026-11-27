@@ -51,14 +51,32 @@ public interface LegacyCouponCheckoutSourcePort {
             } else ContractChecks.require(orderNo==null && discountMinor==null);
         }
     }
-    enum ReverseReason { CANCELLED, FULL_REFUND }
+    enum ReverseReason { CANCELLED, FULL_REFUND, PARTIAL_REFUND }
+    record RefundPart(String afterSaleNo, long amountMinor) {
+        public RefundPart {
+            ContractChecks.id(afterSaleNo);
+            ContractChecks.require(amountMinor > 0);
+        }
+    }
     record Reversal(String checkoutNo,String operationNo,String decisionNo,String orderNo,String sourceRef,
-                    String economicHash,String currency,long discountMinor,ReverseReason reason,Instant occurredAt) {
+                    String economicHash,String currency,long discountMinor,ReverseReason reason,Instant occurredAt,
+                    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+                    List<RefundPart> parts) {
+        public Reversal(String checkoutNo,String operationNo,String decisionNo,String orderNo,String sourceRef,
+                        String economicHash,String currency,long discountMinor,ReverseReason reason,Instant occurredAt) {
+            this(checkoutNo,operationNo,decisionNo,orderNo,sourceRef,economicHash,currency,discountMinor,reason,occurredAt,List.of());
+        }
         public Reversal {
             ContractChecks.id(checkoutNo); ContractChecks.id(operationNo); ContractChecks.id(decisionNo);
             ContractChecks.id(orderNo); ContractChecks.id(sourceRef); ContractChecks.hash(economicHash);
             ContractChecks.currency(currency); ContractChecks.require(discountMinor>0);
             ContractChecks.present(reason); ContractChecks.present(occurredAt);
+            parts = parts == null ? List.of() : List.copyOf(parts);
+            long sum = parts.stream().mapToLong(RefundPart::amountMinor).reduce(0, Math::addExact);
+            ContractChecks.require(parts.stream().map(RefundPart::afterSaleNo).distinct().count() == parts.size());
+            ContractChecks.require(reason == ReverseReason.PARTIAL_REFUND ? sum == discountMinor : sum <= discountMinor);
+            if (reason != ReverseReason.PARTIAL_REFUND)
+                ContractChecks.require(parts.stream().noneMatch(part -> sourceRef.equals(part.afterSaleNo())));
         }
     }
 }

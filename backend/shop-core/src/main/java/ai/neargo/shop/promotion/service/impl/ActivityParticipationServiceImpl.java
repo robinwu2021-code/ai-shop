@@ -66,6 +66,7 @@ public class ActivityParticipationServiceImpl implements ActivityParticipationSe
         // Stable source identity excludes revisions; a revised request cannot consume capacity twice.
         String hash = ActivityCommandDeduplicator.hash(json.writeValueAsString(cmd));
         var replay = reservations.selectOne(Wrappers.<PmtActivityReservation>lambdaQuery()
+                .eq(PmtActivityReservation::getReservationType,"ACTIVITY")
                 .eq(PmtActivityReservation::getTenantNo, ctx.tenantNo())
                 .eq(PmtActivityReservation::getSourceKey, cmd.sourceRef().grantKey()));
         if (replay != null) {
@@ -114,6 +115,9 @@ public class ActivityParticipationServiceImpl implements ActivityParticipationSe
                 pay,bonus,d.rule().benefits().stream().map(b -> b.templateVersionNo()).filter(Objects::nonNull).toList(),
                 scope,version.getRuleHash(),Instant.now());
         var row = new PmtActivityReservation(); row.setTenantNo(ctx.tenantNo()); row.setReservationNo(permit.reservationNo());
+        row.setReservationType("ACTIVITY"); row.setQuotaNo(budget.getQuotaNo());
+        row.setSourceType(cmd.sourceRef().sourceType()); row.setSourceNo(cmd.sourceRef().sourceNo());
+        row.setSourceSnapshot(json.writeValueAsString(cmd.sourceRef()));
         row.setSourceKey(cmd.sourceRef().grantKey()); row.setActivityNo(cmd.activityNo());row.setVersionNo(cmd.versionNo());
         row.setTierNo(cmd.tierNo());row.setUserNo(cmd.userNo());row.setEntityNo(cmd.entityNo());row.setStoreNo(cmd.storeNo());
         row.setCurrency(cmd.currency());row.setQuotaUnits(cmd.quantity());row.setBudgetMinor(amount);row.setStatus("RESERVED");
@@ -142,6 +146,7 @@ public class ActivityParticipationServiceImpl implements ActivityParticipationSe
     private ParticipationView settle(EntitlementContext ctx,String no,SourceRef ref,String fact,boolean commit, ReserveActivity binding) {
         // Read identity without a lock, then follow budget -> reservation ordering on every mutation.
         var identity=reservations.selectOne(Wrappers.<PmtActivityReservation>lambdaQuery()
+                .eq(PmtActivityReservation::getReservationType,"ACTIVITY")
                 .eq(PmtActivityReservation::getTenantNo,ctx.tenantNo()).eq(PmtActivityReservation::getReservationNo,no));
         if(identity==null) throw BizException.of(ErrorCode.NOT_FOUND);
         if(budgets.lock(ctx.tenantNo(),identity.getActivityNo())==null) conflict();

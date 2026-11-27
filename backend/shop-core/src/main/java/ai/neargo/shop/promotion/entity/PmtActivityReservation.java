@@ -9,9 +9,14 @@ import lombok.Setter;
 /** Core-owned activity facts; pay assets remain outside this persistence boundary. */
 @Getter
 @Setter
-@TableName("pmt_activity_reservation")
+@TableName("pmt_reservation")
 public class PmtActivityReservation extends BaseEntity {
     private String reservationNo;
+    private String reservationType;
+    private String sourceType;
+    private String sourceNo;
+    private String sourceSnapshot;
+    private String quotaNo;
     private String sourceKey;
     private String activityNo;
     private String versionNo;

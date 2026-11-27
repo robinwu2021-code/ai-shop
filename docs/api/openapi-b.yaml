@@ -3364,6 +3364,14 @@ components:
     MemberDetail:
       type: "object"
       properties:
+        gradeCode:
+          type:
+            - "string"
+            - "null"
+        levelRuleVersionNo:
+          type:
+            - "string"
+            - "null"
         member:
           "$ref": "#/components/schemas/Member"
           description: "会员本身"
@@ -3457,6 +3465,21 @@ components:
     ReachTask:
       type: "object"
       properties:
+        deliveryStatus:
+          type: "string"
+          enum:
+            - "SCHEDULED"
+            - "SENDING"
+            - "SENT"
+            - "CANCELLED"
+        scheduledAt:
+          type:
+            - "number"
+            - "null"
+        scheduleZone:
+          type:
+            - "string"
+            - "null"
         taskNo:
           type: "string"
           description: "批次号"
@@ -3696,6 +3719,23 @@ components:
     MemberSetting:
       type: "object"
       properties:
+        activeGradeVersionNo:
+          type:
+            - "string"
+            - "null"
+        gradeThresholds:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              code:
+                type: "string"
+              minOrders:
+                type: "number"
+            required:
+              - "code"
+              - "minOrders"
+            additionalProperties: false
         memberScope:
           type: "string"
           description: "`ENTITY` 按主体（默认）/ `STORE` 按门店"
@@ -10998,6 +11038,25 @@ components:
     OrderReturned:
       type: "object"
       properties:
+        couponReturn:
+          anyOf:
+            - type: "object"
+              properties:
+                sourceType:
+                  type: "string"
+                  enum:
+                    - "ORDER_CANCEL"
+                    - "AFTER_SALE"
+                discountMinor:
+                  type: "number"
+                decidedAt:
+                  type: "number"
+              required:
+                - "sourceType"
+                - "discountMinor"
+                - "decidedAt"
+              additionalProperties: false
+            - type: "null"
         couponTitle:
           type:
             - "string"
@@ -12362,6 +12421,21 @@ components:
         - "token"
         - "user"
         - "wxRelation"
+      additionalProperties: false
+    CouponIssueReq:
+      type: "object"
+      properties:
+        segmentNo:
+          type:
+            - "string"
+            - "null"
+        audiences:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/AudienceItem"
+        reachableOnly:
+          type: "boolean"
+          description: "默认关闭。开启时按发券当时的 COUPON 场景判断站内消息资格。"
       additionalProperties: false
     AppointmentSlotOpenReq:
       type: "object"
@@ -14136,6 +14210,7 @@ components:
             - "ALL"
             - "RECHARGE"
             - "REDEMPTION"
+            - "REFUND"
           description: "Record, target or calculation classification used to interpret this object."
         startDate:
           type: "string"
@@ -15081,6 +15156,7 @@ components:
             - "ALL"
             - "RECHARGE"
             - "REDEMPTION"
+            - "REFUND"
           description: "Requested stored-value record classification; ALL disables the classification filter."
         startDate:
           type: "string"
@@ -15793,6 +15869,30 @@ components:
         - "INHERIT"
         - "OVERRIDE"
       description: "门店付款方式模式：INHERIT 跟随商户；OVERRIDE 门店自定"
+    ScheduledReachReq:
+      type: "object"
+      properties:
+        audiences:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/AudienceItem"
+        audienceDesc:
+          type: "string"
+        scene:
+          type: "string"
+        title:
+          type: "string"
+        body:
+          type: "string"
+        localTime:
+          type: "string"
+      required:
+        - "audiences"
+        - "scene"
+        - "title"
+        - "body"
+        - "localTime"
+      additionalProperties: false
     PayServiceStatus:
       type: "object"
       properties:
@@ -17763,6 +17863,20 @@ components:
     SvRecord:
       type: "object"
       properties:
+        serviceOrderNo:
+          type:
+            - "string"
+            - "null"
+          description: "Original fully stored-value-funded service order on an eligible redemption detail."
+        refundStatus:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "REFUND_PENDING"
+            - "REFUNDED"
+            - null
+          description: "Durable return progress on the original redemption."
         documentNo:
           type:
             - "string"
@@ -17787,6 +17901,7 @@ components:
           enum:
             - "RECHARGE"
             - "REDEMPTION"
+            - "REFUND"
           description: "Record, target or calculation classification used to interpret this object."
         title:
           type: "string"
@@ -19683,6 +19798,14 @@ components:
       required:
         - "original"
       additionalProperties: false
+    ScheduledReachResult:
+      type: "object"
+      properties:
+        taskNo:
+          type: "string"
+      required:
+        - "taskNo"
+      additionalProperties: false
     SvBrandOption:
       type: "object"
       properties:
@@ -19968,6 +20091,26 @@ components:
       required:
         - "service"
         - "quote"
+      additionalProperties: false
+    SvServiceOrderRefund:
+      type: "object"
+      properties:
+        refundNo:
+          type: "string"
+          description: "Identifier of the full refund against the original service order."
+        status:
+          type: "string"
+          enum:
+            - "REFUND_PENDING"
+            - "REFUNDED"
+          description: "Durable processing or completion status."
+        amountMinor:
+          type: "number"
+          description: "Full amount restored to the original stored-value account, in minor currency units."
+      required:
+        - "refundNo"
+        - "status"
+        - "amountMinor"
       additionalProperties: false
     SvOperation:
       type: "object"
@@ -23719,6 +23862,7 @@ paths:
               - "ALL"
               - "RECHARGE"
               - "REDEMPTION"
+              - "REFUND"
             description: "Requested stored-value record classification; ALL disables the classification filter."
         - name: "startDate"
           in: "query"
@@ -23763,6 +23907,45 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/stored-value/consumptions/order/{orderNo}/refund":
+    post:
+      operationId: "mSvConsumptionRefund"
+      summary: "Return the full service payment to the original stored-value account"
+      tags:
+        - "stored-value"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvServiceOrderRefund"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvConsumptionStoreQuery"
   "/biz/stored-value/consumptions/orders/{orderNo}/cancel":
     post:
       operationId: "mSvConsumptionCancel"
@@ -26116,6 +26299,7 @@ paths:
               - "ALL"
               - "RECHARGE"
               - "REDEMPTION"
+              - "REFUND"
             description: "Record, target or calculation classification used to interpret this object."
         - name: "startDate"
           in: "query"
@@ -33920,7 +34104,13 @@ paths:
         - "coupons"
       security:
         - bearerAuth: []
-      parameters: []
+      parameters:
+        - name: "Idempotency-Key"
+          in: "header"
+          required: false
+          schema:
+            type: "string"
+            maxLength: 64
       responses:
         "200":
           description: "OK"
@@ -33940,6 +34130,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/CouponIssueReq"
   "/biz/coupon-issues":
     get:
       operationId: "mCouponIssues"
@@ -34393,6 +34589,75 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/ReachResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/member-reach/schedule":
+    post:
+      operationId: "mScheduleReach"
+      summary: "按门店当地时间预约触达"
+      tags:
+        - "member-reach"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+            maxLength: 64
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ScheduledReachResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ScheduledReachReq"
+  "/biz/member-reach/task/{taskNo}/cancel":
+    post:
+      operationId: "mCancelReach"
+      summary: "到期前撤销预约"
+      tags:
+        - "member-reach"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
                 required:
                   - "code"
                   - "msg"

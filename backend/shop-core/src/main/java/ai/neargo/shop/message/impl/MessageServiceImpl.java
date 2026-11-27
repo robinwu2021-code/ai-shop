@@ -46,6 +46,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
@@ -140,23 +141,33 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    public Set<String> atMarketingDailyLimit(List<String> userNos) {
+        return userNos.isEmpty() ? Set.of() : atMarketingDailyLimit(userNos, notifyQuota().dailyPerUser());
+    }
+
+    private Set<String> atMarketingDailyLimit(List<String> userNos, int limit) {
+        if (limit <= 0) {
+            return Set.copyOf(userNos);
+        }
+        long dayStart = java.time.LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        return DataScopeContext.executeWithoutScope(() -> Set.copyOf(messageMapper.<String>selectObjs(
+                Wrappers.<MsgMessage>lambdaQuery().select(MsgMessage::getReceiverNo)
+                        .eq(MsgMessage::getReceiverType, MsgMessage.RECEIVER_USER)
+                        .eq(MsgMessage::getMsgType, MsgMessage.MARKETING)
+                        .in(MsgMessage::getReceiverNo, userNos)
+                        .ge(MsgMessage::getAt, dayStart)
+                        .groupBy(MsgMessage::getReceiverNo)
+                        .having("COUNT(*) >= {0}", limit))));
+    }
+
+    @Override
     @Transactional
     public boolean inboxMarketing(String userNo, String title, String body, String link, String dedupKey) {
         if (userNo == null || userNo.isBlank()) {
             return false;
         }
         long now = System.currentTimeMillis();
-        long dayStart = java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault())
-                .toInstant().toEpochMilli();
-        // 日上限与 pushMarketing 同一把尺：交易消息不占，营销类合计（不分哪家店）
-        long today = DataScopeContext.executeWithoutScope(() ->
-                messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
-                        .eq(MsgMessage::getReceiverType, MsgMessage.RECEIVER_USER)
-                        .eq(MsgMessage::getReceiverNo, userNo)
-                        .eq(MsgMessage::getMsgType, MsgMessage.MARKETING)
-                        .ge(MsgMessage::getAt, dayStart)));
-        if (today >= notifyQuota().dailyPerUser()) {
-            log.info("[quota] 会员消息被日上限拦下 user={} today={}", userNo, today);
+        if (!atMarketingDailyLimit(List.of(userNo)).isEmpty()) {
             return false;
         }
         // 同 pushTo：查重要连软删的行一起看，否则撞 uk_msg_dedup
@@ -198,18 +209,7 @@ public class MessageServiceImpl implements MessageService {
 
         NotifyQuotaVO quota = notifyQuota();
         long now = System.currentTimeMillis();
-        long dayStart = java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault())
-                .toInstant().toEpochMilli();
-
-        // 日上限：只数营销类 —— 交易消息不占用户的「被打扰额度」
-        long today = DataScopeContext.executeWithoutScope(() ->
-                messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
-                        .eq(MsgMessage::getReceiverType, MsgMessage.RECEIVER_USER)
-                        .eq(MsgMessage::getReceiverNo, userNo)
-                        .eq(MsgMessage::getMsgType, MsgMessage.MARKETING)
-                        .ge(MsgMessage::getAt, dayStart)));
-        if (today >= quota.dailyPerUser()) {
-            log.info("[quota] 日上限拦下 user={} today={}/{}", userNo, today, quota.dailyPerUser());
+        if (!atMarketingDailyLimit(List.of(userNo), quota.dailyPerUser()).isEmpty()) {
             return false;
         }
 

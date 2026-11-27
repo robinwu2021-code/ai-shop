@@ -5,6 +5,9 @@ import ai.neargo.shop.member.entity.MbrMemberSource;
 import ai.neargo.shop.member.entity.MbrMemberStore;
 import ai.neargo.shop.member.entity.MbrSetting;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.time.LocalDateTime;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * 会员域的 Mapper 集合（嵌套接口，与 {@code UserMappers} / {@code MerchantMappers} 同一写法）。
@@ -17,6 +20,15 @@ public final class MemberMappers {
     }
 
     public interface MemberMapper extends BaseMapper<MbrMember> {
+        @org.apache.ibatis.annotations.Select("""
+                SELECT m.person_no FROM mbr_member m
+                WHERE m.tenant_no=#{tenant} AND m.entity_no=#{entity} AND m.member_no=#{member}
+                AND m.deleted=0 AND m.status='ACTIVE' AND (m.first_store_no=#{store} OR EXISTS (
+                    SELECT 1 FROM mbr_store_profile p WHERE p.tenant_no=m.tenant_no AND p.entity_no=m.entity_no
+                    AND p.member_no=m.member_no AND p.store_no=#{store} AND p.deleted=0))
+                """)
+        String posMemberPerson(String tenant,String entity,String store,String member);
+
     }
 
     /** 门店维度。**单店主体没有行** —— 读不到就回落主表 */
@@ -27,7 +39,19 @@ public final class MemberMappers {
     public interface MemberSourceMapper extends BaseMapper<MbrMemberSource> {
     }
 
+    public record GradeVersion(String versionNo, String levelsJson) {}
+
     public interface SettingMapper extends BaseMapper<MbrSetting> {
+        @Select("""
+                SELECT version_no, levels_json FROM mbr_level_rule
+                WHERE tenant_no = #{tenantNo} AND entity_no = #{entityNo}
+                  AND scope_type = 'ENTITY' AND scope_no = #{entityNo}
+                  AND status = 'ACTIVE' AND deleted = 0 AND basis = 'ORDER_COUNT'
+                  AND stat_period_days IS NULL AND downgrade_policy = 'PERIODIC'
+                  AND effective_from <= #{now}
+                  AND (effective_to IS NULL OR effective_to > #{now})
+                """)
+        GradeVersion activeGradeVersion(@Param("tenantNo") String tenantNo, @Param("entityNo") String entityNo, @Param("now") LocalDateTime now);
     }
 
     /** 标签字典。改名只动这里一行 */

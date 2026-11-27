@@ -71,6 +71,7 @@ public class PayRightsNumberReservations extends DefaultPointcutAdvisor {
             || name.equals("EntitlementGrantWriter") && method.equals("prepare")
             || name.equals("EntitlementIssueBatchWriter") && Set.of("create", "step").contains(method)
             || name.equals("EntitlementUseWriter") && method.equals("finish")
+            || name.equals("StoredValueWholeRefundWriter") && method.equals("apply")
             || name.equals("StoredValuePostingServiceImpl") && method.equals("creditReceived")
             || name.equals("StoredValueRechargeWriterImpl") && Set.of("create", "cancel").contains(method)
             || name.equals("StoredValueRedemptionPostingServiceImpl") && method.equals("finish");
@@ -94,7 +95,7 @@ public class PayRightsNumberReservations extends DefaultPointcutAdvisor {
             if (method.equals("cancel") && args[3] == null) return Map.of();
             return Map.of(DocumentType.SV_RECHARGE,1);
         }
-        if (name.equals("StoredValuePostingServiceImpl")) return Map.of(DocumentType.SV_VOUCHER,1);
+        if (name.equals("StoredValuePostingServiceImpl") || name.equals("StoredValueWholeRefundWriter")) return Map.of(DocumentType.SV_VOUCHER,1);
         // One financial voucher per operation, except the two documented composed/bounded operations.
         int count=1;
         if (name.equals("PointsWorkbenchServiceImpl") && method.equals("draftStatements")) count=400;

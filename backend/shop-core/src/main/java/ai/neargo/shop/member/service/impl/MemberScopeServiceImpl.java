@@ -49,7 +49,22 @@ public class MemberScopeServiceImpl implements MemberScopeService {
  public long importLegacy(String tenant,String entity,String store,String actor){var target=scope(tenant,entity,store);var conflicts=new HashSet<String>();
   for(var source:organizations.stores(target)){
    var verified=scope(tenant,source.entityNo(),source.storeNo());if(!target.scopeType().equals(verified.scopeType())||!target.scopeNo().equals(verified.scopeNo()))continue;
-   for(var old:db.rows("SELECT m.* FROM mbr_member m WHERE m.tenant_no=? AND m.entity_no=? AND m.deleted=0 AND (m.first_store_no=? OR EXISTS(SELECT 1 FROM mbr_member_store ms WHERE ms.tenant_no=m.tenant_no AND ms.member_no=m.member_no AND ms.store_no=? AND ms.deleted=0)) AND NOT EXISTS(SELECT 1 FROM mbr_scope_legacy_link l JOIN mbr_scope_member sm ON sm.tenant_no=l.tenant_no AND sm.scope_member_no=l.scope_member_no WHERE l.tenant_no=m.tenant_no AND l.legacy_member_no=m.member_no AND l.status='VERIFIED' AND l.deleted=0 AND sm.scope_type=? AND sm.scope_no=? AND sm.deleted=0)",tenant,source.entityNo(),source.storeNo(),source.storeNo(),target.scopeType(),target.scopeNo())){
+   // Compare historical business keys across V224 and V545 collations without folding distinct identifiers.
+   for (var old : db.rows("""
+       SELECT m.* FROM mbr_member m
+       WHERE m.tenant_no = ? AND m.entity_no = ? AND m.deleted = 0
+         AND (m.first_store_no = ? OR EXISTS (
+             SELECT 1 FROM mbr_store_profile ms
+             WHERE ms.tenant_no = ? AND ms.entity_no = ? AND ms.store_no = ? AND ms.deleted = 0
+               AND CAST(ms.member_no AS BINARY(256)) = CAST(m.member_no AS BINARY(256))))
+         AND NOT EXISTS (
+             SELECT 1 FROM mbr_scope_legacy_link l
+             JOIN mbr_scope_member sm ON sm.tenant_no = l.tenant_no AND sm.scope_member_no = l.scope_member_no
+             WHERE l.tenant_no = ? AND l.status = 'VERIFIED' AND l.deleted = 0
+               AND CAST(l.legacy_member_no AS BINARY(256)) = CAST(m.member_no AS BINARY(256))
+               AND sm.scope_type = ? AND sm.scope_no = ? AND sm.deleted = 0)
+       """, tenant, source.entityNo(), source.storeNo(), tenant, source.entityNo(), source.storeNo(),
+       tenant, target.scopeType(), target.scopeNo())) {
     String customer=s(old,"person_no");var evidence=identities.find(tenant,customer);if(evidence.isEmpty()||!evidence.get().consistent()){conflicts.add(s(old,"member_no"));continue;}
     var member=enrollInternal(tenant,source.entityNo(),source.storeNo(),customer,actor,null,true);
     linkLegacy(tenant,s(old,"member_no"),member.scopeMemberNo(),source.storeNo(),actor);

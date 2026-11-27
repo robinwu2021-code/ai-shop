@@ -44,7 +44,13 @@ public interface StoreOrderService {
      * @param invoiceTiming 本单开票时机 ON_PAID / MANUAL / LATER（P2）：存在订单上，null = 跟门店开票设定
      */
     record CreateCmd(String idempotencyKey, String clientOrderNo, String channel, String currency,
-            List<LineCmd> lines, List<AdjustmentCmd> adjustments, BuyerCmd buyer, String invoiceTiming) {}
+            List<LineCmd> lines, List<AdjustmentCmd> adjustments, BuyerCmd buyer, String invoiceTiming,
+            Integer activityFactsVersion, String memberNo) {
+        public CreateCmd(String key, String client, String channel, String currency, List<LineCmd> lines,
+                List<AdjustmentCmd> adjustments, BuyerCmd buyer, String timing) {
+            this(key, client, channel, currency, lines, adjustments, buyer, timing, null, null);
+        }
+    }
 
     /**
      * @param storeItemNo 门店常用品项（仅自订行，与 name / taxType 互斥）：带出品名与课税别，选零税率 / 免税不需
@@ -54,7 +60,9 @@ public interface StoreOrderService {
     record LineCmd(String kind, String skuNo, int quantity, long unitPriceMinor, String name, String taxType,
             String storeItemNo) {}
 
-    record AdjustmentCmd(String kind, String name, long amountMinor) {}
+    record AdjustmentCmd(String kind, String name, long amountMinor, String activityNo) {
+        public AdjustmentCmd(String kind, String name, long amountMinor) { this(kind, name, amountMinor, null); }
+    }
 
     /** 买受人四选一：CONSUMER / COMPANY（taxId + name）/ CARRIER（carrierType + carrierId）/ DONATE（donateCode） */
     record BuyerCmd(String type, String taxId, String name, String carrierType, String carrierId, String donateCode) {}

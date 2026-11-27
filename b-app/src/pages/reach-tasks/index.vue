@@ -79,15 +79,18 @@ function md(ts: number) {
 }
 
 function taskRow(x: ReachTask): Row {
+  const status = x.deliveryStatus;
+  const pending = !!status && status !== "SENT";
+  const at = x.scheduledAt || x.sentAt;
   return {
     key: x.taskNo,
-    at: x.sentAt,
+    at,
     title: x.title,
-    meta: tt("reachTasks.msgMeta", { s: tt(`reach.scene.${x.scene}`), a: x.audienceDesc, d: md(x.sentAt) }),
-    chip: x.settled
+    meta: tt("reachTasks.msgMeta", { s: tt(`reach.scene.${x.scene}`), a: x.audienceDesc, d: md(at) }),
+    chip: pending ? { text: tt(`reach.state.${status}`), cls: "" } : x.settled
       ? { text: tt("reachTasks.settled"), cls: "" }
       : { text: tt("reachTasks.counting"), cls: "sh-chip--primary" },
-    line: tt("reachTasks.msgLine", { s: x.sent, o: x.opened, r: x.ordered }),
+    line: pending ? tt("reach.progress", { done: x.sent + x.skipped, total: x.matched }) : tt("reachTasks.msgLine", { s: x.sent, o: x.opened, r: x.ordered }),
     rate: pct(x.ordered, x.sent),
     url: `${ROUTES.reachTask}?taskNo=${x.taskNo}`,
   };

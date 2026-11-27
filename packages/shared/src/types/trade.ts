@@ -320,6 +320,7 @@ export interface ActivityChoice {
 }
 /** 订单关闭后券与积分去了哪（后端 `OrderVO.Returned`） */
 export interface OrderReturned {
+  couponReturn?: { sourceType: "ORDER_CANCEL" | "AFTER_SALE"; discountMinor: number; decidedAt: number } | null;
   /** 这一单用过、现在已回到券包的券名 */
   couponTitle?: string | null;
   /** 退回的抵扣积分（该单 REFUND 流水之和） */

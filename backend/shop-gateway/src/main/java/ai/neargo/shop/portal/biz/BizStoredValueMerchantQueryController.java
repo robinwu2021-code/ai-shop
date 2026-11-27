@@ -12,6 +12,9 @@ import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition.RedemptionScope;
 import ai.neargo.shop.spi.storedvalue.StoredValueMerchantViews;
 import ai.neargo.shop.spi.user.StoredValueCustomerProfilePort;
+import ai.neargo.shop.spi.entitlement.EntitlementUsePort.AssetKind;
+import ai.neargo.shop.trade.dto.ServiceOrderSnapshot;
+import ai.neargo.shop.trade.service.EntitlementServiceOrderService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -30,9 +33,11 @@ public class BizStoredValueMerchantQueryController {
     private final EntitlementScopeResolver scopes;
     private final StoredValueCustomerProfilePort profiles;
     private final MarketPort markets;
+    private final EntitlementServiceOrderService orders;
     private final MerchantQueryPort merchants;
     public BizStoredValueMerchantQueryController(StoredValueMerchantQueryAppService reads,
-            EntitlementScopeResolver scopes,StoredValueCustomerProfilePort profiles,MarketPort markets,MerchantQueryPort merchants){this.reads=reads;this.scopes=scopes;this.profiles=profiles;this.markets=markets;this.merchants=merchants;}
+            EntitlementScopeResolver scopes,StoredValueCustomerProfilePort profiles,MarketPort markets,MerchantQueryPort merchants,
+            EntitlementServiceOrderService orders){this.orders=orders;this.reads=reads;this.scopes=scopes;this.profiles=profiles;this.markets=markets;this.merchants=merchants;}
 
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_ACCOUNT_READ+"')")
     @GetMapping("/biz/stored-value/account-directory")
@@ -85,7 +90,11 @@ public class BizStoredValueMerchantQueryController {
     @GetMapping("/biz/stored-value/records/{recordNo}")
     public RecordView record(@PathVariable String recordNo,@RequestParam String storeNo){
         var s=scope(storeNo);var r=reads.record(s,storeNo,recordNo);
-        return record(r,profiles.profiles(s.tenantNo(),s.entityNo(),storeNo,List.of(r.identityNo())).get(r.identityNo()));
+        var order = "REDEMPTION".equals(r.type()) ? orders.findOperation(s.tenantNo(), s.entityNo(), r.businessNo()) : null;
+        boolean refundable = order != null && storeNo.equals(order.fact().storeNo())
+                && "COMMITTED".equals(order.status()) && order.command().assetKind() == AssetKind.STORED_VALUE;
+        return record(r, profiles.profiles(s.tenantNo(), s.entityNo(), storeNo, List.of(r.identityNo())).get(r.identityNo()),
+                refundable ? order : null);
     }
     private CatalogScope scope(String store){
         var s=scopes.resolve(new RedemptionScope("STORES",List.of(store)));
@@ -96,17 +105,22 @@ public class BizStoredValueMerchantQueryController {
                 a.balanceMinor(),a.heldMinor(),a.availableMinor(),a.lastOccurredAt(),a.lastRechargeAt());
     }
     static RecordView record(StoredValueMerchantViews.Record r,StoredValueCustomerProfilePort.Profile p){
+        return record(r, p, null);
+    }
+    private static RecordView record(StoredValueMerchantViews.Record r, StoredValueCustomerProfilePort.Profile p,
+                                     ServiceOrderSnapshot order) {
         return new RecordView(r.recordNo(),p==null?"顾客":p.maskedName(),p==null?"":p.maskedPhone(),r.type(),r.title(),r.storeNo(),r.storeName(),
-                r.currency(),r.signedAmountMinor(),r.balanceAfterMinor(),r.occurredAt(),r.businessNo(),r.planNo(),r.versionNo(),r.paidAmountMinor(),r.bonusAmountMinor(),r.documentNo(),r.voucherDocumentNo());
+                r.currency(),r.signedAmountMinor(),r.balanceAfterMinor(),r.occurredAt(),r.businessNo(),r.planNo(),r.versionNo(),r.paidAmountMinor(),r.bonusAmountMinor(),r.documentNo(),r.voucherDocumentNo(),
+                order == null ? null : order.serviceOrderNo(), order == null ? null : order.refundStatus());
     }
     public record AccountView(String accountRef,String maskedName,String maskedPhone,String currency,long balanceMinor,
             long heldMinor,long availableMinor,Instant lastOccurredAt,Instant lastRechargeAt){ }
     public record RecordView(String recordNo,String maskedName,String maskedPhone,String type,String title,String storeNo,String storeName,
             String currency,long signedAmountMinor,long balanceAfterMinor,Instant occurredAt,String businessNo,String planNo,String versionNo,
-            Long paidAmountMinor,Long bonusAmountMinor,String documentNo,String voucherDocumentNo){
+            Long paidAmountMinor,Long bonusAmountMinor,String documentNo,String voucherDocumentNo,String serviceOrderNo,String refundStatus){
         public RecordView(String recordNo,String maskedName,String maskedPhone,String type,String title,String storeNo,String storeName,
                 String currency,long signedAmountMinor,long balanceAfterMinor,Instant occurredAt,String businessNo,String planNo,String versionNo,
                 Long paidAmountMinor,Long bonusAmountMinor){this(recordNo,maskedName,maskedPhone,type,title,storeNo,storeName,currency,signedAmountMinor,
-                    balanceAfterMinor,occurredAt,businessNo,planNo,versionNo,paidAmountMinor,bonusAmountMinor,null,null);}
+                    balanceAfterMinor,occurredAt,businessNo,planNo,versionNo,paidAmountMinor,bonusAmountMinor,null,null,null,null);}
     }
 }

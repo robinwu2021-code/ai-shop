@@ -2,6 +2,7 @@ package ai.neargo.shop.promotion.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -21,6 +22,12 @@ public class PmtCouponIssue extends BaseEntity {
 
 
     private String issueNo;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String templateVersionNo;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String requestKey;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String requestHash;
     private String couponNo;
     private String entityNo;
     private String issueMode;

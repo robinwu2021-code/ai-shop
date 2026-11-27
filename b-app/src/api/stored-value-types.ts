@@ -69,6 +69,10 @@ lastOccurredAt:string|null;
 /** Time of the most recent completed recharge; null when none exists. */
 lastRechargeAt?:string|null }
 export interface SvRecord {
+/** Original fully stored-value-funded service order on an eligible redemption detail. */
+serviceOrderNo?:string|null;
+/** Durable return progress on the original redemption. */
+refundStatus?:'REFUND_PENDING'|'REFUNDED'|null;
 /** Human-facing document number; null or absent for historical unmapped records. */
 documentNo?:string|null;
 /** Human-facing accounting voucher number; absent for historical unmapped vouchers. */
@@ -80,7 +84,7 @@ maskedName:string;
 /** Customer phone number masked for the current operator's access level. */
 maskedPhone:string;
 /** Record, target or calculation classification used to interpret this object. */
-type:'RECHARGE'|'REDEMPTION';
+type:'RECHARGE'|'REDEMPTION'|'REFUND';
 /** Human-readable title of the stored-value business record. */
 title:string;
 /** Store identifier scoping the requested operation or returned business record. */
@@ -109,7 +113,7 @@ export interface SvRecordsQuery {
 /** Store identifier scoping the requested operation or returned business record. */
 storeNo:string;
 /** Record, target or calculation classification used to interpret this object. */
-type:'ALL'|'RECHARGE'|'REDEMPTION';
+type:'ALL'|'RECHARGE'|'REDEMPTION'|'REFUND';
 /** Inclusive first business date in YYYY-MM-DD format. */
 startDate?:string;
 /** Inclusive final business date in YYYY-MM-DD format. */
@@ -419,6 +423,14 @@ scopeType:'STORE'|'BRAND';
 issuerName:string|null;
 /** Server expiry timestamp after which the reference or confirmation must be refreshed. */
 expiresAt:string}}
+export interface SvServiceOrderRefund {
+  /** Identifier of the full refund against the original service order. */
+  refundNo:string;
+  /** Durable processing or completion status. */
+  status:'REFUND_PENDING'|'REFUNDED';
+  /** Full amount restored to the original stored-value account, in minor currency units. */
+  amountMinor:number;
+}
 export interface SvOperation {
 /** Stable operation identifier used to recover the original execution. */
 operationNo:string;
@@ -426,3 +438,9 @@ operationNo:string;
 status:string;
 /** Ledger usage identifier; null until consumption has produced a usage. */
 usageNo:string|null}
+
+export const svRecordTypeLabels = {
+  RECHARGE: 'storedValue.recharge',
+  REDEMPTION: 'storedValue.redemption',
+  REFUND: 'storedValue.refund',
+} as const;

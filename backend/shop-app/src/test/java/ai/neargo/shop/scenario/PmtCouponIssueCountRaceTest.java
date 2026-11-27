@@ -60,8 +60,8 @@ class PmtCouponIssueCountRaceTest {
         String e = "M-CNT-" + (++seq);
         StoreOwnerFixture.entity(jdbc, e);
         String couponNo = couponService.save(e, targeted(5), "OP").couponNo();
-        doReturn(audience("A", 4)).when(members).resolveSegment(e, "SEG-A");
-        doReturn(audience("B", 4)).when(members).resolveSegment(e, "SEG-B");
+        doReturn(audience("A", 4)).when(members).resolveSegment(e, "SEG-A", null);
+        doReturn(audience("B", 4)).when(members).resolveSegment(e, "SEG-B", null);
 
         InterleavedRace.Racer[] other = new InterleavedRace.Racer[1];
         // 第一批读完券行（余量 5）、还没加锁的那一刻，第二批整批跑一遍

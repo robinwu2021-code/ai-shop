@@ -12,9 +12,13 @@ import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 /** 消息与客服（[API 清单 §2.13]）。 */
 public interface MessageService {
+
+    /** 返回已达当前营销日限的收件人。 */
+    Set<String> atMarketingDailyLimit(List<String> userNos);
 
     String TRADE = "TRADE";
     String MARKETING = "MARKETING";

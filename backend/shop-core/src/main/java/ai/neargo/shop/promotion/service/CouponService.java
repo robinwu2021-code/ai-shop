@@ -36,9 +36,26 @@ public interface CouponService {
      * <p><b>预算是硬闸门且不部分发放</b>：本批最大敞口超出剩余预算时整批拒绝 ——
      * 部分发放会留下一个谁也说不清的中间态（发到第几个人？没发的怎么办？）。
      */
+    default CouponIssueVO issue(String entityNo, String couponNo, String segmentNo,
+                        List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences,
+                        String operatorNo) {
+        return issue(entityNo, couponNo, segmentNo, audiences, operatorNo, null);
+    }
+
+    default CouponIssueVO issue(String entityNo, String couponNo, String segmentNo,
+                        List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences,
+                        String operatorNo, String requestKey) {
+        return issue(entityNo, couponNo, segmentNo, audiences, operatorNo, requestKey, false);
+    }
+
     CouponIssueVO issue(String entityNo, String couponNo, String segmentNo,
                         List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences,
-                        String operatorNo);
+                        String operatorNo, String requestKey, boolean reachableOnly);
+
+    /** Original PMT receipt for an issuance request made before a Pay cutover. */
+    CouponIssueVO sourceIssueReceipt(String entityNo, String couponNo, String segmentNo,
+                        List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences,
+                        String operatorNo, String requestKey, boolean reachableOnly);
 
     /** 旧入参：一个人群号或预设键（@SLEEPING …）。旧版 App 还在这样调，保留一个版本 */
     default CouponIssueVO issue(String entityNo, String couponNo, String segmentNo, String operatorNo) {
@@ -64,7 +81,11 @@ public interface CouponService {
     List<ai.neargo.shop.promotion.dto.CouponVOs.CustomerCoupon> center(String userNo);
 
     /** 顾客领一张。判据：进行中、有效期内、没领满、有库存（一条 UPDATE 原子扣）、不超预算 */
-    ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon receive(String userNo, String couponNo);
+    default ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon receive(String userNo, String couponNo) {
+        return receive(userNo, couponNo, null);
+    }
+    ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon receive(String userNo, String couponNo, String requestKey);
+    ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon sourceClaimReceipt(String userNo, String couponNo, String requestKey);
 
     /** 这个人手里下单可抵扣的券（不含已撤销） */
     List<ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon> held(String userNo);

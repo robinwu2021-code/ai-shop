@@ -17,6 +17,7 @@ import { confirm } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { takePendingAudience } from "@/shared/audience";
+import { idempotencyKey } from "@shared/net/http-client";
 import { money } from "@shared/utils/money";
 import type { AudienceItem, AudiencePreview, MerchantCoupon } from "@shared/types";
 
@@ -24,6 +25,7 @@ const { t } = useI18n();
 const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
 const merchant = useMerchantStore();
 
+let requestKey = idempotencyKey();
 const couponNo = ref("");
 const c = ref<MerchantCoupon | null>(null);
 const failed = ref(false);
@@ -33,6 +35,7 @@ const showPicker = ref(false);
 const items = ref<AudienceItem[]>([{ type: "ALL", value: "*" }]);
 const label = ref("");
 const preview = ref<AudiencePreview | null>(null);
+const reachableOnly = ref(false);
 
 async function load() {
   if (!couponNo.value) return;
@@ -46,10 +49,23 @@ async function load() {
 }
 
 async function recount() {
-  preview.value = await api.mAudiencePreview({ audiences: items.value }).catch(() => null);
+  const key = requestKey;
+  preview.value = null;
+  const counted = await api.mAudiencePreview({
+    audiences: items.value,
+    scene: reachableOnly.value ? "COUPON" : undefined,
+  }).catch(() => null);
+  if (key === requestKey) preview.value = counted;
+}
+
+function setReachableOnly(value: boolean) {
+  reachableOnly.value = value;
+  requestKey = idempotencyKey();
+  void recount();
 }
 
 function onPick(next: AudienceItem[], text: string) {
+  requestKey = idempotencyKey();
   items.value = next;
   label.value = text;
   showPicker.value = false;
@@ -73,14 +89,15 @@ const maxSpend = computed(() => willIssue.value * perCoupon.value);
 async function send() {
   const x = c.value;
   if (!x || busy.value || !willIssue.value) return;
+  const confirmedKey = requestKey;
   const ok = await confirm({
     title: tt("couponSend.confirmTitle", { name: label.value }),
     hint: tt("couponSend.confirmBody", { n: willIssue.value, title: x.title }),
   });
-  if (!ok) return;
+  if (!ok || confirmedKey !== requestKey || busy.value) return;
   busy.value = true;
   try {
-    const r = await api.mIssueCoupon(x.couponNo, null, items.value);
+    const r = await api.mIssueCoupon(x.couponNo, null, items.value, confirmedKey, reachableOnly.value);
     uni.redirectTo({ url: `${ROUTES.couponIssues}?couponNo=${x.couponNo}&issueNo=${r.issueNo}` });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -129,6 +146,10 @@ onLoad((q) => {
           </view>
         </view>
         <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body">{{ $t("couponSend.reachableOnly") }}</text>
+          <sh-switch :model-value="reachableOnly" :disabled="busy" @update:model-value="setReachableOnly"></sh-switch>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ $t("couponSend.matched") }}</text>
           <text class="txt-body sh-num">{{ preview?.matched ?? "…" }}</text>
         </view>
@@ -155,6 +176,7 @@ onLoad((q) => {
       <biz-audience-picker
         :visible="showPicker"
         :model-value="items"
+        :scene="reachableOnly ? 'COUPON' : undefined"
         @close="showPicker = false"
         @confirm="onPick"
       ></biz-audience-picker>

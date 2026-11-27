@@ -65,7 +65,7 @@ public class StoredValueMerchantQueryServiceImpl implements StoredValueMerchantQ
     }
     /** Only called after the issuer query has verified the customer-bound wallet reference. */
     public CursorPage<Record> walletRecords(CatalogScope scope,String store,String type,Instant from,Instant to,String account,String cursor,int size){
-        read(scope,store,size);ContractChecks.require(List.of("ALL","RECHARGE","REDEMPTION").contains(type));
+        read(scope,store,size);ContractChecks.require(List.of("ALL","RECHARGE","REDEMPTION","REFUND").contains(type));
         ContractChecks.require(from==null||to==null||from.isBefore(to));
         String filters=digest(List.of(scope.entityNo(),store,type,from==null?"":from.toString(),to==null?"":to.toString(),account==null?"":account),json);
         var after=cursors.decode(cursor,"SV_RECORDS",scope.tenantNo(),scope.actorNo(),filters);
@@ -147,6 +147,7 @@ public class StoredValueMerchantQueryServiceImpl implements StoredValueMerchantQ
         return rows.stream().map(row -> {
             String documentNo="RECHARGE".equals(row.getType())
                     ? recharges.get(source(row,ai.neargo.shop.numbering.DocumentType.SV_RECHARGE,row.getBusinessNo()))
+                    : "REFUND".equals(row.getType()) ? vouchers.get(source(row,ai.neargo.shop.numbering.DocumentType.SV_VOUCHER,row.getVoucherNo()))
                     : usageByOperation.containsKey(row.getBusinessNo())
                         ? usageNumbers.get(source(row,ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE,usageByOperation.get(row.getBusinessNo()))) : null;
             return new Record(row.getRecordNo(),row.getUserNo(),row.getType(),row.getTitle(),row.getStoreNo(),row.getStoreName(),

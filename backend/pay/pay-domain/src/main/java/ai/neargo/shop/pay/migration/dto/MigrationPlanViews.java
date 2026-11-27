@@ -6,7 +6,15 @@ import java.time.Instant;
 /** Operator metadata only, without recipient identities, ciphertext or authority to import. */
 public final class MigrationPlanViews {
     private MigrationPlanViews() { }
-    public record PlanCommand(String stageNo,String reason) {
+    public enum Cohort { UNUSED_MERCHANT_COUPONS, UNUSED_STORE_COUPONS, UNUSED_VERSIONED_COUPONS }
+
+    // Omitting the optional selector preserves the command hashes of previously prepared plans.
+    public record PlanCommand(String stageNo, String reason,
+            @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+            Cohort cohort) {
+        public PlanCommand(String stageNo, String reason) {
+            this(stageNo, reason, null);
+        }
         public PlanCommand {
             ContractChecks.id(stageNo);
             ContractChecks.require(reason!=null && !reason.isBlank() && reason.length()<=500);

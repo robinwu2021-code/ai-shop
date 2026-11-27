@@ -22,6 +22,9 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseReceipt;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.ReversalView;
 import ai.neargo.shop.spi.entitlement.SourceDecisionPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import ai.neargo.shop.pay.mapper.storedvalue.SvVoucherMapper;
+import ai.neargo.shop.pay.storedvalue.entity.SvVoucher;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueWholeRefundWriter;
 import java.util.Objects;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
@@ -34,22 +37,28 @@ public class EntitlementReversalServiceImpl implements EntitlementReversalServic
     private final EntUsageMapper usages;
     private final EntUseIntentMapper intents;
     private final EntitlementReversalWriter writer;
+    private final SvVoucherMapper vouchers;
+    private final StoredValueWholeRefundWriter moneyRefunds;
     private final ObjectProvider<SourceDecisionPort> decisions;
     private final ObjectMapper json;
     public EntitlementReversalServiceImpl(EntUseReversalMapper reversals, EntUsageMapper usages,
             EntUseIntentMapper intents, EntitlementReversalWriter writer,
-            ObjectProvider<SourceDecisionPort> decisions, ObjectMapper json) {
+            ObjectProvider<SourceDecisionPort> decisions, ObjectMapper json,
+            SvVoucherMapper vouchers, StoredValueWholeRefundWriter moneyRefunds) {
+        this.vouchers = vouchers; this.moneyRefunds = moneyRefunds;
         this.reversals = reversals; this.usages = usages; this.intents = intents;
         this.writer = writer; this.decisions = decisions; this.json = json;
     }
     @Override public ReversalView queryReverse(EntitlementContext ctx, String entity, String reverseNo) {
         ContractChecks.id(entity); ContractChecks.id(reverseNo);
         var row = reversals.find(ctx.tenantNo(), reverseNo);
-        var usage = row == null ? null : usages.selectOne(Wrappers.<EntUsage>lambdaQuery()
-                .eq(EntUsage::getTenantNo, ctx.tenantNo()).eq(EntUsage::getUsageNo, row.getUsageNo())
+        var refund = row == null && reverseNo.startsWith("SVR-") ? refundVoucher(ctx, reverseNo) : null;
+        String usageNo = row != null ? row.getUsageNo() : refund != null ? refund.getUsageNo() : null;
+        var usage = usageNo == null ? null : usages.selectOne(Wrappers.<EntUsage>lambdaQuery()
+                .eq(EntUsage::getTenantNo, ctx.tenantNo()).eq(EntUsage::getUsageNo, usageNo)
                 .eq(EntUsage::getEntityNo, entity));
         if (usage == null) return new ReversalView(reverseNo, State.NOT_FOUND, null, null);
-        var receipt = writer.view(row);
+        var receipt = refund == null ? writer.view(row) : StoredValueWholeRefundWriter.receipt(refund);
         return new ReversalView(reverseNo, receipt.status(), receipt.usageNo(), receipt.occurredAt());
     }
     @Override public UseReceipt reverse(EntitlementContext ctx, OrderBenefitReverse c) {
@@ -59,7 +68,16 @@ public class EntitlementReversalServiceImpl implements EntitlementReversalServic
             if (!prior.getPayloadHash().equals(digest(json.writeValueAsString(c)))) conflict();
             return writer.view(prior);
         }
-        if (c.assetKind() != AssetKind.ORDER_COUPON || !"CORE".equals(c.sourceRef().sourceSystem())
+        boolean money = c.assetKind() == AssetKind.STORED_VALUE;
+        if (money != c.reverseNo().startsWith("SVR-")) conflict();
+        if (money) {
+            var refund = refundVoucher(ctx, c.reverseNo());
+            if (refund != null) {
+                if (!refund.getPayloadHash().equals(digest(json.writeValueAsString(c)))) conflict();
+                return StoredValueWholeRefundWriter.receipt(refund);
+            }
+        }
+        if (!"CORE".equals(c.sourceRef().sourceSystem())
                 || !"ORDER_REFUND".equals(c.sourceRef().sourceType())
                 || !c.usageNo().equals(c.sourceRef().sourceLineNo())
                 || c.sourceRef().unitIndex() != null || c.sourceRef().entitlementIndex() != null) conflict();
@@ -68,8 +86,13 @@ public class EntitlementReversalServiceImpl implements EntitlementReversalServic
         if (usage == null) throw BizException.of(ErrorCode.NOT_FOUND);
         var intent = intents.find(ctx.tenantNo(), usage.getOperationNo());
         if (intent == null || !"COMMITTED".equals(intent.getStatus())
-                || !"ORDER_COUPON".equals(usage.getAssetKind())) conflict();
+                || !c.assetKind().name().equals(usage.getAssetKind())
+                || !c.assetKind().name().equals(intent.getAssetKind())
+                || !usage.getUsageNo().equals(intent.getUsageNo())) conflict();
         var original = json.readValue(intent.getCommandSnapshot(), Prepared.class);
+        if (money && (!"SERVICE_USE".equals(original.command().sourceRef().sourceType())
+                || !Objects.equals(c.amountMinor(), usage.getAmountMinor())
+                || !Objects.equals(c.amountMinor(), original.command().amountMinor()))) conflict();
         var owner = decisions.getIfAvailable(); if (owner == null) unavailable();
         var fact = owner.query(ctx, c.sourceRef());
         if (fact == null) unavailable();
@@ -81,6 +104,12 @@ public class EntitlementReversalServiceImpl implements EntitlementReversalServic
                 || !usage.getEntityNo().equals(fact.entityNo()) || !usage.getStoreNo().equals(fact.storeNo())
                 || !usage.getCurrency().equals(fact.currency()) || !Objects.equals(c.amountMinor(), fact.amountMinor())
                 || !original.source().orderSnapshotHash().equals(fact.snapshotHash())) conflict();
-        return writer.apply(ctx, c, usage.getOperationNo());
+        return money ? moneyRefunds.apply(ctx, c, usage.getOperationNo()) : writer.apply(ctx, c, usage.getOperationNo());
     }
+
+    private SvVoucher refundVoucher(EntitlementContext ctx, String reverseNo) {
+        return vouchers.selectOne(Wrappers.<SvVoucher>lambdaQuery().eq(SvVoucher::getTenantNo, ctx.tenantNo())
+                .eq(SvVoucher::getBizType, "REFUND").eq(SvVoucher::getBizNo, reverseNo));
+    }
+
 }

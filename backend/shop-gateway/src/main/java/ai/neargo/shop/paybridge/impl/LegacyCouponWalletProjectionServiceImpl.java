@@ -49,7 +49,7 @@ public class LegacyCouponWalletProjectionServiceImpl implements LegacyCouponWall
                 long end=expiry(s);
                 out.putIfAbsent(row.userCouponNo(),new MyCouponVO(row.userCouponNo(),row.couponNo(),s.definition().title(),row.benefitText(),
                         row.entityNo(),"ORDER",null,s.definition().minAmountMinor(),s.totalUnits(),s.totalUnits()-s.remainingUnits(),
-                        s.remainingUnits(),end,status(s),s.usableNow(),row.merchantName(),s.definition().redemptionScope().mode()));
+                        s.remainingUnits(),end,status(s),s.usableNow(),row.merchantName(),LegacyCouponCompatibilityServiceImpl.legacyScopeType(s.definition())));
             }
         }
         return List.copyOf(out.values());
@@ -86,7 +86,7 @@ public class LegacyCouponWalletProjectionServiceImpl implements LegacyCouponWall
                     :"减 "+java.math.BigDecimal.valueOf(d.benefitValue(),2).stripTrailingZeros().toPlainString()+" 元";
             String name=merchants==null?null:merchants.find(right.entityNo()).map(m->m.merchantName()).orElse(null);
             result.add(new MyCouponVO(right.instanceNo(),right.sourceTemplateNo(),d.title(),benefit,right.entityNo(),"ORDER",null,d.minAmountMinor(),
-                    s.totalUnits(),s.totalUnits()-s.remainingUnits(),s.remainingUnits(),expiry(s),status(s),s.usableNow(),name,d.redemptionScope().mode()));
+                    s.totalUnits(),s.totalUnits()-s.remainingUnits(),s.remainingUnits(),expiry(s),status(s),s.usableNow(),name,LegacyCouponCompatibilityServiceImpl.legacyScopeType(d)));
         }
         return List.copyOf(result);
     }

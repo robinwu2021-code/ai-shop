@@ -4,6 +4,9 @@ import ai.neargo.shop.member.entity.MbrMember;
 import ai.neargo.shop.member.mapper.MemberMappers.MemberMapper;
 import ai.neargo.shop.member.service.MemberSegmentService;
 import ai.neargo.shop.spi.member.MemberQueryPort;
+import ai.neargo.shop.spi.member.PosSaleMemberPort;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.user.PersonPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
@@ -18,7 +21,18 @@ import java.util.List;
  * 而那 12 个里有多少是「还没注册」必须由这里报出来 —— 营销域看不见会员的身份字段。
  */
 @Component
-public class MemberQueryPortImpl implements MemberQueryPort {
+public class MemberQueryPortImpl implements MemberQueryPort, PosSaleMemberPort {
+    @Override public String requireUser(String tenant,String entity,String store,String memberNo) {
+        var person = memberMapper.posMemberPerson(tenant, entity, store, memberNo);
+        if (person == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        return personPort.find(person).map(PersonPort.PersonView::userNo)
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+    }
+
+    @Override public boolean active(String tenant,String entity,String store,String memberNo) {
+        return memberNo != null && memberMapper.posMemberPerson(tenant, entity, store, memberNo) != null;
+    }
+
 
     private final MemberSegmentService segmentService;
     /** 受众判断要标签集合。同域直接依赖，不必绕 Port */
@@ -94,12 +108,12 @@ public class MemberQueryPortImpl implements MemberQueryPort {
     private static final String PRESET_ALL = "ALL";
 
     @Override
-    public SegmentAudience resolveSegment(String entityNo, String segmentNo) {
+    public SegmentAudience resolveSegment(String entityNo, String segmentNo, String scene) {
         /*
          * 预设人群（@ALL / @NEW / @LOYAL …，原型 s18 的前四行）按分层现筛，不要求商家先存一个人群 ——
          * 「发给沉睡会员」是最常见的一次发放。与存下来的人群、与新的多项受众走同一个解析器。
          */
-        AudienceResolution r = resolve(entityNo, itemsOf(segmentNo), null);
+        AudienceResolution r = resolve(entityNo, itemsOf(segmentNo), scene);
         return new SegmentAudience(r.matched(), r.reachable());
     }
 

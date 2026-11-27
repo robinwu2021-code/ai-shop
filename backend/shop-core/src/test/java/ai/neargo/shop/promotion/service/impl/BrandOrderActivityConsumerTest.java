@@ -65,6 +65,7 @@ class BrandOrderActivityConsumerTest {
         assertThat(service.commit("U1","O1",selected.getFirst())).isTrue();
         var saved=ArgumentCaptor.forClass(PmtApply.class); verify(applies).insert(saved.capture());
         assertThat(saved.getValue().getEntityNo()).isEqualTo("E2");
+        assertThat(saved.getValue().getActivityVersionNo()).isEqualTo("AV1");
         assertThat(saved.getValue().getSubOrderNo()).isEqualTo("SUB2");
         verify(costs).captureActivity("MAIN",saved.getValue().getApplyNo(),"AV1");
         verify(facts,never()).find("MAIN","O1","HQ","S2");

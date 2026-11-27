@@ -36,5 +36,10 @@ public interface EntitlementServiceOrderService {
     ServiceOrderSnapshot stage(EntitlementContext context, String entityNo, String storeNo, ServiceUseSubmit command);
     ServiceOrderSnapshot accept(EntitlementContext context, String entityNo, UseFact fact);
     ServiceOrderSnapshot cancel(EntitlementContext context, String entityNo, String storeNo, String no, String reason);
+    ServiceOrderSnapshot refundOrder(EntitlementContext context, String entityNo, String storeNo, String serviceOrderNo);
+    ServiceOrderSnapshot decideRefund(EntitlementContext context, String entityNo, String storeNo,
+                                      String serviceOrderNo, UseFact committed);
+    ServiceOrderSnapshot acknowledgeRefund(EntitlementContext context, String entityNo, String serviceOrderNo,
+                                           String reverseNo);
     void acknowledge(EntitlementContext context, String entityNo, HoldView result);
 }

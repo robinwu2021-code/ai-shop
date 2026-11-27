@@ -30,8 +30,11 @@ public class StoredValueAllocationPolicy {
             scope.refs().forEach(ContractChecks::id);
         }
     }
-    public record ItemAllocation(String orderLineNo, long amountMinor) {
-        public ItemAllocation { ContractChecks.id(orderLineNo); ContractChecks.require(amountMinor > 0); }
+    public record ItemAllocation(String orderLineNo, long amountMinor, long principalMinor, long bonusMinor) {
+        public ItemAllocation {
+            ContractChecks.id(orderLineNo);
+            ContractChecks.require(amountMinor > 0 && ContractChecks.addAmounts(principalMinor, bonusMinor) == amountMinor);
+        }
     }
     public record Allocation(String lotNo, long principalMinor, long bonusMinor, List<ItemAllocation> items) {
         public Allocation { items = List.copyOf(items); }
@@ -69,26 +72,43 @@ public class StoredValueAllocationPolicy {
         if (paid > requested) throw new IllegalStateException("Allocation exceeds the original service amount");
         var allocations = new ArrayList<Allocation>();
         for (int i = 0; i < lots.size(); i++) {
-            var details = new ArrayList<ItemAllocation>(); long used = 0;
+            var lineAmounts = new long[items.size()];
+            long used = 0;
             for (int j = 0; j < items.size(); j++) {
                 var edge = assignments[i][j];
                 long applied = edge == null ? 0 : edge.initial - edge.remaining;
-                if (applied > 0) {
-                    details.add(new ItemAllocation(items.get(j).orderLineNo(), applied));
-                    used = Math.addExact(used, applied);
-                }
+                lineAmounts[j] = applied;
+                used = Math.addExact(used, applied);
             }
             if (used == 0) continue;
             var lot = lots.get(i);
             long basisBonus=lot.originalBonusMinor()==null?lot.bonusMinor():lot.originalBonusMinor();
             long basisTotal=lot.originalPrincipalMinor()==null?Math.addExact(lot.principalMinor(),lot.bonusMinor()):Math.addExact(lot.originalPrincipalMinor(),lot.originalBonusMinor());
-            long bonus=BigInteger.valueOf(used).multiply(BigInteger.valueOf(basisBonus)).divide(BigInteger.valueOf(basisTotal)).longValueExact();
+            long bonus = share(used, basisBonus, basisTotal);
             // Holds and rounding may exhaust one component. The final allocation consumes the exact residue.
             bonus=Math.max(Math.max(0,used-lot.principalMinor()),Math.min(lot.bonusMinor(),bonus));
+            var details = new ArrayList<ItemAllocation>();
+            long cumulative = 0;
+            long priorBonus = 0;
+            for (int j = 0; j < lineAmounts.length; j++) {
+                long amount = lineAmounts[j];
+                if (amount == 0) continue;
+                cumulative = Math.addExact(cumulative, amount);
+                // Difference of cumulative floors puts the exact lot residue on its final funded line.
+                long cumulativeBonus = share(cumulative, bonus, used);
+                long lineBonus = cumulativeBonus - priorBonus;
+                details.add(new ItemAllocation(items.get(j).orderLineNo(), amount, amount - lineBonus, lineBonus));
+                priorBonus = cumulativeBonus;
+            }
             allocations.add(new Allocation(lot.lotNo(), used - bonus, bonus, details));
         }
         return new Plan(paid, allocations);
     }
+    private static long share(long amount, long component, long total) {
+        return BigInteger.valueOf(amount).multiply(BigInteger.valueOf(component))
+                .divide(BigInteger.valueOf(total)).longValueExact();
+    }
+
     private boolean eligible(RedemptionScope scope, UseSourceFact source, UseItem item) {
         return switch (scope.mode()) {
             case "ALL" -> true;

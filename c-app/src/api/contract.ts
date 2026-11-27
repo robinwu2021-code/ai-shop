@@ -545,7 +545,7 @@ export interface ShopApi {
    */
   reachOpened(reachNo: string): Promise<ReachOpened>;
   /** 领券。返回的是**领到手的那张**（UserCoupon），不是券模板 */
-  receiveCoupon(couponNo: string): Promise<UserCoupon>;
+  receiveCoupon(couponNo: string, requestKey?: string): Promise<UserCoupon>;
   /** 只取当前自提点的团 —— 成团单位是自提点 */
   groupBuyList(pickupNo?: string): Promise<GroupBuy[]>;
   groupBuyDetail(groupNo: string): Promise<GroupBuy>;

@@ -74,6 +74,14 @@ class LegacyCouponHistoricalMigrationFlowTest {
         assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE entity_no=?",Integer.class,f.scope().entityNo())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_ledger WHERE biz_type='MIGRATION_RETURN' AND instance_no IN (SELECT instance_no FROM ent_instance WHERE entity_no=?)",Integer.class,f.scope().entityNo())).isEqualTo(1);
         assertThat(queries.history(f.ctx(),new UsageHistoryQuery("U"+f.id(),f.scope().entityNo(),null,null,20)).records().getFirst().status()).isEqualTo("REVERSED");
+        var detail=queries.usage(f.ctx(),new ai.neargo.shop.spi.entitlement.EntitlementQueryPort.UsageQuery(
+                "U"+f.id(),f.scope().entityNo(),receipt.usageNo()));
+        assertThat(detail.reversals()).singleElement().satisfies(r -> {
+            assertThat(r.sourceType()).isEqualTo("AFTER_SALE");
+            assertThat(r.sourceNo()).isEqualTo("AS"+f.id());
+            assertThat(r.units()).isEqualTo(1);
+            assertThat(r.discountMinor()).isEqualTo(detail.usage().amountMinor());
+        });
         assertThat(jdbc.queryForObject("SELECT reverted_at FROM pmt_apply WHERE apply_no=?",Long.class,"AP"+f.id())).isNull();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_grant",Integer.class)).isZero();
     }

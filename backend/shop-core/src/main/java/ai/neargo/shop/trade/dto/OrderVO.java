@@ -472,10 +472,15 @@ public record OrderVO(String orderNo,
     }
 
     /** 订单关闭后券与积分去了哪。三项都可能为空 / 0 —— 有才说 */
-    public record Returned(String couponTitle, long pointsReturned, long pointsClawedBack) {
+    public record CouponReturn(String sourceType, long discountMinor, long decidedAt) { }
+
+    public record Returned(String couponTitle, long pointsReturned, long pointsClawedBack, CouponReturn couponReturn) {
+        public Returned(String couponTitle, long pointsReturned, long pointsClawedBack) {
+            this(couponTitle, pointsReturned, pointsClawedBack, null);
+        }
         public boolean isEmpty() {
             return (couponTitle == null || couponTitle.isBlank())
-                    && pointsReturned <= 0 && pointsClawedBack <= 0;
+                    && couponReturn == null && pointsReturned <= 0 && pointsClawedBack <= 0;
         }
     }
 

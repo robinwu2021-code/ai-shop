@@ -1329,6 +1329,45 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.storedvalue.StoredValuePolicies$BrandScope"
       },
+      "Bucket_6e4fe576d6": {
+        "properties": {
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "days": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Metrics_567f1cf476"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metrics_567f1cf476"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.trade.service.PosActivityEffectService$Bucket"
+      },
       "CancelConsumption_de4cdc64c1": {
         "properties": {
           "storeNo": {
@@ -3266,6 +3305,57 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizBrandStoredValueActivityController$Draft"
       },
+      "Effect_5bb5f5ea5c": {
+        "properties": {
+          "currencies": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Bucket_6e4fe576d6"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "through": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "zone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.trade.service.PosActivityEffectService$Effect"
+      },
       "EffectivePolicy_09817d4c45": {
         "properties": {
           "configured": {
@@ -4902,6 +4992,110 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.promotion.service.ActivityMarketingSummaryService$Metric"
+      },
+      "Metrics_567f1cf476": {
+        "properties": {
+          "averageDiscountMinor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "averagePaidMinor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "covered": {
+            "type": "boolean"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "discountMinor": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "discountPercent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memberOrders": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memberPercent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "netPaidMinor": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "orders": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.trade.service.PosActivityEffectService$Metrics"
       },
       "Operation_9dd4099e6d": {
         "properties": {
@@ -6681,6 +6875,26 @@
               }
             ]
           },
+          "refundStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "serviceOrderNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "signedAmountMinor": {
             "format": "int64",
             "type": "integer"
@@ -6959,6 +7173,22 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.entitlement.EntitlementDefinition$RedemptionScope"
+      },
+      "RefundConsumption_215c27644c": {
+        "properties": {
+          "storeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueController$RefundConsumption"
       },
       "Request_cb21faa468": {
         "properties": {
@@ -7694,6 +7924,36 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.paybridge.dto.StoredValueCustomerViews$Selection"
+      },
+      "ServiceOrderRefund_5307884e18": {
+        "properties": {
+          "amountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "refundNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.paybridge.EntitlementServiceUseCoordinator$ServiceOrderRefund"
       },
       "ServiceView_c57f0537bf": {
         "properties": {
@@ -9083,6 +9343,16 @@
               }
             ]
           },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "createdAt": {
             "anyOf": [
               {
@@ -9601,6 +9871,19 @@
               }
             ]
           },
+          "reversals": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/UsageReversal_c3e24c1082"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "serviceStaffName": {
             "anyOf": [
               {
@@ -9758,6 +10041,51 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.entitlement.EntitlementQueryPort$UsageItem"
+      },
+      "UsageReversal_c3e24c1082": {
+        "properties": {
+          "discountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "occurredAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "units": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.spi.entitlement.EntitlementQueryPort$UsageReversal"
       },
       "UseItem_26c295d6e3": {
         "properties": {
@@ -10560,6 +10888,105 @@
                       "anyOf": [
                         {
                           "$ref": "#/components/schemas/ActivityView_976c03ce3f"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('biz:campaign')"
+      }
+    },
+    "/biz/activities/{activityNo}/effect": {
+      "get": {
+        "operationId": "BizActivityMarketingSummaryController_effect",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activityNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "through",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "zone",
+            "required": true,
+            "schema": {
+              "description": "IANA time zone of the selected store",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Effect_5bb5f5ea5c"
                         },
                         {
                           "type": "null"
@@ -15769,6 +16196,14 @@
           },
           {
             "in": "query",
+            "name": "activityNo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "from",
             "required": true,
             "schema": {
@@ -16262,6 +16697,80 @@
         "x-permission-expression": "@perm.canBiz('pay:sv:consume:create')"
       }
     },
+    "/biz/stored-value/consumptions/order/{orderNo}/refund": {
+      "post": {
+        "operationId": "BizStoredValueController_refundConsumption",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundConsumption_215c27644c"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ServiceOrderRefund_5307884e18"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('mch:pay:refund')"
+      }
+    },
     "/biz/stored-value/consumptions/orders/{orderNo}": {
       "get": {
         "operationId": "BizStoredValueController_consumptionOrder",
@@ -16617,7 +17126,7 @@
         "tags": [
           "biz"
         ],
-        "x-permission-expression": "@perm.canBiz('pay:sv:plan:read') or @perm.canBiz('pay:sv:plan:manage') or @perm.canBiz('pay:sv:account:read') or @perm.canBiz('pay:sv:recharge:create')"
+        "x-permission-expression": "@perm.canAnyBiz('pay:sv:plan:read','pay:sv:plan:manage','pay:sv:account:read','pay:sv:recharge:create')"
       }
     },
     "/biz/stored-value/customer-candidates": {
@@ -17175,7 +17684,7 @@
         "tags": [
           "biz"
         ],
-        "x-permission-expression": "@perm.canBiz('pay:sv:recharge:read') or @perm.canBiz('pay:sv:recharge:create')"
+        "x-permission-expression": "@perm.canAnyBiz('pay:sv:recharge:read','pay:sv:recharge:create')"
       }
     },
     "/biz/stored-value/plan-recharges/{rechargeNo}/cancel": {
@@ -17511,7 +18020,7 @@
         "tags": [
           "biz"
         ],
-        "x-permission-expression": "@perm.canBiz('pay:sv:plan:read') or @perm.canBiz('pay:sv:plan:manage') or @perm.canBiz('pay:sv:recharge:create')"
+        "x-permission-expression": "@perm.canAnyBiz('pay:sv:plan:read','pay:sv:plan:manage','pay:sv:recharge:create')"
       },
       "post": {
         "operationId": "BizStoredValuePlanController_create",
@@ -17655,7 +18164,7 @@
         "tags": [
           "biz"
         ],
-        "x-permission-expression": "@perm.canBiz('pay:sv:plan:read') or @perm.canBiz('pay:sv:plan:manage') or @perm.canBiz('pay:sv:recharge:create')"
+        "x-permission-expression": "@perm.canAnyBiz('pay:sv:plan:read','pay:sv:plan:manage','pay:sv:recharge:create')"
       }
     },
     "/biz/stored-value/plans/{planNo}/status": {

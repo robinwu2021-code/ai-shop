@@ -1,6 +1,6 @@
 export default {
   salesInvoice: {"title": "我的发票", "detailTitle": "发票详情", "carriersTitle": "发票载具", "choiceTitle": "发票开法", "carriersEntryHint": "手机条码、自然人凭证", "unknownSeller": "商家", "empty": "还没有发票", "emptyTip": "商家开给你的电子发票会出现在这里", "loadMore": "加载更多", "moreFailed": "没加载出来，点这里重试", "period": "{y}年{a}-{b}月", "periodLabel": "期别", "randomCode": "随机码", "issuedAt": "开立时间", "sellerTaxId": "统一编号", "destination": "存放方式", "destinationNo": "号码", "dest": {"member": "会员载具", "mobile": "手机条码", "citizen": "自然人凭证", "taxId": "打统一编号", "donate": "已捐赠", "paper": "纸本证明联"}, "status": {"issued": "已开立", "voided": "已作废", "revoking": "注销中", "revoked": "已注销"}, "voidedHint": "这张发票已被商家作废", "noPaper": "已存入载具或捐赠，不印纸本证明联", "lines": "明细", "sales": "销售额", "zeroTaxSales": "零税率销售额", "freeTaxSales": "免税销售额", "tax": "税额", "total": "总计", "allowed": "已折让", "carriersHint": "存好常用载具，结账选发票时一点就好。会员载具不用存，直接选就行。", "carriersEmpty": "还没有存载具", "addCarrier": "添加载具", "default": "默认", "setDefault": "设为默认", "delete": "删除", "deleteTitle": "删除这个载具？", "deleteHint": "删除 {id} 后，已开立的发票不受影响。", "carrierType": {"mobile": "手机条码", "citizen": "自然人凭证"}, "mobilePh": "/ 加 7 码，如 /ABC+123", "citizenPh": "2 个大写英文字母加 14 位数字", "formatWrong": "格式不对，请核对载具号码", "labelPh": "备注名（选填）", "makeDefault": "设为默认载具", "save": "保存", "saved": "已保存", "failed": "没成功，请稍后再试", "choiceHint": "发票存进载具就不用保管纸本，中奖会自动通知。", "kind": {"member": "会员载具", "carrier": "我的载具", "consumer": "一般（纸本证明联）", "taxId": "打统一编号", "donate": "捐赠"}, "kindHint": {"member": "存进本平台会员账号，不用填号码", "carrier": "手机条码或自然人凭证", "consumer": "由商家印出纸本证明联", "taxId": "公司报账用，填 8 位统一编号", "donate": "捐给社福团体，填爱心码"}, "manageCarriers": "管理载具", "taxIdPh": "8 位统一编号", "taxIdWrong": "统一编号是 8 位数字", "buyerNamePh": "买受人名称（选填）", "donatePh": "3–7 位爱心码", "donateWrong": "爱心码是 3–7 位数字", "submit": "确定", "resubmit": "改选后重新提交", "done": "完成", "resultTitle": "各商家的结果", "subOrder": "订单 {no}", "outcome": {"saved": "已记下，付款后依此开立", "issued": "已开立，发票号码 {no}", "alreadyIssued": "已开过发票（{no}），要改需请商家作废重开", "notEnabled": "该商家未提供电子发票", "memberUnavailable": "该商家未提供会员载具，请改选其他方式"}, "noOrder": "没有找到这笔订单", "orderEntry": "电子发票", "orderEntryHint": "选择开法"},
-  storedValue: {"accountLocalTime": "账户时区", "serviceState": {"WAIT_SUBMIT": "已确认，等待门店核销", "PROCESSING": "正在核对消费结果", "COMMITTED": "核销成功", "EXPIRED": "确认已过期，请门店重新发起", "CANCELLED": "本次消费已取消", "RELEASED": "本次消费已取消"},"brandScope": "品牌储值", "storeScope": "本店储值", "confirmConsumption": "确认本次消费", "paymentWallet": "扣款账户", "consumeAmount": "消费金额", "refreshConfirmation": "刷新消费状态",
+  storedValue: {"accountLocalTime": "账户时区", "serviceState": {"REFUND_PENDING": "退款处理中", "REFUNDED": "已全额退回储值账户", "WAIT_SUBMIT": "已确认，等待门店核销", "PROCESSING": "正在核对消费结果", "COMMITTED": "核销成功", "EXPIRED": "确认已过期，请门店重新发起", "CANCELLED": "本次消费已取消", "RELEASED": "本次消费已取消"},"brandScope": "品牌储值", "storeScope": "本店储值", "confirmConsumption": "确认本次消费", "paymentWallet": "扣款账户", "consumeAmount": "消费金额", "refreshConfirmation": "刷新消费状态",
     "storeLocalTime": "门店当地时间",
     "title": "储值记录",
     "entryHint": "查看储值与消费记录",
@@ -12,6 +12,7 @@ export default {
     "ALL": "全部",
     "RECHARGE": "储值",
     "REDEMPTION": "核销",
+    "REFUND": "消费退款",
     "time": "时间",
     "timeTitle": "筛选时间",
     "timeHint": "按门店当地自然日（{zone}）筛选，包含开始和结束当天。",
@@ -803,6 +804,7 @@ export default {
     pickupFar: "距你约 {d}",
     /** 优惠依据：这一条是哪个活动 / 哪张券减的 */
     fromActivity: "活动「{name}」",
+    couponDiscount: "优惠券抵扣",
     fromCoupon: "券「{name}」",
     /** 优惠面板（原型 k03）。三段：自动活动 / 可用券 / 不可用券 */
     couponPanel: "优惠",
@@ -988,6 +990,8 @@ export default {
       REFUNDED: "钱已原路退回，到账时间以银行为准",
     },
     returned: {
+      cancelCoupon: "订单取消已返券，本单原优惠 {amount}（{time}）",
+      refundCoupon: "整单退款已返券，本单原优惠 {amount}（{time}）",
       coupon: "「{name}」已回到券包",
       points: "{n} 积分已退回",
       clawback: "已收回本单赠送的 {n} 积分",

@@ -63,6 +63,12 @@ public class EntitlementRecoveryScanServiceImpl implements EntitlementRecoverySc
                     .gt(PmtRechargeIntent::getId,afterId).orderByAsc(PmtRechargeIntent::getId)
                     .last("LIMIT "+(limit+1))).stream().map(r ->
                             new Row(r.getId(),r.getEntityNo(),r.getOperatorNo(),r.getRechargeNo())).toList();
+            case SERVICE_REFUND -> services.selectList(Wrappers.<OrdEntServiceOrder>lambdaQuery()
+                    .eq(OrdEntServiceOrder::getTenantNo, tenant)
+                    .eq(OrdEntServiceOrder::getRefundStatus, "REFUND_PENDING")
+                    .gt(OrdEntServiceOrder::getId, afterId).orderByAsc(OrdEntServiceOrder::getId)
+                    .last("LIMIT " + (limit + 1))).stream().map(r ->
+                            new Row(r.getId(), r.getEntityNo(), r.getOperatorNo(), r.getOperationNo())).toList();
             case SERVICE_USE -> services.selectList(Wrappers.<OrdEntServiceOrder>lambdaQuery()
                     .eq(OrdEntServiceOrder::getTenantNo,tenant)
                     .in(OrdEntServiceOrder::getStatus,"PENDING","COMMIT_DECIDED","CANCEL_DECIDED")

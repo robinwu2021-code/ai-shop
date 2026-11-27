@@ -528,8 +528,12 @@ CREATE TABLE sv_voucher (
     voucher_no VARCHAR(64) NOT NULL COMMENT '凭证号',
     account_no VARCHAR(64) NOT NULL COMMENT '账户',
     account_seq BIGINT NOT NULL COMMENT '账户账序',
-    biz_type VARCHAR(24) NOT NULL COMMENT 'RECHARGE/CONSUME，首期无开放退款',
-    biz_no VARCHAR(64) NOT NULL COMMENT '来源充值或使用意图',
+    biz_type VARCHAR(24) NOT NULL COMMENT 'RECHARGE/CONSUME/REFUND',
+    biz_no VARCHAR(64) NOT NULL COMMENT '来源充值、使用意图或整退号',
+    origin_voucher_no VARCHAR(64) NULL COMMENT '原消费凭证号',
+    usage_no VARCHAR(64) NULL COMMENT '原储值核销号',
+    source_decision_no VARCHAR(64) NULL COMMENT '交易侧退款决定号',
+    after_sale_no VARCHAR(64) NULL COMMENT '退款来源业务号',
     payload_hash CHAR(64) NOT NULL COMMENT '幂等内容',
     principal_delta BIGINT NOT NULL COMMENT '本金变化',
     bonus_delta BIGINT NOT NULL COMMENT '赠金变化',
@@ -545,6 +549,8 @@ CREATE TABLE sv_voucher (
     PRIMARY KEY (id),
     UNIQUE KEY uk_voucher (tenant_no,voucher_no),
     UNIQUE KEY uk_sv_biz (tenant_no,biz_type,biz_no),
+    UNIQUE KEY uk_sv_whole_refund (tenant_no,biz_type,origin_voucher_no),
+    CONSTRAINT ck_sv_refund_origin CHECK (biz_type <> 'REFUND' OR (origin_voucher_no IS NOT NULL AND usage_no IS NOT NULL AND source_decision_no IS NOT NULL AND after_sale_no IS NOT NULL AND principal_delta >= 0 AND bonus_delta >= 0 AND (principal_delta > 0 OR bonus_delta > 0))),
     UNIQUE KEY uk_sv_seq (tenant_no,account_no,account_seq),
     CHECK (after_principal_minor>=0 AND after_bonus_minor>=0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='金额变化不可变凭证';
@@ -715,7 +721,10 @@ CREATE TABLE ent_use_reversal (
     command_snapshot JSON NOT NULL COMMENT '不可变回补来源与决策',
     origin_operation_no VARCHAR(64) NOT NULL COMMENT '原成功使用',
     instance_no VARCHAR(64) NOT NULL COMMENT '原用户券',
-    after_sale_no VARCHAR(64) NOT NULL COMMENT '权威售后号',
+    source_type VARCHAR(16) NOT NULL,
+    source_stage VARCHAR(16) NOT NULL DEFAULT 'RETURN',
+    source_no VARCHAR(64) NOT NULL,
+    after_sale_no VARCHAR(64) NULL COMMENT '权威售后号',
     source_decision_no VARCHAR(64) NOT NULL COMMENT '源补偿决策',
     units INT NOT NULL COMMENT '本次恢复使用次数',
     discount_minor BIGINT NOT NULL COMMENT '原优惠的本次回补归属',
@@ -728,7 +737,13 @@ CREATE TABLE ent_use_reversal (
     updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
     PRIMARY KEY (id),
     UNIQUE KEY uk_reverse (tenant_no,reverse_no),
-    UNIQUE KEY uk_reverse_fact (tenant_no,after_sale_no,origin_operation_no,instance_no),
+    UNIQUE KEY uk_reverse_source_stage (tenant_no,source_type,source_no,origin_operation_no,instance_no,source_stage),
+    CHECK (source_stage='RETURN' OR (source_stage='CLOSURE' AND source_type='AFTER_SALE' AND units=1)),
+    KEY ix_reverse_usage (tenant_no,usage_no),
+    CONSTRAINT ck_reverse_source CHECK (
+        (source_type='ORDER_CANCEL' AND after_sale_no IS NULL) OR
+        (source_type='AFTER_SALE' AND after_sale_no IS NOT NULL AND after_sale_no=source_no)
+    ),
     CHECK (units>=0 AND discount_minor>=0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='既有订单券受限内部补偿，不开放储值退款';
 

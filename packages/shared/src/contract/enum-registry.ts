@@ -137,7 +137,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "Delivery outcomes of the shared inventory/order event, including legacy archived events." },
   { decl: "shared:InventoryOutboxMode", dom: "inventory", shape: "CLASS", verdict: "OK", words: ["UNIFIED", "LEGACY"],
     note: "Persisted event mechanism; this is a source classification, not a lifecycle state." },
-  { decl: "c-app:StoredValueType", dom: "finance", shape: "CLASS", verdict: "OK", words: ["ALL", "RECHARGE", "REDEMPTION"],
+  { decl: "c-app:StoredValueType", dom: "finance", shape: "CLASS", verdict: "OK", words: ["ALL", "RECHARGE", "REDEMPTION", "REFUND"],
     note: "Stored-value record filter; ALL is a query selection and never a persisted record type." },
 
   { decl: "shared:RecipientSalutation", dom: "user", shape: "CLASS", verdict: "OK",

@@ -141,7 +141,8 @@ public final class MemberVOs {
      *                  商家打电话前能先看到上周已经发过一次唤回、而且他来了
      */
     public record MemberDetailVO(MemberVO member, List<MemberStoreVO> stores,
-                                 List<MemberSourceVO> sources, List<TagVO> tags, LastReach lastReach) {
+                                 List<MemberSourceVO> sources, List<TagVO> tags, LastReach lastReach,
+                                 String gradeCode, String levelRuleVersionNo) {
     }
 
     /** 一个人身上最近的一次触达：场景、时刻、之后来没来、下没下单 */
@@ -228,9 +229,12 @@ public final class MemberVOs {
                               int tagCount, int segmentCount, int tasks, int skipped, double skipRate) {
     }
 
+    public record GradeThreshold(String code, int minOrders) {
+    }
+
     public record MemberSettingVO(String memberScope, boolean autoJoinOnOrder,
                                   int sleepDays, int loyalD90Orders, int regularD90Orders,
-                                  Long levelComputedAt) {
+                                  Long levelComputedAt, String activeGradeVersionNo, List<GradeThreshold> gradeThresholds) {
     }
 
     /**

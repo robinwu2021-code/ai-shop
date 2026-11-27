@@ -104,13 +104,13 @@ ent_owner_registry,shop 库,0,会员营销,退役,抽象,,,,,券与储值迁入�
 ent_period_bucket,shop 库,0,会员营销,并入,抽象,,,,,pmt_quota,额度：活动总量、每人限量、卡券发行量、周期限量各一张
 ent_sale_reservation,shop 库,0,会员营销,并入,抽象,,,,,pmt_reservation,预留：活动名额与卡券售卖各一张
 ent_template,shop 库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_template,；每行一版，带版本号、状态、生效起止，已发生的业务记下用的是哪一版,规则与定义一张表、每行一版
-ent_template_scope,新建,0,,新建,抽象,会员营销,会员营销库,卡券,ent_template_scope,卡券适用范围：这一版模板适用哪些商品、类目、门店,设计字段时发现的明细表
+ent_template_scope,新建,0,,并入,抽象,,,,,pmt_activity_scope（承接卡券模板版本范围）,前版拟新建对象，按确认方案并入范围模型
 ent_template_version,shop 库,0,会员营销,并入,抽象,,,,,ent_template（每行就是一版，带版本号、状态、生效起止）,规则与定义一张表、每行一版
 ent_usage,shop 库 + 支付库副本,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_usage,使用记录：这一单用了哪项优惠或哪张卡券、抵了多少,
 ent_use_allocation,shop 库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_use_allocation,,
 ent_use_intent,shop 库 + 支付库副本,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_use_intent,,
 ent_use_proposal,shop 库,0,会员营销,并入,抽象,,,,,ent_use_intent,优惠意向与卡券使用提案是同一步
-ent_use_reversal,shop 库,0,会员营销,并入,抽象,,,,,ent_usage,冲正是一条反向的使用记录
+ent_use_reversal,shop 库 + 支付库,0,会员营销,保留,,会员营销,会员营销库,卡券,ent_use_reversal,逐笔记录订单券售后冲回，关联原核销和累计恢复次数,
 flyway_schema_history,shop 库 + 支付库副本,80,平台基础,不迁入,去冗余,,,,,新库用新的基线与迁移历史,
 fnb_action_log,shop 库,0,餐饮,并入,抽象,,,,,基础能力库统一审计,操作记录是审计
 fnb_banquet_attendance_confirmation,shop 库,0,餐饮,保留,,餐饮,行业库,宴会,fnb_banquet_attendance_confirmation,,
@@ -382,9 +382,10 @@ mbr_identity_ticket,shop 库,0,会员营销,并入,抽象,,,,,平台基础库 au
 mbr_level_rule,新建,0,,新建,抽象,会员营销,会员营销库,会员,mbr_level_rule,会员等级规则：按消费或成长值分级，各级的权益；当前等级记在会员上；每行一版，带版本号、状态、生效起止，已发生的业务记下用的是哪一版,规则与定义一张表、每行一版
 mbr_member,shop 库,5,会员营销,保留,,会员营销,会员营销库,会员,mbr_member,,
 mbr_member_source,shop 库,3,会员营销,保留,,会员营销,会员营销库,会员,mbr_member_source,,
-mbr_member_store,shop 库,1,会员营销,并入,去冗余,,,,,mbr_member（会员与门店 / 范围的关系只留一张）,
+mbr_member_store,shop 库,1,会员营销,并入,去冗余,,,,,mbr_store_profile（按原会员号追溯门店往来，保留门店私有资料）,
 mbr_member_tag,shop 库,0,会员营销,保留,,会员营销,会员营销库,会员,mbr_member_tag,,
 mbr_reach_log,shop 库,0,会员营销,保留,,会员营销,会员营销库,触达,mbr_reach_log,,
+mbr_reach_recipient,shop 库,,会员营销,保留,,会员营销,会员营销库,触达,mbr_reach_recipient,,到期名单与逐人恢复结果
 mbr_reach_task,shop 库,0,会员营销,保留,,会员营销,会员营销库,触达,mbr_reach_task,,
 mbr_scope_legacy_link,shop 库,0,会员营销,退役,去冗余,,,,,过渡,
 mbr_scope_member,shop 库,0,会员营销,并入,抽象,,,,,mbr_member（带范围）,会员主表两种口径
@@ -490,7 +491,7 @@ mkt_attribution_rule,shop 库,0,会员营销,保留,,会员营销,会员营销�
 mkt_campaign,shop 库,0,会员营销,并入,去冗余,,,,,pmt_activity（作为活动类型）,
 mkt_content_slot,shop 库,0,会员营销,并入,抽象,,,,,门店交易库 prd_topic,运营位归零售的专题
 mkt_counter_campaign_fence,shop 库,3,会员营销,并入,抽象,,,,,基础能力库的公共发号（sys_sequence）,修订计数是发号
-mkt_coupon,shop 库,0,会员营销,退役,去冗余,,,,,旧一代券，正式库全空,
+mkt_coupon,shop 库,0,会员营销,兼容期保留,去冗余,,,,,ent_template,旧 MKT 来源保留编号与路由；核清别名及历史后再退役
 mkt_coupon_issue,shop 库,0,会员营销,退役,去冗余,,,,,旧一代券，正式库全空,
 mkt_fission_campaign,shop 库,0,会员营销,并入,去冗余,,,,,pmt_activity（作为活动类型）,
 mkt_fission_invite,shop 库,0,会员营销,保留,,会员营销,会员营销库,活动,pmt_invite,裂变邀请：谁邀请了谁、是否达成、奖励发了没有,设计字段时发现的明细表
@@ -501,7 +502,7 @@ mkt_quote_revision,shop 库,0,会员营销,并入,抽象,,,,,基础能力库统�
 mkt_request,shop 库,0,会员营销,改归属,去冗余,零售,门店交易库,询价求购,mkt_request,询价求购是交易前环节,
 mkt_request_interest,shop 库,0,会员营销,改归属,去冗余,零售,门店交易库,询价求购,mkt_request_interest,询价求购是交易前环节,
 mkt_store_visit,shop 库,0,会员营销,并入,抽象,,,,,mbr_store_view（到店记录，归因也读它）,第二轮业务复核后采纳
-mkt_user_coupon,shop 库,0,会员营销,退役,去冗余,,,,,旧一代券，正式库全空,
+mkt_user_coupon,shop 库,0,会员营销,兼容期保留,去冗余,,,,,ent_instance,旧 MKT 来源保留编号与路由；核清别名及历史后再退役
 msg_faq,shop 库,0,平台基础,保留,,平台服务,平台服务库,通知,msg_faq,常见问题,
 notify_channel,shop 库,0,平台基础,保留,,平台服务,平台服务库,通知,notify_channel,,
 notify_message,shop 库,170,平台基础,保留,,平台服务,平台服务库,通知,notify_message,,
@@ -585,6 +586,7 @@ ord_points_work_cursor,shop 库,0,零售,并入,去冗余,,,,,任务库 job_curs
 ord_price_quote,shop 库,0,零售,保留,,零售,门店交易库,计价,ord_price_quote,,
 ord_price_quote_allocation,shop 库,0,零售,保留,,零售,门店交易库,计价,ord_price_quote_allocation,,
 ord_price_quote_line,shop 库,0,零售,保留,,零售,门店交易库,计价,ord_price_quote_line,,
+ord_pos_activity_line,shop 库,,交易,并入,抽象,,,,,ord_price_quote_allocation,保留原单行和活动发布版本及核销号
 ord_pricing_fee_advice,shop 库,0,零售,并入,抽象,,,,,ord_after_sale_item,计价收敛
 ord_pricing_fee_application,shop 库,0,零售,并入,抽象,,,,,ord_price_quote_allocation,费用应用、人工改价都是报价的分摊
 ord_pricing_fee_reconciliation,shop 库,0,零售,并入,抽象,,,,,ord_after_sale_item,计价收敛
@@ -799,16 +801,16 @@ payment_collection_scope,shop 库,7,零售,并入,抽象,,,,,任务库 job_curso
 payment_collection_source,shop 库,6,零售,并入,抽象,,,,,支付库 pay_merchant_source_link,收款来源绑定在支付侧
 payment_collection_stream,shop 库,44,零售,并入,抽象,,,,,ord_payment,一笔订单收到的一笔款：线上回执、线下记账、门店代收各一张
 pmt_activity,shop 库,6,会员营销,保留,,会员营销,会员营销库,活动,pmt_activity,,
-pmt_activity_audience,shop 库,0,会员营销,并入,抽象,,,,,pmt_activity_scope,活动的适用范围：商品、人群、报名商品各一张
+pmt_activity_audience,shop 库,0,会员营销,并入,抽象,,,,,pmt_activity_scope（活动版本的受众规则）,保留历史规则快照
 pmt_activity_budget,shop 库,0,会员营销,保留,,会员营销,会员营销库,额度与预留,pmt_quota,额度：活动或卡券模板的总量、每人限量、周期限量，记已占与已用,额度：活动总量、每人限量、卡券发行量、周期限量各一张
-pmt_activity_goods,shop 库,2,会员营销,并入,抽象,,,,,pmt_activity_scope,活动的适用范围：商品、人群、报名商品各一张
+pmt_activity_goods,shop 库,2,会员营销,并入,抽象,,,,,pmt_activity_scope（活动版本自身商品范围）,与报名商品及卡券适用范围分开归属
 pmt_activity_participant,shop 库,0,会员营销,并入,抽象,,,,,pmt_quota,额度：活动总量、每人限量、卡券发行量、周期限量各一张
 pmt_activity_reservation,shop 库,0,会员营销,保留,,会员营销,会员营销库,额度与预留,pmt_reservation,预留：下单时先占额度，支付后确认或释放,预留：活动名额与卡券售卖各一张
 pmt_activity_rule,shop 库,4,会员营销,并入,抽象,,,,,pmt_activity_version（规则快照）,活动规则新旧两处
-pmt_activity_scope,shop 库,0,会员营销,保留,,会员营销,会员营销库,活动,pmt_activity_scope,,
+pmt_activity_scope,shop 库,0,会员营销,保留,,会员营销,会员营销库,活动,pmt_activity_scope,统一活动、报名与卡券模板版本范围；按归属类型隔离,只有范围结构共用，保留归属版本、适用或排除及反查
 pmt_activity_version,shop 库,0,会员营销,保留,,会员营销,会员营销库,活动,pmt_activity_version,,
 pmt_apply,shop 库,0,会员营销,并入,抽象,,,,,ent_usage（使用记录：活动优惠与卡券共用，用来源区分）,第二轮业务复核后采纳
-pmt_benefit_intent,shop 库,0,会员营销,并入,抽象,,,,,ent_use_intent,优惠意向与卡券使用提案是同一步
+pmt_benefit_intent,shop 库,0,会员营销,并入,抽象,,,,,ent_grant,领券完成结果随发放记录保留；处理中意向须保留至可恢复
 pmt_brand_activity_owner,shop 库,0,会员营销,并入,抽象,,,,,pmt_activity,品牌归属是活动的属性
 pmt_brand_cost_fact,shop 库,0,会员营销,并入,抽象,,,,,支付库 stl_settlement_line,品牌活动成本分摊
 pmt_brand_cost_rule,shop 库,0,会员营销,保留,,会员营销,会员营销库,品牌成本分摊,pmt_brand_cost_rule,；每行一版，带版本号、状态、生效起止，已发生的业务记下用的是哪一版,规则与定义一张表、每行一版
@@ -819,22 +821,23 @@ pmt_brand_coupon_command,shop 库,0,会员营销,并入,去冗余,,,,,不建表�
 pmt_brand_coupon_source,shop 库,0,会员营销,并入,抽象,,,,,ent_template,品牌券来源是卡券模板的属性
 pmt_brand_marketing_command,shop 库,0,会员营销,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
 pmt_command_dedup,shop 库,1,会员营销,并入,去冗余,,,,,不建表：防重是功能能力（应用层防重，加业务表上的唯一键兜底）,
-pmt_coupon,shop 库,2,会员营销,并入,去冗余,,,,,ent_template(+version)（券是卡券的一种）,
+pmt_coupon,shop 库,2,会员营销,并入,去冗余,,,,,ent_template（卡券模板版本；适用范围另迁 pmt_activity_scope）,
+pmt_coupon_version,shop 库,,会员营销,并入,抽象,,,,,ent_template,V708 商家自发券的发放时规则版本
 pmt_coupon_issue,shop 库,2,会员营销,并入,去冗余,,,,,ent_issue_batch,
-pmt_coupon_scope,shop 库,2,会员营销,并入,去冗余,,,,,ent_template(+version)（券是卡券的一种）,
+pmt_coupon_scope,shop 库,2,会员营销,并入,去冗余,,,,,pmt_activity_scope（按卡券模板版本归属）,活动与卡券范围共用结构，分别明确归属
 pmt_effect_projection,shop 库,0,会员营销,并入,抽象,,,,,ent_usage,优惠的使用记录两张
 pmt_enrollment,shop 库,0,会员营销,保留,,会员营销,会员营销库,活动,pmt_enrollment,,
-pmt_enrollment_goods,shop 库,0,会员营销,并入,抽象,,,,,pmt_activity_scope,活动的适用范围：商品、人群、报名商品各一张
+pmt_enrollment_goods,shop 库,0,会员营销,并入,抽象,,,,,pmt_activity_scope（归属商家报名单，保留关联活动版本）,报名选择不能覆盖活动自身范围
 pmt_migration_decision,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
 pmt_migration_return,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
 pmt_migration_source,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
 pmt_pay_coupon_projection,shop 库,0,会员营销,退役,去冗余,,,,,券迁入卡券的过渡表，迁完退役,
 pmt_period,shop 库,0,会员营销,改归属,抽象,零售,门店交易库,社区团购,cmt_period,团购周期：截单时间、提货日,第二轮业务复核后采纳
 pmt_preset_template,shop 库,0,会员营销,保留,,会员营销,会员营销库,活动,pmt_preset_template,,
-pmt_recharge_intent,shop 库,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
-pmt_recharge_tier,shop 库,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
-pmt_sv_approval,shop 库,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
-pmt_sv_release_link,shop 库,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
+pmt_recharge_intent,shop 库,0,支付,待确认,储值迁出,,,,,待确认：保留营销侧真实充值意图、档位与许可快照、请求幂等及结果回写，按充值号关联 sv_recharge,营销来源意图与支付实收、入账使用不同事务边界
+pmt_recharge_tier,shop 库,0,支付,待确认,储值迁出,,,,,待确认：活动版本下的精确充值档位，可映射版本化储值额度定义；保留活动、金额唯一约束和可用范围快照,活动档位规则与实收、入账凭证分开
+pmt_sv_approval,shop 库,0,支付,待确认,储值迁出,,,,,待确认：储值活动审批证据由业务申请关联通用审批或审核与工单服务,审批进度和决定不写入卡券模板
+pmt_sv_release_link,shop 库,0,支付,待确认,储值迁出,,,,,待确认：储值活动发布结果与支付侧发布号映射归充值活动发布流程,保留发布结果及重试对账关联
 pmt_user_coupon,shop 库,0,会员营销,并入,去冗余,,,,,ent_instance,
 prd_category,shop 库,6,零售,保留,,零售,门店交易库,分类与规格,prd_category,,
 prd_category_pay_mode,shop 库,0,零售,并入,抽象,,,,,prd_category,类目支付方式是类目属性
@@ -1018,35 +1021,35 @@ stl_settlement_line,新建,0,,新建,抽象,账务结算,账务结算库,结算�
 stl_split_intent,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,pay_channel_operation_intent,分账与冲正是一种渠道操作
 stl_split_log,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,pay_channel_operation_intent,分账与冲正是一种渠道操作
 stl_withdraw,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_payout,出款：提现、兑付、清分付款各一张
-sv_account,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_instance（账户与批次即持有的储值卡）,储值迁到会员营销（储值卡是卡券的一种）
+sv_account,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值账户与入账,sv_account,储值账户：按发行方、客户、币种持有本金、赠金及冻结余额,资金明细账留在储值域，保留账号、批次、业务来源和凭证的原子约束
 sv_activity_daily_summary,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,报表库 rpt_metric_daily（储值活动日汇总是报表）,储值活动日汇总是报表投影
 sv_clearing_entry,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement_line,结算单：现金、储值、积分各一套
-sv_customer_identity,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·mbr_member,储值迁到会员营销（储值卡是卡券的一种）
-sv_customer_issuer_index,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·mbr_member,储值迁到会员营销（储值卡是卡券的一种）
-sv_entry,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_ledger（本金、赠金的增减）,储值迁到会员营销（储值卡是卡券的一种）
-sv_financial_membership_change,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·sv_issuer_store_access,储值迁到会员营销（储值卡是卡券的一种）
-sv_hold_allocation,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_use_allocation（占用与核销分摊）,储值迁到会员营销（储值卡是卡券的一种）
-sv_issue_policy,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·pmt_quota（发行额度）,储值迁到会员营销（储值卡是卡券的一种）
-sv_issue_policy_version,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·pmt_quota（发行额度）,储值迁到会员营销（储值卡是卡券的一种）
-sv_issue_quota,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·pmt_quota（发行额度）,储值迁到会员营销（储值卡是卡券的一种）
-sv_issue_quota_reservation,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·pmt_reservation,储值迁到会员营销（储值卡是卡券的一种）
+sv_customer_identity,支付库 + shop 遗留副本,0,支付,待确认,储值迁出,,,,,待确认：保留储值客户身份与归属映射，支持 sv_account 和历史账户认领,会员关系与储值账户身份边界不同
+sv_customer_issuer_index,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·以 sv_account 和储值客户身份重建发行方查询投影，索引键待确认,索引可重建，不能当作会员关系
+sv_entry,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值账户与入账,sv_entry,按批次分录：保留凭证和充值批次的本金、赠金变动,资金明细账留在储值域，保留账号、批次、业务来源和凭证的原子约束
+sv_financial_membership_change,支付库 + shop 遗留副本,0,支付,待确认,储值迁出,,,,,待确认：储值发行方门店范围变更的金融执行记录及重试证据,最终范围进入 sv_issuer_store_access，跨域流程状态应单独承接
+sv_hold_allocation,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值账户与入账,sv_hold_allocation,一笔消费意向在每个充值批次冻结的本金、赠金及服务行分配,与账户和批次同事务
+sv_issue_policy,支付库 + shop 遗留副本,0,支付,待确认,储值迁出,,,,,待确认：储值发行方、允许门店、总量和期限政策的稳定标识；额度计数归 pmt_quota,存量已生效及已引用的政策须可追溯
+sv_issue_policy_version,支付库 + shop 遗留副本,0,支付,待确认,储值迁出,,,,,待确认：按版本承接储值发行资格及额度口径，已充值业务仍引用原版本,政策版本不能降为计数行
+sv_issue_quota,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·pmt_quota（储值发行额度，按已生效政策版本计数）,保留按本金金额及持有人维度限额
+sv_issue_quota_reservation,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·pmt_reservation（储值发行额度预留，关联 sv_recharge）,确认和释放须与充值业务状态保持原子语义
 sv_issuer,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值发行方,sv_issuer,发行方：谁发的卡、哪些门店可发可用；每行一版，带版本号、状态、生效起止，已发生的业务记下用的是哪一版,规则与定义一张表、每行一版
-sv_issuer_store_access,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值发行方,sv_issuer_store_access,发行方：谁发的卡、哪些门店可发可用,储值迁到会员营销（储值卡是卡券的一种）
+sv_issuer_store_access,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值发行方,sv_issuer_store_access,发行方门店范围：保留可发可用、历史区间和关联变更单,门店范围不替代跨域金融变更流程
 sv_issuer_version,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,sv_issuer（每行就是一版，带版本号、状态、生效起止）,规则与定义一张表、每行一版
-sv_lot,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_instance（账户与批次即持有的储值卡）,储值迁到会员营销（储值卡是卡券的一种）
-sv_posting_line,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_ledger（本金、赠金的增减）,储值迁到会员营销（储值卡是卡券的一种）
-sv_recharge,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_grant（一次充值即一次发放）,储值迁到会员营销（储值卡是卡券的一种）
-sv_recharge_plan,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
-sv_recharge_plan_version,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_template(+version)（充值方案即储值卡模板）,储值迁到会员营销（储值卡是卡券的一种）
-sv_release,支付库 + shop 遗留副本,0,支付,退役,去冗余,,,,,旧档位，由 sv_recharge_plan(+version) 取代,储值充值档位多套
-sv_release_tier,支付库 + shop 遗留副本,0,支付,退役,去冗余,,,,,旧档位，由 sv_recharge_plan(+version) 取代,储值充值档位多套
+sv_lot,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值账户与入账,sv_lot,充值余额批次：保留本金、赠金、冻结余额及历史可用范围,资金明细账留在储值域，保留账号、批次、业务来源和凭证的原子约束
+sv_posting_line,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值账户与入账,sv_posting_line,同一凭证下客户请求权与商家义务的借贷记录,与账户和批次同事务
+sv_recharge,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值账户与入账,sv_recharge,充值业务单：保留申请、支付实收证据、入账结果及幂等,资金明细账留在储值域，保留账号、批次、业务来源和凭证的原子约束
+sv_recharge_plan,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_template（储值产品定义和方案标识）,方案定义与 sv_recharge 的实收、入账流程分开
+sv_recharge_plan_version,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_template（版本化储值产品定义）,保留已发生充值引用的原版本及金额快照
+sv_release,支付库 + shop 遗留副本,0,支付,退役,去冗余,,,,,旧档位计划退役；由已版本化储值充值面额定义承接，历史发布号与生效窗口保留,退役前核对退款、核销和历史档位引用
+sv_release_tier,支付库 + shop 遗留副本,0,支付,退役,去冗余,,,,,旧档位明细计划退役；由已版本化储值充值面额定义承接，历史档位引用保留,退役前核对实际实收、赠金及档位口径
 sv_settlement_bill,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement,结算单：现金、储值、积分各一套
 sv_settlement_bill_item,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement_line,结算单：现金、储值、积分各一套
 sv_settlement_event,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_settlement,结算单：现金、储值、积分各一套
 sv_settlement_payment,支付库 + shop 遗留副本,0,支付,并入,抽象,,,,,stl_payout,出款：提现、兑付、清分付款各一张
-sv_statement,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·由 ent_ledger 查询得出,储值迁到会员营销（储值卡是卡券的一种）
-sv_user_store_index,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·mbr_member,储值迁到会员营销（储值卡是卡券的一种）
-sv_voucher,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·ent_ledger（本金、赠金的增减）,储值迁到会员营销（储值卡是卡券的一种）
+sv_statement,支付库 + shop 遗留副本,0,支付,待确认,储值迁出,,,,,待确认：现行储值收支展示投影继续使用；可核对是否从 sv_voucher、sv_recharge 等重建,校验历史展示标题、门店快照与分页口径可重建
+sv_user_store_index,支付库 + shop 遗留副本,0,支付,并入,储值迁出,,,,,会员营销·由 sv_recharge 和 sv_voucher 等重建用户门店目录投影,保留充值、核销日期及历史门店可见性
+sv_voucher,支付库 + shop 遗留副本,0,支付,改归属,储值迁出,会员营销,会员营销库,储值账户与入账,sv_voucher,不可变入账凭证：绑定业务来源、账户账序及入账后余额,资金明细账留在储值域，保留账号、批次、业务来源和凭证的原子约束
 sys_agreement_consent,新建,0,,新建,抽象,平台基础,平台基础库,协议与同意,sys_agreement_consent,同意记录：谁在什么时候同意了哪一版,平台基础库合并后复核采纳
 sys_agreement_version,新建,0,,新建,抽象,平台基础,平台基础库,协议与同意,sys_agreement_version,协议版本：用户协议、隐私政策、储值与订阅条款的每一版,平台基础库合并后复核采纳
 sys_api_resource,shop 库,1678,平台基础,改归属,抽象,基础能力,基础能力库,权限,sys_api_resource,各端共用的角色、功能点、接口资源,权限统一：运营、商户、支付各一套角色授权

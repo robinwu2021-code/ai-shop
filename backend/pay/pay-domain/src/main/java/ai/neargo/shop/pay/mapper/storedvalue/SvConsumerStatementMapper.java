@@ -18,8 +18,13 @@ public interface SvConsumerStatementMapper {
     SvStatement focus(@Param("tenant") String tenant, @Param("user") String user,
             @Param("store") String store, @Param("type") String type, @Param("business") String business);
 
+    @Select("SELECT s.* FROM sv_statement s WHERE " + OWNED
+            + " AND s.type='REFUND' AND s.voucher_no=#{voucher}")
+    SvStatement refund(@Param("tenant") String tenant, @Param("user") String user,
+            @Param("store") String store, @Param("voucher") String voucher);
+
     @Select("<script>SELECT s.* FROM sv_statement s WHERE " + OWNED
-            + " AND s.type IN ('RECHARGE','REDEMPTION')"
+            + " AND s.type IN ('RECHARGE','REDEMPTION','REFUND')"
             + "<if test='type != &quot;ALL&quot;'> AND s.type=#{type}</if>"
             + "<if test='from != null'> AND s.occurred_at &gt;=#{from}</if>"
             + "<if test='to != null'> AND s.occurred_at &lt;#{to}</if>"

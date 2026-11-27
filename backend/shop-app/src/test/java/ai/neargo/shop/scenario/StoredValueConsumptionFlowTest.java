@@ -24,6 +24,8 @@ import ai.neargo.shop.member.service.MemberCodeResolveService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueCreditService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueQueryService;
 import ai.neargo.shop.paybridge.EntitlementServiceUseCoordinator;
+import ai.neargo.shop.paybridge.EntitlementRecoveryService;
+import ai.neargo.shop.trade.dto.EntitlementRecoveryWork.Kind;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort;
@@ -70,6 +72,7 @@ class StoredValueConsumptionFlowTest {
     @Autowired ai.neargo.shop.pay.entitlement.service.EntitlementReconciliationService reconciliation;
     @Autowired StoredValueQueryService queries;
     @Autowired EntitlementServiceUseCoordinator coordinator;
+    @Autowired EntitlementRecoveryService recovery;
     @Autowired MemberCodeResolveService members;
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
@@ -216,9 +219,12 @@ class StoredValueConsumptionFlowTest {
         assertThat(reconciliation.check(scope,check,id()).diffCount()).isZero();
     }
     private ServiceOrderSnapshot authorized(String key) {
+        return authorized(key, 1000);
+    }
+    private ServiceOrderSnapshot authorized(String key, long price) {
         var order = services.createMonetary(ctx, entity,
                 new ServiceOrderCreate(reference, store, List.of(new ServiceOrderCreate.Line(sku, 1))), key);
-        assertThat(order.fact().items().getFirst().amountMinor()).isEqualTo(1000);
+        assertThat(order.fact().items().getFirst().amountMinor()).isEqualTo(price);
         var quote = quotes.quote(ctx, order.fact().source()); assertThat(quote.redeemable()).isTrue();
         services.bindMoneyPreview(ctx, entity, store, order.serviceOrderNo(), quote);
         var auth = consent.confirm("MAIN", user, order.serviceOrderNo(),
@@ -232,6 +238,13 @@ class StoredValueConsumptionFlowTest {
         assertThat(held.status()).isEqualTo(EntitlementUsePort.State.HELD);
         assertThat(balance()).isEqualTo(1100);
         assertThat(held()).isEqualTo(1000);
+        var item = json.readTree(jdbc.queryForObject(
+                "SELECT items_allocation FROM sv_hold_allocation WHERE tenant_no=? AND operation_no=?",
+                String.class, ctx.tenantNo(), order.operationNo())).get(0);
+        assertThat(item.get("orderLineNo").asString()).isEqualTo(order.fact().items().getFirst().orderLineNo());
+        assertThat(item.get("amountMinor").asLong()).isEqualTo(1000);
+        assertThat(item.get("principalMinor").asLong()).isEqualTo(910);
+        assertThat(item.get("bonusMinor").asLong()).isEqualTo(90);
         assertMoneyReconciles();
         var actual = facts.query(ctx, entity, order.operationNo());
         assertThat(actual.command().assetKind()).isEqualTo(EntitlementUsePort.AssetKind.STORED_VALUE);
@@ -302,6 +315,92 @@ class StoredValueConsumptionFlowTest {
         assertThat(balance.heldMinor()).isZero();
         assertThat(balance.availableMinor()).isEqualTo(100);
     }
+    @Test void wholeRefundRestoresOriginalPoolsAcrossTwoLotsExactlyOnce() throws Exception {
+        credits.credit(new EntitlementContext("MAIN", actor, id(), "b".repeat(64)),
+                StoredValueCreditFixture.received(jdbc, json, user, entity, store, 500, 100));
+        jdbc.update("UPDATE prd_sku SET price=1500 WHERE sku_no=?", sku);
+        var order = authorized("two-lot-refund", 1500);
+        var used = coordinator.submit(ctx, entity, store, new ServiceUseSubmit(order.serviceOrderNo(),
+                order.preview().ref(), order.command().authorizationRef(), order.preview().assetRevision()));
+        assertThat(balance()).isEqualTo(200);
+        var snapshot = services.decideRefund(ctx, entity, store, order.serviceOrderNo(),
+                facts.query(ctx, entity, order.operationNo()));
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var workers = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            java.util.concurrent.Callable<EntitlementUsePort.UseReceipt> retry = () -> {
+                start.await();
+                return uses.reverse(ctx, snapshot.refundCommand());
+            };
+            var first = workers.submit(retry);
+            var second = workers.submit(retry);
+            start.countDown();
+            assertThat(first.get(20, java.util.concurrent.TimeUnit.SECONDS))
+                    .isEqualTo(second.get(20, java.util.concurrent.TimeUnit.SECONDS));
+        }
+        var result = coordinator.refund(ctx, entity, store, order.serviceOrderNo());
+        assertThat(result.status()).isEqualTo("REFUNDED");
+        assertThat(coordinator.refund(ctx, entity, store, order.serviceOrderNo())).isEqualTo(result);
+        assertThat(balance()).isEqualTo(1700);
+        assertThat(held()).isZero();
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM sv_voucher r JOIN sv_entry e ON e.voucher_no=r.voucher_no
+                JOIN sv_entry d ON d.voucher_no=r.origin_voucher_no AND d.lot_no=e.lot_no
+                WHERE r.usage_no=? AND r.biz_type='REFUND'
+                  AND e.principal_delta=-d.principal_delta AND e.bonus_delta=-d.bonus_delta
+                """, Integer.class, used.usageNo())).isEqualTo(2);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM sv_voucher r JOIN sv_posting_line p ON p.voucher_no=r.voucher_no
+                JOIN sv_posting_line d ON d.voucher_no=r.origin_voucher_no
+                  AND p.pool=d.pool AND p.book=d.book AND p.amount_minor=d.amount_minor AND p.side<>d.side
+                WHERE r.usage_no=? AND r.biz_type='REFUND'
+                """, Integer.class, used.usageNo())).isEqualTo(4);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_voucher WHERE usage_no=? AND biz_type='REFUND'",
+                Integer.class, used.usageNo())).isOne();
+        assertMoneyReconciles();
+    }
+
+    @Test void inconsistentOriginalLotEntryRollsBackRefundAndCanBeRetried() {
+        var order = authorized("refund-rollback");
+        var used = coordinator.submit(ctx, entity, store, new ServiceUseSubmit(order.serviceOrderNo(),
+                order.preview().ref(), order.command().authorizationRef(), order.preview().assetRevision()));
+        String voucher = jdbc.queryForObject("SELECT voucher_no FROM sv_voucher WHERE biz_type='CONSUME' AND biz_no=?",
+                String.class, order.operationNo());
+        jdbc.update("UPDATE sv_entry SET principal_delta=principal_delta-1 WHERE voucher_no=?", voucher);
+        assertThatThrownBy(() -> coordinator.refund(ctx, entity, store, order.serviceOrderNo()))
+                .isInstanceOf(ai.neargo.shop.common.BizException.class);
+        assertThat(balance()).isEqualTo(100);
+        assertThat(jdbc.queryForObject("SELECT status FROM ent_usage WHERE usage_no=?", String.class, used.usageNo()))
+                .isEqualTo("COMMITTED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_voucher WHERE origin_voucher_no=?", Integer.class,
+                voucher)).isZero();
+        jdbc.update("UPDATE sv_entry SET principal_delta=principal_delta+1 WHERE voucher_no=?", voucher);
+        assertThat(coordinator.refund(ctx, entity, store, order.serviceOrderNo()).status()).isEqualTo("REFUNDED");
+        assertThat(balance()).isEqualTo(1100);
+        assertMoneyReconciles();
+    }
+
+    @Test void recoveryCompletesDurableRefundWhosePayAcknowledgementWasLost() {
+        var order = authorized("refund-recovery");
+        assertThatThrownBy(() -> coordinator.refund(ctx, entity, store, order.serviceOrderNo()))
+                .isInstanceOf(ai.neargo.shop.common.BizException.class);
+        var used = coordinator.submit(ctx, entity, store, new ServiceUseSubmit(order.serviceOrderNo(),
+                order.preview().ref(), order.command().authorizationRef(), order.preview().assetRevision()));
+        var refund = services.decideRefund(ctx, entity, store, order.serviceOrderNo(),
+                facts.query(ctx, entity, order.operationNo()));
+        assertThat(refund.refundCommand().sourceRef().sourceLineNo()).isEqualTo(used.usageNo());
+        var paid = uses.reverse(ctx, refund.refundCommand());
+        assertThat(paid.status()).isEqualTo(EntitlementUsePort.State.COMMITTED);
+        assertThat(services.refundOrder(ctx, entity, store, order.serviceOrderNo()).refundStatus())
+                .isEqualTo("REFUND_PENDING");
+        var report = recovery.recover("MAIN", Kind.SERVICE_REFUND, 0, 100);
+        assertThat(report.completed()).isPositive();
+        assertThat(services.refundOrder(ctx, entity, store, order.serviceOrderNo()).refundStatus())
+                .isEqualTo("REFUNDED");
+        assertThat(balance()).isEqualTo(1100);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_voucher WHERE biz_no=?", Integer.class,
+                refund.refundCommand().reverseNo())).isOne();
+    }
+
     @Test void directoryKeepsStableTiesAndCursorsCannotChangeMemberOrQueryKind() {
         String holder = id();
         var at = java.time.LocalDateTime.of(2026, 10, 1, 10, 0);

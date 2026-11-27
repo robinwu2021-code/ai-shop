@@ -800,3 +800,15 @@ c-app 店铺页回写与真机推送 → 进店 → 下单的闭环**未验**（
 §6实现对账：仅改`members_api.dart`、`members_pages.dart`、`mock_v24.dart`及新增`member_marketing_results_test.dart`，另更新原TDD/总报告/两份清单与App交接。无新端点、DDL、权限码或i18n键。App曾被共享工作区未完成的storeVersion字段初始化挡住，原文件由该改动会话补齐后，在实际工作区通过验证；本批未修改该文件，未使用临时App副本作为通过证据。
 
 上一批R04验证不累计到本批。本批只完成C06的营销结果回看子批，仍有其他App模块接线、真实触达同意/供应商、资产扣返与部署准出；未调用真实推送/短信，未改live白名单、地区或库存开关，166接入保持最后。
+
+### B3 · 预约触达
+
+- §0 / §1　手持沿用会员试算、任务列表和详情，预约与撤销均要求 biz:campaign。门店时区取所属主体的市场主数据。当地时间有歧义或不存在时拒绝预约。
+- §2　POST /biz/member-reach/schedule 接受受众项、内容、场景和当地时间。V716 扩展批次头并保存逐会员处理结果。到期前可 POST /biz/member-reach/task/{taskNo}/cancel。到期锁定批次并固化名单，逐人事务同时记录站内信、触达明细与处理结果。恢复仅处理未完成行，手机推送在站内信提交后尽力通知一次。
+- §5　MemberReachFlowTest 验证预约后退订、新入会、跨主体撤销、到期撤销截止、部分执行后的续跑与重复调度。
+- 预约请求的 `Idempotency-Key` 必填。任务头按主体和请求键唯一，同一内容和操作者重放原任务号，内容冲突返回 10409。B 商家页和手持 T07 在同一草稿重试时复用键。任务处理采用 JobRunner 的 `scheduled-member-reach`，按每轮每批次最多 100 名会员推进。
+- 2026-11-27 验收使用 Android API 34 AVD、独立 QA 调试包、正式 Remote 网络仓储和本机 HTTP 夹具。测试启动器从 V12 开始，提供模拟店长授权。夹具逐次检查受众 SG-QA、门店 STORE-QA、主体 ENTITY-QA，仅使用合成会员。物理设备和真实登录仍待联调。
+- 同一[人群详情](evidence/member-reach-20261127/v12.png)进入[发券结果](evidence/member-reach-20261127/coupon.png)，已发 2 张、略过 1 人。T07 [预估](evidence/member-reach-20261127/t07-plan.png)命中 3 人、可发 2 人、退订 1 人；模拟预估后再有 1 人退订，[即时结果](evidence/member-reach-20261127/t07-sent.png)显示实发 1 人、退订 2 人。
+- 选择 2026-11-28 10:00，T07 发送当地时间及同一人群，夹具收到幂等键；[预约记录](evidence/member-reach-20261127/t07-scheduled.png)显示 Asia/Shanghai、0/3 和待发送。点击撤销并刷新后，[任务状态](evidence/member-reach-20261127/t07-cancelled.png)显示已撤销、0/3。
+- Android `SegmentReachTest` 两项通过，包含传输重试保留预约键、时间和受众。商家端 `member-reach-schedule.test.ts` 一项通过，覆盖零预估预约以及响应丢失后重试保留请求键；`vue-tsc --noEmit` 通过。
+- 后台 H2 场景：`MemberReachFlowTest` 10/10、`ReachEffectFlowTest` 9/9，逐人退订、预约后新增会员、撤销及分批恢复与原归因路径通过。

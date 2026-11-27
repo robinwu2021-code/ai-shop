@@ -41,6 +41,7 @@ public class EntLegacyCouponOperation extends BaseEntity {
     private String commitSnapshot;
     private String abortSnapshot;
     private String reverseSnapshot;
+    private String partialReturnSnapshot;
     private LocalDateTime heldAt;
     private LocalDateTime committedAt;
     private LocalDateTime releasedAt;

@@ -18,6 +18,11 @@ public class MbrReachTask extends BaseEntity {
 
     private String taskNo;
     private String entityNo;
+    private String deliveryStatus;
+    private Long scheduledAt;
+    private String scheduleZone;
+    private String requestKey;
+    private String requestHash;
     private String scene;
     private String title;
     private String body;

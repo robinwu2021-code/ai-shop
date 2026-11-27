@@ -3052,7 +3052,7 @@ Owned issuer history　🔒
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
 | `issuerRef` | query | `string` | 是 | — |
-| `type` | query | `ALL` \| `RECHARGE` \| `REDEMPTION` | 否 | 类型筛选，取值见对应枚举 |
+| `type` | query | `ALL` \| `RECHARGE` \| `REDEMPTION` \| `REFUND` | 否 | 类型筛选，取值见对应枚举 |
 | `startDate` | query | `string` | 否 | — |
 | `endDate` | query | `string` | 否 | — |
 | `focusDocumentNo` | query | `string` | 否 | — |
@@ -4374,6 +4374,7 @@ BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。
 
 - `RECHARGE`
 - `REDEMPTION`
+- `REFUND`
 
 ### FrequentItem
 
@@ -6226,6 +6227,7 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 - `ALL`
 - `RECHARGE`
 - `REDEMPTION`
+- `REFUND`
 
 ### TraceDisplayMode
 

@@ -142,6 +142,16 @@ public interface LegacyCouponFenceMapper {
     @Select("SELECT * FROM pmt_coupon_scope WHERE tenant_no=#{tenant} AND coupon_no=#{no} ORDER BY id LIMIT #{limit}")
     List<ai.neargo.shop.promotion.entity.PmtCouponScope> manifestPromoScopes(@Param("tenant") String tenant,@Param("no") String no,@Param("limit") int limit);
 
+    @Select("SELECT * FROM pmt_coupon_version WHERE tenant_no=#{tenant} AND entity_no=#{entity} "
+            + "AND coupon_no=#{no} AND deleted=0 ORDER BY id LIMIT #{limit}")
+    List<ai.neargo.shop.promotion.entity.PmtCouponVersion> issuedVersions(@Param("tenant") String tenant,
+            @Param("entity") String entity, @Param("no") String no, @Param("limit") int limit);
+
+    @Select("SELECT * FROM pmt_activity_scope WHERE tenant_no=#{tenant} AND owner_type='ENT_TEMPLATE' "
+            + "AND owner_no=#{no} AND deleted=0 ORDER BY version_no,sort_no,id LIMIT #{limit}")
+    List<ai.neargo.shop.promotion.entity.PmtActivityScope> issuedScopes(@Param("tenant") String tenant,
+            @Param("no") String no, @Param("limit") int limit);
+
     @Select("SELECT a.* FROM pmt_apply a JOIN pmt_user_coupon u ON u.tenant_no=a.tenant_no AND u.user_coupon_no=a.promo_no "
             + "WHERE a.tenant_no=#{tenant} AND u.coupon_no=#{no} AND a.promo_type='COUPON' ORDER BY a.id LIMIT #{limit}")
     List<ai.neargo.shop.promotion.entity.PmtApply> manifestPromoHistory(@Param("tenant") String tenant,

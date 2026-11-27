@@ -44,6 +44,22 @@ class StoredValueClearingEntryTest {
         var f=new Fixture();f.record();var row=f.jdbc.queryForMap("SELECT * FROM sv_clearing_entry");assertThat(row.get("principal_used_minor")).isEqualTo(2000L);assertThat(row.get("bonus_used_minor")).isEqualTo(600L);assertThat(row.get("payable_minor")).isEqualTo(2000L);assertThat(row.get("issuer_borne_minor")).isEqualTo(600L);assertThat(row.get("recharge_store_no")).isEqualTo("A");assertThat(row.get("redemption_store_no")).isEqualTo("B");
         f.record();assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM sv_clearing_entry",Long.class)).isEqualTo(1);assertThat(f.jdbc.queryForObject("SELECT version FROM sv_customer_issuer_index",Long.class)).isEqualTo(1);
     }
+    @Test void refundUsesOriginalCrossStoreComponentsOnceEvenAfterIssuerRulesChange() throws Exception {
+        var f = new Fixture();
+        f.record();
+        f.jdbc.update("UPDATE sv_issuer_version SET settlement_entity_no='OTHER'");
+        var occurredAt = java.time.LocalDateTime.of(2026, 11, 27, 12, 0);
+        for (int i = 0; i < 2; i++) {
+            f.db.write(() -> { f.service.reverse(f.ctx, "U1", "REFUND-1", occurredAt); return null; });
+        }
+        var original = f.jdbc.queryForMap("SELECT * FROM sv_clearing_entry WHERE entry_type='USE'");
+        var reversal = f.jdbc.queryForMap("SELECT * FROM sv_clearing_entry WHERE entry_type='REVERSAL'");
+        assertThat(reversal).containsEntry("original_clearing_no", original.get("clearing_no"))
+                .containsEntry("decision_no", "REFUND-1").containsEntry("payer_entity_no", "E1")
+                .containsEntry("payee_entity_no", "E2").containsEntry("principal_used_minor", -2000L)
+                .containsEntry("bonus_used_minor", -600L).containsEntry("payable_minor", -2000L)
+                .containsEntry("issuer_borne_minor", -600L);
+    }
     @Test void sameEntityProducesInternalReconciliationWithoutFakePayable()throws Exception{
         var f=new Fixture();f.jdbc.update("UPDATE ent_usage SET entity_no='E1'");f.record();assertThat(f.jdbc.queryForObject("SELECT payable_minor FROM sv_clearing_entry",Long.class)).isZero();assertThat(f.jdbc.queryForObject("SELECT bonus_used_minor FROM sv_clearing_entry",Long.class)).isEqualTo(600);
     }

@@ -1,6 +1,10 @@
 package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.spi.marketing.PosActivityPort;
+import ai.neargo.shop.spi.member.PosSaleMemberPort;
+import ai.neargo.shop.trade.mapper.PosActivitySaleMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -72,6 +76,10 @@ public class StoreOrderServiceImpl implements StoreOrderService {
     static final String SOURCE_STORE_ITEM = "STORE_ITEM";
     /** 自订行没填课税别，取门店默认课税别（P2） */
     static final String SOURCE_STORE_DEFAULT = "STORE_DEFAULT";
+
+    @Autowired private PosActivityPort posActivities;
+    @Autowired private PosSaleMemberPort posMembers;
+    @Autowired private PosActivitySaleMapper posFacts;
 
     private final OrderMapper orders;
     private final SubOrderMapper subOrders;
@@ -234,6 +242,8 @@ public class StoreOrderServiceImpl implements StoreOrderService {
         order.setStoreNo(scope.storeNo());
         order.setOperationNo(keyHash);
         order.setClientOrderNo(cmd.clientOrderNo());
+        order.setPosActivityFactsVersion(cmd.activityFactsVersion());
+        if (cmd.activityFactsVersion() != null) order.setPosMemberNo(cmd.memberNo());
         order.setChannel(cmd.channel());
         order.setInvoiceTiming(cmd.invoiceTiming());
         order.setCurrency(cmd.currency());
@@ -277,6 +287,48 @@ public class StoreOrderServiceImpl implements StoreOrderService {
             item.setWeighed(false);
             item.setWeighAdjustMinor(0L);
             items.insert(item);
+        }
+        var selected = cmd.adjustments().stream().filter(a -> "ACTIVITY".equals(a.kind()))
+                .sorted(java.util.Comparator.comparing(AdjustmentCmd::activityNo)).toList();
+        if (!selected.isEmpty() && cmd.activityFactsVersion() == null
+                || selected.stream().map(AdjustmentCmd::activityNo).distinct().count() != selected.size())
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        String memberUser = order.getPosMemberNo() == null ? null
+                : posMembers.requireUser(TENANT,scope.entityNo(),scope.storeNo(),order.getPosMemberNo());
+        var cart = plan.lines().stream().map(l -> new PosActivityPort.Line(l.getGoodsNo(), l.getCategoryNo(),
+                l.getQty(), l.getPrice())).toList();
+        long[] activityTotals = new long[cart.size()];
+        var itemOffers = selected.size()<2 ? java.util.Set.<String>of() :
+                posActivities.itemOffers(TENANT, selected.stream().map(AdjustmentCmd::activityNo).toList());
+        var executionOrder=selected.stream().sorted(java.util.Comparator.comparing(a -> !itemOffers.contains(a.activityNo()))).toList();
+        boolean hasOrderOffer = false;
+        for (var adjustment : executionOrder) {
+            long amount = Math.negateExact(adjustment.amountMinor());
+            var eligible = new ArrayList<>(cart);
+            if (!itemOffers.contains(adjustment.activityNo())) {
+                for (int i=0;i<eligible.size();i++) if (activityTotals[i]>0)
+                    eligible.set(i,new PosActivityPort.Line("",null,0,0));
+            }
+            var use = posActivities.apply(TENANT, scope.entityNo(), scope.storeNo(), orderNo.value(), subNo.value(),
+                    memberUser, cmd.currency(), adjustment.activityNo(), amount, eligible);
+            if (use.orderOffer() && hasOrderOffer) throw BizException.of(ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE);
+            hasOrderOffer |= use.orderOffer();
+            var shares = LineShares.allocate(amount, use.weights());
+            for (int i=0; i<shares.length; i++) {
+                if (shares[i] == 0) continue;
+                var item = plan.lines().get(i);
+                if (activityTotals[i] != 0) throw BizException.of(ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE);
+                activityTotals[i] = shares[i];
+                if (activityTotals[i] > item.getAmount()) throw BizException.of(ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE);
+                posFacts.insert(TENANT,subNo.value(),item.getId(),use.applyNo(),adjustment.activityNo(),use.versionNo(),shares[i]);
+            }
+        }
+        if (!selected.isEmpty()) {
+            long[] remaining = new long[cart.size()];
+            for (int i=0;i<remaining.length;i++) remaining[i]=plan.lines().get(i).getAmount()-activityTotals[i];
+            long[] paid = LineShares.allocate(plan.totalMinor(), remaining);
+            for (int i=0;i<paid.length;i++) items.update(null,new UpdateWrapper<OrdItem>()
+                    .eq("id",plan.lines().get(i).getId()).set("paid_share_minor",paid[i]));
         }
         numbers.bindReserved(new DocumentSource(TENANT, "CORE", "TRADE_ORDER", orderNo.value()), orderNo);
         numbers.bindReserved(new DocumentSource(TENANT, "CORE", "TRADE_SUBORDER", subNo.value()), subNo);
@@ -434,6 +486,7 @@ public class StoreOrderServiceImpl implements StoreOrderService {
             subOrders.update(null, new UpdateWrapper<OrdSubOrder>().eq("id", sub.getId())
                     .eq("status", OrdSubOrder.WAIT_PAY).set("status", OrdSubOrder.CANCELLED)
                     .setSql("version=version+1"));
+            if (order.getPosActivityFactsVersion() != null) posActivities.cancel(orderNo);
             return null;
         }));
         return get(scope, orderNo);

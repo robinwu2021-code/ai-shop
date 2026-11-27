@@ -8,6 +8,13 @@
 
 [总设计](./TDD-活动卡券储值-模块化系统设计.md) · [接口](./TDD-活动卡券储值-API契约.md)。活动类归核心服务数据源，券与卡和储值权益归pay数据源；HTTP入口不改变数据所有者。以下DDL用于完整字段评审，不可直接替代当前线上同名表。
 
+商家自发券从旧入口制券和发放，Core 在 V708–V710 保存发放时版本、批次与持券关联。按券号完成迁移后，Pay 接手该券的后续发放。会员营销库目标设计将模板、批次、发放记录和持券分别归入 `ent_template`、`ent_issue_batch`、`ent_grant` 和 `ent_instance`，核销后的逐笔冲回保留 `ent_use_reversal`。[首批范围及迁移条件](design/数据库设计/库/07-会员营销库.md#首批商家自发券的实施范围)
+
+
+活动参与及预留在 V705、V706 的现行存储、历史兼容和部署顺序见[会员与活动库表切换](design/数据库设计/库/07-会员营销库.md#v2-会员与活动的库表切换)。
+
+统一订单活动从 V714 开始在优惠发生记录保留本次判价的发布版本。旧行的证据边界、退款按原成交日回算的确认口径与手持端现状见[手持活动成效](TDD-手持活动成效.md)。
+
 ## 一、共同约定与关系
 
 每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
@@ -613,8 +620,12 @@ CARD商品SKU引用支付权益版本，不重复保存余次规则。
 | voucher_no | VARCHAR(64) NOT NULL | 凭证号 |
 | account_no | VARCHAR(64) NOT NULL | 账户 |
 | account_seq | BIGINT NOT NULL | 账户账序 |
-| biz_type | VARCHAR(24) NOT NULL | RECHARGE/CONSUME，首期无开放退款 |
-| biz_no | VARCHAR(64) NOT NULL | 来源充值或使用意图 |
+| biz_type | VARCHAR(24) NOT NULL | RECHARGE/CONSUME/REFUND |
+| biz_no | VARCHAR(64) NOT NULL | 来源充值、使用意图或整退号 |
+| origin_voucher_no | VARCHAR(64) NULL | 原消费凭证号，整退必填 |
+| usage_no | VARCHAR(64) NULL | 原储值核销号，整退必填 |
+| source_decision_no | VARCHAR(64) NULL | 交易侧退款决定号，整退必填 |
+| after_sale_no | VARCHAR(64) NULL | 退款来源业务号，整退必填 |
 | payload_hash | CHAR(64) NOT NULL | 幂等内容 |
 | principal_delta | BIGINT NOT NULL | 本金变化 |
 | bonus_delta | BIGINT NOT NULL | 赠金变化 |
@@ -1333,3 +1344,12 @@ V474完整69表DDL已在隔离MySQL执行通过（`/tmp/ent-legacy-issue-schema-
 ## 门店独立储值实现增量（2026-10-20）
 
 V532–V535为本轮DDL真源，分别覆盖门店账户唯一键、独立方案及版本、PLAN充值来源和批次溯源、统一收支投影。字段和切换限制见[TDD-门店储值实现与交付](./TDD-门店储值实现与交付.md#2-数据库)。当前业务库尚未应用本轮迁移；独立MySQL临时库演练通过并已删除。
+
+
+### 首批商家券核销与返券
+
+旧券号结账以 Core 订单创建决策为准，Pay 将占用确认为一次使用并记录原核销。建单失败只释放占用；已核销订单整单取消、或开启返券且全部子单退结后，按冻结优惠额恢复一次。Pay 在既有返券事务内写入原核销对应的冲回明细。迁入前的核销按原 apply_no 和迁移基线定位；迁入前已经撤销且无权威来源的记录保留原状态。上线时先排空旧写入节点，再应用 V711 并启用新节点。
+
+### 纯储值消费整退（V712、V713）
+
+纯储值服务单整笔退款沿用原核销号及消费凭证。交易侧在服务单固化退款决定，储值账按原批次退回本金、赠金，追加反向凭证及借贷分录。每张消费凭证至多整退一次。 `ord_ent_service_order` 保存 refund_status、refund_actor_no、refund_command_snapshot，原服务单维持 COMMITTED。恢复任务重放同一决定。按行部分退及充值退资待确认。

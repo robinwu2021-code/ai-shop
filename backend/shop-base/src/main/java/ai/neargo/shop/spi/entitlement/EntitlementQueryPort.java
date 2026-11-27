@@ -120,9 +120,16 @@ public interface EntitlementQueryPort {
         }
     }
 
+    record UsageReversal(String sourceType, String sourceNo, long discountMinor, int units, Instant occurredAt) { }
+
     record UsageDetail(UsageItem usage, List<UseItem> items, String serviceStaffName, String sourceOrderNo,
-                       Integer remainingUnits) {
+                       Integer remainingUnits, List<UsageReversal> reversals) {
+        public UsageDetail(UsageItem usage, List<UseItem> items, String serviceStaffName, String sourceOrderNo,
+                           Integer remainingUnits) {
+            this(usage, items, serviceStaffName, sourceOrderNo, remainingUnits, List.of());
+        }
         public UsageDetail {
+            reversals = reversals == null ? List.of() : List.copyOf(reversals);
             ContractChecks.present(usage);
             items = List.copyOf(ContractChecks.present(items));
         }

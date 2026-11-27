@@ -33,10 +33,12 @@ public class LegacyCouponUsageRecorder {
     @org.springframework.beans.factory.annotation.Autowired
     private PayOperationsDocuments documents;
     private final EntUsageMapper usages;
+    private final LegacyCouponReversalRecorder reversalRecorder;
     private final ObjectMapper json;
     private final EntLedgerMapper ledger;
     private final PayEntitlementEventPublisher events;
-    public LegacyCouponUsageRecorder(EntUsageMapper usages,ObjectMapper json,EntLedgerMapper ledger,PayEntitlementEventPublisher events) {
+    public LegacyCouponUsageRecorder(EntUsageMapper usages,ObjectMapper json,EntLedgerMapper ledger,PayEntitlementEventPublisher events, LegacyCouponReversalRecorder reversalRecorder) {
+        this.reversalRecorder = reversalRecorder;
         this.usages=usages;this.json=json;this.ledger=ledger;this.events=events;
     }
 
@@ -50,6 +52,8 @@ public class LegacyCouponUsageRecorder {
             throw BizException.of(ErrorCode.CONFLICT);
         var row=usages.selectOne(Wrappers.<EntUsage>lambdaQuery().eq(EntUsage::getTenantNo,ctx.tenantNo())
                 .eq(EntUsage::getOperationNo,operation.getOperationNo()).eq(EntUsage::getProtocol,"LEGACY"));
+        String returnSnapshot = operation.getReverseSnapshot() == null
+                ? operation.getPartialReturnSnapshot() : operation.getReverseSnapshot();
         boolean changed=false;
         if(row==null) {
             var rule=json.readValue(operation.getRuleSnapshot(),EntitlementDefinition.class);
@@ -57,7 +61,17 @@ public class LegacyCouponUsageRecorder {
             String store=parts.isEmpty()?null:parts.getFirst().storeNo();
             if(store==null || parts.stream().anyMatch(part->!Objects.equals(part.storeNo(),parts.getFirst().storeNo()))) store=null;
             row=new EntUsage();EntitlementRecords.audit(row,ctx);
-            row.setUsageNo("EU"+UUID.randomUUID().toString().replace("-",""));
+            String originalNo = reversalRecorder.originalUsageNo(ctx, operation.getReverseDecisionNo());
+            if (originalNo == null && returnSnapshot != null) {
+                var snapshot = json.readValue(returnSnapshot,
+                        ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.Reversal.class);
+                if (!snapshot.parts().isEmpty()) {
+                    row.setOperationNo(operation.getOperationNo());
+                    originalNo = reversalRecorder.originalUsageNo(ctx,
+                            LegacyCouponReversalRecorder.partDecision(row, snapshot.parts().getFirst().afterSaleNo()));
+                }
+            }
+            row.setUsageNo(originalNo != null ? originalNo : "EU" + UUID.randomUUID().toString().replace("-", ""));
             row.setProtocol("LEGACY");row.setLegacyInstanceNo(operation.getInstanceNo());
             row.setOperationNo(operation.getOperationNo());row.setUserNo(operation.getUserNo());row.setEntityNo(operation.getEntityNo());
             row.setStoreNo(store);row.setStoreName(null);row.setAssetKind("ORDER_COUPON");row.setTitle(rule.title());
@@ -73,6 +87,32 @@ public class LegacyCouponUsageRecorder {
             if(!Objects.equals(row.getStatus(),operation.getStatus())) {
                 row.setStatus(operation.getStatus());row.setUpdatedBy(ctx.actorNo());row.setUpdatedAt(EntitlementRecords.now());
                 EntitlementRecords.changed(usages.updateById(row));changed=true;
+            }
+        }
+        if (returnSnapshot != null) {
+            var fact = json.readValue(returnSnapshot,
+                    ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.Reversal.class);
+            boolean terminal = "REVERSED".equals(operation.getStatus());
+            if (terminal && !notify) {
+                var reversed = ledger.selectOne(Wrappers.<EntLedger>lambdaQuery()
+                        .eq(EntLedger::getTenantNo, ctx.tenantNo()).eq(EntLedger::getInstanceNo, operation.getInstanceNo())
+                        .eq(EntLedger::getBizKey, "LEGACY_REVERSE:" + operation.getOperationNo())
+                        .eq(EntLedger::getAssetSeq, operation.getReverseAssetSeq()));
+                if (reversed == null || !entry.getEntryNo().equals(reversed.getOriginEntryNo())
+                        || !Integer.valueOf(1).equals(reversed.getUnitsDelta()))
+                    throw BizException.of(ErrorCode.CONFLICT);
+            }
+            // Re-serialize the typed fact so MySQL JSON normalization cannot change the replay hash.
+            long attributed = 0;
+            for (var part : fact.parts()) {
+                changed |= reversalRecorder.record(ctx, row, LegacyCouponReversalRecorder.partDecision(row,part.afterSaleNo()),
+                        "PARTIAL_REFUND", part.afterSaleNo(), json.writeValueAsString(part),
+                        EntitlementRecords.utc(fact.occurredAt()), part.amountMinor(), 0);
+                attributed = Math.addExact(attributed, part.amountMinor());
+            }
+            if (terminal) {
+                changed |= reversalRecorder.record(ctx, row, fact.decisionNo(), fact.reason().name(), fact.sourceRef(),
+                        json.writeValueAsString(fact), operation.getReversedAt(), fact.discountMinor() - attributed, 1);
             }
         }
         if(notify) {

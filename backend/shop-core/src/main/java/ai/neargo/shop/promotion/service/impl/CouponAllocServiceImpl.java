@@ -64,6 +64,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
     }
 
     private final LegacyCouponSourceFenceService sourceFence;
+    @Autowired private IssuedCouponRules issuedRules;
     private final CouponMapper couponMapper;
     private final UserCouponMapper userCouponMapper;
     private final ApplyMapper applyMapper;
@@ -85,7 +86,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
             return CouponPort.Allocation.none();
         }
         var instance = require(userNo, userCouponNo);
-        ordinary(template(instance.getCouponNo()));
+        ordinary(template(instance), instance);
         return allocate(userNo, userCouponNo, groups);
     }
 
@@ -112,12 +113,15 @@ public class CouponAllocServiceImpl implements CouponAllocService {
                             || !original.getCouponNo().equals(instance.getCouponNo())) {
                         throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
                     }
-                    ordinary(coupon);
+                    if (instance.getTemplateVersionNo() != null) {
+                        coupon = issuedRules.issued(coupon, instance.getTemplateVersionNo());
+                    }
+                    ordinary(coupon, instance);
                     assertUsable(instance, coupon);
                 });
     }
 
-    private void ordinary(PmtCoupon coupon) {
+    private void ordinary(PmtCoupon coupon, PmtUserCoupon instance) {
         if (coupon == null
                 || !Set.of("CASH", "PERCENT").contains(coupon.getBenefitMode())
                 || !"ORDER".equals(coupon.getRedeemMode())
@@ -126,7 +130,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
                 || coupon.getMinQty() != null && coupon.getMinQty() != 0
                 || coupon.getBenefitRef() != null && !coupon.getBenefitRef().isBlank()
                 || !Set.of("PLATFORM", "MERCHANT").contains(coupon.getFunder())
-                || DataScopeContext.executeWithoutScope(
+                || instance.getTemplateVersionNo() == null && DataScopeContext.executeWithoutScope(
                                 () ->
                                         checkoutScopes.selectCount(
                                                 Wrappers.<PmtCouponScope>lambdaQuery()
@@ -158,6 +162,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         for (PmtUserCoupon uc : rows) {
             PmtCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
                     Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
+            if (uc.getTemplateVersionNo() != null) c = issuedRules.issued(c, uc.getTemplateVersionNo());
             if (c != null && PmtCoupon.ACTIVE.equals(c.getStatus())
                     && PmtCoupon.REDEEM_ORDER.equals(c.getRedeemMode())
                     && uc.usableAt(now, c.timesTotalOrOne()) && c.startedAt(now)) {
@@ -182,11 +187,11 @@ public class CouponAllocServiceImpl implements CouponAllocService {
             return CouponPort.Allocation.none();
         }
         PmtUserCoupon uc = require(userNo, userCouponNo);
-        PmtCoupon coupon = template(uc.getCouponNo());
+        PmtCoupon coupon = template(uc);
         assertUsable(uc, coupon);
 
         // 商家券只对本店商品计门槛、也只减本店的钱
-        java.util.Set<String> stores = storesOf(coupon);
+        java.util.Set<String> stores = storesOf(coupon, uc);
         List<CouponPort.MerchantAmount> applicable = groups.stream()
                 .filter(g -> coupon.getEntityNo() == null || coupon.getEntityNo().isBlank()
                         || coupon.getEntityNo().equals(g.merchantNo()))
@@ -225,7 +230,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
             return;
         }
         PmtUserCoupon uc = require(userNo, userCouponNo);
-        PmtCoupon coupon = template(uc.getCouponNo());
+        PmtCoupon coupon = template(uc);
         sourceFence.requireWritable(coupon.getTenantNo(), SourceSystem.PMT, coupon.getCouponNo(), false);
         assertUsable(uc, coupon);
 
@@ -373,6 +378,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         PmtCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
                 Wrappers.<PmtCoupon>lambdaQuery()
                         .eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
+        if (uc.getTemplateVersionNo() != null) c = issuedRules.issued(c, uc.getTemplateVersionNo());
         return c == null ? null : c.getTitle();
     }
 
@@ -399,6 +405,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         PmtCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
                 Wrappers.<PmtCoupon>lambdaQuery()
                         .eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
+        if (uc.getTemplateVersionNo() != null) c = issuedRules.issued(c, uc.getTemplateVersionNo());
         return c == null ? null : c.getTitle();
     }
 
@@ -417,10 +424,11 @@ public class CouponAllocServiceImpl implements CouponAllocService {
      * 写着「仅限河坊街店」的券在总店的单上照样减 —— 商家为一家店做的让利被全主体吃掉，到对账才发现。
      * <b>读不到范围就当一家店都不认</b>（空集合）：宁可这张券用不了，也不能退回成全店券。
      */
-    private java.util.Set<String> storesOf(PmtCoupon coupon) {
+    private java.util.Set<String> storesOf(PmtCoupon coupon, PmtUserCoupon instance) {
         if (!PmtCoupon.SCOPE_STORE.equals(coupon.getScopeType())) {
             return null;
         }
+        if (instance.getTemplateVersionNo() != null) return issuedRules.stores(coupon);
         if (scopeMapper == null) {
             return java.util.Set.of();
         }
@@ -462,14 +470,14 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         return uc;
     }
 
-    private PmtCoupon template(String couponNo) {
+    private PmtCoupon template(PmtUserCoupon instance) {
         PmtCoupon c = DataScopeContext.executeWithoutScope(() ->
                 couponMapper.selectOne(Wrappers.<PmtCoupon>lambdaQuery()
-                        .eq(PmtCoupon::getCouponNo, couponNo).last("limit 1")));
+                        .eq(PmtCoupon::getCouponNo, instance.getCouponNo()).last("limit 1")));
         if (c == null) {
             throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
         }
-        return c;
+        return instance.getTemplateVersionNo() == null ? c : issuedRules.issued(c, instance.getTemplateVersionNo());
     }
 
     private static long nz(Long v) {

@@ -16,7 +16,7 @@ type Original={key:string;body:SvConsumptionCreate;preview:SvConsumptionPreview|
 const goods=ref<Goods[]>([]),counts=ref<Record<string,number>>({}),original=ref<Original|null>(null),order=ref<SvServiceView|null>(null);
 const loading=ref(false),busy=ref(false),error=ref(''),page=ref(1),more=ref(false);
 let generation=0,store='',storage='',foreground=true,timer:ReturnType<typeof setTimeout>|undefined;
-const terminal=computed(()=>!!order.value&&['COMMITTED','CANCELLED','RELEASED','EXPIRED'].includes(order.value.status));
+const terminal=computed(()=>!!order.value&&['COMMITTED','CANCELLED','RELEASED','EXPIRED','REFUNDED'].includes(order.value.status));
 const lines=computed(()=>Object.entries(counts.value).filter(([,quantity])=>quantity>0).map(([skuNo,quantity])=>({skuNo,quantity})));
 const canConsume=computed(()=>merchant.can('pay:sv:consume:create'));
 const canSubmit=computed(()=>canConsume.value&&order.value?.status==='WAIT_SUBMIT'&&!!order.value.confirmation);
@@ -120,7 +120,7 @@ onHide(()=>{foreground=false;clearTimeout(timer);});onShow(()=>{const returning=
   <template v-if="order">
    <view class="sh-card"><text class="txt-strong">{{t('storedValue.consumeState.'+order.status)}}</text><sh-kv v-for="(item,i) in order.items" :key="i" :label="item.title" between>× {{item.quantity}}</sh-kv><sh-kv v-if="order.payment" :label="t('storedValue.consumeAmount')" between>{{money(order.payment.amountMinor,order.payment.currency)}}</sh-kv></view>
    <text v-if="order.status==='WAIT_AUTH'&&order.confirmation" class="sh-hint">{{t('storedValue.askCustomerConfirm')}}</text>
-   <view v-if="!terminal" class="sh-link sh-hit" @tap="cancel">{{t('storedValue.cancelConsumption')}}</view>
+   <view v-if="!terminal&&order.status!=='REFUND_PENDING'" class="sh-link sh-hit" @tap="cancel">{{t('storedValue.cancelConsumption')}}</view>
   </template>
   <text v-if="error" class="sh-hint">{{error}}</text>
  </view>

@@ -309,6 +309,8 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
         registry.register("mbr_member", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mbr_member_store", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_level_rule", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_store_profile", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mbr_member_source", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mbr_setting", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mbr_tag", Map.of(ScopeDim.MERCHANT, "entity_no"));
@@ -332,6 +334,7 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          */
         // 小程序会话上下文只能被其消费者本人读取；token 哈希不能成为跨账号的查询捷径。
         registry.register("usr_mp_session", Map.of(ScopeDim.SELF, "user_no"));
+        registry.register("pmt_coupon_version", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("pmt_coupon", Map.of(ScopeDim.MERCHANT, "entity_no"));
 
         /*

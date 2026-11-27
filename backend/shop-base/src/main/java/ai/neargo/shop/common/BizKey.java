@@ -68,6 +68,7 @@ public final class BizKey {
     public static final String MEMBER_SEGMENT = "SG";
     /** 券模板（新模型 pmt_coupon）。与老 mkt_coupon 的号分开 —— 两套表并存期间要一眼看出是哪一套 */
     public static final String PROMO_COUPON = "PC";
+    public static final String PROMO_COUPON_VERSION = "PCV";
     /** 用户券（新模型）。发到某个人手上的那一张 */
     public static final String PROMO_USER_COUPON = "PU";
     /** 发放批次：一次定向发券 */

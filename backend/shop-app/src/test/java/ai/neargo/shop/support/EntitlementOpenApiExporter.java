@@ -164,6 +164,7 @@ public final class EntitlementOpenApiExporter {
         if (raw == Instant.class || raw == OffsetDateTime.class || raw == ZonedDateTime.class) {
             return Map.of("type", "string", "format", "date-time");
         }
+        if (raw == java.time.ZoneId.class) return Map.of("type", "string", "description", "IANA time zone of the selected store");
         if (raw == LocalDate.class) return Map.of("type", "string", "format", "date");
         if (raw == LocalDateTime.class) return Map.of("type", "string", "description", "Local date-time without offset; consult endpoint time-zone rules");
         if (raw == LocalTime.class || raw == Duration.class) return Map.of("type", "string");

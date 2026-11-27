@@ -44,6 +44,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.Instant;
 import java.time.LocalDate;
+import ai.neargo.shop.pay.entitlement.entity.EntUseReversal;
+import ai.neargo.shop.pay.mapper.entitlement.EntUseReversalMapper;
+import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.UsageReversal;
 import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -56,6 +59,7 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
     private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final EntInstanceMapper instances;
     private final EntPeriodBucketMapper buckets;
+    private final EntUseReversalMapper reversals;
     private final EntUsageMapper usages;
     private final EntUseAllocationMapper allocations;
     private final EntLedgerMapper ledger;
@@ -64,7 +68,8 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
     private final StoredValueCursorCodec historyCursors;
     public EntitlementQueryServiceImpl(EntInstanceMapper instances, EntPeriodBucketMapper buckets,
             EntUsageMapper usages, EntUseAllocationMapper allocations, EntLedgerMapper ledger,
-            EntitlementCursorCodec cursors, ObjectMapper json, StoredValueCursorCodec historyCursors) {
+            EntitlementCursorCodec cursors, ObjectMapper json, StoredValueCursorCodec historyCursors, EntUseReversalMapper reversals) {
+        this.reversals = reversals;
         this.instances = instances;
         this.buckets = buckets;
         this.usages = usages;
@@ -129,15 +134,20 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
                 .eq(EntUsage::getUserNo, q.userNo()).eq(q.entityNo() != null, EntUsage::getEntityNo, q.entityNo())
                 .eq(EntUsage::getUsageNo, documentNumbers.resolve(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, context.tenantNo(), q.usageNo())));
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        var returns = reversals.selectList(Wrappers.<EntUseReversal>lambdaQuery()
+                .eq(EntUseReversal::getTenantNo, context.tenantNo()).eq(EntUseReversal::getUsageNo, row.getUsageNo())
+                .orderByAsc(EntUseReversal::getOccurredAt, EntUseReversal::getId)).stream()
+                .map(r -> new UsageReversal(r.getSourceType(), r.getSourceNo(), r.getDiscountMinor(),
+                        r.getUnits(), r.getOccurredAt().toInstant(java.time.ZoneOffset.UTC))).toList();
         if ("MIGRATED".equals(row.getProtocol())) {
-            return new UsageDetail(usageItem(row), List.of(), null, row.getSourceOrderNo(), null);
+            return new UsageDetail(usageItem(row), List.of(), null, row.getSourceOrderNo(), null, returns);
         }
         if ("LEGACY".equals(row.getProtocol())) {
             var original = ledger.selectOne(Wrappers.<EntLedger>lambdaQuery()
                     .eq(EntLedger::getTenantNo, context.tenantNo()).eq(EntLedger::getInstanceNo, row.getLegacyInstanceNo())
                     .eq(EntLedger::getBizKey, "LEGACY_COMMIT:" + row.getOperationNo()));
             return new UsageDetail(usageItem(row), List.of(), null, row.getSourceOrderNo(),
-                    original == null ? null : original.getAfterUnits());
+                    original == null ? null : original.getAfterUnits(), returns);
         }
         var allocation = allocations.selectOne(Wrappers.<EntUseAllocation>lambdaQuery()
                 .eq(EntUseAllocation::getTenantNo, context.tenantNo())
@@ -146,7 +156,7 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
                 .eq(EntLedger::getTenantNo, context.tenantNo()).eq(EntLedger::getInstanceNo, allocation.getInstanceNo())
                 .eq(EntLedger::getBizKey, "USE:" + row.getOperationNo()));
         return new UsageDetail(usageItem(row), List.of(json.readValue(row.getItemsSnapshot(), UseItem[].class)),
-                row.getServiceStaffName(), row.getSourceOrderNo(), entry == null ? null : entry.getAfterUnits());
+                row.getServiceStaffName(), row.getSourceOrderNo(), entry == null ? null : entry.getAfterUnits(), returns);
     }
 
     @Override

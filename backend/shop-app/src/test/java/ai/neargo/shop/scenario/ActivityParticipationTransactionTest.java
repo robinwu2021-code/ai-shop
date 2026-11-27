@@ -80,8 +80,8 @@ class ActivityParticipationTransactionTest {
         version.setRuleSnapshot(snapshot); version.setRuleHash(ActivityCommandDeduplicator.hash(snapshot));
         version.setPublishedBy("SYSTEM"); version.setPublishedAt(LocalDateTime.now(ZoneOffset.UTC));
         versions.insert(version);
-        var capacity = new PmtActivityBudget(); audit(capacity);
-        capacity.setActivityNo(no); capacity.setCurrency("CNY"); capacity.setQuotaLimit(quota);
+        var capacity = PmtActivityBudget.forActivity(no); audit(capacity);
+        capacity.setCurrency("CNY"); capacity.setQuotaLimit(quota);
         capacity.setBudgetLimitMinor(budget); capacity.setPerUserLimit(personal);
         capacity.setQuotaHeld(0L); capacity.setQuotaUsed(0L);
         capacity.setBudgetHeldMinor(0L); capacity.setBudgetUsedMinor(0L); budgets.insert(capacity);
@@ -99,7 +99,7 @@ class ActivityParticipationTransactionTest {
         return cmd;
     }
     private long count(String activity, String column) {
-        return jdbc.queryForObject("SELECT " + column + " FROM pmt_activity_budget WHERE tenant_no=? AND activity_no=?",
+        return jdbc.queryForObject("SELECT " + column + " FROM pmt_quota WHERE quota_dimension='TOTAL' AND tenant_no=? AND activity_no=?",
                 Long.class, tenant, activity);
     }
     @Test void confirmationAndDurableAbortSettleBothCountersExactlyOnce() {
@@ -117,7 +117,7 @@ class ActivityParticipationTransactionTest {
         service.release(context(), release); service.release(context(), release);
         assertThat(count(activity, "quota_held")).isZero();
         assertThat(count(activity, "quota_used")).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT used_count FROM pmt_activity_participant "
+        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_quota "
                 + "WHERE tenant_no=? AND activity_no=? AND user_no='user'", Integer.class, tenant, activity)).isEqualTo(1);
     }
     @Test void concurrentSourceReplayConsumesOnlyOneReservation() throws Exception {
@@ -147,7 +147,7 @@ class ActivityParticipationTransactionTest {
     @Test void unknownRecoveryAndForgedTerminalBindingsNeverReleaseOriginalHold() {
         String activity = seed(10, 10, 1000); var cmd = command(activity, "user");
         var permit = service.reserve(context(), cmd);
-        jdbc.update("UPDATE pmt_activity_reservation SET deadline=? WHERE tenant_no=? AND reservation_no=?",
+        jdbc.update("UPDATE pmt_reservation SET deadline=? WHERE tenant_no=? AND reservation_no=?",
                 LocalDateTime.now(ZoneOffset.UTC).minusDays(1), tenant, permit.reservationNo());
         service.recoverPending(100);
         assertThat(count(activity, "quota_held")).isEqualTo(1);
@@ -169,12 +169,12 @@ class ActivityParticipationTransactionTest {
         var committed = command(activity, "second");
         service.reserve(context(), committed);
         source.finish(tenant, committed, ActivityParticipationOutcomePort.State.COMMITTED, "laterGrant");
-        jdbc.update("UPDATE pmt_activity_reservation SET deadline=? WHERE tenant_no=? AND activity_no=?",
+        jdbc.update("UPDATE pmt_reservation SET deadline=? WHERE tenant_no=? AND activity_no=?",
                 LocalDateTime.now(ZoneOffset.UTC).minusDays(1), tenant, activity);
         service.recoverPending(1);
         assertThat(service.query(context(), unknown.sourceRef()).status())
                 .isEqualTo(ActivityParticipationPort.State.RESERVED);
-        assertThat(jdbc.queryForObject("SELECT deadline FROM pmt_activity_reservation "
+        assertThat(jdbc.queryForObject("SELECT deadline FROM pmt_reservation "
                 + "WHERE tenant_no=? AND reservation_no=?", LocalDateTime.class, tenant,
                 unknownPermit.reservationNo())).isAfter(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(4));
         service.recoverPending(1);

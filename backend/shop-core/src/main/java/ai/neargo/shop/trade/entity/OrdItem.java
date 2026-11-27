@@ -82,6 +82,8 @@ public class OrdItem extends BaseEntity {
 
     /** 分摊后的本行实付（含优惠 / 积分抵扣分摊，不含运费）—— 下单时落快照（V404）。存量为 0，读时现算 */
     private Long paidShareMinor;
+    /** 下单时本行承担的券优惠，历史未取证为 null。 */
+    private Long couponShareMinor;
     /** 已退件数（V404） */
     private Integer refundedQty;
     /** 已退金额（V404） */

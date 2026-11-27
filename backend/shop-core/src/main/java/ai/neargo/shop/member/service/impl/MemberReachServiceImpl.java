@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -92,12 +93,6 @@ public class MemberReachServiceImpl implements MemberReachService {
         java.util.Set<String> devices = withDevice(r);
 
         for (Audience t : r.reachable()) {
-            /*
-             * **先记录再推送**。反过来的话，推送成功而记录失败时，
-             * 频次闸就不知道我们刚打扰过他 —— 下一次群发会立刻再发一条。
-             * 多记一条没发出去的，代价只是这个人这几天收不到；
-             * 少记一条已发出去的，代价是他被连着打扰两次。
-             */
             MbrReachLog row = new MbrReachLog();
             row.setReachNo(BizKey.next(BizKey.REACH));
             row.setEntityNo(entityNo);
@@ -108,7 +103,6 @@ public class MemberReachServiceImpl implements MemberReachService {
             row.setChannel(devices.contains(t.userNo()) ? "PUSH" : "INBOX");
             row.setScene(scene);
             row.setSentAt(now);
-            reachMapper.insert(row);
 
             /*
              * **先进消息列表，有设备再推送**。买家多在小程序、没有推送设备 ——
@@ -119,17 +113,23 @@ public class MemberReachServiceImpl implements MemberReachService {
             if (!inboxPort.deliverMarketing(t.userNo(), title, body, link, row.getReachNo())) {
                 continue;
             }
+            reachMapper.insert(row);
             sent++;
             if (devices.contains(t.userNo()) && pushPort.pushToUser(t.userNo(), title, body, link)) {
                 pushed++;
             }
         }
-        int skipped = r.matched() - r.reachable().size();
-        writeTask(taskNo, entityNo, audiences, audienceDesc, scene, title, body, r, sent, pushed, skipped,
+        List<ReachPlan.Skip> skipDetail = new ArrayList<>(skips(r));
+        int rejected = r.reachable().size() - sent;
+        if (rejected > 0) {
+            skipDetail.add(new ReachPlan.Skip("INBOX_REJECTED", rejected));
+        }
+        int skipped = r.matched() - sent;
+        writeTask(taskNo, entityNo, audiences, audienceDesc, scene, title, body, r.matched(), sent, pushed, skipped, skipDetail,
                 now, operatorNo);
         log.info("[触达] {} 场景 {} 计划 {} 发出 {} 推送 {} 跳过 {}", entityNo, scene, r.matched(), sent, pushed,
                 skipped);
-        return new ReachResult(taskNo, sent, pushed, skipped, skips(r));
+        return new ReachResult(taskNo, sent, pushed, skipped, skipDetail);
     }
 
     /** 这批能收到的人里，谁有推送设备（一次查完） */
@@ -143,8 +143,8 @@ public class MemberReachServiceImpl implements MemberReachService {
      * 同一事务里，先写后写对读的人没有区别。
      */
     private void writeTask(String taskNo, String entityNo, List<AudienceItem> audiences, String audienceDesc,
-                           String scene, String title, String body, AudienceResolution r,
-                           int sent, int pushed, int skipped, long now, String operatorNo) {
+                           String scene, String title, String body, int matched,
+                           int sent, int pushed, int skipped, List<ReachPlan.Skip> skipDetail, long now, String operatorNo) {
         MbrReachTask t = new MbrReachTask();
         t.setTaskNo(taskNo);
         t.setEntityNo(entityNo);
@@ -154,11 +154,11 @@ public class MemberReachServiceImpl implements MemberReachService {
         List<AudienceItem> items = audiences == null ? List.of() : audiences;
         t.setAudienceJson(json.writeValueAsString(items));
         t.setAudienceDesc(clip(audienceDesc == null || audienceDesc.isBlank() ? fallbackDesc(items) : audienceDesc));
-        t.setMatchedCount(r.matched());
+        t.setMatchedCount(matched);
         t.setSentCount(sent);
         t.setPushedCount(pushed);
         t.setSkippedCount(skipped);
-        t.setSkipDetail(r.skips().isEmpty() ? null : r.skips().stream()
+        t.setSkipDetail(skipDetail.isEmpty() ? null : skipDetail.stream()
                 .map(x -> x.reason() + ":" + x.count()).collect(Collectors.joining(",")));
         t.setOpenedCount(0);
         t.setOrderedCount(0);
@@ -170,12 +170,12 @@ public class MemberReachServiceImpl implements MemberReachService {
     }
 
     /** 旧版 App 不传描述：拼出受众项本身，至少不是一片空白 */
-    private static String fallbackDesc(List<AudienceItem> items) {
+    static String fallbackDesc(List<AudienceItem> items) {
         return items.stream().map(i -> AudienceItem.ALL.equals(i.type()) ? i.type() : i.type() + ":" + i.value())
                 .collect(Collectors.joining(" · "));
     }
 
-    private static String clip(String s) {
+    static String clip(String s) {
         return s.length() <= DESC_MAX ? s : s.substring(0, DESC_MAX);
     }
 
@@ -189,7 +189,7 @@ public class MemberReachServiceImpl implements MemberReachService {
         return taskMapper.selectPage(new Page<>(Math.max(page, 1), size <= 0 ? 20 : Math.min(size, 100)),
                         Wrappers.<MbrReachTask>lambdaQuery()
                                 .eq(MbrReachTask::getEntityNo, entityNo)
-                                .orderByDesc(MbrReachTask::getSentAt))
+                                .last("ORDER BY COALESCE(scheduled_at, sent_at) DESC, id DESC"))
                 .getRecords().stream()
                 .map(t -> vo(t, List.of(), Math.max(nz(t.getSentCount()) - nz(t.getOpenedCount()), 0))).toList();
     }
@@ -237,15 +237,15 @@ public class MemberReachServiceImpl implements MemberReachService {
         int sent = nz(t.getSentCount());
         int opened = nz(t.getOpenedCount());
         return new ReachTaskVO(t.getTaskNo(), t.getScene(), t.getTitle(), t.getBody(), t.getAudienceDesc(),
-                t.getSentAt(), t.getStatsUntil(), System.currentTimeMillis() > t.getStatsUntil(),
+                t.getSentAt(), t.getStatsUntil(), "SENT".equals(t.getDeliveryStatus()) && System.currentTimeMillis() > t.getStatsUntil(),
                 nz(t.getMatchedCount()), sent, nz(t.getPushedCount()), nz(t.getSkippedCount()),
                 parseSkips(t.getSkipDetail()),
                 opened, nz(t.getOrderedCount()),
                 t.getOrderedAmountMinor() == null ? 0 : t.getOrderedAmountMinor(),
-                ordered, notOpened);
+                ordered, notOpened, t.getDeliveryStatus(), t.getScheduledAt(), t.getScheduleZone());
     }
 
-    private static List<ReachPlan.Skip> parseSkips(String detail) {
+    static List<ReachPlan.Skip> parseSkips(String detail) {
         if (detail == null || detail.isBlank()) {
             return List.of();
         }

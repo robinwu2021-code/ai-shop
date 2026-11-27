@@ -58,6 +58,8 @@ export const marketingMock: Pick<MerchantApi,
   | "mPreviewMemberSegment"
   | "mPlanReach"
   | "mSendReach"
+  | "mScheduleReach"
+  | "mCancelReach"
   | "mReachTasks"
   | "mReachTask"
   | "mActivities"
@@ -563,11 +565,41 @@ export const marketingMock: Pick<MerchantApi,
     });
   },
 
+  async mScheduleReach(payload, key) {
+    const prior = scheduledRequests.get(key);
+    const signature = JSON.stringify(payload);
+    if (prior) {
+      if (prior.signature !== signature) throw new ApiError(10409, "预约内容与首次请求不符");
+      return { taskNo: prior.taskNo };
+    }
+    // 演示门店数据使用中国市场。
+    const at = Date.parse(payload.localTime + "+08:00");
+    if (!(at > Date.now())) throw new ApiError(10400, "请选择未来的门店当地时间");
+    const plan = await this.mPlanReach(payload);
+    const taskNo = nextNo("RC");
+    addMockReachTask({ taskNo, scene: payload.scene as ReachScene, title: payload.title, body: payload.body,
+      audienceDesc: payload.audienceDesc || "—", sentAt: 0, matched: plan.matched, skips: [],
+      scheduledAt: at, scheduleZone: "Asia/Shanghai", deliveryStatus: "SCHEDULED" }, []);
+    pendingReach.set(taskNo, payload);
+    scheduledRequests.set(key, { signature, taskNo });
+    return { taskNo };
+  },
+
+  async mCancelReach(taskNo) {
+    const task = mockReachTasks().find(t => t.taskNo === taskNo);
+    if (task?.deliveryStatus !== "SCHEDULED" || (task.scheduledAt ?? 0) <= Date.now())
+      throw new ApiError(10400, "预约已到期");
+    task.deliveryStatus = "CANCELLED";
+    pendingReach.delete(taskNo);
+  },
+
   async mReachTasks() {
+    await dispatchMockReach();
     return delay(mockReachTasks().map((t) => reachTaskView(t, false)));
   },
 
   async mReachTask(taskNo) {
+    await dispatchMockReach();
     const t = mockReachTasks().find((x) => x.taskNo === taskNo);
     if (!t) throw new ApiError(10404, "这次触达不存在");
     return delay(reachTaskView(t, true));
@@ -889,7 +921,7 @@ export const marketingMock: Pick<MerchantApi,
    * 定向发券。**三类跳过分开算**，与后端同一口径 ——
    * 只报一个「发放成功」的话，商家会以为人群里每个人都收到了。
    */
-  async mIssueCoupon(couponNo, segmentNo, audiences) {
+  async mIssueCoupon(couponNo, segmentNo, audiences, _requestKey, reachableOnly = false) {
     const c = db.merchantCoupons.find((x) => x.couponNo === couponNo);
     if (!c) throw new ApiError(10404, "券不存在");
     if (c.status !== "ACTIVE") throw new ApiError(40014, "这张券已暂停或已结束，发不出去");
@@ -897,10 +929,10 @@ export const marketingMock: Pick<MerchantApi,
     const sg = db.memberSegments.find((x) => x.segmentNo === segmentNo);
     // 预设人群「@ALL / @NEW / @LOYAL / @SLEEPING」按分层现筛，与后端同一口径
     const level = segmentNo?.startsWith("@") ? segmentNo.slice(1) : null;
-    const hit = audiences?.length ? (resolveAudienceMock(audiences) ?? [])
+    const hit = audiences ? (resolveAudienceMock(audiences) ?? [])
       : sg ? matchSegment(sg.rule)
-        : allMockMembers().filter((m) => !level || level === "ALL" || m.level === level);
-    const reachable = hit.filter((m) => m.status === "ACTIVE" && !m.reachOptOut);
+        : segmentNo && !level ? [] : allMockMembers().filter((m) => !level || level === "ALL" || m.level === level);
+    const reachable = hit.filter((m) => !skipReasonMock(m, reachableOnly ? "COUPON" : undefined));
     const unreachable = hit.length - reachable.length;
 
     let alreadyHas = 0;
@@ -1096,4 +1128,20 @@ function reachTargets(payload: { segmentNo?: string; audiences?: Array<{ type: s
   if (payload.audiences?.length) return resolveAudienceMock(payload.audiences) ?? [];
   const sg = payload.segmentNo ? db.memberSegments.find((x) => x.segmentNo === payload.segmentNo) : null;
   return sg ? matchSegment(sg.rule) : allMockMembers();
+}
+
+const scheduledRequests = new Map<string, { signature: string; taskNo: string }>();
+const pendingReach = new Map<string, Parameters<MerchantApi["mScheduleReach"]>[0]>();
+
+async function dispatchMockReach() {
+  for (const [no, payload] of pendingReach) {
+    const task = mockReachTasks().find(row => row.taskNo === no);
+    if (!task || (task.scheduledAt ?? 0) > Date.now()) continue;
+    pendingReach.delete(no);
+    const sent = await marketingMock.mSendReach(payload);
+    const rows = mockReachTasks();
+    const index = rows.findIndex(row => row.taskNo === sent.taskNo);
+    const [delivered] = rows.splice(index, 1);
+    Object.assign(task, delivered, { taskNo: no, deliveryStatus: "SENT" });
+  }
 }

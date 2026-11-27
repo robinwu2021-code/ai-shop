@@ -127,7 +127,7 @@ class StoredValueRechargeSourceFlowTest {
         String snapshot = json.writeValueAsString(new PublishedSnapshot(definition, null));
         version.setRuleSnapshot(snapshot); version.setRuleHash(ActivityCommandDeduplicator.hash(snapshot));
         version.setPublishedAt(LocalDateTime.now(ZoneOffset.UTC)); version.setPublishedBy(actor); versions.insert(version);
-        var budget = new PmtActivityBudget(); audit(budget); budget.setActivityNo(activity); budget.setCurrency("CNY");
+        var budget = PmtActivityBudget.forActivity(activity); audit(budget); budget.setCurrency("CNY");
         budget.setQuotaLimit(10L); budget.setQuotaHeld(0L); budget.setQuotaUsed(0L); budget.setPerUserLimit(2);
         budget.setBudgetLimitMinor(10000L); budget.setBudgetHeldMinor(0L); budget.setBudgetUsedMinor(0L);
         budgets.insert(budget);
@@ -142,9 +142,9 @@ class StoredValueRechargeSourceFlowTest {
         assertThat(plan.participation().userNo()).isEqualTo(user);
         assertThat(facts.resolve(ctx, plan.source())).isEqualTo(plan.fact());
         assertThat(facts.byRechargeNo(ctx, plan.rechargeNo())).isEqualTo(plan.fact());
-        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_activity_budget WHERE activity_no=?",
+        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",
                 Long.class, activity)).isOne();
-        assertThat(jdbc.queryForObject("SELECT budget_held_minor FROM pmt_activity_budget WHERE activity_no=?",
+        assertThat(jdbc.queryForObject("SELECT budget_held_minor FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",
                 Long.class, activity)).isEqualTo(100);
         assertThat(jdbc.queryForObject("SELECT plan_snapshot FROM pmt_recharge_intent WHERE intent_no=?", String.class,
                 plan.intentNo())).doesNotContain(request.customerRef());
@@ -166,7 +166,7 @@ class StoredValueRechargeSourceFlowTest {
         finally { jdbc.execute("ALTER TABLE sys_outbox DROP CONSTRAINT reject_recharge_source"); }
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_recharge_intent WHERE entity_no=?", Integer.class,
                 entity)).isZero();
-        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_activity_budget WHERE activity_no=?", Long.class,
+        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?", Long.class,
                 activity)).isZero();
         assertThat(sources.begin(ctx, entity, request, "retry").permit()).isNotNull();
     }
@@ -215,7 +215,7 @@ class StoredValueRechargeSourceFlowTest {
         var confirmed = participation.confirm(plan.context(), new ActivityParticipationPort.ConfirmParticipation(
                 plan.permit().reservationNo(), plan.source(), row.rechargeNo()));
         assertThat(confirmed.status()).isEqualTo(ActivityParticipationPort.State.CONFIRMED);
-        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_activity_budget WHERE activity_no=?",
+        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",
                 Long.class, activity)).isOne();
     }
     @Test void cancellationBeforeCreateFencesLateCreateAndOnlyActualCancellationReleasesBudget() {
@@ -229,7 +229,7 @@ class StoredValueRechargeSourceFlowTest {
         assertThat(participation.release(plan.context(), new ActivityParticipationPort.ReleaseParticipation(
                 plan.permit().reservationNo(), plan.source(), plan.rechargeNo())).status())
                 .isEqualTo(ActivityParticipationPort.State.RELEASED);
-        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_activity_budget WHERE activity_no=?",
+        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",
                 Long.class, activity)).isZero();
     }
     @Test void receiptCannotFundTwoRechargesAndReceiveRacingCancelHasOneDurableOutcome() throws Exception {

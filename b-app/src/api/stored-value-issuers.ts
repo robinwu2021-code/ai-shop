@@ -1,4 +1,4 @@
-import type {SvPage,SvPlan,SvProgress,SvBrandOption,SvWallet,SvRecordsQuery,SvRecord,SvConsumptionCreate,SvConsumptionPreview,SvServiceView,SvOperation} from './stored-value-types';
+import type {SvPage,SvPlan,SvProgress,SvBrandOption,SvWallet,SvRecordsQuery,SvRecord,SvConsumptionCreate,SvConsumptionPreview,SvServiceView,SvOperation,SvServiceOrderRefund} from './stored-value-types';
 export interface IssuerRoute {
 /** Payment merchant assigned to this collection route; null until configured. */
 paymentMerchantNo:string|null;
@@ -94,6 +94,7 @@ sourceRevision:number;
 /** Current server-owned lifecycle state of this resource. */
 status:string}
 export interface IssuerApi {
+ mSvConsumptionRefund(orderNo:string,storeNo:string):Promise<SvServiceOrderRefund>;
  mSvConsumptionCancel(orderNo:string,storeNo:string):Promise<SvOperation>;
  mSvConsumptionResolve(body:SvConsumptionCreate,key:string):Promise<SvConsumptionResolution>;
  mSvConsumptionPreview(body:SvConsumptionCreate,key:string):Promise<SvConsumptionPreview>;

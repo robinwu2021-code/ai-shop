@@ -109,7 +109,7 @@ public interface MemberReachService {
                        long sentAt, long statsUntil, boolean settled,
                        int matched, int sent, int pushed, int skipped, List<ReachPlan.Skip> skips,
                        int opened, int ordered, long orderedAmountMinor,
-                       List<OrderedMember> orderedMembers, int notOpened) {
+                       List<OrderedMember> orderedMembers, int notOpened, String deliveryStatus, Long scheduledAt, String scheduleZone) {
     }
 
     /**

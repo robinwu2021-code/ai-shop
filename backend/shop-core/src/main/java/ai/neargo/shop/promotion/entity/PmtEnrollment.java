@@ -24,6 +24,7 @@ public class PmtEnrollment extends BaseEntity {
 
     private String enrollmentNo;
     private String activityNo;
+    private String scopeVersionNo;
     /** 报名商家。数据域锚点 */
     private String entityNo;
     private Integer quota;

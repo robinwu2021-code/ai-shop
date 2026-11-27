@@ -85,6 +85,9 @@ public class OrdOrder extends BaseEntity {
     private Long discountAmount;
 
     private String currency;
+    private Integer posActivityFactsVersion;
+    private String posMemberNo;
+    private Boolean posMemberAtPayment;
 
     /** WAIT_PAY / PAID / CANCELLED / CLOSED */
     private String status;

@@ -59,6 +59,44 @@ public class StoredValueClearingServiceImpl implements StoredValueClearingServic
         db.update("UPDATE sv_statement SET issuer_no=?,scope_type=?,scope_no=?,operating_entity_no=?,settlement_entity_no=? WHERE tenant_no=? AND voucher_no=?",text(account,"issuer_no"),text(issuer,"scope_type"),text(issuer,"scope_no"),text(usage,"entity_no"),text(account,"entity_no"),ctx.tenantNo(),voucherNo);
         db.update("UPDATE sv_customer_issuer_index SET last_activity_at=?,last_occurrence_store_no=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND account_no=?",voucher.get("occurred_at"),text(usage,"store_no"),Timestamp.from(Instant.now()),ctx.actorNo(),ctx.tenantNo(),text(account,"account_no"));
     }
+    @Override
+    public void reverse(EntitlementContext ctx, String usageNo, String decisionNo, LocalDateTime occurredAt) {
+        if (!db.payTransactionActive()) throw new IllegalStateException("Pay transaction required");
+        var originals = db.rows("SELECT * FROM sv_clearing_entry WHERE tenant_no=? AND usage_no=? "
+                + "AND entry_type='USE' AND deleted=0 ORDER BY id", ctx.tenantNo(), usageNo);
+        var postedAt = Timestamp.from(Instant.now());
+        for (var original : originals) {
+            String clearingNo = text(original, "clearing_no");
+            String key = EntitlementRecords.digest(db.encode(List.of("REVERSAL", ctx.tenantNo(), clearingNo)));
+            var row = new LinkedHashMap<String,Object>();
+            for (String field : List.of("tenant_no", "issuer_no", "usage_no", "allocation_no", "lot_no", "release_no",
+                    "issuer_version_no", "recharge_store_no", "redemption_store_no", "payer_entity_no", "payee_entity_no", "currency")) {
+                row.put(field, original.get(field));
+            }
+            for (String field : List.of("principal_used_minor", "bonus_used_minor", "payable_minor", "issuer_borne_minor")) {
+                row.put(field, Math.negateExact(number(original, field)));
+            }
+            row.put("entry_type", "REVERSAL");
+            row.put("original_clearing_no", clearingNo);
+            row.put("decision_no", decisionNo);
+            row.put("occurred_at", Timestamp.from(occurredAt.toInstant(ZoneOffset.UTC)));
+            row.put("source_event_key", key);
+            String hash = EntitlementRecords.digest(db.encode(row));
+            var existing = db.one("SELECT content_hash FROM sv_clearing_entry WHERE tenant_no=? AND source_event_key=?",
+                    ctx.tenantNo(), key);
+            if (existing != null) {
+                if (!hash.equals(text(existing, "content_hash"))) conflict();
+                continue;
+            }
+            row.put("content_hash", hash);
+            row.put("clearing_no", BizKey.next(BizKey.STORED_VALUE_CLEARING));
+            row.put("created_at", postedAt);
+            row.put("updated_at", postedAt);
+            row.put("created_by", ctx.actorNo());
+            row.put("updated_by", ctx.actorNo());
+            db.insert("sv_clearing_entry", row);
+        }
+    }
     private static Instant instant(Object value){if(value instanceof Timestamp time)return time.toInstant();if(value instanceof LocalDateTime time)return time.toInstant(ZoneOffset.UTC);if(value instanceof Instant time)return time;throw new IllegalStateException("Missing Pay timestamp");}
     private static void conflict(){throw BizException.of(ErrorCode.CONFLICT);}
 }

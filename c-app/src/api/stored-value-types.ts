@@ -1,5 +1,5 @@
 import type { CurrencyCode } from "@shared/types";
-export type StoredValueType = "ALL" | "RECHARGE" | "REDEMPTION";
+export type StoredValueType = "ALL" | "RECHARGE" | "REDEMPTION" | "REFUND";
 export interface StoredValueStore {
   /** Store identifier scoping the requested operation or returned business record. */
   storeNo: string;

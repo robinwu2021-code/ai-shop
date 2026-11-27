@@ -175,6 +175,7 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("POST", "/biz/stored-value/consumptions"),
             HostRoute.of("GET", "/biz/stored-value/consumptions/orders/" + ID),
             HostRoute.of("POST", "/biz/stored-value/consumptions/orders/" + ID + "/cancel"),
+            HostRoute.of("POST", "/biz/stored-value/consumptions/order/" + ID + "/refund"),
             HostRoute.of("POST", "/biz/stored-value/consumptions/preview"),
             HostRoute.of("POST", "/biz/stored-value/consumptions/resolve"),
             HostRoute.of("GET", "/biz/stored-value/context"),

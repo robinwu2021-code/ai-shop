@@ -6,6 +6,8 @@ import ai.neargo.shop.spi.notify.UserInboxPort;
 
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Set;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -41,6 +43,11 @@ public class UserInboxPortImpl implements UserInboxPort {
                 Messages.get("points.expiry.body", notice.points(), date),
                 null,
                 notice.dedupKey());
+    }
+
+    @Override
+    public Set<String> atMarketingDailyLimit(List<String> userNos) {
+        return messageService.atMarketingDailyLimit(userNos);
     }
 
     @Override

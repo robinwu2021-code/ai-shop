@@ -120,6 +120,9 @@ function stamp(ts: number) {
           {{ $t("memberSettings.levelComputedAt", { t: stamp(setting.levelComputedAt) }) }}
         </text>
       </view>
+      <sh-kv between :label="String($t('memberDetail.gradeVersion'))">
+        <text>{{ setting.activeGradeVersionNo || $t('memberSettings.noGradeRule') }}</text>
+      </sh-kv>
       <sh-kv between class="sh-mt-sm" :label="String($t('members.level.SLEEPING'))">
         <text class="txt-sub">{{ $t("memberSettings.ruleSleep", { n: setting.sleepDays }) }}</text>
       </sh-kv>

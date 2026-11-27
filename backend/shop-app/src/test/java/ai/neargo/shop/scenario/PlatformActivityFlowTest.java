@@ -65,6 +65,8 @@ class PlatformActivityFlowTest {
     @AfterEach
     void drop() {
         for (String no : made) {
+            jdbc.update("delete from pmt_activity_scope where owner_type='ENROLLMENT' and owner_no in "
+                    + "(select enrollment_no from pmt_enrollment where activity_no=?)", no);
             jdbc.update("delete from pmt_enrollment_goods where enrollment_no in "
                     + "(select enrollment_no from pmt_enrollment where activity_no=?)", no);
             jdbc.update("delete from pmt_enrollment where activity_no=?", no);
@@ -87,6 +89,8 @@ class PlatformActivityFlowTest {
         assertThat(jdbc.queryForObject("select enroll_reserved_minor from pmt_activity where activity_no=?",
                 Long.class, a.activityNo())).as("通过即占预算").isEqualTo(2000L);
 
+        // A versioned submission must keep pricing the original goods even if the legacy copy drifts.
+        jdbc.update("UPDATE pmt_enrollment_goods SET goods_no=? WHERE enrollment_no=?", "STALE", e.enrollmentNo());
         startNow(a.activityNo());
         String orderNo = buy(login(phone()), GOODS, SKU, 3);   // 3 × 49.80 = 149.40，满 100 减 20
         Map<String, Object> sub = subOf(orderNo);
@@ -113,11 +117,14 @@ class PlatformActivityFlowTest {
         service.review(e.enrollmentNo(), true, null, "OP-1");
         startNow(a.activityNo());
 
+        jdbc.update("UPDATE pmt_enrollment SET scope_version_no=NULL WHERE enrollment_no=?", e.enrollmentNo());
         String orderNo = buy(login(phone()), GOODS, SKU, 1);   // 49.80 < 100，报名的货不够门槛
         assertThat(((Number) subOf(orderNo).get("discount_platform")).longValue())
                 .as("★ 报名的货只有 49.8 元，不该凑别的货去够满 100").isZero();
         assertThat(jdbc.queryForObject("select count(*) from pmt_apply where order_no=? and promo_no=?",
                 Integer.class, orderNo, a.activityNo())).isZero();
+        String qualifyingOrder = buy(login(phone()), GOODS, SKU, 3);
+        assertThat(((Number) subOf(qualifyingOrder).get("discount_platform")).longValue()).isEqualTo(1000L);
     }
 
     @Test
@@ -144,6 +151,14 @@ class PlatformActivityFlowTest {
         service.review(e.enrollmentNo(), false, "价格高于平台同类", "OP-1");
         var again = service.enroll(ENTITY, a.activityNo(), new EnrollCommand(List.of(GOODS), 3));
         assertThat(again.status()).isEqualTo("SUBMITTED");
+        assertThat(jdbc.queryForList("""
+                SELECT version_no FROM pmt_activity_scope
+                WHERE tenant_no='MAIN' AND owner_type='ENROLLMENT' AND owner_no=?
+                  AND scope_dimension='TARGET' AND scope_kind='GOODS' AND ref_no=? AND activity_version_no IS NULL
+                ORDER BY id
+                """, String.class, e.enrollmentNo(), GOODS)).containsExactly("0", "1");
+        assertThat(jdbc.queryForObject("SELECT scope_version_no FROM pmt_enrollment WHERE enrollment_no=?",
+                String.class, e.enrollmentNo())).isEqualTo("1");
         assertThat(again.rejectReason()).as("重报之后不该还挂着上一次的驳回理由").isNull();
 
         jdbc.update("update pmt_activity set enroll_deadline=? where activity_no=?",

@@ -33,6 +33,8 @@ public class PmtApply extends BaseEntity {
     private String applyNo;
     private String promoType;
     private String promoNo;
+    private String activityVersionNo;
+    private String posRuleSnapshot;
     private String userNo;
     private String entityNo;
     private String storeNo;

@@ -3,6 +3,7 @@ package ai.neargo.shop.pay.storedvalue.service;
 import static ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.audit;
 
 import ai.neargo.shop.pay.entitlement.entity.EntUsage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.pay.mapper.storedvalue.SvStatementMapper;
 import ai.neargo.shop.pay.storedvalue.entity.SvAccount;
 import ai.neargo.shop.pay.storedvalue.entity.SvRecharge;
@@ -31,6 +32,25 @@ public class StoredValueStatementProjector {
     }
     public void redemption(EntitlementContext ctx,SvAccount a,EntUsage u,SvVoucher v){
         var row=base(ctx,a,v);row.setStoreNo(u.getStoreNo());row.setEntityNo(u.getEntityNo());row.setType("REDEMPTION");row.setStoreName(u.getStoreName());row.setTitle(u.getTitle());
+        statements.insert(row);
+    }
+    public void refund(EntitlementContext ctx, SvAccount account, EntUsage usage, SvVoucher refund, SvVoucher debit) {
+        var row = base(ctx, account, refund);
+        row.setType("REFUND");
+        row.setTitle(usage.getTitle());
+        row.setEntityNo(usage.getEntityNo());
+        row.setStoreNo(usage.getStoreNo());
+        row.setStoreName(usage.getStoreName());
+        var original = statements.selectOne(Wrappers.<SvStatement>lambdaQuery()
+                .eq(SvStatement::getTenantNo, ctx.tenantNo()).eq(SvStatement::getVoucherNo, debit.getVoucherNo()));
+        if (original != null) {
+            row.setIssuerNo(original.getIssuerNo());
+            row.setScopeType(original.getScopeType());
+            row.setScopeNo(original.getScopeNo());
+            row.setReleaseNo(original.getReleaseNo());
+            row.setOperatingEntityNo(original.getOperatingEntityNo());
+            row.setSettlementEntityNo(original.getSettlementEntityNo());
+        }
         statements.insert(row);
     }
     private static SvStatement base(EntitlementContext ctx,SvAccount a,SvVoucher v){

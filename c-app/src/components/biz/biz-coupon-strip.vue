@@ -9,6 +9,7 @@
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { idempotencyKey } from "@shared/net/http-client";
 import { money } from "@shared/utils/format";
 import type { Coupon } from "@shared/types";
 
@@ -29,6 +30,7 @@ const { t } = useI18n();
 const coupons = ref<Coupon[]>([]);
 const open = ref(false);
 const claiming = ref("");
+const claimKeys = new Map<string, string>();
 
 async function load(no: string) {
   if (!no) {
@@ -71,7 +73,10 @@ async function claim(c: Coupon) {
   if (c.received || claiming.value) return;
   claiming.value = c.couponNo;
   try {
-    await api.receiveCoupon(c.couponNo);
+    const key = claimKeys.get(c.couponNo) ?? idempotencyKey();
+    claimKeys.set(c.couponNo, key);
+    await api.receiveCoupon(c.couponNo, key);
+    claimKeys.delete(c.couponNo);
     c.received = true;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });

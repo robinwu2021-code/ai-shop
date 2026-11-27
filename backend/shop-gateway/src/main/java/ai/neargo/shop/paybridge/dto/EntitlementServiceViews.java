@@ -41,6 +41,7 @@ public final class EntitlementServiceViews {
                         : new Payment("STORED_VALUE",s.fact().currency(),s.preview().amountMinor(),s.preview().moneyQuote().walletProof()==null?"STORE":s.preview().moneyQuote().walletProof().selected().scopeType(),s.preview().moneyQuote().walletProof()==null?null:s.preview().moneyQuote().walletProof().selected().issuerName()));
     }
     public static String status(ServiceOrderSnapshot s) {
+        if (s.refundStatus() != null) return s.refundStatus();
         if (s.command() == null && List.of("CREATED", "PREVIEWED", "AUTHORIZED").contains(s.status())
                 && (!Instant.now().isBefore(s.deadline()) || s.preview() != null
                 && !Instant.now().isBefore(s.preview().expiresAt()))) return "EXPIRED";

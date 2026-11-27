@@ -9,6 +9,7 @@ import ai.neargo.shop.promotion.service.ActivityMarketingSummaryService;
 import ai.neargo.shop.promotion.service.ActivityPricingService;
 import ai.neargo.shop.promotion.service.ActivityVersionService;
 import ai.neargo.shop.promotion.service.EntitlementScopeValidationService;
+import ai.neargo.shop.promotion.service.MarketingEffectProjector;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition.RedemptionScope;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.promotion.ActivityCapability;
@@ -42,6 +43,7 @@ class UnifiedOrderActivityTransactionTest {
     @Autowired ActivityVersionService versions;
     @Autowired ActivityPricingService pricing;
     @Autowired ActivityMarketingSummaryService summary;
+    @Autowired MarketingEffectProjector effects;
     @Autowired OrderService orders;
     @Autowired JdbcTemplate jdbc;
     @Autowired @Qualifier("transactionManager") PlatformTransactionManager manager;
@@ -55,7 +57,8 @@ class UnifiedOrderActivityTransactionTest {
         tx().executeWithoutResult(status->pricing.commit("U-TX",order,discount));
         tx().executeWithoutResult(status->pricing.commit("U-TX",order,discount));
         assertUsage(fixture,1,100,1);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_apply WHERE promo_no=?",Integer.class,fixture.activity())).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT activity_version_no FROM pmt_apply WHERE promo_no=?",
+                String.class,fixture.activity())).containsExactly(fixture.version());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_effect_projection WHERE activity_no=?",Integer.class,fixture.activity())).isEqualTo(1);
         var before=summary.summarize(fixture.actor(),null,Instant.now().minusSeconds(120),Instant.now().plusSeconds(120));
         assertThat(before.metrics()).hasSize(1);
@@ -76,10 +79,25 @@ class UnifiedOrderActivityTransactionTest {
         assertThatThrownBy(()->tx().executeWithoutResult(status->pricing.commit("U-TX",second,discount)))
                 .isInstanceOf(BizException.class);
         assertUsage(fixture,1,100,1);
-        assertThat(jdbc.queryForObject("SELECT quota_held+budget_held_minor FROM pmt_activity_budget WHERE activity_no=?",Long.class,fixture.activity())).isZero();
-        assertThat(jdbc.queryForObject("SELECT held_count FROM pmt_activity_participant WHERE activity_no=? AND user_no='U-TX'",Integer.class,fixture.activity())).isZero();
+        assertThat(jdbc.queryForObject("SELECT quota_held+budget_held_minor FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",Long.class,fixture.activity())).isZero();
+        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_quota WHERE quota_dimension='PER_USER' AND activity_no=? AND user_no='U-TX'",Integer.class,fixture.activity())).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_apply WHERE order_no=?",Integer.class,second)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_effect_projection WHERE activity_no=?",Integer.class,fixture.activity())).isEqualTo(1);
+    }
+
+    @Test void activityFilterAppliesToOrderDiscountsAndPayEffects() {
+        var fixture=activity();
+        String order=order(fixture,"U-TX");
+        var selected=pricing.autoDiscount("U-TX",basket(fixture));
+        tx().executeWithoutResult(status->pricing.commit("U-TX",order,selected));
+        var at=Instant.now();
+        effects.recordPayEffect("MAIN",key(),fixture.activity(),fixture.actor().entityNo(),fixture.store(),
+                "COUPON_DISCOUNT",25L,"CNY",null,at);
+        var from=at.minusSeconds(120);
+        var to=at.plusSeconds(120);
+        assertThat(summary.summarize(fixture.actor(),null,fixture.activity(),from,to).metrics())
+                .extracting(ActivityMarketingSummaryService.Metric::amountMinor).containsExactly(100L,25L);
+        assertThat(summary.summarize(fixture.actor(),null,"A-OTHER",from,to).metrics()).isEmpty();
     }
 
     private Fixture activity() {
@@ -91,8 +109,8 @@ class UnifiedOrderActivityTransactionTest {
                 new UnifiedActivityDefinition.Rule(1,new UnifiedActivityDefinition.Trigger("AMOUNT",1000L,null),
                         List.of(new UnifiedActivityDefinition.Benefit("CUT",100L,null,null,null)),List.of()),10L,1000L,1,"CNY");
         var draft=versions.saveDraft(actor,new SaveDraft(null,null,definition),key());
-        versions.publish(actor,draft.activityNo(),draft.revision(),key());
-        return new Fixture(actor,store,draft.activityNo());
+        var published=versions.publish(actor,draft.activityNo(),draft.revision(),key());
+        return new Fixture(actor,store,draft.activityNo(),published.versionNo());
     }
     private String order(Fixture f,String user) {
         String order="O-TX-"+UUID.randomUUID(); String sub="SO-TX-"+UUID.randomUUID();
@@ -105,13 +123,13 @@ class UnifiedOrderActivityTransactionTest {
         return List.of(new CampaignPort.MerchantAmount(f.actor().entityNo(),1000,1,f.store()));
     }
     private void assertUsage(Fixture f,long quota,long amount,int personal) {
-        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_activity_budget WHERE activity_no=?",Long.class,f.activity())).isEqualTo(quota);
-        assertThat(jdbc.queryForObject("SELECT budget_used_minor FROM pmt_activity_budget WHERE activity_no=?",Long.class,f.activity())).isEqualTo(amount);
-        assertThat(jdbc.queryForObject("SELECT used_count FROM pmt_activity_participant WHERE activity_no=? AND user_no='U-TX'",Integer.class,f.activity())).isEqualTo(personal);
+        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",Long.class,f.activity())).isEqualTo(quota);
+        assertThat(jdbc.queryForObject("SELECT budget_used_minor FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",Long.class,f.activity())).isEqualTo(amount);
+        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_quota WHERE quota_dimension='PER_USER' AND activity_no=? AND user_no='U-TX'",Integer.class,f.activity())).isEqualTo(personal);
     }
     private TransactionTemplate tx() { return new TransactionTemplate(manager); }
     private String key() { return "K"+UUID.randomUUID().toString().replace("-",""); }
-    private record Fixture(ActivityActor actor,String store,String activity) { }
+    private record Fixture(ActivityActor actor,String store,String activity,String version) { }
     @TestConfiguration static class Readiness {
         @Bean ActivityCapabilityEvidence transactionFixtureEvidence() { return actor->EnumSet.allOf(ActivityCapability.class); }
     }

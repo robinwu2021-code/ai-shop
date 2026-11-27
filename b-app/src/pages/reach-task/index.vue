@@ -7,13 +7,13 @@
  * 下单的打上标签（下次活动圈他们）。
  */
 import { computed, ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShow, onHide, onUnload } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
-import { prompt } from "@ai-shop/ui/prompt";
+import { confirm, prompt } from "@ai-shop/ui/prompt";
 import type { ReachTask } from "@shared/types";
 
 const { t } = useI18n();
@@ -35,6 +35,38 @@ async function load() {
     failed.value = true;
   }
 }
+
+const pending = computed(() => !!data.value?.deliveryStatus && data.value.deliveryStatus !== "SENT");
+const scheduledTime = computed(() => {
+  const task = data.value;
+  if (!task?.scheduledAt || !task.scheduleZone) return "";
+  return new Date(task.scheduledAt).toLocaleString(undefined, { timeZone: task.scheduleZone }) + " " + task.scheduleZone;
+});
+
+async function cancelScheduled() {
+  if (saving.value || !await confirm({ title: tt("reach.cancelSchedule") })) return;
+  saving.value = true;
+  try {
+    await api.mCancelReach(taskNo.value);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    saving.value = false;
+    await load();
+  }
+}
+
+let timer: ReturnType<typeof setInterval> | undefined;
+function stopPolling() { clearInterval(timer); }
+onShow(() => {
+  void load();
+  stopPolling();
+  timer = setInterval(() => {
+    if (data.value?.deliveryStatus === "SCHEDULED" || data.value?.deliveryStatus === "SENDING") void load();
+  }, 15000);
+});
+onHide(stopPolling);
+onUnload(stopPolling);
 
 function md(ts: number) {
   const d = new Date(ts);
@@ -90,7 +122,6 @@ function onTagged() {
 
 onLoad((q) => {
   taskNo.value = (q?.taskNo as string) ?? "";
-  void load();
 });
 </script>
 
@@ -98,6 +129,17 @@ onLoad((q) => {
   <sh-scaffold title-key="reachTask.title" :denied="!merchant.can('biz:customer')"
     :failed="failed" @retry="load">
     <template v-if="data">
+      <view v-if="data.scheduledAt" class="sh-card">
+        <text class="txt-strong">{{ data.title }} · {{ $t(`reach.state.${data.deliveryStatus}`) }}</text>
+        <text class="sh-muted blk">{{ scheduledTime }}</text>
+        <text class="blk">{{ $t("reach.progress", { done: data.sent + data.skipped, total: data.matched }) }}</text>
+        <text v-for="s in data.skips" :key="s.reason" class="sh-muted blk">
+          {{ $t(`reach.reason.${s.reason}`, { n: s.count }) }}
+        </text>
+        <view v-if="data.deliveryStatus === 'SCHEDULED' && data.scheduledAt > Date.now() && merchant.can('biz:campaign')"
+          class="sh-btn sh-btn--muted" @tap="cancelScheduled">{{ $t("reach.cancelSchedule") }}</view>
+      </view>
+      <template v-if="!pending">
       <view class="hero">
         <text class="txt-strong">{{ data.title }}</text>
         <text class="txt-display sh-num hero__big">
@@ -155,6 +197,7 @@ onLoad((q) => {
         @close="showTag = false"
         @done="onTagged"
       ></biz-batch-tag-sheet>
+      </template>
     </template>
     <sh-empty v-else :pending="!failed" :failed="failed" @retry="load"></sh-empty>
   </sh-scaffold>

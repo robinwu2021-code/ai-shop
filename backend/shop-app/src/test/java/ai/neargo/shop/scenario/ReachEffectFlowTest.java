@@ -15,6 +15,7 @@ import ai.neargo.shop.member.mapper.MemberMappers.ReachTaskMapper;
 import ai.neargo.shop.member.service.impl.AudienceResolver;
 import ai.neargo.shop.member.service.impl.MemberReachServiceImpl;
 import ai.neargo.shop.member.service.impl.ReachAttribution;
+import ai.neargo.shop.spi.notify.UserInboxPort;
 import ai.neargo.shop.spi.notify.UserPushPort;
 import ai.neargo.shop.spi.user.PersonPort;
 import ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * 触达效果回看（TDD-会员标签与定向营销 批 C · AC-12 … AC-15、AC-17）。
@@ -138,6 +140,25 @@ class ReachEffectFlowTest {
         assertThat(t.settled()).as("窗口还没关").isFalse();
 
         assertThat(reachService.tasks(e, 1, 20)).extracting(ReachTaskVO::taskNo).containsExactly(taskNo);
+    }
+
+    @Test
+    void inboxRejectionAfterAudienceResolutionIsRecordedOnlyAsSkipped() {
+        String entity = "M-EFF-" + (++seq);
+        buyer(entity);
+        UserPushPort push = mock(UserPushPort.class);
+        UserInboxPort rejectingInbox = mock(UserInboxPort.class);
+        MemberReachService service = new MemberReachServiceImpl(reachMapper, taskMapper, memberMapper, resolver,
+                push, personPort, attribution, json, rejectingInbox);
+
+        var result = service.send(entity, ALL, MbrReachLog.SCENE_NOTICE, "notice", "body", "OP");
+        assertThat(result.sent()).isZero();
+        assertThat(result.skipped()).isOne();
+        assertThat(result.skips()).containsExactly(new MemberReachService.ReachPlan.Skip("INBOX_REJECTED", 1));
+        var saved = task(entity, result.taskNo());
+        assertThat(saved.skips()).isEqualTo(result.skips());
+        assertThat(saved.notOpened()).isZero();
+        assertThat(reachService.plan(entity, ALL, MbrReachLog.SCENE_NOTICE).reachable()).isOne();
     }
 
     @Test

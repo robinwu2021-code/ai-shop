@@ -17,6 +17,8 @@ import ai.neargo.shop.pay.entitlement.service.EntitlementCommandDeduplicator;
 import ai.neargo.shop.pay.entitlement.service.EntitlementRecords;
 import ai.neargo.shop.pay.mapper.entitlement.EntMigrationAliasMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntMigrationPlanMapper;
+import ai.neargo.shop.pay.migration.dto.MigrationPlanViews.Cohort;
+import ai.neargo.shop.pay.migration.service.LegacyCouponMigrationNormalizer;
 import ai.neargo.shop.pay.migration.dto.MigrationPlanViews.PlanCommand;
 import ai.neargo.shop.pay.migration.dto.MigrationPlanViews.PlanView;
 import ai.neargo.shop.pay.migration.entity.EntMigrationPlan;
@@ -54,8 +56,11 @@ public class EntitlementMigrationPlanServiceImpl implements EntitlementMigration
         this.plans=plans;this.aliases=aliases;this.evidence=evidence;this.migration=migration;this.writer=writer;
         this.commands=commands;this.cipher=cipher;this.json=json;
     }
-    public PlanView prepare(CatalogScope scope,String stageNo,String reason,String key) {
-        outside(scope);var command=new PlanCommand(stageNo,reason);ContractChecks.id(key);
+    public PlanView prepare(CatalogScope scope, PlanCommand command, String key) {
+        outside(scope);
+        String stageNo = command.stageNo();
+        String reason = command.reason();
+        ContractChecks.id(key);
         var replay=commands.replay(scope,EntitlementMigrationPlanWriter.OPERATION,key,command,PlanView.class);
         if(replay.isPresent()) return numbered(replay.get(), scope.tenantNo());
         cipher.requireConfigured();
@@ -65,6 +70,28 @@ public class EntitlementMigrationPlanServiceImpl implements EntitlementMigration
         var report=migration.assess(scope,stageNo); // Includes fresh alias recognition and complete issuance constraints.
         var sources=new ArrayList<EntMigrationStage>();sources.add(primary);
         var alias=aliases.findMember(scope.tenantNo(),stageNo);
+        Instant at=Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        boolean storeScoped = "PMT".equals(primary.getSourceSystem()) && "STORE".equals(body.path("template").path("scopeType").asText());
+        boolean multiple = "PMT".equals(primary.getSourceSystem()) && LegacyCouponMigrationNormalizer.multipleVersions(body);
+        Cohort expected = multiple ? Cohort.UNUSED_VERSIONED_COUPONS : storeScoped ? Cohort.UNUSED_STORE_COUPONS : Cohort.UNUSED_MERCHANT_COUPONS;
+        if ((multiple || storeScoped || command.cohort() != null) && command.cohort() != expected) conflict();
+        if (command.cohort() != null) {
+            var template = body.path("template");
+            String version = template.path("templateVersionNo").asText("");
+            boolean supported = !version.isBlank() && "PMT".equals(primary.getSourceSystem()) && alias == null
+                    && "MERCHANT".equals(template.path("funder").asText())
+                    && (storeScoped || "ALL".equals(template.path("scopeType").asText("ALL")))
+                    && template.path("minQty").asInt(0) == 0
+                    && java.util.Set.of("CENTER", "TARGETED").contains(template.path("issueMode").asText())
+                    && report.definition() != null && report.definition().totalUnits() == 1
+                    && body.path("historyAvailable").asBoolean(false)
+                    && body.path("applications").isArray() && body.path("applications").isEmpty()
+                    && body.path("instances").isArray()
+                    && report.instances().stream().allMatch(i -> !i.archivalOnly()
+                            && "UNUSED".equals(i.sourceStatus()) && i.remainingUnits() == 1
+                            && i.effectiveUntil() != null && i.effectiveUntil().isAfter(at));
+            if (!supported) conflict();
+        }
         if(alias!=null) {
             if(!stageNo.equals(alias.getCanonicalStageNo()) || !"RECOGNIZED".equals(alias.getStatus())) conflict();
             var shadow=evidence.owned(scope,alias.getMktStageNo());evidence.current(scope,shadow);
@@ -72,7 +99,6 @@ public class EntitlementMigrationPlanServiceImpl implements EntitlementMigration
                     || !shadow.getContentHash().equals(alias.getMktContentHash())) conflict();
             sources.add(shadow);
         }
-        Instant at=Instant.now().truncatedTo(ChronoUnit.MILLIS);
         String no="MP"+EntitlementRecords.digest(json.writeValueAsString(List.of(scope.tenantNo(),stageNo))).substring(0,62);
         var refs=sources.stream().map(this::reference).toList();
         var payload=LegacyCouponTargetPlan.build(json,no,scope.entityNo(),at,refs,body,report);

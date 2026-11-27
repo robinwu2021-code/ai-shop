@@ -23,7 +23,7 @@ public class ActivityMarketingSummaryServiceImpl implements ActivityMarketingSum
     public ActivityMarketingSummaryServiceImpl(PmtEffectProjectionMapper effects, MerchantScopeFactsPort merchants) {
         this.effects = effects; this.merchants = merchants;
     }
-    @Override public Summary summarize(ActivityActor actor, String storeNo, Instant from, Instant to) {
+    @Override public Summary summarize(ActivityActor actor, String storeNo, String activityNo, Instant from, Instant to) {
         if (from == null || to == null || !to.isAfter(from) || Duration.between(from, to).toDays() > 366) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -36,11 +36,11 @@ public class ActivityMarketingSummaryServiceImpl implements ActivityMarketingSum
             stores = List.of(storeNo);
         }
         if (stores != null && stores.isEmpty()) return new Summary(from, to, List.of());
-        List<Metric> metrics = new ArrayList<>(effects.summary(actor.tenantNo(), actor.entityNo(), stores,
+        List<Metric> metrics = new ArrayList<>(effects.summary(actor.tenantNo(), actor.entityNo(), stores, activityNo,
                 LocalDateTime.ofInstant(from, ZoneOffset.UTC), LocalDateTime.ofInstant(to, ZoneOffset.UTC)).stream()
                 .map(row -> new Metric("ORDER_DISCOUNT", row.currency(),
                         row.amountMinor().longValueExact(), row.events())).toList());
-        metrics.addAll(effects.paySummary(actor.tenantNo(),actor.entityNo(),stores,
+        metrics.addAll(effects.paySummary(actor.tenantNo(),actor.entityNo(),stores,activityNo,
                 LocalDateTime.ofInstant(from,ZoneOffset.UTC),LocalDateTime.ofInstant(to,ZoneOffset.UTC)).stream()
                 .map(row -> new Metric(row.effectKind(),row.currency(),
                         row.amountMinor()==null?null:row.amountMinor().longValueExact(),row.events(),

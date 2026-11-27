@@ -243,7 +243,9 @@ export const httpApi: ShopApi = {
   setMembershipReach: (entityNo, optOut) =>
     call<void>("setMembershipReach", { entityNo }, { optOut }),
   reachOpened: (reachNo) => call<ReachOpened>("reachOpened", { reachNo }, {}),
-  receiveCoupon: (couponNo) => call<UserCoupon>("receiveCoupon", { couponNo }),
+  receiveCoupon: (couponNo, requestKey) => http.post<UserCoupon>(
+    buildPath(ENDPOINTS.receiveCoupon.path, { couponNo }), undefined,
+    requestKey ? { "Idempotency-Key": requestKey } : undefined),
 
   // ---- 拼团
   groupBuyList: (pickupNo) => call<GroupBuy[]>("groupBuyList", undefined, { pickupNo } satisfies GroupBuyListQuery),

@@ -2,13 +2,14 @@ package ai.neargo.shop.member.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
 /**
  * 会员在某一家门店的往来。
  *
- * <p><b>单店主体不写这张表</b> —— 那一行等于主表的复制。只有多店主体才有，
+ * <p><b>单店主体不重复写门店统计</b> —— 那一行等于主表的复制。只有多店主体才有，
  * 读的时候取不到就回落主表。
  *
  * <p>它里面**没有任何身份字段**（没有状态、来源、标签、退订）：那些只在
@@ -17,9 +18,12 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("mbr_member_store")
+@TableName("mbr_store_profile")
 public class MbrMemberStore extends BaseEntity {
 
+    private String storeProfileNo;
+    private String customerNo;
+    private LocalDateTime firstSeenAt;
     private String memberNo;
     private String entityNo;
     private String storeNo;

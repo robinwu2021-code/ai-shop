@@ -93,6 +93,52 @@ class CouponIssueFlowTest {
     }
 
     @Test
+    void reachableOnlyRespectsMarketingInboxDailyLimitWithoutSpendingIt(
+            @Autowired ai.neargo.shop.message.MessageService messages) {
+        String entity = entityWithMembers(2);
+        String capped = "U-CPN-" + seq;
+        String available = "U-CPN-" + (seq - 1);
+        String segment = allMembersSegment(entity);
+        var coupon = couponService.save(entity, cash(100, 10, 1000L), "OP");
+        int limit = messages.notifyQuota().dailyPerUser();
+        for (int i = 0; i < limit; i++) {
+            assertThat(messages.inboxMarketing(capped, "other store", "", null, capped + "-" + i)).isTrue();
+        }
+        var filtered = couponService.issue(entity, coupon.couponNo(), segment, null, "OP", "filtered-cap", true);
+        assertThat(filtered.planned()).isEqualTo(2);
+        assertThat(filtered.issued()).isOne();
+        assertThat(filtered.skipped()).isOne();
+        assertThat(jdbc.queryForList("SELECT user_no FROM pmt_user_coupon WHERE issue_no=?", String.class,
+                filtered.issueNo())).containsExactly(available);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notify_message WHERE receiver_no=? AND msg_type='MARKETING'",
+                Integer.class, available)).isZero();
+        var usual = couponService.issue(entity, coupon.couponNo(), segment, null, "OP", "usual-cap", false);
+        assertThat(jdbc.queryForList("SELECT user_no FROM pmt_user_coupon WHERE issue_no=?", String.class,
+                usual.issueNo())).containsExactly(capped);
+    }
+
+    @Test
+    void reachableOnlyUsesCouponSceneAndReplaysOriginalBatch() {
+        String entity = entityWithMembers(2);
+        String segment = allMembersSegment(entity);
+        var coupon = couponService.save(entity, cash(100, 10, 1000L), "OP");
+        jdbc.update("""
+                INSERT INTO mbr_reach_log(reach_no,entity_no,member_no,scene,sent_at,created_at,updated_at)
+                SELECT member_no,entity_no,member_no,'COUPON',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+                FROM mbr_member WHERE entity_no=? ORDER BY id LIMIT 1
+                """, System.currentTimeMillis(), entity);
+        var first = couponService.issue(entity, coupon.couponNo(), segment, null, "OP", "filtered", true);
+        assertThat(first.issued()).isOne();
+        assertThat(first.skipped()).isOne();
+        assertThat(couponService.issue(entity, coupon.couponNo(), segment, null, "OP", "filtered", true))
+                .isEqualTo(first);
+        assertThatThrownBy(() -> couponService.issue(entity, coupon.couponNo(), segment, null, "OP", "filtered", false))
+                .isInstanceOf(BizException.class);
+        var second = couponService.issue(entity, coupon.couponNo(), segment, null, "OP", "usual", false);
+        assertThat(second.issued()).isOne();
+    }
+
+    @Test
     @DisplayName("★★★ 折扣券不封顶就不许建 —— 敞口随订单金额无限放大，只能在核销那一刻去追")
     void percentCouponMustHaveCap() {
         String e = entity();
@@ -171,6 +217,74 @@ class CouponIssueFlowTest {
     }
 
     @Test
+    void targetedIssueBindsVersionAndReplaysWithoutAnotherGrant() {
+        String entity = entityWithMembers(2);
+        String segment = allMembersSegment(entity);
+        String coupon = couponService.save(entity, cash(500, 2, null), "OP").couponNo();
+        String version = jdbc.queryForObject("SELECT template_version_no FROM pmt_coupon WHERE coupon_no=?",
+                String.class, coupon);
+        assertThat(version).isNotBlank();
+
+        CouponIssueVO first = couponService.issue(entity, coupon, segment, null, "OP", "same-request");
+        couponService.setStatus(entity, coupon, PmtCoupon.PAUSED);
+        assertThat(couponService.issue(entity, coupon, segment, null, "OP", "same-request")).isEqualTo(first);
+        assertThatThrownBy(() -> couponService.issue(entity, coupon, "@ALL", null, "OP", "same-request"))
+                .isInstanceOf(BizException.class).hasMessage(ErrorCode.CONFLICT.name());
+
+        assertThat(jdbc.queryForList("SELECT template_version_no FROM pmt_coupon_issue WHERE coupon_no=?",
+                String.class, coupon)).containsExactly(version);
+        assertThat(jdbc.queryForList("SELECT template_version_no FROM pmt_user_coupon WHERE issue_no=?",
+                String.class, first.issueNo())).containsExactly(version, version);
+        assertThat(jdbc.queryForObject("SELECT issued_exposure_minor FROM pmt_coupon WHERE coupon_no=?",
+                Long.class, coupon)).isEqualTo(1000);
+        assertThat(couponService.detail(entity, coupon).receivedCount()).isEqualTo(2);
+    }
+
+    @Test
+    void changedFaceValueKeepsTheExposureOfEarlierIssues() {
+        String entity = entity();
+        String coupon = couponService.save(entity, centerCash(null, 500, 1_000), "OP").couponNo();
+        couponService.receive("U-OLD-" + entity, coupon);
+        assertThatThrownBy(() -> couponService.save(entity, centerCash(coupon, 10, 509), "OP"))
+                .isInstanceOf(BizException.class);
+        CouponVO revised = couponService.save(entity, centerCash(coupon, 10, 510), "OP");
+        assertThat(revised.maxExposureMinor()).isEqualTo(510);
+        couponService.receive("U-NEW-" + entity, coupon);
+        assertThat(jdbc.queryForObject("SELECT issued_exposure_minor FROM pmt_coupon WHERE coupon_no=?",
+                Long.class, coupon)).isEqualTo(510);
+        assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT template_version_no) FROM pmt_user_coupon WHERE coupon_no=?",
+                Integer.class, coupon)).isEqualTo(2);
+    }
+
+    @Test
+    void claimKeyIsScopedToTheUserAndTemplateAndRespectsMultiClaimLimit() {
+        String entity = entity();
+        var cmd = new CouponSaveCmd(null, "两张券", PmtCoupon.CASH, 100L, null, null,
+                0L, null, PmtCoupon.SCOPE_ALL, List.of(), null, PmtCoupon.RELATIVE, null, null, 7,
+                PmtCoupon.ISSUE_CENTER, PmtCoupon.REDEEM_ORDER, 1, 10, 2, null);
+        String coupon = couponService.save(entity, cmd, "OP").couponNo();
+        String user = "U1-" + entity;
+        var first = couponService.receive(user, coupon, "A");
+        var second = couponService.receive(user, coupon, "a");
+        assertThat(first.userCouponNo()).isNotEqualTo(second.userCouponNo());
+        assertThat(couponService.receive(user, coupon, "A")).isEqualTo(first);
+        assertThatThrownBy(() -> couponService.receive(user, coupon, "C"))
+                .isInstanceOf(BizException.class).hasMessage(ErrorCode.COUPON_SOLD_OUT.name());
+        assertThat(couponService.receive("U2-" + entity, coupon, "A").userCouponNo())
+                .isNotEqualTo(first.userCouponNo());
+        String other = couponService.save(entity, cmd, "OP").couponNo();
+        assertThat(couponService.receive(user, other, "A").userCouponNo()).isNotEqualTo(first.userCouponNo());
+        assertThat(couponService.detail(entity, coupon).receivedCount()).isEqualTo(3);
+    }
+
+    private static CouponSaveCmd centerCash(String couponNo, long face, long budget) {
+        return new CouponSaveCmd(couponNo, "领取券", PmtCoupon.CASH, face, null, null,
+                0L, null, PmtCoupon.SCOPE_ALL, List.of(), null,
+                PmtCoupon.RELATIVE, null, null, 7, PmtCoupon.ISSUE_CENTER,
+                PmtCoupon.REDEEM_ORDER, 1, 2, 1, budget);
+    }
+
+    @Test
     @DisplayName("★★★ 券只剩 2 张而人群有 3 个人：发 2 张、跳过 1 个，不是「发放成功」了事")
     void stockRunsOutIsReportedNotSilent() {
         String e = entityWithMembers(3);
@@ -230,7 +344,7 @@ class CouponIssueFlowTest {
         String e = entityWithMembers(1);
         String seg = allMembersSegment(e);
         CouponVO c = couponService.save(e, cash(500, 10, null), "OP");
-        long before = System.currentTimeMillis();
+
 
         couponService.issue(e, c.couponNo(), seg, "OP");
 
@@ -246,6 +360,7 @@ class CouponIssueFlowTest {
         var issued = couponService.issues(e, c.couponNo());
         assertThat(issued).hasSize(1);
         assertThat(issued.get(0).issued()).isEqualTo(1);
-        assertThat(before + sevenDays).isGreaterThan(before);
+        assertThat(jdbc.queryForObject("SELECT expire_at-received_at FROM pmt_user_coupon WHERE coupon_no=?",
+                Long.class, c.couponNo())).isEqualTo(sevenDays);
     }
 }

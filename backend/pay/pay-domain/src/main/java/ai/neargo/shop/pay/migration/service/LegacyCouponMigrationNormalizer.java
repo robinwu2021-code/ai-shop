@@ -88,7 +88,8 @@ public final class LegacyCouponMigrationNormalizer {
                 ? 1 : configuredTotal != null && configuredTotal <= Integer.MAX_VALUE
                 && configuredTotal >= Integer.MIN_VALUE ? (int)Math.max(configuredTotal, 1) : 0;
         if (total == 0) blockers.add("INVALID_UNIT_COUNTER");
-        if (!legacy && !"ALL".equals(root.path("scopeType").asText("ALL"))) {
+        boolean storeScoped = !legacy && "STORE".equals(root.path("scopeType").asText());
+        if (!legacy && !storeScoped && !"ALL".equals(root.path("scopeType").asText("ALL"))) {
             notices.add("LEGACY_ORDER_SCOPE_NOT_ENFORCED");
         }
         if (!legacy && !root.path("minQty").isNull() && !root.path("minQty").isMissingNode()) {
@@ -111,9 +112,21 @@ public final class LegacyCouponMigrationNormalizer {
             } else blockers.add("INVALID_TEMPLATE_VALIDITY");
         } else blockers.add("INVALID_TEMPLATE_VALIDITY");
 
+        String currentVersion = root.path("templateVersionNo").asText("");
+        var published = facts.path("issuedVersions");
+        boolean multiple = !legacy && multipleVersions(manifest);
+        boolean versionProof = multiple || storeScoped;
+        RedemptionScope redemption = new RedemptionScope("ALL", List.of());
+        if (versionProof) {
+            var current = published.path(currentVersion);
+            if (currentVersion.isBlank() || !current.path("rule").isObject()) {
+                blockers.add("VERSIONED_SCOPE_CONVERSION_REQUIRED");
+            }
+            redemption = scope(current);
+        }
         EntitlementDefinition definition = null;
         if (marketValid && baseWindow != null && total > 0) {
-            definition = definition(root, legacy, benefit, total, market.currency(), baseWindow);
+            definition = definition(root, legacy, benefit, total, market.currency(), baseWindow, redemption);
             if (!validDefinition(definition)) {
                 blockers.add("INVALID_TARGET_DEFINITION");
                 definition = null;
@@ -123,7 +136,33 @@ public final class LegacyCouponMigrationNormalizer {
         var seenApplications = new HashSet<String>();
         var historyInstances = new HashSet<String>();
         var recipients = new HashMap<String, String>();
+        if (!legacy && !currentVersion.isEmpty() && !storeScoped && !"ALL".equals(root.path("scopeType").asText())) {
+            blockers.add("VERSIONED_SCOPE_CONVERSION_REQUIRED");
+        }
+        if (!legacy && !currentVersion.isEmpty()
+                && (root.path("minQty").asInt(0) != 0 || !root.path("benefitRef").asText("").isBlank())) {
+            blockers.add("VERSIONED_ORDER_CONVERSION_REQUIRED");
+        }
+        if (versionProof && (!manifest.path("issues").isArray() || !manifest.path("applications").isEmpty()
+                || total != 1 || !Set.of("CENTER", "TARGETED").contains(root.path("issueMode").asText()))) {
+            blockers.add("UNSUPPORTED_VERSIONED_FAMILY");
+        }
+        var batches = new HashMap<String,String>();
+        for (var issue : manifest.path("issues")) {
+            if (!versionProof) continue;
+            String version = issue.path("templateVersionNo").asText("");
+            if (version.isBlank() || !published.has(version) || deleted(issue)
+                    || batches.put(issue.path("issueNo").asText(),version) != null) {
+                blockers.add("ISSUED_RULE_VERSION_MISMATCH");
+            }
+        }
         for (var instance : manifest.path("instances")) {
+            String version = instance.path("templateVersionNo").asText("");
+            String batch = instance.path("issueNo").asText("");
+            if (!legacy && (versionProof ? version.isBlank() || !published.has(version)
+                    || !batch.isEmpty() && !version.equals(batches.get(batch)) : !currentVersion.equals(version))) {
+                blockers.add("ISSUED_RULE_VERSION_MISMATCH");
+            }
             recipients.put(instance.path("userCouponNo").asText(), instance.path("userNo").asText());
         }
         if (!manifest.path("applications").isArray() || !manifest.path("instances").isArray()) {
@@ -178,8 +217,25 @@ public final class LegacyCouponMigrationNormalizer {
             if ("EXPIRED".equals(status) && until != null && at.isBefore(until)) {
                 blockers.add("EXPIRED_STATUS_WINDOW_MISMATCH");
             }
-            EntitlementDefinition historical = definition == null || !validWindow(from, until) ? null
-                    : definition(root, legacy, benefit, total, market.currency(), absolute(from, until, market.timeZone()));
+            EntitlementDefinition historical = null;
+            if (definition != null && validWindow(from, until)) {
+                var validity = absolute(from, until, market.timeZone());
+                if (versionProof) {
+                    var version = published.path(instance.path("templateVersionNo").asText(""));
+                    var rule = version.path("rule");
+                    String mode = rule.path("benefitMode").asText("");
+                    if (!"MERCHANT".equals(rule.path("funder").asText()) || !"ORDER".equals(rule.path("redeemMode").asText())
+                            || !Set.of("CASH","PERCENT").contains(mode) || rule.path("timesTotal").asInt(1) != 1
+                            || rule.path("minQty").asInt(0) != 0 || !rule.path("benefitRef").asText("").isBlank()
+                            || !Set.of("CENTER","TARGETED").contains(rule.path("issueMode").asText())) {
+                        blockers.add("INVALID_HISTORICAL_DEFINITION");
+                    } else {
+                        historical = definition(rule, false, mode, 1, market.currency(), validity, scope(version));
+                    }
+                } else {
+                    historical = definition(root, legacy, benefit, total, market.currency(), validity, redemption);
+                }
+            }
             if (historical != null && !validDefinition(historical)) {
                 blockers.add("INVALID_HISTORICAL_DEFINITION");
                 historical = null;
@@ -195,13 +251,30 @@ public final class LegacyCouponMigrationNormalizer {
                 items, List.copyOf(notices), List.copyOf(blockers), issuance);
     }
 
+    public static boolean multipleVersions(JsonNode manifest) {
+        String current = manifest.path("template").path("templateVersionNo").asText("");
+        for (String collection : List.of("issues", "instances")) {
+            for (var item : manifest.path(collection)) {
+                if (!current.equals(item.path("templateVersionNo").asText(""))) return true;
+            }
+        }
+        return false;
+    }
+
+    private static RedemptionScope scope(JsonNode version) {
+        if ("ALL".equals(version.path("rule").path("scopeType").asText())) return new RedemptionScope("ALL", List.of());
+        var stores = new ArrayList<String>();
+        for (var ref : version.path("refs")) stores.add(ref.asText(""));
+        return new RedemptionScope("STORES", stores);
+    }
+
     private static EntitlementDefinition definition(JsonNode root, boolean legacy, String benefit, int total,
-                                                     String currency, Validity validity) {
+                                                     String currency, Validity validity, RedemptionScope redemption) {
         return new EntitlementDefinition(root.path("title").asText(), "ORDER_COUPON", root.path("funder").asText(),
                 currency, benefit, integer(root, legacy ? "PERCENT".equals(benefit) ? "discountRate" : "faceMinor"
                 : "benefitValue"), "PERCENT".equals(benefit) ? integer(root, legacy ? "maxDiscountMinor" : "benefitCapMinor") : null, null,
                 minimum(root, legacy), null, "COUNT", total, null,
-                validity, new RedemptionScope("ALL", List.of()),
+                validity, redemption,
                 legacy || "CENTER".equals(root.path("issueMode").asText()) ? List.of("CENTER", "TARGETED")
                         : "ACTIVITY".equals(root.path("issueMode").asText()) ? List.of("TARGETED", "ACTIVITY")
                         : List.of("TARGETED"));

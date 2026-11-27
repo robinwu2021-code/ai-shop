@@ -18,4 +18,6 @@ public class OrdAfterSaleItem extends BaseEntity {
     private Integer qty;
     /** 本行本次退款额（商家核定 / 协商后按比例分回） */
     private Long refundMinor;
+    /** 此次结案实际退件对应的原券优惠。 */
+    private Long couponReturnMinor;
 }

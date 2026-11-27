@@ -135,6 +135,18 @@ public class LegacyCouponMigrationPreflightServiceImpl implements LegacyCouponMi
             else if (!"MERCHANT".equals(head.getFunder()) || head.getEntityNo() == null) {
                 blockers.add("PLATFORM_OR_MISSING_FUNDER_COMPATIBILITY_REQUIRED");
             }
+            if (head != null && !java.util.Objects.equals(head.getTemplateVersionNo(), row.getTemplateVersionNo())) {
+                blockers.add(head.getTemplateVersionNo() != null && row.getTemplateVersionNo() != null
+                        ? "PUBLISHED_VERSION_PROOF_REQUIRED" : "ISSUED_RULE_VERSION_MISMATCH");
+            }
+            if (head != null && head.getTemplateVersionNo() != null && !"ALL".equals(head.getScopeType())) {
+                blockers.add("STORE".equals(head.getScopeType()) ? "PUBLISHED_STORE_SCOPE_PROOF_REQUIRED" : "VERSIONED_SCOPE_CONVERSION_REQUIRED");
+            }
+            if (head != null && head.getTemplateVersionNo() != null
+                    && (head.getMinQty() != null && head.getMinQty() != 0
+                            || head.getBenefitRef() != null && !head.getBenefitRef().isBlank())) {
+                blockers.add("VERSIONED_ORDER_CONVERSION_REQUIRED");
+            }
             int total = head == null ? 1 : head.timesTotalOrOne();
             int used = row.getTimesUsed() == null ? 0 : row.getTimesUsed();
             if (used < 0 || used > total) blockers.add("INVALID_COUNTERS");

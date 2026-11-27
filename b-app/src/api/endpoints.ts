@@ -101,6 +101,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSvApprovalDecide:{method:"POST",path:"/biz/management/stored-value/activity-approvals/:no/decisions",auth:true,summary:"审批储值活动"},
 
   mSvWalletRecords:{method:"GET",path:"/biz/stores/:storeNo/stored-value/customer-selections/:customerRef/records",auth:true,summary:"Current store records of selected wallet"},
+  mSvConsumptionRefund:{method:"POST",path:"/biz/stored-value/consumptions/order/:orderNo/refund",auth:true,summary:"Return the full service payment to the original stored-value account"},
   mSvConsumptionCancel:{method:"POST",path:"/biz/stored-value/consumptions/orders/:orderNo/cancel",auth:true,summary:"Cancel original service without refund"},
   mSvConsumptionResolve:{method:"POST",path:"/biz/stored-value/consumptions/resolve",auth:true,summary:"Resolve exact original preview without expired references"},
   mSvConsumptionPreview:{method:"POST",path:"/biz/stored-value/consumptions/preview",auth:true,summary:"Selected wallet service preview"},
@@ -502,6 +503,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mPeriodPurchaseLines: { method: "GET", path: "/biz/period/{periodNo}/purchase-lines", auth: true, summary: "社区集单：按 SKU 汇总给进货单" },
   mPlanReach: { method: "POST", path: "/biz/member-reach/plan", auth: true, summary: "群发试算：能发多少、跳过多少" },
   mSendReach: { method: "POST", path: "/biz/member-reach/send", auth: true, summary: "群发（会打扰真实用户）" },
+  mScheduleReach: { method: "POST", path: "/biz/member-reach/schedule", auth: true, summary: "按门店当地时间预约触达" },
+  mCancelReach: { method: "POST", path: "/biz/member-reach/task/{taskNo}/cancel", auth: true, summary: "到期前撤销预约" },
   mReachTasks: { method: "GET", path: "/biz/member-reach/task", auth: true, summary: "发出去的消息（批次列表）" },
   mReachTask: { method: "GET", path: "/biz/member-reach/task/{taskNo}", auth: true, summary: "一次触达的效果" },
 

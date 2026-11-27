@@ -98,6 +98,39 @@ public class EntitlementServiceUseCoordinatorImpl implements EntitlementServiceU
     @Override public HoldView cancel(EntitlementContext ctx, String entity, String store, String no, String reason) {
         return advance(orders.cancel(ctx, entity, store, no, reason));
     }
+    @Override public ServiceOrderRefund refund(EntitlementContext ctx, String entity, String store, String no) {
+        var order = orders.refundOrder(ctx, entity, store, no);
+        if (order.refundCommand() == null) {
+            if (!"COMMITTED".equals(order.status()) || order.command().assetKind() != AssetKind.STORED_VALUE) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            var committed = facts.query(order.context(), entity, order.operationNo());
+            order = orders.decideRefund(ctx, entity, store, no, committed);
+        }
+        return completeRefund(order);
+    }
+
+    @Override public ServiceOrderRefund recoverRefund(EntitlementContext ctx, String entity, String operation) {
+        var order = orders.findOperation(ctx.tenantNo(), entity, operation);
+        if (order == null || order.refundCommand() == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        return completeRefund(order);
+    }
+
+    private ServiceOrderRefund completeRefund(ServiceOrderSnapshot order) {
+        var reverse = order.refundCommand();
+        if ("REFUND_PENDING".equals(order.refundStatus())) {
+            var ctx = new EntitlementContext(order.context().tenantNo(), order.refundActorNo(), reverse.reverseNo(),
+                    order.fact().orderSnapshotHash());
+            var receipt = pay.reverse(ctx, reverse);
+            if (!reverse.reverseNo().equals(receipt.operationNo())) throw BizException.of(ErrorCode.CONFLICT);
+            if (receipt.status() == State.COMMITTED) {
+                if (!reverse.usageNo().equals(receipt.usageNo())) throw BizException.of(ErrorCode.CONFLICT);
+                order = orders.acknowledgeRefund(ctx, order.fact().entityNo(), order.serviceOrderNo(), reverse.reverseNo());
+            }
+        }
+        return new ServiceOrderRefund(reverse.reverseNo(), order.refundStatus(), reverse.amountMinor());
+    }
+
     private HoldView advance(ServiceOrderSnapshot order) {
         if (List.of("CREATED", "PREVIEWED", "AUTHORIZED").contains(order.status())) {
             return view(order.operationNo(), State.WAIT_AUTH);

@@ -1,6 +1,7 @@
 package ai.neargo.shop.paybridge.impl;
 
 import ai.neargo.shop.paybridge.EntitlementRecoveryService;
+import ai.neargo.shop.paybridge.EntitlementServiceUseCoordinator;
 import ai.neargo.shop.paybridge.StoredValueRechargeCoordinator;
 import ai.neargo.shop.paybridge.EntitlementOrderCoordinator;
 import ai.neargo.shop.paybridge.ActivityBenefitCoordinator;
@@ -18,17 +19,20 @@ import org.springframework.transaction.annotation.Propagation;
 @Service
 @Transactional(propagation=Propagation.NOT_SUPPORTED)
 public class EntitlementRecoveryServiceImpl implements EntitlementRecoveryService {
-    private static final Set<String> COMPLETE=Set.of("COMMITTED","RELEASED","CREDITED","CANCELLED","ABORTED","REVERSED");
+    private static final Set<String> COMPLETE=Set.of("COMMITTED","RELEASED","CREDITED","CANCELLED","ABORTED","REVERSED","REFUNDED");
     private final EntitlementRecoveryScanService scans;
     private final LegacyCouponCheckoutJournal legacyJournal;
     private final ai.neargo.shop.paybridge.LegacyCouponHistoricalReturnCoordinator historical;
     private final LegacyCouponOrderCreationCoordinator legacy;
     private final StoredValueRechargeCoordinator recharge;
+    private final EntitlementServiceUseCoordinator serviceUses;
     private final EntitlementOrderCoordinator uses;
     private final ActivityBenefitCoordinator benefits;
     public EntitlementRecoveryServiceImpl(EntitlementRecoveryScanService scans,StoredValueRechargeCoordinator recharge,
             EntitlementOrderCoordinator uses,ActivityBenefitCoordinator benefits,LegacyCouponCheckoutJournal legacyJournal,
-            LegacyCouponOrderCreationCoordinator legacy,ai.neargo.shop.paybridge.LegacyCouponHistoricalReturnCoordinator historical) {
+            LegacyCouponOrderCreationCoordinator legacy,ai.neargo.shop.paybridge.LegacyCouponHistoricalReturnCoordinator historical,
+            EntitlementServiceUseCoordinator serviceUses) {
+        this.serviceUses = serviceUses;
         this.scans=scans; this.recharge=recharge; this.uses=uses; this.benefits=benefits;this.legacyJournal=legacyJournal;this.legacy=legacy;this.historical=historical;
     }
     @Override public Result recover(String tenant,Kind kind,long afterId,int limit) {
@@ -42,6 +46,7 @@ public class EntitlementRecoveryServiceImpl implements EntitlementRecoveryServic
                     case LEGACY_COUPON -> legacyJournal.decideForRecovery(ctx,row.resourceNo())
                             ?legacy.recover(ctx,row.resourceNo()).status().name():"PENDING";
                     case RECHARGE -> recharge.recover(ctx,row.entityNo(),row.resourceNo()).status();
+                    case SERVICE_REFUND -> serviceUses.recoverRefund(ctx,row.entityNo(),row.resourceNo()).status();
                     case SERVICE_USE,ORDER_USE -> uses.recover(ctx,row.entityNo(),row.resourceNo()).status().name();
                     case ACTIVITY_BENEFIT -> benefits.recover(ctx,row.resourceNo()).status();
                 };

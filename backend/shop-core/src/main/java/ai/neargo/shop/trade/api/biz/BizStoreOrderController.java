@@ -72,9 +72,10 @@ public class BizStoreOrderController {
                 body.lines().stream().map(l -> new LineCmd(l.kind(), l.skuNo(), l.quantity(), l.unitPriceMinor(),
                         l.name(), l.taxType(), l.storeItemNo())).toList(),
                 body.adjustments() == null ? List.of() : body.adjustments().stream()
-                        .map(a -> new AdjustmentCmd(a.kind(), a.name(), a.amountMinor())).toList(),
+                        .map(a -> new AdjustmentCmd(a.kind(), a.name(), a.amountMinor(), a.activityNo())).toList(),
                 body.invoice() == null || body.invoice().buyer() == null ? null : buyer(body.invoice().buyer()),
-                body.invoice() == null ? null : body.invoice().timing()));
+                body.invoice() == null ? null : body.invoice().timing(), body.activityFactsVersion(),
+                body.member() == null ? null : body.member().memberNo()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
@@ -124,7 +125,7 @@ public class BizStoreOrderController {
             @NotEmpty @Size(max = 200) List<@NotNull @Valid LineBody> lines,
             @Size(max = 20) List<@NotNull @Valid AdjustmentBody> adjustments,
             @Valid MemberBody member,
-            @Valid InvoiceBody invoice) {}
+            @Valid InvoiceBody invoice, @Min(1) @Max(1) Integer activityFactsVersion) {}
 
     /**
      * SKU 行要 skuNo，品名 / 课税别以商品资料为准（送了也不用）；自订行不收 skuNo，品名 / 课税别可空（= 待补，
@@ -151,9 +152,14 @@ public class BizStoreOrderController {
     }
 
     public record AdjustmentBody(
-            @NotNull @Pattern(regexp = "DISCOUNT") String kind,
+            @NotNull @Pattern(regexp = "DISCOUNT|ACTIVITY") String kind,
             @Size(max = 64) String name,
-            @JsonProperty(required = true) @Max(0) @Min(-99_999_999_999L) long amountMinor) {}
+            @JsonProperty(required = true) @Max(0) @Min(-99_999_999_999L) long amountMinor,
+            @Size(min = 1, max = 64) String activityNo) {
+        @AssertTrue public boolean isActivityValid() {
+            return "ACTIVITY".equals(kind) ? activityNo != null && !activityNo.isBlank() && amountMinor < 0 : activityNo == null;
+        }
+    }
 
     public record MemberBody(@Size(max = 64) String memberNo) {}
 

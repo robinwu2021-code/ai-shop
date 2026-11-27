@@ -52,7 +52,7 @@ class PhaseOnePointsCampaignTest {
      */
     private static final List<String> ACTIVITY_TABLES = List.of(
             "pmt_activity_rule", "pmt_activity_version", "pmt_activity_goods", "pmt_activity_audience",
-            "pmt_activity_budget", "pmt_activity_participant", "pmt_activity_reservation", "pmt_period",
+            "pmt_quota", "pmt_reservation", "pmt_period",
             "pmt_enrollment", "pmt_effect_projection", "pmt_coupon_issue", "pmt_activity");
 
     @AfterEach

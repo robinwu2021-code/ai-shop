@@ -3672,6 +3672,11 @@ class PointsPayoutPreparationTest {
         final Map<String, Integer> sends = new ConcurrentHashMap<>();
 
         @Override
+        public Set<String> atMarketingDailyLimit(List<String> users) {
+            throw new AssertionError("Financial reminders must not query marketing quota");
+        }
+
+        @Override
         public boolean deliverMarketing(
                 String user, String title, String body, String link, String key) {
             throw new AssertionError("Financial reminders must not use marketing delivery");

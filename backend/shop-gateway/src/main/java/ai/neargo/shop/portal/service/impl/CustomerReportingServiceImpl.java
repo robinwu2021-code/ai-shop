@@ -100,7 +100,7 @@ public class CustomerReportingServiceImpl implements CustomerReportingService {
   }
   private String memberWhere(Scope s,String alias) {return alias+".tenant_no=:tenant AND "+alias+".deleted=0 AND "+scope(s,alias+".entity_no");}
   private String memberRelations(String m) {
-    return "(st.store_no="+m+".first_store_no OR EXISTS (SELECT 1 FROM mbr_member_store rel WHERE rel.tenant_no="+m+".tenant_no AND rel.member_no="+m+".member_no AND rel.entity_no="+m+".entity_no AND rel.store_no=st.store_no AND rel.deleted=0) OR EXISTS (SELECT 1 FROM mbr_member_source src WHERE src.tenant_no="+m+".tenant_no AND src.member_no="+m+".member_no AND src.entity_no="+m+".entity_no AND src.store_no=st.store_no AND src.deleted=0))";
+    return "(st.store_no="+m+".first_store_no OR EXISTS (SELECT 1 FROM mbr_store_profile rel WHERE rel.tenant_no="+m+".tenant_no COLLATE utf8mb4_unicode_520_ci AND rel.member_no="+m+".member_no COLLATE utf8mb4_unicode_520_ci AND rel.entity_no="+m+".entity_no COLLATE utf8mb4_unicode_520_ci AND rel.store_no=st.store_no COLLATE utf8mb4_unicode_520_ci AND rel.deleted=0) OR EXISTS (SELECT 1 FROM mbr_member_source src WHERE src.tenant_no="+m+".tenant_no AND src.member_no="+m+".member_no AND src.entity_no="+m+".entity_no AND src.store_no=st.store_no AND src.deleted=0))";
   }
   private String personFrom(Scope s) {
     // Select the earliest visible original membership before applying store/brand filters.

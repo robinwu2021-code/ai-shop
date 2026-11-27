@@ -25,6 +25,15 @@ it('switches types directly and only applies time after confirmation',async()=>{
  await w.findAll('button').find(x=>x.text()==='storedValue.confirm')!.trigger('tap');await flushPromises();
  expect(m.records.mock.lastCall?.[0]).toMatchObject({type:'REDEMPTION',startDate:'2026-10-20'});w.unmount();
 });
+it('shows the refund label and filters to returned funds',async()=>{
+ const w=mount(Records);await flushPromises();
+ m.records.mockResolvedValueOnce({records:[{...row,type:'REFUND'}],nextCursor:null,hasMore:false});
+ w.findComponent(Tabs).vm.$emit('change','REFUND');await flushPromises();
+ expect(m.records.mock.lastCall?.[0].type).toBe('REFUND');
+ expect(w.find('.sv-card').text()).toContain('storedValue.refund');
+ expect(w.find('.sv-card .sh-num').text()).toMatch(/^\+/);
+ w.unmount();
+});
 it('never displays an old store response after switching stores',async()=>{
  let old!:(value:unknown)=>void;m.records.mockImplementationOnce(()=>new Promise(r=>{old=r;}));
  const w=mount(Records);await flushPromises();store.storeNo='S2';m.records.mockResolvedValue({records:[],nextCursor:null,hasMore:false});await flushPromises();

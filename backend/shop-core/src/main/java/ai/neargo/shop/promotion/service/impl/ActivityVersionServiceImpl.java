@@ -181,9 +181,9 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
             version.setRuleSnapshot(snapshot); version.setRuleHash(ActivityCommandDeduplicator.hash(snapshot));
             version.setPublishedBy(actor.actorNo()); version.setPublishedAt(now());
             changed(versions.insert(version));
-            writeScopeAndTiers(actor, version.getVersionNo(), definition);
-            var budget = new PmtActivityBudget(); audit(budget, actor);
-            budget.setActivityNo(activityNo); budget.setCurrency(definition.currency());
+            writeScopeAndTiers(actor, version, definition, audience);
+            var budget = PmtActivityBudget.forActivity(activityNo); audit(budget, actor);
+            budget.setCurrency(definition.currency());
             budget.setQuotaLimit(definition.quotaLimit()); budget.setQuotaHeld(0L); budget.setQuotaUsed(0L);
             budget.setBudgetLimitMinor(definition.budgetLimitMinor()); budget.setBudgetHeldMinor(0L);
             budget.setBudgetUsedMinor(0L); budget.setPerUserLimit(definition.perUserLimit());
@@ -355,19 +355,40 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                 }).findFirst().orElseThrow(() -> BizException.of(ErrorCode.BAD_REQUEST));
     }
 
-    private void writeScopeAndTiers(ActivityActor actor, String versionNo, UnifiedActivityDefinition d) {
+    private void writeScopeAndTiers(ActivityActor actor, PmtActivityVersion version,
+                                    UnifiedActivityDefinition d, String audienceSnapshot) {
         var scope = d.storeParticipationScope();
-        for (String ref : "ALL".equals(scope.mode()) ? List.of("*") : scope.refs()) {
-            var row = new PmtActivityScope(); audit(row, actor); row.setVersionNo(versionNo);
-            row.setScopeKind("ALL".equals(scope.mode()) ? "ALL" : "STORE"); row.setRefNo(ref);
+        boolean all = "ALL".equals(scope.mode());
+        int sort = 0;
+        for (String ref : all ? List.of("*") : scope.refs()) {
+            var row = activityScope(actor, version, "TARGET", all ? "ALL" : "STORE", ref);
+            row.setSortNo(sort++);
+            changed(scopes.insert(row));
+        }
+        if (d.audienceRef() != null) {
+            var row = activityScope(actor, version, "AUDIENCE", "SEGMENT", d.audienceRef());
+            row.setRuleSnapshot(audienceSnapshot);
             changed(scopes.insert(row));
         }
         for (var tier : d.rule().tiers()) {
-            var row = new PmtRechargeTier(); audit(row, actor); row.setVersionNo(versionNo);
+            var row = new PmtRechargeTier(); audit(row, actor); row.setVersionNo(version.getVersionNo());
             row.setTierNo(tier.tierNo()); row.setPayAmountMinor(tier.payAmountMinor());
             row.setBonusAmountMinor(tier.bonusAmountMinor());
             row.setRedemptionScope(json.writeValueAsString(tier.redemptionScope())); changed(tiers.insert(row));
         }
+    }
+
+    private static PmtActivityScope activityScope(ActivityActor actor, PmtActivityVersion version,
+                                                  String dimension, String kind, String ref) {
+        var row = new PmtActivityScope();
+        audit(row, actor);
+        row.setOwnerType("ACTIVITY");
+        row.setOwnerNo(version.getActivityNo());
+        row.setVersionNo(version.getVersionNo());
+        row.setScopeDimension(dimension);
+        row.setScopeKind(kind);
+        row.setRefNo(ref);
+        return row;
     }
 
     private UnifiedActivityDefinition definition(PmtActivity row) {

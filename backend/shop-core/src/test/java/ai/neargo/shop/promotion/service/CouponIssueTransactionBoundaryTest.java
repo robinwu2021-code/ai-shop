@@ -25,6 +25,7 @@ import ai.neargo.shop.promotion.mapper.PromotionMappers.CouponScopeMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.UserCouponMapper;
 import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
 import ai.neargo.shop.promotion.service.impl.PmtCouponServiceImpl;
+import ai.neargo.shop.promotion.service.impl.PmtCouponVersionPublisher;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
 import ai.neargo.shop.spi.member.MemberQueryPort;
 import java.util.List;
@@ -70,14 +71,14 @@ class CouponIssueTransactionBoundaryTest {
             if (frozen.get()) throw BizException.of(ErrorCode.CONFLICT);
             return null;
         }).when(fence).requireWritable("MAIN", SourceSystem.PMT, "COUPON", false);
-        when(members.resolveSegment(anyString(), anyString())).thenAnswer(call -> {
+        when(members.resolveSegment(anyString(), anyString(), org.mockito.ArgumentMatchers.isNull())).thenAnswer(call -> {
             assertFalse(TransactionSynchronizationManager.isActualTransactionActive(),
                     "Remote audience resolution must not run under a source lock");
             frozen.set(true);
             return new MemberQueryPort.SegmentAudience(1,
                     List.of(new MemberQueryPort.Audience("MEMBER", "USER")));
         });
-        var service = new PmtCouponServiceImpl(coupons, scopes, issued, batches, members, fence);
+        var service = new PmtCouponServiceImpl(coupons, scopes, issued, batches, members, fence, mock(PmtCouponVersionPublisher.class));
         service.setDocumentNumbers(numbers);
         var ownership = mock(StoreOwnershipWritePort.class);
         doAnswer(call -> {

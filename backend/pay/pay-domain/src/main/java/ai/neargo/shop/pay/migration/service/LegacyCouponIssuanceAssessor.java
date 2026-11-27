@@ -52,18 +52,30 @@ public final class LegacyCouponIssuanceAssessor {
             blockers.add("FINITE_ISSUANCE_EXPOSURE_UNAVAILABLE");
         } else {
             try {
-                if (issued != null && issued >= 0) {
-                    lifetime = Math.multiplyExact(Math.multiplyExact(perUse, definition.totalUnits().longValue()), issued);
-                    if (maxExposure != null && lifetime > maxExposure) blockers.add("ISSUANCE_EXPOSURE_EXCEEDS_BUDGET");
-                }
-                long units = 0;
+                boolean multiple = !legacy && LegacyCouponMigrationNormalizer.multipleVersions(manifest);
+                long observedExposure = 0;
+                long activeExposure = 0;
                 for (var instance : instances) {
+                    var rule = multiple ? instance.historicalDefinition() : definition;
+                    if (rule == null) {
+                        blockers.add("FINITE_ISSUANCE_EXPOSURE_UNAVAILABLE");
+                        continue;
+                    }
+                    Long unit = "CASH".equals(rule.benefitMode()) ? rule.benefitValue() : rule.benefitCapMinor();
+                    if (unit == null || unit <= 0) {
+                        blockers.add("FINITE_ISSUANCE_EXPOSURE_UNAVAILABLE");
+                        continue;
+                    }
+                    observedExposure = Math.addExact(observedExposure, Math.multiplyExact(unit, rule.totalUnits().longValue()));
                     if (!instance.archivalOnly() && "UNUSED".equals(instance.sourceStatus())
                             && instance.effectiveUntil() != null && at.isBefore(instance.effectiveUntil())) {
-                        units = Math.addExact(units, instance.remainingUnits());
+                        activeExposure = Math.addExact(activeExposure, Math.multiplyExact(unit, instance.remainingUnits()));
                     }
                 }
-                remaining = Math.multiplyExact(perUse, units);
+                if (issued != null && issued >= 0) lifetime = multiple ? observedExposure : Math.multiplyExact(Math.multiplyExact(perUse, definition.totalUnits().longValue()), issued);
+                remaining = activeExposure;
+                if (maxExposure != null && lifetime != null && lifetime > maxExposure) blockers.add("ISSUANCE_EXPOSURE_EXCEEDS_BUDGET");
+                if (multiple && (lifetime == null || !lifetime.equals(number(root,"issuedExposureMinor")))) blockers.add("ISSUED_EXPOSURE_MISMATCH");
             } catch (ArithmeticException overflow) {
                 lifetime = null; remaining = null;
                 blockers.add("ISSUANCE_EXPOSURE_OVERFLOW");

@@ -14,6 +14,7 @@ import ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem;
 import ai.neargo.shop.spi.member.MemberQueryPort.AudienceResolution;
 import ai.neargo.shop.spi.member.MemberQueryPort.Skip;
 import ai.neargo.shop.spi.platform.SettingPort;
+import ai.neargo.shop.spi.notify.UserInboxPort;
 import ai.neargo.shop.spi.user.PersonPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -69,10 +70,12 @@ public class AudienceResolver {
     private final ReachLogMapper reachMapper;
     private final PersonPort personPort;
     private final SettingPort settingPort;
+    private final UserInboxPort inbox;
 
     public AudienceResolver(MemberService memberService, MemberSegmentService segmentService,
                             MemberMapper memberMapper, ReachLogMapper reachMapper,
-                            PersonPort personPort, SettingPort settingPort) {
+                            PersonPort personPort, SettingPort settingPort, UserInboxPort inbox) {
+        this.inbox = inbox;
         this.memberService = memberService;
         this.segmentService = segmentService;
         this.memberMapper = memberMapper;
@@ -83,6 +86,51 @@ public class AudienceResolver {
 
     /** 在商家会话里调用（数据域就是本店）；买家会话里的判定走 {@code MemberQueryPortImpl#matchesRule} */
     public AudienceResolution resolve(String entityNo, List<AudienceItem> items, String scene) {
+        Candidates candidates = candidates(entityNo, items, false);
+        if (!candidates.countable()) {
+            return new AudienceResolution(0, List.of(), List.of(), false);
+        }
+        Map<String, Integer> skipped = new LinkedHashMap<>();
+        List<Audience> reachable = new ArrayList<>();
+        long now = System.currentTimeMillis();
+        Integer minDays = scene == null ? null : minDays(scene);
+        List<String> nos = new ArrayList<>(candidates.members());
+        for (int i = 0; i < nos.size(); i += CHUNK) {
+            List<MbrMember> rows = memberMapper.selectList(Wrappers.<MbrMember>lambdaQuery()
+                    .eq(MbrMember::getEntityNo, entityNo)
+                    .in(MbrMember::getMemberNo, nos.subList(i, Math.min(i + CHUNK, nos.size()))));
+            List<Audience> eligible = new ArrayList<>();
+            for (MbrMember m : rows) {
+                String userNo = userNo(m);
+                String reason = skipReason(entityNo, m, userNo, scene, minDays, now);
+                if (reason != null) {
+                    skipped.merge(reason, 1, Integer::sum);
+                    continue;
+                }
+                eligible.add(new Audience(m.getMemberNo(), userNo));
+            }
+            Set<String> capped = scene == null || eligible.isEmpty() ? Set.of()
+                    : inbox.atMarketingDailyLimit(eligible.stream().map(Audience::userNo).distinct().toList());
+            for (Audience audience : eligible) {
+                if (capped.contains(audience.userNo())) {
+                    skipped.merge("DAILY_LIMIT", 1, Integer::sum);
+                } else {
+                    reachable.add(audience);
+                }
+            }
+        }
+        List<Skip> skips = skipped.entrySet().stream()
+                .map(e -> new Skip(e.getKey(), e.getValue())).toList();
+        return new AudienceResolution(nos.size(), reachable, skips, true);
+    }
+
+    private record Candidates(Set<String> members, boolean countable) {}
+
+    Set<String> scheduledCandidates(String entityNo, List<AudienceItem> items) {
+        return candidates(entityNo, items, true).members();
+    }
+
+    private Candidates candidates(String entityNo, List<AudienceItem> items, boolean scheduled) {
         List<AudienceItem> clean = items == null ? List.of() : items.stream()
                 .filter(i -> i != null && i.type() != null && !i.type().isBlank())
                 .toList();
@@ -95,36 +143,32 @@ public class AudienceResolver {
                 // 「非本店会员 + 沉睡会员」自相矛盾：沉睡的一定是会员
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
-            return new AudienceResolution(0, List.of(), List.of(), false);
+            return new Candidates(Set.of(), false);
         }
 
         Set<String> matched = new LinkedHashSet<>();
         for (AudienceItem it : clean) {
-            matched.addAll(match(entityNo, it));
-        }
-
-        Map<String, Integer> skipped = new LinkedHashMap<>();
-        List<Audience> reachable = new ArrayList<>();
-        long now = System.currentTimeMillis();
-        Integer minDays = scene == null ? null : minDays(scene);
-        List<String> nos = new ArrayList<>(matched);
-        for (int i = 0; i < nos.size(); i += CHUNK) {
-            List<MbrMember> rows = memberMapper.selectList(Wrappers.<MbrMember>lambdaQuery()
-                    .eq(MbrMember::getEntityNo, entityNo)
-                    .in(MbrMember::getMemberNo, nos.subList(i, Math.min(i + CHUNK, nos.size()))));
-            for (MbrMember m : rows) {
-                String userNo = userNo(m);
-                String reason = skipReason(entityNo, m, userNo, scene, minDays, now);
-                if (reason != null) {
-                    skipped.merge(reason, 1, Integer::sum);
-                    continue;
-                }
-                reachable.add(new Audience(m.getMemberNo(), userNo));
+            try {
+                matched.addAll(match(entityNo, it));
+            } catch (BizException e) {
+                // 预约后被删除的人群在到期时已无成员；其余受众项仍可命中。
+                if (!scheduled || e.errorCode() != ErrorCode.MEMBER_SEGMENT_NOT_FOUND) throw e;
             }
         }
-        List<Skip> skips = skipped.entrySet().stream()
-                .map(e -> new Skip(e.getKey(), e.getValue())).toList();
-        return new AudienceResolution(matched.size(), reachable, skips, true);
+
+        return new Candidates(matched, true);
+    }
+
+    record Recipient(String userNo, String skip) {}
+
+    Recipient recipient(String entityNo, String memberNo, String scene) {
+        MbrMember m = memberMapper.selectOne(Wrappers.<MbrMember>lambdaQuery()
+                .eq(MbrMember::getEntityNo, entityNo).eq(MbrMember::getMemberNo, memberNo).last("FOR UPDATE"));
+        if (m == null) return new Recipient(null, SKIP_NO_ACCOUNT);
+        String user = userNo(m);
+        String reason = skipReason(entityNo, m, user, scene, minDays(scene), System.currentTimeMillis());
+        if (reason == null && !inbox.atMarketingDailyLimit(List.of(user)).isEmpty()) reason = "DAILY_LIMIT";
+        return new Recipient(user, reason);
     }
 
     /** 单个受众项命中的会员号。条件内部的口径全部交给 {@link MemberService#match}，这里不另写 */

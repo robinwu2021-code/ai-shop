@@ -7,13 +7,14 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.PreviewView;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseCommand;
 import ai.neargo.shop.spi.entitlement.EntitlementUseSourcePort.UseSourceFact;
 import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort.Quote;
+import ai.neargo.shop.spi.entitlement.EntitlementUsePort.OrderBenefitReverse;
 import java.time.Instant;
 import java.time.LocalDate;
 
 /** Internal recovery data only; public views must explicitly select safe fields. */
 public record ServiceOrderSnapshot(String serviceOrderNo, String operationNo, String status,
         UseSourceFact fact, EntitlementContext context, PreviewBinding preview, UseCommand command,
-        DecisionRef decision, Instant deadline, String cancellationReason) {
+        DecisionRef decision, Instant deadline, String cancellationReason, String refundStatus, String refundActorNo, OrderBenefitReverse refundCommand) {
     public record PreviewBinding(AssetKind kind, PreviewView preview, LocalDate serviceDay, Quote moneyQuote) {
         public PreviewBinding(AssetKind kind, PreviewView preview, LocalDate serviceDay) {
             this(kind, preview, serviceDay, null);

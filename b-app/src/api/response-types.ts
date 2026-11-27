@@ -334,3 +334,5 @@ export type {SvFinancialBrandChange} from "./stored-value-finance";
 export type {SvFinancialPermissionResult} from "./stored-value-finance";
 
 export type {SvFinancialBrandOriginal} from "./stored-value-finance";
+
+export interface ScheduledReachResult { taskNo: string }

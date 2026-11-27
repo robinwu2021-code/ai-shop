@@ -992,15 +992,17 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             return null;
         }
         String title = couponPort.returnedTitleOf(sub.getOrderNo());
+        var couponReturn = legacyCheckoutJournal == null ? null : legacyCheckoutJournal.couponReturn(
+                sub.getTenantNo(),sub.getOrderNo(),sub.getEntityNo(),sub.getStoreNo());
         var root=orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1"));
         if (root != null && Boolean.TRUE.equals(root.getPointsIntegrated())) {
             if (pointsRefundSource == null)
                 throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
             var totals=pointsRefundSource.confirmedTotals(sub.getSubOrderNo());
-            return new OrderVO.Returned(title,totals.returnedPoints(),totals.reclaimedPoints());
+            return new OrderVO.Returned(title,totals.returnedPoints(),totals.reclaimedPoints(),couponReturn);
         }
-        return new OrderVO.Returned(title,0,0);
+        return new OrderVO.Returned(title,0,0,couponReturn);
     }
 
     /** 一件货的限购与已买量 */
@@ -2652,9 +2654,16 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                                     LineShares.goodsPaid(sub),
                     g.lines.stream().mapToLong(Line::amount).toArray())
                             : pricing.economic().paidShares();
+            long[] couponShares = null;
+            if (binding != null) {
+                long[] lineDiscounts = g.lines.stream().mapToLong(Line::amount).toArray();
+                for (int i = 0; i < shares.length; i++) lineDiscounts[i] -= shares[i];
+                couponShares = LineShares.allocate(discounts.coupon().discountOf(g.merchantNo(), g.storeNo()), lineDiscounts);
+            }
             int lineIdx = 0;
             for (Line line : g.lines) {
                 OrdItem item = new OrdItem();
+                if (couponShares != null) item.setCouponShareMinor(couponShares[lineIdx]);
                 item.setPaidShareMinor(shares[lineIdx++]);
                 item.setSubOrderNo(subOrderNo);
                 item.setOrderNo(orderNo);
@@ -2712,6 +2721,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                      * 「买了 3 件」还是「买 2 件送 1 件」，而这两者的售后与分账都不同。
                      */
                     OrdItem gift = new OrdItem();
+                    if (couponShares != null) gift.setCouponShareMinor(0L);
                     gift.setSubOrderNo(subOrderNo);
                     gift.setOrderNo(orderNo);
                     gift.setGoodsNo(line.snapshot.goodsNo());

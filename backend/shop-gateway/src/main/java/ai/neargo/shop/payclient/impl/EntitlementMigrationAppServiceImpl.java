@@ -37,7 +37,7 @@ public class EntitlementMigrationAppServiceImpl implements EntitlementMigrationA
         return plans.prepared(scope,no);
     }
     @Override public PlanView plan(CatalogScope scope,PlanCommand command,String key) {
-        return plans.prepare(scope,command.stageNo(),command.reason(),key);
+        return plans.prepare(scope,command,key);
     }
     @Override public PlanView getPlan(CatalogScope scope,String no) { return plans.get(scope,no); }
     @Override public PlanView verifyPlan(CatalogScope scope,String no) { return plans.verify(scope,no); }

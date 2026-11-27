@@ -16,5 +16,8 @@ public interface EntitlementServiceUseCoordinator {
     HoldView submit(EntitlementContext context, String entityNo, String storeNo, ServiceUseSubmit command);
     HoldView query(EntitlementContext context, String entityNo, String operationNo);
     HoldView recover(EntitlementContext context, String entityNo, String operationNo);
+    record ServiceOrderRefund(String refundNo, String status, long amountMinor) { }
+    ServiceOrderRefund refund(EntitlementContext context, String entityNo, String storeNo, String serviceOrderNo);
+    ServiceOrderRefund recoverRefund(EntitlementContext context, String entityNo, String operationNo);
     HoldView cancel(EntitlementContext context, String entityNo, String storeNo, String no, String reason);
 }

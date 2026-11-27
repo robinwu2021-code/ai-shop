@@ -32,8 +32,9 @@ public class LegacyCouponAudiencePortImpl implements LegacyCouponAudiencePort {
             if(users.findActive(ctx.tenantNo(),ctx.actorNo()).isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
             return new Fact(ctx.tenantNo(),q,ctx.actorNo(),1,0,List.of(new Recipient(ctx.actorNo(),true,null)));
         }
-        var selected=q.audiences().isEmpty()?members.resolveSegment(q.entityNo(),q.segmentNo()):null;
-        var union=q.audiences().isEmpty()?null:members.resolve(q.entityNo(),q.audiences(),null);
+        String scene = Boolean.TRUE.equals(q.reachableOnly()) ? "COUPON" : null;
+        var selected=q.audiences().isEmpty()?members.resolveSegment(q.entityNo(),q.segmentNo(),scene):null;
+        var union=q.audiences().isEmpty()?null:members.resolve(q.entityNo(),q.audiences(),scene);
         if(union!=null && !union.countable()) throw BizException.of(ErrorCode.BAD_REQUEST);
         int matched=selected!=null?selected.matched():union.matched();
         var reachable=selected!=null?selected.reachable():union.reachable();

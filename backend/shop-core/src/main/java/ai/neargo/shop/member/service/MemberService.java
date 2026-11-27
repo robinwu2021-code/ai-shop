@@ -69,7 +69,11 @@ public interface MemberService {
     Optional<MbrMember> find(String entityNo, String personNo);
 
     /** 这个主体的会员经营口径。没配过就是按主体 —— 多数商家只有一家店，那也是对的默认 */
-    ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO settings(String entityNo);
+    default ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO settings(String entityNo) {
+        return settings("MAIN", entityNo);
+    }
+
+    ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO settings(String tenantNo, String entityNo);
 
     /**
      * 改经营口径。
@@ -77,8 +81,13 @@ public interface MemberService {
      * <p><b>只改展示与分层口径，不改存储</b>：主体级与门店级两份指标一直都在算，
      * 所以商家随时可以切、切回来也不丢。界面上必须写这句，否则没人敢点。
      */
+    default ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO saveSettings(
+            String entityNo, String memberScope, Boolean autoJoinOnOrder) {
+        return saveSettings("MAIN", entityNo, memberScope, autoJoinOnOrder);
+    }
+
     ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO saveSettings(
-            String entityNo, String memberScope, Boolean autoJoinOnOrder);
+            String tenantNo, String entityNo, String memberScope, Boolean autoJoinOnOrder);
 
     /**
      * 我是哪几家店的会员，以及每家的消息开关（C 端，P7）。

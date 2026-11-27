@@ -22,7 +22,8 @@ class ScopeFixture {
   if(url==null)ddl=ddl.replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci","").replace(",\n ADD COLUMN", ";ALTER TABLE mbr_identity_ticket ADD COLUMN").replace("CHECK (scope_type IN ('BRAND','STORE'))", "CHECK (CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE ELSE FALSE END)");
   for(String part:ddl.split(";"))if(!part.isBlank()){if(url==null){var m=java.util.regex.Pattern.compile("CREATE TABLE ([a-z_]+)").matcher(part);if(m.find())part=part.replace("KEY uk_","KEY "+m.group(1)+"_uk_").replace("KEY ix_","KEY "+m.group(1)+"_ix_");}jdbc.execute(part);}
   jdbc.execute("CREATE TABLE mbr_member(tenant_no varchar(32),member_no varchar(64),person_no varchar(64),entity_no varchar(64),first_store_no varchar(64),status varchar(24),remark varchar(500),deleted int default 0)");
-  jdbc.execute("CREATE TABLE mbr_member_store(tenant_no varchar(32),member_no varchar(64),store_no varchar(64),deleted int default 0)");
+  jdbc.execute("ALTER TABLE mbr_store_profile ADD COLUMN member_no varchar(64)");
+  jdbc.execute("ALTER TABLE mbr_store_profile ADD COLUMN entity_no varchar(64)");
   when(org.resolve("MAIN","E1","S1")).thenReturn(new MemberOperatingScopePort.Scope("MAIN","E1","S1","BRAND","B1",1,"甲店"));
   when(org.resolve("MAIN","E2","S2")).thenReturn(new MemberOperatingScopePort.Scope("MAIN","E2","S2","BRAND","B1",1,"乙店"));
   when(org.resolve("MAIN","E1","S3")).thenReturn(new MemberOperatingScopePort.Scope("MAIN","E1","S3","BRAND","B2",1,"丙店"));

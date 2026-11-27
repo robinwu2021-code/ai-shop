@@ -17,6 +17,7 @@ import type { PayStoreMethodMode } from "./pay";
 //   放一起会诱导两端互相复用不该复用的东西。
 import type {
   ArrivalIssueKind,
+  AudienceItem,
   CampaignDraft,
   SettleAccountType,
   StaffRole,
@@ -33,6 +34,13 @@ import type {
 import type { GoodsDraft, GoodsEntrySource } from "./contract";
 import type { OfflineRecordMethod, OfflineRecordStatus } from "./pay";
 import type { ZipPick } from "@shared/ports/zip-media";
+
+export interface CouponIssueReq {
+  segmentNo?: string | null;
+  audiences?: AudienceItem[];
+  /** 默认关闭。开启时按发券当时的 COUPON 场景判断站内消息资格。 */
+  reachableOnly?: boolean;
+}
 
 // ---------------------------------------------------------------- 预约排期
 
@@ -1125,7 +1133,7 @@ expectedRevision:number}}
 export type {SvConsumptionCreate} from './stored-value-types';
 export interface SvConsumptionStoreQuery {storeNo:string}
 export interface SvConsumptionSubmit {orderNo:string;orderRevision:number;customerRef:string;authorizationRef:null}
-export interface SvWalletRecordsQuery {issuerRef:string;accountRef:string;type:'ALL'|'RECHARGE'|'REDEMPTION';startDate?:string;endDate?:string;cursor?:string;size?:number}
+export interface SvWalletRecordsQuery {issuerRef:string;accountRef:string;type:'ALL'|'RECHARGE'|'REDEMPTION'|'REFUND';startDate?:string;endDate?:string;cursor?:string;size?:number}
 export interface SvBrandActivationRequest {managementNo:string;expectedRevision:number}
 
 // P6 finance wire bodies; the API adapter consumes these exact types.
@@ -1174,7 +1182,7 @@ issuerRef:string;
 /** Opaque account selection reference bound to the selected customer and issuer. */
 accountRef:string;
 /** Requested stored-value record classification; ALL disables the classification filter. */
-type:'ALL'|'RECHARGE'|'REDEMPTION';
+type:'ALL'|'RECHARGE'|'REDEMPTION'|'REFUND';
 /** Inclusive first business date in YYYY-MM-DD format. */
 startDate?:string;
 /** Inclusive final business date in YYYY-MM-DD format. */
@@ -1291,4 +1299,14 @@ export interface PayStoreMethodPreferencesReq {
   mode: PayStoreMethodMode;
   /** 自定义模式下启用的方式，继承模式传空 */
   enabledMethods: PayMethodChoice[];
+}
+
+
+export interface ScheduledReachReq {
+  audiences: AudienceItem[];
+  audienceDesc?: string;
+  scene: string;
+  title: string;
+  body: string;
+  localTime: string;
 }

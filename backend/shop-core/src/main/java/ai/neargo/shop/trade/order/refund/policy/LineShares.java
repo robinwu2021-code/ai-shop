@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.refund.policy;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,16 +25,19 @@ public final class LineShares {
     /** 把 {@code total} 按 {@code weights} 比例分摊；权重全 0 或总额 ≤ 0 时全 0 */
     public static long[] allocate(long total, long[] weights) {
         long[] out = new long[weights.length];
-        long sumW = Arrays.stream(weights).filter(w -> w > 0).sum();
+        long sumW = Arrays.stream(weights).filter(w -> w > 0).reduce(0L, Math::addExact);
         if (total <= 0 || sumW <= 0) {
             return out;
         }
         long[] rem = new long[weights.length];
         long given = 0;
+        BigInteger totalMinor = BigInteger.valueOf(total);
+        BigInteger denominator = BigInteger.valueOf(sumW);
         for (int i = 0; i < weights.length; i++) {
             long w = Math.max(0, weights[i]);
-            out[i] = Math.multiplyExact(total, w) / sumW;
-            rem[i] = Math.multiplyExact(total, w) % sumW;
+            var split = totalMinor.multiply(BigInteger.valueOf(w)).divideAndRemainder(denominator);
+            out[i] = split[0].longValueExact();
+            rem[i] = split[1].longValueExact();
             given += out[i];
         }
         Integer[] order = new Integer[weights.length];

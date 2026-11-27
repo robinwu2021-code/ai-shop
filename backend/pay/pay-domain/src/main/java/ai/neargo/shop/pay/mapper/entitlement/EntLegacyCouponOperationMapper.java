@@ -22,7 +22,9 @@ public interface EntLegacyCouponOperationMapper extends BaseMapper<EntLegacyCoup
             SELECT o.* FROM ent_legacy_coupon_operation o LEFT JOIN ent_usage u
               ON u.tenant_no=o.tenant_no AND u.operation_no=o.operation_no AND u.protocol='LEGACY' AND u.deleted=0
             WHERE o.tenant_no=#{tenant} AND o.deleted=0 AND o.id>#{afterId}
-              AND o.status IN ('COMMITTED','REVERSED') AND u.id IS NULL
+              AND o.status IN ('COMMITTED','REVERSED') AND (u.id IS NULL OR
+                  (o.status='REVERSED' AND NOT EXISTS (SELECT 1 FROM ent_use_reversal r
+                    WHERE r.tenant_no=u.tenant_no AND r.usage_no=u.usage_no AND r.deleted=0)))
             ORDER BY o.id LIMIT #{limit}
             """)
     java.util.List<EntLegacyCouponOperation> missingUsage(@Param("tenant") String tenant,@Param("afterId") long afterId,

@@ -5,6 +5,13 @@ import ai.neargo.shop.member.entity.MbrReachLog;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.member.mapper.MemberMappers.ReachLogMapper;
 import ai.neargo.shop.member.service.MemberReachService;
+import ai.neargo.shop.member.service.ScheduledReachService;
+import ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem;
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.member.service.MemberSegmentService;
 import ai.neargo.shop.member.service.MemberService;
 import ai.neargo.shop.user.service.PersonService;
@@ -56,6 +63,52 @@ class MemberReachFlowTest {
 
     @Autowired
     private ai.neargo.shop.message.mapper.MessageMappers.MessageMapper messageMapper;
+
+    @Autowired private ScheduledReachService scheduled;
+    @Autowired private JdbcTemplate db;
+
+    @Test
+    void scheduledReachResumesWithCurrentMembershipAndOptOut() {
+        String e = "M-RCH-S-" + (++seq);
+        db.update("INSERT INTO mch_entity(entity_no,name,status,market,tenant_no,created_at,updated_at) "
+                + "VALUES (?,'schedule','ACTIVE','CN','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", e);
+        ZoneId zone = ZoneId.of("Asia/Shanghai");
+        var local = LocalDateTime.now(zone).plusDays(1).withNano(0);
+        var request = new ScheduledReachService.Request(List.of(new AudienceItem("ALL", "*")),
+                "all", "NOTICE", "title", "body", local);
+        String optOut = registeredMember(e, false);
+        String no = scheduled.schedule(e, request, "OP", "first");
+        assertThat(scheduled.schedule(e, request, "OP", "first")).isEqualTo(no);
+        var changed = new ScheduledReachService.Request(request.audiences(), "all", "NOTICE", "other", "body", local);
+        assertThatThrownBy(() -> scheduled.schedule(e, changed, "OP", "first")).isInstanceOf(BizException.class);
+        String cancelled = scheduled.schedule(e, request, "OP", "second");
+        assertThatThrownBy(() -> scheduled.cancel("other", cancelled)).isInstanceOf(BizException.class);
+        scheduled.cancel(e, cancelled);
+        assertThat(reachService.task(e, cancelled).orElseThrow().deliveryStatus()).isEqualTo("CANCELLED");
+        var initial = reachService.task(e, no).orElseThrow();
+        assertThat(initial.scheduledAt()).isEqualTo(local.atZone(zone).toInstant().toEpochMilli());
+        assertThat(initial.matched()).isOne();
+        assertThat(scheduled.dispatchDue(1)).isZero();
+        String joined = registeredMember(e, false);
+        memberService.setReachOptOut(e, optOut, true);
+        db.update("UPDATE mbr_reach_task SET scheduled_at=1 WHERE task_no IN (?,?)", no, cancelled);
+        assertThatThrownBy(() -> scheduled.cancel(e, no)).isInstanceOf(BizException.class);
+        assertThat(scheduled.dispatchDue(1)).isOne();
+        assertThat(reachService.task(e, no).orElseThrow().deliveryStatus()).isEqualTo("SENDING");
+        assertThat(scheduled.dispatchDue(1)).isOne();
+        assertThat(scheduled.dispatchDue(1)).isZero();
+        var result = reachService.task(e, no).orElseThrow();
+        assertThat(result.deliveryStatus()).isEqualTo("SENT");
+        assertThat(result.matched()).isEqualTo(2);
+        assertThat(result.sent()).isOne();
+        assertThat(result.skips()).containsExactly(new MemberReachService.ReachPlan.Skip("OPT_OUT", 1));
+        assertThat(db.queryForObject("SELECT outcome FROM mbr_reach_recipient WHERE task_no=? AND member_no=?",
+                String.class, no, optOut)).isEqualTo("OPT_OUT");
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM mbr_reach_recipient r JOIN notify_message m "
+                + "ON m.dedup_key=r.reach_no WHERE r.task_no=? AND r.member_no=?", Integer.class, no, joined)).isOne();
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM mbr_reach_recipient WHERE task_no=?",
+                Integer.class, cancelled)).isZero();
+    }
 
     private static int seq = 9100;
 
@@ -143,13 +196,14 @@ class MemberReachFlowTest {
         String seg = allSegment(e);
 
         var r = reachService.send(e, seg, MbrReachLog.SCENE_NOTICE, "上新了", "来看看", "OP");
-        String debugTo = r.sent() == 0 ? "-" : messageMapper.selectList(Wrappers.<MsgMessage>lambdaQuery()
-                .in(MsgMessage::getDedupKey, reachMapper.selectList(Wrappers.<MbrReachLog>lambdaQuery()
-                        .eq(MbrReachLog::getTaskNo, r.taskNo())).stream().map(MbrReachLog::getReachNo).toList()))
-                .stream().map(MsgMessage::getReceiverNo).toList().toString();
-        assertThat(r.sent()).as("先塞了 %d 条给 %s，实际发给 %s", filled, userNo, debugTo).isZero();
+        assertThat(reachService.plan(e, seg, MbrReachLog.SCENE_NOTICE).reachable()).isZero();
+        assertThat(r.sent()).isZero();
         assertThat(r.pushed()).isZero();
-        assertThat(memberNo).isNotNull();
+        assertThat(r.skipped()).isOne();
+        assertThat(r.skips()).containsExactly(new MemberReachService.ReachPlan.Skip("DAILY_LIMIT", 1));
+        assertThat(reachService.task(e, r.taskNo()).orElseThrow().skips()).isEqualTo(r.skips());
+        assertThat(reachMapper.selectCount(Wrappers.<MbrReachLog>lambdaQuery()
+                .eq(MbrReachLog::getTaskNo, r.taskNo()).eq(MbrReachLog::getMemberNo, memberNo))).isZero();
     }
 
     @Test

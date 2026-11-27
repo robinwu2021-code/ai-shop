@@ -8,7 +8,7 @@ import ai.neargo.shop.promotion.entity.PmtActivity;
 import ai.neargo.shop.promotion.entity.PmtActivityVersion;
 import ai.neargo.shop.promotion.entity.PmtActivityRule;
 import ai.neargo.shop.promotion.entity.PmtEnrollment;
-import ai.neargo.shop.promotion.entity.PmtEnrollmentGoods;
+import ai.neargo.shop.promotion.mapper.PmtActivityScopeMapper;
 import ai.neargo.shop.promotion.mapper.PmtActivityVersionMapper;
 import ai.neargo.shop.promotion.dto.UnifiedActivityDefinition;
 import ai.neargo.shop.promotion.policy.ActivityRuleValidator;
@@ -31,6 +31,11 @@ import ai.neargo.shop.promotion.service.ActivityPricingService;
 import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.promotion.service.UnifiedOrderActivityPricingService;
 import ai.neargo.shop.spi.marketing.CampaignPort;
+import ai.neargo.shop.spi.marketing.PosActivityPort;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.spi.pay.MarketPort;
+import ai.neargo.shop.promotion.service.MarketingEffectProjector;
+import org.springframework.transaction.annotation.Propagation;
 import ai.neargo.shop.spi.member.MemberQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,11 +59,118 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 @Service
-public class ActivityPricingServiceImpl implements ActivityPricingService {
+public class ActivityPricingServiceImpl implements ActivityPricingService, PosActivityPort {
 
     @Autowired
     @Qualifier("sqlSessionFactory")
     private SqlSessionFactory counterSessions;
+
+    @Autowired private MerchantQueryPort posMerchants;
+    @Autowired private MarketPort posMarkets;
+    @Autowired private MarketingEffectProjector posEffects;
+
+    @Override
+    public java.util.Set<String> itemOffers(String tenant, List<String> activityNos) {
+        return activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getTenantNo,tenant)
+                .in(PmtActivity::getActivityNo,activityNos).orderByAsc(PmtActivity::getActivityNo).last("FOR UPDATE"))
+                .stream().filter(a->a.getDraftSnapshot()==null && ("PRICE".equals(a.getBenefitType()) || "GIFT".equals(a.getBenefitType())))
+                .map(PmtActivity::getActivityNo).collect(java.util.stream.Collectors.toSet());
+    }
+
+    @Override
+    @Transactional(value="transactionManager", propagation=Propagation.MANDATORY)
+    public Use apply(String tenant, String entity, String store, String orderNo, String subOrderNo,
+            String userNo, String currency, String activityNo, long expectedMinor, List<Line> lines) {
+        var head = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                .eq(PmtActivity::getTenantNo, tenant).eq(PmtActivity::getActivityNo, activityNo).last("FOR UPDATE"));
+        if (head == null || expectedMinor <= 0 || head.getArchivedAt() != null) throw posUnavailable();
+        if (head.getDraftSnapshot() != null) {
+            if (lines.stream().anyMatch(l->l.quantity()==0)) throw posUnavailable();
+            var selected = new CampaignPort.AppliedActivity(activityNo, entity, expectedMinor, 1, 0L, null,
+                    head.getName()).atStore(store);
+            if (!unifiedOrders.commitPos(userNo, orderNo, selected, currency)) throw posUnavailable();
+            var applied = applyMapper.selectOne(Wrappers.<PmtApply>lambdaQuery().eq(PmtApply::getTenantNo, tenant)
+                    .eq(PmtApply::getPromoType, PmtApply.ACTIVITY).eq(PmtApply::getPromoNo, activityNo)
+                    .eq(PmtApply::getOrderNo, orderNo).eq(PmtApply::getSubOrderNo, subOrderNo));
+            return new Use(applied.getApplyNo(), applied.getActivityVersionNo(),
+                    lines.stream().mapToLong(l -> Math.multiplyExact(l.unitPriceMinor(), l.quantity())).toArray(), true);
+        }
+        var market = posMarkets.find(posMerchants.marketOf(entity)).filter(m -> m.enabled() && currency.equals(m.currency()))
+                .orElseThrow(ActivityPricingServiceImpl::posUnavailable);
+        var audience = audienceMapper.selectList(Wrappers.<PmtActivityAudience>lambdaQuery()
+                .eq(PmtActivityAudience::getTenantNo,tenant).eq(PmtActivityAudience::getActivityNo,activityNo)
+                .orderByAsc(PmtActivityAudience::getId));
+        if (!entity.equals(head.getEntityNo()) || head.getStoreNo() != null && !store.equals(head.getStoreNo())
+                || !PmtActivity.OWNER_MERCHANT.equals(head.getOwner())
+                || !head.isActiveAt(System.currentTimeMillis(), ZoneId.of(market.timeZone()))
+                || !head.hasQuotaLeft() || head.budgetLeft() < expectedMinor || !audienceHits(audience, entity, userNo)) {
+            throw posUnavailable();
+        }
+        var scopes = goodsMapper.selectList(Wrappers.<PmtActivityGoods>lambdaQuery()
+                .eq(PmtActivityGoods::getTenantNo, tenant).eq(PmtActivityGoods::getActivityNo, activityNo)
+                .orderByAsc(PmtActivityGoods::getId));
+        var rules = ruleMapper.selectList(Wrappers.<PmtActivityRule>lambdaQuery()
+                .eq(PmtActivityRule::getTenantNo, tenant).eq(PmtActivityRule::getActivityNo, activityNo)
+                .orderByAsc(PmtActivityRule::getSeq)).stream().map(ActivityServiceImpl::readParams).toList();
+        long[] weights = new long[lines.size()];
+        var goods = new ArrayList<CampaignPort.GoodsLine>();
+        boolean itemOffer = PmtActivity.BENEFIT_GIFT.equals(head.getBenefitType())
+                || PmtActivity.BENEFIT_PRICE.equals(head.getBenefitType());
+        for (int i = 0; i < lines.size(); i++) {
+            var l = lines.get(i);
+            if (l.goodsNo().isEmpty() || !scopes.isEmpty() && scopes.stream().noneMatch(s ->
+                    PmtActivityGoods.ALL.equals(s.getScopeType())
+                    || PmtActivityGoods.GOODS.equals(s.getScopeType()) && l.goodsNo().equals(s.getRefNo())
+                    || PmtActivityGoods.CATEGORY.equals(s.getScopeType()) && s.getRefNo().equals(l.categoryNo()))) continue;
+            if (rules.stream().anyMatch(r -> "CONDITION".equals(r.kind()) && "GOODS".equals(r.type())
+                    && !r.goodsNos().contains(l.goodsNo()))) continue;
+            long amount = Math.multiplyExact(l.unitPriceMinor(), l.quantity());
+            goods.add(new CampaignPort.GoodsLine(l.goodsNo(), amount, l.quantity()));
+            weights[i] = switch (head.getBenefitType()) {
+                case "PRICE" -> "GOODS".equals(head.getTriggerType())
+                        ? Math.multiplyExact(Math.max(0L,l.unitPriceMinor()-nz(head.getBenefitAmountMinor())),l.quantity()) : 0;
+                case "GIFT" -> "QTY".equals(head.getTriggerType()) && (head.getBenefitRef()==null || head.getBenefitRef().equals(l.goodsNo()))
+                        && nz(head.getTriggerQty()) > 0 && nz(head.getBenefitQty()) > 0
+                        ? Math.multiplyExact(l.unitPriceMinor(), (long)(l.quantity() /
+                                (head.getTriggerQty() + head.getBenefitQty())) * head.getBenefitQty()) : 0;
+                default -> amount;
+            };
+        }
+        long base = goods.stream().mapToLong(CampaignPort.GoodsLine::amount).sum();
+        var group = new CampaignPort.MerchantAmount(entity, base, goods.stream().mapToInt(CampaignPort.GoodsLine::qty).sum(), store, goods, false);
+        long off;
+        if (itemOffer) off = java.util.Arrays.stream(weights).sum();
+        else if ("CUT".equals(head.getBenefitType()) && cutTriggerHits(head, group)) off = Math.min(base,nz(head.getBenefitAmountMinor()));
+        else if ("COMBO".equals(head.getBenefitType())) {
+            var combo = comboHit(head,group);
+            off = combo == null || combo.points() != 0 ? 0 : combo.off();
+        } else throw posUnavailable();
+        if (expectedMinor != off) throw posUnavailable();
+        String snapshot = counterJson.writeValueAsString(java.util.Arrays.asList(head.getTriggerType(),head.getTriggerAmountMinor(),
+                head.getTriggerQty(),head.getBenefitType(),head.getBenefitAmountMinor(),head.getBenefitQty(),head.getBenefitRef(),
+                currency,scopes.stream().map(s -> List.of(s.getScopeType(),s.getRefNo())).toList(),rules,
+                head.getScheduleType(),head.getStartAt(),head.getEndAt(),head.getScheduleRule(),market.timeZone(),
+                entity,head.getStoreNo(),head.getQuota(),head.getBudgetMinor(),
+                audience.stream().map(r->java.util.Arrays.asList(r.getAudienceType(),r.getAudienceValue(),r.getRuleSnapshot())).toList()));
+        var row = new PmtApply();
+        row.setTenantNo(tenant); row.setApplyNo(BizKey.next(BizKey.PROMO_APPLY)); row.setPromoType(PmtApply.ACTIVITY);
+        row.setPromoNo(activityNo); row.setActivityVersionNo(ActivityCommandDeduplicator.hash(snapshot)); row.setPosRuleSnapshot(snapshot);
+        row.setUserNo(userNo); row.setEntityNo(entity); row.setStoreNo(store); row.setOrderNo(orderNo);
+        row.setSubOrderNo(subOrderNo); row.setRedeemMode("POS_ORDER"); row.setAmountMinor(off);
+        row.setFunder(PmtCoupon.BY_MERCHANT); row.setAppliedAt(System.currentTimeMillis());
+        head.setQuotaUsed(Math.addExact(nz(head.getQuotaUsed()),1)); head.setBudgetUsedMinor(Math.addExact(nz(head.getBudgetUsedMinor()),off));
+        if (!head.hasQuotaLeft() || !head.hasBudgetLeft()) {
+            head.setStatus(PmtActivity.ENDED);
+            head.setEndedReason(!head.hasQuotaLeft() ? PmtActivity.ENDED_QUOTA : PmtActivity.ENDED_BUDGET);
+        }
+        if (activityMapper.updateById(head) != 1 || applyMapper.insert(row) != 1) throw posUnavailable();
+        posEffects.recordOrderDiscount(tenant,activityNo,row.getApplyNo(),entity,store,off,currency,Instant.ofEpochMilli(row.getAppliedAt()));
+        return new Use(row.getApplyNo(),row.getActivityVersionNo(),weights,!itemOffer);
+    }
+
+    private static BizException posUnavailable() { return BizException.of(ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE); }
+
+    @Override public void cancel(String orderNo) { release(orderNo); }
 
     private void currentCounterReads() {
         if (!TransactionSynchronizationManager.isActualTransactionActive()
@@ -124,7 +236,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                     }
                     requireCounterEffect(head, group, now, mandatoryOnly || !"AUTO".equals(mode));
                 }
-                if (enrollmentMapper == null || enrollmentGoodsMapper == null) {
+                if (enrollmentMapper == null || enrollmentScopes == null) {
                     throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
                 }
                 // Capacity and audience are not evidence of objective irrelevance.
@@ -133,10 +245,8 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         .eq(PmtEnrollment::getEntityNo, group.merchantNo())
                         .eq(PmtEnrollment::getStatus, PmtEnrollment.APPROVED));
                 for (var enrollment : enrollments) {
-                    var enrolled = enrollmentGoodsMapper.selectList(Wrappers.<PmtEnrollmentGoods>lambdaQuery()
-                            .eq(PmtEnrollmentGoods::getTenantNo, "MAIN").eq(PmtEnrollmentGoods::getDeleted, 0)
-                            .eq(PmtEnrollmentGoods::getEnrollmentNo, enrollment.getEnrollmentNo()))
-                            .stream().map(PmtEnrollmentGoods::getGoodsNo).toList();
+                    var enrolled = enrollmentScopes.enrollmentGoods(enrollment.getTenantNo(),
+                            enrollment.getEnrollmentNo(), enrollment.getScopeVersionNo());
                     var lines = group.lines().stream().filter(l -> enrolled.contains(l.goodsNo())).toList();
                     if (lines.isEmpty()) {
                         continue;
@@ -460,7 +570,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
      * 其余行为与加这一段之前逐字相同。
      */
     private ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentMapper enrollmentMapper;
-    private ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentGoodsMapper enrollmentGoodsMapper;
+    private PmtActivityScopeMapper enrollmentScopes;
 
     /** 自己组合的行（P3b）。setter 注入，缺了组合活动不参与算价 */
     private ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityRuleMapper ruleMapper;
@@ -472,9 +582,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setEnrollmentMappers(ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentMapper enrollmentMapper,
-                                     ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentGoodsMapper enrollmentGoodsMapper) {
+                                     PmtActivityScopeMapper enrollmentScopes) {
         this.enrollmentMapper = enrollmentMapper;
-        this.enrollmentGoodsMapper = enrollmentGoodsMapper;
+        this.enrollmentScopes = enrollmentScopes;
     }
 
     /**
@@ -912,11 +1022,8 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a == null || !PmtActivity.BENEFIT_CUT.equals(a.getBenefitType()) || !a.isActiveAt(now, MARKET_ZONE)) {
                 continue;
             }
-            java.util.Set<String> goods = DataScopeContext.executeWithoutScope(() ->
-                            enrollmentGoodsMapper.selectList(Wrappers.<ai.neargo.shop.promotion.entity.PmtEnrollmentGoods>lambdaQuery()
-                                    .eq(ai.neargo.shop.promotion.entity.PmtEnrollmentGoods::getEnrollmentNo, e.getEnrollmentNo())))
-                    .stream().map(ai.neargo.shop.promotion.entity.PmtEnrollmentGoods::getGoodsNo)
-                    .collect(java.util.stream.Collectors.toSet());
+            var goods = new HashSet<>(DataScopeContext.executeWithoutScope(() ->
+                    enrollmentScopes.enrollmentGoods(e.getTenantNo(), e.getEnrollmentNo(), e.getScopeVersionNo())));
             long amount = 0L;
             int qty = 0;
             for (CampaignPort.GoodsLine l : g.lines()) {
@@ -1437,6 +1544,10 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         List<PmtActivityAudience> rules = DataScopeContext.executeWithoutScope(() ->
                 audienceMapper.selectList(Wrappers.<PmtActivityAudience>lambdaQuery()
                         .eq(PmtActivityAudience::getActivityNo, a.getActivityNo())));
+        return audienceHits(rules,entityNo,userNo);
+    }
+
+    private boolean audienceHits(List<PmtActivityAudience> rules,String entityNo,String userNo) {
         if (rules.isEmpty()) {
             return true;
         }

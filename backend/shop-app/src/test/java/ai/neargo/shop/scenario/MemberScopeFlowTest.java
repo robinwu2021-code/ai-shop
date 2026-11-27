@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 
@@ -40,6 +41,9 @@ class MemberScopeFlowTest {
 
     @Autowired
     private PersonService personService;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private static int seq = 7000;
 
@@ -90,9 +94,20 @@ class MemberScopeFlowTest {
         String ph = phone();
         String p = person(ph);
         long now = System.currentTimeMillis();
+        jdbc.update("INSERT INTO mbr_store_profile (tenant_no,store_profile_no,customer_no,store_no,remark,"
+                + "advisor_actor_no,first_seen_at,created_at,updated_at,created_by,updated_by) "
+                + "VALUES ('MAIN',?,?,'ST-NORTH','北店备注','ADVISOR',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,"
+                + "CURRENT_TIMESTAMP,'TEST','TEST')", "PROFILE-" + e, p);
         memberService.onOrderPaid("A-1-" + seq, "U" + seq, p, e, "ST-SOUTH", 3000, now);
         memberService.onOrderPaid("A-2-" + seq, "U" + seq, p, e, "ST-SOUTH", 3000, now);
         memberService.onOrderPaid("B-1-" + seq, "U" + seq, p, e, "ST-NORTH", 9900, now);
+
+        memberService.onOrderPaid("B-1-" + seq, "U" + seq, p, e, "ST-NORTH", 9900, now);
+        var northProfile = jdbc.queryForMap("SELECT member_no,remark,advisor_actor_no FROM mbr_store_profile "
+                + "WHERE store_profile_no=?", "PROFILE-" + e);
+        assertThat(northProfile.get("member_no")).isEqualTo(memberService.find(e, p).orElseThrow().getMemberNo());
+        assertThat(northProfile.get("remark")).isEqualTo("北店备注");
+        assertThat(northProfile.get("advisor_actor_no")).isEqualTo("ADVISOR");
 
         MemberVO whole = memberService.list(e, rule(null, List.of())).records().get(0);
         assertThat(whole.orderCount()).isEqualTo(3);

@@ -10,7 +10,14 @@ import lombok.Setter;
 @Setter
 @TableName("pmt_activity_scope")
 public class PmtActivityScope extends BaseEntity {
+    private String ownerType;
+    private String ownerNo;
     private String versionNo;
+    private String activityVersionNo;
+    private String scopeDimension;
+    private Integer included;
+    private Integer sortNo;
+    private String ruleSnapshot;
     private String scopeKind;
     private String refNo;
 }

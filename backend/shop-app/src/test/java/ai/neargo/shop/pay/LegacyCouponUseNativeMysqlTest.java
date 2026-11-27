@@ -31,6 +31,7 @@ import java.util.concurrent.*;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
 import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.io.ClassPathResource;
@@ -57,13 +58,17 @@ class LegacyCouponUseNativeMysqlTest {
     }
     @Test void realJsonConcurrentHoldsAndTerminalDecisionsKeepOneAssetLedger() throws Exception {
         String url=System.getenv("LEGACY_USE_NATIVE_MYSQL_URL");
-        assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/legacy_use_native_fixture\\?.*");
-        var ds=new DriverManagerDataSource(url,"root","");var jdbc=new JdbcTemplate(ds);
+        assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/legacy_use_native_fixture(?:_[0-9a-f]{12})?\\?.*");
+        var ds=new DriverManagerDataSource(url,System.getenv().getOrDefault("COMMERCE_MYSQL_USER","root"),
+                System.getenv().getOrDefault("COMMERCE_MYSQL_PASSWORD",""));var jdbc=new JdbcTemplate(ds);
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V478__entitlement_catalog.sql"),
                 new ClassPathResource("db/migration/V487__entitlement_grants_and_ledger.sql"),
                 new ClassPathResource("db/migration/V518__legacy_coupon_pay_operation.sql"),
                 new ClassPathResource("db/migration/V482__pay_entitlement_event_outbox_inbox.sql"),
                 new ClassPathResource("db/migration/V489__entitlement_use_and_daily_quota.sql"),
+                new ClassPathResource("db/migration/V492__entitlement_use_reversal.sql"),
+                new ClassPathResource("db/migration/V711__coupon_reversal_source.sql"),
+                new ClassPathResource("db/migration/V719__coupon_use_partial_return_snapshot.sql"),
                 new ClassPathResource("db/migration/V521__legacy_coupon_usage_facts.sql"),
                 new ClassPathResource("db/migration/V524__legacy_coupon_target_import.sql"),
                 new ClassPathResource("db/migration/V525__legacy_coupon_historical_usage.sql")).execute(ds);
@@ -74,9 +79,10 @@ class LegacyCouponUseNativeMysqlTest {
         var source=new Facts();var props=new PayEntitlementProperties();
         props.getEntitlement().getUse().setEnabled(true);props.getEntitlement().getLegacyCoupon().setEnabled(true);
         try(var context=new AnnotationConfigApplicationContext()) {
-            context.register(Transactions.class,ai.neargo.shop.pay.migration.service.LegacyCouponSnapshotReader.class,LegacyCouponUseServiceImpl.class,LegacyCouponUseWriter.class,LegacyCouponUsageRecorder.class,
+            context.register(Transactions.class,ai.neargo.shop.pay.migration.service.LegacyCouponReversalRecorder.class,ai.neargo.shop.pay.migration.service.LegacyCouponSnapshotReader.class,LegacyCouponUseServiceImpl.class,LegacyCouponUseWriter.class,LegacyCouponUsageRecorder.class,
                     ai.neargo.shop.pay.entitlement.event.PayEntitlementEventPublisher.class,
                     EntitlementPostingServiceImpl.class,PayEntitlementFeatureGate.class);
+            context.getBeanFactory().registerSingleton("payOperationsDocuments", org.mockito.Mockito.mock(PayOperationsDocuments.class));
             context.registerBean("payTxManager",PlatformTransactionManager.class,()->new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class,()->new ObjectMapper());
             context.registerBean(PayEntitlementProperties.class,()->props);
@@ -86,7 +92,7 @@ class LegacyCouponUseNativeMysqlTest {
                 return new OwnerRef(origin,"I1",OwnerSystem.PAY,MigrationState.CUTOVER,"B1","b".repeat(64),0);
             });
             register(context,EntInstanceMapper.class,sessions);register(context,EntLedgerMapper.class,sessions);
-            register(context,EntLegacyCouponOperationMapper.class,sessions);register(context,EntUsageMapper.class,sessions);
+            register(context,EntLegacyCouponOperationMapper.class,sessions);register(context,EntUsageMapper.class,sessions);register(context,EntUseReversalMapper.class,sessions);
             register(context,PayEntOutboxMapper.class,sessions);context.refresh();
             var json=context.getBean(ObjectMapper.class);var uses=context.getBean(LegacyCouponUseService.class);
             Instant from=Instant.now().minusSeconds(100),until=Instant.now().plusSeconds(3600);
@@ -142,6 +148,9 @@ class LegacyCouponUseNativeMysqlTest {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_legacy_coupon_operation WHERE status='PREPARING'",Integer.class)).isZero();
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_usage",Integer.class)).isEqualTo(1);
             assertThat(jdbc.queryForObject("SELECT status FROM ent_usage",String.class)).isEqualTo("REVERSED");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_use_reversal r JOIN ent_usage u"
+                    +" ON u.tenant_no=r.tenant_no AND u.usage_no=r.usage_no WHERE r.source_type='AFTER_SALE' AND r.units=1",
+                    Integer.class)).isOne();
             assertThat(jdbc.queryForObject("SELECT store_no FROM ent_usage",String.class)).isNull();
             assertThat(jdbc.queryForObject("SELECT amount_minor FROM ent_usage",Long.class)).isEqualTo(100);
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_outbox",Integer.class)).isEqualTo(2);

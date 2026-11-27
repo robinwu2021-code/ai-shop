@@ -23,7 +23,7 @@ const capability = ref<StoredValueNotificationCapability | null>(null);
 const capabilityFailed = ref(false);
 const notificationVisible = ref(false); const subscribing = ref(false);
 const nativeWechat = canNativeShare();
-const typeKeys = { ALL: "storedValue.ALL", RECHARGE: "storedValue.RECHARGE", REDEMPTION: "storedValue.REDEMPTION" };
+const typeKeys = { ALL: "storedValue.ALL", RECHARGE: "storedValue.RECHARGE", REDEMPTION: "storedValue.REDEMPTION", REFUND: "storedValue.REFUND" };
 const pager = createStoredValuePager<StoredValueRecord, StoredValueRecordsQuery, StoredValueRecordsPage>(
   (query, cursor) => {
     const { focusDocumentNo: _focus, ...filters } = query;
@@ -32,7 +32,7 @@ const pager = createStoredValuePager<StoredValueRecord, StoredValueRecordsQuery,
   },
 );
 const state = pager.state;
-const tabs = computed(() => (["ALL", "RECHARGE", "REDEMPTION"] as const).map(key => ({ key, label: t(typeKeys[key]) })));
+const tabs = computed(() => (["ALL", "RECHARGE", "REDEMPTION", "REFUND"] as const).map(key => ({ key, label: t(typeKeys[key]) })));
 const filtered = computed(() => type.value !== "ALL" || !!startDate.value || !!endDate.value);
 const unavailable = computed(() => [404, 10404].includes(state.errorCode));
 function recordsPath() {
@@ -57,7 +57,7 @@ async function load() {
   });
 }
 function selectType(next: string) {
-  if (!["ALL", "RECHARGE", "REDEMPTION"].includes(next)) return;
+  if (!["ALL", "RECHARGE", "REDEMPTION", "REFUND"].includes(next)) return;
   type.value = next as StoredValueType; focusDocumentNo.value = ""; load();
 }
 function openDates() {

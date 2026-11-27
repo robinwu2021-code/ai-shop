@@ -55,6 +55,15 @@ describe("储值账单交互", () => {
     await tapText(w, "storedValue.apply");
     expect(mocks.records.mock.lastCall?.[1]).toEqual({ type: "RECHARGE", size: 20 });
   });
+  it("显示退款为正向流水，并按退款筛选", async () => {
+    const w = render(); await flushPromises();
+    mocks.records.mockResolvedValueOnce({ store: { storeNo: "S1", storeName: "My Store", businessTimeZone: "Asia/Shanghai" }, records: [{ type: "REFUND", title: "护理", currency: "CNY", signedAmountMinor: 12800, occurredAt: "2026-11-27T00:00:00Z", documentNo: "SV1" }], hasMore: false });
+    w.findComponent({ name: "sh-tabs" }).vm.$emit("change", "REFUND"); await flushPromises();
+    expect(mocks.records.mock.lastCall?.[1].type).toBe("REFUND");
+    expect(w.find(".record").text()).toContain("storedValue.REFUND");
+    expect(w.find(".record__amount").text()).toMatch(/^\+/);
+    w.unmount();
+  });
   it("非法日期不请求；H5即使能力可用也不展示原生微信授权按钮", async () => {
     const w = render(); await flushPromises();
     await tapText(w, "storedValue.time");

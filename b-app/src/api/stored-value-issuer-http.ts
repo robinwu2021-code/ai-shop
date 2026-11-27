@@ -11,6 +11,7 @@ export const issuerHttpApi:IssuerApi={
  mSvIssuerVersion:(no,body,key)=>http.post(buildPath(E.mSvIssuerVersion.path,{no}),body,headers(key)),
  mSvIssuerEntities:(managementNo,scopeType,scopeNo)=>http.get(E.mSvIssuerEntities.path,{managementNo,scopeType,scopeNo}),
  mSvWalletRecords:(storeNo,customerRef,q)=>http.get(buildPath(E.mSvWalletRecords.path,{storeNo,customerRef}),q),
+ mSvConsumptionRefund:(orderNo,storeNo)=>http.post(buildPath(E.mSvConsumptionRefund.path,{orderNo}),{storeNo}),
  mSvConsumptionCancel:(orderNo,storeNo)=>http.post(buildPath(E.mSvConsumptionCancel.path,{orderNo}),{storeNo}),
  mSvConsumptionResolve:(body,key)=>http.post(E.mSvConsumptionResolve.path,body,headers(key)),
  mSvConsumptionPreview:(body,key)=>http.post(E.mSvConsumptionPreview.path,body,headers(key)),

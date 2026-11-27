@@ -6,6 +6,17 @@ import org.apache.ibatis.annotations.*;
 import java.time.LocalDateTime;
 
 public interface LegacyCouponCheckoutMapper extends BaseMapper<OrdLegacyCouponCheckout> {
+    record SettledReturn(String afterSaleNo, Long amountMinor) {}
+    @Select("""
+        SELECT s.after_sale_no AS afterSaleNo, CASE WHEN COUNT(l.id)=COUNT(l.coupon_return_minor) THEN SUM(l.coupon_return_minor) END AS amountMinor
+        FROM ord_after_sale s LEFT JOIN ord_after_sale_item l
+            ON l.tenant_no=s.tenant_no AND l.after_sale_no=s.after_sale_no AND l.deleted=0
+        WHERE s.tenant_no=#{tenant} AND s.order_no=#{order} AND s.user_no=#{user}
+          AND s.status='REFUNDED' AND s.refunded_at IS NOT NULL AND s.deleted=0
+        GROUP BY s.after_sale_no,s.refunded_at ORDER BY s.refunded_at,s.after_sale_no
+        """)
+    java.util.List<SettledReturn> settledReturns(@Param("tenant") String tenant,@Param("order") String order,@Param("user") String user);
+
     @Select("SELECT * FROM ord_legacy_coupon_checkout WHERE tenant_no=#{tenant} AND checkout_no=#{no} AND deleted=0")
     OrdLegacyCouponCheckout find(@Param("tenant") String tenant,@Param("no") String no);
     @Select("SELECT * FROM ord_legacy_coupon_checkout WHERE tenant_no=#{tenant} AND checkout_no=#{no} AND deleted=0 FOR UPDATE")
@@ -36,11 +47,11 @@ public interface LegacyCouponCheckoutMapper extends BaseMapper<OrdLegacyCouponCh
     int claim(OrdLegacyCouponCheckout row);
     /** Scalar change DTO deliberately avoids generic BaseEntity audit fill and never rewrites immutable source facts. */
     record StateChange(String tenant,String checkoutNo,long revision,String status,String heldSnapshot,String decisionSnapshot,
-                       String reversalSnapshot,String orderNo,String payState,String payDecisionNo,LocalDateTime payAckedAt,
+                       String reversalSnapshot,String partialReturnSnapshot,String orderNo,String payState,String payDecisionNo,LocalDateTime payAckedAt,
                        LocalDateTime recoveryDueAt,LocalDateTime updatedAt,String updatedBy) { }
     @Update("""
         UPDATE ord_legacy_coupon_checkout SET status=#{change.status},held_snapshot=#{change.heldSnapshot},
-            decision_snapshot=#{change.decisionSnapshot},reversal_snapshot=#{change.reversalSnapshot},order_no=#{change.orderNo},
+            decision_snapshot=#{change.decisionSnapshot},reversal_snapshot=#{change.reversalSnapshot},partial_return_snapshot=#{change.partialReturnSnapshot},order_no=#{change.orderNo},
             pay_state=#{change.payState},pay_decision_no=#{change.payDecisionNo},pay_acked_at=#{change.payAckedAt},
             recovery_due_at=#{change.recoveryDueAt},updated_at=#{change.updatedAt},updated_by=#{change.updatedBy},version=version+1
         WHERE tenant_no=#{change.tenant} AND checkout_no=#{change.checkoutNo} AND version=#{change.revision} AND deleted=0

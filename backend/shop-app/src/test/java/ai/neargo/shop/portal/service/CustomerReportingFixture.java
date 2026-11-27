@@ -17,6 +17,7 @@ public final class CustomerReportingFixture {
     create(db,"V1__baseline.sql","usr_account","mch_account","mch_entity","mch_store");
     create(db,"V222__usr_person.sql","usr_person");
     create(db,"V224__mbr_member.sql","mbr_member","mbr_member_store","mbr_member_source");
+    create(db,"V545__brand_member_scopes.sql","mbr_store_profile");
     create(db,"V544__brand_management_organization.sql","mch_management_space","mch_brand","mch_brand_store_binding");
     create(db,"V648__operating_entity_create.sql","mch_operating_entity");
     // Replay the exact market-column ALTER from its immutable source migration.
@@ -43,6 +44,14 @@ public final class CustomerReportingFixture {
     member(db,5,"OTHER","FM1","FE1","FPS1","ACTIVE","ORDER","FS1",1);
     memberSource(db,1,"MAIN","SRC1","M1","E1","SCAN","S1",100,true);memberSource(db,2,"MAIN","SRC2","M1","E1","ORDER","S2",500,false);memberSource(db,3,"MAIN","SRC3","M2","E2","ORDER","S3",200,true);memberSource(db,4,"OTHER","FSRC","FM1","FE1","ORDER","FS1",1,true);
     insert(db,"mbr_member_store","member_no,entity_no,store_no","M1","E1","S2");insert(db,"mbr_member_store","member_no,entity_no,store_no","M2","E2","S3");insert(db,"mbr_member_store","tenant_no,member_no,entity_no,store_no","OTHER","FM1","FE1","FS1");
+    insert(db,"mbr_store_profile","store_profile_no,customer_no,store_no,first_seen_at,remark,advisor_actor_no",
+        "PRIVATE-S2","PS1","S2",now,"private at S2","ADVISOR-S2");
+    db.update("UPDATE mbr_member_store SET order_count=3,total_spent_minor=7800,d90_order_count=2,d90_spent_minor=6000,level='REGULAR',is_first_store=1,first_order_at=100,last_order_at=500 WHERE member_no='M1'");
+    db.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
+      org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(connection,
+          new ClassPathResource("db/migration/V704__member_store_profile_metrics.sql"));
+      return null;
+    });
     operating(db,"MAIN","OE1","U1","Linked operating entity","TW","E1","ENABLED");operating(db,"MAIN","OE0","U1","Independent operating entity","TW",null,"ENABLED");operating(db,"MAIN","OE2","U2","Out of scope","CN","E2","ENABLED");operating(db,"MAIN","OFF","U1","Disabled","TW","E1","DISABLED");operating(db,"OTHER","OE1","FU1","Foreign operating entity","CN","FE1","ENABLED");
   }
   private static String source(String file) {

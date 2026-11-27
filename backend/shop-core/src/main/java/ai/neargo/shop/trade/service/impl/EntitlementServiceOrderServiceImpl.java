@@ -54,6 +54,7 @@ import ai.neargo.shop.trade.service.EntitlementAuthorizationService;
 import ai.neargo.shop.trade.service.EntitlementServiceOrderService;
 import ai.neargo.shop.trade.service.EntitlementSourceDecisionService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import ai.neargo.shop.spi.entitlement.EntitlementUsePort.OrderBenefitReverse;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -334,6 +335,56 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         if (!expected.equals(row.getStatus())) conflict();
         row.setStatus(result.status().name()); update(row, ctx.actorNo());
     }
+    private void refundScope(OrdEntServiceOrder row, String entity, String store) {
+        if (!row.getEntityNo().equals(entity) || !row.getStoreNo().equals(store)) notFound();
+    }
+
+    @Override public ServiceOrderSnapshot refundOrder(EntitlementContext ctx, String entity, String store, String no) {
+        var row = require(ctx.tenantNo(), no);
+        refundScope(row, entity, store);
+        return snapshot(row, json);
+    }
+
+    @Override @Transactional
+    public ServiceOrderSnapshot decideRefund(EntitlementContext ctx, String entity, String store, String no,
+                                              UseFact committed) {
+        var row = lock(ctx.tenantNo(), no);
+        refundScope(row, entity, store);
+        var order = snapshot(row, json);
+        if (order.refundCommand() != null) return order;
+        var command = order.command();
+        if (!"COMMITTED".equals(order.status()) || command == null || command.assetKind() != AssetKind.STORED_VALUE
+                || committed.operation().status() != State.COMMITTED || !command.equals(committed.command())
+                || !order.operationNo().equals(committed.operation().operationNo())
+                || !order.fact().orderSnapshotHash().equals(committed.orderSnapshotHash())
+                || command.amountMinor() != amount(order.fact()) || order.fact().freightMinor() != 0) conflict();
+        String refundNo = "SVR-" + hash(no).substring(0, 60);
+        String usageNo = committed.operation().usageNo();
+        var source = new SourceRef("CORE", "ORDER_REFUND", refundNo, usageNo, null, null, 0);
+        var decision = decisions.record(ctx.tenantNo(), source, "REVERSE", DecisionRef.DecisionType.ORDER_REVERSE,
+                null, null, row.getUserNo(), entity, store, order.fact().currency(), command.amountMinor(),
+                row.getSourceHash(), Instant.now());
+        var reverse = new OrderBenefitReverse(usageNo, refundNo, source, AssetKind.STORED_VALUE,
+                command.amountMinor(), decision);
+        row.setRefundCommandSnapshot(json.writeValueAsString(reverse));
+        row.setRefundStatus("REFUND_PENDING");
+        row.setRefundActorNo(ctx.actorNo());
+        update(row, ctx.actorNo());
+        return snapshot(row, json);
+    }
+
+    @Override @Transactional
+    public ServiceOrderSnapshot acknowledgeRefund(EntitlementContext ctx, String entity, String no, String reverseNo) {
+        var row = lock(ctx.tenantNo(), no);
+        var order = snapshot(row, json);
+        if (!entity.equals(row.getEntityNo()) || order.refundCommand() == null
+                || !reverseNo.equals(order.refundCommand().reverseNo())) conflict();
+        if ("REFUNDED".equals(order.refundStatus())) return order;
+        row.setRefundStatus("REFUNDED");
+        update(row, ctx.actorNo());
+        return snapshot(row, json);
+    }
+
     private void decide(OrdEntServiceOrder row, ServiceOrderSnapshot view, boolean commit, String reason) {
         var decision = decisions.record(row.getTenantNo(), view.fact().source(), "USE",
                 commit ? DecisionRef.DecisionType.USE_COMMIT : DecisionRef.DecisionType.USE_CANCEL,

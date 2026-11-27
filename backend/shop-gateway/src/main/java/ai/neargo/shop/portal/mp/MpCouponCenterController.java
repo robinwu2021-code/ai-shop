@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -69,9 +71,11 @@ public class MpCouponCenterController {
 
     /** 领一张。按券模板属于哪一套分流 —— 两套的库存计数器各自独立，不能混着扣 */
     @PostMapping("/mp/coupon/{couponNo}/receive")
-    public UserCouponVO receive(@PathVariable String couponNo) {
+    public UserCouponVO receive(@PathVariable String couponNo,
+            @RequestHeader(value = "Idempotency-Key", required = false)
+            @Pattern(regexp = "\\S(?:.{0,62}\\S)?") String requestKey) {
         if (promo.ownsTemplate(couponNo)) {
-            return toVO(promo.receive(SecurityUtils.currentUserNo(), couponNo));
+            return toVO(promo.receive(SecurityUtils.currentUserNo(), couponNo, requestKey));
         }
         return legacy.receive(couponNo);
     }

@@ -11,6 +11,7 @@ import ai.neargo.shop.spi.entitlement.*;
 import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.CheckoutFact;
 import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.Decision;
 import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.Reversal;
+import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.RefundPart;
 import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.IntentKind;
 import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.MerchantGroup;
 import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.Outcome;
@@ -56,6 +57,7 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
     private final ObjectProvider<PlatformSwitchPort> switches;
     private final ObjectMapper json;
     private final TransactionTemplate fresh;
+    private final TransactionTemplate receiptTransaction;
     private final boolean enabled;
     private final Clock clock;
     private final OutboxEventBus events;
@@ -67,6 +69,10 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
         fresh=new TransactionTemplate(transactions);
         fresh.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         fresh.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        // Duplicate acknowledgements lock one journal row and must see the last committed receipt.
+        receiptTransaction = new TransactionTemplate(transactions);
+        receiptTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        receiptTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
     @Override public LegacyCouponBoundOrderService.Binding bindingFor(EntitlementContext ctx,String no,LegacyCouponUsePort.Operation held) {
         check(ctx,no);return fresh.execute(s->scoped(()->{
@@ -118,7 +124,7 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
     @Override public Optional<Reversal> reversal(EntitlementContext ctx,String no) {
         check(ctx,no);return fresh.execute(s->scoped(()->{
             var row=load(ctx,no,false);
-            return row.getReversalSnapshot()==null?Optional.empty():Optional.of(read(row.getReversalSnapshot(),Reversal.class));
+            return Optional.ofNullable(latestReversal(row));
         }));
     }
     @Override @Transactional(propagation=Propagation.MANDATORY)
@@ -162,7 +168,7 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
         check(ctx,orderNo);return scoped(()->{
             var row=rows.lockByOrder(ctx.tenantNo(),orderNo);
             if(row==null) return false;
-            if(row.getReversalSnapshot()!=null) return true;
+            if(latestReversal(row)!=null) return true;
             var fact=fact(row);var original=decision(row).orElseThrow(()->BizException.of(ErrorCode.CONFLICT));
             if(original.outcome()!=Outcome.COMMIT) conflict();
             var order=orders.selectOne(Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getTenantNo,ctx.tenantNo())
@@ -194,7 +200,8 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
                     || !Objects.equals(child.getUserNo(),afterSale.getUserNo()) || !Objects.equals(child.getEntityNo(),afterSale.getEntityNo())) conflict();
             var row=rows.lockByOrder(ctx.tenantNo(),child.getOrderNo());
             if(row==null) return Optional.empty();
-            if(row.getReversalSnapshot()!=null) return Optional.of(read(row.getReversalSnapshot(),Reversal.class));
+            var prior = latestReversal(row);
+            if (prior != null && prior.reason() != ReverseReason.PARTIAL_REFUND) return Optional.of(prior);
             if(!allowed) return Optional.empty();
             var fact=fact(row);var original=decision(row).orElseThrow(()->BizException.of(ErrorCode.CONFLICT));
             if(original.outcome()!=Outcome.COMMIT || !fact.userNo().equals(child.getUserNo())) conflict();
@@ -204,15 +211,40 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
             if(!OrdOrder.PAID.equals(order.getStatus())) return Optional.empty();
             var children=subs.selectList(Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getTenantNo,ctx.tenantNo())
                     .eq(OrdSubOrder::getOrderNo,child.getOrderNo()));
-            if(children.isEmpty() || children.stream().anyMatch(c->!fullyReturned(ctx,c))) return Optional.empty();
-            var reversal=new Reversal(fact.checkoutNo(),fact.operationNo(),BizKey.next(BizKey.ENTITLEMENT_DECISION),
-                    order.getOrderNo(),afterSaleNo,fact.economicHash(),fact.currency(),original.discountMinor(),ReverseReason.FULL_REFUND,
-                    clock.instant().truncatedTo(ChronoUnit.MILLIS));
-            row.setReversalSnapshot(write(reversal));pending(row);save(row,ctx);
+            boolean closed = !children.isEmpty() && children.stream().allMatch(c -> fullyReturned(ctx,c));
+            var settled = rows.settledReturns(ctx.tenantNo(), order.getOrderNo(), fact.userNo());
+            var parts = new java.util.ArrayList<>(settled.stream()
+                    .filter(s -> s.amountMinor() != null && s.amountMinor() > 0)
+                    .map(s -> new RefundPart(s.afterSaleNo(), s.amountMinor())).toList());
+            long amount = parts.stream().mapToLong(RefundPart::amountMinor).reduce(0, Math::addExact);
+            if (amount > original.discountMinor()) conflict();
+            if (prior != null && !parts.containsAll(prior.parts())) conflict();
+            if (!closed && (amount == 0 || prior != null && prior.parts().equals(parts))) return Optional.ofNullable(prior);
+            String source = afterSaleNo;
+            if (closed) {
+                // Reserve the unit restoration for a settled receipt without a prior partial entry.
+                var accounted = prior == null ? List.<String>of() : prior.parts().stream().map(RefundPart::afterSaleNo).toList();
+                source = settled.stream().map(s -> s.afterSaleNo()).filter(no -> !accounted.contains(no))
+                        .reduce((first,last) -> last).orElse(afterSaleNo);
+                String terminalSource = source;
+                parts.removeIf(part -> part.afterSaleNo().equals(terminalSource));
+            }
+            var reversal = new Reversal(fact.checkoutNo(), fact.operationNo(), BizKey.next(BizKey.ENTITLEMENT_DECISION),
+                    order.getOrderNo(), source, fact.economicHash(), fact.currency(), closed ? original.discountMinor() : amount,
+                    closed ? ReverseReason.FULL_REFUND : ReverseReason.PARTIAL_REFUND,
+                    clock.instant().truncatedTo(ChronoUnit.MILLIS), parts);
+            if (closed) row.setReversalSnapshot(write(reversal));
+            else row.setPartialReturnSnapshot(write(reversal));
+            pending(row);save(row,ctx);
             events.publish(new LegacyCouponCheckoutEvents.Decided(ctx.tenantNo(),fact.entityNo(),fact.checkoutNo(),fact.operationNo()));
             return Optional.of(reversal);
         }));
     }
+    private Reversal latestReversal(OrdLegacyCouponCheckout row) {
+        String snapshot = row.getReversalSnapshot() == null ? row.getPartialReturnSnapshot() : row.getReversalSnapshot();
+        return snapshot == null ? null : read(snapshot, Reversal.class);
+    }
+
     private boolean fullyReturned(EntitlementContext ctx,OrdSubOrder child) {
         if(OrdSubOrder.CANCELLED.equals(child.getStatus())) return true;
         if(!OrdSubOrder.REFUNDED.equals(child.getStatus())) return false;
@@ -246,7 +278,7 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
             var sub=subs.selectOne(Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getTenantNo,tenant).eq(OrdSubOrder::getSubOrderNo,subNo));
             if(sub==null) return List.of();
             var row=rows.findByOrder(tenant,sub.getOrderNo());
-            if(row==null || !"COMMITTED".equals(row.getStatus()) || row.getReversalSnapshot()!=null || row.getHeldSnapshot()==null) return List.of();
+            if(row==null || !"COMMITTED".equals(row.getStatus()) || row.getHeldSnapshot()==null) return List.of();
             var f=fact(row);var held=read(row.getHeldSnapshot(),LegacyCouponUsePort.Operation.class);
             String title=rows.originalTitle(tenant,f.origin().sourceSystem().name(),f.userNo(),f.origin().sourceNo());
             return held.allocations().stream().filter(a->Objects.equals(a.merchantNo(),sub.getEntityNo())
@@ -254,11 +286,26 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
                     .map(a->new OrderVO.DiscountLine("COUPON",title,a.discountMinor(),"MERCHANT")).toList();
         });
     }
+    @Override
+    public OrderVO.CouponReturn couponReturn(String tenant, String order, String entity, String store) {
+        return scoped(() -> {
+            var row = rows.findByOrder(tenant, order);
+            if (row == null || !"REVERSED".equals(row.getPayState())) return null;
+            var reversal = read(row.getReversalSnapshot(), Reversal.class);
+            var hold = read(row.getHeldSnapshot(), LegacyCouponUsePort.Operation.class);
+            long amount = hold.allocations().stream()
+                    .filter(a -> Objects.equals(entity, a.merchantNo()) && Objects.equals(store, a.storeNo()))
+                    .mapToLong(a -> a.discountMinor()).sum();
+            if (amount == 0) return null;
+            return new OrderVO.CouponReturn(reversal.reason() == ReverseReason.CANCELLED ? "ORDER_CANCEL" : "AFTER_SALE",
+                    amount, reversal.occurredAt().toEpochMilli());
+        });
+    }
     @Override public String originalTitle(String tenant,String no,boolean returned) {
         ContractChecks.id(tenant);ContractChecks.id(no);return scoped(()->{
             var row=rows.findByOrder(tenant,no);
             if(row==null || !"COMMITTED".equals(row.getStatus())) return null;
-            if(returned? !"REVERSED".equals(row.getPayState()):row.getReversalSnapshot()!=null) return null;
+            if (returned != "REVERSED".equals(row.getPayState())) return null;
             var f=fact(row);return rows.originalTitle(tenant,f.origin().sourceSystem().name(),f.userNo(),f.origin().sourceNo());
         });
     }
@@ -281,17 +328,18 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
             events.publish(new LegacyCouponCheckoutEvents.Decided(ctx.tenantNo(),fact.entityNo(),no,fact.operationNo()));return true;
         }));
     }
-    @Override public void acknowledge(EntitlementContext ctx,String no,LegacyCouponUsePort.Operation completed) {
-        noAmbient();check(ctx,no);ContractChecks.present(completed);fresh.executeWithoutResult(tx->scoped(()->{
+    @Override public void acknowledge(EntitlementContext ctx,String no,String appliedDecisionNo,LegacyCouponUsePort.Operation completed) {
+        noAmbient();check(ctx,no);ContractChecks.present(completed);receiptTransaction.executeWithoutResult(tx->scoped(()->{
             var row=load(ctx,no,true);var fact=fact(row);var d=decision(row).orElseThrow(()->BizException.of(ErrorCode.CONFLICT));
             same(fact.checkoutNo(),completed.checkoutNo());same(fact.operationNo(),completed.operationNo());
             same(fact.targetInstanceNo(),completed.instanceNo());same(fact.entityNo(),completed.entityNo());
             same(fact.currency(),completed.currency());same(fact.economicHash(),completed.economicHash());
-            var reversal=row.getReversalSnapshot()==null?null:read(row.getReversalSnapshot(),Reversal.class);
-            String expected=reversal!=null?"REVERSED":d.outcome()==Outcome.COMMIT?"COMMITTED":"RELEASED";
+            var reversal=latestReversal(row);
+            String expected=reversal!=null && reversal.reason()!=ReverseReason.PARTIAL_REFUND?"REVERSED":d.outcome()==Outcome.COMMIT?"COMMITTED":"RELEASED";
             same(expected,completed.status().name());
             if(d.outcome()==Outcome.COMMIT) same(d.discountMinor(),completed.discountMinor());
             String decisionNo=reversal==null?d.decisionNo():reversal.decisionNo();
+            same(decisionNo,appliedDecisionNo);
             if(expected.equals(row.getPayState()) && decisionNo.equals(row.getPayDecisionNo())) return null;
             row.setPayState(expected);row.setPayDecisionNo(decisionNo);row.setPayAckedAt(utcNow());
             row.setRecoveryDueAt(null);save(row,ctx);return null;
@@ -330,7 +378,7 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
     private void save(OrdLegacyCouponCheckout row,EntitlementContext ctx) {
         row.setUpdatedAt(utcNow());row.setUpdatedBy(ctx.actorNo());
         var change=new LegacyCouponCheckoutMapper.StateChange(row.getTenantNo(),row.getCheckoutNo(),row.getVersion(),
-                row.getStatus(),row.getHeldSnapshot(),row.getDecisionSnapshot(),row.getReversalSnapshot(),row.getOrderNo(),
+                row.getStatus(),row.getHeldSnapshot(),row.getDecisionSnapshot(),row.getReversalSnapshot(),row.getPartialReturnSnapshot(),row.getOrderNo(),
                 row.getPayState(),row.getPayDecisionNo(),row.getPayAckedAt(),row.getRecoveryDueAt(),row.getUpdatedAt(),row.getUpdatedBy());
         if(rows.updateState(change)!=1) conflict();
         row.setVersion(row.getVersion()+1);

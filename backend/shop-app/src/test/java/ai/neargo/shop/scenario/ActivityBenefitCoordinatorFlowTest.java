@@ -142,7 +142,7 @@ class ActivityBenefitCoordinatorFlowTest {
         version.setRuleSnapshot(snapshot); version.setRuleHash(ActivityCommandDeduplicator.hash(snapshot));
         version.setPublishedBy("FIXTURE"); version.setPublishedAt(LocalDateTime.now(ZoneOffset.UTC));
         versions.insert(version);
-        var budget = new PmtActivityBudget(); audit(budget); budget.setActivityNo(no); budget.setCurrency("CNY");
+        var budget = PmtActivityBudget.forActivity(no); audit(budget); budget.setCurrency("CNY");
         budget.setQuotaLimit(5L); budget.setBudgetLimitMinor(0L); budget.setPerUserLimit(1);
         budget.setQuotaHeld(0L); budget.setQuotaUsed(0L); budget.setBudgetHeldMinor(0L); budget.setBudgetUsedMinor(0L);
         budgets.insert(budget); return no;
@@ -167,7 +167,7 @@ class ActivityBenefitCoordinatorFlowTest {
             var result = coordinator.claim(context, new BenefitClaimCommand(version, draft.activityNo(),
                     published.versionNo(), owner[1], owner[2]), "published");
             assertThat(result.status()).isEqualTo("COMMITTED");
-            assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_activity_budget WHERE activity_no=?",
+            assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",
                     Long.class, draft.activityNo())).isEqualTo(1);
         } finally {
             jdbc.update("UPDATE pmt_preset_template SET enabled=0 WHERE tenant_no='MAIN' AND template_code='AP004'");
@@ -181,10 +181,10 @@ class ActivityBenefitCoordinatorFlowTest {
         var result = coordinator.claim(context, command, "bundle");
         assertThat(result.status()).isEqualTo("COMMITTED"); assertThat(result.grants()).hasSize(2);
         assertThat(result.grants()).allSatisfy(g -> assertThat(g.instanceNos()).hasSize(1));
-        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_activity_budget WHERE activity_no=?",
+        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",
                 Long.class, no))
                 .isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_activity_budget WHERE activity_no=?",
+        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",
                 Long.class, no))
                 .isZero();
         assertThat(coordinator.claim(context, command, "bundle")).isEqualTo(result);
@@ -199,7 +199,7 @@ class ActivityBenefitCoordinatorFlowTest {
                 + "(SELECT template_no FROM ent_template_version WHERE version_no=?)", second);
         var result = coordinator.claim(context, command, "failed-bundle");
         assertThat(result.status()).isEqualTo("ABORTED");
-        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_activity_budget WHERE activity_no=?",
+        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",
                 Long.class, no))
                 .isZero();
         for (var child : plan.grants()) {
@@ -222,7 +222,7 @@ class ActivityBenefitCoordinatorFlowTest {
         }).when(pay).prepare(any(), any());
         var result = coordinator.claim(context, command, "lost");
         assertThat(result.status()).isEqualTo("PROCESSING");
-        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_activity_budget WHERE activity_no=?",
+        assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",
                 Long.class, no))
                 .isEqualTo(1);
         var plan = intents.mine(context, result.intentNo());

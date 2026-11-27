@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.*;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
 import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.springframework.context.annotation.*;
 import org.springframework.core.io.ClassPathResource;
@@ -51,8 +52,9 @@ class LegacyCouponHistoricalReturnNativeMysqlTest {
     @TestConfiguration(proxyBeanMethods=false) @EnableTransactionManagement static class Transactions { }
     @Test void concurrentHistoricalReturnsRestoreOnceFromTheOriginalBaseline() throws Exception {
         String url=System.getenv("LEGACY_IMPORT_NATIVE_MYSQL_URL");
-        assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/legacy_import_native_fixture\\?.*");
-        var ds=new DriverManagerDataSource(url,"root","");var jdbc=new JdbcTemplate(ds);
+        assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/legacy_import_native_fixture(?:_[0-9a-f]{12})?\\?.*");
+        var ds=new DriverManagerDataSource(url,System.getenv().getOrDefault("COMMERCE_MYSQL_USER","root"),
+                System.getenv().getOrDefault("COMMERCE_MYSQL_PASSWORD",""));var jdbc=new JdbcTemplate(ds);
         var ddl=new ResourceDatabasePopulator();
         for(String file:List.of("V478__entitlement_catalog.sql","V482__pay_entitlement_event_outbox_inbox.sql",
                 "V486__entitlement_issue_capacity.sql","V487__entitlement_grants_and_ledger.sql",
@@ -60,7 +62,8 @@ class LegacyCouponHistoricalReturnNativeMysqlTest {
                 "V515__entitlement_migration_evidence_stage.sql","V516__entitlement_manifest_stage_metadata.sql",
                 "V517__entitlement_migration_alias.sql","V521__legacy_coupon_usage_facts.sql",
                 "V522__legacy_coupon_target_plan.sql","V524__legacy_coupon_target_import.sql",
-                "V525__legacy_coupon_historical_usage.sql","V526__legacy_coupon_historical_return.sql"))
+                "V525__legacy_coupon_historical_usage.sql","V526__legacy_coupon_historical_return.sql","V492__entitlement_use_reversal.sql","V711__coupon_reversal_source.sql",
+                "V518__legacy_coupon_pay_operation.sql","V719__coupon_use_partial_return_snapshot.sql"))
             ddl.addScript(new ClassPathResource("db/migration/"+file));
         ddl.execute(ds);
         var cfg=new MybatisConfiguration();cfg.setMapUnderscoreToCamelCase(true);
@@ -87,12 +90,16 @@ class LegacyCouponHistoricalReturnNativeMysqlTest {
         var migration=mock(EntitlementMigrationService.class);when(migration.assess(scope,"MS1")).thenReturn(assessment);
         var hash=new AtomicReference<String>();var available=new AtomicBoolean(true);var reads=new AtomicInteger();
         try(var context=new AnnotationConfigApplicationContext()) {
-            context.register(Transactions.class,EntitlementCommandDeduplicator.class,LegacyMigrationEvidenceReader.class,
+            context.register(Transactions.class,ai.neargo.shop.pay.migration.service.LegacyCouponReversalRecorder.class,EntitlementCommandDeduplicator.class,LegacyMigrationEvidenceReader.class,
                     EntitlementMigrationPlanWriter.class,EntitlementMigrationPlanServiceImpl.class,
                     LegacyCouponMigrationImportWriter.class,LegacyCouponMigrationImportServiceImpl.class,LegacyCouponHistoricalUsageWriter.class,
                     EntitlementPostingServiceImpl.class,EntitlementOwnerRegistryServiceImpl.class,
                     LegacyCouponHistoricalReturnServiceImpl.class,LegacyCouponHistoricalReturnWriter.class,
                     ai.neargo.shop.pay.entitlement.event.PayEntitlementEventPublisher.class);
+            var docs = mock(PayOperationsDocuments.class);
+            when(docs.internal(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString())).thenAnswer(invocation -> invocation.getArgument(2));
+            context.getBeanFactory().registerSingleton("payOperationsDocuments", docs);
             context.registerBean("payTxManager",PlatformTransactionManager.class,()->new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class,()->json);
             context.registerBean(LegacySnapshotCipher.class,()->new LegacySnapshotCipher("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","NATIVE"));
@@ -120,7 +127,7 @@ class LegacyCouponHistoricalReturnNativeMysqlTest {
             for(Class<?> mapper:List.of(EntMigrationStageMapper.class,EntMigrationPlanMapper.class,EntMigrationAliasMapper.class,
                     EntMigrationImportMapper.class,EntMigrationAssetMapper.class,EntTemplateMapper.class,EntTemplateVersionMapper.class,
                     EntInstanceMapper.class,EntIssuePolicyMapper.class,EntIssueRecipientMapper.class,EntOwnerRegistryMapper.class,
-                    EntLedgerMapper.class,PayEntCommandDedupMapper.class,EntUsageMapper.class,EntMigrationUsageMapper.class,EntMigrationReturnMapper.class,PayEntOutboxMapper.class)) register(context,mapper,sessions);
+                    EntLedgerMapper.class,PayEntCommandDedupMapper.class,EntUsageMapper.class,EntMigrationUsageMapper.class,EntMigrationReturnMapper.class,EntUseReversalMapper.class,PayEntOutboxMapper.class)) register(context,mapper,sessions);
             context.refresh();
             var evidence=context.getBean(LegacyMigrationEvidenceReader.class);var cipher=context.getBean(LegacySnapshotCipher.class);
             var stage=new EntMigrationStage();EntitlementRecords.audit(stage,new EntitlementContext("MAIN","OP1","S1","d".repeat(64)));
@@ -159,6 +166,9 @@ class LegacyCouponHistoricalReturnNativeMysqlTest {
             assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance",Integer.class)).isEqualTo(1);
             assertThat(jdbc.queryForObject("SELECT asset_seq FROM ent_instance",Long.class)).isEqualTo(2);
             assertThat(jdbc.queryForObject("SELECT status FROM ent_usage",String.class)).isEqualTo("REVERSED");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_use_reversal r JOIN ent_usage u"
+                    +" ON u.tenant_no=r.tenant_no AND u.usage_no=r.usage_no WHERE r.source_type='AFTER_SALE' AND r.units=1",
+                    Integer.class)).isOne();
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_outbox",Integer.class)).isEqualTo(1);
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_grant",Integer.class)).isZero();
             available.set(false);int prior=reads.get();

@@ -16,14 +16,16 @@ public final class LegacyCouponQuotePolicy {
     public Result calculate(EntitlementDefinition rule,String entityNo,List<MerchantGroup> groups) {
         new EntitlementRuleValidator().validate(rule);
         if(!"ORDER_COUPON".equals(rule.kind()) || !"MERCHANT".equals(rule.funder()) || !"COUNT".equals(rule.usageModel())
-                || !"ALL".equals(rule.redemptionScope().mode()) || rule.minQty()!=null
+                || !Set.of("ALL","STORES").contains(rule.redemptionScope().mode()) || rule.minQty()!=null
                 || !Set.of("CASH","PERCENT").contains(rule.benefitMode())
                 || ("PERCENT".equals(rule.benefitMode()) && (rule.benefitCapMinor()==null || rule.benefitCapMinor()<=0)))
             throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if(entityNo==null || entityNo.isBlank() || groups==null || groups.isEmpty()
                 || groups.stream().map(MerchantGroup::groupKey).distinct().count()!=groups.size())
             throw BizException.of(ErrorCode.BAD_REQUEST);
-        var eligible=groups.stream().filter(g->entityNo.equals(g.merchantNo())).toList();
+        var scope=rule.redemptionScope();
+        var eligible=groups.stream().filter(g->entityNo.equals(g.merchantNo()))
+                .filter(g->"ALL".equals(scope.mode()) || g.storeNo()!=null && scope.refs().contains(g.storeNo())).toList();
         long base=0;
         try { for(var group:eligible) base=Math.addExact(base,group.goodsAmountMinor()); }
         catch(ArithmeticException overflow) { throw BizException.of(ErrorCode.BAD_REQUEST); }

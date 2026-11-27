@@ -32,6 +32,39 @@ class MemberEnrollFlowTest {
     @Autowired
     private ai.neargo.shop.marketing.attribution.AttributionService attributionService;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Test
+    void currentRulesAndAssignedGradeHaveIndependentVersions() {
+        String p = person();
+        String e = entity();
+        memberService.onOrderPaid("SUB-GRADE-" + seq, "U" + seq, p, e, "ST-1", 100, System.currentTimeMillis());
+        String no = memberService.find(e, p).orElseThrow().getMemberNo();
+        assertThat(memberService.detail(e, no).orElseThrow().gradeCode()).isNull();
+        jdbc.update("""
+                INSERT INTO mbr_level_rule (tenant_no,entity_no,scope_type,scope_no,rule_no,version_no,
+                    status,effective_from,basis,levels_json,benefits_json,downgrade_policy,published_by,
+                    published_at,created_at,updated_at,created_by,updated_by)
+                VALUES ('MAIN',?,'ENTITY',?,'G-R',?,'ACTIVE','2020-01-01','ORDER_COUNT',
+                    ?,?,
+                    'PERIODIC','TEST',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'TEST','TEST')
+                """, e, e, "G-V2-" + seq, "[{\"code\":\"BASE\",\"minOrders\":0}]".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                "{}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        jdbc.update("UPDATE mbr_member SET grade_code='GOLD',level_rule_version_no=? WHERE member_no=?",
+                "G-V1-" + seq, no);
+        var settings = memberService.settings(e);
+        assertThat(settings.activeGradeVersionNo()).isEqualTo("G-V2-" + seq);
+        assertThat(settings.gradeThresholds()).singleElement().satisfies(tier -> {
+            assertThat(tier.code()).isEqualTo("BASE");
+            assertThat(tier.minOrders()).isZero();
+        });
+        var detail = memberService.detail(e, no).orElseThrow();
+        assertThat(detail.gradeCode()).isEqualTo("GOLD");
+        assertThat(detail.levelRuleVersionNo()).isEqualTo("G-V1-" + seq);
+        assertThat(detail.member().level()).isEqualTo(MbrMember.LEVEL_NEW);
+    }
+
     private static int seq = 5000;
 
     private String person() {

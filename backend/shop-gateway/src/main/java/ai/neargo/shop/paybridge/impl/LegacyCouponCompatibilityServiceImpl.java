@@ -19,6 +19,7 @@ import ai.neargo.shop.promotion.dto.CouponVOs.CustomerCoupon;
 import ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon;
 import ai.neargo.shop.promotion.dto.CouponVOs.MyCouponVO;
 import ai.neargo.shop.promotion.service.CouponService;
+import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort;
@@ -83,13 +84,17 @@ public class LegacyCouponCompatibilityServiceImpl implements CouponService {
         if(route==null) return legacy.setStatus(entity,no,status);
         return view(original,pay.status(route.scope(),route.ref(),status,"LS"+UUID.randomUUID()));
     }
+    static String legacyScopeType(EntitlementDefinition definition) {
+        return "STORES".equals(definition.redemptionScope().mode()) ? "STORE" : definition.redemptionScope().mode();
+    }
+
     private static CouponVO view(CouponVO old,Snapshot s) {
         var d=s.definition();var p=s.template().issuePolicy();var validity=d.validity();
         String status="ACTIVE".equals(s.template().status()) && !p.enabled()?"PAUSED":s.template().status();
         Long max=p.limitCount()==null?null:Math.multiplyExact(p.limitCount(),Math.multiplyExact((long)d.totalUnits(),
                 "CASH".equals(d.benefitMode())?d.benefitValue():d.benefitCapMinor()));
         return new CouponVO(old.couponNo(),d.title(),d.benefitMode(),d.benefitValue(),d.benefitCapMinor(),d.benefitRef(),
-                d.minAmountMinor(),d.minQty(),d.redemptionScope().mode(),d.redemptionScope().refs(),old.scopeDesc(),validity.mode(),
+                d.minAmountMinor(),d.minQty(),legacyScopeType(d),d.redemptionScope().refs(),old.scopeDesc(),validity.mode(),
                 validity.startAt()==null?null:validity.startAt().toEpochMilli(),validity.endAt()==null?null:validity.endAt().toEpochMilli(),validity.validDays(),
                 d.allowedIssueModes().contains("CENTER")?"CENTER":d.allowedIssueModes().contains("ACTIVITY")?"ACTIVITY":"TARGETED","ORDER",d.totalUnits(),
                 p.limitCount()==null?null:Math.toIntExact(p.limitCount()),Math.toIntExact(p.issuedCount()),p.perUserLimit(),
@@ -100,7 +105,7 @@ public class LegacyCouponCompatibilityServiceImpl implements CouponService {
         if(c.couponNo()==null || c.couponNo().isBlank()) return legacy.save(e,c,actor);
         var original=legacy.detail(e,c.couponNo());var routed=route(e,c.couponNo());
         if(routed==null) return legacy.save(e,c,actor);
-        if(!"ORDER".equals(c.redeemMode()) || !"ALL".equals(c.scopeType())
+        if(!"ORDER".equals(c.redeemMode()) || !("ALL".equals(c.scopeType()) || "STORE".equals(c.scopeType()))
                 || c.issueMode()==null || !Set.of("CENTER","TARGETED","ACTIVITY").contains(c.issueMode())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         var current=pay.get(routed.scope(),routed.ref()).definition();
         boolean relative="RELATIVE".equals(c.validityMode());
@@ -108,17 +113,30 @@ public class LegacyCouponCompatibilityServiceImpl implements CouponService {
                 relative || c.endAt()==null?null:java.time.Instant.ofEpochMilli(c.endAt()),relative?c.validDays():null,"GRANTED","ROLLING_DAYS",current.validity().zone());
         var definition=new EntitlementDefinition(c.title(),"ORDER_COUPON","MERCHANT","CNY",c.benefitMode(),c.benefitValue(),
                 c.benefitCapMinor(),c.benefitRef(),c.minAmountMinor(),c.minQty(),"COUNT",c.timesTotal()==null?1:c.timesTotal(),null,validity,
-                new EntitlementDefinition.RedemptionScope("ALL",c.scopeRefs()==null?List.of():c.scopeRefs()),
+                new EntitlementDefinition.RedemptionScope("STORE".equals(c.scopeType()) ? "STORES" : "ALL",c.scopeRefs()==null?List.of():c.scopeRefs()),
                 "CENTER".equals(c.issueMode())?List.of("CENTER","TARGETED"):"ACTIVITY".equals(c.issueMode())?List.of("TARGETED","ACTIVITY"):List.of("TARGETED"));
         var scope=new CatalogScope("MAIN",e,actor,false);
         return view(original,pay.save(scope,routed.ref(),new DefinitionChange(definition,c.totalCount()==null?null:c.totalCount().longValue(),
                 c.budgetMinor()==null || c.budgetMinor()==0?null:c.budgetMinor(),c.perUserLimit()==null?1:c.perUserLimit()),"LS"+UUID.randomUUID()));
     }
-    public CouponIssueVO issue(String e,String no,String segment,List<AudienceItem> a,String actor) {
-        legacy.detail(e,no);var routed=route(e,no);if(routed==null) return legacy.issue(e,no,segment,a,actor);
+    public CouponIssueVO sourceIssueReceipt(String entity,String coupon,String segment,List<AudienceItem> audiences,String actor,String key,boolean reachableOnly) {
+        return legacy.sourceIssueReceipt(entity,coupon,segment,audiences,actor,key,reachableOnly);
+    }
+    public CouponIssueVO issue(String e,String no,String segment,List<AudienceItem> a,String actor,String key,boolean reachableOnly) {
+        legacy.detail(e,no);var routed=route(e,no);if(routed==null) return legacy.issue(e,no,segment,a,actor,key,reachableOnly);
+        if (key != null) {
+            var receipt = sourceIssueReceipt(e,no,segment,a,actor,key,reachableOnly);
+            if (receipt != null) return receipt;
+        }
         var result=issueCoordinator.issue(new CatalogScope("MAIN",e,actor,false),
-                new LegacyCouponIssueViews.Command(routed.ref(),"TARGETED",segment,a),"LI"+UUID.randomUUID());
+                new LegacyCouponIssueViews.Command(routed.ref(),"TARGETED",segment,a,null,1,null,reachableOnly),payIssueKey("TARGETED", no, "", key));
         return issueView(result);
+    }
+    /** Pay deduplicates per tenant and operation. Preserve the source coupon/claimant namespaces there. */
+    private static String payIssueKey(String mode, String coupon, String claimant, String key) {
+        if (key == null) return UUID.randomUUID().toString();
+        return ActivityCommandDeduplicator.hash(mode + ":" + coupon.length() + ":" + coupon
+                + claimant.length() + ":" + claimant + key);
     }
     private static CouponIssueVO issueView(LegacyCouponIssueViews.View v) {
         return new CouponIssueVO(v.issueNo(),v.sourceTemplateNo(),v.segmentNo(),v.planned(),v.issued(),v.skipped(),
@@ -157,12 +175,19 @@ public class LegacyCouponCompatibilityServiceImpl implements CouponService {
         }
         return List.copyOf(out);
     }
-    public HeldCoupon receive(String user,String no) {
+    public HeldCoupon sourceClaimReceipt(String user,String no,String key) {
+        return legacy.sourceClaimReceipt(user,no,key);
+    }
+    public HeldCoupon receive(String user,String no,String key) {
+        if (key != null) {
+            var receipt = sourceClaimReceipt(user,no,key);
+            if (receipt != null) return receipt;
+        }
         var ctx=new EntitlementContext("MAIN",user,"LEGACY_CENTER","0".repeat(64));
         var entity=identities.templateEntity(ctx,SourceSystem.PMT,no).orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND));
-        var routed=route(entity,no);if(routed==null) return legacy.receive(user,no);
+        var routed=route(entity,no);if(routed==null) return legacy.receive(user,no,key);
         var result=issueCoordinator.issue(new CatalogScope("MAIN",entity,user,false),
-                new LegacyCouponIssueViews.Command(routed.ref(),"CENTER",null,List.of()),"LC"+UUID.randomUUID());
+                new LegacyCouponIssueViews.Command(routed.ref(),"CENTER",null,List.of()),payIssueKey("CENTER", no, user, key));
         if(result.issued()==0) throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
         String instance=result.results().stream().filter(i->"ISSUED".equals(i.status()) && user.equals(i.userNo())).findFirst().orElseThrow().instanceNo();
         return wallet.issuedHeld(user).stream().filter(c->instance.equals(c.userCouponNo())).findFirst().orElseThrow(()->BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));

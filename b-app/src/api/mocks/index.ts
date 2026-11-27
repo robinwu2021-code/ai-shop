@@ -94,6 +94,7 @@ mSvFinancialBrandResume:async()=>{throw Error("Financial operations require the 
   mSvIssuerVersion:async()=>{throw Error('Issuer operations require the real backend')},
   mSvIssuerEntities:async()=>{throw Error('Issuer operations require the real backend')},
   mSvWalletRecords:async()=>{throw Error("Wallet reads require the real backend")},
+  mSvConsumptionRefund:async()=>{throw Error("Refund requires the real backend")},
   mSvConsumptionCancel:async()=>{throw Error("Consumption requires the real backend")},
   mSvConsumptionResolve:async()=>{throw Error("Consumption requires the real backend")},
   mSvConsumptionPreview:async()=>{throw Error("Consumption requires the real backend")},

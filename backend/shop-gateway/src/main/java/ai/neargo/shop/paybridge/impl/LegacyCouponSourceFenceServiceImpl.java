@@ -23,6 +23,9 @@ import ai.neargo.shop.promotion.dto.ActivityActor;
 import ai.neargo.shop.promotion.entity.PmtApply;
 import ai.neargo.shop.promotion.entity.PmtCoupon;
 import ai.neargo.shop.promotion.entity.PmtCouponScope;
+import ai.neargo.shop.promotion.entity.PmtCouponIssue;
+import ai.neargo.shop.promotion.entity.PmtActivityScope;
+import java.util.stream.Collectors;
 import ai.neargo.shop.promotion.entity.PmtUserCoupon;
 import ai.neargo.shop.paybridge.mapper.LegacyCouponFenceMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers;
@@ -30,6 +33,7 @@ import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
 import ai.neargo.shop.spi.entitlement.LegacyCouponFrozenSnapshotPort.Query;
 import ai.neargo.shop.spi.entitlement.LegacyCouponFrozenSnapshotPort.Snapshot;
 import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
+import ai.neargo.shop.promotion.service.impl.PmtCouponVersionPublisher;
 import ai.neargo.shop.spi.entitlement.ContractChecks;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceIdentity;
@@ -312,6 +316,15 @@ public class LegacyCouponSourceFenceServiceImpl implements LegacyCouponSourceFen
             var merchant=merchants.getIfAvailable();
             var merchantOwner=merchantFacts.getIfAvailable();
             boolean active=merchantOwner!=null && merchantOwner.entityActive(ctx.tenantNo(),root.entity());
+            if (!old && root.promo().getTemplateVersionNo() != null) {
+                String current = root.promo().getTemplateVersionNo();
+                boolean multiple = instances.stream().map(PmtUserCoupon.class::cast)
+                        .anyMatch(i -> !current.equals(i.getTemplateVersionNo()))
+                        || issueRows.stream().map(PmtCouponIssue.class::cast).anyMatch(i -> !current.equals(i.getTemplateVersionNo()));
+                if (multiple || PmtCoupon.SCOPE_STORE.equals(root.promo().getScopeType())) {
+                    facts.put("issuedVersions", issuedVersions(ctx.tenantNo(), root));
+                }
+            }
             facts.put("entityActive",active);
             facts.put("market",active && merchant!=null ? merchant.marketOf(root.entity()) : null);
             facts.put("peerTemplateCount",old?locks.peerPromoTemplates(ctx.tenantNo(),root.no())
@@ -375,6 +388,28 @@ public class LegacyCouponSourceFenceServiceImpl implements LegacyCouponSourceFen
         }
         return bytes.toString(StandardCharsets.UTF_8);
     }
+    /** Immutable published definitions and their own scope rows, hashed with the frozen family manifest. */
+    private Map<String,Object> issuedVersions(String tenant, Root root) {
+        var versions = locks.issuedVersions(tenant, root.entity(), root.no(), MAX_INSTANCES + 1);
+        var scopes = locks.issuedScopes(tenant, root.no(), MAX_INSTANCES + 1);
+        if (versions.size() > MAX_INSTANCES || scopes.size() > MAX_INSTANCES) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        var byVersion = scopes.stream().collect(Collectors.groupingBy(PmtActivityScope::getVersionNo));
+        var result = new TreeMap<String,Object>();
+        for (var version : versions) {
+            var rule = json.readTree(version.getRuleSnapshot());
+            if (version.getVersionNo().equals(root.promo().getTemplateVersionNo())
+                    && !rule.equals(json.readTree(PmtCouponVersionPublisher.ruleSnapshot(json, root.promo())))) continue;
+            String kind = rule.path("scopeType").asText();
+            var rows = byVersion.getOrDefault(version.getVersionNo(), List.of());
+            if (rows.isEmpty() || rows.stream().anyMatch(row -> !"TARGET".equals(row.getScopeDimension())
+                    || !kind.equals(row.getScopeKind()) || !Integer.valueOf(1).equals(row.getIncluded()))) continue;
+            var refs = rows.stream().map(PmtActivityScope::getRefNo).toList();
+            if (!"STORE".equals(kind) && !("ALL".equals(kind) && refs.equals(List.of("*")))) continue;
+            result.put(version.getVersionNo(), Map.of("rule", rule, "refs", refs));
+        }
+        return result;
+    }
+
     private record CapturedSource(String watermark,String contentHash,String payload) {
         @Override public String toString() { return "CapturedSource[payload=<redacted>]"; }
     }

@@ -35,6 +35,18 @@ public interface RefundLedgerMapper {
             + " AND e.sub_order_no=ord_sub_order.sub_order_no AND e.state='CASH_CONFIRMED' AND e.deleted=0)")
     int addPreparedSub(@Param("as") String as,@Param("no") String no,@Param("minor") long minor);
 
+    /** Called under the order-line lock retained by the ledger update. Cumulative floors preserve minor-unit tails. */
+    @Update("""
+        UPDATE ord_after_sale_item SET coupon_return_minor=(
+            SELECT FLOOR(CAST(i.coupon_share_minor AS DECIMAL(55,15))*i.refunded_qty/i.qty)
+                 - FLOOR(CAST(i.coupon_share_minor AS DECIMAL(55,15))*(i.refunded_qty-#{qty})/i.qty)
+            FROM ord_item i WHERE i.id=#{item} AND i.sub_order_no=#{sub} AND i.qty>0 AND i.deleted=0)
+        WHERE after_sale_no=#{sale} AND sub_order_no=#{sub} AND item_id=#{item}
+          AND qty=#{qty} AND deleted=0 AND coupon_return_minor IS NULL
+        """)
+    int recordCouponReturn(@Param("sale") String sale, @Param("sub") String sub,
+                           @Param("item") long item, @Param("qty") int qty);
+
     @Select("SELECT refunded_minor AS refunded, pay_amount AS pay FROM ord_sub_order WHERE sub_order_no = #{no} LIMIT 1")
     Map<String, Object> subRefundedAndPay(@Param("no") String no);
 

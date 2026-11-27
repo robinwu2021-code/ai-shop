@@ -101,6 +101,16 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
     /** Returns true for unified activities, including rejected unified requests (which throw). */
     @Transactional(value="transactionManager", propagation=Propagation.MANDATORY)
     public boolean commit(String userNo, String orderNo, CampaignPort.AppliedActivity selected) {
+        return commit(userNo, orderNo, selected, null);
+    }
+
+    @Override
+    @Transactional(value="transactionManager", propagation=Propagation.MANDATORY)
+    public boolean commitPos(String userNo, String orderNo, CampaignPort.AppliedActivity selected, String currency) {
+        return commit(userNo, orderNo, selected, currency);
+    }
+
+    private boolean commit(String userNo, String orderNo, CampaignPort.AppliedActivity selected, String posCurrency) {
         return DataScopeContext.executeWithoutScope(() -> {
             var preflight = head(selected.activityNo(), false);
             if (preflight == null || preflight.getDraftSnapshot() == null) return false;
@@ -127,9 +137,9 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
             }
             if (!flags.getActivity().isEnabled() || !"RUNNING".equals(head.getStatus())
                     || head.getArchivedAt()!=null) unavailable();
-            if (sub==null || !"WAIT_PAY".equals(sub.status()) || !Objects.equals(userNo,sub.userNo())) unavailable();
+            if (sub==null || !"WAIT_PAY".equals(sub.status()) || (posCurrency == null ? !Objects.equals(userNo,sub.userNo()) : userNo == null)) unavailable();
             long off=discount(snapshot.definition(), new CampaignPort.MerchantAmount(selected.merchantNo(),
-                    sub.goodsAmountMinor(),sub.goodsQuantity(),selected.storeNo()),Instant.now());
+                    sub.goodsAmountMinor(),sub.goodsQuantity(),selected.storeNo()),Instant.now(),posCurrency == null ? "CNY" : posCurrency);
             if (off<=0 || off!=selected.amountMinor() || !audienceMatches) unavailable();
             var budget=budgets.lock(head.getTenantNo(),head.getActivityNo());
             if (budget==null || !Objects.equals(budget.getCurrency(),snapshot.definition().currency())) unavailable();
@@ -141,6 +151,7 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
             var row=new PmtApply(); row.setTenantNo(head.getTenantNo());
             row.setApplyNo(BizKey.next(BizKey.PROMO_APPLY)); row.setPromoType(PmtApply.ACTIVITY);
             row.setPromoNo(head.getActivityNo()); row.setOrderNo(orderNo); row.setSubOrderNo(sub.subOrderNo());
+            row.setActivityVersionNo(head.getCurrentVersionNo());
             row.setUserNo(userNo); row.setEntityNo(selected.merchantNo()); row.setStoreNo(selected.storeNo());
             row.setAmountMinor(off); row.setRedeemMode(PmtCoupon.REDEEM_ORDER);
             row.setFunder(PmtCoupon.BY_MERCHANT); row.setAppliedAt(System.currentTimeMillis());
@@ -204,13 +215,15 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
     }
     private boolean capacity(PmtActivity head,String user,long off) {
         var b=budgets.selectOne(Wrappers.<PmtActivityBudget>lambdaQuery()
-                .eq(PmtActivityBudget::getTenantNo,head.getTenantNo()).eq(PmtActivityBudget::getActivityNo,head.getActivityNo()));
+                .eq(PmtActivityBudget::getTenantNo,head.getTenantNo()).eq(PmtActivityBudget::getTargetNo,head.getActivityNo())
+                .eq(PmtActivityBudget::getTargetType,"ACTIVITY").eq(PmtActivityBudget::getQuotaDimension,"TOTAL"));
         if (b==null || (b.getQuotaLimit()!=null && b.getQuotaLimit()-b.getQuotaHeld()-b.getQuotaUsed()<1)
                 || (b.getBudgetLimitMinor()!=null && b.getBudgetLimitMinor()-b.getBudgetHeldMinor()-b.getBudgetUsedMinor()<off)) return false;
         var p=people.selectOne(Wrappers.<PmtActivityParticipant>lambdaQuery()
-                .eq(PmtActivityParticipant::getTenantNo,head.getTenantNo()).eq(PmtActivityParticipant::getActivityNo,head.getActivityNo())
+                .eq(PmtActivityParticipant::getTenantNo,head.getTenantNo()).eq(PmtActivityParticipant::getTargetNo,head.getActivityNo())
+                .eq(PmtActivityParticipant::getTargetType,"ACTIVITY").eq(PmtActivityParticipant::getQuotaDimension,"PER_USER")
                 .eq(PmtActivityParticipant::getUserNo,user));
-        return p==null || b.getPerUserLimit()-p.getHeldCount()-p.getUsedCount()>0;
+        return p==null || b.getPerUserLimit()-p.getQuotaHeld()-p.getQuotaUsed()>0;
     }
     /** Existing checkout has no currency context; only its actual CNY fixed-cut contract is executable. */
     private boolean participates(PmtActivity head,String entity,String store){
@@ -219,7 +232,11 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
     }
 
     public static boolean supportsDefinition(UnifiedActivityDefinition definition) {
-        return "ORDER".equals(definition.scene()) && "CNY".equals(definition.currency())
+        return supportsDefinition(definition, "CNY");
+    }
+
+    private static boolean supportsDefinition(UnifiedActivityDefinition definition, String currency) {
+        return "ORDER".equals(definition.scene()) && currency.equals(definition.currency())
                 && definition.rule().tiers().isEmpty() && !definition.rule().benefits().isEmpty()
                 && definition.rule().benefits().stream().allMatch(benefit -> "CUT".equals(benefit.kind()))
                 && List.of("NONE", "AMOUNT", "QTY").contains(definition.rule().trigger().type());
@@ -227,7 +244,11 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
 
     /** Fixed cuts are the only unified effect this adapter owns; no flash/gift/group widening. */
     static long discount(UnifiedActivityDefinition d,CampaignPort.MerchantAmount group,Instant now) {
-        if (!supportsDefinition(d) || group.goodsAmount()<=0 || group.storeNo()==null) return 0;
+        return discount(d, group, now, "CNY");
+    }
+
+    private static long discount(UnifiedActivityDefinition d, CampaignPort.MerchantAmount group, Instant now, String currency) {
+        if (!supportsDefinition(d, currency) || group.goodsAmount()<=0 || group.storeNo()==null) return 0;
         var scope=d.storeParticipationScope();
         if (!"ALL".equals(scope.mode()) && !("STORES".equals(scope.mode()) && scope.refs().contains(group.storeNo()))) return 0;
         var schedule=d.schedule();

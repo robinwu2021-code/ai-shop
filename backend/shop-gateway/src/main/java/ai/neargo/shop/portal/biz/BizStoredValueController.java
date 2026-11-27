@@ -169,6 +169,17 @@ public class BizStoredValueController {
         requireStore(c.storeNo(),BizPerms.SV_CONSUME_CREATE);var ctx=context("cancel-sv-service");String entity=BizContext.requireMerchantNo();serviceOrders.requireMerchant(ctx,entity,c.storeNo(),orderNo);
         return EntitlementServiceViews.Operation.from(serviceUses.cancel(ctx,entity,c.storeNo(),orderNo,"Merchant cancelled service"));
     }
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_REFUND + "')")
+    @PostMapping("/biz/stored-value/consumptions/order/{orderNo}/refund")
+    public EntitlementServiceUseCoordinator.ServiceOrderRefund refundConsumption(@PathVariable String orderNo,
+            @RequestBody RefundConsumption request) {
+        requireStore(request.storeNo(), BizPerms.PAY_REFUND);
+        return serviceUses.refund(context("refund-sv-service"), BizContext.requireMerchantNo(), request.storeNo(), orderNo);
+    }
+
+    public record RefundConsumption(String storeNo) {
+        public RefundConsumption { ContractChecks.id(storeNo); }
+    }
     public record CancelConsumption(String storeNo){public CancelConsumption{ContractChecks.id(storeNo);}}
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_CONSUME_CREATE+"')")
     @PostMapping("/biz/stored-value/consumptions/resolve")

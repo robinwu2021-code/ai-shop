@@ -7,10 +7,16 @@ import java.util.List;
 import java.util.Map;
 public final class LegacyCouponIssueViews {
     private LegacyCouponIssueViews() { }
-    public record Command(LegacyCouponTemplateViews.Reference reference,String mode,String segmentNo,List<AudienceItem> audiences,String userKey,int count,String targetDesc) {
-        public Command {ContractChecks.present(reference);audiences=audiences==null?List.of():List.copyOf(audiences);
+    public record Command(LegacyCouponTemplateViews.Reference reference,String mode,String segmentNo,List<AudienceItem> audiences,String userKey,int count,String targetDesc,
+            @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) Boolean reachableOnly) {
+        public Command(LegacyCouponTemplateViews.Reference reference,String mode,String segmentNo,List<AudienceItem> audiences,String userKey,int count,String targetDesc) {
+            this(reference,mode,segmentNo,audiences,userKey,count,targetDesc,null);
+        }
+        public Command {
+            reachableOnly = Boolean.TRUE.equals(reachableOnly) ? Boolean.TRUE : null;
+            ContractChecks.present(reference);audiences=audiences==null?List.of():List.copyOf(audiences);
             if(count==0 && userKey==null) count=1;
-            new LegacyCouponAudiencePort.Query(reference.source(),reference.batchNo(),reference.planHash(),"CHECK",mode,segmentNo,audiences,userKey,count,userKey!=null);
+            new LegacyCouponAudiencePort.Query(reference.source(),reference.batchNo(),reference.planHash(),"CHECK",mode,segmentNo,audiences,userKey,count,userKey!=null,reachableOnly);
             ContractChecks.require(targetDesc==null || targetDesc.length()<=255);}
         public Command(LegacyCouponTemplateViews.Reference reference,String mode,String segmentNo,List<AudienceItem> audiences) {
             this(reference,mode,segmentNo,audiences,null,1,null);

@@ -115,7 +115,7 @@ class BeautyStoredValueLifecycleFlowTest {
         assertThat(credited.status()).isEqualTo("CREDITED");
         assertThat(recharge.recover(ctx,entity,created.rechargeNo())).isEqualTo(credited);
         assertThat(recharge.create(ctx,entity,request,createKey).rechargeNo()).isEqualTo(created.rechargeNo());
-        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_activity_budget WHERE activity_no=?",Long.class,
+        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?",Long.class,
                 draft.activityNo())).isEqualTo(1);
         // A second real activity funds another lot: one later consumption must attribute both contributions.
         var secondDraft=activities.saveDraft(owner,new SaveDraft(null,null,definition),id());

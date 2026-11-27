@@ -9,6 +9,15 @@ import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.trade.service.LegacyCouponOrderPricingService;
 import ai.neargo.shop.trade.service.OrderService;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import tools.jackson.databind.node.ObjectNode;
+import ai.neargo.shop.support.CashReceiptFixture;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import org.springframework.web.context.WebApplicationContext;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -154,19 +163,21 @@ class LegacyCouponOrderBridgeFlowTest {
         assertThat(orders.create(cmd,key).payOrderNo()).isNotBlank();
     }
     @Test void failureAfterWritingTheDecisionStillRollsBackTheOrderAndReleasesItsHold() {
-        var cmd=command(1);String asset=migratedAsset(cmd);
+        var cmd=command(1);String asset=LegacyCouponFixtureSupport.asset(jdbc,json,identities,owners,user,cmd,1);
         jdbc.execute("ALTER TABLE sys_outbox ADD CONSTRAINT reject_legacy_order_created CHECK (event_type<>'ORDER_CREATED' OR payload NOT LIKE '%"+user+"%')");
         try {assertThatThrownBy(()->orders.create(cmd,"ROLLBACK"+UUID.randomUUID())).isInstanceOf(RuntimeException.class);}
         finally {jdbc.execute("ALTER TABLE sys_outbox DROP CONSTRAINT reject_legacy_order_created");}
         assertThat(jdbc.queryForObject("SELECT status FROM ord_legacy_coupon_checkout WHERE user_no=?",String.class,user)).isEqualTo("ABORTED");
         assertThat(jdbc.queryForObject("SELECT status FROM ent_legacy_coupon_operation WHERE instance_no=?",String.class,asset)).isEqualTo("RELEASED");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_order WHERE user_no=?",Integer.class,user)).isZero();
-        assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT reserved_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_use_reversal WHERE instance_no=?",Integer.class,asset)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_usage WHERE legacy_instance_no=?",Integer.class,asset)).isZero();
     }
 
     @Test void originalCancelWritesARealReversalAndOutboxReturnsTheOriginalCouponOnlyOnce() {
-        var cmd=command(1);String asset=migratedAsset(cmd);
+        var cmd=command(1);String asset=LegacyCouponFixtureSupport.asset(jdbc,json,identities,owners,user,cmd,1);
         var order=orders.create(cmd,"CANCEL"+UUID.randomUUID());
         String checkout=jdbc.queryForObject("SELECT checkout_no FROM ord_legacy_coupon_checkout WHERE user_no=?",String.class,user);
         payProperties.getEntitlement().getUse().setEnabled(false);payProperties.getEntitlement().getLegacyCoupon().setEnabled(false);
@@ -178,14 +189,15 @@ class LegacyCouponOrderBridgeFlowTest {
         String event=jdbc.queryForObject("SELECT event_no FROM sys_outbox WHERE aggregate_id=? AND event_type='LEGACY_COUPON_CHECKOUT_DECIDED' ORDER BY id DESC LIMIT 1",String.class,checkout);
         decisionConsumer.consume(outboxes.findByEventNo(event));decisionConsumer.consume(outboxes.findByEventNo(event));
         assertThat(jdbc.queryForObject("SELECT status FROM ent_legacy_coupon_operation WHERE instance_no=?",String.class,asset)).isEqualTo("REVERSED");
-        assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT reserved_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_ledger WHERE instance_no=? AND biz_type='LEGACY_REVERSE'",Integer.class,asset)).isEqualTo(1);
+        assertWholeReturn(asset,"ORDER_CANCEL",order.payOrderNo());
     }
 
     @Test void refundSourceRejectsPartialLedgerEvenIfStatusWasMarkedRefundedThenRestoresOnlyTheOriginalUnit() {
         // Explicit already-settled core refund fixtures; this verifies source authority, not the external refund gateway.
-        var cmd=command(1);String asset=migratedAsset(cmd);
+        var cmd=command(1);String asset=LegacyCouponFixtureSupport.asset(jdbc,json,identities,owners,user,cmd,1);
         var order=orders.create(cmd,"REFUND"+UUID.randomUUID());
         String sub=order.subOrders().getFirst().orderNo(),afterSale="AS"+UUID.randomUUID();
         jdbc.update("UPDATE ord_order SET status='PAID' WHERE order_no=?",order.payOrderNo());
@@ -194,7 +206,7 @@ class LegacyCouponOrderBridgeFlowTest {
                 +"VALUES(?,?,?,?,'M0001','REFUND_ONLY','REFUNDED','fixture',1,?,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",afterSale,sub,order.payOrderNo(),user,System.currentTimeMillis());
         var ctx=new ai.neargo.shop.spi.entitlement.EntitlementContext("MAIN","REFUND_RECOVERY","REFUND","a".repeat(64));
         assertThat(journal.returnRefundedOrder(ctx,afterSale)).isEmpty();
-        assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isZero();
         jdbc.update("UPDATE ord_sub_order SET refund_progress='FULL',refunded_minor=pay_amount WHERE sub_order_no=?",sub);
         var reversed=journal.returnRefundedOrder(ctx,afterSale).orElseThrow();
         assertThat(reversed.reason()).isEqualTo(ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.ReverseReason.FULL_REFUND);
@@ -204,8 +216,138 @@ class LegacyCouponOrderBridgeFlowTest {
         String checkout=jdbc.queryForObject("SELECT checkout_no FROM ord_legacy_coupon_checkout WHERE user_no=?",String.class,user);
         String event=jdbc.queryForObject("SELECT event_no FROM sys_outbox WHERE aggregate_id=? AND event_type='LEGACY_COUPON_CHECKOUT_DECIDED' ORDER BY id DESC LIMIT 1",String.class,checkout);
         decisionConsumer.consume(outboxes.findByEventNo(event));decisionConsumer.consume(outboxes.findByEventNo(event));
-        assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_ledger WHERE instance_no=? AND biz_type='LEGACY_REVERSE'",Integer.class,asset)).isEqualTo(1);
+        assertWholeReturn(asset,"AFTER_SALE",afterSale);
+    }
+
+    @Test
+    void partialRefundsAttributeOriginalLineDiscountAndOnlyFinalReceiptRestoresUnit() {
+        var cmd = command(3);
+        var asset = LegacyCouponFixtureSupport.asset(jdbc,json,identities,owners,user,cmd,1);
+        var order = orders.create(cmd,"LINE"+UUID.randomUUID());
+        var sub = order.subOrders().getFirst().orderNo();
+        long item = jdbc.queryForObject("SELECT id FROM ord_item WHERE sub_order_no=?",Long.class,sub);
+        assertThat(jdbc.queryForObject("SELECT coupon_share_minor FROM ord_item WHERE id=?",Long.class,item)).isEqualTo(100L);
+        jdbc.update("UPDATE ord_order SET status='PAID' WHERE order_no=?",order.payOrderNo());
+        var ctx = new ai.neargo.shop.spi.entitlement.EntitlementContext("MAIN","REFUND_RECOVERY","LINES","a".repeat(64));
+        var ledger = application.getBean(ai.neargo.shop.trade.order.mapper.RefundLedgerMapper.class);
+        String checkout = jdbc.queryForObject("SELECT checkout_no FROM ord_legacy_coupon_checkout WHERE order_no=?",String.class,order.payOrderNo());
+        for (int n=1;n<=3;n++) {
+            String sale = "AS"+UUID.randomUUID();
+            jdbc.update("""
+                    INSERT INTO ord_after_sale(after_sale_no,sub_order_no,order_no,user_no,entity_no,type,status,reason,
+                    refund_minor,refunded_at,tenant_no,created_at,updated_at)
+                    VALUES(?,?,?,?,'M0001','REFUND_ONLY','REFUNDED','fixture',1,?,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+                    """,sale,sub,order.payOrderNo(),user,System.currentTimeMillis());
+            jdbc.update("INSERT INTO ord_after_sale_item(after_sale_no,sub_order_no,item_id,qty,tenant_no) VALUES(?,?,?,1,'MAIN')",sale,sub,item);
+            assertThat(ledger.addItemRefund(item,1,1)).isOne();
+            assertThat(ledger.recordCouponReturn(sale,sub,item,1)).isOne();
+            if (n == 3) {
+                // Financial closure may follow the original line attribution for the same after-sale.
+                journal.returnRefundedOrder(ctx,sale).orElseThrow();
+                consumeLatestCouponDecision(checkout);
+                assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,asset)).isZero();
+                jdbc.update("UPDATE ord_sub_order SET status='REFUNDED',refund_progress='FULL',refunded_minor=pay_amount WHERE sub_order_no=?",sub);
+            }
+            var decision = journal.returnRefundedOrder(ctx,sale).orElseThrow();
+            assertThat(journal.returnRefundedOrder(ctx,sale)).contains(decision);
+            consumeLatestCouponDecision(checkout);
+            consumeLatestCouponDecision(checkout);
+            assertThat(jdbc.queryForObject("SELECT SUM(discount_minor) FROM ent_use_reversal WHERE instance_no=? AND after_sale_no=?",Long.class,asset,sale))
+                    .isEqualTo(n==3 ? 34L : 33L);
+            assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",Integer.class,asset))
+                    .isEqualTo(n==3 ? 1 : 0);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT usage_no) FROM ent_use_reversal WHERE instance_no=?",Integer.class,asset)).isOne();
+        assertThat(jdbc.queryForObject("SELECT SUM(discount_minor) FROM ent_use_reversal WHERE instance_no=?",Long.class,asset)).isEqualTo(100L);
+    }
+
+    private void consumeLatestCouponDecision(String checkout) {
+        String event = jdbc.queryForObject("SELECT event_no FROM sys_outbox WHERE aggregate_id=? AND event_type='LEGACY_COUPON_CHECKOUT_DECIDED' ORDER BY id DESC LIMIT 1",String.class,checkout);
+        decisionConsumer.consume(outboxes.findByEventNo(event));
+    }
+
+    @Test
+    void buyerRefundApplicationRecordsTheActualCouponShareAfterCashConfirmation() throws Exception {
+        var cmd = command(3);
+        String asset = LegacyCouponFixtureSupport.asset(jdbc, json, identities, owners, user, cmd, 1);
+        var mode = jdbc.queryForObject("SELECT funds_mode FROM mch_entity WHERE entity_no='M0001'", String.class);
+        jdbc.update("UPDATE mch_entity SET funds_mode='DIRECT' WHERE entity_no='M0001'");
+        try {
+            String token = (String) SecurityContextHolder.getContext().getAuthentication().getDetails();
+            var order = orders.create(cmd, "REFUND-ENTRY-" + UUID.randomUUID());
+            String sub = order.subOrders().getFirst().orderNo();
+            var receipts = new CashReceiptFixture((WebApplicationContext) application);
+            receipts.pay(token, order.payOrderNo());
+            long item = jdbc.queryForObject("SELECT id FROM ord_item WHERE sub_order_no=?", Long.class, sub);
+            var mvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) application).apply(springSecurity()).build();
+            var body = mvc.perform(post("/mp/order/" + sub + "/after-sale")
+                            .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                            .content(json.writeValueAsString(Map.of("type", "REFUND_ONLY", "reason", "one item",
+                                    "reasonCode", "NOT_WANTED", "items", List.of(Map.of("itemId", item, "qty", 1))))))
+                    .andExpect(jsonPath("$.code").value(0)).andReturn().getResponse().getContentAsString();
+            String sale = json.readTree(body).get("data").get("afterSaleNo").asString();
+            receipts.confirmRefund(sale);
+            assertThat(jdbc.queryForObject("SELECT coupon_return_minor FROM ord_after_sale_item WHERE after_sale_no=?",
+                    Long.class, sale)).isEqualTo(33);
+            var ctx = new EntitlementContext("MAIN", "REFUND_RECOVERY", "PARTIAL", "a".repeat(64));
+            var partial = journal.returnRefundedOrder(ctx, sale).orElseThrow();
+            var event = jdbc.queryForObject("SELECT event_no FROM sys_outbox WHERE aggregate_id=? "
+                    + "AND event_type='LEGACY_COUPON_CHECKOUT_DECIDED' ORDER BY id DESC LIMIT 1",
+                    String.class, partial.checkoutNo());
+            decisionConsumer.consume(outboxes.findByEventNo(event));
+            assertThat(jdbc.queryForObject("SELECT discount_minor FROM ent_use_reversal WHERE instance_no=? AND after_sale_no=?",
+                    Long.class, asset, sale)).isEqualTo(33);
+            assertThat(jdbc.queryForObject("SELECT remaining_units FROM ent_instance WHERE instance_no=?",
+                    Integer.class, asset)).isZero();
+        } finally {
+            jdbc.update("UPDATE mch_entity SET funds_mode=? WHERE entity_no='M0001'", mode);
+        }
+    }
+
+    @Test
+    void oneCentCouponOverTwoOneCentLinesFitsTheActualDiscountOnEachLine() {
+        var base = command(1);
+        var lines = List.of(new OrderService.CreateOrderCommand.Item("G0001", "SK0001", 1),
+                new OrderService.CreateOrderCommand.Item("G0001", "SK0002", 1));
+        var cmd = new OrderService.CreateOrderCommand(lines, base.fulfillment(), base.pickupNo(), null,
+                base.couponNo(), 0L, null, null, null, null, null);
+        String asset = LegacyCouponFixtureSupport.asset(jdbc, json, identities, owners, user, cmd, 1);
+        var rule = (ObjectNode) json.readTree(jdbc.queryForObject(
+                "SELECT rule_snapshot FROM ent_instance WHERE instance_no=?", String.class, asset));
+        rule.put("benefitValue", 1L);
+        jdbc.update("UPDATE ent_instance SET rule_snapshot=? WHERE instance_no=?", json.writeValueAsString(rule), asset);
+        var prices = jdbc.queryForList("SELECT sku_no,price FROM prd_sku WHERE market='CN' AND sku_no IN ('SK0001','SK0002')");
+        assertThat(prices).hasSize(2);
+        jdbc.update("UPDATE prd_sku SET price=1 WHERE market='CN' AND sku_no IN ('SK0001','SK0002')");
+        try {
+            var order = orders.create(cmd, "TAIL-" + UUID.randomUUID());
+            assertThat(order.amount().discountMinor()).isOne();
+            var sub = order.subOrders().getFirst().orderNo();
+            assertThat(jdbc.queryForList("SELECT paid_share_minor FROM ord_item WHERE sub_order_no=? ORDER BY paid_share_minor",
+                    Long.class, sub)).containsExactly(0L, 1L);
+            assertThat(jdbc.queryForList("SELECT coupon_share_minor FROM ord_item WHERE sub_order_no=? ORDER BY paid_share_minor",
+                    Long.class, sub)).containsExactly(1L, 0L);
+        } finally {
+            prices.forEach(row -> jdbc.update("UPDATE prd_sku SET price=? WHERE sku_no=? AND market='CN'",
+                    row.get("price"), row.get("sku_no")));
+        }
+    }
+
+    private void assertWholeReturn(String asset, String type, String source) {
+        var facts = jdbc.queryForList("""
+                SELECT r.source_type, r.source_no, r.after_sale_no, r.discount_minor, r.units, u.amount_minor
+                FROM ent_use_reversal r JOIN ent_usage u ON u.tenant_no=r.tenant_no AND u.usage_no=r.usage_no
+                WHERE r.instance_no=? AND r.origin_operation_no=u.operation_no AND u.status='REVERSED'
+                """, asset);
+        assertThat(facts).singleElement().satisfies(row -> {
+            assertThat(row.get("source_type")).isEqualTo(type);
+            assertThat(row.get("source_no")).isEqualTo(source);
+            assertThat(row.get("after_sale_no")).isEqualTo("AFTER_SALE".equals(type) ? source : null);
+            assertThat(row.get("units")).isEqualTo(1);
+            assertThat(row.get("discount_minor")).isEqualTo(100L).isEqualTo(row.get("amount_minor"));
+        });
     }
 
     @Test void actualOrderPreviewReadsThePayOwnerWithoutWritingACheckoutOrReservingAUnit() {

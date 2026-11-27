@@ -15,6 +15,8 @@ import ai.neargo.shop.promotion.approval.EnrollmentApprovalSubject;
 import ai.neargo.shop.promotion.entity.PmtActivity;
 import ai.neargo.shop.promotion.entity.PmtEnrollment;
 import ai.neargo.shop.promotion.entity.PmtEnrollmentGoods;
+import ai.neargo.shop.promotion.entity.PmtActivityScope;
+import ai.neargo.shop.promotion.mapper.PmtActivityScopeMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentGoodsMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentMapper;
@@ -67,6 +69,7 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
     private final ActivityMapper activityMapper;
     private final EnrollmentMapper enrollmentMapper;
     private final EnrollmentGoodsMapper enrollmentGoodsMapper;
+    private final PmtActivityScopeMapper scopes;
     private final MerchantQueryPort merchantPort;
     private final GoodsQueryPort goodsPort;
     private final ObjectMapper json;
@@ -80,12 +83,13 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
     }
 
     public PlatformActivityServiceImpl(ActivityMapper activityMapper, EnrollmentMapper enrollmentMapper,
-                                       EnrollmentGoodsMapper enrollmentGoodsMapper,
+                                       EnrollmentGoodsMapper enrollmentGoodsMapper, PmtActivityScopeMapper scopes,
                                        MerchantQueryPort merchantPort, GoodsQueryPort goodsPort,
                                        ObjectMapper json) {
         this.activityMapper = activityMapper;
         this.enrollmentMapper = enrollmentMapper;
         this.enrollmentGoodsMapper = enrollmentGoodsMapper;
+        this.scopes = scopes;
         this.merchantPort = merchantPort;
         this.goodsPort = goodsPort;
         this.json = json;
@@ -353,11 +357,13 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
         boolean create = e == null;
         if (create) {
             e = new PmtEnrollment();
+            e.setTenantNo(a.getTenantNo());
             e.setEnrollmentNo(BizKey.next(BizKey.PROMO_ENROLLMENT));
             e.setActivityNo(activityNo);
             e.setEntityNo(entityNo);
             e.setQuotaUsed(0);
         }
+        e.setScopeVersionNo(Long.toString(create ? 0L : e.getVersion() + 1));
         e.setQuota(cmd.quota());
         e.setPlatformMaxMinor(perPlatform * cmd.quota());
         e.setMerchantMaxMinor(perMerchant * cmd.quota());
@@ -370,7 +376,8 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
             enrollmentMapper.insert(row);
         } else {
             // updateById 跳过 null 字段：驳回理由与审核人要显式清掉，否则重报之后还挂着上一次的驳回
-            enrollmentMapper.update(null, Wrappers.<PmtEnrollment>lambdaUpdate()
+            int updated = enrollmentMapper.update(null, Wrappers.<PmtEnrollment>lambdaUpdate()
+                    .set(PmtEnrollment::getScopeVersionNo, row.getScopeVersionNo())
                     .set(PmtEnrollment::getQuota, row.getQuota())
                     .set(PmtEnrollment::getPlatformMaxMinor, row.getPlatformMaxMinor())
                     .set(PmtEnrollment::getMerchantMaxMinor, row.getMerchantMaxMinor())
@@ -381,14 +388,29 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
                     // 重报时修订号要变：内容相同的重报不能撞上一次送审的修订号（T18）
                     .setSql("version = version + 1")
                     .eq(PmtEnrollment::getEnrollmentNo, row.getEnrollmentNo())
-                    .eq(PmtEnrollment::getEntityNo, entityNo));
+                    .eq(PmtEnrollment::getEntityNo, entityNo)
+                    .eq(PmtEnrollment::getVersion, row.getVersion())
+                    .ne(PmtEnrollment::getStatus, PmtEnrollment.APPROVED));
+            if (updated != 1) throw BizException.of(ErrorCode.CONFLICT);
         }
+        int sort = 0;
         enrollmentGoodsMapper.hardDeleteByEnrollment(row.getEnrollmentNo());
         for (String g : cmd.goodsNos().stream().distinct().toList()) {
             PmtEnrollmentGoods eg = new PmtEnrollmentGoods();
             eg.setEnrollmentNo(row.getEnrollmentNo());
             eg.setGoodsNo(g);
             enrollmentGoodsMapper.insert(eg);
+            var scope = new PmtActivityScope();
+            scope.setTenantNo(row.getTenantNo());
+            scope.setOwnerType("ENROLLMENT");
+            scope.setOwnerNo(row.getEnrollmentNo());
+            scope.setVersionNo(row.getScopeVersionNo());
+            scope.setActivityVersionNo(a.getCurrentVersionNo());
+            scope.setScopeDimension("TARGET");
+            scope.setScopeKind("GOODS");
+            scope.setRefNo(g);
+            scope.setSortNo(sort++);
+            scopes.insert(scope);
         }
         var approval = approvals == null ? null : approvals.getIfAvailable();
         if (approval != null) {
@@ -462,10 +484,7 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
     }
 
     private EnrollmentVO enrollmentVO(PmtEnrollment e) {
-        List<String> goods = enrollmentGoodsMapper.selectList(Wrappers.<PmtEnrollmentGoods>lambdaQuery()
-                        .eq(PmtEnrollmentGoods::getEnrollmentNo, e.getEnrollmentNo())
-                        .orderByAsc(PmtEnrollmentGoods::getId))
-                .stream().map(PmtEnrollmentGoods::getGoodsNo).toList();
+        List<String> goods = scopes.enrollmentGoods(e.getTenantNo(), e.getEnrollmentNo(), e.getScopeVersionNo());
         var m = merchantPort.find(e.getEntityNo());
         return new EnrollmentVO(e.getEnrollmentNo(), e.getActivityNo(), e.getEntityNo(),
                 m.map(MerchantQueryPort.MerchantBrief::merchantName).orElse(""),

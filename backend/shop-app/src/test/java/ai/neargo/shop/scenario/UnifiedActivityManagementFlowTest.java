@@ -78,9 +78,35 @@ class UnifiedActivityManagementFlowTest {
                 .isInstanceOf(BizException.class);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_activity_version WHERE activity_no=?", Integer.class,
                 draft.activityNo())).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_activity_budget WHERE activity_no=?", Integer.class,
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no=?", Integer.class,
                 draft.activityNo())).isEqualTo(1);
     }
+    @Test void publishedScopeFreezesStoreAndSegmentForItsOwnerAndVersion() {
+        String segment = key();
+        jdbc.update("""
+                INSERT INTO mbr_segment(segment_no,entity_no,name,rule_json,created_at,updated_at)
+                VALUES(?,?,?,'{"level":"VIP","page":1,"size":20}',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+                """, segment, actor.entityNo(), segment);
+        var d = definition(false);
+        var targeted = new UnifiedActivityDefinition(d.name(), d.scene(), d.templateCode(), d.templateVersion(),
+                d.storeParticipationScope(), segment, d.schedule(), d.rule(), d.quotaLimit(), d.budgetLimitMinor(),
+                d.perUserLimit(), d.currency());
+        var draft = service.saveDraft(actor, new SaveDraft(null, null, targeted), key());
+        var version = service.publish(actor, draft.activityNo(), draft.revision(), key());
+        jdbc.update("UPDATE mbr_segment SET rule_json='{}' WHERE segment_no=?", segment);
+        String query = """
+                SELECT ref_no FROM pmt_activity_scope
+                WHERE tenant_no=? AND owner_type='ACTIVITY' AND owner_no=? AND version_no=?
+                  AND scope_dimension=? AND scope_kind=?
+                """;
+        assertThat(jdbc.queryForList(query, String.class, actor.tenantNo(), draft.activityNo(), version.versionNo(),
+                "TARGET", "STORE")).containsExactly("ST-MGMT");
+        assertThat(jdbc.queryForList(query, String.class, actor.tenantNo(), draft.activityNo(), version.versionNo(),
+                "AUDIENCE", "SEGMENT")).containsExactly(segment);
+        assertThat(jdbc.queryForObject("SELECT rule_snapshot FROM pmt_activity_scope WHERE owner_no=? AND version_no=? AND scope_kind='SEGMENT'",
+                String.class, draft.activityNo(), version.versionNo())).contains("VIP");
+    }
+
     @Test void statusPublicationAndOperationsStopSharePersistentVersionAndRevision() {
         var draft = service.saveDraft(actor, new SaveDraft(null, null, definition(false)), key());
         var running = service.changeStatus(actor, draft.activityNo(), draft.revision(), "RUNNING", "发布活动", key());

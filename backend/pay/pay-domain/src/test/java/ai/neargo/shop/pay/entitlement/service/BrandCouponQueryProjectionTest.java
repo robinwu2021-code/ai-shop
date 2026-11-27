@@ -30,7 +30,7 @@ class BrandCouponQueryProjectionTest {
         var usages = mock(EntUsageMapper.class);
         var service = new EntitlementQueryServiceImpl(instances, mock(EntPeriodBucketMapper.class), usages,
                 mock(EntUseAllocationMapper.class), mock(EntLedgerMapper.class), mock(EntitlementCursorCodec.class),
-                json, mock(StoredValueCursorCodec.class));
+                json, mock(StoredValueCursorCodec.class), mock(ai.neargo.shop.pay.mapper.entitlement.EntUseReversalMapper.class));
         var context = new EntitlementContext("MAIN", "U1", "READ", "a".repeat(64));
         var definition = new EntitlementDefinition("brand coupon", "ORDER_COUPON", "MERCHANT", "CNY", "CASH",
                 100L, null, null, 0L, null, "COUNT", 1, null,

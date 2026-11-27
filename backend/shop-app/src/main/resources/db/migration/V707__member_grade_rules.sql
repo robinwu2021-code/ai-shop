@@ -1,0 +1,42 @@
+-- 经营分层继续使用 mbr_member.level；已发布的权益等级才引用规则版本。
+CREATE TABLE mbr_level_rule (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(64) NOT NULL,
+    version_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(16) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    effective_from DATETIME(3) NULL,
+    effective_to DATETIME(3) NULL,
+    basis VARCHAR(16) NOT NULL,
+    stat_period_days INT NULL,
+    currency VARCHAR(8) NULL,
+    levels_json JSON NOT NULL,
+    benefits_json JSON NOT NULL,
+    downgrade_policy VARCHAR(16) NOT NULL,
+    published_by VARCHAR(64) NULL,
+    published_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_member_grade_version (tenant_no, version_no),
+    KEY ix_member_grade_rule (tenant_no, rule_no, version_no),
+    KEY ix_member_grade_scope (tenant_no, scope_type, scope_no, status, effective_from),
+    CHECK (scope_type IN ('ENTITY','BRAND','STORE')),
+    CHECK (basis IN ('SPEND','GROWTH','ORDER_COUNT')),
+    CHECK (status IN ('DRAFT','ACTIVE','DISABLED')),
+    CHECK (downgrade_policy IN ('NEVER','PERIODIC')),
+    CHECK (stat_period_days IS NULL OR stat_period_days > 0),
+    CHECK (effective_to IS NULL OR (effective_from IS NOT NULL AND effective_to > effective_from)),
+    CHECK (status <> 'ACTIVE' OR (published_by IS NOT NULL AND published_at IS NOT NULL AND effective_from IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE mbr_member
+    ADD COLUMN grade_code VARCHAR(32) NULL,
+    ADD COLUMN level_rule_version_no VARCHAR(64) NULL;

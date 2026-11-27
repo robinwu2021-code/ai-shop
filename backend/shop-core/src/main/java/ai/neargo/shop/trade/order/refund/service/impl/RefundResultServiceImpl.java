@@ -55,6 +55,7 @@ public class RefundResultServiceImpl implements RefundResultService {
     private final TradeStatusWriter statuses;
     private final AfterSaleSlots slots;
     private final RefundLedger ledger;
+    private final RefundLedgerMapper ledgerRows;
     private final RefundExecutionMapper sources;
     private final ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations;
     private final ObjectMapper json;
@@ -73,6 +74,7 @@ public class RefundResultServiceImpl implements RefundResultService {
         this.afterSales = afterSales;
         this.statuses = statuses;
         this.slots = slots;
+        this.ledgerRows = ledger;
         this.ledger = new RefundLedger(new MybatisRefundLedgerStore(ledger));
         this.json = json;
         this.events = events;
@@ -139,6 +141,9 @@ public class RefundResultServiceImpl implements RefundResultService {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         var recorded = ledger.record(plan);
+        for (var line : plan.lines()) {
+            ledgerRows.recordCouponReturn(as.getAfterSaleNo(), plan.subOrderNo(), line.itemId(), line.qty());
+        }
         long quantity = originalItems.stream().mapToLong(item -> item.getQty()).sum();
         // Legacy execution closes benefits independently; versioned obligations replace this adapter in T2.
         long terminated = originalItems.stream().mapToLong(item -> item.getRefundedQty() == null ? 0 : item.getRefundedQty()).sum()

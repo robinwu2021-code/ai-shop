@@ -30,5 +30,6 @@ public class OrdLegacyCouponCheckout extends BaseEntity {
     private String heldSnapshot;
     private String decisionSnapshot;
     private String reversalSnapshot;
+    private String partialReturnSnapshot;
     private String orderNo;
 }

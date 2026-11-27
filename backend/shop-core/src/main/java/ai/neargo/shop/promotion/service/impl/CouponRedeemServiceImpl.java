@@ -52,6 +52,7 @@ public class CouponRedeemServiceImpl implements CouponRedeemService {
     private static final long DEDUP_WINDOW_MS = 3_000L;
 
     private final LegacyCouponSourceFenceService sourceFence;
+    @Autowired private IssuedCouponRules issuedRules;
     private final CouponMapper couponMapper;
     private final UserCouponMapper userCouponMapper;
     private final ApplyMapper applyMapper;
@@ -69,7 +70,7 @@ public class CouponRedeemServiceImpl implements CouponRedeemService {
     @Override
     public RedeemView peek(String entityNo, String code) {
         PmtUserCoupon uc = byCode(entityNo, code);
-        PmtCoupon c = template(uc.getCouponNo());
+        PmtCoupon c = template(uc);
         int total = c.timesTotalOrOne();
         int used = nz(uc.getTimesUsed());
         String reason = whyNot(uc, c, System.currentTimeMillis());
@@ -86,7 +87,7 @@ public class CouponRedeemServiceImpl implements CouponRedeemService {
     public RedeemResult redeem(String entityNo, String code, String storeNo, String operatorNo) {
         ownershipWrites.lockAndCheck("MAIN", entityNo, storeNo);
         PmtUserCoupon uc = byCode(entityNo, code);
-        PmtCoupon c = template(uc.getCouponNo());
+        PmtCoupon c = template(uc);
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         long now = System.currentTimeMillis();
 
@@ -199,14 +200,14 @@ public class CouponRedeemServiceImpl implements CouponRedeemService {
         return uc;
     }
 
-    private PmtCoupon template(String couponNo) {
+    private PmtCoupon template(PmtUserCoupon instance) {
         PmtCoupon c = DataScopeContext.executeWithoutScope(() ->
                 couponMapper.selectOne(Wrappers.<PmtCoupon>lambdaQuery()
-                        .eq(PmtCoupon::getCouponNo, couponNo).last("limit 1")));
+                        .eq(PmtCoupon::getCouponNo, instance.getCouponNo()).last("limit 1")));
         if (c == null) {
             throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
         }
-        return c;
+        return instance.getTemplateVersionNo() == null ? c : issuedRules.issued(c, instance.getTemplateVersionNo());
     }
 
     private static long nz(Long v) {

@@ -11,6 +11,7 @@ import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.trade.dto.ServiceOrderSnapshot;
 import ai.neargo.shop.trade.dto.ServiceOrderSnapshot.PreviewBinding;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntServiceOrder;
+import ai.neargo.shop.spi.entitlement.EntitlementUsePort.OrderBenefitReverse;
 import java.time.Instant;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -58,7 +59,9 @@ public final class EntitlementServiceSnapshotPolicy {
                         : json.readValue(row.getCommandSnapshot(), UseCommand.class),
                 row.getDecisionSnapshot() == null ? null
                         : json.readValue(row.getDecisionSnapshot(), DecisionRef.class),
-                row.getDeadline().toInstant(ZoneOffset.UTC), row.getCancellationReason());
+                row.getDeadline().toInstant(ZoneOffset.UTC), row.getCancellationReason(), row.getRefundStatus(), row.getRefundActorNo(),
+                row.getRefundCommandSnapshot() == null ? null
+                        : json.readValue(row.getRefundCommandSnapshot(), OrderBenefitReverse.class));
     }
     public static String sourceHash(String snapshot, ObjectMapper json) {
         return hash(json.writeValueAsString(normalize(json.readTree(snapshot))));

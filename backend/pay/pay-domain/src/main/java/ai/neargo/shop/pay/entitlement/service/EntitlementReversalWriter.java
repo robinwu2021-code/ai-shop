@@ -105,6 +105,7 @@ public class EntitlementReversalWriter {
         usage.setUpdatedAt(now()); usage.setUpdatedBy(ctx.actorNo()); changed(usages.updateById(usage));
         var row = new EntUseReversal(); audit(row, ctx);
         row.setReverseNo(c.reverseNo()); row.setUsageNo(c.usageNo()); row.setOriginOperationNo(originalOperation);
+        row.setSourceType("AFTER_SALE"); row.setSourceNo(c.sourceRef().sourceNo());
         row.setInstanceNo(asset.getInstanceNo()); row.setAfterSaleNo(c.sourceRef().sourceNo());
         row.setSourceDecisionNo(c.decisionRef().decisionNo()); row.setPayloadHash(digest(json.writeValueAsString(c)));
         row.setCommandSnapshot(json.writeValueAsString(c)); row.setUnits(restored);

@@ -14,6 +14,9 @@ public class EntUseReversal extends BaseEntity {
     private String usageNo;
     private String originOperationNo;
     private String instanceNo;
+    private String sourceType;
+    private String sourceStage;
+    private String sourceNo;
     private String afterSaleNo;
     private String sourceDecisionNo;
     private String payloadHash;

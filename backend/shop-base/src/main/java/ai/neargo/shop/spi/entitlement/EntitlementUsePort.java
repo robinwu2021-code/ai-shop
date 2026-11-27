@@ -188,7 +188,8 @@ public interface EntitlementUsePort {
         public OrderBenefitReverse {
             ContractChecks.id(usageNo);
             ContractChecks.id(reverseNo);
-            ContractChecks.require(assetKind == AssetKind.ORDER_COUPON && amountMinor != null && amountMinor > 0);
+            ContractChecks.require((assetKind == AssetKind.ORDER_COUPON || assetKind == AssetKind.STORED_VALUE)
+                    && amountMinor != null && amountMinor > 0);
             ContractChecks.present(decisionRef).requireFor(sourceRef, DecisionRef.DecisionType.ORDER_REVERSE);
         }
     }

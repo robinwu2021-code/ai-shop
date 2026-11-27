@@ -2,6 +2,7 @@ package ai.neargo.shop.pay.storedvalue.issuer;
 
 import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.*;
 import ai.neargo.shop.common.*;
+import ai.neargo.shop.pay.entitlement.entity.EntUsage;
 import ai.neargo.shop.pay.storedvalue.entity.*;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition.RedemptionScope;
@@ -234,6 +235,25 @@ public class StoredValueIssuerLedgerBridge {
                     voucher.get("occurred_at"),text(account,"store_no"),at,ctx.actorNo(),ctx.tenantNo(),accountNo);
             return new Consumption(voucherNo,amount);
         });
+    }
+    /** Runs once under the refund owner lock, before acquiring the account/lot locks. */
+    public void beforeRefund(EntitlementContext ctx, SvVoucher debit, EntUsage usage) {
+        transaction();
+        if (debit.getIssuerNo() == null) {
+            if (enabled) requireUnswitchedStore(ctx, usage.getStoreNo());
+            return;
+        }
+        var issuer = db.one("SELECT scope_type,scope_no,write_mode FROM sv_issuer "
+                + "WHERE tenant_no=? AND issuer_no=? AND deleted=0 FOR UPDATE", ctx.tenantNo(), debit.getIssuerNo());
+        if (issuer == null) throw BizException.of(ErrorCode.CONFLICT);
+        if ("FENCED".equals(text(issuer, "write_mode"))) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        long amount = Math.negateExact(Math.addExact(debit.getPrincipalDelta(), debit.getBonusDelta()));
+        boolean brand = "BRAND".equals(text(issuer, "scope_type"));
+        changed(db.update("UPDATE sv_issue_quota SET outstanding_minor=outstanding_minor+?,"
+                + "updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND "
+                + (brand ? "issuer_no=?" : "store_no=?") + " AND currency=? AND deleted=0",
+                amount, Timestamp.from(Instant.now()), ctx.actorNo(), ctx.tenantNo(),
+                brand ? debit.getIssuerNo() : text(issuer, "scope_no"), usage.getCurrency()));
     }
     private void requireUnswitchedStore(EntitlementContext ctx,String store) {
         var issuer=db.one("SELECT write_mode FROM sv_issuer WHERE tenant_no=? AND scope_type='STORE' AND scope_no=? AND deleted=0 FOR UPDATE",ctx.tenantNo(),store);

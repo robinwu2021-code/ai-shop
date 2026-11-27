@@ -234,6 +234,7 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
   mSvBrandActivityContext: "SvGovernanceContext",
   mSvBrandActivityPresets: "SvGovernancePresetsPage",
   mSvBrandActivitySchedule: "SvGovernanceSchedule",
+  mSvConsumptionRefund:"SvServiceOrderRefund",
   mSvConsumptionCancel:"SvOperation",
   mSvConsumptionResolve:"SvConsumptionResolution",
   mSvConsumptionPreview:"SvConsumptionPreview",
@@ -508,6 +509,8 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
   mSaveStoreFulfillment: "StoreFulfillment",
   mSelfBuildPickup: "PickupCandidate",
   mSendReach: "ReachResult",
+  mScheduleReach: "ScheduledReachResult",
+  mCancelReach: "void",
   mReachTasks: "ReachTask[]",
   mReachTask: "ReachTask",
   mSetActivityStatus: "StoreActivity",
@@ -714,6 +717,8 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mIssueCoupon: "CouponIssueReq",
+  mScheduleReach: "ScheduledReachReq",
   mPayRecordOffline: "OfflineRecordCreateReq",
   mPaySaveStoreMethods: "PayStoreMethodReq",
   mPaySaveStoreMethodPreferences: "PayStoreMethodPreferencesReq",
@@ -758,6 +763,7 @@ mSvFinancialBrandStart:"SvFinancialBrandRequest",mSvFinancialBrandChange:"SvFina
   mSvBrandActivityContext: "SvGovernanceContextQuery",
   mSvBrandActivityPresets: "SvGovernancePresetQuery",
   mSvBrandActivitySchedule: "SvGovernanceScheduleQuery",
+  mSvConsumptionRefund:"SvConsumptionStoreQuery",
   mSvConsumptionCancel:"SvConsumptionStoreQuery",
   mSvConsumptionResolve:"SvConsumptionCreate",
   mSvConsumptionPreview:"SvConsumptionCreate",
@@ -973,6 +979,8 @@ for (const [key, ep] of Object.entries(endpoints)) {
   if ((ep.method === "GET" || ep.method === "DELETE") && reqType) params.push(...queryParams(reqType));
 
   // Existing published P6 Java routes require the original command identity for all finance mutations.
+  if (key === "mScheduleReach") params.push({ name: "Idempotency-Key", in: "header", required: true, schema: { type: "string", maxLength: 64 } });
+  if (key === "mIssueCoupon") params.push({ name: "Idempotency-Key", in: "header", required: false, schema: { type: "string", maxLength: 64 } });
   if (["mSvFinancialBrandStart", "mSvSettlementGenerate", "mSvSettlementReconcile", "mSvSettlementDispute", "mSvSettlementResolveDispute", "mSvSettlementAdjust", "mSvSettlementRegister", "mSvSettlementReceipt", "mSvSettlementVoid", "mPayRecordOffline"].includes(key)) params.push({name:"Idempotency-Key",in:"header",required:true,schema:{type:"string"}});
   const op = {
     operationId: key,

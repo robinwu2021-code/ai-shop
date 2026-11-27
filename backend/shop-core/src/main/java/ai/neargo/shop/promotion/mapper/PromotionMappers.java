@@ -2,6 +2,7 @@ package ai.neargo.shop.promotion.mapper;
 
 import ai.neargo.shop.promotion.entity.PmtApply;
 import ai.neargo.shop.promotion.entity.PmtCoupon;
+import ai.neargo.shop.promotion.entity.PmtCouponVersion;
 import ai.neargo.shop.promotion.entity.PmtCouponIssue;
 import ai.neargo.shop.promotion.entity.PmtCouponScope;
 import ai.neargo.shop.promotion.entity.PmtUserCoupon;
@@ -22,11 +23,24 @@ public final class PromotionMappers {
     public interface CouponMapper extends BaseMapper<PmtCoupon> {
     }
 
+    public interface CouponVersionMapper extends BaseMapper<PmtCouponVersion> {
+    }
+
     /** 范围规则。**没有任何一行 = 全店**，与 {@code scope_type=ALL} 一致 */
     public interface CouponScopeMapper extends BaseMapper<PmtCouponScope> {
+        @org.apache.ibatis.annotations.Update("""
+                UPDATE pmt_coupon_scope SET deleted=0, version=version+1,
+                    updated_at=CURRENT_TIMESTAMP, updated_by=#{actor}
+                WHERE tenant_no=#{tenant} AND coupon_no=#{couponNo}
+                    AND scope_type=#{kind} AND ref_no=#{ref} AND deleted=1
+                """)
+        int restoreScope(@Param("tenant") String tenant, @Param("couponNo") String couponNo,
+                         @Param("kind") String kind, @Param("ref") String ref, @Param("actor") String actor);
     }
 
     public interface UserCouponMapper extends BaseMapper<PmtUserCoupon> {
+        @Select("SELECT id FROM pmt_user_coupon WHERE coupon_no=#{couponNo} LIMIT 1 FOR UPDATE")
+        Long firstIssuedId(@Param("couponNo") String couponNo);
     }
 
     public interface CouponIssueMapper extends BaseMapper<PmtCouponIssue> {

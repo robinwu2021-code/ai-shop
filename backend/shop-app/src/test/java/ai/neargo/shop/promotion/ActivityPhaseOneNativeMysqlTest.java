@@ -37,14 +37,42 @@ class ActivityPhaseOneNativeMysqlTest {
                 new ClassPathResource("db/migration/V483__promotion_preset_catalog.sql"),
                 new ClassPathResource("db/migration/V484__promotion_version_participation.sql"),
                 new ClassPathResource("db/migration/V485__promotion_effect_store_scope.sql")).execute(ds);
+        jdbc.update("INSERT INTO pmt_activity_budget (tenant_no,activity_no,currency,quota_limit,budget_limit_minor,per_user_limit,quota_used,budget_used_minor,"
+                + "created_at,updated_at,created_by,updated_by) VALUES "
+                + "('MAIN','HISTORY','CNY',20,2000,2,1,100,NOW(),NOW(),'TEST','TEST')");
+        jdbc.update("INSERT INTO pmt_activity_participant (tenant_no,activity_no,user_no,held_count,used_count,"
+                + "created_at,updated_at,created_by,updated_by) VALUES "
+                + "('MAIN','HISTORY','LEGACY',0,1,NOW(),NOW(),'TEST','TEST')");
+        jdbc.update("""
+                INSERT INTO pmt_activity_reservation
+                    (tenant_no,reservation_no,source_key,activity_no,version_no,user_no,entity_no,store_no,currency,
+                     quota_units,budget_minor,status,permit_snapshot,payload_hash,deadline,pay_fact_no,
+                     created_at,updated_at,created_by,updated_by)
+                VALUES ('MAIN','R1',REPEAT('a',64),'HISTORY','V1','LEGACY','E1','S1','CNY',1,100,'COMMITTED',
+                     JSON_OBJECT('sourceRef',JSON_OBJECT('sourceType','RECHARGE','sourceNo','RC1')),
+                     REPEAT('b',64),NOW(),'GRANT1',NOW(),NOW(),'TEST','TEST')
+                """);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V706__activity_quota_reservation.sql")).execute(ds);
+        assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_quota WHERE quota_dimension='PER_USER' "
+                + "AND target_no='HISTORY' AND user_no='LEGACY'", Long.class)).isEqualTo(1);
+
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM pmt_reservation r JOIN pmt_quota q
+                  ON r.tenant_no=q.tenant_no AND r.quota_no=q.quota_no
+                WHERE q.target_no='HISTORY' AND q.quota_dimension='TOTAL' AND r.reservation_type='ACTIVITY'
+                  AND r.reservation_no='R1' AND r.source_type='RECHARGE' AND r.source_no='RC1'
+                  AND r.source_key=REPEAT('a',64) AND r.payload_hash=REPEAT('b',64)
+                  AND q.quota_used=1 AND q.budget_used_minor=100
+                  AND r.status='COMMITTED' AND r.pay_fact_no='GRANT1'
+                """, Integer.class)).isOne();
+        seedBudget(jdbc,"A1",20,2000,2);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_preset_template",Integer.class)).isEqualTo(46);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_preset_template WHERE enabled<>0",Integer.class)).isZero();
         assertThatThrownBy(()->jdbc.update("UPDATE pmt_preset_template SET draft_schema='invalid-json' WHERE template_code='AP001'"))
                 .isInstanceOf(DataAccessException.class);
-        seedBudget(jdbc,"A1",20,2000,2);
-        assertThatThrownBy(()->jdbc.update("UPDATE pmt_activity_budget SET quota_used=21 WHERE activity_no='A1'"))
+        assertThatThrownBy(()->jdbc.update("UPDATE pmt_quota SET quota_used=21 WHERE activity_no='A1'"))
                 .isInstanceOf(DataAccessException.class);
-        assertThatThrownBy(()->jdbc.update("UPDATE pmt_activity_budget SET budget_held_minor=-1 WHERE activity_no='A1'"))
+        assertThatThrownBy(()->jdbc.update("UPDATE pmt_quota SET budget_held_minor=-1 WHERE activity_no='A1'"))
                 .isInstanceOf(DataAccessException.class);
         var config=new MybatisConfiguration(); config.setMapUnderscoreToCamelCase(true);
         var factory=new MybatisSqlSessionFactoryBean(); factory.setDataSource(ds); factory.setConfiguration(config);
@@ -64,8 +92,8 @@ class ActivityPhaseOneNativeMysqlTest {
                 assertThat(people.reserve("MAIN","ROLLBACK","U1",1,1)).isEqualTo(1);
                 throw new IllegalStateException("simulated downstream failure");
             })).isInstanceOf(IllegalStateException.class);
-            assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_activity_budget WHERE activity_no='ROLLBACK'",Long.class)).isZero();
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_activity_participant WHERE activity_no='ROLLBACK'",Long.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT quota_held FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no='ROLLBACK'",Long.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_quota WHERE quota_dimension='PER_USER' AND activity_no='ROLLBACK'",Long.class)).isZero();
             List<Callable<Boolean>> attempts=new ArrayList<>();
             for(int i=0;i<100;i++) {
                 String user="U"+(i%10);
@@ -89,15 +117,15 @@ class ActivityPhaseOneNativeMysqlTest {
                 }
                 assertThat(succeeded).isEqualTo(20);
             } finally { pool.shutdownNow(); }
-            assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_activity_budget WHERE activity_no='A1'",Long.class)).isEqualTo(20);
-            assertThat(jdbc.queryForObject("SELECT budget_used_minor FROM pmt_activity_budget WHERE activity_no='A1'",Long.class)).isEqualTo(2000);
-            assertThat(jdbc.queryForObject("SELECT quota_held+budget_held_minor FROM pmt_activity_budget WHERE activity_no='A1'",Long.class)).isZero();
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_activity_participant WHERE activity_no='A1' AND used_count=2 AND held_count=0",Long.class)).isEqualTo(10);
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_activity_participant WHERE held_count<0 OR used_count<0",Long.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no='A1'",Long.class)).isEqualTo(20);
+            assertThat(jdbc.queryForObject("SELECT budget_used_minor FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no='A1'",Long.class)).isEqualTo(2000);
+            assertThat(jdbc.queryForObject("SELECT quota_held+budget_held_minor FROM pmt_quota WHERE quota_dimension='TOTAL' AND activity_no='A1'",Long.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_quota WHERE quota_dimension='PER_USER' AND activity_no='A1' AND quota_used=2 AND quota_held=0",Long.class)).isEqualTo(10);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_quota WHERE quota_dimension='PER_USER' AND (quota_held<0 OR quota_used<0)",Long.class)).isZero();
         }
     }
     private static void seedBudget(JdbcTemplate jdbc,String activity,int quota,long amount,int personal) {
-        jdbc.update("INSERT INTO pmt_activity_budget (tenant_no,activity_no,currency,quota_limit,budget_limit_minor,per_user_limit,created_at,updated_at,created_by,updated_by) VALUES ('MAIN',?,'CNY',?,?,?,CURRENT_TIMESTAMP(3),CURRENT_TIMESTAMP(3),'TEST','TEST')",activity,quota,amount,personal);
+        jdbc.update("INSERT INTO pmt_quota (tenant_no,quota_no,target_type,target_no,quota_dimension,activity_no,currency,quota_limit,budget_limit_minor,per_user_limit,created_at,updated_at,created_by,updated_by) VALUES ('MAIN',UUID(),'ACTIVITY',?,'TOTAL',?,'CNY',?,?,?,CURRENT_TIMESTAMP(3),CURRENT_TIMESTAMP(3),'TEST','TEST')",activity,activity,quota,amount,personal);
     }
     private static <T> void registerMapper(AnnotationConfigApplicationContext context,Class<T> type,SqlSessionFactory sessions) {
         context.registerBean(type.getSimpleName(),MapperFactoryBean.class,()->{

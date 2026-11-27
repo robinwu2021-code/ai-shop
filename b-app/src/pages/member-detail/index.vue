@@ -145,6 +145,12 @@ onLoad(async (q) => {
           {{ $t("memberDetail.joined", { s: monthDay(data.member.joinedAt) }) }}
           · {{ $t(`members.source.${data.member.source}`) }}
         </text>
+        <sh-kv between :label="tt('memberDetail.grade')">
+          <text>{{ data.gradeCode || tt('memberDetail.ungraded') }}</text>
+        </sh-kv>
+        <sh-kv v-if="data.levelRuleVersionNo" between :label="tt('memberDetail.gradeVersion')">
+          <text>{{ data.levelRuleVersionNo }}</text>
+        </sh-kv>
         <text v-if="data.member.firstStoreNo" class="sh-muted">
           {{ $t("memberDetail.firstStore", { s: storeName(data.member.firstStoreNo) }) }}
         </text>

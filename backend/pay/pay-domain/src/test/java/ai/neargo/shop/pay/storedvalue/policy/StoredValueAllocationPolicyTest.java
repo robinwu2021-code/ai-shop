@@ -33,9 +33,9 @@ class StoredValueAllocationPolicyTest {
         assertThat(plan.allocations()).hasSize(2);
         assertThat(plan.allocations().getFirst().lotNo()).isEqualTo("OLD");
         assertThat(plan.allocations().getFirst().items()).containsExactly(
-                new StoredValueAllocationPolicy.ItemAllocation("L2", 100));
+                new StoredValueAllocationPolicy.ItemAllocation("L2", 100, 100, 0));
         assertThat(plan.allocations().getLast().items()).containsExactly(
-                new StoredValueAllocationPolicy.ItemAllocation("L1", 100));
+                new StoredValueAllocationPolicy.ItemAllocation("L1", 100, 100, 0));
     }
     @Test void frozenProportionUsesIntegerMoneyAndCanExhaustTheEntireResidualWithoutOverflow() {
         var balance = lot("A", 1000, 100, "STORES", List.of("S1"), 1);
@@ -51,6 +51,17 @@ class StoredValueAllocationPolicyTest {
         assertThat(enormous.allocations().getFirst().principalMinor()).isEqualTo(Long.MAX_VALUE - 1000);
         assertThat(enormous.allocations().getFirst().bonusMinor()).isEqualTo(1000);
     }
+    @Test void twoLotsFreezeExactPrincipalAndBonusOnEachOriginalLineIncludingRemainder() {
+        var source = source(List.of(new UseItem("L1", "G1", "Care A", 1, 61),
+                new UseItem("L2", "G2", "Care B", 1, 79)));
+        var plan = policy.allocate(List.of(lot("A", 80, 20, "ALL", List.of(), 1),
+                lot("B", 30, 10, "GOODS", List.of("G2"), 2)), source);
+        assertThat(plan.allocations().getFirst().items()).containsExactly(
+                new StoredValueAllocationPolicy.ItemAllocation("L1", 61, 49, 12),
+                new StoredValueAllocationPolicy.ItemAllocation("L2", 39, 31, 8));
+        assertThat(plan.allocations().getLast().items()).containsExactly(
+                new StoredValueAllocationPolicy.ItemAllocation("L2", 40, 30, 10));
+    }
     @Test void storeAndCategoryRestrictionsCannotBeAddedToAnUnrelatedServiceOrInventAFullPayment() {
         var source = source(List.of(new UseItem("L1", "G1", "Care A", 1, 100),
                 new UseItem("L2", "G2", "Care B", 1, 100)));
@@ -59,6 +70,6 @@ class StoredValueAllocationPolicyTest {
         assertThat(plan.amountMinor()).isEqualTo(50);
         assertThat(plan.allocations()).hasSize(1);
         assertThat(plan.allocations().getFirst().items()).containsExactly(
-                new StoredValueAllocationPolicy.ItemAllocation("L1", 50));
+                new StoredValueAllocationPolicy.ItemAllocation("L1", 50, 50, 0));
     }
 }

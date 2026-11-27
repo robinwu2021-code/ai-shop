@@ -54,9 +54,9 @@ public final class BasicRefundPolicy {
                 || items.stream().anyMatch(i -> !Integer.valueOf(0).equals(i.getShippedQty()))) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
+        boolean discounted = nz(sub.getDiscountAmount()) != 0 || nz(sub.getDiscountPlatform()) != 0 || nz(sub.getDiscountMerchant()) != 0;
         if (items.isEmpty() || sub.getPayAmount() == null || sub.getPayAmount() < 0
-                || nz(sub.getDiscountAmount()) != 0 || nz(sub.getDiscountPlatform()) != 0
-                || nz(sub.getDiscountMerchant()) != 0 || nz(sub.getPointsDeduct()) != 0
+                || (discounted && !hasOriginalCoupon(sub, items)) || nz(sub.getPointsDeduct()) != 0
                 || nz(sub.getPointsDeductMinor()) != 0 || nz(sub.getPointsFeeMinor()) != 0)
             throw invalid();
         Map<Long, OrdItem> originals = new HashMap<>();
@@ -94,6 +94,20 @@ public final class BasicRefundPolicy {
         RefundPlan plan = new RefundPlan(sub.getSubOrderNo(), lines, all ? freight - refundedFreight : 0);
         if (amount != null && amount != plan.totalMinor()) throw invalid();
         return plan;
+    }
+
+    public static boolean hasOriginalCoupon(OrdSubOrder sub, List<OrdItem> items) {
+        long discount = nz(sub.getDiscountAmount());
+        if (nz(sub.getDiscountPlatform()) != 0 || nz(sub.getDiscountMerchant()) != discount) return false;
+        if (discount <= 0) return false;
+        long sum = 0;
+        for (OrdItem item : items) {
+            Long coupon = item.getCouponShareMinor();
+            if (coupon == null || coupon < 0 || item.getAmount() == null || item.getPaidShareMinor() == null
+                    || item.getAmount() - item.getPaidShareMinor() != coupon) return false;
+            sum = Math.addExact(sum, coupon);
+        }
+        return sum == discount;
     }
 
     private static boolean exactWhole(List<OrdItem> items, List<RefundLine> requested) {

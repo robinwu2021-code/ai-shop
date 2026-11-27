@@ -16,7 +16,10 @@ public interface EntitlementMigrationPlanService {
     EntMigrationPlan owned(CatalogScope scope,String no);
     /** Decrypt only the owned fixed plan supplied by the trusted import coordinator. */
     ai.neargo.shop.pay.migration.service.LegacyCouponTargetPlan decode(EntMigrationPlan row);
-    PlanView prepare(CatalogScope scope,String stageNo,String reason,String key);
+    PlanView prepare(CatalogScope scope, ai.neargo.shop.pay.migration.dto.MigrationPlanViews.PlanCommand command, String key);
+    default PlanView prepare(CatalogScope scope, String stageNo, String reason, String key) {
+        return prepare(scope, new ai.neargo.shop.pay.migration.dto.MigrationPlanViews.PlanCommand(stageNo, reason), key);
+    }
     PlanView get(CatalogScope scope,String no);
     PlanView verify(CatalogScope scope,String no);
     LegacyCouponMigrationPlan prepared(CatalogScope scope,String no);

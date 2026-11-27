@@ -382,13 +382,16 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          * 退什么、退多少（第 5 步）：售后期守卫 → 按行 × 件数出方案（不传行 = 整单剩余）→ 只给金额就按额分回
          * → 渠道不支持部分退则拒。上限是剩余可退额，不再是实付（第二张售后只能退剩下的）。
          */
-        RefundPlan plan = requestPlanner.planOriginal(sub, refundQuery.lockItems(sub),
+        var originalItems = refundQuery.lockItems(sub);
+        RefundPlan plan = requestPlanner.planOriginal(sub, originalItems,
                 cmd.items() == null ? null : cmd.items().stream()
                         .map(i -> new RefundLine(i.itemId(), i.qty(), 0L)).toList(),
                 cmd.refundMinor(), cmd.ruleReason(), System.currentTimeMillis());
         long refund = plan.totalMinor();
         if (refund != sub.getPayAmount() || (sub.getRefundedMinor() != null && sub.getRefundedMinor() > 0)) {
-            if (source == null || pointsIntegrated(sub) || (couponPort != null && couponPort.usedTitleOf(sub.getOrderNo()) != null))
+            boolean frozenCoupon = BasicRefundPolicy.hasOriginalCoupon(sub, originalItems);
+            if (pointsIntegrated(sub) || !frozenCoupon && (source == null
+                    || couponPort != null && couponPort.usedTitleOf(sub.getOrderNo()) != null))
                 throw BizException.of(ErrorCode.AFTERSALE_AMOUNT_INVALID);
             var latest = latestOf(subOrderNo);
             if (latest.isPresent()) {

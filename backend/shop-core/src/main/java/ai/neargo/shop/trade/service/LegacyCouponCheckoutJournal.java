@@ -29,9 +29,10 @@ public interface LegacyCouponCheckoutJournal {
     }
     LegacyCouponBoundOrderService.Binding bindingFor(EntitlementContext ctx,String checkoutNo,LegacyCouponUsePort.Operation held);
     List<OrderVO.DiscountLine> discountLines(String tenantNo,String subOrderNo);
+    OrderVO.CouponReturn couponReturn(String tenantNo, String orderNo, String entityNo, String storeNo);
     String originalTitle(String tenantNo,String orderNo,boolean returned);
     boolean decideForRecovery(EntitlementContext ctx,String checkoutNo);
-    void acknowledge(EntitlementContext ctx,String checkoutNo,LegacyCouponUsePort.Operation completed);
+    void acknowledge(EntitlementContext ctx,String checkoutNo,String decisionNo,LegacyCouponUsePort.Operation completed);
     CheckoutFact stage(EntitlementContext ctx,Stage command);
     CheckoutFact bind(EntitlementContext ctx,String checkoutNo,String userNo,String commandHash,List<MerchantGroup> actualGroups,
               LegacyCouponUsePort.Operation held);

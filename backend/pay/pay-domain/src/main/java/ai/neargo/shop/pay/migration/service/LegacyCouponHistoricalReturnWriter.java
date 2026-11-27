@@ -28,10 +28,12 @@ public class LegacyCouponHistoricalReturnWriter {
     private final EntLedgerMapper ledger;
     private final EntitlementPostingService posting;
     private final PayEntitlementEventPublisher events;
+    private final LegacyCouponReversalRecorder reversalRecorder;
     private final ObjectMapper json;
     public LegacyCouponHistoricalReturnWriter(EntMigrationUsageMapper mappings,EntMigrationReturnMapper receipts,EntMigrationImportMapper imports,
             EntMigrationAssetMapper baselines,EntInstanceMapper instances,EntUsageMapper usages,EntLedgerMapper ledger,
-            EntitlementPostingService posting,PayEntitlementEventPublisher events,ObjectMapper json) {
+            EntitlementPostingService posting,PayEntitlementEventPublisher events,ObjectMapper json, LegacyCouponReversalRecorder reversalRecorder) {
+        this.reversalRecorder = reversalRecorder;
         this.mappings=mappings;this.receipts=receipts;this.imports=imports;this.baselines=baselines;this.instances=instances;
         this.usages=usages;this.ledger=ledger;this.posting=posting;this.events=events;this.json=json;
     }
@@ -66,6 +68,8 @@ public class LegacyCouponHistoricalReturnWriter {
         asset.setUpdatedBy(ctx.actorNo());asset.setUpdatedAt(EntitlementRecords.now());EntitlementRecords.changed(instances.updateById(asset));
         posting.post(ctx,asset,"MIGRATION_RETURN",fact.returnNo(),1,0,null,entry.getEntryNo());
         usage.setStatus("REVERSED");usage.setUpdatedBy(ctx.actorNo());usage.setUpdatedAt(EntitlementRecords.now());EntitlementRecords.changed(usages.updateById(usage));
+        reversalRecorder.record(ctx, usage, fact.returnNo(), fact.reason(), fact.sourceRefNo(),
+                json.writeValueAsString(fact), usage.getUpdatedAt());
         var row=new EntMigrationReturn();EntitlementRecords.audit(row,ctx);
         row.setReceiptNo("PR"+EntitlementRecords.digest(ctx.tenantNo()+":"+fact.returnNo()).substring(0,62));row.setReturnNo(fact.returnNo());
         row.setSourceUsageNo(fact.sourceUsageNo());row.setUsageNo(usage.getUsageNo());row.setInstanceNo(asset.getInstanceNo());

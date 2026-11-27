@@ -17,6 +17,10 @@ public class SvVoucher extends BaseEntity {
     private Long accountSeq;
     private String bizType;
     private String bizNo;
+    private String originVoucherNo;
+    private String usageNo;
+    private String afterSaleNo;
+    private String sourceDecisionNo;
     private String payloadHash;
     private Long principalDelta;
     private Long bonusDelta;

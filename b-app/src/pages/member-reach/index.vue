@@ -17,6 +17,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { AudienceItem, ReachPlan, ReachResult } from "@shared/types";
+import { idempotencyKey } from "@shared/net/http-client";
 import { confirm } from "@ai-shop/ui/prompt";
 import { takePendingAudience } from "@/shared/audience";
 import { ROUTES } from "@/shared/nav";
@@ -40,8 +41,15 @@ const result = ref<ReachResult | null>(null);
 const planFailed = ref(false);
 const busy = ref(false);
 
+let lastSchedule = "";
+let scheduleKey = "";
+const later = ref(false);
+const date = ref("");
+const time = ref("09:00");
+
 const canSend = computed(
-  () => !!plan.value && plan.value.reachable > 0 && !!title.value.trim() && !busy.value,
+  () => merchant.can("biz:campaign") && !!plan.value && !!title.value.trim() && !busy.value
+    && (later.value ? !!date.value : plan.value.reachable > 0),
 );
 
 
@@ -81,18 +89,32 @@ function onPick(next: AudienceItem[], label: string) {
 async function send() {
   const p = plan.value;
   if (!p || !canSend.value) return;
-  const ok = await confirm({ title: String(t("reach.confirmTitle", { n: p.reachable })), hint: String(t("reach.confirmBody")), confirmText: String(String(t("reach.confirmBtn"))) });
-  if (!ok) return;
+  const ok = await confirm({
+    title: later.value ? tt("reach.schedule") : String(t("reach.confirmTitle", { n: p.reachable })),
+    hint: later.value ? String(t("reach.scheduleHint", { when: date.value + " " + time.value, zone: merchant.currentStore?.timeZone ?? "" }))
+      : tt("reach.confirmBody"),
+    confirmText: tt(later.value ? "reach.schedule" : "reach.confirmBtn"),
+  });
+  if (!ok || busy.value) return;
 
   busy.value = true;
   try {
-    result.value = await api.mSendReach({
-      audiences: items.value,
-      scene: scene.value,
-      title: title.value.trim(),
-      body: body.value.trim(),
-      audienceDesc: itemsLabel.value,
-    });
+    const payload = {
+      audiences: items.value, scene: scene.value, title: title.value.trim(),
+      body: body.value.trim(), audienceDesc: itemsLabel.value,
+    };
+    if (later.value) {
+      const schedule = { ...payload, localTime: date.value + "T" + time.value + ":00" };
+      const signature = JSON.stringify(schedule);
+      if (lastSchedule !== signature) {
+        scheduleKey = idempotencyKey();
+        lastSchedule = signature;
+      }
+      const task = await api.mScheduleReach(schedule, scheduleKey);
+      uni.redirectTo({ url: ROUTES.reachTask + "?taskNo=" + task.taskNo });
+      return;
+    }
+    result.value = await api.mSendReach(payload);
     // 发完立刻重算：频次闸已经把这批人挡住了，界面上要立刻反映出来，
     // 否则他会以为「再点一次能再发一遍」
     plan.value = await api.mPlanReach({ audiences: items.value, scene: scene.value });
@@ -174,8 +196,24 @@ onShow(() => {
       <textarea v-model="body" class="field__input area" :placeholder="$t('common.optional')" />
     </view>
 
-    <view class="sh-btn send" :class="{ 'is-disabled': !canSend }" @tap="send">
-      {{ plan && plan.reachable
+    <view v-if="merchant.can('biz:campaign')" class="sh-card sh-mt-sm">
+      <view class="sh-row sh-row--between">
+        <text>{{ $t("reach.schedule") }}</text>
+        <switch :checked="later" @change="later = !later" />
+      </view>
+      <view v-if="later" class="chips">
+        <picker mode="date" :value="date" @change="date = String($event.detail.value)">
+          <text class="sh-chip">{{ date || $t("reach.chooseDate") }}</text>
+        </picker>
+        <picker mode="time" :value="time" @change="time = String($event.detail.value)">
+          <text class="sh-chip">{{ time }}</text>
+        </picker>
+        <text class="sh-muted">{{ merchant.currentStore?.timeZone }}</text>
+      </view>
+    </view>
+
+    <view v-if="merchant.can('biz:campaign')" class="sh-btn send" :class="{ 'is-disabled': !canSend }" @tap="send">
+      {{ later ? $t("reach.schedule") : plan && plan.reachable
         ? $t("reach.sendN", { n: plan.reachable })
         : $t("reach.sendNone") }}
     </view>

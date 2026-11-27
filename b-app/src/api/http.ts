@@ -1,3 +1,5 @@
+import type { ScheduledReachReq } from "./requests";
+import type { ScheduledReachResult } from "./response-types";
 import {salesInvoiceHttp} from "./sales-invoice-http";
 import {storedValueFinanceHttp} from "./stored-value-finance-http";
 import { payHttp } from "./pay-http";
@@ -24,6 +26,7 @@ import type { AutomationSession, GoodsPayMode, PayMode, StorePaySetting, EstateL
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
   AppVersionQuery,
+  CouponIssueReq,
   SubmitFeedbackReq,
   AddStaffReq,
   AppealReviewReq,
@@ -712,9 +715,9 @@ export const httpApi: MerchantApi = {
   mSaveCoupon: (payload) => http.post<MerchantCoupon>(E.mSaveCoupon.path, payload),
   mSetCouponStatus: (couponNo, status) =>
     http.put<MerchantCoupon>(buildPath(E.mSetCouponStatus.path, { couponNo }), { status }),
-  mIssueCoupon: (couponNo, segmentNo, audiences) =>
+  mIssueCoupon: (couponNo, segmentNo, audiences, requestKey, reachableOnly = false) =>
     http.post<CouponIssueBatch>(buildPath(E.mIssueCoupon.path, { couponNo }),
-      audiences?.length ? { audiences } : { segmentNo }),
+      { ...(audiences ? { audiences } : { segmentNo }), reachableOnly } satisfies CouponIssueReq, requestKey ? { "Idempotency-Key": requestKey } : undefined),
   mCouponIssues: (couponNo) =>
     http.get<CouponIssueBatch[]>(E.mCouponIssues.path, couponNo ? { couponNo } : undefined),
   mPeekCouponCode: (code) =>
@@ -740,6 +743,8 @@ export const httpApi: MerchantApi = {
     http.get<BatchPurchaseLine[]>(buildPath(E.mPeriodPurchaseLines.path, { periodNo })),
   mPlanReach: (payload) => http.post<ReachPlan>(E.mPlanReach.path, payload),
   mSendReach: (payload) => http.post<ReachResult>(E.mSendReach.path, payload),
+  mScheduleReach: (payload, requestKey) => http.post<ScheduledReachResult>(E.mScheduleReach.path, payload satisfies ScheduledReachReq, { "Idempotency-Key": requestKey }),
+  mCancelReach: (taskNo) => http.post<void>(buildPath(E.mCancelReach.path, { taskNo })),
   mReachTasks: (page) => http.get<ReachTask[]>(E.mReachTasks.path, { page: page ?? 1, size: 20 }),
   mReachTask: (taskNo) => http.get<ReachTask>(buildPath(E.mReachTask.path, { taskNo })),
 

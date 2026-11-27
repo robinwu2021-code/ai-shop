@@ -44,7 +44,7 @@ public class LegacyCouponIssueServiceImpl implements LegacyCouponIssueService {
         var version=catalog.getVersion(scope,template.template().currentVersionNo());
         if(!version.definition().allowedIssueModes().contains(command.mode())) throw BizException.of(ErrorCode.CONFLICT);
         var q=new LegacyCouponAudiencePort.Query(command.reference().source(),command.reference().batchNo(),command.reference().planHash(),
-                scope.entityNo(),command.mode(),command.segmentNo(),command.audiences(),command.userKey(),command.count(),scope.platformActor());
+                scope.entityNo(),command.mode(),command.segmentNo(),command.audiences(),command.userKey(),command.count(),scope.platformActor(),command.reachableOnly());
         var owner=audience.getIfAvailable();if(owner==null) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         var source=owner.resolve(new EntitlementContext(scope.tenantNo(),scope.actorNo(),key,"0".repeat(64)),q);
         if(source==null || !q.equals(source.query()) || !scope.tenantNo().equals(source.tenantNo()) || !scope.actorNo().equals(source.actorNo())) throw BizException.of(ErrorCode.CONFLICT);

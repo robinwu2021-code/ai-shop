@@ -10999,6 +10999,25 @@ components:
     OrderReturned:
       type: "object"
       properties:
+        couponReturn:
+          anyOf:
+            - type: "object"
+              properties:
+                sourceType:
+                  type: "string"
+                  enum:
+                    - "ORDER_CANCEL"
+                    - "AFTER_SALE"
+                discountMinor:
+                  type: "number"
+                decidedAt:
+                  type: "number"
+              required:
+                - "sourceType"
+                - "discountMinor"
+                - "decidedAt"
+              additionalProperties: false
+            - type: "null"
         couponTitle:
           type:
             - "string"
@@ -13039,6 +13058,7 @@ components:
         - "ALL"
         - "RECHARGE"
         - "REDEMPTION"
+        - "REFUND"
     StoredValueLocateQuery:
       type: "object"
       properties:
@@ -13060,6 +13080,7 @@ components:
             - "ALL"
             - "RECHARGE"
             - "REDEMPTION"
+            - "REFUND"
           description: "Requested stored-value record classification; ALL disables the classification filter."
         startDate:
           type: "string"
@@ -14206,6 +14227,7 @@ components:
       enum:
         - "RECHARGE"
         - "REDEMPTION"
+        - "REFUND"
 paths:
   "/mp/user/otp/send":
     post:
@@ -16696,6 +16718,13 @@ paths:
           required: true
           schema:
             type: "string"
+        - name: "Idempotency-Key"
+          in: "header"
+          required: false
+          description: "商家 PMT 券领取请求键，按用户与券模板区分。"
+          schema:
+            type: "string"
+            maxLength: 64
       responses:
         "200":
           description: "OK"
@@ -18539,6 +18568,7 @@ paths:
               - "ALL"
               - "RECHARGE"
               - "REDEMPTION"
+              - "REFUND"
             description: "Requested stored-value record classification; ALL disables the classification filter."
         - name: "startDate"
           in: "query"

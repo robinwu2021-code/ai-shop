@@ -25,6 +25,23 @@ class CustomerReportingMysqlTest {
     var ds=new DriverManagerDataSource(url.replace("/?","/"+schema+"?"),user,password);db=new JdbcTemplate(ds);CustomerReportingFixture.createAndSeed(db);reporting=new CustomerReportingServiceImpl(ds);
   }
   @AfterEach void cleanup(){if(admin!=null&&schema!=null)admin.execute("DROP DATABASE "+schema);}
+  @Test void migrationPreservesEachStoresMetricsAndPrivateProfile(){
+    var row=db.queryForMap("SELECT p.* FROM mbr_store_profile p JOIN mbr_member_store s ON s.id=p.legacy_member_store_id WHERE s.member_no='M1'");
+    assertEquals("PRIVATE-S2",row.get("store_profile_no"));
+    assertEquals("private at S2",row.get("remark"));
+    assertEquals("ADVISOR-S2",row.get("advisor_actor_no"));
+    assertEquals("PS1",row.get("customer_no"));
+    assertEquals("M1",row.get("member_no"));
+    assertEquals("REGULAR",row.get("level"));
+    assertEquals(3,((Number)row.get("order_count")).intValue());
+    assertEquals(7800L,((Number)row.get("total_spent_minor")).longValue());
+    assertEquals(2,((Number)row.get("d90_order_count")).intValue());
+    assertEquals(6000L,((Number)row.get("d90_spent_minor")).longValue());
+    assertEquals(100L,((Number)row.get("first_order_at")).longValue());
+    assertEquals(500L,((Number)row.get("last_order_at")).longValue());
+    assertEquals(3L,db.queryForObject("SELECT COUNT(*) FROM mbr_store_profile WHERE legacy_member_store_id IS NOT NULL",Long.class));
+    assertNull(db.queryForObject("SELECT remark FROM mbr_store_profile WHERE member_no='M2'",String.class));
+  }
   @Test void registrationsIncludeUnbuiltAccountsAndScopeBeforeCountsPagingAndTrend(){
     var r=reporting.registrations(all,filter(null,null,1,1));assertEquals(3,r.total());assertEquals(1,r.withoutStores());assertEquals(3,r.newLast30Days());assertEquals(30,r.trend().size());assertEquals("U0",r.page().records().getFirst().userNo());
     var scoped=reporting.registrations(one,filter(null,null,1,1));assertEquals(1,scoped.total());assertEquals(0,scoped.withoutStores());assertEquals("U1",scoped.page().records().getFirst().userNo());assertEquals(2,scoped.page().records().getFirst().storeCount());assertEquals(1,scoped.newLast30Days());
@@ -48,7 +65,7 @@ class CustomerReportingMysqlTest {
     db.update("UPDATE mbr_member SET first_store_no='S3' WHERE member_no='M3'");
     db.update("INSERT INTO mbr_member_source(tenant_no,source_no,member_no,entity_no,source_type,store_no,occurred_at,is_first,created_at,updated_at) VALUES('MAIN','MOVED_SRC','M1','E1','ORDER','S3',600,0,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
     // A mismatched denormalized entity anchor must not establish a store relation.
-    db.update("INSERT INTO mbr_member_store(tenant_no,member_no,entity_no,store_no,created_at,updated_at) VALUES('MAIN','M3','E2','S2',UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+    db.update("INSERT INTO mbr_store_profile(tenant_no,member_no,entity_no,store_no,store_profile_no,customer_no,first_seen_at,created_at,updated_at,created_by,updated_by) VALUES('MAIN','M3','E2','S2','MISMATCH','PS2',UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP(),'TEST','TEST')");
     db.update("INSERT INTO mbr_member_source(tenant_no,source_no,member_no,entity_no,source_type,store_no,occurred_at,is_first,created_at,updated_at) VALUES('MAIN','BAD_ANCHOR','M3','E2','ORDER','S2',700,0,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
     assertEquals(0,reporting.members(one,filter("S3",null,1,20)).total());
     assertEquals(1,reporting.members(one,filter("S2",null,1,20)).total());

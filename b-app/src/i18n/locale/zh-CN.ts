@@ -101,7 +101,7 @@ export default {
     "BRAND_STORE_CHANGED": "调整连锁门店"
   }
 },
-  storedValue: {"noWallet": "暂无储值账户", "noServices": "暂无可核销服务", "consumeAmount": "核销金额", "askCustomerConfirm": "请顾客进入「储值记录」确认本次消费。", "cancelConsumption": "取消本次核销", "completeRedemption": "完成核销", "previewConsumption": "发起核销", "insufficientWallet": "所选账户可用余额不足", "consumeState": {"WAIT_AUTH": "待顾客确认", "WAIT_SUBMIT": "顾客已确认", "PROCESSING": "正在核对核销结果", "COMMITTED": "核销成功", "CANCELLED": "已取消", "RELEASED": "已取消", "EXPIRED": "已过期"},
+  storedValue: { "refundFull": "全额退回储值账户", "refundQuestion": "将 {amount} 退回顾客原储值账户？","noWallet": "暂无储值账户", "noServices": "暂无可核销服务", "consumeAmount": "核销金额", "askCustomerConfirm": "请顾客进入「储值记录」确认本次消费。", "cancelConsumption": "取消本次核销", "completeRedemption": "完成核销", "previewConsumption": "发起核销", "insufficientWallet": "所选账户可用余额不足", "consumeState": {"REFUND_PENDING": "退款处理中", "REFUNDED": "已全额退回", "WAIT_AUTH": "待顾客确认", "WAIT_SUBMIT": "顾客已确认", "PROCESSING": "正在核对核销结果", "COMMITTED": "核销成功", "CANCELLED": "已取消", "RELEASED": "已取消", "EXPIRED": "已过期"},
     "sourceStore": "来源门店",
     "identityConflict": "部分会员身份待核实",
     "memberSuggest": "姓名、备注或手机号",
@@ -148,6 +148,7 @@ export default {
     "recharge": "储值",
     "all": "全部",
     "redemption": "核销",
+    "refund": "消费退款",
     "time": "时间",
     "start": "开始日期",
     "end": "结束日期",
@@ -2463,6 +2464,7 @@ export default {
     quotesPending: "{n} 待报价",
   },
   memberDetail: {
+    grade: "权益等级", ungraded: "未定级", gradeVersion: "权益规则版本",
     lastReach: "最近触达",
     lastReachLine: "{d} {s} · {o}",
     reachOutcome: { ORDERED: "已下单", OPENED: "已进店", NONE: "未进店" },
@@ -2760,6 +2762,7 @@ export default {
     needPerUser: "每人至少 1 张",
   },
   couponSend: {
+    reachableOnly: "仅发给当前可接收优惠券通知的会员",
     audience: "人群",
     matched: "命中",
     reachable: "能收到",
@@ -2814,6 +2817,10 @@ export default {
     receivedOf: "领 {n} / {m}",
   },
   reach: {
+    schedule: "预约发送", chooseDate: "选择日期",
+    scheduleHint: "门店时间 {when} {zone}。到期重新确定受众并检查退订和频控。",
+    cancelSchedule: "撤销预约", progress: "已处理 {done} / {total} 人",
+    state: { SCHEDULED: "待发送", SENDING: "发送中", SENT: "已发送", CANCELLED: "已撤销" },
     title: "给会员发消息",
     entry: "发消息",
     sceneQ: "消息类型",
@@ -2829,6 +2836,8 @@ export default {
     skipped: "发不出",
     reason: {
       BLOCKED: "{n} 人已被你拉黑",
+      DAILY_LIMIT: "{n} 人已达平台当日营销消息上限",
+      INBOX_REJECTED: "{n} 人未收到站内信",
       TOO_SOON: "{n} 人最近刚收到过",
       OPT_OUT: "{n} 人已关闭消息接收",
       LEAD: "{n} 人为手工录入，本人未同意接收",
@@ -2967,6 +2976,7 @@ export default {
     ruleHint: "人群按条件动态变化，发券时重新计算。",
   },
   memberSettings: {
+    noGradeRule: "暂无生效版本",
     title: "会员设置",
 
     scope: "会员统计口径",

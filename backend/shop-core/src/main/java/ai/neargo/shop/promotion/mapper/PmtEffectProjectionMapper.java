@@ -31,6 +31,7 @@ public interface PmtEffectProjectionMapper extends BaseMapper<PmtEffectProjectio
             + "WHERE e.tenant_no=#{tenant} AND e.entity_no=#{entity} AND e.effect_kind='ORDER_DISCOUNT' "
             + "AND e.deleted=0 AND a.deleted=0 AND a.reverted_at IS NULL "
             + "AND e.occurred_at&gt;=#{from} AND e.occurred_at&lt;#{to}",
+            "<if test='activity != null'> AND e.activity_no=#{activity}</if>",
             "<if test='stores != null'> AND e.store_no IN "
             + "<foreach collection='stores' item='store' open='(' separator=',' close=')'>#{store}</foreach></if>",
             "GROUP BY e.currency ORDER BY e.currency", "</script>"})
@@ -38,7 +39,7 @@ public interface PmtEffectProjectionMapper extends BaseMapper<PmtEffectProjectio
             @Arg(column = "amount_minor", javaType = BigDecimal.class),
             @Arg(column = "events", javaType = long.class)})
     List<EffectTotal> summary(@Param("tenant") String tenant, @Param("entity") String entity,
-            @Param("stores") List<String> stores, @Param("from") LocalDateTime from,
+            @Param("stores") List<String> stores, @Param("activity") String activity, @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
     record EffectTotal(String currency, BigDecimal amountMinor, long events) { }
     @Select("SELECT * FROM pmt_effect_projection WHERE tenant_no=#{tenant} AND source_event_no=#{event} "
@@ -50,6 +51,7 @@ public interface PmtEffectProjectionMapper extends BaseMapper<PmtEffectProjectio
             + "COUNT(DISTINCT e.source_event_no) AS events FROM pmt_effect_projection e "
             + "WHERE e.tenant_no=#{tenant} AND e.entity_no=#{entity} AND e.deleted=0 "
             + "AND e.effect_kind&lt;&gt;'ORDER_DISCOUNT' AND e.occurred_at&gt;=#{from} AND e.occurred_at&lt;#{to}",
+            "<if test='activity != null'> AND e.activity_no=#{activity}</if>",
             "<if test='stores != null'> AND e.store_no IN "
             + "<foreach collection='stores' item='store' open='(' separator=',' close=')'>#{store}</foreach></if>",
             "GROUP BY e.effect_kind,e.currency ORDER BY e.effect_kind,e.currency","</script>"})
@@ -57,6 +59,6 @@ public interface PmtEffectProjectionMapper extends BaseMapper<PmtEffectProjectio
             @Arg(column="amount_minor",javaType=BigDecimal.class),@Arg(column="units",javaType=BigDecimal.class),
             @Arg(column="events",javaType=long.class)})
     List<PayEffectTotal> paySummary(@Param("tenant") String tenant,@Param("entity") String entity,
-            @Param("stores") List<String> stores,@Param("from") LocalDateTime from,@Param("to") LocalDateTime to);
+            @Param("stores") List<String> stores, @Param("activity") String activity,@Param("from") LocalDateTime from,@Param("to") LocalDateTime to);
     record PayEffectTotal(String effectKind,String currency,BigDecimal amountMinor,BigDecimal units,long events) { }
 }

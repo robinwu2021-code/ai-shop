@@ -21,6 +21,11 @@ import ai.neargo.shop.member.dto.MemberVOs.TagVO;
 import ai.neargo.shop.member.service.MemberTagService;
 import ai.neargo.shop.member.dto.MemberVOs;
 import ai.neargo.shop.member.service.MemberReachService;
+import ai.neargo.shop.member.service.ScheduledReachService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.validation.annotation.Validated;
 import ai.neargo.shop.member.service.MemberAudienceService;
 import ai.neargo.shop.member.dto.MemberVOs.AudiencePreviewVO;
 import ai.neargo.shop.member.dto.MemberVOs.BatchTagVO;
@@ -49,6 +54,7 @@ import java.util.List;
  * 所以它们在同一个控制器（按权限与使用者切，不按资源切）。
  */
 @Profile("api")
+@Validated
 @RestController
 public class BizMemberController {
 
@@ -57,13 +63,14 @@ public class BizMemberController {
 
     private final ai.neargo.shop.member.service.MemberSegmentService segmentService;
     private final MemberReachService reachService;
+    private final ScheduledReachService scheduledReach;
     private final MemberAudienceService audienceService;
     private final MerchantQueryPort merchantQuery;
     private final MemberQueryScopeAuthority queryScope;
 
     public BizMemberController(MemberService memberService, MemberTagService tagService,
                                ai.neargo.shop.member.service.MemberSegmentService segmentService,
-                               MemberReachService reachService,
+                               MemberReachService reachService, ScheduledReachService scheduledReach,
                                MemberAudienceService audienceService,
                                MerchantQueryPort merchantQuery,
                                MemberQueryScopeAuthority queryScope) {
@@ -71,6 +78,7 @@ public class BizMemberController {
         this.merchantQuery = merchantQuery;
         this.segmentService = segmentService;
         this.reachService = reachService;
+        this.scheduledReach = scheduledReach;
         this.audienceService = audienceService;
         this.memberService = memberService;
         this.tagService = tagService;
@@ -305,10 +313,31 @@ public class BizMemberController {
     public record ReachReq(String segmentNo, String scene, String title, String body,
                            List<AudienceItem> audiences, String audienceDesc) {
 
+        public ReachReq {
+            if (audiences != null && audiences.isEmpty() && (segmentNo == null || segmentNo.isBlank())) {
+                throw BizException.of(ErrorCode.MEMBER_AUDIENCE_REQUIRED);
+            }
+        }
+
         boolean hasAudiences() {
             return audiences != null && !audiences.isEmpty();
         }
     }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
+    @PostMapping("/biz/member-reach/schedule")
+    public ScheduledReachResult scheduleReach(@Valid @RequestBody ScheduledReachService.Request req,
+            @RequestHeader("Idempotency-Key") @Pattern(regexp = "\\S(?:.{0,62}\\S)?") String key) {
+        return noScope(() -> new ScheduledReachResult(scheduledReach.schedule(BizContext.requireMerchantNo(), req, SecurityUtils.currentUserNo(), key)));
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
+    @PostMapping("/biz/member-reach/task/{taskNo}/cancel")
+    public void cancelScheduledReach(@PathVariable String taskNo) {
+        noScope(() -> scheduledReach.cancel(BizContext.requireMerchantNo(), taskNo));
+    }
+
+    public record ScheduledReachResult(String taskNo) {}
 
     /** 「发出去的」列表（原型 m19）。只有消息；券的批次走 {@code /biz/coupon-issues} */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
@@ -401,7 +430,7 @@ public class BizMemberController {
     @GetMapping("/biz/member-settings")
     public MemberSettingVO settings() {
         return noScope(() -> {
-            return memberService.settings(BizContext.requireMerchantNo());
+            return memberService.settings(SecurityUtils.requireUser().tenantNo(), BizContext.requireMerchantNo());
         });
     }
 
@@ -414,7 +443,7 @@ public class BizMemberController {
     @PutMapping("/biz/member-settings")
     public MemberSettingVO saveSettings(@RequestBody SettingReq req) {
         return noScope(() -> {
-            return memberService.saveSettings(BizContext.requireMerchantNo(),
+            return memberService.saveSettings(SecurityUtils.requireUser().tenantNo(), BizContext.requireMerchantNo(),
                     req.memberScope(), req.autoJoinOnOrder());
         });
     }

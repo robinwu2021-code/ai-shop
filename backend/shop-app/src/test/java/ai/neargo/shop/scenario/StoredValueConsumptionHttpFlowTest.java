@@ -126,5 +126,22 @@ class StoredValueConsumptionHttpFlowTest {
         assertThat(getJson(mvc, "/mp/stored-value/consumptions?entityNo=" + entity, ownerConsumer)
                 .path("data").path("records").size()).isZero();
         assertThat(getJson(mvc, historyPath, ownerConsumer).path("data").path("records").size()).isZero();
+
+        String recordNo = jdbc.queryForObject("SELECT record_no FROM sv_statement WHERE business_no=?",
+                String.class, used.path("data").path("operationNo").asString());
+        String recordPath = "/biz/stores/" + store + "/stored-value/issuer-records/" + recordNo;
+        assertThat(getJson(mvc, recordPath, merchant).path("data").path("serviceOrderNo").asString()).isEqualTo(order);
+        String refund = "/biz/stored-value/consumptions/order/" + order + "/refund";
+        assertThat(postJson(mvc, refund, buyer, Map.of("storeNo", store), id()).path("code").asInt()).isNotZero();
+        assertThat(postJson(mvc, refund, merchant, Map.of("storeNo", id()), id()).path("code").asInt()).isNotZero();
+        var returned = postJson(mvc, refund, merchant, Map.of("storeNo", store), id());
+        assertThat(returned.path("code").asInt()).as(returned.toString()).isZero();
+        assertThat(returned.path("data").path("status").asString()).isEqualTo("REFUNDED");
+        assertThat(returned.path("data").path("amountMinor").asLong()).isEqualTo(1000);
+        assertThat(postJson(mvc, refund, merchant, Map.of("storeNo", store), id()).path("data"))
+                .isEqualTo(returned.path("data"));
+        assertThat(getJson(mvc, recordPath, merchant).path("data").path("refundStatus").asString()).isEqualTo("REFUNDED");
+        assertThat(getJson(mvc, "/biz/stored-value/consumptions/orders/" + order + "?storeNo=" + store, merchant)
+                .path("data").path("status").asString()).isEqualTo("REFUNDED");
     }
 }

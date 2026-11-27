@@ -215,7 +215,11 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             } else {
                 verified(head,null);
             }
-            var result=new RefundLedger(new MybatisRefundLedgerStore(ledgerStore,as)).record(snapshot(head).plan());
+            var plan = snapshot(head).plan();
+            var result = new RefundLedger(new MybatisRefundLedgerStore(ledgerStore, as)).record(plan);
+            for (var line : plan.lines()) {
+                ledgerStore.recordCouponReturn(as, plan.subOrderNo(), line.itemId(), line.qty());
+            }
             change(head,"COMMITTED",(String)head.get("cash_payment_no"),number(head,"net_cash_minor"),
                     json.writeValueAsString(result));
             return result;

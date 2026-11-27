@@ -14,6 +14,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LineSharesTest {
 
     @Test
+    void largeLineDiscountsRetainEveryMinorUnit() {
+        assertThat(LineShares.allocate(4_000_000_001L, new long[]{3_000_000_000L, 2_000_000_000L}))
+                .containsExactly(2_400_000_001L, 1_600_000_000L);
+    }
+
+    @Test
     @DisplayName("★★★ Σ 份额恰等于总额 —— 三行等权 100 元分不尽，零头不丢")
     void sumIsExact() {
         long[] s = LineShares.allocate(10000L, new long[]{1, 1, 1});

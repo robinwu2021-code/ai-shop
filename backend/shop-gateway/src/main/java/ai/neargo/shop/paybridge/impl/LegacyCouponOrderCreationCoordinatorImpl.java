@@ -91,7 +91,7 @@ public class LegacyCouponOrderCreationCoordinatorImpl implements LegacyCouponOrd
                 && result.status()!=LegacyCouponUsePort.State.REVERSED
                 || decision.outcome()==Outcome.ABORT && result.status()!=LegacyCouponUsePort.State.RELEASED)
             throw BizException.of(ErrorCode.CONFLICT);
-        journal.acknowledge(ctx,checkout,result);
+        journal.acknowledge(ctx,checkout,reversal.map(r -> r.decisionNo()).orElse(decision.decisionNo()),result);
         return result;
     }
     private CheckoutFact find(EntitlementContext ctx,String no) {

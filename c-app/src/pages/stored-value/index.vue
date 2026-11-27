@@ -13,7 +13,7 @@ const pager = createStoredValuePager<StoredValueIssuer, {}, StoredValueIssuersPa
 );
 const state = pager.state;const pendingServices=ref<StoredValueService[]>([]),confirmOrder=ref(""),servicesFailed=ref(false);
 async function services(){servicesFailed.value=false;try{pendingServices.value=(await readStoredValueWithSession(()=>api.storedValuePendingServices(),()=>ROUTES.storedValue)).filter(s=>s.payment?.assetKind==="STORED_VALUE"&&s.confirmation&&["WAIT_AUTH","WAIT_SUBMIT","PROCESSING"].includes(s.status));}catch{servicesFailed.value=true;}}
-const typeKeys = { RECHARGE: "storedValue.RECHARGE", REDEMPTION: "storedValue.REDEMPTION" };
+const typeKeys = { RECHARGE: "storedValue.RECHARGE", REDEMPTION: "storedValue.REDEMPTION", REFUND: "storedValue.REFUND" };
 function load() { void pager.reset({});void services(); }
 function open(issuerRef: string) {
   uni.navigateTo({ url: `${ROUTES.storedValueRecords}?issuerRef=${encodeURIComponent(issuerRef)}` });

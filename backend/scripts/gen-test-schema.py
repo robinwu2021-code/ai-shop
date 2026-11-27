@@ -843,7 +843,8 @@ def _h2_permission_seed(stmt):
 
 
 def replay_statements(statements, tables, order, seeds, renames, altered):
-    # Keep already lexed native bodies whole; never re-split projected statements.
+    # Temporary migration work tables have no rows or schema in the final H2 database.
+    temporary_tables = set()
     for stmt in statements:
         if not stmt:
             continue
@@ -852,6 +853,8 @@ def replay_statements(statements, tables, order, seeds, renames, altered):
         known = _known_grant_rewrite(stmt)
         if known is not None:
             seeds.append((None, [], known))
+        elif (target := re.match(r"delete\s+(\w+)\s+from\s+(\w+)\s+\1\s+join\b", low)) and target[2] in temporary_tables:
+            continue
         elif re.match(r"delete\s+\w+\s+from\b", low):
             raise SystemExit("✗ MySQL 多表 DELETE H2 重放不了；改的若是种子，请在 _KNOWN_GRANT_REWRITES 登记等价写法：\n  " + stmt[:200])
         elif low.startswith("create table"):
@@ -944,7 +947,15 @@ def replay_statements(statements, tables, order, seeds, renames, altered):
             else:
                 # 种子数据：H2 建表脚本里保留，测试要用到（如端×品类可售规则的 25 行）
                 seeds.append(_snapshot(stmt, tables))
+        elif low in ("start transaction", "commit"):
+            # 存量回填事务的边界不属于 H2 最终结构。
+            pass
         elif low.startswith("create temporary table") or low.startswith("drop temporary table"):
+            temp = re.match(r"(create|drop) temporary table (\w+)", low)
+            if temp and temp[1] == "create":
+                temporary_tables.add(temp[2])
+            elif temp:
+                temporary_tables.discard(temp[2])
             # **临时表是迁移过程中的草稿纸，不是结构的一部分。**
             #
             # V72 用 `CREATE TEMPORARY TABLE tmp_rp_identity AS SELECT …` 把「清空重建
@@ -1138,6 +1149,9 @@ def _apply_action(table, action, cols):
         before = len(cols)
         cols[:] = [c for c in cols
                    if not re.match(rf"^\s*CONSTRAINT\s+{name}\s+CHECK\b", c, re.I)]
+        if table == "sv_statement" and name == "sv_statement_chk_2" and len(cols) == before:
+            # V535's second, unnamed CHECK gets this MySQL name. H2 keeps the original expression.
+            cols.remove("    CHECK ((type='RECHARGE' AND signed_amount_minor>0) OR (type='REDEMPTION' AND signed_amount_minor<0))")
         if len(cols) == before:
             raise SystemExit(f"✗ DROP CHECK {table}.{name}：约束不存在")
         return
