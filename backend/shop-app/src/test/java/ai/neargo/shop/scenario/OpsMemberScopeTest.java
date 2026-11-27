@@ -66,9 +66,9 @@ class OpsMemberScopeTest {
         personService.bindOnLogin(userNo, phone);
         long now = System.currentTimeMillis();
         memberService.onOrderPaid("SUB-OPS-A" + seq, userNo, personNo, "M-OPS-A" + seq,
-                "ST-1", 5_000, now);
+                "ST-OPS-A" + seq, 5_000, now);
         memberService.onOrderPaid("SUB-OPS-B" + seq, userNo, personNo, "M-OPS-B" + seq,
-                "ST-1", 3_000, now);
+                "ST-OPS-B" + seq, 3_000, now);
         return new String[]{personNo, phone};
     }
 
