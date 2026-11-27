@@ -292,10 +292,10 @@
 | 1b | 字典收敛 | **已做（2026-11-27，10ead5ef7）**：`spi.dict.DictionaryPort` 一个端口，唯一实现 `DictionaryPortImpl` 按类型汇集三个来源；行业实为两个概念（经营类型树、进件行业），`cim_provider` 是销售渠道方、不并；三个旧端口方法与四处渠道常量别名删掉，见下方“1b 字典” | 中 |
 | 1c | 设置收敛 | **已做（2026-11-27，77d04fc9c）**：结算、提现改经 `SettingPort` 读写 `sys_setting`，删 `PaySettingService`/`PaySetting`；pay-svc 桩清单加回 `SettingPort`。`pay_setting` 不再读写、未删表；上线前查生产 `sys_setting` 有无 V285 前的四个旧键 | 小 |
 | 1d | 发号仓储 | **已做（2026-11-27，44d906f85）**：仓储不再按归属切表，CORE/PAY 共用 `sys_sequence` + `core_document_number`（支付数据源与主库同一个库，只分事务，所以不跨库）；订单号段 `SeqSegmentSource` 改调仓储 `claimSegment`，删第二份 `SeqMapper` 与 `SysSequence`。**新增迁移 V706**（见下）。「三种按范围计数」逐个核过，只有订单号段是重复的发号，已收；另三处不属发号：`ord_points_source_counter`（积分来源事实的流序号，属事件组）、`mkt_counter_campaign_fence`（营销活动并发围栏，靠同事务行锁，不能挪进独立事务的发号）、`pay_sequence` / `pay_checkout_display_revision`（本仓库没有读写代码，只在库里） | 中 |
-| 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准）。**部分完成（2026-11-27，a24af565d 等）**：运营侧 `ApprovalPort`（门店审核、退款两人复核），店内 `LightApprovalPort` + `sys_approval`（改价）；储值活动审批随储值迁出，等 §3 Q17。见下方“1e 审批” | 中 |
+| 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准）。**部分完成（2026-11-27，a24af565d 等）**：运营侧 `ApprovalPort`（门店审核、退款两人复核），店内 `LightApprovalPort` + `sys_approval`（改价）；储值活动审批随储值迁出（Q17 已定，不在本项）。见下方“1e 审批” | 中 |
 | 1f | 撤中转 | **已做（2026-11-27，69b2bedd8）**：PAY 权益中转、NearPay 接收端、进销存回写按原事件号经 `OutboxEventBus.forward` 直发中间件；餐饮包装含路由决定未删，见下方“1f 撤中转” | 中 |
 | 1g | 接口级防重迁移 | `sys_idempotent` / `IdempotencyService` 的 50 个使用文件按域分批改用统一防重，每批一提交。**已做（2026-11-27）**：Q11 定 A，统一端口 `RequestIdempotencyPort`；端口与主干 18e27062a、美业 2821a4f2f、餐饮 288d997c9、删转发器 260735a0b，做法见下方“1g” | 大 |
-| 1h | 开放应用 | 三套应用凭据（`pay_app`、`inv_open_credential`、`sys_ops_api_key`）收敛；若设计已定归密钥库，则做迁移接口，不在本库落表。**部分完成（2026-11-27）**：统一凭据接口 `CredentialVerifier` 与摘要档已做，运营接口密钥已改走密钥库；库存开放凭证等 §3 Q18；`pay_app` → `sys_open_app` 随基础能力库换库（Q2）。见下方“1h 开放应用” | 中 |
+| 1h | 开放应用 | 三套应用凭据（`pay_app`、`inv_open_credential`、`sys_ops_api_key`）收敛；若设计已定归密钥库，则做迁移接口，不在本库落表。**已做（2026-11-27）**：统一凭据接口 `CredentialVerifier` 与摘要档；运营接口密钥、库存开放凭证都已改走密钥库；`pay_app` → `sys_open_app` 随基础能力库换库（Q2，第 2 阶段）。见下方“1h 开放应用” | 中 |
 | 1i | 审计提交后写 | **已做（2026-11-27，267f86839）**：`AuditLogPortImpl` 提交后在后台线程写 `sys_audit_log`，回滚不写、失败只记日志；只动统一审计，各域操作日志不动（D4 未定，不影响） | 小 |
 
 建议分组：会话甲 1a、1c、1i、1d；会话乙 1b、1e、1h；会话丙 1f、1g。
@@ -466,7 +466,7 @@
 
 **储值活动审批：不并入 `sys_approval`**（与 Q13 的建议不同，偏差）：设计清单里 `pmt_sv_approval`、`pmt_sv_release_link` 归“储值迁到会员营销”，
 并入 `ent_template(+version)` —— 活动审批会变成卡模板版本的发布状态，不是独立的审批单；而且它的列表按管理层、范围类型、品牌筛选，`sys_approval` 没有这些列。
-所以它随储值迁出一起处理（另一条线），本项不动。见 §3 Q17。
+所以它随储值迁出一起处理（另一条线），本项不动。Q17 已定（2026-11-27）：认可。
 
 **待定**：
 
@@ -528,9 +528,20 @@
 - **部署前提**：运营接口密钥依赖密钥模块，进程须配 `shop.secret.env`（DIGEST 档不需要主密钥）；未配时 `oak_` 认证会 500。上线前确认。
 - `scripts/gen-test-schema.py` 支持 `ALTER TABLE … DROP CONSTRAINT`（V3 要在 H2 上直接跑，`DROP CHECK` 不通用）。
 
-**未做：库存开放凭证**（等 Q18）。`inventory-svc` 独立部署时没有密钥模块（无依赖、无 `sec_*` 数据源，密钥模块是库不是服务）；
-且模型不对齐：库存所有者是可空字符串（系统凭证按 `system_code` 选业主）而 `KeyOwner.ownerId` 是数字，凭证是 `appKey` + `appSecret` 一对并带 scopes/capabilities，哈希用 BCrypt 不能按摘要查。
-`inv_open_credential`、`OpenApiCredentialServiceImpl`、`ServicePlatformServiceImpl` 原样未动。
+**已做（2026-11-27）：库存开放凭证改走密钥库**（Q18 照建议）
+
+- 所有者：业主凭证 `KeyOwner(INVENTORY, "INV_OWNER", inv_owner.id)`，系统凭证 `KeyOwner(INVENTORY, "INVENTORY_SYSTEM", inv_client_system.id)`。
+- 凭据号 = `appKey`（`AK…` 开放接口、`SK…` 服务），`credentialId` 现在等于 `appKey`；secret 由密钥模块生成，格式 `ivk_` + 43 位 Base64URL（原 64 位十六进制）。
+  验证按 secret 找凭证再核对凭据号即请求里的 `appKey`，四种失败仍同一个错。
+- `scope` 编码：分号分隔 `scopes=…;caps=…;owner=<owner_id>;system=<system_code>`（没有的省略）。
+  电商、设备两套库存各有库、主键都从 1 起、共用一个密钥库，所以认证、列出、按号查、吊销都再核对本库那一行的 `owner_id` / `system_code` 与 scope 一致，对不上当不存在。
+- `inv_open_credential` 停读停写（线上 0 行，上线后重新签发），实体与 Mapper 删掉，表待后续迁移删。
+- `CredentialVerifier` 新增 `find(namespace, ownerType, credentialNo)`（含已吊销）。
+- `inventory-svc` 自带密钥库数据源 `InventorySecretConfig`（不跑迁移，迁移归 shop-app），配置项 `inventory.secret.env`、`inventory.secret.datasource.url/username/password/max-pool-size`、
+  `inventory.secret.flyway-enabled`（默认关，仅测试）；口令只从 `INVENTORY_SECRET_DATASOURCE_PASSWORD` 来、无默认值。嵌入部署用 shop-app 的 `DigestCredentialVerifier`。
+- 偏差：`lastUsedAt` 恒为空（密钥库只有按所有者的最近使用，不按张；不为它建表），认证不再写库；不给期限按 100 年存；签发已过期的期限返回 400；
+  `OpenApiCredentialService.issue/revoke` 无操作人参数，记 `SYSTEM`。
+- **部署前提**：`inventory-svc` 须配密钥库连接（指向 ai-shop 主库，只授 `sec_key`、`sec_key_version`、`sec_key_event`、`sec_access_log` 的读写）与 `INVENTORY_SECRET_ENV`（与 shop-app 的 `shop.secret.env` 一致），否则起不来或验证一律不过。
 
 ## §3 待你定
 
@@ -547,13 +558,13 @@
 | Q8 | 报表脏日丢一次能否靠每日重算兜底 | 有重算就降到 ②，十几个事件的跨库部分随之变少 |
 | Q9 | 是否引入 MQ（已定 RabbitMQ 4）；生产由谁部署（.80 / UME 166 目前没有） | 引入，按 §1.5 默认 `local`；见 ADR-067（提案，待确认）。部署负责人待定 |
 | Q11 | **已定 A（2026-11-27）**，见 §2.2 1g；清理按 S8 修正为不加。接口级防重（1g）怎么统一：A. 做成基础能力的一个端口（语义即 §2.2 1g 的 S1–S8），回执存基础能力库一张请求回执表、24 小时清理，设计 §6.9 的“不建表”改为“不在业务库建表”，调用方迁移只是换端口；B. 照设计定稿逐接口加业务唯一键、重复时重读业务数据重建响应 | A：约 100 处调用机械可分批、对外语义不变；B 要约 40 个接口所在文件各加迁移与测试，原始响应重放与 24 小时语义消失，餐饮/美业要各模块做 |
-| Q17 | 1e：储值活动审批按设计清单随储值迁到会员营销、并成卡模板版本的发布状态（不进 `sys_approval`），是否认可 | 认可；Q13 的“归轻量审批”作废。若仍要进 `sys_approval`，需给它加管理层与范围列（偏离字段设计） |
+| Q17 | 1e：储值活动审批按设计清单随储值迁到会员营销、并成卡模板版本的发布状态（不进 `sys_approval`），是否认可 | **已定（2026-11-27）**：认可；Q13 的“归轻量审批”作废，储值活动审批随储值迁出那条线处理，1e 不再动它 |
 | Q12 | 1e：退款两人复核切到 OpsKit 时，OpsKit 要不要强制“审批人不得为提交人、两步不同人”（支付现行规则；OpsKit 默认可本人审批） | **已定（2026-11-27）**：要 |
 | Q13 | 1e：储值活动审批（商户管理层批）归哪 | **已定（2026-11-27）**：归轻量审批；但见 Q17 |
 | Q14 | 1e：轻量审批（店内、商户侧）要不要和 `ApprovalPort` 合成一个接口 | **已定（2026-11-27）**：不合，另设 `LightApprovalPort` |
 | Q15 | 1h：API Key 类凭据（库存开放凭证、运营接口密钥）进密钥库只存摘要还是可还原材料 | **已定（2026-11-27）**：只存摘要 |
 | Q16 | 1h：运营接口密钥的所有者用 `sys_ops_staff.id`（`KeyOwner.ownerId` 是数字）还是改 `KeyOwner` 收字符串 | **已定（2026-11-27）**：用 `sys_ops_staff.id` |
-| Q18 | 1h：库存独立服务 `inventory-svc` 的凭据怎么接密钥库：给它装一套指向同一密钥库的 secret 数据源，还是经 shop-app 的内部验证端点；库存所有者映射成什么 | 装 secret 数据源（密钥库本就是共享库，验证在本地少一跳）；所有者用 `inv_owner` 数字主键，系统凭证用 `owner_type=INVENTORY_SYSTEM`；`appKey` 作凭据号、capabilities 进 scope；存量 BCrypt 凭证 0 行，重新签发 |
+| Q18 | 1h：库存独立服务 `inventory-svc` 的凭据怎么接密钥库：给它装一套指向同一密钥库的 secret 数据源，还是经 shop-app 的内部验证端点；库存所有者映射成什么 | **已定（2026-11-27）**：照建议 —— 装 secret 数据源（密钥库本就是共享库，验证在本地少一跳）；所有者用 `inv_owner` 数字主键，系统凭证用 `owner_type=INVENTORY_SYSTEM`；`appKey` 作凭据号、capabilities 进 scope；存量 BCrypt 凭证 0 行，重新签发 |
 | Q10 | 商户来单通知（`SUB_ORDER_PAID`）改成提交后发、不落发件箱，接受“提交后、发送前进程崩溃漏一次” | **已定（2026-11-27）**：统一走 MQ，来单属 MQ 直发 |
 
 ## §5 对账三 · 实现 → 需求
