@@ -42,7 +42,7 @@ public final class CommerceMappers {
 
     public interface FulfillmentLinkMapper extends BaseMapper<CimFulfillmentLink> {}
 
-    public interface FulfillmentLineLinkMapper extends BaseMapper<CimFulfillmentLineLink> {}
+    public interface FulfillmentLineLinkMapper extends TradeTableMapper<CimFulfillmentLineLink> {}
 
     public interface OrderLineLinkMapper extends TradeTableMapper<CimOrderLineLink> {}
 

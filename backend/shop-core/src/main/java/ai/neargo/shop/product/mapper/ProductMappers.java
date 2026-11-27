@@ -434,6 +434,17 @@ public final class ProductMappers {
                 + "AND source_manifest_hash IS NOT NULL")
         int trackedOriginal(@Param("order") String order);
 
+        /** Plain read for mirror evidence: every original row of one fulfillment, settled and deleted included. */
+        @Select("SELECT * FROM prd_stock_lock WHERE fulfillment_ref=#{ref} ORDER BY id")
+        List<PrdStockLock> fulfillmentOriginals(@Param("ref") String ref);
+
+        /** Which of the given lock numbers hold this SKU; the delivery guard asks without joining outbox. */
+        @Select("""
+                <script>SELECT DISTINCT lock_no FROM prd_stock_lock WHERE sku_no=#{sku} AND lock_no IN
+                <foreach collection="lockNos" item="no" open="(" separator="," close=")">#{no}</foreach></script>
+                """)
+        List<String> lockNosHoldingSku(@Param("sku") String sku, @Param("lockNos") java.util.Collection<String> lockNos);
+
     }
 
     /** Links are queried under existing stock roots; deleted identity conflicts are never hidden. */

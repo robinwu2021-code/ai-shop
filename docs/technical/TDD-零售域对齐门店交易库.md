@@ -289,6 +289,8 @@
 | 并回餐饮 44 个混用类 | 拆类出错、行为漂移 | 先补场景测试（`food-embedded-test` 已有一批），逐类拆 |
 | 测试基建 | 13 个 IT 要专用测试库；`StoreOrderMysqlTest` 依赖旧库模板；171 个测试夹具文件写死表名 | S0 先建 `n_trade` 测试库脚本（设计 DDL + 补充脚本），夹具随子模块改 |
 | 交易核心分支长期不合回（方案甲） | 与 v2 上并行的改动冲突越积越多；最后一次切换问题集中 | 第一段（接句柄）仍逐步推到 v2，缩小分支差异；分支每完成一个子模块就合入一次 v2 的最新代码；切换前在 `n_trade` 测试库上跑全量，并演练一次数据搬迁与回退 |
+| 网关发货重传锁单与写发货上传在同一事务（`ShipmentSourcePortImpl.retryUpload`、`lockedIdentityOf`） | 订单换到交易库、发货上传留主库后成了跨库事务 | 随物流一起拆：锁单只用来对版本，改成先读版本、写发货上传时带版本号比对 |
+| 旧券结账闸门按主库数据源判「结账事务已开」（`LegacyCouponSourceFenceServiceImpl`） | 换表后结账事务开在交易库，带旧券的结账一律失败 | 切换前旧券迁移必须完成、闸门下线；没完成就不切 |
 | 分支上的测试只能对着 `n_trade` 测试库跑 | 测试库与 61 上的库、设计 DDL 不一致 | 测试库只由修好后的设计 DDL + 补充脚本生成，与 61 用同一份来源 |
 
 ## §5 对账三 · 实现 → 需求（实现后填）
@@ -488,6 +490,45 @@
 - `shop-app` 带餐饮、渠道、零售插件（`-P food-embedded,food-verify,commerce-embedded,food-commerce-embedded,retail-commerce-embedded`，`shop.food.enabled=true`）跑 `food-embedded-test` 加守卫、架构、Mapper 冒烟：失败 52 个，与改动前完全相同——都是原生 MySQL 测试与「缺餐饮迁移历史」（`fnb_flyway_history`），外加 `ArchitectureTest` 原有的 4 个。
 - **没验证**：带美业或餐饮启动整个应用。两个插件都要自己的迁移历史，而它们的迁移脚本只能在 MySQL 上跑；守卫测试没有覆盖插件目录（配置类里按 bean 分了两边，整文件规则套不上）。
 
+### 第一段 · 提交十：渠道插件其余部分（售后、履约、核销、对账、证书）
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `commerce-core/.../mapper/AfterSaleMappers.java`、`CommerceMappers.java`、`RedemptionItemMapper.java` | 4 个 Mapper 改继承 `TradeTableMapper`：售后修订、售后行关联（并进商家订单与订单行）、履约行关联（并进订单行）、核销明细（`ord_payment_redemption_item`） |
+
+这几块的写入都经 `CommerceCommands`，事务已在提交八改成交易句柄，这里只补 Mapper 归属。
+留在主库：售后关联、履约关联、核销关联与预览与冲正（「先留原表」：并入收款记录、履约单时缺列太多）、对账单与明细（账务结算库）、证书句柄。
+
+**证书与「统一调用平台 API」**：渠道的证书加解密已经走平台密钥接口 `SecretVault`（`secret-api`，与发票、支付同一个），该接口按设计是进程内的库，刻意不包成远程接口，免得明文走网络。
+渠道自己还剩一张证书句柄表 `cim_certificate_handle`（连接 → 密文引用 + 状态）。设计把它并进密钥库 `sec_secret_blob`，但现有平台接口只有封存和解开，没有「按归属查引用」。**用户 2026-11-27 定：密钥统一通过平台密钥接口处理（§8-Q12）**——句柄表并进密钥库，平台接口补「按归属查引用、作废」；渠道不再自留句柄表。改平台接口属契约变更，随第二段换表做，本提交未动代码。
+
+验证（2026-11-26，本机，H2）：渠道插件 4 个模块，失败 2 个，都在改渠道之前的基线 3 个之内（基线里那个依时间的不稳定用例这次通过）。
+
+### 第一段 · 提交十一：网关里碰交易表的几处
+
+逐处核了 §2.7 列的「要退回业务模块」清单，看它到底碰了哪个库、有没有跨库同事务：
+
+| 网关代码 | 碰的表 | 结论 |
+|---|---|---|
+| `InventoryDeliveryGuard` | 事件表 `sys_outbox` 联查锁量表 `prd_stock_lock`（T5） | **本提交改**：拆成两次查询，锁量经商品模块的 `StockLockMapper` 查 |
+| `ExecutionStockMirrorEvidenceServiceImpl` 用的 `ExecutionRetentionMirrorMapper` | 同一个网关 Mapper 里既查 `sys_outbox` 又查 `prd_stock_lock` | **本提交改**：锁量那条移到 `StockLockMapper.fulfillmentOriginals`，网关 Mapper 只剩事件表 |
+| `ShipmentSourcePortImpl` | 读订单（交易）+ 运单与发货上传（先留，归物流）；`retryUpload` 在一个事务里锁商家订单再写发货上传 | 不改：锁单用的 `StatusCasMapper` 本来就还没归交易库（提交一说明），现在同库；换表前要随物流一起拆，记 §4 |
+| `LegacyCouponSourceFenceServiceImpl` | 营销券表 + 订单，结账事务里按主库数据源判「事务已开」 | 不改：迁移期代码（对照表「迁移期先留」），换表前旧券迁移须完成并下线，否则结账带旧券会失败闭合，记 §4 |
+| `StockAlignmentService`、`StockReconcileService` | `prd_stock_alignment_*`、`prd_stock_sync_operation` | 不改：不归交易库（对照表 §3 补列），各自不开跨库事务 |
+| `payment_collection_*` 五个类 | 收款记录与代收来源 + 平台门店 | 不改：表「先留原表」，随 `ord_payment` 并入再退回 |
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `shop-core/.../product/mapper/ProductMappers.java` | `StockLockMapper` 加 `fulfillmentOriginals`、`lockNosHoldingSku` 两个只读查询 |
+| 修改 | `shop-gateway/.../invbridge/InventoryDeliveryGuard.java` | 先查未送达的库存镜像事件，再按事件的聚合号问锁量表；判定规则不变 |
+| 修改 | `shop-gateway/.../invbridge/impl/ExecutionStockMirrorEvidenceServiceImpl.java`、`mapper/ExecutionRetentionMirrorMapper.java` | 履约归属改从 `StockLockMapper` 取 |
+| 删除 | `shop-gateway/.../invbridge/entity/ExecutionRetentionMirrorOwnership.java` | 改用 `PrdStockLock` 后无人用 |
+| 修改 | `shop-app/src/test/.../invbridge/InventoryDeliveryGuardTest.java` | 锁量经 Mapper 取，断言不变 |
+| 修改 | `docs/technical/零售域-旧表新表对照.md` | §3 补列漏掉的三张库存对账表 |
+
+验证（2026-11-27，本机，H2）：`InventoryDeliveryGuardTest`、`ExecutionStockRetentionExhaustionTest`、`InventorySharedSourceTest`、`ArchitectureTest`、`ModuleTxManagerConventionTest`、`MapperSmokeTest` 共 35 个，0 失败、1 跳过（`ArchitectureTest` 原有）。
+**没验证**：履约归属那条查询的真实路径在 `DualExecutionStockRetentionIT`（28 个），它要 MySQL，本机整类跳过。
+
 ### 偏差说明
 
 - `tradeJdbcTemplate` 放进了已有的 `PlatformJdbcConfiguration`，而不是 §2.2 写的新类 `TradeJdbcConfiguration`：主库那个 `JdbcTemplate` 的 `@Primary` 声明在这个类里，模块的模板放在一处更不容易漏。类名以后可改成 `ModuleJdbcConfiguration`。
@@ -511,6 +552,9 @@
 | 2026-11-26 | 用户定：商品发布不进任务库；密钥统一调平台 API |
 | 2026-11-26 | 第一段提交八实现（渠道插件主流程） |
 | 2026-11-26 | 第一段提交九实现（美业、餐饮插件），与七、八一起提交 |
+| 2026-11-26 | 第一段提交十实现（渠道插件其余部分），未提交 |
+| 2026-11-27 | 用户定 Q12：密钥统一通过平台密钥接口处理，证书句柄表并进密钥库（随第二段） |
+| 2026-11-27 | 第一段提交十一实现（网关碰交易表的几处：库存投递守卫拆查询，其余逐处定不改的理由），未提交 |
 
 ## §8 待确认
 
@@ -526,4 +570,5 @@
 | Q8 | 设计缺陷（§2.6）由谁修：建库会话 / 设计方案拥有者 | 设计方案拥有者修生成器；本篇的对照表 §4 作为输入 |
 | Q9 | 试点：先切社区团购与询价（S8），验证建表、迁数、绑定、回退全流程 | 同意即可 |
 | Q10 | 券与活动限量改「预占—确认」两阶段，接受吗 | 接受；否则下单只能和营销同库 |
+| Q12 | 渠道证书句柄表并进密钥库：给平台密钥接口加「按归属查引用」，还是保留渠道自己的句柄表（加解密已经走平台接口） | **已定（2026-11-27）：密钥统一通过平台密钥接口处理**。句柄表并进 `sec_secret_blob`（归属用 `owner_type`=渠道连接、`owner_id`），平台接口补「按归属查引用」与「作废」；跨店校验由归属参与附加认证数据兜底。随第二段做 |
 | Q11 | 积分暂不接（用户 2026-11-26 定）。切换上线时：先接回积分，还是这段时间不提供积分、三端隐藏入口 | 切换前再定 |

@@ -3,6 +3,7 @@ package ai.neargo.shop.invbridge.impl;
 import ai.neargo.shop.invbridge.ExecutionStockMirrorEvidenceService;
 import ai.neargo.shop.invbridge.InvMirrorEvent;
 import ai.neargo.shop.invbridge.mapper.ExecutionRetentionMirrorMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
 import ai.neargo.shop.invbridge.entity.ExecutionRetentionMirrorEvent;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -37,11 +38,13 @@ public final class ExecutionStockMirrorEvidenceServiceImpl implements ExecutionS
     private final ObjectProvider<StockDispositionPort> stock;
     private final ExecutionRetentionRouteMapper routes;
     private final ExecutionRetentionRouteSchemaVerifier schema;
+    private final StockLockMapper locks;
 
-    public ExecutionStockMirrorEvidenceServiceImpl(ExecutionRetentionMirrorMapper events, ObjectMapper json,
-            ObjectProvider<StockDispositionPort> stock, ExecutionRetentionRouteMapper routes,
+    public ExecutionStockMirrorEvidenceServiceImpl(ExecutionRetentionMirrorMapper events, StockLockMapper locks,
+            ObjectMapper json, ObjectProvider<StockDispositionPort> stock, ExecutionRetentionRouteMapper routes,
             ExecutionRetentionRouteSchemaVerifier schema) {
         this.events = events;
+        this.locks = locks;
         this.json = json;
         this.stock = stock;
         this.routes = routes;
@@ -253,7 +256,7 @@ public final class ExecutionStockMirrorEvidenceServiceImpl implements ExecutionS
     }
 
     private void uniqueFulfillment(RetentionLookup lookup, String fulfillment) {
-        var owners = DataScopeContext.executeWithoutScope(() -> events.fulfillmentOwners(fulfillment));
+        var owners = DataScopeContext.executeWithoutScope(() -> locks.fulfillmentOriginals(fulfillment));
         require(!owners.isEmpty() && owners.stream().allMatch(row -> row.getId() != null && row.getId() > 0
                 && lookup.stockOriginal().tenantNo().equals(row.getTenantNo())
                 && lookup.stockOriginal().orderNo().equals(row.getLockNo())
