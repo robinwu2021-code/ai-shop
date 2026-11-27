@@ -228,6 +228,15 @@ function RefundsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string; 
   const canReview = allow("commerce:refund:review");
   const columns: Column<MallRefundView>[] = [
     { header: c.colRefundNo, cell: (x) => <code className="txt-caption">{x.refundNo}</code> },
+    { header: c.colComponent, cell: x => {
+      if (x.hardware) {
+        const { orderComponentNo, quantity } = x.hardware;
+        const shipped = (d.shipments ?? []).filter(s => s.orderComponentNo === orderComponentNo && s.status === "SUCCEEDED")
+          .reduce((n, s) => n + (s.quantity ?? 0), 0);
+        return <span>{orderComponentNo} · {fill(c.refundUnits, { quantity, shipped })}</span>;
+      }
+      return x.sourcePeriodNos?.map(no => <div key={no}>{no} · {d.deliveredSources?.find(s => s.periodNo === no)?.entitlementCodes.join(", ")}</div>);
+    } },
     { header: c.colReview, cell: (x) => <Badge tone={x.reviewStatus === "APPROVED" ? "success" : x.reviewStatus === "DECLINED" ? "muted" : "warning"}>{x.reviewStatus ?? "—"}</Badge> },
     { header: c.colFunds, cell: (x) => <StatusBadge map={asyncMap(c)} value={x.status ?? "PENDING"} /> },
     { header: c.colCash, numeric: true, cell: (x) => <Money m={x.cashAmount} /> },
@@ -240,7 +249,7 @@ function RefundsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string; 
             <Button size="sm" variant="outline" onClick={() => reject(x)}>{c.btnReject}</Button>
           </>
         )}
-        {offline && allow("commerce:mall:offline:refund:confirm") && x.reviewStatus === "APPROVED" && x.status === "PENDING" && (
+        {offline && allow("commerce:mall:offline:refund:confirm") && ["APPROVED", "DISPATCHING", "UNKNOWN"].includes(x.reviewStatus ?? "") && x.cashAmount && x.cashAmount.minor !== "0" && (
           <Button size="sm" onClick={() => setPayoutFor(x)}>{c.btnPayout}</Button>
         )}
       </span>
@@ -291,7 +300,7 @@ function PayoutForm({ c, storeNo, orderNo, refund, onDone }: { c: MallCopy; stor
   const save = useMutation({
     mutationFn: () => api.confirmOfflineRefundPayout(storeNo, orderNo, refund.refundNo!, { actualAmount: { currency: cur, minor: minor! },
       paidOutAt: new Date(f.at).toISOString(), payeeReference: f.payee.trim(), bankReference: f.bankRef.trim(), evidenceKey: f.evidenceKey }),
-    onSuccess: () => { notify.success(c.toastPayout); onDone(); },
+    onSuccess: result => { if (result.status === "SUCCEEDED") notify.success(c.toastPayout); else notify.info(c.payoutPending); onDone(); },
   });
   const valid = minor !== null && f.at && f.payee.trim() && f.bankRef.trim() && f.evidenceKey;
   return (

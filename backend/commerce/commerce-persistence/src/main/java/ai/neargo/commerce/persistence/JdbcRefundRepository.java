@@ -353,6 +353,21 @@ public final class JdbcRefundRepository implements RefundRepository {
                 s.reviewedAt(),
                 encode(s.command()),
                 s.reviewer() == null ? null : s.reviewEvidence());
+        if (p.hardware() != null) {
+            var selection = p.hardware().selection();
+            jdbc.update(
+                    """
+                    INSERT INTO mall_refund_item(tenant_no,created_at,updated_at,version,deleted,refund_item_no,refund_no,
+                        order_component_no,quantity,cash_refund_minor,credit_restore_minor,rights_action,status,adjustment_snapshot)
+                    VALUES (?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0,?,?,?,?,0,0,'NONE','PREVIEW',?)
+                    """,
+                    p.store().tenantNo(),
+                    UUID.randomUUID().toString(),
+                    p.refundNo(),
+                    selection.orderComponentNo(),
+                    selection.quantity(),
+                    encode(p.hardware()));
+        }
         for (var source : p.sources())
             jdbc.update(
                     "INSERT INTO"
@@ -420,6 +435,18 @@ public final class JdbcRefundRepository implements RefundRepository {
                         s.fact() == null ? null : s.fact().providerRefundNo(),
                         p.store().tenantNo(),
                         p.refundNo()));
+        if (p.hardware() != null)
+            changed(
+                    jdbc.update(
+                            """
+                            UPDATE mall_refund_item SET status=?,cash_refund_minor=?,version=version+1,updated_at=UTC_TIMESTAMP(3)
+                            WHERE tenant_no=? AND refund_no=? AND order_component_no=? AND rights_action='NONE'
+                            """,
+                            s.status(),
+                            s.approvedCash(),
+                            p.store().tenantNo(),
+                            p.refundNo(),
+                            p.hardware().selection().orderComponentNo()));
         long cash = s.approvedCash(), credit = s.restoredCredit();
         for (var source : p.sources()) {
             long partCash = Math.min(cash, source.cashLimit()),
@@ -681,7 +708,20 @@ public final class JdbcRefundRepository implements RefundRepository {
                         .reduce(0, Math::addExact);
         return cashLeft == 0
                 && Math.addExact(restored, cancelledCredit) == order.quote().credit()
-                && !remaining;
+                && !remaining
+                && jdbc.queryForList(
+                                """
+                                SELECT c.order_component_no FROM mall_order_component c JOIN mall_order_item i
+                                  ON i.tenant_no=c.tenant_no AND i.order_item_no=c.order_item_no
+                                WHERE i.tenant_no=? AND i.order_no=? AND c.component_type='HARDWARE'
+                                  AND c.unit_count > (SELECT COALESCE(SUM(r.quantity),0) FROM mall_refund_item r
+                                    WHERE r.tenant_no=c.tenant_no AND r.order_component_no=c.order_component_no
+                                      AND r.status='SUCCEEDED' AND r.rights_action='NONE') LIMIT 1
+                                """,
+                                String.class,
+                                store.tenantNo(),
+                                order.orderNo())
+                        .isEmpty();
     }
 
     public boolean hasReservedHold(MallSnapshot.Order o) {

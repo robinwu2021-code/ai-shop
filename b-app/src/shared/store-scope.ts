@@ -88,6 +88,8 @@ export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
   mMallOfflineQuote: "CommerceOfflineBuyerHttpController → 路径带门店号，报价归这家店",
   mMallPlaceOrder: "CommerceBuyerMallHttpController → 路径带门店号，订单与权益归这家店",
   mMallOrders: "CommerceBuyerMallHttpController → 路径带门店号，只列这家店的商城订单",
+  mMallRefundPreview: "按当前门店和原订单预览退款",
+  mMallRefund: "按当前门店和原订单申请退款",
   mMallOrder: "CommerceBuyerMallHttpController → 路径带门店号，校验订单属于这家店",
   mMallIssueInstructions: "CommerceOfflineBuyerHttpController → 路径带门店号，校验订单属于这家店",
   mMallInstructions: "CommerceOfflineBuyerHttpController → 路径带门店号，校验订单属于这家店",

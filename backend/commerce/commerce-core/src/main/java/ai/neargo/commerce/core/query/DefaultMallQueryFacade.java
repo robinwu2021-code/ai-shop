@@ -191,6 +191,14 @@ public final class DefaultMallQueryFacade implements MallQueryFacade {
                                             s.operationNo()));
                         }
                     }
+                    boolean hasDigital = order.axes().payment() == OrderState.Payment.PAID
+                            && order.quote().lines().stream().flatMap(line -> line.sku().components().stream())
+                                    .anyMatch(component -> component.kind() != ComponentKind.HARDWARE);
+                    var deliveredSources = hasDigital ? refunds.ownedSources(order).stream().map(row -> {
+                        var period = row.period();
+                        return new MallOrderDetailView.DeliveredSource(row.componentNo(), period.no(), period.planVersion(),
+                                period.ends().keySet().stream().sorted().toList(), period.lifecycle());
+                    }).toList() : List.<MallOrderDetailView.DeliveredSource>of();
                     return new MallOrderDetailView(
                             summary(actor, order),
                             order.quote().view(),
@@ -206,7 +214,8 @@ public final class DefaultMallQueryFacade implements MallQueryFacade {
                                     .map(p -> new MallOrderDetailView.HardwareItem(p.orderComponentNo(),
                                             p.snapshot().allocation().component().hardwareSkuNo(),
                                             p.snapshot().allocation().cycles().size()))
-                                    .toList());
+                                    .toList(),
+                            deliveredSources);
                 });
     }
 }

@@ -729,6 +729,8 @@ export interface MallShipment {
 
 /** 退款 */
 export interface MallRefundView {
+  hardware?: { orderComponentNo: string; quantity: number } | null;
+  sourcePeriodNos?: string[];
   /** 退款号 */
   refundNo?: string;
   /** 订单号 */
@@ -768,6 +770,7 @@ export interface MallOrderSummary {
 
 /** 订单详情：三个独立维度 + 冻结报价 + 实际动作 */
 export interface MallOrderDetailView {
+  deliveredSources?: { orderComponentNo: string; periodNo: string; planVersionNo?: string | null; entitlementCodes: string[]; lifecycle: string }[];
   hardwareItems?: { orderComponentNo: string; hardwareSkuNo: string; quantity: number }[];
   /** 概览与三维状态 */
   summary?: MallOrderSummary;

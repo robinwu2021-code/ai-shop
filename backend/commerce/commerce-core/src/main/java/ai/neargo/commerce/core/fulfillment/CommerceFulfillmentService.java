@@ -775,7 +775,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         o -> {
                             if (o.axes().payment() != Payment.PAID
                                     || o.axes().refund() != Refund.NONE
-                                            && !repo.digitalOnlyRefund(o))
+                                            && !repo.allowsRemainingShipment(o))
                                 throw fail("INVALID_STATE");
                             var component =
                                     orders.components(o.quote().store(), o.orderNo()).stream()

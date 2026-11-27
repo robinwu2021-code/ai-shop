@@ -55,7 +55,9 @@ class BuyerMallHttpContractTest {
 
                     public Buyer buyer(String no, String cap) {
                         assertEquals("S", no);
-                        assertEquals("commerce:mall:purchase", cap);
+                        assertTrue(
+                                Set.of("commerce:mall:purchase", "commerce:mall:refund:request")
+                                        .contains(cap));
                         return new Buyer(actor, store);
                     }
 
@@ -73,10 +75,19 @@ class BuyerMallHttpContractTest {
                         return new Failure(400, Map.of("code", 10400, "msg", code));
                     }
                 };
+        var refundPort =
+                (RefundFacade)
+                        java.lang.reflect.Proxy.newProxyInstance(
+                                getClass().getClassLoader(),
+                                new Class[] {RefundFacade.class},
+                                (proxy, method, args) -> {
+                                    seen.add(args[1]);
+                                    return null;
+                                });
         var mvc =
                 MockMvcBuilders.standaloneSetup(
                                 new CommerceBuyerMallHttpController(
-                                        facade, null, null, null, context, envelope))
+                                        facade, null, null, refundPort, context, envelope))
                         .build();
         String quote =
                 "{\"lines\":[{\"skuVersionNo\":\"sku.1:current\",\"quantity\":1}],\"currency\":\"CNY\"}";
@@ -115,6 +126,31 @@ class BuyerMallHttpContractTest {
                         .getResponse()
                         .getStatus());
         assertEquals(store, ((PlaceOrderCommand) seen.get(1)).expectedStore());
+        var hardware = new HardwareRefund("component", 1);
+        for (String route : List.of("refund-previews", "refunds")) {
+            String payload =
+                    """
+                    {"refundNo":"r1","hardware":{"orderComponentNo":"component","quantity":1}%s}
+                    """
+                            .formatted(
+                                    route.equals("refunds")
+                                            ? ",\"cashAmount\":{\"currency\":\"CNY\",\"minor\":\"100\"},\"reason\":\"return\""
+                                            : "");
+            assertEquals(
+                    200,
+                    mvc.perform(
+                                    post("/biz/stores/S/mall/orders/order.1/" + route)
+                                            .contentType("application/json")
+                                            .content(payload))
+                            .andReturn()
+                            .getResponse()
+                            .getStatus());
+            assertEquals(
+                    hardware,
+                    seen.getLast() instanceof RefundCommand c
+                            ? c.hardware()
+                            : ((RefundPreviewCommand) seen.getLast()).hardware());
+        }
         assertEquals(
                 400,
                 mvc.perform(

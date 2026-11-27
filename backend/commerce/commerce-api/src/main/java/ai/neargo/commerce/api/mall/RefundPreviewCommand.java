@@ -5,8 +5,17 @@ import ai.neargo.commerce.api.common.*;
 import java.util.List;
 
 public record RefundPreviewCommand(
-        StoreRef store, String orderNo, String refundNo, List<String> sourcePeriodNos) {
+        StoreRef store,
+        String orderNo,
+        String refundNo,
+        List<String> sourcePeriodNos,
+        HardwareRefund hardware) {
+    public RefundPreviewCommand(
+            StoreRef store, String orderNo, String refundNo, List<String> sourcePeriodNos) {
+        this(store, orderNo, refundNo, sourcePeriodNos, null);
+    }
+
     public RefundPreviewCommand {
-        sourcePeriodNos = List.copyOf(sourcePeriodNos);
+        sourcePeriodNos = sourcePeriodNos == null ? List.of() : List.copyOf(sourcePeriodNos);
     }
 }

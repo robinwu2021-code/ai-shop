@@ -525,7 +525,7 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                 attempt);
     }
 
-    public boolean digitalOnlyRefund(Order o) {
+    public boolean allowsRemainingShipment(Order o) {
         guard(o.quote().store().tenantNo());
         var scopes =
                 jdbc.queryForList(
@@ -548,7 +548,7 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                         .allMatch(
                                 p ->
                                         !p.late()
-                                                && (!p.sources().isEmpty()
+                                                && (p.hardware() != null || !p.sources().isEmpty()
                                                         || !p.pendingTasks().isEmpty()));
     }
 

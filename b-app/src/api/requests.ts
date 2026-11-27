@@ -1261,7 +1261,7 @@ export interface OfflineRecordVoidReq {
 }
 
 // 平台商城的请求体住在 ./mall.ts（与 commerce-mall-openapi.json 逐字一致）；转出给 OpenAPI 生成器
-export type { MallQuoteRequest, MallPlaceRequest, MallOfflineClaimRequest } from "./mall";
+export type { MallQuoteRequest, MallPlaceRequest, MallRefundSelection, MallRefundRequest, MallOfflineClaimRequest } from "./mall";
 
 /** 保存门店付款方式（TDD-门店付款方式-App设置） */
 export interface PayStoreMethodReq {

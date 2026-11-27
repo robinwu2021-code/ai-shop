@@ -11,7 +11,18 @@ public record RefundCommand(
         String refundNo,
         Money cashAmount,
         String reason,
-        List<String> sourcePeriodNos) {
+        List<String> sourcePeriodNos,
+        HardwareRefund hardware) {
+    public RefundCommand(
+            StoreRef store,
+            String orderNo,
+            String refundNo,
+            Money cashAmount,
+            String reason,
+            List<String> sourcePeriodNos) {
+        this(store, orderNo, refundNo, cashAmount, reason, sourcePeriodNos, null);
+    }
+
     public RefundCommand {
         sourcePeriodNos = sourcePeriodNos == null ? List.of() : List.copyOf(sourcePeriodNos);
     }

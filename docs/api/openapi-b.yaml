@@ -15685,6 +15685,75 @@ components:
           description: "邮编"
       additionalProperties: false
       description: "收货地址（含硬件时必填）"
+    MallRefundSelection:
+      type: "object"
+      properties:
+        refundNo:
+          type: "string"
+        hardware:
+          type: "object"
+          properties:
+            orderComponentNo:
+              type: "string"
+            quantity:
+              type: "number"
+          required:
+            - "orderComponentNo"
+            - "quantity"
+          additionalProperties: false
+        sourcePeriodNos:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "refundNo"
+        - "sourcePeriodNos"
+      additionalProperties: false
+      description: "订单详情"
+    MallRefundRequest:
+      type: "object"
+      properties:
+        refundNo:
+          type: "string"
+        hardware:
+          type: "object"
+          properties:
+            orderComponentNo:
+              type: "string"
+            quantity:
+              type: "number"
+          required:
+            - "orderComponentNo"
+            - "quantity"
+          additionalProperties: false
+        sourcePeriodNos:
+          type: "array"
+          items:
+            type: "string"
+        reason:
+          type: "string"
+        cashAmount:
+          "$ref": "#/components/schemas/MallMoney"
+      required:
+        - "cashAmount"
+        - "reason"
+        - "refundNo"
+        - "sourcePeriodNos"
+      additionalProperties: false
+    MallMoney:
+      type: "object"
+      properties:
+        currency:
+          type: "string"
+          description: "ISO 4217 三位大写币种（TWD / CNY …）"
+        minor:
+          type: "string"
+          description: "最小货币单位的十进制整数文本（TWD 699000 = NT$6,990.00）；不是 number，避免超过 2^53 失真"
+      required:
+        - "currency"
+        - "minor"
+      additionalProperties: false
+      description: "金额：币种 + 最小单位整数字符串"
     MallOfflineClaimRequest:
       type: "object"
       properties:
@@ -15713,20 +15782,6 @@ components:
         - "evidenceKeys"
       additionalProperties: false
       description: "付款申报请求"
-    MallMoney:
-      type: "object"
-      properties:
-        currency:
-          type: "string"
-          description: "ISO 4217 三位大写币种（TWD / CNY …）"
-        minor:
-          type: "string"
-          description: "最小货币单位的十进制整数文本（TWD 699000 = NT$6,990.00）；不是 number，避免超过 2^53 失真"
-      required:
-        - "currency"
-        - "minor"
-      additionalProperties: false
-      description: "金额：币种 + 最小单位整数字符串"
     PayStoreMethodReq:
       type: "object"
       properties:
@@ -16659,6 +16714,49 @@ components:
     MallOrderDetail:
       type: "object"
       properties:
+        hardwareItems:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              orderComponentNo:
+                type: "string"
+              hardwareSkuNo:
+                type: "string"
+              quantity:
+                type: "number"
+            required:
+              - "orderComponentNo"
+              - "hardwareSkuNo"
+              - "quantity"
+            additionalProperties: false
+        deliveredSources:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              orderComponentNo:
+                type: "string"
+              periodNo:
+                type: "string"
+              planVersionNo:
+                type: "string"
+              entitlementCodes:
+                type: "array"
+                items:
+                  type: "string"
+              lifecycle:
+                type: "string"
+            required:
+              - "orderComponentNo"
+              - "periodNo"
+              - "entitlementCodes"
+              - "lifecycle"
+            additionalProperties: false
+        refunds:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallRefundResult"
         lines:
           type: "array"
           items:
@@ -16699,7 +16797,35 @@ components:
             "$ref": "#/components/schemas/MallShipment"
           description: "硬件发货"
       additionalProperties: false
-      description: "订单详情"
+    MallRefundResult:
+      type: "object"
+      properties:
+        refundNo:
+          type: "string"
+        reviewStatus:
+          type: "string"
+        status:
+          type: "string"
+        hardware:
+          type: "object"
+          properties:
+            orderComponentNo:
+              type: "string"
+            quantity:
+              type: "number"
+          required:
+            - "orderComponentNo"
+            - "quantity"
+          additionalProperties: false
+        sourcePeriodNos:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "refundNo"
+        - "reviewStatus"
+        - "status"
+      additionalProperties: false
     MallShipment:
       type: "object"
       properties:
@@ -16723,6 +16849,14 @@ components:
           description: "状态"
       additionalProperties: false
       description: "硬件发货"
+    MallRefundPreview:
+      type: "object"
+      properties:
+        cashLimit:
+          "$ref": "#/components/schemas/MallMoney"
+      required:
+        - "cashLimit"
+      additionalProperties: false
     MallOfflineInstructions:
       type: "object"
       properties:
@@ -37762,6 +37896,74 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/stores/{storeNo}/mall/orders/{orderNo}/refund-previews":
+    post:
+      operationId: "mMallRefundPreview"
+      summary: "平台商城：组件退款预览"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallRefundPreview"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MallRefundSelection"
+  "/biz/stores/{storeNo}/mall/orders/{orderNo}/refunds":
+    post:
+      operationId: "mMallRefund"
+      summary: "平台商城：申请组件退款"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallRefundResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MallRefundRequest"
   "/biz/stores/{storeNo}/mall/orders/{orderNo}":
     get:
       operationId: "mMallOrder"
