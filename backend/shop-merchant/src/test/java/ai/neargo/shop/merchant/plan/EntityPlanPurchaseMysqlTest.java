@@ -19,12 +19,13 @@ import tools.jackson.databind.ObjectMapper;
 
 @EnabledIfEnvironmentVariable(named = "PLAN_MYSQL_URL", matches = ".+")
 class EntityPlanPurchaseMysqlTest {
-  JdbcTemplate admin, db;
+  JdbcTemplate admin, db, mall;
   String schema;
   EntityPlanPurchaseService svc;
   final Actor buyer = new Actor("U1", "E1", "S1", false), ops = new Actor("OP1", "E1", null, true);
   final Instant now = Instant.parse("2026-11-11T00:00:00Z");
-  int receipts;
+  int receipts, issuanceCalls;
+  boolean interruptIssuance;
   boolean cut, mismatch, closed;
   String refusal;
   long currentTime;
@@ -41,6 +42,10 @@ class EntityPlanPurchaseMysqlTest {
     admin.execute("CREATE DATABASE " + schema + " CHARACTER SET utf8mb4");
     var ds = new DriverManagerDataSource(url.replace("/?", "/" + schema + "?"), user, pass);
     db = new JdbcTemplate(ds);
+    admin.execute("CREATE DATABASE " + schema + "_mall CHARACTER SET utf8mb4");
+    mall = new JdbcTemplate(new DriverManagerDataSource(url.replace("/?", "/" + schema + "_mall?"), user, pass));
+    var fulfillment = Files.readString(Path.of("../commerce/commerce-persistence/src/main/resources/db/mall/fulfillment/V1__mall_fulfillment.sql"));
+    mall.execute(fulfillment.substring(0, fulfillment.indexOf(';')));
     db.execute(
         "CREATE TABLE mch_account(tenant_no varchar(32),mch_account_no varchar(64),entity_no"
             + " varchar(64),user_no varchar(64),is_owner boolean,status varchar(16),deleted"
@@ -101,6 +106,8 @@ class EntityPlanPurchaseMysqlTest {
     PlatformPaymentPort payments =
         new PlatformPaymentPort() {
           public PaymentOutcome create(PaymentIntentCommand c) {
+            issuanceCalls++;
+            if (interruptIssuance) throw new IllegalStateException("issuance interrupted");
             return new PaymentOutcome(
                 c.orderNo(),
                 Optional.of("PAY1"),
@@ -220,13 +227,16 @@ class EntityPlanPurchaseMysqlTest {
                 return Instant.ofEpochMilli(currentTime);
               }
             },
-            "P", new ai.neargo.shop.merchant.service.impl.StoreOperationalReviewServiceImpl(db,org.mockito.Mockito.mock(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper.class),ownership,org.mockito.Mockito.mock(ai.neargo.shop.spi.platform.AuditLogPort.class)));
+            "P", new ai.neargo.shop.merchant.service.impl.StoreOperationalReviewServiceImpl(db,org.mockito.Mockito.mock(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper.class),ownership,org.mockito.Mockito.mock(ai.neargo.shop.spi.platform.AuditLogPort.class)), mall);
     svc.saveOffer(ops, new OfferEdit("PRO30", 0, "PRO", "成长月包", 30, new Money("TWD", 19900), true));
   }
 
   @AfterEach
   void clean() {
-    if (schema != null) admin.execute("DROP DATABASE " + schema);
+    if (schema != null) {
+      admin.execute("DROP DATABASE IF EXISTS " + schema + "_mall");
+      admin.execute("DROP DATABASE IF EXISTS " + schema);
+    }
   }
 
   String purchase() {
@@ -389,6 +399,7 @@ class EntityPlanPurchaseMysqlTest {
     assertEquals("P", order.instructions().profileNo());
     svc.saveOffer(
         ops, new OfferEdit("PRO30", 1, "PRO", "updated", 30, new Money("TWD", 29900), false));
+    db.execute("RENAME TABLE mch_plan_offer TO retired_plan_offer");
     var replay = svc.assistedBuy(ops, command);
     assertEquals(order.orderNo(), replay.orderNo());
     assertEquals(1, replay.offer().version());
@@ -485,6 +496,61 @@ class EntityPlanPurchaseMysqlTest {
     assertEquals(Optional.of(true), svc.recoverPayment("MAIN", no, "PAY1"));
     assertEquals(
         "REVIEW_REQUIRED", db.queryForObject("SELECT status FROM mch_plan_purchase", String.class));
+  }
+
+  @Test
+  void checkoutPersistsOneFrozenMallAttemptBeforeIssuanceAndRecoversByOrder() {
+    mall.execute("CREATE TRIGGER stop_prepare BEFORE INSERT ON mall_payment_ref FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='unavailable'");
+    assertThrows(org.springframework.dao.DataAccessException.class, this::purchase);
+    assertEquals(0, issuanceCalls);
+    var no = db.queryForObject("SELECT order_no FROM mch_plan_purchase WHERE status='PREPARED'", String.class);
+    assertNull(svc.order(buyer, no).instructions());
+    mall.execute("DROP TRIGGER stop_prepare");
+    interruptIssuance = true;
+    assertThrows(IllegalStateException.class, this::purchase);
+    assertEquals("CREATED", mall.queryForObject("SELECT status FROM mall_payment_ref WHERE payment_attempt_no=?", String.class, no));
+    mall.update("UPDATE mall_payment_ref SET request_snapshot=JSON_SET(request_snapshot,'$.buyerNo','OTHER')");
+    interruptIssuance = false;
+    assertEquals(1, svc.recoverPending(null, 10).failed());
+    assertEquals(1, issuanceCalls);
+    mall.update("UPDATE mall_payment_ref SET request_snapshot=JSON_SET(request_snapshot,'$.buyerNo','U1')");
+    assertEquals(0, svc.recoverPending(null, 10).failed());
+    assertEquals(no, purchase());
+    assertNotNull(svc.order(buyer, no).instructions());
+    assertEquals(2, issuanceCalls);
+    assertEquals(1, mall.queryForObject("SELECT COUNT(*) FROM mall_payment_ref", Integer.class));
+  }
+
+  @Test
+  void matchedCashSurvivesBothMerchantCommitFailuresAndGrantsOnce() {
+    var no = purchase();
+    claim(no);
+    var cmd = confirm(no);
+    db.execute("""
+        CREATE TRIGGER stop_receipt BEFORE UPDATE ON mch_plan_purchase_action FOR EACH ROW
+        BEGIN IF NEW.status='PAID_PENDING' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='unavailable'; END IF; END
+        """);
+    assertThrows(org.springframework.dao.DataAccessException.class, () -> svc.confirm(ops, no, cmd));
+    assertEquals("PAY1", mall.queryForObject("SELECT pay_order_no FROM mall_payment_ref WHERE order_no=?", String.class, no));
+    // Receipt-only v2 rows predate the separate issuance snapshot.
+    mall.update("""
+        UPDATE mall_payment_ref SET request_snapshot=verified_fact_snapshot->'$.command',
+            verified_fact_snapshot=JSON_REMOVE(verified_fact_snapshot,'$.command') WHERE order_no=?
+        """, no);
+    db.execute("DROP TRIGGER stop_receipt");
+    db.execute("CREATE TRIGGER stop_grant BEFORE UPDATE ON mch_entity_plan FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='unavailable'");
+    cut = true; // Recovery now has only the mall receipt.
+    assertEquals("PAID_PENDING", svc.confirm(ops, no, cmd).status());
+    assertEquals("PAID_PENDING", svc.order(buyer, no).status());
+    assertEquals("FREE", db.queryForObject("SELECT plan_code FROM mch_entity_plan", String.class));
+    db.execute("DROP TRIGGER stop_grant");
+    assertEquals(0, svc.recoverPending(null, 10).failed());
+    assertEquals("APPLIED", svc.order(buyer, no).status());
+    var grant = db.queryForMap("SELECT version,expire_at FROM mch_entity_plan WHERE plan_code='PRO'");
+    assertEquals(Optional.of(true), svc.recoverPayment("MAIN", no, "PAY1"));
+    assertEquals("APPLIED", svc.confirm(ops, no, cmd).status());
+    assertEquals(grant, db.queryForMap("SELECT version,expire_at FROM mch_entity_plan"));
+    assertEquals(1, receipts);
   }
 
   @Test
@@ -622,6 +688,8 @@ class EntityPlanPurchaseMysqlTest {
                 ops, order, new VoidCommand("V1", "BANK-CHECK", evidence(ops, order), "银行确认无入款"))
             .status());
     assertTrue(closed);
+    assertEquals("FENCE1", mall.queryForObject(
+        "SELECT closure_reference FROM mall_payment_ref WHERE order_no=? AND status='CLOSED'", String.class, order));
   }
 
   @Test

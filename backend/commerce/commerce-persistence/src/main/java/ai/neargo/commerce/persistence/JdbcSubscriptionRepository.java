@@ -26,7 +26,14 @@ public final class JdbcSubscriptionRepository
     private final JdbcSubscriptionAccountRepository accounts;
     private final CommerceIdGenerator ids;
 
+    private final JdbcEndActivation activation;
+
     public JdbcSubscriptionRepository(DataSource ds, CommerceIdGenerator ids) {
+        this(ds, ids, null);
+    }
+
+    public JdbcSubscriptionRepository(DataSource ds, CommerceIdGenerator ids, JdbcEndActivation activation) {
+        this.activation = activation;
         this.ds = ds;
         this.jdbc = new JdbcTemplate(ds);
         this.ids = ids;
@@ -168,6 +175,7 @@ WHERE tenant_no=? AND store_no=? AND period_no=? AND state='NORMAL' AND converte
 
     public Map<String, GrantState> grantStates(StoreRef s) {
         requireOuterTransaction(s);
+        if (activation != null) return activation.grantStates(s);
         var result = new TreeMap<String, GrantState>();
         jdbc.query(
                 """
@@ -200,6 +208,7 @@ ORDER BY g.entitlement_code,g.id FOR SHARE
 
     public List<AccessSegment> segments(StoreRef s, String code) {
         requireOuterTransaction(s);
+        if (activation != null) return activation.purchased(s, code);
         var rows =
                 jdbc.query(
                         """
@@ -236,13 +245,13 @@ AND state='NORMAL' ORDER BY start_at,period_no FOR SHARE
 
     public long lastChange(StoreRef s) {
         requireOuterTransaction(s);
-        var cuts =
+        var cuts = activation == null ?
                 jdbc.queryForList(
                         "SELECT effective_at FROM mch_end_schedule_event WHERE tenant_no=? AND"
                                 + " store_no=? ORDER BY effective_at DESC LIMIT 1 FOR SHARE",
                         Long.class,
                         s.tenantNo(),
-                        s.storeNo());
+                        s.storeNo()) : List.of(activation.lastChange(s));
         var deliveries =
                 jdbc.queryForList(
                         "SELECT delivered_at FROM mch_subscription_period WHERE tenant_no=? AND"
@@ -372,6 +381,42 @@ VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?,?,?,?,?,'NORMAL',?,?,?,UTC_TIM
             List<Period> periods,
             String actor) {
         requireOuterTransaction(s);
+        if (activation == null) {
+            reviseLocalGrants(s, code, op, at, rev, before, after, periods, actor);
+        } else {
+            durationCheck(code, periods, after, at);
+            activation.enqueue(s, code, op, at, rev, after, periods, actor);
+        }
+        for (var p : periods)
+            if (!p.fixed() && p.ends().containsKey(code)) {
+                var slices = after.stream().filter(g -> g.sourceNo().equals(p.no())).toList();
+                if (slices.isEmpty()) continue;
+                long start = slices.getFirst().startsAt().toEpochMilli(),
+                        end = slices.getLast().endsAt().toEpochMilli();
+                boolean first = before.stream().noneMatch(g -> g.sourceNo().equals(p.no()));
+                jdbc.update(
+                        """
+UPDATE mch_subscription_period SET original_start_at=IF(?, ?, original_start_at),original_end_at=IF(?, ?, original_end_at),
+effective_start_at=?,effective_end_at=?,updated_at=UTC_TIMESTAMP(3),updated_by=?,version=version+1
+WHERE tenant_no=? AND store_no=? AND period_no=? AND (effective_start_at<>? OR effective_end_at<>?)
+""",
+                        first,
+                        start,
+                        first,
+                        end,
+                        start,
+                        end,
+                        actor,
+                        s.tenantNo(),
+                        s.storeNo(),
+                        p.no(),
+                        start,
+                        end);
+            }
+    }
+
+    private void reviseLocalGrants(StoreRef s, String code, String op, long at, long rev,
+            List<AccessSegment> before, List<AccessSegment> after, List<Period> periods, String actor) {
         String event = ids.nextBusinessNo("schedule-event");
         jdbc.update(
                 """
@@ -435,32 +480,12 @@ VALUES (?,?,?,?,?,?,?,?,?,?,?,'NORMAL',?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0
                         actor,
                         actor);
             }
-        for (var p : periods)
-            if (!p.fixed() && p.ends().containsKey(code)) {
-                var slices = after.stream().filter(g -> g.sourceNo().equals(p.no())).toList();
-                if (slices.isEmpty()) continue;
-                long start = slices.getFirst().startsAt().toEpochMilli(),
-                        end = slices.getLast().endsAt().toEpochMilli();
-                boolean first = before.stream().noneMatch(g -> g.sourceNo().equals(p.no()));
-                jdbc.update(
-                        """
-UPDATE mch_subscription_period SET original_start_at=IF(?, ?, original_start_at),original_end_at=IF(?, ?, original_end_at),
-effective_start_at=?,effective_end_at=?,updated_at=UTC_TIMESTAMP(3),updated_by=?,version=version+1
-WHERE tenant_no=? AND store_no=? AND period_no=? AND (effective_start_at<>? OR effective_end_at<>?)
-""",
-                        first,
-                        start,
-                        first,
-                        end,
-                        start,
-                        end,
-                        actor,
-                        s.tenantNo(),
-                        s.storeNo(),
-                        p.no(),
-                        start,
-                        end);
-            }
+    }
+
+    public boolean separateActivation() { return activation != null; }
+
+    public List<AccessSegment> activatedSegments(StoreRef store, String code) {
+        return activation == null ? segments(store, code) : activation.activated(store, code);
     }
 
     public void updateVersion(AccountSnapshot a, long rev, String actor) {

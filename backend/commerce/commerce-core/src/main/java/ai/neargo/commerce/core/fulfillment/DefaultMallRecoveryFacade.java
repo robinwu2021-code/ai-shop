@@ -13,12 +13,19 @@ public final class DefaultMallRecoveryFacade implements MallRecoveryFacade {
     private final CommerceUnitOfWork uow;
     private final PaymentFacade payments;
     private final RefundFacade refunds;
+    private final java.util.function.IntUnaryOperator recoverActivations;
 
     public DefaultMallRecoveryFacade(
             RecoveryRepository repository,
             CommerceUnitOfWork uow,
             PaymentFacade payments,
             RefundFacade refunds) {
+        this(repository, uow, payments, refunds, limit -> 0);
+    }
+
+    public DefaultMallRecoveryFacade(RecoveryRepository repository, CommerceUnitOfWork uow,
+            PaymentFacade payments, RefundFacade refunds, java.util.function.IntUnaryOperator recoverActivations) {
+        this.recoverActivations = recoverActivations;
         this.repository = Objects.requireNonNull(repository);
         this.uow = Objects.requireNonNull(uow);
         this.payments = Objects.requireNonNull(payments);
@@ -29,8 +36,11 @@ public final class DefaultMallRecoveryFacade implements MallRecoveryFacade {
         uow.requireOutsideTransaction();
         if (batch == null || batch.afterOrderId() < 0 || batch.limit() < 1 || batch.limit() > 500)
             throw new IllegalArgumentException("invalid recovery batch");
-        var candidates = uow.required(() -> repository.orders(batch.afterOrderId(), batch.limit()));
-        int failed = 0;
+        var candidates = uow.required(() -> {
+            repository.expireQuotes(batch.limit());
+            return repository.orders(batch.afterOrderId(), batch.limit());
+        });
+        int failed = recoverActivations.applyAsInt(batch.limit());
         for (var candidate : candidates) {
             var query = new FulfillmentQuery(candidate.tenantNo(), candidate.orderNo());
             boolean failure = false;

@@ -842,6 +842,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                             c,
                                             null,
                                             null);
+                            repo.prepareShipment(o, next);
                             repo.save(c.tenantNo(), next);
                             return new Dispatch(next, true);
                         });

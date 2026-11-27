@@ -98,7 +98,7 @@ public class WaybillProgress {
         if (!t.changed() && trace != null && trace.atLocker() && !Integer.valueOf(1).equals(w.getAtLocker())
                 && WaybillStatus.DELIVERING.equals(w.getStatus())) {
             // 派件中途放进了驿站 / 快递柜：主状态没变，但「去取件」是买家这一路上最要紧的一句
-            events.notifyAfterCommit(new LogisticsEvents.WaybillProgressed(w.getShipmentNo(), w.getBizRef(), w.getProfile(),
+            events.publish(new LogisticsEvents.WaybillProgressed(w.getShipmentNo(), w.getBizRef(), w.getProfile(),
                     carrierOf(w, patch), w.getWaybillNo(), WaybillStatus.DELIVERING, true, now));
         }
         if (t.changed()) {
@@ -154,11 +154,11 @@ public class WaybillProgress {
     private void publish(LgsWaybill w, String carrier, Transition t, TraceResult trace, long signedAt,
                          String channel, long now) {
         if (t.firstPickedUp()) {
-            events.notifyAfterCommit(new LogisticsEvents.WaybillProgressed(w.getShipmentNo(), w.getBizRef(), w.getProfile(),
+            events.publish(new LogisticsEvents.WaybillProgressed(w.getShipmentNo(), w.getBizRef(), w.getProfile(),
                     carrier, w.getWaybillNo(), WaybillStatus.PICKED_UP, false, now));
         }
         if (WaybillStatus.DELIVERING.equals(t.next()) || WaybillStatus.EXCEPTION.equals(t.next())) {
-            events.notifyAfterCommit(new LogisticsEvents.WaybillProgressed(w.getShipmentNo(), w.getBizRef(), w.getProfile(),
+            events.publish(new LogisticsEvents.WaybillProgressed(w.getShipmentNo(), w.getBizRef(), w.getProfile(),
                     carrier, w.getWaybillNo(), t.next(), trace != null && trace.atLocker(), now));
         }
         if (t.firstDelivered()) {

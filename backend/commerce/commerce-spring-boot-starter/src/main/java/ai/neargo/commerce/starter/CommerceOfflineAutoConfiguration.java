@@ -38,8 +38,12 @@ public class CommerceOfflineAutoConfiguration {
     @ConditionalOnMissingBean(ai.neargo.commerce.api.port.OfflineCashRefundPort.class)
     @DependsOn("commerceMigrationInitializer")
     ai.neargo.commerce.api.port.OfflineCashRefundPort commerceOfflineCashRefunds(DataSource ds,CommerceUnitOfWork uow,
-            OfflineCollectionPort collection,ai.neargo.commerce.api.port.PlatformPaymentPort payments) {
-        return new ai.neargo.commerce.core.offline.DefaultOfflineCashRefundPort(new ai.neargo.commerce.persistence.JdbcCashRefundRepository(ds),uow,collection,payments,Clock.systemUTC());
+            OfflineCollectionPort collection,ai.neargo.commerce.api.port.PlatformPaymentPort payments,
+            ObjectProvider<CommerceMallDatabaseAutoConfiguration.MallStorage> storage) {
+        var mall = storage.getIfAvailable();
+        var repository = mall == null ? new ai.neargo.commerce.persistence.JdbcCashRefundRepository(ds)
+                : new ai.neargo.commerce.persistence.JdbcMallCashRefundRepository(mall.mall());
+        return new ai.neargo.commerce.core.offline.DefaultOfflineCashRefundPort(repository,uow,collection,payments,Clock.systemUTC());
     }
 
     @Bean

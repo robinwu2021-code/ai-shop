@@ -42,6 +42,9 @@ public interface RefundRepository {
     void create(State state);
 
     void save(State state);
+    default void save(State state, String approvalNo) {
+        save(state);
+    }
 
     void freeze(State state, List<Period> before, long at);
 

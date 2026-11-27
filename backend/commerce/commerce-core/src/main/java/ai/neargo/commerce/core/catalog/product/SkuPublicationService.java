@@ -20,7 +20,7 @@ public final class SkuPublicationService {
         code(d.categoryCode(), 32);
         text(d.name(), 128, "name");
         unique(d.allowedBusinessTypes());
-        check(d.kind() != null, "product kind required");
+        check(d.kind() != null && d.kind() != ProductKind.SERVICE, "unsupported product kind");
         check(!d.allowedBusinessTypes().isEmpty(), "product scope required");
         return s.write(
                 a,

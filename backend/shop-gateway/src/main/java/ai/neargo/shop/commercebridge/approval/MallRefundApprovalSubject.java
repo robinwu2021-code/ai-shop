@@ -3,7 +3,6 @@ package ai.neargo.shop.commercebridge.approval;
 import ai.neargo.commerce.starter.http.OpsApprovalGatePort;
 import java.util.ArrayList;
 import java.util.Map;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /** T9a · 商城退款（审核 {@code commerce:refund:review} → 复核 {@code commerce:mall:refund:approve}）。拟定结果 = 「退款通过」请求体（核价单号、退现金额、恢复额度）。 */
@@ -12,8 +11,8 @@ public class MallRefundApprovalSubject extends MallGateSubject {
 
     public static final String SUBJECT_TYPE = "shop.mall_refund";
 
-    public MallRefundApprovalSubject(JdbcTemplate db) {
-        super(db);
+    public MallRefundApprovalSubject(Databases databases) {
+        super(databases.mall, databases.platform, databases.split);
     }
 
     @Override public String subjectType() { return SUBJECT_TYPE; }
@@ -26,7 +25,8 @@ public class MallRefundApprovalSubject extends MallGateSubject {
 
     private Map<String, Object> row(Ref r) {
         var rows = db.queryForList("SELECT version,status,reason,requested_cash_minor FROM mall_refund"
-                + " WHERE tenant_no=? AND store_no=? AND order_no=? AND refund_no=?", r.tenant(), r.store(), r.order(), r.subject());
+                + " WHERE tenant_no=? AND store_no=? AND order_no=? AND refund_no=?"
+                + (split ? " AND JSON_CONTAINS_PATH(policy_snapshot,'one','$.refundNo')" : ""), r.tenant(), r.store(), r.order(), r.subject());
         return rows.isEmpty() ? null : rows.getFirst();
     }
 

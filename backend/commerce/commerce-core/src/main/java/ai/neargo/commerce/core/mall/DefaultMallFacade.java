@@ -399,7 +399,7 @@ public final class DefaultMallFacade implements MallFacade {
         String hash = requestHash(command);
         boolean freshClaim =
                 repo.claimOrder(
-                        actor.tenantNo(), idempotencyOwner(q), command.idempotencyKey(), hash, at);
+                        q, idempotencyOwner(q), command.idempotencyKey(), hash, at);
         var account = account(store);
         var balance = repo.lockBalance(q.store(), q.currency());
         var sources = repo.lockSources(q.store(), at);
@@ -440,7 +440,7 @@ public final class DefaultMallFacade implements MallFacade {
             validateAddress(command.shippingAddress().orElseThrow(() -> fail("SHIPPING_REQUIRED")));
         var order =
                 new Order(
-                        ids.nextBusinessNo("mall-order"),
+                        repo.orderNo(q, ids),
                         q,
                         command.idempotencyKey(),
                         hash,

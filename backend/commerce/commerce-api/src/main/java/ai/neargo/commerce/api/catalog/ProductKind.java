@@ -4,5 +4,6 @@ public enum ProductKind {
     PLAN,
     END_ACCESS,
     HARDWARE,
+    SERVICE,
     BUNDLE
 }

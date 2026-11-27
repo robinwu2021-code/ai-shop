@@ -49,6 +49,9 @@ public interface OfflineRepository {
     /** Distinct order numbers with ACCEPTED actions after the cursor, ordered. */
     List<String> pendingOrders(String tenant,String afterOrderNo,int limit);
     void saveAction(Action action);
+    default void saveAction(Action action, String approvalNo) {
+        saveAction(action);
+    }
     void reserve(Evidence evidence);
     Optional<Evidence> evidence(String tenant, String key);
     List<String> retained(String tenant);

@@ -19,7 +19,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 只发通知的事件：<b>不落发件箱</b>，业务事务提交后在后台线程交给支持它的消费者，失败只记日志、不重投。
+ * 通知类消费者（{@link OutboxConsumer#afterCommitOnly()}）的投递：业务事务提交后在后台线程交给它们，失败只记日志、不重投。
+ * 由 {@link OutboxEventBus#publish(DomainEvent)} 按订阅者自动登记，业务代码不直接调。
  *
  * <p>用于下游只有站内信、推送、提醒这类“丢一次可以接受”的事件（基础能力库对齐方案 §1.4 的 D 类）。
  * 下游要写别的库或调外部系统且必须做成的，仍走 {@link OutboxEventBus#publish(DomainEvent)}。
@@ -56,8 +57,13 @@ public class AfterCommitNotifications implements DisposableBean {
 
     /** 在业务事务里调用；序列化失败直接抛出，让业务事务一起失败。 */
     public void publish(DomainEvent event) {
+        publish(null, event);
+    }
+
+    /** @param eventNo 外部带来的稳定事件号（下游按它去重）；为空时新发一个 */
+    public void publish(String eventNo, DomainEvent event) {
         SysOutbox envelope = new SysOutbox();
-        envelope.setEventNo(BizKey.next(BizKey.EVENT));
+        envelope.setEventNo(eventNo == null || eventNo.isBlank() ? BizKey.next(BizKey.EVENT) : eventNo);
         envelope.setAggregateType(event.aggregateType());
         envelope.setAggregateId(event.aggregateId());
         envelope.setEventType(event.eventType());
@@ -92,10 +98,10 @@ public class AfterCommitNotifications implements DisposableBean {
 
     private void deliver(SysOutbox envelope) {
         consumers.orderedStream()
-                .filter(c -> c.supports(envelope.getEventType()))
+                .filter(c -> c.afterCommitOnly() && c.supports(envelope.getEventType()))
                 .forEach(c -> {
                     try {
-                        c.consume(envelope);
+                        DeliveryContext.run(envelope.getEventNo(), () -> c.consume(envelope));
                     } catch (RuntimeException e) {
                         log.warn("提交后通知失败，不重投 {} {} {}", c.getClass().getSimpleName(),
                                 envelope.getEventType(), envelope.getAggregateId(), e);

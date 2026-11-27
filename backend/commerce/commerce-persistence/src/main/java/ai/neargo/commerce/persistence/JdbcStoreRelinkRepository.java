@@ -13,7 +13,10 @@ public final class JdbcStoreRelinkRepository implements StoreRelinkRepository {
     private final DataSource ds;
     private final JdbcTemplate jdbc;
     private final String readLock;
-    public JdbcStoreRelinkRepository(DataSource ds) {
+    private final boolean mallDatabase;
+    public JdbcStoreRelinkRepository(DataSource ds) { this(ds,false); }
+    public JdbcStoreRelinkRepository(DataSource ds, boolean mallDatabase) {
+        this.mallDatabase = mallDatabase;
         this.ds=ds; this.jdbc=new JdbcTemplate(ds);
         this.readLock=jdbc.execute((ConnectionCallback<String>) connection ->
                 "H2".equals(connection.getMetaData().getDatabaseProductName()) ? " FOR UPDATE" : " FOR SHARE");
@@ -31,7 +34,8 @@ public final class JdbcStoreRelinkRepository implements StoreRelinkRepository {
         // Current reads cannot reuse a host caller's older RR snapshot.
         // Read every source even after a hit: missing schema must not report complete.
         for (String table : HISTORY_TABLES) {
-            history |= exists("SELECT 1 FROM " + table + " WHERE tenant_no=? AND store_no=? LIMIT 1",
+            history |= exists("SELECT 1 FROM " + table + " WHERE tenant_no=? AND store_no=?"
+                    + (mallDatabase && "mall_order".equals(table) ? " AND stage='ORDERED'" : "") + " LIMIT 1",
                     store.tenantNo(),store.storeNo());
         }
         history |= exists("""

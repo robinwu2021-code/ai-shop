@@ -33,7 +33,7 @@ public class StoreIndustryAdminServiceImpl implements StoreIndustryAdminService 
 
     @Override @Transactional
     public View save(ActorContext actor, Save c) {
-        if (catalog.overview(actor).businessTypes().stream()
+        if (catalog.businessTypes(actor).stream()
                 .noneMatch(t -> t.draft().typeCode().equals(c.businessTypeCode())))
             throw BizException.of(ErrorCode.BAD_REQUEST);
         String sub = c.subIndustryCode() == null ? "" : c.subIndustryCode();

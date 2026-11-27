@@ -83,5 +83,8 @@ public interface FulfillmentRepository {
         return false;
     }
 
+    /** Reserve serialized pieces before dispatching the external inventory operation. */
+    default void prepareShipment(Order order, Operation operation) {}
+
     void shipment(Order order, Operation operation);
 }

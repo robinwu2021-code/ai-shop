@@ -125,6 +125,25 @@ class OrderPaidFourChannelsFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 同一事件号投两次（MQ 至少一次）→ 微信 / 企微群 / 短信 / App **仍各一次**（ADR-067 决策 8）")
+    void redeliveredEventDoesNotResendExternalChannels() throws Exception {
+        Owner o = anOwner("wx-open-f4-dup", "M-F4-DUP", "cid-f4-dup", "13700000030");
+        grantWx(o.userNo);
+        configureGroup(o.storeNo);
+        var paid = new OrderEvents.SubOrderPaid("SUB-F4-DUP", "SO-SUB-F4-DUP", o.entityNo,
+                "ST-" + o.entityNo, "U-BUYER-SUB-F4-DUP", 12_80L);
+
+        eventBus.publish("EV-F4-DUP", paid);
+        eventBus.publish("EV-F4-DUP", paid);
+        drainOutbox();
+
+        assertThat(sentWx(o.openId)).as("微信订阅").hasSize(1);
+        assertThat(pushTo("cid-f4-dup")).as("App 推送").hasSize(1);
+        assertThat(botStub.sent()).as("企微群").hasSize(1);
+        assertThat(smsTo("13700000030")).as("短信按条计费").hasSize(1);
+    }
+
+    @Test
     @DisplayName("备货后售后申请同时发微信订阅和短信，短信落独立发送记录")
     void afterSaleUsesWxAndSmsTogether() throws Exception {
         Owner o = anOwner("wx-open-f4-refund", "M-F4-REFUND", "cid-f4-refund", "13700000020");

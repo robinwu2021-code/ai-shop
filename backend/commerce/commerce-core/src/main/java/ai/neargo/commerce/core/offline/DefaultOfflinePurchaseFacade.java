@@ -368,7 +368,12 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
                 offline.action(actor.tenantNo(),o.orderNo(),actionNo).map(OfflineRepository.Action::view));
     }
 
-    public ActionView confirm(ActorContext actor,ReviewCommand c) {
+    public ActionView confirm(ActorContext actor, ReviewCommand c) {
+        return confirm(actor, c, null);
+    }
+
+    @Override
+    public ActionView confirm(ActorContext actor, ReviewCommand c, String approvalNo) {
         operator(actor);
         if(c==null || c.order()==null || c.actualAmount()==null || c.actualAmount().minor()<=0 || c.actualPaidAt()==null
                 || c.actualPaidAt().getNano()!=0 || c.actualPaidAt().isAfter(clock.instant()))throw fail("INVALID_REQUEST");
@@ -399,7 +404,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
                 offline.saveClaim(claim.reviewed("REVIEWING",actor.principalNo(),c.reason()));
             }
             var a=new OfflineRepository.Action(c.actionNo(),"CONFIRM",c.order(),actor.principalNo(),clock.millis(),c,null,payment(o),"ACCEPTED",null);
-            offline.saveAction(a);return a;
+            offline.saveAction(a, approvalNo);return a;
         });
         return advance(action).view();
     }

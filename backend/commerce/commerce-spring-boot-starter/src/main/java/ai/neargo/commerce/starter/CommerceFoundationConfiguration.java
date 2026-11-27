@@ -21,10 +21,12 @@ public class CommerceFoundationConfiguration {
             DataSource ds,
             CommerceUnitOfWork uow,
             FoundationAuthorityPort host,
-            ObjectProvider<Clock> clocks, ObjectProvider<FoundationPurchaseAvailabilityPort> purchase) {
+            ObjectProvider<CommerceMallDatabaseAutoConfiguration.MallStorage> storage,
+            ObjectProvider<JdbcSubscriptionRepository> subscriptions, ObjectProvider<Clock> clocks, ObjectProvider<FoundationPurchaseAvailabilityPort> purchase) {
+        var mall = storage.getIfAvailable();
         return new FoundationQueryService(
-                new JdbcCatalogRepository(ds),
-                new JdbcSubscriptionRepository(ds, ns -> UUID.randomUUID().toString()),
+                mall == null ? new JdbcCatalogRepository(ds) : new JdbcCatalogRepository(mall.mall(), mall.foundation()),
+                mall == null ? new JdbcSubscriptionRepository(ds, ns -> UUID.randomUUID().toString()) : subscriptions.getObject(),
                 uow,
                 host,
                 clocks.getIfAvailable(Clock::systemUTC),purchase.getIfAvailable(()->(a,c)->java.util.Set.of()));

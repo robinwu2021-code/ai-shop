@@ -76,7 +76,7 @@ public class GroupSettleNotifier {
         if (userNos.isEmpty()) {
             return;   // 一个人都没有的团：没人可通知，也不是错误
         }
-        eventBus.notifyAfterCommit(new MarketingEvents.GroupSettled(
+        eventBus.publish(new MarketingEvents.GroupSettled(
                 groupNo, status, g == null ? null : g.getTitle(), userNos));
     }
 }

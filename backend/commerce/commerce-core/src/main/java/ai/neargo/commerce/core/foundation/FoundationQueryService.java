@@ -150,7 +150,7 @@ public final class FoundationQueryService implements FoundationQueryFacade {
                                     p.ends()
                                             .forEach(
                                                     (code, end) -> {
-                                                        if (!grants.containsKey(code))
+                                                        if (!repository.separateActivation() && !grants.containsKey(code))
                                                             throw new IllegalStateException(
                                                                     "missing source schedule");
                                                         bind(ends, code, end);
@@ -158,7 +158,7 @@ public final class FoundationQueryService implements FoundationQueryFacade {
                     grants.forEach((code, g) -> bind(ends, code, g.endCode()));
                     var schedules = new TreeMap<String, List<AccessSegment>>();
                     ends.keySet()
-                            .forEach(code -> schedules.put(code, repository.segments(store, code)));
+                            .forEach(code -> schedules.put(code, repository.activatedSegments(store, code)));
                     // Refresh membership after potentially blocking on the account/catalog; old
                     // role snapshots
                     // cannot authorize the result after a contended read.
@@ -183,7 +183,7 @@ public final class FoundationQueryService implements FoundationQueryFacade {
                                     rows.stream()
                                             .filter(
                                                     row ->
-                                                            activeSources.contains(row.sourceNo())
+                                                            repository.separateActivation() || activeSources.contains(row.sourceNo())
                                                                     || row.endsAt() != null
                                                                             && row.endsAt()
                                                                                             .toEpochMilli()

@@ -22,14 +22,25 @@ import javax.sql.DataSource;
  */
 public final class JdbcCatalogRepository implements CatalogRepository {
     private final DataSource ds;
+    private final JdbcTemplate dictionary;
+    private final CatalogChangeJournal journal;
     private final JdbcTemplate jdbc;
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final TypeReference<TreeMap<String, String>> NAMES = new TypeReference<>() {};
 
     public JdbcCatalogRepository(DataSource ds) {
+        this(ds, null);
+    }
+
+    public JdbcCatalogRepository(DataSource ds, DataSource foundation) {
+        dictionary = foundation == null ? null : new JdbcTemplate(foundation);
         this.ds = Objects.requireNonNull(ds);
         jdbc = new JdbcTemplate(ds);
+        journal = foundation == null ? null : new JdbcMallCatalogChanges(jdbc, foundation);
     }
+
+    @Override
+    public CatalogChangeJournal changeJournal() { return journal; }
 
     private List<Map<String, Object>> rows(String table, String tenant, CatalogLockMode mode) {
         return jdbc.queryForList(
@@ -87,7 +98,56 @@ public final class JdbcCatalogRepository implements CatalogRepository {
         return "[" + String.join(",", codes.stream().map(CatalogSupport::json).toList()) + "]";
     }
 
+    @Override
+    public Collection<CatalogState.Category> loadCategories(String tenant) {
+        JdbcWriteGuard.require(ds, tenant);
+        return categories(tenant, CatalogLockMode.SHARED);
+    }
+
+    @Override
+    public CatalogState lockCategoryTree(String tenant) {
+        JdbcWriteGuard.require(ds, tenant);
+        var tree = new CatalogState();
+        for (var category : categories(tenant, CatalogLockMode.EXCLUSIVE)) {
+            tree.categories.put(category.draft().categoryCode(), category);
+        }
+        return tree;
+    }
+
+    @Override
+    public boolean hasOnSaleProduct(String tenant, String category, CatalogState state) {
+        JdbcWriteGuard.require(ds, tenant);
+        return !jdbc.queryForList("""
+                SELECT id FROM mall_product
+                WHERE tenant_no=? AND category_code=? AND sale_status='ON_SALE' AND deleted=0
+                LIMIT 1 FOR UPDATE
+                """, Long.class, tenant, category).isEmpty();
+    }
+
+    private List<CatalogState.Category> categories(String tenant, CatalogLockMode mode) {
+        var result = new ArrayList<CatalogState.Category>();
+        for (var r : rows("mall_category", tenant, mode)) {
+            var d =
+                    new CategoryDraft(
+                            str(r, "category_code"),
+                            str(r, "parent_code"),
+                            JSON.readValue(str(r, "names"), NAMES),
+                            str(r, "icon"),
+                            integer(r, "sort_order"),
+                            enabledCategory(str(r, "status")),
+                            num(r, "version"),
+                            "persisted category");
+            result.add(new CatalogState.Category(d, integer(r, "level"), num(r, "version")));
+        }
+        return result;
+    }
+
+    private static boolean enabledCategory(String status) {
+        return "ACTIVE".equals(status) || "ENABLED".equals(status);
+    }
+
     public CatalogState load(String tenant, CatalogLockMode mode) {
+        if (dictionary != null) return mallState(tenant, mode, System::currentTimeMillis);
         if (mode != CatalogLockMode.NONE) JdbcWriteGuard.require(ds, tenant);
         else JdbcWriteGuard.tenant(tenant);
         var s = new CatalogState();
@@ -104,25 +164,7 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                     d.typeCode(),
                     new CatalogState.Type(d, num(r, "plan_catalog_version"), num(r, "version")));
         }
-        for (var r : rows("sys_business_end", tenant, mode)) {
-            var d =
-                    new BusinessEndDraft(
-                            str(r, "end_code"),
-                            str(r, "entitlement_code"),
-                            str(r, "name"),
-                            EndScope.valueOf(str(r, "scope")),
-                            strings(str(r, "allowed_business_types")),
-                            ReleaseStatus.valueOf(str(r, "release_status")),
-                            flag(r, "sale_enabled"),
-                            flag(r, "bootstrap_required"),
-                            flag(r, "enabled"),
-                            str(r, "client_id"),
-                            str(r, "route_policy_ref"),
-                            str(r, "acceptance_ref"),
-                            num(r, "version"),
-                            "persisted registration");
-            s.ends.put(d.code(), new CatalogState.End(d, num(r, "version")));
-        }
+        loadEnds(s, "sys_business_end", tenant, mode);
         for (var r : rows("sys_industry_plan", tenant, mode)) {
             var p =
                     new CatalogState.Plan(
@@ -168,20 +210,43 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                             nullableLong(r, "published_at"),
                             str(r, "published_by")));
         }
-        for (var r : rows("mall_category", tenant, mode)) {
+        loadMerchandise(s, tenant, mode);
+        return s;
+    }
+
+    private void loadEnds(CatalogState s, String table, String tenant, CatalogLockMode mode) {
+        for (var r : rows(table, tenant, mode)) {
             var d =
-                    new CategoryDraft(
-                            str(r, "category_code"),
-                            str(r, "parent_code"),
-                            JSON.readValue(str(r, "names"), NAMES),
-                            str(r, "icon"),
-                            integer(r, "sort_order"),
-                            "ENABLED".equals(str(r, "status")),
+                    new BusinessEndDraft(
+                            str(r, "end_code"),
+                            str(r, "entitlement_code"),
+                            str(r, "name"),
+                            EndScope.valueOf(str(r, "scope")),
+                            strings(str(r, "allowed_business_types")),
+                            releaseStatus(str(r, "release_status")),
+                            flag(r, "sale_enabled"),
+                            flag(r, "bootstrap_required"),
+                            flag(r, "enabled"),
+                            str(r, "client_id"),
+                            str(r, "route_policy_ref"),
+                            str(r, "acceptance_ref"),
                             num(r, "version"),
-                            "persisted category");
-            s.categories.put(
-                    d.categoryCode(),
-                    new CatalogState.Category(d, integer(r, "level"), num(r, "version")));
+                            "persisted registration");
+            s.ends.put(d.code(), new CatalogState.End(d, num(r, "version")));
+        }
+    }
+
+    private static ReleaseStatus releaseStatus(String status) {
+        return switch (status) {
+            case "GA" -> ReleaseStatus.VERIFIED;
+            case "DEV", "BETA" -> ReleaseStatus.PLANNED;
+            default -> ReleaseStatus.valueOf(status);
+        };
+    }
+
+    private void loadMerchandise(CatalogState s, String tenant, CatalogLockMode mode) {
+        for (var category : categories(tenant, mode)) {
+            s.categories.put(category.draft().categoryCode(), category);
         }
         for (var r : rows("mall_product", tenant, mode)) {
             var d =
@@ -225,7 +290,7 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                                     c ->
                                             new SkuComponent(
                                                     str(c, "component_no"),
-                                                    "END_ACCESS".equals(str(c, "component_type"))
+                                                    Set.of("END_ACCESS", "ENTITLEMENT").contains(str(c, "component_type"))
                                                             ? ComponentKind.END_PACKAGE
                                                             : ComponentKind.valueOf(
                                                                     str(c, "component_type")),
@@ -266,7 +331,98 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                             num(r, "version"),
                             nullableLong(r, "published_at")));
         }
-        return s;
+
+    }
+
+    @Override
+    public Collection<CatalogState.Type> businessTypes(String tenant) {
+        if (dictionary == null) return CatalogRepository.super.businessTypes(tenant);
+        JdbcWriteGuard.tenant(tenant);
+        var result = new ArrayList<CatalogState.Type>();
+        var types = dictionary.queryForList("""
+                SELECT item_code,name,sort_no,status,version,
+                       JSON_UNQUOTE(JSON_EXTRACT(attrs,'$.plan_catalog_version')) AS catalog_version
+                FROM sys_dict_item WHERE tenant_no=? AND dict_type='BUSINESS_TYPE'
+                  AND item_level='TYPE' AND deleted=0 ORDER BY sort_no,item_code
+                """, tenant);
+        for (var row : types) {
+            long version = num(row, "version");
+            var type = new BusinessTypeDraft(str(row, "item_code"), str(row, "name"),
+                    integer(row, "sort_no"), "ENABLED".equals(str(row, "status")), version, null);
+            String token = str(row, "catalog_version");
+            if (token == null) throw new IllegalStateException(
+                    "Missing plan_catalog_version for business type " + type.typeCode());
+            result.add(new CatalogState.Type(type, Long.parseLong(token), version));
+        }
+        return result;
+    }
+
+    @Override
+    public void saveBusinessType(String tenant, CatalogState.Type before, CatalogState.Type after,
+            CatalogWriteContext context) {
+        JdbcMallMasterData.saveBusinessType(dictionary, tenant, before, after, context);
+    }
+
+    @Override
+    public CatalogState overview(String tenant, LongSupplier clock) {
+        if (dictionary == null) return CatalogRepository.super.overview(tenant, clock);
+        return mallState(tenant, CatalogLockMode.SHARED, clock);
+    }
+
+    @Override
+    public CatalogState lockForWrite(String tenant, LongSupplier clock) {
+        return dictionary == null ? CatalogRepository.super.lockForWrite(tenant, clock)
+                : mallState(tenant, CatalogLockMode.EXCLUSIVE, clock);
+    }
+
+    private CatalogState mallState(String tenant, CatalogLockMode mode, LongSupplier clock) {
+        if (mode != CatalogLockMode.NONE) JdbcWriteGuard.require(ds, tenant);
+        var state = new CatalogState();
+        loadEnds(state, "mall_end_entitlement", tenant, mode);
+        var plans = rows("sys_industry_plan", tenant, mode);
+        // A publication may commit while the plan locks are being acquired.
+        long now = clock.getAsLong();
+        // If no version is effective yet, expose the latest revision as the editable definition.
+        plans.sort(Comparator.comparingInt((Map<String, Object> row) -> integer(row, "revision")).reversed());
+        var members = rows("sys_plan_version_end", tenant, mode);
+        var codes = new HashMap<String, List<String>>();
+        members.stream().sorted(Comparator.comparingInt(r -> integer(r, "sort"))).forEach(r ->
+                codes.computeIfAbsent(str(r, "plan_version_no"), ignored -> new ArrayList<>())
+                        .add(str(r, "entitlement_code")));
+        for (var row : plans) {
+            String plan = str(row, "plan_no"), no = str(row, "version_no");
+            String status = str(row, "status");
+            long version = num(row, "version");
+            var draft = new PlanDraft(plan, no, str(row, "business_type_code"),
+                    PlanTier.valueOf(str(row, "tier_code")), str(row, "display_name"),
+                    str(row, "summary"), codes.getOrDefault(no, List.of()), str(row, "policy_version"),
+                    version, str(row, "change_note"));
+            var revision = integer(row, "revision");
+            state.planVersions.put(no, new CatalogState.PlanVersion(draft, revision,
+                    "ACTIVE".equals(status) ? "PUBLISHED" : status, version,
+                    nullableLong(row, "published_at"), str(row, "published_by")));
+            Long from = nullableLong(row, "effective_from"), to = nullableLong(row, "effective_to");
+            boolean current = "ACTIVE".equals(status) && (from == null || from <= now) && (to == null || now < to);
+            var prior = state.plans.get(plan);
+            if (prior == null || (current && (prior.currentVersionNo() == null
+                    || state.planVersions.get(prior.currentVersionNo()).revision() < revision))) {
+                state.plans.put(plan, new CatalogState.Plan(plan, draft.typeCode(), draft.tier(),
+                        current ? no : null, str(row, "sale_status"), version));
+            }
+        }
+        loadMerchandise(state, tenant, mode);
+        if (mode != CatalogLockMode.NONE) journal.finishPending(tenant);
+        for (var type : businessTypes(tenant)) {
+            var code = type.draft().typeCode();
+            state.types.put(code, type);
+            for (var tier : PlanTier.catalogTiers(code)) {
+                if (state.plans.values().stream().noneMatch(p -> p.typeCode().equals(code) && p.tier() == tier)) {
+                    String plan = code + ":" + tier;
+                    state.plans.put(plan, new CatalogState.Plan(plan, code, tier, null, "DRAFT", 1));
+                }
+            }
+        }
+        return state;
     }
 
     private static LinkedHashMap<String, Object> fields(Object... entries) {
@@ -341,6 +497,15 @@ public final class JdbcCatalogRepository implements CatalogRepository {
     public void save(
             String tenant, CatalogState before, CatalogState after, CatalogWriteContext context) {
         JdbcWriteGuard.require(ds, tenant);
+        if (dictionary == null) saveLegacyPlans(tenant, before, after, context);
+        else {
+            JdbcMallMasterData.save(ds, tenant, before, after, context);
+            saveMallPlans(tenant, before, after, context);
+        }
+        saveMerchandise(tenant, before, after, context);
+    }
+
+    private void saveLegacyPlans(String tenant, CatalogState before, CatalogState after, CatalogWriteContext context) {
         changes(
                 before.types,
                 after.types,
@@ -468,6 +633,79 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                             after,
                             context);
                 });
+    }
+
+    private void saveMallPlans(String tenant, CatalogState before, CatalogState after, CatalogWriteContext context) {
+        var timestamp = LocalDateTime.ofInstant(context.occurredAt(), ZoneOffset.UTC);
+        changes(before.planVersions, after.planVersions, (old, next) -> {
+            var draft = next.draft();
+            // Publication writes the version and the definition together below.
+            if (!next.status().equals("DRAFT")) return;
+            if (old == null) {
+                int inserted = jdbc.update("""
+                        INSERT INTO sys_industry_plan
+                          (tenant_no,plan_no,version_no,revision,business_type_code,tier_code,`rank`,sort,
+                           store_quota,staff_quota,cross_store_stats,trial_days,display_name,summary,
+                           policy_version,change_note,status,sale_status,version,deleted,created_at,updated_at,created_by,updated_by)
+                        SELECT tenant_no,plan_no,?,?,business_type_code,tier_code,`rank`,sort,
+                               store_quota,staff_quota,cross_store_stats,trial_days,?,?,?,?,'DRAFT','OFF_SALE',
+                               1,0,?,?,?,? FROM sys_industry_plan
+                        WHERE tenant_no=? AND plan_no=? AND deleted=0 ORDER BY revision DESC LIMIT 1
+                        """, draft.planVersionNo(), next.revision(), draft.displayName(), draft.summary(),
+                        draft.policyVersion(), draft.reason(), timestamp, timestamp, context.principalNo(),
+                        context.principalNo(), tenant, draft.planNo());
+                if (inserted == 0) {
+                    var tier = draft.tier().ordinal();
+                    jdbc.update("""
+                            INSERT INTO sys_industry_plan
+                              (tenant_no,plan_no,version_no,revision,business_type_code,tier_code,`rank`,sort,
+                               display_name,summary,policy_version,change_note,status,sale_status,version,deleted,
+                               created_at,updated_at,created_by,updated_by)
+                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT','OFF_SALE',1,0,?,?,?,?)
+                            """, tenant, draft.planNo(), draft.planVersionNo(), next.revision(), draft.typeCode(),
+                            draft.tier().name(), tier, tier, draft.displayName(), draft.summary(),
+                            draft.policyVersion(), draft.reason(), timestamp, timestamp, context.principalNo(),
+                            context.principalNo());
+                }
+            } else {
+                row("sys_industry_plan", "version_no", draft.planVersionNo(), tenant, old.version(),
+                        next.version(), context, fields("display_name", draft.displayName(), "summary",
+                                draft.summary(), "policy_version", draft.policyVersion(), "change_note", draft.reason()));
+            }
+            syncPlanEnds(tenant, old == null ? List.of() : old.draft().entitlementCodes(), draft, after, context);
+        });
+        changes(before.plans, after.plans, (old, next) -> {
+            if (old == null) return; // Type creation exposes definitions before their first draft.
+            String target = next.currentVersionNo();
+            if (target == null) {
+                target = before.planVersions.values().stream()
+                        .filter(v -> v.draft().planNo().equals(next.planNo()))
+                        .max(Comparator.comparingInt(CatalogState.PlanVersion::revision))
+                        .orElseThrow().draft().planVersionNo();
+            }
+            var original = before.planVersions.get(target);
+            var data = fields("sale_status", next.saleStatus());
+            if (!Objects.equals(old.currentVersionNo(), next.currentVersionNo())) {
+                if (old.currentVersionNo() != null) {
+                    var previous = before.planVersions.get(old.currentVersionNo());
+                    row("sys_industry_plan", "version_no", old.currentVersionNo(), tenant, previous.version(),
+                            previous.version() + 1, context, fields("effective_to", context.occurredAt().toEpochMilli(),
+                                    "sale_status", "OFF_SALE"));
+                }
+                data.put("status", "ACTIVE");
+                data.put("effective_from", context.occurredAt().toEpochMilli());
+                data.put("effective_to", null);
+                if (original.status().equals("DRAFT")) {
+                    data.put("published_at", context.occurredAt().toEpochMilli());
+                    data.put("published_by", context.principalNo());
+                }
+            }
+            row("sys_industry_plan", "version_no", target, tenant, original.version(),
+                    Math.max(original.version(), old.version()) + 1, context, data);
+        });
+    }
+
+    private void saveMerchandise(String tenant, CatalogState before, CatalogState after, CatalogWriteContext context) {
         changes(
                 before.categories,
                 after.categories,
@@ -493,7 +731,7 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                                     "sort_order",
                                     d.sortOrder(),
                                     "status",
-                                    n.status()));
+                                    dictionary != null && d.enabled() ? "ACTIVE" : n.status()));
                 });
         changes(
                 before.products,
@@ -715,7 +953,8 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                             "component_seq",
                             seq,
                             "component_type",
-                            c.kind() == ComponentKind.END_PACKAGE ? "END_ACCESS" : c.kind().name(),
+                            c.kind() == ComponentKind.END_PACKAGE
+                                    ? (dictionary == null ? "END_ACCESS" : "ENTITLEMENT") : c.kind().name(),
                             "plan_version_no",
                             c.planVersionNo(),
                             "entitlement_code",

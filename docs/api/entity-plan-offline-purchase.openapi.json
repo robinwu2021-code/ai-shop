@@ -1601,6 +1601,7 @@
               "AWAITING_PAYMENT",
               "SUBMITTED",
               "CONFIRMING",
+              "PAID_PENDING",
               "APPLIED",
               "UNMATCHED",
               "REVIEW_REQUIRED",

@@ -45,6 +45,14 @@ public interface MallRepository {
      */
     boolean claimOrder(String tenant, String buyer, String key, String requestHash, long at);
 
+    default boolean claimOrder(Quote quote, String owner, String key, String requestHash, long at) {
+        return claimOrder(quote.store().tenantNo(), owner, key, requestHash, at);
+    }
+
+    default String orderNo(Quote quote, ai.neargo.commerce.api.port.CommerceIdGenerator ids) {
+        return ids.nextBusinessNo("mall-order");
+    }
+
     /**
      * Only after claimOrder returned false and the quoted account is locked; the order must exist.
      */

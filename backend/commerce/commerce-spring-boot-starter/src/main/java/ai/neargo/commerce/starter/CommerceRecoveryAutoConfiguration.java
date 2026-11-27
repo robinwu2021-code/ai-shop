@@ -5,6 +5,7 @@ import ai.neargo.commerce.api.mall.RefundFacade;
 import ai.neargo.commerce.core.fulfillment.*;
 import ai.neargo.commerce.core.spi.CommerceUnitOfWork;
 import ai.neargo.commerce.persistence.JdbcRecoveryRepository;
+import ai.neargo.commerce.persistence.JdbcEndActivation;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -23,11 +24,15 @@ public class CommerceRecoveryAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(MallRecoveryFacade.class)
     MallRecoveryFacade commerceMallRecovery(
-            DataSource ds,
+            DataSource ds, ObjectProvider<CommerceMallDatabaseAutoConfiguration.MallStorage> storage,
             CommerceUnitOfWork uow,
             PaymentFacade payments,
-            ObjectProvider<RefundFacade> refunds) {
+            ObjectProvider<RefundFacade> refunds, ObjectProvider<JdbcEndActivation> activations) {
+        var activation = activations.getIfAvailable();
+        var mall = storage.getIfAvailable();
+        var repository = mall == null ? new JdbcRecoveryRepository(ds) : new JdbcRecoveryRepository(mall.mall(), true);
         return new DefaultMallRecoveryFacade(
-                new JdbcRecoveryRepository(ds), uow, payments, refunds.getIfAvailable());
+                repository, uow, payments, refunds.getIfAvailable(),
+                activation == null ? limit -> 0 : activation::retryPendingAll);
     }
 }

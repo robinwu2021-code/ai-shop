@@ -44,6 +44,12 @@ public class PrintNotifyBridge implements OutboxConsumer {
         return "print-notify";
     }
 
+    /** 只发打印提醒：提交后收，不进发件箱（ADR-067）。 */
+    @Override
+    public boolean afterCommitOnly() {
+        return true;
+    }
+
     public boolean supports(String type) {
         return Set.of("PRINT_BATCH_RESOLVED", "PRINT_INCIDENT_OPENED", "PRINT_INCIDENT_RESOLVED")
                 .contains(type);

@@ -82,7 +82,10 @@ class MallApprovalGateTest {
         when(port.latest("shop.mall_refund", "MAIN:S1:O1:R1")).thenReturn(Optional.of(new ApprovalPort.Link("shop.mall_refund", "MAIN:S1:O1:R1", rev, "shop_mall_refund", null, null, "PENDING", null)));
         assertThat((Map<String, Object>) click(500).orElseThrow()).containsEntry("approvalStatus", "PENDING");
 
-        when(port.latest("shop.mall_refund", "MAIN:S1:O1:R1")).thenReturn(Optional.of(new ApprovalPort.Link("shop.mall_refund", "MAIN:S1:O1:R1", rev, "shop_mall_refund", null, null, "APPLIED", null)));
+        when(port.latest("shop.mall_refund", "MAIN:S1:O1:R1")).thenReturn(Optional.of(new ApprovalPort.Link("shop.mall_refund", "MAIN:S1:O1:R1", rev, "shop_mall_refund", "approval-42", null, "APPLIED", null)));
+        var released = gate.decide(OpsApprovalGatePort.MALL_REFUND_APPROVE, operator, "S1", "O1", "R1",
+                new Approve("dg", "Q1", new Money("TWD", 500), new Money("TWD", 0), "核过"));
+        assertThat(released.approvalNo()).isEqualTo("approval-42");
         assertThat(click(500)).isEmpty(); // 放行：进入商城，以运营本人会话执行
 
         assertThat(click(600)).isPresent(); // 改了金额 = 另一份审批

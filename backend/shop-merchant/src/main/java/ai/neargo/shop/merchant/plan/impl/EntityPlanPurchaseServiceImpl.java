@@ -36,6 +36,8 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   private final String profileNo;
   private final StoreOperationalReviewService reviews;
 
+  private final EntityPlanMallReceipts mallReceipts;
+
   public record Snapshot(
       String entityNo,
       String storeNo,
@@ -62,6 +64,22 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       Predicate<String> opsVisible,
       Clock clock,
       String profileNo, StoreOperationalReviewService reviews) {
+    this(db, manager, json, payments, money, media, policies, ownership, opsVisible, clock, profileNo, reviews, null);
+  }
+
+  public EntityPlanPurchaseServiceImpl(
+      JdbcTemplate db,
+      PlatformTransactionManager manager,
+      ObjectMapper json,
+      PlatformPaymentPort payments,
+      OfflineCollectionPort money,
+      PrivateEvidencePort media,
+      MoneyPolicyPort policies,
+      StoreOwnershipWritePort ownership,
+      Predicate<String> opsVisible,
+      Clock clock,
+      String profileNo, StoreOperationalReviewService reviews, JdbcTemplate mall) {
+    this.mallReceipts = mall == null ? null : new EntityPlanMallReceipts(mall, json);
     this.db = db;
     this.tx = new TransactionTemplate(manager);
     this.json = json;
@@ -462,16 +480,6 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     var entity = authorize(a);
     if (c == null || c.requestNo() == null || !c.requestNo().matches("[A-Za-z0-9_-]{1,64}"))
       throw bad();
-    // Resolve the trusted version before the write, but never disclose instructions until issuance.
-    Offer offer =
-        offers(a).stream()
-            .filter(
-                o ->
-                    o.offerNo().equals(c.offerNo())
-                        && o.version() == c.offerVersion()
-                        && o.enabled())
-            .findFirst()
-            .orElse(null);
     var replay =
         one(
             "SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND creator_no=?"
@@ -484,6 +492,16 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       checkReplay(replay, a, request, ownerAccount);
       return issue(creator, str(replay, "order_no"));
     }
+    // Resolve the trusted version before the write, but never disclose instructions until issuance.
+    Offer offer =
+        offers(a).stream()
+            .filter(
+                o ->
+                    o.offerNo().equals(c.offerNo())
+                        && o.version() == c.offerVersion()
+                        && o.enabled())
+            .findFirst()
+            .orElse(null);
     if (offer == null || !currency(entity).equals(offer.price().currency())) throw bad();
     validMoney(offer.price(), true);
     OfflineCollectionTerms terms =
@@ -628,7 +646,12 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   private OrderView issue(Actor a, String no) {
     var row = row(a, no, false);
     if (!"PREPARED".equals(str(row, "status"))) return order(a, no);
-    var intent = snapshot(row).intent();
+    issuePayment(snapshot(row).intent());
+    return order(a, no);
+  }
+
+  private void issuePayment(PaymentIntentCommand intent) {
+    if (mallReceipts != null) mallReceipts.prepare(intent);
     var result = payments.create(intent);
     if (result == null
         || result.status() != AsyncStatus.PENDING
@@ -642,8 +665,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                 "UPDATE mch_plan_purchase SET status='AWAITING_PAYMENT' WHERE tenant_no=? AND"
                     + " order_no=? AND status='PREPARED'",
                 TENANT,
-                no));
-    return order(a, no);
+                intent.orderNo()));
   }
 
   @Override
@@ -910,7 +932,14 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
               no);
           return null;
         });
-    advance(no, c.actionNo());
+    try {
+      advance(no, c.actionNo());
+    } catch (org.springframework.dao.DataAccessException failure) {
+      var pending = one("SELECT * FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND action_no=?",
+          TENANT, no, c.actionNo());
+      if (pending == null || !"PAID_PENDING".equals(str(pending, "status"))) throw failure;
+      return actionView(pending);
+    }
     return actionView(
         one(
             "SELECT * FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND"
@@ -935,31 +964,44 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
             TENANT,
             no,
             actionNo);
-    if (action == null || !"ACCEPTED".equals(str(action, "status"))) return;
+    if (action == null || !Set.of("ACCEPTED", "PAID_PENDING").contains(str(action, "status"))) return;
     var c = decode(action.get("command_json"), Confirm.class);
     long accepted = number(action, "confirmed_at");
     OfflineCollectionPort.ManualResult result;
-    try {
-      result =
-          money.confirm(
-              new OfflineCollectionPort.ManualPayment(
-                  s.intent(),
-                  str(action, "operator_no"),
-                  c.amount(),
-                  c.paidAt(),
-                  s.intent().platformMerchantNo(),
-                  c.bankReference(),
-                  c.evidenceKey(),
-                  false,
-                  Instant.ofEpochMilli(accepted)));
-    } catch (IllegalArgumentException refusal) {
-      reject(no, actionNo, refusal, refusedClaimStatus(order,c), false);
-      return;
+    if ("PAID_PENDING".equals(str(action, "status"))) {
+      result = new OfflineCollectionPort.ManualResult("MATCHED", str(action, "payment_no"));
+    } else {
+      var command = new OfflineCollectionPort.ManualPayment(s.intent(), str(action, "operator_no"),
+          c.amount(), c.paidAt(), s.intent().platformMerchantNo(), c.bankReference(),
+          c.evidenceKey(), false, Instant.ofEpochMilli(accepted));
+      var saved = mallReceipts == null ? null : mallReceipts.find(actionNo, command);
+      if (saved != null) {
+        result = saved;
+      } else {
+        try {
+          result = money.confirm(command);
+        } catch (IllegalArgumentException refusal) {
+          reject(no, actionNo, refusal, refusedClaimStatus(order,c), false);
+          return;
+        }
+        if (result == null || result.paymentNo() == null
+            || !Set.of("MATCHED", "LATE", "UNMATCHED").contains(result.disposition()))
+          throw new IllegalStateException("PAYMENT_RESULT_UNKNOWN");
+        if (mallReceipts != null && "MATCHED".equals(result.disposition()))
+          mallReceipts.save(actionNo, command, result);
+      }
+      if ("MATCHED".equals(result.disposition())) {
+        write(() -> {
+          one("SELECT order_no FROM mch_plan_purchase WHERE tenant_no=? AND order_no=? FOR UPDATE", TENANT, no);
+          if (db.update("UPDATE mch_plan_purchase_action SET status='PAID_PENDING',payment_no=?"
+              + " WHERE tenant_no=? AND order_no=? AND action_no=? AND status='ACCEPTED'",
+              result.paymentNo(), TENANT, no, actionNo) == 1)
+            db.update("UPDATE mch_plan_purchase SET status='PAID_PENDING',payment_no=? WHERE tenant_no=? AND order_no=?",
+                result.paymentNo(), TENANT, no);
+          return null;
+        });
+      }
     }
-    if (result == null
-        || result.paymentNo() == null
-        || !Set.of("MATCHED", "LATE", "UNMATCHED").contains(result.disposition()))
-      throw new IllegalStateException("PAYMENT_RESULT_UNKNOWN");
     write(
         () -> {
           // Entity -> subscription -> order, the same ownership barrier as creation/quota writes.
@@ -987,7 +1029,9 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                   TENANT,
                   no,
                   actionNo);
-          if (!"ACCEPTED".equals(str(live, "status"))) return null;
+          if ("MATCHED".equals(result.disposition())) {
+            if (!"PAID_PENDING".equals(str(live, "status")) || !result.paymentNo().equals(str(live,"payment_no"))) return null;
+          } else if (!"ACCEPTED".equals(str(live, "status"))) return null;
           String status = "LATE".equals(result.disposition()) ? "REVIEW_REQUIRED" : "UNMATCHED";
           if ("MATCHED".equals(result.disposition())) {
             var entity = identity;
@@ -1093,7 +1137,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     for (var action :
         db.queryForList(
             "SELECT action_no FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND"
-                + " status='ACCEPTED' AND kind='CONFIRM'",
+                + " status IN ('ACCEPTED','PAID_PENDING') AND kind='CONFIRM'",
             TENANT,
             no)) advance(no, str(action, "action_no"));
     return order(a, no);
@@ -1101,12 +1145,12 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
 
   @Override public RecoverySweep recoverPending(String after,int limit){
     if(limit<1||limit>200)throw bad();
-    var rows=db.queryForList("SELECT order_no,status,snapshot_json FROM mch_plan_purchase WHERE tenant_no=? AND order_no>? AND status IN ('PREPARED','CONFIRMING','CLOSING') ORDER BY order_no LIMIT ?",TENANT,after==null?"":after,limit);int failed=0;
+    var rows=db.queryForList("SELECT order_no,status,snapshot_json FROM mch_plan_purchase WHERE tenant_no=? AND order_no>? AND status IN ('PREPARED','CONFIRMING','PAID_PENDING','CLOSING') ORDER BY order_no LIMIT ?",TENANT,after==null?"":after,limit);int failed=0;
     for(var r:rows)try{
       String no=str(r,"order_no");
-      if("PREPARED".equals(str(r,"status"))){var intent=snapshot(r).intent();var result=payments.create(intent);if(result==null||result.status()!=AsyncStatus.PENDING||!intent.amount().equals(result.amount())||!intent.orderNo().equals(result.orderNo())||!intent.platformMerchantNo().equals(result.platformMerchantNo()))throw new IllegalStateException("PAYMENT_ISSUANCE_UNKNOWN");write(()->db.update("UPDATE mch_plan_purchase SET status='AWAITING_PAYMENT' WHERE tenant_no=? AND order_no=? AND status='PREPARED'",TENANT,no));}
+      if ("PREPARED".equals(str(r,"status"))) issuePayment(snapshot(r).intent());
       else if("CLOSING".equals(str(r,"status")))advanceVoid(no);
-      else for(var action:db.queryForList("SELECT action_no FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND status='ACCEPTED' AND kind='CONFIRM'",TENANT,no))advance(no,str(action,"action_no"));
+      else for(var action:db.queryForList("SELECT action_no FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND status IN ('ACCEPTED','PAID_PENDING') AND kind='CONFIRM'",TENANT,no))advance(no,str(action,"action_no"));
     }catch(RuntimeException retry){failed++;}
     return new RecoverySweep(rows.size(),failed,rows.isEmpty()?after:str(rows.getLast(),"order_no"));
   }
@@ -1196,6 +1240,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     var v = decode(row.get("closure_json"), VoidAction.class);
     var c = v.command();
     // Idempotently establish the original intent, including an interrupted issuance.
+    if (mallReceipts != null) mallReceipts.prepare(s.intent());
     payments.create(s.intent());
     var already=payments.query(new PaymentQuery(TENANT,no,s.intent().paymentAttemptNo(),s.intent()));
     if(v.returnedFunds()){
@@ -1207,6 +1252,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     }catch(IllegalArgumentException refusal){reject(no,c.actionNo(),refusal,v.previousStatus()==null?"CANCELLATION_REQUESTED":v.previousStatus(),true);return;}
     var closed=payments.query(new PaymentQuery(TENANT,no,s.intent().paymentAttemptNo(),s.intent()));
     if(closed==null||closed.closureReference().isEmpty()||!closed.definitivelyClosed()&&!(v.returnedFunds()&&closed.status()==AsyncStatus.SUCCEEDED))throw new IllegalStateException("PAYMENT_CLOSURE_UNKNOWN");
+    if (mallReceipts != null) mallReceipts.close(s.intent(), closed.closureReference().orElseThrow());
     write(
         () -> {
           db.update(
@@ -1264,7 +1310,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     for (var action :
         db.queryForList(
             "SELECT action_no FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND"
-                + " status='ACCEPTED' AND kind='CONFIRM'",
+                + " status IN ('ACCEPTED','PAID_PENDING') AND kind='CONFIRM'",
             TENANT,
             no)) advance(no, str(action, "action_no"));
     var after =

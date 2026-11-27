@@ -146,7 +146,7 @@
 | 物流 → 交易（取一次） | 登记那一刻要收件人、微信交易键、商品 | `ShipmentSourcePort.sourceOf(subOrderNo)`，**只在登记时调一次** |
 | 物流 → 交易（出） | 揽收 / 派件 / 签收 / 异常 | `LogisticsEvents.*`（经 `sys_outbox`），交易与通知各自消费 |
 | 交易 → 物流（读） | 订单详情、物流页、自动确认收货 | `LogisticsPort.track / signedAtOf` |
-| 交易 → 物流（写） | 微信发货信息已上传 | 事件 `WxShippingUploaded`（换 token 的前置条件） |
+| 交易 → 物流（写） | 微信发货信息已上传 | 端口 `WaybillWxUploadPort.markUploaded`，同库同事务直调（换 token 的前置条件）；2026-11-27 前为事件 `WxShippingUploaded` |
 
 > **为什么登记不用「事件里带全量数据」**：事件走 `sys_outbox`，而 `sys_outbox` **没有任何清理**，投递过的行永久留着。
 > 把收件人手机号放进 payload，等于多存一份永久的明文。所以事件只带业务键，物流在登记那一刻拉一次快照，
@@ -388,7 +388,7 @@ POST /callback/logistics/{channel}
 
 ```
 WxBindPolicy.ready(w) = profile==WX ∧ bind_state==WAITING ∧ wx_uploaded_at!=null ∧ status≥PICKED_UP
-触发点：① 推送进入 PICKED_UP 或之后任一推送  ② 收到 WxShippingUploaded（两者先后不定，两边都要判）
+触发点：① 推送进入 PICKED_UP 或之后任一推送  ② 上传成功时直调 `WaybillWxUploadPort`（2026-11-27 前为收到 WxShippingUploaded；两者先后不定，两边都要判）
 调 trace_waybill：
   成功 → display_token, bind_state=DONE
   9300559（微信还没收录）→ 保持 WAITING，什么都不做，等下一条推送

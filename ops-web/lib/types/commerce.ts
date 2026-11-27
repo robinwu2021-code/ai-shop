@@ -89,7 +89,7 @@ export interface MallTypeUpdate {
 // ── 业务端 ─────────────────────────────────────────────────────────────
 
 /** 业务端作用域 */
-export type MallEndScope = "STORE" | "SYSTEM";
+export type MallEndScope = "STORE" | "SYSTEM" | "ENTITY";
 /** 业务端验收状态；VERIFIED 必须绑定部署验收清单里的一项 */
 export type MallReleaseStatus = "PLANNED" | "VERIFIED" | "RETIRED";
 
@@ -293,7 +293,7 @@ export interface MallIndustryPublish {
 // ── 商品与 SKU ────────────────────────────────────────────────────────
 
 /** 商品种类 */
-export type MallProductKind = "PLAN" | "END_ACCESS" | "HARDWARE" | "BUNDLE";
+export type MallProductKind = "PLAN" | "END_ACCESS" | "HARDWARE" | "BUNDLE" | "SERVICE";
 /** 组件种类 */
 export type MallComponentKind = "PLAN" | "END_PACKAGE" | "HARDWARE";
 
@@ -793,6 +793,8 @@ export interface MallShipmentRequest {
   trackingNo: string;
   /** 数量 */
   quantity: number;
+  /** 按序列号出货时，一件设备对应一个序列号 */
+  deviceSerials?: string[];
 }
 
 /** 退款预览 */

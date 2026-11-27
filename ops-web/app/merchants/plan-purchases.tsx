@@ -49,7 +49,7 @@ export function EntityPlanPurchaseDetail({order:o,onChanged}:{order:EntityPlanPu
  const [f,set]=useState({amount:"",at:"",reference:"",reason:""});
  const [attempt,a]=useState<EntityPlanConfirm|null>(null),[absent,markAbsent]=useState(false);
  useFinancialLock(`confirm:${o.entityNo}:${o.orderNo}`,!!attempt||busy);
- const claim=o.claims.find(x=>x.status==="SUBMITTED");
+ const claim=o.status==="SUBMITTED"?o.claims.find(x=>x.status==="SUBMITTED"):undefined;
  const canConfirm=allow("commerce:mall:offline:confirm")&&allow("merchant:merchant:ban");
  const canVoid=allow("commerce:mall:offline:void")&&allow("merchant:merchant:ban");
  const direct=o.purchaseSource==="OPERATOR"&&o.status==="AWAITING_PAYMENT";
@@ -78,7 +78,7 @@ export function EntityPlanPurchaseDetail({order:o,onChanged}:{order:EntityPlanPu
    {evidence&&<span>✓</span>}{(claim||direct)&&canConfirm&&<Button onClick={()=>confirm()}>{c.confirm}</Button>}
   </fieldset>}
   {claim&&!attempt&&allow("commerce:mall:offline:review")&&allow("merchant:merchant:ban")&&<div><Field label={c.reason}><Input disabled={busy} value={f.reason} onChange={v=>set({...f,reason:v.target.value})}/></Field><Button disabled={busy||!f.reason.trim()} onClick={()=>perform(()=>api.declineEntityPlanPurchase(o.entityNo,o.orderNo,claim.claimNo,f.reason.trim()))}>{c.decline}</Button></div>}
-  {((canConfirm&&["PREPARED","CONFIRMING"].includes(o.status))||(canVoid&&o.status==="CLOSING"))&&<Button disabled={busy} onClick={()=>perform(()=>api.recoverEntityPlanPurchase(o.entityNo,o.orderNo))}>{c.recover}</Button>}
+  {((canConfirm&&["PREPARED","CONFIRMING","PAID_PENDING"].includes(o.status))||(canVoid&&o.status==="CLOSING"))&&<Button disabled={busy} onClick={()=>perform(()=>api.recoverEntityPlanPurchase(o.entityNo,o.orderNo))}>{c.recover}</Button>}
 
   <CashRefundsSection kind="entity" allowUnfulfilledMatchedCash={o.status==="REVIEW_REQUIRED"} scope={o.entityNo} orderNo={o.orderNo} canRelease={closing||["UNMATCHED","REVIEW_REQUIRED"].includes(o.status)} onChanged={onChanged}/>
   {error&&<p role="alert">{error}</p>}

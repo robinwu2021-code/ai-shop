@@ -40,9 +40,8 @@ class StoreIndustryAdminServiceTest {
             jdbc.execute("DROP TABLE IF EXISTS sys_store_industry");
         }
         jdbc.execute(nativeUrl == null ? sql.substring(0, sql.lastIndexOf(')') + 1) : sql);
-        when(catalog.overview(actor)).thenReturn(new CatalogOverview(
-                List.of(new BusinessTypeView(new BusinessTypeDraft("RETAIL", "零售", 1, true, 0, "seed"), 0, 1)),
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of()));
+        when(catalog.businessTypes(actor)).thenReturn(List.of(
+                new BusinessTypeView(new BusinessTypeDraft("RETAIL", "零售", 1, true, 0, "seed"), 0, 1)));
     }
 
     Save command(String sub, String type, boolean enabled, Long version) {

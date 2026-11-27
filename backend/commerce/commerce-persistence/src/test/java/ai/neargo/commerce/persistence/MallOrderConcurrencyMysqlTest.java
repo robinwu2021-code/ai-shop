@@ -44,6 +44,11 @@ class MallOrderConcurrencyMysqlTest {
                 boolean hardware,
                 java.util.List<ai.neargo.commerce.api.catalog.SkuComponent> components,
                 long price) {
+            this(db, hardware, components, price, false);
+        }
+
+        Fixture(MysqlDatabase db, boolean hardware, List<ai.neargo.commerce.api.catalog.SkuComponent> components,
+                long price, boolean mergedOrder) {
             this.hardware = hardware;
             this.db = db;
             c = new JdbcCatalogFixture(db);
@@ -145,7 +150,7 @@ class MallOrderConcurrencyMysqlTest {
                         "source-" + i);
             api =
                     new DefaultMallFacade(
-                            new JdbcMallRepository(db.ds, new JdbcCommerceEventPersistence(db.ds)),
+                            new JdbcMallRepository(db.ds, new JdbcCommerceEventPersistence(db.ds), mergedOrder ? c.ids : null),
                             c.repo,
                             new JdbcSubscriptionAccountRepository(db.ds),
                             c.uow,

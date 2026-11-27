@@ -16,6 +16,12 @@ public interface OutboxConsumer {
     /** Target database, not the source event database. */
     default String targetSource() { return "PLATFORM"; }
 
+    /**
+     * 通知类消费者：事件提交后在后台收（{@link AfterCommitNotifications}），发件箱投递跳过它，丢一次可以接受。
+     * 一个事件类型只有这类消费者时不落发件箱（ADR-067）。
+     */
+    default boolean afterCommitOnly() { return false; }
+
     /** External workflows keep their own action ledger outside an enclosing JDBC transaction. */
     default boolean externalWorkflow() { return false; }
 

@@ -23,9 +23,16 @@ public final class JdbcMallRepository implements MallRepository {
     private final DataSource ds;
     private final CommerceEventPersistencePort events;
     private final JdbcTemplate jdbc;
+    private final CommerceIdGenerator quoteOrderIds;
     private final JsonMapper json = JsonMapper.builder().build();
 
     public JdbcMallRepository(DataSource ds, CommerceEventPersistencePort events) {
+        this(ds, events, null);
+    }
+
+    /** The mall schema allocates a durable order identity as part of quoting. */
+    public JdbcMallRepository(DataSource ds, CommerceEventPersistencePort events, CommerceIdGenerator quoteOrderIds) {
+        this.quoteOrderIds = quoteOrderIds;
         this.ds = Objects.requireNonNull(ds);
         this.events = Objects.requireNonNull(events);
         jdbc = new JdbcTemplate(ds);
@@ -237,6 +244,10 @@ public final class JdbcMallRepository implements MallRepository {
 
     public void saveQuote(Quote q, String actor) {
         guard(q.store().tenantNo());
+        if (quoteOrderIds != null) {
+            saveOrderQuote(q, actor);
+            return;
+        }
         var r = row(q.store().tenantNo(), actor, q.valuationAt());
         r.put("quote_no", q.quoteNo());
         r.put("store_no", q.store().storeNo());
@@ -276,8 +287,76 @@ public final class JdbcMallRepository implements MallRepository {
         insert("mall_quote", r);
     }
 
+    /** Only the frozen calculation inputs without a dedicated scalar column are kept in JSON. */
+    private record QuoteContext(long entitlementVersion, long accountVersion, long balanceVersion,
+            long catalogVersion, long businessTypeVersion, List<CreditUse> creditUses,
+            List<ConversionSource> conversions, Long convertedCredit, Long historicalAvailableCredit,
+            RawPrincipalIdentity buyerIdentity, MoneyPolicy moneyPolicy, Purchase purchase) {}
+
+    private void saveOrderQuote(Quote q, String actor) {
+        String orderNo = quoteOrderIds.nextBusinessNo("mall-order");
+        var r = row(q.store().tenantNo(), actor, q.valuationAt());
+        r.put("order_no",orderNo);
+        r.put("quote_no",q.quoteNo());
+        r.put("stage","QUOTE");
+        r.put("store_no",q.store().storeNo());
+        r.put("entity_no",q.entityNo());
+        r.put("buyer_user_no",q.buyerNo());
+        r.put("buyer_kind","STORE".equals(q.purchase().buyerKind()) ? "PLATFORM" : "MERCHANT");
+        r.put("creator_no","STORE".equals(q.purchase().buyerKind()) ? q.purchase().initiatedBy() : null);
+        r.put("business_type_code",q.businessType());
+        r.put("intent",q.intent());
+        r.put("currency",q.currency());
+        r.put("gross_minor",q.gross());
+        r.put("discount_minor",q.gross()-q.deal());
+        r.put("deal_minor",q.deal());
+        r.put("new_conversion_minor",q.convertedValue());
+        r.put("credit_used_minor",q.credit());
+        r.put("cash_due_minor",q.deal()-q.credit());
+        r.put("cash_paid_minor",0);
+        r.put("cash_refunded_minor",0);
+        r.put("valuation_at",q.valuationAt());
+        r.put("quote_expires_at",q.expiresAt());
+        r.put("pricing_policy_version",q.pricingPolicyVersion());
+        r.put("stacking_policy_version",q.stackingPolicyVersion());
+        r.put("schedule_preview_snapshot","{}");
+        r.put("quote_context",encode(new QuoteContext(q.entitlementVersion(),q.accountVersion(),
+                q.balanceVersion(),q.catalogVersion(),q.businessTypeVersion(),q.creditUses(),q.conversions(),q.convertedCredit(),
+                q.historicalAvailableCredit(),q.buyerIdentity(),q.moneyPolicy(),q.purchase())));
+        var axes = OrderState.initial(q.hardware());
+        r.put("pay_status",axes.payment().name());
+        r.put("fulfillment_status",axes.fulfillment().name());
+        r.put("refund_status",axes.refund().name());
+        r.put("pay_deadline",q.expiresAt());
+        insert("mall_order",r);
+        insertItems(q,orderNo,actor,q.valuationAt());
+    }
+
+    private Quote readQuote(java.sql.ResultSet r) throws java.sql.SQLException {
+        var tenant = r.getString("tenant_no");
+        var context = decode(r.getString("quote_context"),QuoteContext.class);
+        var lines = jdbc.query("SELECT sku_snapshot FROM mall_order_item WHERE tenant_no=? AND order_no=? ORDER BY id",
+                (rs,n) -> decode(rs.getString(1),Line.class),tenant,r.getString("order_no"));
+        return new Quote(r.getString("quote_no"),new StoreRef(tenant,r.getString("store_no")),r.getString("entity_no"),
+                r.getString("buyer_user_no"),r.getString("business_type_code"),r.getString("intent"),r.getString("currency"),
+                r.getLong("valuation_at"),r.getLong("quote_expires_at"),context.entitlementVersion(),context.accountVersion(),
+                context.balanceVersion(),context.catalogVersion(),context.businessTypeVersion(),r.getString("pricing_policy_version"),
+                r.getString("stacking_policy_version"),lines,context.creditUses(),context.conversions(),context.convertedCredit(),
+                context.historicalAvailableCredit(),context.buyerIdentity(),context.moneyPolicy(),context.purchase());
+    }
+
+    @Override
+    public String orderNo(Quote quote, CommerceIdGenerator ids) {
+        if (quoteOrderIds == null) return MallRepository.super.orderNo(quote, ids);
+        guard(quote.store().tenantNo());
+        return jdbc.queryForObject("SELECT order_no FROM mall_order WHERE tenant_no=? AND quote_no=?",
+                String.class,quote.store().tenantNo(),quote.quoteNo());
+    }
+
     public Optional<Quote> quote(String tenant, String no) {
         guard(tenant);
+        if (quoteOrderIds != null) return jdbc.query("SELECT * FROM mall_order WHERE tenant_no=? AND quote_no=?",
+                (r,n) -> readQuote(r),tenant,no).stream().findFirst();
         return jdbc
                 .query(
                         "SELECT line_snapshot FROM mall_quote WHERE tenant_no=? AND quote_no=?",
@@ -295,9 +374,10 @@ public final class JdbcMallRepository implements MallRepository {
         values.addAll(Arrays.asList(args));
         return jdbc
                 .query(
-                        "SELECT o.*,q.line_snapshot quote_snapshot FROM mall_order o JOIN"
+                        (quoteOrderIds != null ? "SELECT o.* FROM mall_order o WHERE o.stage='ORDERED' AND o.tenant_no=? AND " :
+                         "SELECT o.*,q.line_snapshot quote_snapshot FROM mall_order o JOIN"
                             + " mall_quote q ON q.tenant_no=o.tenant_no AND q.quote_no=o.quote_no"
-                            + " WHERE o.tenant_no=? AND "
+                            + " WHERE o.tenant_no=? AND ")
                                 + predicate
                                 + " FOR UPDATE",
                         (r, n) -> {
@@ -317,12 +397,12 @@ public final class JdbcMallRepository implements MallRepository {
                                             r.getString("refund_status"));
                             return new Order(
                                     no,
-                                    decode(r.getString("quote_snapshot"), Quote.class),
+                                    quoteOrderIds == null ? decode(r.getString("quote_snapshot"), Quote.class) : readQuote(r),
                                     r.getString("idempotency_key"),
                                     r.getString("request_hash"),
                                     addresses.isEmpty() ? null : addresses.getFirst(),
                                     axes,
-                                    r.getObject("created_at", LocalDateTime.class)
+                                    r.getObject(quoteOrderIds == null ? "created_at" : "ordered_at", LocalDateTime.class)
                                             .toInstant(ZoneOffset.UTC)
                                             .toEpochMilli(),
                                     r.getLong("version"));
@@ -365,12 +445,36 @@ public final class JdbcMallRepository implements MallRepository {
         }
     }
 
+    @Override
+    public boolean claimOrder(Quote quote, String owner, String key, String hash, long at) {
+        if (quoteOrderIds == null) return MallRepository.super.claimOrder(quote, owner, key, hash, at);
+        String tenant = quote.store().tenantNo();
+        guard(tenant);
+        try {
+            int written = jdbc.update("""
+                    UPDATE mall_order SET idempotency_owner=?,idempotency_key=?,request_hash=?
+                    WHERE tenant_no=? AND quote_no=? AND stage='QUOTE' AND idempotency_key IS NULL
+                    """, owner,key,hash,tenant,quote.quoteNo());
+            if (written == 1) return true;
+        } catch (org.springframework.dao.DuplicateKeyException conflict) {
+            throw new MallException("IDEMPOTENCY_CONFLICT");
+        }
+        var saved = jdbc.queryForMap("SELECT stage,idempotency_owner,idempotency_key,request_hash FROM mall_order WHERE tenant_no=? AND quote_no=? FOR UPDATE",
+                tenant,quote.quoteNo());
+        if ("QUOTE_EXPIRED".equals(saved.get("stage"))) throw new MallException("QUOTE_EXPIRED");
+        if (!owner.equals(saved.get("idempotency_owner")) || !key.equals(saved.get("idempotency_key"))) throw new MallException("QUOTE_USED");
+        if (!hash.equals(saved.get("request_hash"))) throw new MallException("IDEMPOTENCY_CONFLICT");
+        return false;
+    }
+
     public Optional<Order> byIdempotency(String tenant, String buyer, String key) {
-        return findOrder(tenant, "o.buyer_user_no=? AND o.idempotency_key=?", buyer, key);
+        return findOrder(tenant, quoteOrderIds == null ? "o.buyer_user_no=? AND o.idempotency_key=?" :
+                "o.idempotency_owner=? AND o.idempotency_key=?", buyer, key);
     }
 
     @Override
     public Optional<Order> byIdempotency(Quote quote, String key) {
+        if (quoteOrderIds != null) return MallRepository.super.byIdempotency(quote,key);
         if (!"STORE".equals(quote.purchase().buyerKind()))
             return byIdempotency(quote.store().tenantNo(), quote.buyerNo(), key);
         return findOrder(quote.store().tenantNo(),
@@ -385,7 +489,10 @@ public final class JdbcMallRepository implements MallRepository {
         guard(tenant);
         int updated =
                 jdbc.update(
-                        "UPDATE mall_quote SET"
+                        quoteOrderIds != null ? """
+                        UPDATE mall_order SET stage='ORDERED',updated_by=?,updated_at=?
+                        WHERE tenant_no=? AND quote_no=? AND stage='QUOTE'
+                        """ : "UPDATE mall_quote SET"
                             + " status='ORDERED',version=version+1,updated_by=?,updated_at=? WHERE"
                             + " tenant_no=? AND quote_no=? AND status='VALID'",
                         actor,
@@ -402,7 +509,8 @@ public final class JdbcMallRepository implements MallRepository {
     public List<Order> orders(StoreRef store, String after, int limit) {
         guard(store.tenantNo());
         if (limit < 1 || limit > 100) throw new MallException("INVALID_REQUEST");
-        var numbers = jdbc.queryForList("SELECT order_no FROM mall_order WHERE tenant_no=? AND store_no=? AND order_no>? ORDER BY order_no LIMIT ? FOR UPDATE",
+        var numbers = jdbc.queryForList("SELECT order_no FROM mall_order WHERE tenant_no=? AND store_no=? AND order_no>?" +
+                (quoteOrderIds == null ? "" : " AND stage='ORDERED'") + " ORDER BY order_no LIMIT ? FOR UPDATE",
                 String.class, store.tenantNo(), store.storeNo(), after == null ? "" : after, limit);
         return numbers.stream().map(no -> order(store.tenantNo(), no).orElseThrow()).toList();
     }
@@ -451,78 +559,43 @@ public final class JdbcMallRepository implements MallRepository {
                             account.rowVersion(),
                             account.entitlementVersion()));
         var r = row(s.tenantNo(), actor, o.createdAt());
-        r.put("order_no", o.orderNo());
-        r.put("store_no", s.storeNo());
-        r.put("entity_no", q.entityNo());
-        r.put("buyer_user_no", q.buyerNo());
-        r.put("business_type_code", q.businessType());
-        r.put("quote_no", q.quoteNo());
-        r.put("intent", q.intent());
-        r.put("currency", q.currency());
-        long gross = q.gross();
-        r.put("gross_minor", gross);
-        r.put("discount_minor", gross - q.deal());
-        r.put("deal_minor", q.deal());
-        r.put("credit_used_minor", q.credit());
-        r.put("cash_due_minor", q.deal() - q.credit());
-        r.put("cash_paid_minor", 0);
-        r.put("cash_refunded_minor", 0);
-        r.put("pay_status", o.axes().payment().name());
-        r.put("fulfillment_status", o.axes().fulfillment().name());
-        r.put("refund_status", o.axes().refund().name());
-        r.put("pay_deadline", o.paymentDueAt());
-        r.put("idempotency_key", o.idempotencyKey());
-        r.put("request_hash", o.requestHash());
-        insert("mall_order", r);
-        var hardwareItems = new ArrayList<ShipmentItem>();
-        for (var line : q.lines()) {
-            String itemNo = UUID.randomUUID().toString();
-            var item = row(s.tenantNo(), actor, o.createdAt());
-            item.put("order_item_no", itemNo);
-            item.put("order_no", o.orderNo());
-            item.put("sku_no", line.sku().skuNo());
-            item.put("sku_version_no", line.sku().skuVersionNo());
-            item.put("quantity", line.quantity());
-            item.put("unit_price_minor", line.sku().price().minor());
-            long list = Math.multiplyExact(line.sku().listPrice().minor(), line.quantity()),
-                    deal = Math.multiplyExact(line.sku().price().minor(), line.quantity());
-            item.put("gross_minor", list);
-            item.put("discount_minor", list - deal);
-            item.put("deal_minor", deal);
-            item.put("sku_snapshot", encode(line));
-            insert("mall_order_item", item);
-            for (var component : line.components()) {
-                var a = component.allocation();
-                var c = a.component();
-                var part = row(s.tenantNo(), actor, o.createdAt());
-                String componentNo = UUID.randomUUID().toString();
-                part.put("order_component_no", componentNo);
-                if (c.kind() == ComponentKind.HARDWARE)
-                    hardwareItems.add(
-                            new ShipmentItem(componentNo, c.hardwareSkuNo(), a.cycles().size()));
-                part.put("order_item_no", itemNo);
-                part.put("component_no", c.componentNo());
-                part.put("component_type", c.kind().name());
-                part.put("target_snapshot", encode(component));
-                part.put("unit_count", a.cycles().size());
-                part.put("allocated_deal_minor", a.deal());
-                part.put("allocated_cash_minor", a.cash());
-                part.put("allocated_credit_minor", a.credit());
-                part.put(
-                        "eligible_basis_minor",
-                        a.cycles().stream()
-                                .mapToLong(ComponentAllocation.Cycle::eligibleBasis)
-                                .reduce(0, Math::addExact));
-                part.put("is_gift", c.gift() ? 1 : 0);
-                part.put("fulfillment_status", "PENDING");
-                insert("mall_order_component", part);
-            }
+        List<ShipmentItem> hardwareItems = List.of();
+        if (quoteOrderIds != null) {
+            changed(jdbc.update("""
+                    UPDATE mall_order SET ordered_at=?,updated_at=?,updated_by=?,pay_deadline=?
+                    WHERE tenant_no=? AND order_no=? AND stage='ORDERED' AND ordered_at IS NULL
+                    """,r.get("created_at"),r.get("updated_at"),actor,o.paymentDueAt(),s.tenantNo(),o.orderNo()));
+        } else {
+            r.put("order_no", o.orderNo());
+            r.put("store_no", s.storeNo());
+            r.put("entity_no", q.entityNo());
+            r.put("buyer_user_no", q.buyerNo());
+            r.put("business_type_code", q.businessType());
+            r.put("quote_no", q.quoteNo());
+            r.put("intent", q.intent());
+            r.put("currency", q.currency());
+            long gross = q.gross();
+            r.put("gross_minor", gross);
+            r.put("discount_minor", gross - q.deal());
+            r.put("deal_minor", q.deal());
+            r.put("credit_used_minor", q.credit());
+            r.put("cash_due_minor", q.deal() - q.credit());
+            r.put("cash_paid_minor", 0);
+            r.put("cash_refunded_minor", 0);
+            r.put("pay_status", o.axes().payment().name());
+            r.put("fulfillment_status", o.axes().fulfillment().name());
+            r.put("refund_status", o.axes().refund().name());
+            r.put("pay_deadline", o.paymentDueAt());
+            r.put("idempotency_key", o.idempotencyKey());
+            r.put("request_hash", o.requestHash());
+            insert("mall_order", r);
+            hardwareItems = insertItems(q,o.orderNo(),actor,o.createdAt());
         }
         if (q.hardware()) {
             var shipment = row(s.tenantNo(), actor, o.createdAt());
             shipment.put("shipment_no", UUID.randomUUID().toString());
             shipment.put("order_no", o.orderNo());
-            shipment.put("shipment_items", encode(hardwareItems));
+            if (quoteOrderIds == null) shipment.put("shipment_items", encode(hardwareItems));
             shipment.put("address_snapshot", encode(o.shippingAddress()));
             shipment.put("status", "PENDING_INVENTORY");
             insert("mall_shipment", shipment);
@@ -591,6 +664,55 @@ public final class JdbcMallRepository implements MallRepository {
                 insert("mch_subscription_credit_ledger", entry);
             }
         }
+    }
+
+    private List<ShipmentItem> insertItems(Quote q, String orderNo, String actor, long at) {
+        var s = q.store();
+        var hardwareItems = new ArrayList<ShipmentItem>();
+        for (var line : q.lines()) {
+            String itemNo = UUID.randomUUID().toString();
+            var item = row(s.tenantNo(), actor, at);
+            item.put("order_item_no", itemNo);
+            item.put("order_no", orderNo);
+            item.put("sku_no", line.sku().skuNo());
+            item.put("sku_version_no", line.sku().skuVersionNo());
+            item.put("quantity", line.quantity());
+            item.put("unit_price_minor", line.sku().price().minor());
+            long list = Math.multiplyExact(line.sku().listPrice().minor(), line.quantity()),
+                    deal = Math.multiplyExact(line.sku().price().minor(), line.quantity());
+            item.put("gross_minor", list);
+            item.put("discount_minor", list - deal);
+            item.put("deal_minor", deal);
+            item.put("sku_snapshot", encode(line));
+            insert("mall_order_item", item);
+            for (var component : line.components()) {
+                var a = component.allocation();
+                var c = a.component();
+                var part = row(s.tenantNo(), actor, at);
+                String componentNo = UUID.randomUUID().toString();
+                part.put("order_component_no", componentNo);
+                if (c.kind() == ComponentKind.HARDWARE)
+                    hardwareItems.add(
+                            new ShipmentItem(componentNo, c.hardwareSkuNo(), a.cycles().size()));
+                part.put("order_item_no", itemNo);
+                part.put("component_no", c.componentNo());
+                part.put("component_type", c.kind().name());
+                part.put("target_snapshot", encode(component));
+                part.put("unit_count", a.cycles().size());
+                part.put("allocated_deal_minor", a.deal());
+                part.put("allocated_cash_minor", a.cash());
+                part.put("allocated_credit_minor", a.credit());
+                part.put(
+                        "eligible_basis_minor",
+                        a.cycles().stream()
+                                .mapToLong(ComponentAllocation.Cycle::eligibleBasis)
+                                .reduce(0, Math::addExact));
+                part.put("is_gift", c.gift() ? 1 : 0);
+                part.put("fulfillment_status", "PENDING");
+                insert("mall_order_component", part);
+            }
+        }
+        return hardwareItems;
     }
 
     public Order transition(Order before, OrderState.Axes after, String actor) {
