@@ -28,6 +28,7 @@ import ai.neargo.shop.food.entity.FnbStation;
 import ai.neargo.shop.food.entity.FnbStockBalance;
 import ai.neargo.shop.food.entity.FnbStockSyncDelivery;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import ai.neargo.shop.food.entity.FnbCheckCart;
 import ai.neargo.shop.food.entity.FnbCheckCartItem;
 import ai.neargo.shop.food.entity.FnbSkuStation;
@@ -115,9 +116,26 @@ public final class FoodMappers {
     }
     public interface ChargeIntentMapper extends BaseMapper<FnbChargeIntent> { }
 
-    public interface OrderBatchMapper extends TradeTableMapper<FnbOrderBatch> { }
+    public interface OrderBatchMapper extends TradeTableMapper<FnbOrderBatch> {
+        /** 批次所在门店与状态：出品在行业库，按批次号回交易库取门店与接单状态（不联表）。 */
+        record BatchState(String batchNo, String storeNo, String status, LocalDateTime acceptedAt) {}
+
+        @Select("<script>SELECT batch_no,store_no,status,accepted_at FROM fnb_order_batch "
+                + "WHERE tenant_no='MAIN' AND entity_no=#{entity} AND deleted=0 AND batch_no IN "
+                + "<foreach collection='batches' item='b' open='(' separator=',' close=')'>#{b}</foreach>"
+                + "</script>")
+        List<BatchState> states(@Param("entity") String entity, @Param("batches") Collection<String> batches);
+    }
     public interface CoreOrderBindingMapper extends BaseMapper<FnbCoreOrderBinding> { }
-    public interface OrderLineMapper extends TradeTableMapper<FnbOrderLine> { }
+    public interface OrderLineMapper extends TradeTableMapper<FnbOrderLine> {
+        /** 某门店某 SKU 的点菜行：出品耗料按商品筛选时先在交易库取行号，再到行业库取事件。 */
+        @Select("SELECT l.food_line_no FROM fnb_order_line l JOIN fnb_order_batch b ON b.tenant_no=l.tenant_no "
+                + "AND b.entity_no=l.entity_no AND b.batch_no=l.batch_no AND b.deleted=0 "
+                + "WHERE l.tenant_no='MAIN' AND l.entity_no=#{entity} AND b.store_no=#{store} "
+                + "AND l.sku_no=#{sku} AND l.deleted=0")
+        List<String> lineNosBySku(@Param("entity") String entity, @Param("store") String store,
+                @Param("sku") String sku);
+    }
     public interface CoreLineAllocationMapper extends TradeTableMapper<FnbCoreLineAllocation> { }
     public interface OrderComponentMapper extends TradeTableMapper<FnbOrderComponent> { }
     public interface OrderModifierMapper extends TradeTableMapper<FnbOrderModifier> { }
@@ -266,7 +284,6 @@ public final class FoodMappers {
                 +"+(SELECT COUNT(*) FROM fnb_check_batch_membership WHERE entity_no=#{entity} AND check_no=#{check})"
                 +"+(SELECT COUNT(*) FROM fnb_settlement_item WHERE entity_no=#{entity} AND check_no=#{check})"
                 +"+(SELECT COUNT(*) FROM fnb_return WHERE entity_no=#{entity} AND check_no=#{check})"
-                +"+(SELECT COUNT(*) FROM fnb_dining_entitlement WHERE entity_no=#{entity} AND check_no=#{check})"
                 +"+(SELECT COUNT(*) FROM fnb_check_cart WHERE entity_no=#{entity} AND check_no=#{check} AND (status IS NULL OR status<>'CLOSED'))")
         long tradeFacts(@Param("entity") String entity,@Param("check") String check);
     }
@@ -407,66 +424,62 @@ public final class FoodMappers {
     public interface SalesRestrictionMapper extends TradeTableMapper<FnbSalesRestriction> { }
     public interface SalesQuotaClaimMapper extends TradeTableMapper<FnbSalesQuotaClaim> { }
     public interface ReturnMapper extends BaseMapper<FnbReturn> { }
-    public interface ReturnItemMapper extends BaseMapper<FnbReturnItem> { }
-
-    public interface CourseMapper extends IndustryTableMapper<FnbCourse> { }
-    public interface KitchenTaskMapper extends TradeTableMapper<FnbKitchenTask> {
-        @Select("<script>SELECT b.batch_no FROM fnb_kitchen_task t "
-                + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
-                + "JOIN fnb_order_batch b ON b.tenant_no=k.tenant_no AND b.entity_no=k.entity_no AND b.batch_no=k.batch_no "
-                + "WHERE t.tenant_no='MAIN' AND t.entity_no=#{entity} AND b.store_no=#{store} "
-                + "AND t.deleted=0 AND k.deleted=0 AND b.deleted=0 AND b.status='ACCEPTED' "
-                + "AND k.status&lt;&gt;'CLOSED' AND t.status NOT IN ('SERVED','VOIDED') "
-                + "<if test='station != null'>AND t.station_no=#{station} </if>"
-                + "GROUP BY b.batch_no,b.accepted_at ORDER BY b.accepted_at,b.batch_no</script>")
-        List<String> activeBatchNos(@Param("entity") String entity,@Param("store") String store,
-                @Param("station") String station);
-    }
-    public interface KitchenTicketMapper extends IndustryTableMapper<FnbKitchenTicket> {
+    public interface ReturnItemMapper extends BaseMapper<FnbReturnItem> {
+        /** 已由厨房确认取消的主菜数量（原在出品单 Mapper 上；退菜是交易的事实，不在行业库）。 */
         @Select("SELECT COALESCE(SUM(i.qty),0) FROM fnb_return_item i JOIN fnb_return r "
                 + "ON r.entity_no=i.entity_no AND r.return_no=i.return_no AND r.tenant_no=i.tenant_no "
                 + "WHERE i.tenant_no='MAIN' AND i.entity_no=#{entity} AND i.food_line_no=#{line} "
                 + "AND i.component_no IS NULL AND i.kitchen_disposition='CANCEL' "
                 + "AND r.kitchen_status='HANDLED' AND i.deleted=0 AND r.deleted=0")
         BigDecimal cancelledMainQty(@Param("entity") String entity,@Param("line") String line);
+    }
 
+    public interface CourseMapper extends IndustryTableMapper<FnbCourse> { }
+    /** 制作任务在行业库（ADR-068 修订一）：与出品单、服务事件、道次同库同事务。 */
+    public interface KitchenTaskMapper extends IndustryTableMapper<FnbKitchenTask> {
+        /** 仍有未完结制作任务的批次号；门店与接单状态回交易库按 {@link OrderBatchMapper#states} 取。 */
+        @Select("<script>SELECT DISTINCT k.batch_no FROM fnb_kitchen_task t "
+                + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
+                + "WHERE t.tenant_no='MAIN' AND t.entity_no=#{entity} "
+                + "AND t.deleted=0 AND k.deleted=0 "
+                + "AND k.status&lt;&gt;'CLOSED' AND t.status NOT IN ('SERVED','VOIDED') "
+                + "<if test='station != null'>AND t.station_no=#{station} </if>"
+                + "</script>")
+        List<String> activeTaskBatchNos(@Param("entity") String entity, @Param("station") String station);
+    }
+    public interface KitchenTicketMapper extends IndustryTableMapper<FnbKitchenTicket> {
         @Select("SELECT * FROM fnb_config_revision r WHERE r.tenant_no='MAIN' AND r.entity_no=#{entity} "
                 + "AND r.config_kind='STATION' AND r.deleted=0 AND r.effective_at<=CURRENT_TIMESTAMP(3) "
                 + "AND r.status<>'CANCELLED' ORDER BY r.config_no,r.effective_at DESC,r.revision DESC")
         List<FnbConfigRevision> stationPublications(@Param("entity") String entity);
     }
     public interface ServiceEventMapper extends IndustryTableMapper<FnbServiceEvent> {
-        record ProductionSource(String entityNo, String storeNo, String eventNo) {}
+        /**
+         * 会触发出品耗料的服务事件（制作环节的开始、补料、损耗），带所属批次号。
+         * 批次的门店与接单状态在交易库、耗料处理状态在耗料表，由服务按批次号与事件号分别补查（不跨库联表）。
+         */
+        record ProductionCandidate(long sourceId, String entityNo, String sourceEventNo, String taskNo,
+                String action, String batchNo) {}
 
-        @Select("SELECT e.id AS source_id,e.event_no AS source_event_no,e.task_no,e.action,"
-                + "COALESCE(h.status,'NOT_STARTED') AS status FROM fnb_service_event e "
+        @Select("<script>SELECT e.id AS source_id,e.entity_no,e.event_no AS source_event_no,e.task_no,e.action,"
+                + "k.batch_no FROM fnb_service_event e "
                 + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no AND t.task_no=e.task_no "
                 + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
-                + "JOIN fnb_order_batch b ON b.tenant_no=k.tenant_no AND b.entity_no=k.entity_no AND b.batch_no=k.batch_no "
-                + "LEFT JOIN fnb_production_consumption h ON h.tenant_no=e.tenant_no AND h.entity_no=e.entity_no "
-                + "AND h.store_no=b.store_no AND h.source_event_no=e.event_no AND h.deleted=0 "
-                + "WHERE e.tenant_no='MAIN' AND e.entity_no=#{entity} AND b.store_no=#{store} "
-                + "AND e.deleted=0 AND t.deleted=0 AND k.deleted=0 AND b.deleted=0 "
-                + "AND t.task_role='MAKE' AND (h.id IS NOT NULL OR b.status='ACCEPTED') "
+                + "WHERE e.tenant_no='MAIN' <if test='entity != null'>AND e.entity_no=#{entity} </if>"
+                + "AND e.deleted=0 AND t.deleted=0 AND k.deleted=0 AND t.task_role='MAKE' "
                 + "AND e.action IN ('START','MATERIAL_SUPPLEMENT','MATERIAL_WASTE') "
-                + "AND (h.id IS NULL OR h.status IN ('PREPARED','SUBMITTED','UNKNOWN','REVERSAL_PENDING','BLOCKED','FAILED')) "
-                + "AND e.id>#{afterId} ORDER BY e.id LIMIT #{limit}")
-        List<ai.neargo.shop.food.dto.ProductionContracts.PendingVO> pending(
-                @Param("entity") String entity, @Param("store") String store,
+                + "AND e.id&gt;#{afterId} ORDER BY e.id LIMIT #{limit}</script>")
+        List<ProductionCandidate> productionCandidates(@Param("entity") String entity,
                 @Param("afterId") long afterId, @Param("limit") int limit);
 
-
-        @Select("SELECT e.entity_no,b.store_no,e.event_no FROM fnb_service_event e "
-                + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no AND t.task_no=e.task_no "
-                + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
-                + "JOIN fnb_order_batch b ON b.tenant_no=k.tenant_no AND b.entity_no=k.entity_no AND b.batch_no=k.batch_no "
-                + "WHERE e.tenant_no='MAIN' AND e.deleted=0 AND t.deleted=0 AND k.deleted=0 AND b.deleted=0 "
-                + "AND t.task_role='MAKE' AND b.status='ACCEPTED' "
-                + "AND e.action IN ('START','MATERIAL_SUPPLEMENT','MATERIAL_WASTE') "
-                + "AND NOT EXISTS (SELECT 1 FROM fnb_production_consumption h WHERE h.tenant_no=e.tenant_no "
-                + "AND h.entity_no=e.entity_no AND h.store_no=b.store_no AND h.source_event_no=e.event_no AND h.deleted=0) "
-                + "ORDER BY e.id LIMIT #{limit}")
-        List<ProductionSource> unconsumed(@Param("limit") int limit);
+        /** 这些点菜行上的服务事件号：出品耗料按商品筛选用。 */
+        @Select("<script>SELECT e.event_no FROM fnb_service_event e "
+                + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no "
+                + "AND t.task_no=e.task_no AND t.deleted=0 "
+                + "WHERE e.tenant_no='MAIN' AND e.entity_no=#{entity} AND e.deleted=0 AND t.food_line_no IN "
+                + "<foreach collection='lines' item='l' open='(' separator=',' close=')'>#{l}</foreach>"
+                + "</script>")
+        List<String> eventNosForLines(@Param("entity") String entity, @Param("lines") Collection<String> lines);
     }
 
     public interface BusinessDayMapper extends TradeTableMapper<FnbBusinessDay> { }
@@ -484,22 +497,25 @@ public final class FoodMappers {
                 + "<if test='query.itemRef != null'>AND EXISTS (SELECT 1 FROM fnb_production_consumption_line p "
                 + "WHERE p.tenant_no=h.tenant_no AND p.entity_no=h.entity_no AND p.consumption_no=h.consumption_no "
                 + "AND p.deleted=0 AND p.item_ref=#{query.itemRef}) </if>"
-                + "<if test='query.skuNo != null'>AND EXISTS (SELECT 1 FROM fnb_service_event e "
-                + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no "
-                + "AND t.task_no=e.task_no AND t.deleted=0 "
-                + "JOIN fnb_order_line l ON l.tenant_no=t.tenant_no AND l.entity_no=t.entity_no "
-                + "AND l.food_line_no=t.food_line_no AND l.deleted=0 "
-                + "JOIN fnb_order_batch b ON b.tenant_no=l.tenant_no AND b.entity_no=l.entity_no "
-                + "AND b.batch_no=l.batch_no AND b.deleted=0 AND b.store_no=h.store_no "
-                + "WHERE e.tenant_no=h.tenant_no AND e.entity_no=h.entity_no AND e.event_no=h.source_event_no "
-                + "AND e.deleted=0 AND l.sku_no=#{query.skuNo}) </if>";
+                // 按商品筛：服务先在交易库取该商品的点菜行、再到行业库取事件号，这里只按事件号过滤。
+                + "<if test='events != null'>AND h.source_event_no IN "
+                + "<foreach collection='events' item='ev' open='(' separator=',' close=')'>#{ev}</foreach> </if>";
+        /** 这些事件的耗料处理状态；按主体、门店、事件号对上才算（没有行表示还没开始处理）。 */
+        record EventState(String entityNo, String storeNo, String sourceEventNo, String status) {}
+
+        @Select("<script>SELECT entity_no,store_no,source_event_no,status FROM fnb_production_consumption "
+                + "WHERE tenant_no='MAIN' AND deleted=0 AND source_event_no IN "
+                + "<foreach collection='events' item='ev' open='(' separator=',' close=')'>#{ev}</foreach>"
+                + "</script>")
+        List<EventState> eventStates(@Param("events") Collection<String> events);
+
         @Select("<script>SELECT COUNT(*)" + LIST_FILTER + "</script>")
         long countFiltered(@Param("entity") String entity,@Param("store") String store,
-                @Param("query") ListQuery query);
+                @Param("query") ListQuery query, @Param("events") Collection<String> events);
         @Select("<script>SELECT h.*" + LIST_FILTER
                 + " ORDER BY h.occurred_at DESC,h.id DESC LIMIT #{size} OFFSET #{offset}</script>")
         List<FnbProductionConsumption> pageFiltered(@Param("entity") String entity,@Param("store") String store,
-                @Param("query") ListQuery query,
+                @Param("query") ListQuery query, @Param("events") Collection<String> events,
                 @Param("offset") long offset,@Param("size") int size);
     }
     public interface ProductionConsumptionLineMapper extends BaseMapper<FnbProductionConsumptionLine> { }

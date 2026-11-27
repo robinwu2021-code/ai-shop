@@ -54,6 +54,8 @@ class KitchenCustodyServiceTest {
     private final OrderBatchMapper batches=mock(OrderBatchMapper.class);
     private final OrderLineMapper lines=mock(OrderLineMapper.class);
     private final KitchenTicketMapper tickets=mock(KitchenTicketMapper.class);
+    private final ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper returnItems=
+            mock(ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper.class);
     private final KitchenTaskMapper tasks=mock(KitchenTaskMapper.class);
     private final ServiceEventMapper events=mock(ServiceEventMapper.class);
     private final CoreOrderBindingMapper bindings=mock(CoreOrderBindingMapper.class);
@@ -106,7 +108,7 @@ class KitchenCustodyServiceTest {
         when(events.updateById(any(FnbServiceEvent.class))).thenReturn(1);
         service=new KitchenTaskServiceImpl(batches,lines,mock(OrderComponentMapper.class),
                 mock(ConfigRevisionMapper.class),
-                tickets,tasks,events,mock(CourseMapper.class),mock(CheckMapper.class),idem,new ObjectMapper(),manager,
+                tickets,tasks,events,mock(CourseMapper.class),mock(CheckMapper.class),returnItems,idem,new ObjectMapper(),manager,
                 mock(OutboxPublisher.class),bindings,allocations);
     }
 
@@ -143,7 +145,7 @@ class KitchenCustodyServiceTest {
     }
 
     @Test void netCancelledCompleteCustodyNeverProducesOriginalWholePickupEvidence() {
-        when(tickets.cancelledMainQty("E","L")).thenReturn(BigDecimal.ONE);
+        when(returnItems.cancelledMainQty("E","L")).thenReturn(BigDecimal.ONE);
         task.setVoidQty(BigDecimal.ONE); task.setReadyQty(new BigDecimal("2"));
         pack("2","pack-1"); handover("2","hand-1");
         assertThat(facts).noneMatch(e -> "HANDOVER".equals(e.getAction()));

@@ -283,4 +283,15 @@ public class FoodIndustryOperationsMapper {
                         from,
                         until));
     }
+
+    /** 账单上的堂食权益（不论状态）：账单释放前要求为零。 */
+    public long diningEntitlementFacts(String e, String check) {
+        Long count =
+                db.queryForObject(
+                        "SELECT COUNT(*) FROM fnb_dining_entitlement WHERE entity_no=? AND check_no=?",
+                        Long.class,
+                        e,
+                        check);
+        return count == null ? 0 : count;
+    }
 }

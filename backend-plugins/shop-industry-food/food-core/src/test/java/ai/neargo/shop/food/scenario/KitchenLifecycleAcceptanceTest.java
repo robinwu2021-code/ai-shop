@@ -287,9 +287,12 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             }
             f.sql.update("UPDATE fnb_kitchen_task SET task_role='PACK' WHERE task_no='T3'");
             f.sql.update("UPDATE fnb_service_event SET deleted=1 WHERE event_no='EV4'");
-            var mapper = c.getBean(ServiceEventMapper.class);
-            assertThat(mapper.unconsumed(1)).extracting(ServiceEventMapper.ProductionSource::eventNo).containsExactly("EV1");
-            assertThat(mapper.unconsumed(10)).extracting(ServiceEventMapper.ProductionSource::storeNo).containsExactly("S", "S2");
+            // 原是一条跨库联表 SQL，拆库后由 ProductionSourceQuery 分三次查询合并；断言不变。
+            var mapper = new ai.neargo.shop.food.service.support.ProductionSourceQuery(
+                    c.getBean(ServiceEventMapper.class), c.getBean(OrderBatchMapper.class),
+                    c.getBean(OrderLineMapper.class), c.getBean(ProductionConsumptionMapper.class));
+            assertThat(mapper.unconsumed(1)).extracting(ai.neargo.shop.food.service.support.ProductionSourceQuery.Source::eventNo).containsExactly("EV1");
+            assertThat(mapper.unconsumed(10)).extracting(ai.neargo.shop.food.service.support.ProductionSourceQuery.Source::storeNo).containsExactly("S", "S2");
             var pending = mapper.pending("E", "S", 0, 1);
             assertThat(pending).singleElement().satisfies(v -> {
                 assertThat(v.sourceEventNo()).isEqualTo("EV1");
@@ -303,7 +306,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
                     .containsExactly("EV2");
 
             f.sql.update("INSERT INTO fnb_production_consumption(tenant_no,entity_no,store_no,source_event_no,status,deleted) VALUES ('OTHER','E','S2','EV2','BLOCKED',0),('MAIN','E','WRONG','EV2','BLOCKED',0),('MAIN','E','S','EV1','BLOCKED',0)");
-            assertThat(mapper.unconsumed(10)).extracting(ServiceEventMapper.ProductionSource::eventNo).containsExactly("EV2");
+            assertThat(mapper.unconsumed(10)).extracting(ai.neargo.shop.food.service.support.ProductionSourceQuery.Source::eventNo).containsExactly("EV2");
             assertThat(mapper.pending("E", "S", 0, 100))
                     .extracting(ai.neargo.shop.food.dto.ProductionContracts.PendingVO::status)
                     .containsExactly("BLOCKED");
@@ -363,7 +366,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             db.update("INSERT INTO kitchen_acceptance_outbox VALUES (?,?,?,?,?)", e.eventNo(), e.taskNo(), e.ticketNo(), e.action(), e.qty());
             return null;
         };
-        var service = new KitchenTaskServiceImpl(c.getBean(OrderBatchMapper.class), c.getBean(OrderLineMapper.class), c.getBean(OrderComponentMapper.class), c.getBean(ConfigRevisionMapper.class), c.getBean(KitchenTicketMapper.class), c.getBean(KitchenTaskMapper.class), c.getBean(ServiceEventMapper.class), c.getBean(CourseMapper.class), c.getBean(CheckMapper.class), c.getBean(RequestIdempotencyPort.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), outbox);
+        var service = new KitchenTaskServiceImpl(c.getBean(OrderBatchMapper.class), c.getBean(OrderLineMapper.class), c.getBean(OrderComponentMapper.class), c.getBean(ConfigRevisionMapper.class), c.getBean(KitchenTicketMapper.class), c.getBean(KitchenTaskMapper.class), c.getBean(ServiceEventMapper.class), c.getBean(CourseMapper.class), c.getBean(CheckMapper.class), c.getBean(ReturnItemMapper.class), c.getBean(RequestIdempotencyPort.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), outbox);
         var f = new Kitchen(db, service);
         for (String check : List.of("C1", "C2")) db.update("INSERT INTO fnb_check(tenant_no,entity_no,store_no,check_no,status,version,deleted) VALUES ('MAIN','E','S',?,'OPEN',0,0)", check);
         return f;
@@ -424,5 +427,6 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
         @Bean MapperFactoryBean<ServiceEventMapper> eventMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(ServiceEventMapper.class,t); }
         @Bean MapperFactoryBean<CourseMapper> courseMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(CourseMapper.class,t); }
         @Bean MapperFactoryBean<CheckMapper> checkMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(CheckMapper.class,t); }
+        @Bean MapperFactoryBean<ReturnItemMapper> returnItemMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(ReturnItemMapper.class,t); }
     }
 }

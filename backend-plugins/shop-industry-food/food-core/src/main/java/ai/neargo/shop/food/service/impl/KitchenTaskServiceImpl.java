@@ -39,6 +39,7 @@ import ai.neargo.shop.food.entity.FnbOrderComponent;
 import ai.neargo.shop.food.entity.FnbOrderLine;
 import ai.neargo.shop.food.entity.FnbServiceEvent;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CoreLineAllocationMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper;
@@ -105,6 +106,8 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
     private final ServiceEventMapper events;
     private final CourseMapper courses;
     private final CheckMapper checks;
+    /** 退菜在交易侧：已由厨房确认取消的数量从这里读。 */
+    private final ReturnItemMapper returnItems;
     private final RequestIdempotencyPort idem;
     private final OutboxPublisher outbox;
     private final ObjectMapper json;
@@ -155,6 +158,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
             ServiceEventMapper events,
             CourseMapper courses,
             CheckMapper checks,
+            ReturnItemMapper returnItems,
             RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager,
@@ -169,6 +173,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                 events,
                 courses,
                 checks,
+                returnItems,
                 idem,
                 json,
                 manager,
@@ -187,12 +192,14 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
             ServiceEventMapper events,
             CourseMapper courses,
             CheckMapper checks,
+            ReturnItemMapper returnItems,
             RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager,
             OutboxPublisher outbox,
             CoreOrderBindingMapper bindings,
             CoreLineAllocationMapper allocations) {
+        this.returnItems = returnItems;
         this.bindings = bindings;
         this.allocations = allocations;
         this.batches = batches;
@@ -406,7 +413,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
             BigDecimal qty,
             FrozenRoutes frozen) {
         KitchenQuantityPolicy.positive(qty);
-        BigDecimal cancelled = tickets.cancelledMainQty(entity, line.getFoodLineNo());
+        BigDecimal cancelled = returnItems.cancelledMainQty(entity, line.getFoodLineNo());
         if (cancelled == null) cancelled = BigDecimal.ZERO;
         if (cancelled.signum() < 0 || cancelled.compareTo(line.getQty()) > 0) throw conflict();
         if (cancelled.compareTo(line.getQty()) == 0) return;
@@ -456,7 +463,8 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                     boolean active = batchNo == null;
                     var activeBatches =
                             active
-                                    ? tasks.activeBatchNos(entity, store, station)
+                                    // 行业库只给批次号；门店与接单状态由下面的交易库查询过滤。
+                                    ? tasks.activeTaskBatchNos(entity, station)
                                     : List.<String>of();
                     if (active && activeBatches.isEmpty()) return List.of();
                     var heads =
@@ -1148,7 +1156,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
         boolean complete = true;
         int matched = 0;
         for (var line : orderLines) {
-            BigDecimal cancelled = tickets.cancelledMainQty(entity, line.getFoodLineNo());
+            BigDecimal cancelled = returnItems.cancelledMainQty(entity, line.getFoodLineNo());
             BigDecimal demand =
                     line.getQty().subtract(cancelled == null ? BigDecimal.ZERO : cancelled);
             if (demand.signum() < 0) throw conflict();
@@ -1308,7 +1316,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
         // verification.
         boolean intact = originals.stream().allMatch(t -> t.getVoidQty().signum() == 0);
         for (var line : orderLines) {
-            var cancelled = tickets.cancelledMainQty(entity, line.getFoodLineNo());
+            var cancelled = returnItems.cancelledMainQty(entity, line.getFoodLineNo());
             if (cancelled != null && cancelled.signum() != 0) intact = false;
         }
         if (!packing && complete && intact)

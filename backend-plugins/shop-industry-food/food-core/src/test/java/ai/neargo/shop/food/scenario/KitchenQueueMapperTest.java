@@ -65,19 +65,20 @@ class KitchenQueueMapperTest extends FoodWriteGuardFixture {
             task(sql,"DELETED_TASK","FRESH","MAIN","E","HOT","QUEUED");
             sql.update("UPDATE fnb_kitchen_task SET deleted=1 WHERE task_no='DELETED_TASK'");
             var mapper=c.getBean(FoodMappers.KitchenTaskMapper.class);
-            assertThat(DataScopeContext.executeWithoutScope(() -> mapper.activeBatchNos("E","S",null)))
-                    .containsExactly("OLD","NEW");
-            assertThat(DataScopeContext.executeWithoutScope(() -> mapper.activeBatchNos("E","S","COLD")))
+            // 制作任务在行业库：Mapper 只给有未完结任务的批次号；门店、接单状态与排序由出品服务回交易库过滤（见下方 queue 断言）。
+            assertThat(DataScopeContext.executeWithoutScope(() -> mapper.activeTaskBatchNos("E",null)))
+                    .containsExactlyInAnyOrder("OLD","NEW","OTHER_STORE","UNACCEPTED");
+            assertThat(DataScopeContext.executeWithoutScope(() -> mapper.activeTaskBatchNos("E","COLD")))
                     .containsExactly("NEW");
-            assertThat(DataScopeContext.executeWithoutScope(() -> mapper.activeBatchNos("E","MISSING",null))).isEmpty();
             var kitchen=new KitchenTaskServiceImpl(c.getBean(FoodMappers.OrderBatchMapper.class),
                     c.getBean(FoodMappers.OrderLineMapper.class),mock(FoodMappers.OrderComponentMapper.class),
                     mock(FoodMappers.ConfigRevisionMapper.class),c.getBean(FoodMappers.KitchenTicketMapper.class),mapper,
                     mock(FoodMappers.ServiceEventMapper.class),mock(FoodMappers.CourseMapper.class),mock(FoodMappers.CheckMapper.class),
-                    mock(RequestIdempotencyPort.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class),
+                    mock(FoodMappers.ReturnItemMapper.class),mock(RequestIdempotencyPort.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class),
                     mock(OutboxPublisher.class));
             assertThat(kitchen.queue("E","S",null,null)).extracting(t -> t.taskNo())
                     .containsExactly("REMAKE_ACTIVE","NEW_COLD","NEW_HOT");
+            assertThat(kitchen.queue("E","MISSING",null,null)).isEmpty();
             assertThat(kitchen.queue("E","S","HOT",null)).extracting(t -> t.taskNo())
                     .containsExactly("REMAKE_ACTIVE","NEW_HOT");
             assertThat(kitchen.queue("E","S",null,"OLD")).extracting(t -> t.taskNo())

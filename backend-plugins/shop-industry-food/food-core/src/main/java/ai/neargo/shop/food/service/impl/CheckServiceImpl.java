@@ -35,6 +35,7 @@ import ai.neargo.shop.food.entity.FnbSeat;
 import ai.neargo.shop.food.entity.FnbTable;
 import ai.neargo.shop.food.entity.FnbTableOccupancy;
 import ai.neargo.shop.food.entity.FnbTableOperation;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper;
@@ -104,6 +105,8 @@ public class CheckServiceImpl implements CheckService {
     }
 
     private final CheckMapper checks;
+    /** 堂食权益在行业库：释放账单前单独数一次，不再和交易事实联在一条 SQL 里。 */
+    private final FoodIndustryOperationsMapper industry;
     private final TableMapper tables;
     private final TableOccupancyMapper occupancies;
     private final SeatMapper seats;
@@ -131,7 +134,8 @@ public class CheckServiceImpl implements CheckService {
             RequestIdempotencyPort idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json,
-            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
+            FoodIndustryOperationsMapper industry) {
         this(
                 checks,
                 areas,
@@ -146,7 +150,8 @@ public class CheckServiceImpl implements CheckService {
                 publisher,
                 json,
                 manager,
-                null);
+                null,
+                industry);
     }
 
     @Autowired
@@ -164,8 +169,10 @@ public class CheckServiceImpl implements CheckService {
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
-            ReservationTableMapper reservationTables) {
+            ReservationTableMapper reservationTables,
+            FoodIndustryOperationsMapper industry) {
         this.reservationTables = reservationTables;
+        this.industry = industry;
         this.checks = checks;
         this.tables = tables;
         this.occupancies = occupancies;
@@ -862,6 +869,7 @@ public class CheckServiceImpl implements CheckService {
     private void noTradeFacts(FnbCheck row) {
         if (!("PREPAY".equals(row.getPayMode()) || "POSTPAY".equals(row.getPayMode()))
                 || checks.tradeFacts(row.getEntityNo(), row.getCheckNo()) > 0
+                || industry.diningEntitlementFacts(row.getEntityNo(), row.getCheckNo()) > 0
                 || operations.externalOrPendingForCheck(row.getEntityNo(), row.getCheckNo()) > 0)
             throw BizException.of(ErrorCode.CONFLICT);
     }

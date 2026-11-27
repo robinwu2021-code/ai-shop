@@ -131,8 +131,9 @@ class ProductionConsumptionListMapperTest extends FoodWriteGuardFixture {
             StoreCardQueryPort stores,InventoryProductionPort inventory) {
         return new ProductionConsumptionServiceImpl(c.getBean(FoodMappers.ProductionConsumptionMapper.class),
                 c.getBean(FoodMappers.ProductionConsumptionLineMapper.class),mock(FoodMappers.OrderBatchMapper.class),
-                mock(FoodMappers.OrderLineMapper.class),mock(FoodMappers.KitchenTicketMapper.class),
-                mock(FoodMappers.KitchenTaskMapper.class),mock(FoodMappers.ServiceEventMapper.class),
+                // 按商品筛选拆库后由交易库取点菜行、行业库取事件号，这两个用真实 Mapper。
+                c.getBean(FoodMappers.OrderLineMapper.class),mock(FoodMappers.KitchenTicketMapper.class),
+                mock(FoodMappers.KitchenTaskMapper.class),c.getBean(FoodMappers.ServiceEventMapper.class),
                 mock(FoodMappers.ConfigRevisionMapper.class),stores,inventory,c.getBean(ObjectMapper.class),
                 c.getBean(PlatformTransactionManager.class));
     }
@@ -182,5 +183,9 @@ class ProductionConsumptionListMapperTest extends FoodWriteGuardFixture {
                 @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(FoodMappers.ProductionConsumptionMapper.class,t); }
         @Bean MapperFactoryBean<FoodMappers.ProductionConsumptionLineMapper> productionConsumptionLineMapper(
                 @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(FoodMappers.ProductionConsumptionLineMapper.class,t); }
+        @Bean MapperFactoryBean<FoodMappers.OrderLineMapper> orderLineMapper(
+                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(FoodMappers.OrderLineMapper.class,t); }
+        @Bean MapperFactoryBean<FoodMappers.ServiceEventMapper> serviceEventMapper(
+                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(FoodMappers.ServiceEventMapper.class,t); }
     }
 }

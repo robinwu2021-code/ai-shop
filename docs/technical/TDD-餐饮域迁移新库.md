@@ -228,6 +228,15 @@ P1 之后，餐饮只能跑在「`industry` 绑定到按 `n_industry` 建的库�
   消耗的重放由已有的 `ServiceEntitlementPersistenceTest#exactOriginalFoodLineConsumesOnceAcrossKeysAndCannotExceedCanonicalPersonQuota` 覆盖。
 - 测试：food-core 755 个通过（54 个要 MySQL 的跳过）。
 
+### 已完成：出品整组归行业句柄（2026-11-27）
+
+- `KitchenTaskMapper` 改挂行业句柄。「进行中的批次」拆成：行业库取有未完结任务的批次号（`activeTaskBatchNos`），门店、接单状态、排序由出品服务回交易库过滤。
+- 「已由厨房确认取消的主菜数量」是退菜的事实，从出品单 Mapper 移到 `ReturnItemMapper`。
+- 出品耗料的待处理、漏处理扫描、按商品筛选：原是跨行业库、交易库、耗料表的一条联表 SQL，抽成 `ProductionSourceQuery` 分三次查询合并；耗料记录按主体、批次所在门店、事件号对上才算（原测试的跨租户、跨门店断言原样保留并通过）。
+- 账单释放前的事实计数去掉堂食权益，改由 `FoodIndustryOperationsMapper#diningEntitlementFacts` 在行业库单独数。
+- 出品服务的事务管理器改为 `industryTxManager`。
+- 测试：food-core 755 个通过（54 个要 MySQL 的跳过）。
+
 ### 事务拆分记录
 
 | 服务 | 类 | 处理 |
@@ -240,6 +249,11 @@ P1 之后，餐饮只能跑在「`industry` 绑定到按 `n_industry` 建的库�
 | `BusinessOperationsServiceImpl` 交接提议、接收、取消 | 行业为主 | 去掉命令回执，在行业事务里写；交接单号由请求键派生（`CommandBusinessKey`），重放按单号查回，同键异参拒绝；接收、取消以交接单本身为键，已是目标状态且同一人决定的按重放返回。来源只读、按摘要比对，不跨库加锁。账单上的服务员（交易冗余）在行业提交后写，只在不同时才改，重放接收时再补一次 |
 | `ServiceEntitlementServiceImpl#consume` | 行业为主 | 去掉命令回执，在行业事务里锁权益、扣量、记事件；「批次 + 点菜行」为业务键，换不换请求键都查回首次结果；到店单、账单、点菜行只读 |
 | `ServiceEntitlementServiceImpl` 发放、延长、宴会方案、到场确认 | 到店单为主 | 仍是交易事务 + 交易侧命令回执（回执与到店单同库同事务）。交易侧的校验与写（推进到店单版本、时段占用）先做，行业库的写放在最后、用行业事务单独提交，然后交易提交；行业单号由请求键派生，已写过就跳过。残余窗口：行业已提交而交易提交本身失败，留下一条孤立的行业行，客户端用同一请求键重试即接上 |
+| `KitchenTaskServiceImpl` | 行业 | 出品整组同在行业库，厨房动作是行业事务；对批次、点菜行、账单只读。冻结路由（下单时）只读行业配置 |
+| 接单后建出品单 | 交易先、行业跟（已有） | 接单提交后由 `DiningKitchenAcceptedConsumer` 收事件调 `accepted`，带派单键可重复；定时出品由定时任务调 |
+| `KitchenReturnServiceImpl` 退菜取消制作 | 行业先、交易后 | 退菜事务里调出品服务，出品在行业事务里先提交；请求键由退菜行与任务号确定，交易回滚后重试按键重放；事件上的动作键唯一兜底 |
+| `ProductionConsumptionServiceImpl` | **随 P3** | 耗料记录（主库，将归库存库）与制作任务、服务事件（行业库）仍在一个主库事务里写；耗料按处置提案改到库存模块时拆，见 [其余旧表提案](../../deploy/ume/food-kds-cutover/legacy-table-dispositions.md) |
+| 出品动作发的 `DiningServiceEvent`（发件箱） | **待改** | 发件箱写主库，出品在行业事务里后不再同事务；按 §2.3 改为提交后直接调用，行业句柄生产绑定前完成 |
 
 ## §8 待定
 

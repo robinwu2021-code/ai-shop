@@ -292,7 +292,7 @@ public class KitchenReturnServiceImpl implements KitchenReturnService {
                                         if ("CANCEL".equals(decision)
                                                 && selectedComponent == null) {
                                             BigDecimal priorCancelled =
-                                                    tickets.cancelledMainQty(
+                                                    items.cancelledMainQty(
                                                             entity, line.getFoodLineNo());
                                             if (priorCancelled == null)
                                                 priorCancelled = BigDecimal.ZERO;

@@ -471,7 +471,8 @@ class CheckServiceTest extends FoodWriteGuardFixture {
                 return result;
             };
             return new CheckServiceImpl(checks,areas,tables,occupancy,seats,operations,
-                    sessions,actions,policies,idem,checked,json,manager);
+                    sessions,actions,policies,idem,checked,json,manager,
+                    new ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper(source));
         }
     }
 }

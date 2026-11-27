@@ -41,7 +41,7 @@ class KitchenDispatchServiceTest {
         when(manager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
         return new KitchenTaskServiceImpl(batches,mock(OrderLineMapper.class),mock(OrderComponentMapper.class),
                 revisions,tickets,tasks,mock(ServiceEventMapper.class),mock(CourseMapper.class),mock(CheckMapper.class),
-                mock(RequestIdempotencyPort.class),new ObjectMapper(),manager,mock(OutboxPublisher.class));
+                mock(ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper.class),mock(RequestIdempotencyPort.class),new ObjectMapper(),manager,mock(OutboxPublisher.class));
     }
     @Test void denyDispatchBeforeActualAcceptanceEvenWithAcceptedTimestamp() {
         var service=service(); var row=batch("BOUND");

@@ -45,11 +45,13 @@ public class FoodOperationsConfiguration {
             FoodMappers.OrderComponentMapper components,FoodMappers.ConfigRevisionMapper revisions,
             FoodMappers.KitchenTicketMapper tickets,FoodMappers.KitchenTaskMapper tasks,
             FoodMappers.ServiceEventMapper events,FoodMappers.CourseMapper courses,FoodMappers.CheckMapper checks,
-            RequestIdempotencyPort idem,ObjectMapper json,@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
+            FoodMappers.ReturnItemMapper returnItems,RequestIdempotencyPort idem,ObjectMapper json,
+            // 出品整组（制作任务、出品单、服务事件、道次）在行业库（ADR-068 修订一）：厨房动作是行业库内的本地事务。
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             FoodMappers.CoreOrderBindingMapper bindings, FoodMappers.CoreLineAllocationMapper allocations) {
         return new KitchenTaskServiceImpl(batches,lines,components,revisions,tickets,tasks,events,courses,checks,
-                idem,json,manager,publisher,bindings,allocations);
+                returnItems,idem,json,manager,publisher,bindings,allocations);
     }
     @Bean @ConditionalOnMissingBean(BusinessCloseService.class)
     BusinessCloseService businessCloseService(FoodMappers.BusinessDayMapper days,FoodMappers.CloseRunMapper runs,

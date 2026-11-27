@@ -42,6 +42,7 @@ import ai.neargo.shop.food.policy.PublicationDocuments;
 import ai.neargo.shop.food.policy.RecipePublicationDocuments;
 import ai.neargo.shop.food.service.FoodMaintenanceService.Report;
 import ai.neargo.shop.food.service.ProductionConsumptionService;
+import ai.neargo.shop.food.service.support.ProductionSourceQuery;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
@@ -95,6 +96,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
     private final KitchenTicketMapper tickets;
     private final KitchenTaskMapper tasks;
     private final ServiceEventMapper events;
+    private ProductionSourceQuery sources;
     private final ConfigRevisionMapper revisions;
     private final StoreCardQueryPort stores;
     private final InventoryProductionPort inventory;
@@ -136,6 +138,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
         this.tickets = tickets;
         this.tasks = tasks;
         this.events = events;
+        this.sources = new ProductionSourceQuery(events, batches, orderLines, heads);
         this.revisions = revisions;
         this.stores = stores;
         this.json = json;
@@ -145,6 +148,12 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
         read = new TransactionTemplate(manager);
         read.setReadOnly(true);
         read.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+    }
+
+    /** 替换耗料来源查询（测试直接给出拆库后的合并结果）。 */
+    public ProductionConsumptionServiceImpl withSourceQuery(ProductionSourceQuery query) {
+        this.sources = query;
+        return this;
     }
 
     private java.util.function.Supplier<ai.neargo.shop.food.mapper.FoodMappers.ReturnStockDispositionMapper> returnStockClaims=()->null;
@@ -454,7 +463,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
         outside();
         if (limit < 1 || limit > 200) throw BizException.of(ErrorCode.BAD_REQUEST);
         // Reserve part of the same budget for the commit-to-first-prepare crash gap.
-        var missed = DataScopeContext.executeWithoutScope(() -> events.unconsumed(Math.max(1, limit / 2)));
+        var missed = DataScopeContext.executeWithoutScope(() -> sources.unconsumed(Math.max(1, limit / 2)));
         int pendingBudget = limit - missed.size();
         var pending = pendingBudget == 0 ? List.<FnbProductionConsumption>of() :
                 DataScopeContext.executeWithoutScope(
@@ -534,7 +543,10 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                 () ->
                         read.execute(
                                 status -> {
-                                    long total = heads.countFiltered(entity, store, query);
+                                    List<String> events = sources.skuEvents(entity, store, query.skuNo());
+                                    if (events != null && events.isEmpty())
+                                        return PageData.of(List.<ConsumptionVO>of(), 0, page, size);
+                                    long total = heads.countFiltered(entity, store, query, events);
                                     var records =
                                             total == 0
                                                     ? List.<ConsumptionVO>of()
@@ -543,6 +555,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                                                                     entity,
                                                                     store,
                                                                     query,
+                                                                    events,
                                                                     ((long) page - 1) * size,
                                                                     size)
                                                             .stream()
@@ -558,8 +571,8 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
             ai.neargo.shop.food.dto.ProductionContracts.PendingQuery query) {
         outside();
         scope(entity, store, actor);
-        return DataScopeContext.executeWithoutScope(() -> read.execute(tx ->
-                events.pending(entity, store, query.afterId(), query.limit())));
+        return DataScopeContext.executeWithoutScope(
+                () -> sources.pending(entity, store, query.afterId(), query.limit()));
     }
 
     private boolean invalidFilter(String value, int max) {
