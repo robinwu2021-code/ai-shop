@@ -17,7 +17,7 @@ import ai.neargo.shop.spi.trade.IndustryFulfillmentPort;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort.Receipt;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort.Reference;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort.VerifyPickup;
-import ai.neargo.shop.spi.trade.OrderEvents;
+import ai.neargo.shop.trade.event.SubOrderCompletion;
 import ai.neargo.shop.spi.trade.PricingSourceFacts;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 import ai.neargo.shop.spi.trade.PricingSourceRef;
@@ -625,14 +625,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                                     "行业原行交付完成", OrderContext.authorizedOnly()
                                             .withRequireBuyerConfirm(buyerConfirm(f.sub())));
                         }
-                        if (OrdSubOrder.COMPLETED.equals(f.sub().getStatus()))
-                            events.publish(
-                                    new OrderEvents.SubOrderCompleted(
-                                            ref.subOrderNo(),
-                                            ref.orderNo(),
-                                            ref.scope().entityNo(),
-                                            f.sub().getUserNo(),
-                                            f.sub().getFulfillment()));
+                        SubOrderCompletion.publishIfCompleted(events, f.sub());
                         row.setStatus(
                                 buyerConfirm(f.sub())
                                                 && !OrdSubOrder.COMPLETED.equals(
@@ -917,15 +910,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                                 "门店自提核销",
                                 OrderContext.authorizedOnly()
                                         .withRequireBuyerConfirm(buyerConfirm(facts.sub())));
-                        if (OrdSubOrder.COMPLETED.equals(facts.sub().getStatus())) {
-                            events.publish(
-                                    new OrderEvents.SubOrderCompleted(
-                                            ref.subOrderNo(),
-                                            ref.orderNo(),
-                                            ref.scope().entityNo(),
-                                            facts.sub().getUserNo(),
-                                            facts.sub().getFulfillment()));
-                        }
+                        SubOrderCompletion.publishIfCompleted(events, facts.sub());
                     }
                     row.setInventoryReceiptJson(json.writeValueAsString(proof));
                     row.setStatus(

@@ -26,7 +26,7 @@ import ai.neargo.shop.spi.trade.IndustryOrderAmendmentPort.Line;
 import ai.neargo.shop.spi.trade.IndustryOrderAmendmentPort.Receipt;
 import ai.neargo.shop.spi.trade.IndustryOrderAmendmentPort.Reduction;
 import ai.neargo.shop.spi.trade.IndustryOrderPort;
-import ai.neargo.shop.spi.trade.OrderEvents;
+import ai.neargo.shop.trade.event.SubOrderCompletion;
 import ai.neargo.shop.spi.trade.PricingFeeFacts;
 import ai.neargo.shop.spi.trade.PricingFeeScopePort;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
@@ -989,14 +989,7 @@ public class IndustryOrderAmendmentServiceImpl implements IndustryOrderAmendment
                                                             .equals(
                                                                     f.sub()
                                                                             .getRequireBuyerConfirm()))));
-            if (OrdSubOrder.COMPLETED.equals(f.sub().getStatus()))
-                events.publish(
-                        new OrderEvents.SubOrderCompleted(
-                                ref.subOrderNo(),
-                                ref.orderNo(),
-                                ref.scope().entityNo(),
-                                f.sub().getUserNo(),
-                                f.sub().getFulfillment()));
+            SubOrderCompletion.publishIfCompleted(events, f.sub());
         } else bump(f.sub());
     }
 

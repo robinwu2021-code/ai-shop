@@ -11,6 +11,7 @@ import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.event.SubOrderCompletion;
 import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
@@ -186,8 +187,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
                 OrderContext.authorizedOnly());
 
         // 核销是自提线走到终态的唯一出口：评价开放、结算解冻计时、通知用户都挂在这条事件上
-        eventBus.publish(new OrderEvents.SubOrderCompleted(sub.getSubOrderNo(), sub.getOrderNo(),
-                sub.getEntityNo(), sub.getUserNo(), sub.getFulfillment()));
+        SubOrderCompletion.publishIfCompleted(eventBus, sub);
         return true;
     }
 
