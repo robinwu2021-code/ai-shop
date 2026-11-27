@@ -497,7 +497,7 @@ export interface MallSkuRequest {
   components: MallSkuComponent[];
   /** 每单上限 */
   maxPerOrder: number;
-  /** 乐观锁：新 SKU 传 0；否则带 SKU 定义的 version */
+  /** 新版本传 0；编辑草稿传该版本的 version */
   expectedVersion: number;
   /** 审计原因 */
   reason: string;
@@ -507,9 +507,9 @@ export interface MallSkuRequest {
 export interface MallPublishSku {
   /** 幂等操作号 */
   operationNo: string;
-  /** SKU 定义行版本 */
+  /** 草稿版本行的 version */
   expectedVersion: number;
-  /** SKU 版本行版本 */
+  /** SKU 定义行的 version */
   expectedSkuVersion: number;
   /** 审计原因 */
   reason: string;

@@ -9,6 +9,9 @@
           <text class="txt-caption sh-num">{{ orderNo }}</text>
           <text class="sh-chip" :class="paid ? 'sh-chip--primary' : 'sh-chip--warning'">{{ t(`bizMall.payment.${payment}`) }}</text>
         </view>
+        <view v-for="line in detail.lines" :key="line.skuVersionNo" class="sh-mt-xs">
+          <text class="txt-strong">{{ line.title }} × {{ line.quantity }}</text>
+        </view>
         <view v-for="(c, i) in detail.quote?.components ?? detail.summary?.order?.components ?? []" :key="c.componentNo ?? i" class="sh-mt-xs">
           <text class="txt-sub">
             {{ t(`bizMall.kind.${c.kind}`) }}<text v-if="c.cycleDays"> · {{ t("bizMall.checkout.days", { n: c.cycleDays }) }}</text>

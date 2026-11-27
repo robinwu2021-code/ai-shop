@@ -16421,6 +16421,11 @@ components:
         readiness:
           "$ref": "#/components/schemas/MallReadiness"
           description: "在线支付口径的可购买判断"
+        offlineReadiness:
+          anyOf:
+            - "$ref": "#/components/schemas/MallReadiness"
+            - type: "null"
+          description: "门店可用的线下收款方式。"
       additionalProperties: false
       description: "列表里的一个可售 SKU"
     MallSku:
@@ -16514,6 +16519,22 @@ components:
           items:
             type: "string"
           description: "不可买的原因码"
+        paymentOptions:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              channel:
+                type: "string"
+              payMethod:
+                type: "string"
+              currency:
+                type: "string"
+            required:
+              - "channel"
+              - "payMethod"
+              - "currency"
+            additionalProperties: false
       additionalProperties: false
       description: "在线支付口径的可购买判断（线下转账另有判断，以报价结果为准）"
     MallQuote:
@@ -16616,6 +16637,11 @@ components:
     MallOrderSummary:
       type: "object"
       properties:
+        title:
+          type:
+            - "string"
+            - "null"
+          description: "下单时的首行商品标题"
         order:
           "$ref": "#/components/schemas/MallOrder"
           description: "订单"
@@ -16633,6 +16659,29 @@ components:
     MallOrderDetail:
       type: "object"
       properties:
+        lines:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              productNo:
+                type: "string"
+              skuNo:
+                type: "string"
+              skuVersionNo:
+                type: "string"
+              title:
+                type: "string"
+              quantity:
+                type: "number"
+            required:
+              - "productNo"
+              - "skuNo"
+              - "skuVersionNo"
+              - "title"
+              - "quantity"
+            additionalProperties: false
+          description: "按购买时版本冻结的商品明细"
         summary:
           "$ref": "#/components/schemas/MallOrderSummary"
           description: "概览与三维状态"

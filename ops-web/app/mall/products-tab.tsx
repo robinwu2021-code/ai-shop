@@ -39,6 +39,7 @@ interface ProductForm {
 }
 
 interface CompRow {
+  componentNo?: string;
   kind: MallComponentKind; planVersionNo: string; entitlementCode: string; hardwareSkuNo: string; periodDays: string;
   unitCount: string; allocationWeight: string; gift: boolean; activationPolicy: string; title: string;
 }
@@ -49,12 +50,12 @@ interface SkuForm {
   components: CompRow[]; maxPerOrder: string; expectedVersion: number; reason: string;
 }
 
-const blankComp = (): CompRow => ({ kind: "PLAN", planVersionNo: "", entitlementCode: "", hardwareSkuNo: "", periodDays: "365",
-  unitCount: "1", allocationWeight: "1", gift: false, activationPolicy: "IMMEDIATE", title: "" });
+const blankComp = (kind: MallComponentKind = "PLAN"): CompRow => ({ kind, planVersionNo: "", entitlementCode: "", hardwareSkuNo: "", periodDays: "365",
+  unitCount: "1", allocationWeight: "1", gift: false, activationPolicy: "ON_FULFILLMENT", title: "" });
 
 function useInvalidate() {
   const qc = useQueryClient();
-  return () => ["mall-catalog", "mall-products"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+  return () => ["mall-catalog", "mall-products", "mall-sku-version"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
 }
 
 export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: boolean; canPublish: boolean }) {
@@ -82,9 +83,9 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
   });
 
   const toComp = (r: CompRow): MallSkuComponent => ({
-    kind: r.kind, planVersionNo: r.kind === "PLAN" ? r.planVersionNo : null, entitlementCode: r.kind === "END_PACKAGE" ? r.entitlementCode : null,
+    componentNo: r.componentNo, kind: r.kind, planVersionNo: r.kind === "PLAN" ? r.planVersionNo : null, entitlementCode: r.kind === "END_PACKAGE" ? r.entitlementCode : null,
     hardwareSkuNo: r.kind === "HARDWARE" ? r.hardwareSkuNo.trim() : null, periodDays: r.kind === "HARDWARE" ? null : Number(r.periodDays),
-    unitCount: Number(r.unitCount), allocationWeight: Number(r.allocationWeight), gift: r.gift, activationPolicy: r.activationPolicy,
+    unitCount: Number(r.unitCount), allocationWeight: r.gift ? 0 : Number(r.allocationWeight), gift: r.gift, activationPolicy: r.kind === "HARDWARE" ? "ON_FULFILLMENT" : r.activationPolicy,
     title: r.title.trim() || null,
   });
 
@@ -108,10 +109,10 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
       productNo: p.draft!.productNo!, skuNo: def?.skuNo ?? "", skuVersionNo: editing ? d!.skuVersionNo! : null, newSku: !def,
       title: d?.title ?? "", currency: d?.price?.currency ?? "TWD", listPrice: d?.listPrice ? toMajorInput(d.listPrice) : "",
       price: d?.price ? toMajorInput(d.price) : "", allowedBusinessTypes: d?.allowedBusinessTypes ?? p.draft?.allowedBusinessTypes ?? [],
-      unusedDigital: policy, maxPerOrder: String(d?.maxPerOrder ?? 1), expectedVersion: def?.version ?? 0, reason: "",
-      components: (d?.components ?? []).map((x) => ({ kind: x.kind ?? "PLAN", planVersionNo: x.planVersionNo ?? "", entitlementCode: x.entitlementCode ?? "",
+      unusedDigital: policy, maxPerOrder: String(d?.maxPerOrder ?? 1), expectedVersion: editing ? from!.version! : 0, reason: "",
+      components: !d ? [blankComp(p.draft?.kind === "HARDWARE" ? "HARDWARE" : p.draft?.kind === "END_ACCESS" ? "END_PACKAGE" : "PLAN")] : (d.components ?? []).map((x) => ({ componentNo: editing ? x.componentNo ?? undefined : undefined, kind: x.kind ?? "PLAN", planVersionNo: x.planVersionNo ?? "", entitlementCode: x.entitlementCode ?? "",
         hardwareSkuNo: x.hardwareSkuNo ?? "", periodDays: String(x.periodDays ?? ""), unitCount: String(x.unitCount ?? 1),
-        allocationWeight: String(x.allocationWeight ?? 1), gift: !!x.gift, activationPolicy: x.activationPolicy ?? "IMMEDIATE",
+        allocationWeight: String(x.allocationWeight ?? 1), gift: !!x.gift, activationPolicy: x.activationPolicy === "AFTER_PREVIOUS" ? "AFTER_PREVIOUS" : "ON_FULFILLMENT",
         title: x.title ?? "" })),
     });
   };
@@ -120,8 +121,8 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
     const def = skuDefs.find((d) => d.skuNo === v.draft?.skuNo)!;
     return confirm({
       title: c.skuPublishTitle, desc: fill(c.skuPublishDesc, { v: v.draft?.skuVersionNo ?? "" }), requireReason: true,
-      action: (reason) => api.publishMallSkuVersion(v.draft!.skuVersionNo!, { operationNo: newOpNo("PUB"), expectedVersion: def.version!,
-        expectedSkuVersion: v.version!, reason }).then(() => { invalidate(); notify.success(c.toastSkuPublished); }),
+      action: (reason) => api.publishMallSkuVersion(v.draft!.skuVersionNo!, { operationNo: newOpNo("PUB"), expectedVersion: v.version!,
+        expectedSkuVersion: def.version!, reason }).then(() => { invalidate(); notify.success(c.toastSkuPublished); }),
     });
   };
 
@@ -359,9 +360,9 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
                         <Input aria-label={c.fieldPeriodDays} placeholder={c.fieldPeriodDays} inputMode="numeric" value={r.periodDays} onChange={(e) => setComp(i, { periodDays: e.target.value })} />
                       )}
                       <Input aria-label={c.fieldUnitCount} placeholder={c.fieldUnitCount} inputMode="numeric" value={r.unitCount} onChange={(e) => setComp(i, { unitCount: e.target.value })} />
-                      <Input aria-label={c.fieldWeight} placeholder={c.fieldWeight} inputMode="numeric" value={r.allocationWeight} onChange={(e) => setComp(i, { allocationWeight: e.target.value })} />
+                      <Input disabled={r.gift} aria-label={c.fieldWeight} placeholder={c.fieldWeight} inputMode="numeric" value={r.allocationWeight} onChange={(e) => setComp(i, { allocationWeight: e.target.value })} />
                     </div>
-                    <CheckboxField label={c.fieldGift} checked={r.gift} onChange={(v) => setComp(i, { gift: v === true })} />
+                    <CheckboxField label={c.fieldGift} checked={r.gift} onChange={(v) => setComp(i, { gift: v === true, allocationWeight: v === true ? "0" : r.allocationWeight })} />
                   </div>
                 ))}
                 <Button size="sm" variant="outline" onClick={() => setSForm((f) => f && { ...f, components: [...f.components, blankComp()] })}>{c.btnAddComponent}</Button>

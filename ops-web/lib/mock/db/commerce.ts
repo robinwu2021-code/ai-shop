@@ -256,7 +256,7 @@ export function seedMall(): MallState {
     listPrice: twd("69900"), price: twd("69900"), allowedBusinessTypes: ["RETAIL"],
     refundPolicySnapshot: '{"schema":"commerce-refund-v1","unusedDigital":"FULL_ORIGINAL_ALLOCATION","usedDigital":"MANUAL_ONLY"}',
     components: [{ componentNo: "SC-1", kind: "PLAN", planVersionNo: "PV-RETAIL-PRO-1", entitlementCode: null, hardwareSkuNo: null,
-      periodDays: 365, unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "IMMEDIATE" }],
+      periodDays: 365, unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_FULFILLMENT" }],
     maxPerOrder: 1 } };
   // 一个草稿 SKU：用来走「发布单个 SKU」
   s.skuDefs["SKU-POS-HW-1"] = { skuNo: "SKU-POS-HW-1", productNo: "MP-POS-HW", title: "收银机一台（开发测试）",
@@ -266,7 +266,7 @@ export function seedMall(): MallState {
     listPrice: twd("1200000"), price: twd("990000"), allowedBusinessTypes: ["RETAIL", "FNB"],
     refundPolicySnapshot: '{"schema":"commerce-refund-v1","unusedDigital":"MANUAL_ONLY","usedDigital":"MANUAL_ONLY"}',
     components: [{ componentNo: "SC-2", kind: "HARDWARE", planVersionNo: null, entitlementCode: null, hardwareSkuNo: "HW-POS-01",
-      periodDays: null, unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_SHIPMENT" }],
+      periodDays: null, unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_FULFILLMENT" }],
     maxPerOrder: 5 } };
 
   // 收款档案：TWD v1 已启用（开发样例账户）
@@ -625,30 +625,28 @@ export function saveSkuVersion(productNo: string, v: {
     else if (c.kind === "END_PACKAGE") need(c.entitlementCode && Object.values(s.ends).some((e) => e.draft.entitlementCode === c.entitlementCode) && (c.periodDays ?? 0) > 0, "INVALID_ARGUMENT");
     else if (c.kind === "HARDWARE") need(text(c.hardwareSkuNo, 64), "INVALID_ARGUMENT");
     else mallFail("INVALID_ARGUMENT");
+    need(c.activationPolicy === "ON_FULFILLMENT" || (c.kind !== "HARDWARE" && c.activationPolicy === "AFTER_PREVIOUS"), "INVALID_ARGUMENT");
     need(c.title == null || text(c.title, 64), "INVALID_ARGUMENT");
     need((c.unitCount ?? 0) >= 1 && (c.allocationWeight ?? -1) >= 0, "INVALID_ARGUMENT");
   }
   for (const t of v.allowedBusinessTypes) need(product.draft.allowedBusinessTypes?.includes(t), "INVALID_ARGUMENT");
   const def = s.skuDefs[v.skuNo];
   if (def) need(def.productNo === productNo, "INVALID_ARGUMENT");
-  expected(v.expectedVersion, def?.version ?? 0);
   const creating = v.skuVersionNo == null;
   const old = creating ? undefined : s.skuVersions[v.skuVersionNo!];
   if (!creating) need(old && old.draft.skuNo === v.skuNo, "INVALID_ARGUMENT");
   if (old && old.status !== "DRAFT") mallFail("IMMUTABLE_VERSION");
+  expected(v.expectedVersion, old?.version ?? 0);
   const revision = old?.revision ?? Math.max(0, ...Object.values(s.skuVersions).filter((x) => x.draft.skuNo === v.skuNo).map((x) => x.revision)) + 1;
   const vno = v.skuVersionNo ?? `SV-${v.skuNo.replace(/^SKU-/, "")}-${revision}`;
-  const defVersion = (def?.version ?? 0) + 1;
-  s.skuDefs[v.skuNo] = def
-    ? { ...def, version: defVersion }
-    : { skuNo: v.skuNo, productNo, title: v.title, maxPerOrder: v.maxPerOrder, currentVersionNo: null, saleStatus: "DRAFT", version: defVersion };
+  if (!def) s.skuDefs[v.skuNo] = { skuNo: v.skuNo, productNo, title: v.title, maxPerOrder: v.maxPerOrder, currentVersionNo: null, saleStatus: "DRAFT", version: 1 };
   s.skuVersions[vno] = { status: "DRAFT", revision, version: (old?.version ?? 0) + 1, draft: {
     productNo, skuNo: v.skuNo, skuVersionNo: vno, title: v.title, listPrice: { ...v.listPrice, minor: String(v.listPrice.minor) },
     price: { ...v.price, minor: String(v.price.minor) }, allowedBusinessTypes: [...v.allowedBusinessTypes],
     refundPolicySnapshot: JSON.stringify({ schema: "commerce-refund-v1", unusedDigital: p.unusedDigital, usedDigital: "MANUAL_ONLY" }),
     components: v.components!.map((c, i) => ({ ...c, componentNo: c.componentNo ?? `SC-${vno}-${i + 1}` })),
     maxPerOrder: v.maxPerOrder, reason: v.reason } };
-  return { entityNo: v.skuNo, draftVersionNo: vno, version: defVersion };
+  return { entityNo: v.skuNo, draftVersionNo: vno, version: s.skuVersions[vno]!.version };
 }
 
 export function publishSku(no: string, d: { operationNo: string; expectedVersion: number; expectedSkuVersion: number; reason: string }) {
@@ -658,8 +656,8 @@ export function publishSku(no: string, d: { operationNo: string; expectedVersion
   if (s.publications[key]) return s.publications[key] as { publicationNo: string; catalogVersion: number; publishedVersionNos: string[] };
   const sv = s.skuVersions[no] ?? mallFail("NOT_FOUND");
   const def = s.skuDefs[sv.draft.skuNo!]!;
-  expected(d.expectedVersion, def.version);
-  expected(d.expectedSkuVersion, sv.version);
+  expected(d.expectedVersion, sv.version);
+  expected(d.expectedSkuVersion, def.version);
   // 套餐 SKU 只能引用**当前已发布**的 Plan 版本：否则要走行业发布一起冻结
   for (const c of sv.draft.components ?? []) {
     if (c.kind === "PLAN") {

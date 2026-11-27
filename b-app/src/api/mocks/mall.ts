@@ -8,6 +8,7 @@ import { currentStoreNo } from "./_shared";
 const TWD = (minor: number) => ({ currency: "TWD", minor: String(minor) });
 const now = () => new Date().toISOString();
 
+const offlineReadiness = { available: true, paymentOptions: [{ channel: "OFFLINE", payMethod: "BANK_TRANSFER", currency: "TWD" }] };
 const storefront: MallStorefront = {
   businessTypeCode: "RETAIL",
   currency: "TWD",
@@ -15,17 +16,17 @@ const storefront: MallStorefront = {
   products: [
     {
       product: { productNo: "P-PRO", kind: "PLAN", name: "零售 PRO 方案", description: "收银、会员与报表全套，一年期" },
-      skus: [{ sku: { skuNo: "PRO-365", skuVersionNo: "PRO-365-v1", title: "PRO · 365 天", price: TWD(699000), listPrice: TWD(799000),
+      skus: [{ offlineReadiness, sku: { skuNo: "PRO-365", skuVersionNo: "PRO-365-v1", title: "PRO · 365 天", price: TWD(699000), listPrice: TWD(799000),
         components: [{ kind: "PLAN", planVersionNo: "PRO-v1", periodDays: 365, unitCount: 1 }] } }],
     },
     {
       product: { productNo: "P-POS", kind: "HARDWARE", name: "收银机 POS-1", description: "含小票打印机" },
-      skus: [{ sku: { skuNo: "POS-1", skuVersionNo: "POS-1-v1", title: "POS-1 收银机", price: TWD(1299000),
+      skus: [{ offlineReadiness, sku: { skuNo: "POS-1", skuVersionNo: "POS-1-v1", title: "POS-1 收银机", maxPerOrder: 10, price: TWD(1299000),
         components: [{ kind: "HARDWARE", hardwareSkuNo: "HW-POS-1", unitCount: 1 }] } }],
     },
     {
       product: { productNo: "P-KIT", kind: "BUNDLE", name: "开店套装", description: "PRO 一年 + POS-1 收银机" },
-      skus: [{ sku: { skuNo: "KIT-1", skuVersionNo: "KIT-1-v1", title: "PRO 365 天 + POS-1", price: TWD(1799000),
+      skus: [{ offlineReadiness, sku: { skuNo: "KIT-1", skuVersionNo: "KIT-1-v1", title: "PRO 365 天 + POS-1", price: TWD(1799000),
         components: [{ kind: "PLAN", planVersionNo: "PRO-v1", periodDays: 365, unitCount: 1 },
           { kind: "HARDWARE", hardwareSkuNo: "HW-POS-1", unitCount: 1 }] } }],
     },
@@ -33,14 +34,17 @@ const storefront: MallStorefront = {
 };
 
 // 一律按「门店:单号」存：切店后看不到别家店的单，与后端按路径门店号校验归属一致
-const quotes = new Map<string, MallQuote>();
+const quotes = new Map<string, { quote: MallQuote; lines: MallOrderDetail["lines"] }>();
+let serial = 0;
+const placements = new Map<string, { request: string; orderNo: string }>();
+const usedQuotes = new Set<string>();
 const orders = new Map<string, MallOrderDetail>();
 const instructions = new Map<string, MallOfflineInstructions>();
 const claims = new Map<string, MallOfflineClaim[]>();
 const k = (store: string, no: string) => `${store}:${no}`;
 
 function sku(versionNo: string) {
-  for (const p of storefront.products ?? []) for (const s of p.skus ?? []) if (s.sku?.skuVersionNo === versionNo) return s.sku;
+  for (const p of storefront.products ?? []) for (const s of p.skus ?? []) if (s.sku?.skuVersionNo === versionNo) return { productNo: p.product!.productNo!, s: s.sku };
   throw new Error("NOT_FOUND");
 }
 
@@ -50,25 +54,43 @@ export const mallMock: MallApi = {
   },
   async mMallOfflineQuote(storeNo, body) {
     const store = storeNo || currentStoreNo();
-    const s = sku(body.lines[0]!.skuVersionNo);
-    const quoteNo = "Q" + Date.now();
+    if (body.lines.length !== 1 || body.currency !== storefront.currency) throw new Error("INVALID_REQUEST");
+    const { productNo, s } = sku(body.lines[0]!.skuVersionNo);
+    const count = body.lines[0]!.quantity;
+    if (!Number.isSafeInteger(count) || count < 1 || count > (s.maxPerOrder ?? 1)) throw new Error("INVALID_REQUEST");
+    const total = { ...s.price!, minor: String(BigInt(s.price!.minor) * BigInt(count)) };
+    const quoteNo = "Q" + ++serial;
     const q: MallQuote = {
-      quoteNo, total: s.price, credit: TWD(0), payable: s.price,
+      quoteNo, total, credit: TWD(0), payable: total,
       components: (s.components ?? []).map((c, i) => ({ componentNo: `C${i + 1}`, kind: c.kind, cycleDays: c.periodDays ?? undefined,
-        quantity: c.unitCount, dealAmount: i === 0 ? s.price : TWD(0) })),
+        quantity: (c.unitCount ?? 1) * count, dealAmount: i === 0 ? total : TWD(0) })),
       expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
     };
-    quotes.set(k(store, quoteNo), q);
+    quotes.set(k(store, quoteNo), { quote: q, lines: [{ productNo, skuNo: s.skuNo!, skuVersionNo: s.skuVersionNo!, title: s.title!, quantity: count }] });
     return q;
   },
   async mMallPlaceOrder(storeNo, body) {
     const store = storeNo || currentStoreNo();
-    const q = quotes.get(k(store, body.quoteNo));
-    if (!q) throw new Error("QUOTE_EXPIRED");
-    const orderNo = "MO" + Date.now();
+    const identity = k(store, body.idempotencyKey);
+    const address = body.shippingAddress;
+    const request = JSON.stringify([body.quoteNo, address && [address.recipient,address.phone,address.countryCode,address.region,address.city,address.addressLine,address.postalCode]]);
+    const prior = placements.get(identity);
+    if (prior) {
+      if (prior.request !== request) throw new Error("IDEMPOTENCY_CONFLICT");
+      return orders.get(k(store, prior.orderNo))!.summary!.order!;
+    }
+    const quoteKey = k(store, body.quoteNo);
+    const frozen = quotes.get(quoteKey);
+    const q = frozen?.quote;
+    if (!q || Date.parse(q.expiresAt!) <= Date.now()) throw new Error("QUOTE_EXPIRED");
+    if (usedQuotes.has(quoteKey)) throw new Error("QUOTE_USED");
+    if (q.components?.some(c => c.kind === "HARDWARE") && !(address?.recipient && address.phone && address.countryCode && address.addressLine)) throw new Error("SHIPPING_REQUIRED");
+    const orderNo = "MO" + ++serial;
     const order = { orderNo, status: "AWAITING_PAYMENT" as const, payable: q.payable, components: q.components, createdAt: now() };
-    orders.set(k(store, orderNo), { summary: { order, paymentStatus: "UNPAID", fulfillmentStatus: "PENDING", refundStatus: "NONE" },
+    orders.set(k(store, orderNo), { lines: frozen.lines, summary: { order, title: frozen.lines?.[0]?.title, paymentStatus: "UNPAID", fulfillmentStatus: "PENDING", refundStatus: "NONE" },
       quote: q, shippingAddress: body.shippingAddress, shipments: [] });
+    placements.set(identity, { request, orderNo });
+    usedQuotes.add(quoteKey);
     return order;
   },
   async mMallOrders(storeNo) {

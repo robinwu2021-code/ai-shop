@@ -6,7 +6,7 @@
 
     <template v-else>
       <view class="sh-card">
-        <text class="txt-strong">{{ name }}</text>
+        <text class="txt-strong">{{ name }} × {{ quantity }}</text>
         <view v-for="(c, i) in quote.components ?? []" :key="c.componentNo ?? i" class="sh-row sh-row--between sh-mt-xs">
           <text class="txt-sub">
             {{ t(`bizMall.kind.${c.kind}`) }}<text v-if="c.cycleDays"> · {{ t("bizMall.checkout.days", { n: c.cycleDays }) }}</text>
@@ -72,6 +72,8 @@ const merchant = useMerchantStore();
 const err = (e: unknown) => mallErrorText(e, (k, v) => String(v ? t(k, v) : t(k)), te);
 
 const sku = ref("");
+const quantity = ref(1);
+const store = ref("");
 const currency = ref("");
 const name = ref("");
 const quote = ref<MallQuote | null>(null);
@@ -87,11 +89,16 @@ const ready = computed(() =>
   !!quote.value?.quoteNo && (!needsAddress.value || !!(address.recipient && address.phone && address.addressLine)));
 
 async function requote() {
+  quote.value = null;
+  if (store.value !== merchant.storeNo || !Number.isSafeInteger(quantity.value) || quantity.value < 1) {
+    quoteError.value = err(new Error("INVALID_REQUEST"));
+    return;
+  }
   quoting.value = true;
   quoteError.value = "";
   try {
-    quote.value = await api.mMallOfflineQuote(merchant.storeNo, {
-      lines: [{ skuVersionNo: sku.value, quantity: 1 }],
+    quote.value = await api.mMallOfflineQuote(store.value, {
+      lines: [{ skuVersionNo: sku.value, quantity: quantity.value }],
       currency: currency.value,
     });
   } catch (e) {
@@ -111,9 +118,9 @@ async function place() {
   if (!ready.value || placing.value) return;
   placing.value = true;
   placeError.value = "";
-  const store = merchant.storeNo;
+  if (store.value !== merchant.storeNo) { placing.value = false; placeError.value = err(new Error("STORE_UNAVAILABLE")); return; }
   try {
-    const order = await api.mMallPlaceOrder(store, {
+    const order = await api.mMallPlaceOrder(store.value, {
       quoteNo: quote.value!.quoteNo!,
       idempotencyKey: key,
       shippingAddress: needsAddress.value
@@ -121,7 +128,8 @@ async function place() {
         : null,
     });
     // 指引发不出去不挡路：订单已建，详情页会再发
-    await api.mMallIssueInstructions(store, order.orderNo!).catch(() => undefined);
+    await api.mMallIssueInstructions(store.value, order.orderNo!).catch(() => undefined);
+    if (store.value !== merchant.storeNo) return;
     uni.redirectTo({ url: `${ROUTES.bizMallOrder}?orderNo=${encodeURIComponent(order.orderNo!)}` });
   } catch (e) {
     placeError.value = err(e);
@@ -133,9 +141,12 @@ async function place() {
 }
 
 onLoad((q) => {
+  store.value = String(q?.store ?? merchant.storeNo);
+  quantity.value = Number(q?.quantity ?? 1);
   sku.value = decodeURIComponent(String(q?.sku ?? ""));
   currency.value = decodeURIComponent(String(q?.currency ?? ""));
-  name.value = decodeURIComponent(String(q?.name ?? ""));
+  const rawName = String(q?.name ?? "");
+  try { name.value = decodeURIComponent(rawName); } catch { name.value = rawName; }
   void requote();
 });
 </script>
