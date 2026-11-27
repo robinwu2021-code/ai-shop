@@ -108,7 +108,12 @@ public interface EntityPlanPurchaseService {
       Instant dueAt,
       OfflineCollectionTerms instructions,
       List<ClaimView> claims,
-      List<ActionView> actions,String purchaseSource) {}
+      List<ActionView> actions,String purchaseSource,boolean mallOffline) {
+    public OrderView(String orderNo,String requestNo,String entityNo,String storeNo,Offer offer,String status,Instant dueAt,
+        OfflineCollectionTerms instructions,List<ClaimView> claims,List<ActionView> actions,String purchaseSource) {
+      this(orderNo,requestNo,entityNo,storeNo,offer,status,dueAt,instructions,claims,actions,purchaseSource,false);
+    }
+  }
 
   record ReviewQuota(String planCode, Long stores, Long staff, Boolean crossStore, Long storeOverride,
       Long staffOverride, boolean overridesKnown, Long expiry, String grantedBy) {}

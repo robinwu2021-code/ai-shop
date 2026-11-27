@@ -8,6 +8,7 @@
 // 线下面板把**三类状态分开**：申报（买家说付了）、资金（平台确认到账没有）、权益（门店能不能用）。
 // 核款回 ACCEPTED 只表示受理：资金端还没确认，恢复任务会继续推进，界面不能写「已到账」。
 import * as React from "react";
+import {useFinancialLock} from "@/components/offline/financial-lock";
 import {CashRefundsSection} from "@/components/offline/cash-refunds";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MallOfflineReviewAttempt, mallOfflineReceiver, receiptTimeForMode } from "@/lib/mall-offline-review";
@@ -639,7 +640,7 @@ function ConfirmForm({
   );
 }
 
-function ReceiptDocumentationSection({c,storeNo,orderNo}:{c:MallCopy;storeNo:string;orderNo:string}) {
+export function ReceiptDocumentationSection({c,storeNo,orderNo,canSupplement=true}:{c:MallCopy;storeNo:string;orderNo:string;canSupplement?:boolean}) {
   const allow=useCan();
   const docs=useQuery({queryKey:["mall-offline",storeNo,orderNo,"documentation"],queryFn:()=>api.offlineReceiptDocumentation(storeNo,orderNo),retry:false});
   const [selected,setSelected]=React.useState<string|null>(null);
@@ -655,7 +656,7 @@ function ReceiptDocumentationSection({c,storeNo,orderNo}:{c:MallCopy;storeNo:str
         <p className="txt-caption text-muted-foreground">{fmtAt(item.createdAt)} · {item.operatorNo}</p><p>{item.note}</p>
         <ClaimReceipts c={c} storeNo={storeNo} orderNo={orderNo} keys={item.evidenceKeys}/>
       </div>)}
-      {allow("commerce:mall:offline:confirm") && ["APPLIED","UNMATCHED"].includes(row.status) && selected===null && <Button size="sm" variant="outline" onClick={()=>setSelected(row.confirmationActionNo)}>{c.supplement}</Button>}
+      {canSupplement && allow("commerce:mall:offline:confirm") && ["APPLIED","UNMATCHED"].includes(row.status) && selected===null && <Button size="sm" variant="outline" onClick={()=>setSelected(row.confirmationActionNo)}>{c.supplement}</Button>}
       {selected===row.confirmationActionNo && <SupplementForm key={selected} c={c} storeNo={storeNo} orderNo={orderNo} confirmationActionNo={selected} onClose={()=>setSelected(null)}/>}
     </div>)}
   </div>;
@@ -663,6 +664,7 @@ function ReceiptDocumentationSection({c,storeNo,orderNo}:{c:MallCopy;storeNo:str
 function SupplementForm({c,storeNo,orderNo,confirmationActionNo,onClose}:{c:MallCopy;storeNo:string;orderNo:string;confirmationActionNo:string;onClose:()=>void}) {
   const [actionNo]=React.useState(()=>newOpNo("docs"));const [note,setNote]=React.useState("");const [key,setKey]=React.useState("");
   const review=useOfflineReview(c,storeNo,orderNo,onClose);
+  useFinancialLock(`supplement:${storeNo}:${orderNo}:${confirmationActionNo}`,review.attempt!==null);
   return <div className="space-y-3 border-t pt-3"><p className="txt-caption text-muted-foreground">{c.supplementHint}</p>
     <fieldset disabled={review.attempt!==null} className="space-y-3">
       <Label htmlFor="supplement-note">{c.supplementNote}</Label><Textarea id="supplement-note" maxLength={1024} value={note} onChange={setNote}/>

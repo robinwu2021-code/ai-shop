@@ -13,6 +13,8 @@ import {Button} from "@/components/ui/button";
 import {Input,Select} from "@/components/ui/input";
 import {DrawerSection,Field} from "@/components/ui/drawer";
 import {CashRefundsSection} from "@/components/offline/cash-refunds";
+import {ReceiptDocumentationSection} from "../mall/order-drawer";
+import {MALL_COPY} from "../mall/copy";
 import {PlanRefundReviewPanel} from "./plan-refund-review";
 import {EntityAssistedPurchase} from "./plan-assisted-purchase";
 import {PLAN_PURCHASES_COPY} from "./plan-purchases-copy";
@@ -45,7 +47,7 @@ function OfferEditor({entityNo,offers,onSaved}:{entityNo:string;offers:EntityPla
  </div>;
 }
 export function EntityPlanPurchaseDetail({order:o,onChanged}:{order:EntityPlanPurchase;onChanged:()=>unknown}) {
- const c=useCopy(PLAN_PURCHASES_COPY),allow=useCan();
+ const c=useCopy(PLAN_PURCHASES_COPY),mallCopy=useCopy(MALL_COPY),allow=useCan();
  const [busy,b]=useState(false),[error,e]=useState(""),[evidence,k]=useState("");
  const [f,set]=useState({amount:"",at:"",reference:"",reason:""});
  const [attempt,a]=useState<EntityPlanConfirm|null>(null),[absent,markAbsent]=useState(false);
@@ -82,6 +84,7 @@ export function EntityPlanPurchaseDetail({order:o,onChanged}:{order:EntityPlanPu
   {((canConfirm&&["PREPARED","CONFIRMING","PAID_PENDING","REFUND_PENDING"].includes(o.status))||(canVoid&&o.status==="CLOSING"))&&<Button disabled={busy} onClick={()=>perform(()=>api.recoverEntityPlanPurchase(o.entityNo,o.orderNo))}>{c.recover}</Button>}
 
   {["REFUND_REVIEW","REFUND_REVIEWED"].includes(o.status)&&allow("merchant:merchant:read")&&<PlanRefundReviewPanel entityNo={o.entityNo} orderNo={o.orderNo} canClose={allow("commerce:refund:review")&&allow("merchant:merchant:ban")} onChanged={onChanged}/>}
+  {o.mallOffline && o.actions.some(action=>action.paymentNo) && allow("commerce:mall:order:read") && <ReceiptDocumentationSection canSupplement={canConfirm} c={mallCopy} storeNo={o.storeNo} orderNo={o.orderNo}/>}
   <CashRefundsSection kind="entity" allowUnfulfilledMatchedCash={o.status==="REVIEW_REQUIRED"} scope={o.entityNo} orderNo={o.orderNo} canRelease={closing||["UNMATCHED","REVIEW_REQUIRED"].includes(o.status)} onChanged={onChanged}/>
   {error&&<p role="alert">{error}</p>}
  </section>;

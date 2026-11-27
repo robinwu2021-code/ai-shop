@@ -37,6 +37,15 @@ import static org.mockito.Mockito.*;
 class EntityPlanUnifiedCheckoutMysqlTest {
   @ParameterizedTest @CsvSource({"false,false,false","true,false,false","true,false,true","false,true,false"})
   void paidStoreOrderActivatesFrozenRightsAndEntityQuota(boolean assisted,boolean legacy,boolean interruptConfirmation) throws Exception {
+    runCheckout(assisted,legacy,interruptConfirmation,false);
+  }
+
+  @ParameterizedTest @CsvSource({"false,false,false","true,false,false","false,true,false","false,false,true"})
+  void voidAndRecoverOriginalOrder(boolean mismatch,boolean legacy,boolean mallEntry) throws Exception {
+    runCheckout(mismatch,legacy,mallEntry,true);
+  }
+
+  private void runCheckout(boolean assisted, boolean legacy, boolean interruptConfirmation, boolean closing) throws Exception {
     try (var ledger=new PlatformOfflineCollectionMysqlTest.Fixture(); var mall=new PlatformCollectionMysqlTest.Fixture()) {
       var host=ledger.base;
       EntityPlanOfflineLedgerMysqlTest.seedMerchant(host.jdbc);
@@ -114,6 +123,63 @@ class EntityPlanUnifiedCheckoutMysqlTest {
       var at=clock.instant();
       // Simulate an already-issued mall order whose snapshot predates the offline-record cutover.
       if(legacy) host.jdbc.update("UPDATE mch_plan_purchase SET snapshot_json=JSON_REMOVE(snapshot_json,'$.quote.mallOffline') WHERE order_no=?",no);
+      if(closing) {
+        var operator=ctx.operator("commerce:mall:offline:confirm");
+        var target=new OrderQuery(store.store(),no);
+        var cash=new ai.neargo.commerce.core.offline.DefaultOfflineCashRefundPort(
+            new JdbcMallCashRefundRepository(mall.ds),uow,collection,pay,clock);
+        var accounting=new ai.neargo.shop.merchant.plan.impl.EntityPlanRefundServiceImpl(service,cash,collection);
+        var proof=service.reserveEvidence(ops,no,"RECONCILIATION");
+        var close=new VoidCommand("CLOSE","BANK-CHECK",proof,"checked original statement");
+        if(assisted) {
+          var mismatch=new Money("TWD",19800);
+          var confirmation=service.confirm(ops,no,new Confirm("CONF",null,mismatch,at,"BANK-IN",service.reserveEvidence(ops,no),"amount differs"));
+          assertEquals("UNMATCHED",confirmation.status());
+          var receipt=accounting.receipts(ops,no).getFirst();
+          assertEquals(confirmation.paymentNo(),receipt.paymentNo());
+          assertThrows(ai.neargo.shop.common.BizException.class,()->service.voidOrder(ops,no,close));
+          var supplement=new OfflinePurchaseFacade.SupplementCommand(target,"SUP","CONF","bank statement",
+              List.of(service.reserveEvidence(ops,no,"PLATFORM_RECEIPT")));
+          var added=offline.supplement(operator,supplement);
+          assertEquals(added,offline.supplement(operator,supplement));
+          assertEquals(confirmation.paymentNo(),added.paymentNo());
+          assertEquals("SUP",offline.documentation(operator,target).confirmations().getFirst().supplements().getFirst().actionNo());
+          var refund=accounting.request(ops,no,new OfflineCashRefundPort.Request("cash-RETURN",receipt.paymentNo(),"return mismatch"));
+          var paid=accounting.payout(ops,no,refund.refundNo(),new OfflineCashRefundPort.Payout("OUT",mismatch,at,"original payer","OUT-BANK",service.reserveEvidence(ops,no,"REFUND_PROOF")));
+          assertEquals("REFUNDED",paid.status());
+          assertEquals(mismatch.minor(),accounting.receipts(ops,no).getFirst().refundedMinor());
+        } else assertTrue(accounting.receipts(ops,no).isEmpty());
+        String dbAction=legacy?"mch_plan_purchase_action":"mall_offline_payment";
+        var actionDb=legacy?host.jdbc:mall.jdbc;
+        if(legacy) {
+          // A purchase could already use mall payment records while its void was accepted by the old writer.
+          host.jdbc.update("UPDATE mch_plan_purchase SET snapshot_json=JSON_SET(snapshot_json,'$.quote.mallOffline',CAST('true' AS JSON)) WHERE order_no=?",no);
+          var accepted=new EntityPlanPurchaseServiceImpl.VoidAction(close,ops.userNo(),clock.millis(),"AWAITING_PAYMENT",false,Map.of(),null);
+          host.jdbc.update("INSERT INTO mch_plan_purchase_action(tenant_no,order_no,action_no,operator_no,command_json,confirmed_at,kind,status) VALUES('MAIN',?,?,?,?,?,'VOID','ACCEPTED')",
+              no,close.actionNo(),ops.userNo(),json.writeValueAsString(close),clock.millis());
+          host.jdbc.update("UPDATE mch_plan_purchase SET status='CLOSING',closure_json=JSON_REMOVE(CAST(? AS JSON),'$.mallVoid') WHERE order_no=?",
+              json.writeValueAsString(accepted),no);
+        }
+        actionDb.execute("CREATE TRIGGER lost_void BEFORE UPDATE ON "+dbAction+" FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='interrupted after bank reconciliation'");
+        if(interruptConfirmation) {
+          var nativeVoid=new OfflinePurchaseFacade.VoidCommand(target,close.actionNo(),close.reference(),close.reason(),proof,Map.of());
+          assertThrows(org.springframework.dao.DataAccessException.class,()->offline.voidOrder(operator,nativeVoid));
+        } else assertThrows(org.springframework.dao.DataAccessException.class,()->service.voidOrder(ops,no,close));
+        var pending=service.order(ops,no);
+        assertEquals("CLOSING",pending.status());
+        var closingQuery=new Query(new Access("MAIN",false,Set.of("E1")),new Filter("E1","S1",no,"CLOSING","TWD",null,null,false),null,1);
+        assertEquals(no,service.searchOperatorOrders(ops,closingQuery).getFirst().orderNo());
+        assertTrue(pending.actions().stream().anyMatch(a->"CLOSE".equals(a.actionNo()) && "ACCEPTED".equals(a.status())));
+        actionDb.execute("DROP TRIGGER lost_void");
+        var completed=service.recover(ops,no);
+        assertEquals(assisted?"REFUNDED":"CANCELLED",completed.status());
+        assertEquals(completed,service.voidOrder(ops,no,close));
+        assertThrows(ai.neargo.shop.common.BizException.class,()->service.voidOrder(ops,no,new VoidCommand("CLOSE","DIFFERENT",proof,"different")));
+        assertEquals(legacy?0:1,mall.jdbc.queryForObject("SELECT COUNT(*) FROM mall_offline_payment WHERE order_no=? AND kind='VOID' AND status='APPLIED'",Integer.class,no));
+        assertEquals(legacy?1:0,host.jdbc.queryForObject("SELECT COUNT(*) FROM mch_plan_purchase_action WHERE order_no=? AND kind='VOID'",Integer.class,no));
+        assertEquals(0,host.jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_end_grant",Integer.class));
+        return;
+      }
       var queue=new Query(new Access("MAIN",false,Set.of("E1")),new Filter("E1","S1",no,"SUBMITTED","TWD",null,null,true),null,1);
       if (!assisted) {
         var key=service.reserveEvidence(owner,no);

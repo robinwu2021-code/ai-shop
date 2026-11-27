@@ -35,11 +35,19 @@ final class ShopEntityPlanOfflineRecords implements EntityPlanOfflineRecords {
   }
 
   private <T> T locked(String order, Supplier<T> work) {
+    return locked(order, false, work);
+  }
+
+  private <T> T locked(String order, boolean allowQuote, Supplier<T> work) {
     return tx.required(
         () -> {
           db.queryForObject(
               "SELECT order_no FROM mall_order WHERE tenant_no=? AND order_no=? AND"
-                  + " pricing_policy_version='entity-plan-cash-v1' AND stage='ORDERED' FOR UPDATE",
+                  + " pricing_policy_version='entity-plan-cash-v1' AND "
+                  + (allowQuote
+                      ? "stage IN ('QUOTE','QUOTE_EXPIRED','ORDERED')"
+                      : "stage='ORDERED'")
+                  + " FOR UPDATE",
               String.class,
               TENANT,
               order);
@@ -64,6 +72,7 @@ final class ShopEntityPlanOfflineRecords implements EntityPlanOfflineRecords {
   public void reserve(PrivateEvidencePort.Scope scope, String key, long at) {
     locked(
         scope.orderNo(),
+        "RECONCILIATION".equals(scope.purpose()),
         () -> {
           records.reserve(new OfflineRepository.Evidence(key, scope, at));
           return null;
@@ -117,34 +126,45 @@ final class ShopEntityPlanOfflineRecords implements EntityPlanOfflineRecords {
     var result = new HashMap<String, PaymentState>();
     if (orders.isEmpty()) return result;
     String sql =
-        "SELECT order_no,record_type,status FROM mall_offline_payment WHERE tenant_no='MAIN' AND"
+        "SELECT order_no,record_type,status,kind,action_no FROM mall_offline_payment WHERE tenant_no='MAIN' AND"
             + " order_no IN ("
             + String.join(",", Collections.nCopies(orders.size(), "?"))
-            + ") AND (record_type='CLAIM' OR kind='CONFIRM')"
+            + ") AND (record_type='CLAIM' OR kind='CONFIRM' OR (kind='VOID' AND status<>'REJECTED'))"
             + " ORDER BY (status='SUBMITTED') DESC, created_at DESC,action_no DESC";
     db.query(
         sql,
         (org.springframework.jdbc.core.RowCallbackHandler)
             r -> {
               var no = r.getString(1);
-              var prev = result.getOrDefault(no, new PaymentState(null, null));
+              var prev = result.getOrDefault(no, new PaymentState(null, null, null));
               if ("CLAIM".equals(r.getString(2)) && prev.claim() == null)
-                result.put(no, new PaymentState(r.getString(3), prev.action()));
-              if ("ACTION".equals(r.getString(2)) && prev.action() == null)
-                result.put(no, new PaymentState(prev.claim(), r.getString(3)));
+                result.put(no, new PaymentState(r.getString(3), prev.action(),prev.voidNo()));
+              if ("CONFIRM".equals(r.getString(4)) && prev.action() == null)
+                result.put(no, new PaymentState(prev.claim(), r.getString(3),prev.voidNo()));
+              if ("VOID".equals(r.getString(4)) && prev.voidNo()==null)
+                result.put(no,new PaymentState(prev.claim(),prev.action(),r.getString(5)));
             },
         orders.toArray());
     return result;
   }
 
   public List<ActionView> actions(String no) {
+    return actionViews(no, "CONFIRM");
+  }
+
+  public List<ActionView> voidActions(String no) {
+    return actionViews(no, "VOID");
+  }
+
+  private List<ActionView> actionViews(String no, String kind) {
     return db.query(
         "SELECT action_no,status,payment_no,COALESCE(failure_code,review_note) FROM"
             + " mall_offline_payment WHERE tenant_no=? AND order_no=? AND record_type='ACTION' AND"
-            + " kind='CONFIRM' ORDER BY created_at,action_no",
+            + " kind=? ORDER BY created_at,action_no",
         (r, i) -> new ActionView(r.getString(1), r.getString(2), r.getString(3), r.getString(4)),
         TENANT,
-        no);
+        no,
+        kind);
   }
 
   public ClaimView submit(Actor a, String store, String no, Claim c, long at, boolean open) {
@@ -251,6 +271,103 @@ final class ShopEntityPlanOfflineRecords implements EntityPlanOfflineRecords {
                   "ACCEPTED",
                   null));
           return null;
+        });
+  }
+
+  public SavedVoid latestVoid(String no) {
+    return db
+        .query(
+            "SELECT action_snapshot FROM mall_offline_payment WHERE tenant_no=? AND order_no=? AND"
+                + " record_type='ACTION' AND kind='VOID' AND status IN ('ACCEPTED','APPLIED') ORDER"
+                + " BY created_at DESC,action_no DESC LIMIT 1",
+            (r, i) -> {
+              var action = json.readValue(r.getString(1), OfflineRepository.Action.class);
+              var c = action.reconciliation();
+              return new SavedVoid(
+                  new VoidCommand(
+                      c.actionNo(), c.reconciliationReference(), c.evidenceKey(), c.reason()),
+                  action.operatorNo(),
+                  action.acceptedAt(),
+                  c.unmatchedDispositions());
+            },
+            TENANT,
+            no)
+        .stream()
+        .findFirst()
+        .orElse(null);
+  }
+
+  private ActionView checkedVoid(
+      OfflineRepository.Action action, String operator, VoidCommand command) {
+    var saved = action.reconciliation();
+    if (saved == null
+        || !operator.equals(action.operatorNo())
+        || !command.reference().equals(saved.reconciliationReference())
+        || !command.evidenceKey().equals(saved.evidenceKey())
+        || !command.reason().equals(saved.reason())) throw BizException.of(ErrorCode.BAD_REQUEST);
+    return new ActionView(
+        action.actionNo(),
+        action.status(),
+        action.paymentNo(),
+        action.rejection() == null ? saved.reason() : action.rejection());
+  }
+
+  public ActionView findVoid(String no, String operator, VoidCommand command) {
+    return db
+        .query(
+            "SELECT action_snapshot FROM mall_offline_payment WHERE tenant_no=? AND order_no=? AND"
+                + " record_type='ACTION' AND action_no=?",
+            (r, i) ->
+                checkedVoid(
+                    json.readValue(r.getString(1), OfflineRepository.Action.class),
+                    operator,
+                    command),
+            TENANT,
+            no,
+            command.actionNo())
+        .stream()
+        .findFirst()
+        .orElse(null);
+  }
+
+  public ActionView stageVoid(
+      String store,
+      PaymentIntentCommand payment,
+      String operator,
+      long at,
+      VoidCommand command,
+      Map<String, String> dispositions,
+      boolean alreadyClosed) {
+    String no = payment.orderNo();
+    return locked(
+        no,
+        alreadyClosed,
+        () -> {
+          var prior = records.action(TENANT, no, command.actionNo());
+          if (prior.isPresent()) return checkedVoid(prior.get(), operator, command);
+          var target = new OrderQuery(new StoreRef(TENANT, store), no);
+          var reconciliation =
+              new OfflinePurchaseFacade.VoidCommand(
+                  target,
+                  command.actionNo(),
+                  command.reference(),
+                  command.reason(),
+                  command.evidenceKey(),
+                  dispositions);
+          var action =
+              new OfflineRepository.Action(
+                  command.actionNo(),
+                  "VOID",
+                  target,
+                  operator,
+                  at,
+                  null,
+                  reconciliation,
+                  payment,
+                  alreadyClosed ? "APPLIED" : "ACCEPTED",
+                  null);
+          records.saveAction(action);
+          return checkedVoid(action, operator, command);
         });
   }
 

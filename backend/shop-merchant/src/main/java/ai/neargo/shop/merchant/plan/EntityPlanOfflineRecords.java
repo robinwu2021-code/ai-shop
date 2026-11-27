@@ -20,7 +20,7 @@ public interface EntityPlanOfflineRecords {
 
   List<ActionView> actions(String order);
 
-  record PaymentState(String claim, String action) {}
+  record PaymentState(String claim, String action, String voidNo) {}
 
   Map<String, PaymentState> states(List<String> orders);
 
@@ -35,6 +35,25 @@ public interface EntityPlanOfflineRecords {
       Confirm confirm,
       long at,
       boolean open);
+
+  List<ActionView> voidActions(String order);
+
+  record SavedVoid(
+      VoidCommand command, String operator, long acceptedAt, Map<String, String> dispositions) {}
+
+  SavedVoid latestVoid(String order);
+
+  /** Returns a recorded result only for the original operator and immutable request. */
+  ActionView findVoid(String order, String operator, VoidCommand command);
+
+  ActionView stageVoid(
+      String store,
+      PaymentIntentCommand payment,
+      String operator,
+      long at,
+      VoidCommand command,
+      Map<String, String> dispositions,
+      boolean alreadyClosed);
 
   void resume(String order);
 }

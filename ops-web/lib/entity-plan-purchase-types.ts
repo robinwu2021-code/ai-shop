@@ -86,6 +86,8 @@ export type EntityPlanAction={
   reason:string;
 };
 export type EntityPlanPurchase={
+  /** 该订单的收款资料可按门店号和原商城订单号查询。 */
+  mallOffline?:boolean;
   /** 主体套餐购买订单号。 */
   orderNo:string;
   /** 创建订单的原始幂等请求号。 */

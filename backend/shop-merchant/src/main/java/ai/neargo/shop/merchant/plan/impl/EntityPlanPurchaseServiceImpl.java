@@ -391,6 +391,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       sql.append(" AND (p.status IN ('AWAITING_PAYMENT','CANCELLATION_REQUESTED','SUBMITTED') OR p.status=?)");
       args.add(f.status());
     }
+    else if ("CLOSING".equals(f.status())) sql.append(" AND p.status IN ('AWAITING_PAYMENT','CANCELLATION_REQUESTED','UNMATCHED','REVIEW_REQUIRED','CLOSING')");
     else reportEqual(sql,args,"p.status",f.status());
     reportEqual(sql,args,"JSON_UNQUOTE(JSON_EXTRACT(p.snapshot_json,'$.offer.price.currency'))",f.currency());
     if (f.createdFrom()!=null) { sql.append(" AND p.created_at>=?"); args.add(f.createdFrom()); }
@@ -446,8 +447,11 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     var claim=state==null?str(r,"claim_status"):state.claim();
     var snap=json.readTree(str(r,"snapshot_json")); var price=snap.path("offer").path("price");
     var store=snap.path("storeNo");
+    String status=str(r,"status");
+    if (canAdoptVoid(status) && state!=null && state.voidNo()!=null
+        && (r.get("closure_json")==null || !state.voidNo().equals(decode(r.get("closure_json"),VoidAction.class).command().actionNo()))) status="CLOSING";
     return new Row(Model.ENTITY,str(r,"order_no"),str(r,"entity_no"),store.isNull() || store.isMissingNode()?null:store.asText(),
-        price.path("currency").asText(),price.path("minor").asText(),displayedStatus(str(r,"status"),claim,state==null?null:state.action()),claim,number(r,"created_at"));
+        price.path("currency").asText(),price.path("minor").asText(),displayedStatus(status,claim,state==null?null:state.action()),claim,number(r,"created_at"));
   }
 
   private static String reportMarks(int n) { return String.join(",",Collections.nCopies(n,"?")); }
@@ -806,12 +810,33 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
             .stream()
             .map(this::actionView)
             .toList();
+    String status=str(r,"status");
     String lastConfirmation=null;
     if(mallOffline(s)) {
       var combined=new ArrayList<>(actions); // Merchant closure actions have their own recovery path.
       for(var action:checkout.offlineRecords().actions(no)) {
         lastConfirmation=action.status();
         combined.add(paymentView(r,action));
+      }
+      var voids=checkout.offlineRecords().voidActions(no);
+      var closure=r.get("closure_json")==null?null:decode(r.get("closure_json"),VoidAction.class);
+      combined.addAll(voids);
+      String releaseNo=null;
+      if ("CLOSING".equals(status) && closure!=null && Boolean.TRUE.equals(closure.mallVoid())) {
+        releaseNo=closure.command().actionNo();
+      } else if(canAdoptVoid(status)) {
+        var latest=voids.reversed().stream().filter(v->!"REJECTED".equals(v.status())).findFirst();
+        if(latest.isPresent() && (closure==null || !closure.command().actionNo().equals(latest.get().actionNo()))) {
+          status="CLOSING";
+          releaseNo=latest.get().actionNo();
+        }
+      }
+      if(releaseNo!=null) {
+        // The entity release may still need recovery after the ledger and mall already closed.
+        final String pendingNo=releaseNo;
+        var saved=voids.stream().filter(action->action.actionNo().equals(pendingNo)).findFirst();
+        combined.removeIf(action->action.actionNo().equals(pendingNo));
+        combined.add(new ActionView(pendingNo,"ACCEPTED",null,saved.map(ActionView::reason).orElseGet(()->closure.command().reason())));
       }
       actions=combined;
     }
@@ -821,11 +846,11 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
         s.entityNo(),
         s.storeNo(),
         s.offer(),
-        displayedStatus(str(r,"status"),claims.stream().anyMatch(c->"SUBMITTED".equals(c.status()))?"SUBMITTED":null,lastConfirmation),
+        displayedStatus(status,claims.stream().anyMatch(c->"SUBMITTED".equals(c.status()))?"SUBMITTED":null,lastConfirmation),
         s.intent().expiresAt(),
         "PREPARED".equals(str(r, "status")) ? null : s.intent().offline(),
         claims,
-        actions,"OPS".equals(s.creatorKind())?"OPERATOR":"MERCHANT");
+        actions,"OPS".equals(s.creatorKind())?"OPERATOR":"MERCHANT",mallOffline(s));
   }
 
   private PrivateEvidencePort.Scope scope(Actor a, Snapshot s, String purpose) {
@@ -1350,6 +1375,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     }
     if(mallOffline(snapshot(r))) {
       recoverMallActions(no);
+      recoverMallVoid(no);
       return order(a,no);
     }
     for (var action :
@@ -1484,7 +1510,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     return new RecoverySweep(rows.size(),failed,rows.isEmpty()?after:str(rows.getLast(),"order_no"));
   }
 
-  public record VoidAction(VoidCommand command,String operatorNo,long acceptedAt,String previousStatus,boolean returnedFunds,Map<String,String> dispositions) {
+  public record VoidAction(VoidCommand command,String operatorNo,long acceptedAt,String previousStatus,boolean returnedFunds,Map<String,String> dispositions,Boolean mallVoid) {
     public VoidAction {dispositions=dispositions==null?Map.of():Map.copyOf(dispositions);}
   }
 
@@ -1514,11 +1540,35 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     operator(a);
     var initial=row(a,no,false);String priorStatus=str(initial,"status");
     boolean returning=Set.of("UNMATCHED","REVIEW_REQUIRED","REFUNDED").contains(priorStatus)||"CLOSING".equals(priorStatus)&&initial.get("closure_json")!=null&&decode(initial.get("closure_json"),VoidAction.class).returnedFunds();
-    requireEvidence(a,no,c.evidenceKey(),returning?"RECONCILIATION":"PLATFORM_RECEIPT");
+    var snap=snapshot(initial);
+    boolean mall=mallOffline(snap);
+    if (mall) {
+      var existing=checkout.offlineRecords().findVoid(no,a.userNo(),c);
+      if(existing!=null) {
+        if ("CLOSING".equals(priorStatus)) advanceVoid(no);
+        else if(!"REJECTED".equals(existing.status())) recoverMallVoid(no);
+        return order(a,no);
+      }
+    }
+    var legacy=one("SELECT * FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND action_no=?",TENANT,no,c.actionNo());
+    if(legacy!=null) {
+      verifyLegacyVoid(a,c,legacy);
+      if("ACCEPTED".equals(str(legacy,"status"))) advanceVoid(no);
+      return order(a,no);
+    }
+    var priorClosure=initial.get("closure_json")==null?null:decode(initial.get("closure_json"),VoidAction.class);
+    if(priorClosure!=null && priorClosure.command().actionNo().equals(c.actionNo())) {
+      if(!priorClosure.command().equals(c) || !priorClosure.operatorNo().equals(a.userNo())) throw bad();
+      advanceVoid(no);
+      return order(a,no);
+    }
+    var proof=reserved(a,no,c.evidenceKey(),true);
+    if(!"RECONCILIATION".equals(proof.purpose()) && (mall || returning || !"PLATFORM_RECEIPT".equals(proof.purpose()))
+        || !media.stored(proof,c.evidenceKey())) throw bad();
     Map<String,String> dispositions=new TreeMap<>();
-    if(returning){
+    if(returning || mall){
       var actual=money.receipts(TENANT,no);
-      if(actual.isEmpty()||actual.stream().anyMatch(x->x.pendingRefund()||x.refundedMinor()!=x.amount().minor()))throw bad();
+      if(returning && actual.isEmpty() || actual.stream().anyMatch(x->x.pendingRefund()||x.refundedMinor()!=x.amount().minor()))throw bad();
       var original=snapshot(initial).intent().paymentAttemptNo();
       for(var receipt:actual)if(!original.equals(receipt.paymentAttemptNo()))dispositions.put(receipt.paymentNo(),"VERIFIED_REFUNDED");
     }
@@ -1534,17 +1584,22 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                   no,
                   c.actionNo());
           if (prior != null) {
-            if (!"VOID".equals(str(prior, "kind"))
-                || !decode(prior.get("command_json"), VoidCommand.class).equals(c)
-                || !a.userNo().equals(str(prior, "operator_no"))) throw bad();
+            verifyLegacyVoid(a,c,prior);
             return null;
+          }
+          if(previous!=null) {
+            var pending=decode(previous,VoidAction.class);
+            if(pending.command().actionNo().equals(c.actionNo())) {
+              if(!pending.command().equals(c) || !pending.operatorNo().equals(a.userNo())) throw bad();
+              return null;
+            }
           }
           if(snapshot(r).refundNo()!=null) throw bad();
           if(mallOffline(snapshot(r)) && (mallReviewPending(no,str(r,"status"))
               || checkout.offlineRecords().actions(no).stream().anyMatch(action->c.actionNo().equals(action.actionNo())))) throw bad();
           if (previous != null&&!returning) throw bad();
           if(!Set.of("PREPARED","AWAITING_PAYMENT","CANCELLATION_REQUESTED","UNMATCHED","REVIEW_REQUIRED","REFUNDED").contains(str(r,"status"))||!Objects.equals(priorStatus,str(r,"status")))throw bad();
-          db.update(
+          if (!mall) db.update(
               "INSERT INTO"
                   + " mch_plan_purchase_action(tenant_no,order_no,action_no,operator_no,command_json,confirmed_at,kind,status)"
                   + " VALUES(?,?,?,?,?,?,'VOID','ACCEPTED')",
@@ -1557,7 +1612,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
           db.update(
               "UPDATE mch_plan_purchase SET status='CLOSING',closure_json=? WHERE tenant_no=? AND"
                   + " order_no=?",
-              encode(new VoidAction(c,a.userNo(),clock.millis(),priorStatus,returning,dispositions)),
+              encode(new VoidAction(c,a.userNo(),clock.millis(),priorStatus,returning,dispositions,mall)),
               TENANT,
               no);
           return null;
@@ -1566,14 +1621,52 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     return order(a, no);
   }
 
+  private void verifyLegacyVoid(Actor a,VoidCommand c,Map<String,Object> prior) {
+    if (!"VOID".equals(str(prior,"kind")) || !a.userNo().equals(str(prior,"operator_no"))
+        || !c.equals(decode(prior.get("command_json"),VoidCommand.class))) throw bad();
+  }
+
+  private static boolean canAdoptVoid(String status) {
+    return Set.of("AWAITING_PAYMENT","CANCELLATION_REQUESTED","UNMATCHED","REVIEW_REQUIRED").contains(status);
+  }
+
+  // A mall operator can reconcile directly from the original store order. Recover the entity
+  // release from that same persisted authorization, even if the original operator is offline.
+  private void recoverMallVoid(String no) {
+    var saved=checkout.offlineRecords().latestVoid(no);
+    if(saved!=null) write(()->{
+      var row=one("SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND order_no=? FOR UPDATE",TENANT,no);
+      String status=str(row,"status");
+      if(!canAdoptVoid(status)
+          || snapshot(row).refundNo()!=null) return null;
+      if(row.get("closure_json")!=null && saved.command().actionNo().equals(decode(row.get("closure_json"),VoidAction.class).command().actionNo()))return null;
+      var v=new VoidAction(saved.command(),saved.operator(),saved.acceptedAt(),status,
+          Set.of("UNMATCHED","REVIEW_REQUIRED").contains(status),saved.dispositions(),true);
+      db.update("UPDATE mch_plan_purchase SET status='CLOSING',closure_json=? WHERE tenant_no=? AND order_no=?",encode(v),TENANT,no);
+      return null;
+    });
+    advanceVoid(no);
+  }
+
   private void advanceVoid(String no) {
     var row = one("SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND order_no=?", TENANT, no);
     if (!"CLOSING".equals(str(row, "status"))) return;
     var s = snapshot(row);
     var v = decode(row.get("closure_json"), VoidAction.class);
     var c = v.command();
+    if (Boolean.TRUE.equals(v.mallVoid())) {
+      ActionView prior;
+      try { prior=checkout.offlineRecords().findVoid(no,v.operatorNo(),c); }
+      catch(BizException conflict) { restoreBeforeVoid(no,v); throw conflict; }
+      if(prior!=null && "REJECTED".equals(prior.status())) {
+        restoreBeforeVoid(no,v);
+        return;
+      }
+    }
     // Idempotently establish the original intent, including an interrupted issuance.
     if (s.quote() != null && checkout.discardUnplaced(s.quote(),false)) {
+      if (Boolean.TRUE.equals(v.mallVoid())) checkout.offlineRecords().stageVoid(s.storeNo(),s.intent(),v.operatorNo(),
+          v.acceptedAt(),c,v.dispositions(),true);
       finishVoid(no,v);
       return;
     }
@@ -1584,11 +1677,33 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     if (s.quote() == null && mallReceipts != null) mallReceipts.prepare(s.intent());
     payments.create(s.intent());
     var already=payments.query(new PaymentQuery(TENANT,no,s.intent().paymentAttemptNo(),s.intent()));
-    if(v.returnedFunds()){
+    if(v.returnedFunds() || Boolean.TRUE.equals(v.mallVoid()) && already!=null && already.closureReference().isPresent()){
       var actual=money.receipts(TENANT,no);
-      if(actual.isEmpty()||actual.stream().anyMatch(x->x.pendingRefund()||x.refundedMinor()!=x.amount().minor()))throw new IllegalStateException("REFUND_NOT_VERIFIED");
+      if(v.returnedFunds() && actual.isEmpty() || actual.stream().anyMatch(x->x.pendingRefund()||x.refundedMinor()!=x.amount().minor()))throw new IllegalStateException("REFUND_NOT_VERIFIED");
     }
-    if(already==null||already.closureReference().isEmpty())try{
+    if (Boolean.TRUE.equals(v.mallVoid())) {
+      var records=checkout.offlineRecords();
+      ActionView action;
+      try {
+        action=records.stageVoid(s.storeNo(),s.intent(),v.operatorNo(),v.acceptedAt(),c,v.dispositions(),
+            already!=null && already.closureReference().isPresent() && (already.definitivelyClosed() || v.returnedFunds() && already.status()==AsyncStatus.SUCCEEDED));
+      } catch (BizException conflict) {
+        restoreBeforeVoid(no,v);
+        throw conflict;
+      }
+      if ("ACCEPTED".equals(action.status())) {
+        try { records.resume(no); }
+        catch(ai.neargo.commerce.api.mall.MallException failure) {
+          if(!"REJECTED".equals(records.findVoid(no,v.operatorNo(),c).status())) throw failure;
+        }
+        action=records.findVoid(no,v.operatorNo(),c);
+      }
+      if ("REJECTED".equals(action.status())) {
+        restoreBeforeVoid(no,v);
+        return;
+      }
+      if (!"APPLIED".equals(action.status())) throw new IllegalStateException("PAYMENT_CLOSURE_UNKNOWN");
+    } else if(already==null||already.closureReference().isEmpty())try{
       money.reconcile(new OfflineCollectionPort.Reconciliation(s.intent(),v.operatorNo(),c.reference(),c.reason(),c.evidenceKey(),Instant.ofEpochMilli(v.acceptedAt()),v.dispositions()));
     }catch(IllegalArgumentException refusal){reject(no,c.actionNo(),refusal,v.previousStatus()==null?"CANCELLATION_REQUESTED":v.previousStatus(),true);return;}
     var closed=payments.query(new PaymentQuery(TENANT,no,s.intent().paymentAttemptNo(),s.intent()));
@@ -1598,11 +1713,16 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     finishVoid(no,v);
   }
 
+  private void restoreBeforeVoid(String no,VoidAction v) {
+    db.update("UPDATE mch_plan_purchase SET status=?,closure_json=NULL WHERE tenant_no=? AND order_no=? AND status='CLOSING' AND closure_json->>'$.command.actionNo'=?",
+        v.previousStatus(),TENANT,no,v.command().actionNo());
+  }
+
   private void finishVoid(String no, VoidAction v) {
     var c = v.command();
     write(
         () -> {
-          db.update(
+          if (!Boolean.TRUE.equals(v.mallVoid())) db.update(
               "UPDATE mch_plan_purchase_action SET status='APPLIED' WHERE tenant_no=? AND"
                   + " order_no=? AND action_no=? AND status='ACCEPTED'",
               TENANT,
@@ -1610,10 +1730,10 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
               c.actionNo());
           return db.update(
               "UPDATE mch_plan_purchase SET status=?,open_entity=NULL WHERE tenant_no=?"
-                  + " AND order_no=? AND status='CLOSING'",
+                  + " AND order_no=? AND status='CLOSING' AND closure_json->>'$.command.actionNo'=?",
               v.returnedFunds()?"REFUNDED":"CANCELLED",
               TENANT,
-              no);
+              no,c.actionNo());
         });
   }
 
