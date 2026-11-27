@@ -62311,6 +62311,14 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "PRODUCT",
+      "type": "String",
+      "value": "\"product\"",
+      "zh": "商品领域（ai.neargo.shop.product）：商品与 SKU、规格、类目、门店上架定价与库存、标准品、销售目录。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "INDUSTRY",
       "type": "String",
       "value": "\"industry\"",
@@ -62495,6 +62503,30 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "PRODUCT_TX_MANAGER",
+      "type": "String",
+      "value": "\"productTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PRODUCT_DATA_SOURCE",
+      "type": "String",
+      "value": "\"productDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PRODUCT_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"productSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "INDUSTRY_TX_MANAGER",
       "type": "String",
       "value": "\"industryTxManager\"",
@@ -62545,8 +62577,16 @@
       "host": "ModuleDataSources",
       "name": "MODULES",
       "type": "List<String>",
-      "value": "List.of( INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, INDUSTRY, COMMON, MEMBER_MARKETING)",
+      "value": "List.of( INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, PRODUCT, INDUSTRY, COMMON, MEMBER_MARKETING)",
       "zh": "守卫测试也读这份清单。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "LEGACY_DATABASES",
+      "type": "List<String>",
+      "value": "List.of( \"ai_shop\", \"ai_shop_ume\", \"ai_shop_ume_inv\", \"ai_shop_inv\", \"ai_shop_ume_rehearsal\")",
+      "zh": "旧库名单（用户 2026-11-27：业务不再访问旧库）。",
       "module": "shop-store-mybatis"
     },
     {

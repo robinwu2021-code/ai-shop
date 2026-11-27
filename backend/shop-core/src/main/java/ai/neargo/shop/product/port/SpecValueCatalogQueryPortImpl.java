@@ -26,7 +26,7 @@ public class SpecValueCatalogQueryPortImpl implements SpecValueCatalogQueryPort 
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly=true, isolation=Isolation.REPEATABLE_READ)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER, readOnly=true, isolation=Isolation.REPEATABLE_READ)
     public List<SpecValueFact> getValues(String entity, List<String> numbers) {
         SpecValueCatalogQueryPort.validateLookup(entity, numbers);
         return DataScopeContext.executeWithoutScope(() -> {

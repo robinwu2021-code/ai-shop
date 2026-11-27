@@ -1,6 +1,8 @@
 package ai.neargo.shop.config;
 
 import ai.neargo.shop.common.config.CommonTableMapper;
+import ai.neargo.shop.common.config.MemberMarketingTableMapper;
+import ai.neargo.shop.common.config.ProductTableMapper;
 import ai.neargo.shop.common.config.ModuleDataSourceRegistrar;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
@@ -50,6 +52,12 @@ import org.springframework.context.annotation.Import;
 @MapperScan(basePackages = {"ai.neargo.shop.trade.order.mapper", "ai.neargo.shop.trade.mapper"},
         markerInterface = TradeSqlMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.TRADE_SQL_SESSION_FACTORY)
+// 商品领域（TDD-商品领域迁到门店交易库）：表在门店交易库的收到商品句柄（部署时与交易句柄绑同一个数据源名）；
+// 评价、专题、收藏的表在会员营销库，收到会员营销句柄
+@MapperScan(basePackages = "ai.neargo.shop.product", markerInterface = ProductTableMapper.class,
+        sqlSessionFactoryRef = ModuleDataSources.PRODUCT_SQL_SESSION_FACTORY)
+@MapperScan(basePackages = "ai.neargo.shop.product", markerInterface = MemberMarketingTableMapper.class,
+        sqlSessionFactoryRef = ModuleDataSources.MEMBER_MARKETING_SQL_SESSION_FACTORY)
 // 基础能力库的 Mapper（TDD-基础能力库对齐 2a）：按标记收。先是权限，其余公共能力收敛后同样打标记
 @MapperScan(basePackages = {"ai.neargo.shop.platform", "ai.neargo.shop.event"}, markerInterface = CommonTableMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.COMMON_SQL_SESSION_FACTORY)

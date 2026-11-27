@@ -6,6 +6,8 @@ import ai.neargo.shop.common.config.PlatformSqlMapper;
 import ai.neargo.shop.common.config.PlatformTableMapper;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.common.config.IndustryTableMapper;
+import ai.neargo.shop.common.config.MemberMarketingTableMapper;
+import ai.neargo.shop.common.config.ProductTableMapper;
 import ai.neargo.shop.common.config.TradeSqlMapper;
 import ai.neargo.shop.common.config.TradeTableMapper;
 import org.mybatis.spring.annotation.MapperScan;
@@ -80,7 +82,9 @@ import org.springframework.context.annotation.Import;
 
                 // 标记接口本身也继承 BaseMapper、又在本扫描根之下：不排除的话它自己会被注册成一个 Mapper。
                 // 支付商户库的那个标记由 PayDataSourceConfig 收取，这里只负责不把它扫进来
-                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PayMerchantTableMapper.class)})
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PayMerchantTableMapper.class),
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = ProductTableMapper.class),
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = MemberMarketingTableMapper.class)})
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *

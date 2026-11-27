@@ -92,6 +92,8 @@ public class ModuleDataSourceRegistrar implements ImportBeanDefinitionRegistrar,
         if (source.getUrl() == null || source.getUrl().isBlank()) {
             throw new IllegalStateException("shop.datasources." + name + ".url 没有配置");
         }
+        rejectLegacy(name, source.getUrl(), environment.getProperty("shop.legacy-databases", String[].class,
+                ModuleDataSources.LEGACY_DATABASES.toArray(String[]::new)));
         String dataSource = ModuleDataSources.dataSource(name);
         if (registry.containsBeanDefinition(dataSource)) {
             return;   // 注册器会被每个引入它的配置类各触发一次（平台装配、支付装配），只登记一遍
@@ -105,6 +107,41 @@ public class ModuleDataSourceRegistrar implements ImportBeanDefinitionRegistrar,
         registry.registerBeanDefinition(ModuleDataSources.txManager(name), BeanDefinitionBuilder
                 .genericBeanDefinition(PlatformTransactionManager.class, () -> transactions(dataSource))
                 .getBeanDefinition());
+    }
+
+    /**
+     * 具名数据源不准指向旧库（{@link ModuleDataSources#LEGACY_DATABASES}）：只认 JDBC 地址里的库名，
+     * 比较不分大小写。命中就拒绝启动，而不是让业务悄悄读写旧库。
+     */
+    static void rejectLegacy(String name, String url, String[] legacy) {
+        String database = databaseOf(url);
+        for (String old : legacy) {
+            if (old != null && old.trim().equalsIgnoreCase(database)) {
+                throw new IllegalStateException("shop.datasources." + name + " 指向旧库 " + database
+                        + "：业务不再访问旧库，请改成新库（n_*）的地址");
+            }
+        }
+    }
+
+    /** {@code jdbc:mysql://host:port/<库名>?参数} 里的库名；取不到返回空串。 */
+    static String databaseOf(String url) {
+        int scheme = url.indexOf("://");
+        if (scheme < 0) {
+            return "";
+        }
+        int slash = url.indexOf('/', scheme + 3);
+        if (slash < 0) {
+            return "";
+        }
+        String rest = url.substring(slash + 1);
+        int end = rest.length();
+        for (char stop : new char[] {'?', ';', '/'}) {
+            int i = rest.indexOf(stop);
+            if (i >= 0) {
+                end = Math.min(end, i);
+            }
+        }
+        return rest.substring(0, end);
     }
 
     private static HikariDataSource pool(String name, Source source) {

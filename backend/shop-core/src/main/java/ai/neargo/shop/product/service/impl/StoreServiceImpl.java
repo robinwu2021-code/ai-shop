@@ -263,7 +263,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public ReorderResultVO reorderFrom(String orderNo) {
         String userNo = SecurityUtils.currentUserNo();
         // Port 内部已做归属校验：别人的订单号查不出东西（订单号是可枚举的）
@@ -302,7 +302,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public RebuyResultVO rebuy(String merchantNo) {
         List<FrequentItemVO> items = frequentItems(merchantNo);
         int added = 0;

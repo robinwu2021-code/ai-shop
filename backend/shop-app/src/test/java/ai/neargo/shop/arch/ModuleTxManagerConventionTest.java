@@ -36,7 +36,7 @@ class ModuleTxManagerConventionTest {
             "shop-gateway/src/main/java/ai/neargo/shop/merchantbridge", "ModuleDataSources.PLATFORM_TX_MANAGER",
             "invoice/invoice-domain/src/main/java/ai/neargo/shop/invoice", "ModuleDataSources.INVOICE_TX_MANAGER",
             "shop-core/src/main/java/ai/neargo/shop/printing", "ModuleDataSources.PRINT_TX_MANAGER",
-            "shop-core/src/main/java/ai/neargo/shop/product", "ModuleDataSources.TRADE_TX_MANAGER",
+            "shop-core/src/main/java/ai/neargo/shop/product", "ModuleDataSources.PRODUCT_TX_MANAGER",
             "shop-core/src/main/java/ai/neargo/shop/trade", "ModuleDataSources.TRADE_TX_MANAGER",
             "shop-core/src/main/java/ai/neargo/shop/fulfillment", "ModuleDataSources.TRADE_TX_MANAGER",
             // 基础能力库的权限（运营端角色、功能点、接口资源）：TDD-基础能力库对齐 2a
@@ -166,6 +166,10 @@ class ModuleTxManagerConventionTest {
         assertThat(ModuleDataSources.TRADE_DATA_SOURCE).isEqualTo(ModuleDataSources.dataSource(ModuleDataSources.TRADE));
         assertThat(ModuleDataSources.TRADE_SQL_SESSION_FACTORY)
                 .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.TRADE));
+        assertThat(ModuleDataSources.PRODUCT_TX_MANAGER).isEqualTo(ModuleDataSources.txManager(ModuleDataSources.PRODUCT));
+        assertThat(ModuleDataSources.PRODUCT_DATA_SOURCE).isEqualTo(ModuleDataSources.dataSource(ModuleDataSources.PRODUCT));
+        assertThat(ModuleDataSources.PRODUCT_SQL_SESSION_FACTORY)
+                .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.PRODUCT));
         assertThat(ModuleDataSources.INDUSTRY_TX_MANAGER)
                 .isEqualTo(ModuleDataSources.txManager(ModuleDataSources.INDUSTRY));
         assertThat(ModuleDataSources.INDUSTRY_DATA_SOURCE)

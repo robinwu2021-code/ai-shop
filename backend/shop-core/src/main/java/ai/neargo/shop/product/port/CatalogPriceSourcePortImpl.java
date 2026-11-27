@@ -65,7 +65,7 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
             MerchantQueryPort merchants,
             MarketPort markets,
             PricingTaxSettingPort taxes,
-            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.PRODUCT_TX_MANAGER) PlatformTransactionManager manager) {
         this(
                 skus,
                 goods,

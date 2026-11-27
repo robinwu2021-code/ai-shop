@@ -52,12 +52,12 @@ public class OriginalStockRestoreServiceImpl implements OriginalStockRestoreServ
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void restore(String purpose, String original, List<SkuQty> items) {
         restoreLocked(purpose, original, null, null, items);
     }
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void restore(String purpose, Original original, String confirmationOperationNo, List<SkuQty> items) {
         StockDispositionContract.requireOperation(original, confirmationOperationNo);
         if (!List.of("PLATFORM", "DUAL").contains(original.authority())) throw BizException.of(ErrorCode.CONFLICT);

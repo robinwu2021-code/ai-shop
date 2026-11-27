@@ -91,7 +91,7 @@ public class SpuStdServiceImpl implements SpuStdService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public SpuStdVO save(SaveCommand cmd) {
         if (cmd.title() == null || cmd.title().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -124,7 +124,7 @@ public class SpuStdServiceImpl implements SpuStdService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public SpuStdVO archive(String stdNo) {
         PrdSpuStd t = requireRow(stdNo);
         /*
@@ -139,7 +139,7 @@ public class SpuStdServiceImpl implements SpuStdService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public int bulkStatus(List<String> stdNos, String status) {
         if (stdNos == null || stdNos.isEmpty()) {
             return 0;
@@ -167,7 +167,7 @@ public class SpuStdServiceImpl implements SpuStdService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public SpuStdVO unarchive(String stdNo) {
         PrdSpuStd t = requireRow(stdNo);
         t.setStatus(PrdSpuStd.ACTIVE);

@@ -953,7 +953,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     // ---------------------------------------------------------------- 保存
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO save(String merchantNo, SaveCommand cmd) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         if (cmd.title() == null || cmd.title().isBlank()) {
@@ -1406,7 +1406,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO publishDraft(String merchantNo, String goodsNo, Long confirmVersion) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         PrdGoods live = mine(merchantNo, goodsNo);
@@ -1459,7 +1459,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO discardDraft(String merchantNo, String goodsNo) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         // mine() 先核归属 —— 草稿表只有 goods_no，不核的话拿别家的单号也删得掉
@@ -2547,7 +2547,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO toggle(String merchantNo, String goodsNo, boolean onSale) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         PrdGoods g = mine(merchantNo, goodsNo);
@@ -2624,7 +2624,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO forceOff(String goodsNo, String reason) {
         if (reason == null || reason.isBlank()) {
             // 与审核驳回同一条规矩：没有原因的处置在申诉时站不住
@@ -2655,7 +2655,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO platformSuspendGoods(String goodsNo, String reason) {
         if (reason == null || reason.isBlank()) {
             // 与审核驳回同一条规矩：没有原因的处置在申诉时站不住
@@ -2688,7 +2688,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void platformOfflineStore(String entityNo, String storeNo) {
         lockOwnership(entityNo, storeNo);
         List<PrdGoods> all =
@@ -2729,7 +2729,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void platformRestoreStore(String entityNo, String storeNo) {
         lockOwnership(entityNo, storeNo);
         List<ai.neargo.shop.product.entity.PrdStoreGoods> suspended =
@@ -3283,7 +3283,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO saveStock(String merchantNo, String goodsNo, String skuNo, int stock) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         PrdGoods g = mine(merchantNo, goodsNo);
@@ -3349,7 +3349,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO saveStoreStock(
             String merchantNo, String storeNo, String goodsNo, String skuNo, int stock) {
         lockOwnership(merchantNo, storeNo);
@@ -3402,7 +3402,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO submitForAudit(String merchantNo, String goodsNo) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         PrdGoods g = mine(merchantNo, goodsNo);
@@ -3480,7 +3480,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO savePresaleCutoff(
             String merchantNo, String goodsNo, Long cutoffAt, String arrivalDesc) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
@@ -3510,7 +3510,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO saveStorePrice(
             String merchantNo,
             String storeNo,
@@ -3692,7 +3692,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO audit(String goodsNo, boolean approved, String reason) {
         if (!approved && (reason == null || reason.isBlank())) {
             // 不写理由的驳回等于让商家猜着改
@@ -4003,7 +4003,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public SpecTemplateVO saveSpecTemplate(
             String merchantNo, String name, List<SpecOption> options) {
         if (name == null || name.isBlank() || options == null || options.isEmpty()) {
@@ -4093,7 +4093,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public List<String> setPayModes(String merchantNo, String goodsNo, List<String> payModes) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         if (payModes == null || payModes.stream().anyMatch(m -> !PayModes.isValid(m))) {

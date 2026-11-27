@@ -31,6 +31,14 @@ public final class ModuleDataSources {
      */
     public static final String TRADE = "trade";
     /**
+     * 商品领域（{@code ai.neargo.shop.product}）：商品与 SKU、规格、类目、门店上架定价与库存、标准品、销售目录。
+     * 表在门店交易库，与 {@link #TRADE} 同库；单列一个句柄是为了商品能先于交易对齐新表、先在测试里验证
+     * （TDD-商品领域迁到门店交易库 §2.3）。<b>部署时必须与 {@link #TRADE} 绑到同一个数据源名</b>：
+     * 下单、退款在同一个事务里锁商品库存，同名数据源共用连接池与事务管理器，原子性才保得住。
+     * 哪些 Mapper 归它，看 {@link ProductTableMapper}。
+     */
+    public static final String PRODUCT = "product";
+    /**
      * 行业库上的行业模块：餐饮的桌台、工位、出品单、厨显、人头权益、宴会、排队、寄存、服务交接，
      * 美业的服务执行，以及两个行业共用的门店经营策略、提成规则（ADR-068）。代码在行业插件里，
      * 各插件的持久化配置按 {@link IndustryTableMapper} 收到这个句柄上。
@@ -66,6 +74,9 @@ public final class ModuleDataSources {
     public static final String TRADE_TX_MANAGER = "tradeTxManager";
     public static final String TRADE_DATA_SOURCE = "tradeDataSource";
     public static final String TRADE_SQL_SESSION_FACTORY = "tradeSqlSessionFactory";
+    public static final String PRODUCT_TX_MANAGER = "productTxManager";
+    public static final String PRODUCT_DATA_SOURCE = "productDataSource";
+    public static final String PRODUCT_SQL_SESSION_FACTORY = "productSqlSessionFactory";
     public static final String INDUSTRY_TX_MANAGER = "industryTxManager";
     public static final String INDUSTRY_DATA_SOURCE = "industryDataSource";
     public static final String INDUSTRY_SQL_SESSION_FACTORY = "industrySqlSessionFactory";
@@ -75,7 +86,14 @@ public final class ModuleDataSources {
 
     /** 守卫测试也读这份清单；常量名与这里的规则对不上会在那里变红。 */
     public static final List<String> MODULES = List.of(
-            INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, INDUSTRY, COMMON, MEMBER_MARKETING);
+            INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, PRODUCT, INDUSTRY, COMMON, MEMBER_MARKETING);
+
+    /**
+     * 旧库名单（用户 2026-11-27：业务不再访问旧库）。具名数据源的地址指向这些库就拒绝启动，
+     * 防部署时把新库连接误填成旧库。可用 {@code shop.legacy-databases} 覆盖。
+     */
+    public static final List<String> LEGACY_DATABASES = List.of(
+            "ai_shop", "ai_shop_ume", "ai_shop_ume_inv", "ai_shop_inv", "ai_shop_ume_rehearsal");
 
     private ModuleDataSources() {
     }
