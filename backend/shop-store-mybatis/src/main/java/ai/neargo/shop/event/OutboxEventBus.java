@@ -83,10 +83,7 @@ public class OutboxEventBus {
     /** @param afterCommit 有通知类消费者 @param durable 有必达（发件箱）消费者 */
     private record Route(boolean afterCommit, boolean durable) { }
 
-    /**
-     * 有通知类消费者就登记提交后通知；返回还要不要落发件箱。
-     * 只有通知类消费者时不落；没有任何消费者时照旧落（存档语义不变）。
-     */
+    /** 有通知类消费者就登记提交后通知；返回还要不要落发件箱。 */
     private boolean persistAfterNotifying(String eventNo, DomainEvent event) {
         if (notifications == null || consumers == null) {
             return true;
@@ -95,7 +92,13 @@ public class OutboxEventBus {
         if (route.afterCommit()) {
             notifications.publish(eventNo, event);
         }
-        return route.durable() || !route.afterCommit();
+        if (route.durable()) {
+            return true;
+        }
+        // 本进程没有必达消费者时，只在别处还有人收才落库（R10.1 / ADR-067 决策 10：无人消费的事件不再存档）：
+        // 中间件名单里的类型可能由别的进程订阅；统一模式下可能登记了在别的进程执行的处理者
+        return (brokerProperties != null && brokerProperties.relays(event.eventType()))
+                || (unified != null && unified.enabled("PLATFORM") && unified.hasDelivery("PLATFORM", event.eventType()));
     }
 
     private Route route(String eventType) {
@@ -169,7 +172,8 @@ public class OutboxEventBus {
 
     /**
      * 唯一的发布入口（ADR-067）。按订阅者决定走法：有通知类消费者 → 提交后交给它们；
-     * 有必达消费者 → 落发件箱；只有通知类 → 不落发件箱；一个消费者都没有 → 照旧落库（存档语义不变）。
+     * 有必达消费者 → 落发件箱；只有通知类 → 不落发件箱；一个消费者都没有 → 不落库（R10.1），
+     * 除非它在中间件名单里或统一模式登记了别处的投递目标。
      */
     public void publish(DomainEvent event) {
         if (unified != null && unified.isMaintenance()) { throw new IllegalStateException("Outbox maintenance"); }
