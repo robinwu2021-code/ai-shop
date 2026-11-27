@@ -30,3 +30,13 @@ INSERT IGNORE INTO sys_pay_channel_market
 VALUES
     ('WECHAT', 'CN', 'MAIN', '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0),
     ('ALIPAY', 'CN', 'MAIN', '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0);
+
+-- 平台标准品种子：schema-test.sql 写在旧表 prd_spu_std，商品代码读门店交易库的 prd_standard_goods
+-- （TDD-商品领域迁到门店交易库 批次 1，列完全一致）。旧表随 schema-test.sql 退场时，种子直接改写进新表、删掉这段。
+INSERT INTO prd_standard_goods
+    (std_no, category_no, title, title_i18n, subtitle, cover, images, spec_groups, keywords,
+     status, ref_count, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT std_no, category_no, title, title_i18n, subtitle, cover, images, spec_groups, keywords,
+       status, ref_count, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted
+FROM prd_spu_std s
+WHERE NOT EXISTS (SELECT 1 FROM prd_standard_goods g WHERE g.std_no = s.std_no);
