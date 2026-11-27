@@ -309,8 +309,9 @@ shop:
     # 发件箱里改由中间件投递的事件类型，按域逐个加（ADR-067 第 4 步）；不在名单里的照旧进程内投递。
     # 名单里的事件，必达消费者以“保序订阅”收（RabbitMQ 下按聚合号分区，需服务端启用 rabbitmq_consistent_hash_exchange）。
     # 2026-11-27 已切：商品→库存域（四个事件，库存四个投影同一订阅组 inventory-product）；
-    # 打印事实域（三个事件，事实与控制变更同一订阅组 print-facts）。transport=local 时名单不起作用。
-    outbox-event-types: ${SHOP_EVENTS_OUTBOX_TYPES:SKU_UPSERTED,SKU_RETIRED,GOODS_ON_SALE_CHANGED,SKU_INV_MODE_CHANGED,ORDER_PRINT_FACT_READY,ORDER_PRINT_CONTROL_CHANGED,BUSINESS_PRINT_FACT_READY}
+    # 打印事实域（三个事件，事实与控制变更同一订阅组 print-facts）；
+    # 发货快照回写（LGS_SHIPMENT_SNAPSHOT，单消费者按运单号保序）。transport=local 时名单不起作用。
+    outbox-event-types: ${SHOP_EVENTS_OUTBOX_TYPES:SKU_UPSERTED,SKU_RETIRED,GOODS_ON_SALE_CHANGED,SKU_INV_MODE_CHANGED,ORDER_PRINT_FACT_READY,ORDER_PRINT_CONTROL_CHANGED,BUSINESS_PRINT_FACT_READY,LGS_SHIPMENT_SNAPSHOT}
     rabbitmq:
       host: ${SHOP_RABBITMQ_HOST:192.168.3.200}
       port: ${SHOP_RABBITMQ_PORT:5673}

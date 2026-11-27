@@ -10021,6 +10021,12 @@
             "items": {
               "$ref": "#/components/schemas/MallOrderDetailView_Line"
             }
+          },
+          "hardwareItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MallOrderDetailView_HardwareItem"
+            }
           }
         }
       },
@@ -11335,6 +11341,12 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "requestOperationNo": {
+            "type": [
+              "string",
+              "null"
             ]
           }
         }
@@ -13097,6 +13109,20 @@
                 }
               }
             }
+          }
+        }
+      },
+      "MallOrderDetailView_HardwareItem": {
+        "type": "object",
+        "properties": {
+          "orderComponentNo": {
+            "type": "string"
+          },
+          "hardwareSkuNo": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
           }
         }
       }

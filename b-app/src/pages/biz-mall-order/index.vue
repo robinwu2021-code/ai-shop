@@ -28,8 +28,8 @@
           <text class="txt-sub">{{ detail.shippingAddress.recipient }} · {{ detail.shippingAddress.phone }}</text>
           <text class="txt-sub">{{ [detail.shippingAddress.city, detail.shippingAddress.addressLine].filter(Boolean).join(" ") }}</text>
         </view>
-        <view v-for="s in detail.shipments ?? []" :key="s.operationNo" class="sh-mt-xs">
-          <text class="txt-caption">{{ t("bizMall.order.shipped", { carrier: s.carrierCode, no: s.trackingNo }) }}</text>
+        <view v-for="s in confirmedShipments" :key="s.operationNo" class="sh-mt-xs">
+          <text class="txt-caption">{{ t("bizMall.order.shipped", { carrier: s.carrierCode, no: s.trackingNo }) }} × {{ s.quantity }}</text>
         </view>
       </view>
 
@@ -142,8 +142,9 @@ let retryClaim: { form: string; request: MallOfflineClaimRequest } | undefined;
 const payment = computed(() => detail.value?.summary?.paymentStatus ?? "UNPAID");
 const awaitingTransfer = computed(() => payment.value === "UNPAID" || payment.value === "PAYING");
 const paid = computed(() => payment.value === "PAID");
+const confirmedShipments = computed(() => detail.value?.shipments?.filter(s => s.status === "SUCCEEDED") ?? []);
 const awaitingShipment = computed(() => paid.value && detail.value?.summary?.fulfillmentStatus === "PARTIAL"
-  && detail.value.summary.refundStatus === "NONE" && !detail.value.shipments?.length
+  && detail.value.summary.refundStatus === "NONE" && !confirmedShipments.value.length
   && detail.value.quote?.components?.some(c => c.kind === "HARDWARE"));
 const pendingClaim = computed(() => claims.value.some((c) => c.status === "SUBMITTED" || c.status === "REVIEWING"));
 const canSubmit = computed(() => receipts.value.length > 0 && bankReference.value.length > 0);

@@ -13,7 +13,16 @@ public record MallOrderDetailView(
         List<PaymentAttempt> paymentAttempts,
         List<Shipment> shipments,
         List<RefundView> refunds,
-        List<Line> lines) {
+        List<Line> lines,
+        List<HardwareItem> hardwareItems) {
+    public record HardwareItem(String orderComponentNo, String hardwareSkuNo, int quantity) {}
+
+    public MallOrderDetailView(Summary summary, QuoteView quote, ShippingAddress shippingAddress,
+            List<PaymentAttempt> paymentAttempts, List<Shipment> shipments, List<RefundView> refunds,
+            List<Line> lines) {
+        this(summary, quote, shippingAddress, paymentAttempts, shipments, refunds, lines, List.of());
+    }
+
     public MallOrderDetailView(
             Summary summary,
             QuoteView quote,
@@ -86,5 +95,11 @@ public record MallOrderDetailView(
             String trackingNo,
             long quantity,
             AsyncStatus status,
-            String errorCode) {}
+            String errorCode,
+            String requestOperationNo) {
+        public Shipment(String operationNo, String orderComponentNo, String carrierCode,
+                String trackingNo, long quantity, AsyncStatus status, String errorCode) {
+            this(operationNo, orderComponentNo, carrierCode, trackingNo, quantity, status, errorCode, null);
+        }
+    }
 }

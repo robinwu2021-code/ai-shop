@@ -35,7 +35,8 @@ function summary(o: m.MallOrderRow): MallOrderSummary {
 function detail(o: m.MallOrderRow): MallOrderDetailView {
   return clone({
     summary: summary(o), quote: o.quote, shippingAddress: o.shippingAddress, paymentAttempts: o.attempts,
-    shipments: o.shipments.map(({ fingerprint: _f, ...x }) => x), refunds: o.refunds.map(m.publicRefund),
+    hardwareItems: o.hardwareItems,
+    shipments: o.shipments.map(({ fingerprint: _f, ...x }) => ({ ...x, requestOperationNo: x.operationNo })), refunds: o.refunds.map(m.publicRefund),
   });
 }
 

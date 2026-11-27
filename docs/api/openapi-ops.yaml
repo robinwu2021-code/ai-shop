@@ -14866,6 +14866,10 @@ components:
     MallShipment:
       type: "object"
       properties:
+        requestOperationNo:
+          type:
+            - "string"
+            - "null"
         operationNo:
           type: "string"
           description: "操作号"
@@ -14974,6 +14978,22 @@ components:
     MallOrderDetailView:
       type: "object"
       properties:
+        hardwareItems:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              orderComponentNo:
+                type: "string"
+              hardwareSkuNo:
+                type: "string"
+              quantity:
+                type: "number"
+            required:
+              - "orderComponentNo"
+              - "hardwareSkuNo"
+              - "quantity"
+            additionalProperties: false
         summary:
           "$ref": "#/components/schemas/MallOrderSummary"
           description: "概览与三维状态"

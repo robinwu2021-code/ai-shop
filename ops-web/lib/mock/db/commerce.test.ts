@@ -312,10 +312,14 @@ describe("线下收款：申报 ≠ 到账", () => {
 
 describe("订单与权益", () => {
   it("硬件发货：不超发，operationNo 幂等且参数不可变，全部发完履约才 COMPLETED", async () => {
+    const order = await api.mallOrder(S1, "MO-1003");
+    const item = order.hardwareItems![0]!;
+    expect(item.orderComponentNo).not.toBe(order.quote?.components?.[0]?.componentNo);
     const ship = (operationNo: string, quantity: number, trackingNo = "T1") =>
-      api.shipMallOrder(S1, "MO-1003", { orderComponentNo: "OC-HW-1003", operationNo, carrierCode: "DEV", trackingNo, quantity });
+      api.shipMallOrder(S1, "MO-1003", { orderComponentNo: item.orderComponentNo, operationNo, carrierCode: "DEV", trackingNo, quantity });
     expect(await reason(ship("SH-0", 3))).toBe("INVALID_REQUEST");
     expect((await ship("SH-1", 1)).summary?.fulfillmentStatus).toBe("PARTIAL");
+    expect((await ship("SH-1", 1)).shipments).toHaveLength(1);
     expect(await reason(ship("SH-1", 1, "T2"))).toBe("IDEMPOTENCY_CONFLICT");
     expect((await ship("SH-2", 1, "T2")).summary?.fulfillmentStatus).toBe("COMPLETED");
   });

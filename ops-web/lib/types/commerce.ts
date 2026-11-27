@@ -710,6 +710,7 @@ export interface MallPaymentAttempt {
 
 /** 发货 */
 export interface MallShipment {
+  requestOperationNo?: string | null;
   /** 操作号 */
   operationNo?: string;
   /** 订单组件号 */
@@ -767,6 +768,7 @@ export interface MallOrderSummary {
 
 /** 订单详情：三个独立维度 + 冻结报价 + 实际动作 */
 export interface MallOrderDetailView {
+  hardwareItems?: { orderComponentNo: string; hardwareSkuNo: string; quantity: number }[];
   /** 概览与三维状态 */
   summary?: MallOrderSummary;
   /** 冻结报价 */

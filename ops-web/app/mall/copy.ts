@@ -283,6 +283,7 @@ const zh = {
   shippedOf: "{no}：已发 {done} / {total}",
   btnShip: "确认发货",
   shipNeedsPaid: "订单未到账，不能发货。",
+  shipPending: "发货结果待确认，请按原单查看处理状态",
   toastShipped: "已登记发货",
 
   secRefunds: "退款",
@@ -757,6 +758,7 @@ const en: typeof zh = {
   shippedOf: "{no}: shipped {done} / {total}",
   btnShip: "Confirm shipment",
   shipNeedsPaid: "The order is not paid yet, so it cannot ship.",
+  shipPending: "Shipment awaiting confirmation. Check the status on this order.",
   toastShipped: "Shipment recorded",
 
   secRefunds: "Refunds",
