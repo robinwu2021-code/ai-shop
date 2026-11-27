@@ -1127,7 +1127,19 @@ _无字段_
 
 按人群定向发券　🔒
 
-**入参**：无
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `Idempotency-Key` | header | `string` | 否 | — |
+
+请求体：[`CouponIssueReq`](#couponissuereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `segmentNo` | `string,null` | 否 | — |
+| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 否 | — |
+| `reachableOnly` | `boolean` | 否 | 默认关闭。开启时按发券当时的 COUPON 场景判断站内消息资格。 |
 
 **出参**（`data`）
 
@@ -6176,6 +6188,36 @@ mSvLocalIssuerSummary　🔒
 | `count` | `number` | 是 | — |
 
 
+#### POST `/biz/member-reach/schedule`
+
+按门店当地时间预约触达　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`ScheduledReachReq`](#scheduledreachreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 是 | — |
+| `audienceDesc` | `string` | 否 | — |
+| `scene` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `body` | `string` | 是 | — |
+| `localTime` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`ScheduledReachResult`](#scheduledreachresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `taskNo` | `string` | 是 | — |
+
+
 #### POST `/biz/member-reach/send`
 
 群发（会打扰真实用户）　🔒
@@ -6225,6 +6267,9 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `deliveryStatus` | `SCHEDULED` \| `SENDING` \| `SENT` \| `CANCELLED` | 否 | — |
+| `scheduledAt` | `number,null` | 否 | — |
+| `scheduleZone` | `string,null` | 否 | — |
 | `taskNo` | `string` | 是 | 批次号 |
 | `scene` | [`ReachScene`](#reachscene) | 是 | `NOTICE` / `WAKEUP` / `COUPON` |
 | `title` | `string` | 是 | 消息标题 |
@@ -6250,6 +6295,17 @@ mSvLocalIssuerSummary　🔒
 |---|---|:---:|---|
 | `reason` | `string` | 是 | — |
 | `count` | `number` | 是 | — |
+
+
+#### POST `/biz/member-reach/task/{taskNo}/cancel`
+
+到期前撤销预约　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
 
 
 ### member-segments
@@ -6345,12 +6401,21 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `activeGradeVersionNo` | `string,null` | 否 | — |
+| `gradeThresholds` | `object`（见下）\[\] | 否 | — |
 | `memberScope` | `string` | 是 | `ENTITY` 按主体（默认）/ `STORE` 按门店 |
 | `autoJoinOnOrder` | `boolean` | 是 | 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 |
 | `sleepDays` | `number` | 是 | 分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡 |
 | `loyalD90Orders` | `number` | 是 | 近 90 天至少这么多单算熟客 |
 | `regularD90Orders` | `number` | 是 | 近 90 天至少这么多单算常客；再少是新客 |
 | `levelComputedAt` | `number,null` | 否 | 上一次按口径重算的时刻；从没跑过为 null |
+
+`gradeThresholds[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `code` | `string` | 是 | — |
+| `minOrders` | `number` | 是 | — |
 
 
 #### PUT `/biz/member-settings`
@@ -6365,12 +6430,21 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `activeGradeVersionNo` | `string,null` | 否 | — |
+| `gradeThresholds` | `object`（见下）\[\] | 否 | — |
 | `memberScope` | `string` | 是 | `ENTITY` 按主体（默认）/ `STORE` 按门店 |
 | `autoJoinOnOrder` | `boolean` | 是 | 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 |
 | `sleepDays` | `number` | 是 | 分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡 |
 | `loyalD90Orders` | `number` | 是 | 近 90 天至少这么多单算熟客 |
 | `regularD90Orders` | `number` | 是 | 近 90 天至少这么多单算常客；再少是新客 |
 | `levelComputedAt` | `number,null` | 否 | 上一次按口径重算的时刻；从没跑过为 null |
+
+`gradeThresholds[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `code` | `string` | 是 | — |
+| `minOrders` | `number` | 是 | — |
 
 
 ### member-tags
@@ -6523,6 +6597,8 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `gradeCode` | `string,null` | 否 | — |
+| `levelRuleVersionNo` | `string,null` | 否 | — |
 | `member` | [`Member`](#member) | 是 | 会员本身 |
 | `stores` | [`MemberStoreStat`](#memberstorestat)\[\] | 是 | 他在各门店的往来。单店主体没有这一段 |
 | `sources` | [`MemberSourceItem`](#membersourceitem)\[\] | 是 | 来源轨迹：他是怎么来的 |
@@ -11190,6 +11266,33 @@ Consume using existing consumer confirmation　🔒
 | `usageNo` | `string,null` | 是 | Ledger usage identifier; null until consumption has produced a usage. |
 
 
+#### POST `/biz/stored-value/consumptions/order/{orderNo}/refund`
+
+Return the full service payment to the original stored-value account　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+请求体：[`SvConsumptionStoreQuery`](#svconsumptionstorequery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | Store identifier for the service or ledger record; null when no single store applies. |
+
+**出参**（`data`）
+
+类型：[`SvServiceOrderRefund`](#svserviceorderrefund)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | Identifier of the full refund against the original service order. |
+| `status` | `REFUND_PENDING` \| `REFUNDED` | 是 | Durable processing or completion status. |
+| `amountMinor` | `number` | 是 | Full amount restored to the original stored-value account, in minor currency units. |
+
+
 #### GET `/biz/stored-value/consumptions/orders/{orderNo}`
 
 Merchant original service status　🔒
@@ -12841,6 +12944,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `serviceOrderNo` | `string,null` | 否 | Original fully stored-value-funded service order on an eligible redemption detail. |
+| `refundStatus` | `REFUND_PENDING` \| `REFUNDED` \| `null` | 否 | Durable return progress on the original redemption. |
 | `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `voucherDocumentNo` | `string,null` | 否 | Human-facing accounting voucher number; absent for historical unmapped vouchers. |
 | `recordNo` | `string` | 是 | Internal stored-value record reference; use documentNo for human display. |
@@ -13174,6 +13279,15 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 
 - `SHORTAGE`
 - `DAMAGE`
+
+### AudienceItem
+
+一个受众项：活动、发券、发消息「发给谁」的最小单位。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `string` | 是 | `ALL` 全部会员 · `LEVEL` 分层 · `TAG` 标签 · `SEGMENT` 人群 · `SOURCE` 首次来源 · `NON_MEMBER` 非本店会员（只在活动里） |
+| `value` | `string` | 是 | 分层码 / 标签号 / 人群号 / 来源码；`ALL`、`NON_MEMBER` 为 `*`。**存号不存文本** —— 标签改名不该动到这里 |
 
 ### AudiencePreview
 
@@ -13599,6 +13713,14 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 |---|---|:---:|---|
 | `reason` | `string` | 是 | — |
 | `count` | `number` | 是 | — |
+
+### CouponIssueReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `segmentNo` | `string,null` | 否 | — |
+| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 否 | — |
+| `reachableOnly` | `boolean` | 否 | 默认关闭。开启时按发券当时的 COUPON 场景判断站内消息资格。 |
 
 ### CouponRedeemResult
 
@@ -15137,6 +15259,8 @@ SKU 组件：一件 SKU 交付哪些东西
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `gradeCode` | `string,null` | 否 | — |
+| `levelRuleVersionNo` | `string,null` | 否 | — |
 | `member` | [`Member`](#member) | 是 | 会员本身 |
 | `stores` | [`MemberStoreStat`](#memberstorestat)\[\] | 是 | 他在各门店的往来。单店主体没有这一段 |
 | `sources` | [`MemberSourceItem`](#membersourceitem)\[\] | 是 | 来源轨迹：他是怎么来的 |
@@ -15223,12 +15347,21 @@ SKU 组件：一件 SKU 交付哪些东西
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `activeGradeVersionNo` | `string,null` | 否 | — |
+| `gradeThresholds` | `object`（见下）\[\] | 否 | — |
 | `memberScope` | `string` | 是 | `ENTITY` 按主体（默认）/ `STORE` 按门店 |
 | `autoJoinOnOrder` | `boolean` | 是 | 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 |
 | `sleepDays` | `number` | 是 | 分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡 |
 | `loyalD90Orders` | `number` | 是 | 近 90 天至少这么多单算熟客 |
 | `regularD90Orders` | `number` | 是 | 近 90 天至少这么多单算常客；再少是新客 |
 | `levelComputedAt` | `number,null` | 否 | 上一次按口径重算的时刻；从没跑过为 null |
+
+`gradeThresholds[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `code` | `string` | 是 | — |
+| `minOrders` | `number` | 是 | — |
 
 ### MemberSourceItem
 
@@ -16162,6 +16295,7 @@ Processing state of the order points refund projection.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `couponReturn` | `object`（见下） \| `null` | 否 | — |
 | `couponTitle` | `string,null` | 否 | 这一单用过、现在已回到券包的券名 |
 | `pointsReturned` | `number,null` | 否 | 退回的抵扣积分（该单 REFUND 流水之和） |
 | `pointsClawedBack` | `number,null` | 否 | 收回的本单赠送积分（该单 CLAWBACK 流水之和） |
@@ -16853,6 +16987,9 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `deliveryStatus` | `SCHEDULED` \| `SENDING` \| `SENT` \| `CANCELLED` | 否 | — |
+| `scheduledAt` | `number,null` | 否 | — |
+| `scheduleZone` | `string,null` | 否 | — |
 | `taskNo` | `string` | 是 | 批次号 |
 | `scene` | [`ReachScene`](#reachscene) | 是 | `NOTICE` / `WAKEUP` / `COUPON` |
 | `title` | `string` | 是 | 消息标题 |
@@ -17231,6 +17368,23 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 ### SaveStoreReqBody
 
 类型：`StoreProfile`
+
+### ScheduledReachReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 是 | — |
+| `audienceDesc` | `string` | 否 | — |
+| `scene` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `body` | `string` | 是 | — |
+| `localTime` | `string` | 是 | — |
+
+### ScheduledReachResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `taskNo` | `string` | 是 | — |
 
 ### ScopeCandidatePage
 
@@ -19485,6 +19639,8 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `serviceOrderNo` | `string,null` | 否 | Original fully stored-value-funded service order on an eligible redemption detail. |
+| `refundStatus` | `REFUND_PENDING` \| `REFUNDED` \| `null` | 否 | Durable return progress on the original redemption. |
 | `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 | `voucherDocumentNo` | `string,null` | 否 | Human-facing accounting voucher number; absent for historical unmapped vouchers. |
 | `recordNo` | `string` | 是 | Internal stored-value record reference; use documentNo for human display. |
@@ -19542,6 +19698,14 @@ StorePointType 的 status 取值域，按服务端契约校验。
 ### SvSelectionSource
 
 类型：`object`（见下） \| `object`（见下）
+
+### SvServiceOrderRefund
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | Identifier of the full refund against the original service order. |
+| `status` | `REFUND_PENDING` \| `REFUNDED` | 是 | Durable processing or completion status. |
+| `amountMinor` | `number` | 是 | Full amount restored to the original stored-value account, in minor currency units. |
 
 ### SvServiceView
 

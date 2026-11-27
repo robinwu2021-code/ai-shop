@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1266 个接口**：后端已实现 1013（80%）· 前端在调 1085
+**合计 1269 个接口**：后端已实现 1016（80%）· 前端在调 1088
 
 ---
 
@@ -332,7 +332,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **504** 个接口 ｜ 后端已实现 **398**（79%）｜ 前端在调 **502**
+共 **507** 个接口 ｜ 后端已实现 **401**（79%）｜ 前端在调 **505**
 
 ### activities（4）
 
@@ -427,7 +427,7 @@
 | GET | `/biz/coupons` | 券列表 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/coupons` | 建券 / 改券（敞口在这一步算清） | — | `MerchantCoupon` | 🔒 | ✅ | ✅ |
 | GET | `/biz/coupons/{couponNo}` | 券详情 | — | `MerchantCoupon` | 🔒 | ✅ | ✅ |
-| POST | `/biz/coupons/{couponNo}/issue` | 按人群定向发券 | — | `CouponIssueBatch` | 🔒 | ✅ | ✅ |
+| POST | `/biz/coupons/{couponNo}/issue` | 按人群定向发券 | `CouponIssueReq` | `CouponIssueBatch` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/coupons/{couponNo}/status` | 暂停 / 恢复 / 结束 | — | `MerchantCoupon` | 🔒 | ✅ | ✅ |
 
 ### cross-store（2）
@@ -729,14 +729,16 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/biz/member-code/resolve` | 识别统一会员码 | `ResolveMemberCodeReq` | `CustomerReference` | 🔒 | ✅ | ✅ |
 
-### member-reach（4）
+### member-reach（6）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/biz/member-reach/plan` | 群发试算：能发多少、跳过多少 | — | `ReachPlan` | 🔒 | ✅ | ✅ |
+| POST | `/biz/member-reach/schedule` | 按门店当地时间预约触达 | `ScheduledReachReq` | `ScheduledReachResult` | 🔒 | ✅ | ✅ |
 | POST | `/biz/member-reach/send` | 群发（会打扰真实用户） | — | `ReachResult` | 🔒 | ✅ | ✅ |
 | GET | `/biz/member-reach/task` | 发出去的消息（批次列表） | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/member-reach/task/{taskNo}` | 一次触达的效果 | — | `ReachTask` | 🔒 | ✅ | ✅ |
+| POST | `/biz/member-reach/task/{taskNo}/cancel` | 到期前撤销预约 | — | — | 🔒 | ✅ | ✅ |
 
 ### member-segments（5）
 
@@ -1129,7 +1131,7 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/store-spec-dims` | 本店货架类目各自能用的规格 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### stored-value（21）
+### stored-value（22）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1137,6 +1139,7 @@
 | GET | `/biz/stored-value/accounts/{accountRef}` | 门店储值账户 | — | `SvAccount` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stored-value/brand-capability` | Brand readiness | — | `SvBrandCapability` | 🔒 | ✅ | ✅ |
 | POST | `/biz/stored-value/consumptions` | Consume using existing consumer confirmation | `SvConsumptionSubmit` | `SvOperation` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stored-value/consumptions/order/{orderNo}/refund` | Return the full service payment to the original stored-value account | `SvConsumptionStoreQuery` | `SvServiceOrderRefund` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stored-value/consumptions/orders/{orderNo}` | Merchant original service status | — | `SvServiceView` | 🔒 | ✅ | ✅ |
 | POST | `/biz/stored-value/consumptions/orders/{orderNo}/cancel` | Cancel original service without refund | `SvConsumptionStoreQuery` | `SvOperation` | 🔒 | ✅ | ✅ |
 | POST | `/biz/stored-value/consumptions/preview` | Selected wallet service preview | `SvConsumptionCreate` | `SvConsumptionPreview` | 🔒 | ✅ | ✅ |

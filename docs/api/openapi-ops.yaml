@@ -13662,6 +13662,7 @@ components:
       enum:
         - "STORE"
         - "SYSTEM"
+        - "ENTITY"
       description: "业务端作用域"
     MallReleaseStatus:
       type: "string"
@@ -14026,6 +14027,7 @@ components:
         - "END_ACCESS"
         - "HARDWARE"
         - "BUNDLE"
+        - "SERVICE"
       description: "商品种类"
     MallComponentKind:
       type: "string"
@@ -15020,6 +15022,11 @@ components:
         quantity:
           type: "number"
           description: "数量"
+        deviceSerials:
+          type: "array"
+          items:
+            type: "string"
+          description: "按序列号出货时，一件设备对应一个序列号"
       required:
         - "orderComponentNo"
         - "operationNo"

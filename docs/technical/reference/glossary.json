@@ -1414,6 +1414,12 @@
           "ar": "{n} متاحة"
         },
         {
+          "key": "confirm.couponDiscount",
+          "zh-CN": "优惠券抵扣",
+          "en": "Coupon discount",
+          "ar": "خصم القسيمة"
+        },
+        {
           "key": "confirm.couponDroppedOffline",
           "zh-CN": "当面付不能用平台券，已取消这张券",
           "en": "Platform coupons can't be used when paying in person; removed",
@@ -4144,6 +4150,12 @@
           "ar": "استخدم هذا الرمز للاستبدال"
         },
         {
+          "key": "order.returned.cancelCoupon",
+          "zh-CN": "订单取消已返券，本单原优惠 {amount}（{time}）",
+          "en": "Coupon returned after cancellation. Original discount {amount} ({time})",
+          "ar": "أُعيدت القسيمة بعد إلغاء الطلب. الخصم الأصلي {amount} ({time})"
+        },
+        {
           "key": "order.returned.clawback",
           "zh-CN": "已收回本单赠送的 {n} 积分",
           "en": "{n} points earned on this order were taken back",
@@ -4160,6 +4172,12 @@
           "zh-CN": "{n} 积分已退回",
           "en": "{n} points returned",
           "ar": "تمت إعادة {n} نقطة"
+        },
+        {
+          "key": "order.returned.refundCoupon",
+          "zh-CN": "整单退款已返券，本单原优惠 {amount}（{time}）",
+          "en": "Coupon returned after a full refund. Original discount {amount} ({time})",
+          "ar": "أُعيدت القسيمة بعد الاسترداد الكامل. الخصم الأصلي {amount} ({time})"
         },
         {
           "key": "order.signedBeforeOrder",
@@ -6766,6 +6784,12 @@
           "ar": "الخصم"
         },
         {
+          "key": "storedValue.REFUND",
+          "zh-CN": "消费退款",
+          "en": "Refund",
+          "ar": "استرداد المبلغ"
+        },
+        {
           "key": "storedValue.accountLocalTime",
           "zh-CN": "账户时区",
           "en": "Account time zone",
@@ -6962,6 +6986,18 @@
           "zh-CN": "正在核对消费结果",
           "en": "Checking service result",
           "ar": "جارٍ التحقق من نتيجة الخدمة"
+        },
+        {
+          "key": "storedValue.serviceState.REFUNDED",
+          "zh-CN": "已全额退回储值账户",
+          "en": "Refunded to your balance",
+          "ar": "أُعيد المبلغ بالكامل إلى رصيدك"
+        },
+        {
+          "key": "storedValue.serviceState.REFUND_PENDING",
+          "zh-CN": "退款处理中",
+          "en": "Refund in progress",
+          "ar": "جارٍ رد المبلغ"
         },
         {
           "key": "storedValue.serviceState.RELEASED",
@@ -10980,6 +11016,12 @@
           "zh-CN": "能收到",
           "en": "Reachable",
           "ar": "يمكن مراسلتهم"
+        },
+        {
+          "key": "couponSend.reachableOnly",
+          "zh-CN": "仅发给当前可接收优惠券通知的会员",
+          "en": "Only issue to members eligible for coupon notifications",
+          "ar": "الإصدار فقط للأعضاء المؤهلين لتلقّي إشعارات القسائم"
         },
         {
           "key": "couponSend.submitN",
@@ -16076,6 +16118,18 @@
           "ar": "الأول"
         },
         {
+          "key": "memberDetail.grade",
+          "zh-CN": "权益等级",
+          "en": "Benefit tier",
+          "ar": "فئة المزايا"
+        },
+        {
+          "key": "memberDetail.gradeVersion",
+          "zh-CN": "权益规则版本",
+          "en": "Benefit rule version",
+          "ar": "إصدار قاعدة المزايا"
+        },
+        {
           "key": "memberDetail.joined",
           "zh-CN": "{s} 加入",
           "en": "Joined {s}",
@@ -16164,6 +16218,12 @@
           "zh-CN": "会员详情",
           "en": "Member",
           "ar": "بطاقة العضو"
+        },
+        {
+          "key": "memberDetail.ungraded",
+          "zh-CN": "未定级",
+          "en": "Unassigned",
+          "ar": "لم تحدد بعد"
         },
         {
           "key": "memberSegment.coupon",
@@ -16428,6 +16488,12 @@
           "zh-CN": "分层口径",
           "en": "Tier rules",
           "ar": "قواعد الفئات"
+        },
+        {
+          "key": "memberSettings.noGradeRule",
+          "zh-CN": "暂无生效版本",
+          "en": "No active version",
+          "ar": "لا يوجد إصدار سارٍ"
         },
         {
           "key": "memberSettings.reversible",
@@ -21968,6 +22034,18 @@
           "ar": "{n} من الجيران يريدون هذا"
         },
         {
+          "key": "reach.cancelSchedule",
+          "zh-CN": "撤销预约",
+          "en": "Cancel scheduled delivery",
+          "ar": "إلغاء الإرسال المجدول"
+        },
+        {
+          "key": "reach.chooseDate",
+          "zh-CN": "选择日期",
+          "en": "Choose date",
+          "ar": "اختر التاريخ"
+        },
+        {
           "key": "reach.confirmBody",
           "zh-CN": "发送后不可撤回；近期已接收消息的顾客可能因频次限制被排除。",
           "en": "Messages cannot be recalled. Recent recipients may be excluded by frequency limits.",
@@ -22028,6 +22106,12 @@
           "ar": "لا يمكن الوصول لأحد في هذه الدفعة. جرّب مجموعة أخرى أو عد بعد أيام"
         },
         {
+          "key": "reach.progress",
+          "zh-CN": "已处理 {done} / {total} 人",
+          "en": "Processed {done} of {total}",
+          "ar": "تمت معالجة {done} من {total}"
+        },
+        {
           "key": "reach.pushSplit",
           "zh-CN": "其中 {m} 人会收到手机推送，其余在小程序的消息列表里看到",
           "en": "{m} will also get a phone notification; the rest will see it in the mini-program's message list",
@@ -22044,6 +22128,18 @@
           "zh-CN": "{n} 人已被你拉黑",
           "en": "{n} blocked by you",
           "ar": "{n} محظورون من قبلك"
+        },
+        {
+          "key": "reach.reason.DAILY_LIMIT",
+          "zh-CN": "{n} 人已达平台当日营销消息上限",
+          "en": "{n} reached the platform’s daily marketing message limit",
+          "ar": "بلغ {n} الحد اليومي لرسائل التسويق على المنصة"
+        },
+        {
+          "key": "reach.reason.INBOX_REJECTED",
+          "zh-CN": "{n} 人未收到站内信",
+          "en": "Inbox delivery failed for {n}",
+          "ar": "تعذّر تسليم الرسالة إلى صندوق الوارد لدى {n}"
         },
         {
           "key": "reach.reason.LEAD",
@@ -22112,6 +22208,18 @@
           "ar": "نوع الرسالة"
         },
         {
+          "key": "reach.schedule",
+          "zh-CN": "预约发送",
+          "en": "Schedule delivery",
+          "ar": "جدولة الإرسال"
+        },
+        {
+          "key": "reach.scheduleHint",
+          "zh-CN": "门店时间 {when} {zone}。到期重新确定受众并检查退订和频控。",
+          "en": "Store time {when} {zone}. Audience membership, opt-outs and frequency limits are checked at delivery.",
+          "ar": "بتوقيت المتجر {when} {zone}. يُراجع الجمهور وإلغاء الاشتراك وحدود التكرار عند الإرسال."
+        },
+        {
           "key": "reach.sendN",
           "zh-CN": "发给 {n} 人",
           "en": "Send to {n}",
@@ -22128,6 +22236,30 @@
           "zh-CN": "发不出",
           "en": "Cannot send",
           "ar": "تعذّر الإرسال"
+        },
+        {
+          "key": "reach.state.CANCELLED",
+          "zh-CN": "已撤销",
+          "en": "Cancelled",
+          "ar": "ملغى"
+        },
+        {
+          "key": "reach.state.SCHEDULED",
+          "zh-CN": "待发送",
+          "en": "Scheduled",
+          "ar": "مجدول"
+        },
+        {
+          "key": "reach.state.SENDING",
+          "zh-CN": "发送中",
+          "en": "Sending",
+          "ar": "جارٍ الإرسال"
+        },
+        {
+          "key": "reach.state.SENT",
+          "zh-CN": "已发送",
+          "en": "Sent",
+          "ar": "تم الإرسال"
         },
         {
           "key": "reach.title",
@@ -28802,6 +28934,18 @@
           "ar": "جارٍ التحقق من النتيجة"
         },
         {
+          "key": "storedValue.consumeState.REFUNDED",
+          "zh-CN": "已全额退回",
+          "en": "Fully refunded",
+          "ar": "تم رد المبلغ بالكامل"
+        },
+        {
+          "key": "storedValue.consumeState.REFUND_PENDING",
+          "zh-CN": "退款处理中",
+          "en": "Refund in progress",
+          "ar": "جارٍ رد المبلغ"
+        },
+        {
           "key": "storedValue.consumeState.RELEASED",
           "zh-CN": "已取消",
           "en": "Cancelled",
@@ -29184,6 +29328,24 @@
           "zh-CN": "刷新进度",
           "en": "Refresh status",
           "ar": "تحديث الحالة"
+        },
+        {
+          "key": "storedValue.refund",
+          "zh-CN": "消费退款",
+          "en": "Refund",
+          "ar": "استرداد المبلغ"
+        },
+        {
+          "key": "storedValue.refundFull",
+          "zh-CN": "全额退回储值账户",
+          "en": "Refund to stored value",
+          "ar": "رد المبلغ إلى حساب الرصيد"
+        },
+        {
+          "key": "storedValue.refundQuestion",
+          "zh-CN": "将 {amount} 退回顾客原储值账户？",
+          "en": "Return {amount} to the customer’s original stored-value account?",
+          "ar": "هل تريد رد {amount} إلى حساب الرصيد الأصلي للعميل؟"
         },
         {
           "key": "storedValue.rejected",
@@ -36306,13 +36468,6 @@
       "package": "ai.neargo.shop.member.entity"
     },
     {
-      "table": "mbr_member_store",
-      "class": "MbrMemberStore",
-      "zh": "会员在某一家门店的往来。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.member.entity"
-    },
-    {
       "table": "mbr_member_tag",
       "class": "MbrMemberTag",
       "zh": "谁被打了哪个标签。",
@@ -36344,6 +36499,13 @@
       "table": "mbr_setting",
       "class": "MbrSetting",
       "zh": "这个主体怎么经营会员。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.member.entity"
+    },
+    {
+      "table": "mbr_store_profile",
+      "class": "MbrMemberStore",
+      "zh": "会员在某一家门店的往来。",
       "module": "shop-core",
       "package": "ai.neargo.shop.member.entity"
     },
@@ -37580,30 +37742,9 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
-      "table": "pmt_activity_budget",
-      "class": "PmtActivityBudget",
-      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.promotion.entity"
-    },
-    {
       "table": "pmt_activity_goods",
       "class": "PmtActivityGoods",
       "zh": "活动作用在哪些商品上。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.promotion.entity"
-    },
-    {
-      "table": "pmt_activity_participant",
-      "class": "PmtActivityParticipant",
-      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.promotion.entity"
-    },
-    {
-      "table": "pmt_activity_reservation",
-      "class": "PmtActivityReservation",
-      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
     },
@@ -37671,6 +37812,13 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_coupon_version",
+      "class": "PmtCouponVersion",
+      "zh": "商家券每次发布的不可变定义，适用对象按同一版本保存在 pmt_activity_scope。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_effect_projection",
       "class": "PmtEffectProjection",
       "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
@@ -37734,6 +37882,20 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_quota",
+      "class": "PmtActivityBudget",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_quota",
+      "class": "PmtActivityParticipant",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_recharge_intent",
       "class": "PmtRechargeIntent",
       "zh": "",
@@ -37743,6 +37905,13 @@
     {
       "table": "pmt_recharge_tier",
       "class": "PmtRechargeTier",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_reservation",
+      "class": "PmtActivityReservation",
       "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
@@ -40877,6 +41046,13 @@
         "name": "PROMO_COUPON",
         "value": "PC",
         "zh": "券模板（新模型 pmt_coupon）。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "PROMO_COUPON_VERSION",
+        "value": "PCV",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -47897,6 +48073,16 @@
         "module": "pay/pay-channel"
       },
       {
+        "name": "Cohort",
+        "values": [
+          "UNUSED_MERCHANT_COUPONS",
+          "UNUSED_STORE_COUPONS",
+          "UNUSED_VERSIONED_COUPONS"
+        ],
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
         "name": "Collection",
         "values": [
           "PLATFORM_COLLECTED",
@@ -48220,6 +48406,7 @@
         "name": "EndScope",
         "values": [
           "STORE",
+          "ENTITY",
           "SYSTEM"
         ],
         "zh": "",
@@ -49225,6 +49412,7 @@
         "values": [
           "RECHARGE",
           "SERVICE_USE",
+          "SERVICE_REFUND",
           "ORDER_USE",
           "ACTIVITY_BENEFIT",
           "LEGACY_COUPON",
@@ -50279,6 +50467,7 @@
           "PLAN",
           "END_ACCESS",
           "HARDWARE",
+          "SERVICE",
           "BUNDLE"
         ],
         "zh": "",
@@ -50538,7 +50727,8 @@
         "name": "ReverseReason",
         "values": [
           "CANCELLED",
-          "FULL_REFUND"
+          "FULL_REFUND",
+          "PARTIAL_REFUND"
         ],
         "zh": "",
         "module": "shop-base"
@@ -52734,7 +52924,8 @@
         "client": "ops-web",
         "values": [
           "STORE",
-          "SYSTEM"
+          "SYSTEM",
+          "ENTITY"
         ],
         "zh": "业务端作用域"
       },
@@ -52875,7 +53066,8 @@
           "PLAN",
           "END_ACCESS",
           "HARDWARE",
-          "BUNDLE"
+          "BUNDLE",
+          "SERVICE"
         ],
         "zh": "商品种类"
       },
@@ -54913,7 +55105,8 @@
         "values": [
           "ALL",
           "RECHARGE",
-          "REDEMPTION"
+          "REDEMPTION",
+          "REFUND"
         ],
         "zh": ""
       },

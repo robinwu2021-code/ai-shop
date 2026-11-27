@@ -3365,6 +3365,14 @@ components:
     MemberDetail:
       type: "object"
       properties:
+        gradeCode:
+          type:
+            - "string"
+            - "null"
+        levelRuleVersionNo:
+          type:
+            - "string"
+            - "null"
         member:
           "$ref": "#/components/schemas/Member"
           description: "会员本身"
@@ -3458,6 +3466,21 @@ components:
     ReachTask:
       type: "object"
       properties:
+        deliveryStatus:
+          type: "string"
+          enum:
+            - "SCHEDULED"
+            - "SENDING"
+            - "SENT"
+            - "CANCELLED"
+        scheduledAt:
+          type:
+            - "number"
+            - "null"
+        scheduleZone:
+          type:
+            - "string"
+            - "null"
         taskNo:
           type: "string"
           description: "批次号"
@@ -3697,6 +3720,23 @@ components:
     MemberSetting:
       type: "object"
       properties:
+        activeGradeVersionNo:
+          type:
+            - "string"
+            - "null"
+        gradeThresholds:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              code:
+                type: "string"
+              minOrders:
+                type: "number"
+            required:
+              - "code"
+              - "minOrders"
+            additionalProperties: false
         memberScope:
           type: "string"
           description: "`ENTITY` 按主体（默认）/ `STORE` 按门店"

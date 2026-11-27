@@ -16701,6 +16701,7 @@ Delivery state of an inventory/order synchronization event.
 
 - `STORE`
 - `SYSTEM`
+- `ENTITY`
 
 ### MallEntitlementSource
 
@@ -16990,6 +16991,7 @@ Plan 版本行；status=PUBLISHED 之后只读
 - `END_ACCESS`
 - `HARDWARE`
 - `BUNDLE`
+- `SERVICE`
 
 ### MallProductView
 

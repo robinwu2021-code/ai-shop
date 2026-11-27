@@ -3,11 +3,11 @@
 > 由 `python3 scripts/gen-gateway-api-inventory.py` 生成，**请勿手改**。来源是后端源码里实际声明的入口。
 > 总览、分类规则与验证清单见 [网关接口清单](网关接口清单.md)。
 
-共 **1223** 个入口：支付 268、零售 580、餐饮 261、服务业 32、库存 45、平台与通用 37。
+共 **1227** 个入口：支付 269、零售 583、餐饮 261、服务业 32、库存 45、平台与通用 37。
 
-## 支付（268）
+## 支付（269）
 
-网关判权：能提前判 171、只要求登录 97。构建：默认构建 268。生产：已入网关 223、未部署 45。
+网关判权：能提前判 172、只要求登录 97。构建：默认构建 269。生产：已入网关 223、未部署 46。
 
 ### checkout（3）
 
@@ -308,7 +308,7 @@
 | GET | `/biz/settle/rate-card` | `@perm.canBiz('biz:finance')` | 能提前判 | 默认构建 | 已入网关 | BizSettleController |
 | GET | `/biz/settle/statement` | `@perm.canBiz('biz:finance')` | 能提前判 | 默认构建 | 已入网关 | BizSettleController |
 
-### stored-value（32）
+### stored-value（33）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
@@ -317,6 +317,7 @@
 | GET | `/biz/stored-value/accounts/{accountRef}` | `@perm.canBiz('pay:sv:account:read')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueMerchantQueryController |
 | GET | `/biz/stored-value/brand-capability` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueBrandActivationController |
 | POST | `/biz/stored-value/consumptions` | `@perm.canBiz('pay:sv:consume:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueController |
+| POST | `/biz/stored-value/consumptions/order/{orderNo}/refund` | `@perm.canBiz('mch:pay:refund')` | 能提前判 | 默认构建 | 未部署 | BizStoredValueController |
 | GET | `/biz/stored-value/consumptions/orders/{orderNo}` | `@perm.canBiz('pay:sv:consume:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueController |
 | POST | `/biz/stored-value/consumptions/orders/{orderNo}/cancel` | `@perm.canBiz('pay:sv:consume:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueController |
 | POST | `/biz/stored-value/consumptions/preview` | `@perm.canBiz('pay:sv:consume:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueController |
@@ -377,17 +378,18 @@
 | GET | `/biz/stores/{storeNo}/stored-value/recharge-options` | `@perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueIssuerOperationsController |
 | GET | `/biz/stores/{storeNo}/stored-value/store-summary` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueReportController |
 
-## 零售（580）
+## 零售（583）
 
-网关判权：能提前判 451、只要求登录 123、留给入口判 6。构建：默认构建 512、插件 shop-commerce-integration 68。生产：已入网关 468、未部署 112。
+网关判权：能提前判 454、只要求登录 123、留给入口判 6。构建：默认构建 515、插件 shop-commerce-integration 68。生产：已入网关 468、未部署 115。
 
-### activities（5）
+### activities（6）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
 | GET | `/biz/activities` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 已入网关 | BizActivityController、BizVersionedActivityController |
 | POST | `/biz/activities` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 已入网关 | BizActivityController、BizVersionedActivityController |
 | GET | `/biz/activities/{activityNo}` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 已入网关 | BizActivityController、BizVersionedActivityController |
+| GET | `/biz/activities/{activityNo}/effect` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 未部署 | BizActivityMarketingSummaryController |
 | POST | `/biz/activities/{activityNo}/publish` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 已入网关 | BizVersionedActivityController |
 | PUT | `/biz/activities/{activityNo}/status` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 已入网关 | BizActivityController、BizVersionedActivityController |
 
@@ -756,14 +758,16 @@
 |---|---|---|---|---|---|---|
 | POST | `/biz/member-code/resolve` | `@perm.canBiz('biz:customer')` | 能提前判 | 默认构建 | 已入网关 | BizMemberCodeController |
 
-### member-reach（4）
+### member-reach（6）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
 | POST | `/biz/member-reach/plan` | `@perm.canBiz('biz:customer')` | 能提前判 | 默认构建 | 已入网关 | BizMemberController |
+| POST | `/biz/member-reach/schedule` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 未部署 | BizMemberController |
 | POST | `/biz/member-reach/send` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 已入网关 | BizMemberController |
 | GET | `/biz/member-reach/task` | `@perm.canBiz('biz:customer')` | 能提前判 | 默认构建 | 已入网关 | BizMemberController |
 | GET | `/biz/member-reach/task/{taskNo}` | `@perm.canBiz('biz:customer')` | 能提前判 | 默认构建 | 已入网关 | BizMemberController |
+| POST | `/biz/member-reach/task/{taskNo}/cancel` | `@perm.canBiz('biz:campaign')` | 能提前判 | 默认构建 | 未部署 | BizMemberController |
 
 ### member-segments（5）
 

@@ -444,6 +444,7 @@
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
 | `couponNo` | path | `string` | 是 | 券单号 |
+| `Idempotency-Key` | header | `string` | 否 | 商家 PMT 券领取请求键，按用户与券模板区分。 |
 
 **出参**（`data`）
 
@@ -5309,6 +5310,7 @@ Processing state of the order points refund projection.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `couponReturn` | `object`（见下） \| `null` | 否 | — |
 | `couponTitle` | `string,null` | 否 | 这一单用过、现在已回到券包的券名 |
 | `pointsReturned` | `number,null` | 否 | 退回的抵扣积分（该单 REFUND 流水之和） |
 | `pointsClawedBack` | `number,null` | 否 | 收回的本单赠送积分（该单 CLAWBACK 流水之和） |
