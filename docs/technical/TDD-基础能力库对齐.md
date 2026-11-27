@@ -463,7 +463,7 @@
   成员表有而 JSON 没有的逻辑删除；JSON 不合法或为空按无角色。此前判权以 JSON 为准，对齐后每个人的权限与切换前相同；多出来、只影响菜单的成员行会被撤掉。
   已在本机 MySQL 9.7.4 临时库实跑。**迁移号**：另一条分支 `origin/codex/v2-member-marketing` 自用了 V706–V720，其中 V706 与 v2 上的 V706 撞号，它合入 v2 时要改号；本条取 V721 以免再撞。
 - **强制下线**：`forceLogoutRole` 在基础能力库只读成员，写的是平台基础库的运营会话，审计已提交后写（1i），所以不再开 common 事务。
-- **未做（K3）**：建号、改角色仍在同一个主库事务里先写账号（平台基础库）、再写角色（基础能力库）。两库未分开绑定时这是一个事务，行为不变；分开绑定前要拆，见 §1.2。
+- **K3 已做（2026-11-27）**：建号 = 平台库事务写账号 + 基础能力库独立事务（`REQUIRES_NEW`）写角色；账号这边随后失败（如开通邮件发不出去）就在独立事务里撤回角色，撤回失败只记日志、不盖住原错误。改角色（`setStaffRole`、`setStaffRoles`）只写基础能力库，事务点名 `commonTxManager`。提交前的提交失败（MyBatis 写入即执行，约束错在插入时就抛）不在补偿范围内。测试 `OpsStaffCrossStoreFlowTest`（邮件失败不留孤儿角色、建号两边都写、改角色只开 common 事务）。
 
 #### 1e 审批（会话乙，2026-11-27）
 
@@ -609,4 +609,4 @@
 |---|---|---|
 | K1 | `CommonTableAccessTest`（基线未清零前只保证不新增越界） | 2026-11-27 通过 1/1 |
 | K2 | `OpsPermConfigFlowTest`、`OpsStaffWriteFlowTest`、`OpsPlatformConfigFlowTest` 等 | — |
-| K3 | 待建守卫 | — |
+| K3 | `OpsStaffCrossStoreFlowTest` | 3/3 通过（2026-11-27） |
