@@ -155,6 +155,7 @@ public interface EntityPlanPurchaseService {
   ActionView confirm(Actor operator, String orderNo, Confirm command);
 
   OrderView recover(Actor operator, String orderNo);
+  default RecoverySweep recoverRefunds(String afterRefundNo,int limit){return new RecoverySweep(0,0,afterRefundNo);}
   record RecoverySweep(int visited,int failed,String nextOrderNo){}
   default RecoverySweep recoverPending(String afterOrderNo,int limit){throw new UnsupportedOperationException();}
 

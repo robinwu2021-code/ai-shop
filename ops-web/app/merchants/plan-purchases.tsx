@@ -78,7 +78,7 @@ export function EntityPlanPurchaseDetail({order:o,onChanged}:{order:EntityPlanPu
    {evidence&&<span>✓</span>}{(claim||direct)&&canConfirm&&<Button onClick={()=>confirm()}>{c.confirm}</Button>}
   </fieldset>}
   {claim&&!attempt&&allow("commerce:mall:offline:review")&&allow("merchant:merchant:ban")&&<div><Field label={c.reason}><Input disabled={busy} value={f.reason} onChange={v=>set({...f,reason:v.target.value})}/></Field><Button disabled={busy||!f.reason.trim()} onClick={()=>perform(()=>api.declineEntityPlanPurchase(o.entityNo,o.orderNo,claim.claimNo,f.reason.trim()))}>{c.decline}</Button></div>}
-  {((canConfirm&&["PREPARED","CONFIRMING","PAID_PENDING"].includes(o.status))||(canVoid&&o.status==="CLOSING"))&&<Button disabled={busy} onClick={()=>perform(()=>api.recoverEntityPlanPurchase(o.entityNo,o.orderNo))}>{c.recover}</Button>}
+  {((canConfirm&&["PREPARED","CONFIRMING","PAID_PENDING","REFUND_PENDING"].includes(o.status))||(canVoid&&o.status==="CLOSING"))&&<Button disabled={busy} onClick={()=>perform(()=>api.recoverEntityPlanPurchase(o.entityNo,o.orderNo))}>{c.recover}</Button>}
 
   <CashRefundsSection kind="entity" allowUnfulfilledMatchedCash={o.status==="REVIEW_REQUIRED"} scope={o.entityNo} orderNo={o.orderNo} canRelease={closing||["UNMATCHED","REVIEW_REQUIRED"].includes(o.status)} onChanged={onChanged}/>
   {error&&<p role="alert">{error}</p>}

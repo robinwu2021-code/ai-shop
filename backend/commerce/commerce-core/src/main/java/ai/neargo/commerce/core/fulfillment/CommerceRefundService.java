@@ -486,7 +486,7 @@ public final class CommerceRefundService implements RefundFacade {
                     schedule.persistTransition(
                             subscriptions.lock(p.store()),
                             codes,
-                            "freeze-" + FactDigest.of(List.of(p.refundNo())).substring(0, 48),
+                            RefundSnapshot.freezeOperation(p.refundNo()),
                             Instant.ofEpochMilli(cut),
                             Set.of(),
                             history,

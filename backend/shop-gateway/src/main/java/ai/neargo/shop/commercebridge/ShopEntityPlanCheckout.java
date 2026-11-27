@@ -98,6 +98,41 @@ public final class ShopEntityPlanCheckout implements EntityPlanCheckout {
 
   public void refreshPayment(String no) { payments.refresh(new FulfillmentQuery("MAIN",no)); }
 
+  public List<RefundedPlan> refundedPlans(String after,String orderNo,int limit) {
+    String sql="""
+        SELECT r.refund_no,r.order_no,o.entity_no,o.store_no FROM mall_refund r
+        JOIN mall_order o ON o.tenant_no=r.tenant_no AND o.order_no=r.order_no AND o.store_no=r.store_no
+        WHERE r.tenant_no='MAIN' AND r.status='SUCCEEDED' AND o.pricing_policy_version='entity-plan-cash-v1'
+          AND r.verified_fact_snapshot IS NOT NULL AND r.command_snapshot->>'$.entityQuotaResult' IS NULL
+          AND EXISTS (SELECT 1 FROM mall_refund_item i JOIN mch_subscription_period p
+            ON p.tenant_no=i.tenant_no AND p.period_no=i.period_no AND p.store_no=o.store_no
+            WHERE i.tenant_no=r.tenant_no AND i.refund_no=r.refund_no AND p.state='REFUNDED')
+        """;
+    var args=new java.util.ArrayList<Object>();
+    if (orderNo!=null) {sql+=" AND r.order_no=?"; args.add(orderNo);}
+    args.add(after==null?"":after);
+    args.add(limit);
+    return db.query(sql+" AND r.refund_no>? ORDER BY r.refund_no LIMIT ?",
+        (r,n)->new RefundedPlan(r.getString(1),r.getString(2),r.getString(3),r.getString(4)),args.toArray());
+  }
+
+  public boolean reversalDelivered(RefundedPlan refund) {
+    var operation=ai.neargo.commerce.core.mall.RefundSnapshot.freezeOperation(refund.refundNo());
+    return Boolean.TRUE.equals(db.queryForObject("""
+        SELECT NOT EXISTS (SELECT 1 FROM mall_fulfillment_task WHERE tenant_no='MAIN' AND task_type='END_ACTIVATION'
+          AND request_snapshot->>'$.store'=? AND request_snapshot->>'$.operation'=? AND status<>'DONE')
+        """,Boolean.class,refund.storeNo(),operation));
+  }
+
+  public void acknowledgeReversal(RefundedPlan refund,String result) {
+    db.update("""
+        UPDATE mall_refund SET command_snapshot=JSON_SET(command_snapshot,'$.entityQuotaResult',?),
+          version=version+1,updated_at=UTC_TIMESTAMP(3)
+        WHERE tenant_no='MAIN' AND refund_no=? AND order_no=? AND status='SUCCEEDED'
+          AND command_snapshot->>'$.entityQuotaResult' IS NULL
+        """,result,refund.refundNo(),refund.orderNo());
+  }
+
   public boolean fulfill(String no) {
     db.update("""
         UPDATE mall_order SET schedule_preview_snapshot=JSON_SET(schedule_preview_snapshot,'$.entityPlanGranted',CAST('true' AS JSON)),

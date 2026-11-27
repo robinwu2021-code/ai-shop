@@ -13,5 +13,9 @@ public interface EntityPlanCheckout {
   record Receipt(String operatorNo,long acceptedAt,EntityPlanPurchaseService.Confirm confirmation) {}
   java.util.Optional<Receipt> confirmedReceipt(String orderNo,String paymentNo);
   void refreshPayment(String orderNo);
+  record RefundedPlan(String refundNo,String orderNo,String entityNo,String storeNo) {}
+  java.util.List<RefundedPlan> refundedPlans(String afterRefundNo,String orderNo,int limit);
+  boolean reversalDelivered(RefundedPlan refund);
+  void acknowledgeReversal(RefundedPlan refund,String result);
   boolean fulfill(String orderNo);
 }

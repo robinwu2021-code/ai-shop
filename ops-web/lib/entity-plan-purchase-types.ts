@@ -96,7 +96,7 @@ export type EntityPlanPurchase={
   storeNo:string;
   /** 下单时冻结的销售报价及额度快照。 */
   offer:EntityPlanOffer;
-  /** 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 */
+  /** 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示退款完成，REFUND_PENDING 和 REFUND_REVIEW 分别表示门店撤权待完成和主体额度待人工复核。 */
   status:string;
   /** 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 */
   purchaseSource?:string;

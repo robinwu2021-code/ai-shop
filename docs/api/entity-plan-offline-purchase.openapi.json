@@ -1772,6 +1772,8 @@
               "APPLIED",
               "UNMATCHED",
               "REVIEW_REQUIRED",
+              "REFUND_PENDING",
+              "REFUND_REVIEW",
               "CANCELLATION_REQUESTED",
               "CLOSING",
               "CANCELLED",

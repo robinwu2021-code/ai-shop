@@ -1,6 +1,9 @@
 package ai.neargo.shop.pay.service.impl;
 
 import ai.neargo.commerce.api.common.*;
+import ai.neargo.commerce.api.mall.*;
+import ai.neargo.commerce.api.offline.OfflinePurchaseFacade;
+import ai.neargo.commerce.core.fulfillment.CommerceRefundService;
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.core.access.EndScheduleService;
 import ai.neargo.commerce.core.fulfillment.CommerceFulfillmentService;
@@ -38,7 +41,7 @@ class EntityPlanUnifiedCheckoutMysqlTest {
       EntityPlanOfflineLedgerMysqlTest.seedMerchant(host.jdbc);
       host.jdbc.execute("ALTER TABLE mch_store ADD COLUMN id BIGINT AUTO_INCREMENT UNIQUE");
       ledger.profile(1,"TWD");
-      for (String slice : List.of("catalog","order","fulfillment","subscription","offline")) {
+      for (String slice : List.of("catalog","order","fulfillment","subscription","offline","refund")) {
         String name="offline".equals(slice)?"offline_payment":"mall_"+slice;
         new ResourceDatabasePopulator(new ClassPathResource("db/mall/"+slice+"/V1__"+name+".sql")).execute(mall.ds);
       }
@@ -70,8 +73,10 @@ class EntityPlanUnifiedCheckoutMysqlTest {
           events,clock,ids,"platform-mch",Set.of("OFFLINE:BANK_TRANSFER"),permissions,(s,e,o,b,t)->{});
       var media=mock(PrivateEvidencePort.class,CALLS_REAL_METHODS);
       when(media.stored(any(),anyString())).thenReturn(true);
+      var refunds=new CommerceRefundService(orders,new JdbcRefundRepository(mall.ds,ids,subscriptions,true),operations,
+          subscriptions,accounts,new EndScheduleService(subscriptions,uow,events,ids,clock),uow,permissions,pay,clock);
       var offline=new DefaultOfflinePurchaseFacade(orders,operations,new JdbcMallOfflineRepository(mall.ds),accounts,uow,
-          stores,permissions,mallApi,payment,null,collection,media,clock,ids,"profile");
+          stores,permissions,mallApi,payment,refunds,collection,media,clock,ids,"profile");
       var ctx=mock(MallHttpContextPort.class);
       var owner=new Actor("U1","E1","S1",false);
       var ops=new Actor("ops","E1",null,true);
@@ -83,6 +88,11 @@ class EntityPlanUnifiedCheckoutMysqlTest {
       var service=new EntityPlanPurchaseServiceImpl(host.jdbc,new DataSourceTransactionManager(host.ds),json,pay,collection,media,
           (t,c)->Optional.of(new MoneyPolicy("twd","TWD",2,100,100)),mock(StoreOwnershipWritePort.class),
           e->true,clock,"profile",mock(StoreOperationalReviewService.class),mall.jdbc,checkout);
+      host.jdbc.update("""
+          INSERT INTO mch_entity_plan(tenant_no,entity_no,plan_code,store_quota,staff_quota,cross_store_stats,
+            staff_quota_override,status,start_at,granted_by,trial_used,created_at,updated_at)
+          VALUES('MAIN','E1','FREE',2,5,0,7,'ACTIVE',1000,'PLATFORM',1,NOW(),NOW())
+          """);
       var amount=new Money("TWD",19900);
       // Existing sale rows predate the catalog binding.
       var prior=new Offer("P30",1,"PRO","月包",30,amount,3,10,false,true);
@@ -127,6 +137,53 @@ class EntityPlanUnifiedCheckoutMysqlTest {
       assertEquals(1,host.jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE status='SUCCESS'",Integer.class));
       assertEquals(1,host.jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_end_grant WHERE store_no='S1' AND entitlement_code='POS_USE' AND state IN ('ACTIVE','SCHEDULED')",Integer.class));
       assertEquals("PRO",host.jdbc.queryForObject("SELECT plan_code FROM mch_entity_plan WHERE entity_no='E1'",String.class));
+      var buyer=ctx.buyer("S1","commerce:mall:purchase").actor();
+      var operator=ctx.operator("commerce:mall:offline:confirm");
+      String originalPeriod=mall.jdbc.queryForObject("SELECT period_no FROM mch_subscription_period WHERE plan_version_no='PV1' AND store_no='S1'",String.class);
+      if (assisted) delivery.deliver(store.store(),"independent-grant",List.of(new SubscriptionService.Delivery(
+          "gift-source",SubscriptionService.Origin.GRANT,null,"POS_USE",86400000L,0,0,"TWD",true)));
+      var preview=refunds.preview(buyer,new RefundPreviewCommand(store.store(),no,"plan-refund",List.of()));
+      assertEquals(amount,preview.cashLimit());
+      refunds.request(buyer,new RefundCommand(store.store(),no,preview.refundNo(),amount,"return plan"));
+      if (!assisted) host.jdbc.execute("CREATE TRIGGER revoke_unavailable BEFORE UPDATE ON mch_store_end_grant FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='revocation unavailable'");
+      refunds.approve(operator,new RefundApprovalCommand(store.store(),no,preview.refundNo(),preview.approvalDigest(),
+          amount,preview.creditLimit(),"reviewed original plan period"));
+      var query=new RefundQuery("MAIN",no,preview.refundNo());
+      refunds.recover(query);
+      assertEquals(0,service.recoverRefunds(null,10).visited());
+      assertEquals("PRO",host.jdbc.queryForObject("SELECT plan_code FROM mch_entity_plan WHERE entity_no='E1'",String.class));
+      var target=new OrderQuery(store.store(),no);
+      var proof=offline.reserveEvidence(operator,target,"REFUND_PROOF");
+      var payout=new OfflinePurchaseFacade.RefundPayoutCommand(target,preview.refundNo(),amount,at,"owner-bank","RETURN",proof.assetKey());
+      assertEquals(AsyncStatus.SUCCEEDED,offline.confirmRefundPayout(operator,payout).status());
+      assertEquals(1,mall.jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period WHERE state='REFUNDED' AND store_no='S1'",Integer.class));
+      if (!assisted) {
+        assertEquals(1,service.recoverRefunds(null,10).failed());
+        assertEquals("REFUND_PENDING",service.order(ops,no).status());
+        assertEquals("PRO",host.jdbc.queryForObject("SELECT plan_code FROM mch_entity_plan WHERE entity_no='E1'",String.class));
+        host.jdbc.execute("DROP TRIGGER revoke_unavailable");
+        mall.jdbc.update("UPDATE mall_fulfillment_task SET next_retry_at=0 WHERE task_type='END_ACTIVATION'");
+        new JdbcEndActivation(mall.ds,host.ds,ids).retryPendingAll(10);
+      }
+      assertEquals(0,host.jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_end_grant WHERE store_no='S1' AND entitlement_code='POS_USE' AND period_no=? AND state IN ('ACTIVE','SCHEDULED') AND deleted=0",Integer.class,originalPeriod));
+      if(assisted) assertEquals(1,host.jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_end_grant WHERE store_no='S1' AND entitlement_code='POS_USE' AND period_no<>? AND state IN ('ACTIVE','SCHEDULED') AND deleted=0",Integer.class,originalPeriod));
+      if (assisted) host.jdbc.update("UPDATE mch_entity_plan SET plan_code='CHAIN',store_quota=20,version=version+1 WHERE entity_no='E1'");
+      assertEquals(0,service.recoverRefunds(null,10).failed());
+      // Replay after the merchant commit and a lost mall acknowledgement.
+      host.jdbc.update("UPDATE mch_entity_plan SET staff_quota_override=8,version=version+1 WHERE entity_no='E1'");
+      mall.jdbc.update("UPDATE mall_refund SET command_snapshot=JSON_REMOVE(command_snapshot,'$.entityQuotaResult') WHERE refund_no=?",preview.refundNo());
+      assertEquals(0,service.recoverRefunds(null,10).failed());
+      assertEquals(0,service.recoverRefunds(null,10).visited());
+      assertEquals(assisted?"REFUND_REVIEW":"REFUNDED",service.recover(ops,no).status());
+      var restored=host.jdbc.queryForMap("SELECT plan_code,store_quota,staff_quota,staff_quota_override,trial_used,granted_by FROM mch_entity_plan WHERE entity_no='E1'");
+      assertEquals(assisted?"CHAIN":"FREE",restored.get("plan_code"));
+      assertEquals(assisted?20:2,((Number)restored.get("store_quota")).intValue());
+      assertEquals(8,((Number)restored.get("staff_quota_override")).intValue());
+      if (!assisted) {
+        assertEquals(5,((Number)restored.get("staff_quota")).intValue());
+        assertEquals("PLATFORM",restored.get("granted_by"));
+      }
+
     }
   }
 
