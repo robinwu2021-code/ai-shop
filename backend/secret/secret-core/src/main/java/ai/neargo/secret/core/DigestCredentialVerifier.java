@@ -93,7 +93,7 @@ public class DigestCredentialVerifier implements CredentialVerifier {
         SecKeyVersion v = db.versions().selectOne(Wrappers.<SecKeyVersion>lambdaQuery()
                 .eq(SecKeyVersion::getMaterialDigest, digestOf(presented))
                 .eq(SecKeyVersion::getStatus, "ACTIVE"));
-        if (v == null || !v.getValidTo().isAfter(settings.now())) {
+        if (v == null || !v.getValidTo().isAfter(settings.now()) || !settings.envConfigured()) {
             return Optional.empty();
         }
         SecKey key = db.keys().selectById(v.getSecKeyId());
@@ -212,7 +212,14 @@ public class DigestCredentialVerifier implements CredentialVerifier {
         return key;
     }
 
+    /**
+     * 所有者那把 {@code sec_key}；没有为空。未配 {@code shop.secret.env} 的进程发不出凭据，也就不可能有它的凭据：
+     * 读的一面（列出、吊销全部）当作没有，不抛 —— 否则停用一个运营账号也要先配密钥库环境。发放与登记仍要求配置。
+     */
     private SecKey keyOf(KeyOwner owner) {
+        if (!settings.envConfigured()) {
+            return null;
+        }
         return db.keys().selectOne(Wrappers.<SecKey>lambdaQuery()
                 .eq(SecKey::getNamespace, owner.namespace().name())
                 .eq(SecKey::getOwnerType, owner.ownerType())

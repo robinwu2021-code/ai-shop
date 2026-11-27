@@ -152,6 +152,21 @@ class DigestCredentialVerifierTest {
         assertThat(production.credentials().verify(SecretNamespace.PLATFORM, secret)).isEmpty();
     }
 
+    @Test
+    @DisplayName("★★ 未配 shop.secret.env：读的一面当作没有凭据（停用账号时吊销全部不报错），发放仍拒绝")
+    void unconfiguredEnvironmentReadsAsNoCredentials() {
+        String secret = verifier.issue(credential(STAFF_7, "k-1"), "oak_").secret();
+
+        DigestCredentialVerifier unconfigured = f.restartAs(null).start().credentials();
+
+        assertThat(unconfigured.revokeAll(STAFF_7, "ops-alice", "账号停用")).isZero();
+        assertThat(unconfigured.list(STAFF_7)).isEmpty();
+        assertThat(unconfigured.verify(SecretNamespace.PLATFORM, secret)).isEmpty();
+        assertThatThrownBy(() -> unconfigured.issue(credential(STAFF_7, "k-2"), "oak_"))
+                .isInstanceOf(SecretException.class)
+                .satisfies(e -> assertThat(((SecretException) e).reason()).isEqualTo(Reason.ENV_NOT_CONFIGURED));
+    }
+
     private static void assertDuplicate(Runnable call) {
         assertThatThrownBy(call::run).isInstanceOf(SecretException.class)
                 .satisfies(e -> assertThat(((SecretException) e).reason()).isEqualTo(Reason.DUPLICATE));
