@@ -10,7 +10,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.MoneyMinor;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.trade.PricingCheckoutPort;
 import ai.neargo.shop.spi.trade.PricingManualAdjustmentPort.AdjustmentVO;
 import ai.neargo.shop.spi.trade.PricingManualAdjustmentPort.ManualKind;
@@ -67,7 +67,7 @@ public class PricingManualAdjustmentServiceImpl implements PricingManualAdjustme
     private final PricingPreparationService preparations;
     private final PricingQuoteService quotes;
     private final PricingQuoteAssembler assembler;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final TransactionTemplate tx;
     private final Clock clock;
     private final PricingManualPlanCompiler compiler=new PricingManualPlanCompiler();
@@ -76,14 +76,14 @@ public class PricingManualAdjustmentServiceImpl implements PricingManualAdjustme
     @Autowired
     public PricingManualAdjustmentServiceImpl(PolicyMapper policies,AdjustmentMapper adjustments,
             ObjectProvider<BizIdentityResolver> identities,PricingPreparationService preparations,
-            PricingQuoteService quotes,PricingQuoteAssembler assembler,IdempotencyService idem,
+            PricingQuoteService quotes,PricingQuoteAssembler assembler,RequestIdempotencyPort idem,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this(policies,adjustments,Objects.requireNonNullElse(identities.getIfUnique(),BizIdentityResolver.NONE),
                 preparations,quotes,assembler,idem,manager,Clock.systemUTC());
     }
     public PricingManualAdjustmentServiceImpl(PolicyMapper policies,AdjustmentMapper adjustments,
             BizIdentityResolver identities,PricingPreparationService preparations,PricingQuoteService quotes,
-            PricingQuoteAssembler assembler,IdempotencyService idem,PlatformTransactionManager manager,Clock clock) {
+            PricingQuoteAssembler assembler,RequestIdempotencyPort idem,PlatformTransactionManager manager,Clock clock) {
         this.policies=policies; this.adjustments=adjustments; this.identities=identities;
         this.preparations=preparations; this.quotes=quotes; this.assembler=assembler; this.idem=idem; this.clock=clock;
         tx=new TransactionTemplate(manager); tx.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);

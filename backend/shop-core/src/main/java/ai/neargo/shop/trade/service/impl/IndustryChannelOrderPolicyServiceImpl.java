@@ -7,7 +7,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderFacts;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderPort.Scope;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
@@ -40,13 +40,13 @@ public final class IndustryChannelOrderPolicyServiceImpl
     private static final long MAX_MINOR = 9_007_199_254_740_991L;
     private final ChannelPolicyMapper policies;
     private final MerchantScopeFactsPort owners;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final TransactionTemplate write;
 
     public IndustryChannelOrderPolicyServiceImpl(
             ChannelPolicyMapper policies,
             MerchantScopeFactsPort owners,
-            IdempotencyService idempotency,
+            RequestIdempotencyPort idempotency,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.policies = policies;
         this.owners = owners;

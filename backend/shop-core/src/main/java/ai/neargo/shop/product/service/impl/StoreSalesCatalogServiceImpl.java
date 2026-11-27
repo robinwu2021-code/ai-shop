@@ -9,7 +9,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.product.entity.PrdStoreCatalog;
 import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
 import ai.neargo.shop.product.mapper.ProductMappers;
@@ -50,7 +50,7 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
     private final ProductMappers.StoreCatalogVersionMapper versions;
     private final StoreDirectoryPort stores;
     private final GoodsQueryPort quotes;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final DataSource source;
     private final ObjectMapper json;
     private final TransactionTemplate writes;
@@ -58,7 +58,7 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
 
     public StoreSalesCatalogServiceImpl(ProductMappers.StoreCatalogMapper heads,
             ProductMappers.StoreCatalogVersionMapper versions, StoreDirectoryPort stores, GoodsQueryPort quotes,
-            IdempotencyService idempotency, @Qualifier("dataSource") DataSource source, ObjectMapper json,
+            RequestIdempotencyPort idempotency, @Qualifier("dataSource") DataSource source, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.heads = heads;
         this.versions = versions;

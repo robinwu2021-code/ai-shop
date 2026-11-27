@@ -15,7 +15,7 @@ import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizIdentityResolver;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.spi.trade.PricingManualAdjustmentPort.ManualKind;
 import ai.neargo.shop.spi.trade.PricingManualAdjustmentPort.Request;
 import ai.neargo.shop.trade.assembler.PricingQuoteAssembler;
@@ -45,7 +45,7 @@ class PricingManualAuthorityTest {
         var policies=mock(PolicyMapper.class); var adjustments=mock(AdjustmentMapper.class);
         var preparations=mock(PricingPreparationService.class); var quotes=mock(PricingQuoteService.class);
         var service=new PricingManualAdjustmentServiceImpl(policies,adjustments,BizIdentityResolver.NONE,
-                preparations,quotes,new PricingQuoteAssembler(),mock(IdempotencyService.class),
+                preparations,quotes,new PricingQuoteAssembler(),mock(RequestIdempotencyPortImpl.class),
                 new TestTransactions(),Clock.fixed(PricingManualPlanCompilerTest.NOW,ZoneOffset.UTC));
         var request=new Request(PricingManualPlanCompilerTest.SOURCE,ManualKind.AMOUNT,10L,null,
                 "PRICE_CORRECTION","Actual concession reason");
@@ -170,7 +170,7 @@ class PricingManualAuthorityTest {
             when(adjustments.updateById(any(OrdManualPriceAdjustment.class))).thenAnswer(call -> {
                 OrdManualPriceAdjustment row=call.getArgument(0); row.setVersion(row.getVersion()+1); return 1;
             });
-            var idem=mock(IdempotencyService.class);
+            var idem=mock(RequestIdempotencyPortImpl.class);
             doAnswer(call -> ((Supplier<?>)call.getArgument(5)).get()).when(idem)
                     .execute(anyString(),anyString(),anyString(),anyString(),any(),any());
             var assembler=new PricingQuoteAssembler();

@@ -7,7 +7,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.common.pricing.TaxClass;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.product.dto.GoodsPricingPolicyCommands.Context;
 import ai.neargo.shop.product.dto.GoodsPricingPolicyCommands.PolicyVO;
 import ai.neargo.shop.product.dto.GoodsPricingPolicyCommands.SaveReq;
@@ -46,10 +46,10 @@ public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService 
     private final GoodsMapper goods;
     private final SkuMapper skus;
     private final SkuPricingPolicyMapper policies;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final TransactionTemplate transactions;
     public GoodsPricingPolicyServiceImpl(GoodsMapper goods, SkuMapper skus, SkuPricingPolicyMapper policies,
-            IdempotencyService idempotency, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
+            RequestIdempotencyPort idempotency, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.goods = goods; this.skus = skus; this.policies = policies; this.idempotency = idempotency;
         this.transactions = new TransactionTemplate(manager);
     }

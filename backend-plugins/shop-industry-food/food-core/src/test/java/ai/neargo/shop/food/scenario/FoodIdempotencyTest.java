@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -98,7 +99,7 @@ class FoodIdempotencyTest extends FoodWriteGuardFixture {
                     .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
             f.sql().update("UPDATE sys_idempotent SET result_json=NULL");
             assertThatThrownBy(() -> idem.findCompleted("key", "FOOD:fixture:E:A", "actor", "hash", String.class))
-                    .isInstanceOf(IdempotencyService.ConcurrentRequestException.class);
+                    .isInstanceOf(RequestIdempotencyPort.ConcurrentRequestException.class);
         });
     }
 

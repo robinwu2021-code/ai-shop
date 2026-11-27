@@ -1,0 +1,36 @@
+# 直接依赖接口级防重旧类 IdempotencyService（迁移期转发器） 的源文件（RequestIdempotencyPortGuardTest）。待办型：只准变短。
+# 做法：字段、构造参数、Bean 类型改成端口 RequestIdempotencyPort（TDD-基础能力库对齐 §2.2 1g）。插件装配改成建 RequestIdempotencyPortImpl。名单清空时删掉转发器本身（最后一行）。
+../backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyDefinitionConfiguration.java
+../backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyPolicyConfiguration.java
+../backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyWriteGuardConfiguration.java
+../backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceDefinitionServiceImpl.java
+../backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/StorePolicyServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/config/FoodAutoConfiguration.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/config/FoodBusinessOperationsConfiguration.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/config/FoodOperationsConfiguration.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/config/FoodWriteGuardConfiguration.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/BundleServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/BusinessCloseServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/BusinessOperationsServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/BusinessShareServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCartServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckCollaborationServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/CheckServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/ConfigRevisionServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DiningSessionServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DishServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/KitchenTaskServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/MenuChannelBindingServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/MenuServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/ModifierServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/OptionGroupServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/QueueServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/RecipeServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/ReservationPreorderServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/ReservationServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/SalesRestrictionServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/ServiceSlotServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/StationServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/StoreOperationServiceImpl.java
+../backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/TableServiceImpl.java
+shop-store-mybatis/src/main/java/ai/neargo/shop/idem/IdempotencyService.java

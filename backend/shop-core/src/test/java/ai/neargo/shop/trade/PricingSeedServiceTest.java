@@ -27,7 +27,7 @@ import tools.jackson.databind.node.ObjectNode;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingCapabilities;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.Context;
 import ai.neargo.shop.trade.mapper.TradeMappers.PricingTemplateMapper;
@@ -70,7 +70,7 @@ class PricingSeedServiceTest {
         factory.setDataSource(data); factory.setConfiguration(configuration);
         var session = new SqlSessionTemplate(factory.getObject());
         service = new PricingSeedServiceImpl(session.getMapper(PricingTemplateMapper.class),
-                new IdempotencyService(session.getMapper(SysIdempotentMapper.class), JSON),
+                new RequestIdempotencyPortImpl(session.getMapper(SysIdempotentMapper.class), JSON),
                 new DataSourceTransactionManager(data));
         seed = Files.readString(Path.of("../../docs/technical/design/schema/pricing-initial-data.example.json"));
     }

@@ -17,7 +17,7 @@ import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.trade.order.contract.ContractOrderStatus;
 import ai.neargo.shop.event.OutboxEventBus;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.numbering.DocumentNumberFormatter;
 import ai.neargo.shop.numbering.DocumentSource;
 import ai.neargo.shop.numbering.DocumentType;
@@ -346,7 +346,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     private FreightPort freightPort;
     /** 挑「服务这个社区的最近门店」时要它给社区坐标 */
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityPort;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final OutboxEventBus eventBus;
     /** 支付成功后告诉会员域「他买了一单」。trade 不认识会员表，也不该认识 */
     private final ai.neargo.shop.spi.member.MemberEventPort memberEventPort;
@@ -575,7 +575,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                             ai.neargo.shop.spi.user.UserQueryPort userPort,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityPort,
-                            IdempotencyService idempotency, OutboxEventBus eventBus,
+                            RequestIdempotencyPort idempotency, OutboxEventBus eventBus,
                             ai.neargo.shop.spi.user.AdmissionPort admissionPort,
                             ai.neargo.shop.spi.member.MemberEventPort memberEventPort,
                             ai.neargo.shop.spi.user.PersonPort personPort,

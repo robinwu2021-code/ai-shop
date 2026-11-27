@@ -38,7 +38,7 @@ import ai.neargo.shop.spi.trade.PricingSourceRef;
 import ai.neargo.shop.spi.trade.PricingConfigEvidencePort;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 import ai.neargo.shop.trade.service.impl.PricingRuntimeConfigServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.Context;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.CreateTemplateReq;
@@ -97,7 +97,7 @@ class PricingConfigServiceTest {
         factory.setDataSource(dataSource);
         factory.setConfiguration(config);
         session = new SqlSessionTemplate(factory.getObject());
-        var policy = buildPolicy(new IdempotencyService(session.getMapper(SysIdempotentMapper.class), JSON));
+        var policy = buildPolicy(new RequestIdempotencyPortImpl(session.getMapper(SysIdempotentMapper.class), JSON));
         templates = new PricingTemplateServiceImpl(policy);
         stores = new StorePricingConfigServiceImpl(policy);
         definition = JSON.readTree(Files.readString(Path.of("../../docs/technical/design/schema/"
@@ -379,7 +379,7 @@ class PricingConfigServiceTest {
         var req = request(draft);
         var intercepted = new AtomicBoolean();
         var original = new AtomicReference<RevisionVO>();
-        var racy = new IdempotencyService(session.getMapper(SysIdempotentMapper.class), JSON) {
+        var racy = new RequestIdempotencyPortImpl(session.getMapper(SysIdempotentMapper.class), JSON) {
             @Override
             public <T> Optional<T> findCompleted(String key, String endpoint, String actor, String hash,
                     Class<T> type) {
@@ -527,7 +527,7 @@ class PricingConfigServiceTest {
                 beans.getBeanProvider(PricingConfigEvidencePort.class));
     }
 
-    private static PricingPublicationPolicy buildPolicy(IdempotencyService idempotency) {
+    private static PricingPublicationPolicy buildPolicy(RequestIdempotencyPortImpl idempotency) {
         return new PricingPublicationPolicy(session.getMapper(TradeMappers.PricingTemplateMapper.class),
                 session.getMapper(TradeMappers.PricingTemplateRevisionMapper.class),
                 session.getMapper(TradeMappers.StorePricingConfigMapper.class),
