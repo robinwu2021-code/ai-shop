@@ -18,6 +18,7 @@ import ai.neargo.shop.food.dto.TableVO;
 import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbGuestSession;
 import ai.neargo.shop.food.entity.FnbTable;
+import ai.neargo.shop.food.entity.FnbTableArea;
 import ai.neargo.shop.food.entity.FnbTableToken;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper;
@@ -25,7 +26,6 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableTokenMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
-import ai.neargo.shop.food.policy.TableResourceLocks;
 import ai.neargo.shop.food.service.DiningSessionService;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -64,16 +64,46 @@ public class DiningSessionServiceImpl implements DiningSessionService {
     private final ActionLogMapper actions;
     private final RequestIdempotencyPort idem;
     private final TransactionTemplate tx;
-    private final TableResourceLocks locks;
     private static final SecureRandom RANDOM=new SecureRandom();
 
     public DiningSessionServiceImpl(TableAreaMapper areas,TableMapper tables,TableTokenMapper tokens,
             GuestSessionMapper sessions,ActionLogMapper actions,RequestIdempotencyPort idem,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.tables=tables;this.tokens=tokens;this.sessions=sessions;this.actions=actions;
-        this.idem=idem;this.locks=new TableResourceLocks(areas,tables);
+        this.idem=idem;this.areas=areas;
         this.tx=new TransactionTemplate(manager);tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
+    // 桌台在行业库，令牌与顾客会话归平台（ADR-068 修订二、处置提案）：不跨库锁桌台。
+    // 同一张桌的令牌轮换、撤销与开会话靠令牌行自身的行锁排队（撤销是带条件的更新，开会话锁令牌行）；
+    // 桌台只读一次比对版本与状态，版本号在本事务提交后再加（带原版本条件，可重复）。
+    private final TableAreaMapper areas;
+
+    private FnbTable tableAt(String entity,String store,String table,Long version,boolean active) {
+        var rows=tables.selectList(Wrappers.<FnbTable>lambdaQuery().eq(FnbTable::getEntityNo,entity)
+                .eq(FnbTable::getStoreNo,store).eq(FnbTable::getTableNo,table).last("LIMIT 1"));
+        if(rows.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
+        var row=rows.getFirst();
+        if(version!=null && !row.getVersion().equals(version)) throw BizException.of(ErrorCode.CONFLICT);
+        if(active) {
+            var area=areas.selectList(Wrappers.<FnbTableArea>lambdaQuery().eq(FnbTableArea::getEntityNo,entity)
+                    .eq(FnbTableArea::getStoreNo,store).eq(FnbTableArea::getAreaNo,row.getAreaNo()).last("LIMIT 1"));
+            if(area.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
+            if(!"ACTIVE".equals(row.getStatus()) || !"ACTIVE".equals(area.getFirst().getStatus()))
+                throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return row;
+    }
+
+    /** 提交后给桌台加版本（带原版本条件；别人先加了就不再加）。返回本次命令给出的结果版本。 */
+    private long bumpAfterCommit(FnbTable row,String actor) {
+        long expected=row.getVersion();
+        ai.neargo.shop.food.service.support.IndustryFollowUp.afterTradeCommit(() -> tables.update(null,
+                Wrappers.<FnbTable>lambdaUpdate().eq(FnbTable::getId,row.getId()).eq(FnbTable::getVersion,expected)
+                        .set(FnbTable::getVersion,expected+1).set(FnbTable::getUpdatedBy,actor)
+                        .set(FnbTable::getUpdatedAt,LocalDateTime.now())));
+        return expected+1;
+    }
+
     @Override public TableTokenVO rotateTableToken(String entity,String store,String table,String actor,
             RotateTableTokenReq req,String key) {
         if(req==null || req.expiresAt()==null || !req.expiresAt().isAfter(Instant.now())) bad();
@@ -83,16 +113,16 @@ public class DiningSessionServiceImpl implements DiningSessionService {
         var secret=new AtomicReference<String>();
         command("ROTATE_TABLE_TOKEN",entity,store,actor,key,
                 FoodCommandFingerprint.hash(table,req.version().toString(),expiry.toString()), () -> {
-                    var row=locks.lock(entity,store,List.of(table),Map.of(table,req.version()),true).getFirst();
+                    var row=tableAt(entity,store,table,req.version(),true);
                     var before=view(row);var now=now();
                     revoke(entity,store,table,now,"ROTATED",actor);
                     String raw=randomToken("ft_");
                     var token=new FnbTableToken();token.setEntityNo(entity);token.setTokenNo(BizKey.next("FTOK"));
                     token.setTableNo(table);token.setTokenHash(hash(raw));token.setExpiresAt(local(expiry));
                     token.setVersion(0L);tokens.insert(token);
-                    update(row,actor);String op=tableEvent(row,actor,"ROTATE_TABLE_TOKEN",null,before,key);
+                    long version=bumpAfterCommit(row,actor);String op=tableEvent(row,actor,"ROTATE_TABLE_TOKEN",null,before,key);
                     secret.set(raw);
-                    return new OperationResultVO(new OperationVO(op,"SUCCEEDED",row.getVersion(),table));
+                    return new OperationResultVO(new OperationVO(op,"SUCCEEDED",version,table));
                 });
         if(secret.get()==null) throw BizException.of(ErrorCode.CONFLICT);
         return new TableTokenVO(secret.get(),expiry);
@@ -102,10 +132,10 @@ public class DiningSessionServiceImpl implements DiningSessionService {
         if(req==null) bad();version(req.version());id(table);String reason=text(req.reason(),255);
         return command("REVOKE_TABLE_TOKEN",entity,store,actor,key,
                 FoodCommandFingerprint.hash(table,req.version().toString(),reason), () -> {
-                    var row=locks.lock(entity,store,List.of(table),Map.of(table,req.version()),false).getFirst();
-                    var before=view(row);revoke(entity,store,table,now(),reason,actor);update(row,actor);
+                    var row=tableAt(entity,store,table,req.version(),false);
+                    var before=view(row);revoke(entity,store,table,now(),reason,actor);long version=bumpAfterCommit(row,actor);
                     String op=tableEvent(row,actor,"REVOKE_TABLE_TOKEN",reason,before,key);
-                    return new OperationResultVO(new OperationVO(op,"SUCCEEDED",row.getVersion(),table));
+                    return new OperationResultVO(new OperationVO(op,"SUCCEEDED",version,table));
                 });
     }
     @Override public DiningSessionTableVO resolveTableToken(String raw) {
@@ -136,7 +166,7 @@ public class DiningSessionServiceImpl implements DiningSessionService {
         var raw=new AtomicReference<String>();var expiry=new AtomicReference<Instant>();
         var result=command("START_DINING_SESSION",entity,store,actor,key,
                 FoodCommandFingerprint.hash(req.tableToken(),buyer==null ? "":buyer), () -> {
-                    locks.lock(entity,store,List.of(target.tableNo()),null,true);
+                    tableAt(entity,store,target.tableNo(),null,true);
                     var token=validToken(req.tableToken(),true);
                     if(!token.getEntityNo().equals(entity) || !token.getTableNo().equals(target.tableNo()))
                         throw BizException.of(ErrorCode.NOT_FOUND);
@@ -205,10 +235,6 @@ public class DiningSessionServiceImpl implements DiningSessionService {
             return tx.execute(status -> idem.execute(key,FoodCommandFingerprint.scope(action,entity,store),actor,hash,
                     OperationResultVO.class,work));
         } catch(ConcurrencyFailureException | DuplicateKeyException conflict) { throw BizException.of(ErrorCode.CONFLICT); }
-    }
-    private void update(FnbTable row,String actor) {
-
-        if(row.getVersion()==Long.MAX_VALUE || tables.updateById(row)!=1) throw BizException.of(ErrorCode.CONFLICT);
     }
     private String tableEvent(FnbTable row,String actor,String action,String reason,TableVO before,String key) {
         String op=audit(row.getEntityNo(),row.getStoreNo(),"TABLE",row.getTableNo(),actor,action,reason,key);
