@@ -5,7 +5,8 @@ import ai.neargo.commerce.api.common.ActorContext;
 import ai.neargo.commerce.core.catalog.CatalogLockMode;
 import ai.neargo.commerce.core.spi.CommerceUnitOfWork;
 import ai.neargo.commerce.core.catalog.CatalogRepository;
-import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.spi.dict.DictionaryPort;
+import ai.neargo.shop.spi.dict.DictionaryPort.IndustryRow;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -18,9 +19,9 @@ import org.springframework.stereotype.Component;
 public class OpsStoreSetupQuery {
     private final CatalogRepository catalog;
     private final CommerceUnitOfWork uow;
-    private final MerchantQueryPort merchants;
-    public OpsStoreSetupQuery(CatalogRepository catalog, CommerceUnitOfWork uow, MerchantQueryPort merchants) {
-        this.catalog=catalog;this.uow=uow;this.merchants=merchants;
+    private final DictionaryPort dictionary;
+    public OpsStoreSetupQuery(CatalogRepository catalog, CommerceUnitOfWork uow, DictionaryPort dictionary) {
+        this.catalog=catalog;this.uow=uow;this.dictionary=dictionary;
     }
     public record Choice(String industryCode, String subIndustryCode, String businessTypeCode,
                          String nameZh, String nameTw, String nameEn, int sort,
@@ -35,16 +36,16 @@ public class OpsStoreSetupQuery {
                         return p.typeCode().equals(type) && p.tier()==PlanTier.FREE && "ON_SALE".equals(p.saleStatus())
                                 && v!=null && "PUBLISHED".equals(v.status());
                     })).collect(Collectors.toSet());
-            return choices(merchants.industries(),published);
+            return choices(dictionary.storeIndustries(),published);
         });
     }
 
-    static List<Choice> choices(List<MerchantQueryPort.IndustryRow> rows, Set<String> published) {
+    static List<Choice> choices(List<IndustryRow> rows, Set<String> published) {
             var parents=rows.stream().filter(r->r.enabled() && r.subIndustryCode()==null)
-                    .map(MerchantQueryPort.IndustryRow::industryCode).collect(Collectors.toSet());
+                    .map(IndustryRow::industryCode).collect(Collectors.toSet());
             var selectable=rows.stream().filter(r->r.enabled() && r.subIndustryCode()!=null
                     && parents.contains(r.industryCode()) && published.contains(r.businessTypeCode()))
-                    .map(MerchantQueryPort.IndustryRow::industryCode).collect(Collectors.toSet());
+                    .map(IndustryRow::industryCode).collect(Collectors.toSet());
             return rows.stream().filter(r->r.enabled() && parents.contains(r.industryCode()))
                     .map(r->new Choice(r.industryCode(),r.subIndustryCode(),r.businessTypeCode(),
                             r.nameZh(),r.nameTw(),r.nameEn(),r.sort(),true,

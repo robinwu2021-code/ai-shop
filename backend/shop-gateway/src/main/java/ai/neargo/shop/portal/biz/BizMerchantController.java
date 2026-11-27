@@ -38,6 +38,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import java.util.Locale;
 import java.util.Objects;
 import ai.neargo.shop.spi.user.CommunityQueryPort;
+import ai.neargo.shop.spi.dict.DictionaryPort;
+import ai.neargo.shop.spi.dict.DictionaryPort.IndustryRow;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.user.service.AuthService;
 import ai.neargo.shop.user.service.UserService;
@@ -463,9 +465,17 @@ public class BizMerchantController {
         return resolveMarket(accountMarket, markets.getIfAvailable(), req, otherBusinessType, industries());
     }
 
+    /** 经营类型与子行业，读统一字典；setter 注入，不动构造函数（测试按位置传参） */
+    private DictionaryPort dictionary;
+
+    @Autowired(required = false)
+    void setDictionary(DictionaryPort dictionary) {
+        this.dictionary = dictionary;
+    }
+
     /** 行业表（V643）；未接入时为空，校验回落一对一默认映射 */
-    private List<MerchantQueryPort.IndustryRow> industries() {
-        return merchantQueryPort == null ? List.of() : merchantQueryPort.industries();
+    private List<IndustryRow> industries() {
+        return dictionary == null ? List.of() : dictionary.storeIndustries();
     }
 
     static String resolveMarket(String accountMarket, MarketPort markets, QuickStartReq req) {
@@ -478,7 +488,7 @@ public class BizMerchantController {
     }
 
     static String resolveMarket(String accountMarket, MarketPort markets, QuickStartReq req,
-                                String otherBusinessType, List<MerchantQueryPort.IndustryRow> industries) {
+                                String otherBusinessType, List<IndustryRow> industries) {
         String requested = req.market() == null || req.market().isBlank() ? accountMarket : req.market();
         if (!accountMarket.equals(requested)) throw BizException.of(ErrorCode.BAD_REQUEST);
         requireIndustry(req, otherBusinessType, industries);
@@ -499,7 +509,7 @@ public class BizMerchantController {
      * </ul>
      */
     private static void requireIndustry(QuickStartReq req, String otherBusinessType,
-                                        List<MerchantQueryPort.IndustryRow> industries) {
+                                        List<IndustryRow> industries) {
         String industry = req.industryCode();
         String sub = req.subIndustryCode();
         String type = req.businessTypeCode();
@@ -532,7 +542,7 @@ public class BizMerchantController {
         if (!ok) throw BizException.of(ErrorCode.BAD_REQUEST);
     }
 
-    private static MerchantQueryPort.IndustryRow industryRow(List<MerchantQueryPort.IndustryRow> industries,
+    private static IndustryRow industryRow(List<IndustryRow> industries,
                                                              String industry, String sub) {
         if (industries == null || industry == null) return null;
         return industries.stream()
@@ -544,7 +554,7 @@ public class BizMerchantController {
      * 门店要存的行业码（TDD-子行业与能力端验收 B4/B5）：登记过的两级都存；子行业「其他」只存行业；
      * 旧一对一形状、顶层「其他」、没选都不存（回显时回落经营类型）。请求须已通过 {@link #requireIndustry}。
      */
-    static List<String> storedIndustry(QuickStartReq req, List<MerchantQueryPort.IndustryRow> industries) {
+    static List<String> storedIndustry(QuickStartReq req, List<IndustryRow> industries) {
         String industry = req.industryCode();
         String sub = req.subIndustryCode();
         if (industry == null || BizFoundationController.OTHER.equals(industry)) return java.util.Arrays.asList(null, null);
@@ -580,7 +590,7 @@ public class BizMerchantController {
     }
 
     static MerchantAdminPort.QuickStartCommand quickStartCommand(String userNo, String market, QuickStartReq req,
-                                                                 List<MerchantQueryPort.IndustryRow> industries) {
+                                                                 List<IndustryRow> industries) {
         var stored = storedIndustry(req, industries);
         String industryText = BizFoundationController.OTHER.equals(req.industryCode()) ? trimmed(req.industryText())
                 : null;

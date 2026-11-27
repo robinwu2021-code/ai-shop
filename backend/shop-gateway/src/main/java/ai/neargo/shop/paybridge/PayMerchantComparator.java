@@ -1,5 +1,6 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.common.PayChannels;
 import ai.neargo.shop.spi.pay.PayMerchantQueryPort;
 import ai.neargo.shop.spi.pay.PayMerchantQueryPort.PayRoute;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -103,7 +104,7 @@ public class PayMerchantComparator {
                 String storeNo = (String) s.get("store_no");
                 Set<String> channels = new LinkedHashSet<>(legacyChannels);
                 routes.collectableRoutes(storeId, market).forEach(r -> channels.add(r.payChannel()));
-                channels.removeAll(MerchantQueryPort.CHANNEL_FREE_PAY_CHANNELS);
+                channels.removeAll(PayChannels.NO_CHANNEL_ACCOUNT);
                 for (String channel : channels) {
                     checked++;
                     compareOne(entityNo, storeNo, storeId, channel, funds).forEach(d -> diffs.add(

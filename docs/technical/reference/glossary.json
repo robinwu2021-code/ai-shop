@@ -9254,6 +9254,42 @@
           "ar": "عنوان الشحن"
         },
         {
+          "key": "bizMall.afterSale.quantity",
+          "zh-CN": "申请件数",
+          "en": "Quantity to refund",
+          "ar": "الكمية للاسترداد"
+        },
+        {
+          "key": "bizMall.afterSale.reason",
+          "zh-CN": "退款原因",
+          "en": "Reason for refund",
+          "ar": "سبب الاسترداد"
+        },
+        {
+          "key": "bizMall.afterSale.sent",
+          "zh-CN": "已提交退款申请",
+          "en": "Refund request submitted",
+          "ar": "تم إرسال طلب الاسترداد"
+        },
+        {
+          "key": "bizMall.afterSale.shipped",
+          "zh-CN": "已发 {shipped} 件，可退 {left} 件",
+          "en": "{shipped} shipped, {left} eligible",
+          "ar": "شُحن {shipped}، والمتاح للاسترداد {left}"
+        },
+        {
+          "key": "bizMall.afterSale.submit",
+          "zh-CN": "提交申请（现金上限 {amount}）",
+          "en": "Submit request (up to {amount})",
+          "ar": "إرسال الطلب (حتى {amount})"
+        },
+        {
+          "key": "bizMall.afterSale.title",
+          "zh-CN": "申请售后退款",
+          "en": "Request a refund",
+          "ar": "طلب استرداد"
+        },
+        {
           "key": "bizMall.checkout.days",
           "zh-CN": "{n} 天",
           "en": "{n} days",
@@ -39659,13 +39695,6 @@
         "module": "logistics"
       },
       {
-        "host": "TestPayGateway",
-        "name": "CHANNEL",
-        "value": "TEST",
-        "zh": "通道码。",
-        "module": "pay/pay-channel"
-      },
-      {
         "host": "WechatApiV3Signer",
         "name": "SIGN_TYPE",
         "value": "RSA",
@@ -41584,6 +41613,27 @@
         "module": "shop-base"
       },
       {
+        "host": "PayChannels",
+        "name": "OFFLINE",
+        "value": "OFFLINE",
+        "zh": "线下收款（现金、自带设备）：钱不经过任何通道",
+        "module": "shop-base"
+      },
+      {
+        "host": "PayChannels",
+        "name": "STUB",
+        "value": "STUB",
+        "zh": "开发期“恒成功”假网关（shop.pay.stub=true）",
+        "module": "shop-base"
+      },
+      {
+        "host": "PayChannels",
+        "name": "TEST",
+        "value": "TEST",
+        "zh": "测试渠道：走真实状态机的假网关。",
+        "module": "shop-base"
+      },
+      {
         "host": "PayModes",
         "name": "ONLINE",
         "value": "ONLINE",
@@ -41762,6 +41812,20 @@
         "host": "ApprovalSubmitRequested",
         "name": "TYPE",
         "value": "APPROVAL_SUBMIT_REQUESTED",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "DictItem",
+        "name": "LEVEL_TYPE",
+        "value": "TYPE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "DictItem",
+        "name": "LEVEL_SUB",
+        "value": "SUB",
         "zh": "",
         "module": "shop-base"
       },
@@ -48093,6 +48157,16 @@
         ],
         "zh": "由主体资料自动带出，页面不必填：如汎宇的 SELLERID 就是卖方统编。",
         "module": "invoice"
+      },
+      {
+        "name": "DictType",
+        "values": [
+          "BUSINESS_TYPE",
+          "ONBOARD_INDUSTRY",
+          "PAY_CHANNEL"
+        ],
+        "zh": "字典类型，对应基础能力库 sys_dict_item.dict_type。",
+        "module": "shop-base"
       },
       {
         "name": "Dim",
@@ -55518,14 +55592,6 @@
       "module": "pay/pay-channel"
     },
     {
-      "host": "FreePayGateway",
-      "name": "CHANNEL",
-      "type": "String",
-      "value": "ai.neargo.shop.common.PayChannels.FREE",
-      "zh": "通道名。",
-      "module": "pay/pay-channel"
-    },
-    {
       "host": "WechatApis",
       "name": "HOST",
       "type": "String",
@@ -57870,6 +57936,14 @@
       "module": "shop-base"
     },
     {
+      "host": "PayChannels",
+      "name": "NO_CHANNEL_ACCOUNT",
+      "type": "Set<String>",
+      "value": "Set.of(OFFLINE, FREE, STUB, TEST)",
+      "zh": "不对应任何收款号的渠道：结算单上的收款号按它们不过滤渠道，取「主体默认号」（F01 · Review R01）。",
+      "module": "shop-base"
+    },
+    {
       "host": "PayModes",
       "name": "ALL",
       "type": "Set<String>",
@@ -58035,6 +58109,38 @@
       "type": "int",
       "value": "32",
       "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "DictItem",
+      "name": "LANG_ZH_CN",
+      "type": "String",
+      "value": "\"zh-CN\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "DictItem",
+      "name": "LANG_ZH_TW",
+      "type": "String",
+      "value": "\"zh-TW\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "DictItem",
+      "name": "LANG_EN",
+      "type": "String",
+      "value": "\"en\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "DictItem",
+      "name": "ATTR_BUSINESS_TYPE_CODE",
+      "type": "String",
+      "value": "\"business_type_code\"",
+      "zh": "DictType#BUSINESS_TYPE 的子行业条目：它决定的经营类型",
       "module": "shop-base"
     },
     {
@@ -61979,6 +62085,46 @@
       "type": "int",
       "value": "10",
       "zh": "一条事件最多投几次。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerMessage",
+      "name": "SOURCE_SYSTEM",
+      "type": "String",
+      "value": "\"sourceSystem\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerMessage",
+      "name": "SOURCE_EVENT_NO",
+      "type": "String",
+      "value": "\"sourceEventNo\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerMessage",
+      "name": "SCHEMA_VERSION",
+      "type": "String",
+      "value": "\"schemaVersion\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerMessage",
+      "name": "STREAM_SEQUENCE",
+      "type": "String",
+      "value": "\"streamSequence\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerMessage",
+      "name": "OCCURRED_AT",
+      "type": "String",
+      "value": "\"occurredAt\"",
+      "zh": "",
       "module": "shop-store-mybatis"
     },
     {

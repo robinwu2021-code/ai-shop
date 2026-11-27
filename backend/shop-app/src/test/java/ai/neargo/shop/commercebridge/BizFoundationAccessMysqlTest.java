@@ -275,6 +275,7 @@ class BizFoundationAccessMysqlTest {
                             f.mybatis.getMapper(MchEntityMapper.class),
                             mock(ai.neargo.shop.spi.platform.MasterDataPort.class),
                             mock(ai.neargo.shop.spi.pay.PayChannelMasterPort.class),
+                            mock(ai.neargo.shop.spi.dict.DictionaryPort.class),
                             new tools.jackson.databind.ObjectMapper(),
                             f.mybatis.getMapper(MchStoreMapper.class),
                             java.util.List.of(gateway),

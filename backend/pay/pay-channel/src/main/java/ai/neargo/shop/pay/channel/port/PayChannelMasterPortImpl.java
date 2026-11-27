@@ -21,15 +21,6 @@ public class PayChannelMasterPortImpl implements PayChannelMasterPort {
     }
 
     @Override
-    public String channelName(String payChannel) {
-        // 查不到返回通道码本身：界面上宁可显示 WECHAT 也别显示空
-        return master.find(payChannel)
-                .map(SysPayChannel::getName)
-                .filter(n -> !n.isBlank())
-                .orElse(payChannel);
-    }
-
-    @Override
     public List<String> enabledChannels(String market) {
         return master.enabled(market).stream().map(SysPayChannel::getPayChannel).toList();
     }

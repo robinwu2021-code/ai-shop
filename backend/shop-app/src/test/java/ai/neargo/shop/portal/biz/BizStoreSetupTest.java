@@ -1,5 +1,6 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.spi.dict.DictionaryPort.IndustryRow;
 import static org.junit.jupiter.api.Assertions.*;
 
 import static org.mockito.Mockito.mock;
@@ -275,12 +276,12 @@ class BizStoreSetupTest {
 
     // ---------------------------------------------------------------- TDD-子行业与能力端验收
 
-    static ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow row(String industry, String sub, String type,
+    static IndustryRow row(String industry, String sub, String type,
                                                                     String zh, String tw, int sort) {
-        return new ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow(industry, sub, type, zh, tw, null, sort);
+        return new IndustryRow(industry, sub, type, zh, tw, null, sort);
     }
 
-    static final List<ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow> ROWS = List.of(
+    static final List<IndustryRow> ROWS = List.of(
             row("FOOD", null, "FOOD", "餐饮", "餐飲", 1),
             row("FOOD", "FOOD_BREAKFAST", "FOOD", "早餐店", "早餐店", 1),
             row("FOOD", "FOOD_CAFE", "FOOD", "咖啡厅", "咖啡廳", 2),
@@ -328,7 +329,7 @@ class BizStoreSetupTest {
         assertEquals("咖啡廳", cafe.displayName(Locale.forLanguageTag("zh-Hant-HK")));
         assertEquals("咖啡厅", cafe.displayName(Locale.SIMPLIFIED_CHINESE));
         assertEquals("咖啡厅", cafe.displayName(Locale.ENGLISH), "没有英文名时回落简体");
-        assertEquals("Cafe", new ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow(
+        assertEquals("Cafe", new IndustryRow(
                 "FOOD", "FOOD_CAFE", "FOOD", "咖啡厅", "咖啡廳", "Cafe", 2).displayName(Locale.ENGLISH));
     }
 
@@ -373,7 +374,7 @@ class BizStoreSetupTest {
                 BizMerchantController.storedIndustry(pick(null, null, null), ROWS));
     }
     @Test void allDisabledConfigurationDoesNotRestoreDefaultIndustries() {
-        var disabled = ROWS.stream().map(r -> new ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow(
+        var disabled = ROWS.stream().map(r -> new IndustryRow(
                 r.industryCode(), r.subIndustryCode(), r.businessTypeCode(), r.nameZh(), r.nameTw(), r.nameEn(), r.sort(), false)).toList();
         var setup = BizFoundationController.storeSetup(markets(true).find("TW").orElseThrow(),
                 FOOD_AND_RETAIL, null, null, disabled, Locale.TRADITIONAL_CHINESE);
@@ -383,7 +384,7 @@ class BizStoreSetupTest {
     }
 
     @Test void disabledChildIsHiddenAndRejectedWithoutChangingOtherChildren() {
-        var rows = ROWS.stream().map(r -> new ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow(
+        var rows = ROWS.stream().map(r -> new IndustryRow(
                 r.industryCode(), r.subIndustryCode(), r.businessTypeCode(), r.nameZh(), r.nameTw(), r.nameEn(), r.sort(),
                 !"FOOD_CAFE".equals(r.subIndustryCode()))).toList();
         var setup = BizFoundationController.storeSetup(markets(true).find("TW").orElseThrow(),

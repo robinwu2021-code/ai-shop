@@ -73,7 +73,11 @@ class CommonTableAccessTest {
         GROUPS.put("字典", new Group(List.of("pay_channel", "pay_channel_product", "sys_pay_channel",
                 "sys_pay_channel_market", "cim_product_profile", "cim_provider", "inv_uom", "sys_auth_code",
                 "sys_business_type", "sys_industry", "sys_legal_form", "sys_market", "sys_region", "sys_store_industry"),
-                List.of()));
+                // 端口 DictionaryPort 的唯一实现与它按类型汇集的来源（TDD-基础能力库对齐 §2.2 1b）
+                List.of("shop-core/src/main/java/ai/neargo/shop/platform/port/DictionaryPortImpl.java",
+                        "shop-core/src/main/java/ai/neargo/shop/platform/port/OnboardIndustryDictionarySource.java",
+                        "shop-merchant/src/main/java/ai/neargo/shop/merchant/port/StoreIndustryDictionarySource.java",
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/port/PayChannelDictionarySource.java")));
         GROUPS.put("审批", new Group(List.of("approval_link", "pay_terminal_manager_authorization",
                 "ord_manual_price_adjustment"),
                 List.of("shop-opskit/src/main/java/ai/neargo/shop/approval/opskit/ApprovalLinkStore.java")));

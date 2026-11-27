@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.dict.DictType;
+import ai.neargo.shop.spi.dict.DictionaryPort;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 
@@ -162,6 +164,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     /** 支付单（支付服务 I3）：去支付先建一张，通道尝试挂在它下面。没装（独立形态未接上）时照旧走原路 */
     @Autowired(required = false) private PaymentPort paymentPort;
     @Autowired private LegacyCouponCheckoutJournal legacyCheckoutJournal;
+    /** 支付渠道展示名读统一字典（TDD-基础能力库对齐 §2.3 1b） */
+    @Autowired private DictionaryPort dictionary;
     @Autowired private ObjectProvider<LegacyCouponOrderCreationCoordinator> legacyCreationCoordinators;
     @Autowired private ObjectProvider<LegacyCouponBoundOrderService> coreCreationWriters;
     @Autowired private ObjectMapper legacyCheckoutJson;
@@ -3008,7 +3012,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             String reason = !gatewayReady ? "该支付方式暂未开通"
                     : !merchantOk ? "本单中有店铺尚未开通这种收款方式" : null;
             methods.add(new ai.neargo.shop.trade.dto.OrderPayMethodVO.Method(
-                    ch, ch, payChannelMasterPort.channelName(ch),
+                    ch, ch, dictionary.nameOf(DictType.PAY_CHANNEL, ch),
                     gatewayReady && merchantOk, reason));
         }
         // 币种跟着通道走（与结算单同一口径）；取不到时留空，端上据此不显示金额
@@ -3332,7 +3336,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                     || accepted.draft().paymentStores().size() != accepted.draft().allSubOrderNos().size()
                     || accepted.draft().paymentStores().stream().anyMatch(s ->
                     !channel.equals(s.route().channel())
-                            && !(ai.neargo.shop.common.PayChannels.FREE.equals(channel)
+                            && !(PayChannels.FREE.equals(channel)
                                     && Long.valueOf(0).equals(paymentAmount)))) {
                 throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
             }
@@ -3373,7 +3377,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          *
          * markPaid 自身幂等（已是 PAID 直接返回），用户连点两下不会推乱。
          */
-        boolean settled = ai.neargo.shop.common.PayChannels.FREE.equals(init.payChannel());
+        boolean settled = PayChannels.FREE.equals(init.payChannel());
         if (settled) {
             // The merchant attempt reference is not the channel's confirmed transaction number.
             if (init.outTradeNo() == null || init.outTradeNo().isBlank()) {
@@ -5746,7 +5750,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 是这条链本来就缺一个出口。
          */
         if (order.getPayAmount() != null && order.getPayAmount() == 0L) {
-            return ai.neargo.shop.common.PayChannels.FREE;
+            return PayChannels.FREE;
         }
         if (requested != null && !requested.isBlank()) {
             return requested;

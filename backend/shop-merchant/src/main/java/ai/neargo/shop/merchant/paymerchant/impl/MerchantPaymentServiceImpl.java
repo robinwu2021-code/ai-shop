@@ -9,6 +9,8 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Masks;
 import ai.neargo.shop.spi.pay.PayApplymentGateway;
+import ai.neargo.shop.spi.dict.DictType;
+import ai.neargo.shop.spi.dict.DictionaryPort;
 import ai.neargo.shop.spi.pay.PayChannelMasterPort;
 import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.shop.merchant.dto.PaymentApplymentVO;
@@ -48,6 +50,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     private final MasterDataPort masterDataPort;
     /** 通道主数据。2026-09-01 从 MasterDataPort 拆出来 —— 通道属性归 pay（见 ADR-023 那条原则） */
     private final PayChannelMasterPort payChannelMasterPort;
+    private final DictionaryPort dictionary;
     private final tools.jackson.databind.ObjectMapper json;
     /**
      * 每通道一个实现。开发期（{@code shop.pay.stub=true}）由 STUB 替 {@code shop.pay.stub-channels} 里**点了名**的渠道做事，
@@ -60,6 +63,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     public MerchantPaymentServiceImpl(MchPaymentMapper paymentMapper, MchEntityMapper merchantMapper,
                                       MasterDataPort masterDataPort,
                                       PayChannelMasterPort payChannelMasterPort,
+                                      DictionaryPort dictionary,
                                       tools.jackson.databind.ObjectMapper json,
                                       ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
                                       List<PayApplymentGateway> gatewayList,
@@ -70,6 +74,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         this.merchantMapper = merchantMapper;
         this.masterDataPort = masterDataPort;
         this.payChannelMasterPort = payChannelMasterPort;
+        this.dictionary = dictionary;
         this.json = json;
         this.storeMapper = storeMapper;
         Map<String, PayApplymentGateway> byChannel = new java.util.HashMap<>(gatewayList.stream()
@@ -141,7 +146,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         virtual.setLegalForm(legalFormOf(merchantNo));
         virtual.setApplyStatus(MchPaymentMerchant.NONE);
         return new PaymentApplymentVO(virtual.getPayChannel(),
-                payChannelMasterPort.channelName(virtual.getPayChannel()),
+                dictionary.nameOf(DictType.PAY_CHANNEL, virtual.getPayChannel()),
                 MchPaymentMerchant.NONE, false, null, null, null, null, null,
                 missingOf(virtual, null, null, null), false, null, null, "");
     }
@@ -537,7 +542,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                 : missingOf(row, row.getSettleAccountType(), row.getSettleAccountMasked(), null);
         return new PaymentApplymentVO(
                 row.getPayChannel(),
-                payChannelMasterPort.channelName(row.getPayChannel()),
+                dictionary.nameOf(DictType.PAY_CHANNEL, row.getPayChannel()),
                 row.getApplyStatus(),
                 active,
                 row.getPayMerchantNo(),

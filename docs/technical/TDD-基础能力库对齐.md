@@ -368,6 +368,45 @@
 靠业务表唯一键，重复请求只能重读业务数据拼返回值”。照它改，S1–S4、S7 要逐接口重做：每张会被重复提交的表加来自请求的唯一键（迁移，契约档 1），
 每个接口写“按键重读并重建响应”，原始响应与 24 小时语义都没有了；餐饮、美业的接口还归各自模块。见 §3 Q11。**Q11 定之前 1g 不动代码。**
 
+#### 1b 字典（会话乙，2026-11-27）
+
+档位：1（新增 spi 端口、删 spi 上的常量与方法；不动库表、端点、权限码、i18n）。
+
+**读写面盘点**（`backend/` 主工程；`backend/commerce` 与 `backend-plugins` 另算）：
+
+| 旧件 | 写 | 跨域读 | 所在 |
+|---|---|---|---|
+| `sys_industry`（7 行） | `IndustryServiceImpl`（运营端） | `MasterDataPort.industryKnown` ← `MerchantScopeFactsPortImpl` | `shop-core` platform |
+| `sys_store_industry`（35 行） | `StoreIndustryAdminServiceImpl`（运营端） | `MerchantQueryPort.industries()` / `IndustryRow` ← `BizMerchantController`、`BizFoundationController`、`OpsStoreSetupQuery`；域内 `MerchantPortImpl.validateInitialStore` | `shop-merchant` dictionary |
+| `sys_business_type` | 商城 `SysBusinessTypeRepository` | 商城自己；商城新代码已读 `sys_dict_item`（`BUSINESS_TYPE`） | `backend/commerce`，商城库 |
+| `sys_pay_channel` | `PayChannelMasterServiceImpl`（支付数据源） | `PayChannelMasterPort.channelName` ← `OrderServiceImpl`、`MerchantPaymentServiceImpl`×2 | `pay-channel` |
+| 渠道常量 | — | `PayChannels.FREE`、`FreePayGateway.CHANNEL`（转引 FREE）、`MerchantQueryPort.CHANNEL_FREE_PAY_CHANNELS`、`StoreOrderSettlementServiceImpl.CHANNEL_OFFLINE`、`TestPayGateway.CHANNEL` | 散在 4 个模块 |
+| `cim_provider` | 渠道接入插件 | 插件自己 | `backend-plugins/shop-commerce-integration` |
+
+**哪些是同一概念**（按设计 `sys_dict_item` 的字典类型判，不按行数或引用数）：
+
+| 字典类型 | 并入的旧件 | 判定 |
+|---|---|---|
+| `BUSINESS_TYPE` 经营类型与子行业 | `sys_store_industry`、`sys_business_type` | 同一棵树：行业行即经营类型（FOOD/RETAIL/SERVICE），子行业挂在下面并指明经营类型。两张表是同一概念的重复建模 |
+| `ONBOARD_INDUSTRY` 进件行业 | `sys_industry` | **不同概念**：码是 CATERING/LIFE_SERVICE…，每行挂小微准入、积分强制，是通道准入口径（V360 注释明说不能为意向加行）。与经营类型不并，单独一个类型 |
+| `PAY_CHANNEL` 支付渠道 | `sys_pay_channel` + 散落的渠道码常量 | 同一概念：表是运营维护的渠道，常量是代码里认得的码。`FREE/OFFLINE/STUB/TEST` 不进表（不是运营可开关的渠道），收成 `PayChannels` 一处 |
+| `CHANNEL_PRODUCT` 渠道产品 | `cim_provider` | **不同概念**：销售渠道方（外卖、电商平台），与支付渠道无关。在插件工程里，本次不动 |
+
+**做法**：
+
+- 端口 `spi.dict.DictionaryPort`：`items(DictType)` 返回 `DictItem`（形状对齐 `sys_dict_item`：租户、类型、编码、上级、层级、多语言名、排序、启停、属性），
+  另有 `item`、`known`、`nameOf` 与经营类型树的视图 `storeIndustries()`（原 `MerchantQueryPort.IndustryRow` 移来，改名 `IndustryRow`）。
+- 唯一实现 `platform.port.DictionaryPortImpl`（`shop-core`）。三张旧表分在三个模块、支付那张还在独立数据源，
+  所以实现按类型汇集 `spi.dict.DictionarySource`：现在每个旧表的属主各出一个（`OnboardIndustryDictionarySource`、
+  `StoreIndustryDictionarySource`、`PayChannelDictionarySource`），同一类型两个来源启动即失败。
+  **迁移路径**：基础能力库落地后换成一个读 `sys_dict_item` 的来源，三个旧来源删掉，调用方不动。
+- 调用方改走端口：`MerchantQueryPort.industries()`、`IndustryRow`、`MasterDataPort.industryKnown`、
+  `PayChannelMasterPort.channelName` 删掉。`PayChannelMasterPort` 余下的“可下单通道 = 开着 ∩ 有网关实现”是支付业务判断，不是字典，留在原处。
+- 常量：`MerchantQueryPort.CHANNEL_FREE_PAY_CHANNELS` 移成 `PayChannels.NO_CHANNEL_ACCOUNT`，`PayChannels` 补 `OFFLINE`、`TEST`、`STUB`；
+  `FreePayGateway.CHANNEL`、`TestPayGateway.CHANNEL`、`StoreOrderSettlementServiceImpl.CHANNEL_OFFLINE` 三个别名删掉，直接用它。
+- 不在本项：`sys_business_type`（商城库、商城会话）、`cim_provider`（插件工程）；运营端维护两张旧表的写入口不动（写仍归属主，读走端口）。
+
+
 ## §3 待你定
 
 | # | 问题 | 建议 |

@@ -1,6 +1,8 @@
 package ai.neargo.shop.portal.biz;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.spi.dict.DictionaryPort;
+import ai.neargo.shop.spi.dict.DictionaryPort.IndustryRow;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.pay.MarketPort;
 import ai.neargo.shop.platform.port.GeoRouter;
@@ -87,9 +89,9 @@ public class BizFoundationController {
         if (market.isEmpty()) return new StoreSetup(List.of(), null);
         var router = geo == null ? null : geo.getIfAvailable();
         var map = router == null ? null : router.clientMapFor(market.get().market()).orElse(null);
-        var merchantPort = merchants == null ? null : merchants.getIfAvailable();
+        var dictionaryPort = dictionary == null ? null : dictionary.getIfAvailable();
         return storeSetup(market.get(), queries.businessTypes(ShopCommerceActorAdapter.current()),
-                map, otherBusinessType, merchantPort == null ? List.of() : merchantPort.industries(),
+                map, otherBusinessType, dictionaryPort == null ? List.of() : dictionaryPort.storeIndustries(),
                 org.springframework.context.i18n.LocaleContextHolder.getLocale());
     }
 
@@ -119,7 +121,7 @@ public class BizFoundationController {
      * 行业下没有可用子行业就不列。行业表为空时回落一对一默认映射（B2），与改动前完全一样。
      */
     static StoreSetup storeSetup(MarketPort.MarketBrief m, List<BusinessType> types, GeoRouter.ClientMap map,
-                                 String otherBusinessType, List<MerchantQueryPort.IndustryRow> rows,
+                                 String otherBusinessType, List<IndustryRow> rows,
                                  Locale locale) {
         List<StoreSetupIndustry> industries = rows == null || rows.isEmpty() ? defaultIndustries(types)
                 : catalogIndustries(types, rows, locale);
@@ -134,18 +136,18 @@ public class BizFoundationController {
     }
 
     private static List<StoreSetupIndustry> catalogIndustries(List<BusinessType> types,
-                                                               List<MerchantQueryPort.IndustryRow> rows,
+                                                               List<IndustryRow> rows,
                                                                Locale locale) {
         var published = new java.util.LinkedHashMap<String, BusinessType>();
         types.forEach(t -> published.put(t.businessTypeCode(), t));
         var out = new java.util.ArrayList<StoreSetupIndustry>();
         rows.stream().filter(r -> r.enabled() && r.subIndustryCode() == null)
-                .sorted(java.util.Comparator.comparingInt(MerchantQueryPort.IndustryRow::sort))
+                .sorted(java.util.Comparator.comparingInt(IndustryRow::sort))
                 .forEach(industry -> {
                     var subs = rows.stream()
                             .filter(r -> r.enabled() && industry.industryCode().equals(r.industryCode())
                                     && r.subIndustryCode() != null && published.containsKey(r.businessTypeCode()))
-                            .sorted(java.util.Comparator.comparingInt(MerchantQueryPort.IndustryRow::sort))
+                            .sorted(java.util.Comparator.comparingInt(IndustryRow::sort))
                             .map(r -> {
                                 var type = published.get(r.businessTypeCode());
                                 return new StoreSetupSubIndustry(r.subIndustryCode(), r.displayName(locale),
@@ -215,6 +217,13 @@ public class BizFoundationController {
     @Autowired
     void setMerchants(ObjectProvider<MerchantQueryPort> merchants) {
         this.merchants = merchants;
+    }
+
+    private ObjectProvider<DictionaryPort> dictionary;
+
+    @Autowired
+    void setDictionary(ObjectProvider<DictionaryPort> dictionary) {
+        this.dictionary = dictionary;
     }
 
     @PreAuthorize("@perm.memberOfSelectedStore(#storeNo)")

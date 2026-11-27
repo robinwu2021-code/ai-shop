@@ -1,6 +1,6 @@
 package ai.neargo.shop.commercebridge;
 
-import ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow;
+import ai.neargo.shop.spi.dict.DictionaryPort.IndustryRow;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
