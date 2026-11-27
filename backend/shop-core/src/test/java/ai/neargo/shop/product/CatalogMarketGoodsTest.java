@@ -12,6 +12,7 @@ import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.port.GoodsCatalogQueryPortImpl;
@@ -59,7 +60,7 @@ class CatalogMarketGoodsTest {
         when(owner.market(scope)).thenThrow(failure);
         new ApplicationContextRunner().withUserConfiguration(GoodsCatalogQueryPortImpl.class)
                 .withBean(GoodsMapper.class, () -> goods).withBean(SkuMapper.class, () -> skus)
-                .withBean("transactionManager", PlatformTransactionManager.class,
+                .withBean(ModuleDataSources.TRADE_TX_MANAGER, PlatformTransactionManager.class,
                         () -> mock(PlatformTransactionManager.class))
                 .withBean(CatalogPriceSourcePort.class, () -> owner).run(c -> {
                     assertThat(c).hasNotFailed();
