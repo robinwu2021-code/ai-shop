@@ -27,11 +27,6 @@
     },
     {
       "app": "b-app",
-      "method": "GET",
-      "path": "/biz/stores/{storeNo}/subscription"
-    },
-    {
-      "app": "b-app",
       "method": "POST",
       "path": "/biz/auth/logout"
     },
