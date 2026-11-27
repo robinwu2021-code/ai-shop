@@ -1,5 +1,15 @@
 package ai.neargo.shop.platform.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+
+import org.springframework.transaction.support.TransactionTemplate;
+
+import org.springframework.transaction.TransactionDefinition;
+
+import org.springframework.transaction.PlatformTransactionManager;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.platform.MarketPhonePolicyService;
 
@@ -1182,7 +1192,8 @@ public class OpsServiceImpl implements OpsService {
     }
 
     @Override
-    @Transactional
+    // 只写基础能力库的角色（K3）：只开基础能力库的事务，账号在平台基础库只读
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public StaffVO setStaffRole(String staffNo, String role) {
         if (role == null || role.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1258,7 +1269,20 @@ public class OpsServiceImpl implements OpsService {
         staff.setStatus("ACTIVE");
         staff.setMustChangePassword(true);
         staffMapper.insert(staff);
-        staffRoles.set(staff.getStaffNo(), want);
+        // 角色在基础能力库，两库各自绑定后没有共同事务（K3）：独立事务先写，账号这边随后失败就撤回
+        writeRolesSeparately(staff.getStaffNo(), want);
+        try {
+            return deliverCreatedStaff(staff, want, username, realName, initial);
+        } catch (RuntimeException e) {
+            // 账号这边失败（邮件发不出去等）会整体回滚；角色已在基础能力库独立提交，要撤回，否则留下孤儿角色（K3）
+            revokeRolesSeparately(staff.getStaffNo());
+            throw e;
+        }
+    }
+
+    /** 建号的后半段：审计与初始密码交付。抛错时由 {@link #createStaff} 撤回已写的角色。 */
+    private CreatedStaffVO deliverCreatedStaff(SysOpsStaff staff, List<String> want, String username,
+                                              String realName, String initial) {
 
         // 审计里**不写密码**。写了就等于把「一次性」这件事作废
         audit("STAFF_CREATE", staff.getStaffNo(), username + " / " + String.join(",", want));
@@ -1309,8 +1333,36 @@ public class OpsServiceImpl implements OpsService {
         return new CreatedStaffVO(toVO(staff, want, rolePermResolver.of(want)), initial, null);
     }
 
+    /** 基础能力库的独立事务（K3）；没有时（裁剪装配、手工构造）就在当前事务里写，行为同两库未分开 */
+    private TransactionTemplate commonRequiresNew;
+
+    @Autowired(required = false)
+    public void setCommonTxManager(@Qualifier(ModuleDataSources.COMMON_TX_MANAGER) PlatformTransactionManager manager) {
+        TransactionTemplate t = new TransactionTemplate(manager);
+        t.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.commonRequiresNew = t;
+    }
+
+    /** 撤回建号时已写的角色；撤回本身失败只记日志，不盖住原来的错误 */
+    private void revokeRolesSeparately(String staffNo) {
+        try {
+            writeRolesSeparately(staffNo, List.of());
+        } catch (RuntimeException e) {
+            log.error("[ops] 建号失败后撤回角色也失败，基础能力库留下孤儿角色 staffNo={}", staffNo, e);
+        }
+    }
+
+    private void writeRolesSeparately(String staffNo, List<String> roles) {
+        if (commonRequiresNew == null) {
+            staffRoles.set(staffNo, roles);
+            return;
+        }
+        commonRequiresNew.executeWithoutResult(s -> staffRoles.set(staffNo, roles));
+    }
+
     @Override
-    @Transactional
+    // 只写基础能力库的角色（K3）：只开基础能力库的事务，账号在平台基础库只读
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public StaffVO setStaffRoles(String staffNo, List<String> roles) {
         List<String> want = normalizeRoles(roles);
         if (want.isEmpty()) {

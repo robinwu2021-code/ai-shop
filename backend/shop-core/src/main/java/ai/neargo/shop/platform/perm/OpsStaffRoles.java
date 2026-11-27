@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 运营账号有哪些角色：唯一的读写入口，数据在基础能力库的 {@code sys_role_member}（TDD-基础能力库对齐 2a、Q3）。
  *
  * <p>此前角色双写：{@code sys_ops_staff.roles} 的 JSON 判权，{@code sys_role_member} 出菜单，两处靠每个写入点各自同步。
- * 现在判权、菜单、账号列表都读这里，JSON 列停写（存量由 V707 对齐）。
+ * 现在判权、菜单、账号列表都读这里，JSON 列停写（存量由 V721 对齐）。
  *
  * <p>角色按授予顺序给出（行的先后）。
  */
