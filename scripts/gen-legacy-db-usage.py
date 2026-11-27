@@ -179,14 +179,16 @@ def main():
             tables |= sql_tables(body_after(t, m.start()))
             where, legacy, pool, target = classify(pkg, names, bound)
             mappers.append(dict(file=f, module=module_of(f), pkg=pkg, name=m.group(1), where=where,
-                                legacy=legacy, pool=pool, target=target, tables=sorted(tables)))
+                                legacy=legacy, pool=pool, target=target, tables=sorted(tables),
+                                outer=None if Path(f).stem == m.group(1) else Path(f).stem))
         # 不继承 BaseMapper、只打 @Mapper 的接口（全局第二个扫描收，走主库）
         for m in re.finditer(r"@Mapper\s*(?:@\w+(?:\([^)]*\))?\s*)*public\s+interface\s+(\w+)\s*\{", t):
             if any(x["file"] == f and x["name"] == m.group(1) for x in mappers):
                 continue
             where, legacy, pool, target = ("旧库：主库（@Mapper）", True, "primary", None)
             mappers.append(dict(file=f, module=module_of(f), pkg=pkg, name=m.group(1), where=where, legacy=legacy,
-                                pool=pool, target=target, tables=sorted(sql_tables(body_after(t, m.start())))))
+                                pool=pool, target=target, tables=sorted(sql_tables(body_after(t, m.start()))),
+                                outer=None if Path(f).stem == m.group(1) else Path(f).stem))
 
     def suggest(mp):
         if mp["target"]:
@@ -212,6 +214,8 @@ def main():
         primary = not handles or "dataSource" in quals or "jdbcTemplate" in quals
         jdbc.append(dict(file=f, module=module_of(f), quals=handles, primary=primary))
 
+    consumers = find_consumers(mappers, texts)
+
     legacy_refs = subprocess.run(
         ["git", "grep", "-l", "-E",
          r"ai_shop_ume|SPRING_DATASOURCE_(URL|USERNAME|PASSWORD)|SHOP_DB_(USER|PASS)|spring\.datasource\.url",
@@ -219,6 +223,7 @@ def main():
         cwd=ROOT, capture_output=True, text=True).stdout.split()
 
     out = render(mappers, jdbc, legacy_refs, bound, suggest, missing)
+    out += render_consumers(mappers, consumers, suggest)
     if check:
         current = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
         if current != out:
@@ -313,6 +318,114 @@ def render(mappers, jdbc, legacy_refs, bound, suggest, missing):
                 f"{', '.join(miss) if miss else ('—' if x['target'] else '')} |")
         add("")
     return "\n".join(L) + "\n"
+
+
+def source_of(m) -> str:
+    """mapper 现在实际连到的物理数据源（句柄没绑定时算它落回的那个池）。"""
+    w = m["where"]
+    if w.startswith("新库："):
+        return w.split("（")[0].replace("新库：", "新库 ")
+    for key, label in (("支付池", "旧库 · 支付池"), ("密钥池", "旧库 · 密钥池"), ("进销存", "旧库 · 进销存独立库"),
+                       ("任务", "旧库 · 任务独立库"), ("报表", "旧库 · 报表独立库")):
+        if key in w:
+            return label
+    return "旧库 · 主库"
+
+
+def find_consumers(mappers, texts):
+    """每个类依赖了哪些 mapper：按 import（含嵌套类 Outer.Name）与同包引用判断。"""
+    by_fqn, by_outer, by_pkg = {}, collections.defaultdict(list), collections.defaultdict(list)
+    for i, m in enumerate(mappers):
+        if m["outer"]:
+            by_fqn[f"{m['pkg']}.{m['outer']}.{m['name']}"] = i
+            by_outer[f"{m['pkg']}.{m['outer']}"].append(i)
+        else:
+            by_fqn[f"{m['pkg']}.{m['name']}"] = i
+        by_pkg[m["pkg"]].append(i)
+    mapper_files = {m["file"] for m in mappers}
+    result = {}
+    for f, t in texts.items():
+        if f in mapper_files:
+            continue
+        pkg_m = re.search(r"^package\s+([\w.]+);", t, re.M)
+        if not pkg_m:
+            continue
+        pkg = pkg_m.group(1)
+        body = re.sub(r"^import\s.*$", "", t, flags=re.M)
+        used = set()
+        for imp, star in re.findall(r"^import\s+(?:static\s+)?([\w.]+?)(\.\*)?;", t, re.M):
+            if not star and imp in by_fqn:
+                m = mappers[by_fqn[imp]]
+                if re.search(r"\b" + m["name"] + r"\b", body):
+                    used.add(by_fqn[imp])
+            for i in by_outer.get(imp, []):
+                name = mappers[i]["name"]
+                if re.search(r"\b" + mappers[i]["outer"] + r"\." + name + r"\b", body) or \
+                        (star and re.search(r"\b" + name + r"\b", body)):
+                    used.add(i)
+        for i in by_pkg.get(pkg, []):
+            m = mappers[i]
+            token = (m["outer"] + r"\." + m["name"]) if m["outer"] else m["name"]
+            if re.search(r"\b" + token + r"\b", body):
+                used.add(i)
+        if used:
+            result[f] = sorted(used)
+    return result
+
+
+def render_consumers(mappers, consumers, suggest):
+    L = []
+    add = L.append
+    by_source = collections.defaultdict(set)
+    for f, idx in consumers.items():
+        for i in idx:
+            by_source[source_of(mappers[i])].add(f)
+    mapper_count = collections.Counter(source_of(m) for m in mappers)
+
+    def cls(f):
+        return Path(f).stem
+
+    add("## 6 按数据源：依赖它的 Mapper 与服务")
+    add("")
+    add("「服务」指引用了这些 Mapper 的类（Service、Port、Controller、Job、Coordinator 等），按 import 与同包引用判断。"
+        "句柄没绑定的 Mapper 计在它落回的那个池。")
+    add("")
+    add("| 数据源（现在实际连到） | Mapper | 依赖它的类 |")
+    add("|---|---|---|")
+    for src in sorted(mapper_count, key=lambda s: (s.startswith("新库"), -mapper_count[s])):
+        add(f"| {src} | {mapper_count[src]} | {len(by_source.get(src, ()))} |")
+    add("")
+    for src in sorted(mapper_count, key=lambda s: (s.startswith("新库"), -mapper_count[s])):
+        files = sorted(by_source.get(src, ()), key=lambda f: (module_of(f), cls(f)))
+        add(f"### {src}（{len(files)} 个类）")
+        add("")
+        add("| 类 | Maven 模块 | 用到的 Mapper |")
+        add("|---|---|---|")
+        for f in files:
+            names = sorted({mappers[i]["name"] for i in consumers[f] if source_of(mappers[i]) == src})
+            shown = "、".join(f"`{n}`" for n in names[:8]) + (f" 等 {len(names)} 个" if len(names) > 8 else "")
+            add(f"| `{cls(f)}` | `{module_of(f)}` | {shown} |")
+        add("")
+
+    add("## 7 依赖多个数据源的服务")
+    add("")
+    add("同一个类里用到的 Mapper 分属不同的库：现在就跨库的（多为主库 + 支付池），和迁移后会跨库的"
+        "（各 Mapper 的目标新库不同）。后者在各模块绑新库后，原来同一个事务里的写会被拆开，要先拆服务或改成跨库一致性。")
+    add("")
+    add("| 类 | Maven 模块 | 现在连到的数据源 | 迁移后的目标库 |")
+    add("|---|---|---|---|")
+    rows = []
+    for f, idx in consumers.items():
+        now = sorted({source_of(mappers[i]) for i in idx})
+        later = sorted({suggest(mappers[i]).split("（")[0] for i in idx} - {"未定"})
+        if len(now) > 1 or len(later) > 1:
+            rows.append((-(len(later) + len(now)), module_of(f), cls(f), now, later))
+    for _, mod, c, now, later in sorted(rows):
+        add(f"| `{c}` | `{mod}` | {'、'.join(now)} | {'、'.join(later) or '—'} |")
+    add("")
+    add(f"共 {len(rows)} 个类。")
+    add("")
+    return "\n".join(L)
 
 
 def business_label(pkg: str) -> str:
