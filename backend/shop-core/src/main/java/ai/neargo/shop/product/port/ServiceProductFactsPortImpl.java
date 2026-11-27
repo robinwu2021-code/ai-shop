@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.port;
 
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -17,6 +19,17 @@ import org.springframework.stereotype.Component;
 /** Resolves ownership in product SQL and delegates price/shelf overlays to the existing product quote owner. */
 @Component
 public class ServiceProductFactsPortImpl implements ServiceProductFactsPort {
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
+
     private final SkuMapper skus;
     private final GoodsMapper goods;
     private final GoodsQueryPort quotes;
@@ -32,7 +45,7 @@ public class ServiceProductFactsPortImpl implements ServiceProductFactsPort {
             var sku = skus.selectOne(Wrappers.<PrdSku>lambdaQuery()
                     .select(PrdSku::getSkuNo, PrdSku::getGoodsNo, PrdSku::getEntityNo, PrdSku::getVersion)
                     .eq(PrdSku::getTenantNo, "MAIN").eq(PrdSku::getEntityNo, entityNo)
-                    .eq(PrdSku::getMarket, "CN").eq(PrdSku::getSkuNo, skuNo));
+                    .eq(PrdSku::getMarket, homeMarket).eq(PrdSku::getSkuNo, skuNo));
             if (sku == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
             var product = goods.selectOne(Wrappers.<PrdGoods>lambdaQuery()
                     .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo, PrdGoods::getStoreNo,

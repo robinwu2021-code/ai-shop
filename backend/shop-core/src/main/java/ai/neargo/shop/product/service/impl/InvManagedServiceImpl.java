@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -31,7 +33,16 @@ import java.util.Set;
 @Service
 public class InvManagedServiceImpl implements InvManagedService {
 
-    private static final String HOME_MARKET = "CN";
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
     private static final Set<String> MODES = Set.of(PrdGoods.INV_INHERIT, PrdGoods.INV_ON, PrdGoods.INV_OFF);
     /** 平台默认记库存的品类：有实物、会进货的那两类 */
     private static final Set<String> TRACKED_TYPES = Set.of(PrdGoods.TYPE_NORMAL, PrdGoods.TYPE_FRESH);
@@ -262,7 +273,7 @@ public class InvManagedServiceImpl implements InvManagedService {
         List<PrdSku> rows = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
                         .in(PrdSku::getGoodsNo, new HashSet<>(goodsNos))
-                        .eq(PrdSku::getMarket, HOME_MARKET)));
+                        .eq(PrdSku::getMarket, homeMarket)));
         Map<String, PrdSku> bySku = new LinkedHashMap<>();
         for (PrdSku r : rows) {
             if (r.getSkuNo() != null) {

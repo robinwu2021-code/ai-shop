@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -43,6 +45,17 @@ import org.springframework.transaction.support.TransactionTemplate;
 /** Store-owned SKU metadata; CAS and receipt commit together, without changing price or stock. */
 @Service
 public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService {
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
+
     private final GoodsMapper goods;
     private final SkuMapper skus;
     private final SkuPricingPolicyMapper policies;
@@ -139,14 +152,14 @@ public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService 
         var sku = DataScopeContext.executeWithoutScope(() -> skus.selectOne(new QueryWrapper<PrdSku>()
                 .select("sku_no", "goods_no", "entity_no", "market")
                 .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo()).eq("goods_no", ref.goodsNo())
-                .eq("sku_no", ref.skuNo()).eq("market", "CN").eq("deleted", 0)));
+                .eq("sku_no", ref.skuNo()).eq("market", homeMarket).eq("deleted", 0)));
         var owner = DataScopeContext.executeWithoutScope(() -> goods.selectOne(new QueryWrapper<PrdGoods>()
                 .select("goods_no", "entity_no", "store_no")
                 .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo())
                 .eq("goods_no", ref.goodsNo()).eq("deleted", 0)));
         if (sku == null || owner == null || !ref.goodsNo().equals(sku.getGoodsNo())
                 || !ref.skuNo().equals(sku.getSkuNo()) || !scope.entityNo().equals(sku.getEntityNo())
-                || !"CN".equals(sku.getMarket()) || !ref.goodsNo().equals(owner.getGoodsNo())
+                || !homeMarket.equals(sku.getMarket()) || !ref.goodsNo().equals(owner.getGoodsNo())
                 || !scope.entityNo().equals(owner.getEntityNo()) || !scope.storeNo().equals(owner.getStoreNo())) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }

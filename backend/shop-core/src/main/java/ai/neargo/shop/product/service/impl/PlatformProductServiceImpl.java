@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -46,7 +48,16 @@ public class PlatformProductServiceImpl implements PlatformProductService {
      * 否则同一个规格会在列表里出现两次（CN 一行、SG 一行），
      * 而运营看到的是「同一件商品重复了」。基准市场恒有行（保存时必写），拿它当锚。
      */
-    private static final String HOME_MARKET = "CN";
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
 
     private static final String AUDITING = "AUDITING";
     private static final String REJECTED = "REJECTED";
@@ -95,7 +106,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
         }
 
         LambdaQueryWrapper<PrdSku> w = Wrappers.<PrdSku>lambdaQuery()
-                .eq(PrdSku::getMarket, HOME_MARKET)
+                .eq(PrdSku::getMarket, homeMarket)
                 .in(goodsNos != null, PrdSku::getGoodsNo, goodsNos == null ? List.of() : goodsNos)
                 // presaleOnly 做在 SQL 里而不是交给前端过滤：真实库里预售 SKU 大概率
                 // 不在第一页，前端过滤会让「库存与预售」tab 长期显示为空，且接口 200
@@ -126,7 +137,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
          * 所以这张表上每一行都有人认领 —— 这正是 setPresale 刻意不拦「额度小于已售」的理由。
          */
         LambdaQueryWrapper<PrdSku> w = Wrappers.<PrdSku>lambdaQuery()
-                .eq(PrdSku::getMarket, HOME_MARKET)
+                .eq(PrdSku::getMarket, homeMarket)
                 .gt(PrdSku::getPresaleQuota, 0)
                 .apply("sold_count > presale_quota")
                 .orderByDesc(PrdSku::getId);
@@ -171,7 +182,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
             }
             DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
         }
-        return toVOs(rowsOf(skuNo).stream().filter(r -> HOME_MARKET.equals(r.getMarket())).toList()).get(0);
+        return toVOs(rowsOf(skuNo).stream().filter(r -> homeMarket.equals(r.getMarket())).toList()).get(0);
     }
 
     @Override
@@ -346,7 +357,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
 
     private OpsSkuDetailVO detailOf(String skuNo) {
         List<PrdSku> home = rowsOf(skuNo).stream()
-                .filter(r -> HOME_MARKET.equals(r.getMarket())).toList();
+                .filter(r -> homeMarket.equals(r.getMarket())).toList();
         return toVOs(home.isEmpty() ? rowsOf(skuNo).subList(0, 1) : home).get(0);
     }
 

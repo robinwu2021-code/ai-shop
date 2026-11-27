@@ -1,5 +1,6 @@
 package ai.neargo.shop.product.port;
 
+import java.util.Locale;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.entity.PrdGoods;
@@ -23,6 +24,17 @@ import org.springframework.transaction.annotation.Transactional;
 /** Uses original price and stock readers, with explicit ownership before any unscoped legacy lookup. */
 @Component
 public class DishOfferQueryPortImpl implements DishOfferQueryPort {
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
+
     private final SkuMapper skus;
     private final GoodsMapper goods;
     private final GoodsQueryPort prices;
@@ -44,7 +56,7 @@ public class DishOfferQueryPortImpl implements DishOfferQueryPort {
     private List<Offer> read(String entity, String store, List<String> numbers) {
         var owned = skus.selectList(Wrappers.<PrdSku>lambdaQuery()
                 .select(PrdSku::getSkuNo, PrdSku::getGoodsNo, PrdSku::getEntityNo, PrdSku::getPrice)
-                .eq(PrdSku::getEntityNo, entity).eq(PrdSku::getMarket, "CN").in(PrdSku::getSkuNo, numbers));
+                .eq(PrdSku::getEntityNo, entity).eq(PrdSku::getMarket, homeMarket).in(PrdSku::getSkuNo, numbers));
         if (owned.isEmpty()) return List.of();
         var heads = goods.selectList(Wrappers.<PrdGoods>lambdaQuery()
                 .select(PrdGoods::getGoodsNo).eq(PrdGoods::getEntityNo, entity).eq(PrdGoods::getStoreNo, store)

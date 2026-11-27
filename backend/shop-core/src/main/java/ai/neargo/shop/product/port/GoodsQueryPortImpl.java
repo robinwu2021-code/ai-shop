@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.port;
 
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -28,7 +30,16 @@ import java.util.stream.Collectors;
 @Component
 public class GoodsQueryPortImpl implements GoodsQueryPort {
 
-    private static final String MARKET_CN = "CN";
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
 
     private final SkuMapper skuMapper;
     private final GoodsMapper goodsMapper;
@@ -142,7 +153,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         PrdSku sku = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectOne(Wrappers.<PrdSku>lambdaQuery()
                         .eq(PrdSku::getGoodsNo, goodsNo)
-                        .eq(PrdSku::getMarket, MARKET_CN)
+                        .eq(PrdSku::getMarket, homeMarket)
                         .orderByAsc(PrdSku::getId)
                         .last("limit 1")));
         if (sku == null) {
@@ -175,7 +186,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                         Wrappers.<ai.neargo.shop.product.entity.PrdStorePrice>lambdaQuery()
                                 .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, skuNos)
                                 .in(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo, storeNos)
-                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, MARKET_CN)));
+                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, homeMarket)));
         Map<String, Long> out = new HashMap<>();
         for (var r : rows) {
             // 只认「这家主体这一单要走的那家店」的行：别的店的价不该串进来
@@ -277,7 +288,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         List<PrdSku> skus = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
                         .in(PrdSku::getSkuNo, skuNos)
-                        .eq(PrdSku::getMarket, MARKET_CN)));
+                        .eq(PrdSku::getMarket, homeMarket)));
         if (skus.isEmpty()) {
             return Map.of();
         }
@@ -391,7 +402,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                                 .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, storeOfSku.keySet())
                                 .in(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo,
                                         new java.util.HashSet<>(storeOfSku.values()))
-                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, MARKET_CN)));
+                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, homeMarket)));
         Map<String, Long> out = new HashMap<>();
         for (var r : rows) {
             if (r.getPrice() != null && r.getStoreNo().equals(storeOfSku.get(r.getSkuNo()))) {
@@ -493,7 +504,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         List<PrdSku> all = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
                         .in(PrdSku::getGoodsNo, goodsNos)
-                        .eq(PrdSku::getMarket, MARKET_CN)));
+                        .eq(PrdSku::getMarket, homeMarket)));
         Map<String, Integer> out = new HashMap<>();
         for (PrdSku s : all) {
             out.merge(s.getGoodsNo(), 1, Integer::sum);

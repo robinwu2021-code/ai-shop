@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +81,16 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private static final String REJECTED = "REJECTED";
 
     /** 一期只做单市场（CN）；priceByMarket 里的其余市场各写一行 SKU。 */
-    private static final String HOME_MARKET = "CN";
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
 
     /** 市场主数据。**只用来校验 market 取值**，见 marketsOf 的注释 */
     private final ai.neargo.shop.spi.pay.MarketPort marketPort;
@@ -538,7 +549,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                 skuMapper.selectList(
                                         Wrappers.<PrdSku>lambdaQuery()
                                                 .eq(PrdSku::getEntityNo, merchantNo)
-                                                .eq(PrdSku::getMarket, HOME_MARKET)));
+                                                .eq(PrdSku::getMarket, homeMarket)));
         Map<String, Boolean> anyInStock = new LinkedHashMap<>();
         for (PrdSku s : rows) {
             boolean has = nz(s.getStock()) - nz(s.getLockedStock()) > 0;
@@ -2048,7 +2059,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             // 按市场逐行写：(entity_no, sku_no, market) 是价格的唯一权威，
             // 一个 SKU 在三个市场就是三行，而不是一行里塞一个 JSON 价格表
             Map<String, Long> prices = new LinkedHashMap<>();
-            prices.put(HOME_MARKET, sku.price());
+            prices.put(homeMarket, sku.price());
             if (sku.priceByMarket() != null) {
                 /*
                  * **market 的取值要校验，它是从调用方原样落进列里的。**
@@ -3552,7 +3563,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStorePrice
                                                                 ::getMarket,
-                                                        HOME_MARKET)));
+                                                        homeMarket)));
         /*
          * **传空 = 取消本店单独定价**，回到主体价。
          *
@@ -3577,7 +3588,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             row.setStoreNo(storeNo);
             row.setSkuNo(skuNo);
             row.setEntityNo(merchantNo);
-            row.setMarket(HOME_MARKET);
+            row.setMarket(homeMarket);
             row.setPrice(price);
             row.setOriginPrice(originPrice);
             DataScopeContext.executeWithoutScope(() -> storePriceMapper.insert(row));
@@ -3612,7 +3623,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStorePrice
                                                                 ::getMarket,
-                                                        HOME_MARKET)
+                                                        homeMarket)
                                                 .in(
                                                         ai.neargo.shop.product.entity.PrdStorePrice
                                                                 ::getSkuNo,
