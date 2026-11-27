@@ -20,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -58,6 +60,27 @@ class WxShippingSourceIsolationFlowTest {
         assertThat(current.getStatus()).isEqualTo("PENDING");
         assertThat(json.valueToTree(current).path("sourceSnapshot").asString(""))
                 .contains(replacement).contains(number(sub, "B")).doesNotContain(number(sub, "A"));
+    }
+
+    @Test
+    void remoteSendHoldsNoDatabaseTransaction() {
+        String sub = OrderLogisticsFixture.seed(jdbc, ledger, true);
+        ship(sub, "T");
+        drain();
+        TrdShippingUpload pending = row(sub);
+        AtomicReference<Boolean> activeDuringSend = new AtomicReference<>();
+        WxShippingPort probe = new WxShippingPort() {
+            public boolean enabled() { return true; }
+            public Result upload(Command command) {
+                activeDuringSend.set(TransactionSynchronizationManager.isActualTransactionActive());
+                return Result.ok();
+            }
+        };
+        ReflectionTestUtils.setField(uploads, "shipping", probe);
+        try { assertThat(uploads.upload(pending, "物流商品", number(sub, "T"), "STO", "LG-OPENID")).isTrue(); }
+        finally { ReflectionTestUtils.setField(uploads, "shipping", original); }
+        assertThat(activeDuringSend.get()).isFalse();
+        assertThat(row(sub).getStatus()).isEqualTo("SUCCESS");
     }
 
     @Test
