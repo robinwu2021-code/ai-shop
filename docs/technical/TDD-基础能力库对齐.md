@@ -267,6 +267,63 @@
 | D2 | `StoreSalesCatalogIT` 期望 Flyway 版本 536，迁移已到 V596（本会话之前就如此） |
 | D3 | 餐饮等集成测试要 Docker MySQL 8.4，本机只有 MySQL 9、无 Docker，跑不了；`StoreOrderMysqlTest` 等要 `COMMERCE_MYSQL_URL` |
 
+### 2.2 执行计划（2026-11-27，v2 @ 6957a7251）
+
+按依赖分四个阶段。第 1 阶段不等任何决定、各项互不相干，可并行；第 2 阶段等决定；第 3 阶段在服务器上；第 4 阶段归各业务模块。
+状态与落点见 [基础能力功能清单](基础能力功能清单.md)。
+
+**第 0 阶段：要你定的（与第 1 阶段并行推进，不阻塞它）**
+
+| # | 决定 | 解锁 |
+|---|---|---|
+| D1 | Q1：待投递记录放产生它的业务库（改设计定稿“公共事件只在基础能力库”）；Q1a：只存档行有没有人读 | 2b |
+| D2 | Q2：公共能力用独立句柄 `common`（未绑定时指向主库） | 2a |
+| D3 | Q3：`ops_staff.roles` 随权限一步停写 | 2a |
+| D4 | Q5：各域操作日志不并入统一审计 | 1i 的范围 |
+| D5 | A4：RabbitMQ 运维负责人、节点数 | 3a |
+| D6 | A5：生产打开定时作业（`SHOP_JOB_ENABLED` + 独立调度器） | 3d |
+| D7 | ADR-067 转“已接受” | 3c 上线 |
+
+**第 1 阶段：可立即做（建议分 3 个会话并行，各自写不同文件）**
+
+| # | 事项 | 产出与验收 | 量级 |
+|---|---|---|---|
+| 1a | 公共能力表访问守卫 | 新守卫：公共能力表只经唯一实现访问，以现状为基线、只准变短；先建守卫，后续各项让基线变短 | 小 |
+| 1b | 字典收敛 | 行业三套、渠道三套收成一个字典端口；调用方改走端口；删重复常量 | 中 |
+| 1c | 设置收敛 | `PaySettingService`（9 个文件用）并入 `SettingService`，行为不变 | 小 |
+| 1d | 发号仓储 | 仓储去掉按归属（CORE/PAY）切表；三种按范围计数收进 `DocumentNumberService` | 中 |
+| 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准） | 中 |
+| 1f | 撤中转 | PAY 权益三个中转改由源头发；进销存回写改由库存库发件箱发；删两个包装转发器 | 中 |
+| 1g | 接口级防重迁移 | `sys_idempotent` / `IdempotencyService` 的 50 个使用文件按域分批改用统一防重，每批一提交 | 大 |
+| 1h | 开放应用 | 三套应用凭据（`pay_app`、`inv_open_credential`、`sys_ops_api_key`）收敛；若设计已定归密钥库，则做迁移接口，不在本库落表 | 中 |
+| 1i | 审计提交后写 | 审计改为业务提交后写（失败不连累业务）；范围按 D4 | 小 |
+
+建议分组：会话甲 1a、1c、1i、1d；会话乙 1b、1e、1h；会话丙 1f、1g。
+
+**第 2 阶段：等决定后做**
+
+| # | 事项 | 依赖 | 产出 |
+|---|---|---|---|
+| 2a | 权限：`common` 句柄与 `CommonTableMapper`；`platform/perm` 7 张表与网关 `iam` 接入；拆运营角色双写；强制下线改提交后吊销 | D2、D3 | §2 第 1 步 |
+| 2b | 事件收敛：待投递表随业务库；删 `Source` 枚举与 `inv_` 前缀；支付权益、积分、商城内核三套并入 | D1 | §2 第 5 步；需先改设计文档 |
+| 2c | 审计并入范围按 D4 落地 | D4 | — |
+
+**第 3 阶段：服务器上做**
+
+| # | 事项 | 依赖 |
+|---|---|---|
+| 3a | RabbitMQ 启用 `rabbitmq_consistent_hash_exchange`、核对 `neargo_app` 权限，跑 `RabbitMessageBrokerIT` | D5 |
+| 3b | `-P opskit` 对真实客户端编译，跑 `OpsKitReconcileJobTest`、`OpsKitApprovalFlowTest`、`ScheduledJobConventionTest` | 能拉到 `opskit-approval-client` |
+| 3c | 设 `SHOP_EVENTS_TRANSPORT=rabbitmq`、`SHOP_RABBITMQ_PASSWORD`，观察已切的 5 个域（看死信队列与发件箱 FAILED） | 3a、D7 |
+| 3d | 定时作业跑起来后：清单 A7–A11 改 MQ 直发；物流“卡住数”改读死信 | D6、3c |
+
+**第 4 阶段：各业务模块自定（不在本会话）**
+
+餐饮（统一模式处理者，基础能力已支持）、商城渠道源各自决定哪些事件进名单、怎么分组；规则见 ADR-067“一个消费者收的类型全进或全不进”。
+
+**每项的完成标准**：先写失败测试再改；相关测试与 `ArchitectureTest`、`BrokerIsolationTest` 通过；
+功能清单与本节状态同步更新；按模块提交、`git push --no-verify origin v2`。
+
 ## §3 待你定
 
 | # | 问题 | 建议 |
