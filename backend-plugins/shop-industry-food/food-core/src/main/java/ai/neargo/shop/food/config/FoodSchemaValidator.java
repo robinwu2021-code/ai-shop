@@ -38,12 +38,22 @@ public final class FoodSchemaValidator {
             "fnb_channel_import_guard", List.of("guard_no", "tenant_no,entity_no,store_no,import_no"));
 
     public FoodSchemaReady initialize(DataSource source, FoodProperties.MigrationMode mode) {
-        return initialize(source, source, mode);
+        return initialize(source, source, source, mode);
     }
 
     FoodSchemaReady initialize(DataSource source, DataSource trade, FoodProperties.MigrationMode mode) {
+        return initialize(source, trade, source, mode);
+    }
+
+    /**
+     * 每个句柄只在自己连的库上校验自己那部分表（TDD-餐饮域迁移新库 P1-4）。行业句柄单独绑库时，
+     * 主库不再要求 {@link FoodIndustryTables} 里的表，改在行业库上检查它们的列与唯一键。
+     */
+    FoodSchemaReady initialize(
+            DataSource source, DataSource trade, DataSource industry, FoodProperties.MigrationMode mode) {
         if (mode == FoodProperties.MigrationMode.OFF) return FoodSchemaReady.off();
         boolean separateTrade = source != trade;
+        boolean separateIndustry = source != industry;
         if (mode == FoodProperties.MigrationMode.VALIDATE) source = readOnly(source);
         Map<String, Set<String>> expected = expectedColumns();
         Map<String, Set<String>> before = columns(source);
@@ -106,17 +116,25 @@ public final class FoodSchemaValidator {
                     "Cannot validate original specification identity width");
         }
         var actual = columns(source);
+        if (separateIndustry) actual.keySet().removeAll(FoodIndustryTables.NAMES);
+        var industryActual =
+                separateIndustry ? columns(industry, FoodIndustryTables.NAMES) : Map.<String, Set<String>>of();
         List<String> missing = new ArrayList<>();
         expected.forEach(
-                (table, fields) ->
-                        fields.forEach(
-                                field -> {
-                                    if (!actual.getOrDefault(table, Set.of()).contains(field))
-                                        missing.add(table + "." + field);
-                                }));
+                (table, fields) -> {
+                    boolean onIndustry = separateIndustry && FoodIndustryTables.NAMES.contains(table);
+                    var present = (onIndustry ? industryActual : actual).getOrDefault(table, Set.of());
+                    fields.forEach(
+                            field -> {
+                                if (!present.contains(field))
+                                    missing.add((onIndustry ? "industry:" : "") + table + "." + field);
+                            });
+                });
         require(missing.isEmpty(), "missing food columns: " + missing);
         missing.addAll(new PlatformWritePrerequisites().missing(source));
         missing.addAll(missingFoodUniqueKeys(source, actual));
+        if (separateIndustry)
+            missingFoodUniqueKeys(industry, industryActual).forEach(key -> missing.add("industry:" + key));
         missing.addAll(missingLocalStockContract(source));
         if (separateTrade) missing.addAll(missingTradeRelinkContract(trade, expected));
         Collections.sort(missing);

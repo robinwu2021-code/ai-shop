@@ -307,6 +307,15 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 
 测试：共用测试配置 `FoodWriteGuardFixture.Shared` 引入 `ModuleDataSourceRegistrar`，句柄按应用同样的规则注册；同库不同池测试（P0-6）在它上面绑定即可。
 
+### P1 进展（2026-11-27）
+
+- **P1-1 建表脚本**：`food-core/src/test/resources/db/n_industry/V1__industry_design.sql`（设计 DDL 原样，去掉建库与 USE）、`V2__industry_supplement.sql`：
+  ① 厨显沿用 .61 已执行的 `01-industry-kds.sql`；② 按 ADR-068 第 4 条补回出品单派单键、排队号请求防重列与唯一键；
+  ③ 修订一、二收回的表（制作任务、占台、换台记录、订位、订位占桌、时段、容量、营业日历）按餐饮现结构建；④ 过渡：合并与改名完成前代码仍读写的 11 张旧表，每完成一组合并就删掉对应的表。本机 MySQL 9.7.4 上建成 50 张。
+- **P1-4 启动校验（过渡版）**：新增 `FoodIndustryTables`（行业句柄负责的表，唯一来源）；`FoodSchemaValidator` 在行业句柄单独绑库时不再要求主库有这些表，改在行业库检查它们的列与唯一键。未绑定时行为不变。
+- **P1-6 新库测试**：`FoodIndustryDatabaseTest`（本机 MySQL，`FOOD_TEST_DISPOSABLE`）：主库按餐饮旧迁移建表后删掉行业表，行业库按 V1、V2 新建，行业句柄绑到它；验证上下文能启动、行业句柄下全部注解 Mapper 按实体全字段在行业库上查询成功。已通过。
+- 待做：P1-2 同构改名表（寄存两张改名）、P1-3 九组合并、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本。
+
 ### 事务拆分记录
 
 | 服务 | 类 | 处理 |

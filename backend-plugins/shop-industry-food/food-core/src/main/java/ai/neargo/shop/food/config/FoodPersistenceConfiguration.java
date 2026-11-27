@@ -59,8 +59,10 @@ public class FoodPersistenceConfiguration {
     @Bean
     @DependsOnDatabaseInitialization
     FoodSchemaReady foodSchemaReady(@Qualifier("dataSource") DataSource dataSource,
-            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource trade, FoodProperties properties) {
-        FoodSchemaReady schema = new FoodSchemaValidator().initialize(dataSource, trade, properties.migration().mode());
+            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource trade,
+            @Qualifier(ModuleDataSources.INDUSTRY_DATA_SOURCE) DataSource industry, FoodProperties properties) {
+        FoodSchemaReady schema =
+                new FoodSchemaValidator().initialize(dataSource, trade, industry, properties.migration().mode());
         if (!schema.ready()) throw new IllegalStateException("Food prerequisites missing: " + schema.missingCapabilities());
         return schema;
     }
