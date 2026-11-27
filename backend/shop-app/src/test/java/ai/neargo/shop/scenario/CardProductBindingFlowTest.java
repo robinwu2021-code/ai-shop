@@ -46,7 +46,7 @@ class CardProductBindingFlowTest {
     @Autowired ObjectMapper json;
     @Autowired OtpStore otp;
     @Autowired TokenStores tokens;
-    private String id() { return UUID.randomUUID().toString(); }
+    private String id() { return UUID.randomUUID().toString().replace("-", ""); }   // 32 位：新库的编号列是 varchar(32)
     private EntitlementDefinition rule(String title) {
         return new EntitlementDefinition(title, "PAID_CARD", "MERCHANT", "CNY", "SERVICE_UNITS",
                 null, null, null, null, null, "COUNT", 30, null,

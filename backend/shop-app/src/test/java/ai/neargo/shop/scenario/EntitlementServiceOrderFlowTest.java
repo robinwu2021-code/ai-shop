@@ -53,7 +53,7 @@ class EntitlementServiceOrderFlowTest {
     private String instance;
     private EntitlementContext context;
     private ServiceOrderCreate command;
-    private String id() { return UUID.randomUUID().toString(); }
+    private String id() { return UUID.randomUUID().toString().replace("-", ""); }   // 32 位：新库的编号列是 varchar(32)
     @BeforeEach void setup() {
         user = id(); actor = id(); entity = id(); store = id(); goods = id(); sku = id(); instance = id();
         context = new EntitlementContext("MAIN", actor, id(), "a".repeat(64));

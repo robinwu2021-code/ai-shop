@@ -115,6 +115,7 @@ ADD_INDEX = {
 WIDE = re.compile(r'^(created_by|updated_by|confirmed_by|actor_no|operator_no|request_key|client_order_no|channel_order_no'
                   r'|external_[a-z_]+|[a-z_]*_external_[a-z_]+|[a-z_]*_ref|trade_no|pay_trade_no|pay_order_no|out_trade_no'
                   r'|channel_store_key|external_order_key)$')
+NULL_MEANS = re.compile(r"COMMENT '[^']*(空表示|未配时|可不填)")
 MONEY_COUNT = re.compile(r'^([a-z_]*_minor|[a-z_]*_qty|qty|quantity|[a-z_]*_count|count|[a-z_]*_units|units|persons'
                          r'|party_size|seats|capacity|[a-z_]*_persons)$')
 BIN_COLLATE = re.compile(r'^([a-z_]*_no|[a-z_]*_key|[a-z_]*_hash|code|[a-z_]*_code)$')
@@ -164,8 +165,9 @@ def fix_column(table, line, statuses):
     if WIDE.match(name):
         ln = re.sub(r'`%s` varchar\((\d+)\)' % name,
                     lambda m: '`%s` varchar(%d)' % (name, max(64, int(m.group(1)))), ln)
-    # D6：金额与计数不为空、默认 0
-    if MONEY_COUNT.match(name) and re.search(r'`%s` (bigint|int|smallint|tinyint|decimal\([0-9,]+\))( unsigned)? DEFAULT NULL' % name, ln):
+    # D6：金额与计数不为空、默认 0。例外：注释写明「空」有含义的（空表示…、未配时…、可不填）保持可空 ——
+    # 0 与空含义不同（团购价 0 元 ≠ 未开拼团，可售量 0 ≠ 按规则换算），用户 2026-11-27 确认
+    if MONEY_COUNT.match(name) and not NULL_MEANS.search(ln) and re.search(r'`%s` (bigint|int|smallint|tinyint|decimal\([0-9,]+\))( unsigned)? DEFAULT NULL' % name, ln):
         ln = re.sub(r'(`%s` (?:bigint|int|smallint|tinyint|decimal\([0-9,]+\))(?: unsigned)?) DEFAULT NULL' % name,
                     r'\1 NOT NULL DEFAULT 0', ln)
     # D7：编号、键、摘要按二进制比较
