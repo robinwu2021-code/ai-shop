@@ -110,9 +110,8 @@ public final class DiningReportFactsPortAdapter implements DiningReportFactsServ
                     .le(FnbBusinessDay::getStartsAt,now).gt(FnbBusinessDay::getEndsAt,now).eq(FnbBusinessDay::getDeleted,0).last("LIMIT 2"));
             if (selected.size()>1) throw new IllegalStateException("REPORT_CURRENT_DAY_AMBIGUOUS");
             if (selected.isEmpty()) {
-                var candidates=policyRows(scope);
-                for(var policy:candidates) {
-                    if(policy.getEffectiveFrom().isAfter(now)) continue;
+                // 不保留策略历史（TDD §2.5）：按门店当前策略推算当天。
+                for(var policy:policyRows(scope)) {
                     var local=Instant.now().atZone(ZoneId.of(policy.getTimezone()));
                     var date=local.toLocalDate();
                     if(local.getHour()*60+local.getMinute()<policy.getCutoverMinute()) date=date.minusDays(1);
@@ -136,26 +135,21 @@ public final class DiningReportFactsPortAdapter implements DiningReportFactsServ
         if (rows.size()>1) throw new IllegalStateException("REPORT_ORIGINAL_DAY_AMBIGUOUS");
         if (rows.isEmpty()) return policyInterval(s,date);
         var day=rows.getFirst();
-        var rowsPolicy=policies.selectList(Wrappers.<FnbStorePolicy>lambdaQuery().eq(FnbStorePolicy::getTenantNo,s.tenantNo())
-                .eq(FnbStorePolicy::getEntityNo,s.entityNo()).eq(FnbStorePolicy::getStoreNo,s.storeNo())
-                .eq(FnbStorePolicy::getPolicyNo,day.getPolicyNo()).eq(FnbStorePolicy::getDeleted,0).last("LIMIT 2"));
-        if (rowsPolicy.size()!=1) throw new IllegalStateException("REPORT_ORIGINAL_POLICY_NOT_READY");
-        var policy=rowsPolicy.getFirst();
+        // 营业日自己冻结了起止时间；时区与切点按门店当前策略展示（策略号每店不变，TDD §2.5）。
+        var policy=policies.current(s.entityNo(),s.storeNo());
+        if (policy==null || !policy.getPolicyNo().equals(day.getPolicyNo()))
+            throw new IllegalStateException("REPORT_ORIGINAL_POLICY_NOT_READY");
         return new DayEvidence(day.getDayNo(),day.getPolicyNo(),0,policy.getTimezone(),policy.getCutoverMinute(),
                 day.getStartsAt().toInstant(ZoneOffset.UTC),day.getEndsAt().toInstant(ZoneOffset.UTC));
     }
     private List<FnbStorePolicy> policyRows(Scope scope) {
-        var selected=policies.selectList(Wrappers.<FnbStorePolicy>lambdaQuery().eq(FnbStorePolicy::getTenantNo,scope.tenantNo())
-                .eq(FnbStorePolicy::getEntityNo,scope.entityNo()).eq(FnbStorePolicy::getStoreNo,scope.storeNo())
-                .eq(FnbStorePolicy::getDeleted,0).orderByDesc(FnbStorePolicy::getEffectiveFrom).orderByDesc(FnbStorePolicy::getPolicyNo).last("LIMIT 257"));
-        if(selected.size()>256) throw new IllegalStateException("REPORT_POLICY_HISTORY_LIMIT");
-        return selected;
+        var current=policies.current(scope.entityNo(),scope.storeNo());
+        return current==null ? List.of() : List.of(current);
     }
     private DayEvidence policyInterval(Scope scope,LocalDate date) {
         // Same original policy-at-local-day-start rule and DST boundary calculation as business-day opening.
-        var policy=policyRows(scope).stream().filter(p->!p.getEffectiveFrom().isAfter(
-                BusinessCloseServiceImpl.boundaries(date,p.getTimezone(),p.getCutoverMinute()).getFirst()))
-                .findFirst().orElseThrow(()->new IllegalStateException("REPORT_ORIGINAL_POLICY_NOT_READY"));
+        var policy=policyRows(scope).stream().findFirst()
+                .orElseThrow(()->new IllegalStateException("REPORT_ORIGINAL_POLICY_NOT_READY"));
         var bounds=BusinessCloseServiceImpl.boundaries(date,policy.getTimezone(),policy.getCutoverMinute());
         String reference="POLICY:"+PricingSnapshotHash.of(List.of(scope,date,policy.getPolicyNo())).substring(0,32);
         return new DayEvidence(reference,policy.getPolicyNo(),0,policy.getTimezone(),policy.getCutoverMinute(),

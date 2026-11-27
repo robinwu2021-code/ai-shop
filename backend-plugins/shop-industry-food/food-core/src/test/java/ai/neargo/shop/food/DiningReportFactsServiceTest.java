@@ -40,7 +40,7 @@ class DiningReportFactsServiceTest {
         var manager=mock(PlatformTransactionManager.class);when(manager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
         when(days.selectList(any())).thenReturn(List.of());when(batches.selectList(any())).thenReturn(List.of());
         var policy=new FnbStorePolicy();policy.setPolicyNo("P1");policy.setTimezone("America/New_York");policy.setCutoverMinute(0);
-        policy.setEffectiveFrom(LocalDateTime.of(2020,1,1,0,0));when(policies.selectList(any())).thenReturn(List.of(policy));
+        when(policies.current(any(),any())).thenReturn(policy); // 不保留策略历史（TDD §2.5）：取门店当前策略
         when(stores.cards(any())).thenReturn(Map.of("S1",new StoreCard("S1","Store","E1","","ACTIVE",true,"","",null,null,0,0)));
         var service=new DiningReportFactsPortAdapter(days,policies,batches,bindings,lines,stores,manager);
         var scope=new Scope("MAIN","E1","S1");var date=LocalDate.of(2026,11,1);var day=service.day(scope,date);
@@ -59,7 +59,7 @@ class DiningReportFactsServiceTest {
         var manager=mock(PlatformTransactionManager.class);when(manager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
         when(days.selectList(any())).thenReturn(List.of());when(bindings.selectList(any())).thenReturn(List.of());
         var policy=new FnbStorePolicy();policy.setPolicyNo("P1");policy.setTimezone("UTC");policy.setCutoverMinute(0);
-        policy.setEffectiveFrom(LocalDateTime.of(2019,1,1,0,0));when(policies.selectList(any())).thenReturn(List.of(policy));
+        when(policies.current(any(),any())).thenReturn(policy); // 不保留策略历史（TDD §2.5）：取门店当前策略
         when(stores.cards(any())).thenReturn(Map.of("S1",new StoreCard("S1","Store","E1","","ACTIVE",true,"","",null,null,0,0)));
         var service=new DiningReportFactsPortAdapter(days,policies,batches,bindings,lines,stores,manager);
         var scope=new Scope("MAIN","E1","S1");var date=LocalDate.of(2020,1,1);var day=service.day(scope,date);
@@ -79,7 +79,7 @@ class DiningReportFactsServiceTest {
         var batch=new FnbOrderBatch();batch.setEntityNo("E1");batch.setStoreNo("S1");batch.setBusinessDate(LocalDate.of(2020,1,1));
         when(batches.selectList(any())).thenReturn(List.of(batch));when(days.selectList(any())).thenReturn(List.of());
         var policy=new FnbStorePolicy();policy.setPolicyNo("P1");policy.setTimezone("Asia/Shanghai");policy.setCutoverMinute(240);
-        policy.setEffectiveFrom(LocalDateTime.of(2019,1,1,0,0));when(policies.selectList(any())).thenReturn(List.of(policy));
+        when(policies.current(any(),any())).thenReturn(policy); // 不保留策略历史（TDD §2.5）：取门店当前策略
         when(stores.cards(any())).thenReturn(Map.of("S1",new StoreCard("S1","Store","E1","","ACTIVE",true,"","",null,null,0,0)));
         var service=new DiningReportFactsPortAdapter(days,policies,batches,bindings,lines,stores,manager);
         var result=service.affectedDays(new ai.neargo.shop.spi.report.ReportAffectedDaysPort.Change("MAIN",null,"SO1",java.time.Instant.parse("2020-01-20T18:00:00Z")));

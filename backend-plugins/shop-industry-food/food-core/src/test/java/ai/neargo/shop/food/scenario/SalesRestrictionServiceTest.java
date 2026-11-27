@@ -44,8 +44,7 @@ class SalesRestrictionServiceTest extends FoodWriteGuardFixture {
                     + "reserved_qty DECIMAL(18,6),consumed_qty DECIMAL(18,6),starts_at DATETIME(3),expires_at " +
                             "DATETIME(3),"
                     + "status VARCHAR(16),reason VARCHAR(255),order_source VARCHAR(32),fulfillment VARCHAR(32))");
-            f.sql().update("INSERT INTO fnb_store_policy(entity_no,policy_no,store_no,timezone,effective_from) "
-                    + "VALUES('E','P1','A','UTC','2026-01-01 00:00:00')");
+            f.sql().update("INSERT INTO ind_store_policy(tenant_no,industry_code,entity_no,policy_no,store_no,timezone) VALUES('MAIN','FNB','E','P1','A','UTC')");
             var template = c.getBean(SqlSessionTemplate.class);
             template.getConfiguration().addMapper(SalesRestrictionMapper.class);
             var fail = new AtomicBoolean();
@@ -127,7 +126,7 @@ class SalesRestrictionServiceTest extends FoodWriteGuardFixture {
     }
     @Test void dailyQuotaUsesOriginalStoreCutoffAndRestoresAtItsEnd() {
         run(c -> {
-            c.fixture.sql().update("UPDATE fnb_store_policy SET timezone='Asia/Shanghai',cutover_minute=240");
+            c.fixture.sql().update("UPDATE ind_store_policy SET timezone='Asia/Shanghai',cutover_minute=240");
             var r = c.service.manage("E", "A", "U", new SalesRestrictionReq("S1", "QUOTA", null, null,
                     new BigDecimal("3"), LocalDate.parse("2026-10-20"), null, null,
                     "daily", null, null), "daily");

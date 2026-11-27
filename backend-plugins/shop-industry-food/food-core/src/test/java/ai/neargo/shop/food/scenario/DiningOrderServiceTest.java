@@ -206,12 +206,9 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
                                                 + " VALUES('E','C','A','BUYER','OPEN','H5','PICKUP','SESSION')");
                             f.sql()
                                     .update(
-                                            "INSERT INTO"
-                                                + " fnb_store_policy(entity_no,policy_no,store_no,timezone,cutover_minute,effective_from,pay_policy)"
-                                                + " VALUES('E','P','A','UTC',240,'2026-01-01"
-                                                + " 00:00:00','PREPAY')");
+                                            "INSERT INTO ind_store_policy(tenant_no,industry_code,entity_no,policy_no,store_no,timezone,cutover_minute,pay_policy) VALUES('MAIN','FNB','E','P','A','UTC',240,'PREPAY')");
                             if (postpay)
-                                f.sql().update("UPDATE fnb_store_policy SET pay_policy='POSTPAY'");
+                                f.sql().update("UPDATE ind_store_policy SET pay_policy='POSTPAY'");
                             if (staff)
                                 f.sql()
                                         .update(

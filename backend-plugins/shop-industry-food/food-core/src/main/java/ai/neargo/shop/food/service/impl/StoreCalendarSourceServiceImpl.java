@@ -117,68 +117,17 @@ public final class StoreCalendarSourceServiceImpl implements StoreCalendarSource
                                             LocalDateTime.ofInstant(
                                                     StoreCalendarSourcePolicy.upper(q),
                                                     ZoneOffset.UTC);
-                                    var baseline =
-                                            policies.selectList(
-                                                    Wrappers.<FnbStorePolicy>lambdaQuery()
-                                                            .eq(FnbStorePolicy::getTenantNo, "MAIN")
-                                                            .eq(
-                                                                    FnbStorePolicy::getEntityNo,
-                                                                    q.entityNo())
-                                                            .eq(
-                                                                    FnbStorePolicy::getStoreNo,
-                                                                    q.storeNo())
-                                                            .le(
-                                                                    FnbStorePolicy
-                                                                            ::getEffectiveFrom,
-                                                                    lower)
-                                                            .orderByDesc(
-                                                                    FnbStorePolicy
-                                                                            ::getEffectiveFrom)
-                                                            .last("LIMIT 1"));
-                                    var changes =
-                                            policies.selectList(
-                                                    Wrappers.<FnbStorePolicy>lambdaQuery()
-                                                            .eq(FnbStorePolicy::getTenantNo, "MAIN")
-                                                            .eq(
-                                                                    FnbStorePolicy::getEntityNo,
-                                                                    q.entityNo())
-                                                            .eq(
-                                                                    FnbStorePolicy::getStoreNo,
-                                                                    q.storeNo())
-                                                            .gt(
-                                                                    FnbStorePolicy
-                                                                            ::getEffectiveFrom,
-                                                                    lower)
-                                                            .le(
-                                                                    FnbStorePolicy
-                                                                            ::getEffectiveFrom,
-                                                                    upper)
-                                                            .orderByAsc(
-                                                                    FnbStorePolicy
-                                                                            ::getEffectiveFrom)
-                                                            .last("LIMIT 257"));
-                                    require(changes.size() <= 256);
-                                    var all = new ArrayList<FnbStorePolicy>();
-                                    all.addAll(baseline);
-                                    all.addAll(changes);
-                                    if (all.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
+                                    // 不保留策略历史（TDD §2.5）：当前策略覆盖整个查询范围，生效时间记为范围起点。
+                                    var current = policies.current(q.entityNo(), q.storeNo());
+                                    if (current == null) throw BizException.of(ErrorCode.NOT_FOUND);
                                     var policyFacts =
-                                            all.stream()
-                                                    .map(
-                                                            p ->
-                                                                    new Policy(
-                                                                            p.getPolicyNo(),
-                                                                            p.getTimezone(),
-                                                                            p.getCutoverMinute(),
-                                                                            p.getEffectiveFrom()
-                                                                                            == null
-                                                                                    ? null
-                                                                                    : p.getEffectiveFrom()
-                                                                                            .toInstant(
-                                                                                                    ZoneOffset
-                                                                                                            .UTC),
-                                                                            p.getVersion()))
-                                                    .toList();
+                                            List.of(
+                                                    new Policy(
+                                                            current.getPolicyNo(),
+                                                            current.getTimezone(),
+                                                            current.getCutoverMinute(),
+                                                            lower.toInstant(ZoneOffset.UTC),
+                                                            current.getVersion()));
                                     var days =
                                             calendars.selectList(
                                                     Wrappers.<FnbServiceCalendar>lambdaQuery()

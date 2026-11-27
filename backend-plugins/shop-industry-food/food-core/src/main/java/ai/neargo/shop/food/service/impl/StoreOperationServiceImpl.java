@@ -137,11 +137,8 @@ public class StoreOperationServiceImpl implements StoreOperationService {
 
     private OperationVO saveDay(String entityNo, String storeNo, LocalDate date, String actorNo,
             SaveCalendarReq req, List<String> intervals, String requestNo) {
-        var policy = policies.selectList(Wrappers.<FnbStorePolicy>lambdaQuery()
-                .eq(FnbStorePolicy::getEntityNo, entityNo).eq(FnbStorePolicy::getStoreNo, storeNo)
-                .le(FnbStorePolicy::getEffectiveFrom, LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
-                .orderByDesc(FnbStorePolicy::getEffectiveFrom).last("LIMIT 1 FOR UPDATE"));
-        if (policy.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
+        var policy = policies.lockCurrent(entityNo, storeNo);
+        if (policy == null) throw BizException.of(ErrorCode.NOT_FOUND);
         var rows = calendars.selectList(Wrappers.<FnbServiceCalendar>lambdaQuery()
                 .eq(FnbServiceCalendar::getEntityNo, entityNo).eq(FnbServiceCalendar::getStoreNo, storeNo)
                 .eq(FnbServiceCalendar::getLocalDate, date).last("LIMIT 1 FOR UPDATE"));
@@ -152,7 +149,7 @@ public class StoreOperationServiceImpl implements StoreOperationService {
                 row.getPolicyNo(), row.getVersion().toString());
         row.setMode(req.mode());
         row.setIntervals(json.writeValueAsString(intervals));
-        row.setPolicyNo(policy.getFirst().getPolicyNo());
+        row.setPolicyNo(policy.getPolicyNo());
         if (rows.isEmpty()) {
             row.setEntityNo(entityNo);
             row.setStoreNo(storeNo);
@@ -185,28 +182,41 @@ public class StoreOperationServiceImpl implements StoreOperationService {
 
     private OperationVO publish(String entityNo, String storeNo, String actorNo, CreatePolicyReq req,
             String requestNo) {
-        var previous = policies.selectList(Wrappers.<FnbStorePolicy>lambdaQuery()
-                .eq(FnbStorePolicy::getEntityNo, entityNo).eq(FnbStorePolicy::getStoreNo, storeNo)
-                .orderByDesc(FnbStorePolicy::getEffectiveFrom).last("LIMIT 1 FOR UPDATE"));
-        var head = previous.isEmpty() ? null : previous.getFirst();
+        // 每店每行业一行，改策略即原地更新、立即生效（TDD §2.5，不保留历史）；版本号做乐观锁。
+        var head = policies.lockCurrent(entityNo, storeNo);
         long version = head == null ? 0 : head.getVersion();
-        LocalDateTime effective = LocalDateTime.ofInstant(req.effectiveFrom(), ZoneOffset.UTC);
-        if (version == Long.MAX_VALUE || req.version() != version
-                || head != null && !effective.isAfter(head.getEffectiveFrom())) {
-            throw BizException.of(ErrorCode.CONFLICT);
+        if (version == Long.MAX_VALUE || req.version() != version) throw BizException.of(ErrorCode.CONFLICT);
+        String before = head == null ? null : head.getPolicyNo() + ":" + version;
+        var policy = head == null ? new FnbStorePolicy() : head;
+        if (head == null) {
+            // 新库唯一键含可空的 tenant_no，必须显式写 MAIN（TDD §2.5）。
+            policy.setTenantNo("MAIN");
+            policy.setEntityNo(entityNo);
+            policy.setStoreNo(storeNo);
+            policy.setPolicyNo(BizKey.next(POLICY_PREFIX));
+            policy.setIndustryCode(FnbStorePolicy.INDUSTRY);
         }
-        var policy = new FnbStorePolicy();
-        policy.setEntityNo(entityNo);
-        policy.setStoreNo(storeNo);
-        policy.setPolicyNo(BizKey.next(POLICY_PREFIX));
         policy.setTimezone(req.timezone());
         policy.setCutoverMinute(req.cutoverMinute());
-        policy.setEffectiveFrom(effective);
         policy.setPayPolicy(req.payPolicy());
         policy.setCapabilities(json.writeValueAsString(req.capabilities()));
-        policy.setSettings("{}");
-        policy.setVersion(version + 1);
-        policies.insert(policy);
+        policy.setStatus(FnbStorePolicy.ACTIVE);
+        if (head == null) {
+            policy.setVersion(1L);
+            policies.insert(policy);
+        } else if (policies.update(
+                        null,
+                        Wrappers.<FnbStorePolicy>lambdaUpdate()
+                                .eq(FnbStorePolicy::getId, head.getId())
+                                .eq(FnbStorePolicy::getVersion, version)
+                                .set(FnbStorePolicy::getTimezone, req.timezone())
+                                .set(FnbStorePolicy::getCutoverMinute, req.cutoverMinute())
+                                .set(FnbStorePolicy::getPayPolicy, req.payPolicy())
+                                .set(FnbStorePolicy::getCapabilities, policy.getCapabilities())
+                                .set(FnbStorePolicy::getStatus, FnbStorePolicy.ACTIVE)
+                                .set(FnbStorePolicy::getUpdatedBy, actorNo)
+                                .set(FnbStorePolicy::getVersion, version + 1))
+                != 1) throw BizException.of(ErrorCode.CONFLICT);
         var audit = new FnbActionLog();
         audit.setEntityNo(entityNo);
         audit.setStoreNo(storeNo);
@@ -216,8 +226,8 @@ public class StoreOperationServiceImpl implements StoreOperationService {
         audit.setAction("PUBLISH");
         audit.setOperatorNo(actorNo);
         audit.setRequestNo(requestNo);
-        audit.setBeforeRef(head == null ? null : head.getPolicyNo());
-        audit.setAfterRef(policy.getPolicyNo());
+        audit.setBeforeRef(before);
+        audit.setAfterRef(policy.getPolicyNo() + ":" + (version + 1));
         actions.insert(audit);
         publisher.publish(new StorePolicyPublished(entityNo, storeNo, policy.getPolicyNo(), version + 1,
                         req.effectiveFrom(), audit.getActionNo()),
@@ -243,6 +253,8 @@ public class StoreOperationServiceImpl implements StoreOperationService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (!req.capabilities().isEmpty() || !blank(req.approvalRef())) throw BizException.of(ErrorCode.FORBIDDEN);
+        // 不支持未来生效（TDD §2.5，用户 2026-11-27 定）：策略改了立即生效，未来时间拒绝。
+        if (req.effectiveFrom().isAfter(clock.instant())) throw BizException.of(ErrorCode.BAD_REQUEST);
     }
 
     private static boolean blank(String value) { return value == null || value.isBlank(); }
@@ -253,13 +265,9 @@ public class StoreOperationServiceImpl implements StoreOperationService {
         if (entityNo == null || entityNo.isBlank() || storeNo == null || storeNo.isBlank()) {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
-        var at = query == null || query.at() == null ? clock.instant() : query.at();
-        var rows = policies.selectList(Wrappers.<FnbStorePolicy>lambdaQuery()
-                .eq(FnbStorePolicy::getEntityNo, entityNo).eq(FnbStorePolicy::getStoreNo, storeNo)
-                .le(FnbStorePolicy::getEffectiveFrom, LocalDateTime.ofInstant(at, ZoneOffset.UTC))
-                .orderByDesc(FnbStorePolicy::getEffectiveFrom).last("LIMIT 1"));
-        if (rows.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
-        FnbStorePolicy row = rows.getFirst();
+        // 不保留历史：任何时刻都按门店当前策略（TDD §2.5）。
+        FnbStorePolicy row = policies.current(entityNo, storeNo);
+        if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
         try {
             ZoneId.of(row.getTimezone());
             if (row.getCutoverMinute() == null || row.getCutoverMinute() < 0 || row.getCutoverMinute() > 1439

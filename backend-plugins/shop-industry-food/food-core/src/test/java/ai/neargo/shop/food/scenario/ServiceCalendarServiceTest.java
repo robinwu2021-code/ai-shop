@@ -28,9 +28,7 @@ class ServiceCalendarServiceTest extends FoodWriteGuardFixture {
                 + "version BIGINT,deleted INT DEFAULT 0,"
                 + "calendar_no VARCHAR(32) UNIQUE,store_no VARCHAR(32),local_date DATE,mode VARCHAR(16),"
                 + "intervals VARCHAR(2048),policy_no VARCHAR(32),UNIQUE(store_no,local_date))");
-        f.sql().update("INSERT INTO fnb_store_policy(entity_no,policy_no,store_no,timezone,cutover_minute,"
-                + "effective_from,pay_policy,capabilities,settings,version) VALUES "
-                + "('E','P1','A','Asia/Shanghai',240,'2026-10-01 00:00:00','PREPAY','[]','{}',1)");
+        f.sql().update("INSERT INTO ind_store_policy(tenant_no,industry_code,entity_no,policy_no,store_no,timezone,cutover_minute,pay_policy,capabilities,version) VALUES('MAIN','FNB','E','P1','A','Asia/Shanghai',240,'PREPAY','[]',1)");
         return f;
     }
     private SaveCalendarReq open(long version, String... intervals) {
@@ -91,7 +89,7 @@ class ServiceCalendarServiceTest extends FoodWriteGuardFixture {
             code(() -> service.saveCalendar("E","A",DAY,"actor",open(0,"99:00-02:00"),"one"),ErrorCode.BAD_REQUEST);
             code(() -> service.saveCalendar("OTHER","A",DAY,"actor",open(0,"22:00-02:00"),"one"),ErrorCode.NOT_FOUND);
             code(() -> service.saveCalendar("E","B",DAY,"actor",open(0,"22:00-02:00"),"one"),ErrorCode.NOT_FOUND);
-            f.sql().update("DELETE FROM fnb_store_policy");
+            f.sql().update("DELETE FROM ind_store_policy");
             code(() -> service.saveCalendar("E","A",DAY,"actor",open(0,"22:00-02:00"),"one"),ErrorCode.NOT_FOUND);
             emptyWrites(f);
         });

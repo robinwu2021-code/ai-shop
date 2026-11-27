@@ -155,7 +155,7 @@ P1 本身照做：餐饮的行业 Mapper 对齐新结构，并在「`industry` �
 |---|---|---|
 | `fnb_config_revision` | `ind_config_revision` | `config_no` → `policy_no`；`revision` → `revision_index`；`revision_no` → `policy_version_no`；`content_hash` → `snapshot_hash`；`content_schema` → `schema_version`；内容进 `definition_snapshot` |
 | `fnb_banquet_plan_revision` | `ind_config_revision`（`config_kind = BANQUET_PLAN`） | `plan_no` → `policy_no`；计划人数、预算、币种、表单号、计划快照进 `definition_snapshot` |
-| `fnb_store_policy` | `ind_store_policy`（`industry_code = FNB`） | 时区、切日、付款方式、能力码直接成列；`effective_from`、`settings` 进当前修订（`ind_config_revision`，`config_kind = STORE_POLICY`） |
+| `fnb_store_policy` | `ind_store_policy`（`industry_code = FNB`） | 时区、切日、付款方式、能力码直接成列。**用户 2026-11-27 定：不保留历史**——每店每行业一行，改策略即原地更新、立即生效，乐观锁版本号；`effective_from` 不落库，未来时间拒绝（`BAD_REQUEST`）；`settings` 旧代码只写 `{}`，丢弃；`current_policy_version_no` 暂不用 |
 | `fnb_dining_entitlement` | `fnb_service_entitlement` | `check_no` → `form_no`；`starts_at`/`expires_at` → `valid_from`/`valid_until`；类型、人群、人数、规则快照、状态成列；`core_order_ref` 经到店单查 |
 | `fnb_scheduled_dispatch` | `fnb_kitchen_ticket` | 定时出品作为出品单的 `SCHEDULED` 状态加 `dispatch_at`；`attempts` → `dispatch_attempts`；`next_attempt_at` 与 `dispatch_key` 的用途实现时逐条核对，代码在用就在 `V2` 补回 |
 | `fnb_service_event` | `fnb_kds_event` | `action` → `event_type`；`task_no`、`qty`、`ready_loss_qty`、`reason`、`inventory_doc_no`、`custody_snapshot` 成列；`operation_key`、`source_request_hash` 是动作防重，按 ADR-068 第 4 条在 `V2` 补回并建唯一键 |
@@ -319,7 +319,14 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - **P1-3 合并 ②：宴会方案修订 → `ind_config_revision`（`config_kind=BANQUET_PLAN`）**。被修订的对象是到店单：`policy_no`=到店单号、`revision_index`=修订序号、`policy_version_no`=方案号；方案快照（已含币种、预算、人数）进 `definition_snapshot`，摘要进 `snapshot_hash`。读取按原列名取别名，服务不变。新表唯一键带 `tenant_no` 且可为空，写入显式填 `MAIN`（MySQL 唯一键不约束空值）。
 - 测试工具 `IndustrySchema`：H2 场景测试按 `db/n_industry` 建表（清洗 MySQL 方言、索引名加表名前缀、JSON 列按文本建）。
 - **P1-3 合并 ③：配置修订 → `ind_config_revision`**（工位、菜单、套餐、选项组、加料、配方的发布修订）。`revision_no`→`policy_version_no`、`config_no`→`policy_no`、`revision`→`revision_index`、`content_schema`→`schema_version`、`content_hash`→`snapshot_hash`；实体字段名不变，`ConfigRevisionMapper.COLUMNS` 按旧列名取别名，服务不变；写入显式 `tenant_no='MAIN'`。数据域登记改为新表。8 个测试里的直接 SQL 按同一规则改写，自建旧表改用 `IndustrySchema`。
-- 待做：P1-3 其余六组合并（门店策略、定时出品、服务事件、交接、交接明细、责任）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本。
+- **P1-3 合并 ④：门店策略 → `ind_store_policy`（`industry_code='FNB'`），不保留历史**（用户 2026-11-27 定）。
+  旧表每次发布追加一行、按 `effective_from` 取「当时生效」的那条；新表每店每行业一行：发布时锁当前行，版本号相符就原地改时区、切日、付款方式、能力码并加版本，没有就建（`tenant_no='MAIN'` 显式写）。
+  请求里的 `effectiveFrom` 仍校验，晚于当前时刻拒绝（`BAD_REQUEST`），不再登记待生效版本；查询的时刻参数不再挑版本。
+  读策略的地方统一走 `StorePolicyMapper.current` / `lockCurrent`：营业日、日结、报表事实、菜单时区、排队锚点、日历来源（只剩当前一条，下界取查询起点）。
+  营业日自身冻结起止时间，旧日子不依赖策略历史。
+  设计 DDL 的唯一键 `(tenant_no, entity_no, store_no)` 不含行业，餐饮与美业同店会冲突，`V2` 改为 `(tenant_no, entity_no, store_no, industry_code)`；校验器同步。
+  测试：发布改为原地更新语义并加未来时间拒绝；依赖历史的两条查询用例与日历来源的多版本用例改写或删除。
+- 待做：P1-3 其余五组合并（定时出品、服务事件、交接、交接明细、责任）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
 
@@ -350,6 +357,9 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 
 - **Q2 桌台的并发锁放哪。** ✅ 2026-11-27 用户定：订单域与业务域分开，占台、换台记录、订位、时段与容量随桌台归行业库，跨域用补偿（ADR-068 修订二，§2.7）。
 
+- **Q3 订单域的门店锁。** 下单（`DiningOrderServiceImpl`）、限量认领（`SalesQuotaClaimServiceImpl`）、限售规则（`SalesRestrictionServiceImpl`）在交易事务里锁门店策略行做同店串行；策略行已在行业库，行业句柄单独绑库后这把锁不在交易事务里，串行失效。
+  现按原样改为 `lockCurrent`（未绑定时同库照常生效）。**行业句柄生产绑定前**须换成交易库内的锁（例如营业日行或限售规则行本身），待定。
+
 ## §7 确认与完成
 
 | 日期 | 事件 |
@@ -359,3 +369,4 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 | 2026-11-27 | 用户定：出品整组迁到行业库，跨库场景降到最低，交易库只保留订单（ADR-068 修订一，§2.3） |
 | 2026-11-27 | 用户定：订单域与业务域分开，跨域用补偿不用事务；占台、换台记录、订位、时段随桌台归行业库（ADR-068 修订二，§2.7） |
 | 2026-11-27 | 用户定：不做同库不同池测试，改完直接在新库测试（P0-6 取消，AC1 由 P1 新库测试覆盖） |
+| 2026-11-27 | 用户定：门店策略不保留历史，每店每行业一行原地更新、立即生效，未来生效时间拒绝（§2.5、合并 ④） |

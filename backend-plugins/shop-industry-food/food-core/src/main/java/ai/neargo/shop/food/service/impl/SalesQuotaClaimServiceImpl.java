@@ -156,11 +156,11 @@ public class SalesQuotaClaimServiceImpl implements SalesQuotaClaimService {
     }
 
     private FnbStorePolicy lockStore(String entity, String store, LocalDateTime now) {
-        List<FnbStorePolicy> locked = policies.selectList(Wrappers.<FnbStorePolicy>lambdaQuery()
-                .eq(FnbStorePolicy::getTenantNo, "MAIN").eq(FnbStorePolicy::getEntityNo, entity)
-                .eq(FnbStorePolicy::getStoreNo, store).orderByAsc(FnbStorePolicy::getPolicyNo).last("FOR UPDATE"));
-        return locked.stream().filter(row -> row.getEffectiveFrom() != null && !row.getEffectiveFrom().isAfter(now))
-                .max(Comparator.comparing(FnbStorePolicy::getEffectiveFrom)).orElseThrow(this::conflict);
+        // 订单域（交易库）在用门店策略行当「同一门店订单操作串行」的锁。未绑行业库时与原来一致；
+        // 行业库单独绑定后这把锁跨库失效，绑定前须换成交易库的门店锁（TDD §8-Q3）。
+        var policy = policies.lockCurrent(entity, store);
+        if (policy == null) throw conflict();
+        return policy;
     }
     private List<FnbSalesRestriction> lockRestrictions(String entity, String store) {
         return restrictions.selectList(Wrappers.<FnbSalesRestriction>lambdaQuery()

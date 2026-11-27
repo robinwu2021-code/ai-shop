@@ -197,27 +197,9 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
                     if (!existing.isEmpty()) return day(existing.getFirst());
                     // Freeze policy already effective at the beginning of this local business day.
                     // 门店策略在行业库：只读一次，不跨库加锁；建日的串行由上面锁住的营业日行保证。
-                    var candidates =
-                            policies.selectList(
-                                    Wrappers.<FnbStorePolicy>lambdaQuery()
-                                            .eq(FnbStorePolicy::getEntityNo, entity)
-                                            .eq(FnbStorePolicy::getStoreNo, store)
-                                            .orderByDesc(FnbStorePolicy::getEffectiveFrom)
-                                            .orderByDesc(FnbStorePolicy::getPolicyNo));
-                    var policy =
-                            candidates.stream()
-                                    .filter(
-                                            p ->
-                                                    !p.getEffectiveFrom()
-                                                            .isAfter(
-                                                                    boundaries(
-                                                                                    date,
-                                                                                    p.getTimezone(),
-                                                                                    p
-                                                                                            .getCutoverMinute())
-                                                                            .getFirst()))
-                                    .findFirst()
-                                    .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+                    // 不保留策略历史（TDD §2.5）：按门店当前策略冻结本营业日的起止，营业日自己存着起止时间。
+                    var policy = policies.current(entity, store);
+                    if (policy == null) throw BizException.of(ErrorCode.NOT_FOUND);
                     var bounds = boundaries(date, policy.getTimezone(), policy.getCutoverMinute());
                     var row = new FnbBusinessDay();
                     row.setEntityNo(entity);

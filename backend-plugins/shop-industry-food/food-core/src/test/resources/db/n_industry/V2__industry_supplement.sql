@@ -97,6 +97,9 @@ ALTER TABLE fnb_kitchen_ticket ADD COLUMN dispatch_key VARCHAR(64) CHARACTER SET
 ALTER TABLE fnb_queue_ticket ADD COLUMN request_key CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '取号请求防重键', ADD COLUMN request_hash CHAR(64) NULL COMMENT '取号请求摘要', ADD COLUMN seat_request_hash CHAR(64) NULL COMMENT '入座请求摘要', ADD UNIQUE KEY uk_queue_ticket_request (entity_no, store_no, request_key);
 ALTER TABLE fnb_custody_movement ADD COLUMN key_hash VARCHAR(64) NOT NULL COMMENT '寄存动作防重键摘要', ADD COLUMN request_hash VARCHAR(64) NOT NULL COMMENT '寄存动作请求摘要', ADD UNIQUE KEY uk_custody_movement_key (tenant_no, entity_no, store_no, key_hash);
 
+-- 设计缺陷修正：ind_store_policy 餐饮与美业共用，设计说明写「门店 + 行业唯一」，DDL 的唯一键漏了行业（TDD §2.5，先记后改）。
+ALTER TABLE ind_store_policy DROP INDEX uk_bty_store_policy_2, ADD UNIQUE KEY uk_ind_store_policy_store_industry (tenant_no, entity_no, store_no, industry_code);
+
 -- 三、ADR-068 修订一：制作任务归行业库（设计 DDL 里原拟并入 n_trade.ord_execution）。
 CREATE TABLE `fnb_kitchen_task` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'BaseEntityè‡ªå¢žç‰©ç†ä¸»é”®ï¼Œä¸å¯¹å¤–ä¸è¿›URL',
@@ -327,32 +330,6 @@ CREATE TABLE `fnb_service_calendar` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='é¤é¥®æŽ¥å•æ—¥åŽ†ä¾‹å¤–';
 
 -- 五、过渡：9 组合并（TDD §2.5）与寄存改名完成前，代码仍读写的旧表；每完成一组就从这里删掉对应的表。
-CREATE TABLE `fnb_store_policy` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'BaseEntityè‡ªå¢žç‰©ç†ä¸»é”®ï¼Œä¸å¯¹å¤–ä¸è¿›URL',
-  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT 'æ²¿ç”¨BaseEntityï¼Œä¸€æœŸMAINï¼›ä¸æ˜¯entity_noï¼Œä¸å¦å¯ç§Ÿæˆ·ä½“ç³»',
-  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'å½“å‰ä¸»ä½“æˆ–ä¸šåŠ¡å‘ç”Ÿæ—¶ä¸»ä½“å¿«ç…§ï¼Œä¸ç­‰äºŽè´¦å·å’Œæ”¯ä»˜å•†æˆ·å·',
-  `created_at` datetime(3) NOT NULL COMMENT 'æ²¿ç”¨MetaObjectHandleråŠçŽ°æœ‰LocalDateTimeæŒä¹…åŒ–çº¦å®š',
-  `created_by` varchar(32) NOT NULL COMMENT 'å½“å‰è®¤è¯ä¸šåŠ¡é”®ï¼›æŒ‰çŽ°æœ‰å¡«å……è§„åˆ™ï¼Œä½œä¸šSYSTEM',
-  `updated_at` datetime(3) NOT NULL COMMENT 'æ²¿ç”¨å…¬å…±å¡«å……',
-  `updated_by` varchar(32) NOT NULL COMMENT 'æ²¿ç”¨å…¬å…±å¡«å……',
-  `version` bigint NOT NULL DEFAULT '0' COMMENT 'BaseEntityä¹è§‚é”',
-  `deleted` int NOT NULL DEFAULT '0' COMMENT 'BaseEntityé€»è¾‘åˆ é™¤ï¼›ç­¾æ ¸å’Œäº‹å®žè¡¨ç¦æ­¢ä¸šåŠ¡å½’æ¡£è¦†ç›–åŽ†å²',
-  `policy_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'ç­–ç•¥å·',
-  `store_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'é—¨åº—',
-  `timezone` varchar(64) NOT NULL COMMENT 'IANAæ—¶åŒº',
-  `cutover_minute` int NOT NULL COMMENT 'è¥ä¸šæ—¥åˆ‡ç‚¹',
-  `effective_from` datetime(3) NOT NULL COMMENT 'ç”Ÿæ•ˆæ—¶åˆ»',
-  `pay_policy` varchar(16) NOT NULL COMMENT 'PREPAY/POSTPAY',
-  `capabilities` json NOT NULL COMMENT 'èƒ½åŠ›ç é›†åˆ',
-  `settings` json NOT NULL COMMENT 'ç‰ˆæœ¬åŒ–é™é¢ä¸Žå®¡æ‰¹ç­–ç•¥',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_food_1` (`policy_no`),
-  UNIQUE KEY `uk_food_2` (`store_no`,`effective_from`),
-  KEY `ix_food_audit` (`entity_no`,`created_at`,`id`),
-  KEY `ix_food_store` (`entity_no`,`store_no`,`updated_at`,`id`),
-  CONSTRAINT `fnb_store_policy_chk_1` CHECK ((`cutover_minute` between 0 and 1439))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='é—¨åº—è¥ä¸šç­–ç•¥';
-
 CREATE TABLE `fnb_scheduled_dispatch` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN',

@@ -56,13 +56,7 @@ class StoreCalendarSourceServiceTest extends FoodWriteGuardFixture {
                                                 + " VARCHAR(32))");
                             fixture.sql()
                                     .update(
-                                            "INSERT INTO"
-                                                + " fnb_store_policy(entity_no,policy_no,store_no,"
-                                                + "timezone,cutover_minute,effective_from,"
-                                                + "pay_policy,capabilities,settings,version)"
-                                                + " VALUES"
-                                                + " ('E','P1','A','Asia/Shanghai',240,'2026-10-01"
-                                                + " 00:00:00','PREPAY','[]','{}',1)");
+                                            "INSERT INTO ind_store_policy(tenant_no,industry_code,entity_no,policy_no,store_no,timezone,cutover_minute,pay_policy,capabilities,version) VALUES('MAIN','FNB','E','P1','A','Asia/Shanghai',240,'PREPAY','[]',1)");
                             test.accept(context, fixture);
                         });
     }
@@ -160,30 +154,12 @@ class StoreCalendarSourceServiceTest extends FoodWriteGuardFixture {
     }
 
     @Test
-    void futureEffectivePoliciesAndUnknownStoreHoursArePreserved() {
+    void singleCurrentPolicyAndUnknownStoreHoursArePreserved() {
         run(
                 (c, f) -> {
-                    f.sql()
-                            .update(
-                                    "INSERT INTO"
-                                        + " fnb_store_policy(entity_no,policy_no,store_no,"
-                                        + "timezone,cutover_minute,effective_from,"
-                                        + "pay_policy,capabilities,settings,version)"
-                                        + " VALUES ('E','P2','A','Asia/Shanghai',0,'2026-10-20"
-                                        + " 17:00:00','POSTPAY','[]','{}',2)");
+                    // 门店策略不保留历史（TDD §2.5）：来源里只有当前这一条。
                     var facts = service(c, stores()).capture(QUERY);
-                    assertThat(facts.policies()).hasSize(2);
-                    f.sql()
-                            .update(
-                                    "INSERT INTO"
-                                        + " fnb_service_calendar(entity_no,calendar_no,"
-                                        + "store_no,local_date,mode,intervals,policy_no)"
-                                        + " VALUES ('E','C2','A','2026-10-21','CLOSED','[]','P1')");
-                    facts = service(c, stores()).capture(QUERY);
-                    assertThat(
-                                    StoreCalendarSourcePolicy.acceptsAt(
-                                            facts, Instant.parse("2026-10-20T18:00:00Z"), NOW))
-                            .isFalse();
+                    assertThat(facts.policies()).hasSize(1);
                     for (var hours : Arrays.asList(null, "unknown", "25:00-03:00")) {
                         var unknown =
                                 service(c, n -> Map.of("A", card("ACTIVE", hours))).capture(QUERY);
@@ -227,10 +203,10 @@ class StoreCalendarSourceServiceTest extends FoodWriteGuardFixture {
                                                                     service(c, stores())
                                                                             .capture(QUERY))
                                                     .isInstanceOf(BizException.class));
-                    f.sql().update("UPDATE fnb_store_policy SET timezone='invalid'");
+                    f.sql().update("UPDATE ind_store_policy SET timezone='invalid'");
                     assertThatThrownBy(() -> service(c, stores()).capture(QUERY))
                             .isInstanceOf(BizException.class);
-                    f.sql().update("DELETE FROM fnb_store_policy");
+                    f.sql().update("DELETE FROM ind_store_policy");
                     assertThatThrownBy(() -> service(c, stores()).capture(QUERY))
                             .isInstanceOf(BizException.class);
                 });
@@ -240,7 +216,7 @@ class StoreCalendarSourceServiceTest extends FoodWriteGuardFixture {
     void changesDuringStoreRefreshAreRejected() {
         var mutations =
                 List.of(
-                        "UPDATE fnb_store_policy SET cutover_minute=0",
+                        "UPDATE ind_store_policy SET cutover_minute=0",
                         "INSERT INTO fnb_service_calendar(entity_no,calendar_no,store_no,"
                                 + "local_date,mode,intervals,policy_no) VALUES "
                                 + "('E','NEW','A','2026-10-20','CLOSED','[]','P1')");
@@ -298,22 +274,7 @@ class StoreCalendarSourceServiceTest extends FoodWriteGuardFixture {
     }
 
     @Test
-    void largePolicyTimelineAndDuplicateBusinessDaysCannotBeTruncatedIntoSuccess() {
-        run(
-                (c, f) -> {
-                    for (int n = 0; n < 257; n++)
-                        f.sql()
-                                .update(
-                                        "INSERT INTO fnb_store_policy(entity_no,policy_no,store_no,"
-                                            + "timezone,cutover_minute,effective_from,"
-                                            + "pay_policy,capabilities,settings,version) VALUES "
-                                            + "('E',?,'A','Asia/Shanghai',240,?,'PREPAY','[]','{}',?)",
-                                        "P" + (n + 2),
-                                        LocalDateTime.of(2026, 10, 19, 0, 0).plusSeconds(n),
-                                        n + 2);
-                    assertThatThrownBy(() -> service(c, stores()).capture(QUERY))
-                            .isInstanceOf(BizException.class);
-                });
+    void duplicateBusinessDaysCannotBeTruncatedIntoSuccess() {
         run(
                 (c, f) -> {
                     for (var no : List.of("C1", "C2"))

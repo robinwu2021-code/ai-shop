@@ -44,7 +44,7 @@ class StationServiceTest extends FoodWriteGuardFixture {
                 OptionGroupServiceTest.Groups.class, Stations.class).run(c -> {
                     var f = new OptionGroupServiceTest().fixture(c);
                     for (String store : List.of("A","B")) f.sql().update(
-                            "INSERT INTO fnb_store_policy(entity_no,store_no,policy_no) VALUES (?,?,?)",
+                            "INSERT INTO ind_store_policy(tenant_no,industry_code,entity_no,store_no,policy_no) VALUES('MAIN','FNB',?,?,?)",
                             "E",store,"POL-"+store);
                     String common = "id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',"
                             + "entity_no VARCHAR(32),created_at DATETIME(3),created_by VARCHAR(32),"

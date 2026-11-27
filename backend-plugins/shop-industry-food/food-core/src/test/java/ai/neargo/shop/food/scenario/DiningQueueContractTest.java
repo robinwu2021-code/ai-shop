@@ -157,7 +157,7 @@ class DiningQueueContractTest {
             row.setPartySize(2); row.setStatus("CALLED"); row.setVersion(0L);
             when(tickets.selectList(any())).thenReturn(List.of(row));
             when(tickets.updateById(any(FnbQueueTicket.class))).thenReturn(1);
-            when(policyRows.selectList(any())).thenReturn(List.of(new FnbStorePolicy()));
+            when(policyRows.lockCurrent(any(),any())).thenReturn(new FnbStorePolicy());
             when(policies.getPolicy(anyString(),anyString(),any())).thenReturn(
                     new StoreOperationPolicyResultVO("P","Asia/Shanghai",240,"PREPAY",List.of(),0));
             when(stores.cards(any())).thenReturn(Map.of("S",new StoreCard("S","Store","E",null,

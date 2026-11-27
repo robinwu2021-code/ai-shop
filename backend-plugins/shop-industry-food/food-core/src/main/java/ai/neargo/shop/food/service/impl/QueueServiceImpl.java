@@ -430,19 +430,10 @@ public class QueueServiceImpl implements QueueService {
                 });
     }
 
-    /**
-     * Oldest immutable policy is a stable store anchor across new effective policy publications.
-     */
+    /** 门店策略行是同一门店排队操作的锁。 */
     private void anchor(String entity, String store) {
-        var rows =
-                policyRows.selectList(
-                        Wrappers.<FnbStorePolicy>lambdaQuery()
-                                .eq(FnbStorePolicy::getEntityNo, entity)
-                                .eq(FnbStorePolicy::getStoreNo, store)
-                                .orderByAsc(FnbStorePolicy::getEffectiveFrom)
-                                .orderByAsc(FnbStorePolicy::getPolicyNo)
-                                .last("LIMIT 1 FOR UPDATE"));
-        if (rows.isEmpty()) throw missing();
+        // 门店策略每店一行（TDD §2.5），同在行业库：锁它串行同一门店的排队操作。
+        if (policyRows.lockCurrent(entity, store) == null) throw missing();
     }
 
     private FnbQueueTicket find(String entity, String store, String no, boolean lock) {

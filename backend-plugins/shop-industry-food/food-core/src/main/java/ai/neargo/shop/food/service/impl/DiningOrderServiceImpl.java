@@ -1624,23 +1624,11 @@ public class DiningOrderServiceImpl implements DiningOrderService {
     }
 
     private FnbStorePolicy lockStore(String entity, String store) {
-        var rows =
-                policyRows.selectList(
-                        Wrappers.<FnbStorePolicy>lambdaQuery()
-                                .eq(FnbStorePolicy::getEntityNo, entity)
-                                .eq(FnbStorePolicy::getStoreNo, store)
-                                .orderByAsc(FnbStorePolicy::getPolicyNo)
-                                .last("FOR UPDATE"));
-        return rows.stream()
-                .filter(
-                        row ->
-                                row.getEffectiveFrom() != null
-                                        && !row.getEffectiveFrom()
-                                                .isAfter(
-                                                        LocalDateTime.ofInstant(
-                                                                clock.instant(), ZoneOffset.UTC)))
-                .max(Comparator.comparing(FnbStorePolicy::getEffectiveFrom))
-                .orElseThrow(DiningOrderServiceImpl::conflict);
+        // 订单域（交易库）在用门店策略行当「同一门店订单操作串行」的锁。未绑行业库时与原来一致；
+        // 行业库单独绑定后这把锁跨库失效，绑定前须换成交易库的门店锁（TDD §8-Q3）。
+        var policy = policyRows.lockCurrent(entity, store);
+        if (policy == null) throw conflict();
+        return policy;
     }
 
     private void stamp(BaseEntity row, String entity, String actor) {

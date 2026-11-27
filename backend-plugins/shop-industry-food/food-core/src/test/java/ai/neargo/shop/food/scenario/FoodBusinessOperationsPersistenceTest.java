@@ -94,10 +94,9 @@ public class FoodBusinessOperationsPersistenceTest {
                                 "ADD COLUMN batch_no VARCHAR(32) NULL; ALTER TABLE"
                                     + " fnb_capacity_claim");
         for (String sql : migration.split(";")) if (!sql.isBlank()) ddl.execute(sql);
-        ddl.execute(
-                "CREATE TABLE fnb_store_policy (policy_no VARCHAR(32),entity_no"
-                        + " VARCHAR(32),store_no VARCHAR(32),deleted INT DEFAULT 0)");
-        db.update("INSERT INTO fnb_store_policy VALUES ('P','E','S',0)");
+        IndustrySchema.create(ds, "ind_store_policy");
+        db.update("INSERT INTO ind_store_policy (tenant_no,entity_no,policy_no,store_no,industry_code)"
+                + " VALUES ('MAIN','E','P','S','FNB')");
         ddl.execute(
                 "CREATE TABLE fnb_check (tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no"
                         + " VARCHAR(32),store_no VARCHAR(32),check_no VARCHAR(32),status"

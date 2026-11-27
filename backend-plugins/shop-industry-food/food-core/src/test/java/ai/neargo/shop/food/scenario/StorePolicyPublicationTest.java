@@ -66,10 +66,7 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
         String common = "id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',"
                 + "entity_no VARCHAR(32),created_at DATETIME(3),created_by VARCHAR(32),updated_at DATETIME(3),"
                 + "updated_by VARCHAR(32),version BIGINT DEFAULT 0,deleted INT DEFAULT 0,";
-        f.sql().execute("CREATE TABLE fnb_store_policy (" + common
-                + "policy_no VARCHAR(32) UNIQUE,store_no VARCHAR(32),timezone VARCHAR(64),cutover_minute INT,"
-                + "effective_from DATETIME(3),pay_policy VARCHAR(16),capabilities VARCHAR(2048),settings VARCHAR(2048),"
-                + "UNIQUE(store_no,effective_from))");
+        IndustrySchema.create(f.sql().getDataSource(), "ind_store_policy");
         f.sql().execute("CREATE TABLE fnb_action_log (" + common
                 + "action_no VARCHAR(32) UNIQUE,store_no VARCHAR(32),object_type VARCHAR(32),object_no VARCHAR(32),"
                 + "action VARCHAR(32),operator_no VARCHAR(32),request_no VARCHAR(64),reason VARCHAR(255),"
@@ -79,7 +76,7 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
         return new CreatePolicyReq("Asia/Shanghai", 240, time, "POSTPAY", List.of(), null, version);
     }
     private void empty(Fixture f) {
-        for (String table : List.of("fnb_store_policy", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
+        for (String table : List.of("ind_store_policy", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isZero();
         }
     }
@@ -92,12 +89,12 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
             assertThat(first.status()).isEqualTo("SUCCEEDED");
             assertThat(first.version()).isEqualTo(1);
             assertThat(service.createPolicy("E", "A", "actor", request(0, FIRST), "key")).isEqualTo(first);
-            for (String table : List.of("fnb_store_policy", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
+            for (String table : List.of("ind_store_policy", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isOne();
             }
             assertThat(f.sql().queryForObject("SELECT operator_no FROM fnb_action_log", String.class))
                     .isEqualTo("actor");
-            assertThat(f.sql().queryForObject("SELECT policy_no FROM fnb_store_policy", String.class))
+            assertThat(f.sql().queryForObject("SELECT policy_no FROM ind_store_policy", String.class))
                     .isEqualTo(first.resultRef());
         });
     }
@@ -122,22 +119,25 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
             assertThat(replay.version()).isEqualTo(1);
         });
     }
-    @Test void appendsFuturePolicyAndRejectsStaleVersionOrTimelineInsertion() {
+    /** 每店每行业一行，改策略原地更新、立即生效；旧版本号冲突，未来生效时间拒绝（TDD §2.5）。 */
+    @Test void updatesTheSingleRowInPlaceAndRejectsStaleVersionOrFutureTime() {
         runner().withUserConfiguration(Publication.class).run(context -> {
             var f = fixture(context);
             var service = context.getBean(StoreOperationService.class);
-            assertThat(service.createPolicy("E", "A", "actor", request(0, FIRST), "one")).isNotNull();
-            var next = service.createPolicy("E", "A", "actor", request(1, FIRST.plusSeconds(86400)), "two");
+            var first = service.createPolicy("E", "A", "actor", request(0, FIRST), "one");
+            assertThat(first).isNotNull();
+            var next = service.createPolicy("E", "A", "actor", request(1, FIRST.plusSeconds(60)), "two");
             assertThat(next).isNotNull();
             assertThat(next.version()).isEqualTo(2);
-            assertCode(() -> service.createPolicy("E", "A", "actor", request(1, FIRST.plusSeconds(172800)), "old"),
+            assertThat(next.resultRef()).isEqualTo(first.resultRef());
+            assertCode(() -> service.createPolicy("E", "A", "actor", request(1, FIRST), "old"),
                     ErrorCode.CONFLICT);
-            assertCode(() -> service.createPolicy("E", "A", "actor", request(2, FIRST.plusSeconds(1)), "middle"),
-                    ErrorCode.CONFLICT);
-            assertCode(() -> service.createPolicy("E", "A", "actor", request(2, FIRST.plusSeconds(86400)), "equal"),
-                    ErrorCode.CONFLICT);
-            assertThat(f.sql().queryForList("SELECT version FROM fnb_store_policy ORDER BY effective_from", Long.class))
-                    .containsExactly(1L, 2L);
+            // 时钟固定在 2026-10-20T15:30Z：晚于它的生效时间是「未来」，不再登记待生效版本。
+            assertCode(() -> service.createPolicy("E", "A", "actor", request(2, FIRST.plusSeconds(86400)), "future"),
+                    ErrorCode.BAD_REQUEST);
+            assertThat(f.sql().queryForList("SELECT version FROM ind_store_policy", Long.class)).containsExactly(2L);
+            assertThat(f.sql().queryForObject("SELECT industry_code FROM ind_store_policy", String.class))
+                    .isEqualTo("FNB");
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isEqualTo(2);
         });
     }
@@ -179,7 +179,7 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
             var f = fixture(context);
             assertThat(context.getBean(StoreOperationService.class)
                     .createPolicy("E", "A", "actor", request(0, FIRST), "key")).isNotNull();
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_store_policy", Integer.class)).isOne();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_store_policy", Integer.class)).isOne();
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
         });
     }
@@ -191,7 +191,7 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
             var f = fixture(context);
             assertThat(context.getBean(StoreOperationService.class)
                     .createPolicy("E", "A", "actor", request(0, FIRST), "key")).isNotNull();
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_store_policy", Integer.class)).isOne();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_store_policy", Integer.class)).isOne();
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
         });
     }
@@ -230,7 +230,7 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
                 assertThat(results.stream().filter(OperationVO.class::isInstance).count()).isEqualTo(1);
                 assertThat(results).contains(ErrorCode.CONFLICT);
             }
-            for (String table : List.of("fnb_store_policy", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
+            for (String table : List.of("ind_store_policy", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isOne();
             }
         });

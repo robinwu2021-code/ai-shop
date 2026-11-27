@@ -171,10 +171,9 @@ public class ServiceEntitlementPersistenceTest {
                 "CREATE TABLE fnb_check_batch_membership(entity_no VARCHAR(32),batch_no"
                     + " VARCHAR(32),check_no VARCHAR(32),detached_at TIMESTAMP,deleted INT DEFAULT"
                     + " 0)");
-        db.execute(
-                "CREATE TABLE fnb_store_policy(entity_no VARCHAR(32),store_no VARCHAR(32),policy_no"
-                        + " VARCHAR(32),deleted INT DEFAULT 0)");
-        db.update("INSERT INTO fnb_store_policy VALUES('E','S','POLICY',0)");
+        IndustrySchema.create(ds, "ind_store_policy");
+        db.update("INSERT INTO ind_store_policy (tenant_no,entity_no,policy_no,store_no,industry_code)"
+                + " VALUES ('MAIN','E','POLICY','S','FNB')");
         var manager = new DataSourceTransactionManager(ds);
         tx = new TransactionTemplate(manager);
         var operations = new FoodBusinessOperationsMapper(ds);

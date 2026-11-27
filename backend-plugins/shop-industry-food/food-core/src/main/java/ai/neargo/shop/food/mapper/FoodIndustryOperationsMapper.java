@@ -43,8 +43,8 @@ public class FoodIndustryOperationsMapper {
         return rows(
                 db.queryForList(
                         // 只确认门店已开餐饮；时段写在交易库，这里不跨库加锁。
-                        "SELECT policy_no FROM fnb_store_policy WHERE entity_no=? AND store_no=?"
-                                + " AND deleted=0 ORDER BY policy_no LIMIT 1",
+                        "SELECT policy_no FROM ind_store_policy WHERE tenant_no='MAIN' AND entity_no=?"
+                                + " AND store_no=? AND industry_code='FNB' AND deleted=0 LIMIT 1",
                         e,
                         s));
     }

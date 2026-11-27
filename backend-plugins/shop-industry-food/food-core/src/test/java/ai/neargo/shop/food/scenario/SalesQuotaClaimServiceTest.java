@@ -46,8 +46,7 @@ class SalesQuotaClaimServiceTest extends FoodWriteGuardFixture {
             f.sql().execute("CREATE TABLE fnb_sales_quota_claim (" + common + "claim_no VARCHAR(32) UNIQUE,"
                     + "restriction_no VARCHAR(32),batch_no VARCHAR(32),quantity DECIMAL(18,6),status VARCHAR(16),"
                     + "UNIQUE(restriction_no,batch_no))");
-            f.sql().update("INSERT INTO fnb_store_policy(entity_no,policy_no,store_no,timezone,cutover_minute,"
-                    + "effective_from) VALUES('E','P','A','UTC',240,'2026-01-01 00:00:00')");
+            f.sql().update("INSERT INTO ind_store_policy(tenant_no,industry_code,entity_no,policy_no,store_no,timezone,cutover_minute) VALUES('MAIN','FNB','E','P','A','UTC',240)");
             SqlSessionTemplate template = context.getBean(SqlSessionTemplate.class);
             for (Class<?> type : List.of(StorePolicyMapper.class, SalesRestrictionMapper.class, SalesQuotaClaimMapper.class)) {
                 if (!template.getConfiguration().hasMapper(type)) template.getConfiguration().addMapper(type);
@@ -123,7 +122,7 @@ class SalesQuotaClaimServiceTest extends FoodWriteGuardFixture {
     @Test void respectsSourceFulfillmentAndCutoverDateAndRejectsUnsupportedModesOrAmbiguousSources() {
         run(c -> {
             quota(c, "DAILY", "2"); quota(c, "OTHER_DAY", "0.1"); quota(c, "H5_ONLY", "0.1");
-            c.fixture.sql().update("UPDATE fnb_store_policy SET cutover_minute=840");
+            c.fixture.sql().update("UPDATE ind_store_policy SET cutover_minute=840");
             c.fixture.sql().update("UPDATE fnb_sales_restriction SET business_date='2026-10-20' WHERE restriction_no='DAILY'");
             c.fixture.sql().update("UPDATE fnb_sales_restriction SET business_date='2026-10-21' WHERE restriction_no='OTHER_DAY'");
             c.fixture.sql().update("UPDATE fnb_sales_restriction SET order_source='H5' WHERE restriction_no='H5_ONLY'");
@@ -173,8 +172,7 @@ class SalesQuotaClaimServiceTest extends FoodWriteGuardFixture {
             AtomicReference<Thread> thread = new AtomicReference<>();
             try (var workers = Executors.newSingleThreadExecutor(); var connection = c.fixture.source().getConnection()) {
                 connection.setAutoCommit(false);
-                try (var statement = connection.prepareStatement("SELECT id FROM fnb_store_policy WHERE entity_no='E' "
-                        + "AND store_no='A' ORDER BY policy_no FOR UPDATE"); var rows = statement.executeQuery()) {
+                try (var statement = connection.prepareStatement("SELECT id FROM ind_store_policy WHERE entity_no='E' AND store_no='A' ORDER BY policy_no FOR UPDATE"); var rows = statement.executeQuery()) {
                     assertThat(rows.next()).isTrue();
                 }
                 var pending = workers.submit(() -> {

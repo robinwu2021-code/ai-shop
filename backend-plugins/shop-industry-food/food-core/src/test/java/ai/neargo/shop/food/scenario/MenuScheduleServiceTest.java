@@ -55,10 +55,10 @@ class MenuScheduleServiceTest {
             var s = m.service(); var sql = m.fixture().sql();
             var id = s.createMenu("E", "A", "actor", MenuServiceTest.input("早餐"), "create").configNo();
             var result = s.replaceSchedule("E", "A", id, "actor", req(0), "schedule");
-            sql.update("UPDATE fnb_store_policy SET timezone='Asia/Tokyo'");
+            sql.update("UPDATE ind_store_policy SET timezone='Asia/Tokyo'");
             assertThat(s.replaceSchedule("E", "A", id, "actor", req(0), "schedule")).isEqualTo(result);
             MenuServiceTest.code(() -> s.replaceSchedule("E", "A", id, "actor", req(1), "new"), ErrorCode.CONFLICT);
-            sql.update("UPDATE fnb_store_policy SET timezone='Asia/Shanghai'");
+            sql.update("UPDATE ind_store_policy SET timezone='Asia/Shanghai'");
             MenuServiceTest.code(() -> s.replaceSchedule("E", "A", id, "actor", req(0), "stale"), ErrorCode.CONFLICT);
             s.replaceSchedule("E", "A", id, "actor", req(1), "next");
             assertThat(s.replaceSchedule("E", "A", id, "actor", req(0), "schedule")).isEqualTo(result);

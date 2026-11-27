@@ -120,8 +120,7 @@ class MenuServiceTest extends FoodWriteGuardFixture {
             f.sql().execute("CREATE TABLE fnb_menu_channel_binding (" + common + "binding_no VARCHAR(32),"
                     + "menu_no VARCHAR(32),store_no VARCHAR(32),provider VARCHAR(32),channel_account_ref VARCHAR(64),"
                     + "external_store_ref VARCHAR(64),status VARCHAR(16))");
-            f.sql().update("INSERT INTO fnb_store_policy(entity_no,policy_no,store_no,timezone,effective_from) "
-                    + "VALUES('E','P1','A','Asia/Shanghai','2026-01-01 00:00:00')");
+            f.sql().update("INSERT INTO ind_store_policy(tenant_no,industry_code,entity_no,policy_no,store_no,timezone) VALUES('MAIN','FNB','E','P1','A','Asia/Shanghai')");
             var template = c.getBean(SqlSessionTemplate.class);
             for (var type : List.of(MenuMapper.class, MenuStoreMapper.class, StorePolicyMapper.class,
                     MenuScheduleMapper.class, MenuExceptionMapper.class, MenuContextMapper.class,
@@ -261,11 +260,11 @@ class MenuServiceTest extends FoodWriteGuardFixture {
         run(m -> {
             var s = m.service(); var f = m.fixture();
             var receipt = s.createMenu("E", "A", "actor", input("早餐"), "key");
-            f.sql().update("UPDATE fnb_store_policy SET timezone='Asia/Tokyo'");
+            f.sql().update("UPDATE ind_store_policy SET timezone='Asia/Tokyo'");
             assertThat(s.createMenu("E", "A", "actor", input("早餐"), "key")).isEqualTo(receipt);
             code(() -> s.createMenu("E", "A", "actor", input("午餐"), "key"), ErrorCode.CONFLICT);
             code(() -> s.createMenu("E", "A", "actor", input("午餐"), "new"), ErrorCode.CONFLICT);
-            f.sql().update("UPDATE fnb_store_policy SET timezone='Asia/Shanghai'");
+            f.sql().update("UPDATE ind_store_policy SET timezone='Asia/Shanghai'");
             s.updateMenu("E", "A", receipt.configNo(), "actor", update(0, "午餐", "MEAL"), "edit");
             code(() -> s.updateMenu("E", "A", receipt.configNo(), "actor", update(0, "晚餐", null), "stale"),
                     ErrorCode.CONFLICT);

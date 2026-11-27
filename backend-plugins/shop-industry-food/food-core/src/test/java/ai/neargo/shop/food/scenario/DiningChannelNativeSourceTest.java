@@ -178,10 +178,8 @@ class DiningChannelNativeSourceTest extends FoodWriteGuardFixture {
                             f.sql()
                                     .update(
                                             "INSERT INTO"
-                                                + " fnb_store_policy(entity_no,policy_no,store_no,timezone,cutover_minute,effective_from)"
-                                                + " VALUES('E','POLICY','S','UTC',0,?)",
-                                            LocalDateTime.ofInstant(
-                                                    NOW.minusSeconds(86400), ZoneOffset.UTC));
+                                                + " ind_store_policy(tenant_no,entity_no,policy_no,store_no,industry_code,timezone,cutover_minute)"
+                                                + " VALUES('MAIN','E','POLICY','S','FNB','UTC',0)");
                             f.sql()
                                     .update(
                                             "INSERT INTO"

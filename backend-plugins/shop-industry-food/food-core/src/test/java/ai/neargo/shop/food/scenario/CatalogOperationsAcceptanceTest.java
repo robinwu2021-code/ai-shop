@@ -62,8 +62,7 @@ class CatalogOperationsAcceptanceTest extends FoodWriteGuardFixture {
                     + "ticket_no VARCHAR(32) UNIQUE,store_no VARCHAR(32),business_date DATE,party_size INT,contact_ref VARCHAR(64),"
                     + "status VARCHAR(16),called_at DATETIME(3),check_no VARCHAR(32),request_key VARCHAR(64),request_hash VARCHAR(64),"
                     + "seat_request VARCHAR(10000),seat_actor_no VARCHAR(32),seat_request_hash VARCHAR(64))");
-            f.sql().update("INSERT INTO fnb_store_policy(entity_no,store_no,policy_no,effective_from,timezone,cutover_minute,pay_policy)"
-                    + " VALUES('E','A','P','2026-01-01','UTC',0,'PREPAY')");
+            f.sql().update("INSERT INTO ind_store_policy(tenant_no,industry_code,entity_no,store_no,policy_no,timezone,cutover_minute,pay_policy) VALUES('MAIN','FNB','E','A','P','UTC',0,'PREPAY')");
             test.run(c, f);
         });
     }

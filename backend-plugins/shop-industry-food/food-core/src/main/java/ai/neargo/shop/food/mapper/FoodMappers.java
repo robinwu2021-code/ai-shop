@@ -339,7 +339,27 @@ public final class FoodMappers {
     public interface ServiceCalendarMapper extends IndustryTableMapper<FnbServiceCalendar> {
     }
 
+    /** 门店当前策略：每店每行业一行（不保留历史，TDD §2.5）。 */
     public interface StorePolicyMapper extends IndustryTableMapper<FnbStorePolicy> {
+        default FnbStorePolicy current(String entity, String store) {
+            return first(entity, store, "LIMIT 1");
+        }
+
+        /** 锁住门店策略行：同一门店需要串行的业务域操作以它为锁（只在行业事务里用）。 */
+        default FnbStorePolicy lockCurrent(String entity, String store) {
+            return first(entity, store, "LIMIT 1 FOR UPDATE");
+        }
+
+        private FnbStorePolicy first(String entity, String store, String last) {
+            var rows = selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers.<FnbStorePolicy>lambdaQuery()
+                    .eq(FnbStorePolicy::getTenantNo, "MAIN")
+                    .eq(FnbStorePolicy::getEntityNo, entity)
+                    .eq(FnbStorePolicy::getStoreNo, store)
+                    .eq(FnbStorePolicy::getIndustryCode, FnbStorePolicy.INDUSTRY)
+                    .eq(FnbStorePolicy::getDeleted, 0)
+                    .last(last));
+            return rows.isEmpty() ? null : rows.getFirst();
+        }
     }
 
     public interface TableMapper extends IndustryTableMapper<FnbTable> {
@@ -371,8 +391,8 @@ public final class FoodMappers {
     }
     public interface MenuChannelBindingMapper extends TradeTableMapper<FnbMenuChannelBinding> { }
     public interface StationMapper extends IndustryTableMapper<FnbStation> {
-        @Select("SELECT id FROM fnb_store_policy WHERE entity_no=#{entity} AND store_no=#{store} "
-                + "AND deleted=0 ORDER BY id FOR UPDATE")
+        @Select("SELECT id FROM ind_store_policy WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND store_no=#{store} AND industry_code='FNB' AND deleted=0 ORDER BY id FOR UPDATE")
         List<Long> lockStore(@Param("entity") String entity, @Param("store") String store);
     }
     public interface SkuStationMapper extends TradeTableMapper<FnbSkuStation> {

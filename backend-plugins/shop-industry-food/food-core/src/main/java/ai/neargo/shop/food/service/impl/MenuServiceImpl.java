@@ -538,11 +538,9 @@ public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess
     }
 
     private void timezone(String entity, String store, String timezone) {
-        var rows = policies.selectList(Wrappers.<FnbStorePolicy>lambdaQuery()
-                .eq(FnbStorePolicy::getEntityNo, entity).eq(FnbStorePolicy::getStoreNo, store)
-                .le(FnbStorePolicy::getEffectiveFrom, LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
-                .orderByDesc(FnbStorePolicy::getEffectiveFrom).last("LIMIT 1 FOR UPDATE"));
-        if (rows.isEmpty() || !timezone.equals(rows.getFirst().getTimezone())) {
+        // 菜单（交易库）同样拿门店策略行当锁并核对时区；绑定前处理同 TDD §8-Q3。
+        var policy = policies.lockCurrent(entity, store);
+        if (policy == null || !timezone.equals(policy.getTimezone())) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
     }
