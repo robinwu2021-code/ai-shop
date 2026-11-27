@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1268 个接口**：后端已实现 1013（80%）· 前端在调 1087
+**合计 1270 个接口**：后端已实现 1013（80%）· 前端在调 1087
 
 ---
 
@@ -1217,7 +1217,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **623** 个接口 ｜ 后端已实现 **478**（77%）｜ 前端在调 **444**
+共 **625** 个接口 ｜ 后端已实现 **478**（76%）｜ 前端在调 **444**
 
 ### aftersale（5）
 
@@ -1645,7 +1645,7 @@
 | POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
-### merchant（70）
+### merchant（72）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1665,6 +1665,8 @@
 | POST | `/ops/merchant-plan-purchases/{e}/{o}/evidence/content` | uploadEntityPlanEvidence | — | `EntityPlanEvidenceTicket` | — | ⬜ | ⬜ |
 | GET | `/ops/merchant-plan-purchases/{e}/{o}/evidence/url` | entityPlanEvidenceUrl | — | `EntityPlanSignedRead` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant-plan-purchases/{e}/{o}/recover` | recoverEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}/{o}/refund-review` | entityPlanRefundReview | — | `object` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/refund-review` | closeEntityPlanRefundReview | — | `object` | — | ⬜ | ⬜ |
 | GET | `/ops/merchant-plan-purchases/{e}/assistance-context` | entityPlanAssistanceContext | — | `EntityAssistanceContext` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant-plan-purchases/{e}/assisted` | assistedEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
 | GET | `/ops/merchant-plan-purchases/{e}/offers` | entityPlanOffers | — | `数组` | — | ⬜ | ⬜ |
