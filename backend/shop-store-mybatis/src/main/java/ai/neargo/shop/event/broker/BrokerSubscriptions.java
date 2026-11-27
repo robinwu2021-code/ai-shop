@@ -9,6 +9,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.env.Environment;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -42,6 +45,21 @@ public class BrokerSubscriptions implements SmartLifecycle {
     private final BrokerProperties props;
     private final Environment env;
     private volatile boolean running;
+    private TransactionTemplate perMessage;
+
+    /**
+     * 必达订阅每条消息在一个独立事务里调消费者（{@code REQUIRES_NEW}），与进程内投递
+     * {@code OutboxDispatcher} 的“每条事件一个事务”一致：消费者没自己声明事务时，多次写库同提交、同回滚。
+     * 声明了 {@code NOT_SUPPORTED} 的外部流程消费者照样挂起它。
+     */
+    public void setTransactionManager(PlatformTransactionManager manager) {
+        if (manager == null) {
+            perMessage = null;
+            return;
+        }
+        perMessage = new TransactionTemplate(manager);
+        perMessage.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
 
     public BrokerSubscriptions(ObjectProvider<MessageBroker> brokers, ObjectProvider<OutboxConsumer> consumers,
                                BrokerProperties props, Environment env) {
@@ -87,10 +105,18 @@ public class BrokerSubscriptions implements SmartLifecycle {
         }
         for (var g : groups.entrySet()) {
             broker.subscribe(new BrokerSubscription(g.getKey(), groupTypes.get(g.getKey()), true),
-                    handler(g.getValue(), true));
+                    transactional(handler(g.getValue(), true)));
             count++;
         }
         log.info("[events] 已登记 {} 个中间件订阅；发件箱改由中间件投递的类型：{}", count, props.getOutboxEventTypes());
+    }
+
+    private Consumer<BrokerMessage> transactional(Consumer<BrokerMessage> handler) {
+        TransactionTemplate tx = perMessage;
+        if (tx == null) {
+            return handler;
+        }
+        return message -> tx.executeWithoutResult(status -> handler.accept(message));
     }
 
     /** 组内按顺序逐个调支持该类型的消费者；任何一个抛错整条重投（已成功的靠自身幂等），与进程内投递一致。 */

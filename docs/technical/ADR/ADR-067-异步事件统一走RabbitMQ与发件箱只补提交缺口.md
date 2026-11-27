@@ -135,4 +135,9 @@
    **第二个域（2026-11-27）：打印事实**：`ORDER_PRINT_FACT_READY`、`ORDER_PRINT_CONTROL_CHANGED`、`BUSINESS_PRINT_FACT_READY` 进默认名单。
    事实建任务、控制变更作用于已建任务，同一订单控制若先到会给已取消的单子建出任务，所以两个消费者同组 `print-facts`。
    **第三个域（2026-11-27）：发货快照回写** `LGS_SHIPMENT_SNAPSHOT`：单消费者、按运单号保序；收敛锁行且只前进，不另设组。
+   **第四个域（2026-11-27）：订单类** `ORDER_CREATED`、`ORDER_PAID`、`SUB_ORDER_SHIPPED`、`SUB_ORDER_COMPLETED`、`AFTER_SALE_REFUNDED`，
+   加 `CARD_SALE_CANCELLED`（卡券消费者收的两类必须一起走中间件，否则一半进程内一半中间件，先后无保证）。
+   物流登记与微信发货上传入队同组 `order-shipping`（原来同事务提交，上传事件提交后才发）。
+   **同时补上**：必达订阅每条消息在一个 `REQUIRES_NEW` 事务里调消费者，与进程内投递一致，消费者多次写库同提交同回滚。
+   **规则**：一个必达消费者收的所有类型要么都进名单、要么都不进；按域加名单时逐个核对。
 5. 撤中转（清单 §〇 C 类）。

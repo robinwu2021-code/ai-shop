@@ -102,6 +102,45 @@ class BrokerSubscriptionsTest {
     }
 
     @Test
+    @DisplayName("必达订阅每条消息在一个独立事务里调消费者（同进程内投递）；通知类不开事务")
+    void durableDeliveryRunsInItsOwnTransaction() {
+        List<Boolean> active = new ArrayList<>();
+        OutboxConsumer durable = new OutboxConsumer() {
+            @Override public String handlerId() { return "card-sale"; }
+            @Override public boolean supports(String t) { return "ORDER_PAID".equals(t); }
+            @Override public void consume(SysOutbox e) {
+                active.add(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive());
+            }
+        };
+        OutboxConsumer notify = new OutboxConsumer() {
+            @Override public String handlerId() { return "notification"; }
+            @Override public boolean afterCommitOnly() { return true; }
+            @Override public Set<String> eventTypes() { return Set.of("ORDER_PAID"); }
+            @Override public boolean supports(String t) { return true; }
+            @Override public void consume(SysOutbox e) {
+                active.add(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive());
+            }
+        };
+        var broker = new FakeBroker();
+        var props = new BrokerProperties();
+        props.setOutboxEventTypes(Set.of("ORDER_PAID"));
+        var subscriptions = orchestration(broker, props, new MockEnvironment(), notify, durable);
+        subscriptions.setTransactionManager(new StubTransactionManager());
+        subscriptions.start();
+        broker.publish(new BrokerMessage("EV-1", "ORDER", "O-1", "ORDER_PAID", "{}"));
+        assertThat(active).containsExactly(false, true);
+    }
+
+    /** 最小的事务管理器：只让 Spring 认为有一个真实事务在进行。 */
+    static final class StubTransactionManager
+            extends org.springframework.transaction.support.AbstractPlatformTransactionManager {
+        @Override protected Object doGetTransaction() { return new Object(); }
+        @Override protected void doBegin(Object tx, org.springframework.transaction.TransactionDefinition d) { }
+        @Override protected void doCommit(org.springframework.transaction.support.DefaultTransactionStatus s) { }
+        @Override protected void doRollback(org.springframework.transaction.support.DefaultTransactionStatus s) { }
+    }
+
+    @Test
     @DisplayName("没有中间件实现：什么都不登记")
     @SuppressWarnings("unchecked")
     void noBrokerNoop() {
