@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -186,6 +187,18 @@ public class RegionServiceImpl implements RegionService {
 
     public RegionServiceImpl(RegionMapper mapper) {
         this.mapper = mapper;
+    }
+
+    @Override
+    public boolean recordCoordinate(String regionCode, int latE6, int lngE6, String source) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.update(null,
+                Wrappers.<SysRegion>lambdaUpdate()
+                        .set(SysRegion::getLatE6, latE6)
+                        .set(SysRegion::getLngE6, lngE6)
+                        .set(SysRegion::getCoordsSource, source)
+                        .set(SysRegion::getCoordsAt, LocalDateTime.now())
+                        .eq(SysRegion::getRegionCode, regionCode)
+                        .isNull(SysRegion::getLatE6))) > 0;
     }
 
     @Override

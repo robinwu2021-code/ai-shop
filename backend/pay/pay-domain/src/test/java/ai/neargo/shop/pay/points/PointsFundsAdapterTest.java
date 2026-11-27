@@ -30,6 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.withSettings;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -39,6 +40,7 @@ class PointsFundsAdapterTest {
     void capability_gates_before_acceptance() {
         var router=mock(LegacyChannelBridge.class);
         var master=mock(PayChannelMasterService.class);
+        when(master.brief(anyString())).thenCallRealMethod();
         var legacy=mock(PayGateway.class);
         SysPayChannel channel=new SysPayChannel();
         channel.setEnabled(true); channel.setCurrency("CNY");
@@ -59,6 +61,7 @@ class PointsFundsAdapterTest {
     void unregistered_channel_rejects_execution_without_default_gateway() {
         var router=mock(LegacyChannelBridge.class);
         var master=mock(PayChannelMasterService.class);
+        when(master.brief(anyString())).thenCallRealMethod();
         when(master.find("TEST")).thenReturn(Optional.empty());
         var result=adapter(router,master).submit(command());
         assertThat(result.status()).isEqualTo(FundsStatus.FAILED);
@@ -70,6 +73,7 @@ class PointsFundsAdapterTest {
     void missing_query_adapter_is_unknown_and_never_queries_payment() {
         var router=mock(LegacyChannelBridge.class);
         var master=mock(PayChannelMasterService.class);
+        when(master.brief(anyString())).thenCallRealMethod();
         var legacy=mock(PayGateway.class);
         when(router.supports("TEST")).thenReturn(true);
         // 能力实现装了，但没顺带实现资金动作接口（旧：路由到一个不是 PayFundsOperations 的网关）
@@ -222,6 +226,7 @@ class PointsFundsAdapterTest {
     private NativeFixture nativeFixture() {
         var router=mock(LegacyChannelBridge.class);
         var master=mock(PayChannelMasterService.class);
+        when(master.brief(anyString())).thenCallRealMethod();
         PayGateway gateway=mock(PayGateway.class,withSettings().extraInterfaces(PayFundsOperations.class));
         var operations=(PayFundsOperations)gateway;
         SysPayChannel channel=new SysPayChannel();

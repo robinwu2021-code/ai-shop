@@ -73,11 +73,27 @@ class CommonTableAccessTest {
         GROUPS.put("字典", new Group(List.of("pay_channel", "pay_channel_product", "sys_pay_channel",
                 "sys_pay_channel_market", "cim_product_profile", "cim_provider", "inv_uom", "sys_auth_code",
                 "sys_business_type", "sys_industry", "sys_legal_form", "sys_market", "sys_region", "sys_store_industry"),
-                // 端口 DictionaryPort 的唯一实现与它按类型汇集的来源（TDD-基础能力库对齐 §2.2 1b）
+                // 读：端口 DictionaryPort 的唯一实现与它按类型汇集的来源（TDD-基础能力库对齐 §2.2 1b）。
+                // 写：每张旧表各有一个属主维护（运营端增删改），「写归属主、读走端口」。区划 66 万行只能按层级懒加载，
+                // 不走 items()，由 RegionService 专管。基础能力库落地后来源换成 sys_dict_item，属主随之换成一个维护入口
                 List.of("shop-core/src/main/java/ai/neargo/shop/platform/port/DictionaryPortImpl.java",
                         "shop-core/src/main/java/ai/neargo/shop/platform/port/OnboardIndustryDictionarySource.java",
                         "shop-merchant/src/main/java/ai/neargo/shop/merchant/port/StoreIndustryDictionarySource.java",
-                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/port/PayChannelDictionarySource.java")));
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/port/PayChannelDictionarySource.java",
+                        // 进件行业 sys_industry、主体类型 sys_legal_form、区划 sys_region
+                        "shop-core/src/main/java/ai/neargo/shop/platform/impl/IndustryServiceImpl.java",
+                        "shop-core/src/main/java/ai/neargo/shop/platform/impl/MasterDataServiceImpl.java",
+                        "shop-core/src/main/java/ai/neargo/shop/platform/RegionService.java",
+                        "shop-core/src/main/java/ai/neargo/shop/platform/impl/RegionServiceImpl.java",
+                        // 类目授权码 sys_auth_code、经营类型 sys_store_industry
+                        "shop-merchant/src/main/java/ai/neargo/shop/merchant/dictionary/",
+                        // 支付渠道 sys_pay_channel(+_market)、支付产品 pay_channel_product、市场 sys_market
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/master/",
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/port/PayChannelMasterPortImpl.java",
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/catalog/DbChannelProductCatalog.java",
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/config/ChannelPipelineConfiguration.java",
+                        "pay/pay-channel/src/main/java/ai/neargo/shop/pay/mapper/ChannelMappers.java",
+                        "pay/pay-domain/src/main/java/ai/neargo/shop/pay/market/impl/MarketServiceImpl.java")));
         GROUPS.put("审批", new Group(List.of("approval_link", "sys_approval", "pay_terminal_manager_authorization",
                 "ord_manual_price_adjustment"),
                 List.of("shop-opskit/src/main/java/ai/neargo/shop/approval/opskit/ApprovalLinkStore.java",

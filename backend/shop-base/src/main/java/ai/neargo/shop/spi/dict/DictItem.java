@@ -24,6 +24,8 @@ public record DictItem(String tenantNo, DictType type, String code, String paren
     public static final String LANG_EN = "en";
     /** {@link DictType#BUSINESS_TYPE} 的子行业条目：它决定的经营类型 */
     public static final String ATTR_BUSINESS_TYPE_CODE = "business_type_code";
+    /** {@link DictType#ONBOARD_INDUSTRY}：任一通道允许小微进件（"true" / "false"） */
+    public static final String ATTR_MICRO_ALLOWED = "micro_allowed";
 
     public DictItem {
         nameI18n = nameI18n == null ? Map.of() : Map.copyOf(nameI18n);

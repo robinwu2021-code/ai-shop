@@ -3,10 +3,9 @@ package ai.neargo.shop.platform.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.platform.EstateCacheService;
 import ai.neargo.shop.platform.GeoService;
+import ai.neargo.shop.platform.RegionService;
 import ai.neargo.shop.platform.entity.GeoPoiCache;
-import ai.neargo.shop.platform.entity.SysRegion;
 import ai.neargo.shop.platform.mapper.PlatformMappers.GeoPoiCacheMapper;
-import ai.neargo.shop.platform.mapper.PlatformMappers.RegionMapper;
 import ai.neargo.shop.spi.platform.GeoPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -49,13 +48,13 @@ public class EstateCacheServiceImpl implements EstateCacheService {
     private final GeoPoiCacheMapper mapper;
     private final ObjectMapper json;
     private final GeoService geo;
-    private final RegionMapper regionMapper;
+    private final RegionService regions;
 
-    public EstateCacheServiceImpl(GeoPoiCacheMapper mapper, ObjectMapper json, GeoService geo, RegionMapper regionMapper) {
+    public EstateCacheServiceImpl(GeoPoiCacheMapper mapper, ObjectMapper json, GeoService geo, RegionService regions) {
         this.mapper = mapper;
         this.json = json;
         this.geo = geo;
-        this.regionMapper = regionMapper;
+        this.regions = regions;
     }
 
     @Override
@@ -166,17 +165,8 @@ public class EstateCacheServiceImpl implements EstateCacheService {
             return;
         }
         try {
-            DataScopeContext.executeWithoutScope(() -> regionMapper.update(null,
-                    Wrappers.<SysRegion>lambdaUpdate()
-                            .set(SysRegion::getLatE6, latE6)
-                            .set(SysRegion::getLngE6, lngE6)
-                            // coordsSource/coordsAt 是这张表本来就设计好、但从没被写过的字段
-                            // （见 SysRegion 类注释：AMAP 批量补录 / MERCHANT 商家纠正 / OPS 运营录入）——
-                            // 这是第一处真正落地的写入，按需查询就该记成 AMAP 这一档
-                            .set(SysRegion::getCoordsSource, GeoPoiCache.AMAP)
-                            .set(SysRegion::getCoordsAt, LocalDateTime.now())
-                            .eq(SysRegion::getRegionCode, regionCode)
-                            .isNull(SysRegion::getLatE6)));
+            // coordsSource 记成 AMAP：按需查询补的坐标就是高德这一档（另两档是商家纠正、运营录入）
+            regions.recordCoordinate(regionCode, latE6, lngE6, GeoPoiCache.AMAP);
         } catch (RuntimeException e) {
             // 写回失败不影响这次请求本身要返回的结果 —— 只是下次还得再查一次，不该让整个接口跟着挂
         }

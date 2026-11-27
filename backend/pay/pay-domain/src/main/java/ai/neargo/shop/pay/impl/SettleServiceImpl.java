@@ -1621,8 +1621,8 @@ public class SettleServiceImpl implements SettleService {
         if (payChannel == null || payChannel.isBlank() || PayModes.OFFLINE.equals(payChannel)) {
             return DEFAULT_CURRENCY;
         }
-        String c = channelMaster.find(payChannel)
-                .map(ai.neargo.shop.pay.channel.entity.SysPayChannel::getCurrency)
+        String c = channelMaster.brief(payChannel)
+                .map(PayChannelMasterService.ChannelBrief::currency)
                 .filter(v -> v != null && !v.isBlank())
                 .orElse(null);
         if (c == null) {
