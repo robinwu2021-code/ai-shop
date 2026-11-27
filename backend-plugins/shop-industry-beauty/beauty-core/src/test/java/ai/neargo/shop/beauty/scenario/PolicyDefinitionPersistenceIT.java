@@ -48,7 +48,7 @@ class PolicyDefinitionPersistenceIT {
     }
 
     private ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
                 required("config.BeautyPersistenceConfiguration"))
                 .withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("shop.beauty.enabled=true", "spring.datasource.url=" + fixture.source.getUrl(),

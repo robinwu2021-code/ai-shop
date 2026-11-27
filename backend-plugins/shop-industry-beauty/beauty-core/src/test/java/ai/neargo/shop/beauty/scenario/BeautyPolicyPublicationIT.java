@@ -70,7 +70,7 @@ class BeautyPolicyPublicationIT {
     void clear() { SecurityContextHolder.clearContext(); }
 
     private ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
                 required("config.BeautyPersistenceConfiguration"), required("config.BeautyWriteGuardConfiguration"),
                 required("config.BeautyPolicyConfiguration"))
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)

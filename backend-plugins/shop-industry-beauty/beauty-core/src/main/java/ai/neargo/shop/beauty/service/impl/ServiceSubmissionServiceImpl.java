@@ -351,7 +351,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
         BtyServiceSubmission accepted;
         try {
             accepted =
-                    db.tx(
+                    db.industryTx(
                             () -> {
                                 if (preparedScope != null) {
                                     bindingService.beforeScopeMutationLocked(entity, store, workOrder);
@@ -867,7 +867,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                     intent.getEntityNo(), intent.getStoreNo(), actor, intent.getSubmissionNo());
         }
         var leased =
-                db.tx(
+                db.industryTx(
                         () -> {
                             var row =
                                     submissions.selectScopedForUpdate(
@@ -1037,7 +1037,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
             String status,
             String reason,
             LocalDateTime retryAt) {
-        return db.tx(
+        return db.industryTx(
                 () -> {
                     submissions.finishSourceRecovery(
                             lease.getEntityNo(),
@@ -1307,7 +1307,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                 true,
                 "MANUAL_PREPARE".equals(c.sourceMode()));
         var leased =
-                db.tx(
+                db.industryTx(
                         () -> {
                             var row =
                                     submissions.selectScopedForUpdate(

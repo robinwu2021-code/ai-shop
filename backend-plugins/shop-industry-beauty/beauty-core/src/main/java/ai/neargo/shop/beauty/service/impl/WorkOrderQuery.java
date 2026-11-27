@@ -63,7 +63,8 @@ public final class WorkOrderQuery {
         var operation = legacy ? null : operations.selectOpenedForWorkOrder(root.getEntityNo(), root.getStoreNo(),
                 root.getWorkOrderNo(), context.getSourceReceptionOperationNo());
         if (!legacy && operation == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
-        var rows = tasks.selectForWorkOrder(root.getEntityNo(), root.getStoreNo(), root.getWorkOrderNo());
+        var rows = db.ownedTasks(root.getEntityNo(), root.getAppointmentNo(),
+                tasks.selectForWorkOrder(root.getEntityNo(), root.getStoreNo(), root.getWorkOrderNo()));
         var currentBindings =
                 bindings.selectCurrentForWorkOrder(
                         root.getEntityNo(), root.getStoreNo(), root.getWorkOrderNo());

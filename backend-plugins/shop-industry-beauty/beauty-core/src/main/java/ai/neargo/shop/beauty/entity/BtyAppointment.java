@@ -37,4 +37,6 @@ public class BtyAppointment extends BaseEntity {
     private String policyVersionNo;
     /** 签到。 */
     private LocalDateTime checkedInAt;
+    /** 已开的工单（V9.1）：预约侧的护栏看这一列，不联查行业库的工单表。 */
+    private String workOrderNo;
 }

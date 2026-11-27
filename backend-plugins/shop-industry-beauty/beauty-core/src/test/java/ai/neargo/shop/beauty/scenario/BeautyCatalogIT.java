@@ -70,7 +70,7 @@ class BeautyCatalogIT {
             return port.getClasses()[0].getConstructor(String.class, String.class, String.class, String.class,
                     long.class, int.class).newInstance(productEntity, "S", "SKU", "G", 9900L, productDuration);
         });
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
                 type("ai.neargo.shop.beauty.config.BeautyPersistenceConfiguration"),
                 type("ai.neargo.shop.beauty.config.BeautyWriteGuardConfiguration"),
                 type("ai.neargo.shop.beauty.config.BeautyPolicyConfiguration"),

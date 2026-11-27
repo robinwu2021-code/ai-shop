@@ -96,10 +96,13 @@ class BeautySchemaMigrationIT {
                 + "WHERE table_schema=DATABASE() AND table_name='flyway_schema_history'"));
     }
 
-    /** Test-only target9 constructs the historical deployed base; production never targets a partial sequence. */
+    /**
+     * Test-only target 9.1 constructs the deployed base (V1-V9 plus the V9.1 appointment work order number)
+     * without the optional V10-V11 extensions; production never targets a partial sequence.
+     */
     void baseNine() {
         Flyway.configure().dataSource(source).locations("classpath:db/industry/beauty")
-                .table("bty_flyway_history").target("9").placeholderReplacement(false).load().migrate();
+                .table("bty_flyway_history").target("9.1").placeholderReplacement(false).load().migrate();
     }
 
     @Test

@@ -23,8 +23,8 @@ import javax.sql.DataSource;
 /** Beauty owns mapper activation, while the platform retains the primary factory and transaction manager. */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBeautyEnabled
-// 美业的预约、服务定义在门店交易库（ADR-067）：按标记收到交易句柄；门店策略在行业库：按标记收到行业句柄；
-// 设计里还没去处的表留在原模板。工单、服务任务等服务执行的表按方案也归行业库，随「美业拆事务」改标记
+// 美业的预约、服务定义在门店交易库（ADR-067）：按标记收到交易句柄；门店策略与服务执行（工单、任务、步骤、
+// 绑定、提交、参与）在行业库：按标记收到行业句柄；设计里还没去处的表留在原模板
 @MapperScan(basePackages = "ai.neargo.shop.beauty.mapper", markerInterface = TradeTableMapper.class,
         sqlSessionTemplateRef = "beautyTradeSqlSessionTemplate")
 @MapperScan(basePackages = "ai.neargo.shop.beauty.mapper", markerInterface = IndustryTableMapper.class,

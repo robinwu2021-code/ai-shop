@@ -147,7 +147,7 @@ public class BeautySourceConfiguration {
             BeautyMappers.SourceObservationMapper rows,
             ObjectProvider<CheckoutPort> checkout,
             ObjectProvider<ManualServiceAdmissionPort> manual,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json,
             @Qualifier("beautyReceptionClock") Clock clock,
             ServiceExecutionFenceCoordinator executionFences) {
@@ -236,7 +236,7 @@ public class BeautySourceConfiguration {
             ObjectProvider<CheckoutPort> checkout,
             ObjectProvider<ManualServiceAdmissionPort> manual,
             ServiceSourceObservation observations,
-            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
             @Qualifier("beautyReceptionClock") Clock clock) {
         return new WorkOrderBillServiceImpl(
                 db,

@@ -31,6 +31,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import org.springframework.security.core.context.SecurityContextHolder;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
+import ai.neargo.shop.beauty.scenario.BeautyModuleHandles;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.personnel.PersonnelOperatorFactsPort;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
@@ -138,7 +139,7 @@ public class ManualExecutionSourceIT {
     }
 
     private ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
                 BeautyPersistenceConfiguration.class, ActualMerchantMappers.class,
                 actual("ai.neargo.shop.merchant.port.MerchantOperatorAccessPortImpl"),
                 actual("ai.neargo.shop.merchant.port.PersonnelOperatorFactsPortImpl"))

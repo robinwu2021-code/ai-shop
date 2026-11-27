@@ -50,7 +50,7 @@ abstract class BeautyExecutionFixture {
     ApplicationContextRunner runner() {
         return new ApplicationContextRunner()
                 .withUserConfiguration(
-                        PrimaryPersistenceConfiguration.class,
+                        PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
                         required("config.BeautyPersistenceConfiguration"))
                 .withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues(

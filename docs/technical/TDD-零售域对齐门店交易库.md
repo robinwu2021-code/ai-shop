@@ -567,6 +567,48 @@
 - 美业插件：5 个模块，只有 `BeautyBm04AssemblyTest` 1 个错误，和基线相同（夹具读主迁移文件，路径不存在）。
 - **没验证**：行业句柄绑到另一个数据源的情形；带餐饮或美业插件起整个应用（插件迁移只能在 MySQL 上跑）。
 
+### 第二段准备 · 提交十三：美业服务执行接行业句柄（拆事务第一步）
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `beauty-core/.../mapper/BeautyMappers.java` | 12 个服务执行的 Mapper 改继承 `IndustryTableMapper`：工单、工单上下文、服务任务、服务参与（原在交易句柄），服务步骤、服务提交、任务绑定、分配围栏、来源观察、执行围栏、到店认领、到店核验（原在主库）。预约时的派工 `AppointmentAssignmentMapper` 留在交易句柄：它是预约的一部分，跟预约一起建；方案里的「指定技师」本来就记在预约明细上 |
+| 修改 | `beauty-core/.../service/impl/AppointmentPersistence.java`、`BeautyAppointmentConfiguration` | 加一个行业事务 `industryTx`（同样是新开事务、读已提交），配置里交易、行业两个事务管理器分开给；原构造器保留（测试用，两边共用一个管理器） |
+| 修改 | 美业 5 个服务类 | 只写行业表的 14 处事务从 `db.tx` 改成 `db.industryTx`：到店认领、到店核验、服务提交（4 处）、来源绑定、服务执行（7 处） |
+| 修改 | `BeautySourceConfiguration` | 工单结账 `WorkOrderBillServiceImpl`、来源观察 `ServiceSourceObservation` 的事务改点名行业句柄（它们写的是提交、绑定、观察；结账经 `CheckoutPort` 调交易，接口自己开事务） |
+
+分类方法：按每个事务体（含同一个类里调用到的方法）写了哪些 Mapper 来判；跨类调用没有展开，所以「只写行业表」是静态判断。行业句柄未绑定时这些改动不改变行为。
+
+验证（2026-11-27，本机，H2）：美业插件 5 个模块，只有 `BeautyBm04AssemblyTest` 1 个错误，和基线相同。
+
+### 第二段准备 · 提交十四：美业开工单拆事务（拆事务第二步）
+
+用户 2026-11-27 定：给美业预约加工单号并拆开；**接待操作账本 `bty_reception_operation` 放行业库**（与工单同库，开单的最后一步与「操作成功」同一个事务）。
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 新增 | `beauty-core/.../db/industry/beauty/V9_1__beauty_appointment_work_order_no.sql` | 预约加 `work_order_no` 与 `(tenant_no, entity_no, work_order_no)` 唯一约束，并把已有的一预约一工单回填。编号 9.1 排在可选扩展 V10–V11 之前：编成 V12 会让没装扩展的库无法单独补上它 |
+| 修改 | `BeautySchemaValidator` | V9.1 进必需的基础迁移；核对脚本全文与摘要，往预约的表契约里加这一列与唯一约束；显式迁移时允许乱序（已装 V10–V11 的库要在它们之后补 V9.1） |
+| 修改 | `BeautyMappers` | 预约侧 4 条改看新列：`markWorkOrderOpened` 同时写工单号、`countWorkOrders`、资源围栏 `acquire`、资源意图 `authorize`；执行侧 3 条去掉对预约明细的联查；新增 `releaseWorkOrderClaim`（撤销开单标记）、`countForAppointmentItems`（孤儿任务预检）；`affectedTaskNos` 从预约 Mapper 挪到任务 Mapper；接待操作 Mapper 改继承 `IndustryTableMapper` |
+| 修改 | `WorkOrderCoordinator` | 开工单改三步：①行业事务在接待操作上预留工单号并预检孤儿任务；②交易事务锁预约、校验、在预约上记这个号（已记过就跳过校验；走入单越过开始时间则撤销标记、接待操作记成需重新排期）；③行业事务建工单、任务、上下文、开单提交并把接待操作记成成功。任一步失败可重跑 |
+| 修改 | `AppointmentPersistence`、`WorkOrderQuery` | 查工单详情时按预约明细核对任务归属（读出来再过滤，不跨库联查） |
+| 修改 | 测试 | 6 个集成测试的上下文补上模块句柄（此前美业集成测试全部起不来，是提交九漏的）；迁移测试的「基础版本」改成 9.1；两条用例按新约定改：已有工单的预约要带工单号；外部记账失败时预约上的开单标记已提交、工单回滚，重试补建同一个号 |
+
+验证（2026-11-27，本机 MySQL 9.7.4，美业 22 个集成测试类 + 单元测试）：
+- 单元测试只有已知的 `BeautyBm04AssemblyTest` 1 个错误。
+- 集成测试：拆事务引出的 7 个失败全部修好；剩下的失败和改动前的基线逐个相同，共 5 个类：
+  - `ServiceSubmissionIT` 2 个（Bean 无默认构造器）；
+  - `WorkOrderScopeIT` 1 个（旧上下文 NOT_FOUND）；
+  - `ServiceSourceObservationIT`、`ManualExecutionSourceIT`（读不到主迁移文件）；
+  - `ResourceIntentMigrationIT` 1 个（表数断言还是 28）；
+  - `BeautyPolicyPublicationIT` 1 个（数据源无法解包）。
+- 并发用例 `concurrentSameEndpointKeyReplaysOneCommittedSubmission` 在第一次全量里失败一次，再跑通过，属不稳定用例。
+
+**还没拆的**：
+- 接待的其他流程：签到、改约、走入登记（`ReceptionCoordinator`、`ReceptionPreparation`、`ReceptionRecovery`、`AppointmentPreparation`）仍在一个交易事务里同时写预约和接待操作。行业句柄绑定前要按开工单的做法拆：先在行业库记操作，再改预约，最后在行业库收尾。
+- 接待操作的 SQL `selectOpenedForWorkOrder` 联查工单与上下文，现在同在行业库，没问题。
+- 执行围栏与耗材预占 `ServiceExecutionStockIntentMapper.observe` 联查行业表与库存意图表（库存库），随库存收口再拆。
+- V9.1 带一条回填 `UPDATE`。美业以往的迁移刻意不改写数据，这一条是例外：回填只是把一预约一工单的已知事实抄到预约上，没有它，已开单的预约上护栏就失效了。
+
 ### 偏差说明
 
 - `tradeJdbcTemplate` 放进了已有的 `PlatformJdbcConfiguration`，而不是 §2.2 写的新类 `TradeJdbcConfiguration`：主库那个 `JdbcTemplate` 的 `@Primary` 声明在这个类里，模块的模板放在一处更不容易漏。类名以后可改成 `ModuleJdbcConfiguration`。
@@ -594,13 +636,15 @@
 | 2026-11-27 | 用户定 Q12：密钥统一通过平台密钥接口处理，证书句柄表并进密钥库（随第二段） |
 | 2026-11-27 | 第一段提交十一实现（网关碰交易表的几处：库存投递守卫拆查询，其余逐处定不改的理由），与提交十一起提交 |
 | 2026-11-27 | 用户定：美业服务执行整段留行业库；按建议稿定 Q4–Q11，ADR-067 采纳（第 2 条按行业改写） |
-| 2026-11-27 | 用户定：账务结算库只管支付收款；提成规则移到行业库 `ind_commission_rule`；交易库 74 → 67、行业库 14 → 23 |
+| 2026-11-27 | 用户定：账务结算库只管支付收款；提成规则移到行业库 `ind_commission_rule`；交易库 74 → 67、行业库 14 → 24 |
 | 2026-11-27 | 状态短值换值表初版；用户定状态值只从枚举与静态常量取 |
 | 2026-11-27 | 第二段准备提交十二：行业库句柄，餐饮 10 个、美业 2 个 Mapper 与 4 处只写行业表的事务接上；跨库写的点记表 |
+| 2026-11-27 | 第二段准备提交十三：美业服务执行 12 个 Mapper 与 16 处事务接行业句柄 |
+| 2026-11-27 | 用户定：给美业预约加工单号并拆开开工单；接待操作账本放行业库。提交十四实现（V9.1、开单三步、8 条跨库 SQL） |
 
 ## §8 待确认
 
-2026-11-27：Q4–Q11 按[建议稿](零售域-第二段建议方案与表清单.md)全部定下；表数量随之调整为 `n_trade` 67 张、`n_industry` 23 张（建议稿 B、C 节），设计方案拥有者据此改生成器。
+2026-11-27：Q4–Q11 按[建议稿](零售域-第二段建议方案与表清单.md)全部定下；表数量随之调整为 `n_trade` 67 张、`n_industry` 24 张（建议稿 B、C 节），设计方案拥有者据此改生成器。
 
 | # | 问题 | 建议 |
 |---|---|---|
