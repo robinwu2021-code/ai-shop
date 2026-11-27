@@ -418,7 +418,7 @@ public final class ReceptionCoordinator {
             var op = preparations.begin(entity, store, actor, "BAPI-053", key, hash, null,
                     new ReceptionPreparation.ExceptionPayload(1, root.getAppointmentNo(), req.kind(), req.proposal(),
                             req.expectedRevision()));
-            var affected = db.roots.affectedTaskNos(entity, store, root.getAppointmentNo());
+            var affected = workOrders.affectedTaskNos(entity, store, root.getAppointmentNo());
             String actionNo = action(root, op, "RECEPTION_EXCEPTION_REQUESTED", req.reason(),
                     db.json.writeValueAsString(new ExceptionSnapshot(req.kind(), req.proposal(), affected)),
                     root.getVersion());

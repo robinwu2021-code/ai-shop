@@ -27,7 +27,7 @@ class BookingServerWiringTest {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ApplicationContextRunner runner() {
         var runner = new ApplicationContextRunner().withUserConfiguration(
-                BeautyAppointmentConfiguration.class, BeautyMerchantClientConfiguration.class)
+                BeautyAppointmentConfiguration.class, BeautyMerchantClientConfiguration.class, BeautyModuleHandles.class)
                 .withPropertyValues("shop.beauty.enabled=true", "shop.beauty.deployment=standalone")
                 .withBean(InternalHttp.class, () -> new InternalHttp(service -> {
                     throw new AssertionError("target lookup while constructing source/executor graph");

@@ -128,6 +128,10 @@ public class NotificationConsumer implements OutboxConsumer {
     @Override
     public boolean afterCommitOnly() { return true; }
 
+    /** MQ 队列按这些事件类型绑定（ADR-067），与 {@link #supports} 同一份清单。 */
+    @Override
+    public Set<String> eventTypes() { return NotifyScene.ALL; }
+
     @Override
     public boolean supports(String eventType) {
         return NotifyScene.ALL.contains(eventType);

@@ -1,5 +1,6 @@
 package ai.neargo.shop.fulfillment.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.fulfillment.entity.FulBatch;
 import ai.neargo.shop.fulfillment.entity.FulCarrier;
 import ai.neargo.shop.fulfillment.entity.FulFreightTemplate;
@@ -16,14 +17,14 @@ public final class FulfillmentMappers {
     private FulfillmentMappers() {
     }
 
-    public interface VerifyLogMapper extends BaseMapper<FulVerifyLog> {
+    public interface VerifyLogMapper extends TradeTableMapper<FulVerifyLog> {
     }
 
-    public interface GroupPickupMapper extends BaseMapper<FulGroupPickup> {
+    public interface GroupPickupMapper extends TradeTableMapper<FulGroupPickup> {
     }
 
     /** 到货批次（P-5.1.1）。V1 建表、V130 补调度列，此前**没有任何读写方**。 */
-    public interface BatchMapper extends BaseMapper<FulBatch> {
+    public interface BatchMapper extends TradeTableMapper<FulBatch> {
     }
 
     /** 自提点缺件上报（P-5.1.2）。 */

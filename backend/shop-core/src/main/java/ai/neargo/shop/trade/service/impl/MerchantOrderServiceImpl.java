@@ -7,6 +7,7 @@ import ai.neargo.shop.common.ExpressCompanies;
 import ai.neargo.shop.common.StoreMarkets;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.PayModes;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
 import ai.neargo.shop.spi.logistics.LogisticsPort;
 import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
@@ -19,6 +20,7 @@ import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.order.mapper.InvoiceRequestMapper;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.event.SubOrderCompletion;
 import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.command.ShipCommand;
 import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
@@ -64,7 +66,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     @Autowired(required=false)
     public void setCardPaymentGate(PaidCardPaymentGatePort gate) { this.cardPaymentGate=gate; }
     @Autowired
-    public void setOfflineTransactions(@Qualifier("transactionManager") PlatformTransactionManager manager) {
+    public void setOfflineTransactions(@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.offlineTransactions=new TransactionTemplate(manager);
     }
 
@@ -315,14 +317,14 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public OrderVO ship(String merchantNo, String storeNo, String subOrderNo,
                         String expressNo, String expressCompany) {
         return ship(merchantNo, storeNo, subOrderNo, expressNo, expressCompany, merchantNo);
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public OrderVO ship(String merchantNo, String storeNo, String subOrderNo,
                         String expressNo, String expressCompany, String operatorNo) {
         OrdSubOrder current = DataScopeContext.executeWithoutScope(() -> shippingLocks.lockOrder(subOrderNo));
@@ -372,7 +374,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public OrderVO prepare(String merchantNo, String storeNo, String subOrderNo) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
         // 幂等：已备货再点是空操作（备货时刻不覆盖，留住第一次的真实时间）
@@ -387,7 +389,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     }
 
     @Override
-    @Transactional(propagation=Propagation.NOT_SUPPORTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation=Propagation.NOT_SUPPORTED)
     public OrderVO confirmOfflinePay(String merchantNo, String storeNo, String subOrderNo,
                                      String operator) {
         var sub=require(merchantNo,storeNo,subOrderNo);
@@ -443,7 +445,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public OrderVO delivered(String merchantNo, String storeNo, String subOrderNo) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
         requireGenericFulfillment(sub);
@@ -508,9 +510,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         if (eventBus == null) {
             return;
         }
-        eventBus.publish(new ai.neargo.shop.spi.trade.OrderEvents.SubOrderCompleted(
-                sub.getSubOrderNo(), sub.getOrderNo(), sub.getEntityNo(),
-                sub.getUserNo(), sub.getFulfillment()));
+        SubOrderCompletion.publishIfCompleted(eventBus, sub);
     }
 
     private void notifyShipping(OrdSubOrder sub) {
@@ -1557,7 +1557,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public OpsOrderVO intervene(String subOrderNo, String to, String remark, String operatorNo) {
         if (remark == null || remark.isBlank()) {
             // 改状态这件事事后要说得清是谁、为什么 —— 没有原因的干预无法复盘

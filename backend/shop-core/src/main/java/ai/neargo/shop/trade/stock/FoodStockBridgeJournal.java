@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.stock;
 
 import ai.neargo.shop.common.*;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.food.FoodLocalStockPort;
 import ai.neargo.shop.spi.food.FoodStockFingerprint;
 import java.time.LocalDateTime;
@@ -22,8 +23,8 @@ public class FoodStockBridgeJournal {
     public record Wire(FoodLocalStockPort.Command command,String payloadJson){}
     private record Stored(String hash,String command,String payload){}
     private final JdbcTemplate db;private final TransactionTemplate write;private final ObjectMapper json;
-    public FoodStockBridgeJournal(@Qualifier("dataSource")DataSource source,
-            @Qualifier("transactionManager")PlatformTransactionManager manager,ObjectMapper json){
+    public FoodStockBridgeJournal(@Qualifier(ModuleDataSources.TRADE_DATA_SOURCE)DataSource source,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER)PlatformTransactionManager manager,ObjectMapper json){
         this.db=new JdbcTemplate(source);this.json=json;write=new TransactionTemplate(manager);
         write.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }

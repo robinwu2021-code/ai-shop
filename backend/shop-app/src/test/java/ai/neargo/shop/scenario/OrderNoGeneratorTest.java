@@ -9,7 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import ai.neargo.shop.trade.order.mapper.SeqMapper;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -38,9 +38,13 @@ class OrderNoGeneratorTest {
     @Autowired
     private SeqSegmentSource source;
     @Autowired
-    private SeqMapper seqMapper;
+    private JdbcTemplate jdbc;
     @Autowired
     private PlatformTransactionManager txm;
+
+    private long peek() {
+        return jdbc.queryForObject("SELECT next_value FROM sys_sequence WHERE seq_name = 'ord_main'", Long.class);
+    }
 
     /** 同一小时的毫秒（固定住 yyMMddHH，只看尾 4 位序列） */
     private static final long HOUR_T = 1_760_000_000_000L;
@@ -156,7 +160,7 @@ class OrderNoGeneratorTest {
     void claimCommitsEvenIfOuterRolls() {
         // 先确保 ord_main 存在、读到基线
         source.claim("ord_main", 1);
-        long before = seqMapper.peek("ord_main");
+        long before = peek();
 
         // 在一个**会回滚**的外层事务里取号（触发领新段）
         new TransactionTemplate(txm).execute(status -> {
@@ -167,7 +171,7 @@ class OrderNoGeneratorTest {
             return null;
         });
 
-        long after = seqMapper.peek("ord_main");
+        long after = peek();
         assertThat(after)
                 .as("领段必须独立提交 —— 外层回滚了，游标也不能退回（退回就会重号）。"
                         + "撤回 REQUIRES_NEW 改回 REQUIRED，这里 after==before → 红")

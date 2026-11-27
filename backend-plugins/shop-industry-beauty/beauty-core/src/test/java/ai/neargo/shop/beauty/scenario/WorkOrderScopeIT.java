@@ -758,8 +758,15 @@ class WorkOrderScopeIT extends ReceptionFixture {
                     root.appointmentNo(), req, "OPEN")).hasMessage("reception-audit-rollback");
             for (String table : List.of("bty_work_order", "bty_work_order_context", "bty_service_task",
                     "bty_service_submission")) { assertThat(count(table)).isZero(); }
+            // 开单分步提交（ADR-068）：预约上的开单标记在交易事务里已经提交，工单那一步回滚；
+            // 接待操作带着预留的工单号，重试时直接补建工单
+            String reserved = sql.queryForObject("SELECT work_order_no FROM bty_reception_operation "
+                    + "WHERE action='OPEN_WORK_ORDER'", String.class);
+            assertThat(reserved).isNotNull();
             assertThat(sql.queryForObject("SELECT version FROM bty_appointment", Long.class))
-                    .isEqualTo(arrived.revision());
+                    .isEqualTo(arrived.revision() + 1);
+            assertThat(sql.queryForObject("SELECT work_order_no FROM bty_appointment", String.class))
+                    .isEqualTo(reserved);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action='WORK_ORDER_OPENED'",
                     Integer.class)).isZero();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation WHERE action='OPEN_WORK_ORDER' "
@@ -768,6 +775,8 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThat(c.getBean(AppointmentService.class).openWorkOrderFromAppointment("E", "S", "A",
                     root.appointmentNo(), req, "OPEN").status()).isEqualTo("OPEN");
             assertThat(count("bty_work_order")).isEqualTo(1);
+            assertThat(sql.queryForObject("SELECT work_order_no FROM bty_work_order", String.class))
+                    .isEqualTo(reserved);
         });
     }
     @Test void catalogChangesCannotOverwriteFrozenScope() {

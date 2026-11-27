@@ -26,7 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+/** 运营接口密钥（TDD-基础能力库对齐 §2.2「1h 开放应用」）：凭据在密钥库 sec_key，只存摘要；sys_ops_api_key 停写停读 */
+@SpringBootTest(properties = "shop.secret.env=SANDBOX")
 @ActiveProfiles("test")
 class OpsApiKeyFlowTest {
 
@@ -55,8 +56,14 @@ class OpsApiKeyFlowTest {
     void bindsKeyAndAppliesCurrentRolesAndRouteScope() throws Exception {
         String keyNo = UUID.randomUUID().toString();
         String key = issueKey(keyNo, "READ_ONLY");
-        assertThat(jdbc.queryForObject("SELECT secret_hash FROM sys_ops_api_key WHERE key_no=?", String.class, keyNo))
-                .matches("[a-f0-9]{64}").isNotEqualTo(key);
+        assertThat(jdbc.queryForObject("""
+                SELECT v.material_digest FROM sec_key_version v JOIN sec_key k ON k.id=v.sec_key_id
+                WHERE v.external_key_id=? AND v.storage_tier='DIGEST' AND v.sec_secret_blob_id IS NULL
+                    AND k.namespace='PLATFORM' AND k.owner_type='OPS_STAFF'
+                    AND k.owner_id=(SELECT id FROM sys_ops_staff WHERE staff_no=?)
+                """, String.class, keyNo, staffNo)).isEqualTo(TokenHash.of(key));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_ops_api_key", Integer.class))
+                .as("旧表停写").isZero();
         getAs(keys, admin).andExpect(jsonPath("$.data[0].keyNo").value(keyNo))
                 .andExpect(jsonPath("$.data[0].apiKey").doesNotExist());
         issue(keyNo, "READ_ONLY").andExpect(jsonPath("$.code").value(10409));
@@ -85,8 +92,26 @@ class OpsApiKeyFlowTest {
 
         String expiredNo = UUID.randomUUID().toString();
         String expired = issueKey(expiredNo, "READ_ONLY");
-        jdbc.update("UPDATE sys_ops_api_key SET expires_at=0 WHERE key_no=?", expiredNo);
+        jdbc.update("UPDATE sec_key_version SET valid_to=valid_from WHERE external_key_id=?", expiredNo);
         getAs("/ops/auth/me", expired).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void legacyKeyTableIsNoLongerRead() throws Exception {
+        String legacy = "oak_" + "Z".repeat(43);
+        String keyNo = UUID.randomUUID().toString();
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+                INSERT INTO sys_ops_api_key
+                    (key_no,staff_no,secret_hash,label,access_level,issued_by,created_at,expires_at)
+                VALUES (?,?,?,'legacy','READ_ONLY','admin',?,?)
+                """, keyNo, staffNo, TokenHash.of(legacy), now, now + 86_400_000L);
+        try {
+            getAs("/ops/auth/me", legacy).andExpect(status().isUnauthorized());
+            getAs(keys, admin).andExpect(jsonPath("$.data[?(@.keyNo=='" + keyNo + "')]").isEmpty());
+        } finally {
+            jdbc.update("DELETE FROM sys_ops_api_key WHERE key_no=?", keyNo);
+        }
     }
 
     @Test

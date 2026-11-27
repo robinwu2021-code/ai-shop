@@ -134,6 +134,8 @@ public final class CommerceRefundService implements RefundFacade {
             var p = refunds.requestPreview(actor.tenantNo(), c.refundNo());
             if (!p.orderNo().equals(o.orderNo())
                     || !p.buyerNo().equals(actor.principalNo())
+                    || !Objects.equals(
+                            c.hardware(), p.hardware() == null ? null : p.hardware().selection())
                     || !c.sourcePeriodNos().isEmpty()
                             && !new HashSet<>(c.sourcePeriodNos())
                                     .equals(new HashSet<>(p.view().sourcePeriodNos())))
@@ -150,6 +152,40 @@ public final class CommerceRefundService implements RefundFacade {
     private State calculatePreview(String buyerNo, MallSnapshot.Order o, RefundPreviewCommand c) {
         if (o.axes().payment() != OrderState.Payment.PAID
                 || o.axes().refund() == OrderState.Refund.REFUNDING) throw fail("INVALID_STATE");
+        if (c.hardware() != null) {
+            if (!c.sourcePeriodNos().isEmpty()) throw fail("INVALID_SOURCE");
+            var hardware = hardwareAllocation(o, c.hardware());
+            var proof = refunds.payment(o);
+            if (hardware.cashLimit() > proof.fact().paid().minor()) throw fail("REFUND_LIMIT");
+            long at = clock.millis();
+            String digest =
+                    FactDigest.of(
+                            List.of(
+                                    c.refundNo(),
+                                    o.orderNo(),
+                                    buyerNo,
+                                    hardware.toString(),
+                                    proof.toString(),
+                                    Long.toString(at)));
+            var p =
+                    new Preview(
+                            c.refundNo(),
+                            o.orderNo(),
+                            c.store(),
+                            o.quote().currency(),
+                            buyerNo,
+                            at,
+                            Math.addExact(at, 900000),
+                            List.of(),
+                            Map.of(),
+                            proof,
+                            false,
+                            digest,
+                            o.axes().refund().name(),
+                            List.of(),
+                            hardware);
+            return new State(p, "PREVIEW", 0, 0, null, null, null, null);
+        }
         var all = refunds.ownedSources(o);
         if (all.isEmpty()) return pendingPreview(buyerNo, o, c);
         if (accounts.lockSubscriptionAccount(c.store()).pendingChangeOrderNo() != null)
@@ -234,6 +270,46 @@ public final class CommerceRefundService implements RefundFacade {
         return state;
     }
 
+    private Hardware hardwareAllocation(MallSnapshot.Order order, HardwareRefund selection) {
+        var store = order.quote().store();
+        String part = selection.orderComponentNo();
+        if (!text(part) || selection.quantity() < 1) throw fail("INVALID_SOURCE");
+        var allocation =
+                mall.components(store, order.orderNo()).stream()
+                        .filter(c -> part.equals(c.orderComponentNo()))
+                        .map(c -> c.snapshot().allocation())
+                        .filter(a -> a.component().kind() == ComponentKind.HARDWARE)
+                        .findFirst()
+                        .orElseThrow(() -> fail("INVALID_SOURCE"));
+        long shipped =
+                fulfillment.operations(store.tenantNo(), order.orderNo()).stream()
+                        .filter(
+                                op ->
+                                        "SHIP".equals(op.kind())
+                                                && part.equals(op.componentNo())
+                                                && op.inventoryResult() != null
+                                                && op.inventoryResult().status()
+                                                        == AsyncStatus.SUCCEEDED)
+                        .mapToLong(op -> op.shipment().quantity())
+                        .sum();
+        int prior =
+                refunds.forOrder(order).stream()
+                        .filter(s -> "SUCCEEDED".equals(s.status()))
+                        .map(s -> s.preview().hardware())
+                        .filter(Objects::nonNull)
+                        .map(Hardware::selection)
+                        .filter(v -> part.equals(v.orderComponentNo()))
+                        .mapToInt(HardwareRefund::quantity)
+                        .reduce(0, Math::addExact);
+        if (shipped > allocation.cycles().size() || selection.quantity() > shipped - prior)
+            throw fail("REFUND_LIMIT");
+        long cash =
+                allocation.cycles().subList(prior, prior + selection.quantity()).stream()
+                        .mapToLong(ComponentAllocation.Cycle::cash)
+                        .reduce(0, Math::addExact);
+        return new Hardware(selection, Math.toIntExact(shipped), prior, cash);
+    }
+
     private State pendingPreview(String buyerNo, MallSnapshot.Order o, RefundPreviewCommand c) {
         if (!c.sourcePeriodNos().isEmpty()
                 || o.axes().refund() != OrderState.Refund.NONE
@@ -291,7 +367,8 @@ public final class CommerceRefundService implements RefundFacade {
                                             c.store(),
                                             c.orderNo(),
                                             c.refundNo(),
-                                            c.sourcePeriodNos()));
+                                            c.sourcePeriodNos(),
+                                            c.hardware()));
                     if (!c.cashAmount().equals(s.preview().view().cashLimit()))
                         throw fail("REFUND_LIMIT");
                     if (!"PREVIEW".equals(s.status())) return s.view();
@@ -320,10 +397,12 @@ public final class CommerceRefundService implements RefundFacade {
             var original = request.preview();
             var current = calculatePreview(original.buyerNo(), o,
                     new RefundPreviewCommand(c.store(), c.orderNo(), c.refundNo(),
-                            original.view().sourcePeriodNos())).preview();
+                            original.view().sourcePeriodNos(), original.view().hardware())).preview();
             // An unmaterialized complete group is a distinct request intent, never a source refund.
             if (!original.pendingTasks().isEmpty() && !original.pendingTasks().equals(current.pendingTasks())
                     || original.pendingTasks().isEmpty() && !current.pendingTasks().isEmpty())
+                throw fail("VERSION_CONFLICT");
+            if (original.hardware() != null && current.hardware().alreadyRefunded() != original.hardware().alreadyRefunded())
                 throw fail("VERSION_CONFLICT");
             var bounded = new ArrayList<Source>();
             for (var source : current.sources()) {
@@ -342,7 +421,7 @@ public final class CommerceRefundService implements RefundFacade {
                     new Preview(current.refundNo(), current.orderNo(), current.store(), current.currency(),
                             original.buyerNo(), current.createdAt(), current.expiresAt(), bounded,
                             current.history(), current.payment(), false, digest,
-                            current.previousRefund(), current.pendingTasks()));
+                            current.previousRefund(), current.pendingTasks(), current.hardware()));
             if (quote.preview().cashLimit() > original.cashLimit()
                     || quote.preview().creditLimit() > original.creditLimit()) throw fail("REFUND_LIMIT");
             refunds.createReviewQuote(quote);
@@ -418,6 +497,29 @@ public final class CommerceRefundService implements RefundFacade {
                         return s.view();
                     }
                     if (clock.millis() >= p.expiresAt()) throw fail("QUOTE_EXPIRED");
+                    if (p.hardware() != null) {
+                        var h = hardwareAllocation(o, p.hardware().selection());
+                        if (o.axes().payment() != OrderState.Payment.PAID
+                                || !o.axes().refund().name().equals(p.previousRefund())
+                                || h.alreadyRefunded() != p.hardware().alreadyRefunded()
+                                || h.cashLimit() != p.cashLimit()) throw fail("VERSION_CONFLICT");
+                        var approved =
+                                approved(
+                                        s,
+                                        c.cashAmount().minor(),
+                                        0,
+                                        actor.principalNo(),
+                                        c.reviewEvidence());
+                        refunds.save(approved, approvalNo);
+                        mall.transition(
+                                o,
+                                new OrderState.Axes(
+                                        o.axes().payment(),
+                                        o.axes().fulfillment(),
+                                        OrderState.Refund.REFUNDING),
+                                actor.principalNo());
+                        return approved.view();
+                    }
                     if (!p.pendingTasks().isEmpty()) {
                         if (o.axes().payment() != OrderState.Payment.PAID
                                 || o.axes().refund() != OrderState.Refund.NONE
@@ -486,7 +588,7 @@ public final class CommerceRefundService implements RefundFacade {
                     schedule.persistTransition(
                             subscriptions.lock(p.store()),
                             codes,
-                            "freeze-" + FactDigest.of(List.of(p.refundNo())).substring(0, 48),
+                            RefundSnapshot.freezeOperation(p.refundNo()),
                             Instant.ofEpochMilli(cut),
                             Set.of(),
                             history,
@@ -686,7 +788,7 @@ public final class CommerceRefundService implements RefundFacade {
                     } else if (!s.preview().pendingTasks().isEmpty()) {
                         refunds.resolveTasks(finalState, success);
                         if (success) fulfillment.settleHolds(o, false);
-                    } else {
+                    } else if (s.preview().hardware() == null) {
                         var p = s.preview();
                         var before = subscriptions.periods(p.store());
                         var codes = p.history().keySet();

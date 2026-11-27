@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ai.neargo.shop.idem.IdempotencyScope;
@@ -97,7 +98,7 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
             ServiceExecutionMapper.ActionMapper actions, ObjectProvider<ServiceExecutionSourcePort> sources,
             ObjectProvider<PersonnelOperatorFactsPort> personnel, StockDispositionPort stock,
             ServiceExecutionSchemaVerifier schema, ObjectMapper json, CheckoutClock clock,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.operations = operations;
         this.admissions = admissions;
         this.executions = executions;

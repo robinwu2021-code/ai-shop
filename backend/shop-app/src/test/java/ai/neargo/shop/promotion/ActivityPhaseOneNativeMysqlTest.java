@@ -52,7 +52,7 @@ class ActivityPhaseOneNativeMysqlTest {
                      JSON_OBJECT('sourceRef',JSON_OBJECT('sourceType','RECHARGE','sourceNo','RC1')),
                      REPEAT('b',64),NOW(),'GRANT1',NOW(),NOW(),'TEST','TEST')
                 """);
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V706__activity_quota_reservation.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V723__activity_quota_reservation.sql")).execute(ds);
         assertThat(jdbc.queryForObject("SELECT quota_used FROM pmt_quota WHERE quota_dimension='PER_USER' "
                 + "AND target_no='HISTORY' AND user_no='LEGACY'", Long.class)).isEqualTo(1);
 

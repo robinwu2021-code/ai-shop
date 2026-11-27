@@ -1,9 +1,13 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.common.config.CommonTableMapper;
 import ai.neargo.shop.common.config.PayMerchantTableMapper;
 import ai.neargo.shop.common.config.PlatformSqlMapper;
 import ai.neargo.shop.common.config.PlatformTableMapper;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
+import ai.neargo.shop.common.config.IndustryTableMapper;
+import ai.neargo.shop.common.config.TradeSqlMapper;
+import ai.neargo.shop.common.config.TradeTableMapper;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -67,6 +71,13 @@ import org.springframework.context.annotation.Import;
                 // 表在平台基础库的 Mapper 按标记排除（它们和别的库的 Mapper 混在同一个包里），
                 // 由 ModuleMapperScanConfig 按同一个标记收到平台句柄上
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformTableMapper.class),
+                // 门店交易库的同理（ADR-068）
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class),
+                // 基础能力库的同理：由 ModuleMapperScanConfig 收到 common 句柄上
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = CommonTableMapper.class),
+                // 行业库的同理：由各行业插件的持久化配置收到行业句柄上
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = IndustryTableMapper.class),
+
                 // 标记接口本身也继承 BaseMapper、又在本扫描根之下：不排除的话它自己会被注册成一个 Mapper。
                 // 支付商户库的那个标记由 PayDataSourceConfig 收取，这里只负责不把它扫进来
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PayMerchantTableMapper.class)})
@@ -92,7 +103,8 @@ import org.springframework.context.annotation.Import;
         "ai.neargo.shop.promotion.mapper", "ai.neargo.shop.member.mapper", "ai.neargo.shop.paybridge.mapper",
         "ai.neargo.shop.invbridge.mapper"},
         annotationClass = org.apache.ibatis.annotations.Mapper.class,
-        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformSqlMapper.class),
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
+                classes = {PlatformSqlMapper.class, TradeSqlMapper.class}),
         sqlSessionFactoryRef = "sqlSessionFactory")
 public class MybatisPlusConfig {
 }

@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.service.lifecycle.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.settle.OrdinaryRefundPort;
 import ai.neargo.shop.spi.settle.RefundDispatchResult;
 import ai.neargo.shop.spi.settle.RefundRequest;
@@ -36,7 +37,7 @@ public class PaymentResolutionOpsServiceImpl implements PaymentResolutionOpsServ
 
     public PaymentResolutionOpsServiceImpl(PaymentResolutionMapper resolutions, OrderMapper orders,
             SubOrderMapper children, ObjectProvider<OrdinaryRefundPort> owners,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.resolutions = resolutions;
         this.orders = orders;
         this.children = children;

@@ -1,14 +1,9 @@
 package ai.neargo.shop.platform.port;
 
-import ai.neargo.shop.platform.entity.SysRegion;
+import ai.neargo.shop.platform.RegionService;
 import ai.neargo.shop.platform.MasterDataService;
 import ai.neargo.shop.spi.platform.MasterDataPort;
 import org.springframework.stereotype.Component;
-import ai.neargo.shop.platform.mapper.PlatformMappers.IndustryMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import ai.neargo.common.data.scope.DataScopeContext;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import ai.neargo.shop.platform.entity.SysIndustry;
 
 
 /**
@@ -29,22 +24,6 @@ public class MasterDataPortImpl implements MasterDataPort {
                               ai.neargo.shop.platform.RegionService regionService) {
         this.masterDataService = masterDataService;
         this.regionService = regionService;
-    }
-
-    private IndustryMapper industries;
-
-    @Autowired
-    public void setIndustryFacts(IndustryMapper industries) {
-        this.industries = industries;
-    }
-
-    @Override
-    public boolean industryKnown(String tenantNo, String industry) {
-        if (industries == null || tenantNo == null || industry == null || industry.isBlank()) return false;
-        return DataScopeContext.executeWithoutScope(() -> industries.selectCount(
-                Wrappers.<SysIndustry>lambdaQuery()
-                        .eq(SysIndustry::getTenantNo, tenantNo)
-                        .eq(SysIndustry::getIndustry, industry))) == 1;
     }
 
     @Override
@@ -97,7 +76,7 @@ public class MasterDataPortImpl implements MasterDataPort {
         }
         var self = path.get(path.size() - 1);
         var parent = path.get(path.size() - 2);
-        boolean official = SysRegion.LEVEL_VILLAGE.equals(self.level())
+        boolean official = RegionService.LEVEL_VILLAGE.equals(self.level())
                 && (self.source() == null || "OFFICIAL".equals(self.source()));
         // 街道码是 9 位：聚落必须挂在街道/镇下，挂粗了按街道覆盖永远匹配不到
         return official && parent.regionCode() != null && parent.regionCode().length() == 9
@@ -121,7 +100,7 @@ public class MasterDataPortImpl implements MasterDataPort {
             return java.util.Optional.empty();
         }
         return regionService.children(d, false, null).stream()
-                .filter(r -> SysRegion.LEVEL_STREET.equals(r.level()))
+                .filter(r -> RegionService.LEVEL_STREET.equals(r.level()))
                 // 名字可能带后缀差异（「福城街道」vs「福城街道办事处」），前缀匹配兜一手
                 .filter(r -> r.name().equals(t) || r.name().startsWith(t) || t.startsWith(r.name()))
                 .map(ai.neargo.shop.platform.RegionService.RegionVO::regionCode)

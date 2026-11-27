@@ -1,14 +1,14 @@
 package ai.neargo.shop.product.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.product.entity.PrdEntitlementBinding;
 import ai.neargo.shop.product.entity.PrdGoods;
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
-public interface PrdEntitlementBindingMapper extends BaseMapper<PrdEntitlementBinding> {
+public interface PrdEntitlementBindingMapper extends TradeTableMapper<PrdEntitlementBinding> {
     /** Includes historical mappings: disabling/deleting a binding must not re-enable legacy sales. */
     @Select("SELECT * FROM prd_entitlement_binding WHERE tenant_no=#{tenant} AND goods_no=#{goods} AND sku_no=#{sku}")
     PrdEntitlementBinding findIdentity(@Param("tenant") String tenant, @Param("goods") String goods,

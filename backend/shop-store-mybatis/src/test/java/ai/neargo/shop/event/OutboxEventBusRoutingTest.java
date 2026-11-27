@@ -1,5 +1,8 @@
 package ai.neargo.shop.event;
 
+import ai.neargo.shop.event.broker.BrokerMessage;
+import ai.neargo.shop.event.broker.BrokerProperties;
+import ai.neargo.shop.event.broker.MessageBroker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -11,6 +14,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -94,6 +98,86 @@ class OutboxEventBusRoutingTest {
         bus(consumer(true, "N")).publish("EXT-1", new Evt("N"));
         verify(notifications).publish(org.mockito.ArgumentMatchers.eq("EXT-1"), any());
         verify(mapper, never()).insertIfAbsent(any(SysOutbox.class));
+    }
+
+    @Test
+    @DisplayName("名单里的发件箱事件改由中间件投递：中间件确认才标已发，不再进程内调消费者；没确认就退避重投")
+    void relayedTypesGoThroughBroker() {
+        List<String> called = new java.util.ArrayList<>();
+        OutboxConsumer durable = new OutboxConsumer() {
+            @Override public boolean supports(String t) { return true; }
+            @Override public void consume(SysOutbox e) { called.add(e.getEventType()); }
+        };
+        var dispatcher = new OutboxDispatcher(mapper, List.of(durable),
+                mock(org.springframework.transaction.PlatformTransactionManager.class));
+        var broker = mock(ai.neargo.shop.event.broker.MessageBroker.class);
+        var props = new ai.neargo.shop.event.broker.BrokerProperties();
+        props.setOutboxEventTypes(Set.of("ORDER_PAID"));
+        dispatcher.setBroker(broker);
+        dispatcher.setBrokerProperties(props);
+
+        SysOutbox paid = row(1L, "ORDER_PAID");
+        when(mapper.selectById(1L)).thenReturn(paid);
+        assertThat(dispatcher.dispatchOne(1L).sent()).isTrue();
+        verify(broker).publish(ai.neargo.shop.event.broker.BrokerMessage.of(paid));
+        assertThat(called).isEmpty();
+        assertThat(paid.getStatus()).isEqualTo(SysOutbox.SENT);
+
+        SysOutbox other = row(2L, "SKU_UPSERTED");
+        when(mapper.selectById(2L)).thenReturn(other);
+        assertThat(dispatcher.dispatchOne(2L).sent()).isTrue();
+        assertThat(called).containsExactly("SKU_UPSERTED");
+
+        SysOutbox down = row(3L, "ORDER_PAID");
+        when(mapper.selectById(3L)).thenReturn(down);
+        org.mockito.Mockito.doThrow(new ai.neargo.shop.event.broker.BrokerException("down"))
+                .when(broker).publish(ai.neargo.shop.event.broker.BrokerMessage.of(down));
+        var outcome = dispatcher.dispatchOne(3L);
+        assertThat(outcome.sent()).isFalse();
+        assertThat(outcome.retryAfter()).isNotNull();
+        assertThat(down.getStatus()).isEqualTo(SysOutbox.PENDING);
+    }
+
+    @Test
+    @DisplayName("转发源头已持久化的事件：类型在名单里就直接发中间件、保留原事件号，不再落本库发件箱")
+    void forwardRelayedTypeGoesStraightToBroker() {
+        OutboxEventBus bus = bus(consumer(false, "D"));
+        MessageBroker broker = mock(MessageBroker.class);
+        BrokerProperties props = new BrokerProperties();
+        props.setOutboxEventTypes(Set.of("D"));
+        bus.setBroker(broker);
+        bus.setBrokerProperties(props);
+
+        bus.forward("PAY-1", new Evt("D"));
+
+        verify(broker).publish(new BrokerMessage("PAY-1", "T", "A1", "D", "{\"type\":\"D\"}"));
+        verify(mapper, never()).insertIfAbsent(any(SysOutbox.class));
+    }
+
+    @Test
+    @DisplayName("转发不在名单里的事件：照外部事件号发布落发件箱，事件号不变")
+    void forwardOtherTypeFallsBackToOutbox() {
+        when(mapper.insertIfAbsent(any(SysOutbox.class))).thenReturn(1);
+        OutboxEventBus bus = bus(consumer(false, "D"));
+        bus.setBroker(mock(MessageBroker.class));
+        bus.setBrokerProperties(new BrokerProperties());
+
+        bus.forward("PAY-2", new Evt("D"));
+
+        verify(mapper).insertIfAbsent(argThat(r -> "PAY-2".equals(r.getEventNo())));
+    }
+
+    private static SysOutbox row(long id, String type) {
+        SysOutbox e = new SysOutbox();
+        e.setId(id);
+        e.setEventNo("EV-" + id);
+        e.setAggregateType("ORDER");
+        e.setAggregateId("O-" + id);
+        e.setEventType(type);
+        e.setPayload("{}");
+        e.setStatus(SysOutbox.PENDING);
+        e.setRetryCount(0);
+        return e;
     }
 
     @Test

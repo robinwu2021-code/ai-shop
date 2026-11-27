@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.dto.CardProductBindingView;
 import ai.neargo.shop.product.dto.ProductEntitlementBinding;
 import ai.neargo.shop.product.entity.PrdEntBindingCommand;
@@ -39,7 +40,7 @@ public class CardProductBindingWriter {
         var previous = commands.find(ctx.tenantNo(), key);
         return previous == null ? null : original(previous, hash);
     }
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public CardProductBindingView write(EntitlementContext ctx, String entity, ProductEntitlementBinding c, String key,
                                          String market, String currency, PublishedDefinition definition) {
         return DataScopeContext.executeWithoutScope(() ->

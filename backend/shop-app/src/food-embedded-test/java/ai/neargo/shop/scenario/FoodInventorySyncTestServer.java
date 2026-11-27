@@ -19,7 +19,12 @@ public final class FoodInventorySyncTestServer {
                 Map.entry("inventory.datasource.username",System.getenv("INVENTORY_PROJECTION_TEST_USER")),
                 Map.entry("inventory.datasource.password",System.getenv("INVENTORY_PROJECTION_TEST_PASSWORD")),
                 Map.entry("inventory.instance.code","SHOP"),Map.entry("inventory.instance.allowed-systems","SHOP"),
-                Map.entry("inventory.jobs.enabled",false),Map.entry("inventory.admin.token","native-sync-test-only")))));
+                Map.entry("inventory.jobs.enabled",false),Map.entry("inventory.admin.token","native-sync-test-only"),
+                // 开放凭证存密钥库（Q18）：本进程签发、本进程验证，给它一个只在本 JVM 的内存密钥库
+                Map.entry("inventory.secret.env","SANDBOX"),
+                Map.entry("inventory.secret.datasource.url","jdbc:h2:mem:sync_secret;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"),
+                Map.entry("inventory.secret.datasource.username","sa"),Map.entry("inventory.secret.datasource.password",""),
+                Map.entry("inventory.secret.flyway-enabled",true)))));
         var context=app.run();
         Files.writeString(Path.of(System.getenv("SYNC_INVENTORY_PORT_FILE")),context.getEnvironment().getProperty("local.server.port"));
     }

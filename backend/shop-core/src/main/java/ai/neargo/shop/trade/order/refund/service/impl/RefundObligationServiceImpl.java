@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.order.refund.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.trade.order.mapper.RefundObligationMapper;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
@@ -25,7 +26,7 @@ public class RefundObligationServiceImpl implements RefundObligationService {
     private final ObjectMapper json;
     private final TransactionTemplate tx;
     public RefundObligationServiceImpl(RefundObligationMapper mapper,RefundExecutionStore executions,
-            CouponPort coupons,ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager) {
+            CouponPort coupons,ObjectMapper json,@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.mapper=mapper; this.executions=executions; this.coupons=coupons; this.json=json;
         this.tx=new TransactionTemplate(manager);
     }
@@ -52,7 +53,7 @@ public class RefundObligationServiceImpl implements RefundObligationService {
                 Boolean.TRUE.equals(row.getReturnCoupon()),"SUCCEEDED".equals(row.getStatus()));
     }
     private record Source(String orderNo,int version,boolean returnCoupon,boolean ready) { }
-    @Override @Transactional(propagation=Propagation.MANDATORY)
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation=Propagation.MANDATORY)
     public void prepare(String no) {
         DataScopeContext.executeWithoutScope(() -> {
             var execution=source(no);
@@ -111,7 +112,7 @@ public class RefundObligationServiceImpl implements RefundObligationService {
                     row.getPaymentNo(),row.getStatus(),row.getResourceStatus(),row.getResourceErrorCode());
         });
     }
-    @Override @Transactional(propagation=Propagation.NOT_SUPPORTED)
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation=Propagation.NOT_SUPPORTED)
     public void recover(String no) {
         require(!TransactionSynchronizationManager.isActualTransactionActive(),"REFUND_OBLIGATION_REQUIRES_NO_TRANSACTION");
         var work=tx.execute(s -> DataScopeContext.executeWithoutScope(() -> {

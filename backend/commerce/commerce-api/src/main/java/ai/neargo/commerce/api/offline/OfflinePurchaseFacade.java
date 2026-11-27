@@ -64,6 +64,8 @@ public interface OfflinePurchaseFacade {
      * never from the caller. A merchant ACCOUNT quotes for itself; an OPERATOR quotes as assisted STORE purchase.
      */
     QuoteView quote(ActorContext actor, QuoteCommand command);
+    /** An entity-wide offer is paid in cash. Store credit stays with the store. */
+    default QuoteView quoteEntityPlan(ActorContext actor, QuoteCommand command) { throw new UnsupportedOperationException(); }
     /** Verified real receipts and buyer-safe exception refund progress, scoped to this order. */
     default List<ai.neargo.commerce.api.port.OfflineCollectionPort.CashReceipt> cashReceipts(ActorContext actor,OrderQuery order){throw new UnsupportedOperationException();}
     default List<ai.neargo.commerce.api.port.OfflineCashRefundPort.View> cashRefunds(ActorContext actor,OrderQuery order){throw new UnsupportedOperationException();}

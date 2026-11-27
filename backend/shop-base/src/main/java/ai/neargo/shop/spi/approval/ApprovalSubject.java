@@ -39,6 +39,14 @@ public interface ApprovalSubject {
         return approverPerm();
     }
 
+    /**
+     * 审批人是否必须与提交人不同、且各步不同人（默认否：用户 2026-11-23 定“一律可以本人审批”）。
+     * 只有业务规则本身要求多人分离的才打开，如退款两人复核（TDD-基础能力库对齐 Q12）。
+     */
+    default boolean separateApprovers() {
+        return false;
+    }
+
     /** 二级流程里「要不要加复核」的条件字段：业务在 {@link Snapshot#fields()} 里放 {@code recheck=true} 即出现复核步骤。 */
     String RECHECK_FIELD = "recheck";
 

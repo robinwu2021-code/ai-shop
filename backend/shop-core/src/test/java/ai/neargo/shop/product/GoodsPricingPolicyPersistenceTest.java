@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.TaxClass;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.product.dto.GoodsPricingPolicyCommands.Context;
 import ai.neargo.shop.product.dto.GoodsPricingPolicyCommands.SaveReq;
@@ -72,7 +72,7 @@ class GoodsPricingPolicyPersistenceTest {
         service = new GoodsPricingPolicyServiceImpl(
                 session.getMapper(GoodsMapper.class), session.getMapper(SkuMapper.class),
                 session.getMapper(SkuPricingPolicyMapper.class),
-                new IdempotencyService(session.getMapper(SysIdempotentMapper.class), JsonMapper.builder().build()),
+                new RequestIdempotencyPortImpl(session.getMapper(SysIdempotentMapper.class), JsonMapper.builder().build()),
                 new DataSourceTransactionManager(source));
     }
     @BeforeEach void reset() {

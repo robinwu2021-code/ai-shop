@@ -13,6 +13,9 @@ import {Button} from "@/components/ui/button";
 import {Input,Select} from "@/components/ui/input";
 import {DrawerSection,Field} from "@/components/ui/drawer";
 import {CashRefundsSection} from "@/components/offline/cash-refunds";
+import {ReceiptDocumentationSection} from "../mall/order-drawer";
+import {MALL_COPY} from "../mall/copy";
+import {PlanRefundReviewPanel} from "./plan-refund-review";
 import {EntityAssistedPurchase} from "./plan-assisted-purchase";
 import {PLAN_PURCHASES_COPY} from "./plan-purchases-copy";
 
@@ -31,20 +34,20 @@ export function EntityPlanPurchasesPanel({entityNo}:{entityNo:string}) {
 }
 function OfferEditor({entityNo,offers,onSaved}:{entityNo:string;offers:EntityPlanOffer[];onSaved:()=>unknown}) {
  const c=useCopy(PLAN_PURCHASES_COPY);
- const [form,set]=useState({offerNo:"",planCode:"PRO",name:"",days:"30",price:"",currency:"TWD"});
+ const [form,set]=useState({offerNo:"",skuVersionNo:"",planCode:"PRO",name:"",days:"30",price:"",currency:"TWD"});
  const [selected,select]=useState<EntityPlanOffer|null>(null),[busy,b]=useState(false),[error,e]=useState("");
  const field=(key:keyof typeof form,label:string)=><Field label={label}><Input value={form[key]} onChange={v=>set({...form,[key]:v.target.value})}/></Field>;
  async function save(enabled:boolean){
   const minor=parseMajor(form.price,form.currency);if(!minor||Number(minor)<=0||!Number.isSafeInteger(Number(minor))||!form.name.trim()||!form.offerNo.trim())return e(c.noProof);
-  b(true);e("");try{await api.saveEntityPlanOffer(entityNo,{...form,expectedVersion:selected?.version??0,days:Number(form.days),price:{currency:form.currency,minor:Number(minor)},enabled});await onSaved();select(null);set({...form,offerNo:"",name:"",price:""});}catch{e(c.error);}finally{b(false);}
+  b(true);e("");try{await api.saveEntityPlanOffer(entityNo,{...form,expectedVersion:selected?.version??0,days:Number(form.days),price:{currency:form.currency,minor:Number(minor)},enabled});await onSaved();select(null);set({...form,offerNo:"",skuVersionNo:"",name:"",price:""});}catch{e(c.error);}finally{b(false);}
  }
  return <div className="space-y-3 mt-4"><h3>{c.offers}</h3><p>{c.configure}</p><p>{c.saveHint}</p>
-  {offers.map(o=><Button key={o.offerNo} variant="outline" onClick={()=>{select(o);set({offerNo:o.offerNo,planCode:o.planCode,name:o.name,days:String(o.days),price:String(o.price.minor/100),currency:o.price.currency});}}>{o.name} · {o.price.currency} {o.price.minor/100} · {c.quota} {o.storeQuota}/{o.staffQuota} · {o.enabled?c.enabled:c.disable}</Button>)}
-  <fieldset disabled={busy} className="space-y-2">{field("offerNo",c.offerNo)}{field("name",c.name)}<Select value={form.planCode} onChange={v=>set({...form,planCode:v.target.value})}><option>PRO</option><option>CHAIN</option></Select>{field("days",c.days)}<Select value={form.currency} onChange={v=>set({...form,currency:v.target.value})}><option>TWD</option><option>CNY</option></Select>{field("price",c.price)}<Button onClick={()=>save(true)}>{c.save}</Button>{selected&&<Button variant="outline" onClick={()=>save(false)}>{c.disable}</Button>}</fieldset>{error&&<p role="alert">{error}</p>}
+  {offers.map(o=><Button key={o.offerNo} variant="outline" onClick={()=>{select(o);set({offerNo:o.offerNo,skuVersionNo:o.catalog?.skuVersionNo??"",planCode:o.planCode,name:o.name,days:String(o.days),price:String(o.price.minor/100),currency:o.price.currency});}}>{o.name} · {o.price.currency} {o.price.minor/100} · {c.quota} {o.storeQuota}/{o.staffQuota} · {o.enabled?c.enabled:c.disable}</Button>)}
+  <fieldset disabled={busy} className="space-y-2">{field("offerNo",c.offerNo)}{field("skuVersionNo",c.skuVersion)}{selected?.catalog&&<p>{c.entitlements} · {selected.catalog.entitlementCodes.join(", ")}</p>}{field("name",c.name)}<Select value={form.planCode} onChange={v=>set({...form,planCode:v.target.value})}><option>PRO</option><option>CHAIN</option></Select>{field("days",c.days)}<Select value={form.currency} onChange={v=>set({...form,currency:v.target.value})}><option>TWD</option><option>CNY</option></Select>{field("price",c.price)}<Button onClick={()=>save(true)}>{c.save}</Button>{selected&&<Button variant="outline" onClick={()=>save(false)}>{c.disable}</Button>}</fieldset>{error&&<p role="alert">{error}</p>}
  </div>;
 }
 export function EntityPlanPurchaseDetail({order:o,onChanged}:{order:EntityPlanPurchase;onChanged:()=>unknown}) {
- const c=useCopy(PLAN_PURCHASES_COPY),allow=useCan();
+ const c=useCopy(PLAN_PURCHASES_COPY),mallCopy=useCopy(MALL_COPY),allow=useCan();
  const [busy,b]=useState(false),[error,e]=useState(""),[evidence,k]=useState("");
  const [f,set]=useState({amount:"",at:"",reference:"",reason:""});
  const [attempt,a]=useState<EntityPlanConfirm|null>(null),[absent,markAbsent]=useState(false);
@@ -78,8 +81,10 @@ export function EntityPlanPurchaseDetail({order:o,onChanged}:{order:EntityPlanPu
    {evidence&&<span>✓</span>}{(claim||direct)&&canConfirm&&<Button onClick={()=>confirm()}>{c.confirm}</Button>}
   </fieldset>}
   {claim&&!attempt&&allow("commerce:mall:offline:review")&&allow("merchant:merchant:ban")&&<div><Field label={c.reason}><Input disabled={busy} value={f.reason} onChange={v=>set({...f,reason:v.target.value})}/></Field><Button disabled={busy||!f.reason.trim()} onClick={()=>perform(()=>api.declineEntityPlanPurchase(o.entityNo,o.orderNo,claim.claimNo,f.reason.trim()))}>{c.decline}</Button></div>}
-  {((canConfirm&&["PREPARED","CONFIRMING","PAID_PENDING"].includes(o.status))||(canVoid&&o.status==="CLOSING"))&&<Button disabled={busy} onClick={()=>perform(()=>api.recoverEntityPlanPurchase(o.entityNo,o.orderNo))}>{c.recover}</Button>}
+  {((canConfirm&&["PREPARED","CONFIRMING","PAID_PENDING","REFUND_PENDING"].includes(o.status))||(canVoid&&o.status==="CLOSING"))&&<Button disabled={busy} onClick={()=>perform(()=>api.recoverEntityPlanPurchase(o.entityNo,o.orderNo))}>{c.recover}</Button>}
 
+  {["REFUND_REVIEW","REFUND_REVIEWED"].includes(o.status)&&allow("merchant:merchant:read")&&<PlanRefundReviewPanel entityNo={o.entityNo} orderNo={o.orderNo} canClose={allow("commerce:refund:review")&&allow("merchant:merchant:ban")} onChanged={onChanged}/>}
+  {o.mallOffline && o.actions.some(action=>action.paymentNo) && allow("commerce:mall:order:read") && <ReceiptDocumentationSection canSupplement={canConfirm} c={mallCopy} storeNo={o.storeNo} orderNo={o.orderNo}/>}
   <CashRefundsSection kind="entity" allowUnfulfilledMatchedCash={o.status==="REVIEW_REQUIRED"} scope={o.entityNo} orderNo={o.orderNo} canRelease={closing||["UNMATCHED","REVIEW_REQUIRED"].includes(o.status)} onChanged={onChanged}/>
   {error&&<p role="alert">{error}</p>}
  </section>;

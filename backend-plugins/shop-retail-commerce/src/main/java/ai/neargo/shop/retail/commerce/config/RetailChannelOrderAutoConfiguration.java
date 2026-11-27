@@ -1,5 +1,6 @@
 package ai.neargo.shop.retail.commerce.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.retail.commerce.mapper.RetailChannelMappers;
 import ai.neargo.shop.retail.commerce.mapper.RetailChannelMappers.ImportGuardMapper;
 import ai.neargo.shop.retail.commerce.mapper.RetailChannelMappers.OrderSourceMapper;
@@ -56,7 +57,7 @@ import java.time.Clock;
 @MapperScan(
         basePackageClasses = RetailChannelMappers.class,
         markerInterface = BaseMapper.class,
-        sqlSessionTemplateRef = "sqlSessionTemplate")
+        sqlSessionFactoryRef = ModuleDataSources.TRADE_SQL_SESSION_FACTORY)
 public class RetailChannelOrderAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(RetailChannelSourceReader.class)
@@ -87,7 +88,7 @@ public class RetailChannelOrderAutoConfiguration {
             MaterialCatalogQueryPort materials,
             ObjectMapper json,
             ObjectProvider<Clock> clocks,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new RetailChannelOrderServiceImpl(
                 guards,
                 sources,

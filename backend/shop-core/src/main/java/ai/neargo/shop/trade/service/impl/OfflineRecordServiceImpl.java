@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
@@ -108,7 +109,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
             MerchantQueryPort merchants,
             MarketPort markets,
             UserQueryPort users,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.records = records;
         this.events = events;
         this.subOrders = subOrders;

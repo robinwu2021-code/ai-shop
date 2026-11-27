@@ -25,6 +25,7 @@ final class SecretFixture {
     DefaultKeyRegistry registry;
     DatabaseKeyVault keyVault;
     SecretLifecycleService lifecycle;
+    DigestCredentialVerifier credentials;
     final String env;
 
     SecretFixture(String env) {
@@ -76,8 +77,13 @@ final class SecretFixture {
         registry = new DefaultKeyRegistry(mappers, vault, settings, store.txManager());
         keyVault = new DatabaseKeyVault(mappers, registry, settings);
         lifecycle = new SecretLifecycleService(mappers, book, provider, vault, settings, store.txManager());
+        credentials = new DigestCredentialVerifier(mappers, settings, store.txManager());
         book.sync();
         return this;
+    }
+
+    DigestCredentialVerifier credentials() {
+        return credentials;
     }
 
     static final class MovableClock extends Clock {

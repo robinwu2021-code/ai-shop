@@ -1,5 +1,6 @@
 package ai.neargo.shop.community.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.community.entity.CmtCommunity;
 import ai.neargo.shop.community.entity.CmtPickupPoint;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -18,7 +19,7 @@ public final class CommunityMappers {
     public interface CommunityMapper extends BaseMapper<CmtCommunity> {
     }
 
-    public interface PickupPointMapper extends BaseMapper<CmtPickupPoint> {
+    public interface PickupPointMapper extends TradeTableMapper<CmtPickupPoint> {
     }
 
     /** 固定地址库。系统写、谁都读 —— 与社区同一类主数据 */

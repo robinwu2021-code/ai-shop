@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.service.support.ReservationPreorderLifecycle;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -32,7 +33,7 @@ import ai.neargo.shop.food.policy.TableResourceLocks;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -92,7 +93,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final ActionLogMapper actions;
     private final CheckService checks;
     private final StoreOperationService policies;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final StoreCardQueryPort stores;
     private final TableResourceLocks locks;
@@ -107,10 +108,10 @@ public class ReservationServiceImpl implements ReservationService {
             ActionLogMapper actions,
             CheckService checks,
             StoreOperationService policies,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             StoreCardQueryPort stores,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.reservations = reservations;
         this.memberships = memberships;
         this.occupancies = occupancies;
@@ -126,7 +127,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public DetailVO get(String entity, String store, String number) {
         scope(entity, store);
         id(number);
@@ -573,7 +574,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public PageData<ReservationVO> listReservations(
             String entity, String store, ListReservationsQuery query) {
         if (entity == null

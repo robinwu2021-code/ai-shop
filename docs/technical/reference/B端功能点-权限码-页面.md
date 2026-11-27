@@ -1382,5 +1382,5 @@
 - `/biz/stores/{}/entitlements`　
 - `/biz/stores/{}/features`　
 - `/biz/stores/{}/mall/`　
-- `/biz/stores/{}/subscription`　
+- `/biz/stores/{}/subscription`　平台商城：查询本店订阅版本
 

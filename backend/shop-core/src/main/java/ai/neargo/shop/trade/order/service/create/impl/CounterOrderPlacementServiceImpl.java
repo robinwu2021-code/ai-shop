@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.service.create.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.product.StockDispositionContract;
 import ai.neargo.shop.spi.product.StockDispositionPort;
 import ai.neargo.shop.spi.product.StockDispositionPort.Original;
@@ -85,7 +86,7 @@ public class CounterOrderPlacementServiceImpl implements CounterOrderPlacementSe
             StockDispositionPort stock,
             ObjectMapper json,
             CheckoutClock clock,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.operations = operations;
         this.quotes = quotes;
         this.confirmations = confirmations;

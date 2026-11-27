@@ -46,7 +46,7 @@ class StoredValueRecordAliasLookupTest {
   final JdbcTemplate jdbc;
   Fixture() {
    var ds=new DriverManagerDataSource("jdbc:h2:mem:alias-"+UUID.randomUUID()+";MODE=MySQL;DB_CLOSE_DELAY=-1","sa","");jdbc=new JdbcTemplate(ds);
-   jdbc.execute("CREATE TABLE pay_document_number(document_no VARCHAR(32) PRIMARY KEY,tenant_no VARCHAR(64),document_type VARCHAR(40),source_system VARCHAR(32),source_resource_type VARCHAR(64),source_no VARCHAR(128),business_date DATE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+   jdbc.execute("CREATE TABLE core_document_number(document_no VARCHAR(32) PRIMARY KEY,tenant_no VARCHAR(64),document_type VARCHAR(40),source_system VARCHAR(32),source_resource_type VARCHAR(64),source_no VARCHAR(128),business_date DATE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
    jdbc.execute("CREATE TABLE sv_statement(record_no VARCHAR(128),voucher_no VARCHAR(128),tenant_no VARCHAR(64),entity_no VARCHAR(64),store_no VARCHAR(64),type VARCHAR(20),business_no VARCHAR(128),currency VARCHAR(3),signed_amount_minor BIGINT,balance_after_minor BIGINT,occurred_at TIMESTAMP)");
    jdbc.execute("CREATE TABLE ent_usage(tenant_no VARCHAR(64),entity_no VARCHAR(64),store_no VARCHAR(64),usage_no VARCHAR(128),operation_no VARCHAR(128),asset_kind VARCHAR(32))");
    jdbc.execute("INSERT INTO sv_statement VALUES('voucher-r','voucher-r','MAIN','ENTITY','STORE','RECHARGE','recharge','CNY',100,100,CURRENT_TIMESTAMP),('voucher-c','voucher-c','MAIN','ENTITY','STORE','REDEMPTION','operation','CNY',-20,80,CURRENT_TIMESTAMP)");
@@ -63,7 +63,7 @@ class StoredValueRecordAliasLookupTest {
    ReflectionTestUtils.setField(service,"usages",usages);
    ReflectionTestUtils.setField(service,"documentNumbers",new JdbcDocumentNumberRepository(DocumentOwner.PAY,new DataSourceTransactionManager(ds)));
   }
-  void alias(DocumentType type,String alias,String no) {jdbc.update("INSERT INTO pay_document_number(document_no,tenant_no,document_type,source_system,source_resource_type,source_no,business_date) VALUES(?,'MAIN',?,'PAY',?,?,CURRENT_DATE)",alias,type.name(),type.name(),no);}
+  void alias(DocumentType type,String alias,String no) {jdbc.update("INSERT INTO core_document_number(document_no,tenant_no,document_type,source_system,source_resource_type,source_no,business_date) VALUES(?,'MAIN',?,'PAY',?,?,CURRENT_DATE)",alias,type.name(),type.name(),no);}
   <T> T one(String table,Wrapper<?> wrapper,Class<T> type) {var rows=query(table,wrapper,type);return rows.isEmpty()?null:rows.getFirst();}
   <T> List<T> query(String table,Wrapper<?> wrapper,Class<T> type) {
    String sql=wrapper.getCustomSqlSegment();var values=new ArrayList<Object>();var m=Pattern.compile("#\\{ew.paramNameValuePairs.([^}]+)}").matcher(sql);var out=new StringBuilder();

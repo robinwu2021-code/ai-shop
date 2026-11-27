@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -95,7 +96,7 @@ public final class IndustryChannelOrderStore {
             ChannelPreparationMapper preparations,
             ObjectMapper json,
             @Qualifier("coreDocumentNumberCoordinator") DocumentNumberCoordinator numbers,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this(
                 imports,
                 guards,

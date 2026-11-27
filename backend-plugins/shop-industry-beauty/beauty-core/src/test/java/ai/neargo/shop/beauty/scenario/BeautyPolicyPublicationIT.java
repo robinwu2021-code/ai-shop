@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import com.zaxxer.hikari.HikariDataSource;
 import java.lang.reflect.InvocationTargetException;
@@ -62,7 +62,7 @@ class BeautyPolicyPublicationIT {
     void clear() { SecurityContextHolder.clearContext(); }
 
     private ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
                 required("config.BeautyPersistenceConfiguration"), required("config.BeautyWriteGuardConfiguration"),
                 required("config.BeautyPolicyConfiguration"))
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
@@ -167,7 +167,7 @@ class BeautyPolicyPublicationIT {
     void sameKeyCannotRevealResultToAnotherActor() {
         runner().run(context -> {
             publish(context, "K", 0, 7);
-            var idem = context.getBean(IdempotencyService.class);
+            var idem = context.getBean(RequestIdempotencyPort.class);
             var tx = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
             String endpoint = sql.queryForObject("SELECT endpoint FROM sys_idempotent", String.class);
             String hash = sql.queryForObject("SELECT request_hash FROM sys_idempotent", String.class);
@@ -182,7 +182,7 @@ class BeautyPolicyPublicationIT {
         runner().run(context -> {
             assertThatThrownBy(() -> publish(context, " ", 0, 7)).isInstanceOf(BizException.class);
             emptyBusiness();
-            var idem = context.getBean(IdempotencyService.class);
+            var idem = context.getBean(RequestIdempotencyPort.class);
             assertThat(idem.execute(null, "POST /mp/order", "ACTOR", String.class, () -> "retail-compatible"))
                     .isEqualTo("retail-compatible");
             assertThat(count("sys_idempotent")).isZero();

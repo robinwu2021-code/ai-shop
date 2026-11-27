@@ -3,6 +3,7 @@ package ai.neargo.shop.product.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -83,7 +84,7 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ImportReport apply(String merchantNo, String csv) {
         return run(merchantNo, csv, true);
     }
@@ -244,7 +245,7 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
     // ------------------------------------------------------------------ 单件绑码
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void bindBarcode(String merchantNo, String skuNo, String barcode) {
         if (skuNo == null || skuNo.isBlank() || barcode == null || barcode.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

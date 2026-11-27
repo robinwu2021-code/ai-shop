@@ -1,5 +1,7 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.merchant.service.AuthCodeAdminService;
+import ai.neargo.shop.platform.SettingService;
 import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -48,8 +50,8 @@ public class DevSeeder {
                                  SkuMapper skuMapper,
                                  CategoryMapper categoryMapper, StaffMapper staffMapper,
                                  RoleMemberMapper roleMemberMapper,
-                                 ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysAuthCodeMapper authCodeMapper,
-                                 ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper settingMapper,
+                                 AuthCodeAdminService authCodes,
+                                 SettingService settings,
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
@@ -119,23 +121,23 @@ public class DevSeeder {
              * 停用的三个（乳制品/熟食/维修）也要灌：一期收敛后它们仍在库里，
              * 只是 enabled=0。不灌的话「停用码不出现在可授权列表」这条测不出来。
              */
-            seedAuthCode(authCodeMapper, "FRESH_VEG", "蔬菜", 10, true);
-            seedAuthCode(authCodeMapper, "FRESH_FRUIT", "水果", 20, true);
-            seedAuthCode(authCodeMapper, "PACKAGED_FOOD", "预包装食品", 25, true);
-            seedAuthCode(authCodeMapper, "FRESH_DAIRY", "乳制品", 30, false);
-            seedAuthCode(authCodeMapper, "FOOD", "熟食加工", 40, false);
-            seedAuthCode(authCodeMapper, "DAILY", "日用百货", 50, true);
-            seedAuthCode(authCodeMapper, "SERVICE_REPAIR", "维修服务", 60, false);
-            seedAuthCode(authCodeMapper, "HOUSEKEEPING", "家政服务", 65, true);
+            seedAuthCode(authCodes, "FRESH_VEG", "蔬菜", 10, true);
+            seedAuthCode(authCodes, "FRESH_FRUIT", "水果", 20, true);
+            seedAuthCode(authCodes, "PACKAGED_FOOD", "预包装食品", 25, true);
+            seedAuthCode(authCodes, "FRESH_DAIRY", "乳制品", 30, false);
+            seedAuthCode(authCodes, "FOOD", "熟食加工", 40, false);
+            seedAuthCode(authCodes, "DAILY", "日用百货", 50, true);
+            seedAuthCode(authCodes, "SERVICE_REPAIR", "维修服务", 60, false);
+            seedAuthCode(authCodes, "HOUSEKEEPING", "家政服务", 65, true);
 
             /*
              * 平台可调参数。真库由各自的迁移灌，这里只服务于**不跑 Flyway 的 H2 测试**。
              * 少了它，机审词表为空 = 全放行，而「命中转人审」那组用例会绿着通过 ——
              * 测试绿而功能没生效，是最坏的一种绿。
              */
-            seedSetting(settingMapper, "store.sensitive-words",
+            seedSetting(settings, "store.sensitive-words",
                     "[\"最低价\",\"全网第一\",\"国家级\",\"绝对\",\"包治\",\"微信\",\"加V\",\"私聊\"]");
-            seedSetting(settingMapper, "review.score-config",
+            seedSetting(settings, "review.score-config",
                     "{\"weightProduct\":50,\"weightFulfill\":30,\"weightService\":20,"
                             + "\"newMerchantProtectDays\":30,\"decayHalfLifeDays\":180}");
             /*
@@ -143,7 +145,7 @@ public class DevSeeder {
              * 的兜底，于是「选 PLATFORM 被拒」那条用例在 H2 上永远失败 ——
              * 而失败的原因看起来会是校验没生效，其实是种子少了一行。
              */
-            seedSetting(settingMapper, "merchant.service-scope-enabled", "[\"COMMUNITY\",\"CITY\"]");
+            seedSetting(settings, "merchant.service-scope-enabled", "[\"COMMUNITY\",\"CITY\"]");
 
             communityMapper.insert(community("C0001", "阳光花园", "杭州市西湖区文一西路 100 号", 30280000, 120100000));
             communityMapper.insert(community("C0002", "翡翠城", "杭州市西湖区文二西路 200 号", 30285000, 120105000));
@@ -286,32 +288,21 @@ public class DevSeeder {
         roleMemberMapper.insert(m);
     }
 
-    private void seedSetting(ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper mapper,
-                             String key, String value) {
-        if (mapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.platform.entity.SysSetting>lambdaQuery()
-                .eq(ai.neargo.shop.platform.entity.SysSetting::getSettingKey, key)) > 0) {
-            return;
+    /** 经统一设置写（sys_setting 只经 SettingService 读写，TDD-基础能力库对齐 1a 守卫）；已配过就不覆盖。 */
+    private void seedSetting(SettingService settings, String key, String value) {
+        if (settings.get(key, null) == null) {
+            settings.put(key, value, "SYSTEM");
         }
-        var row = new ai.neargo.shop.platform.entity.SysSetting();
-        row.setSettingKey(key);
-        row.setSettingValue(value);
-        mapper.insert(row);
     }
 
-    private void seedAuthCode(ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysAuthCodeMapper mapper,
-                              String code, String name, int sort, boolean enabled) {
-        var c = new ai.neargo.shop.merchant.dictionary.entity.SysAuthCode();
-        c.setCode(code);
-        c.setName(name);
-        c.setRequiredQualification(AUTH_QUALIFICATION.get(code));
-        c.setSort(sort);
-        c.setEnabled(enabled);
-        // 同上：真库由 V5 灌，这里只补 H2
-        if (mapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.merchant.dictionary.entity.SysAuthCode>lambdaQuery()
-                .eq(ai.neargo.shop.merchant.dictionary.entity.SysAuthCode::getCode, code)) == 0) {
-            mapper.insert(c);
+    /** 经授权码的维护入口写（sys_auth_code 只归字典属主，TDD-基础能力库对齐 1b 续）；已有就不动。真库由 V5 灌，这里只补 H2 */
+    private void seedAuthCode(AuthCodeAdminService authCodes, String code, String name, int sort, boolean enabled) {
+        if (authCodes.list().stream().anyMatch(c -> code.equals(c.code()))) {
+            return;
+        }
+        authCodes.save(new AuthCodeAdminService.SaveCommand(code, name, AUTH_QUALIFICATION.get(code), sort));
+        if (!enabled) {
+            authCodes.setEnabled(code, false, "DEV-SEED");
         }
     }
 

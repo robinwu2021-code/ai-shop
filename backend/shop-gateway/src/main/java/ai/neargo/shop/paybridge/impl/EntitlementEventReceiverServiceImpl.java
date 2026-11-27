@@ -11,7 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-/** Typed pay facts become a durable core outbox row; no asset or balance is modified by this receiver. */
+/**
+ * Standalone pay pushes its outbox events here after the internal-call check; forwarding goes straight to the
+ * broker for relayed types (no second outbox), otherwise a durable core outbox row. No asset or balance is modified.
+ */
 @Service
 public class EntitlementEventReceiverServiceImpl implements EntitlementEventReceiverService {
     private final OutboxEventBus events;
@@ -22,7 +25,7 @@ public class EntitlementEventReceiverServiceImpl implements EntitlementEventRece
     @Override @Transactional
     public Accepted receive(Envelope envelope) {
         var event = PayEntitlementEventCodec.decode(envelope, json);
-        try { events.publish(event.eventNo(), event); }
+        try { events.forward(event.eventNo(), event); }
         catch (IllegalStateException conflictingFacts) { throw BizException.of(ErrorCode.CONFLICT); }
         return new Accepted(event.eventNo(), true);
     }

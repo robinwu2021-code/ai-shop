@@ -11,6 +11,7 @@ import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.pay.PointsService;
 import ai.neargo.shop.pay.entity.PtsUserAccount;
 import ai.neargo.shop.pay.mapper.SettleMappers;
+import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdOrder;
@@ -61,9 +62,8 @@ class PointsClientSwitchFlowTest {
     @Autowired private PointsService pointsService;
     @Autowired private PointsPort pointsPort;
 
-    @Autowired
-    /** 2026-09-01：这四个设置搬进 pay 自己的表（V285），不再走平台的 sys_setting */
-    private ai.neargo.shop.pay.setting.PaySettingService settingPort;
+    /** 2026-11-27：支付设置并回统一设置（sys_setting），与运营端写的是同一处 */
+    @Autowired private SettingPort settingPort;
 
     @Autowired private SettleMappers.PointsAccountMapper accountMapper;
     @Autowired private PaymentMapper orderMapper;

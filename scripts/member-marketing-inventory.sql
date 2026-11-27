@@ -1,4 +1,4 @@
--- MySQL 9, post-V711, co-located Core and Pay snapshot. Run with a SELECT-only account.
+-- MySQL 9, post-V724, co-located Core and Pay snapshot. Run with a SELECT-only account.
 SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY;
 SELECT DATABASE() AS snapshot_schema, VERSION() AS mysql_version, UTC_TIMESTAMP(3) AS observed_at_utc;

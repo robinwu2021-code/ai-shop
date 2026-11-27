@@ -3,6 +3,7 @@ package ai.neargo.shop.product.service.impl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.dto.OpsCategoryVO;
 import ai.neargo.shop.product.entity.PrdCategory;
@@ -150,7 +151,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     @org.springframework.cache.annotation.CacheEvict(value = {"categoryTree", "categoryType"}, allEntries = true)
     public OpsCategoryVO save(SaveCategoryCommand cmd) {
         if (cmd.name() == null || cmd.name().isBlank()) {
@@ -209,7 +210,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     @org.springframework.cache.annotation.CacheEvict(value = {"categoryTree", "categoryType"}, allEntries = true)
     public OpsCategoryVO archive(String categoryNo) {
         PrdCategory c = byNo(categoryNo);
@@ -261,7 +262,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     @org.springframework.cache.annotation.CacheEvict(value = {"categoryTree", "categoryType"}, allEntries = true)
     public OpsCategoryVO unarchive(String categoryNo) {
         PrdCategory c = byNo(categoryNo);

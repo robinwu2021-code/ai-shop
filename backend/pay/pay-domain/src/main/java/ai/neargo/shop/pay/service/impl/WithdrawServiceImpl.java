@@ -13,7 +13,7 @@ import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.entity.StlWithdraw;
 import ai.neargo.shop.pay.mapper.SettleMappers.WithdrawMapper;
 import ai.neargo.shop.pay.service.WithdrawService;
-import ai.neargo.shop.pay.setting.PaySettingService;
+import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -53,17 +53,17 @@ public class WithdrawServiceImpl implements WithdrawService {
     private final ai.neargo.shop.pay.mapper.SettleMappers.BillMapper billMapper;
     private final MerchantQueryPort merchantPort;
     /** 支付域自己的设置（2026-09-01 从 sys_setting 搬过来，见 V285） */
-    private final PaySettingService paySettings;
+    private final SettingPort settings;
     private final ObjectMapper json;
 
     public WithdrawServiceImpl(WithdrawMapper withdrawMapper,
                                ai.neargo.shop.pay.mapper.SettleMappers.BillMapper billMapper,
                                MerchantQueryPort merchantPort,
-                               PaySettingService paySettings, ObjectMapper json) {
+                               SettingPort settings, ObjectMapper json) {
         this.withdrawMapper = withdrawMapper;
         this.billMapper = billMapper;
         this.merchantPort = merchantPort;
-        this.paySettings = paySettings;
+        this.settings = settings;
         this.json = json;
     }
 
@@ -233,7 +233,7 @@ public class WithdrawServiceImpl implements WithdrawService {
 
     @Override
     public TaxRuleVO taxRule() {
-        return json.readValue(paySettings.get(TAX_RULE_KEY, TAX_RULE_DEFAULT), TaxRuleVO.class);
+        return json.readValue(settings.get(TAX_RULE_KEY, TAX_RULE_DEFAULT), TaxRuleVO.class);
     }
 
     @Override
@@ -250,7 +250,7 @@ public class WithdrawServiceImpl implements WithdrawService {
          */
         TaxRuleVO saved = new TaxRuleVO(threshold, rate,
                 java.time.Instant.now().toString(), operatorNo);
-        paySettings.put(TAX_RULE_KEY, json.writeValueAsString(saved), operatorNo);
+        settings.put(TAX_RULE_KEY, json.writeValueAsString(saved), operatorNo);
         return saved;
     }
 

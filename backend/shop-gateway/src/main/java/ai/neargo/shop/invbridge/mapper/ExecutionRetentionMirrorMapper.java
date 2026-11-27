@@ -1,7 +1,6 @@
 package ai.neargo.shop.invbridge.mapper;
 
 import ai.neargo.shop.invbridge.entity.ExecutionRetentionMirrorEvent;
-import ai.neargo.shop.invbridge.entity.ExecutionRetentionMirrorOwnership;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -22,9 +21,4 @@ public interface ExecutionRetentionMirrorMapper {
         """)
     List<ExecutionRetentionMirrorEvent> candidates(@Param("refs") List<String> refs);
 
-    @Select("""
-        SELECT id,tenant_no,lock_no,source_store_no,source_manifest_hash,confirmation_operation_no,lifecycle_version
-        FROM prd_stock_lock WHERE fulfillment_ref=#{fulfillment} ORDER BY id
-        """)
-    List<ExecutionRetentionMirrorOwnership> fulfillmentOwners(@Param("fulfillment") String fulfillment);
 }

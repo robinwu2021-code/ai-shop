@@ -32,7 +32,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.DishMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.DishService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.food.DishChanged;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import ai.neargo.shop.spi.media.MediaAssetQueryPort;
@@ -58,7 +58,7 @@ public class DishServiceImpl implements DishService {
     private final CatalogCurrencyService currencies;
     private final DishMapper dishes;
     private final ActionLogMapper actions;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final TransactionTemplate transaction;
@@ -69,7 +69,7 @@ public class DishServiceImpl implements DishService {
     private final OptionGroupItemMapper items;
     private final TransactionTemplate readTransaction;
 
-    public DishServiceImpl(DishMapper dishes, ActionLogMapper actions, IdempotencyService idempotency,
+    public DishServiceImpl(DishMapper dishes, ActionLogMapper actions, RequestIdempotencyPort idempotency,
             OutboxPublisher publisher, ObjectMapper json, PlatformTransactionManager manager,
             GoodsCatalogQueryPort catalog, DishOptionGroupMapper bindings, OptionGroupMapper groups,
             OptionGroupItemMapper items) {
@@ -77,7 +77,7 @@ public class DishServiceImpl implements DishService {
                 (entity, store, keys) -> { throw new IllegalStateException("Media ownership authority unavailable"); });
     }
 
-    public DishServiceImpl(DishMapper dishes, ActionLogMapper actions, IdempotencyService idempotency,
+    public DishServiceImpl(DishMapper dishes, ActionLogMapper actions, RequestIdempotencyPort idempotency,
             OutboxPublisher publisher, ObjectMapper json, PlatformTransactionManager manager,
             GoodsCatalogQueryPort catalog, DishOptionGroupMapper bindings, OptionGroupMapper groups,
             OptionGroupItemMapper items, MediaAssetQueryPort media) {
@@ -86,7 +86,7 @@ public class DishServiceImpl implements DishService {
     }
 
     /** Currency-aware wiring keeps legacy construction and original command semantics available. */
-    public DishServiceImpl(DishMapper dishes, ActionLogMapper actions, IdempotencyService idempotency,
+    public DishServiceImpl(DishMapper dishes, ActionLogMapper actions, RequestIdempotencyPort idempotency,
             OutboxPublisher publisher, ObjectMapper json, PlatformTransactionManager manager,
             GoodsCatalogQueryPort catalog, DishOptionGroupMapper bindings, OptionGroupMapper groups,
             OptionGroupItemMapper items, MediaAssetQueryPort media,

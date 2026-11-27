@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.service.support.BusinessCommandJournal;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -31,7 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.TreeMap;
 
-@Transactional(transactionManager = "transactionManager")
+@Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
 public class FoodFeeSourceServiceImpl implements FoodFeeSourceService, FoodFeeSourceLifecycle {
     private final FoodBusinessOperationsMapper mapper;
     private final ObjectMapper json;

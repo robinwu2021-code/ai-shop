@@ -25,6 +25,23 @@ public final class ModuleDataSources {
      * 没绑定时落到支付域现有的那一组（{@code payDataSource} 等），不是主库 —— 见 {@link #unboundTarget}。
      */
     public static final String PAY_MERCHANT = "payMerchant";
+    /**
+     * 门店交易库上的交易模块：商品、门店目录与可售、收银与下单、订单与售后、履约、渠道、预约与资源。
+     * 这些子模块同在一个库、下单等事务里互相写，共用一个句柄。哪些 Mapper 归它，看 {@link TradeTableMapper}。
+     */
+    public static final String TRADE = "trade";
+    /**
+     * 行业库上的行业模块：餐饮的桌台、工位、出品单、厨显、人头权益、宴会、排队、寄存、服务交接，
+     * 美业的服务执行，以及两个行业共用的门店经营策略、提成规则（ADR-068）。代码在行业插件里，
+     * 各插件的持久化配置按 {@link IndustryTableMapper} 收到这个句柄上。
+     */
+    public static final String INDUSTRY = "industry";
+
+    /**
+     * 基础能力库上的公共能力：权限（运营端角色、功能点、接口资源），以及随后收进来的审计、设置、发号、字典、审批、开放应用
+     * （TDD-基础能力库对齐 Q2：独立句柄，未绑定时指向主库）。哪些 Mapper 归它，看 {@link CommonTableMapper}。
+     */
+    public static final String COMMON = "common";
 
     /** 储值和权益共用核销、事件、编号与发行账簿。 */
     public static final String MEMBER_MARKETING_MAPPER_PATTERN = "ai\\.neargo\\.shop\\.pay\\.mapper\\.(entitlement|storedvalue)\\..*";
@@ -46,9 +63,19 @@ public final class ModuleDataSources {
     public static final String PLATFORM_TX_MANAGER = "platformTxManager";
     public static final String PLATFORM_DATA_SOURCE = "platformDataSource";
     public static final String PLATFORM_SQL_SESSION_FACTORY = "platformSqlSessionFactory";
+    public static final String TRADE_TX_MANAGER = "tradeTxManager";
+    public static final String TRADE_DATA_SOURCE = "tradeDataSource";
+    public static final String TRADE_SQL_SESSION_FACTORY = "tradeSqlSessionFactory";
+    public static final String INDUSTRY_TX_MANAGER = "industryTxManager";
+    public static final String INDUSTRY_DATA_SOURCE = "industryDataSource";
+    public static final String INDUSTRY_SQL_SESSION_FACTORY = "industrySqlSessionFactory";
+    public static final String COMMON_TX_MANAGER = "commonTxManager";
+    public static final String COMMON_DATA_SOURCE = "commonDataSource";
+    public static final String COMMON_SQL_SESSION_FACTORY = "commonSqlSessionFactory";
 
     /** 守卫测试也读这份清单；常量名与这里的规则对不上会在那里变红。 */
-    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT, MEMBER_MARKETING);
+    public static final List<String> MODULES = List.of(
+            INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, INDUSTRY, COMMON, MEMBER_MARKETING);
 
     private ModuleDataSources() {
     }

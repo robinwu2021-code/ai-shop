@@ -64,7 +64,7 @@ import ai.neargo.shop.food.policy.PublicationDocuments;
 import ai.neargo.shop.food.policy.RecipePublicationDocuments;
 import ai.neargo.shop.food.policy.RecipePublicationSource;
 import ai.neargo.shop.food.service.ConfigRevisionService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.food.ConfigPublished;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort.MaterialFact;
@@ -104,7 +104,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
     private final OptionGroupMapper groups;
     private final OptionGroupItemMapper items;
     private final ActionLogMapper actions;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final GoodsCatalogQueryPort goods;
@@ -123,7 +123,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
 
     public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
             ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort goods, SpecValueCatalogQueryPort specs) {
         this(revisions, modifiers, components, groups, items, actions, idem, publisher, json,
                 manager, goods, specs, Clock.systemUTC());
@@ -131,7 +131,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
 
     public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
             ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort goods, SpecValueCatalogQueryPort specs,
             Clock clock) {
         this(revisions, modifiers, components, groups, items, actions, idem, publisher, json,
@@ -140,7 +140,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
 
     public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
             ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort goods, SpecValueCatalogQueryPort specs,
             Clock clock, BundlePublicationSource bundles) {
         this(revisions, modifiers, components, groups, items, actions, idem, publisher, json, manager,
@@ -149,7 +149,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
 
     public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
             ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort goods, SpecValueCatalogQueryPort specs,
             Clock clock, BundlePublicationSource bundles, RecipePublicationSource recipes,
             MaterialCatalogQueryPort materials) {
@@ -159,7 +159,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
 
     public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
             ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort goods, SpecValueCatalogQueryPort specs,
             Clock clock, BundlePublicationSource bundles, RecipePublicationSource recipes,
             MaterialCatalogQueryPort materials, MenuPublicationSource menus, StationPublicationSource stations,
@@ -170,7 +170,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
 
     public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
             ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort goods, SpecValueCatalogQueryPort specs,
             Clock clock, BundlePublicationSource bundles, RecipePublicationSource recipes,
             MaterialCatalogQueryPort materials, MenuPublicationSource menus, StationPublicationSource stations,
@@ -183,7 +183,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
     /** Currency-aware wiring keeps legacy construction and original command semantics available. */
     public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
             ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort goods, SpecValueCatalogQueryPort specs,
             Clock clock, BundlePublicationSource bundles, RecipePublicationSource recipes,
             MaterialCatalogQueryPort materials, MenuPublicationSource menus, StationPublicationSource stations,

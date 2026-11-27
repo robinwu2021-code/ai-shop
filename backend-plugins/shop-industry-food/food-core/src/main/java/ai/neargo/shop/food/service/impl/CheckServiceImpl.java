@@ -5,6 +5,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
@@ -50,7 +51,7 @@ import ai.neargo.shop.food.policy.TableResourceLocks;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.StoreOperationService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.food.CheckChanged;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -110,7 +111,7 @@ public class CheckServiceImpl implements CheckService {
     private final GuestSessionMapper sessions;
     private final ActionLogMapper actions;
     private final StoreOperationService policies;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final TransactionTemplate tx;
@@ -127,10 +128,10 @@ public class CheckServiceImpl implements CheckService {
             GuestSessionMapper sessions,
             ActionLogMapper actions,
             StoreOperationService policies,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this(
                 checks,
                 areas,
@@ -159,10 +160,10 @@ public class CheckServiceImpl implements CheckService {
             GuestSessionMapper sessions,
             ActionLogMapper actions,
             StoreOperationService policies,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ReservationTableMapper reservationTables) {
         this.reservationTables = reservationTables;
         this.checks = checks;
@@ -349,7 +350,7 @@ public class CheckServiceImpl implements CheckService {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public PageData<CheckVO> listChecks(String entity, String store, ListChecksQuery query) {
         scope(entity, store);
         int page = page(query == null ? null : query.page());
@@ -377,7 +378,7 @@ public class CheckServiceImpl implements CheckService {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public CheckDetailVO getCheck(String entity, String store, String number) {
         scope(entity, store);
         id(number);
@@ -687,7 +688,7 @@ public class CheckServiceImpl implements CheckService {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public OperationResultVO getTableOperation(String entity, String store, String operation) {
         scope(entity, store);
         id(operation);
@@ -723,7 +724,7 @@ public class CheckServiceImpl implements CheckService {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public PageData<ActionLogVO> listActions(
             String entity, String store, String number, ListCheckActionsQuery query) {
         scope(entity, store);

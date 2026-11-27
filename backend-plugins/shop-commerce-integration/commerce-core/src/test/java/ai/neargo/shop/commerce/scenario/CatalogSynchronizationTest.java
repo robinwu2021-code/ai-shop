@@ -257,7 +257,7 @@ class CatalogSynchronizationTest {
         var gateway = new Gateway();
         var runner =
                 new ApplicationContextRunner()
-                        .withUserConfiguration(PrimaryPersistenceConfiguration.class)
+                        .withUserConfiguration(PrimaryPersistenceConfiguration.class, CommerceModuleHandles.class)
                         .withConfiguration(
                                 AutoConfigurations.of(CommerceCoreAutoConfiguration.class))
                         .withBean(Source.class, () -> source)

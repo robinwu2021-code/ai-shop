@@ -1,13 +1,13 @@
 package ai.neargo.shop.trade.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntServiceOrder;
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-public interface EntitlementServiceOrderMapper extends BaseMapper<OrdEntServiceOrder> {
+public interface EntitlementServiceOrderMapper extends TradeTableMapper<OrdEntServiceOrder> {
     @Select("SELECT * FROM ord_ent_service_order WHERE tenant_no=#{tenant} AND service_order_no=#{no} AND deleted=0")
     @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
     OrdEntServiceOrder find(@Param("tenant") String tenant, @Param("no") String no);

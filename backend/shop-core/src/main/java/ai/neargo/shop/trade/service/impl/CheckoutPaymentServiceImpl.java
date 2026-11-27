@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.settle.PaymentOperationPort;
 import ai.neargo.shop.spi.settle.PaymentOperationPort.PaymentOperationReq;
 import ai.neargo.shop.spi.settle.PaymentOperationPort.PaymentOperationView;
@@ -70,7 +71,7 @@ public class CheckoutPaymentServiceImpl implements CheckoutPaymentService {
             PaymentOperationPort payments,
             ObjectMapper json,
             CheckoutClock clock,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.access = access;
         this.operations = operations;
         this.requests = requests;

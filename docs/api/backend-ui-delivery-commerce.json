@@ -33,16 +33,6 @@
     {
       "app": "b-app",
       "method": "POST",
-      "path": "/biz/stores/{storeNo}/mall/orders/{orderNo}/refund-previews"
-    },
-    {
-      "app": "b-app",
-      "method": "POST",
-      "path": "/biz/stores/{storeNo}/mall/orders/{orderNo}/refunds"
-    },
-    {
-      "app": "b-app",
-      "method": "POST",
       "path": "/biz/stores/{storeNo}/mall/quotes"
     },
     {

@@ -21,7 +21,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.ServiceCalendarPolicy;
 import ai.neargo.shop.food.service.StoreOperationService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.food.ServiceCalendarSaved;
 import ai.neargo.shop.spi.food.StorePolicyPublished;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -57,7 +57,7 @@ public class StoreOperationServiceImpl implements StoreOperationService {
     private final StorePolicyMapper policies;
     private final ServiceCalendarMapper calendars;
     private final ActionLogMapper actions;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final TransactionTemplate transaction;
@@ -67,7 +67,7 @@ public class StoreOperationServiceImpl implements StoreOperationService {
     @Autowired
     public StoreOperationServiceImpl(StorePolicyMapper policies, ActionLogMapper actions,
             ServiceCalendarMapper calendars,
-            IdempotencyService idempotency, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+            RequestIdempotencyPort idempotency, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this(policies, actions, calendars, idempotency, publisher, json, manager, Clock.systemUTC());
     }
@@ -75,7 +75,7 @@ public class StoreOperationServiceImpl implements StoreOperationService {
     /** Explicit clock keeps reads deterministic; publication effective time always comes from the typed request. */
     public StoreOperationServiceImpl(StorePolicyMapper policies, ActionLogMapper actions,
             ServiceCalendarMapper calendars,
-            IdempotencyService idempotency, OutboxPublisher publisher, ObjectMapper json,
+            RequestIdempotencyPort idempotency, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, Clock clock) {
         this.policies = policies;
         this.calendars = calendars;

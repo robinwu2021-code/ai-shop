@@ -31,7 +31,7 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.TableService;
 import ai.neargo.shop.food.mapper.ReservationTableMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -59,20 +59,20 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class TableServiceImpl implements TableService {
     private final TableAreaMapper areas;
     private final ActionLogMapper actions;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final TransactionTemplate transaction;
     private final TransactionTemplate tableTransaction;
     private final TableMapper tables;
     private final ReservationTableMapper reservationTables;
 
     public TableServiceImpl(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
-            IdempotencyService idempotency,
+            RequestIdempotencyPort idempotency,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this(areas, tables, actions, idempotency, manager, null);
     }
     @Autowired
     public TableServiceImpl(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
-            IdempotencyService idempotency, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            RequestIdempotencyPort idempotency, @Qualifier("transactionManager") PlatformTransactionManager manager,
             ReservationTableMapper reservationTables) {
         this.reservationTables = reservationTables;
         this.areas = areas;

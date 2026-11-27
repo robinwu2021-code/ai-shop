@@ -6,6 +6,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.ExpressCompanies;
 import ai.neargo.shop.common.PayModes;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.fulfillment.ExpressPickupPort;
 import ai.neargo.shop.spi.platform.PlatformSwitchPort;
 import ai.neargo.shop.spi.user.MerchantDebtPort;
@@ -71,7 +72,7 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
     private TransactionTemplate tx;
 
     @Autowired
-    public void setTransactionManager(@Qualifier("transactionManager") PlatformTransactionManager manager) {
+    public void setTransactionManager(@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.tx = new TransactionTemplate(manager);
     }
 

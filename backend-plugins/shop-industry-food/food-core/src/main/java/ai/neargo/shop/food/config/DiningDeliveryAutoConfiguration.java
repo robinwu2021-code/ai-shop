@@ -2,6 +2,7 @@ package ai.neargo.shop.food.config;
 
 import ai.neargo.common.data.scope.DataScopeRegistrar;
 import ai.neargo.shop.auth.ScopeDim;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.DiningDeliveryMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper;
 import ai.neargo.shop.food.service.CheckCartService;
@@ -32,7 +33,7 @@ public class DiningDeliveryAutoConfiguration {
             CheckCartMapper cartRows,
             DiningDeliveryMapper addresses,
             ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new DiningDeliveryServiceImpl(
                 carts, cartRows, addresses, json, manager, Clock.systemUTC());
     }

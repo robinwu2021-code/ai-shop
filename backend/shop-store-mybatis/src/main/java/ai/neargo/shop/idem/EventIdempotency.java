@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
  * events.once(event.eventNo(), "settle-bill", () -> settleService.generateForOrder(orderNo));
  * }</pre>
  *
- * <h2>与 {@link IdempotencyService} 的区别 —— 刻意不合并</h2>
+ * <h2>与接口级防重 {@code RequestIdempotencyPort} 的区别 —— 刻意不合并</h2>
  * 那一个是<b>接口级</b>的：键是客户端传来的 {@code Idempotency-Key} + 端点，
  * 服务的是「用户手滑点了两次提交」，并存 {@code result_json} 供重放时原样返回。
  * 这一个是<b>域内事件级</b>的：键是事件号 + 消费者名，不存结果 ——

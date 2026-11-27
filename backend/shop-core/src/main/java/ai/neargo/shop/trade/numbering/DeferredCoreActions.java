@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.numbering;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.AfterCommit;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.springframework.aop.support.DefaultPointcutAdvisor;
@@ -21,7 +22,7 @@ import java.util.Set;
 @Component
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 public class DeferredCoreActions extends DefaultPointcutAdvisor {
-    public DeferredCoreActions(@Qualifier("transactionManager") PlatformTransactionManager manager) {
+    public DeferredCoreActions(@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         var scanBoundary = new TransactionTemplate(manager);
         scanBoundary.setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
         setOrder(Ordered.HIGHEST_PRECEDENCE);

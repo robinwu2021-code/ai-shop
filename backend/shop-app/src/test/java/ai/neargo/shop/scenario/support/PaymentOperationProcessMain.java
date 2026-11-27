@@ -49,8 +49,7 @@ public final class PaymentOperationProcessMain {
                                 "--server.port=0",
                                 "--spring.main.allow-bean-definition-overriding=true",
                                 "--spring.security.user.password=isolated-process-test-only",
-                                "--shop.member-code.enabled=true",
-                                "--shop.catalog.publication.archive-only=true")) {
+                                "--shop.member-code.enabled=true")) {
             if (!(app.getBean(TestPayGateway.class) instanceof LoopbackTestGateway)) {
                 throw new IllegalStateException("isolated loopback gateway is not active");
             }

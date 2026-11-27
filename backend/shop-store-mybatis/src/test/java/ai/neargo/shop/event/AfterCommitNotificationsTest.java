@@ -84,6 +84,26 @@ class AfterCommitNotificationsTest {
     }
 
     @Test
+    @DisplayName("配了中间件：提交后发给中间件而不是本地调消费者；中间件暂时不可用就重试，用尽只记日志")
+    void brokerReceivesAfterCommitWithRetry() {
+        var n = notifications(notify);
+        var broker = mock(ai.neargo.shop.event.broker.MessageBroker.class);
+        org.mockito.Mockito.doThrow(new ai.neargo.shop.event.broker.BrokerException("down"))
+                .doNothing().when(broker).publish(org.mockito.ArgumentMatchers.any());
+        var props = new ai.neargo.shop.event.broker.BrokerProperties();
+        props.setSendBackoffMillis(0);
+        n.setBroker(broker);
+        n.setBrokerProperties(props);
+        TransactionSynchronizationManager.initSynchronization();
+        n.publish(new Arrived("O4"));
+        org.mockito.Mockito.verifyNoInteractions(broker);
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        org.mockito.Mockito.verify(broker, org.mockito.Mockito.times(2)).publish(org.mockito.ArgumentMatchers.argThat(
+                m -> m.eventType().equals("ORDER_ARRIVED") && m.aggregateId().equals("O4") && m.eventNo() != null));
+        assertThat(seen).as("交给中间件，不再本地调").isEmpty();
+    }
+
+    @Test
     @DisplayName("回滚了就不发")
     void rollbackSendsNothing() {
         var n = notifications(notify);

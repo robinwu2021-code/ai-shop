@@ -97,6 +97,19 @@ public class OpsPlanPurchaseController {
     return service.order(actor(entityNo), orderNo);
   }
 
+  @GetMapping("/{orderNo}/refund-review")
+  @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
+  public RefundReview refundReview(@PathVariable String entityNo, @PathVariable String orderNo) {
+    return service.refundReview(actor(entityNo), orderNo);
+  }
+
+  @PostMapping("/{orderNo}/refund-review")
+  @PreAuthorize("@perm.can('commerce:refund:review') and @perm.can('" + Perms.MERCHANT_BAN + "')")
+  public RefundReview closeRefundReview(@PathVariable String entityNo, @PathVariable String orderNo,
+      @Valid @RequestBody CloseRefundReview command) {
+    return service.closeRefundReview(actor(entityNo), orderNo, command);
+  }
+
   @PostMapping("/{orderNo}/confirm")
   @PreAuthorize(
       "@perm.can('commerce:mall:offline:confirm') and @perm.can('" + Perms.MERCHANT_BAN + "')")

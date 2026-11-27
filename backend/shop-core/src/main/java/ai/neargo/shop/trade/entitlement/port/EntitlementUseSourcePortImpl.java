@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.entitlement.port;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.promotion.CouponCalculation;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseItem;
@@ -62,7 +63,7 @@ public class EntitlementUseSourcePortImpl implements EntitlementUseSourcePort {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public UseSourceFact resolve(EntitlementContext context, SourceRef source) {
         if (source != null && "CORE".equals(source.sourceSystem()) && "SERVICE_USE".equals(source.sourceType())) {
             return serviceOrders.getObject().source(context, source);

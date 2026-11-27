@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
@@ -105,24 +106,24 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         if (key == null || key.isBlank() || key.length() > 128) badRequest();
         return operationNo(orderNo(ctx, entity, key, json));
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot create(EntitlementContext ctx, String entity, ServiceOrderCreate c, String key) {
         return createInternal(ctx, entity, c.storeNo(), c.items(), key, hash(json.writeValueAsString(c)), false,
                 () -> customers.resolveReference(ctx,
                         new ReferenceQuery(entity, c.storeNo(), c.customerRef())).userNo());
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot createMonetary(EntitlementContext ctx, String entity, ServiceOrderCreate c, String key) {
         return createInternal(ctx, entity, c.storeNo(), c.items(), key,
                 hash(json.writeValueAsString(List.of("STORED_VALUE", c))), true,
                 () -> customers.resolveReference(ctx, new ReferenceQuery(entity, c.storeNo(), c.customerRef())).userNo());
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot createMonetarySelected(EntitlementContext ctx,String entity,ServiceOrderCreate c,String key,String walletFingerprint){
         ai.neargo.shop.spi.entitlement.ContractChecks.hash(walletFingerprint);
         return createInternal(ctx,entity,c.storeNo(),c.items(),key,hash(json.writeValueAsString(List.of("STORED_VALUE_SELECTED",c,walletFingerprint))),true,()->customers.resolveReference(ctx,new ReferenceQuery(entity,c.storeNo(),c.customerRef())).userNo());
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot createIdentified(EntitlementContext ctx, String entity,
                                                  ServiceOrderIdentifiedCreate c, String key) {
         return createInternal(ctx, entity, c.storeNo(), c.items(), key, hash(json.writeValueAsString(c)), false,
@@ -217,7 +218,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
                 || !row.getEntityNo().equals(store.entityNo())) notFound();
         return view.fact();
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot bindPreview(EntitlementContext ctx, String entity, String store, String no,
                                             AssetKind kind, PreviewView preview, LocalDate day) {
         var row = lock(ctx.tenantNo(), no); merchant(row, ctx, entity, store);
@@ -234,7 +235,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
                 preview.snapshotHash(), 0, view.fact().currency(), preview.expiresAt());
         return snapshot(row, json);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot bindMoneyPreview(EntitlementContext ctx, String entity, String store, String no,
                                                  Quote quote) {
         var row = lock(ctx.tenantNo(), no); merchant(row, ctx, entity, store); var view = snapshot(row, json);
@@ -256,7 +257,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
                 bounded.amountMinor(), bounded.currency(), expiry);
         return snapshot(row, json);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot stage(EntitlementContext ctx, String entity, String store, ServiceUseSubmit c) {
         var row = lock(ctx.tenantNo(), c.serviceOrderNo()); merchant(row, ctx, entity, store);
         var view = snapshot(row, json); var binding = view.preview();
@@ -298,7 +299,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         events.publish(new UsePrepared(ctx.tenantNo(), entity, row.getOperationNo()));
         return snapshot(row, json);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot accept(EntitlementContext ctx, String entity, UseFact fact) {
         var known = orders.findOperation(ctx.tenantNo(), fact.operation().operationNo());
         if (known == null || !entity.equals(known.getEntityNo())) notFound();
@@ -316,7 +317,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         if (!"PENDING".equals(row.getStatus())) conflict();
         decide(row, view, true, null); return snapshot(row, json);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot cancel(EntitlementContext ctx, String entity, String store, String no, String reason) {
         if (reason == null || reason.isBlank() || reason.length() > 100) badRequest();
         var row = lock(ctx.tenantNo(), no); merchant(row, ctx, entity, store); var view = snapshot(row, json);
@@ -324,7 +325,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         if (!Set.of("CREATED", "PREVIEWED", "AUTHORIZED", "PENDING").contains(row.getStatus())) conflict();
         decide(row, view, false, reason); return snapshot(row, json);
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void acknowledge(EntitlementContext ctx, String entity, HoldView result) {
         var known = orders.findOperation(ctx.tenantNo(), result.operationNo());
         if (known == null || !entity.equals(known.getEntityNo())) notFound();

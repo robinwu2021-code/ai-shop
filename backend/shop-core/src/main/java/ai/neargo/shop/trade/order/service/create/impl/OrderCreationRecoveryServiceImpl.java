@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.service.create.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
 import ai.neargo.shop.spi.product.StockDispositionContract;
 import ai.neargo.shop.spi.product.StockDispositionPort.Original;
@@ -241,7 +242,7 @@ public class OrderCreationRecoveryServiceImpl implements OrderCreationRecoverySe
     }
 
     public OrderCreationRecoveryServiceImpl(CreateIntentMapper intents, PaymentMapper payments, StockPort stock,
-            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ObjectMapper json, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             @Value("${shop.inventory.stock-authority:PLATFORM}") String authority) {
         this.intents = intents;
         this.payments = payments;

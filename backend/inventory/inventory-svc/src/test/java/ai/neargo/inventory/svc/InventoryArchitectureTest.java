@@ -23,8 +23,19 @@ class InventoryArchitectureTest {
     void inventoryDoesNotDependOnShopCode() {
         noClasses().that().resideInAPackage("ai.neargo.inventory..")
                 .should().dependOnClassesThat().resideInAnyPackage(
-                        "ai.neargo.shop..", "ai.neargo.secret..", "ai.neargo.job.core..", "ai.neargo.job.store..")
-                .because("进销存是独立服务，白名单只有 neargo 框架、job-api 与 svc-client（TDD §2.1）")
+                        "ai.neargo.shop..", "ai.neargo.job.core..", "ai.neargo.job.store..")
+                .because("进销存是独立服务，白名单只有 neargo 框架、job-api、svc-client 与密钥模块（TDD §2.1；Q18）")
+                .check(INVENTORY);
+    }
+
+    @Test
+    void onlyTheProcessWiresTheSecretModule() {
+        // 开放凭证进密钥库（TDD-基础能力库对齐「1h 开放应用」Q18）：领域只认契约 CredentialVerifier，
+        // 实现与持久层只在独立进程的装配里出现（内嵌时由 ai-shop 装）
+        noClasses().that().resideOutsideOfPackage("ai.neargo.inventory.svc..")
+                .and().resideInAPackage("ai.neargo.inventory..")
+                .should().dependOnClassesThat().resideInAnyPackage("ai.neargo.secret.core..", "ai.neargo.secret.store..")
+                .because("领域不知道密钥库在哪、怎么连；宿主决定")
                 .check(INVENTORY);
     }
 

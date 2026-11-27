@@ -85,12 +85,10 @@ import javax.sql.DataSource;
         properties = {
             "spring.datasource.url=${CHECKOUT_NATIVE_MYSQL_URL:jdbc:h2:mem:manual-source;MODE=MySQL}",
             "shop.member-code.enabled=true",
-            "shop.catalog.publication.archive-only=true",
             "shop.member.guest.credential-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             "shop.beauty.enabled=true",
             "shop.beauty.deployment=embedded",
             "shop.beauty.migration.mode=migrate",
-            "shop.beauty.publication.archive-only=true",
             "shop.inventory.enabled=true",
             "shop.inventory.flyway-enabled=false",
             "shop.inventory.datasource.url=${MANUAL_INVENTORY_MYSQL_URL}",

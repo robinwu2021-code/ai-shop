@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.order.service.receipt.impl;
 
 import ai.neargo.shop.common.Fulfillments;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.logistics.LogisticsPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.entity.OrdShipment;
@@ -44,7 +45,7 @@ public class OrderReceiptCompleterImpl implements OrderReceiptCompleter {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public boolean completeAuto(String subOrderNo, long now, int shippedDays, int signedDays) {
         if (shippedDays <= 0) {
             return false;
@@ -67,7 +68,7 @@ public class OrderReceiptCompleterImpl implements OrderReceiptCompleter {
     }
 
     @Override
-    @Transactional(propagation = Propagation.MANDATORY, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.MANDATORY, isolation = Isolation.READ_COMMITTED)
     public boolean completeSigned(String subOrderNo, String shipmentNo, long signedAt, String source) {
         OrdSubOrder order = read.findOrder(subOrderNo);
         if (order == null || !OrdSubOrder.FULFILLING.equals(order.getStatus())

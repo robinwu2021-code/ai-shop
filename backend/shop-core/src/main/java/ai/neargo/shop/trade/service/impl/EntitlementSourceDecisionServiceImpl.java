@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntSourceDecision;
@@ -29,7 +30,7 @@ public class EntitlementSourceDecisionServiceImpl implements EntitlementSourceDe
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public DecisionRef record(String tenantNo, SourceRef source, String purpose, DecisionRef.DecisionType type,
             String authorizationRef, String paidFactRef, String userNo, String entityNo, String storeNo,
             String currency, long amountMinor, String snapshotHash, Instant occurredAt) {

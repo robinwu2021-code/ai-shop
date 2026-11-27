@@ -79,3 +79,8 @@ ReportSourceFactsPort	2
 StatementNoticePort	5
 StoreDirectoryPort	4
 UserInboxPort	4
+# 2026-11-27 新登记 7（TDD-基础能力库对齐 1c）：支付的 pay_setting 并入统一设置 sys_setting（设计归基础能力库），
+# 结算（开票抬头）与提现（个税规则）改经 SettingPort 读写：两个类各 import / 字段 / 构造参数 3，加 pay-svc 待远程桩 1。
+# 这不是 pay → 业务：设置是公共能力，pay-svc 独立时接基础能力库的句柄（common），不是补 HTTP 客户端。
+# 之前分两张表、同一个键两处读写，出过「运营改了、支付读不到」的缺陷（见 SettingKeyOwnershipTest）。
+SettingPort	7

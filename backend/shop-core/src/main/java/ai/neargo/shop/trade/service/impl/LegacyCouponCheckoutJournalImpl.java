@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.trade.service.LegacyCouponBoundOrderService;
 import ai.neargo.shop.trade.dto.OrderVO;
@@ -127,7 +128,7 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
             return Optional.ofNullable(latestReversal(row));
         }));
     }
-    @Override @Transactional(propagation=Propagation.MANDATORY)
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation=Propagation.MANDATORY)
     public CheckoutFact bind(EntitlementContext ctx,String no,String user,String commandHash,List<MerchantGroup> actual,
                      LegacyCouponUsePort.Operation held) {
         check(ctx,no);return scoped(()->{
@@ -140,7 +141,7 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
             return fact;
         });
     }
-    @Override @Transactional(propagation=Propagation.MANDATORY)
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation=Propagation.MANDATORY)
     public Decision commit(EntitlementContext ctx,String no,String orderNo,LegacyCouponUsePort.Operation held) {
         check(ctx,no);ContractChecks.id(orderNo);return scoped(()->{
             var row=load(ctx,no,true);var fact=fact(row);same(actor(row),ctx.actorNo());verifyHeld(fact,held);
@@ -163,7 +164,7 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
             events.publish(new LegacyCouponCheckoutEvents.Decided(ctx.tenantNo(),fact.entityNo(),no,fact.operationNo()));return d;
         });
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public boolean returnCancelledOrder(EntitlementContext ctx,String orderNo) {
         check(ctx,orderNo);return scoped(()->{
             var row=rows.lockByOrder(ctx.tenantNo(),orderNo);

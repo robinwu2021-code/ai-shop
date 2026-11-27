@@ -9290,6 +9290,42 @@
           "ar": "عنوان الشحن"
         },
         {
+          "key": "bizMall.afterSale.quantity",
+          "zh-CN": "申请件数",
+          "en": "Quantity to refund",
+          "ar": "الكمية للاسترداد"
+        },
+        {
+          "key": "bizMall.afterSale.reason",
+          "zh-CN": "退款原因",
+          "en": "Reason for refund",
+          "ar": "سبب الاسترداد"
+        },
+        {
+          "key": "bizMall.afterSale.sent",
+          "zh-CN": "已提交退款申请",
+          "en": "Refund request submitted",
+          "ar": "تم إرسال طلب الاسترداد"
+        },
+        {
+          "key": "bizMall.afterSale.shipped",
+          "zh-CN": "已发 {shipped} 件，可退 {left} 件",
+          "en": "{shipped} shipped, {left} eligible",
+          "ar": "شُحن {shipped}، والمتاح للاسترداد {left}"
+        },
+        {
+          "key": "bizMall.afterSale.submit",
+          "zh-CN": "提交申请（现金上限 {amount}）",
+          "en": "Submit request (up to {amount})",
+          "ar": "إرسال الطلب (حتى {amount})"
+        },
+        {
+          "key": "bizMall.afterSale.title",
+          "zh-CN": "申请售后退款",
+          "en": "Request a refund",
+          "ar": "طلب استرداد"
+        },
+        {
           "key": "bizMall.checkout.days",
           "zh-CN": "{n} 天",
           "en": "{n} days",
@@ -9342,6 +9378,18 @@
           "zh-CN": "商品总额",
           "en": "Total",
           "ar": "الإجمالي"
+        },
+        {
+          "key": "bizMall.checkout.upgradeCredit",
+          "zh-CN": "套餐升级抵扣",
+          "en": "Plan upgrade credit",
+          "ar": "رصيد ترقية الباقة"
+        },
+        {
+          "key": "bizMall.checkout.upgradeHint",
+          "zh-CN": "升级后，原套餐剩余期限将按报价折算抵扣。",
+          "en": "Upgrading converts the remaining term of your current plan into credit at the quoted value.",
+          "ar": "عند الترقية تُحتسب المدة المتبقية من باقتك الحالية كرصيد وفق عرض السعر."
         },
         {
           "key": "bizMall.claim.bankReference",
@@ -9602,6 +9650,12 @@
           "ar": "باقة"
         },
         {
+          "key": "bizMall.order.awaitingShipment",
+          "zh-CN": "待发货",
+          "en": "Awaiting shipment",
+          "ar": "بانتظار الشحن"
+        },
+        {
           "key": "bizMall.order.createdAt",
           "zh-CN": "下单时间",
           "en": "Ordered at",
@@ -9680,6 +9734,12 @@
           "ar": "الدفع بالتحويل البنكي"
         },
         {
+          "key": "bizMall.pay.transferRemark",
+          "zh-CN": "转账附言（订单号）",
+          "en": "Transfer reference (order number)",
+          "ar": "مرجع التحويل (رقم الطلب)"
+        },
+        {
           "key": "bizMall.payment.CANCEL_PENDING",
           "zh-CN": "取消处理中",
           "en": "Cancelling",
@@ -9714,6 +9774,12 @@
           "zh-CN": "待付款",
           "en": "Awaiting payment",
           "ar": "بانتظار الدفع"
+        },
+        {
+          "key": "bizMall.store.buy",
+          "zh-CN": "购买",
+          "en": "Buy",
+          "ar": "شراء"
         },
         {
           "key": "bizMall.store.cannotProcure",
@@ -36125,13 +36191,6 @@
       "package": "ai.neargo.inventory.domain.entity"
     },
     {
-      "table": "inv_open_credential",
-      "class": "InvOpenCredential",
-      "zh": "Open API 凭证：服务端到服务端，不复用给人用的令牌",
-      "module": "inventory",
-      "package": "ai.neargo.inventory.domain.entity"
-    },
-    {
       "table": "inv_outbound_line",
       "class": "InvOutboundLine",
       "zh": "出库单行",
@@ -37707,13 +37766,6 @@
       "package": "ai.neargo.shop.pay.entity"
     },
     {
-      "table": "pay_setting",
-      "class": "PaySetting",
-      "zh": "支付域自己的设置（V285）。",
-      "module": "pay/pay-domain",
-      "package": "ai.neargo.shop.pay.entity"
-    },
-    {
       "table": "pay_terminal",
       "class": "PayTerminal",
       "zh": "pay_terminal（db/pay V16 · pay-guard 开发计划 M6.1）：刷卡机终端（自研 App）：绑定收款商户与门店。",
@@ -38820,13 +38872,6 @@
       "package": "ai.neargo.shop.platform.perm.entity"
     },
     {
-      "table": "sys_sequence",
-      "class": "SysSequence",
-      "zh": "号段序列（ADR-035）。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.trade.entity"
-    },
-    {
       "table": "sys_setting",
       "class": "SysSetting",
       "zh": "平台可调参数：一行一组，值是 JSON。",
@@ -39397,6 +39442,34 @@
         "module": "inventory"
       },
       {
+        "host": "CredentialOwnerType",
+        "name": "OWNER",
+        "value": "INV_OWNER",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "CredentialOwnerType",
+        "name": "SYSTEM",
+        "value": "INVENTORY_SYSTEM",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "CredentialStatus",
+        "name": "ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "CredentialStatus",
+        "name": "REVOKED",
+        "value": "REVOKED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
         "host": "DataSource",
         "name": "OWN",
         "value": "OWN",
@@ -39808,13 +39881,6 @@
         "value": "LGS_WX_FOLLOW_REQUESTED",
         "zh": "",
         "module": "logistics"
-      },
-      {
-        "host": "TestPayGateway",
-        "name": "CHANNEL",
-        "value": "TEST",
-        "zh": "通道码。",
-        "module": "pay/pay-channel"
       },
       {
         "host": "WechatApiV3Signer",
@@ -40917,6 +40983,13 @@
       },
       {
         "host": "BizKey",
+        "name": "LIGHT_APPROVAL",
+        "value": "LAP",
+        "zh": "轻量审批单（sys_approval）：店内、商户侧的快速审批",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "STORED_VALUE_ISSUE_POLICY",
         "value": "SVIP",
         "zh": "",
@@ -41742,6 +41815,27 @@
         "module": "shop-base"
       },
       {
+        "host": "PayChannels",
+        "name": "OFFLINE",
+        "value": "OFFLINE",
+        "zh": "线下收款（现金、自带设备）：钱不经过任何通道",
+        "module": "shop-base"
+      },
+      {
+        "host": "PayChannels",
+        "name": "STUB",
+        "value": "STUB",
+        "zh": "开发期“恒成功”假网关（shop.pay.stub=true）",
+        "module": "shop-base"
+      },
+      {
+        "host": "PayChannels",
+        "name": "TEST",
+        "value": "TEST",
+        "zh": "测试渠道：走真实状态机的假网关。",
+        "module": "shop-base"
+      },
+      {
         "host": "PayModes",
         "name": "ONLINE",
         "value": "ONLINE",
@@ -41920,6 +42014,20 @@
         "host": "ApprovalSubmitRequested",
         "name": "TYPE",
         "value": "APPROVAL_SUBMIT_REQUESTED",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "DictItem",
+        "name": "LEVEL_TYPE",
+        "value": "TYPE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "DictItem",
+        "name": "LEVEL_SUB",
+        "value": "SUB",
         "zh": "",
         "module": "shop-base"
       },
@@ -43992,6 +44100,13 @@
         "host": "Reason",
         "name": "STALE_LEDGER",
         "value": "STALE_LEDGER",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OpsApiKeyStore",
+        "name": "OWNER_TYPE",
+        "value": "OPS_STAFF",
         "zh": "",
         "module": "shop-core"
       },
@@ -48263,6 +48378,16 @@
         "module": "invoice"
       },
       {
+        "name": "DictType",
+        "values": [
+          "BUSINESS_TYPE",
+          "ONBOARD_INDUSTRY",
+          "PAY_CHANNEL"
+        ],
+        "zh": "字典类型，对应基础能力库 sys_dict_item.dict_type。",
+        "module": "shop-base"
+      },
+      {
         "name": "Dim",
         "values": [
           "STORE",
@@ -50577,7 +50702,8 @@
           "DUAL_CONTROL",
           "VERSION_UNUSABLE",
           "KEY_UNUSABLE",
-          "WRONG_USAGE"
+          "WRONG_USAGE",
+          "DUPLICATE"
         ],
         "zh": "",
         "module": "secret"
@@ -51383,7 +51509,8 @@
           "L2",
           "L3",
           "L4",
-          "L5"
+          "L5",
+          "DIGEST"
         ],
         "zh": "密钥材料存在哪一档（sec_key_version.storage_tier，TDD-支付服务-开放API加解密与密钥分发 §2.8.1）。",
         "module": "secret"
@@ -51626,7 +51753,8 @@
           "VERIFY",
           "HMAC",
           "ENCRYPT",
-          "MTLS"
+          "MTLS",
+          "API_KEY"
         ],
         "zh": "sec_key.key_usage（列不叫 usage：MariaDB 保留字）",
         "module": "secret"
@@ -55700,14 +55828,6 @@
       "module": "pay/pay-channel"
     },
     {
-      "host": "FreePayGateway",
-      "name": "CHANNEL",
-      "type": "String",
-      "value": "ai.neargo.shop.common.PayChannels.FREE",
-      "zh": "通道名。",
-      "module": "pay/pay-channel"
-    },
-    {
       "host": "WechatApis",
       "name": "HOST",
       "type": "String",
@@ -55953,6 +56073,14 @@
       "type": "String",
       "value": "\"T+1\"",
       "zh": "次日结。",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "RefundReviewRouting",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "\"shop.pay_refund_review\"",
+      "zh": "审批主题。",
       "module": "pay/pay-domain"
     },
     {
@@ -57916,6 +58044,14 @@
       "module": "secret"
     },
     {
+      "host": "KeyPurpose",
+      "name": "INBOUND_API_KEY",
+      "type": "KeyPurpose",
+      "value": "new KeyPurpose(Direction.INBOUND, Usage.API_KEY)",
+      "zh": "外部调我方时出示的 API Key：只存摘要（StorageTier#DIGEST），经 CredentialVerifier 验证",
+      "module": "secret"
+    },
+    {
       "host": "SecretLifecycleJob",
       "name": "NAME",
       "type": "String",
@@ -58049,6 +58185,14 @@
       "type": "Duration",
       "value": "Duration.ofMinutes(10)",
       "zh": "邮箱验证码有效期：收信比短信慢，166 联调时 5 分钟不够用（2026-11-07 用户决定「改成 10 分钟」）",
+      "module": "shop-base"
+    },
+    {
+      "host": "PayChannels",
+      "name": "NO_CHANNEL_ACCOUNT",
+      "type": "Set<String>",
+      "value": "Set.of(OFFLINE, FREE, STUB, TEST)",
+      "zh": "不对应任何收款号的渠道：结算单上的收款号按它们不过滤渠道，取「主体默认号」（F01 · Review R01）。",
       "module": "shop-base"
     },
     {
@@ -58217,6 +58361,46 @@
       "type": "int",
       "value": "32",
       "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "DictItem",
+      "name": "LANG_ZH_CN",
+      "type": "String",
+      "value": "\"zh-CN\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "DictItem",
+      "name": "LANG_ZH_TW",
+      "type": "String",
+      "value": "\"zh-TW\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "DictItem",
+      "name": "LANG_EN",
+      "type": "String",
+      "value": "\"en\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "DictItem",
+      "name": "ATTR_BUSINESS_TYPE_CODE",
+      "type": "String",
+      "value": "\"business_type_code\"",
+      "zh": "DictType#BUSINESS_TYPE 的子行业条目：它决定的经营类型",
+      "module": "shop-base"
+    },
+    {
+      "host": "DictItem",
+      "name": "ATTR_MICRO_ALLOWED",
+      "type": "String",
+      "value": "\"micro_allowed\"",
+      "zh": "DictType#ONBOARD_INDUSTRY：任一通道允许小微进件（\"true\" / \"false\"）",
       "module": "shop-base"
     },
     {
@@ -61516,10 +61700,34 @@
       "module": "shop-gateway"
     },
     {
+      "host": "InventoryProductEvents",
+      "name": "SUBSCRIPTION_GROUP",
+      "type": "String",
+      "value": "\"inventory-product\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "InventoryProductEvents",
+      "name": "TYPES",
+      "type": "Set<String>",
+      "value": "Set.of(\"SKU_UPSERTED\", \"SKU_RETIRED\", \"GOODS_ON_SALE_CHANGED\", \"SKU_INV_MODE_CHANGED\")",
+      "zh": "与 shop.events.outbox-event-types 默认值一致，由 InventoryProductBrokerTest 守着。",
+      "module": "shop-gateway"
+    },
+    {
       "host": "SettleBatchJob",
       "name": "NAME",
       "type": "String",
       "value": "\"settle-batch\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PayRefundReviewApprovalSubject",
+      "name": "SUBJECT_TYPE",
+      "type": "String",
+      "value": "RefundReviewRouting.SUBJECT_TYPE",
       "zh": "",
       "module": "shop-gateway"
     },
@@ -61721,6 +61929,22 @@
       "type": "String",
       "value": "StoreVO.OTHER",
       "zh": "行业与子业态的「其他」都用这个码。",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PrintFactEvents",
+      "name": "SUBSCRIPTION_GROUP",
+      "type": "String",
+      "value": "\"print-facts\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PrintFactEvents",
+      "name": "TYPES",
+      "type": "Set<String>",
+      "value": "Set.of(\"ORDER_PRINT_FACT_READY\", \"ORDER_PRINT_CONTROL_CHANGED\", \"BUSINESS_PRINT_FACT_READY\")",
+      "zh": "与 shop.events.outbox-event-types 默认值一致，由 PrintFactBrokerTest 守着。",
       "module": "shop-gateway"
     },
     {
@@ -61941,6 +62165,30 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "TRADE",
+      "type": "String",
+      "value": "\"trade\"",
+      "zh": "门店交易库上的交易模块：商品、门店目录与可售、收银与下单、订单与售后、履约、渠道、预约与资源。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "INDUSTRY",
+      "type": "String",
+      "value": "\"industry\"",
+      "zh": "行业库上的行业模块：餐饮的桌台、工位、出品单、厨显、人头权益、宴会、排队、寄存、服务交接， 美业的服务执行，以及两个行业共用的门店经营策略、提成规则（ADR-068）。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "COMMON",
+      "type": "String",
+      "value": "\"common\"",
+      "zh": "基础能力库上的公共能力：权限（运营端角色、功能点、接口资源），以及随后收进来的审计、设置、发号、字典、审批、开放应用 （TDD-基础能力库对齐 Q2：独立句柄，未绑定时指向主库）。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "MEMBER_MARKETING_MAPPER_PATTERN",
       "type": "String",
       "value": "\"ai\\\\.neargo\\\\.shop\\\\.pay\\\\.mapper\\\\.(entitlement|storedvalue)\\\\..*\"",
@@ -62085,9 +62333,81 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "TRADE_TX_MANAGER",
+      "type": "String",
+      "value": "\"tradeTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "TRADE_DATA_SOURCE",
+      "type": "String",
+      "value": "\"tradeDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "TRADE_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"tradeSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "INDUSTRY_TX_MANAGER",
+      "type": "String",
+      "value": "\"industryTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "INDUSTRY_DATA_SOURCE",
+      "type": "String",
+      "value": "\"industryDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "INDUSTRY_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"industrySqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "COMMON_TX_MANAGER",
+      "type": "String",
+      "value": "\"commonTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "COMMON_DATA_SOURCE",
+      "type": "String",
+      "value": "\"commonDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "COMMON_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"commonSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "MODULES",
       "type": "List<String>",
-      "value": "List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT, MEMBER_MARKETING)",
+      "value": "List.of( INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, INDUSTRY, COMMON, MEMBER_MARKETING)",
       "zh": "守卫测试也读这份清单。",
       "module": "shop-store-mybatis"
     },
@@ -62100,11 +62420,75 @@
       "module": "shop-store-mybatis"
     },
     {
+      "host": "PlatformJdbcConfiguration",
+      "name": "TRADE_JDBC_TEMPLATE",
+      "type": "String",
+      "value": "\"tradeJdbcTemplate\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "PlatformJdbcConfiguration",
+      "name": "COMMON_JDBC_TEMPLATE",
+      "type": "String",
+      "value": "\"commonJdbcTemplate\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
       "host": "OutboxDispatcher",
       "name": "MAX_ATTEMPTS",
       "type": "int",
       "value": "10",
       "zh": "一条事件最多投几次。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerMessage",
+      "name": "SOURCE_SYSTEM",
+      "type": "String",
+      "value": "\"sourceSystem\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerMessage",
+      "name": "SOURCE_EVENT_NO",
+      "type": "String",
+      "value": "\"sourceEventNo\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerMessage",
+      "name": "SCHEMA_VERSION",
+      "type": "String",
+      "value": "\"schemaVersion\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerMessage",
+      "name": "STREAM_SEQUENCE",
+      "type": "String",
+      "value": "\"streamSequence\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerMessage",
+      "name": "OCCURRED_AT",
+      "type": "String",
+      "value": "\"occurredAt\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerSubscriptions",
+      "name": "PHASE",
+      "type": "int",
+      "value": "0",
+      "zh": "中间件实现用 PHASE + 1，在订阅登记之后启动。",
       "module": "shop-store-mybatis"
     },
     {

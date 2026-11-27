@@ -35,7 +35,13 @@ class ModuleTxManagerConventionTest {
             // 网关里 B 端登录与身份、换号注销、PIN 找回、门店换主体：读写的都是平台基础库的表
             "shop-gateway/src/main/java/ai/neargo/shop/merchantbridge", "ModuleDataSources.PLATFORM_TX_MANAGER",
             "invoice/invoice-domain/src/main/java/ai/neargo/shop/invoice", "ModuleDataSources.INVOICE_TX_MANAGER",
-            "shop-core/src/main/java/ai/neargo/shop/printing", "ModuleDataSources.PRINT_TX_MANAGER");
+            "shop-core/src/main/java/ai/neargo/shop/printing", "ModuleDataSources.PRINT_TX_MANAGER",
+            "shop-core/src/main/java/ai/neargo/shop/product", "ModuleDataSources.TRADE_TX_MANAGER",
+            "shop-core/src/main/java/ai/neargo/shop/trade", "ModuleDataSources.TRADE_TX_MANAGER",
+            "shop-core/src/main/java/ai/neargo/shop/fulfillment", "ModuleDataSources.TRADE_TX_MANAGER",
+            // 基础能力库的权限（运营端角色、功能点、接口资源）：TDD-基础能力库对齐 2a
+            "shop-core/src/main/java/ai/neargo/shop/platform/perm", "ModuleDataSources.COMMON_TX_MANAGER",
+            "shop-gateway/src/main/java/ai/neargo/shop/gateway/iam", "ModuleDataSources.COMMON_TX_MANAGER");
 
     /** 发票留在主库的那部分（申请事件、邮件投递、通道申请）的入口：这个包里用主库事务是本意。 */
     private static final String PRIMARY_PACKAGE = "/invoice/legacy/";
@@ -46,11 +52,12 @@ class ModuleTxManagerConventionTest {
      * 最后两个是端口：它们要在调用方的事务里加锁，换库那一步要单独处理。
      */
     private static final java.util.Set<String> MERCHANT_NOT_PLATFORM = java.util.Set.of(
-            // 门店交易库：资源、排班、预约、门店分类
+            // 门店交易库：资源、排班、预约、门店分类 —— 它们点名交易句柄，见 MERCHANT_TRADE
             "ResourceServiceImpl.java", "ResourceCommandServiceImpl.java", "ResourceBookingServiceImpl.java",
             "ResourceAdmissionServiceImpl.java", "ResourceSourceAuthorizationServiceImpl.java",
-            "ResourceOccupationSchemaVerifier.java", "ScheduleServiceImpl.java", "AppointmentSlotServiceImpl.java",
-            "StoreCategoryServiceImpl.java",
+            "ResourceOccupationSchemaVerifier.java", "ScheduleServiceImpl.java", "StoreCategoryServiceImpl.java",
+            // 预约时段 mch_appointment_slot：设计里没有去向，在下单事务里占用，先留主库
+            "AppointmentSlotServiceImpl.java",
             // 支付商户库、账务结算库
             "PayoutAccountServiceImpl.java", "PayoutAccountApprovalSubject.java", "MerchantPaymentServiceImpl.java",
             "AdmissionServiceImpl.java", "DebtServiceImpl.java", "PayServiceApplicationStore.java",
@@ -61,12 +68,43 @@ class ModuleTxManagerConventionTest {
             // C 端账号包里：收货地址（门店交易库）、收藏（会员营销库）
             "AddressServiceImpl.java", "StoreFavoriteServiceImpl.java");
 
+    /**
+     * 商户域里表在门店交易库的类（资源、排班、预约占用、门店分类）：它们点名交易句柄（ADR-068），不是平台句柄。
+     * 这几个类还对平台基础库的人员、门店加锁，并经主库事件表登记发布 —— 换库前要拆，见 TDD-零售域对齐门店交易库 §2.4 T13、T4。
+     */
+    private static final java.util.Set<String> MERCHANT_TRADE = java.util.Set.of(
+            "ResourceServiceImpl.java", "ResourceCommandServiceImpl.java", "ResourceBookingServiceImpl.java",
+            "ResourceAdmissionServiceImpl.java", "ResourceSourceAuthorizationServiceImpl.java",
+            "ResourceOccupationSchemaVerifier.java", "ScheduleServiceImpl.java", "StoreCategoryServiceImpl.java");
+
+    /**
+     * 商品包（shop-core product）里表不在门店交易库、或换库前要先拆的类：留在主库句柄上。
+     * 分档依据见 TDD-零售域对齐门店交易库 §6；新加的类默认算门店交易库的。
+     */
+    private static final java.util.Set<String> PRODUCT_NOT_TRADE = java.util.Set.of(
+            // 会员营销库：评价、收藏、专题
+            "ReviewServiceImpl.java", "GoodsFavoriteServiceImpl.java", "TopicServiceImpl.java",
+            // 结账时在调用方（主库）事务里锁门店目录，并在同一事务里登记目录发布事件（TDD §2.4 T2、T4）
+            "StoreSalesCatalogServiceImpl.java");
+
+    /**
+     * 交易包（shop-core trade）里留在主库句柄上的部分（路径片段）：积分这一轮不接（TDD-零售域对齐门店交易库 §2.11），
+     * 打印事实归打印、开票申请归发票、序号段归基础能力库。新加的类默认算门店交易库的。
+     */
+    private static final java.util.Set<String> TRADE_NOT_TRADE = java.util.Set.of(
+            "/shop/trade/order/points/", "/shop/trade/order/printing/",
+            "/shop/trade/order/refund/service/impl/PointsRefundResourceServiceImpl.java",
+            "/shop/trade/service/impl/InvoiceRequestServiceImpl.java",
+            "/shop/trade/support/SeqSegmentSource.java",
+            // 物流（运单、轨迹、承运商）归平台服务库；同类里只有运费模板那两个方法点名交易句柄
+            "/shop/fulfillment/service/impl/LogisticsServiceImpl.java");
+
     /** 有意用主库事务管理器的地方：文件名 → 该行必须包含的片段。 */
     private static final Map<String, String> PRIMARY_ON_PURPOSE = Map.of(
             "PrintingConfiguration.java", "@Qualifier(\"transactionManager\") PlatformTransactionManager manager) {");
 
     @Test
-    @DisplayName("发票、打印、C 端账号、商户域的事务必须点名本模块的事务管理器句柄")
+    @DisplayName("发票、打印、C 端账号、商户域、商品、交易、履约的事务必须点名本模块的事务管理器句柄")
     void module_transactions_name_their_own_manager() throws IOException {
         List<String> wrong = new ArrayList<>();
         int total = 0;
@@ -76,7 +114,11 @@ class ModuleTxManagerConventionTest {
                 for (Path file : files.filter(p -> p.toString().endsWith(".java"))
                         .filter(p -> !p.toString().contains(PRIMARY_PACKAGE))
                         .filter(p -> !((p.toString().contains("/shop/merchant/") || p.toString().contains("/shop/user/"))
-                                && MERCHANT_NOT_PLATFORM.contains(p.getFileName().toString()))).toList()) {
+                                && MERCHANT_NOT_PLATFORM.contains(p.getFileName().toString())
+                                && !MERCHANT_TRADE.contains(p.getFileName().toString())))
+                        .filter(p -> !(p.toString().contains("/shop/product/")
+                                && PRODUCT_NOT_TRADE.contains(p.getFileName().toString())))
+                        .filter(p -> TRADE_NOT_TRADE.stream().noneMatch(p.toString()::contains)).toList()) {
                     String[] lines = Files.readString(file, StandardCharsets.UTF_8).split("\n");
                     for (int i = 0; i < lines.length; i++) {
                         String line = lines[i].trim();
@@ -91,7 +133,10 @@ class ModuleTxManagerConventionTest {
                         if (injected && allowed != null && line.contains(allowed)) {
                             continue;
                         }
-                        if (injected || !line.contains(module.getValue())) {
+                        String required = file.toString().contains("/shop/merchant/")
+                                && MERCHANT_TRADE.contains(file.getFileName().toString())
+                                ? "ModuleDataSources.TRADE_TX_MANAGER" : module.getValue();
+                        if (injected || !line.contains(required)) {
                             wrong.add(BACKEND.relativize(file) + ":" + (i + 1) + "  " + line);
                         }
                     }
@@ -117,6 +162,16 @@ class ModuleTxManagerConventionTest {
                 .isEqualTo(ModuleDataSources.dataSource(ModuleDataSources.PLATFORM));
         assertThat(ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
                 .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.PLATFORM));
+        assertThat(ModuleDataSources.TRADE_TX_MANAGER).isEqualTo(ModuleDataSources.txManager(ModuleDataSources.TRADE));
+        assertThat(ModuleDataSources.TRADE_DATA_SOURCE).isEqualTo(ModuleDataSources.dataSource(ModuleDataSources.TRADE));
+        assertThat(ModuleDataSources.TRADE_SQL_SESSION_FACTORY)
+                .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.TRADE));
+        assertThat(ModuleDataSources.INDUSTRY_TX_MANAGER)
+                .isEqualTo(ModuleDataSources.txManager(ModuleDataSources.INDUSTRY));
+        assertThat(ModuleDataSources.INDUSTRY_DATA_SOURCE)
+                .isEqualTo(ModuleDataSources.dataSource(ModuleDataSources.INDUSTRY));
+        assertThat(ModuleDataSources.INDUSTRY_SQL_SESSION_FACTORY)
+                .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.INDUSTRY));
         assertThat(ModuleDataSources.PRINT_SQL_SESSION_FACTORY)
                 .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.PRINT));
     }

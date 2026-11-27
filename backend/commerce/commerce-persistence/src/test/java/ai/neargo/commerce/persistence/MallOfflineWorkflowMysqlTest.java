@@ -269,7 +269,11 @@ class MallOfflineWorkflowMysqlTest {
             new MallOfflineDeadlineMysqlTest().freezeOffline(db,86400000);
             f.svc().prepareOffline(new FulfillmentQuery("tenant-a",f.order().orderNo()));
             OfflineCollectionPort money=new OfflineCollectionPort() {
-                public ManualResult confirm(ManualPayment command) { return new ManualResult("MATCHED","ledger-row"); }
+                public ManualResult confirm(ManualPayment command) {
+                    f.bridge().payment = new PaymentOutcome(f.order().orderNo(),Optional.of("pay"),"platform",
+                            command.actualAmount(),AsyncStatus.SUCCEEDED,Optional.of(command.actualPaidAt()),Optional.empty());
+                    return new ManualResult("MATCHED","pay");
+                }
             };
             var api=service(db,f,money);
             var q=new OrderQuery(MallOrderConcurrencyMysqlTest.STORE,f.order().orderNo());

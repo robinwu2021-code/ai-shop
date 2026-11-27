@@ -3,6 +3,7 @@ package ai.neargo.shop.product.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.dto.CardProductBindingView;
 import ai.neargo.shop.product.dto.ProductEntitlementBinding;
 import ai.neargo.shop.product.entitlement.CardProductBindingWriter;
@@ -23,7 +24,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(propagation = Propagation.NOT_SUPPORTED)
+@Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.NOT_SUPPORTED)
 public class CardProductBindingServiceImpl implements CardProductBindingService {
     private final CardProductBindingWriter writer;
     private final GoodsMapper goods;

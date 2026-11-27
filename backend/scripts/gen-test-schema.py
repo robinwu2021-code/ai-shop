@@ -1156,6 +1156,16 @@ def _apply_action(table, action, cols):
             raise SystemExit(f"✗ DROP CHECK {table}.{name}：约束不存在")
         return
 
+    # `DROP CONSTRAINT x`：MySQL 8.0.19+ 与 MariaDB 都认、H2 也认（db/secret 的迁移直接在 H2 上跑，只能用它）
+    drop_constraint = re.fullmatch(r"DROP\s+CONSTRAINT\s+(\w+)", action, re.I)
+    if drop_constraint:
+        name = drop_constraint.group(1)
+        before = len(cols)
+        cols[:] = [c for c in cols if not re.match(rf"^\s*CONSTRAINT\s+{name}\b", c, re.I)]
+        if len(cols) == before:
+            raise SystemExit(f"✗ DROP CONSTRAINT {table}.{name}：约束不存在")
+        return
+
     add = re.match(r"ADD\s+(?:COLUMN\s+)?(?:IF NOT EXISTS\s+)?"
                    r"(?!(?:CONSTRAINT|UNIQUE|PRIMARY|KEY|INDEX|CHECK|COLUMN)\b)(\w+\s+.*)", action, re.I | re.S)
     if add:

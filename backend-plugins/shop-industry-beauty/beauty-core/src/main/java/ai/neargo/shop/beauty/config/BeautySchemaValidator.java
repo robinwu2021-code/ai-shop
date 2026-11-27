@@ -70,6 +70,10 @@ public final class BeautySchemaValidator {
     private static final String V8_SHA256 =
             "c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343";
 
+    private static final String V9_1 = "db/industry/beauty/V9_1__beauty_appointment_work_order_no.sql";
+    private static final String V9_1_SHA256 =
+            "1019e3104433abff0e80c38305a41bbf5116684d0e4015e3817602c69b4aed30";
+
     private static final String V9 = "db/industry/beauty/V9__beauty_manual_source_observation.sql";
     private static final String V9_SHA256 =
             "80eb14c95166709bec87787e7b19c573bd1747759c22d7280eae9a29fd8fdea7";
@@ -99,6 +103,9 @@ public final class BeautySchemaValidator {
                         .locations("classpath:db/industry/beauty")
                         .table(HISTORY)
                         .baselineOnMigrate("migrate".equals(mode))
+                        // V9.1 sits before the optional V10-V11 extensions; databases that already carry them
+                        // receive it out of order, and only an explicit migration may do so
+                        .outOfOrder("migrate".equals(mode))
                         .baselineVersion("0")
                         .createSchemas(false)
                         .cleanDisabled(true)
@@ -114,7 +121,7 @@ public final class BeautySchemaValidator {
         ValidateResult validation = flyway.validateWithResult();
         MigrationInfo[] migrations = flyway.info().all();
         Map<String, String> base = Map.of("1", RESOURCE, "2", V2, "3", V3, "4", V4, "5", V5,
-                "6", V6, "7", V7, "8", V8, "9", V9);
+                "6", V6, "7", V7, "8", V8, "9", V9, "9.1", V9_1);
         Set<String> baseSeen = new HashSet<>();
         Map<String, MigrationInfo> extensions = new HashMap<>();
         boolean baselineSeen = false;
@@ -140,7 +147,7 @@ public final class BeautySchemaValidator {
                 extensions.put(version, migration);
             }
         }
-        require(baseSeen.equals(base.keySet()), "Beauty base requires successful V1-V9 history");
+        require(baseSeen.equals(base.keySet()), "Beauty base requires successful V1-V9 and V9.1 history");
         classifyValidation(validation, extensions);
         // The optional extension never weakens any of the frozen 28 physical base contracts or V9 trigger.
         validateStructure(source, expected);
@@ -151,7 +158,7 @@ public final class BeautySchemaValidator {
             require(validation.validationSuccessful
                             && installation == ServiceExecutionSchemaVerifier.Installation.INSTALLED
                             && stockInstallation == ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED,
-                    "Explicit beauty migration requires the full valid V1-V11 sequence");
+                    "Explicit beauty migration requires the full valid V1-V11 sequence including V9.1");
         }
         // In validate mode each known optional owner diagnoses its own ABSENT/CORRUPT state.
         // Its damage cannot authorize execution, nor weaken the mandatory V1-V9 base inspection.
@@ -216,6 +223,7 @@ public final class BeautySchemaValidator {
                                     "Duplicate beauty migration table");
                         });
         addManualDomain(result);
+        addAppointmentWorkOrderNo(result);
         return result;
     }
 
@@ -239,6 +247,42 @@ public final class BeautySchemaValidator {
                 "V6 cannot replace a frozen CHECK");
         contracts.put(match.group(1), new TableContract(table.columns(), table.uniqueKeys(),
                 table.columnDefinitions(), checks, table.modifiers(), table.indexes()));
+    }
+
+    /**
+     * V9.1 adds only the appointment's opened work order number and its uniqueness, then copies existing
+     * one-per-appointment work orders; every other frozen contract of the appointment stays exact.
+     */
+    private static void addAppointmentWorkOrderNo(Map<String, TableContract> contracts) {
+        String sql = frozenText(V9_1, V9_1_SHA256).replaceAll("(?m)^--[^\\n]*\\n", "").strip();
+        String expected = """
+                ALTER TABLE `bty_appointment`
+                    ADD COLUMN `work_order_no` VARCHAR(32) COLLATE utf8mb4_bin NULL COMMENT 'work_order_no',
+                    ADD UNIQUE KEY `uk_bty_appointment_work_order` (`tenant_no`, `entity_no`, `work_order_no`);
+
+                UPDATE `bty_appointment` p
+                    JOIN `bty_work_order` w ON w.`tenant_no` = p.`tenant_no` AND w.`entity_no` = p.`entity_no`
+                        AND w.`appointment_no` = p.`appointment_no`
+                SET p.`work_order_no` = w.`work_order_no`
+                WHERE p.`work_order_no` IS NULL;""";
+        require(expected.equals(sql), "Unexpected V9.1 appointment work order migration");
+        var table = contracts.get("bty_appointment");
+        require(table != null && !table.columns().contains("work_order_no"),
+                "V9.1 target must already belong to the frozen manifest without the column");
+        Set<String> columns = new TreeSet<>(table.columns());
+        columns.add("work_order_no");
+        Map<String, String> definitions = new TreeMap<>(table.columnDefinitions());
+        definitions.put("work_order_no", "varchar(32):NULL:utf8mb4_bin");
+        Map<String, String> modifiers = new TreeMap<>(table.modifiers());
+        modifiers.put("work_order_no", ":false");
+        Set<List<String>> uniqueKeys = new HashSet<>(table.uniqueKeys());
+        uniqueKeys.add(List.of("tenant_no", "entity_no", "work_order_no"));
+        Map<String, String> indexes = new TreeMap<>(table.indexes());
+        require(indexes.putIfAbsent("uk_bty_appointment_work_order",
+                        indexSignature("`tenant_no`, `entity_no`, `work_order_no`", true)) == null,
+                "V9.1 cannot replace a frozen appointment index");
+        contracts.put("bty_appointment", new TableContract(columns, uniqueKeys, definitions, table.checks(),
+                modifiers, indexes));
     }
 
     /** V7 changes only the capacity-unit index; all other frozen physical contracts stay exact. */

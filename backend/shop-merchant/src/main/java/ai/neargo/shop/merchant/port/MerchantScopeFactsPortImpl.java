@@ -11,7 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Component;
-import ai.neargo.shop.spi.platform.MasterDataPort;
+import ai.neargo.shop.spi.dict.DictType;
+import ai.neargo.shop.spi.dict.DictionaryPort;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,24 +30,24 @@ public class MerchantScopeFactsPortImpl implements MerchantScopeFactsPort {
         this.stores = stores;
     }
 
-    private MasterDataPort masterData;
+    private DictionaryPort dictionary;
     private QualificationMapper qualifications;
 
     @Autowired
-    public void setPromotionAdmissionFacts(MasterDataPort masterData,
+    public void setPromotionAdmissionFacts(DictionaryPort dictionary,
             QualificationMapper qualifications) {
-        this.masterData = masterData; this.qualifications = qualifications;
+        this.dictionary = dictionary; this.qualifications = qualifications;
     }
 
     @Override
     public boolean promotionIndustryAdmitted(String tenantNo, String entityNo) {
-        if (masterData == null || qualifications == null) return false;
+        if (dictionary == null || qualifications == null) return false;
         var entity = DataScopeContext.executeWithoutScope(() -> entities.selectOne(
                 Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getTenantNo, tenantNo)
                         .eq(MchEntity::getEntityNo, entityNo).eq(MchEntity::getStatus, MchEntity.ACTIVE)
                         .isNull(MchEntity::getArchivedAt)));
         // Industry.enabled controls new onboarding, not revocation of existing merchant admission.
-        if (entity == null || !masterData.industryKnown(tenantNo, entity.getIndustry())) return false;
+        if (entity == null || !dictionary.known(tenantNo, DictType.ONBOARD_INDUSTRY, entity.getIndustry())) return false;
         // Compute expiry from time; worker-updated EXPIRED status may lag behind actual expiry.
         return DataScopeContext.executeWithoutScope(() -> qualifications.selectCount(
                 Wrappers.<MchQualification>lambdaQuery()

@@ -22,7 +22,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.service.impl.BusinessShareServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.trade.PricingCheckoutPort.QuoteVO;
 import ai.neargo.shop.spi.trade.PricingCheckoutPort.TotalsVO;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
@@ -61,7 +61,7 @@ class BusinessShareServiceTest {
     private final OrderLineMapper lines=mock(OrderLineMapper.class);
     private final CoreOrderBindingMapper bindings=mock(CoreOrderBindingMapper.class);
     private final CoreLineAllocationMapper allocations=mock(CoreLineAllocationMapper.class);
-    private final IdempotencyService idem=mock(IdempotencyService.class);
+    private final RequestIdempotencyPort idem=mock(RequestIdempotencyPort.class);
     private final PlatformTransactionManager manager=mock(PlatformTransactionManager.class);
     private final ObjectMapper json=new ObjectMapper();
     private final FnbCoreLineAllocation allocation=new FnbCoreLineAllocation();

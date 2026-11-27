@@ -36,7 +36,7 @@ class BeautyPersistenceWiringTest {
                         () -> Class.forName("ai.neargo.shop.beauty.config.BeautySchemaReady"));
         Object token =
                 assertDoesNotThrow(() -> ready.getConstructor(String.class).newInstance("9"));
-        return new ApplicationContextRunner().withUserConfiguration(configuration())
+        return new ApplicationContextRunner().withUserConfiguration(configuration()).withUserConfiguration(BeautyModuleHandles.class)
                 .withBean("dataSource", DataSource.class, () -> primary)
                 .withBean("sqlSessionFactory", SqlSessionFactory.class, () -> factory)
                 .withBean("transactionManager", DataSourceTransactionManager.class,
@@ -46,13 +46,13 @@ class BeautyPersistenceWiringTest {
 
     @Test
     void disabledDoesNotLoadPersistenceOrRequirePrimary() {
-        new ApplicationContextRunner().withUserConfiguration(configuration())
+        new ApplicationContextRunner().withUserConfiguration(configuration()).withUserConfiguration(BeautyModuleHandles.class)
                 .run(context -> assertThat(context).hasNotFailed().doesNotHaveBean(SqlSessionTemplate.class));
     }
 
     @Test
     void enabledRequiresPrimaryAndCannotSilentlySkipSchema() {
-        new ApplicationContextRunner().withUserConfiguration(configuration())
+        new ApplicationContextRunner().withUserConfiguration(configuration()).withUserConfiguration(BeautyModuleHandles.class)
                 .withPropertyValues("shop.beauty.enabled=true")
                 .run(context -> assertThat(context).hasFailed());
     }

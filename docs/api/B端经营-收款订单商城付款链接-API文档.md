@@ -235,7 +235,7 @@
 | 范围 | 缺口 |
 |---|---|
 | 开通收款 | 门店改挂已有主体（N1）、绑定已有渠道商户号（N2）、一次提交开通（N3） |
-| 商城 | 用量组件与「我的 › 用量」余额；硬件规格；逐组件的交付状态；硬件退款 |
+| 商城 | 用量组件与「我的 › 用量」余额；硬件规格；逐组件的交付状态 |
 | 零售 | 订单按单号 / 顾客搜索；商品分组计数一次返回；新门店默认类目方案（待定）；平台类目只有简体中文与英文名，无繁体 |
 | 发货 | 台湾物流公司代码与物流公司列表（本期不补）；台湾门店发货会被拒 |
 | 付款链接 | 链接记录里给 `operatorName` |
@@ -272,3 +272,7 @@
 以上`collect-status`、`orders`列表、`orders/summary`、`orders/lookup`、`orders/{payOrderNo}`五个GET接受可选`X-Pay-Read-Environment: PRODUCTION|SANDBOX`。省略与PRODUCTION保持既有生产视图；SANDBOX是显式选择，服务端仍校验原权限、严格当前店/主体、已启用来源映射和专用受保护客户端配置。无授权/无配置不回退生产，其他header值拒绝。两环境记录/金额/分页/统计不合并。
 
 此header不作用于收款、退款、POST订单query补账、链接重发/作废等写路径。SANDBOX详情仍来自PAY权威DTO，不能用SSE消息或receipt金额替代。私有部署开关默认关闭，见《支付只读环境选择》。正式App默认不传；仅显式沙箱测试构建给上述GET附加header。
+
+### 原订单售后
+
+门店从订单详情核对 `shipments` 中已成功发出的件数和 `deliveredSources` 中的购买权益周期、plan 版本及权益代码。向同一门店、同一订单的 `refund-previews` 提交 `refundNo` 与退款范围，再向 `refunds` 提交相同范围、原退款号、预览现金上限和原因。硬件用 `hardware: { orderComponentNo, quantity }`，套餐用 `sourcePeriodNos`。运营按原订单复核并登记出款凭证，订单详情的 `refunds` 返回每笔处理范围与结果。

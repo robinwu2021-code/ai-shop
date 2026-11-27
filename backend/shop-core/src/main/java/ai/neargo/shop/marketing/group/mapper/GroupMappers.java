@@ -1,5 +1,6 @@
 package ai.neargo.shop.marketing.group.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.marketing.group.entity.MktGroupBuy;
 import ai.neargo.shop.marketing.group.entity.MktGroupMember;
 import ai.neargo.shop.marketing.group.entity.MktQuote;
@@ -20,13 +21,13 @@ public final class GroupMappers {
     public interface GroupMemberMapper extends BaseMapper<MktGroupMember> {
     }
 
-    public interface RequestMapper extends BaseMapper<MktRequest> {
+    public interface RequestMapper extends TradeTableMapper<MktRequest> {
     }
 
-    public interface RequestInterestMapper extends BaseMapper<MktRequestInterest> {
+    public interface RequestInterestMapper extends TradeTableMapper<MktRequestInterest> {
     }
 
-    public interface QuoteMapper extends BaseMapper<MktQuote> {
+    public interface QuoteMapper extends TradeTableMapper<MktQuote> {
     }
 
     public interface QuoteRevisionMapper extends BaseMapper<MktQuoteRevision> {

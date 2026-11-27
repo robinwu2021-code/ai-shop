@@ -1,5 +1,6 @@
 package ai.neargo.shop.community.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -1270,7 +1271,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public PickupVO setPickupStatus(String pickupNo, String status, String operatorNo) {
         CmtPickupPoint p = requirePickup(pickupNo);
         if (!PICKUP_TRANSITIONS.getOrDefault(p.getStatus(), Set.of()).contains(status)) {
@@ -1581,7 +1582,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public PickupVO decidePickup(String pickupNo, boolean pass, String reason, String operatorNo) {
         CmtPickupPoint p = requirePickup(pickupNo);
         // 裁完就是终态：再裁一次意味着同一个点有两个结论

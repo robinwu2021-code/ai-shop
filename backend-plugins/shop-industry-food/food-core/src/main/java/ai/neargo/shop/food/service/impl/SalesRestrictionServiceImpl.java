@@ -19,7 +19,7 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.MenuDefinitionPolicy;
 import ai.neargo.shop.food.policy.SalesRestrictionPolicy;
 import ai.neargo.shop.food.service.SalesRestrictionService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -45,7 +45,7 @@ public class SalesRestrictionServiceImpl implements SalesRestrictionService {
     private final SalesRestrictionMapper rows;
     private final StorePolicyMapper policies;
     private final ActionLogMapper actions;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final Clock clock;
     private final GoodsCatalogQueryPort goods;
@@ -53,7 +53,7 @@ public class SalesRestrictionServiceImpl implements SalesRestrictionService {
     private final TransactionTemplate read;
 
     public SalesRestrictionServiceImpl(SalesRestrictionMapper rows, StorePolicyMapper policies, ActionLogMapper actions,
-            IdempotencyService idem, ObjectMapper json, PlatformTransactionManager manager,
+            RequestIdempotencyPort idem, ObjectMapper json, PlatformTransactionManager manager,
             Clock clock, GoodsCatalogQueryPort goods) {
         this.rows = rows; this.policies = policies; this.actions = actions; this.idem = idem;
         this.json = json; this.clock = clock; this.goods = goods;

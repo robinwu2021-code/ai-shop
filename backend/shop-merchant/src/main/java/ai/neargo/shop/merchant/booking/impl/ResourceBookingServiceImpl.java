@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.booking.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -77,7 +78,7 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
             ResourceAdmissionService admission, ResourceMapper resources, PersonnelMapper personnel,
             ResourceBucketMapper buckets, ResourceCommandMapper journal, BookingHoldMapper holds,
             BookingHoldUnitMapper units,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectProvider<Clock> clocks, ObjectMapper json) {
         this.occupations = occupations;
         this.commands = commands;

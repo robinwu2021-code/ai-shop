@@ -66,7 +66,7 @@ import ai.neargo.shop.common.pricing.PricingPortion;
 import ai.neargo.shop.common.pricing.PricingUnit;
 import ai.neargo.shop.common.pricing.TaxClass;
 import ai.neargo.shop.common.pricing.TaxSettingDefinition;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.spi.trade.PricingSourceRef;
 import ai.neargo.shop.trade.assembler.PricingQuoteAssembler;
@@ -108,7 +108,7 @@ class PricingQuotePersistenceTest {
     private static JdbcTemplate jdbc;
     private static SqlSessionTemplate session;
     private static DataSourceTransactionManager manager;
-    private static IdempotencyService receipts;
+    private static RequestIdempotencyPortImpl receipts;
     private static final PricingQuoteAssembler ASSEMBLER = new PricingQuoteAssembler();
     private static final Instant NOW = Instant.parse("2026-10-23T04:00:00Z");
     private PricingQuoteServiceImpl service;
@@ -148,7 +148,7 @@ class PricingQuotePersistenceTest {
         factory.setConfiguration(configuration);
         session = new SqlSessionTemplate(factory.getObject());
         manager = new DataSourceTransactionManager(data);
-        receipts = new IdempotencyService(session.getMapper(SysIdempotentMapper.class), JsonMapper.builder().build());
+        receipts = new RequestIdempotencyPortImpl(session.getMapper(SysIdempotentMapper.class), JsonMapper.builder().build());
     }
 
     @BeforeEach

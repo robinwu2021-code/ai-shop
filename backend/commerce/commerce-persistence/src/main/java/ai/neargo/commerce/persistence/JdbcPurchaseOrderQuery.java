@@ -33,7 +33,7 @@ public final class JdbcPurchaseOrderQuery implements PurchaseOrderQueryPort {
         select = "SELECT o.order_no,o.entity_no,o.store_no,o.currency,o.cash_due_minor,o.pay_status," + orderedAt + " created_at,"
                 + "(SELECT " + status + relation + " ORDER BY CASE WHEN " + needsReview + " THEN 0 ELSE 1 END,"
                 + submitted + " DESC,c.claim_no DESC LIMIT 1) claim_status FROM mall_order o WHERE o.tenant_no=?"
-                + (mallDatabase ? " AND o.stage='ORDERED'" : "");
+                + (mallDatabase ? " AND o.stage='ORDERED' AND o.pricing_policy_version<>'entity-plan-cash-v1'" : "");
     }
 
     @Override public List<Row> search(Query q) {

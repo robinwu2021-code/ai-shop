@@ -15,7 +15,7 @@ import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
@@ -73,7 +73,7 @@ class ScheduleMaintenanceIT {
         String schema = Files.readString(Path.of(System.getProperty("schedule-maintenance.test.root"),
                 "backend/shop-app/src/test/resources/schema-test.sql"));
         schema = ResourceOccupationNativeFixture.beforeNativeUpgrade(schema);
-        schema = schema.replaceAll("\\b([A-Za-z_]\\w*) IS JSON\\b", "JSON_VALID($1)");
+        schema = ResourceOccupationNativeFixture.forMysql(schema);
         new ResourceDatabasePopulator(new ByteArrayResource(schema.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
                 .execute(source);
         ResourceOccupationNativeFixture.install(source);
@@ -103,8 +103,7 @@ class ScheduleMaintenanceIT {
                 .withBean(GoodsQueryPort.class, () -> mock(GoodsQueryPort.class))
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
-                        "spring.datasource.password=", "shop.schedule.publication.archive-only=true",
-                        "shop.personnel.publication.archive-only=true");
+                        "spring.datasource.password=");
     }
     private Object req(String type, String value) { return json.readValue(value, required("dto." + type)); }
     private Object call(ApplicationContext context, String name, Object... args) {
@@ -293,11 +292,11 @@ class ScheduleMaintenanceIT {
     @MapperScan(basePackageClasses = {MerchantMappers.class, ai.neargo.shop.merchant.booking.mapper.BookingMappers.class})
     static class Mappers {
         @Bean
-        IdempotencyService idempotency(SqlSessionFactory factory, ObjectMapper json) {
+        RequestIdempotencyPortImpl idempotency(SqlSessionFactory factory, ObjectMapper json) {
             if (!factory.getConfiguration().hasMapper(SysIdempotentMapper.class)) {
                 factory.getConfiguration().addMapper(SysIdempotentMapper.class);
             }
-            return new IdempotencyService(new SqlSessionTemplate(factory).getMapper(SysIdempotentMapper.class), json);
+            return new RequestIdempotencyPortImpl(new SqlSessionTemplate(factory).getMapper(SysIdempotentMapper.class), json);
         }
     }
 }

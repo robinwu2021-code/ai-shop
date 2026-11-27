@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.AssetKind;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.QuoteView;
@@ -54,7 +55,7 @@ public class EntitlementOrderQuoteServiceImpl implements EntitlementOrderQuoteSe
                     null, null, null, revision));
         });
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void register(EntitlementContext ctx, String order, UseSourceFact source, QuoteView quote, String instance) {
         DataScopeContext.executeWithoutScope(() -> {
             var row = row(ctx.tenantNo(), ctx.actorNo(), order, quote.quoteRef(), true);
@@ -90,7 +91,7 @@ public class EntitlementOrderQuoteServiceImpl implements EntitlementOrderQuoteSe
             return selected;
         });
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public Prepared authorizeAndStage(EntitlementContext ctx, String order, AuthorizationCommand c) {
         var authorization = authorizations.confirm(ctx.tenantNo(), ctx.actorNo(), order, c);
         var selection = selection(ctx.tenantNo(), ctx.actorNo(), order, c.quoteRef());

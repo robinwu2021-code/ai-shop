@@ -23,11 +23,7 @@ class PlatformEndActivationMysqlTest {
             new ResourceDatabasePopulator(
                     new ClassPathResource("db/mall/subscription/V1__mall_subscription.sql"),
                     new ClassPathResource("db/mall/fulfillment/V1__mall_fulfillment.sql")).execute(mall.ds);
-            var platformDir = Path.of("../../shop-app/src/test/resources/db/n_platform");
-            new ResourceDatabasePopulator(
-                    new FileSystemResource(platformDir.resolve("V1__platform_design.sql")),
-                    new FileSystemResource(platformDir.resolve("V2__platform_supplement.sql")),
-                    new FileSystemResource("../../shop-app/src/main/resources/db/n_platform/V3__mall_end_activation.sql")).execute(platform.ds);
+            platformSchema(platform);
             mall.jdbc.execute("""
                     CREATE TABLE mall_end_entitlement(tenant_no VARCHAR(32),end_code VARCHAR(64),
                     entitlement_code VARCHAR(64),scope VARCHAR(16),client_id VARCHAR(128),enabled INT,
@@ -91,5 +87,12 @@ class PlatformEndActivationMysqlTest {
             assertTrue(revoked.segments().isEmpty());
             assertEquals(2,revoked.version());
         }
+    }
+    static void platformSchema(MysqlDatabase platform) {
+        var platformDir = Path.of("../../shop-app/src/test/resources/db/n_platform");
+        new ResourceDatabasePopulator(
+                new FileSystemResource(platformDir.resolve("V1__platform_design.sql")),
+                new FileSystemResource(platformDir.resolve("V2__platform_supplement.sql")),
+                new FileSystemResource("../../shop-app/src/main/resources/db/n_platform/V3__mall_end_activation.sql")).execute(platform.ds);
     }
 }

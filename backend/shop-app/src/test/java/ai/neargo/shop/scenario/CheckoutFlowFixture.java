@@ -46,7 +46,6 @@ import javax.sql.DataSource;
             "spring.datasource.url=${CHECKOUT_NATIVE_MYSQL_URL:jdbc:h2:mem:checkout-pricing;"
                     + "MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1}",
             "shop.member-code.enabled=true",
-            "shop.catalog.publication.archive-only=true",
             "shop.member.guest.credential-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         })
 @ActiveProfiles("test")

@@ -8,6 +8,7 @@ import ai.neargo.secret.api.SecretException;
 import ai.neargo.secret.api.SecretException.Reason;
 import ai.neargo.secret.api.SecretNamespace;
 import ai.neargo.secret.api.SecretRef;
+import ai.neargo.secret.api.StorageTier;
 import ai.neargo.secret.store.entity.SecAccessLog;
 import ai.neargo.secret.store.entity.SecKey;
 import ai.neargo.secret.store.entity.SecKeyEvent;
@@ -226,6 +227,9 @@ public class DefaultKeyRegistry implements KeyRegistry {
     @Override
     public byte[] materialOf(KeyVersionRef ref) {
         SecKeyVersion v = requireVersion(ref);
+        if (StorageTier.DIGEST.name().equals(v.getStorageTier())) {
+            throw new SecretException(Reason.WRONG_USAGE, "version " + ref + " stores a digest only; verify it via CredentialVerifier");
+        }
         if (!FROZEN_USABLE.contains(v.getStatus())) {
             throw new SecretException(Reason.VERSION_UNUSABLE, "version " + ref + " is " + v.getStatus());
         }

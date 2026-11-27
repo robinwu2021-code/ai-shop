@@ -42,6 +42,7 @@ public class MallRecoveryJob implements JobHandler {
     private String cashRefundCursor;
     private ai.neargo.shop.merchant.plan.EntityPlanPurchaseService entityPlans;
     private String entityPlanCursor;
+    private String entityRefundCursor;
     @Autowired(required=false) void setEntityPlans(ai.neargo.shop.merchant.plan.EntityPlanPurchaseService plans){this.entityPlans=plans;}
     @Autowired(required=false) void setCashRefunds(ai.neargo.commerce.api.port.OfflineCashRefundPort cashRefunds){this.cashRefunds=cashRefunds;}
 
@@ -128,6 +129,11 @@ public class MallRecoveryJob implements JobHandler {
         }
         if(cashRefunds!=null)try{var result=cashRefunds.recoverPending("MAIN",cashRefundCursor,batchSize);cashRefundCursor=result.visited()<batchSize?null:result.nextRefundNo();failed+=result.failed();}catch(RuntimeException retry){failed++;}
         if(entityPlans!=null)try{var result=entityPlans.recoverPending(entityPlanCursor,batchSize);entityPlanCursor=result.visited()<batchSize?null:result.nextOrderNo();failed+=result.failed();}catch(RuntimeException retry){failed++;}
+        if(entityPlans!=null)try{
+            var result=entityPlans.recoverRefunds(entityRefundCursor,batchSize);
+            entityRefundCursor=result.visited()<batchSize?null:result.nextOrderNo();
+            failed+=result.failed();
+        }catch(RuntimeException retry){failed++;}
         String detail =
                 "账本交接检查%d，订单检查%d，线下核款恢复%d，待重试%d"
                         .formatted(checked, orders, offlineOrders, failed);

@@ -1,5 +1,7 @@
 package ai.neargo.shop.gateway.iam.resource;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.gateway.core.end.GatewayEndRuntimes;
 import ai.neargo.shop.gateway.core.end.Access;
@@ -32,12 +34,14 @@ public class JdbcResourceStore implements ResourceStore {
 
     private final JdbcClient jdbc;
 
-    public JdbcResourceStore(DataSource dataSource, GatewayEndRuntimes runtimes) {
+    /** 接口资源两张表在基础能力库：本进程直连时走 {@code common} 句柄（TDD-基础能力库对齐 2a） */
+    public JdbcResourceStore(@Qualifier(ModuleDataSources.COMMON_DATA_SOURCE) DataSource dataSource,
+                             GatewayEndRuntimes runtimes) {
         this.jdbc = runtimes.jdbc(Realm.OPERATOR).orElseGet(() -> JdbcClient.create(dataSource));
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public SyncResult syncScanned(String endCode, List<ApiResource> scanned, String appVersion) {
         Map<String, Row> existing = new HashMap<>();
         jdbc.sql("SELECT id, method, pattern, access, rule_text, handler, location, stale FROM sys_api_resource"
@@ -149,7 +153,7 @@ public class JdbcResourceStore implements ResourceStore {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public void adjust(long id, String access, String rule, String operator) {
         jdbc.sql("UPDATE sys_api_resource SET adjusted_access = ?, adjusted_rule = ?, adjusted_by = ?,"
                         + " adjusted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
@@ -177,7 +181,7 @@ public class JdbcResourceStore implements ResourceStore {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public int seedManual(String endCode, List<ApiResource> seeds) {
         int inserted = 0;
         for (ApiResource seed : seeds) {

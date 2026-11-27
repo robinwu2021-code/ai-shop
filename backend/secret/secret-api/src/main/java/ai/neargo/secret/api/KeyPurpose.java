@@ -22,6 +22,8 @@ public record KeyPurpose(Direction direction, Usage usage) {
      * 以及平台加密私钥（增强方案）—— 两者方向与用途相同，靠 {@code owner_type}（PARTNER_APP / PLATFORM_OPEN）区分
      */
     public static final KeyPurpose PARTNER_DATA = new KeyPurpose(Direction.INBOUND, Usage.ENCRYPT);
+    /** 外部调我方时出示的 API Key：只存摘要（{@link StorageTier#DIGEST}），经 {@link CredentialVerifier} 验证 */
+    public static final KeyPurpose INBOUND_API_KEY = new KeyPurpose(Direction.INBOUND, Usage.API_KEY);
 
     public KeyPurpose {
         if (direction == null || usage == null) {
@@ -45,6 +47,8 @@ public record KeyPurpose(Direction direction, Usage usage) {
         VERIFY,
         HMAC,
         ENCRYPT,
-        MTLS
+        MTLS,
+        /** 出示即认证的凭据（Bearer API Key），只比对摘要 */
+        API_KEY
     }
 }

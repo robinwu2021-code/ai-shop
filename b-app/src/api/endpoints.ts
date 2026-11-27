@@ -664,9 +664,13 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mOfflineSaleRevoke: { method: "POST", path: "/biz/store/:storeNo/offline-sale/:docNo/revoke", auth: true, summary: "撤销一笔线下卖出（开退回入库单）" },
   // 平台商城：本店向平台采购套餐 / 硬件，首期只走线下银行转账（docs/api/commerce-mall-http.md「线下银行转账购买」）
   mMallStorefront: { method: "GET", path: "/biz/stores/{storeNo}/mall/products", auth: true, summary: "平台商城：本店可买的商品" },
+  mMallSubscriptionVersion: { method: "GET", path: "/biz/stores/{storeNo}/subscription", auth: true, summary: "平台商城：查询本店订阅版本" },
+  mMallOfflineUpgradeQuote: { method: "POST", path: "/biz/stores/{storeNo}/mall/offline/upgrade-quotes", auth: true, summary: "平台商城：线下套餐升级报价" },
   mMallOfflineQuote: { method: "POST", path: "/biz/stores/{storeNo}/mall/offline/quotes", auth: true, summary: "平台商城：线下转账报价" },
   mMallPlaceOrder: { method: "POST", path: "/biz/stores/{storeNo}/mall/orders", auth: true, summary: "平台商城：按报价下单" },
   mMallOrders: { method: "GET", path: "/biz/stores/{storeNo}/mall/orders", auth: true, summary: "平台商城：本店的商城订单" },
+  mMallRefundPreview: { method: "POST", path: "/biz/stores/{storeNo}/mall/orders/{orderNo}/refund-previews", auth: true, summary: "平台商城：组件退款预览" },
+  mMallRefund: { method: "POST", path: "/biz/stores/{storeNo}/mall/orders/{orderNo}/refunds", auth: true, summary: "平台商城：申请组件退款" },
   mMallOrder: { method: "GET", path: "/biz/stores/{storeNo}/mall/orders/{orderNo}", auth: true, summary: "平台商城：订单详情" },
   mMallIssueInstructions: { method: "POST", path: "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions", auth: true, summary: "平台商城：发出付款指引（幂等）" },
   mMallInstructions: { method: "GET", path: "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions", auth: true, summary: "平台商城：查看付款指引" },

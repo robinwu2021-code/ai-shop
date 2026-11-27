@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -15,7 +16,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSeedValidator;
 import ai.neargo.shop.common.pricing.PricingSeedValidator.SeedPlan;
 import ai.neargo.shop.common.pricing.PricingSeedValidator.TemplateDraft;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.Context;
 import ai.neargo.shop.trade.entity.OrdPricingTemplate;
 import ai.neargo.shop.trade.mapper.TradeMappers.PricingTemplateMapper;
@@ -32,12 +33,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class PricingSeedServiceImpl implements PricingSeedService {
     private final PricingTemplateMapper templates;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final TransactionTemplate transactions;
     private final PricingSeedValidator validator = new PricingSeedValidator();
 
-    public PricingSeedServiceImpl(PricingTemplateMapper templates, IdempotencyService idempotency,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+    public PricingSeedServiceImpl(PricingTemplateMapper templates, RequestIdempotencyPort idempotency,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.templates = templates;
         this.idempotency = idempotency;
         this.transactions = new TransactionTemplate(manager);

@@ -81,10 +81,7 @@ public class OpsKitApprovalConfiguration {
         return new OpsKitSubmitConsumer(client, subjects, links);
     }
 
-    @Bean
-    OpsKitReconcileJob opskitReconcileJob(ApprovalClient client, ApprovalLinkStore links, ApprovalOutcomes outcomes) {
-        return new OpsKitReconcileJob(client, links, outcomes);
-    }
+    // 对账作业 OpsKitReconcileJob 自己是 @Component（还要 shop.job.enabled），JobDeclaration 跟在它身上
 
     @Bean
     OpsKitProcessRegistrar opskitProcessRegistrar(ApprovalClient client, ApprovalSubjects subjects, OpsKitProperties props) {

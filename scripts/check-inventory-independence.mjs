@@ -8,7 +8,7 @@
  *
  * 三条检查，全部纯读文件，几十毫秒：
  *   I2 · Java 不许 import ai.neargo.shop.*（ArchUnit 在 inventory-svc 的测试里还有一道按字节码的）
- *   I3 · pom 不许依赖 ai.neargo.shop 下除 job-api / svc-client 以外的构件（enforcer 在构建期还有一道）
+ *   I3 · pom 不许依赖 ai.neargo.shop 下除 job-api / svc-client / 密钥模块（secret-*）以外的构件（enforcer 在构建期还有一道）
  *   I4 · 目录里任何相对路径都不许指出 backend/inventory/（整目录搬走时会断）
  *
  * 用法：node scripts/check-inventory-independence.mjs   （pre-push 调用，非零退出即拦）
@@ -19,7 +19,8 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SERVICE = join(ROOT, "backend/inventory");
-const ALLOWED_SHOP_ARTIFACTS = new Set(["job-api", "svc-client"]);
+// 密钥模块（TDD-基础能力库对齐「1h 开放应用」Q18）：平台级的库，开放凭证存在密钥库，独立进程内嵌它自连
+const ALLOWED_SHOP_ARTIFACTS = new Set(["job-api", "svc-client", "secret-api", "secret-store", "secret-core"]);
 const TEXT = /\.(java|xml|yml|yaml|properties|md|sql|imports|json)$/;
 
 if (!existsSync(SERVICE)) {
@@ -59,7 +60,7 @@ for (const file of files) {
     const deps = src.matchAll(/<groupId>\s*ai\.neargo\.shop\s*<\/groupId>\s*<artifactId>\s*([^<\s]+)\s*<\/artifactId>/g);
     for (const m of deps) {
       if (!ALLOWED_SHOP_ARTIFACTS.has(m[1])) {
-        errs.push(`${rel(file)}  I3 依赖了 ai-shop 构件 ai.neargo.shop:${m[1]}（白名单只有 job-api、svc-client）`);
+        errs.push(`${rel(file)}  I3 依赖了 ai-shop 构件 ai.neargo.shop:${m[1]}（白名单只有 job-api、svc-client、secret-api/-store/-core）`);
       }
     }
   }

@@ -74,6 +74,9 @@ class GenericIndustryFulfillmentGuardTest {
         when(subs.selectOne(any())).thenReturn(sub);
         var service=new FulfillmentQueryPortImpl(subs,mock(OrderItemMapper.class),mock(OrderStatusLogMapper.class),
                 mock(UserQueryPort.class),bus); service.setStatusWriter(writer);
+        // 真实的 TradeStatusWriter 会把迁移后的状态写回子单；完成事件只在 COMPLETED 时发
+        when(writer.order(any(),any(),any(),any(),any(),any())).thenAnswer(call -> {
+            call.<OrdSubOrder>getArgument(0).setStatus(OrdSubOrder.COMPLETED); return null; });
         assertThat(service.complete("SUB","actor","已核销")).isTrue();
         verify(bus).publish(any());
     }

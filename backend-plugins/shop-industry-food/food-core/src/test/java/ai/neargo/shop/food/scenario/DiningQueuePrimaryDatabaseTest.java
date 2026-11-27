@@ -12,7 +12,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.impl.QueueServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 import ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard;
 import java.util.LinkedHashMap;
@@ -114,7 +114,7 @@ class DiningQueuePrimaryDatabaseTest extends FoodWriteGuardFixture {
             var checks=c.getBean(CheckService.class);
             var queue=new QueueServiceImpl(c.getBean(QueueTicketMapper.class),c.getBean(StorePolicyMapper.class),
                     actions,c.getBean(StoreOperationService.class),checks,stores,
-                    c.getBean(IdempotencyService.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class));
+                    c.getBean(RequestIdempotencyPort.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class));
             test.run(c,f,checks,queue,helper,fail);
         });
     }

@@ -6,6 +6,8 @@ export type PlanMoney = {
   minor:number;
 };
 export type EntityPlanOffer={
+  /** 报价关联的已发布 SKU、套餐版本和权益代码 */
+  catalog?:{skuNo:string;skuVersionNo:string;planVersionNo:string;entitlementCodes:string[]}|null;
   /** 主体套餐销售报价编号。 */
   offerNo:string;
   /** 报价版本；下单必须绑定所选版本。 */
@@ -28,6 +30,8 @@ export type EntityPlanOffer={
   enabled:boolean;
 };
 export type EntityPlanOfferEdit={
+  /** 本次报价绑定的已发布 SKU 版本号 */
+  skuVersionNo?:string;
   /** 要新增或更新的销售报价编号。 */
   offerNo:string;
   /** 期望现有版本；新增报价传 0，防止覆盖并发修改。 */
@@ -84,6 +88,8 @@ export type EntityPlanAction={
   reason:string;
 };
 export type EntityPlanPurchase={
+  /** 该订单的收款资料可按门店号和原商城订单号查询。 */
+  mallOffline?:boolean;
   /** 主体套餐购买订单号。 */
   orderNo:string;
   /** 创建订单的原始幂等请求号。 */
@@ -94,7 +100,7 @@ export type EntityPlanPurchase={
   storeNo:string;
   /** 下单时冻结的销售报价及额度快照。 */
   offer:EntityPlanOffer;
-  /** 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 */
+  /** 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示退款完成，REFUND_PENDING 和 REFUND_REVIEW 分别表示门店撤权待完成和主体额度待人工复核。 */
   status:string;
   /** 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 */
   purchaseSource?:string;
@@ -160,3 +166,16 @@ export type EntityPlanSignedRead={
   url:string;
 };
 export type {EntityPlanPurchaseApi} from "./api/contracts/entity-plan-purchase";
+
+export type PlanReviewQuota = {
+  planCode:string; stores:number|null; staff:number|null; crossStore:boolean|null;
+  storeOverride:number|null; staffOverride:number|null; overridesKnown:boolean;
+  expiry:number|null; grantedBy:string;
+};
+export type ClosePlanRefundReview = {refundNo:string; quotaRevision:string; reason:string};
+export type PlanRefundReview = {
+  orderNo:string; entityNo:string; storeNo:string; offer:EntityPlanOffer; refundNo:string;
+  status:string; before:PlanReviewQuota; current:PlanReviewQuota; quotaRevision:string;
+  decision:null|{result:"KEEP_CURRENT"; operatorNo:string; reviewedAt:string;
+    command:ClosePlanRefundReview; retainedQuota:PlanReviewQuota};
+};

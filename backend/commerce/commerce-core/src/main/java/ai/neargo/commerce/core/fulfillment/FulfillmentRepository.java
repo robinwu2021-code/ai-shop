@@ -12,6 +12,8 @@ public interface FulfillmentRepository {
     /** Immutable identity lookup only; never locks order before its subscription account. */
     record Location(StoreRef store, String currency) {}
 
+    default boolean entityPlanGrantReady(String tenant, String orderNo) { return false; }
+
     Optional<Location> locate(String tenant, String orderNo);
 
     record Operation(
@@ -74,8 +76,8 @@ public interface FulfillmentRepository {
 
     void paid(Order order, VerifiedPaymentFact fact, String attemptNo);
 
-    /** Persisted approved ordinary digital-only refund scope; never late whole-order refunds. */
-    default boolean digitalOnlyRefund(Order order) {
+    /** Whether reviewed refund scopes permit dispatch of outstanding hardware. */
+    default boolean allowsRemainingShipment(Order order) {
         return false;
     }
 

@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
@@ -175,7 +176,7 @@ public class CheckoutServiceImpl implements CheckoutService {
             PaymentOperationPort financialOperations,
             CheckoutMappers.PaymentRequestMapper paymentRequests,
             CheckoutPaymentService payments,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.operations = operations;
         this.quotes = quotes;
         this.confirmations = confirmations;

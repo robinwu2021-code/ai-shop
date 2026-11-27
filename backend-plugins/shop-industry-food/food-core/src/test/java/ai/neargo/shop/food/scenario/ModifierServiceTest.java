@@ -18,7 +18,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper;
 import ai.neargo.shop.food.service.ModifierService;
 import ai.neargo.shop.food.service.impl.ModifierServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.math.BigDecimal;
 import java.util.List;
@@ -244,7 +244,7 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
             var m = new MapperFactoryBean<>(ModifierComponentMapper.class); m.setSqlSessionTemplate(t); return m;
         }
         @Bean ModifierService modifiers(ModifierMapper heads, ModifierComponentMapper components,
-                ActionLogMapper actions, IdempotencyService idem, ObjectMapper json,
+                ActionLogMapper actions, RequestIdempotencyPort idem, ObjectMapper json,
                 PlatformTransactionManager manager, Fail fail) {
             var catalog = mock(GoodsCatalogQueryPort.class);
             when(catalog.getSku(anyString(),

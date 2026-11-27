@@ -10,7 +10,7 @@ export type {
 } from "./pay";
 // 平台商城（向平台采购，线下银行转账）的响应类型住在 ./mall.ts；同样转出一次
 export type {
-  MallStorefront, MallQuote, MallOrder, MallOrderSummary, MallOrderDetail, MallOfflineInstructions,
+  MallStorefront, MallQuote, MallOrder, MallOrderSummary, MallOrderDetail, MallRefundPreview, MallRefundResult, MallOfflineInstructions,
   MallEvidenceTicket, MallEvidenceUploaded, MallOfflineClaim,
 } from "./mall";
 

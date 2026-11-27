@@ -56,6 +56,15 @@
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-jsqlparser</artifactId>
         </dependency>
+        <!--
+            ADR-067：异步事件经 RabbitMQ 4。只引 spring-rabbit、**不引 spring-boot-starter-amqp**：
+            starter 带 Boot 的自动配置与健康检查，没部署 MQ 的环境（shop.events.transport=local，默认）也会去连、
+            把就绪探针拖红。连接工厂只在 transport=rabbitmq 时由 RabbitEventsConfiguration 自己建。
+        -->
+        <dependency>
+            <groupId>org.springframework.amqp</groupId>
+            <artifactId>spring-rabbit</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

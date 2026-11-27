@@ -44,7 +44,6 @@ import static org.mockito.Mockito.doCallRealMethod;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -64,11 +63,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Unified B provisions actual platform V544 and Beauty V10 history; no fabricated install marker.
  */
 @EnabledIfSystemProperty(named = "beauty.execution.test.native", matches = "true")
-@TestPropertySource(properties = {
-        "shop.personnel.publication.archive-only=true",
-        "shop.schedule.publication.archive-only=true",
-        "shop.resource.publication.archive-only=true"
-})
 class ManualExecutionIT extends ManualSourceHostFixture {
     @Autowired PersonnelService personnel;
     @Autowired ScheduleService schedules;

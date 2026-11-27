@@ -1,5 +1,6 @@
 package ai.neargo.shop.platform.perm.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -227,7 +228,7 @@ public class PermConfigServiceImpl implements PermConfigService {
     // ---------------------------------------------------------------- 写侧
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public RoleVO createRole(String roleCode, String name, String operatorNo) {
         if (roleCode == null || roleCode.isBlank() || name == null || name.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -252,7 +253,7 @@ public class PermConfigServiceImpl implements PermConfigService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public RoleVO setRolePoints(String roleCode, List<String> pointCodes, String operatorNo) {
         SysRole r = requireRole(roleCode);
         /*
@@ -312,7 +313,7 @@ public class PermConfigServiceImpl implements PermConfigService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public RoleVO renameRole(String roleCode, String name, String operatorNo) {
         if (name == null || name.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -336,7 +337,7 @@ public class PermConfigServiceImpl implements PermConfigService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public void deleteRole(String roleCode, String operatorNo) {
         SysRole r = requireRole(roleCode);
         if (!Boolean.FALSE.equals(r.getBuiltin())) {
@@ -361,7 +362,7 @@ public class PermConfigServiceImpl implements PermConfigService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public int forceLogoutRole(String roleCode, String operatorNo) {
         // 角色必须存在：对着一个打错的角色码点「强制下线」，返回 0 会被当成「没人在线」
         requireRole(roleCode);
@@ -419,7 +420,7 @@ public class PermConfigServiceImpl implements PermConfigService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public void moveFunction(String functionCode, MoveDirection direction, String operatorNo) {
         List<SysFunction> siblings = functionMapper.selectList(Wrappers.<SysFunction>lambdaQuery()
                 .eq(SysFunction::getEndCode, OPS).orderByAsc(SysFunction::getSort));
@@ -435,7 +436,7 @@ public class PermConfigServiceImpl implements PermConfigService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public void movePoint(String pointCode, MoveDirection direction, String operatorNo) {
         SysFunctionPoint me = pointMapper.selectOne(Wrappers.<SysFunctionPoint>lambdaQuery()
                 .eq(SysFunctionPoint::getPointCode, pointCode).last("LIMIT 1"));
@@ -483,7 +484,7 @@ public class PermConfigServiceImpl implements PermConfigService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public void reorderFunctions(List<String> codes, String operatorNo) {
         List<SysFunction> all = functionMapper.selectList(Wrappers.<SysFunction>lambdaQuery()
                 .eq(SysFunction::getEndCode, OPS));
@@ -499,7 +500,7 @@ public class PermConfigServiceImpl implements PermConfigService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public void reorderPoints(String functionCode, List<String> pointCodes, String operatorNo) {
         // 只重排菜单项：ACTION 是页面内的按钮级授权，它没有"顺序"可言
         List<SysFunctionPoint> all = pointMapper.selectList(Wrappers.<SysFunctionPoint>lambdaQuery()

@@ -118,9 +118,13 @@ public final class OutboxRunner implements AutoCloseable {
             }, clock.instant().plus(heartbeatInterval), heartbeatInterval);
             try {
                 var handler = facade.handler(ref.source(), c.handlerId());
+                var relay = facade.relay();
                 DeliveryResult result;
                 try {
-                    result = handler == null ? DeliveryResult.failed("NO_HANDLER", "Handler not registered")
+                    result = handler != null && relay != null && relay.relays(c.event().eventType())
+                            // 改发中间件：确认接收即算投出，由订阅端调回同一个处理者（ADR-067）
+                            ? relayed(relay, c)
+                            : handler == null ? DeliveryResult.failed("NO_HANDLER", "Handler not registered")
                             : OutboxLease.withCheck(() -> leaseValid.get()
                                 && store.renew(c, clock.instant(), leaseDuration), () -> handler.handle(c.event()));
                 } catch (ai.neargo.shop.event.outbox.OutboxSourceConflictException ex) {
@@ -147,6 +151,16 @@ public final class OutboxRunner implements AutoCloseable {
         } finally {
             queued.remove(ref);
             signal(ref.source());
+        }
+    }
+
+    private static DeliveryResult relayed(BrokerRelay relay, ClaimedDelivery c) {
+        try {
+            relay.publish(c.event(), c.handlerId());
+            return DeliveryResult.sent();
+        } catch (RuntimeException e) {
+            // 中间件没确认：与目标不可用同等对待，按原退避重试（外部流程也不算“结果未知”，处理者根本没被调）
+            return DeliveryResult.retry("BROKER_UNAVAILABLE", e.getClass().getSimpleName());
         }
     }
 

@@ -1,5 +1,6 @@
 package ai.neargo.shop.platform;
 
+import ai.neargo.shop.platform.entity.SysRegion;
 import java.util.List;
 
 /**
@@ -13,6 +14,21 @@ import java.util.List;
  * 四级时代一次性下发是 1.6 MB，还算撑得住；现在是几十 MB。
  */
 public interface RegionService {
+
+    /** 区划层级。区划的调用方用这里的常量，不认持久化实体（区划换到基础能力库时实体会变） */
+    String LEVEL_PROVINCE = SysRegion.LEVEL_PROVINCE;
+    String LEVEL_CITY = SysRegion.LEVEL_CITY;
+    String LEVEL_DISTRICT = SysRegion.LEVEL_DISTRICT;
+    String LEVEL_STREET = SysRegion.LEVEL_STREET;
+    String LEVEL_VILLAGE = SysRegion.LEVEL_VILLAGE;
+
+    /**
+     * 把现查到的坐标记到区划上，<b>仅当这一条本来没坐标</b>（一条原子 UPDATE，并发时先到者生效）。
+     *
+     * @param source 坐标来源，如高德补录 {@code AMAP}
+     * @return 是否真的写了
+     */
+    boolean recordCoordinate(String regionCode, int latE6, int lngE6, String source);
 
     /**
      * 某个区划的直接下级。

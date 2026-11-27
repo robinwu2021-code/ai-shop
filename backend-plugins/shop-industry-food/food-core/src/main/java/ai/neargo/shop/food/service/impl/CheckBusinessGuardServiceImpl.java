@@ -2,6 +2,7 @@ package ai.neargo.shop.food.service.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
 
@@ -13,7 +14,7 @@ import java.util.Objects;
 /**
  * Every writer locks the same check before touching its cart/batches. No payment state is inferred.
  */
-@Transactional(transactionManager = "transactionManager", propagation = Propagation.MANDATORY)
+@Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.MANDATORY)
 public class CheckBusinessGuardServiceImpl implements CheckBusinessGuardService {
     private final FoodBusinessOperationsMapper mapper;
 

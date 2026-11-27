@@ -520,54 +520,115 @@ public final class WorkOrderCoordinator {
         var prepared = preparedForIdentity(observed, preparation.fromAppointment(observed), canonical(op));
         return openPrepared(observed, actor, op, prepared, original.openingRevision());
     }
+    /**
+     * 开工单分三步（ADR-068：预约在门店交易库；工单、服务执行与接待操作在行业库）。
+     * <ol>
+     *   <li>行业事务：在接待操作上预留工单号（只做一次），并预检这些预约明细上没有孤儿任务；</li>
+     *   <li>交易事务：锁预约、校验，把预留的号记到预约上；已经记过就跳过校验。走入单在这一步之后越过
+     *       服务开始时间的，撤销预约上的标记，接待操作记成「需要重新排期」；</li>
+     *   <li>行业事务：按这个号建工单、任务、上下文、开单提交，并把接待操作记成成功——同一个事务。</li>
+     * </ol>
+     * 任何一步失败都可以重跑本方法：接待操作带着预留的号，预约上的标记与它一致就直接补第三步；
+     * 工单表一预约一张的唯一约束兜住重复。
+     */
     private WorkOrderVO openPrepared(BtyAppointment observed, String actor, BtyReceptionOperation op,
             PreparedWorkOrderScope prepared, long revision) {
+        String entity = prepared.scope().entityNo();
+        String store = prepared.scope().storeNo();
+        var reserved = db.industryTx(() -> {
+            var locked = receptionRows.selectScopedForUpdate(entity, store, op.getOperationNo());
+            AppointmentPersistence.require(sameOperation(op, locked));
+            if (succeeded(locked)) { return new Claim(result(locked), null); }
+            AppointmentPersistence.require(!"REJECTED".equals(locked.getPhase()));
+            if (locked.getWorkOrderNo() == null) {
+                var items = prepared.frozen().items().stream().map(item -> item.appointmentItemNo())
+                        .filter(Objects::nonNull).distinct().toList();
+                AppointmentPersistence.require(items.isEmpty()
+                        || tasks.countForAppointmentItems(entity, items) == 0);
+                locked.setWorkOrderNo(BizKey.next("BTWO"));
+                AppointmentPersistence.require(receptionRows.updateById(locked) == 1);
+            }
+            return new Claim(null, locked.getWorkOrderNo());
+        });
+        if (reserved.done() != null) { return reserved.done(); }
+        String workOrderNo = reserved.workOrderNo();
+        var marked = markAppointment(observed, actor, op, prepared, revision, workOrderNo);
+        if (marked == Mark.RESCHEDULE) { return requireReschedule(entity, store, op); }
+        return db.industryTx(() -> {
+            var locked = receptionRows.selectScopedForUpdate(entity, store, op.getOperationNo());
+            AppointmentPersistence.require(sameOperation(op, locked));
+            if (succeeded(locked)) { return result(locked); }
+            AppointmentPersistence.require(workOrderNo.equals(locked.getWorkOrderNo()));
+            return persist(locked, prepared);
+        });
+    }
+    /** 第一步的结果：要么已经有最终结果，要么拿到了预留的工单号。 */
+    private record Claim(WorkOrderVO done, String workOrderNo) { }
+    private enum Mark { MARKED, RESCHEDULE }
+    /** 第二步：交易事务里只碰预约；接待操作在行业库，这里只读不写。 */
+    private Mark markAppointment(BtyAppointment observed, String actor, BtyReceptionOperation op,
+            PreparedWorkOrderScope prepared, long revision, String workOrderNo) {
+        boolean walkIn = "RECEIVE_WALK_IN".equals(op.getAction());
         return db.tx(() -> {
             if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", prepared.scope().entityNo(), prepared.scope().storeNo());
             if (observed != null) {
-                db.lock(observed);
+                var root = db.lock(observed);
                 db.fences.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
                         observed.getAppointmentNo());
                 db.currents.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
                         observed.getAppointmentNo());
-            }
-            var locked = receptionRows.selectScopedForUpdate(prepared.scope().entityNo(), prepared.scope().storeNo(),
-                    op.getOperationNo());
-            AppointmentPersistence.require(sameOperation(op, locked));
-            if (succeeded(locked)) { return result(locked); }
-            if ("RECEIVE_WALK_IN".equals(locked.getAction())) {
-                var original = db.json.readValue(locked.getFrozenPayload(), WalkInPayload.class);
-                AppointmentPersistence.require("BAPI-048".equals(locked.getEndpoint())
-                        && "OPEN_PENDING".equals(locked.getPhase()) && original.openingRevision() == revision
-                        && original.appointmentNo().equals(locked.getAppointmentNo())
-                        && original.appointmentOperationNo().equals(locked.getAppointmentOperationNo()));
-            }
-            boolean walkIn = "RECEIVE_WALK_IN".equals(locked.getAction());
-            if (observed != null) { verifyAppointmentLocked(observed, prepared, revision, walkIn); }
-            AppointmentPersistence.require(!"REJECTED".equals(locked.getPhase()));
-            preparation.verifyLocked(prepared);
-            // This check follows all lock acquisition: owner reads or lock waits may cross the frozen start.
-            if ("RECEIVE_WALK_IN".equals(locked.getAction())) {
-                var original = db.json.readValue(locked.getFrozenPayload(), WalkInPayload.class);
-                var at = clock.instant();
-                boolean future = ResourcePlanContract.decode(original.matched().plan()).demands().stream()
-                        .flatMap(d -> d.intervals().stream()).allMatch(i -> i.startAt().isAfter(at));
-                if (!future) {
-                    locked.setFailureCode("ARRIVAL_REQUIRES_RESCHEDULE");
-                    AppointmentPersistence.require(receptionRows.updateById(locked) == 1);
-                    receptionRows.update(null, Wrappers.<BtyReceptionOperation>lambdaUpdate()
-                            .eq(BtyReceptionOperation::getId, locked.getId())
-                            .set(BtyReceptionOperation::getNextRetryAt, null)
-                            .set(BtyReceptionOperation::getLeaseUntil, null));
-                    return pending(locked);
+                if (root != null && workOrderNo.equals(root.getWorkOrderNo())) {
+                    // 第二步已经提交过：走入单此时已越过开始时间就撤销标记，否则直接去补第三步
+                    if (walkIn && !stillFuture(op)) {
+                        AppointmentPersistence.require(db.roots.releaseWorkOrderClaim(observed.getEntityNo(),
+                                observed.getStoreNo(), observed.getAppointmentNo(), workOrderNo, actor, now()) == 1);
+                        return Mark.RESCHEDULE;
+                    }
+                    return Mark.MARKED;
                 }
             }
+            if (walkIn) {
+                var original = db.json.readValue(op.getFrozenPayload(), WalkInPayload.class);
+                AppointmentPersistence.require("BAPI-048".equals(op.getEndpoint())
+                        && "OPEN_PENDING".equals(op.getPhase()) && original.openingRevision() == revision
+                        && original.appointmentNo().equals(op.getAppointmentNo())
+                        && original.appointmentOperationNo().equals(op.getAppointmentOperationNo()));
+            }
+            if (observed != null) { verifyAppointmentLocked(observed, prepared, revision, walkIn); }
+            preparation.verifyLocked(prepared);
+            // This check follows all lock acquisition: owner reads or lock waits may cross the frozen start.
+            if (walkIn && !stillFuture(op)) { return Mark.RESCHEDULE; }
             if (observed != null) {
                 AppointmentPersistence.require(db.roots.markWorkOrderOpened(observed.getEntityNo(),
-                        observed.getStoreNo(), observed.getAppointmentNo(), revision, actor, now()) == 1);
+                        observed.getStoreNo(), observed.getAppointmentNo(), workOrderNo, revision, actor, now()) == 1);
             }
-            return persist(locked, prepared);
+            return Mark.MARKED;
         });
+    }
+    private boolean stillFuture(BtyReceptionOperation op) {
+        var original = db.json.readValue(op.getFrozenPayload(), WalkInPayload.class);
+        var at = clock.instant();
+        return ResourcePlanContract.decode(original.matched().plan()).demands().stream()
+                .flatMap(d -> d.intervals().stream()).allMatch(i -> i.startAt().isAfter(at));
+    }
+    /** 走入单越过开始时间：接待操作保持进行中，记下原因并停止自动重试，等重新排期。 */
+    private WorkOrderVO requireReschedule(String entity, String store, BtyReceptionOperation op) {
+        return db.industryTx(() -> {
+            var locked = receptionRows.selectScopedForUpdate(entity, store, op.getOperationNo());
+            AppointmentPersistence.require(sameOperation(op, locked));
+            if (succeeded(locked)) { return result(locked); }
+            locked.setFailureCode("ARRIVAL_REQUIRES_RESCHEDULE");
+            AppointmentPersistence.require(receptionRows.updateById(locked) == 1);
+            receptionRows.update(null, Wrappers.<BtyReceptionOperation>lambdaUpdate()
+                    .eq(BtyReceptionOperation::getId, locked.getId())
+                    .set(BtyReceptionOperation::getNextRetryAt, null)
+                    .set(BtyReceptionOperation::getLeaseUntil, null));
+            return pending(locked);
+        });
+    }
+    /** 预约改约前要知道哪些服务任务受影响：任务在行业库，按工单的来源预约查。 */
+    public List<String> affectedTaskNos(String entity, String store, String appointmentNo) {
+        return tasks.affectedTaskNos(entity, store, appointmentNo);
     }
     private void verifyAppointmentLocked(BtyAppointment observed, PreparedWorkOrderScope prepared, long revision,
             boolean walkIn) {
@@ -602,7 +663,7 @@ public final class WorkOrderCoordinator {
         var scope = prepared.scope();
         if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", scope.entityNo(), scope.storeNo());
         var root = new BtyWorkOrder(); root.setEntityNo(scope.entityNo()); root.setStoreNo(scope.storeNo());
-        root.setWorkOrderNo(BizKey.next("BTWO")); root.setAppointmentNo(op.getAppointmentNo());
+        root.setWorkOrderNo(op.getWorkOrderNo()); root.setAppointmentNo(op.getAppointmentNo());
         root.setCustomerRef(prepared.identity().kind() + ":" + prepared.identity().reference());
         root.setStatus("OPEN");
         root.setScopeRevision(1L); root.setScopeFrozen(false); orders.insert(root);

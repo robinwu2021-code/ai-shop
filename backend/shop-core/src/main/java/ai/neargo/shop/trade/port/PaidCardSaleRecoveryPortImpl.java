@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.port;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.PaidCardSaleRecoveryPort;
 import ai.neargo.shop.trade.mapper.TradeMappers.CardSaleSnapshotMapper;
@@ -19,7 +20,7 @@ public class PaidCardSaleRecoveryPortImpl implements PaidCardSaleRecoveryPort {
         if(limit<1 || limit>200 || after==null) throw BizException.of(ErrorCode.BAD_REQUEST);
         return DataScopeContext.executeWithoutScope(() -> snapshots.pendingDelivery(ctx.tenantNo(),after,limit));
     }
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void acknowledge(EntitlementContext ctx,String no) {
         supported(ctx);
         DataScopeContext.executeWithoutScope(() -> snapshots.acknowledgeDelivery(ctx.tenantNo(),no,

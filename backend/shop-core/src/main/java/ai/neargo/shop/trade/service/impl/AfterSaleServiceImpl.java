@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.trade.order.command.OrderActor;
@@ -197,7 +198,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                                 RefundExecutionService refundExecutions,
                                 ai.neargo.shop.trade.order.mapper.OrderPointsRefundRetryMapper retryRows,
                                 ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper pointsBindings,
-                                @Qualifier("transactionManager") PlatformTransactionManager sourceTransactions,
+                                @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager sourceTransactions,
                                 ai.neargo.shop.trade.order.refund.service.RefundObligationService refundObligations,
                                 PointsRefundResourceService pointsResources) {
         this.pointsResources=pointsResources;
@@ -544,13 +545,13 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO cancel(String afterSaleNo) {
         return cancelForBuyer(afterSaleNo, SecurityUtils.currentUserNo());
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO cancelForBuyer(String afterSaleNo, String buyerNo) {
         OrdAfterSale hint = own(afterSaleNo, buyerNo);
         lockRefundChild(hint.getSubOrderNo());
@@ -562,7 +563,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO shipBack(String afterSaleNo, String company, String expressNo) {
         OrdAfterSale as = ownForMutation(afterSaleNo);
         // 只在「待寄回」时能填：此前不校验状态，终态单也能写入，且每次写都刷新 updated_at 把超时计时重置
@@ -578,7 +579,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO escalate(String afterSaleNo, String appeal) {
         OrdAfterSale as = ownForMutation(afterSaleNo);
         // 入口：被驳回 / 在途待签收 / 商家超时未处理 / 退货寄回后商家超时未确认（TDD-订单状态机 AC10）
@@ -714,7 +715,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark,
                                Long refundMinor, String refundMode) {
         if (OrdAfterSale.REFUND_MODE_POINTS.equals(refundMode)) {
@@ -779,7 +780,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO reject(String merchantNo, String afterSaleNo, String remark) {
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
         // 极速退已经是终态，商家只可见不可拒 —— 状态机在这里挡住
@@ -794,19 +795,19 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo) {
         return confirmReturn(merchantNo, afterSaleNo, false);
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, boolean restockApproved) {
         return confirmReturnInternal(merchantNo, afterSaleNo, null, null, restockApproved);
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, String receiptNo,
                                      List<AfterSaleService.ReturnReceiveLine> receivedLines) {
         return confirmReturnInternal(merchantNo, afterSaleNo, receiptNo, receivedLines, false);
@@ -877,13 +878,13 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo) {
         return confirmRefund(merchantNo, afterSaleNo, null);
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo, String reason) {
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
         if (reason != null && reason.length() > 200) {
@@ -906,7 +907,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      * 无 WAIT_RECEIPT 售后单时为空操作。系统身份调用，绕数据域。
      */
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void settleOnReceipt(String subOrderNo) {
         OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(
                 Wrappers.<OrdAfterSale>lambdaQuery()
@@ -1405,7 +1406,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public OpsAfterSaleVO arbitrate(String afterSaleNo, boolean refund, String liability,
                                     String verdict, String operatorNo) {
         if (verdict == null || verdict.isBlank()) {
@@ -1899,7 +1900,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void remindOverdue(String afterSaleNo) {
         OrdAfterSale as = bySystem(afterSaleNo);
         if (as == null || !OrdAfterSale.APPLIED.equals(as.getStatus())) {
@@ -1914,7 +1915,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void autoCloseUnshipped(String afterSaleNo) {
         OrdAfterSale as = bySystem(afterSaleNo);
         if (as == null || !OrdAfterSale.WAIT_RETURN.equals(as.getStatus())) {
@@ -1925,7 +1926,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void remindUnconfirmedReturn(String afterSaleNo) {
         OrdAfterSale as = bySystem(afterSaleNo);
         if (as == null || !OrdAfterSale.RETURNING.equals(as.getStatus())) {

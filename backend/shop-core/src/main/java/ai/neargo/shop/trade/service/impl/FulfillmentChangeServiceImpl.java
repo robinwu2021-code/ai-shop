@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Fulfillments;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.fulfillment.FreightPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
@@ -80,7 +81,7 @@ public class FulfillmentChangeServiceImpl implements ai.neargo.shop.trade.servic
         return optionsOf(sub);
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public Changed change(String merchantNo, String storeNo, String subOrderNo,
                           String target, String reason, Long expectedVersion, String operatorNo) {
         if (reason == null || reason.isBlank() || reason.length() > 200

@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.port;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.trade.RefundQuantityFactsPort;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import java.time.Instant;
@@ -21,7 +22,7 @@ public final class RefundQuantityFactsPortImpl implements RefundQuantityFactsPor
     private final JdbcTemplate db;
     private final ObjectMapper json;
 
-    public RefundQuantityFactsPortImpl(@Qualifier("transactionManager") PlatformTransactionManager manager,
+    public RefundQuantityFactsPortImpl(@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
                                       ObjectMapper json) {
         if (!(manager instanceof DataSourceTransactionManager data)) {
             throw new IllegalStateException("Core JDBC transaction required");

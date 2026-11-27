@@ -5,6 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.event.broker.BrokerMessage;
+import ai.neargo.shop.event.broker.BrokerProperties;
+import ai.neargo.shop.event.broker.MessageBroker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -81,8 +85,53 @@ public class AfterCommitNotifications implements DisposableBean {
         });
     }
 
+    /** 配了消息中间件就提交后发给它，各通知消费者在自己的订阅里收；没有就走本地线程池（ADR-067）。 */
+    private MessageBroker broker;
+    private int sendAttempts = 3;
+    private long sendBackoffMillis = 500;
+
+    @Autowired(required = false)
+    public void setBroker(MessageBroker broker) { this.broker = broker; }
+
+    @Autowired(required = false)
+    public void setBrokerProperties(BrokerProperties props) {
+        this.sendAttempts = Math.max(1, props.getSendAttempts());
+        this.sendBackoffMillis = Math.max(0, props.getSendBackoffMillis());
+    }
+
     private void submit(SysOutbox envelope) {
-        Runnable task = () -> deliver(envelope);
+        if (broker != null) {
+            run(() -> sendToBroker(BrokerMessage.of(envelope)), envelope);
+            return;
+        }
+        run(() -> deliver(envelope), envelope);
+    }
+
+    /** 中间件暂时不可用就本地重试几次，用尽只记日志：通知丢一次可以接受。 */
+    private void sendToBroker(BrokerMessage message) {
+        for (int i = 1; i <= sendAttempts; i++) {
+            try {
+                broker.publish(message);
+                return;
+            } catch (RuntimeException e) {
+                if (i == sendAttempts) {
+                    log.warn("提交后通知发中间件失败 {} 次，丢弃 {} {}", sendAttempts, message.eventType(),
+                            message.eventNo(), e);
+                    return;
+                }
+                if (sendBackoffMillis > 0) {
+                    try {
+                        Thread.sleep(sendBackoffMillis);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    private void run(Runnable task, SysOutbox envelope) {
         if (!waitForDelivery) {
             executor.execute(task);
             return;

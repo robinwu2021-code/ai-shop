@@ -10,7 +10,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.service.SalesRestrictionService;
 import ai.neargo.shop.food.service.impl.SalesRestrictionServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -64,7 +64,7 @@ class SalesRestrictionServiceTest extends FoodWriteGuardFixture {
                     template.getMapper(StorePolicyMapper.class),
                     FoodAuditFault.failAfterInsert(c.getBean(ActionLogMapper.class), fail::get,
                             "after-restriction-audit"),
-                    c.getBean(IdempotencyService.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
+                    c.getBean(RequestIdempotencyPort.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
                     Clock.fixed(Instant.parse("2026-10-21T12:00:00Z"), ZoneOffset.UTC), goods);
             task.accept(new Context(f, service, fail));
         });

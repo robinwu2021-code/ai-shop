@@ -1,5 +1,6 @@
 package ai.neargo.shop.fulfillment.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.fulfillment.service.PickupService;
 
 import ai.neargo.shop.spi.trade.FulfillmentQueryPort;
@@ -91,7 +92,7 @@ public class PickupServiceImpl implements PickupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public VerifyResultVO verify(String verifyCode, boolean onBehalf) {
         String operator = SecurityUtils.currentUserNo();
         VerifyResultVO result = guardedVerify(verifyCode, operator);
@@ -102,7 +103,7 @@ public class PickupServiceImpl implements PickupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public BatchResult verifyBatch(List<String> verifyCodes) {
         if (verifyCodes != null && verifyCodes.size() > MAX_BATCH) {
             // 整批拒绝而不是截断：截断会让店员以为后面那些也核销了
@@ -245,7 +246,7 @@ public class PickupServiceImpl implements PickupService {
      * <b>403 而不是空列表</b> —— 空列表会让店主以为「今天没单」，而不是「你查错点了」。
      */
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<PickupOrderVO> markArrived(String pickupNo, List<String> subOrderNos) {
         String scope = requireScope(pickupNo);
         if (subOrderNos == null || subOrderNos.isEmpty()) {
@@ -264,7 +265,7 @@ public class PickupServiceImpl implements PickupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public PickupOrderVO reportShortage(String pickupNo, String subOrderNo, String kind,
                                         String skuNo, int qty, String note) {
         String scope = requireScope(pickupNo);

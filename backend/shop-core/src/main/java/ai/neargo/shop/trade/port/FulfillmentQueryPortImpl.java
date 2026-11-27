@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.port;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
 import ai.neargo.shop.trade.order.statemachine.Actor;
@@ -11,6 +12,7 @@ import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.event.SubOrderCompletion;
 import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
@@ -135,7 +137,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public boolean complete(String subOrderNo, String operatorNo, String label) {
         OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
@@ -186,8 +188,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
                 OrderContext.authorizedOnly());
 
         // 核销是自提线走到终态的唯一出口：评价开放、结算解冻计时、通知用户都挂在这条事件上
-        eventBus.publish(new OrderEvents.SubOrderCompleted(sub.getSubOrderNo(), sub.getOrderNo(),
-                sub.getEntityNo(), sub.getUserNo(), sub.getFulfillment()));
+        SubOrderCompletion.publishIfCompleted(eventBus, sub);
         return true;
     }
 
@@ -207,7 +208,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.transaction.annotation.Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<String> markArrived(List<String> subOrderNos, String pickupNo, String operatorNo) {
         if (subOrderNos == null || subOrderNos.isEmpty()) {
             return List.of();
@@ -257,7 +258,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.transaction.annotation.Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void reportException(String subOrderNo, String operatorNo, String label) {
         OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()

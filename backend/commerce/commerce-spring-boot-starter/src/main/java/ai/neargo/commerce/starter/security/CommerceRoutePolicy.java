@@ -320,7 +320,7 @@ public final class CommerceRoutePolicy {
                 // Offline (bank transfer) purchase: same procurement duty, exact routes only.
                 read = read || method.equals("GET")
                         && tail.matches("mall/offline/orders/" + mallId + "/(?:instructions|claims|evidence/url)");
-                write = write || method.equals("POST") && (tail.equals("mall/offline/quotes")
+                write = write || method.equals("POST") && (Set.of("mall/offline/quotes", "mall/offline/upgrade-quotes").contains(tail)
                         || tail.matches("mall/offline/orders/" + mallId + "/(?:instructions|evidence|evidence/content|claims)"));
                 if (read || write) return new Route(Lane.BOOTSTRAP, store, null, PROCUREMENT_DUTY, true);
                 if (method.equals("GET") && Set.of("mall/categories", "mall/products").contains(tail))

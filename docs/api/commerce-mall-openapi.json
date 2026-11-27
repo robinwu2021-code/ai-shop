@@ -10021,6 +10021,18 @@
             "items": {
               "$ref": "#/components/schemas/MallOrderDetailView_Line"
             }
+          },
+          "hardwareItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MallOrderDetailView_HardwareItem"
+            }
+          },
+          "deliveredSources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MallOrderDetailView_DeliveredSource"
+            }
           }
         }
       },
@@ -10055,6 +10067,16 @@
           },
           "approvalDigest": {
             "type": "string"
+          },
+          "hardware": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HardwareRefund"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -10813,6 +10835,16 @@
                 "type": "null"
               }
             ]
+          },
+          "hardware": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HardwareRefund"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -10836,6 +10868,16 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hardware": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HardwareRefund"
               },
               {
                 "type": "null"
@@ -11030,6 +11072,22 @@
                 "type": "null"
               }
             ]
+          },
+          "hardware": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HardwareRefund"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourcePeriodNos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -11335,6 +11393,12 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "requestOperationNo": {
+            "type": [
+              "string",
+              "null"
             ]
           }
         }
@@ -13097,6 +13161,63 @@
                 }
               }
             }
+          }
+        }
+      },
+      "MallOrderDetailView_HardwareItem": {
+        "type": "object",
+        "properties": {
+          "orderComponentNo": {
+            "type": "string"
+          },
+          "hardwareSkuNo": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          }
+        }
+      },
+      "HardwareRefund": {
+        "type": "object",
+        "required": [
+          "orderComponentNo",
+          "quantity"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "orderComponentNo": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "MallOrderDetailView_DeliveredSource": {
+        "type": "object",
+        "properties": {
+          "orderComponentNo": {
+            "type": "string"
+          },
+          "periodNo": {
+            "type": "string"
+          },
+          "planVersionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entitlementCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lifecycle": {
+            "type": "string"
           }
         }
       }

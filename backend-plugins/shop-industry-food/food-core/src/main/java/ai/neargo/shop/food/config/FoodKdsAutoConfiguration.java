@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+
 import ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler;
 import ai.neargo.shop.food.mapper.FoodKdsMapper;
 import ai.neargo.shop.food.mapper.FoodStationRuntimeMapper;
@@ -34,7 +36,7 @@ import javax.sql.DataSource;
 @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
 public class FoodKdsAutoConfiguration {
     @Bean
-    FoodStationRuntimeMapper foodStationRuntimeMapper(@Qualifier("dataSource") DataSource source) {
+    FoodStationRuntimeMapper foodStationRuntimeMapper(@Qualifier(ModuleDataSources.INDUSTRY_DATA_SOURCE) DataSource source) {
         return new FoodStationRuntimeMapper(new JdbcTemplate(source));
     }
 
@@ -44,7 +46,7 @@ public class FoodKdsAutoConfiguration {
             FoodKdsMapper kdsMapper,
             FoodKdsService kds,
             PrintPort printing,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json) {
         return new FoodStationRuntimeServiceImpl(
                 mapper, kdsMapper, kds, printing, manager, Clock.systemUTC(), json);
@@ -58,7 +60,7 @@ public class FoodKdsAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(FoodKdsMapper.class)
-    FoodKdsMapper foodKdsMapper(@Qualifier("dataSource") DataSource source) {
+    FoodKdsMapper foodKdsMapper(@Qualifier(ModuleDataSources.INDUSTRY_DATA_SOURCE) DataSource source) {
         return new FoodKdsMapper(new JdbcTemplate(source));
     }
 
@@ -69,7 +71,7 @@ public class FoodKdsAutoConfiguration {
             FoodKdsMapper mapper,
             PrintPort printing,
             ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager) {
         return new FoodKdsServiceImpl(mapper, printing, json, manager, Clock.systemUTC());
     }
 }

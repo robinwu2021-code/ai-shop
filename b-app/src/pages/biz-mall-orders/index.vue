@@ -4,6 +4,7 @@
     <sh-empty v-if="!rows.length" :pending="!loaded" :failed="failed" @retry="load"
       :text="String(t('bizMall.orders.empty'))"></sh-empty>
     <view v-for="r in rows" :key="r.order?.orderNo" class="sh-card" @tap="open(r.order?.orderNo)">
+      <text v-if="r.title" class="txt-strong">{{ r.title }}</text>
       <view class="sh-row sh-row--between">
         <text class="txt-caption sh-num">{{ r.order?.orderNo }}</text>
         <text class="txt-strong sh-num">{{ mallMoney(r.order?.payable) }}</text>
@@ -20,9 +21,10 @@
 // 本店的商城订单（向平台采购的单，不是顾客的销售单）。付款状态以后端资金维度为准：
 // 商家申报了转账也仍是「待付款」，运营核到款才变「已付款」。
 import { ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { useMallOrderStore } from "@/shared/use-mall-order-store";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { mallMoney, mallTime } from "@/shared/mall";
@@ -41,14 +43,16 @@ function tone(s?: string) {
 async function load() {
   failed.value = false;
   const store = merchant.storeNo;
+  loaded.value = false;
+  rows.value = [];
   try {
     const r = await api.mMallOrders(store);
     if (store !== merchant.storeNo) return;
     rows.value = r;
   } catch {
-    failed.value = true;
+    if (store === merchant.storeNo) failed.value = true;
   } finally {
-    loaded.value = true;
+    if (store === merchant.storeNo) loaded.value = true;
   }
 }
 
@@ -56,5 +60,5 @@ function open(orderNo?: string) {
   if (orderNo) uni.navigateTo({ url: `${ROUTES.bizMallOrder}?orderNo=${encodeURIComponent(orderNo)}` });
 }
 
-onShow(load);
+useMallOrderStore(() => merchant.storeNo, load);
 </script>

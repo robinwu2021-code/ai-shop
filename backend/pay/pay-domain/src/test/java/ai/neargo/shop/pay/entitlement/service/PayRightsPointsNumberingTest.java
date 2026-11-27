@@ -52,7 +52,7 @@ class PayRightsPointsNumberingTest {
             var ds=new DriverManagerDataSource("jdbc:h2:mem:rights-"+UUID.randomUUID()+";MODE=MySQL;DB_CLOSE_DELAY=-1","sa","");
             var manager=new DataSourceTransactionManager(ds);
             var jdbc=new JdbcTemplate(ds);
-            jdbc.execute("CREATE TABLE pay_document_number(document_no VARCHAR(32) PRIMARY KEY,tenant_no VARCHAR(64),document_type VARCHAR(40),source_system VARCHAR(32),source_resource_type VARCHAR(64),source_no VARCHAR(128),business_date DATE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE(tenant_no,document_type,source_system,source_resource_type,source_no))");
+            jdbc.execute("CREATE TABLE core_document_number(document_no VARCHAR(32) PRIMARY KEY,tenant_no VARCHAR(64),document_type VARCHAR(40),source_system VARCHAR(32),source_resource_type VARCHAR(64),source_no VARCHAR(128),business_date DATE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE(tenant_no,document_type,source_system,source_resource_type,source_no))");
             var sequence=new AtomicInteger();
             DocumentNumberGenerator generator=mock(DocumentNumberGenerator.class);
             when(generator.reserve(any(DocumentType.class),any(Instant.class))).thenAnswer(a -> {

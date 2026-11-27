@@ -2,6 +2,7 @@ package ai.neargo.shop.payclient;
 
 import org.springframework.beans.factory.ObjectProvider;
 
+import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.pay.entitlement.config.PayEntitlementProperties;
 import ai.neargo.shop.pay.entitlement.event.PayEntitlementOutboxRelay;
 import ai.neargo.shop.pay.entitlement.port.EntitlementCapabilityPortImpl;
@@ -45,7 +46,6 @@ import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort;
 import ai.neargo.shop.spi.entitlement.LegacyCouponHistoricalReturnPort;
 import ai.neargo.shop.spi.entitlement.LegacyCouponUsePort;
-import ai.neargo.shop.spi.entitlement.PayEntitlementEventBridgePort;
 import ai.neargo.shop.spi.entitlement.PaymentAttemptFactsPort;
 import ai.neargo.shop.spi.storedvalue.StoredValueCapabilityPort;
 import ai.neargo.shop.spi.storedvalue.StoredValueRechargeFactsPort;
@@ -81,11 +81,14 @@ public class EntitlementRuntimeRouting {
         return new PaymentAttemptFactsPortImpl(mapper);
     }
 
+    /**
+     * PAY 发件箱（支付库）的中转直接经 {@link OutboxEventBus#forward} 发出：名单里的类型直发中间件，
+     * 不再先落平台发件箱再转一次（清单 §〇 C1）；原事件号不变，下游按它幂等。
+     */
     @Bean
-    PayEntitlementOutboxRelay entitlementOutboxRelay(PayEntOutboxMapper outbox,
-                                                    PayEntitlementEventBridgePort bridge, ObjectMapper json,
-            EntitlementEventDeliveryService delivery) {
-        return new PayEntitlementOutboxRelay(outbox, bridge, json, delivery);
+    PayEntitlementOutboxRelay entitlementOutboxRelay(PayEntOutboxMapper outbox, OutboxEventBus events,
+            ObjectMapper json, EntitlementEventDeliveryService delivery) {
+        return new PayEntitlementOutboxRelay(outbox, events::forward, json, delivery);
     }
 
     @Bean

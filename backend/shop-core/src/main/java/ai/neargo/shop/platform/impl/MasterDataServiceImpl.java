@@ -7,9 +7,7 @@ import ai.neargo.shop.common.ServiceScopes;
 import ai.neargo.shop.platform.MasterDataService;
 import ai.neargo.shop.platform.ServiceScopeService;
 import ai.neargo.shop.platform.dto.MasterDataVO;
-import ai.neargo.shop.platform.entity.SysIndustry;
 import ai.neargo.shop.platform.entity.SysLegalForm;
-import ai.neargo.shop.platform.mapper.PlatformMappers.IndustryMapper;
 import ai.neargo.shop.platform.mapper.PlatformMappers.MerchantSubjectMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -17,6 +15,9 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import ai.neargo.shop.spi.dict.DictItem;
+import ai.neargo.shop.spi.dict.DictType;
+import ai.neargo.shop.spi.dict.DictionaryPort;
 import ai.neargo.shop.spi.pay.PayChannelMasterPort;
 
 /** {@link MasterDataService} 实现。跨域调用见 {@code platform.port.MasterDataPortImpl}。 */
@@ -26,7 +27,8 @@ public class MasterDataServiceImpl implements MasterDataService {
     /** 没有市场上下文时的默认市场。与全站其它地方的 HOME_MARKET 同值。 */
     private static final String DEFAULT_MARKET = "CN";
 
-    private final IndustryMapper industryMapper;
+    /** 进件行业经统一字典读（TDD-基础能力库对齐 1b 续）；本类只管主体类型 sys_legal_form */
+    private final DictionaryPort dictionary;
     private final MerchantSubjectMapper subjectMapper;
     private final ObjectMapper json;
     /** 通道属性归 pay 之后，这边只能通过 spi 拿 */
@@ -34,10 +36,10 @@ public class MasterDataServiceImpl implements MasterDataService {
     /** 经营范围的启用白名单归它管 —— 一期开哪几档是运营的决定，不该发版 */
     private final ServiceScopeService serviceScopeService;
 
-    public MasterDataServiceImpl(IndustryMapper industryMapper, MerchantSubjectMapper subjectMapper,
+    public MasterDataServiceImpl(DictionaryPort dictionary, MerchantSubjectMapper subjectMapper,
                                  ObjectMapper json, PayChannelMasterPort payChannelMasterPort,
                                  ServiceScopeService serviceScopeService) {
-        this.industryMapper = industryMapper;
+        this.dictionary = dictionary;
         this.subjectMapper = subjectMapper;
         this.json = json;
         this.payChannelMasterPort = payChannelMasterPort;
@@ -52,11 +54,8 @@ public class MasterDataServiceImpl implements MasterDataService {
          * 查两次的话，两个列表会来自两个时刻 —— 运营正好在中间点了停用，
          * 端上就会拿到「进件能选、意向里没有」这种自相矛盾的一对。
          */
-        List<SysIndustry> allIndustries = DataScopeContext.executeWithoutScope(() ->
-                industryMapper.selectList(Wrappers.<SysIndustry>lambdaQuery()
-                        .orderByAsc(SysIndustry::getSort)));
-        List<SysIndustry> industries = allIndustries.stream()
-                .filter(i -> Boolean.TRUE.equals(i.getEnabled())).toList();
+        List<DictItem> allIndustries = dictionary.items(DictType.ONBOARD_INDUSTRY);
+        List<DictItem> industries = allIndustries.stream().filter(DictItem::enabled).toList();
         List<SysLegalForm> subjects = enabledSubjectRows();
         /*
          * 通道走 spi 拿：2026-09-01 通道属性搬进 pay 之后，平台主数据不再直接读那张表
@@ -67,18 +66,16 @@ public class MasterDataServiceImpl implements MasterDataService {
 
         return new MasterDataVO(
                 industries.stream().map(i -> new MasterDataVO.Industry(
-                        i.getIndustry(), i.getName(),
+                        i.code(), i.name(),
                         // 任一通道允许即算允许 —— 商家走哪个通道由进件时决定。
                         // 端上据此禁用「小微」选项，而不是让人填完再被拒
-                        Boolean.TRUE.equals(i.getWechatMicroAllowed())
-                                || Boolean.TRUE.equals(i.getAlipayMicroAllowed()))).toList(),
+                        Boolean.parseBoolean(i.attr(DictItem.ATTR_MICRO_ALLOWED)))).toList(),
                 /*
                  * 意向口径：**不按 enabled 过滤**。入驻意向表要收的正是平台还接不了的那些，
                  * 用准入的尺子量它，想开餐饮的人就只能选「线下零售」。
                  */
                 allIndustries.stream().map(i -> new MasterDataVO.IntentIndustry(
-                        i.getIndustry(), i.getName(),
-                        Boolean.TRUE.equals(i.getEnabled()))).toList(),
+                        i.code(), i.name(), i.enabled())).toList(),
                 subjects.stream().map(s -> new MasterDataVO.Subject(
                         s.getLegalForm(), s.getName(),
                         Boolean.TRUE.equals(s.getNeedLicense()),

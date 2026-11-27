@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+"""门店交易库 n_trade、行业库 n_industry 的建库建表语句：在字段草案生成的基础 DDL 上套用零售域第二段已定的改动。
+
+用法：
+    python3 scripts/gen-retail-ddl.py <基础 DDL 目录>          # 生成
+    python3 scripts/gen-retail-ddl.py <基础 DDL 目录> --check  # 只核对产物是否最新
+
+基础 DDL 是 ai-shop-slim 的 docs/technical/design/schema/ddl/05-n_trade.sql、06-n_industry.sql（字段草案生成，
+14 个库共用一个生成器，那边不动）。改动的依据：
+    docs/technical/零售域-第二段建议方案与表清单.md   A1（D1–D7 统一修法）、A2、A3、A4、A6、B1–B3、C
+    docs/technical/零售域-状态短值换值表.md           状态列注释里的取值
+美业服务执行的表取自 docs/technical/design/schema/retail-ddl/beauty-execution-tables.sql。
+产物：docs/technical/design/schema/ddl/05-n_trade.sql、06-n_industry.sql。
+"""
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / 'docs/technical/design/schema/ddl'
+BEAUTY = ROOT / 'docs/technical/design/schema/retail-ddl/beauty-execution-tables.sql'
+STATUS = ROOT / 'docs/technical/零售域-状态短值换值表.md'
+
+# ---------- 表的去留（B1、B3、C1） ----------
+TRADE_TO_INDUSTRY = {  # 交易库移到行业库：旧名 -> 新名
+    'ord_assignment': 'ind_assignment',
+    'ord_queue_ticket': 'fnb_queue_ticket',
+    'ord_custody': 'fnb_custody',
+    'ord_custody_movement': 'fnb_custody_movement',
+    'ord_commission_rule': 'ind_commission_rule',
+}
+TRADE_DROP = {
+    'ord_address': '收货地址属于用户资料，归平台基础库（C1）',
+    'prd_spec_value_usage': '并入 prd_spec_usage（C1）',
+}
+TABLE_COMMENT = {
+    'ind_assignment': '人员指派与交接：谁在负责这张到店单、这个服务任务；美业服务参与、餐饮服务交接与责任都记在这里，交接就是换一条',
+    'ind_commission_rule': '提成规则：按什么算、多少；每行一版，带生效起止，提成按当时那一版算。提成在行业库计提，不进账务结算库（只管支付收款）',
+}
+
+# ---------- 加列（B2 等） ----------
+ADD_COLUMNS = {
+    'ord_price_quote': [
+        "`confirmation_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '顾客确认编号（原柜台结账确认）'",
+        "`confirmed_at` datetime(3) DEFAULT NULL COMMENT '顾客确认时间'",
+        "`confirmed_by` varchar(64) DEFAULT NULL COMMENT '确认人'",
+    ],
+    'ord_payment': [
+        "`request_key` varchar(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '调用方业务身份键（同一来源同一键只记一笔）'",
+    ],
+    'ord_refund_obligation': [
+        "`input_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '义务输入摘要（防重放）'",
+    ],
+    'ord_execution': [
+        "`source_type` varchar(16) DEFAULT NULL COMMENT '执行来源：ORDER 订单、MANUAL 手工受理'",
+        "`source_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '来源编号'",
+    ],
+    'ord_fulfillment': [
+        "`evidence_json` json NULL COMMENT '渠道履约证据（原渠道履约关联与证据账本）'",
+    ],
+    'rsv_booking': [
+        "`current_key` varchar(64) COLLATE utf8mb4_bin GENERATED ALWAYS AS ((case when (`is_current` = 1) then `source_no` end)) STORED COMMENT '当前占用的仲裁键：当前行等于来源编号，否则为空（取代 mch_booking_owner）'",
+    ],
+    'prd_stock_lock': [
+        "`source_manifest_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '来源清单摘要'",
+        "`lifecycle_version` int NOT NULL DEFAULT 0 COMMENT '生命周期版本'",
+        "`confirmation_operation_no` varchar(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '确认操作号'",
+        "`claim_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '餐饮限量领用编号（并入）'",
+    ],
+    'prd_spec_usage': [
+        "`value_no` varchar(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '规格值编号；为空表示整个维度（并入原规格值使用范围）'",
+        "`label_override` varchar(64) DEFAULT NULL COMMENT '改叫的名字'",
+        "`favorite` tinyint NOT NULL DEFAULT 0 COMMENT '是否常用'",
+    ],
+    'prd_store_catalog': [
+        "`frozen_content` json NULL COMMENT '冻结内容（结账对账用）'",
+        "`snapshot_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '快照摘要'",
+    ],
+    'ord_appointment': [
+        "`work_order_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '已开的服务工单（行业库）；预约侧的护栏看这一列'",
+    ],
+}
+
+# ---------- 唯一约束（B2、附录一的降级与无处安放） ----------
+ADD_UNIQUE = {
+    'ord_payment': [('record_no',), ('entity_no', 'source', 'request_key'), ('pay_order_no',), ('redemption_no',), ('reversal_no',)],
+    'ord_refund_obligation': [('execution_no', 'kind', 'source_no')],
+    'ord_execution': [('execution_no',), ('unit_no', 'attempt_no')],
+    'ord_fulfillment': [('fulfillment_no',)],
+    'rsv_booking': [('entity_no', 'hold_no'), ('entity_no', 'store_no', 'source_type', 'current_key')],
+    'ord_visit_attendee': [('attendee_no',)],
+    'ord_sub_order': [('sub_order_no',), ('pickup_no', 'verify_code')],
+    'ord_order': [('order_no',)],
+    'prd_stock_lock': [('restriction_no', 'batch_no'), ('claim_no',)],
+    'prd_spec_usage': [('scope_type', 'scope_ref', 'dim_no', 'value_no')],
+    'ind_assignment': [('assignment_no',)],
+    'chn_order': [('channel_store_key', 'external_order_key')],
+    'chn_connection': [('connection_no',)],
+    'ord_appointment': [('tenant_no', 'entity_no', 'work_order_no')],
+    'ord_split_share': [('share_no',)],
+    'prd_sku_barcode': [('entity_no', 'barcode')],
+    'ord_cart_item': [('cart_item_no',)],
+    'ord_item': [('sub_order_no', 'line_no')],
+    'prd_catalog_item_sku': [('catalog_item_no', 'sku_no')],
+    'prd_fulfillment_requirement': [('requirement_no', 'revision_no')],
+    'fnb_kds_subscription': [('subscription_no',)],
+    'ind_commission_rule': [('rule_no', 'version_no')],
+}
+ADD_INDEX = {
+    'ind_assignment': [('target_type', 'target_no'), ('entity_no', 'store_no', 'planned_start_at')],
+    'ord_visit_attendee': [('check_no',)],
+}
+
+# ---------- D5、D6、D7 的列规则 ----------
+WIDE = re.compile(r'^(created_by|updated_by|confirmed_by|actor_no|operator_no|request_key|client_order_no|channel_order_no'
+                  r'|external_[a-z_]+|[a-z_]*_external_[a-z_]+|[a-z_]*_ref|trade_no|pay_trade_no|pay_order_no|out_trade_no'
+                  r'|channel_store_key|external_order_key)$')
+MONEY_COUNT = re.compile(r'^([a-z_]*_minor|[a-z_]*_qty|qty|quantity|[a-z_]*_count|count|[a-z_]*_units|units|persons'
+                         r'|party_size|seats|capacity|[a-z_]*_persons)$')
+BIN_COLLATE = re.compile(r'^([a-z_]*_no|[a-z_]*_key|[a-z_]*_hash|code|[a-z_]*_code)$')
+
+
+def status_map():
+    text = STATUS.read_text(encoding='utf-8')
+    body = text[text.index('## 3 换值表'):text.index('## 4 ')]
+    pairs = re.findall(r'^\| `([A-Z_]+)` \| \d+ \| `([A-Z_]+)`', body, re.M)
+    return dict(pairs)
+
+
+def parse(sql):
+    head, tables = [], {}
+    order = []
+    pos = 0
+    for m in re.finditer(r'CREATE TABLE `(\w+)` \((.*?)\n\)([^;]*);', sql, re.S):
+        if not order:
+            head = sql[:m.start()].rstrip('\n').split('\n')
+        name, inner, tail = m.group(1), m.group(2), m.group(3)
+        items = [l for l in re.split(r',\n(?=\s*(?:`|PRIMARY|UNIQUE|KEY|FULLTEXT|CONSTRAINT|INDEX))', inner.strip('\n'))]
+        cols = [i for i in items if i.strip().startswith('`')]
+        keys = [i for i in items if not i.strip().startswith('`')]
+        tables[name] = {'cols': cols, 'keys': keys, 'tail': tail}
+        order.append(name)
+        pos = m.end()
+    return head, tables, order
+
+
+def col_name(line):
+    return re.match(r'\s*`(\w+)`', line).group(1)
+
+
+def fix_column(table, line, statuses):
+    name = col_name(line)
+    ln = line
+    # D6：乐观锁、时间精度
+    if name == 'version':
+        ln = re.sub(r'`version` int\b', '`version` bigint', ln)
+    if name == 'created_at':
+        ln = re.sub(r'`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP\b',
+                    '`created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)', ln)
+    if name == 'updated_at':
+        ln = re.sub(r'`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\b',
+                    '`updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)', ln)
+    # D5：外部来源号、人员列放宽到 64
+    if WIDE.match(name):
+        ln = re.sub(r'`%s` varchar\((\d+)\)' % name,
+                    lambda m: '`%s` varchar(%d)' % (name, max(64, int(m.group(1)))), ln)
+    # D6：金额与计数不为空、默认 0
+    if MONEY_COUNT.match(name) and re.search(r'`%s` (bigint|int|smallint|tinyint|decimal\([0-9,]+\))( unsigned)? DEFAULT NULL' % name, ln):
+        ln = re.sub(r'(`%s` (?:bigint|int|smallint|tinyint|decimal\([0-9,]+\))(?: unsigned)?) DEFAULT NULL' % name,
+                    r'\1 NOT NULL DEFAULT 0', ln)
+    # D7：编号、键、摘要按二进制比较
+    if BIN_COLLATE.match(name) and re.search(r'`%s` (var)?char\(\d+\) (DEFAULT|NOT|NULL)' % name, ln):
+        ln = re.sub(r'(`%s` (?:var)?char\(\d+\)) ' % name, r'\1 COLLATE utf8mb4_bin ', ln)
+    # D4：状态列注释里的取值换成短值
+    if re.search(r'`%s` varchar\(10\)' % name, ln):
+        for long, short in statuses.items():
+            ln = re.sub(r'\b%s\b' % long, short, ln)
+    return ln
+
+
+def fix_keys(table, keys, cols):
+    out = []
+    names = {col_name(c) for c in cols}
+    have = set()
+    for k in keys:
+        k2 = k
+        m = re.match(r'(\s*)KEY `(uk_[^`]+)` \((.*)\)$', k)
+        if m:  # D1：以 uk_ 命名的一律是唯一约束
+            k2 = '%sUNIQUE KEY `%s` (%s)' % (m.group(1), m.group(2), m.group(3))
+        cm = re.search(r'\((.*)\)$', k2)
+        if cm and ('UNIQUE' in k2):
+            have.add(tuple(re.findall(r'`(\w+)`', cm.group(1))))
+        out.append(k2)
+    for cols_ in ADD_UNIQUE.get(table, []):
+        missing = [c for c in cols_ if c not in names]
+        if missing:
+            raise SystemExit('%s: unique key columns missing %s' % (table, missing))
+        if cols_ in have or (('tenant_no',) + cols_) in have:
+            continue
+        out.append('  UNIQUE KEY `uk_%s_%s` (%s)' % (table, '_'.join(c[:12] for c in cols_)[:40], ', '.join('`%s`' % c for c in cols_)))
+    for cols_ in ADD_INDEX.get(table, []):
+        out.append('  KEY `idx_%s_%s` (%s)' % (table, '_'.join(c[:12] for c in cols_)[:40], ', '.join('`%s`' % c for c in cols_)))
+    return out
+
+
+def ensure_deleted(t):
+    if not any(col_name(c) == 'deleted' for c in t['cols']):
+        i = next(k for k, c in enumerate(t['cols']) if col_name(c) == 'version')
+        t['cols'].insert(i, "  `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 正常、1 已删除'")
+
+
+def render(name, t):
+    tail = t['tail']
+    if name in TABLE_COMMENT:
+        tail = re.sub(r"COMMENT='[^']*'", "COMMENT='%s'" % TABLE_COMMENT[name], tail)
+    return 'CREATE TABLE `%s` (\n%s\n)%s;\n' % (name, ',\n'.join(t['cols'] + t['keys']), tail)
+
+
+def build(base_dir):
+    statuses = status_map()
+    th, trade, torder = parse((base_dir / '05-n_trade.sql').read_text(encoding='utf-8'))
+    ih, ind, iorder = parse((base_dir / '06-n_industry.sql').read_text(encoding='utf-8'))
+    # 表的去留
+    moved = []
+    for old, new in TRADE_TO_INDUSTRY.items():
+        ind[new] = trade.pop(old)
+        torder.remove(old)
+        moved.append(new)
+    for old in TRADE_DROP:
+        trade.pop(old)
+        torder.remove(old)
+    iorder += moved
+    _, beauty, border = parse(BEAUTY.read_text(encoding='utf-8'))
+    for name in border:
+        if name in ind:
+            raise SystemExit('beauty table already in industry: ' + name)
+        ind[name] = beauty[name]
+    iorder += border
+    ensure_deleted(ind['ind_assignment'])
+    # 加列
+    for name, cols in ADD_COLUMNS.items():
+        t = trade.get(name) or ind.get(name)
+        if t is None:
+            raise SystemExit('add columns: unknown table ' + name)
+        have = {col_name(c) for c in t['cols']}
+        anchor = next((k for k, c in enumerate(t['cols']) if col_name(c) == 'version'), len(t['cols']))
+        for c in cols:
+            n = re.match(r'`(\w+)`', c).group(1)
+            if n in have:
+                raise SystemExit('%s.%s already exists' % (name, n))
+            t['cols'].insert(anchor, '  ' + c)
+            anchor += 1
+    # 列规则与键
+    for tables in (trade, ind):
+        for name, t in tables.items():
+            if name in border:
+                continue  # 美业执行表取自迁移的实际结构，列与约束原样保留
+            t['cols'] = [fix_column(name, c, statuses) for c in t['cols']]
+            t['keys'] = fix_keys(name, t['keys'], t['cols'])
+    header = ('-- 门店交易库 n_trade：建库建表（零售域第二段定稿，ADR-068）。由 scripts/gen-retail-ddl.py 生成，不要手改。\n'
+              '-- 基础：ai-shop-slim 字段草案生成的 05-n_trade.sql；改动：方案与表清单 A1–A6、B1–B2、C1，状态短值换值表。\n\n'
+              'CREATE DATABASE IF NOT EXISTS `n_trade` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;\n'
+              'USE `n_trade`;\n')
+    trade_sql = header + '\n' + '\n'.join(render(n, trade[n]) for n in torder)
+    header = ('-- 行业库 n_industry：建库建表（零售域第二段定稿，ADR-068）。由 scripts/gen-retail-ddl.py 生成，不要手改。\n'
+              '-- 基础：ai-shop-slim 字段草案生成的 06-n_industry.sql；加上从交易库移来的 5 张与美业服务执行的 9 张（B3、A6）。\n\n'
+              'CREATE DATABASE IF NOT EXISTS `n_industry` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;\n'
+              'USE `n_industry`;\n')
+    ind_sql = header + '\n' + '\n'.join(render(n, ind[n]) for n in iorder)
+    return trade_sql, ind_sql, len(torder), len(iorder)
+
+
+def main():
+    if len(sys.argv) < 2:
+        raise SystemExit(__doc__)
+    base = Path(sys.argv[1])
+    trade_sql, ind_sql, nt, ni = build(base)
+    targets = {OUT / '05-n_trade.sql': trade_sql, OUT / '06-n_industry.sql': ind_sql}
+    if '--check' in sys.argv:
+        stale = [str(p) for p, s in targets.items() if not p.exists() or p.read_text(encoding='utf-8') != s]
+        if stale:
+            raise SystemExit('stale: ' + ', '.join(stale))
+        print('ok: n_trade %d tables, n_industry %d tables' % (nt, ni))
+        return
+    OUT.mkdir(parents=True, exist_ok=True)
+    for p, s in targets.items():
+        p.write_text(s, encoding='utf-8')
+    print('n_trade %d tables, n_industry %d tables' % (nt, ni))
+
+
+if __name__ == '__main__':
+    main()

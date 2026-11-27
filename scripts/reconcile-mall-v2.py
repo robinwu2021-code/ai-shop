@@ -39,10 +39,12 @@ def comparisons(include_merchant):
                Projection("mch_plan_purchase", "order_no",
                           "snapshot_json->>'$.intent.paymentAttemptNo',snapshot_json->>'$.intent.platformMerchantNo',"
                           "snapshot_json->>'$.intent.amount.currency',snapshot_json->'$.intent.amount.minor',snapshot_json->'$.intent'", "TRUE"),
-               Projection("mall_payment_ref", "order_no",
+               Projection("mall_payment_ref p", "order_no",
                           "payment_attempt_no,receiver_account_no,currency,amount_minor,"
-                          "CAST(COALESCE(request_snapshot->'$.original',request_snapshot) AS JSON)",
-                          "deleted=0 AND payment_business_type='ENTITY_PLAN'"),
+                          "CAST(COALESCE(request_snapshot->'$.payment',request_snapshot->'$.original',request_snapshot) AS JSON)",
+                          "deleted=0 AND (payment_business_type='ENTITY_PLAN' OR (payment_business_type='PLATFORM_MALL' "
+                          "AND EXISTS (SELECT 1 FROM mall_order o WHERE o.tenant_no=p.tenant_no AND o.order_no=p.order_no "
+                          "AND o.stage='ORDERED' AND o.pricing_policy_version='entity-plan-cash-v1')))"),
                ["payment_attempt_no", "receiver_account_no", "currency", "amount_minor", "frozen_intent"])
     yield ("catalog_version", "foundation", Projection("sys_business_type", "business_type_code", "plan_catalog_version"),
            Projection("sys_dict_item", "item_code", "attrs->>'$.plan_catalog_version'",

@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.mapper;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort.Reference;
 import ai.neargo.shop.trade.mapper.IndustryOrderAmendmentRows.Applied;
 import ai.neargo.shop.trade.mapper.IndustryOrderAmendmentRows.Debt;
@@ -25,7 +26,7 @@ import javax.sql.DataSource;
 public class IndustryOrderAmendmentMapper {
     private final JdbcTemplate db;
 
-    public IndustryOrderAmendmentMapper(@Qualifier("dataSource") DataSource ds) {
+    public IndustryOrderAmendmentMapper(@Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource ds) {
         db = new JdbcTemplate(ds);
     }
 

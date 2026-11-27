@@ -3,6 +3,7 @@ package ai.neargo.shop.product.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.entity.PrdExecutionRetention;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.mapper.ProductMappers.ExecutionRetentionMapper;
@@ -91,7 +92,7 @@ public final class ExecutionStockRetentionServiceImpl implements ExecutionStockR
     public ExecutionStockRetentionServiceImpl(StockLockMapper stocks, ExecutionRetentionMapper links,
             StockRestoreMapper claims, SkuMapper skus, ExecutionStockRetentionGuard guard,
             ExecutionStockRetentionSchemaVerifier schema, ObjectProvider<ServiceExecutionEvidencePort> evidence,
-            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            ObjectMapper json, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.stocks = stocks;
         this.links = links;
         this.claims = claims;

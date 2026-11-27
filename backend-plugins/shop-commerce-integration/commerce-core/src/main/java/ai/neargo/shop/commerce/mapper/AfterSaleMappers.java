@@ -4,6 +4,7 @@ import ai.neargo.shop.commerce.entity.CimAfterSaleLineLink;
 import ai.neargo.shop.commerce.entity.CimAfterSaleLink;
 import ai.neargo.shop.commerce.entity.CimAfterSaleRevision;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 public final class AfterSaleMappers {
@@ -11,7 +12,7 @@ public final class AfterSaleMappers {
 
     public interface LinkMapper extends BaseMapper<CimAfterSaleLink> {}
 
-    public interface RevisionMapper extends BaseMapper<CimAfterSaleRevision> {}
+    public interface RevisionMapper extends TradeTableMapper<CimAfterSaleRevision> {}
 
-    public interface LineMapper extends BaseMapper<CimAfterSaleLineLink> {}
+    public interface LineMapper extends TradeTableMapper<CimAfterSaleLineLink> {}
 }

@@ -39,7 +39,7 @@ import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.merchant.port.PersonnelFactsPortImpl;
@@ -97,7 +97,7 @@ class PersonnelMaintenanceIT {
         String schema = Files.readString(Path.of(System.getProperty("personnel-maintenance.test.root"),
                 "backend/shop-app/src/test/resources/schema-test.sql"));
         schema = ResourceOccupationNativeFixture.beforeNativeUpgrade(schema);
-        schema = schema.replaceAll("\\b([A-Za-z_]\\w*) IS JSON\\b", "JSON_VALID($1)");
+        schema = ResourceOccupationNativeFixture.forMysql(schema);
         new ResourceDatabasePopulator(new ByteArrayResource(schema.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
                 .execute(source);
         ResourceOccupationNativeFixture.install(source);
@@ -123,7 +123,7 @@ class PersonnelMaintenanceIT {
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withBean(MerchantStaffService.class, () -> mock(MerchantStaffService.class))
                 .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
-                        "spring.datasource.password=", "shop.personnel.publication.archive-only=true");
+                        "spring.datasource.password=");
     }
     private Object req(String type, String value) { return json.readValue(value, required("dto." + type)); }
     private Object call(ApplicationContext context, String name, Object... args) {
@@ -431,11 +431,11 @@ class PersonnelMaintenanceIT {
     @MapperScan({"ai.neargo.shop.merchant.mapper", "ai.neargo.shop.merchant.booking.mapper"})
     static class Mappers {
         @Bean
-        IdempotencyService idempotency(SqlSessionFactory factory, ObjectMapper json) {
+        RequestIdempotencyPortImpl idempotency(SqlSessionFactory factory, ObjectMapper json) {
             if (!factory.getConfiguration().hasMapper(SysIdempotentMapper.class)) {
                 factory.getConfiguration().addMapper(SysIdempotentMapper.class);
             }
-            return new IdempotencyService(new SqlSessionTemplate(factory).getMapper(SysIdempotentMapper.class), json);
+            return new RequestIdempotencyPortImpl(new SqlSessionTemplate(factory).getMapper(SysIdempotentMapper.class), json);
         }
         @Bean
         GoodsQueryPort goods() {

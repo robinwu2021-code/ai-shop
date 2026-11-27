@@ -18,7 +18,7 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.DiningOrderService;
 import ai.neargo.shop.food.service.ReservationPreorderService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -42,7 +42,7 @@ public class ReservationPreorderServiceImpl implements ReservationPreorderServic
     private final BusinessCommandJournal journal;
     private final FoodBusinessOperationsMapper mapper;
     private final TransactionTemplate tx;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final CheckCartService carts;
     private final DiningOrderService orders;
     private final ObjectMapper json;
@@ -51,7 +51,7 @@ public class ReservationPreorderServiceImpl implements ReservationPreorderServic
     public ReservationPreorderServiceImpl(
             FoodBusinessOperationsMapper mapper,
             PlatformTransactionManager manager,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             CheckCartService carts,
             DiningOrderService orders,
             ObjectMapper json,

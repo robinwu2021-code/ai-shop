@@ -5,7 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -18,22 +19,22 @@ import tools.jackson.databind.ObjectMapper;
 
 class FoodIdempotencyTest extends FoodWriteGuardFixture {
     @Test void suppliesOriginalSharedIdempotencyAndMapper() {
-        runner().run(context -> assertThat(context).hasNotFailed().hasSingleBean(IdempotencyService.class)
+        runner().run(context -> assertThat(context).hasNotFailed().hasSingleBean(RequestIdempotencyPort.class)
                 .hasSingleBean(SysIdempotentMapper.class));
     }
     @Test void retainsExistingPlatformServiceAndMapper() {
         runner().withUserConfiguration(ExistingPlatform.class).run(context -> {
-            assertThat(context).hasNotFailed().hasSingleBean(IdempotencyService.class)
+            assertThat(context).hasNotFailed().hasSingleBean(RequestIdempotencyPort.class)
                     .hasSingleBean(SysIdempotentMapper.class);
-            assertThat(context.getBean(IdempotencyService.class))
+            assertThat(context.getBean(RequestIdempotencyPort.class))
                     .isSameAs(context.getBean("existingIdempotencyService"));
-            assertThat(context).doesNotHaveBean("idempotencyService").doesNotHaveBean("sysIdempotentMapper");
+            assertThat(context).doesNotHaveBean("requestIdempotency").doesNotHaveBean("sysIdempotentMapper");
         });
     }
     @Test void replaySameRequestExecutesOnce() {
         runner().run(context -> {
             var fixture = prepare(context);
-            var idem = context.getBean(IdempotencyService.class);
+            var idem = context.getBean(RequestIdempotencyPort.class);
             var calls = new AtomicInteger();
             for (int retry = 0; retry < 2; retry++) {
                 String value = fixture.tx().execute(status -> idem.execute("key", "FOOD:fixture:E:A", "actor",
@@ -47,7 +48,7 @@ class FoodIdempotencyTest extends FoodWriteGuardFixture {
     @Test void rejectChangedRequestWithSameKey() {
         runner().run(context -> {
             var fixture = prepare(context);
-            var idem = context.getBean(IdempotencyService.class);
+            var idem = context.getBean(RequestIdempotencyPort.class);
             fixture.tx().execute(status -> idem.execute("key", "FOOD:fixture:E:A", "actor", "hash-v1",
                     String.class, () -> "first"));
             var calls = new AtomicInteger();
@@ -63,7 +64,7 @@ class FoodIdempotencyTest extends FoodWriteGuardFixture {
     @Test void separateStoreOrOperationDomainsDoNotReplayEachOther() {
         runner().run(context -> {
             var fixture = prepare(context);
-            var idem = context.getBean(IdempotencyService.class);
+            var idem = context.getBean(RequestIdempotencyPort.class);
             var calls = new AtomicInteger();
             for (String endpoint : new String[] {"FOOD:create:E:A", "FOOD:create:E:B", "FOOD:archive:E:A"}) {
                 fixture.tx().execute(status -> idem.execute("same-client-key", endpoint, "actor", "hash", String.class,
@@ -75,7 +76,7 @@ class FoodIdempotencyTest extends FoodWriteGuardFixture {
     @Test void anotherActorCannotReplayAStoredResult() {
         runner().run(context -> {
             var fixture = prepare(context);
-            var idem = context.getBean(IdempotencyService.class);
+            var idem = context.getBean(RequestIdempotencyPort.class);
             fixture.tx().execute(status -> idem.execute("key", "FOOD:fixture:E:A", "original", "hash",
                     String.class, () -> "private"));
             assertThatThrownBy(() -> fixture.tx().execute(status -> idem.execute("key", "FOOD:fixture:E:A", "spoof",
@@ -86,7 +87,7 @@ class FoodIdempotencyTest extends FoodWriteGuardFixture {
 
     @Test void completedLookupNeverClaimsWorkAndPreservesActorFingerprintAndIncompleteGuards() {
         runner().run(context -> {
-            var f = prepare(context); var idem = context.getBean(IdempotencyService.class);
+            var f = prepare(context); var idem = context.getBean(RequestIdempotencyPort.class);
             assertThat(idem.findCompleted("key", "FOOD:fixture:E:A", "actor", "hash", String.class)).isEmpty();
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isZero();
             f.tx().execute(status -> idem.execute("key", "FOOD:fixture:E:A", "actor", "hash", String.class, () -> "first"));
@@ -98,7 +99,7 @@ class FoodIdempotencyTest extends FoodWriteGuardFixture {
                     .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
             f.sql().update("UPDATE sys_idempotent SET result_json=NULL");
             assertThatThrownBy(() -> idem.findCompleted("key", "FOOD:fixture:E:A", "actor", "hash", String.class))
-                    .isInstanceOf(IdempotencyService.ConcurrentRequestException.class);
+                    .isInstanceOf(RequestIdempotencyPort.ConcurrentRequestException.class);
         });
     }
 
@@ -110,8 +111,8 @@ class FoodIdempotencyTest extends FoodWriteGuardFixture {
             mapper.setSqlSessionFactory(factory);
             return mapper;
         }
-        @Bean IdempotencyService existingIdempotencyService(SysIdempotentMapper mapper, ObjectMapper json) {
-            return new IdempotencyService(mapper, json);
+        @Bean RequestIdempotencyPort existingIdempotencyService(SysIdempotentMapper mapper, ObjectMapper json) {
+            return new RequestIdempotencyPortImpl(mapper, json);
         }
     }
 }

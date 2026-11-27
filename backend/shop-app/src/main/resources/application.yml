@@ -300,6 +300,27 @@ shop:
     #   PropertySource 的实现细节，而「配了等于没配」这种失败是全静默的
     #   （configured() 返回 false，服务照起，只是永远存不进凭据）。
     cred-key: ${SHOP_NOTIFY_CRED_KEY:}
+  # 异步事件的传输（ADR-067）：local = 进程内（默认，没部署 MQ 时与原来一致、不建连接）；
+  # rabbitmq = 通知类事件提交后发 RabbitMQ 4，各消费者在自己的仲裁队列里收。
+  # 连接在服务器上部署时打通；口令只从环境变量来、不写默认值（NoSecretDefaultInConfigTest），
+  # 切到 rabbitmq 而漏配口令启动即失败。
+  events:
+    transport: ${SHOP_EVENTS_TRANSPORT:local}
+    # 发件箱里改由中间件投递的事件类型，按域逐个加（ADR-067 第 4 步）；不在名单里的照旧进程内投递。
+    # 名单里的事件，必达消费者以“保序订阅”收（RabbitMQ 下按聚合号分区，需服务端启用 rabbitmq_consistent_hash_exchange）。
+    # 2026-11-27 已切：商品→库存域（四个事件，库存四个投影同一订阅组 inventory-product）；
+    # 打印事实域（三个事件，事实与控制变更同一订阅组 print-facts）；
+    # 发货快照回写（LGS_SHIPMENT_SNAPSHOT，单消费者按运单号保序）；
+    # 订单类（下单、已支付、已发货、子单完成、已退款，加卡券取消；物流登记与上传入队同一订阅组 order-shipping）；
+    # 权益与旧券（按“消费者收的类型全进或全不进”外推出 13 个，含 PAY 中转来的储值与权益事件）。
+    # transport=local 时名单不起作用。
+    outbox-event-types: ${SHOP_EVENTS_OUTBOX_TYPES:SKU_UPSERTED,SKU_RETIRED,GOODS_ON_SALE_CHANGED,SKU_INV_MODE_CHANGED,ORDER_PRINT_FACT_READY,ORDER_PRINT_CONTROL_CHANGED,BUSINESS_PRINT_FACT_READY,LGS_SHIPMENT_SNAPSHOT,ORDER_CREATED,ORDER_PAID,SUB_ORDER_SHIPPED,SUB_ORDER_COMPLETED,AFTER_SALE_REFUNDED,CARD_SALE_CANCELLED,ENTITLEMENT_ORDER_USE_PREPARED,ENTITLEMENT_ORDER_USE_DECIDED,LEGACY_COUPON_CHECKOUT_DECIDED,LEGACY_COUPON_HISTORY_RETURN_DECIDED,ACTIVITY_BENEFIT_DECIDED,STORED_VALUE_RECHARGE_PREPARED,STORED_VALUE_RECHARGE_RECEIVED,STORED_VALUE_RECHARGE_CANCELLED,STORED_VALUE_CREDITED,ENTITLEMENT_GRANTED,ENTITLEMENT_USED,ENTITLEMENT_USE_REVERSED,LEGACY_COUPON_USAGE_CHANGED}
+    rabbitmq:
+      host: ${SHOP_RABBITMQ_HOST:192.168.3.200}
+      port: ${SHOP_RABBITMQ_PORT:5673}
+      virtual-host: ${SHOP_RABBITMQ_VHOST:neargo}
+      username: ${SHOP_RABBITMQ_USERNAME:neargo_app}
+      password: ${SHOP_RABBITMQ_PASSWORD}
   outbox:
     enabled: ${SHOP_OUTBOX_ENABLED:true}
     maintenance: ${SHOP_OUTBOX_MAINTENANCE:false}
@@ -604,6 +625,9 @@ shop:
       # 每天一次：分层按「多少天没来」算，时间本身就会改变它，没有事件能触发。
       # 放在凌晨 3 点 —— 商家早上打开会员页看到的是今天的数
       cron: ${SHOP_JOB_MEMBER_LEVEL_RECOMPUTE_CRON:0 0 3 * * *}
+    opskit-approval-reconcile:
+      # 每天一次（只在 -P opskit 且 shop.opskit.enabled 时有这个任务）：补丢失的审批回调、补投没到 OpsKit 的送审
+      cron: ${SHOP_JOB_OPSKIT_APPROVAL_RECONCILE_CRON:0 0 3 * * *}
     period-cutoff:
       # 一分钟一轮：集单到点截单、未达起订量的期超时自动取消并退款。
       # 截单归属看订单时间与 cutoff_at，不看这个任务跑到没有 —— 晚一分钟扫到不改变谁属于哪一期

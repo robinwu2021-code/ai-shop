@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1269 个接口**：后端已实现 1016（80%）· 前端在调 1088
+**合计 1275 个接口**：后端已实现 1017（80%）· 前端在调 1092
 
 ---
 
@@ -332,7 +332,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **507** 个接口 ｜ 后端已实现 **401**（79%）｜ 前端在调 **505**
+共 **511** 个接口 ｜ 后端已实现 **402**（79%）｜ 前端在调 **509**
 
 ### activities（4）
 
@@ -1158,7 +1158,7 @@
 | GET | `/biz/stored-value/plans/{planNo}` | 储值方案详情 | — | `SvPlan` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/stored-value/plans/{planNo}/status` | 启停门店储值方案 | `SvPlanStatusReq` | `SvPlan` | 🔒 | ✅ | ✅ |
 
-### stores（47）
+### stores（51）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1193,9 +1193,12 @@
 | POST | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions` | 平台商城：发出付款指引（幂等） | — | `MallOfflineInstructions` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions` | 平台商城：查看付款指引 | — | `MallOfflineInstructions` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/stores/{storeNo}/mall/offline/quotes` | 平台商城：线下转账报价 | `MallQuoteRequest` | `MallQuote` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/upgrade-quotes` | 平台商城：线下套餐升级报价 | `MallUpgradeQuoteRequest` | `MallQuote` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/stores/{storeNo}/mall/orders` | 平台商城：按报价下单 | `MallPlaceRequest` | `MallOrder` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{storeNo}/mall/orders` | 平台商城：本店的商城订单 | — | `数组` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{storeNo}/mall/orders/{orderNo}` | 平台商城：订单详情 | — | `MallOrderDetail` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/orders/{orderNo}/refund-previews` | 平台商城：组件退款预览 | `MallRefundSelection` | `MallRefundPreview` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/orders/{orderNo}/refunds` | 平台商城：申请组件退款 | `MallRefundRequest` | `MallRefundResult` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{storeNo}/mall/products` | 平台商城：本店可买的商品 | — | `MallStorefront` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts` | Separate local and brand wallets | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records` | Current store records of selected wallet | — | `SvRecordPage` | 🔒 | ✅ | ✅ |
@@ -1208,6 +1211,7 @@
 | GET | `/biz/stores/{storeNo}/stored-value/issuer-records/{recordNo}` | 储值收支详情 | — | `SvRecord` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/stored-value/issuers` | 门店可用发行方 | — | `StoreIssuerOptions` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/stored-value/recharge-options` | 会员可用储值方案 | — | `SvIssuerRechargeOptions` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/subscription` | 平台商城：查询本店订阅版本 | — | `MallSubscriptionVersion` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/mine` | 我能进的所有门店（按证照分组） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### upload（1）
@@ -1218,7 +1222,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **623** 个接口 ｜ 后端已实现 **478**（77%）｜ 前端在调 **444**
+共 **625** 个接口 ｜ 后端已实现 **478**（76%）｜ 前端在调 **444**
 
 ### aftersale（5）
 
@@ -1646,7 +1650,7 @@
 | POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
-### merchant（70）
+### merchant（72）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1666,6 +1670,8 @@
 | POST | `/ops/merchant-plan-purchases/{e}/{o}/evidence/content` | uploadEntityPlanEvidence | — | `EntityPlanEvidenceTicket` | — | ⬜ | ⬜ |
 | GET | `/ops/merchant-plan-purchases/{e}/{o}/evidence/url` | entityPlanEvidenceUrl | — | `EntityPlanSignedRead` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant-plan-purchases/{e}/{o}/recover` | recoverEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}/{o}/refund-review` | entityPlanRefundReview | — | `object` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/refund-review` | closeEntityPlanRefundReview | — | `object` | — | ⬜ | ⬜ |
 | GET | `/ops/merchant-plan-purchases/{e}/assistance-context` | entityPlanAssistanceContext | — | `EntityAssistanceContext` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant-plan-purchases/{e}/assisted` | assistedEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
 | GET | `/ops/merchant-plan-purchases/{e}/offers` | entityPlanOffers | — | `数组` | — | ⬜ | ⬜ |

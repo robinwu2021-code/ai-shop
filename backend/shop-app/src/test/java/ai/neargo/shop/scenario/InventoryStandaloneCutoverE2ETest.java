@@ -118,7 +118,13 @@ class InventoryStandaloneCutoverE2ETest {
                         "inventory.instance.code=SHOP",
                         "inventory.instance.allowed-systems=SHOP",
                         "inventory.admin.token=" + ADMIN_TOKEN,
-                        "inventory.flip.drain-millis=0")
+                        "inventory.flip.drain-millis=0",
+                        // 开放凭证存密钥库（Q18）：服务自己签发、自己验证，给它一个只在服务里用的内存密钥库
+                        "inventory.secret.env=SANDBOX",
+                        "inventory.secret.datasource.url=jdbc:h2:mem:inv_cutover_secret;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
+                        "inventory.secret.datasource.username=sa",
+                        "inventory.secret.datasource.password=",
+                        "inventory.secret.flyway-enabled=true")
                 .run();
         serviceUrl = "http://127.0.0.1:" + service.getEnvironment().getProperty("local.server.port");
         Map<?, ?> issued = admin().post().uri("/api/inventory/admin/v1/systems/SHOP/credentials")

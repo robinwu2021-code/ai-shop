@@ -1,6 +1,7 @@
 package ai.neargo.shop.merchant.booking.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 import ai.neargo.shop.merchant.booking.entity.MchResource;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelMapper;
@@ -45,7 +46,7 @@ public class ResourceAdmissionServiceImpl implements ResourceAdmissionService {
 
     public ResourceAdmissionServiceImpl(ResourceCommandService commands, PersonnelMapper personnel,
             ResourceMapper resources, PersonnelSkillMapper skills, ScheduleRuleMapper schedules,
-            @Qualifier("dataSource") DataSource dataSource) {
+            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource dataSource) {
         this.commands = commands;
         this.personnel = personnel;
         this.resources = resources;

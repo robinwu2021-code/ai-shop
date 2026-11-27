@@ -88,6 +88,8 @@ export interface MallReadiness {
   available?: boolean;
   /** 不可买的原因码 */
   reasons?: string[];
+  /** 报价允许的支付渠道、方式及币种 */
+  paymentOptions?: {channel: string; payMethod: string; currency: string}[];
 }
 
 /** 列表里的一个可售 SKU */
@@ -96,6 +98,8 @@ export interface MallStorefrontSku {
   sku?: MallSku;
   /** 在线支付口径的可购买判断 */
   readiness?: MallReadiness;
+  /** 门店可用的线下收款方式。 */
+  offlineReadiness?: MallReadiness | null;
 }
 
 /** 列表里的一件商品及其可售 SKU */
@@ -176,6 +180,27 @@ export interface MallQuoteRequest {
   currency: string;
 }
 
+/** 门店当前订阅的并发校验信息。 */
+export interface MallSubscriptionVersion {
+  /** 权益归属门店 */
+  storeNo: string;
+  /** 升级报价使用的当前权益版本 */
+  entitlementVersion: number | null;
+}
+
+export interface MallUpgradeQuoteRequest {
+  /** 已选 SKU 的套餐方案版本 */
+  targetPlanVersionNo: string;
+  /** 门店选中的已发布 SKU 版本 */
+  targetSkuVersionNo: string;
+  /** 本次升级报价请求号 */
+  operationNo: string;
+  /** 门店当前权益版本，用于防止按过期权益折算 */
+  expectedEntitlementVersion: number;
+  /** 报价币种 */
+  currency: string;
+}
+
 /** 收货地址（含硬件时必填） */
 export interface MallShippingAddress {
   /** 收件人 */
@@ -227,6 +252,8 @@ export interface MallOrder {
 
 /** 订单概览：总状态 + 资金 / 交付 / 退款三个独立维度 */
 export interface MallOrderSummary {
+  /** 下单时的首行商品标题 */
+  title?: string | null;
   /** 订单 */
   order?: MallOrder;
   /** 资金维度：UNPAID / PAYING / PAYMENT_UNKNOWN / CANCEL_PENDING / PAID / CLOSED */
@@ -253,8 +280,47 @@ export interface MallShipment {
   status?: string;
 }
 
+/** 本次退款选择的订单组件 */
+export interface MallRefundSelection {
+  /** 本次退款申请的编号 */
+  refundNo: string;
+  /** 本次退款涉及的硬件订单组件及数量 */
+  hardware?: { orderComponentNo: string; quantity: number };
+  /** 本次退款涉及的已交付权益周期编号 */
+  sourcePeriodNos: string[];
+}
+export interface MallRefundPreview {
+  /** 所选组件可退的最高现金金额 */
+  cashLimit: MallMoney;
+}
+export interface MallRefundResult {
+  /** 本次退款申请的编号 */
+  refundNo: string;
+  /** 运营对本次申请的审核状态 */
+  reviewStatus: string;
+  /** 本次退款的资金处理状态 */
+  status: string;
+  /** 本次退款涉及的硬件订单组件及数量 */
+  hardware?: { orderComponentNo: string; quantity: number };
+  /** 本次退款涉及的已交付权益周期编号 */
+  sourcePeriodNos?: string[];
+}
+export interface MallRefundRequest extends MallRefundSelection {
+  /** 申请退款的原因 */
+  reason: string;
+  /** 本次申请退还的现金金额 */
+  cashAmount: MallMoney;
+}
 /** 订单详情 */
 export interface MallOrderDetail {
+  /** 原订单的硬件组件、SKU 和数量 */
+  hardwareItems?: { orderComponentNo: string; hardwareSkuNo: string; quantity: number }[];
+  /** 订单已交付的权益周期、权益代码和状态 */
+  deliveredSources?: { orderComponentNo: string; periodNo: string; planVersionNo?: string; entitlementCodes: string[]; lifecycle: string }[];
+  /** 关联原订单的退款记录 */
+  refunds?: MallRefundResult[];
+  /** 按购买时版本冻结的商品明细 */
+  lines?: { productNo: string; skuNo: string; skuVersionNo: string; title: string; quantity: number }[];
   /** 概览与三维状态 */
   summary?: MallOrderSummary;
   /** 冻结报价 */
@@ -267,6 +333,8 @@ export interface MallOrderDetail {
 
 /** 已发出的付款指引（收款账户按发出时的档案版本冻结） */
 export interface MallOfflineInstructions {
+  /** 该付款指引使用的线下收款方式 */
+  collectionMethod?: string;
   /** 订单号 */
   orderNo: string;
   /** 应转账金额 */
@@ -331,8 +399,14 @@ export interface MallEvidenceUploaded {
 }
 
 export interface MallApi {
+  mMallRefundPreview(storeNo: string, orderNo: string, body: MallRefundSelection): Promise<MallRefundPreview>;
+  mMallRefund(storeNo: string, orderNo: string, body: MallRefundRequest): Promise<MallRefundResult>;
   /** 本店能买的商品 */
   mMallStorefront(storeNo: string): Promise<MallStorefront>;
+  /** 查询当前门店权益版本以申请升级报价 */
+  mMallSubscriptionVersion(storeNo: string): Promise<MallSubscriptionVersion>;
+  /** 按所选版本和门店现有权益折算升级报价 */
+  mMallOfflineUpgradeQuote(storeNo: string, body: MallUpgradeQuoteRequest): Promise<MallQuote>;
   /** 线下转账报价：只取部署配置的收款档案 */
   mMallOfflineQuote(storeNo: string, body: MallQuoteRequest): Promise<MallQuote>;
   /** 按报价下单 */

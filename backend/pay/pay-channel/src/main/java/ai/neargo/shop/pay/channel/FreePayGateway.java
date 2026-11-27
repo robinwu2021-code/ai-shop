@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.channel;
 
+import ai.neargo.shop.common.PayChannels;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -30,13 +31,9 @@ public class FreePayGateway implements PayGateway {
 
     private static final Logger log = LoggerFactory.getLogger(FreePayGateway.class);
 
-    /** 通道名。**定义在 shop-base**，交易域按它路由 —— 两处各写一份字面量的话，
-     *  差一个字母的表现是「通道未接入」而不是编译错误 */
-    public static final String CHANNEL = ai.neargo.shop.common.PayChannels.FREE;
-
     @Override
     public String payChannel() {
-        return CHANNEL;
+        return PayChannels.FREE;
     }
 
     /**
@@ -48,7 +45,7 @@ public class FreePayGateway implements PayGateway {
     @Override
     public PrepayResult prepay(PrepayCommand cmd) {
         log.info("[free] 0 元单免支付 outTradeNo={} amount={}", cmd.outTradeNo(), cmd.amountMinor());
-        return PrepayResult.ok(java.util.Map.of(), CHANNEL + ":" + cmd.outTradeNo());
+        return PrepayResult.ok(java.util.Map.of(), PayChannels.FREE + ":" + cmd.outTradeNo());
     }
 
     /**
@@ -60,7 +57,7 @@ public class FreePayGateway implements PayGateway {
      */
     @Override
     public QueryResult query(String outTradeNo) {
-        return QueryResult.paid(0L, CHANNEL + ":" + outTradeNo);
+        return QueryResult.paid(0L, PayChannels.FREE + ":" + outTradeNo);
     }
 
     /*
@@ -105,7 +102,7 @@ public class FreePayGateway implements PayGateway {
                     + "这条通道没有钱可动", what, amountMinor, requestNo);
             return Result.fatal("免支付订单的" + what + "只能是 0 元，请求 " + amountMinor + " 分");
         }
-        return Result.ok(CHANNEL + "-" + requestNo);
+        return Result.ok(PayChannels.FREE + "-" + requestNo);
     }
 
     /**
@@ -127,6 +124,6 @@ public class FreePayGateway implements PayGateway {
             return Result.fatal("免支付订单只能退 0 元，请求退 " + amountMinor + " 分");
         }
         log.info("[free] 0 元退款 req={} reason={}", requestNo, reason);
-        return Result.ok(CHANNEL + "-REFUND-" + requestNo);
+        return Result.ok(PayChannels.FREE + "-REFUND-" + requestNo);
     }
 }

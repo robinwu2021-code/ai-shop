@@ -29,6 +29,19 @@ public interface PayChannelMasterService {
     Optional<SysPayChannel> find(String payChannel);
 
     /**
+     * 通道主数据之外的调用方只要这几样：启停、记账币种。给视图而不给实体 —— 支付渠道是字典，
+     * 换到基础能力库时实体会变，调用方不该跟着改（TDD-基础能力库对齐 1b 续）。查不到返回空。
+     */
+    default Optional<ChannelBrief> brief(String payChannel) {
+        return find(payChannel).map(c -> new ChannelBrief(c.getPayChannel(), Boolean.TRUE.equals(c.getEnabled()),
+                c.getCurrency()));
+    }
+
+    /** @param currency 记账币种；没配时为空 */
+    record ChannelBrief(String payChannel, boolean enabled, String currency) {
+    }
+
+    /**
      * 启用中的通道。
      *
      * @param market 市场（如 {@code CN}）；为空不筛

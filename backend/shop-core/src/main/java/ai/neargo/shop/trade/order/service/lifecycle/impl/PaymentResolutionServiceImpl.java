@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.order.service.lifecycle.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
@@ -26,7 +27,7 @@ public class PaymentResolutionServiceImpl implements PaymentResolutionService {
     private final TransactionTemplate independent;
 
     public PaymentResolutionServiceImpl(PaymentResolutionMapper resolutions,
-                                        @Qualifier("transactionManager") PlatformTransactionManager manager) {
+                                        @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.resolutions = resolutions;
         independent = new TransactionTemplate(manager);
         independent.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);

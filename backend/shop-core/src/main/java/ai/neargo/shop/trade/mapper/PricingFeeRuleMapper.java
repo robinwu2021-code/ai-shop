@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.mapper;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort.Reference;
 import ai.neargo.shop.trade.entity.PricingFeeEvidenceRow;
 
@@ -21,7 +22,7 @@ public class PricingFeeRuleMapper {
         return db.queryForList(sql, args).stream().map(PricingFeeEvidenceRow::new).toList();
     }
 
-    public PricingFeeRuleMapper(@Qualifier("dataSource") DataSource source) {
+    public PricingFeeRuleMapper(@Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source) {
         db = new JdbcTemplate(source);
     }
 

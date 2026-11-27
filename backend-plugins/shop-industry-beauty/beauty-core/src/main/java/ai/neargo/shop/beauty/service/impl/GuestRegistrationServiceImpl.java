@@ -111,7 +111,7 @@ public final class GuestRegistrationServiceImpl implements GuestRegistrationServ
         catch (DuplicateKeyException race) { return finishTransaction(observed, fact); }
     }
     private GuestClaimVO finishTransaction(BtyReceptionOperation observed, GuestRegistrationPort.GuestFact fact) {
-        return db.tx(() -> {
+        return db.industryTx(() -> {
             var op = operations.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
                     observed.getOperationNo());
             AppointmentPersistence.require(op != null && op.getRequestHash().equals(observed.getRequestHash()));

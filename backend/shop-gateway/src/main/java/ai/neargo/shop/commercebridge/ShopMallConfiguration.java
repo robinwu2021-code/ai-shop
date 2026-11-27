@@ -1,5 +1,6 @@
 package ai.neargo.shop.commercebridge;
 
+import ai.neargo.commerce.api.common.StoreRef;
 import ai.neargo.commerce.api.fulfillment.PaymentFacade;
 import ai.neargo.commerce.api.mall.RefundFacade;
 import ai.neargo.commerce.api.port.CheckoutReadinessPort;
@@ -27,6 +28,9 @@ import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.*;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Clock;
 import java.util.*;
 
@@ -42,7 +46,19 @@ import java.util.*;
 class ShopMallConfiguration {
     @Bean
     PaidStoreActivationPort mallPaidStoreActivation(
-            StoreOperationalReviewService reviews) {
+            StoreOperationalReviewService reviews,
+            @Qualifier("platformTxManager") ObjectProvider<PlatformTransactionManager> platform,
+            @Value("${shop.modules.mall.datasource:}") String mallSource) {
+        if (!mallSource.isBlank()) {
+            var tx = new TransactionTemplate(platform.getObject());
+            return new PaidStoreActivationPort() {
+                @Override public boolean separateDatabase() { return true; }
+                @Override public void activate(StoreRef store, String entity, String order, long purchasedAt, long at) {
+                    tx.executeWithoutResult(status -> reviews.activatePaid(store.tenantNo(), entity,
+                            store.storeNo(), "STORE", order, purchasedAt, at));
+                }
+            };
+        }
         return (store,entity,order,purchasedAt,at) -> reviews.activatePaid(store.tenantNo(),entity,store.storeNo(),"STORE",order,purchasedAt,at);
     }
 

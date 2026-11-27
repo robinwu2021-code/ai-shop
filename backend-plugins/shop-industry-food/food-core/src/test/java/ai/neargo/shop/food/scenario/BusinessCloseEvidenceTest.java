@@ -51,7 +51,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.impl.BusinessCloseServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 import ai.neargo.shop.spi.trade.IndustryOrderPort;
 import org.springframework.beans.factory.ObjectProvider;
@@ -355,7 +355,7 @@ class BusinessCloseEvidenceTest {
             TableInfoHelper.initTableInfo(metadata,FnbCloseException.class);
             when(stores.cards(any())).thenReturn(Map.of("S",new StoreCard("S","Store","E",null,
                     "ACTIVE",true,null,null,null,null,0,0)));
-            var idem=mock(IdempotencyService.class);
+            var idem=mock(RequestIdempotencyPort.class);
             doAnswer(call -> ((Supplier<?>)call.getArgument(5)).get()).when(idem)
                     .execute(anyString(),anyString(),anyString(),anyString(),any(),any());
             service=new BusinessCloseServiceImpl(days,runs,balances,exceptions,adjustments,mock(StorePolicyMapper.class),

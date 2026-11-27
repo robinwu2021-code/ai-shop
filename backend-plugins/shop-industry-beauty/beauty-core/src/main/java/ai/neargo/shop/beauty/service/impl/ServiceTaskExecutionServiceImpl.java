@@ -184,10 +184,10 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         require(selected.size() == 1);
         var binding = selected.getFirst();
         access.requireSame(request.scope(), current);
-        try { return db.tx(() -> freezeLocked(request, current, binding)); }
+        try { return db.industryTx(() -> freezeLocked(request, current, binding)); }
         catch (DuplicateKeyException collision) {
             // Resolve collisions only by complete original replay; never invent success on a losing unit/key.
-            return db.tx(() -> freezeLocked(request, current, binding));
+            return db.industryTx(() -> freezeLocked(request, current, binding));
         }
     }
 
@@ -407,7 +407,7 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
     public StartIntent inspectOriginal(StartIntentLookup request) {
         DelegatedIdentityContext.outside();
         schema.requireAvailable();
-        return db.tx(() -> {
+        return db.industryTx(() -> {
             var locked = lock(request.binding());
             return projection(locked.fence(), locked.start(), locked.observation());
         });
@@ -425,7 +425,7 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
 
     <T> T withStockOriginal(ExecutionBinding binding, Function<StockOriginal, T> action) {
         schema.requireAvailable();
-        return db.tx(
+        return db.industryTx(
                 () -> {
                     var locked = lock(binding);
                     return action.apply(
@@ -511,7 +511,7 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
             require(candidate.getBindingHash().equals(ServiceExecutionContract.bindingHash(binding))
                     && candidate.getBindingJson().equals(ServiceExecutionContract.bindingJson(binding)));
             Locked claimed =
-                    db.tx(
+                    db.industryTx(
                             () -> {
                                 var locked = lock(binding);
                                 var row = locked.fence();
@@ -555,7 +555,7 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
     }
 
     private Locked claim(StartIntentLookup request, String actor) {
-        return db.tx(() -> {
+        return db.industryTx(() -> {
             var locked = lock(request.binding());
             var row = locked.fence();
             if (row.getSuspensionIntentRevision() != null) return null;
@@ -569,7 +569,7 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
     private ExecutionPreparation apply(Locked claimed, Grant grant, String actor) {
         var binding = command(claimed.start()).intent().binding();
         require(grant != null && binding.equals(grant.binding()));
-        return db.tx(() -> {
+        return db.industryTx(() -> {
             var locked = lock(binding);
             var row = locked.fence();
             if (!row.getVersion().equals(claimed.fence().getVersion())

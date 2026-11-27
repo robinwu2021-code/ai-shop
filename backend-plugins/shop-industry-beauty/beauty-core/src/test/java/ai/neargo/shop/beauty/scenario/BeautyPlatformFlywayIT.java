@@ -29,7 +29,7 @@ class BeautyPlatformFlywayIT {
     }
 
     private ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class)
+        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class)
                 .withBean(AuditMetaObjectHandler.class)
                 .withConfiguration(AutoConfigurations.of(FlywayAutoConfiguration.class,
                         BeautyPersistenceAutoConfiguration.class))

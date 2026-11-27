@@ -26,7 +26,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
 import ai.neargo.shop.food.service.impl.KitchenTaskServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
@@ -58,7 +58,7 @@ class KitchenCustodyServiceTest {
     private final ServiceEventMapper events=mock(ServiceEventMapper.class);
     private final CoreOrderBindingMapper bindings=mock(CoreOrderBindingMapper.class);
     private final CoreLineAllocationMapper allocations=mock(CoreLineAllocationMapper.class);
-    private final IdempotencyService idem=mock(IdempotencyService.class);
+    private final RequestIdempotencyPort idem=mock(RequestIdempotencyPort.class);
     private final PlatformTransactionManager manager=mock(PlatformTransactionManager.class);
     private final List<FnbServiceEvent> facts=new ArrayList<>();
     private final FnbKitchenTask task=new FnbKitchenTask();

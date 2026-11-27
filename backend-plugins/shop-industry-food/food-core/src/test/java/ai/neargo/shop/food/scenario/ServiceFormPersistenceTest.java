@@ -18,7 +18,7 @@ import ai.neargo.shop.food.mapper.ServiceFormMapper;
 import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.impl.ServiceFormServiceImpl;
 import ai.neargo.shop.food.service.impl.ServiceSlotServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard;
 
 import org.junit.jupiter.api.AfterEach;
@@ -113,7 +113,7 @@ public class ServiceFormPersistenceTest {
         var slot =
                 new ServiceSlotServiceImpl(
                         mapper,
-                        mock(IdempotencyService.class),
+                        mock(RequestIdempotencyPort.class),
                         Clock.fixed(now, ZoneOffset.UTC),
                         json);
         var card = mock(StoreCard.class);

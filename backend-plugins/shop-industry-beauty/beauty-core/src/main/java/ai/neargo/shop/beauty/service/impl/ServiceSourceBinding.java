@@ -177,7 +177,7 @@ public final class ServiceSourceBinding {
             Allocation input,
             String actor) {
         try {
-            return new Result(db.tx(() -> locked(intent, command, input, actor)), null);
+            return new Result(db.industryTx(() -> locked(intent, command, input, actor)), null);
         } catch (Blocked blocked) {
             return new Result(null, blocked.reason);
         }

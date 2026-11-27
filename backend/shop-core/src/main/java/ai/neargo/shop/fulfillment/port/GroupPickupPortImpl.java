@@ -2,6 +2,7 @@ package ai.neargo.shop.fulfillment.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.fulfillment.entity.FulGroupPickup;
 import ai.neargo.shop.fulfillment.mapper.FulfillmentMappers.GroupPickupMapper;
 import ai.neargo.shop.spi.fulfillment.GroupPickupPort;
@@ -22,7 +23,7 @@ public class GroupPickupPortImpl implements GroupPickupPort {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public String createForGroup(String groupNo, String ownerUserNo, String name,
                                  String address, String timeSlot) {
         // 一团一点：库上有 uk_group 兜底，这里先查是为了幂等 —— 开团接口被重复点击是常态
@@ -50,7 +51,7 @@ public class GroupPickupPortImpl implements GroupPickupPort {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public boolean receive(String groupNo, String operatorUserNo) {
         FulGroupPickup p = row(groupNo);
         if (p == null || !p.getUserNo().equals(operatorUserNo)) {

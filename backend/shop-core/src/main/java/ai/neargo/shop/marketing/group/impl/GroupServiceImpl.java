@@ -1,5 +1,6 @@
 package ai.neargo.shop.marketing.group.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.marketing.group.GroupService;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -231,7 +232,7 @@ public class GroupServiceImpl implements GroupService {
     // ---------------------------------------------------------------- 求团
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public RequestVO createRequest(CreateRequestCommand cmd) {
         MktRequest r = new MktRequest();
         r.setRequestNo(BizKey.next(BizKey.GROUP_REQUEST));
@@ -266,7 +267,7 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public RequestVO toggleInterest(String requestNo) {
         String userNo = SecurityUtils.currentUserNo();
         MktRequest r = requireRequest(requestNo);
@@ -299,7 +300,7 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public RequestVO choose(String requestNo, String quoteNo) {
         MktRequest r = requireRequest(requestNo);
         // ownerId 是团实例上的字段：只有发起人能选定（ADR-004，不是身份）
@@ -349,7 +350,7 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public QuoteVO quote(String merchantNo, String requestNo, QuoteCommand cmd) {
         MktRequest r = requireRequest(requestNo);
         if (r.getChosenQuoteNo() != null || MktRequest.CLOSED.equals(r.getStatus())) {
@@ -395,7 +396,7 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public QuoteVO revise(String merchantNo, String quoteNo, QuoteCommand cmd) {
         MktQuote q = requireQuote(quoteNo);
         if (!q.getEntityNo().equals(merchantNo)) {
@@ -804,7 +805,7 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public QuoteVO opsRevisePrice(String quoteNo, long unitPriceMinor, String reason, String operatorNo) {
         if (unitPriceMinor <= 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

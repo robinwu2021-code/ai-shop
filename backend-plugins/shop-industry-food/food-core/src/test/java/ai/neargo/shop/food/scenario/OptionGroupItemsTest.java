@@ -57,10 +57,11 @@ class OptionGroupItemsTest extends FoodWriteGuardFixture {
             assertThatThrownBy(() -> s.replaceOptionGroupItems("E", "A", group, "actor",
                     req(1, List.of(), List.of()), "items"))
                     .isInstanceOf(BizException.class);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
             for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(2);
             }
+            // 草稿写不再发事件（cf7eea13b 删了只存档的 OPTION_GROUP_CHANGED）
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
         });
     }
     @Test void clearsOnlyKnownCurrentStoreBindingsAndPreservesForeignOrUnknownOnes() {
@@ -140,10 +141,11 @@ class OptionGroupItemsTest extends FoodWriteGuardFixture {
             for (String table : List.of("fnb_option_group_item", "fnb_dish_option_group")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
             }
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
             for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isOne();
             }
+            // 草稿写不再发事件（cf7eea13b 删了只存档的 *_CHANGED），失败的发布也已回滚：发件箱一条都没有
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
         });
     }
 }

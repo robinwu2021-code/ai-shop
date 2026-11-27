@@ -49,6 +49,7 @@ import ai.neargo.shop.pay.mapper.SettleMappers.PaymentMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntUseIntentMapper;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntOutboxMapper;
 import ai.neargo.shop.spi.entitlement.PayEntitlementEventBridgePort;
+import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.payclient.EntitlementBatchAppService;
 import ai.neargo.shop.payclient.EntitlementCodeAppService;
 import ai.neargo.shop.payclient.EntitlementRuntimeRouting;
@@ -125,7 +126,7 @@ class EntitlementRuntimeRoutingTest {
             .withBean("memberMarketingDocumentNumbers", DocumentNumberService.class, () -> mock(DocumentNumberService.class))
             .withBean(EntitlementSourceFence.class, () -> mock(EntitlementSourceFence.class))
             .withBean(PayEntOutboxMapper.class, () -> mock(PayEntOutboxMapper.class))
-            .withBean(PayEntitlementEventBridgePort.class, () -> mock(PayEntitlementEventBridgePort.class))
+            .withBean(OutboxEventBus.class, () -> mock(OutboxEventBus.class))
             .withBean(EntitlementOwnerRegistryService.class, () -> mock(EntitlementOwnerRegistryService.class))
             .withBean(EntitlementMarketingFactsService.class, () -> mock(EntitlementMarketingFactsService.class))
             .withBean(PayEntitlementProperties.class, PayEntitlementProperties::new)
@@ -144,6 +145,8 @@ class EntitlementRuntimeRoutingTest {
                     .hasSingleBean(EntitlementBatchAppService.class).hasSingleBean(StoredValueRechargeFactsPort.class).hasSingleBean(StoredValueRechargeAppService.class);
             assertThat(c.getBean(EntitlementMigrationAppService.class)).isInstanceOf(EntitlementMigrationAppServiceImpl.class);
             assertThat(c).hasSingleBean(PayEntitlementOutboxRelay.class);
+            // 内嵌部署撤掉转发端口：PAY 发件箱的中转直接经 OutboxEventBus.forward 发出
+            assertThat(c).doesNotHaveBean(PayEntitlementEventBridgePort.class);
             assertThat(c.getBean(EntitlementUsePort.class)).isNotInstanceOf(RemoteEntitlementUsePort.class);
             c.getBean(PayEntitlementProperties.class).getEntitlement().getUse().setEnabled(true);
             c.getBean(PayEntitlementProperties.class).getStoredValue().setEnabled(true);

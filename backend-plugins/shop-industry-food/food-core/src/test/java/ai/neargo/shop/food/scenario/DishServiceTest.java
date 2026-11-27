@@ -20,7 +20,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
 import ai.neargo.shop.food.service.DishService;
 import ai.neargo.shop.food.policy.DiningMeasurementPolicy;
 import ai.neargo.shop.food.service.impl.DishServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import ai.neargo.shop.spi.media.MediaAssetQueryPort;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -63,7 +63,7 @@ class DishServiceTest extends FoodWriteGuardFixture {
             var f = fixture(c);
             var source = new CatalogCurrencyBusinessTest.Sources();
             var service = new DishServiceImpl(c.getBean(DishMapper.class), c.getBean(ActionLogMapper.class),
-                    c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
+                    c.getBean(RequestIdempotencyPort.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
                     c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
                     mock(DishOptionGroupMapper.class), c.getBean(OptionGroupMapper.class),
                     c.getBean(OptionGroupItemMapper.class), (entity, store, keys) -> List.of(), source.currencies);
@@ -312,7 +312,7 @@ class DishServiceTest extends FoodWriteGuardFixture {
             factory.setSqlSessionTemplate(t);
             return factory;
         }
-        @Bean DishService dishService(DishMapper mapper, ActionLogMapper actions, IdempotencyService idem,
+        @Bean DishService dishService(DishMapper mapper, ActionLogMapper actions, RequestIdempotencyPort idem,
                 @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
                 PlatformTransactionManager manager, Facts facts, FailAfterPublish fail, DishOptionGroupMapper bindings,
                 OptionGroupMapper groups, OptionGroupItemMapper items, MediaFacts media) {

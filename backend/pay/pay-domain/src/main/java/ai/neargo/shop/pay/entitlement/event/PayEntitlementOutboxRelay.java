@@ -42,9 +42,9 @@ public class PayEntitlementOutboxRelay {
             ObjectMapper json,EntitlementEventDeliveryService delivery) {
         this.outbox=outbox; this.bridge=bridge; this.json=json; this.delivery=delivery;
     }
-    /** Existing native fixtures use a real core bus directly; production always binds the owned bridge. */
+    /** Same-process core bus: forward keeps the pay event number so consumers stay idempotent on it. */
     public PayEntitlementOutboxRelay(PayEntOutboxMapper outbox, OutboxEventBus bus,ObjectMapper json) {
-        this(outbox,(eventNo,event)->bus.publish(event),json);
+        this(outbox,bus::forward,json);
     }
     public void relay(String eventNo) {
         var row=outbox.findByEventNo(TENANT,eventNo);

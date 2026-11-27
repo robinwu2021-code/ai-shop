@@ -112,7 +112,7 @@ public final class PlatformCustomerBrowserLauncher {
       var tokens=new RealmRoutingTokenStore(Map.of(Realm.OPERATOR,memory,Realm.CONSUMER,new MemoryTokenStore(Duration.ofHours(1)),Realm.MERCHANT,new MemoryTokenStore(Duration.ofHours(1))));
       var json=tools.jackson.databind.json.JsonMapper.builder().build();
       var ops=new OpsServiceImpl(sql.getMapper(StaffMapper.class),sql.getMapper(RoleMemberMapper.class),perms,identitiesResolver,
-          null,null,null,null,tokens,TokenStores.single(tokens),json,json,null,null,hash,null,null,null,null,"mail",null,"",new OpsLoginGuard(),new OpsLoginChallenges(),new ai.neargo.shop.platform.auth.OpsApiKeyStore(jdbc));
+          null,null,null,tokens,TokenStores.single(tokens),json,json,null,null,hash,null,null,null,null,"mail",null,"",new OpsLoginGuard(),new OpsLoginChallenges(),new ai.neargo.shop.platform.auth.OpsApiKeyStore(jdbc, null));
       web.getEnvironment().setActiveProfiles("ops");
       web.addBeanFactoryPostProcessor(b->{
         b.registerSingleton("dataSource",ds);b.registerSingleton("jdbc",jdbc);b.registerSingleton("transactionManager",new DataSourceTransactionManager(ds));

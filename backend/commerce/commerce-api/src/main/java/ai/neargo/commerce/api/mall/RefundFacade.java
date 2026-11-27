@@ -10,9 +10,9 @@ import ai.neargo.commerce.api.port.VerifiedRefundFact;
  * unknown/legacy SKU policies require manual review. An ordinary paid order with no materialized
  * digital source supports only its complete proven pending digital task group; it refunds digital
  * cash and releases original reserved credit on verified success, without issuing conversion
- * credit. Hardware allocations are excluded. Buyer refund numbers use bounded ASCII
- * letters/digits/colon/dot/underscore/hyphen, begin with a letter or digit, and cannot use the
- * case-insensitive reserved late- prefix.
+ * credit. Shipped hardware is reviewed separately by original order component and quantity. Buyer
+ * refund numbers use bounded ASCII letters/digits/colon/dot/underscore/hyphen, begin with a letter
+ * or digit, and cannot use the case-insensitive reserved late- prefix.
  */
 public interface RefundFacade {
     RefundPreviewView preview(ActorContext actor, RefundPreviewCommand command);

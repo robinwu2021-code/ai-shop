@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
 import ai.neargo.shop.food.mapper.ServiceFormMapper;
 import ai.neargo.shop.food.service.BusinessOperationsService;
@@ -30,7 +31,7 @@ import ai.neargo.shop.food.service.impl.ScheduledDiningDispatchServiceImpl;
 import ai.neargo.shop.food.service.impl.ServiceFormServiceImpl;
 import ai.neargo.shop.food.service.impl.ServiceSlotServiceImpl;
 import ai.neargo.shop.food.spi.QueueNotificationPort;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.printing.PrintPort;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 
@@ -56,7 +57,7 @@ public class FoodBusinessOperationsConfiguration {
     @Bean
     @ConditionalOnMissingBean(FoodBusinessOperationsMapper.class)
     FoodBusinessOperationsMapper foodBusinessOperationsMapper(
-            @Qualifier("dataSource") DataSource source) {
+            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source) {
         return new FoodBusinessOperationsMapper(source);
     }
 
@@ -71,9 +72,9 @@ public class FoodBusinessOperationsConfiguration {
     CheckCollaborationService checkCollaborationService(
             FoodBusinessOperationsMapper mapper,
             CheckBusinessGuardService guard,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new CheckCollaborationServiceImpl(mapper, guard, idem, json, manager);
     }
 
@@ -81,8 +82,8 @@ public class FoodBusinessOperationsConfiguration {
     @ConditionalOnMissingBean(ReservationPreorderService.class)
     ReservationPreorderService reservationPreorderService(
             FoodBusinessOperationsMapper mapper,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
-            IdempotencyService idem,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
+            RequestIdempotencyPort idem,
             CheckCartService carts,
             DiningOrderService orders,
             ObjectMapper json) {
@@ -93,7 +94,7 @@ public class FoodBusinessOperationsConfiguration {
     @Bean
     @ConditionalOnMissingBean(ServiceSlotService.class)
     ServiceSlotServiceImpl serviceSlotService(
-            FoodBusinessOperationsMapper mapper, IdempotencyService idem, ObjectMapper json) {
+            FoodBusinessOperationsMapper mapper, RequestIdempotencyPort idem, ObjectMapper json) {
         return new ServiceSlotServiceImpl(mapper, idem, Clock.systemUTC(), json);
     }
 
@@ -101,8 +102,8 @@ public class FoodBusinessOperationsConfiguration {
     @ConditionalOnMissingBean(BusinessOperationsService.class)
     BusinessOperationsService businessOperationsService(
             FoodBusinessOperationsMapper mapper,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
-            IdempotencyService idem,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             DiningOrderService orders,
             DiningReturnService returns,
@@ -115,7 +116,7 @@ public class FoodBusinessOperationsConfiguration {
     @ConditionalOnMissingBean(ScheduledDiningDispatchService.class)
     ScheduledDiningDispatchService scheduledDiningDispatchService(
             FoodBusinessOperationsMapper mapper,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             KitchenTaskService kitchen,
             ObjectProvider<PrintPort> printing,
             FoodPrintService documents) {
@@ -134,7 +135,7 @@ public class FoodBusinessOperationsConfiguration {
     @ConditionalOnMissingBean(QueueNotificationService.class)
     QueueNotificationServiceImpl queueNotificationService(
             FoodBusinessOperationsMapper mapper,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectProvider<QueueNotificationPort> provider) {
         return new QueueNotificationServiceImpl(
                 mapper, manager, provider::getIfAvailable, Clock.systemUTC());
@@ -149,7 +150,7 @@ public class FoodBusinessOperationsConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(ServiceFormMapper.class)
-    ServiceFormMapper serviceFormMapper(@Qualifier("dataSource") DataSource source) {
+    ServiceFormMapper serviceFormMapper(@Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source) {
         return new ServiceFormMapper(source);
     }
 
@@ -158,7 +159,7 @@ public class FoodBusinessOperationsConfiguration {
     ServiceFormServiceImpl serviceFormService(
             ServiceFormMapper mapper,
             FoodBusinessOperationsMapper operations,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ServiceSlotService slots,
             ServiceSlotLifecycle capacity,
             ObjectProvider<ReservationService> reservations,

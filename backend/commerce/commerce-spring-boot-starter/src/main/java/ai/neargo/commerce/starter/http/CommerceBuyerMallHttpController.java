@@ -154,7 +154,8 @@ public final class CommerceBuyerMallHttpController extends MallHttpSupport {
                                 context.payerReference(d.channel(), d.payMethod()))));
     }
 
-    public record RefundPreviewRequest(String refundNo, List<String> sourcePeriodNos) {}
+    public record RefundPreviewRequest(
+            String refundNo, List<String> sourcePeriodNos, HardwareRefund hardware) {}
 
     @PostMapping("/orders/{orderNo}/refund-previews")
     public Object refundPreview(
@@ -171,11 +172,16 @@ public final class CommerceBuyerMallHttpController extends MallHttpSupport {
                                 c.store(),
                                 code(order),
                                 d.refundNo(),
-                                d.sourcePeriodNos() == null ? List.of() : d.sourcePeriodNos())));
+                                d.sourcePeriodNos() == null ? List.of() : d.sourcePeriodNos(),
+                                d.hardware())));
     }
 
     public record RefundRequest(
-            String refundNo, Money cashAmount, String reason, List<String> sourcePeriodNos) {}
+            String refundNo,
+            Money cashAmount,
+            String reason,
+            List<String> sourcePeriodNos,
+            HardwareRefund hardware) {}
 
     @PostMapping("/orders/{orderNo}/refunds")
     public Object refund(
@@ -194,6 +200,7 @@ public final class CommerceBuyerMallHttpController extends MallHttpSupport {
                                 d.refundNo(),
                                 d.cashAmount(),
                                 d.reason(),
-                                d.sourcePeriodNos())));
+                                d.sourcePeriodNos(),
+                                d.hardware())));
     }
 }

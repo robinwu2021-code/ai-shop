@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.refund.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
 import ai.neargo.shop.spi.settle.RefundDispatchResult;
@@ -81,7 +82,7 @@ public class RefundResultServiceImpl implements RefundResultService {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public void apply(RefundDispatchResult result) {
         DataScopeContext.executeWithoutScope(() -> {
             OrdRefundExecution hint = store.read(result.executionNo());
@@ -163,7 +164,7 @@ public class RefundResultServiceImpl implements RefundResultService {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public void closePending(String no) {
         DataScopeContext.executeWithoutScope(() -> {
             var hint=store.read(no);

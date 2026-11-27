@@ -724,6 +724,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `hardware` | `object`（见下） \| `null` | 否 | 本次退款涉及的硬件订单组件及数量 |
+| `sourcePeriodNos` | `string`\[\] | 否 | 本次退款涉及的已交付权益周期编号 |
 | `refundNo` | `string` | 否 | 退款号 |
 | `orderNo` | `string` | 否 | 订单号 |
 | `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
@@ -852,12 +854,32 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `deliveredSources` | `object`（见下）\[\] | 否 | 订单已交付的权益周期、权益代码和状态 |
+| `hardwareItems` | `object`（见下）\[\] | 否 | 原订单的硬件组件、SKU 和数量 |
 | `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
 | `quote` | [`MallQuoteView`](#mallquoteview) | 否 | 冻结报价 |
 | `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
 | `paymentAttempts` | [`MallPaymentAttempt`](#mallpaymentattempt)\[\] | 否 | 付款尝试 |
 | `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 发货 |
 | `refunds` | [`MallRefundView`](#mallrefundview)\[\] | 否 | 退款 |
+
+`deliveredSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `periodNo` | `string` | 是 | — |
+| `planVersionNo` | `string,null` | 否 | — |
+| `entitlementCodes` | `string`\[\] | 是 | — |
+| `lifecycle` | `string` | 是 | — |
+
+`hardwareItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `hardwareSkuNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
 
 
 #### POST `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/approve`
@@ -879,6 +901,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `hardware` | `object`（见下） \| `null` | 否 | 本次退款涉及的硬件订单组件及数量 |
+| `sourcePeriodNos` | `string`\[\] | 否 | 本次退款涉及的已交付权益周期编号 |
 | `refundNo` | `string` | 否 | 退款号 |
 | `orderNo` | `string` | 否 | 订单号 |
 | `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
@@ -908,6 +932,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `hardware` | `object`（见下） \| `null` | 否 | 本次退款涉及的硬件订单组件及数量 |
+| `sourcePeriodNos` | `string`\[\] | 否 | 本次退款涉及的已交付权益周期编号 |
 | `refundNo` | `string` | 否 | 退款号 |
 | `orderNo` | `string` | 否 | 订单号 |
 | `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
@@ -960,12 +986,32 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `deliveredSources` | `object`（见下）\[\] | 否 | 订单已交付的权益周期、权益代码和状态 |
+| `hardwareItems` | `object`（见下）\[\] | 否 | 原订单的硬件组件、SKU 和数量 |
 | `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
 | `quote` | [`MallQuoteView`](#mallquoteview) | 否 | 冻结报价 |
 | `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
 | `paymentAttempts` | [`MallPaymentAttempt`](#mallpaymentattempt)\[\] | 否 | 付款尝试 |
 | `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 发货 |
 | `refunds` | [`MallRefundView`](#mallrefundview)\[\] | 否 | 退款 |
+
+`deliveredSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `periodNo` | `string` | 是 | — |
+| `planVersionNo` | `string,null` | 否 | — |
+| `entitlementCodes` | `string`\[\] | 是 | — |
+| `lifecycle` | `string` | 是 | — |
+
+`hardwareItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `hardwareSkuNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
 
 
 #### GET `/ops/biz-mall/products`
@@ -8284,12 +8330,13 @@ entityPlanPurchase
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `mallOffline` | `boolean` | 否 | 该订单的收款资料可按门店号和原商城订单号查询。 |
 | `orderNo` | `string` | 是 | 主体套餐购买订单号。 |
 | `requestNo` | `string` | 是 | 创建订单的原始幂等请求号。 |
 | `entityNo` | `string` | 是 | 订单所属商家主体编号。 |
 | `storeNo` | `string` | 是 | 下单时服务器验证并冻结的门店编号。 |
 | `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | 下单时冻结的销售报价及额度快照。 |
-| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 |
+| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示退款完成，REFUND_PENDING 和 REFUND_REVIEW 分别表示门店撤权待完成和主体额度待人工复核。 |
 | `purchaseSource` | `string` | 否 | 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 |
 | `dueAt` | `string` | 是 | 本订单银行付款截止时间，ISO 8601。 |
 | `instructions` | `null` \| `object`（见下） | 是 | 冻结收款指引；尚未准备或未配置真实收款账户时为 null。 |
@@ -8325,12 +8372,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `mallOffline` | `boolean` | 否 | 该订单的收款资料可按门店号和原商城订单号查询。 |
 | `orderNo` | `string` | 是 | 主体套餐购买订单号。 |
 | `requestNo` | `string` | 是 | 创建订单的原始幂等请求号。 |
 | `entityNo` | `string` | 是 | 订单所属商家主体编号。 |
 | `storeNo` | `string` | 是 | 下单时服务器验证并冻结的门店编号。 |
 | `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | 下单时冻结的销售报价及额度快照。 |
-| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 |
+| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示退款完成，REFUND_PENDING 和 REFUND_REVIEW 分别表示门店撤权待完成和主体额度待人工复核。 |
 | `purchaseSource` | `string` | 否 | 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 |
 | `dueAt` | `string` | 是 | 本订单银行付款截止时间，ISO 8601。 |
 | `instructions` | `null` \| `object`（见下） | 是 | 冻结收款指引；尚未准备或未配置真实收款账户时为 null。 |
@@ -8475,12 +8523,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `mallOffline` | `boolean` | 否 | 该订单的收款资料可按门店号和原商城订单号查询。 |
 | `orderNo` | `string` | 是 | 主体套餐购买订单号。 |
 | `requestNo` | `string` | 是 | 创建订单的原始幂等请求号。 |
 | `entityNo` | `string` | 是 | 订单所属商家主体编号。 |
 | `storeNo` | `string` | 是 | 下单时服务器验证并冻结的门店编号。 |
 | `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | 下单时冻结的销售报价及额度快照。 |
-| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 |
+| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示退款完成，REFUND_PENDING 和 REFUND_REVIEW 分别表示门店撤权待完成和主体额度待人工复核。 |
 | `purchaseSource` | `string` | 否 | 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 |
 | `dueAt` | `string` | 是 | 本订单银行付款截止时间，ISO 8601。 |
 | `instructions` | `null` \| `object`（见下） | 是 | 冻结收款指引；尚未准备或未配置真实收款账户时为 null。 |
@@ -8495,6 +8544,42 @@ _无字段_
 | `status` | `string` | 是 | 申报状态；SUBMITTED 为待核款。 |
 | `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | 商家冻结的原始申报内容。 |
 | `reviewNote` | `string,null` | 是 | 审核说明；未审核时为 null。 |
+
+
+#### GET `/ops/merchant-plan-purchases/{e}/{o}/refund-review`
+
+entityPlanRefundReview
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `o` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/merchant-plan-purchases/{e}/{o}/refund-review`
+
+closeEntityPlanRefundReview
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `o` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### GET `/ops/merchant-plan-purchases/{e}/assistance-context`
@@ -8552,12 +8637,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `mallOffline` | `boolean` | 否 | 该订单的收款资料可按门店号和原商城订单号查询。 |
 | `orderNo` | `string` | 是 | 主体套餐购买订单号。 |
 | `requestNo` | `string` | 是 | 创建订单的原始幂等请求号。 |
 | `entityNo` | `string` | 是 | 订单所属商家主体编号。 |
 | `storeNo` | `string` | 是 | 下单时服务器验证并冻结的门店编号。 |
 | `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | 下单时冻结的销售报价及额度快照。 |
-| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 |
+| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示退款完成，REFUND_PENDING 和 REFUND_REVIEW 分别表示门店撤权待完成和主体额度待人工复核。 |
 | `purchaseSource` | `string` | 否 | 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 |
 | `dueAt` | `string` | 是 | 本订单银行付款截止时间，ISO 8601。 |
 | `instructions` | `null` \| `object`（见下） | 是 | 冻结收款指引；尚未准备或未配置真实收款账户时为 null。 |
@@ -8609,6 +8695,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `catalog` | `object`（见下） \| `null` | 否 | 报价关联的已发布 SKU、套餐版本和权益代码 |
 | `offerNo` | `string` | 是 | 主体套餐销售报价编号。 |
 | `version` | `number` | 是 | 报价版本；下单必须绑定所选版本。 |
 | `planCode` | `string` | 是 | 报价对应的主体套餐档位代码。 |
@@ -15564,6 +15651,7 @@ Reward rule history includes imported legacy revisions.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `catalog` | `object`（见下） \| `null` | 否 | 报价关联的已发布 SKU、套餐版本和权益代码 |
 | `offerNo` | `string` | 是 | 主体套餐销售报价编号。 |
 | `version` | `number` | 是 | 报价版本；下单必须绑定所选版本。 |
 | `planCode` | `string` | 是 | 报价对应的主体套餐档位代码。 |
@@ -15579,12 +15667,13 @@ Reward rule history includes imported legacy revisions.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `mallOffline` | `boolean` | 否 | 该订单的收款资料可按门店号和原商城订单号查询。 |
 | `orderNo` | `string` | 是 | 主体套餐购买订单号。 |
 | `requestNo` | `string` | 是 | 创建订单的原始幂等请求号。 |
 | `entityNo` | `string` | 是 | 订单所属商家主体编号。 |
 | `storeNo` | `string` | 是 | 下单时服务器验证并冻结的门店编号。 |
 | `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | 下单时冻结的销售报价及额度快照。 |
-| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 |
+| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示退款完成，REFUND_PENDING 和 REFUND_REVIEW 分别表示门店撤权待完成和主体额度待人工复核。 |
 | `purchaseSource` | `string` | 否 | 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 |
 | `dueAt` | `string` | 是 | 本订单银行付款截止时间，ISO 8601。 |
 | `instructions` | `null` \| `object`（见下） | 是 | 冻结收款指引；尚未准备或未配置真实收款账户时为 null。 |
@@ -16847,12 +16936,32 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `deliveredSources` | `object`（见下）\[\] | 否 | 订单已交付的权益周期、权益代码和状态 |
+| `hardwareItems` | `object`（见下）\[\] | 否 | 原订单的硬件组件、SKU 和数量 |
 | `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
 | `quote` | [`MallQuoteView`](#mallquoteview) | 否 | 冻结报价 |
 | `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
 | `paymentAttempts` | [`MallPaymentAttempt`](#mallpaymentattempt)\[\] | 否 | 付款尝试 |
 | `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 发货 |
 | `refunds` | [`MallRefundView`](#mallrefundview)\[\] | 否 | 退款 |
+
+`deliveredSources[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `periodNo` | `string` | 是 | — |
+| `planVersionNo` | `string,null` | 否 | — |
+| `entitlementCodes` | `string`\[\] | 是 | — |
+| `lifecycle` | `string` | 是 | — |
+
+`hardwareItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderComponentNo` | `string` | 是 | — |
+| `hardwareSkuNo` | `string` | 是 | — |
+| `quantity` | `number` | 是 | — |
 
 ### MallOrderStatus
 
@@ -17088,6 +17197,8 @@ Plan 版本行；status=PUBLISHED 之后只读
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `hardware` | `object`（见下） \| `null` | 否 | 本次退款涉及的硬件订单组件及数量 |
+| `sourcePeriodNos` | `string`\[\] | 否 | 本次退款涉及的已交付权益周期编号 |
 | `refundNo` | `string` | 否 | 退款号 |
 | `orderNo` | `string` | 否 | 订单号 |
 | `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
@@ -17113,6 +17224,7 @@ Plan 版本行；status=PUBLISHED 之后只读
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `requestOperationNo` | `string,null` | 否 | 提交发货时使用的请求操作号 |
 | `operationNo` | `string` | 否 | 操作号 |
 | `orderComponentNo` | `string` | 否 | 订单组件号 |
 | `carrierCode` | `string` | 否 | 承运商 |

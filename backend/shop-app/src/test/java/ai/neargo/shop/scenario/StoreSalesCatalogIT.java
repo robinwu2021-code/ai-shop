@@ -17,7 +17,7 @@ import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.product.mapper.ProductMappers;
@@ -94,7 +94,7 @@ class StoreSalesCatalogIT {
                 type("ai.neargo.shop.product.service.impl.StoreSalesCatalogServiceImpl"), Mappers.class)
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + source.getUrl(), "spring.datasource.username=root",
-                        "spring.datasource.password=", "shop.catalog.publication.archive-only=true");
+                        "spring.datasource.password=");
     }
     private Object call(ApplicationContext context, String method, Object... args) {
         Object service = context.getBean(type("ai.neargo.shop.product.service.StoreSalesCatalogService"));
@@ -253,8 +253,8 @@ class StoreSalesCatalogIT {
             return mapper(factory, ProductMappers.StoreCatalogVersionMapper.class);
         }
         @Bean
-        IdempotencyService idempotencyService(SqlSessionFactory factory, ObjectMapper json) {
-            return new IdempotencyService(mapper(factory, SysIdempotentMapper.class), json);
+        RequestIdempotencyPortImpl idempotencyService(SqlSessionFactory factory, ObjectMapper json) {
+            return new RequestIdempotencyPortImpl(mapper(factory, SysIdempotentMapper.class), json);
         }
         @Bean
         StoreDirectoryPort stores() {

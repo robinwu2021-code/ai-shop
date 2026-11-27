@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.trade.entitlement.config.EntitlementAuthorizationProperties;
 import ai.neargo.shop.trade.dto.AuthorizationCommand;
@@ -58,7 +59,7 @@ public class EntitlementAuthorizationServiceImpl implements EntitlementAuthoriza
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public void stageTrustedIntent(String tenantNo, String orderNo, SourceRef source, String quoteRef,
                                    String selectionDigest, long amountMinor, String currency,
                                    Instant quoteExpiresAt) {
@@ -126,7 +127,7 @@ public class EntitlementAuthorizationServiceImpl implements EntitlementAuthoriza
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public AuthorizationView confirm(String tenantNo, String userNo, String orderNo, AuthorizationCommand command) {
         requireEnabled();
         if (command == null) throw BizException.of(ErrorCode.BAD_REQUEST);

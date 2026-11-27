@@ -72,6 +72,17 @@
                 <artifactId>svc-client</artifactId>
                 <version>${ai-shop-base.version}</version>
             </dependency>
+            <!-- 开放凭证进密钥库（TDD-基础能力库对齐「1h 开放应用」Q18）：领域只认契约，独立进程装实现、自连密钥库 -->
+            <dependency>
+                <groupId>ai.neargo.shop</groupId>
+                <artifactId>secret-api</artifactId>
+                <version>${ai-shop-base.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.neargo.shop</groupId>
+                <artifactId>secret-core</artifactId>
+                <version>${ai-shop-base.version}</version>
+            </dependency>
             <dependency>
                 <groupId>net.javacrumbs.shedlock</groupId>
                 <artifactId>shedlock-spring</artifactId>
@@ -123,6 +134,10 @@
                                     <includes>
                                         <include>ai.neargo.shop:job-api</include>
                                         <include>ai.neargo.shop:svc-client</include>
+                                        <!-- 密钥模块是平台级的库，不是商城业务（Q18）：契约零依赖，实现只带持久层 -->
+                                        <include>ai.neargo.shop:secret-api</include>
+                                        <include>ai.neargo.shop:secret-store</include>
+                                        <include>ai.neargo.shop:secret-core</include>
                                     </includes>
                                     <message>进销存是独立服务（ADR-046）：不许依赖 ai-shop 的业务构件、Redis 或 Spring Security 过滤链。白名单见 TDD-进销存独立服务与多业态 §2.1。</message>
                                 </bannedDependencies>

@@ -3,7 +3,7 @@ package ai.neargo.shop.infra;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.spi.trade.OrderEvents;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class IdempotencyTest {
 
     @Autowired
-    private IdempotencyService idempotency;
+    private RequestIdempotencyPortImpl idempotency;
 
     @Autowired
     private OutboxEventBus eventBus;

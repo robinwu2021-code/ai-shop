@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionBinding;
 import ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionScope;
 import ai.neargo.shop.spi.trade.ServiceExecutionPort.QuantityFacts;
@@ -22,7 +23,7 @@ import java.util.List;
  * these SQL methods neither authorize actors nor create transactions. Every mutation must affect exactly one row.
  */
 @Mapper
-public interface ServiceExecutionMapper extends BaseMapper<OrdServiceExecution> {
+public interface ServiceExecutionMapper extends TradeTableMapper<OrdServiceExecution> {
     /** Source line absence is serialized by the already locked actual parent, never by a guessed unit. */
     @Select("""
             SELECT * FROM ord_checkout_line
@@ -172,7 +173,7 @@ public interface ServiceExecutionMapper extends BaseMapper<OrdServiceExecution> 
 
     /** Unit state, not attempt count, defines the disjoint quantity buckets; zero rows returns no facts. */
     @Mapper
-    interface UnitMapper extends BaseMapper<OrdServiceExecutionUnit> {
+    interface UnitMapper extends TradeTableMapper<OrdServiceExecutionUnit> {
         /** Permanent association reads do not hide deleted identities. */
         @Select("""
                 SELECT * FROM ord_service_execution_unit WHERE tenant_no='MAIN'

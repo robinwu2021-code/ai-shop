@@ -28,6 +28,7 @@ import ai.neargo.shop.beauty.service.impl.ServiceOperationRecoveryServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ServiceSubmissionQuery;
 import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
 import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
 import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
@@ -60,10 +61,10 @@ public class BeautyAppointmentConfiguration {
             arrangements, BeautyMappers.AppointmentResourceIntentMapper intents,
             BeautyMappers.AppointmentResourceFenceMapper fences, BeautyMappers.AppointmentItemMapper items,
             BeautyMappers.AppointmentAssignmentMapper assignments, BeautyMappers.ActionLogMapper actions,
-            ObjectMapper json, PlatformTransactionManager
-            manager) {
+            ObjectMapper json, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager
+            manager, @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager industry) {
         return new AppointmentPersistence(roots, preparations, operations, currents, arrangements, intents, fences,
-                items, assignments, actions, json, manager);
+                items, assignments, actions, json, manager, industry);
     }
     @Bean
     AppointmentAccess appointmentAccess(ObjectProvider<MerchantOperatorAccessPort> access,

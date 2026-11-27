@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.trade.service.CartService;
 
 import ai.neargo.shop.spi.product.GoodsQueryPort;
@@ -186,13 +187,13 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<CartItemVO> add(String goodsNo, String skuNo, int qty) {
         return add(goodsNo, skuNo, qty, null);
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<CartItemVO> add(String goodsNo, String skuNo, int qty, String storeNo) {
         /*
          * 仅活动且此刻<b>什么活动都没在跑</b>的货，加购就拒，不等到结账 ——
@@ -225,7 +226,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<CartItemVO> update(String skuNo, int qty) {
         TrdCartItem row = find(skuNo);
         if (row == null) {
@@ -252,7 +253,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public List<CartItemVO> remove(List<String> skuNos) {
         if (skuNos != null && !skuNos.isEmpty()) {
             cartMapper.delete(Wrappers.<TrdCartItem>lambdaQuery()

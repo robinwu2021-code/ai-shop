@@ -21,11 +21,11 @@ class MallOfflinePaymentDatabaseMysqlTest {
             db.jdbc.execute("""
                     CREATE TABLE mall_order (tenant_no VARCHAR(32),order_no VARCHAR(64),entity_no VARCHAR(64),
                     store_no VARCHAR(64),currency VARCHAR(8),cash_due_minor BIGINT,pay_status VARCHAR(16),
-                    ordered_at DATETIME(3),stage VARCHAR(16))
+                    ordered_at DATETIME(3),stage VARCHAR(16),pricing_policy_version VARCHAR(64))
                     """);
             db.jdbc.update("""
-                    INSERT INTO mall_order VALUES ('T','O','E','S','USD',10,'UNPAID',NOW(),'ORDERED'),
-                    ('T','Q','E','S','USD',10,'UNPAID',NOW(),'QUOTE'),('B','O','E','S','USD',99,'PAID',NOW(),'ORDERED')
+                    INSERT INTO mall_order VALUES ('T','O','E','S','USD',10,'UNPAID',NOW(),'ORDERED','mall-allocation-v1'),
+                    ('T','Q','E','S','USD',10,'UNPAID',NOW(),'QUOTE','mall-allocation-v1'),('B','O','E','S','USD',99,'PAID',NOW(),'ORDERED','mall-allocation-v1')
                     """);
             var repo = new JdbcMallOfflineRepository(db.ds);
             var report = new JdbcPurchaseOrderQuery(db.ds,true);

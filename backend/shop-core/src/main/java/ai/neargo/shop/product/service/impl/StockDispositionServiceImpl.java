@@ -1,6 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.policy.ExecutionStockRetentionGuard;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -64,7 +65,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ReleaseView releaseOriginal(ReservationLookup request) {
         return DataScopeContext.executeWithoutScope(
                 () -> {
@@ -130,7 +131,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ReservationView reserveOriginal(Reservation request) {
         var original = request.original();
         if (!List.of("PLATFORM", "DUAL").contains(original.authority())) {
@@ -166,7 +167,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ReservationView observeReservation(ReservationLookup request) {
         return DataScopeContext.executeWithoutScope(
                 () -> {
@@ -221,7 +222,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public Disposition confirmOriginal(Confirmation command) {
         return DataScopeContext.executeWithoutScope(
                 () -> {
@@ -272,7 +273,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public Disposition observeOriginal(Lookup query) {
         return DataScopeContext.executeWithoutScope(
                 () -> observeLocked(query.original(), query.operationNo()));

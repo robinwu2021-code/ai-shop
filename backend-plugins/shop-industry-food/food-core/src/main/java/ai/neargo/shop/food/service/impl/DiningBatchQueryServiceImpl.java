@@ -3,6 +3,7 @@ package ai.neargo.shop.food.service.impl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.dto.DiningBatchSummaryVO;
 import ai.neargo.shop.food.dto.DiningBatchSummaryVO.OriginalBindingVO;
 import ai.neargo.shop.food.dto.ListDiningBatchesQuery;
@@ -28,7 +29,7 @@ public class DiningBatchQueryServiceImpl implements DiningBatchQueryService {
     private final TransactionTemplate read;
 
     public DiningBatchQueryServiceImpl(DiningBatchQueryMapper batches,StoreCardQueryPort stores,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.batches=batches; this.stores=stores; read=new TransactionTemplate(manager);
         read.setReadOnly(true); read.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
     }

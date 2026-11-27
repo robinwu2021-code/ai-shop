@@ -2,6 +2,7 @@ package ai.neargo.shop.merchant.mapper;
 
 import ai.neargo.shop.common.config.PlatformSqlMapper;
 import ai.neargo.shop.common.config.PlatformTableMapper;
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.merchant.dto.OperatorAccessRow;
 import ai.neargo.shop.merchant.dto.OperatorPersonnelFactRow;
 import ai.neargo.shop.merchant.dto.ResourceCommandFactRow;
@@ -233,7 +234,7 @@ public final class MerchantMappers {
      * {@link ai.neargo.shop.merchant.entity.MchStoreCategory} 的类注释。
      */
     public interface MchStoreCategoryMapper
-            extends BaseMapper<ai.neargo.shop.merchant.entity.MchStoreCategory> {
+            extends TradeTableMapper<ai.neargo.shop.merchant.entity.MchStoreCategory> {
 
         /**
          * 把一条**被逻辑删除的**经营类目复活。

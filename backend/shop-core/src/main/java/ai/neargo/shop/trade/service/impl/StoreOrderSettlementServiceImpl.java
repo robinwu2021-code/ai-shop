@@ -1,8 +1,10 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.common.PayChannels;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.invoice.InvoicePort;
 import ai.neargo.shop.spi.pay.PaidCollectionPort;
@@ -47,7 +49,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementService {
 
     private static final Logger log = LoggerFactory.getLogger(StoreOrderSettlementServiceImpl.class);
-    static final String CHANNEL_OFFLINE = "OFFLINE";
     static final String CHANNEL_MIXED = "MIXED";
     static final String CHANNEL_COLLECT = "COLLECT";
 
@@ -65,7 +66,7 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
 
     public StoreOrderSettlementServiceImpl(OrderMapper orders, SubOrderMapper subOrders, RecordMapper offline,
             StoreCollectionMapper collections, OutboxEventBus events, ObjectProvider<PaidCollectionPort> paidCollections,
-            ObjectProvider<InvoicePort> invoices, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            ObjectProvider<InvoicePort> invoices, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.orders = orders;
         this.subOrders = subOrders;
         this.offline = offline;
@@ -218,7 +219,7 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
     private static String channel(boolean cash, List<OrdStoreCollection> collected) {
         var channels = collected.stream().map(r -> r.getPayChannel() == null ? CHANNEL_COLLECT : r.getPayChannel())
                 .distinct().toList();
-        if (channels.isEmpty()) return CHANNEL_OFFLINE;
+        if (channels.isEmpty()) return PayChannels.OFFLINE;
         if (cash || channels.size() > 1) return CHANNEL_MIXED;
         String only = channels.getFirst();
         return only.length() > 16 ? CHANNEL_COLLECT : only;

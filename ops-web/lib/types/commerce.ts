@@ -497,7 +497,7 @@ export interface MallSkuRequest {
   components: MallSkuComponent[];
   /** 每单上限 */
   maxPerOrder: number;
-  /** 乐观锁：新 SKU 传 0；否则带 SKU 定义的 version */
+  /** 新版本传 0；编辑草稿传该版本的 version */
   expectedVersion: number;
   /** 审计原因 */
   reason: string;
@@ -507,9 +507,9 @@ export interface MallSkuRequest {
 export interface MallPublishSku {
   /** 幂等操作号 */
   operationNo: string;
-  /** SKU 定义行版本 */
+  /** 草稿版本行的 version */
   expectedVersion: number;
-  /** SKU 版本行版本 */
+  /** SKU 定义行的 version */
   expectedSkuVersion: number;
   /** 审计原因 */
   reason: string;
@@ -710,6 +710,8 @@ export interface MallPaymentAttempt {
 
 /** 发货 */
 export interface MallShipment {
+  /** 提交发货时使用的请求操作号 */
+  requestOperationNo?: string | null;
   /** 操作号 */
   operationNo?: string;
   /** 订单组件号 */
@@ -728,6 +730,10 @@ export interface MallShipment {
 
 /** 退款 */
 export interface MallRefundView {
+  /** 本次退款涉及的硬件订单组件及数量 */
+  hardware?: { orderComponentNo: string; quantity: number } | null;
+  /** 本次退款涉及的已交付权益周期编号 */
+  sourcePeriodNos?: string[];
   /** 退款号 */
   refundNo?: string;
   /** 订单号 */
@@ -767,6 +773,10 @@ export interface MallOrderSummary {
 
 /** 订单详情：三个独立维度 + 冻结报价 + 实际动作 */
 export interface MallOrderDetailView {
+  /** 订单已交付的权益周期、权益代码和状态 */
+  deliveredSources?: { orderComponentNo: string; periodNo: string; planVersionNo?: string | null; entitlementCodes: string[]; lifecycle: string }[];
+  /** 原订单的硬件组件、SKU 和数量 */
+  hardwareItems?: { orderComponentNo: string; hardwareSkuNo: string; quantity: number }[];
   /** 概览与三维状态 */
   summary?: MallOrderSummary;
   /** 冻结报价 */

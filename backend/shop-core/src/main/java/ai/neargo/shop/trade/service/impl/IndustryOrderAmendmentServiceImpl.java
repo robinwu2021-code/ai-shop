@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.MerchantTaxSnapshot;
 import ai.neargo.shop.common.pricing.MoneyMinor;
 import ai.neargo.shop.common.pricing.PriceTaxMode;
@@ -26,7 +27,7 @@ import ai.neargo.shop.spi.trade.IndustryOrderAmendmentPort.Line;
 import ai.neargo.shop.spi.trade.IndustryOrderAmendmentPort.Receipt;
 import ai.neargo.shop.spi.trade.IndustryOrderAmendmentPort.Reduction;
 import ai.neargo.shop.spi.trade.IndustryOrderPort;
-import ai.neargo.shop.spi.trade.OrderEvents;
+import ai.neargo.shop.trade.event.SubOrderCompletion;
 import ai.neargo.shop.spi.trade.PricingFeeFacts;
 import ai.neargo.shop.spi.trade.PricingFeeScopePort;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
@@ -103,7 +104,7 @@ public class IndustryOrderAmendmentServiceImpl implements IndustryOrderAmendment
             IndustryOrderAmendmentMapper persistence,
             TradeStatusWriter writer,
             OutboxEventBus events,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json,
             IndustryOrderSourceMapper sources,
             PaymentMapper orders,
@@ -989,14 +990,7 @@ public class IndustryOrderAmendmentServiceImpl implements IndustryOrderAmendment
                                                             .equals(
                                                                     f.sub()
                                                                             .getRequireBuyerConfirm()))));
-            if (OrdSubOrder.COMPLETED.equals(f.sub().getStatus()))
-                events.publish(
-                        new OrderEvents.SubOrderCompleted(
-                                ref.subOrderNo(),
-                                ref.orderNo(),
-                                ref.scope().entityNo(),
-                                f.sub().getUserNo(),
-                                f.sub().getFulfillment()));
+            SubOrderCompletion.publishIfCompleted(events, f.sub());
         } else bump(f.sub());
     }
 

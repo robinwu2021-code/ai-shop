@@ -41,7 +41,7 @@ import ai.neargo.shop.food.mapper.ReservationTableMapper;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.impl.ReservationServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -64,7 +64,7 @@ class ReservationLifecycleTest {
     final ActionLogMapper actions=mock(ActionLogMapper.class);
     final CheckService checks=mock(CheckService.class);
     final StoreOperationService policies=mock(StoreOperationService.class);
-    final IdempotencyService idem=mock(IdempotencyService.class);
+    final RequestIdempotencyPort idem=mock(RequestIdempotencyPort.class);
     final PlatformTransactionManager manager=mock(PlatformTransactionManager.class);
     final AtomicReference<FnbReservation> saved=new AtomicReference<>();
     final ReservationServiceImpl service;

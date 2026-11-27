@@ -1,5 +1,6 @@
 package ai.neargo.shop.promotion.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.promotion.entity.PmtApply;
 import ai.neargo.shop.promotion.entity.PmtCoupon;
 import ai.neargo.shop.promotion.entity.PmtCouponVersion;
@@ -93,7 +94,7 @@ public final class PromotionMappers {
     }
 
     /** 集单的一期。唯一键 (tenant_no, activity_no, period_date) 兜住并发建期 */
-    public interface PeriodMapper extends BaseMapper<ai.neargo.shop.promotion.entity.PmtPeriod> {
+    public interface PeriodMapper extends TradeTableMapper<ai.neargo.shop.promotion.entity.PmtPeriod> {
     }
 
     /** 平台活动报名单。唯一键 (tenant_no, activity_no, entity_no)：一个商家对一个活动只报一次 */

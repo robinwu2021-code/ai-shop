@@ -384,6 +384,8 @@ class ReceptionBusinessIT extends ReceptionFixture {
             sql.update("UPDATE bty_service_definition SET status='ACTIVE'");
             seed("bty_work_order", "work_order_no", "WO", "store_no", "S", "appointment_no", root.appointmentNo(),
                     "customer_ref", "USR1", "status", "OPEN", "scope_revision", 1, "scope_frozen", false);
+            // V9.1：开过工单的预约自己记着工单号，预约侧的护栏看的是这一列
+            sql.update("UPDATE bty_appointment SET work_order_no='WO' WHERE appointment_no=?", root.appointmentNo());
             assertThatThrownBy(() -> coordinator.reassign("E", "S", "A", root.appointmentNo(), arrived.revision(),
                     desired, start, "HAS-ORDER")).isInstanceOf(BizException.class);
             assertThat(owner.accepts).hasSize(2);

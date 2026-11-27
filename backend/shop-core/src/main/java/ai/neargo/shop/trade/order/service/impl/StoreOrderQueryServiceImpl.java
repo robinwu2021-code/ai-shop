@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.order.service.impl;
 
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.trade.order.contract.StoreOrderQuery;
 import ai.neargo.shop.trade.order.contract.StoreOrderSummary;
 import ai.neargo.shop.trade.order.contract.StoreOrderView;
@@ -15,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** Registered production query service shared by canonical projections and the full legacy JSON adapter. */
 @Service
-@Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
+@Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true, isolation = Isolation.READ_COMMITTED)
 public class StoreOrderQueryServiceImpl implements StoreOrderQueryService {
     private final StoreOrderReadStore store;
 

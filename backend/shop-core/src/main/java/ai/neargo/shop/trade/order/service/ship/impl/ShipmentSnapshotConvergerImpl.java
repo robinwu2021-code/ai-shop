@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.order.service.ship.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.entity.OrdShipment;
 import ai.neargo.shop.trade.order.machine.shipment.ShipmentEvent;
@@ -30,7 +31,7 @@ public class ShipmentSnapshotConvergerImpl implements ShipmentSnapshotConverger 
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public void converge(String shipmentNo, long version, String waybillNo, String status,
                          Long signedAt, Long signedNodeAt, Long firstTraceAt, String source) {
         if (shipmentNo == null || version != 0 || !MOVING.contains(status == null ? "" : status)) {

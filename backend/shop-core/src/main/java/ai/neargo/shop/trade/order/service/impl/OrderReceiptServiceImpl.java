@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.order.service.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.entity.OrdShipment;
@@ -39,7 +40,7 @@ public class OrderReceiptServiceImpl implements OrderReceiptService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void confirmReceipt(String subOrderNo, String shipmentNo, OrderActor actor) {
         ownedOrder(subOrderNo, actor);
         if (handler.confirm(subOrderNo, shipmentNo, Operator.user(actor.buyerNo()))) {
@@ -48,7 +49,7 @@ public class OrderReceiptServiceImpl implements OrderReceiptService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, isolation = Isolation.READ_COMMITTED)
     public void confirmCurrent(String subOrderNo, OrderActor actor) {
         OrdSubOrder order = ownedOrder(subOrderNo, actor);
         if (OrdSubOrder.COMPLETED.equals(order.getStatus())) {

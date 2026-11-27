@@ -224,6 +224,27 @@ public final class InvEnums {
         }
     }
 
+    /**
+     * 开放凭证在密钥库里的归属类型（{@code sec_key.owner_type}，Q18）：业主凭证归 {@code inv_owner.id}，
+     * 系统凭证（不绑业主、按请求头选本系统的业主）归 {@code inv_client_system.id}。
+     */
+    public static final class CredentialOwnerType {
+        public static final String OWNER = "INV_OWNER";
+        public static final String SYSTEM = "INVENTORY_SYSTEM";
+
+        private CredentialOwnerType() {
+        }
+    }
+
+    /** 开放凭证的列表状态：吊销不删行；到期看 {@code expiresAt}，状态仍是 ACTIVE（与停用前的旧表口径一致）。 */
+    public static final class CredentialStatus {
+        public static final String ACTIVE = "ACTIVE";
+        public static final String REVOKED = "REVOKED";
+
+        private CredentialStatus() {
+        }
+    }
+
     /** 物料主数据来源。**两种交付形态的唯一分叉点**。 */
     public static final class DataSource {
         public static final String OWN = "OWN";

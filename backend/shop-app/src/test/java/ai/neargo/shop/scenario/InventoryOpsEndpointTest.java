@@ -40,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>字段名对照 {@code ops-web/lib/types/inventory.ts}。改任何一边都要让这里先红。
  */
-@SpringBootTest
+@SpringBootTest(properties = "shop.secret.env=SANDBOX")
 @ActiveProfiles("test")
 class InventoryOpsEndpointTest {
 
@@ -221,6 +221,7 @@ class InventoryOpsEndpointTest {
         String key = d.get("appKey").asString();
         String secret = d.get("appSecret").asString();
         String credentialId = d.get("credentialId").asString();
+        assertThat(credentialId).as("凭证进密钥库后凭据号就是 appKey（Q18）").isEqualTo(key);
         assertThat(secret)
                 .as("secret 必须在这一刻明文给出 —— 库里只有哈希，之后任何地方都拿不回来")
                 .isNotBlank();

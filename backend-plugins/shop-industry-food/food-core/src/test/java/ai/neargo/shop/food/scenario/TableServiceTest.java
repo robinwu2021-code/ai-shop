@@ -8,7 +8,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -298,7 +298,7 @@ class TableServiceTest extends FoodWriteGuardFixture {
             factory.setSqlSessionTemplate(template);
             return factory;
         }
-        @Bean TableService tableService(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions, IdempotencyService idem,
+        @Bean TableService tableService(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions, RequestIdempotencyPort idem,
                 PlatformTransactionManager manager, StorePolicyPublicationTest.Signals signals) {
             ActionLogMapper checked = FoodAuditFault.afterInsert(actions, () -> {
                 if (signals.afterFlush.get()) TransactionSynchronizationManager.registerSynchronization(

@@ -34,7 +34,7 @@ import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.TableService;
 import ai.neargo.shop.food.service.impl.CheckServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -452,7 +452,7 @@ class CheckServiceTest extends FoodWriteGuardFixture {
                 TableOperationMapper operations,
                 GuestSessionMapper sessions,
                 ActionLogMapper actions,
-                StoreOperationService policies,IdempotencyService idem,
+                StoreOperationService policies,RequestIdempotencyPort idem,
                 @Qualifier("foodOutboxPublisher") OutboxPublisher pub,
                 ObjectMapper json,PlatformTransactionManager manager,
                 StorePolicyPublicationTest.Signals signals,DataSource source) {

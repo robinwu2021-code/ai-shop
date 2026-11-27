@@ -33,15 +33,12 @@ import ai.neargo.shop.common.Masks;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.notify.MailTemplatePort;
 import ai.neargo.shop.spi.notify.NotifyBizType;
-import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
 import ai.neargo.shop.platform.dto.OpsVOs.StaffVO;
 import ai.neargo.shop.platform.OpsService.CreatedStaffVO;
-import ai.neargo.shop.platform.entity.SysAuditLog;
 import ai.neargo.shop.platform.entity.SysOpsStaff;
 import ai.neargo.shop.platform.entity.MchEntityApply;
-import ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper;
 import ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper;
 import ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper;
 import ai.neargo.shop.auth.RequestMetaContext;
@@ -90,7 +87,6 @@ public class OpsServiceImpl implements OpsService {
     private final RolePermResolver rolePermResolver;
     /** 改角色/数据域之后清它 —— 身份也是现算的了（见 LiveIdentityResolver） */
     private final ai.neargo.shop.platform.perm.StaffIdentityResolver identityResolver;
-    private final AuditLogMapper auditLogMapper;
     private final ai.neargo.shop.spi.platform.AuditLogPort auditLogPort;
     private final MerchantApplyMapper applyMapper;
     private final MerchantAdminPort merchantAdminPort;
@@ -136,7 +132,6 @@ public class OpsServiceImpl implements OpsService {
     public OpsServiceImpl(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper,
                           RolePermResolver rolePermResolver,
                           ai.neargo.shop.platform.perm.StaffIdentityResolver identityResolver,
-                          AuditLogMapper auditLogMapper,
                           ai.neargo.shop.spi.platform.AuditLogPort auditLogPort,
                           MerchantApplyMapper applyMapper, MerchantAdminPort merchantAdminPort,
                           TokenStore tokenStore, ai.neargo.shop.auth.TokenStores tokenStores,  ObjectMapper json, ObjectMapper objectMapper,
@@ -173,7 +168,6 @@ public class OpsServiceImpl implements OpsService {
         this.roleMemberMapper = roleMemberMapper;
         this.identityResolver = identityResolver;
         this.rolePermResolver = rolePermResolver;
-        this.auditLogMapper = auditLogMapper;
         this.auditLogPort = auditLogPort;
         this.applyMapper = applyMapper;
         this.merchantAdminPort = merchantAdminPort;
@@ -1090,34 +1084,6 @@ public class OpsServiceImpl implements OpsService {
         auditLogPort.record(action, target, detail, critical, beforeJson, afterJson);
     }
 
-    @Override
-    public PageData<AuditLogVO> auditLogs(String target, String keyword, Boolean critical, long page, long size) {
-        var w = Wrappers.<SysAuditLog>lambdaQuery();
-        if (target != null && !target.isBlank()) {
-            w.eq(SysAuditLog::getTarget, target);
-        }
-        if (critical != null) {
-            w.eq(SysAuditLog::getCritical, critical);
-        }
-        if (keyword != null && !keyword.isBlank()) {
-            w.and(x -> x.like(SysAuditLog::getStaffNo, keyword)
-                    .or().like(SysAuditLog::getStaffName, keyword)
-                    .or().like(SysAuditLog::getOpAction, keyword)
-                    .or().like(SysAuditLog::getTarget, keyword)
-                    .or().like(SysAuditLog::getDetail, keyword));
-        }
-        w.orderByDesc(SysAuditLog::getId);
-        Page<SysAuditLog> p = DataScopeContext.executeWithoutScope(
-                () -> auditLogMapper.selectPage(Page.of(page, size), w));
-        List<AuditLogVO> records = p.getRecords().stream()
-                .map(l -> new AuditLogVO(l.getId(), l.getStaffNo(), l.getStaffName(), l.getOpAction(),
-                        l.getTarget(), l.getDetail(), l.getAt() == null ? 0L : l.getAt(),
-                        l.getIp(), l.getClientType(), Boolean.TRUE.equals(l.getCritical()),
-                        l.getBeforeJson(), l.getAfterJson()))
-                .toList();
-        return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
-    }
-
     // ---------------------------------------------------------------- 内部
 
     private SysOpsStaff requireStaff(String staffNo) {
@@ -1186,7 +1152,7 @@ public class OpsServiceImpl implements OpsService {
          * 照常操作 —— 而停用他的那个人以为立刻生效了。
          */
         if (!enabled) {
-            apiKeys.revokeAll(staffNo, System.currentTimeMillis());
+            apiKeys.revokeAll(staffNo, "staff disabled");
             tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staffNo);
         }
         audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用", true,
@@ -1422,7 +1388,7 @@ public class OpsServiceImpl implements OpsService {
          * 不踢的话拿着旧 token 的人照样在线，改密等于没改。
          */
         tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staff.getStaffNo());
-        apiKeys.revokeAll(staff.getStaffNo(), System.currentTimeMillis());
+        apiKeys.revokeAll(staff.getStaffNo(), "password changed");
         audit("STAFF_PASSWORD", staff.getStaffNo(), "自助改密", true, null, null);
     }
 
@@ -1498,7 +1464,7 @@ public class OpsServiceImpl implements OpsService {
         staffMapper.updateById(staff);
         // 忘记密码的常见动机就是「怀疑被人用了」，不踢的话拿着旧 token 的人照样在线
         tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staffNo);
-        apiKeys.revokeAll(staffNo, System.currentTimeMillis());
+        apiKeys.revokeAll(staffNo, "password reset");
         audit("STAFF_PASSWORD_RESET", staffNo, "经邮件重置", true, null, null);
     }
 

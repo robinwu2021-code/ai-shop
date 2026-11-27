@@ -31,6 +31,8 @@ import ai.neargo.shop.beauty.entity.BtyTradeBinding;
 import ai.neargo.shop.beauty.entity.BtyWorkOrder;
 import ai.neargo.shop.beauty.entity.BtyWorkOrderContext;
 
+import ai.neargo.shop.common.config.IndustryTableMapper;
+import ai.neargo.shop.common.config.TradeTableMapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 import org.apache.ibatis.annotations.Mapper;
@@ -48,7 +50,7 @@ public final class BeautyMappers {
     }
 
     /** Locks an authorized existing head; first creation is arbitrated by its scoped business unique key. */
-    public interface StorePolicyMapper extends BaseMapper<BtyStorePolicy> {
+    public interface StorePolicyMapper extends IndustryTableMapper<BtyStorePolicy> {
         @Select(
                 """
                 SELECT * FROM bty_store_policy
@@ -89,7 +91,7 @@ public final class BeautyMappers {
     }
 
     /** Locks an authorized existing head; first creation is arbitrated by its scoped business unique key. */
-    public interface ServiceDefinitionMapper extends BaseMapper<BtyServiceDefinition> {
+    public interface ServiceDefinitionMapper extends TradeTableMapper<BtyServiceDefinition> {
         @Select(
                 """
                 SELECT * FROM bty_service_definition
@@ -130,22 +132,22 @@ public final class BeautyMappers {
     }
 
     /** Published policy snapshots are immutable; application code uses append and scoped reads only. */
-    public interface StorePolicyVersionMapper extends BaseMapper<BtyStorePolicyVersion> {
+    public interface StorePolicyVersionMapper extends IndustryTableMapper<BtyStorePolicyVersion> {
     }
 
     /** Published execution snapshots are immutable; application code uses append and scoped reads only. */
-    public interface ServiceDefinitionVersionMapper extends BaseMapper<BtyServiceDefinitionVersion> {
+    public interface ServiceDefinitionVersionMapper extends TradeTableMapper<BtyServiceDefinitionVersion> {
     }
 
     /** Requirements belong to an authorized definition version, checked by the publishing transaction. */
-    public interface ServiceRequirementMapper extends BaseMapper<BtyServiceRequirement> {
+    public interface ServiceRequirementMapper extends TradeTableMapper<BtyServiceRequirement> {
     }
     /** Critical actions are appended with the aggregate transaction; they are not mutable operational state. */
     public interface ActionLogMapper extends BaseMapper<BtyActionLog> {
     }
 
     /** 预约单；业务事务先锁预约根，再处理项目及安排历史。 */
-    public interface AppointmentMapper extends BaseMapper<BtyAppointment> {
+    public interface AppointmentMapper extends TradeTableMapper<BtyAppointment> {
         /** 报表（BAPI-119）：窗口内按状态计数；start_at 以 UTC 存 */
         @Select(
                 """
@@ -200,10 +202,11 @@ public final class BeautyMappers {
                 @Param("from") LocalDateTime from,
                 @Param("to") LocalDateTime to);
 
-        /** Conversion advances only the revision; execution still has not started. */
+        /** Conversion advances the revision and records the work order number; execution still has not started. */
         @Update(
                 """
-                UPDATE bty_appointment SET version=version+1,updated_by=#{actorNo},updated_at=#{updatedAt}
+                UPDATE bty_appointment SET version=version+1,work_order_no=#{workOrderNo},
+                  updated_by=#{actorNo},updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                 AND appointment_no=#{appointmentNo} AND deleted=0 AND version=#{expectedVersion}
                 AND status='CHECKED_IN' AND checked_in_at IS NOT NULL
@@ -213,42 +216,40 @@ public final class BeautyMappers {
                 AND EXISTS (SELECT 1 FROM bty_appointment_resource_fence f WHERE f.tenant_no=bty_appointment.tenant_no
                   AND f.entity_no=bty_appointment.entity_no AND f.appointment_no=bty_appointment.appointment_no
                   AND f.deleted=0 AND f.active_intent_no IS NULL)
-                AND NOT EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=bty_appointment.tenant_no
-                  AND w.entity_no=bty_appointment.entity_no AND w.appointment_no=bty_appointment.appointment_no)
+                AND work_order_no IS NULL AND #{workOrderNo} IS NOT NULL
                 """)
         int markWorkOrderOpened(
                 @Param("entityNo") String entityNo,
                 @Param("storeNo") String storeNo,
                 @Param("appointmentNo") String appointmentNo,
+                @Param("workOrderNo") String workOrderNo,
                 @Param("expectedVersion") long expectedVersion,
                 @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
 
-        /** Existing order roots forbid reception replacement even before actual task execution. */
-        @Select(
+        /** 撤销开单标记：走入单在两步之间越过服务开始时间时，预约回到「未开单」，交给重新排期。 */
+        @Update(
                 """
-                SELECT (SELECT COUNT(*) FROM bty_work_order w WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo}
-                AND w.store_no=#{storeNo} AND w.appointment_no=#{appointmentNo} AND w.deleted=0)
-                + (SELECT COUNT(*) FROM bty_service_task t JOIN bty_appointment_item a
-                ON a.tenant_no=t.tenant_no AND a.entity_no=t.entity_no
-                AND a.appointment_item_no=t.appointment_item_no AND a.deleted=0
-                WHERE a.tenant_no='MAIN' AND a.entity_no=#{entityNo} AND a.appointment_no=#{appointmentNo}
-                AND t.deleted=0)
+                UPDATE bty_appointment SET version=version+1,work_order_no=NULL,updated_by=#{actorNo},updated_at=#{updatedAt}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                AND appointment_no=#{appointmentNo} AND deleted=0 AND work_order_no=#{workOrderNo}
                 """)
-        long countWorkOrders(
+        int releaseWorkOrderClaim(
                 @Param("entityNo") String entityNo,
                 @Param("storeNo") String storeNo,
-                @Param("appointmentNo") String appointmentNo);
+                @Param("appointmentNo") String appointmentNo,
+                @Param("workOrderNo") String workOrderNo,
+                @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
 
-        /** Parent scope is checked before exposing affected task references. */
+        /** Existing order roots forbid reception replacement even before actual task execution; read from the appointment (V9.1). */
         @Select(
                 """
-                SELECT t.task_no FROM bty_service_task t JOIN bty_work_order w
-                ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
-                WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo}
-                AND w.appointment_no=#{appointmentNo} AND w.deleted=0 AND t.deleted=0 ORDER BY t.id
+                SELECT COUNT(*) FROM bty_appointment WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                AND store_no=#{storeNo} AND appointment_no=#{appointmentNo} AND deleted=0
+                AND work_order_no IS NOT NULL
                 """)
-        List<String> affectedTaskNos(
+        long countWorkOrders(
                 @Param("entityNo") String entityNo,
                 @Param("storeNo") String storeNo,
                 @Param("appointmentNo") String appointmentNo);
@@ -371,14 +372,7 @@ public final class BeautyMappers {
                   AND f.version=#{expectedFenceVersion} AND f.version<9223372036854775807
                   AND i.intent_no=#{intentNo} AND i.phase_code=0 AND i.source_revision=p.version
                   AND (p.status IN ('HELD','CONFIRMED') OR (p.status='CHECKED_IN' AND i.action='REPLACE'
-                    AND NOT EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=p.tenant_no
-                      AND w.entity_no=p.entity_no AND w.store_no=p.store_no
-                      AND w.appointment_no=p.appointment_no AND w.deleted=0)
-                    AND NOT EXISTS (SELECT 1 FROM bty_service_task t JOIN bty_appointment_item a
-                      ON a.tenant_no=t.tenant_no AND a.entity_no=t.entity_no
-                      AND a.appointment_item_no=t.appointment_item_no AND a.deleted=0
-                      WHERE a.tenant_no=p.tenant_no AND a.entity_no=p.entity_no
-                      AND a.appointment_no=p.appointment_no AND t.deleted=0)
+                    AND p.work_order_no IS NULL
                     AND EXISTS (SELECT 1 FROM bty_appointment_current c JOIN bty_appointment_operation o
                       ON o.tenant_no=c.tenant_no AND o.entity_no=c.entity_no AND o.appointment_no=c.appointment_no
                       AND o.operation_no=c.operation_no AND o.deleted=0
@@ -453,14 +447,7 @@ public final class BeautyMappers {
                   AND i.version=#{expectedVersion} AND i.version<9223372036854775807
                   AND i.source_revision=p.version AND (p.status IN ('HELD',
                           'CONFIRMED') OR (p.status='CHECKED_IN' AND i.action='REPLACE'
-                    AND NOT EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=p.tenant_no
-                      AND w.entity_no=p.entity_no AND w.store_no=p.store_no
-                      AND w.appointment_no=p.appointment_no AND w.deleted=0)
-                    AND NOT EXISTS (SELECT 1 FROM bty_service_task t JOIN bty_appointment_item a
-                      ON a.tenant_no=t.tenant_no AND a.entity_no=t.entity_no
-                      AND a.appointment_item_no=t.appointment_item_no AND a.deleted=0
-                      WHERE a.tenant_no=p.tenant_no AND a.entity_no=p.entity_no
-                      AND a.appointment_no=p.appointment_no AND t.deleted=0)
+                    AND p.work_order_no IS NULL
                     AND EXISTS (SELECT 1 FROM bty_appointment_current c JOIN bty_appointment_operation o
                       ON o.tenant_no=c.tenant_no AND o.entity_no=c.entity_no AND o.appointment_no=c.appointment_no
                       AND o.operation_no=c.operation_no AND o.deleted=0
@@ -512,11 +499,11 @@ public final class BeautyMappers {
     }
 
     /** 预约项目行；写入前由业务事务锁定已授权预约根。 */
-    public interface AppointmentItemMapper extends BaseMapper<BtyAppointmentItem> {
+    public interface AppointmentItemMapper extends TradeTableMapper<BtyAppointmentItem> {
     }
 
     /** 预约确认人员安排历史；按显式安排版本追加，不覆盖旧行。 */
-    public interface AppointmentAssignmentMapper extends BaseMapper<BtyAppointmentAssignment> {
+    public interface AppointmentAssignmentMapper extends TradeTableMapper<BtyAppointmentAssignment> {
         /** 显式父链范围读取；不会按当前人员反推历史安排。 */
         @Select(
                 """
@@ -538,7 +525,7 @@ public final class BeautyMappers {
     }
 
     /** 服务工单；调用者在本域短事务按根→任务→子行锁序操作。 */
-    public interface WorkOrderMapper extends BaseMapper<BtyWorkOrder> {
+    public interface WorkOrderMapper extends IndustryTableMapper<BtyWorkOrder> {
         /** Binding changes the aggregate revision but never silently changes its service scope. */
         @Update(
                 """
@@ -718,7 +705,31 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
     }
 
     /** 可独立执行服务任务；调用者在本域短事务按根→任务→子行锁序操作。 */
-    public interface ServiceTaskMapper extends BaseMapper<BtyServiceTask> {
+    public interface ServiceTaskMapper extends IndustryTableMapper<BtyServiceTask> {
+        /** 开单前的预检：这些预约明细上不能已经挂着任务（工单之外的孤儿任务视为冲突）。 */
+        @Select(
+                """
+                <script>SELECT COUNT(*) FROM bty_service_task WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                AND deleted=0 AND appointment_item_no IN
+                <foreach collection="items" item="item" open="(" separator="," close=")">#{item}</foreach></script>
+                """)
+        long countForAppointmentItems(
+                @Param("entityNo") String entityNo,
+                @Param("items") List<String> items);
+
+        /** Parent scope is checked before exposing affected task references (industry store, ADR-068). */
+        @Select(
+                """
+                SELECT t.task_no FROM bty_service_task t JOIN bty_work_order w
+                ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
+                WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo}
+                AND w.appointment_no=#{appointmentNo} AND w.deleted=0 AND t.deleted=0 ORDER BY t.id
+                """)
+        List<String> affectedTaskNos(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo);
+
         /**
          * Every child proves the complete live root and optional original appointment-item parent.
          */
@@ -728,11 +739,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                   ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
                 WHERE t.tenant_no='MAIN' AND t.entity_no=#{entityNo} AND t.work_order_no=#{workOrderNo}
                   AND t.deleted=0 AND w.deleted=0 AND w.store_no=#{storeNo}
-                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision
-                  AND (t.appointment_item_no IS NULL OR EXISTS (SELECT 1 FROM bty_appointment_item i
-                    WHERE i.tenant_no=t.tenant_no AND i.entity_no=t.entity_no
-                    AND i.appointment_item_no=t.appointment_item_no AND i.appointment_no=w.appointment_no
-                    AND i.deleted=0)) ORDER BY t.id
+                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision ORDER BY t.id
                 """)
         List<BtyServiceTask> selectForWorkOrder(
                 @Param("entityNo") String entityNo,
@@ -876,7 +883,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
     }
 
     /** 任务步骤实例；调用者在本域短事务按根→任务→子行锁序操作。 */
-    public interface ServiceStepMapper extends BaseMapper<BtyServiceStep> {
+    public interface ServiceStepMapper extends IndustryTableMapper<BtyServiceStep> {
         /** A task number alone cannot authorize rows from a foreign or deleted parent. */
         @Select(
                 """
@@ -886,11 +893,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                   AND w.work_order_no=t.work_order_no
                 WHERE c.tenant_no='MAIN' AND c.entity_no=#{entityNo} AND c.task_no=#{taskNo} AND c.deleted=0
                   AND t.work_order_no=#{workOrderNo} AND t.deleted=0 AND w.deleted=0 AND w.store_no=#{storeNo}
-                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision
-                  AND (t.appointment_item_no IS NULL OR EXISTS (SELECT 1 FROM bty_appointment_item i
-                    WHERE i.tenant_no=t.tenant_no AND i.entity_no=t.entity_no
-                    AND i.appointment_item_no=t.appointment_item_no AND i.appointment_no=w.appointment_no
-                    AND i.deleted=0)) ORDER BY c.id
+                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision ORDER BY c.id
                 """)
         List<BtyServiceStep> selectForTask(
                 @Param("entityNo") String entityNo,
@@ -934,7 +937,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
     }
 
     /** 实际服务人员参与段；调用者在本域短事务按根→任务→子行锁序操作。 */
-    public interface ServiceParticipationMapper extends BaseMapper<BtyServiceParticipation> {
+    public interface ServiceParticipationMapper extends IndustryTableMapper<BtyServiceParticipation> {
         /** A task number alone cannot authorize rows from a foreign or deleted parent. */
         @Select(
                 """
@@ -944,11 +947,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                   AND w.work_order_no=t.work_order_no
                 WHERE c.tenant_no='MAIN' AND c.entity_no=#{entityNo} AND c.task_no=#{taskNo} AND c.deleted=0
                   AND t.work_order_no=#{workOrderNo} AND t.deleted=0 AND w.deleted=0 AND w.store_no=#{storeNo}
-                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision
-                  AND (t.appointment_item_no IS NULL OR EXISTS (SELECT 1 FROM bty_appointment_item i
-                    WHERE i.tenant_no=t.tenant_no AND i.entity_no=t.entity_no
-                    AND i.appointment_item_no=t.appointment_item_no AND i.appointment_no=w.appointment_no
-                    AND i.deleted=0)) ORDER BY c.id
+                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision ORDER BY c.id
                 """)
         List<BtyServiceParticipation> selectForTask(
                 @Param("entityNo") String entityNo,
@@ -985,7 +984,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
 
 
     /** 提交与恢复意图；外部权威结果由业务Service验证，不持锁调用外部。 */
-    public interface ServiceSubmissionMapper extends BaseMapper<BtyServiceSubmission> {
+    public interface ServiceSubmissionMapper extends IndustryTableMapper<BtyServiceSubmission> {
         /** START has its own discriminator and CAS; legacy schema2/3 recovery never consumes it. */
         @Update(
                 """
@@ -1258,7 +1257,7 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
     }
 
     /** 不可变来源绑定历史；从双父链确认范围，按版本批读。 */
-    public interface TradeBindingMapper extends BaseMapper<BtyTradeBinding> {
+    public interface TradeBindingMapper extends IndustryTableMapper<BtyTradeBinding> {
         /**
          * Only the task's current pointer and both exact live parents authorize a binding
          * projection.
@@ -1313,7 +1312,7 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
     }
 
     /** 主体内规范来源行仲裁；涉及来源先锁guard，再锁工单与任务。 */
-    public interface SourceAllocationGuardMapper extends BaseMapper<BtySourceAllocationGuard> {
+    public interface SourceAllocationGuardMapper extends IndustryTableMapper<BtySourceAllocationGuard> {
         @Update(
 """
 UPDATE bty_source_allocation_guard g SET allocated_qty=allocated_qty+#{incrementQty},
@@ -1502,9 +1501,9 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
 
 
     /** Persistent server previews; bytes must not be accepted from a public binding. */
-    public interface AppointmentPreparationMapper extends BaseMapper<BtyAppointmentPreparation> { }
-    public interface AppointmentArrangementMapper extends BaseMapper<BtyAppointmentArrangement> { }
-    public interface AppointmentCurrentMapper extends BaseMapper<BtyAppointmentCurrent> {
+    public interface AppointmentPreparationMapper extends TradeTableMapper<BtyAppointmentPreparation> { }
+    public interface AppointmentArrangementMapper extends TradeTableMapper<BtyAppointmentArrangement> { }
+    public interface AppointmentCurrentMapper extends TradeTableMapper<BtyAppointmentCurrent> {
         @Select(
                 """
                 SELECT c.* FROM bty_appointment_current c JOIN bty_appointment a
@@ -1535,7 +1534,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
     }
     public interface AppointmentResourceDecisionMapper extends BaseMapper<BtyAppointmentResourceDecision> { }
     /** Scoped reception persistence; authorization remains in services. */
-    public interface ReceptionOperationMapper extends BaseMapper<BtyReceptionOperation> {
+    public interface ReceptionOperationMapper extends IndustryTableMapper<BtyReceptionOperation> {
         @Select(
                 """
                 SELECT * FROM bty_reception_operation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
@@ -1658,7 +1657,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
     }
 
     /** Scoped reception persistence; authorization remains in services. */
-    public interface WorkOrderContextMapper extends BaseMapper<BtyWorkOrderContext> {
+    public interface WorkOrderContextMapper extends IndustryTableMapper<BtyWorkOrderContext> {
         @Select(
                 """
                 SELECT * FROM bty_work_order_context WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
@@ -1671,14 +1670,14 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
     }
 
     /** Scoped reception persistence; authorization remains in services. */
-    public interface GuestClaimReceiptMapper extends BaseMapper<BtyGuestClaimReceipt> {
+    public interface GuestClaimReceiptMapper extends IndustryTableMapper<BtyGuestClaimReceipt> {
     }
 
     /** Scoped reception persistence; authorization remains in services. */
-    public interface ArrivalChallengeMapper extends BaseMapper<BtyArrivalChallenge> {
+    public interface ArrivalChallengeMapper extends IndustryTableMapper<BtyArrivalChallenge> {
     }
     /** Canonical observation identity is shared across every local work order. */
-    public interface SourceObservationMapper extends BaseMapper<BtySourceObservation> {
+    public interface SourceObservationMapper extends IndustryTableMapper<BtySourceObservation> {
         @Select(
                 """
                 SELECT * FROM bty_source_observation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
@@ -1804,7 +1803,7 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
     }
 
     /** Permanent originals are discovered only after the canonical source observation is locked. */
-    public interface ServiceExecutionFenceMapper extends BaseMapper<BtyServiceExecutionFence> {
+    public interface ServiceExecutionFenceMapper extends IndustryTableMapper<BtyServiceExecutionFence> {
         /**
          * Due-time/id ordering plus durable claim leases prevent one unavailable original starving
          * later rows.

@@ -8,6 +8,7 @@
 // 线下面板把**三类状态分开**：申报（买家说付了）、资金（平台确认到账没有）、权益（门店能不能用）。
 // 核款回 ACCEPTED 只表示受理：资金端还没确认，恢复任务会继续推进，界面不能写「已到账」。
 import * as React from "react";
+import {useFinancialLock} from "@/components/offline/financial-lock";
 import {CashRefundsSection} from "@/components/offline/cash-refunds";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MallOfflineReviewAttempt, mallOfflineReceiver, receiptTimeForMode } from "@/lib/mall-offline-review";
@@ -120,16 +121,32 @@ function ShipmentsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string
   const allow = useCan();
   const orderNo = d.summary!.order!.orderNo!;
   const refresh = useRefreshOrder(storeNo, orderNo);
-  const hardware = (d.quote?.components ?? d.summary?.order?.components ?? []).filter((x) => x.kind === "HARDWARE");
-  const [form, setForm] = React.useState({ componentNo: hardware[0]?.componentNo ?? "", carrierCode: "", trackingNo: "", quantity: "1" });
+  const hardware = d.hardwareItems ?? [];
+  const [form, setForm] = React.useState({ componentNo: hardware[0]?.orderComponentNo ?? "", carrierCode: "", trackingNo: "", quantity: "1" });
   const [opNo, setOpNo] = React.useState(() => newOpNo("SHIP"));
+  const qc = useQueryClient();
+  // Recovery may finish an earlier submission after the initial response was lost.
+  React.useEffect(() => {
+    if (d.shipments?.some(s => s.requestOperationNo === opNo && s.status === "SUCCEEDED")) {
+      setOpNo(newOpNo("SHIP"));
+      setForm(f => ({ ...f, trackingNo: "", quantity: "1" }));
+    }
+  }, [d.shipments, opNo]);
   const ship = useMutation({
     mutationFn: () => api.shipMallOrder(storeNo, orderNo, { orderComponentNo: form.componentNo, operationNo: opNo,
       carrierCode: form.carrierCode.trim(), trackingNo: form.trackingNo.trim(), quantity: Number(form.quantity) }),
-    onSuccess: () => { refresh(); setOpNo(newOpNo("SHIP")); setForm((f) => ({ ...f, trackingNo: "", quantity: "1" })); notify.success(c.toastShipped); },
+    onSuccess: (detail) => {
+      qc.setQueryData(["mall-order", storeNo, orderNo], detail);
+      refresh();
+      if (detail.shipments?.find(x => x.requestOperationNo === opNo)?.status !== "SUCCEEDED") {
+        notify.info(c.shipPending);
+        return;
+      }
+      notify.success(c.toastShipped);
+    },
   });
   if (!hardware.length) return null;
-  const shipped = (no?: string) => (d.shipments ?? []).filter((s) => s.orderComponentNo === no && s.status !== "FAILED").reduce((a, s) => a + (s.quantity ?? 0), 0);
+  const shipped = (no?: string) => (d.shipments ?? []).filter((s) => s.orderComponentNo === no && s.status === "SUCCEEDED").reduce((a, s) => a + (s.quantity ?? 0), 0);
   const columns: Column<MallShipment>[] = [
     { header: c.colComponent, cell: (x) => <code className="txt-caption">{x.orderComponentNo}</code> },
     { header: c.colCarrier, cell: (x) => x.carrierCode },
@@ -138,21 +155,27 @@ function ShipmentsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string
     { header: c.colStatus, cell: (x) => <StatusBadge map={asyncMap(c)} value={x.status ?? "PENDING"} /> },
   ];
   const paid = d.summary?.paymentStatus === "PAID";
-  const valid = form.componentNo && form.carrierCode.trim() && form.trackingNo.trim() && Number(form.quantity) >= 1;
+  const quantity = Number(form.quantity);
+  const item = hardware.find(h => h.orderComponentNo === form.componentNo);
+  const pending = d.shipments?.find(s => s.orderComponentNo === form.componentNo && s.status !== "SUCCEEDED");
+  const valid = item && form.carrierCode.trim() && form.trackingNo.trim() && Number.isSafeInteger(quantity)
+    && quantity > 0 && quantity <= item.quantity - shipped(item.orderComponentNo)
+    && (!pending || (pending.requestOperationNo === opNo && pending.carrierCode === form.carrierCode.trim()
+      && pending.trackingNo === form.trackingNo.trim() && pending.quantity === quantity));
   return (
     <DrawerSection title={c.secShipments} desc={c.secShipmentsDesc}>
       <p className="mb-2 txt-caption text-muted-foreground">
-        {hardware.map((h) => fill(c.shippedOf, { no: h.componentNo ?? "", done: shipped(h.componentNo), total: h.quantity ?? 0 })).join(" · ")}
+        {hardware.map((h) => fill(c.shippedOf, { no: h.hardwareSkuNo, done: shipped(h.orderComponentNo), total: h.quantity })).join(" · ")}
       </p>
       <DataTable columns={columns} rows={d.shipments} error={src.error} onRetry={src.onRetry} rowKey={(x) => x.operationNo ?? ""} empty={c.shipmentsEmpty} />
-      {allow("commerce:mall:shipment:write") && paid && (
+      {allow("commerce:mall:shipment:write") && paid && hardware.some(h => shipped(h.orderComponentNo) < h.quantity) && (
         <div className="mt-3 grid gap-2 md:grid-cols-5">
-          <Select aria-label={c.colComponent} value={form.componentNo} onChange={(e) => setForm((f) => ({ ...f, componentNo: e.target.value }))}>
-            {hardware.map((h) => <option key={h.componentNo} value={h.componentNo}>{h.componentNo}</option>)}
+          <Select disabled={ship.isPending} aria-label={c.colComponent} value={form.componentNo} onChange={(e) => { setOpNo(newOpNo("SHIP")); setForm(f => ({ ...f, componentNo: e.target.value, trackingNo: "", quantity: "1" })); }}>
+            {hardware.map((h) => <option key={h.orderComponentNo} value={h.orderComponentNo}>{h.hardwareSkuNo} · {h.orderComponentNo}</option>)}
           </Select>
-          <Input aria-label={c.colCarrier} placeholder={c.colCarrier} value={form.carrierCode} onChange={(e) => setForm((f) => ({ ...f, carrierCode: e.target.value }))} />
-          <Input aria-label={c.colTracking} placeholder={c.colTracking} value={form.trackingNo} onChange={(e) => setForm((f) => ({ ...f, trackingNo: e.target.value }))} />
-          <Input aria-label={c.colQty} inputMode="numeric" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} />
+          <Input disabled={ship.isPending} aria-label={c.colCarrier} placeholder={c.colCarrier} value={form.carrierCode} onChange={(e) => setForm((f) => ({ ...f, carrierCode: e.target.value }))} />
+          <Input disabled={ship.isPending} aria-label={c.colTracking} placeholder={c.colTracking} value={form.trackingNo} onChange={(e) => setForm((f) => ({ ...f, trackingNo: e.target.value }))} />
+          <Input disabled={ship.isPending} aria-label={c.colQty} inputMode="numeric" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} />
           <Button disabled={!valid} loading={ship.isPending} onClick={() => ship.mutate()}>{c.btnShip}</Button>
         </div>
       )}
@@ -205,6 +228,15 @@ function RefundsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string; 
   const canReview = allow("commerce:refund:review");
   const columns: Column<MallRefundView>[] = [
     { header: c.colRefundNo, cell: (x) => <code className="txt-caption">{x.refundNo}</code> },
+    { header: c.colComponent, cell: x => {
+      if (x.hardware) {
+        const { orderComponentNo, quantity } = x.hardware;
+        const shipped = (d.shipments ?? []).filter(s => s.orderComponentNo === orderComponentNo && s.status === "SUCCEEDED")
+          .reduce((n, s) => n + (s.quantity ?? 0), 0);
+        return <span>{orderComponentNo} · {fill(c.refundUnits, { quantity, shipped })}</span>;
+      }
+      return x.sourcePeriodNos?.map(no => <div key={no}>{no} · {d.deliveredSources?.find(s => s.periodNo === no)?.entitlementCodes.join(", ")}</div>);
+    } },
     { header: c.colReview, cell: (x) => <Badge tone={x.reviewStatus === "APPROVED" ? "success" : x.reviewStatus === "DECLINED" ? "muted" : "warning"}>{x.reviewStatus ?? "—"}</Badge> },
     { header: c.colFunds, cell: (x) => <StatusBadge map={asyncMap(c)} value={x.status ?? "PENDING"} /> },
     { header: c.colCash, numeric: true, cell: (x) => <Money m={x.cashAmount} /> },
@@ -217,7 +249,7 @@ function RefundsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string; 
             <Button size="sm" variant="outline" onClick={() => reject(x)}>{c.btnReject}</Button>
           </>
         )}
-        {offline && allow("commerce:mall:offline:refund:confirm") && x.reviewStatus === "APPROVED" && x.status === "PENDING" && (
+        {offline && allow("commerce:mall:offline:refund:confirm") && ["APPROVED", "DISPATCHING", "UNKNOWN"].includes(x.reviewStatus ?? "") && x.cashAmount && x.cashAmount.minor !== "0" && (
           <Button size="sm" onClick={() => setPayoutFor(x)}>{c.btnPayout}</Button>
         )}
       </span>
@@ -268,7 +300,7 @@ function PayoutForm({ c, storeNo, orderNo, refund, onDone }: { c: MallCopy; stor
   const save = useMutation({
     mutationFn: () => api.confirmOfflineRefundPayout(storeNo, orderNo, refund.refundNo!, { actualAmount: { currency: cur, minor: minor! },
       paidOutAt: new Date(f.at).toISOString(), payeeReference: f.payee.trim(), bankReference: f.bankRef.trim(), evidenceKey: f.evidenceKey }),
-    onSuccess: () => { notify.success(c.toastPayout); onDone(); },
+    onSuccess: result => { if (result.status === "SUCCEEDED") notify.success(c.toastPayout); else notify.info(c.payoutPending); onDone(); },
   });
   const valid = minor !== null && f.at && f.payee.trim() && f.bankRef.trim() && f.evidenceKey;
   return (
@@ -430,6 +462,11 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
     onSuccess: () => { refresh(); notify.success(c.toastIssued); },
   });
 
+  const resume = useMutation({
+    mutationFn: () => api.recoverOfflineOrder(storeNo, orderNo),
+    onSuccess: () => refresh(),
+  });
+
   if (notOffline) return null;
 
   const decline = (cl: MallOfflineClaimView) => confirm({
@@ -447,8 +484,8 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
     { header: c.colSubmittedAt, cell: (x) => fmtAt(x.submittedAt) },
     { header: c.colActions, stickyEnd: "always", cell: (x) => (x.status === "SUBMITTED" || x.status === "REVIEWING") ? (
       <span className="flex gap-2">
-        {allow("commerce:mall:offline:confirm") && <Button size="sm" disabled={mode !== null} onClick={() => { setClaimFor(x.claimNo); setMode("confirm"); }}>{c.btnConfirmClaim}</Button>}
-        {allow("commerce:mall:offline:review") && <Button size="sm" variant="outline" disabled={mode !== null} onClick={() => decline(x)}>{c.btnDecline}</Button>}
+        {!paid && allow("commerce:mall:offline:confirm") && <Button size="sm" disabled={mode !== null} onClick={() => { setClaimFor(x.claimNo); setMode("confirm"); }}>{c.btnConfirmClaim}</Button>}
+        {!paid && allow("commerce:mall:offline:review") && <Button size="sm" variant="outline" disabled={mode !== null} onClick={() => decline(x)}>{c.btnDecline}</Button>}
       </span>
     ) : null },
   ];
@@ -496,6 +533,10 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
       <DataTable columns={claimColumns} rows={claims.data} loading={claims.isLoading} error={claims.error && !notOffline ? showErr(claims.error) : undefined}
         onRetry={() => claims.refetch()} rowKey={(x) => x.claimNo} empty={ins.data?.collectionMethod === "SALES_COLLECTION" || d.quote?.collectionMethod === "SALES_COLLECTION" ? c.salesClaimsNotRequired : c.claimsEmpty} />
 
+      {paid && pendingClaims > 0 && allow("commerce:mall:offline:confirm") && (
+        <Button size="sm" loading={resume.isPending} onClick={() => resume.mutate()}>{c.btnResumeConfirmation}</Button>
+      )}
+      {resume.error && <Notice tone="danger">{resume.error.message}</Notice>}
       {lastAction && <div className="mt-2"><ActionResult c={c} r={lastAction} /></div>}
 
       {!paid && !closed && ins.data && (
@@ -639,7 +680,7 @@ function ConfirmForm({
   );
 }
 
-function ReceiptDocumentationSection({c,storeNo,orderNo}:{c:MallCopy;storeNo:string;orderNo:string}) {
+export function ReceiptDocumentationSection({c,storeNo,orderNo,canSupplement=true}:{c:MallCopy;storeNo:string;orderNo:string;canSupplement?:boolean}) {
   const allow=useCan();
   const docs=useQuery({queryKey:["mall-offline",storeNo,orderNo,"documentation"],queryFn:()=>api.offlineReceiptDocumentation(storeNo,orderNo),retry:false});
   const [selected,setSelected]=React.useState<string|null>(null);
@@ -655,7 +696,7 @@ function ReceiptDocumentationSection({c,storeNo,orderNo}:{c:MallCopy;storeNo:str
         <p className="txt-caption text-muted-foreground">{fmtAt(item.createdAt)} · {item.operatorNo}</p><p>{item.note}</p>
         <ClaimReceipts c={c} storeNo={storeNo} orderNo={orderNo} keys={item.evidenceKeys}/>
       </div>)}
-      {allow("commerce:mall:offline:confirm") && ["APPLIED","UNMATCHED"].includes(row.status) && selected===null && <Button size="sm" variant="outline" onClick={()=>setSelected(row.confirmationActionNo)}>{c.supplement}</Button>}
+      {canSupplement && allow("commerce:mall:offline:confirm") && ["APPLIED","UNMATCHED"].includes(row.status) && selected===null && <Button size="sm" variant="outline" onClick={()=>setSelected(row.confirmationActionNo)}>{c.supplement}</Button>}
       {selected===row.confirmationActionNo && <SupplementForm key={selected} c={c} storeNo={storeNo} orderNo={orderNo} confirmationActionNo={selected} onClose={()=>setSelected(null)}/>}
     </div>)}
   </div>;
@@ -663,6 +704,7 @@ function ReceiptDocumentationSection({c,storeNo,orderNo}:{c:MallCopy;storeNo:str
 function SupplementForm({c,storeNo,orderNo,confirmationActionNo,onClose}:{c:MallCopy;storeNo:string;orderNo:string;confirmationActionNo:string;onClose:()=>void}) {
   const [actionNo]=React.useState(()=>newOpNo("docs"));const [note,setNote]=React.useState("");const [key,setKey]=React.useState("");
   const review=useOfflineReview(c,storeNo,orderNo,onClose);
+  useFinancialLock(`supplement:${storeNo}:${orderNo}:${confirmationActionNo}`,review.attempt!==null);
   return <div className="space-y-3 border-t pt-3"><p className="txt-caption text-muted-foreground">{c.supplementHint}</p>
     <fieldset disabled={review.attempt!==null} className="space-y-3">
       <Label htmlFor="supplement-note">{c.supplementNote}</Label><Textarea id="supplement-note" maxLength={1024} value={note} onChange={setNote}/>

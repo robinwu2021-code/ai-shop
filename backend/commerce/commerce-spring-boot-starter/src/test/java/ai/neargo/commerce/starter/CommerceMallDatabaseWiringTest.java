@@ -26,7 +26,8 @@ class CommerceMallDatabaseWiringTest {
         try (var mall = new CommerceMigrationStartupTest.Database();
                 var foundation = new CommerceMigrationStartupTest.Database()) {
             var schema = new ResourceDatabasePopulator(new ClassPathResource("db/mall/order/V1__mall_order.sql"),
-                    new ClassPathResource("db/mall/offline/V1__offline_payment.sql"));
+                    new ClassPathResource("db/mall/offline/V1__offline_payment.sql"),
+                    new ClassPathResource("db/mall/event/V1__mall_events.sql"));
             schema.execute(mall.ds);
             mall.jdbc.execute("CREATE TABLE rollback_probe(id int)");
             Files.writeString(hostMigrations.resolve("V100__host.sql"), "CREATE TABLE host_marker(id INT);");
@@ -42,7 +43,6 @@ class CommerceMallDatabaseWiringTest {
                     .withBean("dictionaryDataSource", DataSource.class, () -> foundation.ds)
                     .withBean("platformDataSource", DataSource.class, () -> foundation.ds)
                     .withBean(CommerceIdGenerator.class, () -> ns -> "id")
-                    .withBean(CommerceEventPersistencePort.class, () -> new JdbcCommerceEventPersistence(mall.ds))
                     .run(ctx -> {
                         assertNull(ctx.getStartupFailure());
                         assertFalse(ctx.containsBean("commerceUnitOfWork"));
@@ -50,10 +50,15 @@ class CommerceMallDatabaseWiringTest {
                                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='commerce_schema_history'", Integer.class));
                         assertTrue(ctx.getBean(PurchaseOrderQueryPort.class).findByOrderNos("A", List.of("missing")).isEmpty());
                         var tx = ctx.getBean(CommerceUnitOfWork.class);
+                        var events = ctx.getBean(CommerceEventPersistencePort.class);
+                        var fact = new InboundFact("A","MALL_PAYMENT","receipt","PAID","order","digest",java.time.Instant.now());
                         assertThrows(IllegalStateException.class, () -> tx.required(() -> {
+                            assertTrue(events.recordInbound(fact));
                             mall.jdbc.update("INSERT INTO rollback_probe VALUES (1)");
                             throw new IllegalStateException("abort");
                         }));
+                        assertTrue(tx.required(() -> events.recordInbound(fact)));
+                        assertFalse(tx.required(() -> events.recordInbound(fact)));
                         assertEquals(0, mall.jdbc.queryForObject("SELECT COUNT(*) FROM rollback_probe", Integer.class));
                     });
         }

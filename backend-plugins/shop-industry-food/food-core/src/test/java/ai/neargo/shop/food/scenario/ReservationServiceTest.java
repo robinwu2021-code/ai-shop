@@ -9,7 +9,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.TableOccupancyMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.StoreOperationService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import org.springframework.transaction.PlatformTransactionManager;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -96,7 +96,7 @@ class ReservationServiceTest extends FoodWriteGuardFixture {
                     Mockito.mock(ActionLogMapper.class),
                     Mockito.mock(CheckService.class),
                     Mockito.mock(StoreOperationService.class),
-                    Mockito.mock(IdempotencyService.class),new ObjectMapper(),
+                    Mockito.mock(RequestIdempotencyPort.class),new ObjectMapper(),
                     Mockito.mock(StoreCardQueryPort.class),
                     Mockito.mock(PlatformTransactionManager.class));
         }

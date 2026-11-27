@@ -66,6 +66,8 @@ import ai.neargo.shop.commerce.service.impl.ResourceMappingVerificationServiceIm
 import ai.neargo.shop.commerce.service.impl.SourceNoticeServiceImpl;
 import ai.neargo.shop.commerce.service.impl.SyncPolicyServiceImpl;
 import ai.neargo.shop.commerce.service.impl.SyncRunServiceImpl;
+import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway;
 import ai.neargo.shop.spi.commerce.ChannelCatalogGateway;
@@ -95,6 +97,8 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.core.env.Environment;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -108,9 +112,16 @@ import javax.sql.DataSource;
 /** 默认无装配、无迁移；核心仅依赖本域契约与原平台持久化能力。 */
 @AutoConfiguration(afterName = "ai.neargo.shop.common.config.PrimaryPersistenceConfiguration")
 @ConditionalOnProperty(prefix = "shop.commerce", name = "enabled", havingValue = "true")
+// 渠道连接主流程的表（渠道订单、门店连接、账号、映射、同步范围、商品发布与目录快照）在门店交易库（ADR-068）：
+// 按标记收到交易句柄；请求流水、对外操作、回调收件、修订、对账、凭据等技术表暂留主库
+@MapperScan(
+        basePackages = "ai.neargo.shop.commerce.mapper",
+        markerInterface = TradeTableMapper.class,
+        sqlSessionFactoryRef = ModuleDataSources.TRADE_SQL_SESSION_FACTORY)
 @MapperScan(
         basePackages = "ai.neargo.shop.commerce.mapper",
         markerInterface = BaseMapper.class,
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class),
         sqlSessionTemplateRef = "sqlSessionTemplate")
 public class CommerceCoreAutoConfiguration {
     @Bean
@@ -124,7 +135,7 @@ public class CommerceCoreAutoConfiguration {
     CommerceCommands commerceCommands(
             CommerceSchemaReady ready,
             RequestJournalMapper journals,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new CommerceCommands(journals, manager, new ObjectMapper());
     }
 
@@ -264,7 +275,7 @@ public class CommerceCoreAutoConfiguration {
             CatalogPersistence data,
             ProviderMapper providers,
             ObjectProvider<ChannelConnectionIdentityPort> identity,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new ChannelCatalogAuthorityServiceImpl(
                 data,
                 providers,

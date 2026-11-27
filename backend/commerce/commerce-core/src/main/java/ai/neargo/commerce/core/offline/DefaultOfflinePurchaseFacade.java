@@ -103,13 +103,19 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
     }
     @Override
     public QuoteView quote(ActorContext actor, QuoteCommand command, String method) {
+        return quote(actor,command,method,false);
+    }
+    public QuoteView quoteEntityPlan(ActorContext actor, QuoteCommand command) {
+        return quote(actor,command,null,true);
+    }
+    private QuoteView quote(ActorContext actor,QuoteCommand command,String method,boolean entityPlan) {
         uow.requireOutsideTransaction();
         if (profileNo==null) throw fail("OFFLINE_UNAVAILABLE");
         if (actor==null || command==null || command.store()==null || command.currency()==null) throw fail("INVALID_REQUEST");
         var terms=collection.terms(actor.tenantNo(),OfflineCollectionTerms.profile(profileNo,method),command.currency())
                 .orElseThrow(()->fail("OFFLINE_UNAVAILABLE"));
         if (!terms.collectionMethod().equals(OfflineCollectionTerms.method(method))) throw fail("OFFLINE_METHOD_MISMATCH");
-        return mall.quoteOffline(actor,command,terms);
+        return mall.quoteOffline(actor,command,terms,entityPlan);
     }
     @Override
     public QuoteView quoteUpgrade(ActorContext actor, UpgradeCommand command, String currency) {
@@ -461,6 +467,17 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         return trusted(query,o->{
             var current=offline.action(query.tenantNo(),query.orderNo(),a.actionNo()).orElseThrow(()->fail("NOT_FOUND"));
             if(!"ACCEPTED".equals(current.status()))return current;
+            if ("CONFIRM".equals(a.kind()) && "APPLIED".equals(finished.status())) {
+                // A matched bank receipt can precede a successful lookup of the original attempt.
+                // Keep its immutable action recoverable until the mall records that exact payment.
+                boolean paid = o.axes().payment() == OrderState.Payment.PAID
+                        && operations.operations(query.tenantNo(),query.orderNo()).stream()
+                                .anyMatch(op -> op.operationNo().equals(a.payment().paymentAttemptNo())
+                                        && op.paymentResult()!=null
+                                        && op.paymentResult().status()==AsyncStatus.SUCCEEDED
+                                        && op.paymentResult().paymentNo().filter(finished.paymentNo()::equals).isPresent());
+                if (!paid) return current;
+            }
             offline.saveAction(finished);settleClaim(finished);return finished;
         });
     }

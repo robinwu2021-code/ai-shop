@@ -89,7 +89,7 @@ class ActualResourceExecutionIT {
             assertThat(sql.queryForObject("SELECT updated_by FROM " + table, String.class)).isEqualTo(ResourceOccupationNativeFixture.ACTOR);
         }
         assertThat(sql.queryForObject("SELECT segment_no FROM mch_resource_occupation_bucket", String.class)).isEqualTo("SEG");
-        assertThat(sql.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE version='607' AND success=1", Long.class))
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE version='621' AND success=1", Long.class))
                 .isOne();
         assertThatThrownBy(() -> sql.update("DELETE FROM mch_resource_occupation_unit"))
                 .isInstanceOf(RuntimeException.class);

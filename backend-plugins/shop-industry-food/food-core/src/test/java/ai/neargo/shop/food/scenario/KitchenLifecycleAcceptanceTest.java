@@ -9,7 +9,7 @@ import ai.neargo.shop.food.dto.KitchenContracts.*;
 import ai.neargo.shop.food.entity.*;
 import ai.neargo.shop.food.mapper.FoodMappers.*;
 import ai.neargo.shop.food.service.impl.KitchenTaskServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
@@ -363,7 +363,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             db.update("INSERT INTO kitchen_acceptance_outbox VALUES (?,?,?,?,?)", e.eventNo(), e.taskNo(), e.ticketNo(), e.action(), e.qty());
             return null;
         };
-        var service = new KitchenTaskServiceImpl(c.getBean(OrderBatchMapper.class), c.getBean(OrderLineMapper.class), c.getBean(OrderComponentMapper.class), c.getBean(ConfigRevisionMapper.class), c.getBean(KitchenTicketMapper.class), c.getBean(KitchenTaskMapper.class), c.getBean(ServiceEventMapper.class), c.getBean(CourseMapper.class), c.getBean(CheckMapper.class), c.getBean(IdempotencyService.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), outbox);
+        var service = new KitchenTaskServiceImpl(c.getBean(OrderBatchMapper.class), c.getBean(OrderLineMapper.class), c.getBean(OrderComponentMapper.class), c.getBean(ConfigRevisionMapper.class), c.getBean(KitchenTicketMapper.class), c.getBean(KitchenTaskMapper.class), c.getBean(ServiceEventMapper.class), c.getBean(CourseMapper.class), c.getBean(CheckMapper.class), c.getBean(RequestIdempotencyPort.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), outbox);
         var f = new Kitchen(db, service);
         for (String check : List.of("C1", "C2")) db.update("INSERT INTO fnb_check(tenant_no,entity_no,store_no,check_no,status,version,deleted) VALUES ('MAIN','E','S',?,'OPEN',0,0)", check);
         return f;

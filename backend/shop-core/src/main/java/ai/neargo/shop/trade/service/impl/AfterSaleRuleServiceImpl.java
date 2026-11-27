@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.service.AfterSaleRuleService;
@@ -110,7 +111,7 @@ public class AfterSaleRuleServiceImpl implements AfterSaleRuleService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public AfterSaleRuleVO save(AfterSaleRuleVO req, String operatorNo) {
         if (req == null || req.maxAmount() <= 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

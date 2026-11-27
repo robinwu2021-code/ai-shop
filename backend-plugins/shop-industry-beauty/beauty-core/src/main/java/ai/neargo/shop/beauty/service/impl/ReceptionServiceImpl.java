@@ -67,7 +67,7 @@ public final class ReceptionServiceImpl implements ReceptionService {
             row.setCode(Base64.getUrlEncoder().withoutPadding().encodeToString(bytes));
             row.setIssuedAt(LocalDateTime.ofInstant(clock.instant().truncatedTo(ChronoUnit.MILLIS), ZoneOffset.UTC));
             row.setExpiresAt(row.getIssuedAt().plusSeconds(90));
-            try { db.tx(() -> { challenges.insert(row); return null; }); return view(row); }
+            try { db.industryTx(() -> { challenges.insert(row); return null; }); return view(row); }
             catch (DuplicateKeyException raced) {
                 var winner = find(entity, store, hash);
                 if (winner != null) { return view(winner); }

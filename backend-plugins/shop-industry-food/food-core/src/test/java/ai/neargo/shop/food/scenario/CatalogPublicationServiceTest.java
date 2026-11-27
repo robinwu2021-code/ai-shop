@@ -49,7 +49,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
 import ai.neargo.shop.food.policy.StationPublicationSource;
 import ai.neargo.shop.food.policy.MenuPublicationSource;
 import ai.neargo.shop.food.service.impl.ConfigRevisionServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.time.Clock;
@@ -82,7 +82,7 @@ class CatalogPublicationServiceTest {
             var service = new ConfigRevisionServiceImpl(c.getBean(ConfigRevisionMapper.class),
                     c.getBean(ModifierMapper.class), c.getBean(ModifierComponentMapper.class),
                     c.getBean(OptionGroupMapper.class), c.getBean(OptionGroupItemMapper.class),
-                    c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class),
+                    c.getBean(ActionLogMapper.class), c.getBean(RequestIdempotencyPort.class),
                     c.getBean("foodOutboxPublisher", OutboxPublisher.class), c.getBean(ObjectMapper.class),
                     c.getBean(PlatformTransactionManager.class), goods, (e, ids) -> List.of(),
                     Clock.fixed(Instant.parse("2026-10-21T08:00:00Z"), ZoneOffset.UTC), null, null, null,
@@ -301,7 +301,7 @@ class CatalogPublicationServiceTest {
             var service=new ConfigRevisionServiceImpl(revisions,c.getBean(ModifierMapper.class),
                     c.getBean(ModifierComponentMapper.class),c.getBean(OptionGroupMapper.class),
                     c.getBean(OptionGroupItemMapper.class),c.getBean(ActionLogMapper.class),
-                    c.getBean(IdempotencyService.class),c.getBean("foodOutboxPublisher",OutboxPublisher.class),json,
+                    c.getBean(RequestIdempotencyPort.class),c.getBean("foodOutboxPublisher",OutboxPublisher.class),json,
                     c.getBean(PlatformTransactionManager.class),goods,(e,ids) -> List.of(),
                     Clock.fixed(ConfigRevisionServiceTest.NOW.toInstant(),ZoneOffset.UTC),null,null,null,menus,null,
                     () -> authority,template.getMapper(MenuChannelBindingMapper.class));

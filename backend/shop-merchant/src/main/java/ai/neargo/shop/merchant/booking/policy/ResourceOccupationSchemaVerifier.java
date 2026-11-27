@@ -2,6 +2,7 @@ package ai.neargo.shop.merchant.booking.policy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.datasource.DataSourceUtils;
@@ -43,7 +44,7 @@ public final class ResourceOccupationSchemaVerifier {
     private final String historySchema;
 
     /** Only existing primary datasource and Flyway owner settings are captured; construction performs no IO. */
-    public ResourceOccupationSchemaVerifier(@Qualifier("dataSource") DataSource source,
+    public ResourceOccupationSchemaVerifier(@Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source,
             @Value("${spring.flyway.table:flyway_schema_history}") String historyTable,
             @Value("${spring.flyway.default-schema:}") String historySchema) {
         this.source = Objects.requireNonNull(source, "source");
@@ -291,7 +292,8 @@ public final class ResourceOccupationSchemaVerifier {
                         + " AND c.CONSTRAINT_NAME=t.CONSTRAINT_NAME"
                         + " WHERE t.TABLE_SCHEMA=? AND t.TABLE_NAME=? AND t.CONSTRAINT_TYPE='CHECK'",
                 schema, table.path("name").asString())) {
-            require(actual.put(text(row, "constraint_name"), expression(text(row, "check_clause"))) == null);
+            require(actual.put(text(row, "constraint_name"),
+                    expression(renderedCheck(text(row, "check_clause")))) == null);
         }
         Map<String, String> expected = new TreeMap<>();
         table.path("checks").properties().forEach(entry ->
@@ -391,7 +393,7 @@ public final class ResourceOccupationSchemaVerifier {
     // Preserve literal bytes and boolean grouping. Only quoting, whitespace and charset introducers normalize.
     private static List<String> tokens(String sql) {
         Pattern token = Pattern.compile("\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
-                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.-]");
+                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.*%/-]");
         Matcher matcher = token.matcher(sql);
         List<String> result = new ArrayList<>();
         int offset = 0;
@@ -411,7 +413,26 @@ public final class ResourceOccupationSchemaVerifier {
         return result;
     }
 
-    private static String expression(String sql) {
+    /**
+     * MySQL (8.0.16+, incl. 9.7) renders information_schema CHECK_CLAUSE with one level of backslash escaping:
+     * {@code _utf8mb4\'HELD\'}. Undo exactly that level before tokenizing; the descriptor holds plain SQL.
+     */
+    static String renderedCheck(String clause) {
+        if (clause.indexOf('\\') < 0) {
+            return clause;
+        }
+        StringBuilder plain = new StringBuilder(clause.length());
+        for (int i = 0; i < clause.length(); i++) {
+            char c = clause.charAt(i);
+            if (c == '\\' && i + 1 < clause.length()) {
+                c = clause.charAt(++i);
+            }
+            plain.append(c);
+        }
+        return plain.toString();
+    }
+
+    static String expression(String sql) {
         Expression parser = new Expression(tokens(sql));
         String value = parser.or();
         require(parser.at == parser.input.size());
@@ -433,7 +454,8 @@ public final class ResourceOccupationSchemaVerifier {
             while (take("or")) {
                 values.add(and());
             }
-            return values.size() == 1 ? values.getFirst() : "or(" + String.join(",", values) + ")";
+            return values.size() == 1 ? values.getFirst()
+                    : "or(" + String.join(",", values.stream().map(v -> flat("or", v)).toList()) + ")";
         }
 
         private String and() {
@@ -442,7 +464,30 @@ public final class ResourceOccupationSchemaVerifier {
             while (take("and")) {
                 values.add(comparison());
             }
-            return values.size() == 1 ? values.getFirst() : "and(" + String.join(",", values) + ")";
+            return values.size() == 1 ? values.getFirst()
+                    : "and(" + String.join(",", values.stream().map(v -> flat("and", v)).toList()) + ")";
+        }
+
+        /** AND / OR are associative: MySQL stores (a OR b) OR c as a OR b OR c, so splice a same-kind child. */
+        private static String flat(String kind, String value) {
+            String prefix = kind + "(";
+            if (!value.startsWith(prefix)) {
+                return value;
+            }
+            int depth = 0;
+            for (int i = kind.length(); i < value.length(); i++) {
+                char c = value.charAt(i);
+                if (c == '\'') {
+                    i = value.indexOf('\'', i + 1);
+                    if (i < 0) { return value; }
+                    continue;
+                }
+                if (c == '(') { depth++; }
+                if (c == ')' && --depth == 0) {
+                    return i == value.length() - 1 ? value.substring(prefix.length(), i) : value;
+                }
+            }
+            return value;
         }
 
         private String comparison() {
@@ -476,10 +521,27 @@ public final class ResourceOccupationSchemaVerifier {
         }
 
         private String sum() {
-            String value = atom();
+            String value = term();
             while (at < input.size() && List.of("+", "-").contains(input.get(at))) {
                 String op = input.get(at++);
-                value = op + "(" + value + "," + atom() + ")";
+                if ("+".equals(op) && take("interval")) {
+                    // MySQL stores TIMESTAMPADD(unit,n,x) as (x + interval n unit)
+                    String amount = term();
+                    require(at < input.size());
+                    value = "timestampadd(" + input.get(at++) + "," + amount + "," + value + ")";
+                    continue;
+                }
+                value = op + "(" + value + "," + term() + ")";
+            }
+            return value;
+        }
+
+        private String term() {
+            String value = atom();
+            while (at < input.size() && List.of("*", "/", "%").contains(input.get(at))) {
+                String op = input.get(at++);
+                // MySQL stores MOD(a,b) as (a % b); keep one spelling
+                value = ("%".equals(op) ? "mod" : op) + "(" + value + "," + atom() + ")";
             }
             return value;
         }

@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.booking.mapper;
 
+import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.merchant.dto.PersonnelQualificationFactRow;
 import ai.neargo.shop.merchant.dto.ResourceBookingAllocationRow;
 import ai.neargo.shop.merchant.dto.ResourceBookingCounterRow;
@@ -193,7 +194,7 @@ public final class BookingMappers {
     }
 
     /** Native evidence queries are called only after actual supported-schema inspection. */
-    public interface ResourceOccupationMapper extends BaseMapper<MchResourceOccupation> {
+    public interface ResourceOccupationMapper extends TradeTableMapper<MchResourceOccupation> {
         /** Common contract is available on projected H2; no native table is referenced here. */
         @Select("""
                 SELECT (SELECT COUNT(*) FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo}
@@ -399,14 +400,14 @@ public final class BookingMappers {
                 @Param("at") LocalDateTime at);
     }
 
-    public interface ResourceOccupationUnitMapper extends BaseMapper<MchResourceOccupationUnit> { }
+    public interface ResourceOccupationUnitMapper extends TradeTableMapper<MchResourceOccupationUnit> { }
 
-    public interface ResourceOccupationSegmentMapper extends BaseMapper<MchResourceOccupationSegment> { }
+    public interface ResourceOccupationSegmentMapper extends TradeTableMapper<MchResourceOccupationSegment> { }
 
-    public interface ResourceOccupationBucketMapper extends BaseMapper<MchResourceOccupationBucket> { }
+    public interface ResourceOccupationBucketMapper extends TradeTableMapper<MchResourceOccupationBucket> { }
 
     /** 跨店统一容量仲裁桶数据访问；完整仲裁由后续服务编排。 */
-    public interface ResourceBucketMapper extends BaseMapper<MchResourceBucket> {
+    public interface ResourceBucketMapper extends TradeTableMapper<MchResourceBucket> {
         /** Never infer availability from a drifted count or silently drop orphaned/deleted active allocations. */
         @Select("SELECT COALESCE(SUM(CASE WHEN h.status='HELD' AND u.consumed_at IS NULL THEN u.qty ELSE 0 END),0) AS held,"
                 + "COALESCE(SUM(CASE WHEN h.status='CONFIRMED' AND u.consumed_at IS NULL THEN u.qty ELSE 0 END),0) AS confirmed,"
@@ -443,7 +444,7 @@ public final class BookingMappers {
     }
 
     /** 资源集合持有凭证数据访问；完整仲裁由后续服务编排。 */
-    public interface BookingHoldMapper extends BaseMapper<MchBookingHold> {
+    public interface BookingHoldMapper extends TradeTableMapper<MchBookingHold> {
         /** Acquired after the full personnel/resource union, never before discovering additional roots. */
         @Select("SELECT * FROM mch_booking_hold WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} "
                 + "AND store_no=#{scope.storeNo} AND owner_no=#{owner} AND hold_no=#{hold} AND deleted=0 FOR UPDATE")
@@ -495,7 +496,7 @@ public final class BookingMappers {
     }
 
     /** 资源持有分配历史明细数据访问；完整仲裁由后续服务编排。 */
-    public interface BookingHoldUnitMapper extends BaseMapper<MchBookingHoldUnit> {
+    public interface BookingHoldUnitMapper extends TradeTableMapper<MchBookingHoldUnit> {
         /** Missing bucket identity cannot be inferred as free; conservatively stop the entity until repair. */
         @Select("SELECT EXISTS(SELECT 1 FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b "
                 + "ON b.tenant_no=u.tenant_no AND b.entity_no=u.entity_no AND b.bucket_no=u.bucket_no "
@@ -579,7 +580,7 @@ public final class BookingMappers {
     }
 
     /** Verified effective qualification facts carry their original store scope; no permission inference. */
-    public interface PersonnelSkillMapper extends BaseMapper<MchPersonnelSkill> {
+    public interface PersonnelSkillMapper extends TradeTableMapper<MchPersonnelSkill> {
         /** Whole rounded bucket eligibility; SKU-specific facts cannot authorize an unspecified SKU. */
         @Select("""
                 SELECT COUNT(*) FROM mch_personnel_skill
@@ -616,7 +617,7 @@ public final class BookingMappers {
     }
 
     /** Canonical resources; a staff resource is shared by all valid store assignments of one personnel. */
-    public interface ResourceMapper extends BaseMapper<MchResource> {
+    public interface ResourceMapper extends TradeTableMapper<MchResource> {
         /** Any active local rule must be explicitly retired before employment can activate clipped occurrences. */
         @Select("SELECT COUNT(*) FROM mch_schedule_rule WHERE tenant_no='MAIN' AND entity_no=#{entity} "
                 + "AND resource_no=#{resource} AND store_no=#{store} AND status='ACTIVE' AND deleted=0")
@@ -723,7 +724,7 @@ public final class BookingMappers {
     }
 
     /** Weekly rules retain all related store assignments for explicit shared-resource conflict checks. */
-    public interface ScheduleRuleMapper extends BaseMapper<MchScheduleRule> {
+    public interface ScheduleRuleMapper extends TradeTableMapper<MchScheduleRule> {
         /** One scoped snapshot; conservative dates precede exact time-zone expansion and employment clipping. */
         @Select("""
                 <script>
