@@ -19,4 +19,18 @@ it("门店按已发布 SKU 数量报价，硬件地址和原订单在提交重�
   expect(detail.shippingAddress).toEqual(addressed.shippingAddress);
   expect(detail.lines?.[0]).toMatchObject({ title: item.sku!.title, quantity: 2 });
   await expect(mall.mMallPlaceOrder(store, { ...addressed, idempotencyKey: "again" })).rejects.toThrow("QUOTE_USED");
+  const no = order.orderNo!;
+  const instructions = await mall.mMallIssueInstructions(store, no);
+  expect(instructions.instructions.transferRemark).toBe(no);
+  expect((await mall.mMallOrder(store, no)).summary?.paymentStatus).toBe("PAYING");
+  const proof = await mall.mMallReserveEvidence(store, no);
+  const claim = { claimNo: "claim", declaredPaidAt: new Date().toISOString(), declaredAmount: instructions.payable,
+    evidenceKeys: [proof.assetKey], bankReference: "transfer" };
+  await expect(mall.mMallSubmitClaim(store, no, claim)).rejects.toThrow("EVIDENCE_UNAVAILABLE");
+  const bytes = new Uint8Array([255,216,255]).buffer;
+  await expect(mall.mMallUploadEvidence(store, "other", proof.assetKey, bytes, "image/jpeg")).rejects.toThrow("EVIDENCE_FORBIDDEN");
+  await mall.mMallUploadEvidence(store, no, proof.assetKey, bytes, "image/jpeg");
+  const submitted = await mall.mMallSubmitClaim(store, no, claim);
+  expect(await mall.mMallSubmitClaim(store, no, claim)).toEqual(submitted);
+  expect(await mall.mMallClaims(store, no)).toEqual([submitted]);
 });

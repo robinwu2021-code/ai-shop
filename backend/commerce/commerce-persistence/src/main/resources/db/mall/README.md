@@ -10,5 +10,6 @@
 | 4 | `fulfillment/V1__mall_fulfillment.sql` | 4 |
 | 5 | `refund/V1__mall_refund.sql` | 2 |
 | 6 | `subscription/V1__mall_subscription.sql` | 8 |
+| 7 | `event/V1__mall_events.sql` | 2 |
 
-共 28 张。商城库与保存经营类型的基础能力库、保存门店授权的平台基础库分别初始化。
+共 28 张业务表和 2 张事务事件表。已按前六项建库的环境在启用线下核款前执行第 7 项。付款事实、订阅操作去重和权益变更通知与原订单共用商城事务。商城库与保存经营类型的基础能力库、保存门店授权的平台基础库分别初始化。

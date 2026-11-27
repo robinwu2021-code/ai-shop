@@ -16726,6 +16726,8 @@ components:
     MallOfflineInstructions:
       type: "object"
       properties:
+        collectionMethod:
+          type: "string"
         orderNo:
           type: "string"
           description: "订单号"

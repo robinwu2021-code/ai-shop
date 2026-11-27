@@ -20,7 +20,7 @@
         </view>
         <view class="sh-mt-md">
           <sh-kv between :label="String(t('bizMall.checkout.payable'))"><text class="txt-strong sh-num">{{ mallMoney(detail.summary?.order?.payable) }}</text></sh-kv>
-          <sh-kv between :label="String(t('bizMall.order.fulfillment'))"><text class="txt-sub">{{ t(`bizMall.fulfillment.${detail.summary?.fulfillmentStatus ?? "PENDING"}`) }}</text></sh-kv>
+          <sh-kv between :label="String(t('bizMall.order.fulfillment'))"><text class="txt-sub">{{ t(awaitingShipment ? "bizMall.order.awaitingShipment" : `bizMall.fulfillment.${detail.summary?.fulfillmentStatus ?? "PENDING"}`) }}</text></sh-kv>
           <sh-kv between :label="String(t('bizMall.order.createdAt'))"><text class="txt-sub sh-num">{{ mallTime(detail.summary?.order?.createdAt) }}</text></sh-kv>
         </view>
         <view v-if="detail.shippingAddress" class="sh-mt-md">
@@ -34,7 +34,7 @@
       </view>
 
       <!-- 付款：只在资金维度还没结清时出现。申报≠到账，运营核到款后这一块整块消失 -->
-      <view v-if="payment === 'UNPAID'" class="sh-card">
+      <view v-if="awaitingTransfer" class="sh-card">
         <text class="txt-strong">{{ t("bizMall.pay.title") }}</text>
         <sh-empty v-if="!instructions" bare :pending="instructionsPending" :failed="!!instructionsError" @retry="loadInstructions"
           :text="instructionsError"></sh-empty>
@@ -44,6 +44,7 @@
             <text class="sh-num sh-link" @tap="copy(instructions.instructions.bankAccount)">{{ instructions.instructions.bankAccount }}</text>
           </sh-kv>
           <sh-kv between :label="String(t('bizMall.pay.accountName'))"><text>{{ instructions.instructions.accountName }}</text></sh-kv>
+          <sh-kv v-if="instructions.instructions.transferRemark" between :label="String(t('bizMall.pay.transferRemark'))"><text class="sh-num sh-link" @tap="copy(instructions.instructions.transferRemark)">{{ instructions.instructions.transferRemark }}</text></sh-kv>
           <sh-kv between :label="String(t('bizMall.pay.amount'))"><text class="txt-strong sh-num">{{ mallMoney(instructions.payable) }}</text></sh-kv>
           <sh-kv between :label="String(t('bizMall.pay.dueAt'))"><text class="sh-num">{{ mallTime(instructions.paymentDueAt) }}</text></sh-kv>
           <text class="sh-hint txt-quiet">{{ t("bizMall.pay.hint") }}</text>
@@ -63,7 +64,7 @@
       </view>
 
       <!-- 申报：没有在审的申报时才能报。被拒（DECLINED）后用新的申报号重报 -->
-      <view v-if="payment === 'UNPAID' && instructions && !pendingClaim" class="sh-card">
+      <view v-if="awaitingTransfer && instructions && instructions.collectionMethod !== 'SALES_COLLECTION' && !pendingClaim" class="sh-card">
         <text class="txt-strong">{{ t("bizMall.claim.title") }}</text>
         <text class="sh-hint txt-quiet">{{ t("bizMall.claim.hint") }}</text>
         <sh-section :title="String(t('bizMall.claim.receipts'))">
@@ -89,7 +90,7 @@
         <text v-if="submitError" class="sh-hint is-danger">{{ submitError }}</text>
       </view>
 
-      <view v-if="pendingClaim && payment === 'UNPAID'" class="sh-card">
+      <view v-if="pendingClaim && awaitingTransfer" class="sh-card">
         <text class="sh-hint">{{ t("bizMall.claim.waiting") }}</text>
       </view>
     </template>
@@ -112,7 +113,7 @@ import { prompt } from "@ai-shop/ui/prompt";
 import {
   EVIDENCE_MAX_BYTES, mallErrorText, mallMoney, mallTime, readImageBytes, sniffImageType,
 } from "@/shared/mall";
-import type { MallOfflineClaim, MallOfflineInstructions, MallOrderDetail } from "@/api/mall";
+import type { MallOfflineClaim, MallOfflineClaimRequest, MallOfflineInstructions, MallOrderDetail } from "@/api/mall";
 
 const { t, te } = useI18n();
 const merchant = useMerchantStore();
@@ -136,25 +137,39 @@ const paidDate = ref(today);
 const paidClock = ref(`${pad(nowDate.getHours())}:${pad(nowDate.getMinutes())}`);
 const submitting = ref(false);
 const submitError = ref("");
+let retryClaim: { form: string; request: MallOfflineClaimRequest } | undefined;
 
 const payment = computed(() => detail.value?.summary?.paymentStatus ?? "UNPAID");
+const awaitingTransfer = computed(() => payment.value === "UNPAID" || payment.value === "PAYING");
 const paid = computed(() => payment.value === "PAID");
+const awaitingShipment = computed(() => paid.value && detail.value?.summary?.fulfillmentStatus === "PARTIAL"
+  && detail.value.summary.refundStatus === "NONE" && !detail.value.shipments?.length
+  && detail.value.quote?.components?.some(c => c.kind === "HARDWARE"));
 const pendingClaim = computed(() => claims.value.some((c) => c.status === "SUBMITTED" || c.status === "REVIEWING"));
 const canSubmit = computed(() => receipts.value.length > 0 && bankReference.value.length > 0);
 
 async function load() {
   failed.value = false;
   const store = merchant.storeNo;
+  loaded.value = false;
+  detail.value = null;
+  instructions.value = null;
+  claims.value = [];
   try {
     const d = await api.mMallOrder(store, orderNo.value);
     if (store !== merchant.storeNo) return;
+    const history = await api.mMallClaims(store, orderNo.value).catch((e: unknown) => {
+      if (e instanceof Error && e.message === "OFFLINE_INTENT_REQUIRED") return [];
+      throw e;
+    });
+    if (store !== merchant.storeNo) return;
+    claims.value = history;
     detail.value = d;
-    if ((d.summary?.paymentStatus ?? "UNPAID") === "UNPAID") await loadInstructions();
-    claims.value = await api.mMallClaims(store, orderNo.value).catch(() => claims.value);
+    if (awaitingTransfer.value) await loadInstructions();
   } catch {
-    failed.value = true;
+    if (store === merchant.storeNo) failed.value = true;
   } finally {
-    loaded.value = true;
+    if (store === merchant.storeNo) loaded.value = true;
   }
 }
 
@@ -164,16 +179,17 @@ async function loadInstructions() {
   instructionsError.value = "";
   const store = merchant.storeNo;
   try {
-    instructions.value = await api.mMallInstructions(store, orderNo.value).catch((e: unknown) => {
+    const issued = await api.mMallInstructions(store, orderNo.value).catch((e: unknown) => {
       if (e instanceof Error && e.message === "OFFLINE_INSTRUCTIONS_NOT_ISSUED") {
         return api.mMallIssueInstructions(store, orderNo.value);
       }
       throw e;
     });
+    if (store === merchant.storeNo) instructions.value = issued;
   } catch (e) {
-    instructionsError.value = err(e);
+    if (store === merchant.storeNo) instructionsError.value = err(e);
   } finally {
-    instructionsPending.value = false;
+    if (store === merchant.storeNo) instructionsPending.value = false;
   }
 }
 
@@ -204,23 +220,31 @@ async function submit() {
   const store = merchant.storeNo;
   const order = orderNo.value;
   try {
-    const keys: string[] = [];
-    for (const path of receipts.value) {
-      const bytes = await readImageBytes(path);
-      const type = sniffImageType(bytes);
-      if (!type) throw new Error("EVIDENCE_NOT_IMAGE");
-      if (bytes.byteLength > EVIDENCE_MAX_BYTES) throw new Error("EVIDENCE_TOO_LARGE");
-      const ticket = await api.mMallReserveEvidence(store, order);
-      await api.mMallUploadEvidence(store, order, ticket.assetKey, bytes, type);
-      keys.push(ticket.assetKey);
+    if (detail.value?.summary?.order?.store?.storeNo !== store || instructions.value.orderNo !== order) return;
+    const paths = [...receipts.value];
+    const declaredAmount = instructions.value.payable;
+    const declaredPaidAt = new Date(`${paidDate.value}T${paidClock.value}:00`).toISOString();
+    const reference = bankReference.value;
+    const form = JSON.stringify([store, order, declaredAmount, declaredPaidAt, reference, paths]);
+    if (retryClaim?.form !== form) {
+      const keys: string[] = [];
+      for (const path of paths) {
+        const bytes = await readImageBytes(path);
+        const type = sniffImageType(bytes);
+        if (!type) throw new Error("EVIDENCE_NOT_IMAGE");
+        if (bytes.byteLength > EVIDENCE_MAX_BYTES) throw new Error("EVIDENCE_TOO_LARGE");
+        const ticket = await api.mMallReserveEvidence(store, order);
+        await api.mMallUploadEvidence(store, order, ticket.assetKey, bytes, type);
+        keys.push(ticket.assetKey);
+      }
+      retryClaim = { form, request: {
+        claimNo: `CL${Date.now()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+        declaredAmount, declaredPaidAt, bankReference: reference, evidenceKeys: keys,
+      } };
     }
-    await api.mMallSubmitClaim(store, order, {
-      claimNo: `CL${Date.now()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-      declaredAmount: instructions.value.payable,
-      declaredPaidAt: new Date(`${paidDate.value}T${paidClock.value}:00`).toISOString(),
-      bankReference: bankReference.value,
-      evidenceKeys: keys,
-    });
+    if (merchant.storeNo !== store) return;
+    await api.mMallSubmitClaim(store, order, retryClaim.request);
+    retryClaim = undefined;
     receipts.value = [];
     bankReference.value = "";
     uni.showToast({ title: String(t("bizMall.claim.submitted")), icon: "none" });

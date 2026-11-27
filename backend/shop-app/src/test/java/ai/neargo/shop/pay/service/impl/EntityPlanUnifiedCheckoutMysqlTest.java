@@ -59,8 +59,8 @@ class EntityPlanUnifiedCheckoutMysqlTest {
       var clock=Clock.fixed(Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS), ZoneOffset.UTC);
       var store=new StoreSnapshot(new StoreRef("MAIN","S1"),"E1","RETAIL",StoreStatus.ACTIVE,CommerceModel.STORE_V1);
       CommerceIdGenerator ids=namespace -> UUID.randomUUID().toString().replace("-","");
-      var events=mock(CommerceEventPersistencePort.class);
-      when(events.recordInbound(any())).thenReturn(true);
+      new ResourceDatabasePopulator(new ClassPathResource("db/mall/event/V1__mall_events.sql")).execute(mall.ds);
+      var events=new JdbcCommerceEventPersistence(mall.ds);
       var catalog=new JdbcCatalogRepository(mall.ds,host.ds);
       var uow=new JdbcCommerceUnitOfWork(mall.ds,new DataSourceTransactionManager(mall.ds));
       var subscriptions=new JdbcSubscriptionRepository(mall.ds,ids,new JdbcEndActivation(mall.ds,host.ds,ids));

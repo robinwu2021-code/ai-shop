@@ -41,6 +41,12 @@ public class CommerceMallDatabaseAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(CommerceEventPersistencePort.class)
+    CommerceEventPersistencePort mallEventPersistence(MallStorage storage) {
+        return new JdbcCommerceEventPersistence(storage.mall());
+    }
+
+    @Bean
     @ConditionalOnMissingBean(CatalogRepository.class)
     JdbcCatalogRepository mallCatalogRepository(MallStorage storage) {
         return new JdbcCatalogRepository(storage.mall(), storage.foundation());

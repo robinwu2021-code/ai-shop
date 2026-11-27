@@ -274,6 +274,7 @@ export interface MallOrderDetail {
 
 /** 已发出的付款指引（收款账户按发出时的档案版本冻结） */
 export interface MallOfflineInstructions {
+  collectionMethod?: string;
   /** 订单号 */
   orderNo: string;
   /** 应转账金额 */

@@ -40,6 +40,7 @@ const placements = new Map<string, { request: string; orderNo: string }>();
 const usedQuotes = new Set<string>();
 const orders = new Map<string, MallOrderDetail>();
 const instructions = new Map<string, MallOfflineInstructions>();
+const evidence = new Map<string, { order: string; uploaded: boolean }>();
 const claims = new Map<string, MallOfflineClaim[]>();
 const k = (store: string, no: string) => `${store}:${no}`;
 
@@ -86,7 +87,7 @@ export const mallMock: MallApi = {
     if (usedQuotes.has(quoteKey)) throw new Error("QUOTE_USED");
     if (q.components?.some(c => c.kind === "HARDWARE") && !(address?.recipient && address.phone && address.countryCode && address.addressLine)) throw new Error("SHIPPING_REQUIRED");
     const orderNo = "MO" + ++serial;
-    const order = { orderNo, status: "AWAITING_PAYMENT" as const, payable: q.payable, components: q.components, createdAt: now() };
+    const order = { orderNo, store: { tenantNo: "MAIN", storeNo: store }, status: "AWAITING_PAYMENT" as const, payable: q.payable, components: q.components, createdAt: now() };
     orders.set(k(store, orderNo), { lines: frozen.lines, summary: { order, title: frozen.lines?.[0]?.title, paymentStatus: "UNPAID", fulfillmentStatus: "PENDING", refundStatus: "NONE" },
       quote: q, shippingAddress: body.shippingAddress, shipments: [] });
     placements.set(identity, { request, orderNo });
@@ -110,9 +111,10 @@ export const mallMock: MallApi = {
     if (existing) return existing;
     const v: MallOfflineInstructions = {
       orderNo, payable: d.summary!.order!.payable!, paymentDueAt: new Date(Date.now() + 86_400_000).toISOString(),
-      profileNo: "TW-BANK", profileVersion: 1,
-      instructions: { bankCode: "808", bankAccount: "0123-4567-8901", accountName: "邻里科技股份有限公司" },
+      profileNo: "TW-BANK", profileVersion: 1, collectionMethod: "BANK_TRANSFER",
+      instructions: { transferRemark: orderNo, bankCode: "808", bankAccount: "0123-4567-8901", accountName: "邻里科技股份有限公司" },
     };
+    d.summary!.paymentStatus = "PAYING";
     instructions.set(key, v);
     return v;
   },
@@ -122,16 +124,34 @@ export const mallMock: MallApi = {
     return v;
   },
   async mMallReserveEvidence(storeNo, orderNo) {
-    if (!orders.has(k(storeNo || currentStoreNo(), orderNo))) throw new Error("NOT_FOUND");
-    return { assetKey: "ev-" + Date.now() + Math.random().toString(36).slice(2, 6), purpose: "BUYER_RECEIPT" };
+    const order = k(storeNo || currentStoreNo(), orderNo);
+    if (!orders.has(order)) throw new Error("NOT_FOUND");
+    const assetKey = `mall-private/${++serial}.jpg`;
+    evidence.set(assetKey, { order, uploaded: false });
+    return { assetKey, purpose: "BUYER_RECEIPT" };
   },
   async mMallUploadEvidence(storeNo, orderNo, assetKey) {
-    if (!orders.has(k(storeNo || currentStoreNo(), orderNo))) throw new Error("NOT_FOUND");
+    const proof = evidence.get(assetKey);
+    if (proof?.order !== k(storeNo || currentStoreNo(), orderNo)) throw new Error("EVIDENCE_FORBIDDEN");
+    if (proof.uploaded) throw new Error("EVIDENCE_ALREADY_STORED");
+    proof.uploaded = true;
     return { assetKey };
   },
   async mMallSubmitClaim(storeNo, orderNo, body) {
     const key = k(storeNo || currentStoreNo(), orderNo);
+    if (!orders.has(key)) throw new Error("NOT_FOUND");
+    if (!body.evidenceKeys.length || body.evidenceKeys.some(k => {
+      const proof = evidence.get(k);
+      return proof?.order !== key || !proof.uploaded;
+    })) throw new Error("EVIDENCE_UNAVAILABLE");
     const list = claims.get(key) ?? [];
+    const prior = list.find(c => c.claimNo === body.claimNo);
+    if (prior) {
+      if (prior.bankReference !== body.bankReference || prior.declaredPaidAt !== body.declaredPaidAt
+        || prior.declaredAmount.currency !== body.declaredAmount.currency || prior.declaredAmount.minor !== body.declaredAmount.minor
+        || JSON.stringify(prior.evidenceKeys) !== JSON.stringify(body.evidenceKeys)) throw new Error("IDEMPOTENCY_CONFLICT");
+      return prior;
+    }
     if (list.some((c) => c.status === "SUBMITTED" || c.status === "REVIEWING")) throw new Error("CLAIM_ALREADY_SUBMITTED");
     const c: MallOfflineClaim = { claimNo: body.claimNo, status: "SUBMITTED", declaredAmount: body.declaredAmount,
       declaredPaidAt: body.declaredPaidAt, submittedAt: now(), bankReference: body.bankReference, evidenceKeys: body.evidenceKeys };

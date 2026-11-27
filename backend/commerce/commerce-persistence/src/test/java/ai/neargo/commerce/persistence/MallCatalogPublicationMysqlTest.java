@@ -12,15 +12,7 @@ class MallCatalogPublicationMysqlTest {
         try (var mall = new MysqlDatabase(); var foundation = new MysqlDatabase()) {
             CategoryMysqlTest.mallCatalogSchema(mall, foundation);
             var f = new JdbcCatalogFixture(mall, new JdbcCatalogRepository(mall.ds, foundation.ds));
-            for (var code : List.of("BASE", "POS", "KDS")) {
-                mall.jdbc.update("""
-                        INSERT INTO mall_end_entitlement
-                        (tenant_no,created_at,updated_at,version,deleted,end_code,entitlement_code,name,scope,
-                         allowed_business_types,release_status,sale_enabled,bootstrap_required,enabled,client_id,
-                         route_policy_ref,acceptance_ref)
-                        VALUES ('tenant-a',NOW(),NOW(),1,0,?,?,?,'STORE','["RETAIL"]','GA',?,?,1,'client','routes','acceptance')
-                        """, code, code, code, !code.equals("BASE"), code.equals("BASE"));
-            }
+            seedEnds(mall);
             f.plans();
             f.product();
             f.facade.saveProduct(f.ops, new ProductDraft("product","subscriptions",ProductKind.BUNDLE,
@@ -97,6 +89,17 @@ class MallCatalogPublicationMysqlTest {
                     f.planDefinitionTokens("RETAIL"),f.skuDefinitionTokens("RETAIL"),"replace");
             f.facade.publishIndustry(f.ops,replacement);
             assertEquals(oldDefinition + 1, f.planDefinitionTokens("RETAIL").get("RETAIL:PRO"));
+        }
+    }
+    static void seedEnds(MysqlDatabase mall) {
+        for (var code : List.of("BASE", "POS", "KDS")) {
+            mall.jdbc.update("""
+                    INSERT INTO mall_end_entitlement
+                    (tenant_no,created_at,updated_at,version,deleted,end_code,entitlement_code,name,scope,
+                     allowed_business_types,release_status,sale_enabled,bootstrap_required,enabled,client_id,
+                     route_policy_ref,acceptance_ref)
+                    VALUES ('tenant-a',NOW(),NOW(),1,0,?,?,?,'STORE','["RETAIL"]','GA',?,?,1,'client','routes','acceptance')
+                    """, code, code, code, !code.equals("BASE"), code.equals("BASE"));
         }
     }
 }
