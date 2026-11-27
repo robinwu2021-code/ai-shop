@@ -294,7 +294,7 @@
 | 1d | 发号仓储 | 仓储去掉按归属（CORE/PAY）切表；三种按范围计数收进 `DocumentNumberService` | 中 |
 | 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准）。**暂停（2026-11-27）**：门店审核已走 `ApprovalPort`；支付两人复核可并入但与 OpsKit“可本人审批”冲突；储值活动审批与改价是商户侧审批，`ApprovalPort` 承载不了。方案与步骤见下方“1e 审批”，等 §3 Q12–Q14 | 中 |
 | 1f | 撤中转 | **已做（2026-11-27，69b2bedd8）**：PAY 权益中转、NearPay 接收端、进销存回写按原事件号经 `OutboxEventBus.forward` 直发中间件；餐饮包装含路由决定未删，见下方“1f 撤中转” | 中 |
-| 1g | 接口级防重迁移 | `sys_idempotent` / `IdempotencyService` 的 50 个使用文件按域分批改用统一防重，每批一提交。Q11 已定 A（2026-11-27）：统一端口 `RequestIdempotencyPort`，做法见下方“1g” | 大 |
+| 1g | 接口级防重迁移 | `sys_idempotent` / `IdempotencyService` 的 50 个使用文件按域分批改用统一防重，每批一提交。**已做（2026-11-27）**：Q11 定 A，统一端口 `RequestIdempotencyPort`；端口与主干 18e27062a、美业 2821a4f2f、餐饮 288d997c9、删转发器 260735a0b，做法见下方“1g” | 大 |
 | 1h | 开放应用 | 三套应用凭据（`pay_app`、`inv_open_credential`、`sys_ops_api_key`）收敛；若设计已定归密钥库，则做迁移接口，不在本库落表。**暂停（2026-11-27）**：设计确认应用身份进基础能力库 `sys_open_app`、凭据进密钥库 `sec_key`；统一凭据接口与迁移路径见下方“1h 开放应用”，等 §3 Q15、Q16（密钥库只存可还原材料，库存与运营两套只存哈希） | 中 |
 | 1i | 审计提交后写 | **已做（2026-11-27，267f86839）**：`AuditLogPortImpl` 提交后在后台线程写 `sys_audit_log`，回滚不写、失败只记日志；只动统一审计，各域操作日志不动（D4 未定，不影响） | 小 |
 
@@ -375,6 +375,7 @@
   回执表仍是 `sys_idempotent`（在基础能力的 `idem` 包里，随 2a 的 `common` 句柄一起换库）。迁移期 `IdempotencyService` 只是转发给实现，最后一批迁完即删。
 - 调用方只依赖端口；守卫 `RequestIdempotencyPortGuardTest` 扫描后端与插件的 `src/main/java`，与 `backend/known-idempotency-service-refs.txt` 比，引用 `IdempotencyService` 的文件只准变少。
 - 分三批：主干（`shop-core`、`shop-merchant`）→ 美业 → 餐饮；只换类型与装配，不动各模块的业务逻辑与键、端点、摘要的取法。
+  **已完成**：端口 + 主干 18e27062a、美业 2821a4f2f、餐饮 288d997c9、删转发器 260735a0b；守卫名单已清空。
 - 清理不加（见 S8）。将来要清，须先逐个端点核对是否有确定键依赖永久回执。
 - **2a 换库时的约束**：S6 要求回执与业务同一事务。回执表换到独立的基础能力库后，同一事务不再成立，届时要另定（例如回执先于业务单独提交、业务失败时删回执），不能静默放弃 S6。
 
