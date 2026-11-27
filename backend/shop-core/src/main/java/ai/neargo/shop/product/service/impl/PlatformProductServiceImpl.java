@@ -137,7 +137,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
     // ---------------------------------------------------------------- P-3.3 处置
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public OpsSkuDetailVO setPresale(String skuNo, int presaleQuota, String cutoffAt, String arriveAt) {
         List<PrdSku> rows = rowsOf(skuNo);
         if (presaleQuota < 0) {
@@ -175,7 +175,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public OpsSkuDetailVO auditSku(String skuNo, boolean pass, String reason) {
         // 解析到父商品再委托：审核判的是「这件商品能不能卖」，标题/图/类目/资质都在 goods 上
         merchantGoodsService.audit(goodsNoOf(skuNo), pass, reason);
@@ -183,7 +183,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public OpsSkuDetailVO forceOffSku(String skuNo, String reason) {
         // 压下架而**不撤过审** —— 与 goods 级 force-off 的分界见 MerchantGoodsService 的说明
         merchantGoodsService.platformSuspendGoods(goodsNoOf(skuNo), reason);
@@ -209,7 +209,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public OpsSpecTemplateVO saveSpecTemplate(SaveTemplateCommand cmd) {
         if (cmd.name() == null || cmd.name().isBlank()
                 || cmd.options() == null || cmd.options().isEmpty()) {
@@ -274,7 +274,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public OpsSpecTemplateVO archiveSpecTemplate(String templateNo) {
         PrdSpecTemplate t = platformTemplate(templateNo);
         t.setStatus(PrdSpecTemplate.DISABLED);
@@ -283,7 +283,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public OpsSpecTemplateVO unarchiveSpecTemplate(String templateNo) {
         PrdSpecTemplate t = platformTemplate(templateNo);
         t.setStatus(PrdSpecTemplate.ACTIVE);

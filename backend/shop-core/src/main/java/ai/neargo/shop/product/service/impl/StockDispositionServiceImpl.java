@@ -65,7 +65,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public ReleaseView releaseOriginal(ReservationLookup request) {
         return DataScopeContext.executeWithoutScope(
                 () -> {
@@ -131,7 +131,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public ReservationView reserveOriginal(Reservation request) {
         var original = request.original();
         if (!List.of("PLATFORM", "DUAL").contains(original.authority())) {
@@ -167,7 +167,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public ReservationView observeReservation(ReservationLookup request) {
         return DataScopeContext.executeWithoutScope(
                 () -> {
@@ -222,7 +222,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public Disposition confirmOriginal(Confirmation command) {
         return DataScopeContext.executeWithoutScope(
                 () -> {
@@ -273,7 +273,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public Disposition observeOriginal(Lookup query) {
         return DataScopeContext.executeWithoutScope(
                 () -> observeLocked(query.original(), query.operationNo()));

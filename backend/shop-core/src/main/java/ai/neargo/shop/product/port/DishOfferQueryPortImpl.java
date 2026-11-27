@@ -35,7 +35,7 @@ public class DishOfferQueryPortImpl implements DishOfferQueryPort {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly=true, isolation=Isolation.REPEATABLE_READ)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER, readOnly=true, isolation=Isolation.REPEATABLE_READ)
     public List<Offer> getOffers(String entity, String store, List<String> numbers) {
         DishOfferQueryPort.validateLookup(entity, store, numbers);
         return DataScopeContext.executeWithoutScope(() -> read(entity, store, numbers));

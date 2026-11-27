@@ -151,7 +151,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     @org.springframework.cache.annotation.CacheEvict(value = {"categoryTree", "categoryType"}, allEntries = true)
     public OpsCategoryVO save(SaveCategoryCommand cmd) {
         if (cmd.name() == null || cmd.name().isBlank()) {
@@ -210,7 +210,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     @org.springframework.cache.annotation.CacheEvict(value = {"categoryTree", "categoryType"}, allEntries = true)
     public OpsCategoryVO archive(String categoryNo) {
         PrdCategory c = byNo(categoryNo);
@@ -262,7 +262,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     @org.springframework.cache.annotation.CacheEvict(value = {"categoryTree", "categoryType"}, allEntries = true)
     public OpsCategoryVO unarchive(String categoryNo) {
         PrdCategory c = byNo(categoryNo);

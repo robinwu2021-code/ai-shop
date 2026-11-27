@@ -92,7 +92,7 @@ public class OpsCategoryPolicyController {
      */
     @PostMapping("/ops/category-pay-modes/{categoryNo}")
     @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_UPDATE + "')")
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public List<CategoryPayModeVO> saveCategoryPayMode(@PathVariable String categoryNo,
                                                        @RequestBody PayModeReq req) {
         boolean allow = Boolean.TRUE.equals(req.offlineAllowed());

@@ -84,7 +84,7 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public ImportReport apply(String merchantNo, String csv) {
         return run(merchantNo, csv, true);
     }
@@ -245,7 +245,7 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
     // ------------------------------------------------------------------ 单件绑码
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void bindBarcode(String merchantNo, String skuNo, String barcode) {
         if (skuNo == null || skuNo.isBlank() || barcode == null || barcode.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

@@ -33,7 +33,7 @@ APP_YML = ROOT / "backend/shop-app/src/main/resources/application.yml"
 
 HANDLE_TARGET = {
     "platform": "n_platform", "trade": "n_trade", "industry": "n_industry", "common": "n_common",
-    "invoice": "n_service", "print": "n_service", "payMerchant": "n_pay_merchant", "memberMarketing": "n_member",
+    "product": "n_trade", "invoice": "n_service", "print": "n_service", "payMerchant": "n_pay_merchant", "memberMarketing": "n_member",
 }
 HANDLE_UNBOUND = {"payMerchant": "支付池", "memberMarketing": "支付池"}  # ModuleDataSources.unboundTarget
 OWN_POOLS = {  # 不走句柄、自建连接池的模块：(去向, 建议新库)
@@ -48,6 +48,7 @@ MARKERS = {
     "TradeTableMapper": "trade", "TradeSqlMapper": "trade",
     "IndustryTableMapper": "industry", "CommonTableMapper": "common",
     "PayMerchantTableMapper": "payMerchant",
+    "ProductTableMapper": "product", "MemberMarketingTableMapper": "memberMarketing",
 }
 # 只统计 ai-shop 自己的业务代码（用户 2026-11-27：暂时只处理 ai-shop 项目）。
 # 支付域归支付服务、进销存是独立服务、密钥走平台统一密钥接口、任务调度是公共能力，不在这份清单里。
@@ -236,7 +237,8 @@ def main():
     legacy_refs = subprocess.run(
         ["git", "grep", "-l", "-E",
          r"ai_shop_ume|SPRING_DATASOURCE_(URL|USERNAME|PASSWORD)|SHOP_DB_(USER|PASS)|spring\.datasource\.url",
-         "--", ":!docs/", ":!*.md", ":!**/src/test/**", ":!scripts/gen-legacy-db-usage.py"],
+         "--", ":!docs/", ":!*.md", ":!**/src/test/**", ":!scripts/gen-legacy-db-usage.py",
+         ":!backend/shop-store-mybatis/src/main/java/ai/neargo/shop/common/config/ModuleDataSources.java"],
         cwd=ROOT, capture_output=True, text=True).stdout.split()
 
     out = render(mappers, jdbc, legacy_refs, bound, suggest, missing, snap, consumers)

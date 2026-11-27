@@ -40,7 +40,7 @@ public class CardProductBindingWriter {
         var previous = commands.find(ctx.tenantNo(), key);
         return previous == null ? null : original(previous, hash);
     }
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public CardProductBindingView write(EntitlementContext ctx, String entity, ProductEntitlementBinding c, String key,
                                          String market, String currency, PublishedDefinition definition) {
         return DataScopeContext.executeWithoutScope(() ->

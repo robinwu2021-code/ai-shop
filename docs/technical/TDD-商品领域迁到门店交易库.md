@@ -32,7 +32,7 @@
 | 项 | 变更 |
 |---|---|
 | 库表 | 商品领域 36 张旧表按拆库清单改造：保留 8、改名 5、并入 13、改归会员营销库 5、退役 5（逐张见[迁移情况 §2](design/商品领域-迁移情况.md#2-表的去向36-张旧表)） |
-| 配置 | 新增模块句柄 `product`、`member`；`shop.modules.product.datasource=trade`、`shop.modules.member.datasource=member`；`shop.datasources.trade`、`.member` 指向 `n_trade`、`n_member` |
+| 配置 | 新增模块句柄 `product`；评价、专题、收藏用已有的会员营销句柄 `memberMarketing`。部署时 `shop.modules.product.datasource=trade`、`shop.modules.trade.datasource=trade`（同名，见 §2.3）、`shop.modules.member-marketing.datasource=member`；`shop.datasources.trade`、`.member` 指向 `n_trade`、`n_member`；新增 `shop.legacy-databases`（旧库名单，有默认值） |
 | 端点 | 不变（114 个，路径与出入参不动） |
 | 权限码、i18n | 不变 |
 
@@ -55,7 +55,7 @@
 
 新增架构测试 `ProductDatabaseIsolationTest`，挂进推送闸门的后端全量：
 
-1. `ai.neargo.shop.product` 下每个 Mapper 必须继承 `ProductTableMapper`（评价、专题、收藏继承 `MemberTableMapper`）。不允许直接继承 `BaseMapper`、不允许无句柄的 `@Mapper`。
+1. `ai.neargo.shop.product` 下每个 Mapper 必须继承 `ProductTableMapper`（评价、专题、收藏继承 `MemberMarketingTableMapper`）。不允许直接继承 `BaseMapper`、不允许无句柄的 `@Mapper`。
 2. 每个 Mapper 用到的表（实体上的 `@TableName` 与注解 SQL 里的 FROM、JOIN、INTO、UPDATE），必须在目标库的设计 DDL 里有：商品对 `docs/technical/design/schema/ddl/05-n_trade.sql`，评价等对 `07-n_member.sql`。`information_schema` 另列白名单。
 3. 商品包里不允许带库名的表引用（`\w+\.(prd|rvw|mbr)_`），不允许出现 `ai_shop`。
 4. 商品包里不允许注入未点名的 `DataSource`、`JdbcTemplate`、`JdbcClient`，也不允许点名主库（`dataSource`、`jdbcTemplate`）。
@@ -68,7 +68,7 @@
 
 ### 2.3 模块设计
 
-**句柄**：新增 `product`（目标 `n_trade`）与 `member`（目标 `n_member`）两个模块句柄，以及对应的标记接口 `ProductTableMapper`、`MemberTableMapper`。`ModuleMapperScanConfig` 按标记把商品包的 Mapper 收到这两个句柄上。
+**句柄**：新增 `product` 模块句柄（目标 `n_trade`）与标记接口 `ProductTableMapper`；评价、专题、收藏的表在会员营销库，复用已有的 `memberMarketing` 句柄（储值、权益已在用，目标 `n_member`），新增标记接口 `MemberMarketingTableMapper`。`ModuleMapperScanConfig` 按标记把商品包的 Mapper 收到这两个句柄上，全局扫描排除这两个标记。
 
 为什么不直接用已有的交易句柄：交易句柄上还有订单等 118 个 Mapper，它们的表还没对齐新库。商品要能先改造、先在测试里跑通，就得有自己的绑定。
 
@@ -123,7 +123,7 @@
 
 **待确认**
 
-1. 切换批次：商品改造先行、上线与交易同批（推荐），还是商品单独先上线（需要给下单锁库存另做跨库补偿）。
+1. ~~切换批次~~ 已定（用户 2026-11-27「按推荐来」）：商品改造先行、上线与交易同批。
 2. 专题（`prd_topic`、`prd_topic_goods`）放哪个库、表结构怎么定。
 3. 库存同步、对齐、原始库存恢复这几项功能直接下线、交给库存服务，可否。
 
@@ -139,9 +139,21 @@
 
 ## §6 对账二 · 设计 → 实现
 
-（实现完再填）
+### 第 1 步（句柄与守卫）已做
+
+- `ModuleDataSources`：新增 `PRODUCT` 句柄与三个 bean 名、旧库名单 `LEGACY_DATABASES`。
+- `ProductTableMapper`、`MemberMarketingTableMapper`：新标记接口；`ModuleMapperScanConfig` 按标记收取，`MybatisPlusConfig` 全局扫描排除。
+- 商品包 25 个 Mapper 由 `TradeTableMapper` 改为 `ProductTableMapper`，84 处 `TRADE_*` 句柄引用改为 `PRODUCT_*`（未绑新库时两者都指向主库那组 bean，行为不变）。
+- `ModuleDataSourceRegistrar.rejectLegacy`：具名数据源指向旧库即拒绝启动（L1），`LegacyDatabaseGuardTest` 覆盖。
+- `ProductDatabaseIsolationTest`（L3 五条）与基线 `product-db-isolation-baseline.txt`：现状 89 条违规（R1 11、R2 28、R4 2、R5 48），即第 3、4 步的工作清单，只许减少。
+- `ModuleTxManagerConventionTest`：商品包改为点名 `PRODUCT_TX_MANAGER`。
+
+### 偏差说明
+
+- 原方案新建 `member` 句柄；实现时发现已有 `memberMarketing` 句柄目标就是会员营销库，改为复用，只加标记接口。
 
 ## §7 确认与完成
 
-- [ ] 待确认三项有结论
+- [x] 切换批次已定
+- [ ] 专题去处、库存同步类功能下线两项待确认
 - [ ] 方案确认

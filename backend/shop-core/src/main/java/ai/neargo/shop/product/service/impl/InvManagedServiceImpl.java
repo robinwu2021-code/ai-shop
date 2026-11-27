@@ -177,7 +177,7 @@ public class InvManagedServiceImpl implements InvManagedService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void saveCategory(String entityNo, String categoryNo, boolean managed, String operator) {
         PrdEntityCategoryInv row = DataScopeContext.executeWithoutScope(() ->
                 categoryInvMapper.selectOne(Wrappers.<PrdEntityCategoryInv>lambdaQuery()
@@ -238,7 +238,7 @@ public class InvManagedServiceImpl implements InvManagedService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void saveGoodsMode(PrdGoods g, String mode, String operator) {
         if (!MODES.contains(mode)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

@@ -97,7 +97,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
         return RestoreResult.COMPLETED;
     }
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void receiveReturn(String receiptNo, String afterSaleNo, String originalOrderNo,
                               String fulfillmentRef, List<ReturnLine> lines) {
         var originals = DataScopeContext.executeWithoutScope(() -> lockMapper.lockOriginal(originalOrderNo));
@@ -114,7 +114,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     public String returnReceiptStatus(String receiptNo) { return "NOT_TRACKED"; }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.NESTED)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER, propagation = Propagation.NESTED)
     public List<String> lock(String lockNo, List<SkuQty> items) {
         boolean tracked =
                 items != null
@@ -237,7 +237,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void release(String lockNo) {
         forEachActiveLock(
                 lockNo,
@@ -250,7 +250,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void confirm(String lockNo) {
         forEachActiveLock(lockNo, lock -> {
             /*
@@ -274,7 +274,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void confirm(String lockNo, int lifecycleVersion) {
         if (lifecycleVersion != 2) { confirm(lockNo); return; }
         forEachActiveLock(
@@ -287,7 +287,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void issue(String fulfillmentRef) {
         List<PrdStockLock> locks = DataScopeContext.executeWithoutScope(() ->
                 lockMapper.lockFulfillmentCurrent(fulfillmentRef));
@@ -296,7 +296,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void releaseAllocated(String fulfillmentRef) {
         List<PrdStockLock> locks = DataScopeContext.executeWithoutScope(() ->
                 lockMapper.lockFulfillmentCurrent(fulfillmentRef));
@@ -363,14 +363,14 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     }
 
     /** Native original read makes routing independent of today's SKU or inventory configuration. */
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public boolean hasTrackedOriginal(String originalOrderNo) {
         return DataScopeContext.executeWithoutScope(() -> lockMapper.lockOriginal(originalOrderNo).stream()
                 .anyMatch(row -> row.getSourceManifestHash() != null));
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public RestoreResult restore(String restoreNo, String originalOrderNo, List<SkuQty> items) {
         var router = originalReturns.getIfAvailable();
         if (router == null) throw new IllegalStateException("FROZEN_RETURN_AUTHORITY_UNAVAILABLE");
@@ -378,7 +378,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void restore(String restoreNo, List<SkuQty> items) {
         for (SkuQty it : items) {
             if (it.qty() <= 0) {
@@ -501,7 +501,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
      * 后者在并发下会把中间那笔销售覆盖掉，而它与 {@code lockStock} 本来就该是同一套手法。
      */
     @Override
-    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+    @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void setOnHand(String skuNo, String storeNo, int onHand, String reason) {
         if (onHand < 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

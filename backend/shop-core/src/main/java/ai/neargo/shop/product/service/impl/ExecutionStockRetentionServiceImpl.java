@@ -92,7 +92,7 @@ public final class ExecutionStockRetentionServiceImpl implements ExecutionStockR
     public ExecutionStockRetentionServiceImpl(StockLockMapper stocks, ExecutionRetentionMapper links,
             StockRestoreMapper claims, SkuMapper skus, ExecutionStockRetentionGuard guard,
             ExecutionStockRetentionSchemaVerifier schema, ObjectProvider<ServiceExecutionEvidencePort> evidence,
-            ObjectMapper json, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
+            ObjectMapper json, @Qualifier(ModuleDataSources.PRODUCT_TX_MANAGER) PlatformTransactionManager manager) {
         this.stocks = stocks;
         this.links = links;
         this.claims = claims;

@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation = Propagation.NOT_SUPPORTED)
+@Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER, propagation = Propagation.NOT_SUPPORTED)
 public class CardProductBindingServiceImpl implements CardProductBindingService {
     private final CardProductBindingWriter writer;
     private final GoodsMapper goods;
