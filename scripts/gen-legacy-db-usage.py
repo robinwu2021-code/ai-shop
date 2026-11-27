@@ -49,6 +49,22 @@ MARKERS = {
     "IndustryTableMapper": "industry", "CommonTableMapper": "common",
     "PayMerchantTableMapper": "payMerchant",
 }
+# 只统计 ai-shop 自己的业务代码（用户 2026-11-27：暂时只处理 ai-shop 项目）。
+# 支付域归支付服务、进销存是独立服务、密钥走平台统一密钥接口、任务调度是公共能力，不在这份清单里。
+OUT_OF_SCOPE = {"backend/pay/": "支付域（归支付服务）", "backend/inventory/": "进销存（独立服务）",
+                "backend/secret/": "密钥（平台统一密钥接口）", "backend/job/": "任务调度（公共能力）"}
+BIZ_NAMES = {
+    "shop.trade": "交易：订单、售后、结算", "shop.product": "商品、规格、类目、上架与定价",
+    "shop.merchant": "商户、门店、员工与权限", "shop.merchant.booking": "门店预约：资源、排班、占用",
+    "shop.user": "C 端账号与收货地址", "shop.member": "会员", "shop.marketing": "营销：拼团、裂变、卡券、归因",
+    "shop.promotion": "活动与促销", "shop.fulfillment": "履约：自提、配送", "shop.community": "社区与自提点",
+    "shop.platform": "平台运营：设置、地区、行业、审计、员工", "shop.message": "消息通知与推送",
+    "shop.content": "内容：素材、帖子、问答、榜单", "shop.risk": "风控", "shop.link": "短链",
+    "shop.media": "媒体文件", "shop.archive": "归档", "shop.idem": "请求防重", "shop.event": "事件发件箱",
+    "shop.job": "任务运行记录", "shop.printing": "打印", "shop.invoice": "发票", "shop.logistics": "物流",
+    "shop.invbridge": "库存对接", "shop.paybridge": "支付对接", "shop.food": "餐饮插件", "shop.beauty": "美业插件",
+    "shop.commerce": "商城集成（平台商城）", "shop.retail": "零售渠道订单", "shop.report": "报表",
+}
 SQL_WORDS = {"select", "where", "set", "values", "dual", "information_schema", "the", "a", "and", "or", "on",
              "lateral", "json_table", "table", "if", "case", "when"}
 
@@ -150,10 +166,11 @@ def main():
             table_home[t].append(db)
     bound = bound_modules()
 
-    files = sources()
-    texts = {f: (ROOT / f).read_text(encoding="utf-8", errors="replace") for f in files}
+    all_files = sources()
+    texts_all = {f: (ROOT / f).read_text(encoding="utf-8", errors="replace") for f in all_files}
+    texts = {f: t for f, t in texts_all.items() if not any(f.startswith(p) for p in OUT_OF_SCOPE)}
     entity_table = {}
-    for f, t in texts.items():
+    for f, t in texts_all.items():
         for m in re.finditer(r'@TableName\(\s*(?:value\s*=\s*)?"([a-zA-Z0-9_]+)"[^)]*\)\s*(?:@\w+(?:\([^)]*\))?\s*)*'
                              r'public\s+(?:final\s+)?(?:class|record)\s+(\w+)', t):
             entity_table.setdefault(m.group(2), m.group(1).lower())
@@ -168,8 +185,8 @@ def main():
         for m in iface.finditer(t):
             ext = m.group(2)
             names = set(re.findall(r"\b([A-Z]\w*)\s*<", ext)) | set(re.findall(r"\b([A-Z]\w*)\b", ext))
-            if not names & (set(MARKERS) | {"BaseMapper"}):
-                continue
+            if not names & (set(MARKERS) | {"BaseMapper"}) or m.group(1) in MARKERS:
+                continue  # 句柄标记接口本身不是业务 Mapper
             generic = re.search(r"(?:BaseMapper|\w+TableMapper)\s*<\s*([\w.]+)", ext)
             tables = set()
             if generic:
@@ -222,7 +239,7 @@ def main():
          "--", ":!docs/", ":!*.md", ":!**/src/test/**", ":!scripts/gen-legacy-db-usage.py"],
         cwd=ROOT, capture_output=True, text=True).stdout.split()
 
-    out = render(mappers, jdbc, legacy_refs, bound, suggest, missing)
+    out = render(mappers, jdbc, legacy_refs, bound, suggest, missing, snap, consumers)
     out += render_consumers(mappers, consumers, suggest)
     if check:
         current = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
@@ -237,13 +254,18 @@ def main():
           f"直连 JDBC {sum(1 for j in jdbc if j['primary'])} 处；配置与脚本里的旧库地址 {len(legacy_refs)} 个文件")
 
 
-def render(mappers, jdbc, legacy_refs, bound, suggest, missing):
+def render(mappers, jdbc, legacy_refs, bound, suggest, missing, snap, consumers):
     L = []
     add = L.append
+    legacy_refs = [f for f in legacy_refs if not any(f.startswith(p) for p in OUT_OF_SCOPE)]
     add("# 旧库调用清单")
     add("")
     add("> 由 `scripts/gen-legacy-db-usage.py` 生成，不要手改。迁完一个模块（绑新库、改表）后重跑。")
     add("")
+    add("范围：只统计 ai-shop 自己的业务代码（用户 2026-11-27）。不含 " +
+        "、".join(f"`{p.rstrip('/')}`（{why}）" for p, why in OUT_OF_SCOPE.items()) + "。")
+    add("")
+    render_modules(L, mappers, consumers, suggest, snap)
     add("目标：业务不再访问旧库（用户 2026-11-27）。旧库 = 主库 `spring.datasource`（线上 `ai_shop_ume`）及复用它地址的"
         "支付池、密钥池，加上进销存、任务、报表各自的独立旧库。新库 = .61 上的 `n_*`，表名快照见 "
         "`docs/technical/design/legacy-db/new-db-tables.json`。")
@@ -428,8 +450,64 @@ def render_consumers(mappers, consumers, suggest):
     return "\n".join(L)
 
 
+def render_modules(L, mappers, consumers, suggest, snap):
+    """0 节：依赖旧库的业务模块清单（迁移按这张表排期）。"""
+    add = L.append
+    users = collections.defaultdict(set)
+    cross = collections.defaultdict(set)
+    for f, idx in consumers.items():
+        targets = {suggest(mappers[i]).split("（")[0] for i in idx} - {"未定"}
+        for i in idx:
+            if mappers[i]["legacy"]:
+                biz = business_label(mappers[i]["pkg"])
+                users[biz].add(f)
+                if len(targets) > 1:
+                    cross[biz].add(f)
+    groups = collections.defaultdict(list)
+    for m in mappers:
+        groups[business_label(m["pkg"])].append(m)
+    add("## 0 依赖旧库的业务模块")
+    add("")
+    add("「目标库表」看这个模块仍在旧库的 Mapper 用到的表：在建议的新库里已有几张、缺几张；"
+        "「未定」是新库里找不到同名表（按瘦身设计改了名或合并了），要先对表设计。"
+        "「跨库服务」是用到的 Mapper 迁移后会落在不同新库的类。")
+    add("")
+    add("| # | 业务模块 | 包 | Maven 模块 | 旧库 Mapper | 依赖的服务类 | 跨库服务 | 建议目标库 | 目标库表 已有 / 缺 / 未定 |")
+    add("|---|---|---|---|---|---|---|---|---|")
+    rows = []
+    for biz, ms in groups.items():
+        legacy = [x for x in ms if x["legacy"]]
+        if not legacy:
+            continue
+        have = miss = undecided = 0
+        seen = set()
+        for x in legacy:
+            db = suggest(x).split("（")[0]
+            for tb in x["tables"]:
+                if (db, tb) in seen:
+                    continue
+                seen.add((db, tb))
+                if db == "未定":
+                    undecided += 1
+                elif tb in snap.get(db, []):
+                    have += 1
+                else:
+                    miss += 1
+        targets = collections.Counter(suggest(x).split("（")[0] for x in legacy)
+        mods = sorted({x["module"] for x in ms})
+        rows.append((-len(legacy), biz, BIZ_NAMES.get(biz, ""), mods, len(legacy), len(users[biz]), len(cross[biz]),
+                     "、".join(k for k, _ in targets.most_common() if k != "未定") or "未定", have, miss, undecided))
+    for n, (_, biz, name, mods, nl, nu, nc, tgt, have, miss, und) in enumerate(sorted(rows), 1):
+        add(f"| {n} | {name or biz} | `{biz}` | {'<br>'.join(f'`{m}`' for m in mods)} | {nl} | {nu} | {nc} | {tgt} | "
+            f"{have} / {miss} / {und} |")
+    add(f"| | **合计** | | | **{sum(r[4] for r in rows)}** | | | | |")
+    add("")
+
+
 def business_label(pkg: str) -> str:
     parts = pkg.split(".")
+    if pkg.startswith("ai.neargo.shop.merchant.booking"):
+        return "shop.merchant.booking"
     if parts[:3] == ["ai", "neargo", "shop"] and len(parts) > 3:
         return "shop." + parts[3]
     if parts[:2] == ["ai", "neargo"] and len(parts) > 2:
