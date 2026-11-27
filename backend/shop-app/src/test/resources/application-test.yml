@@ -37,6 +37,10 @@ shop:
       # 泵本身的行为由 OutboxPumpTest 覆盖（8 条 + 两处消融），
       # 「publish 之后会不会真的交给泵」由 OutboxEventBusPumpTest 覆盖。
       enabled: false
+  audit:
+    # 统一审计在业务提交后、后台线程写（AuditLogPortImpl）：测试里让提交线程等写完，紧接着查审计表的断言才确定
+    after-commit:
+      wait: true
   notify:
     # 提交后再发的通知（AfterCommitNotifications）：测试里让提交线程等投递做完，断言才确定
     after-commit:

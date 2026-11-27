@@ -266,7 +266,7 @@ class CommerceStoreCreationFlowTest {
                         if(type==MerchantAdminPort.class) values[k]=context.getBean(MerchantAdminPort.class);
                         else if(type==ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper.class) values[k]=sessions.getMapper(ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper.class);
                         else if(type==ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class) values[k]=sessions.getMapper(ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class);
-                        else if(type==ai.neargo.shop.spi.platform.AuditLogPort.class) values[k]=new ai.neargo.shop.platform.port.AuditLogPortImpl(sessions.getMapper(ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class));
+                        else if(type==ai.neargo.shop.spi.platform.AuditLogPort.class) values[k]=new ai.neargo.shop.platform.port.AuditLogPortImpl(sessions.getMapper(ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class), true);
                         else if(type==tools.jackson.databind.ObjectMapper.class) values[k]=new tools.jackson.databind.ObjectMapper();
                         else if(type==String.class) values[k]="response";
                         else if(type==ai.neargo.shop.platform.MasterDataService.class) {
