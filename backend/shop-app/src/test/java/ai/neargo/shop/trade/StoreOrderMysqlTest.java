@@ -729,7 +729,8 @@ class StoreOrderMysqlTest {
         static final String PASS = System.getenv("COMMERCE_MYSQL_PASSWORD");
         static final List<String> TABLES = List.of("ord_order", "ord_sub_order", "ord_item",
                 "ord_industry_order_source", "ord_price_quote_line", "prd_sku_pricing_policy", "mch_role",
-                "ord_offline_record", "ord_offline_record_event", "sys_outbox", "pmt_apply", "ord_after_sale", "ord_after_sale_item");
+                "ord_offline_record", "ord_offline_record_event", "sys_outbox", "pmt_apply", "ord_after_sale",
+                "ord_after_sale_item", "ord_legacy_coupon_checkout");
         static DataSource ds;
         static boolean created;
 
@@ -768,8 +769,7 @@ class StoreOrderMysqlTest {
                 if (hasInvoiceLines && migration.startsWith("V692") || hasCollections && migration.startsWith("V695")) continue;
                 String sql = new ClassPathResource("db/migration/" + migration).getContentAsString(StandardCharsets.UTF_8);
                 for (var statement : sql.replaceAll("(?m)^--.*$", "").split(";"))
-                    if (!statement.isBlank() && !(migration.startsWith("V718")
-                            && statement.strip().startsWith("ALTER TABLE ent_legacy_coupon_operation"))) jdbc.execute(statement);
+                    if (!statement.isBlank()) jdbc.execute(statement);
             }
             jdbc.update("INSERT INTO prd_sku_pricing_policy(policy_no,tenant_no,entity_no,store_no,goods_no,sku_no,"
                     + "promotion_eligible,tax_class,created_at,created_by,updated_at,updated_by,version,deleted) VALUES"
