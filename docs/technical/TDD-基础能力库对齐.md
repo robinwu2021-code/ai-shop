@@ -429,6 +429,24 @@
 - 不在本项：`sys_business_type`（商城库、商城会话）、`cim_provider`（插件工程）；运营端维护两张旧表的写入口不动（写仍归属主，读走端口）。
 
 
+#### 1b 续：字典组的守卫基线（会话甲，2026-11-27）
+
+档位：0（不动库表、端点、权限码、i18n、配置；spi 上 `DictItem` 加一个属性键常量）。
+
+- **守卫误报**（cff9f3a8e）：旧表名 `pay_channel` 同时是订单、收款记录的「付款渠道」列，`@TableField("pay_channel")`、取列值都被当成访问；
+  任务说明、错误提示里写到表名也被算。守卫改为只认 SQL 表位置（FROM/JOIN/INTO/UPDATE/TABLE，相邻字面量拼起来看）和整段就是表名的字面量，
+  `pay_channel` 只认表位置。去掉 15 条误报。
+- **属主**（900f51439）：1b 定了「写归属主、读走端口」。每张旧表的属主就是它的维护入口，登记为字典组实现：进件行业 `IndustryServiceImpl`、
+  主体类型 `MasterDataServiceImpl`、区划 `RegionService`/`RegionServiceImpl`、授权码与经营类型 `shop-merchant` 的 `merchant/dictionary` 包、
+  支付渠道/产品 `pay-channel` 的 `master` 包、`PayChannelMasterPortImpl`、`DbChannelProductCatalog`、`ChannelPipelineConfiguration`、`ChannelMappers`，市场 `MarketServiceImpl`。
+  区划 66 万行只能按层级懒加载，不进 `DictionaryPort.items()`，由 `RegionService` 专管。基础能力库落地后，来源换成一个读 `sys_dict_item` 的，属主收成一个维护入口。
+- **读方改道**：主数据快照的进件行业改读 `DictionaryPort`（`OnboardIndustryDictionarySource` 带 `DictItem.ATTR_MICRO_ALLOWED`、按排序给出）；
+  `BizRegionController`、`MpCatalogController`、`MasterDataPortImpl` 改用 `RegionService.LEVEL_*`，`EstateCacheServiceImpl` 回填坐标改调 `RegionService.recordCoordinate`；
+  结算币种、积分资金适配改用 `PayChannelMasterService.brief` 返回的 `ChannelBrief`（不暴露实体）；`DevSeeder` 授权码种子改经 `AuthCodeAdminService`。
+- **不动的 19 处**：渠道接入插件 13（`cim_provider`/`cim_product_profile`，插件工程自管，1b 已判为另一字典类型）；商城 `sys_business_type` 2（商城库，商城新代码已读 `sys_dict_item`）；
+  支付产品的三个读方 `RouteSelectionPolicy`、`PayMerchantBackfillImpl`、`OnboardingServiceImpl`（商户产品按 `pay_channel_product.id` 关联，并进 `sys_dict_item` 前要先定产品编码与引用方式，属支付设计）；
+  `OpsPayChannelAppServiceImpl`（运营端渠道维护拿实体组装视图，改视图要一并改维护接口）。
+
 #### 1e 审批（会话乙，2026-11-27）
 
 档位：1（新表 `sys_approval`、`ord_manual_price_adjustment` 删四列、新内部端点；V705 带 DDL，166 需 root 先执行）。Q12–Q14 已按建议定（2026-11-27）。
