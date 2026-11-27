@@ -9,13 +9,10 @@ import {api} from "@/lib/api";
 import type {PlanReviewQuota} from "@/lib/entity-plan-purchase-types";
 import {useCopy} from "@/lib/use-copy";
 
-const copy = {
-  zh:{title:"退款额度复核",refund:"退款号",store:"门店号",before:"购买前额度",current:"当前额度",retained:"结单时保留的额度",limits:"门店 / 员工",base:"基础额度",override:"单独约定",none:"无",unknown:"未留存",stats:"跨店统计",yes:"开",no:"关",expiry:"到期",reason:"复核说明",close:"保留当前额度并结单",closed:"已确认保留额度",refresh:"重新读取",error:"请重新读取复核记录，核对额度后再提交。"},
-  en:{title:"Refund quota review",refund:"Refund",store:"Store",before:"Before purchase",current:"Current quota",retained:"Quota retained at closure",limits:"Stores / staff",base:"Base quota",override:"Overrides",none:"None",unknown:"Not recorded",stats:"Cross-store reporting",yes:"On",no:"Off",expiry:"Expiry",reason:"Review notes",close:"Keep current quota and close",closed:"Quota retention confirmed",refresh:"Reload",error:"Reload the review and check the quota before submitting."},
-};
+import {PLAN_REFUND_REVIEW_COPY} from "./plan-purchases-copy";
 
 function Quota({label,value}:{label:string;value:PlanReviewQuota}) {
-  const c=useCopy(copy);
+  const c=useCopy(PLAN_REFUND_REVIEW_COPY);
   return <div><strong>{label} · {value.planCode}</strong>
     <p>{c.base} ({c.limits}) · {value.stores??c.unknown} / {value.staff??c.unknown}</p>
     <p>{c.override} ({c.limits}) · {value.overridesKnown?`${value.storeOverride??c.none} / ${value.staffOverride??c.none}`:c.unknown}</p>
@@ -24,7 +21,7 @@ function Quota({label,value}:{label:string;value:PlanReviewQuota}) {
 }
 
 export function PlanRefundReviewPanel({entityNo,orderNo,canClose,onChanged}:{entityNo:string;orderNo:string;canClose:boolean;onChanged:()=>unknown}) {
-  const c=useCopy(copy);
+  const c=useCopy(PLAN_REFUND_REVIEW_COPY);
   const q=useQuery({queryKey:["entity-plan-refund-review",entityNo,orderNo],queryFn:()=>api.entityPlanRefundReview(entityNo,orderNo),refetchOnWindowFocus:false});
   const [draft,setDraft]=useState({reason:"",revision:""}),[busy,setBusy]=useState(false),[failed,setFailed]=useState(false);
   const review=q.data;

@@ -4,3 +4,8 @@ export const PLAN_PURCHASES_COPY = {
 };
 
 export const ASSISTED_PURCHASE_COPY={zh:{title:"运营代商家购买",owner:"原付款责任账号",store:"门店",offer:"在售报价",pick:"请选择",buy:"创建待付款订单",lookup:"查询原购买记录",retry:"重试同一购买请求",hint:"代购只创建订单，不代表已收款或已开通。原账号和门店由服务器校验。",unknown:"结果待核实，已冻结原报价、门店、账号和请求号。",error:"操作失败，请查询原记录。"},en:{title:"Purchase for merchant",owner:"Responsible buyer account",store:"Store",offer:"Enabled offer",pick:"Select",buy:"Create unpaid order",lookup:"Read original purchase",retry:"Retry identical purchase",hint:"Creates an unpaid order. Bank verification is still required before activation. The server validates account and store.",unknown:"Result unknown. Original offer, store, owner and request key are frozen.",error:"Action failed. Read original purchase."}};
+
+export const PLAN_REFUND_REVIEW_COPY = {
+  zh:{title:"退款额度复核",refund:"退款号",store:"门店号",before:"购买前额度",current:"当前额度",retained:"结单时保留的额度",limits:"门店 / 员工",base:"基础额度",override:"单独约定",none:"无",unknown:"未留存",stats:"跨店统计",yes:"开",no:"关",expiry:"到期",reason:"复核说明",close:"保留当前额度并结单",closed:"已确认保留额度",refresh:"重新读取",error:"请重新读取复核记录，核对额度后再提交。"},
+  en:{title:"Refund quota review",refund:"Refund",store:"Store",before:"Before purchase",current:"Current quota",retained:"Quota retained at closure",limits:"Stores / staff",base:"Base quota",override:"Overrides",none:"None",unknown:"Not recorded",stats:"Cross-store reporting",yes:"On",no:"Off",expiry:"Expiry",reason:"Review notes",close:"Keep current quota and close",closed:"Quota retention confirmed",refresh:"Reload",error:"Reload the review and check the quota before submitting."},
+};
