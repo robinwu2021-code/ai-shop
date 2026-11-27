@@ -40,12 +40,7 @@ class EntityPlanOfflineLedgerMysqlTest {
     org.springframework.security.core.context.SecurityContextHolder.clearContext();
   }
 
-  @Test
-  void merchantSubmissionOperatorReceiptEntitlementsAndMoneyHandoffCloseOnOneLedger()
-      throws Exception {
-    try (var f = new PlatformOfflineCollectionMysqlTest.Fixture()) {
-      var db = f.base.jdbc;
-      f.profile(1, "TWD");
+  static void seedMerchant(org.springframework.jdbc.core.JdbcTemplate db) throws Exception {
       db.execute(
           "CREATE TABLE mch_account(tenant_no varchar(32),mch_account_no varchar(64),entity_no"
               + " varchar(64),user_no varchar(64),is_owner boolean,status varchar(16),deleted"
@@ -87,6 +82,15 @@ class EntityPlanOfflineLedgerMysqlTest {
               + " sys_merchant_plan_def(plan_code,name,store_quota,staff_quota,cross_store_stats,enabled,created_at,updated_at)"
               + " VALUES('PRO','Test quota',10,10,1,1,NOW(),NOW()) ON DUPLICATE KEY UPDATE"
               + " store_quota=10,staff_quota=10");
+  }
+
+  @Test
+  void merchantSubmissionOperatorReceiptEntitlementsAndMoneyHandoffCloseOnOneLedger()
+      throws Exception {
+    try (var f = new PlatformOfflineCollectionMysqlTest.Fixture()) {
+      var db = f.base.jdbc;
+      f.profile(1, "TWD");
+      seedMerchant(db);
       var tx = new DataSourceTransactionManager(f.base.ds);
       Set<String> files = new HashSet<>();
       PrivateEvidencePort media =

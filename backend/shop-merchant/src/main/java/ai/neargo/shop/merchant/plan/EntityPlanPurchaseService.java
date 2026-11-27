@@ -19,6 +19,10 @@ public interface EntityPlanPurchaseService {
     }
   }
 
+  record CatalogBinding(String skuNo, String skuVersionNo, String planVersionNo, List<String> entitlementCodes) {
+    public CatalogBinding { entitlementCodes = List.copyOf(entitlementCodes); }
+  }
+
   record Offer(
       String offerNo,
       long version,
@@ -29,7 +33,12 @@ public interface EntityPlanPurchaseService {
       int storeQuota,
       int staffQuota,
       boolean crossStoreStats,
-      boolean enabled) {}
+      boolean enabled, CatalogBinding catalog) {
+    public Offer(String offerNo, long version, String planCode, String name, int days, Money price,
+        int storeQuota, int staffQuota, boolean crossStoreStats, boolean enabled) {
+      this(offerNo,version,planCode,name,days,price,storeQuota,staffQuota,crossStoreStats,enabled,null);
+    }
+  }
 
   record OfferEdit(
       @NotBlank @Size(max = 64) String offerNo,
@@ -38,7 +47,12 @@ public interface EntityPlanPurchaseService {
       @NotBlank @Size(max = 100) String name,
       @Min(1) @Max(3660) int days,
       @NotNull Money price,
-      boolean enabled) {}
+      boolean enabled, @Size(max=64) String skuVersionNo) {
+    public OfferEdit(String offerNo, long expectedVersion, String planCode, String name, int days,
+        Money price, boolean enabled) {
+      this(offerNo,expectedVersion,planCode,name,days,price,enabled,null);
+    }
+  }
 
   record Buy(
       @NotBlank @Size(max = 64) String requestNo,

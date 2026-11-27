@@ -34,6 +34,10 @@ public class EntityPlanPurchaseConfiguration {
   @Bean
   EntityPlanPurchaseService entityPlanPurchaseService(
       JdbcTemplate jdbc,
+      org.springframework.beans.factory.ObjectProvider<ai.neargo.commerce.api.mall.MallFacade> orders,
+      org.springframework.beans.factory.ObjectProvider<ai.neargo.commerce.api.offline.OfflinePurchaseFacade> offline,
+      org.springframework.beans.factory.ObjectProvider<ai.neargo.commerce.api.fulfillment.PaymentFacade> fulfillment,
+      org.springframework.beans.factory.ObjectProvider<ShopMallAuthority> authority,
       org.springframework.beans.factory.BeanFactory beans,
       @Value("${shop.modules.mall.datasource:}") String mallName,
       @Qualifier("transactionManager") PlatformTransactionManager tx,
@@ -46,6 +50,9 @@ public class EntityPlanPurchaseConfiguration {
       MchEntityMapper entities,
       StoreOperationalReviewService reviews,
       @Value("${commerce.mall.offline.profile-no:}") String profile) {
+    var mall = mallName.isBlank() ? null : new JdbcTemplate(beans.getBean(mallName + "DataSource", javax.sql.DataSource.class));
+    var checkout = mall == null ? null : new ShopEntityPlanCheckout(mall,json,authority.getObject(),
+        orders.getObject(),offline.getObject(),fulfillment.getObject());
     return new EntityPlanPurchaseServiceImpl(
         jdbc,
         tx,
@@ -57,7 +64,6 @@ public class EntityPlanPurchaseConfiguration {
         ownership,
         entity -> entities.financialVisibleEntity(entity)!=null,
         Clock.systemUTC(),
-        profile, reviews, mallName.isBlank() ? null
-            : new JdbcTemplate(beans.getBean(mallName + "DataSource", javax.sql.DataSource.class)));
+        profile, reviews, mall, checkout);
   }
 }

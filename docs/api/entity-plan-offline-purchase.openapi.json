@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Entity quota offline purchase for separate Flutter App",
-    "version": "2026-11-11",
-    "description": "Implemented and locally verified, not deployed; not a store mall plan."
+    "version": "2026-11-27",
+    "description": "Entity quota offers bind a published mall SKU. Store and assisted purchases share the store order, payment attempt and plan entitlement delivery."
   },
   "paths": {
     "/biz/plan/purchases/offers": {
@@ -635,6 +635,117 @@
           }
         },
         "x-required-capability": "biz:store:admin"
+      }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}/offers": {
+      "get": {
+        "operationId": "get_entity_plan_offers",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Read entity plan offers.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business response envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Offer"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:read"
+      },
+      "put": {
+        "operationId": "put_entity_plan_offers",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Save the offer at its expected version. Enabling a v2 offer requires a published SKU version.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business response envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Offer"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "system:param:update",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfferEdit"
+              }
+            }
+          }
+        }
       }
     },
     "/ops/merchant-plan-purchases/{entityNo}/assistance-context": {
@@ -1404,9 +1515,65 @@
           "offerVersion"
         ]
       },
+      "OfferEdit": {
+        "type": "object",
+        "properties": {
+          "offerNo": {
+            "type": "string"
+          },
+          "planCode": {
+            "enum": [
+              "PRO",
+              "CHAIN"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skuVersionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "offerNo",
+          "planCode",
+          "name",
+          "days",
+          "price",
+          "enabled",
+          "expectedVersion"
+        ]
+      },
       "Offer": {
         "type": "object",
         "properties": {
+          "catalog": {
+            "type": ["object", "null"],
+            "properties": {
+              "skuNo": {"type": "string"},
+              "skuVersionNo": {"type": "string"},
+              "planVersionNo": {"type": "string"},
+              "entitlementCodes": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": ["skuNo", "skuVersionNo", "planVersionNo", "entitlementCodes"]
+          },
           "offerNo": {
             "type": "string"
           },

@@ -12,6 +12,8 @@ public interface FulfillmentRepository {
     /** Immutable identity lookup only; never locks order before its subscription account. */
     record Location(StoreRef store, String currency) {}
 
+    default boolean entityPlanGrantReady(String tenant, String orderNo) { return false; }
+
     Optional<Location> locate(String tenant, String orderNo);
 
     record Operation(

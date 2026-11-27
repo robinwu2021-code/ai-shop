@@ -47,6 +47,14 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
         return json.readValue(s, t);
     }
 
+    @Override public boolean entityPlanGrantReady(String tenant, String orderNo) {
+        guard(tenant);
+        return Boolean.TRUE.equals(jdbc.queryForObject("""
+                SELECT COALESCE(schedule_preview_snapshot->>'$.entityPlanGranted'='true',0) FROM mall_order
+                WHERE tenant_no=? AND order_no=? AND stage='ORDERED' AND pricing_policy_version='entity-plan-cash-v1'
+                """, Boolean.class, tenant, orderNo));
+    }
+
     public Optional<Location> locate(String t, String no) {
         guard(t);
         return jdbc
