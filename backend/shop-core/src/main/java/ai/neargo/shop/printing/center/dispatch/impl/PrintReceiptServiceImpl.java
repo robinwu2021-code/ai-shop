@@ -359,7 +359,7 @@ public class PrintReceiptServiceImpl implements PrintReceiptService {
         b.setUpdatedAt(now());
         batches.updateById(b);
         if (nowResolved && !wasResolved)
-            events.notifyAfterCommit(
+            events.publish(
                     new PrintBatchResolved(
                             scope,
                             no,

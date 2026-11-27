@@ -111,6 +111,10 @@ public class NotificationConsumer implements OutboxConsumer {
     @Override
     public boolean externalWorkflow() { return true; }
 
+    /** 只发通知：提交后收，不进发件箱（ADR-067）。外部通道的去重见 ADR-067 决策 8，另做。 */
+    @Override
+    public boolean afterCommitOnly() { return true; }
+
     @Override
     public boolean supports(String eventType) {
         return NotifyScene.ALL.contains(eventType);

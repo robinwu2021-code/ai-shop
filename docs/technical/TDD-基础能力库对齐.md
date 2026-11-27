@@ -68,6 +68,8 @@
 原来“发布失败则业务回滚”的测试，失败点改挂在同一事务里紧挨着的审计写入上。
 
 **D 类已改（2026-11-26）。** 10 处只发通知的发布改走 `OutboxEventBus#notifyAfterCommit`：不写发件箱，
+
+**发布入口已统一（2026-11-27，ADR-067 第 1 步）。** `notifyAfterCommit` 删掉，10 处改回 `publish`。消费者标 `afterCommitOnly()`（现为 `NotificationConsumer`、`PrintNotifyBridge`）即为通知类：发件箱投递与统一模式登记都跳过它，`publish` 按订阅者自动登记提交后通知；事件类型只有通知类消费者时不落发件箱，一个消费者都没有的照旧落库。外部事件号发布（`publish(eventNo, event)`）同样分流，并把事件号带给通知。
 由 `AfterCommitNotifications` 在提交后、在后台线程交给支持它的消费者（`NotificationConsumer`、`PrintNotifyBridge`），
 失败只记日志不重投，回滚则不发。必须换线程：提交回调里本线程的数据库资源还绑着已提交的事务，直接写库会静默丢失。
 测试配置 `shop.notify.after-commit.wait=true` 让提交线程等投递做完。混合类里的通知部分还没拆。

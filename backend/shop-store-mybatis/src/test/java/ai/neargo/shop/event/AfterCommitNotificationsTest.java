@@ -30,6 +30,7 @@ class AfterCommitNotificationsTest {
     private final List<String> threads = new CopyOnWriteArrayList<>();
 
     private final OutboxConsumer notify = new OutboxConsumer() {
+        @Override public boolean afterCommitOnly() { return true; }
         @Override public boolean supports(String type) { return "ORDER_ARRIVED".equals(type); }
         @Override public void consume(SysOutbox e) {
             seen.add(e.getEventType() + ":" + e.getAggregateId() + ":" + e.getPayload()
@@ -42,8 +43,15 @@ class AfterCommitNotificationsTest {
         @Override public void consume(SysOutbox e) { seen.add("other"); }
     };
     private final OutboxConsumer broken = new OutboxConsumer() {
+        @Override public boolean afterCommitOnly() { return true; }
         @Override public boolean supports(String type) { return true; }
         @Override public void consume(SysOutbox e) { throw new IllegalStateException("push down"); }
+    };
+
+    /** 必达消费者从发件箱收，提交后通知不碰它。 */
+    private final OutboxConsumer durable = new OutboxConsumer() {
+        @Override public boolean supports(String type) { return true; }
+        @Override public void consume(SysOutbox e) { seen.add("durable"); }
     };
 
     private AfterCommitNotifications notifications(OutboxConsumer... consumers) {
@@ -63,7 +71,7 @@ class AfterCommitNotificationsTest {
     @Test
     @DisplayName("事务里发布：提交前什么都不发，提交后在另一个线程交给支持它的消费者")
     void deliversOnlyAfterCommitOnAnotherThread() {
-        var n = notifications(broken, notify, other);
+        var n = notifications(broken, notify, other, durable);
         TransactionSynchronizationManager.initSynchronization();
         n.publish(new Arrived("O1"));
         assertThat(seen).isEmpty();

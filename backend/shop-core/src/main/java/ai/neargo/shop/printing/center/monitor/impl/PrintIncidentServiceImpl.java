@@ -79,7 +79,7 @@ public class PrintIncidentServiceImpl implements PrintIncidentService {
         if (i.getId() == null) incidents.insert(i);
         else incidents.updateById(i);
         if (notify)
-            events.notifyAfterCommit(
+            events.publish(
                     new PrintIncidentOpened(
                             c.scope(),
                             i.getIncidentNo(),
@@ -106,7 +106,7 @@ public class PrintIncidentServiceImpl implements PrintIncidentService {
         i.setRevision(i.getRevision() + 1);
         i.setUpdatedAt(now());
         incidents.updateById(i);
-        events.notifyAfterCommit(
+        events.publish(
                 new PrintIncidentResolved(
                         s, no, notifications(s, i.getTargetType(), i.getTargetNo())));
     }

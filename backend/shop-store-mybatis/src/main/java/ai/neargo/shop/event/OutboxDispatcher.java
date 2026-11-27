@@ -63,7 +63,8 @@ public class OutboxDispatcher {
     public OutboxDispatcher(SysOutboxMapper mapper, List<OutboxConsumer> consumers,
                             PlatformTransactionManager transactionManager) {
         this.mapper = mapper;
-        this.consumers = consumers;
+        // 通知类消费者提交后另走一路（AfterCommitNotifications），这里只投必达的
+        this.consumers = consumers.stream().filter(c -> !c.afterCommitOnly()).toList();
         this.perEventTransaction = new TransactionTemplate(transactionManager);
         this.perEventTransaction.setPropagationBehavior(Propagation.REQUIRES_NEW.value());
     }
@@ -71,6 +72,9 @@ public class OutboxDispatcher {
     private UnifiedOutboxFacade unified;
     @Autowired(required = false)
     public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
+
+    /** 发件箱实际投递的消费者（不含通知类）。 */
+    List<OutboxConsumer> deliveryConsumers() { return consumers; }
 
     /**
      * 投递待发送事件。由定时任务调用；测试直接调它，不必等调度。

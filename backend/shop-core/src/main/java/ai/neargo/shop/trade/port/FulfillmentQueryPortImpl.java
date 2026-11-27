@@ -251,7 +251,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
                         java.util.LinkedHashMap::new,
                         java.util.stream.Collectors.mapping(OrdSubOrder::getSubOrderNo,
                                 java.util.stream.Collectors.toList())))
-                .forEach((userNo, subNos) -> eventBus.notifyAfterCommit(
+                .forEach((userNo, subNos) -> eventBus.publish(
                         new OrderEvents.SubOrdersArrived(userNo, pickupNo, subNos)));
         return moved;
     }

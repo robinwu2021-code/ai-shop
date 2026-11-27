@@ -87,6 +87,8 @@ public class OutboxConfiguration {
             List<OutboxHandler> legacyHandlers =
                     consumers
                             .orderedStream()
+                            // 通知类消费者提交后另走一路（ADR-067），不进发件箱
+                            .filter(consumer -> !consumer.afterCommitOnly())
                             .map(
                                     consumer -> {
                                         if (!List.of("PLATFORM", "INVENTORY")

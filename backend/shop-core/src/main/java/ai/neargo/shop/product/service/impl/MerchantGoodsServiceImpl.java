@@ -3250,7 +3250,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         long now = System.currentTimeMillis();
         g.setNewNotifiedAt(now);
         updateGoods(g);
-        events.notifyAfterCommit(
+        events.publish(
                 new ai.neargo.shop.spi.product.ProductEvents.NewGoodsOnSale(
                         g.getGoodsNo(), g.getEntityNo(), g.getTitle(), g.getSubtitle(), now));
     }

@@ -238,7 +238,7 @@ public class ReviewServiceImpl implements ReviewService {
         // 「评价发表后…并计入商家评分」是写在发表页上的一句承诺，这里把它兑现
         recomputeRating(cmd.goodsNo(), item.merchantNo(), item.storeNo());
         // B-N-3：商家要看到新评价，差评（≤2 星）在消费侧单独点名
-        eventBus.notifyAfterCommit(new ai.neargo.shop.spi.product.ProductEvents.ReviewCreated(
+        eventBus.publish(new ai.neargo.shop.spi.product.ProductEvents.ReviewCreated(
                 r.getReviewNo(), item.merchantNo(), item.storeNo(), cmd.goodsNo(), cmd.rating()));
         return toVO(r, false, null);
     }
