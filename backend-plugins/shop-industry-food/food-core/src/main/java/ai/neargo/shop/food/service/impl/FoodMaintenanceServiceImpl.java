@@ -65,7 +65,7 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
                 // 开台补偿只在原 FOOD 宿主上执行（本地 CheckServiceImpl 同时持有两个域的写入）。
                 if (!(require(tables, task) instanceof CheckServiceImpl local))
                     throw new IllegalStateException("FOOD owner for " + task + " is not local");
-                yield new Report(local.recoverOpenings(OPENING_GRACE, limit), 0);
+                yield new Report(local.recoverOpenings(OPENING_GRACE, limit) + local.recoverClosings(limit), 0);
             }
         };
     }

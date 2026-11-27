@@ -667,4 +667,14 @@ public class FoodIndustryOperationsMapper {
                         until,
                         limit));
     }
+
+    /** 仍有在用占台的账单（带门店）：清台补做扫描用；在用占台的数量受桌台数限制。 */
+    public List<FoodBusinessOperationRow> activeOccupancyChecks(int limit) {
+        return rows(
+                db.queryForList(
+                        "SELECT DISTINCT o.entity_no,t.store_no,o.check_no FROM fnb_table_occupancy o"
+                            + " JOIN fnb_table t ON t.entity_no=o.entity_no AND t.table_no=o.table_no"
+                            + " WHERE o.ended_at IS NULL AND o.deleted=0 ORDER BY o.check_no LIMIT ?",
+                        limit));
+    }
 }

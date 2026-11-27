@@ -268,6 +268,20 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - 测试：`CheckServiceTest#eachWriteRollsBackAfterActualOutboxFlush` 的开台、拼桌两项改为验证补偿（订单域表不变，占台结束、翻台复原）；新增 `CheckServiceTest#openingRecoveryEndsOccupancyWithoutCheckAndKeepsRealOnes`。food-core 756 个、food-web 258 个通过。
 - 未做：排队入座、订位到店仍在调用方事务里开台（`openQueuedCheck`、`openReservedCheck`）；换台、并台、清台、结账放台、扫码会话；时段容量。
 
+### 已完成：换台、并台、改人数、清台、结账放台（2026-11-27，修订二第 ③ 步）
+
+| 命令 | 顺序 | 失败时 |
+|---|---|---|
+| 换台、并台 | 业务域先挪占台、更新翻台、写操作记录（操作号由请求键派生，已有就跳过；账单只读比对版本）→ 订单域给账单加版本、记日志与事件 | 订单域失败不补偿，同一请求重试补上（日志里已有操作号就按重放返回） |
+| 改人数 | 业务域先按新人数分座 → 订单域写座位、人数、版本、事件 | 订单域失败：按账单当前人数把座位分回（补偿） |
+| 部分清台 | 业务域先结束选中的占台、其余重新分座 → 订单域加版本、记事件 | 同换台 |
+| 全部清台（账单作废） | 订单域先作废账单、撤销扫码会话、记事件 → 业务域结束占台、更新翻台、写操作记录 | 业务域没做成的由清台补做扫描结束 |
+| 结账放台 | 订单域先放台（服务状态）→ 业务域结束占台、给桌台加版本 | 同上 |
+
+- 清台补做扫描 `CheckServiceImpl#recoverClosings`：账单状态或服务状态不再是 OPEN 而占台仍在的，结束占台；并入维护任务 `food-table-recovery`。
+- 测试：`eachWriteRollsBackAfterActualOutboxFlush` 中换台、并台按向前补做、改人数按补偿验证；新增 `closingRecoveryEndsOccupancyOfFinishedChecks`。food-core 757 个、food-web 258 个通过。
+- 未做：排队入座、订位到店的开台；扫码会话（`DiningSessionServiceImpl`）；时段容量。
+
 ### 事务拆分记录
 
 | 服务 | 类 | 处理 |

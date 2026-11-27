@@ -17,7 +17,7 @@ public interface FoodMaintenanceService {
         PRODUCTION_RECOVERY,
         /** 退菜改单恢复（原改单意图）。 */
         RETURN_AMENDMENT_RECOVERY,
-        /** 开台补偿：先占了桌、账单没建成的占台，超时后结束（ADR-068 修订二，订单域为准）。 */
+        /** 开台补偿与清台补做：先占了桌、账单没建成的占台超时后结束；账单已结束、占台还在的结束（ADR-068 修订二，订单域为准）。 */
         TABLE_RECOVERY
     }
 

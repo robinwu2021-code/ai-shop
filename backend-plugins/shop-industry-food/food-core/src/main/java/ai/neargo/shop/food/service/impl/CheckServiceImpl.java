@@ -488,6 +488,33 @@ public class CheckServiceImpl implements CheckService {
     }
 
     /**
+     * 清台补做的扫描（订单域为准）：账单已作废、结账或放台（状态或服务状态不再是 OPEN），占台却还在的，结束占台并更新翻台。
+     * 返回处理的账单数。
+     */
+    public int recoverClosings(int limit) {
+        int ended = 0;
+        for (var row : industry.activeOccupancyChecks(limit)) {
+            String entity = row.text("entity_no"), store = row.text("store_no"), number = row.text("check_no");
+            var check = checks.selectOne(
+                    Wrappers.<FnbCheck>lambdaQuery()
+                            .eq(FnbCheck::getEntityNo, entity)
+                            .eq(FnbCheck::getCheckNo, number));
+            if (check == null
+                    || "OPEN".equals(check.getStatus()) && "OPEN".equals(check.getServiceState())) continue;
+            industryTx.executeWithoutResult(
+                    status -> {
+                        var still = active(check);
+                        if (still.isEmpty()) return;
+                        var locked = locks.lock(entity, store, tableNos(still), null, false);
+                        endOccupancies(still, "SYSTEM");
+                        touch(entity, locked, "SYSTEM");
+                    });
+            ended++;
+        }
+        return ended;
+    }
+
+    /**
      * 开台补偿的扫描：开台超过 {@code olderThan} 仍没有账单的占台，结束它（订单域为准）。
      * 返回结束的账单号数。
      */
@@ -609,46 +636,117 @@ public class CheckServiceImpl implements CheckService {
                         req.partySize().toString(),
                         reason,
                         json.writeValueAsString(desired));
-        return write(
-                "SAVE_SEATS",
-                entity,
-                store,
-                actor,
-                key,
-                hash,
-                CheckResultVO.class,
-                () -> {
-                    var check = locked(entity, store, number, req.version());
-                    noTrade(check);
-                    if (businessGuard != null)
-                        businessGuard.assertPartyMutable(entity, store, number);
-                    var before = view(check);
-                    var active = active(check);
-                    var beforeSeats = seatViews(check);
-                    var locked = locks.lock(entity, store, tableNos(active), null, true);
-                    localResources(active, locked);
-                    String mode = mode(active);
-                    var allocation = allocation(entity, locked, req.partySize(), mode, number);
-                    for (var row : active) {
-                        row.setSeats(allocation.get(row.getTableNo()));
-                        if (occupancies.updateById(row) != 1)
+        commandScope(entity, store, actor, key);
+        String operationNo = CommandBusinessKey.derive("FOPR", "SAVE_SEATS", entity, store, actor, key);
+        // ① 业务域：按新人数重新分配各桌座位（容量是这里的约束）；账单只读一次比对版本与交易事实。
+        var before = new java.util.concurrent.atomic.AtomicReference<CheckVO>();
+        var beforeSeats = new java.util.concurrent.atomic.AtomicReference<List<SeatReq>>();
+        if (!applied(entity, number, operationNo))
+            reseat(entity, store, number, actor, req.version(), req.partySize(), before, beforeSeats);
+        try {
+            // ② 订单域：座位、人数、账单版本、日志与事件。
+            return orderStep(
+                    "SAVE_SEATS",
+                    entity,
+                    store,
+                    actor,
+                    key,
+                    hash,
+                    CheckResultVO.class,
+                    number,
+                    operationNo,
+                    check -> {
+                        if (check.getVersion() != req.version()
+                                || !"OPEN".equals(check.getStatus())
+                                || !"OPEN".equals(check.getServiceState()))
                             throw BizException.of(ErrorCode.CONFLICT);
-                    }
-                    saveSeatRows(check, desired, actor);
-                    check.setPartySize(req.partySize());
-                    update(check, actor);
-                    touch(entity, locked, actor);
-                    changed(
-                            check,
-                            actor,
-                            "SAVE_SEATS",
-                            reason,
-                            before,
-                            key,
-                            BizKey.next("FOPR"),
-                            beforeSeats);
-                    return new CheckResultVO(view(check));
-                });
+                        noTrade(check);
+                        saveSeatRows(check, desired, actor);
+                        check.setPartySize(req.partySize());
+                        update(check, actor);
+                        changed(
+                                check,
+                                actor,
+                                "SAVE_SEATS",
+                                reason,
+                                before.get() == null ? view(check) : before.get(),
+                                key,
+                                operationNo,
+                                beforeSeats.get() == null ? List.of() : beforeSeats.get());
+                        return new CheckResultVO(view(check));
+                    },
+                    check -> new CheckResultVO(view(check)));
+        } catch (RuntimeException failure) {
+            // 补偿：按账单当前人数把座位分配回去（订单域为准）。
+            var current = find(entity, store, number, false);
+            if (current.getPartySize() != null && !current.getPartySize().equals(req.partySize()))
+                reseat(entity, store, number, actor, null, current.getPartySize(), null, null);
+            throw failure;
+        }
+    }
+
+    /** 只读桌台行（行业库），不加锁。 */
+    private List<FnbTable> tableRows(String entity, String store, List<String> numbers) {
+        if (numbers.isEmpty()) return List.of();
+        return tables.selectList(
+                Wrappers.<FnbTable>lambdaQuery()
+                        .eq(FnbTable::getEntityNo, entity)
+                        .eq(FnbTable::getStoreNo, store)
+                        .in(FnbTable::getTableNo, numbers));
+    }
+
+    /** 订单域日志里已有这个操作号：这次请求已经做完（重放）。 */
+    private boolean applied(String entity, String number, String operationNo) {
+        return actions.selectCount(
+                        Wrappers.<FnbActionLog>lambdaQuery()
+                                .eq(FnbActionLog::getEntityNo, entity)
+                                .eq(FnbActionLog::getObjectType, "CHECK")
+                                .eq(FnbActionLog::getObjectNo, number)
+                                .eq(FnbActionLog::getActionNo, operationNo))
+                > 0;
+    }
+
+    /** 业务域：按人数重新分配这张账单各桌的座位并更新翻台；expectedVersion 为空时不比对（补偿用）。 */
+    private void reseat(
+            String entity,
+            String store,
+            String number,
+            String actor,
+            Long expectedVersion,
+            int partySize,
+            java.util.concurrent.atomic.AtomicReference<CheckVO> before,
+            java.util.concurrent.atomic.AtomicReference<List<SeatReq>> beforeSeats) {
+        try {
+            industryTx.executeWithoutResult(
+                    status -> {
+                        var check = find(entity, store, number, false);
+                        if (expectedVersion != null) {
+                            if (check.getVersion() != expectedVersion.longValue()
+                                    || !"OPEN".equals(check.getStatus())
+                                    || !"OPEN".equals(check.getServiceState()))
+                                throw BizException.of(ErrorCode.CONFLICT);
+                            noTrade(check);
+                            if (businessGuard != null) {
+                                businessGuard.assertMutable(entity, store, number);
+                                businessGuard.assertPartyMutable(entity, store, number);
+                            }
+                            before.set(view(check));
+                            beforeSeats.set(seatViews(check));
+                        }
+                        var active = active(check);
+                        var locked = locks.lock(entity, store, tableNos(active), null, true);
+                        localResources(active, locked);
+                        var allocation = allocation(entity, locked, partySize, mode(active), number);
+                        for (var row : active) {
+                            row.setSeats(allocation.get(row.getTableNo()));
+                            if (occupancies.updateById(row) != 1)
+                                throw BizException.of(ErrorCode.CONFLICT);
+                        }
+                        touch(entity, locked, actor);
+                    });
+        } catch (ConcurrencyFailureException | DuplicateKeyException conflict) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
     }
 
     @Override
@@ -671,7 +769,103 @@ public class CheckServiceImpl implements CheckService {
                         req.version().toString(),
                         reason,
                         json.writeValueAsString(requested));
-        return write(
+        commandScope(entity, store, actor, key);
+        String operationNo = CommandBusinessKey.derive("FOPR", "CLEAR", entity, store, actor, key);
+        if (applied(entity, number, operationNo)) {
+            var check = find(entity, store, number, false);
+            return new OperationVO(operationNo, "SUCCEEDED", check.getVersion(), number);
+        }
+        var current = find(entity, store, number, false);
+        var active = active(current);
+        var chosen = active.stream().filter(o -> requested.contains(o.getOccupancyNo())).toList();
+        if (chosen.size() != requested.size()) throw BizException.of(ErrorCode.NOT_FOUND);
+        if (chosen.isEmpty() && !active.isEmpty()) bad();
+        Map<String, Object> expected = Map.of("checkVersion", req.version(), "occupancyNos", requested);
+        // 先在两边各读一次：有交易事实、待处理或外部占用的不清台（原先在同一事务里查，顺序不变）。
+        noTradeFacts(current);
+        localResources(active, tableRows(entity, store, tableNos(active)));
+        if (chosen.size() == active.size()) {
+            // 全部清台、账单作废：订单域先（以订单为准），业务域随后结束占台；没做成的由清台补做扫描结束。
+            var result =
+                    orderStep(
+                            "CLEAR",
+                            entity,
+                            store,
+                            actor,
+                            key,
+                            hash,
+                            OperationVO.class,
+                            number,
+                            operationNo,
+                            check -> {
+                                if (businessGuard != null)
+                                    businessGuard.assertMutable(entity, store, number);
+                                if (check.getVersion() != req.version()
+                                        || !"OPEN".equals(check.getStatus())
+                                        || !"OPEN".equals(check.getServiceState()))
+                                    throw BizException.of(ErrorCode.CONFLICT);
+                                noTradeFacts(check);
+                                var before = view(check);
+                                check.setServiceState("RELEASED");
+                                check.setStatus("VOIDED");
+                                check.setClosedAt(now());
+                                revokeCheckSessions(check, actor);
+                                update(check, actor);
+                                changed(check, actor, "CLEAR", reason, before, key, operationNo);
+                                return new OperationVO(operationNo, "SUCCEEDED", check.getVersion(), number);
+                            },
+                            check -> new OperationVO(operationNo, "SUCCEEDED", check.getVersion(), number));
+            industryStep(
+                    entity,
+                    operationNo,
+                    () -> {
+                        var check = find(entity, store, number, false);
+                        var still = active(check);
+                        var locked = locks.lock(entity, store, tableNos(still), null, false);
+                        endOccupancies(still, actor);
+                        touch(entity, locked, actor);
+                        operation(check, operationNo, "CLEAR", key, hash, expected, actor, reason);
+                    });
+            return result;
+        }
+        // 部分清台：只改业务域（结束选中的占台、其余重新分配座位），订单域随后给账单加版本、记事件。
+        var before = new java.util.concurrent.atomic.AtomicReference<CheckVO>();
+        industryStep(
+                entity,
+                operationNo,
+                () -> {
+                    var check = find(entity, store, number, false);
+                    if (businessGuard != null) businessGuard.assertMutable(entity, store, number);
+                    if (check.getVersion() != req.version()
+                            || !"OPEN".equals(check.getStatus())
+                            || !"OPEN".equals(check.getServiceState()))
+                        throw BizException.of(ErrorCode.CONFLICT);
+                    noTradeFacts(check);
+                    before.set(view(check));
+                    var live = active(check);
+                    var locked = locks.lock(entity, store, tableNos(live), null, false);
+                    localResources(live, locked);
+                    var remaining =
+                            live.stream().filter(row -> !requested.contains(row.getOccupancyNo())).toList();
+                    var remainingTables =
+                            locked.stream()
+                                    .filter(table -> tableNos(remaining).contains(table.getTableNo()))
+                                    .toList();
+                    var allocation =
+                            allocation(entity, remainingTables, check.getPartySize(), mode(live), number);
+                    for (var row : remaining) {
+                        row.setSeats(allocation.get(row.getTableNo()));
+                        if (row.getVersion() == Long.MAX_VALUE || occupancies.updateById(row) != 1)
+                            throw BizException.of(ErrorCode.CONFLICT);
+                    }
+                    endOccupancies(
+                            live.stream().filter(row -> requested.contains(row.getOccupancyNo())).toList(),
+                            actor);
+                    touch(entity, locked, actor);
+                    check.setVersion(check.getVersion() + 1);
+                    operation(check, operationNo, "CLEAR", key, hash, expected, actor, reason);
+                });
+        return orderStep(
                 "CLEAR",
                 entity,
                 store,
@@ -679,68 +873,14 @@ public class CheckServiceImpl implements CheckService {
                 key,
                 hash,
                 OperationVO.class,
-                () -> {
-                    var check = locked(entity, store, number, req.version());
-                    noTradeFacts(check);
-                    var before = view(check);
-                    var active = active(check);
-                    var chosen =
-                            active.stream()
-                                    .filter(o -> requested.contains(o.getOccupancyNo()))
-                                    .toList();
-                    if (chosen.size() != requested.size())
-                        throw BizException.of(ErrorCode.NOT_FOUND);
-                    if (chosen.isEmpty() && !active.isEmpty()) bad();
-                    var locked = locks.lock(entity, store, tableNos(active), null, false);
-                    localResources(active, locked);
-                    var remaining =
-                            active.stream()
-                                    .filter(row -> !requested.contains(row.getOccupancyNo()))
-                                    .toList();
-                    if (!remaining.isEmpty()) {
-                        var remainingTables =
-                                locked.stream()
-                                        .filter(
-                                                table ->
-                                                        tableNos(remaining)
-                                                                .contains(table.getTableNo()))
-                                        .toList();
-                        var allocation =
-                                allocation(
-                                        entity,
-                                        remainingTables,
-                                        check.getPartySize(),
-                                        mode(active),
-                                        number);
-                        for (var row : remaining) {
-                            row.setSeats(allocation.get(row.getTableNo()));
-                            if (row.getVersion() == Long.MAX_VALUE
-                                    || occupancies.updateById(row) != 1)
-                                throw BizException.of(ErrorCode.CONFLICT);
-                        }
-                    }
-                    endOccupancies(chosen, actor);
-                    if (chosen.size() == active.size()) {
-                        check.setServiceState("RELEASED");
-                        check.setStatus("VOIDED");
-                        check.setClosedAt(now());
-                        revokeCheckSessions(check, actor);
-                    }
+                number,
+                operationNo,
+                check -> {
                     update(check, actor);
-                    touch(entity, locked, actor);
-                    String operation = BizKey.next("FOPR");
-                    operation(
-                            check,
-                            operation,
-                            "CLEAR",
-                            key,
-                            hash,
-                            Map.of("checkVersion", req.version(), "occupancyNos", requested),
-                            actor,
-                            reason);
-                    changed(check, actor, "CLEAR", reason, before, key, operation);
-                    return new OperationVO(operation, "SUCCEEDED", check.getVersion(), number);
-                });
+                    changed(check, actor, "CLEAR", reason, before.get(), key, operationNo);
+                    return new OperationVO(operationNo, "SUCCEEDED", check.getVersion(), number);
+                },
+                check -> new OperationVO(operationNo, "SUCCEEDED", check.getVersion(), number));
     }
 
     @Override
@@ -799,6 +939,12 @@ public class CheckServiceImpl implements CheckService {
                 "COMBINE_TABLES");
     }
 
+    /**
+     * 换台、并台只改业务域的占台（ADR-068 修订二）：
+     * ① 业务域（行业库）挪占台、更新翻台、写操作记录，操作号由请求键派生，已做过就跳过；账单只读一次比对版本；
+     * ② 订单域（交易库）给账单加版本、记日志与事件，日志里已有这个操作号就按重放返回。
+     * ② 失败不补偿：占台已经挪好，用同一请求重试补上账单这一步。
+     */
     private OperationResultVO move(
             String entity,
             String store,
@@ -817,18 +963,18 @@ public class CheckServiceImpl implements CheckService {
                         reason,
                         json.writeValueAsString(targets),
                         json.writeValueAsString(versions));
-        return write(
-                action,
+        commandScope(entity, store, actor, key);
+        String operationNo = CommandBusinessKey.derive("FOPR", action, entity, store, actor, key);
+        var before = new java.util.concurrent.atomic.AtomicReference<CheckVO>();
+        industryStep(
                 entity,
-                store,
-                actor,
-                key,
-                hash,
-                OperationResultVO.class,
+                operationNo,
                 () -> {
-                    var check = locked(entity, store, number, version);
+                    var check = find(entity, store, number, false);
+                    if (businessGuard != null) businessGuard.assertMutable(entity, store, number);
+                    if (check.getVersion() != version) throw BizException.of(ErrorCode.CONFLICT);
                     movable(check);
-                    var before = view(check);
+                    before.set(view(check));
                     var active = active(check);
                     var old = tableNos(active);
                     var all =
@@ -854,25 +1000,102 @@ public class CheckServiceImpl implements CheckService {
                     String mode = mode(active);
                     var allocation =
                             allocation(entity, targetRows, check.getPartySize(), mode, number);
-                    // Claim every target first; releasing the old records is in this same primary
-                    // transaction.
+                    // 先占新桌、再结束旧占台，都在这一个行业事务里。
                     occupy(check, allocation, mode, actor);
                     endOccupancies(active, actor);
-                    update(check, actor);
                     touch(entity, locked, actor);
-                    String operation = BizKey.next("FOPR");
+                    // 操作记录里的结果版本是订单域那一步加版本之后的值（只加一次）。
+                    check.setVersion(check.getVersion() + 1);
                     operation(
                             check,
-                            operation,
+                            operationNo,
                             action,
                             key,
                             hash,
                             Map.of("checkVersion", version, "tableVersions", versions),
                             actor,
                             reason);
-                    changed(check, actor, action, reason, before, key, operation);
+                });
+        return orderStep(
+                action,
+                entity,
+                store,
+                actor,
+                key,
+                hash,
+                OperationResultVO.class,
+                number,
+                operationNo,
+                check -> {
+                    update(check, actor);
+                    changed(check, actor, action, reason, before.get(), key, operationNo);
                     return new OperationResultVO(
-                            new OperationVO(operation, "SUCCEEDED", check.getVersion(), number));
+                            new OperationVO(operationNo, "SUCCEEDED", check.getVersion(), number));
+                },
+                check ->
+                        new OperationResultVO(
+                                new OperationVO(operationNo, "SUCCEEDED", check.getVersion(), number)));
+    }
+
+    private void commandScope(String entity, String store, String actor, String key) {
+        scope(entity, store);
+        if (actor == null || actor.isBlank() || actor.length() > 32)
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        text(key, 128);
+        if (TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Check command cannot join an existing transaction");
+    }
+
+    /** 业务域一步：在行业事务里执行；这个操作号的操作记录已在（重放）就跳过。 */
+    private void industryStep(String entity, String operationNo, Runnable work) {
+        try {
+            industryTx.executeWithoutResult(
+                    status -> {
+                        if (operations.selectCount(
+                                        Wrappers.<FnbTableOperation>lambdaQuery()
+                                                .eq(FnbTableOperation::getEntityNo, entity)
+                                                .eq(FnbTableOperation::getOperationNo, operationNo))
+                                > 0) return;
+                        work.run();
+                    });
+        } catch (ConcurrencyFailureException | DuplicateKeyException conflict) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    /**
+     * 订单域一步：锁账单、执行；账单日志里已有这个操作号（重放、或请求防重已过期）就不再执行，按当前账单返回。
+     */
+    private <T> T orderStep(
+            String action,
+            String entity,
+            String store,
+            String actor,
+            String key,
+            String hash,
+            Class<T> type,
+            String number,
+            String operationNo,
+            java.util.function.Function<FnbCheck, T> work,
+            java.util.function.Function<FnbCheck, T> replay) {
+        return write(
+                action,
+                entity,
+                store,
+                actor,
+                key,
+                hash,
+                type,
+                () -> {
+                    var check = find(entity, store, number, true);
+                    if (actions.selectCount(
+                                    Wrappers.<FnbActionLog>lambdaQuery()
+                                            .eq(FnbActionLog::getEntityNo, entity)
+                                            .eq(FnbActionLog::getObjectType, "CHECK")
+                                            .eq(FnbActionLog::getObjectNo, number)
+                                            .eq(FnbActionLog::getActionNo, operationNo))
+                            > 0) return replay.apply(check);
+                    return work.apply(check);
                 });
     }
 

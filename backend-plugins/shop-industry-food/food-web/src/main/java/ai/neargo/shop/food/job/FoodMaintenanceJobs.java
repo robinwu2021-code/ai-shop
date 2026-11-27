@@ -67,8 +67,8 @@ public class FoodMaintenanceJobs {
     }
 
     @Bean JobDeclaration foodTableRecoveryDeclaration() {
-        return new JobDeclaration(TABLE_RECOVERY, "餐饮开台补偿",
-                "先占了桌、超过 5 分钟仍没有账单的占台按补偿结束，桌台恢复可用；不新建账单",
+        return new JobDeclaration(TABLE_RECOVERY, "餐饮开台补偿与清台补做",
+                "先占了桌、超过 5 分钟仍没有账单的占台按补偿结束；账单已结束而占台仍在的结束占台；不新建账单",
                 OWNER, "0 * * * * *", true, 60, 120, true, false);
     }
 

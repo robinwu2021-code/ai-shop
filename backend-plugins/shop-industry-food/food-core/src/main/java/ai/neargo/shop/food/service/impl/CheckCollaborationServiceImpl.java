@@ -245,7 +245,7 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
                                             industry.checkCollaborationSelectOccupiedTables(e, check);
                                     if (industry.checkCollaborationCountTableOccupancy(e, check) > 0)
                                         conflict();
-                                    industry.checkCollaborationUpdateTableOccupancy(actor, e, check);
+                                    // 占台在行业库：放台提交后再结束（见方法末尾），这里不跨库写。
                                     for (var row : tables) released.add(row.text("table_no"));
                                     mapper.checkCollaborationUpdateGuestSession(
                                             actor, e, store, check);
@@ -268,8 +268,8 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
                                             "SERVICE_RELEASED");
                                     return new OperationVO(op, "SUCCEEDED", expected + 1, check);
                                 }));
-        // 交易先、行业跟：占台已在交易库结束，提交后再给行业库的桌台加版本，让并发的桌台编辑看到变化。
-        // 只加版本、可重复执行；重放时 released 为空，不重复触碰。
+        // 订单域先（放台已提交），业务域随后结束占台、给桌台加版本；都可重复执行，没做成的由清台补做扫描结束。
+        industry.checkCollaborationUpdateTableOccupancy(actor, e, check);
         for (String table : released) industry.checkCollaborationUpdateTable(actor, e, store, table);
         return result;
     }

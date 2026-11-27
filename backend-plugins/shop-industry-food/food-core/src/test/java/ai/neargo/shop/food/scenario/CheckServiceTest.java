@@ -132,6 +132,22 @@ class CheckServiceTest extends FoodWriteGuardFixture {
             assertThat(impl.recoverOpenings(java.time.Duration.ofMinutes(5),100)).isZero();
         });
     }
+    /** 清台补做（ADR-068 修订二，订单域为准）：账单已结束而占台仍在的，扫描结束占台；在用账单不动。 */
+    @Test void closingRecoveryEndsOccupancyOfFinishedChecks() {
+        run(c -> {
+            var f=fixture(c);var t1=table(c,"T1");var t2=table(c,"T2");var s=c.getBean(CheckService.class);
+            var done=s.openCheck("E","A","actor",open(t1,2,"EXCLUSIVE"),"done").check();
+            var live=s.openCheck("E","A","actor",open(t2,2,"EXCLUSIVE"),"live").check();
+            f.sql().update("UPDATE fnb_check SET service_state='RELEASED' WHERE check_no=?",done.checkNo());
+            ai.neargo.shop.food.service.impl.CheckServiceImpl impl=
+                    org.springframework.test.util.AopTestUtils.getUltimateTargetObject(s);
+            assertThat(impl.recoverClosings(100)).isEqualTo(1);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_table_occupancy WHERE check_no=? AND ended_at IS NULL",Integer.class,done.checkNo())).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_table_occupancy WHERE check_no=? AND ended_at IS NULL",Integer.class,live.checkNo())).isOne();
+            assertThat(f.sql().queryForObject("SELECT turnover_state FROM fnb_table WHERE table_no=?",String.class,t1.tableNo())).isEqualTo("IDLE");
+            assertThat(impl.recoverClosings(100)).isZero();
+        });
+    }
     @Test void permitsNoTableAndRejectsUnverifiedCapabilitiesAndForeignResources() {
         run(c -> {
             fixture(c);var t=table(c,"T1");var s=c.getBean(CheckService.class);
@@ -291,9 +307,12 @@ class CheckServiceTest extends FoodWriteGuardFixture {
                 }).isInstanceOf(IllegalStateException.class).hasMessage("after-check-event-flush");
                 // 开台、拼桌按 ADR-068 修订二先在业务域占桌、再在订单域建账单：订单域失败时订单域整体回滚，
                 // 业务域由补偿把本次占台结束、翻台复原（占台与操作记录留痕，桌台版本前进）。
-                boolean compensated=action.equals("open") || action.equals("share");
+                // 改人数：业务域先按新人数分座，订单域失败后按原人数分回（补偿）。
+                boolean compensated=action.equals("open") || action.equals("share") || action.equals("seats");
+                // 换台、并台：业务域先挪好占台（不补偿），订单域回滚；同一请求重试补上账单那一步。
+                boolean forward=action.equals("transfer") || action.equals("combine");
                 for(var entry:before.entrySet()) {
-                    if(compensated && java.util.Set.of("fnb_table","fnb_table_occupancy","fnb_table_operation").contains(entry.getKey())) continue;
+                    if((compensated || forward) && java.util.Set.of("fnb_table","fnb_table_occupancy","fnb_table_operation").contains(entry.getKey())) continue;
                     assertThat(f.sql().queryForList("SELECT * FROM "+entry.getKey()+" ORDER BY id"))
                             .as(action+":"+entry.getKey()).isEqualTo(entry.getValue());
                 }
