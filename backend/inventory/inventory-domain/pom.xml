@@ -19,6 +19,11 @@
             <groupId>ai.neargo.inventory</groupId>
             <artifactId>inventory-api</artifactId>
         </dependency>
+        <dependency>
+            <!-- 开放凭证的统一入口 CredentialVerifier（零依赖契约）；实现由宿主装 -->
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>secret-api</artifactId>
+        </dependency>
         <!-- 数据源（Hikari）、JdbcTemplate、事务 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

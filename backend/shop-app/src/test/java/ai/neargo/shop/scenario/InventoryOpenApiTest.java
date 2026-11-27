@@ -10,13 +10,16 @@ import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import javax.sql.DataSource;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>它带 {@code @Profile("openapi")}，与 api/ops/worker 互斥：一个 jar 四种起法。
  * 所以这里显式多开一个 profile —— 不开的话整类是「端点不存在」的绿。
  */
-@SpringBootTest
+@SpringBootTest(properties = "shop.secret.env=SANDBOX")
 @ActiveProfiles({"test", "openapi"})
 class InventoryOpenApiTest {
 
@@ -55,6 +58,9 @@ class InventoryOpenApiTest {
     private StockQueryService query;
     @Autowired
     private OpenApiCredentialService credentials;
+    @Autowired
+    @Qualifier("secretDataSource")
+    private DataSource secretDataSource;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -133,7 +139,11 @@ class InventoryOpenApiTest {
         int badSecret = codeOf(get("/open/v1/items"), good.key, "wrong-secret");
         Cred revoked = cred("read", "REVOKED", null);
         int revokedCode = codeOf(get("/open/v1/items"), revoked.key, revoked.secret);
-        Cred expired = cred("read", "ACTIVE", LocalDateTime.now().minusDays(1));
+        Cred expired = cred("read", "ACTIVE", LocalDateTime.now().plusDays(1));
+        // 凭证在密钥库里只存摘要（Q18）；签发口不收已过去的期限，过期态改库里的到期时间来造
+        new JdbcTemplate(secretDataSource).update(
+                "update sec_key_version set valid_to = ? where external_key_id = ?",
+                LocalDateTime.now().minusDays(2), expired.key);
         int expiredCode = codeOf(get("/open/v1/items"), expired.key, expired.secret);
 
         assertThat(List.of(badKey, badSecret, revokedCode, expiredCode))

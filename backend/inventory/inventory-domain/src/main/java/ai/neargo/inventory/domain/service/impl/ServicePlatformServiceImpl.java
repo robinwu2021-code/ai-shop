@@ -5,26 +5,21 @@ import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.api.profile.Capability;
 import ai.neargo.inventory.domain.config.ConditionalOnInventory;
 import ai.neargo.inventory.domain.entity.InvClientSystem;
-import ai.neargo.inventory.domain.entity.InvOpenCredential;
 import ai.neargo.inventory.domain.entity.InvOwner;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.ClientSystemMapper;
-import ai.neargo.inventory.domain.mapper.InventoryMappers.OpenCredentialMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
 import ai.neargo.inventory.domain.service.ServicePlatformService;
 import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.inventory.domain.support.InvKeys;
-import ai.neargo.inventory.domain.support.SecretHasher;
+import ai.neargo.secret.api.KeyOwner;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @ConditionalOnInventory
 @Service
@@ -35,15 +30,13 @@ public class ServicePlatformServiceImpl implements ServicePlatformService {
 
     private final OwnerMapper ownerMapper;
     private final ClientSystemMapper systemMapper;
-    private final OpenCredentialMapper credentialMapper;
-    private final SecretHasher hasher;
+    private final InventoryCredentials credentials;
 
     public ServicePlatformServiceImpl(OwnerMapper ownerMapper, ClientSystemMapper systemMapper,
-                                      OpenCredentialMapper credentialMapper, SecretHasher hasher) {
+                                      InventoryCredentials credentials) {
         this.ownerMapper = ownerMapper;
         this.systemMapper = systemMapper;
-        this.credentialMapper = credentialMapper;
-        this.hasher = hasher;
+        this.credentials = credentials;
     }
 
     @Override
@@ -75,16 +68,17 @@ public class ServicePlatformServiceImpl implements ServicePlatformService {
         return owner.getOwnerId();
     }
 
+    /** 业主凭证：密钥库所有者 {@code INV_OWNER / inv_owner.id}，scope 绑定 {@code owner=} */
     @Override
-    @Transactional(transactionManager = "invTransactionManager")
     public Issued issueCredential(String ownerId, String name, Set<Capability> capabilities,
                                   LocalDateTime expiresAt, String operator) {
         InvOwner owner = owner(ownerId);
-        return issue(owner.getSystemCode(), ownerId, name, capabilities, expiresAt, operator);
+        return issue(InventoryCredentials.keyOf(owner), name,
+                new CredentialScope(SERVICE_SCOPE, capabilities, ownerId, null), expiresAt, operator);
     }
 
+    /** 系统凭证：密钥库所有者 {@code INVENTORY_SYSTEM / inv_client_system.id}，scope 绑定 {@code system=} */
     @Override
-    @Transactional(transactionManager = "invTransactionManager")
     public Issued issueSystemCredential(String systemCode, String name, Set<Capability> capabilities,
                                         LocalDateTime expiresAt, String operator) {
         InvClientSystem system = systemCode == null ? null : systemMapper.selectOne(
@@ -92,7 +86,8 @@ public class ServicePlatformServiceImpl implements ServicePlatformService {
         if (system == null || !InvEnums.MasterStatus.ACTIVE.equals(system.getStatus())) {
             throw InventoryException.of(InventoryError.BAD_REQUEST, "system");
         }
-        return issue(systemCode, null, name, capabilities, expiresAt, operator);
+        return issue(InventoryCredentials.keyOf(system), name,
+                new CredentialScope(SERVICE_SCOPE, capabilities, null, systemCode), expiresAt, operator);
     }
 
     @Override
@@ -110,44 +105,22 @@ public class ServicePlatformServiceImpl implements ServicePlatformService {
         return found.isEmpty() ? null : found.get(0);
     }
 
-    private Issued issue(String systemCode, String ownerId, String name, Set<Capability> capabilities,
-                         LocalDateTime expiresAt, String operator) {
+    private Issued issue(KeyOwner keyOwner, String name, CredentialScope scope, LocalDateTime expiresAt,
+                         String operator) {
         String key = "SK" + InvKeys.next(InvKeys.CREDENTIAL);
-        String secret = InvKeys.secret();
-        InvOpenCredential row = new InvOpenCredential();
-        row.setCredentialId(InvKeys.next(InvKeys.CREDENTIAL));
-        row.setOwnerId(ownerId);
-        row.setSystemCode(systemCode);
-        row.setAppKey(key);
-        row.setAppSecretHash(hasher.encode(secret));
-        row.setName(name);
-        row.setScopes(SERVICE_SCOPE);
-        row.setCapabilities(capabilities == null || capabilities.isEmpty() ? null
-                : capabilities.stream().map(Enum::name).sorted().collect(Collectors.joining(",")));
-        row.setStatus(InvEnums.MasterStatus.ACTIVE);
-        row.setExpiresAt(expiresAt);
-        row.setCreatedBy(operator);
-        credentialMapper.insert(row);
-        return new Issued(row.getCredentialId(), key, secret);
+        String secret = credentials.issue(keyOwner, key, name, scope, expiresAt, operator);
+        return new Issued(key, key, secret);
     }
 
     @Override
-    @Transactional(transactionManager = "invTransactionManager")
     public Authenticated authenticate(String appKey, String appSecret) {
-        InvOpenCredential c = appKey == null ? null : credentialMapper.selectOne(
-                Wrappers.<InvOpenCredential>lambdaQuery().eq(InvOpenCredential::getAppKey, appKey));
-        boolean ok = c != null
-                && c.getSystemCode() != null
-                && SERVICE_SCOPE.equals(c.getScopes())
-                && InvEnums.MasterStatus.ACTIVE.equals(c.getStatus())
-                && (c.getExpiresAt() == null || c.getExpiresAt().isAfter(LocalDateTime.now()))
-                && hasher.matches(appSecret, c.getAppSecretHash());
-        if (!ok) {
-            throw InventoryException.of(InventoryError.UNAUTHORIZED);
-        }
-        c.setLastUsedAt(LocalDateTime.now());
-        credentialMapper.updateById(c);
-        return new Authenticated(c.getSystemCode(), c.getOwnerId(), c.getCredentialId(), capabilities(c));
+        InventoryCredentials.Bound c = credentials.verify(appKey, appSecret)
+                .filter(b -> SERVICE_SCOPE.equals(b.scope().scopes()))
+                .orElseThrow(() -> InventoryException.of(InventoryError.UNAUTHORIZED));
+        return c.owner() != null
+                ? new Authenticated(c.owner().getSystemCode(), c.owner().getOwnerId(), c.appKey(),
+                        c.scope().capabilities())
+                : new Authenticated(c.system().getSystemCode(), null, c.appKey(), c.scope().capabilities());
     }
 
     @Override
@@ -170,14 +143,5 @@ public class ServicePlatformServiceImpl implements ServicePlatformService {
             throw InventoryException.of(InventoryError.NOT_FOUND, "owner");
         }
         return owner;
-    }
-
-    private static Set<Capability> capabilities(InvOpenCredential c) {
-        if (c.getCapabilities() == null || c.getCapabilities().isBlank()) {
-            return Set.of();
-        }
-        EnumSet<Capability> result = EnumSet.noneOf(Capability.class);
-        Arrays.stream(c.getCapabilities().split(",")).map(String::strip).map(Capability::valueOf).forEach(result::add);
-        return result;
     }
 }

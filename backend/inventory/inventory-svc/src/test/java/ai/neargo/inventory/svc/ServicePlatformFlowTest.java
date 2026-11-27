@@ -1,5 +1,6 @@
 package ai.neargo.inventory.svc;
 
+import ai.neargo.inventory.domain.service.OpenApiCredentialService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +59,8 @@ class ServicePlatformFlowTest {
     @Autowired WebApplicationContext context;
     @Autowired List<FilterRegistrationBean<?>> filters;
     @Autowired @Qualifier("invDataSource") DataSource invDataSource;
+    @Autowired @Qualifier("invSecretDataSource") DataSource secretDataSource;
+    @Autowired OpenApiCredentialService credentials;
 
     MockMvc mvc;
     JdbcTemplate sql;
@@ -148,6 +151,59 @@ class ServicePlatformFlowTest {
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("inventory.unauthorized"));
         }
+    }
+
+    @Test
+    void credentialsLiveInTheSecretStoreAsDigestsBoundToTheirOwner() throws Exception {
+        // Q18：凭证进密钥库（只存摘要），inv_open_credential 停读停写；appKey 即凭据号，也即 credentialId
+        String owner = openOwner("SHAREHUB", "K-" + UUID.randomUUID());
+        JsonNode ownerCred = JSON.readTree(body(admin(post("/api/inventory/admin/v1/owners/" + owner + "/credentials")
+                .content("{\"name\":\"t\",\"capabilities\":[\"SERIAL\",\"DISPATCH_POOL\"]}"))
+                .andExpect(status().isOk()).andReturn()));
+        JsonNode systemCred = JSON.readTree(body(admin(post("/api/inventory/admin/v1/systems/SHAREHUB/credentials")
+                .content("{\"name\":\"hub\"}")).andExpect(status().isOk()).andReturn()));
+        assertThat(ownerCred.get("credentialId").asString()).isEqualTo(ownerCred.get("appKey").asString());
+
+        assertThat(sql.queryForObject("select count(*) from inv_open_credential", Integer.class)).isZero();
+        JdbcTemplate sec = new JdbcTemplate(secretDataSource);
+        Long ownerPk = sql.queryForObject("select id from inv_owner where owner_id=?", Long.class, owner);
+        assertThat(sec.queryForMap("select k.owner_type, k.owner_id, v.storage_tier, v.scope, v.material_digest"
+                        + " from sec_key k join sec_key_version v on v.sec_key_id=k.id where v.external_key_id=?",
+                ownerCred.get("appKey").asString()))
+                .containsEntry("owner_type", "INV_OWNER").containsEntry("owner_id", ownerPk)
+                .containsEntry("storage_tier", "DIGEST")
+                .containsEntry("scope", "scopes=service;caps=DISPATCH_POOL,SERIAL;owner=" + owner)
+                .doesNotContainValue(ownerCred.get("appSecret").asString());
+        Long systemPk = sql.queryForObject("select id from inv_client_system where system_code='SHAREHUB'", Long.class);
+        assertThat(sec.queryForMap("select k.owner_type, k.owner_id, v.scope from sec_key k"
+                        + " join sec_key_version v on v.sec_key_id=k.id where v.external_key_id=?",
+                systemCred.get("appKey").asString()))
+                .containsEntry("owner_type", "INVENTORY_SYSTEM").containsEntry("owner_id", systemPk)
+                .containsEntry("scope", "scopes=service;system=SHAREHUB");
+
+        String bearer = "Bearer " + ownerCred.get("appKey").asString() + ":" + ownerCred.get("appSecret").asString();
+        mvc.perform(get("/api/inventory/v1/warehouses").header("Authorization", bearer)).andExpect(status().isOk());
+        mvc.perform(get("/api/inventory/v1/warehouses").header("Authorization",
+                        "Bearer " + systemCred.get("appKey").asString() + ":" + systemCred.get("appSecret").asString())
+                        .header("X-Inventory-Owner-Ref", "K-none"))
+                .andExpect(status().isNotFound());
+        // appKey 与 secret 要配对：拿别人的 key 配自己的 secret 不行
+        mvc.perform(get("/api/inventory/v1/warehouses").header("Authorization",
+                        "Bearer " + systemCred.get("appKey").asString() + ":" + ownerCred.get("appSecret").asString()))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(credentials.ownerIdOfCredential(ownerCred.get("credentialId").asString())).isEqualTo(owner);
+        assertThat(credentials.list(owner)).singleElement().satisfies(l -> {
+            assertThat(l.appKey()).isEqualTo(ownerCred.get("appKey").asString());
+            assertThat(l.scopes()).isEqualTo("service");
+            assertThat(l.status()).isEqualTo("ACTIVE");
+            assertThat(l.lastUsedAt()).as("密钥库不记单张凭据的最近使用").isNull();
+        });
+        credentials.revoke(ownerCred.get("credentialId").asString());
+        mvc.perform(get("/api/inventory/v1/warehouses").header("Authorization", bearer))
+                .andExpect(status().isUnauthorized());
+        assertThat(credentials.list(owner)).singleElement()
+                .satisfies(l -> assertThat(l.status()).isEqualTo("REVOKED"));
     }
 
     @Test

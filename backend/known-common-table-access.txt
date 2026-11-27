@@ -168,8 +168,6 @@
 审批 shop-core/src/main/java/ai/neargo/shop/trade/service/impl/PricingManualAdjustmentServiceImpl.java
 审计 pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/backfill/impl/PayMerchantBackfillImpl.java
 审计 pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/service/impl/OnboardingServiceImpl.java
-开放应用 inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/service/impl/OpenApiCredentialServiceImpl.java
-开放应用 inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/service/impl/ServicePlatformServiceImpl.java
 开放应用 pay/pay-domain/src/main/java/ai/neargo/shop/pay/acquiring/port/InternalCallers.java
 开放应用 pay/pay-domain/src/main/java/ai/neargo/shop/pay/checkout/service/impl/CheckoutServiceImpl.java
 开放应用 pay/pay-domain/src/main/java/ai/neargo/shop/pay/notify/WebhookEnvelopes.java

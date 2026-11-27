@@ -20,6 +20,14 @@ inventory:
     url: ${INVENTORY_DATASOURCE_URL:}
     username: ${INVENTORY_DATASOURCE_USERNAME:}
     password: ${INVENTORY_DATASOURCE_PASSWORD:}
+  # 开放凭证存在密钥库（ai-shop 主库的 sec_*，只存摘要），本进程自连验证（TDD-基础能力库对齐「1h 开放应用」Q18）。
+  # 账号只给 sec_key / sec_key_version / sec_key_event / sec_access_log 的读写；本进程不跑密钥库迁移（归 shop-app）。
+  secret:
+    env: ${INVENTORY_SECRET_ENV:}
+    datasource:
+      url: ${INVENTORY_SECRET_DATASOURCE_URL:}
+      username: ${INVENTORY_SECRET_DATASOURCE_USERNAME:}
+      password: ${INVENTORY_SECRET_DATASOURCE_PASSWORD}
   # 定时任务由共用任务服务经 /internal/job/* 触发（InventoryJobEndpoint）；本进程不自己排程
   jobs:
     enabled: ${INVENTORY_JOBS_ENABLED:false}
