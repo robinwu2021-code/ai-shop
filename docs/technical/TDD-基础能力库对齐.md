@@ -218,6 +218,53 @@
 | 两份 `SeqMapper` | `TradeMappers` 里那份没有调用方，删掉；号段只剩 `trade.order.mapper.SeqMapper` |
 | 审计写入 | `sys_audit_log` 的写入从 `OpsServiceImpl` 收进 `AuditLogPortImpl`，运营后台反过来转调端口；仍在调用方事务内，行为不变。原来 `AuditLogPortImpl → OpsServiceImpl` 的依赖环随之消失 |
 
+### 2.1 剩余任务（2026-11-27 汇总，v2 @ 9f7090530 之后）
+
+本会话已做：E 类删除、D 类提交后发、同库 2 处直调、发布入口统一、外部通道去重、中间件统一封装（`MessageBroker`）
+与 RabbitMQ 实现、发件箱按名单改发中间件、商品→库存域进名单、兜底作业核实。下面是还没做的，按“卡在哪”分组。
+
+**A. 等你决定**
+
+| # | 事项 | 卡住什么 |
+|---|---|---|
+| A1 | ADR-067 由“提案”转“已接受” | 正式按它推进 MQ 切换 |
+| A2 | 本 TDD §3 的 Q1a、Q2–Q8（Q1 已由 ADR-067 定为“放产生它的业务库”，但与“公共事件只在基础能力库”的设计定稿冲突，要改设计） | §2 第 1、2、5 步；活动权益/储值（Q6）、发票打印（Q7）、报表脏日（Q8）的去向 |
+| A3 | [TDD-平台基础库换表](TDD-平台基础库换表.md) §2 的 Q1–Q10 及状态映射（NORMAL→ACTIVE、BANNED→DISABLED、DEREGISTERED→CLOSED） | 平台基础库换表整体 |
+| A4 | RabbitMQ 生产部署与运维由谁负责；实例是否 3 节点 | 切 `rabbitmq` 上线；仲裁队列是否真正容灾 |
+| A5 | 生产是否打开定时作业（v2 现为 `SHOP_JOB_ENABLED=false`，独立调度器未跑） | 清单 A7–A11 能否改 MQ 直发；这些兜底作业本身在生产上的作用 |
+
+**B. 要在服务器上做**
+
+| # | 事项 |
+|---|---|
+| B1 | RabbitMQ 启用 `rabbitmq_consistent_hash_exchange` 插件（保序订阅依赖） |
+| B2 | 确认 `neargo_app` 在虚拟主机 `neargo` 上有声明交换机/队列与读写权限 |
+| B3 | 在能连 broker 的机器上跑 `RabbitMessageBrokerIT`（两种订阅、按聚合保序、死信、无人订阅即失败） |
+| B4 | 设 `SHOP_EVENTS_TRANSPORT=rabbitmq`、`SHOP_RABBITMQ_PASSWORD` 后观察商品→库存域，再逐域加名单 |
+
+**C. 可以直接做（不等决定）**
+
+| # | 事项 | 出处 |
+|---|---|---|
+| C1 | 继续按域加中间件名单，每个域先查“哪些消费者写同一份数据、要不要同订阅组”：建议顺序 打印事实（B9）→ 发货快照回写（B11）→ 订单类（B1–B5）→ 权益/旧券（B6–B8）→ 餐饮（B14） | 清单 §〇 B |
+| C2 | 审批对账：OpsKit 查不到时补交一次，并登记作业声明（现只有 `@Scheduled`，`api,ops` 下不跑）；做完可改 MQ 直发 | 清单 A12 |
+| C3 | 门店同步：改成“中间件确认发出才推进游标”；做完可改 MQ 直发 | 清单 A13 |
+| C4 | `CompensationSweeper` 的“卡住数”改读死信队列（现读发件箱 `FAILED`），在物流事件切中间件前做 | 清单 A8 |
+| C5 | 撤中转：PAY 权益三个中转改由源头发；进销存回写改由库存库发件箱发；删 `PrintingConfiguration`/`FoodWriteGuardConfiguration` 的包装转发；**`PlatformPublicationPublisher` 已无调用方，可直接删** | 清单 §〇 C |
+| C6 | 清理：约 20 个测试仍设无用的 `*.publication.archive-only` 属性；`BeautyOutboxConfiguration` 疑似无用；`CATALOG_SOURCE_CHANGED` 既在只存档名单又有订阅者，配置自相矛盾 | §1.4 |
+| C7 | “子单完成”5 个入口（行业精确完结、行业完结、商户手动完成、改单关单、端口完成）各自拼事件，收成一个出口 | 清单 N4 |
+| C8 | 微信发货上传在数据库事务里调微信接口，高并发时占连接，拆出来 | 清单 S2 |
+| C9 | 存量投完后删 `WxUploadedConsumer`（只为消化切换前的 `WX_SHIPPING_UPLOADED`） | §1.5 ① |
+| C10 | 本 TDD §2 第 3 步（字典、审批、开放应用各收成一个端口）、第 4 步剩余（仓储去掉按归属切表）；“公共能力表只经唯一实现访问”的守卫 | §2 |
+
+**D. 已知、与本任务无关的问题（未处理）**
+
+| # | 事项 |
+|---|---|
+| D1 | `ArchitectureTest.noFullyQualifiedReferences` 失败：商城会话合入的 `MallGateSubject.java` 用了全限定类名 |
+| D2 | `StoreSalesCatalogIT` 期望 Flyway 版本 536，迁移已到 V596（本会话之前就如此） |
+| D3 | 餐饮等集成测试要 Docker MySQL 8.4，本机只有 MySQL 9、无 Docker，跑不了；`StoreOrderMysqlTest` 等要 `COMMERCE_MYSQL_URL` |
+
 ## §3 待你定
 
 | # | 问题 | 建议 |
