@@ -183,11 +183,21 @@ public final class ServiceEntitlementMapper {
                 oldUntil);
     }
 
+    // 宴会方案修订并入行业配置修订 ind_config_revision（TDD §2.5，config_kind=BANQUET_PLAN）：
+    // 被修订的对象是到店单（policy_no=到店单号），修订序号 revision_index，方案号 policy_version_no，
+    // 方案快照（含币种、预算、人数）进 definition_snapshot，摘要进 snapshot_hash。
+    // 唯一键带 tenant_no，必须显式写 MAIN（空值不受唯一约束）。读取时按原列名取别名，调用方不变。
+    private static final String PLAN_COLUMNS =
+            "entity_no,store_no,policy_no AS form_no,policy_version_no AS plan_no,revision_index AS"
+                    + " revision,definition_snapshot AS plan_snapshot,snapshot_hash AS content_hash,"
+                    + "actor_no,reason,created_at";
+
     public long nextPlanRevision(String e, String s, String form) {
         Long current =
                 db.queryForObject(
-                        "SELECT COALESCE(MAX(revision),0) FROM fnb_banquet_plan_revision WHERE"
-                                + " entity_no=? AND store_no=? AND form_no=?",
+                        "SELECT COALESCE(MAX(revision_index),0) FROM ind_config_revision WHERE"
+                                + " tenant_no='MAIN' AND entity_no=? AND store_no=? AND"
+                                + " config_kind='BANQUET_PLAN' AND policy_no=? AND deleted=0",
                         Long.class,
                         e,
                         s,
@@ -197,14 +207,18 @@ public final class ServiceEntitlementMapper {
 
     public List<FoodBusinessOperationRow> plan(String e, String s, String form, String no) {
         return rows(
-                "SELECT * FROM fnb_banquet_plan_revision WHERE entity_no=? AND store_no=? AND"
-                        + " form_no=? AND plan_no=?",
+                "SELECT " + PLAN_COLUMNS + " FROM ind_config_revision WHERE tenant_no='MAIN' AND"
+                        + " entity_no=? AND store_no=? AND config_kind='BANQUET_PLAN' AND policy_no=?"
+                        + " AND policy_version_no=? AND deleted=0",
                 e,
                 s,
                 form,
                 no);
     }
 
+    /**
+     * 写一条宴会方案修订。币种、预算、人数已在方案快照里（PlanRevision），不再单独成列；参数保留以便调用方不变。
+     */
     public void plan(
             String e,
             String s,
@@ -219,21 +233,22 @@ public final class ServiceEntitlementMapper {
             String actor,
             String reason) {
         db.update(
-                "INSERT INTO"
-                    + " fnb_banquet_plan_revision(entity_no,store_no,form_no,plan_no,revision,currency,intended_budget_minor,planned_persons,plan_snapshot,content_hash,actor_no,reason,created_at)"
-                    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP(3))",
+                "INSERT INTO ind_config_revision(tenant_no,entity_no,store_no,config_kind,policy_no,"
+                    + "policy_version_no,revision_index,definition_snapshot,schema_version,snapshot_hash,"
+                    + "effective_at,status,actor_no,reason,created_at,updated_at,created_by,updated_by)"
+                    + " VALUES('MAIN',?,?,'BANQUET_PLAN',?,?,?,?,1,?,UTC_TIMESTAMP(3),'EFFECTIVE',?,?,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?)",
                 e,
                 s,
                 form,
                 no,
-                revision,
-                currency,
-                budget,
-                persons,
+                Math.toIntExact(revision),
                 snapshot,
                 hash,
                 actor,
-                reason);
+                reason,
+                actor,
+                actor);
     }
 
     public void confirmation(

@@ -145,6 +145,8 @@ public class ServiceEntitlementPersistenceTest {
                                             + " fnb_capacity_claim");
             for (var statement : ddl.split(";")) if (!statement.isBlank()) db.execute(statement);
         }
+        // 宴会方案修订已并入行业配置修订（TDD §2.5）。
+        IndustrySchema.create(ds, "ind_config_revision");
         db.execute(
                 "CREATE TABLE fnb_check(entity_no VARCHAR(32),store_no VARCHAR(32),check_no"
                         + " VARCHAR(32),party_size INT,status VARCHAR(16),service_state"

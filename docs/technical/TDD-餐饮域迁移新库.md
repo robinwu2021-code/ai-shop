@@ -316,7 +316,9 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - **P1-6 新库测试**：`FoodIndustryDatabaseTest`（本机 MySQL，`FOOD_TEST_DISPOSABLE`）：主库按餐饮旧迁移建表后删掉行业表，行业库按 V1、V2 新建，行业句柄绑到它；验证上下文能启动、行业句柄下全部注解 Mapper 按实体全字段在行业库上查询成功。已通过。
 - **P1-2 改名**：寄存 `fnb_bottle_custody` → `fnb_custody`、`fnb_bottle_movement` → `fnb_custody_movement`（实体表名、校验器、测试）。按旧表最终结构比对出设计漏掉的流水防重列 `key_hash`、`request_hash` 与唯一键，`V2` 补回。`FoodIndustryTables.RENAMED` 登记旧名，校验器不再要求、也不当作未知表。其余同构表的列与唯一键已逐一比对，只差 `V2` 已补的三处。
 - **P1-3 合并 ①：堂食权益 → 人头权益**。旧表 `fnb_dining_entitlement` 代码从未写入，只在放台检查与账单事实检查里计数（结果恒为 0）。并入后改为：交易库按账单取到店单号，行业库数这些到店单上 `entitlement_kind='BUFFET'` 的人头权益（放台检查只数 `status='ACTIVE'`）。旧代码不写放题类权益，行为不变。`FoodIndustryTables.MERGED` 登记退役的旧表；`V2` 删掉该表。测试 `CheckServiceTest`、`PhysicalTableMoveTest` 改按新模型造数据。
-- 待做：P1-3 其余八组合并、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本。
+- **P1-3 合并 ②：宴会方案修订 → `ind_config_revision`（`config_kind=BANQUET_PLAN`）**。被修订的对象是到店单：`policy_no`=到店单号、`revision_index`=修订序号、`policy_version_no`=方案号；方案快照（已含币种、预算、人数）进 `definition_snapshot`，摘要进 `snapshot_hash`。读取按原列名取别名，服务不变。新表唯一键带 `tenant_no` 且可为空，写入显式填 `MAIN`（MySQL 唯一键不约束空值）。
+- 测试工具 `IndustrySchema`：H2 场景测试按 `db/n_industry` 建表（清洗 MySQL 方言、索引名加表名前缀、JSON 列按文本建）。
+- 待做：P1-3 其余七组合并、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本。
 
 ### 事务拆分记录
 

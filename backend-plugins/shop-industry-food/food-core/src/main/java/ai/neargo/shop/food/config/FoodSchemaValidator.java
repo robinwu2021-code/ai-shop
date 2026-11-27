@@ -325,8 +325,8 @@ public final class FoodSchemaValidator {
                 "fnb_service_entitlement_event",
                 List.of("event_no", "entity_no,store_no,event_kind,batch_no,food_line_no"));
         contracts.put(
-                "fnb_banquet_plan_revision",
-                List.of("plan_no", "entity_no,store_no,form_no,revision"));
+                "ind_config_revision",
+                List.of("tenant_no,entity_no,policy_version_no", "tenant_no,entity_no,policy_no,revision_index"));
         contracts.put(
                 "fnb_banquet_attendance_confirmation",
                 List.of("confirmation_no", "entity_no,store_no,form_no,plan_no"));
@@ -1365,6 +1365,24 @@ public final class FoodSchemaValidator {
                                     "actor_no",
                                     "reason",
                                     "created_at")));
+            expected.put(
+                    "ind_config_revision",
+                    new TreeSet<>(
+                            List.of(
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "config_kind",
+                                    "policy_no",
+                                    "policy_version_no",
+                                    "revision_index",
+                                    "definition_snapshot",
+                                    "schema_version",
+                                    "snapshot_hash",
+                                    "effective_at",
+                                    "status",
+                                    "actor_no",
+                                    "reason")));
             expected.put(
                     "fnb_banquet_plan_revision",
                     new TreeSet<>(

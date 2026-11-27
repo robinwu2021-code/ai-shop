@@ -355,28 +355,6 @@ CREATE TABLE `fnb_config_revision` (
   KEY `ix_food_ref_1` (`entity_no`,`previous_revision_no`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='é¤é¥®é…ç½®å‘å¸ƒå¿«ç…§ Config revision';
 
-CREATE TABLE `fnb_banquet_plan_revision` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `tenant_no` varchar(32) COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN',
-  `entity_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `store_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `form_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `plan_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `revision` bigint NOT NULL,
-  `currency` varchar(3) COLLATE utf8mb4_bin NOT NULL,
-  `intended_budget_minor` bigint NOT NULL,
-  `planned_persons` int NOT NULL,
-  `plan_snapshot` longtext COLLATE utf8mb4_bin NOT NULL,
-  `content_hash` varchar(64) COLLATE utf8mb4_bin NOT NULL,
-  `actor_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `reason` varchar(255) COLLATE utf8mb4_bin NOT NULL,
-  `created_at` datetime(3) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_fnb_banquet_plan_no` (`plan_no`),
-  UNIQUE KEY `uk_fnb_banquet_plan_revision` (`entity_no`,`store_no`,`form_no`,`revision`),
-  CONSTRAINT `fnb_banquet_plan_revision_chk_1` CHECK (((`revision` > 0) and (`intended_budget_minor` >= 0) and (`planned_persons` > 0) and (`planned_persons` <= 1000)))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-
 CREATE TABLE `fnb_store_policy` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'BaseEntityè‡ªå¢žç‰©ç†ä¸»é”®ï¼Œä¸å¯¹å¤–ä¸è¿›URL',
   `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT 'æ²¿ç”¨BaseEntityï¼Œä¸€æœŸMAINï¼›ä¸æ˜¯entity_noï¼Œä¸å¦å¯ç§Ÿæˆ·ä½“ç³»',
