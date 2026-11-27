@@ -27,7 +27,8 @@ class OrderMapperOwnershipFlowTest {
     private static final String PACKAGE = "ai.neargo.shop.trade.order.mapper.";
     private static final List<String> OWNED = List.of("PaymentMapper", "StoreOrderMapper", "OrderItemMapper",
             "OrderStatusLogMapper", "AfterSaleMapper", "InvoiceRequestMapper", "ShippingUploadMapper",
-            "ExpressPickupMapper", "SeqMapper");
+            "ExpressPickupMapper");
+    // SeqMapper 已删（TDD-基础能力库对齐 1d）：订单号段改由发号的唯一存储领
     @Autowired
     private ApplicationContext context;
     @Autowired

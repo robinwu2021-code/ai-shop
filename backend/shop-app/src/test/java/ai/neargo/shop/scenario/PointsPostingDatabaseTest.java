@@ -80,6 +80,10 @@ class PointsPostingDatabaseTest {
             String numbers = new ClassPathResource("db/migration/V542__document_numbers.sql")
                     .getContentAsString(java.nio.charset.StandardCharsets.UTF_8)
                     .replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ");
+            // 发号游标与单据号登记两种归属共用 sys_sequence / core_document_number（TDD-基础能力库对齐 1d）
+            numbers = "CREATE TABLE IF NOT EXISTS sys_sequence (seq_name VARCHAR(32) NOT NULL PRIMARY KEY,"
+                    + " next_value BIGINT NOT NULL DEFAULT 0, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);\n"
+                    + numbers;
             new ResourceDatabasePopulator(new org.springframework.core.io.ByteArrayResource(
                     numbers.getBytes(java.nio.charset.StandardCharsets.UTF_8))).execute(dataSource);
         } catch (java.io.IOException ex) { throw new IllegalStateException(ex); }

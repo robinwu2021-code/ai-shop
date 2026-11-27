@@ -89,7 +89,7 @@ class PayRightsWorkbenchReservationTest {
   final StoreStatementService.Snapshot snapshot=new StoreStatementService.Snapshot("statement",new StoreStatementService.Period("POINT","STORE",1,2),List.of(),List.of(new StoreStatementService.Revision(1,List.of(),10,"ACTOR",null)),"DRAFT",null);
   Fixture() {
    var ds=new DriverManagerDataSource("jdbc:h2:mem:workbench-"+UUID.randomUUID()+";MODE=MySQL;DB_CLOSE_DELAY=-1","sa","");manager=new DataSourceTransactionManager(ds);
-   new JdbcTemplate(ds).execute("CREATE TABLE pay_document_number(document_no VARCHAR(32) PRIMARY KEY,tenant_no VARCHAR(64),document_type VARCHAR(40),source_system VARCHAR(32),source_resource_type VARCHAR(64),source_no VARCHAR(128),business_date DATE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE(tenant_no,document_type,source_system,source_resource_type,source_no))");
+   new JdbcTemplate(ds).execute("CREATE TABLE core_document_number(document_no VARCHAR(32) PRIMARY KEY,tenant_no VARCHAR(64),document_type VARCHAR(40),source_system VARCHAR(32),source_resource_type VARCHAR(64),source_no VARCHAR(128),business_date DATE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE(tenant_no,document_type,source_system,source_resource_type,source_no))");
    repository=new JdbcDocumentNumberRepository(DocumentOwner.PAY,manager);var generator=mock(DocumentNumberGenerator.class);
    when(generator.reserve(any(DocumentType.class),any(Instant.class))).thenAnswer(a->{assertFalse(TransactionSynchronizationManager.isActualTransactionActive());return new ReservedDocumentNumber(a.getArgument(0),LocalDate.of(2026,10,20),"PTV20261020"+String.format("%06d",issued.incrementAndGet()));});
    numbers=new DocumentNumberCoordinator(repository,generator,manager);

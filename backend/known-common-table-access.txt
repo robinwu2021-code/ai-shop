@@ -109,8 +109,6 @@
 事件 shop-opskit/src/main/java/ai/neargo/shop/approval/opskit/OpsKitSubmitConsumer.java
 事件 shop-store-mybatis/src/main/java/ai/neargo/shop/common/config/PlatformWritePrerequisites.java
 发号 shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java
-发号 shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/SeqMapper.java
-发号 shop-core/src/main/java/ai/neargo/shop/trade/support/SeqSegmentSource.java
 字典 ../backend-plugins/shop-commerce-integration/commerce-core/src/main/java/ai/neargo/shop/commerce/config/CommerceCoreAutoConfiguration.java
 字典 ../backend-plugins/shop-commerce-integration/commerce-core/src/main/java/ai/neargo/shop/commerce/config/CommerceSchemaValidator.java
 字典 ../backend-plugins/shop-commerce-integration/commerce-core/src/main/java/ai/neargo/shop/commerce/mapper/CommerceMappers.java
