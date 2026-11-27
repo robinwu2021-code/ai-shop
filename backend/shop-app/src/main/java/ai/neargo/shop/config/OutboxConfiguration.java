@@ -1,5 +1,7 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.event.OutboxConsumer;
@@ -56,6 +58,7 @@ public class OutboxConfiguration {
             ObjectMapper json,
             Environment env,
             @Qualifier("dataSource") DataSource platform,
+            @Qualifier(ModuleDataSources.COMMON_DATA_SOURCE) ObjectProvider<DataSource> common,
             @Qualifier("transactionManager") PlatformTransactionManager platformTx,
             @Qualifier("invDataSource") ObjectProvider<DataSource> inventory,
             @Qualifier("invTransactionManager")
@@ -65,6 +68,13 @@ public class OutboxConfiguration {
             ObjectProvider<OutboxRouteContribution> routeContributions) {
         return () -> {
             props.validate();
+            // 统一模式的平台仓储要求发件箱与业务表同一个“源事务”；发件箱归基础能力库后（ADR-067 决策 10），
+            // 两库分开绑定时这个前提不成立 —— 明确拒绝，而不是在第一次发布时才报“缺源事务”（R10.2）
+            DataSource commonSource = common.getIfAvailable(() -> platform);
+            if (props.unified("PLATFORM") && commonSource != platform) {
+                throw new IllegalStateException("shop.outbox.sources.platform.mode=unified 不支持基础能力库单独绑定"
+                        + "（shop.modules.common.datasource）：统一模式的发件箱要求与业务表同一事务，见 TDD-基础能力库对齐 §2.3 R10.2");
+            }
             facade.setMaintenance(props.isMaintenance());
             facade.setRetryPolicy(props.retryPolicy());
             var archive = new HashSet<>(props.getArchiveOnly());

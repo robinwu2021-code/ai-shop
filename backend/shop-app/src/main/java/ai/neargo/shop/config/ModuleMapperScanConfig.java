@@ -51,7 +51,7 @@ import org.springframework.context.annotation.Import;
         markerInterface = TradeSqlMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.TRADE_SQL_SESSION_FACTORY)
 // 基础能力库的 Mapper（TDD-基础能力库对齐 2a）：按标记收。先是权限，其余公共能力收敛后同样打标记
-@MapperScan(basePackages = "ai.neargo.shop.platform", markerInterface = CommonTableMapper.class,
+@MapperScan(basePackages = {"ai.neargo.shop.platform", "ai.neargo.shop.event"}, markerInterface = CommonTableMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.COMMON_SQL_SESSION_FACTORY)
 public class ModuleMapperScanConfig {
 }
