@@ -1,5 +1,21 @@
 package ai.neargo.shop.event;
 
+import org.slf4j.LoggerFactory;
+
+import org.slf4j.Logger;
+
+import javax.sql.DataSource;
+
+import org.springframework.transaction.support.TransactionTemplate;
+
+import org.springframework.transaction.TransactionDefinition;
+
+import org.springframework.transaction.PlatformTransactionManager;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+
+import ai.neargo.shop.common.config.ModuleDataSources;
+
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.event.broker.BrokerMessage;
 import ai.neargo.shop.event.broker.BrokerProperties;
@@ -25,6 +41,8 @@ import java.time.LocalDateTime;
  */
 @Component
 public class OutboxEventBus {
+
+    private static final Logger log = LoggerFactory.getLogger(OutboxEventBus.class);
 
     public static final String PENDING = "PENDING";
 
@@ -139,18 +157,19 @@ public class OutboxEventBus {
         row.setStatus(PENDING);
         row.setRetryCount(0);
         row.setCreatedAt(LocalDateTime.now());
-        int inserted = mapper.insertIfAbsent(row);
-        if (inserted == 1) {
-            pumpAfterCommit(row);
-            return;
-        }
-        SysOutbox existing = mapper.findByEventNo(eventNo);
-        if (existing == null || !java.util.Objects.equals(existing.getAggregateType(), event.aggregateType())
-                || !java.util.Objects.equals(existing.getAggregateId(), event.aggregateId())
-                || !java.util.Objects.equals(existing.getEventType(), event.eventType())
-                || !java.util.Objects.equals(existing.getPayload(), payload)) {
-            throw new IllegalStateException("event number replay has different immutable facts: " + eventNo);
-        }
+        store(row, () -> {
+            if (mapper.insertIfAbsent(row) == 1) {
+                return true;
+            }
+            SysOutbox existing = mapper.findByEventNo(eventNo);
+            if (existing == null || !java.util.Objects.equals(existing.getAggregateType(), event.aggregateType())
+                    || !java.util.Objects.equals(existing.getAggregateId(), event.aggregateId())
+                    || !java.util.Objects.equals(existing.getEventType(), event.eventType())
+                    || !java.util.Objects.equals(existing.getPayload(), payload)) {
+                throw new IllegalStateException("event number replay has different immutable facts: " + eventNo);
+            }
+            return false;
+        });
     }
 
     /**
@@ -193,8 +212,63 @@ public class OutboxEventBus {
         row.setStatus(PENDING);
         row.setRetryCount(0);
         row.setCreatedAt(LocalDateTime.now());
-        mapper.insert(row);
-        pumpAfterCommit(row);
+        store(row, () -> {
+            mapper.insert(row);
+            return true;
+        });
+    }
+
+    /**
+     * 发件箱在基础能力库（ADR-067 决策 10，R10.2）。没分开绑定（{@code commonDataSource} 就是主库）时照旧在业务事务里写；
+     * 分开绑定时两库没有共同事务，业务提交后才以基础能力库的 {@code REQUIRES_NEW} 事务写入，回滚就不写 ——
+     * 提交后、写入前进程崩溃会丢这一条，由兜底作业补（用户 2026-11-27 接受的代价）。
+     *
+     * @param insert 写入；返回 true 表示新写了一行，要交给投递泵
+     */
+    private void store(SysOutbox row, java.util.function.BooleanSupplier insert) {
+        if (commonWrites == null) {
+            if (insert.getAsBoolean()) pumpAfterCommit(row);
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            if (Boolean.TRUE.equals(commonWrites.execute(s -> insert.getAsBoolean()))) pumpNow(row);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    // 同线程上业务库的连接还绑着已提交的事务；REQUIRES_NEW 换基础能力库自己的连接
+                    if (Boolean.TRUE.equals(commonWrites.execute(s -> insert.getAsBoolean()))) pumpNow(row);
+                } catch (RuntimeException e) {
+                    log.error("业务已提交，发件箱写入基础能力库失败，事件丢失待兜底：eventNo={} type={}",
+                            row.getEventNo(), row.getEventType(), e);
+                }
+            }
+        });
+    }
+
+    /** 分开绑定时的基础能力库独立事务；没分开时为 null，发件箱跟业务同事务 */
+    private TransactionTemplate commonWrites;
+
+    @Autowired(required = false)
+    public void setStores(@Qualifier("dataSource") DataSource main,
+                          @Qualifier(ModuleDataSources.COMMON_DATA_SOURCE) DataSource common,
+                          @Qualifier(ModuleDataSources.COMMON_TX_MANAGER) PlatformTransactionManager commonTx) {
+        if (main == null || common == null || commonTx == null || main == common) {
+            this.commonWrites = null;
+            return;
+        }
+        TransactionTemplate t = new TransactionTemplate(commonTx);
+        t.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.commonWrites = t;
+    }
+
+    private void pumpNow(SysOutbox row) {
+        OutboxPump pump = pumpProvider.getIfAvailable();
+        if (pump != null && row.getId() != null) {
+            pump.submit(row.getId(), row.getAggregateId());
+        }
     }
 
     /**

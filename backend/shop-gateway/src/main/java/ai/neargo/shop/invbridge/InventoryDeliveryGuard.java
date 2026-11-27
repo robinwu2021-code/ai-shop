@@ -1,5 +1,7 @@
 package ai.neargo.shop.invbridge;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
@@ -25,7 +27,7 @@ public class InventoryDeliveryGuard {
     private final StockLockMapper locks;
     private final ObjectMapper json;
 
-    public InventoryDeliveryGuard(@Qualifier("dataSource") DataSource platform, StockLockMapper locks, ObjectMapper json) {
+    public InventoryDeliveryGuard(@Qualifier(ModuleDataSources.COMMON_DATA_SOURCE) DataSource platform, StockLockMapper locks, ObjectMapper json) {
         this.jdbc = new JdbcTemplate(platform);
         this.locks = locks;
         this.json = json;

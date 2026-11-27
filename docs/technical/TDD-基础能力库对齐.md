@@ -587,7 +587,7 @@
 | 步 | 内容 | 前提 | 状态 |
 |---|---|---|---|
 | R10.1 | 无消费者的事件不落库：本进程既无通知类也无必达消费者时，只有在中间件名单里（别的进程订阅）或统一模式登记了别处的投递目标才写 | — | **已做（2026-11-27）**：`OutboxEventBus.persistAfterNotifying`；`OutboxEventBusRoutingTest` 3 个新用例；平台 420、餐饮 189 个相关测试通过 |
-| R10.2 | `sys_outbox` 归基础能力库句柄（`SysOutboxMapper` 挂 `CommonTableMapper`，统一投递的平台仓储用 `common` 数据源）；`common` 单独绑定时，发布改为业务提交后以 `commonTxManager` 的 `REQUIRES_NEW` 写入，未绑定时仍同事务 | — | 待做 |
+| R10.2 | `sys_outbox` 归基础能力库句柄；分开绑定时业务提交后以 `commonTxManager` 的 `REQUIRES_NEW` 写，未绑定时仍同事务 | — | **已做（2026-11-27）**：`SysOutboxMapper` 挂 `CommonTableMapper`（`ai.neargo.shop.event` 进 common 扫描）；`OutboxEventBus.store`/`setStores`；`OutboxDispatcher` 事务点名 `commonTxManager`；库存投递守卫读 common 数据源；统一模式遇分开绑定启动即拒。`OutboxCommonStoreTest` 4 个；平台 447、餐饮 189 个相关测试通过。**换库（R12）前还要处理**：统一模式的平台仓储（`JdbcOutboxStore`）、`PlatformWritePrerequisites` 的四个调用方（门店目录、资源、排班、人员服务）检查发件箱表用的是业务库、`ExecutionRetentionMirrorMapper` 读历史镜像行在主库 |
 | R10.3 | 库存 `inv_outbox` 并入：库存服务发件到基础能力库的同一张表，删 `JdbcOutboxStore.Source` 与 `inv_` 前缀 | 库存服务要能连基础能力库（与 Q18 密钥库同样做法：给 `inventory-svc` 装一套 common 数据源） | 待做 |
 | R10.4 | 支付权益 `pay_ent_outbox`、积分 `pts_outbox` 并入 | **R3 / Q6：PAY 是否单独部署**——单独部署则 near-pay 进程也要写基础能力库 | 等 R3 |
 | R10.5 | 商城内核 `commerce_outbox` 并入 | 商城内核是独立产品库（`ai.neargo.commerce`），由商城模块决定是否改 | ➖ 归商城模块 |

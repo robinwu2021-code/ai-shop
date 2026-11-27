@@ -1,5 +1,9 @@
 package ai.neargo.shop.event;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+
+import ai.neargo.shop.common.config.ModuleDataSources;
+
 import ai.neargo.shop.event.broker.BrokerMessage;
 import ai.neargo.shop.event.broker.BrokerProperties;
 import ai.neargo.shop.event.broker.MessageBroker;
@@ -65,7 +69,8 @@ public class OutboxDispatcher {
     private final TransactionTemplate perEventTransaction;
 
     public OutboxDispatcher(SysOutboxMapper mapper, List<OutboxConsumer> consumers,
-                            PlatformTransactionManager transactionManager) {
+                            // 发件箱在基础能力库（ADR-067 决策 10）：投递的事务跟着发件箱表走
+                            @Qualifier(ModuleDataSources.COMMON_TX_MANAGER) PlatformTransactionManager transactionManager) {
         this.mapper = mapper;
         // 通知类消费者提交后另走一路（AfterCommitNotifications），这里只投必达的
         this.consumers = consumers.stream().filter(c -> !c.afterCommitOnly()).toList();
@@ -198,7 +203,7 @@ public class OutboxDispatcher {
      * @return 这一条的结局；{@code retryAfter} 非空表示失败且还没到上限，
      *         调用方要在那之后把它排回来 —— <b>去掉定时轮之后没有别人会捞它</b>
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER, propagation = Propagation.REQUIRES_NEW)
     public Outcome dispatchOne(long id) {
         if (unified != null && (unified.isMaintenance() || unified.enabled("PLATFORM"))) {
             return new Outcome(false, null);
@@ -253,7 +258,7 @@ public class OutboxDispatcher {
      * 把已发送事件重置为待发送 —— **仅测试用**，验证「重投不产生重复副作用」。
      * 生产不会调用：真实的重投由投递失败触发，不是把成功的翻回去。
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER, propagation = Propagation.REQUIRES_NEW)
     public void redeliverAllForTest() {
         for (SysOutbox event : mapper.selectList(Wrappers.<SysOutbox>lambdaQuery()
                 .eq(SysOutbox::getStatus, SysOutbox.SENT))) {
