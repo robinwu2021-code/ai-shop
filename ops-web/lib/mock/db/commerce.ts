@@ -10,7 +10,7 @@
 import { ApiError } from "@/lib/api/error";
 import { mallPlanTiers } from "@/lib/commerce-plan-tiers";
 import type {
-  MallBusinessEndDraft, MallBusinessTypeDraft, MallDeploymentOption, MallEntitlementSource, MallAccessSegment,
+  MallEndRequest, MallBusinessEndDraft, MallBusinessTypeDraft, MallDeploymentOption, MallEntitlementSource, MallAccessSegment,
   MallMoney, MallOfflineClaimView, MallOfflineCollectionTerms, MallOfflineInstructionsView, MallPaymentAttempt,
   MallCategoryDraft, MallCategoryView, MallIndustryPublish, MallPlanDraft, MallPlanTier, MallProductDraft, MallQuoteComponent, MallQuoteView, MallRefundView,
   MallShipment, MallShippingAddress, MallSkuDraft, MallOrderStatus, MallComponentKind,
@@ -390,12 +390,9 @@ export function updateType(code: string, v: { name: string; sortOrder: number; e
   return { entityNo: code, draftVersionNo: null, version: row.version };
 }
 
-export function saveEnd(v: {
-  code: string; entitlementCode: string; name: string; scope: "STORE" | "SYSTEM"; allowedBusinessTypes: string[];
-  releaseStatus: "PLANNED" | "VERIFIED" | "RETIRED"; saleEnabled: boolean; bootstrapRequired: boolean; enabled: boolean;
-  deploymentNo: string | null; expectedVersion: number; reason: string;
-}) {
+export function saveEnd(v: MallEndRequest) {
   const s = st();
+  need(v.scope === "STORE" || (v.scope === "SYSTEM" && !v.saleEnabled && !v.bootstrapRequired), "INVALID_ARGUMENT");
   need(/^[A-Z][A-Z0-9_]{1,31}$/.test(v.code) && /^[A-Z][A-Z0-9_]{1,63}$/.test(v.entitlementCode)
     && text(v.name, 64) && text(v.reason, 1024) && v.allowedBusinessTypes.length > 0, "INVALID_ARGUMENT");
   let binding: MallDeploymentOption | null = null;

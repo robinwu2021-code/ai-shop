@@ -26,6 +26,15 @@ async function evidence(store: string, order: string, purpose: "PLATFORM_RECEIPT
 beforeEach(() => resetMall());
 
 describe("目录：草稿 → 发布", () => {
+  it("业务端保存沿用商城的作用域规则", async () => {
+    const draft = { code: "DEVEND", entitlementCode: "DEVEND_USE", name: "Dev end",
+      allowedBusinessTypes: ["RETAIL"], releaseStatus: "PLANNED" as const, saleEnabled: false,
+      bootstrapRequired: false, enabled: true, deploymentNo: null, expectedVersion: 0, reason: "test" };
+    expect(await reason(api.saveMallBusinessEnd({ ...draft, scope: "ENTITY" }))).toBe("INVALID_ARGUMENT");
+    expect(await reason(api.saveMallBusinessEnd({ ...draft, scope: "SYSTEM", saleEnabled: true }))).toBe("INVALID_ARGUMENT");
+    expect(await reason(api.saveMallBusinessEnd({ ...draft, scope: "SYSTEM", bootstrapRequired: true }))).toBe("INVALID_ARGUMENT");
+    expect((await api.saveMallBusinessEnd({ ...draft, scope: "SYSTEM" })).version).toBe(1);
+  });
   it("新建经营类型必须停用；乐观锁错版本 → VERSION_CONFLICT；同时生成门店初始化档和四档行业 Plan", async () => {
     expect(await reason(api.createMallBusinessType({ typeCode: "SALON", name: "美业", sortOrder: 3, enabled: true, expectedVersion: 0, reason: "r" })))
       .toBe("INVALID_ARGUMENT");
