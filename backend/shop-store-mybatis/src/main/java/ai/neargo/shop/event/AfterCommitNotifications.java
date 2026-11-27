@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -81,7 +82,17 @@ public class AfterCommitNotifications implements DisposableBean {
         });
     }
 
+    /** {@code shop.events.transport=rabbitmq} 时由 RabbitMQ 发送；没有就走本地线程池（ADR-067）。 */
+    private NotificationTransport transport;
+
+    @Autowired(required = false)
+    public void setTransport(NotificationTransport transport) { this.transport = transport; }
+
     private void submit(SysOutbox envelope) {
+        if (transport != null) {
+            transport.send(envelope);
+            return;
+        }
         Runnable task = () -> deliver(envelope);
         if (!waitForDelivery) {
             executor.execute(task);

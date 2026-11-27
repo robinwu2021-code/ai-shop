@@ -72,6 +72,8 @@
 **发布入口已统一（2026-11-27，ADR-067 第 1 步）。** `notifyAfterCommit` 删掉，10 处改回 `publish`。消费者标 `afterCommitOnly()`（现为 `NotificationConsumer`、`PrintNotifyBridge`）即为通知类：发件箱投递与统一模式登记都跳过它，`publish` 按订阅者自动登记提交后通知；事件类型只有通知类消费者时不落发件箱，一个消费者都没有的照旧落库。外部事件号发布（`publish(eventNo, event)`）同样分流，并把事件号带给通知。
 
 **外部通道已去重（2026-11-27，ADR-067 第 2 步）。** `EventIdempotency.firstSend(通道, 收件人)` 在 `sys_event_consumed` 记 `send:<通道>:<收件人>`（`REQUIRES_NEW` 单独提交，外部调用不进数据库事务）；事件号由提交后通知与发件箱投递经 `DeliveryContext` 设上，运营端测试发送等不在投递里的调用直接放行。接在 `WxSubscribeSender`、`PushSender` 的统一出口和 `NotificationConsumer` 的短信、邮件、企微群、收件人物流短信处。
+
+**RabbitMQ 传输已接（2026-11-27，ADR-067 第 3 步）。** `shop.events.transport=local|rabbitmq`（默认 `local`）；`rabbitmq` 下通知类事件提交后发到交换机 `shop.events`，各通知消费者在自己的仲裁队列收，超投递上限进死信。连接配置在 `application.yml` 的 `shop.events.rabbitmq`，地址/虚拟主机/账号有默认值，口令只从 `SHOP_RABBITMQ_PASSWORD` 来。真 broker 集成测试 `RabbitNotificationIT` 待在服务器侧跑。
 由 `AfterCommitNotifications` 在提交后、在后台线程交给支持它的消费者（`NotificationConsumer`、`PrintNotifyBridge`），
 失败只记日志不重投，回滚则不发。必须换线程：提交回调里本线程的数据库资源还绑着已提交的事务，直接写库会静默丢失。
 测试配置 `shop.notify.after-commit.wait=true` 让提交线程等投递做完。混合类里的通知部分还没拆。

@@ -35,7 +35,8 @@
    混合事件不拆：消费者各自一条队列，彼此的失败与重试互不影响。
 
 3. **拓扑**：
-   - 每个域一个持久的 topic 交换机：通知、交易、库存、物流、权益、商城渠道源、餐饮；**路由键 = 事件类型**。
+   - 一个持久的 topic 交换机 `shop.events`，**路由键 = 事件类型**（2026-11-27 实现时由“每域一个”收成一个：
+     事件类型本身已全局唯一，按域分交换机只多一层映射；以后要按域隔离权限再拆）。
    - **每个消费者（现有 `handlerId`）一条仲裁队列**（quorum queue，RabbitMQ 4 默认的复制队列），按它 `supports` 的事件类型绑定。
    - 失败重投用仲裁队列的投递次数上限（`delivery-limit`），超限进该消费者的**死信队列**；退避用“死信 + 带过期时间的重试队列”转回。
    - **要按聚合保序的事件**（库存镜像、发货快照、子单状态、餐饮桌单等，清单里“顺序键”非空的）经**一致性哈希交换机**
@@ -104,5 +105,12 @@
 1. 发布入口收成 `publish` + 按必达消费者决定落不落发件箱（`local` 传输，与 MQ 无关）。 **已做（2026-11-27）**：通知类消费者以 `afterCommitOnly()` 标记。
 2. 通知外部通道按事件号去重。 **已做（2026-11-27）**：复用基础能力的事件幂等表 `sys_event_consumed`，键 `send:<通道>:<收件人>`，单独提交；事件号由投递方经 `DeliveryContext` 带给消费者。覆盖微信订阅、App 推送、来单/售后短信、来单邮件、企微群、收件人物流短信。
 3. 传输抽象 + RabbitMQ 实现（默认 `local`），本机装单机版跑集成测试；先切 MQ 直发类。
+   **已做（2026-11-27）**：`NotificationTransport` 抽象；`shop.events.transport=rabbitmq` 时
+   `RabbitEventsConfiguration` 自建连接工厂（只引 `spring-rabbit`，不引 starter，`local` 下不建连接、不影响健康检查），
+   通知类消费者（`afterCommitOnly()`）各一条仲裁队列 `shop.events.<handlerId>`、按 `eventTypes()` 绑定、
+   投递上限 5 次后进 `shop.events.<handlerId>.dlq`；发送在后台线程等发布确认，失败本地重试 3 次后只记日志。
+   **只切了通知类**；清单 A7–A13（有兜底作业的）仍走发件箱，待兜底作业逐个核实后再切。
+   开发机没有 RabbitMQ（无 Homebrew/Docker/Erlang），连真 broker 的 `RabbitNotificationIT` 以环境变量 `SHOP_RABBITMQ_IT_*` 开启，
+   在能连 RabbitMQ 的机器上跑。
 4. 发件箱中转改发 RabbitMQ，消费者改订阅，按域逐个切。
 5. 撤中转（清单 §〇 C 类）。

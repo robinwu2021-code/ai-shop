@@ -300,6 +300,18 @@ shop:
     #   PropertySource 的实现细节，而「配了等于没配」这种失败是全静默的
     #   （configured() 返回 false，服务照起，只是永远存不进凭据）。
     cred-key: ${SHOP_NOTIFY_CRED_KEY:}
+  # 异步事件的传输（ADR-067）：local = 进程内（默认，没部署 MQ 时与原来一致、不建连接）；
+  # rabbitmq = 通知类事件提交后发 RabbitMQ 4，各消费者在自己的仲裁队列里收。
+  # 连接在服务器上部署时打通；口令只从环境变量来、不写默认值（NoSecretDefaultInConfigTest），
+  # 切到 rabbitmq 而漏配口令启动即失败。
+  events:
+    transport: ${SHOP_EVENTS_TRANSPORT:local}
+    rabbitmq:
+      host: ${SHOP_RABBITMQ_HOST:192.168.3.200}
+      port: ${SHOP_RABBITMQ_PORT:5673}
+      virtual-host: ${SHOP_RABBITMQ_VHOST:neargo}
+      username: ${SHOP_RABBITMQ_USERNAME:neargo_app}
+      password: ${SHOP_RABBITMQ_PASSWORD}
   outbox:
     enabled: ${SHOP_OUTBOX_ENABLED:true}
     maintenance: ${SHOP_OUTBOX_MAINTENANCE:false}

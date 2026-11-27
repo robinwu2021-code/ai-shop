@@ -1,5 +1,7 @@
 package ai.neargo.shop.event;
 
+import java.util.Set;
+
 import ai.neargo.shop.event.outbox.DeliveryResult;
 
 /**
@@ -21,6 +23,12 @@ public interface OutboxConsumer {
      * 一个事件类型只有这类消费者时不落发件箱（ADR-067）。
      */
     default boolean afterCommitOnly() { return false; }
+
+    /**
+     * 这个消费者收哪些事件类型，用于 MQ 队列绑定（ADR-067）。空 = 全收，由 {@link #supports} 过滤。
+     * 只需通知类消费者实现；必须与 {@link #supports} 一致。
+     */
+    default Set<String> eventTypes() { return Set.of(); }
 
     /** External workflows keep their own action ledger outside an enclosing JDBC transaction. */
     default boolean externalWorkflow() { return false; }

@@ -50,9 +50,17 @@ public class PrintNotifyBridge implements OutboxConsumer {
         return true;
     }
 
+    private static final Set<String> TYPES =
+            Set.of("PRINT_BATCH_RESOLVED", "PRINT_INCIDENT_OPENED", "PRINT_INCIDENT_RESOLVED");
+
     public boolean supports(String type) {
-        return Set.of("PRINT_BATCH_RESOLVED", "PRINT_INCIDENT_OPENED", "PRINT_INCIDENT_RESOLVED")
-                .contains(type);
+        return TYPES.contains(type);
+    }
+
+    /** MQ 队列按这些事件类型绑定（ADR-067）。 */
+    @Override
+    public Set<String> eventTypes() {
+        return TYPES;
     }
 
     public void consume(SysOutbox row) {
