@@ -24,6 +24,7 @@ public class FoodMaintenanceJobs {
     static final String QUEUE_NOTICE = "food-queue-notice";
     static final String PRODUCTION_RECOVERY = "food-production-recovery";
     static final String RETURN_AMENDMENT_RECOVERY = "food-return-amendment-recovery";
+    static final String TABLE_RECOVERY = "food-table-recovery";
     private static final String OWNER = "food-core";
     private static final String EVERY_15_SECONDS = "*/15 * * * * *";
 
@@ -38,6 +39,9 @@ public class FoodMaintenanceJobs {
     }
     @Bean JobHandler foodReturnAmendmentRecoveryJob(FoodMaintenanceService service) {
         return new Handler(RETURN_AMENDMENT_RECOVERY, Task.RETURN_AMENDMENT_RECOVERY, 50, service);
+    }
+    @Bean JobHandler foodTableRecoveryJob(FoodMaintenanceService service) {
+        return new Handler(TABLE_RECOVERY, Task.TABLE_RECOVERY, 100, service);
     }
 
     // 高频任务：logEveryRun=false，只在状态变化或失败时落日志
@@ -60,6 +64,12 @@ public class FoodMaintenanceJobs {
         return new JobDeclaration(RETURN_AMENDMENT_RECOVERY, "餐饮退菜改单恢复",
                 "按原退菜审批重试待后厨确认或结果未知的改单，不新建退款或改单",
                 OWNER, EVERY_15_SECONDS, true, 60, 120, true, false);
+    }
+
+    @Bean JobDeclaration foodTableRecoveryDeclaration() {
+        return new JobDeclaration(TABLE_RECOVERY, "餐饮开台补偿",
+                "先占了桌、超过 5 分钟仍没有账单的占台按补偿结束，桌台恢复可用；不新建账单",
+                OWNER, "0 * * * * *", true, 60, 120, true, false);
     }
 
     static final class Handler implements JobHandler {

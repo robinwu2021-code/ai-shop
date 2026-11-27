@@ -111,6 +111,27 @@ class CheckServiceTest extends FoodWriteGuardFixture {
             DiningSessionTest.code(() -> s.openCheck("E","A","actor",open(t,2,"EXCLUSIVE"),"other"),ErrorCode.CONFLICT);
         });
     }
+    /** 开台补偿（ADR-068 修订二）：先占了桌、超时仍没有账单的占台被结束，桌台恢复；有账单的不动。 */
+    @Test void openingRecoveryEndsOccupancyWithoutCheckAndKeepsRealOnes() {
+        run(c -> {
+            var f=fixture(c);var t1=table(c,"T1");var t2=table(c,"T2");var s=c.getBean(CheckService.class);
+            var real=s.openCheck("E","A","actor",open(t1,2,"EXCLUSIVE"),"real").check();
+            f.sql().update("INSERT INTO fnb_table_occupancy(tenant_no,entity_no,created_at,created_by,updated_at,updated_by,"
+                    +"version,deleted,occupancy_no,table_no,check_no,seats,started_at) VALUES ('MAIN','E',?,'actor',?,'actor',0,0,"
+                    +"'ORPHAN_OCC',?,'ORPHAN_CHECK',2,?)",
+                    java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(10),
+                    java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(10),t2.tableNo(),
+                    java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(10));
+            f.sql().update("UPDATE fnb_table_occupancy SET started_at=? WHERE check_no=?",
+                    java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(10),real.checkNo());
+            ai.neargo.shop.food.service.impl.CheckServiceImpl impl=
+                    org.springframework.test.util.AopTestUtils.getUltimateTargetObject(s);
+            assertThat(impl.recoverOpenings(java.time.Duration.ofMinutes(5),100)).isEqualTo(1);
+            assertThat(f.sql().queryForObject("SELECT ended_at IS NOT NULL FROM fnb_table_occupancy WHERE occupancy_no='ORPHAN_OCC'",Boolean.class)).isTrue();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_table_occupancy WHERE check_no=? AND ended_at IS NULL",Integer.class,real.checkNo())).isOne();
+            assertThat(impl.recoverOpenings(java.time.Duration.ofMinutes(5),100)).isZero();
+        });
+    }
     @Test void permitsNoTableAndRejectsUnverifiedCapabilitiesAndForeignResources() {
         run(c -> {
             fixture(c);var t=table(c,"T1");var s=c.getBean(CheckService.class);
@@ -268,8 +289,22 @@ class CheckServiceTest extends FoodWriteGuardFixture {
                         default -> s.openSharedCheck("E","A",table.tableNo(),"actor",new OpenSharedCheckReq(1L,1,"PREPAY"),"fail");
                     }
                 }).isInstanceOf(IllegalStateException.class).hasMessage("after-check-event-flush");
-                for(var entry:before.entrySet()) assertThat(f.sql().queryForList("SELECT * FROM "+entry.getKey()+" ORDER BY id"))
-                        .as(action+":"+entry.getKey()).isEqualTo(entry.getValue());
+                // 开台、拼桌按 ADR-068 修订二先在业务域占桌、再在订单域建账单：订单域失败时订单域整体回滚，
+                // 业务域由补偿把本次占台结束、翻台复原（占台与操作记录留痕，桌台版本前进）。
+                boolean compensated=action.equals("open") || action.equals("share");
+                for(var entry:before.entrySet()) {
+                    if(compensated && java.util.Set.of("fnb_table","fnb_table_occupancy","fnb_table_operation").contains(entry.getKey())) continue;
+                    assertThat(f.sql().queryForList("SELECT * FROM "+entry.getKey()+" ORDER BY id"))
+                            .as(action+":"+entry.getKey()).isEqualTo(entry.getValue());
+                }
+                if(compensated) {
+                    assertThat(f.sql().queryForList("SELECT occupancy_no FROM fnb_table_occupancy WHERE ended_at IS NULL ORDER BY id"))
+                            .as(action+":active occupancy").isEqualTo(before.get("fnb_table_occupancy").stream()
+                                    .filter(r -> r.get("ENDED_AT")==null).map(r -> Map.of("OCCUPANCY_NO",r.get("OCCUPANCY_NO"))).toList());
+                    assertThat(f.sql().queryForList("SELECT table_no,turnover_state FROM fnb_table ORDER BY id"))
+                            .as(action+":turnover").isEqualTo(before.get("fnb_table").stream()
+                                    .map(r -> Map.of("TABLE_NO",r.get("TABLE_NO"),"TURNOVER_STATE",r.get("TURNOVER_STATE"))).toList());
+                }
             });
         }
     }
@@ -472,7 +507,7 @@ class CheckServiceTest extends FoodWriteGuardFixture {
             };
             return new CheckServiceImpl(checks,areas,tables,occupancy,seats,operations,
                     sessions,actions,policies,idem,checked,json,manager,
-                    new ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper(source));
+                    new ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper(source),manager);
         }
     }
 }

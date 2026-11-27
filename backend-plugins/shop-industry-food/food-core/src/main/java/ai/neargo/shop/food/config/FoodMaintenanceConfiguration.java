@@ -34,8 +34,10 @@ public class FoodMaintenanceConfiguration {
             ObjectProvider<ProductionConsumptionService> production,
             ObjectProvider<BusinessReturnApprovalService> amendments,
             ObjectProvider<FoodReturnStockService> returnStock,
-            ObjectProvider<FoodStockSyncWorker> stockSync) {
+            ObjectProvider<FoodStockSyncWorker> stockSync,
+            ObjectProvider<ai.neargo.shop.food.service.CheckService> checks) {
         return new FoodMaintenanceServiceImpl(dispatch::getIfAvailable, notices::getIfAvailable,
-                production::getIfAvailable, amendments::getIfAvailable).withReturnStock(returnStock::getIfAvailable).withStockSync(stockSync::getIfAvailable);
+                production::getIfAvailable, amendments::getIfAvailable).withReturnStock(returnStock::getIfAvailable).withStockSync(stockSync::getIfAvailable)
+                .withTables(checks::getIfAvailable);
     }
 }

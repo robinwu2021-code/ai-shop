@@ -67,7 +67,8 @@ class PhysicalTableMoveTest extends FoodWriteGuardFixture {
                 c.getBean(StoreOperationService.class),c.getBean(RequestIdempotencyPort.class),
                 c.getBean("foodOutboxPublisher",OutboxPublisher.class),c.getBean(ObjectMapper.class),
                 c.getBean(PlatformTransactionManager.class),c.getBean(ReservationTableMapper.class),
-                new ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper(c.getBean(javax.sql.DataSource.class)));
+                new ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper(c.getBean(javax.sql.DataSource.class)),
+                c.getBean(PlatformTransactionManager.class));
     }
     void postpay(Fixture f,String check) {
         f.sql().update("UPDATE fnb_check SET pay_mode='POSTPAY' WHERE check_no=?",check);

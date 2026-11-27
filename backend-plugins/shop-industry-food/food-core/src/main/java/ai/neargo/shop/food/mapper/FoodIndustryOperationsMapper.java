@@ -653,4 +653,18 @@ public class FoodIndustryOperationsMapper {
                         store,
                         no));
     }
+
+    /** 开台时间落在窗口内、仍未结束的占台（按账单号去重，带门店）：开台补偿扫描用。 */
+    public List<FoodBusinessOperationRow> activeOccupanciesStartedBetween(
+            LocalDateTime since, LocalDateTime until, int limit) {
+        return rows(
+                db.queryForList(
+                        "SELECT DISTINCT o.entity_no,t.store_no,o.check_no FROM fnb_table_occupancy o"
+                            + " JOIN fnb_table t ON t.entity_no=o.entity_no AND t.table_no=o.table_no"
+                            + " WHERE o.ended_at IS NULL AND o.deleted=0 AND o.started_at>=? AND"
+                            + " o.started_at<? ORDER BY o.check_no LIMIT ?",
+                        since,
+                        until,
+                        limit));
+    }
 }

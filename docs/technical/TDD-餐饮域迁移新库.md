@@ -260,6 +260,14 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - 测试：food-core 755 个通过（54 个要 MySQL 的跳过）。
 - 未完成：下列服务里业务域写与订单域写仍在一个交易事务里（未绑定时与原来等价），按 §2.7 第 ②③ 步改成补偿流程：开台、换台、并台、清台（`CheckServiceImpl`）、扫码会话（`DiningSessionServiceImpl`）、订位（`ReservationServiceImpl`）、时段容量的占用与确认（`ServiceSlotServiceImpl`，在下单与接单事务里调用）、结账放台（`CheckCollaborationServiceImpl`）。
 
+### 已完成：开台改为先占桌、后建账单、失败补偿（2026-11-27，修订二第 ② 步，散客与拼桌）
+
+- `CheckServiceImpl#openWithCompensation`：账单号与操作号由请求键派生（`CommandBusinessKey`）；业务域在行业事务里锁桌、分配座位、写占台、更新翻台（拼桌时写操作记录），重放时占台已在就跳过；
+  订单域在交易事务里按同一账单号建账单与座位、记事件，账单已在就按它返回；订单域失败且账单不存在时结束本次占台（`compensateOpening`）。门店付款方式检查提到占桌之前，减少无谓的补偿。
+- 开台补偿扫描 `CheckServiceImpl#recoverOpenings`：一天内开的、超过 5 分钟仍没有账单的占台按补偿结束；新增维护任务 `TABLE_RECOVERY`（`food-table-recovery`，每分钟）。
+- 测试：`CheckServiceTest#eachWriteRollsBackAfterActualOutboxFlush` 的开台、拼桌两项改为验证补偿（订单域表不变，占台结束、翻台复原）；新增 `CheckServiceTest#openingRecoveryEndsOccupancyWithoutCheckAndKeepsRealOnes`。food-core 756 个、food-web 258 个通过。
+- 未做：排队入座、订位到店仍在调用方事务里开台（`openQueuedCheck`、`openReservedCheck`）；换台、并台、清台、结账放台、扫码会话；时段容量。
+
 ### 事务拆分记录
 
 | 服务 | 类 | 处理 |

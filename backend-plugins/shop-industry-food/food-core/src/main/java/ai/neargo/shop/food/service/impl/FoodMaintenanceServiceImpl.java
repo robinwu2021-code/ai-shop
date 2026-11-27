@@ -36,6 +36,10 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
     public FoodMaintenanceServiceImpl withReturnStock(Supplier<FoodReturnStockService> source) {
         this.returnStock=source;return this;
     }
+    private Supplier<ai.neargo.shop.food.service.CheckService> tables=()->null;
+    public FoodMaintenanceServiceImpl withTables(Supplier<ai.neargo.shop.food.service.CheckService> source){tables=source;return this;}
+    /** 开台到建账单之间正常只有几秒；超过这个时长仍没有账单的占台按补偿结束。 */
+    static final java.time.Duration OPENING_GRACE = java.time.Duration.ofMinutes(5);
     private Supplier<FoodStockSyncWorker> stockSync=()->null;
     public FoodMaintenanceServiceImpl withStockSync(Supplier<FoodStockSyncWorker> source){stockSync=source;return this;}
     @Override
@@ -57,6 +61,12 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
                         consumed.pending() + disposed.pending() + delivered.pending());
             }
             case RETURN_AMENDMENT_RECOVERY -> require(amendments, task).recover(limit);
+            case TABLE_RECOVERY -> {
+                // 开台补偿只在原 FOOD 宿主上执行（本地 CheckServiceImpl 同时持有两个域的写入）。
+                if (!(require(tables, task) instanceof CheckServiceImpl local))
+                    throw new IllegalStateException("FOOD owner for " + task + " is not local");
+                yield new Report(local.recoverOpenings(OPENING_GRACE, limit), 0);
+            }
         };
     }
 

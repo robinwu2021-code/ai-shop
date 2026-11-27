@@ -50,6 +50,7 @@ import ai.neargo.shop.food.policy.ServiceCalendarPolicy;
 import ai.neargo.shop.food.policy.TableOccupancyPolicy;
 import ai.neargo.shop.food.policy.TableResourceLocks;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
+import ai.neargo.shop.food.service.support.CommandBusinessKey;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
@@ -107,6 +108,8 @@ public class CheckServiceImpl implements CheckService {
     private final CheckMapper checks;
     /** 堂食权益在行业库：释放账单前单独数一次，不再和交易事实联在一条 SQL 里。 */
     private final FoodIndustryOperationsMapper industry;
+    /** 桌台、占台在行业库（ADR-068 修订二）：开台先在这里占桌，再到交易库建账单。 */
+    private final TransactionTemplate industryTx;
     private final TableMapper tables;
     private final TableOccupancyMapper occupancies;
     private final SeatMapper seats;
@@ -135,7 +138,8 @@ public class CheckServiceImpl implements CheckService {
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
-            FoodIndustryOperationsMapper industry) {
+            FoodIndustryOperationsMapper industry,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager industryManager) {
         this(
                 checks,
                 areas,
@@ -151,7 +155,8 @@ public class CheckServiceImpl implements CheckService {
                 json,
                 manager,
                 null,
-                industry);
+                industry,
+                industryManager);
     }
 
     @Autowired
@@ -170,9 +175,12 @@ public class CheckServiceImpl implements CheckService {
             ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ReservationTableMapper reservationTables,
-            FoodIndustryOperationsMapper industry) {
+            FoodIndustryOperationsMapper industry,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager industryManager) {
         this.reservationTables = reservationTables;
         this.industry = industry;
+        this.industryTx = new TransactionTemplate(industryManager);
+        industryTx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         this.checks = checks;
         this.tables = tables;
         this.occupancies = occupancies;
@@ -273,6 +281,10 @@ public class CheckServiceImpl implements CheckService {
                         ? originalHash
                         : FoodCommandFingerprint.hash(
                                 originalHash, "RESERVED_UNTIL", reservedUntil.toString());
+        if (!queued)
+            return openWithCompensation(
+                    entity, store, actor, req, key, action, hash, targets, versions, desired);
+        // 排队入座、订位到店仍在调用方的事务里开台（随排队、订位改补偿时一起改，见 TDD §6）。
         return write(
                 action,
                 entity,
@@ -326,6 +338,176 @@ public class CheckServiceImpl implements CheckService {
                     changed(check, actor, action, null, null, key, operation);
                     return new CheckResultVO(view(check));
                 });
+    }
+
+    /**
+     * 开台（散客、拼桌）：订单域与业务域分开，跨域用补偿（ADR-068 修订二）。
+     *
+     * <ol>
+     *   <li>业务域（行业库）先占桌：锁桌、按座位分配、写占台、更新翻台。账单号由请求键派生，占台引用它；
+     *       同一请求重放时占台已在，不再占。
+     *   <li>订单域（交易库）按同一个账单号建账单与座位；账单已在就按它返回（业务键回查）。
+     *   <li>订单域失败且账单不存在：结束本次占台（补偿）。结果不明时留给 {@link #recoverOpenings}。
+     * </ol>
+     */
+    private CheckResultVO openWithCompensation(
+            String entity,
+            String store,
+            String actor,
+            OpenCheckReq req,
+            String key,
+            String action,
+            String hash,
+            List<String> targets,
+            Map<String, Long> versions,
+            List<SeatReq> desired) {
+        scope(entity, store);
+        if (actor == null || actor.isBlank() || actor.length() > 32)
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        text(key, 128);
+        if (TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Check command cannot join an existing transaction");
+        String checkNo = CommandBusinessKey.derive("FCHK", action, entity, store, actor, key);
+        String operationNo = CommandBusinessKey.derive("FOPR", action, entity, store, actor, key);
+        var existing = checks.selectOne(
+                Wrappers.<FnbCheck>lambdaQuery()
+                        .eq(FnbCheck::getEntityNo, entity)
+                        .eq(FnbCheck::getCheckNo, checkNo));
+        if (existing != null) return new CheckResultVO(view(existing));
+        var at = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        var policy = policies.getPolicy(entity, store, new GetPolicyQuery(at));
+        if (!req.payMode().equals(policy.payPolicy())) throw BizException.of(ErrorCode.CONFLICT);
+        occupyFirst(entity, store, actor, req, key, action, hash, checkNo, operationNo, targets, versions);
+        try {
+            return write(
+                    action,
+                    entity,
+                    store,
+                    actor,
+                    key,
+                    hash,
+                    CheckResultVO.class,
+                    () -> {
+                        var replayed = checks.selectOne(
+                                Wrappers.<FnbCheck>lambdaQuery()
+                                        .eq(FnbCheck::getEntityNo, entity)
+                                        .eq(FnbCheck::getCheckNo, checkNo));
+                        if (replayed != null) return new CheckResultVO(view(replayed));
+                        // 占台已被补偿结束的（超时扫描），不再建账单；不占桌的开台没有占台。
+                        if (!targets.isEmpty() && occupancies.activeForCheck(entity, checkNo).isEmpty())
+                            throw BizException.of(ErrorCode.CONFLICT);
+                        var check = new FnbCheck();
+                        check.setEntityNo(entity);
+                        check.setStoreNo(store);
+                        check.setCheckNo(checkNo);
+                        check.setBusinessDate(ServiceCalendarPolicy.businessDate(at, policy));
+                        check.setPolicyNo(policy.policyNo());
+                        check.setPartySize(req.partySize());
+                        check.setPayMode(req.payMode());
+                        check.setStatus("OPEN");
+                        check.setOpenedAt(local(at));
+                        check.setServiceState("OPEN");
+                        initialize(check, actor);
+                        checks.insert(check);
+                        saveSeatRows(check, desired, actor);
+                        changed(check, actor, action, null, null, key, operationNo);
+                        return new CheckResultVO(view(check));
+                    });
+        } catch (RuntimeException failure) {
+            compensateOpening(entity, store, checkNo, actor);
+            throw failure;
+        }
+    }
+
+    /** 业务域：锁桌、分配座位、写占台、更新翻台；本次请求已占过（重放）就不再占。 */
+    private void occupyFirst(
+            String entity,
+            String store,
+            String actor,
+            OpenCheckReq req,
+            String key,
+            String action,
+            String hash,
+            String checkNo,
+            String operationNo,
+            List<String> targets,
+            Map<String, Long> versions) {
+        try {
+            industryTx.executeWithoutResult(
+                    status -> {
+                        if (targets.isEmpty() || !occupancies.activeForCheck(entity, checkNo).isEmpty()) return;
+                        var locked = locks.lock(entity, store, targets, versions, true);
+                        var allocation =
+                                allocation(entity, locked, req.partySize(), req.sharingMode(), null, null);
+                        var owner = new FnbCheck();
+                        owner.setEntityNo(entity);
+                        owner.setStoreNo(store);
+                        owner.setCheckNo(checkNo);
+                        owner.setPartySize(req.partySize());
+                        owner.setPayMode(req.payMode());
+                        owner.setVersion(0L);
+                        occupy(owner, allocation, req.sharingMode(), actor);
+                        touch(entity, locked, actor);
+                        // 补偿后用同一请求重试：操作记录已在（操作号由请求键派生），不再写。
+                        if (action.equals("SHARE_TABLE")
+                                && operations.selectCount(
+                                                Wrappers.<FnbTableOperation>lambdaQuery()
+                                                        .eq(FnbTableOperation::getEntityNo, entity)
+                                                        .eq(FnbTableOperation::getOperationNo, operationNo))
+                                        == 0)
+                            operation(
+                                    owner,
+                                    operationNo,
+                                    action,
+                                    key,
+                                    hash,
+                                    Map.of("tableVersions", versions),
+                                    actor,
+                                    "独立拼桌");
+                    });
+        } catch (ConcurrencyFailureException | DuplicateKeyException conflict) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    /** 补偿：账单在订单域不存在时，结束这张账单号上的占台并更新翻台（可重复执行）。 */
+    private void compensateOpening(String entity, String store, String checkNo, String actor) {
+        if (checks.selectCount(
+                        Wrappers.<FnbCheck>lambdaQuery()
+                                .eq(FnbCheck::getEntityNo, entity)
+                                .eq(FnbCheck::getCheckNo, checkNo))
+                > 0) return;
+        industryTx.executeWithoutResult(
+                status -> {
+                    var active = occupancies.activeForCheck(entity, checkNo);
+                    if (active.isEmpty()) return;
+                    var locked = locks.lock(entity, store, tableNos(active), null, false);
+                    endOccupancies(occupancies.activeForCheck(entity, checkNo), actor);
+                    touch(entity, locked, actor);
+                });
+    }
+
+    /**
+     * 开台补偿的扫描：开台超过 {@code olderThan} 仍没有账单的占台，结束它（订单域为准）。
+     * 返回结束的账单号数。
+     */
+    public int recoverOpenings(java.time.Duration olderThan, int limit) {
+        var now = Instant.now();
+        var cutoff = LocalDateTime.ofInstant(now.minus(olderThan), ZoneOffset.UTC);
+        // 只看一天内开的：漏建账单发生在开台那几秒，正常在用的占台一天内数量有限（桌台数）。
+        var since = LocalDateTime.ofInstant(now.minus(java.time.Duration.ofDays(1)), ZoneOffset.UTC);
+        int ended = 0;
+        for (var row : industry.activeOccupanciesStartedBetween(since, cutoff, limit)) {
+            String entity = row.text("entity_no"), store = row.text("store_no"), check = row.text("check_no");
+            if (checks.selectCount(
+                            Wrappers.<FnbCheck>lambdaQuery()
+                                    .eq(FnbCheck::getEntityNo, entity)
+                                    .eq(FnbCheck::getCheckNo, check))
+                    > 0) continue;
+            compensateOpening(entity, store, check, "SYSTEM");
+            ended++;
+        }
+        return ended;
     }
 
     @Override

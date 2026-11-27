@@ -514,9 +514,10 @@ public class FoodAutoConfiguration {
             StoreOperationService policies,RequestIdempotencyPort idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager, ReservationTableMapper reservationTables,
-            ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper industry) {
+            ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper industry,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager industryManager) {
         return new CheckServiceImpl(checks,areas,tables,occupancy,seats,operations,
-                sessions,actions,policies,idem,publisher,json,manager,reservationTables,industry);
+                sessions,actions,policies,idem,publisher,json,manager,reservationTables,industry,industryManager);
     }
 
     @Bean
