@@ -153,6 +153,12 @@
 
 - `backend/scripts/gen-product-test-schema.py` → `schema-product-test.sql`（25 张表：n_trade 的 21 张 `prd_*` + 评价 3 张 + 收藏），挂进 `check-generated-docs`；`application-h2db.yml` 的 `schema-locations` 把它排在 `schema-test.sql` 之前。过渡列：`prd_sku.stock`、`prd_sku.locked_stock`、`prd_store_catalog.current_version_no`。
 
+### 第 3 步 · 批次 1（纯改名）
+
+- `PrdSpuStd` → `prd_standard_goods`、`PrdSellRule` → `prd_sellable_rule`：列完全一致，只改 `@TableName`；基线 89 → 87。
+- 后续（不在商品范围）：媒体模块 `CoreMediaRefs` 按表名清理无主图片，仍登记旧表 `prd_spu_std`（其覆盖测试扫的是旧迁移）；媒体随它自己的迁移改成按句柄查新库。
+- 其余改名表都牵涉合表，放批次 2：`prd_store_price` → `prd_store_sku`（并入门店库存）、`prd_category_spec` → `prd_spec_usage`（类目改为范围）、`prd_category_spec_value` 在零售定稿里并入 `prd_spec_usage`。
+
 ### 偏差说明
 
 - 测试库没有按原方案「去掉旧 `prd_*`、两个句柄绑同一个 H2」，而是同一个 H2 库里追加一份按新设计生成的建表脚本：改动更小，漂移测试不受影响，且能逐批迁移。

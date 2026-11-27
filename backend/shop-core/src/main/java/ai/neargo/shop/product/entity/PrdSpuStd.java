@@ -23,7 +23,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("prd_spu_std")
+@TableName("prd_standard_goods")
 public class PrdSpuStd extends BaseEntity {
 
     public static final String ACTIVE = "ACTIVE";

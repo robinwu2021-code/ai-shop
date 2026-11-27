@@ -69,7 +69,7 @@ class RetailStandardBarcodeFlowTest {
     }
 
     private void seed(String no, String barcode, String status) {
-        jdbc.update("INSERT INTO prd_spu_std(std_no,category_no,title,keywords,barcode,status,spec_groups,"
+        jdbc.update("INSERT INTO prd_standard_goods(std_no,category_no,title,keywords,barcode,status,spec_groups,"
                 + "created_at,updated_at) VALUES (?,'CAT210',?,?,?,?,'[]',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 no, title, "alias-" + marker, barcode, status);
     }
