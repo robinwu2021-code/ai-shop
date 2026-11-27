@@ -94,7 +94,7 @@ class StoreSalesCatalogIT {
                 type("ai.neargo.shop.product.service.impl.StoreSalesCatalogServiceImpl"), Mappers.class)
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + source.getUrl(), "spring.datasource.username=root",
-                        "spring.datasource.password=", "shop.catalog.publication.archive-only=true");
+                        "spring.datasource.password=");
     }
     private Object call(ApplicationContext context, String method, Object... args) {
         Object service = context.getBean(type("ai.neargo.shop.product.service.StoreSalesCatalogService"));

@@ -182,7 +182,7 @@ class ResourceBookingExecutionIT {
                     .withBean(ObjectMapper.class, JsonMapper::new)
                     .withBean(ResourceSourceAuthorityPort.class, () -> source)
                     .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
-                            "spring.datasource.password=", "shop.resource.publication.archive-only=true");
+                            "spring.datasource.password=");
         } catch (ClassNotFoundException ex) {
             throw new AssertionError("booking execution service is missing", ex);
         }

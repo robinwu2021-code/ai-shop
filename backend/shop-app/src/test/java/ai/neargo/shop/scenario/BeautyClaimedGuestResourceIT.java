@@ -58,11 +58,7 @@ import java.util.function.Supplier;
         properties = {
             "shop.beauty.enabled=true",
             "shop.beauty.deployment=embedded",
-            "shop.beauty.migration.mode=migrate",
-            "shop.beauty.publication.archive-only=true",
-            "shop.personnel.publication.archive-only=true",
-            "shop.schedule.publication.archive-only=true",
-            "shop.resource.publication.archive-only=true"
+            "shop.beauty.migration.mode=migrate"
         })
 @EnabledIfSystemProperty(named = "beauty.source.test.native", matches = "true")
 class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {

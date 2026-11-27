@@ -84,9 +84,7 @@ import ai.neargo.shop.trade.service.impl.AfterSaleServiceImpl;
 /** Actual DUAL original rows and durable mirror instructions prove that pending is not a completed return marker. */
 @EnabledIfSystemProperty(named = "beauty.execution.test.native", matches = "true")
 @TestPropertySource(properties = {
-    "shop.inventory.stock-authority=DUAL",
-        "shop.personnel.publication.archive-only=true", "shop.schedule.publication.archive-only=true",
-        "shop.resource.publication.archive-only=true"
+    "shop.inventory.stock-authority=DUAL"
 })
 class ExecutionStockReturnIT extends ManualSourceHostFixture {
     @Autowired PersonnelService personnel;

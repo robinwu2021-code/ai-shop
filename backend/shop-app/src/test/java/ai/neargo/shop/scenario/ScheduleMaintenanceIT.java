@@ -103,8 +103,7 @@ class ScheduleMaintenanceIT {
                 .withBean(GoodsQueryPort.class, () -> mock(GoodsQueryPort.class))
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
-                        "spring.datasource.password=", "shop.schedule.publication.archive-only=true",
-                        "shop.personnel.publication.archive-only=true");
+                        "spring.datasource.password=");
     }
     private Object req(String type, String value) { return json.readValue(value, required("dto." + type)); }
     private Object call(ApplicationContext context, String name, Object... args) {

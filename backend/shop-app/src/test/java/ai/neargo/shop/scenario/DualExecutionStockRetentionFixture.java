@@ -76,9 +76,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 /** Shared actual native Core/source/PLATFORM/outbox/Inventory setup; no fabricated owner evidence. */
 @TestPropertySource(properties = {
-    "shop.inventory.stock-authority=DUAL",
-    "shop.personnel.publication.archive-only=true", "shop.schedule.publication.archive-only=true",
-    "shop.resource.publication.archive-only=true"
+    "shop.inventory.stock-authority=DUAL"
 })
 abstract class DualExecutionStockRetentionFixture extends ManualSourceHostFixture {
     @Autowired protected PersonnelService personnel;

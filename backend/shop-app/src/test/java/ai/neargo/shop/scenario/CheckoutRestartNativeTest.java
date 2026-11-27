@@ -128,7 +128,6 @@ class CheckoutRestartNativeTest {
                         "--server.port=0",
                         "--server.address=127.0.0.1",
                         "--shop.member-code.enabled=true",
-                        "--shop.catalog.publication.archive-only=true",
                         "--shop.member.guest.credential-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
     }
 
