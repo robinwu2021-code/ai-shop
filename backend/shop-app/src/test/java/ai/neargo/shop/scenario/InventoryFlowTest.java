@@ -1031,23 +1031,16 @@ class InventoryFlowTest {
                 .isNotEmpty();
 
         Fixture f = fixture();
-        inbound.postDirectly(purchase(f, 5), "老板");
-
-        List<InvOutbox> events = invOutboxMapper.selectList(Wrappers.<InvOutbox>lambdaQuery()
-                .eq(InvOutbox::getOwnerId, f.owner));
-        assertThat(events).as("过账要落一条出站事件").isNotEmpty();
-
-        // 走一遍 sink：事件该进平台的 sys_outbox，与订单/售后走同一条投递链
-        InvOutbox e = events.get(0);
         long before = sysOutboxMapper.selectCount(Wrappers.<SysOutbox>lambdaQuery()
                 .eq(SysOutbox::getAggregateId, f.owner));
-        for (InventoryEventSink sink : sinks) {
-            assertThat(sink.deliver(e.getEventNo(), e.getOwnerId(), e.getEventType(), e.getPayload()))
-                    .as("投递失败要返回 false 让它重投，不能吞掉当成功").isTrue();
-        }
+        inbound.postDirectly(purchase(f, 5), "老板");
+
+        // R10.3（ADR-067 决策 10）：内嵌部署由平台在库存提交后直接接手，不再落库存库的 inv_outbox
+        assertThat(invOutboxMapper.selectCount(Wrappers.<InvOutbox>lambdaQuery()
+                .eq(InvOutbox::getOwnerId, f.owner))).as("过账不再写 inv_outbox").isZero();
         long after = sysOutboxMapper.selectCount(Wrappers.<SysOutbox>lambdaQuery()
                 .eq(SysOutbox::getAggregateId, f.owner));
-        assertThat(after).as("事件要落进平台 outbox").isGreaterThan(before);
+        assertThat(after).as("事件要落进平台 outbox，与订单/售后走同一条投递链").isGreaterThan(before);
 
         SysOutbox row = sysOutboxMapper.selectList(Wrappers.<SysOutbox>lambdaQuery()
                 .eq(SysOutbox::getAggregateId, f.owner)).get(0);

@@ -20,4 +20,13 @@ public interface InventoryEventSink {
                             java.time.Instant occurredAt) {
         return deliver(eventNo, ownerId, eventType, payload);
     }
+
+    /**
+     * 宿主自己可靠地接手事件（ADR-067 决策 10，R10.3）：为 true 时过账不写 {@code inv_outbox}，
+     * 库存事务提交后直接调 {@link #deliver(String, String, String, String, java.time.Instant)}；回滚不调。
+     * 提交后交付失败只记日志，事件丢失由宿主的兜底作业补。默认 false：独立部署照旧写本库出站表。
+     */
+    default boolean takesOverAfterCommit() {
+        return false;
+    }
 }

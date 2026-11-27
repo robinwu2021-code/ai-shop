@@ -2,6 +2,7 @@ package ai.neargo.shop.invbridge;
 
 import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * 进销存回写由库存库发件箱直接发出（清单 §〇 C3）：沿用 {@code inv_outbox} 的事件号（加 {@code INV-} 命名空间），
@@ -41,5 +43,15 @@ class PlatformInventoryEventSinkTest {
     void failureStaysInInventoryOutbox() {
         doThrow(new IllegalStateException("down")).when(bus).forward(any(), any());
         assertThat(sink.deliver("EVT002", "OWNER-1", "POSTED", "{}")).isFalse();
+    }
+
+    @Test
+    @DisplayName("内嵌部署由平台在库存提交后接手（R10.3），统一模式不接手")
+    void takesOverUnlessUnified() {
+        assertThat(sink.takesOverAfterCommit()).isTrue();
+        var unified = mock(UnifiedOutboxFacade.class);
+        when(unified.enabled("PLATFORM")).thenReturn(true);
+        sink.setUnified(unified);
+        assertThat(sink.takesOverAfterCommit()).isFalse();
     }
 }

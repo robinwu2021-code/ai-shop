@@ -12,6 +12,7 @@ import ai.neargo.inventory.domain.mapper.InventoryExactSupportMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.BalanceMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.LedgerMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.OutboxMapper;
+import ai.neargo.inventory.domain.service.InventoryEventSink;
 import ai.neargo.inventory.domain.service.StockPostingService;
 import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.inventory.domain.support.InvKeys;
@@ -20,13 +21,18 @@ import ai.neargo.inventory.domain.support.Quantities;
 import ai.neargo.inventory.domain.policy.ExecutionStockRetentionGuard;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * 过账实现。三件事在**一个事务**里：改余额 → 写流水 → 发事件。
@@ -40,6 +46,8 @@ import org.springframework.transaction.annotation.Transactional;
 @ConditionalOnInventory
 @Service
 public class StockPostingServiceImpl implements StockPostingService {
+
+    private static final Logger log = LoggerFactory.getLogger(StockPostingServiceImpl.class);
 
     private final BalanceMapper balanceMapper;
     private final LedgerMapper ledgerMapper;
@@ -317,6 +325,39 @@ public class StockPostingServiceImpl implements StockPostingService {
         this.relay = relay;
     }
 
+    /** 宿主的事件出口；全部声明提交后接手时（内嵌部署），事件不进 {@code inv_outbox}（ADR-067 决策 10，R10.3） */
+    private List<InventoryEventSink> sinks = List.of();
+
+    @Autowired(required = false)
+    public void setSinks(List<InventoryEventSink> sinks) {
+        this.sinks = sinks == null ? List.of() : List.copyOf(sinks);
+    }
+
+    private void handOffAfterCommit(String eventNo, String ownerId, String payload) {
+        Instant occurredAt = Instant.now();
+        Runnable deliver = () -> {
+            for (InventoryEventSink sink : sinks) {
+                try {
+                    if (!sink.deliver(eventNo, ownerId, InvEnums.EventType.DOCUMENT_POSTED, payload, occurredAt)) {
+                        log.error("过账已提交，宿主未接收事件，待兜底：eventNo={} owner={}", eventNo, ownerId);
+                    }
+                } catch (RuntimeException e) {
+                    log.error("过账已提交，事件交给宿主失败，待兜底：eventNo={} owner={}", eventNo, ownerId, e);
+                }
+            }
+        };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deliver.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deliver.run();
+            }
+        });
+    }
+
     private void publish(PostingDoc doc) {
         if (relay != null && relay.maintenance()) {
             throw new IllegalStateException("Outbox maintenance");
@@ -325,11 +366,17 @@ public class StockPostingServiceImpl implements StockPostingService {
             relay.documentPosted(doc.ownerId(), doc.docNo(), doc.docKind());
             return;
         }
+        String eventNo = InvKeys.next(InvKeys.EVENT);
+        String payload = "{\"docNo\":\"" + doc.docNo() + "\",\"docKind\":\"" + doc.docKind() + "\"}";
+        if (!sinks.isEmpty() && sinks.stream().allMatch(InventoryEventSink::takesOverAfterCommit)) {
+            handOffAfterCommit(eventNo, doc.ownerId(), payload);
+            return;
+        }
         InvOutbox evt = new InvOutbox();
-        evt.setEventNo(InvKeys.next(InvKeys.EVENT));
+        evt.setEventNo(eventNo);
         evt.setOwnerId(doc.ownerId());
         evt.setEventType(InvEnums.EventType.DOCUMENT_POSTED);
-        evt.setPayload("{\"docNo\":\"" + doc.docNo() + "\",\"docKind\":\"" + doc.docKind() + "\"}");
+        evt.setPayload(payload);
         evt.setStatus("PENDING");
         evt.setRetryCount(0);
         evt.setCreatedBy(doc.operator());

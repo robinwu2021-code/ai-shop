@@ -2,7 +2,12 @@ package ai.neargo.shop.invbridge;
 
 import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.inventory.domain.service.InventoryEventSink;
@@ -12,7 +17,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * 进销存事件的平台出口：库存库发件箱（{@code inv_outbox}）的中转在这里把事件按原事件号发出 ——
+ * 进销存事件的平台出口：内嵌部署时库存过账提交后直接交到这里（R10.3，不再进 {@code inv_outbox}；存量积压仍由
+ * {@code InvOutboxDispatchJob} 转来），按原事件号发出 ——
  * 类型在中间件名单里直发中间件，否则写进 {@code sys_outbox}（{@link OutboxEventBus#forward}，清单 §〇 C3）。
  *
  * <h2>为什么要有它</h2>
@@ -62,6 +68,25 @@ public class PlatformInventoryEventSink implements InventoryEventSink {
     @Autowired(required = false)
     public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
 
+    /** 基础能力库的独立事务（发件箱所在，ADR-067 决策 10）；单测里不装 */
+    private TransactionTemplate commonTx;
+
+    @Autowired(required = false)
+    public void setCommonTx(@Qualifier(ModuleDataSources.COMMON_TX_MANAGER) PlatformTransactionManager tx) {
+        TransactionTemplate t = new TransactionTemplate(tx);
+        t.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.commonTx = t;
+    }
+
+    /**
+     * 内嵌部署由本类在库存提交后直接接手（R10.3）：过账不再写 {@code inv_outbox}。
+     * 统一模式另有中转（{@code acceptInventory}），不接手。
+     */
+    @Override
+    public boolean takesOverAfterCommit() {
+        return unified == null || !unified.enabled("PLATFORM");
+    }
+
     @Override
     public boolean deliver(String eventNo, String ownerId, String eventType, String payload) {
         return deliver(eventNo, ownerId, eventType, payload, Instant.EPOCH);
@@ -74,8 +99,14 @@ public class PlatformInventoryEventSink implements InventoryEventSink {
             return true;
         }
         try {
-            // 沿用库存库发件箱的事件号：名单内类型直发中间件，否则落平台发件箱时按号去重（重投不再多出一条）
-            bus.forward(EVENT_NO_PREFIX + eventNo, new InventoryDomainEvent(ownerId, eventType, payload));
+            // 沿用库存的事件号：名单内类型直发中间件，否则落平台发件箱时按号去重（重投不再多出一条）
+            Runnable forward = () -> bus.forward(EVENT_NO_PREFIX + eventNo, new InventoryDomainEvent(ownerId, eventType, payload));
+            if (commonTx == null) {
+                forward.run();
+            } else {
+                // 提交后接手时同线程上还绑着库存库已提交的事务；另起基础能力库的事务，发件箱行与投递泵挂在它上面
+                commonTx.executeWithoutResult(s -> forward.run());
+            }
             return true;
         } catch (RuntimeException e) {
             // 返回 false 让它留在 inv_outbox 里重投 —— 别把异常吞掉当成功
