@@ -197,7 +197,8 @@ class RecipePublicationServiceTest {
             assertThatThrownBy(() -> t.publications().publishRecipe("E", "A", t.recipe(), "actor", req(1), "p"))
                     .isInstanceOf(IllegalStateException.class);
             assertThat(t.drafts().getRecipe("E", "A", t.recipe()).recipe().version()).isEqualTo(1);
-            for (String table : List.of("sys_idempotent", "sys_outbox", "fnb_action_log")) {
+            assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
+            for (String table : List.of("sys_idempotent", "fnb_action_log")) {
                 assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(2);
             }
             assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isZero();

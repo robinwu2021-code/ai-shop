@@ -269,7 +269,8 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
                     .isInstanceOf(IllegalStateException.class);
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isZero();
             assertThat(f.sql().queryForObject("SELECT version FROM fnb_modifier", Long.class)).isZero();
-            for (String table : List.of("fnb_action_log", "sys_outbox", "sys_idempotent")) {
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
+            for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isOne();
             }
         });

@@ -57,7 +57,8 @@ class OptionGroupItemsTest extends FoodWriteGuardFixture {
             assertThatThrownBy(() -> s.replaceOptionGroupItems("E", "A", group, "actor",
                     req(1, List.of(), List.of()), "items"))
                     .isInstanceOf(BizException.class);
-            for (String table : List.of("fnb_action_log", "sys_outbox", "sys_idempotent")) {
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
+            for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(2);
             }
         });
@@ -139,7 +140,8 @@ class OptionGroupItemsTest extends FoodWriteGuardFixture {
             for (String table : List.of("fnb_option_group_item", "fnb_dish_option_group")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
             }
-            for (String table : List.of("fnb_action_log", "sys_outbox", "sys_idempotent")) {
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
+            for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isOne();
             }
         });
