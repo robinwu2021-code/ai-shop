@@ -4,9 +4,8 @@ import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.SysAuthCode;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper;
+import ai.neargo.shop.merchant.dictionary.DictionaryCatalog;
 import ai.neargo.shop.merchant.service.MerchantAuthCodeService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -21,26 +20,24 @@ public class MerchantAuthCodeServiceImpl implements MerchantAuthCodeService {
 
     private static final String ACTIVE = "ACTIVE";
 
-    private final SysAuthCodeMapper authCodeMapper;
+    private final DictionaryCatalog dictionary;
     private final MchEntityMapper merchantMapper;
     private final ObjectMapper json;
     /** 撤码影响面：product → 这边只要一个数（见 CategoryUsagePort 的类注释） */
     private final ai.neargo.shop.spi.product.CategoryUsagePort categoryUsagePort;
 
-    public MerchantAuthCodeServiceImpl(SysAuthCodeMapper authCodeMapper, MchEntityMapper merchantMapper,
+    public MerchantAuthCodeServiceImpl(DictionaryCatalog dictionary, MchEntityMapper merchantMapper,
                                        ai.neargo.shop.spi.product.CategoryUsagePort categoryUsagePort,
                                        ObjectMapper json) {
         this.categoryUsagePort = categoryUsagePort;
-        this.authCodeMapper = authCodeMapper;
+        this.dictionary = dictionary;
         this.merchantMapper = merchantMapper;
         this.json = json;
     }
 
     @Override
     public List<AuthCodeVO> listCodes() {
-        return authCodeMapper.selectList(Wrappers.<SysAuthCode>lambdaQuery()
-                        .eq(SysAuthCode::getEnabled, true)
-                        .orderByAsc(SysAuthCode::getSort)).stream()
+        return dictionary.enabledAuthCodes().stream()
                 .map(c -> new AuthCodeVO(c.getCode(), c.getName(), c.getRequiredQualification(), c.getQualType()))
                 .toList();
     }

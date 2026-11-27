@@ -16,7 +16,6 @@ import static org.mockito.Mockito.when;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 import ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import java.util.Map;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.dto.CheckResultVO;
@@ -28,6 +27,7 @@ import ai.neargo.shop.food.dto.ReservationContracts.DetailVO;
 import ai.neargo.shop.food.dto.ReservationContracts.TransitionReq;
 import ai.neargo.shop.food.dto.StoreOperationPolicyResultVO;
 import ai.neargo.shop.food.dto.TableVersionReq;
+import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.entity.FnbReservation;
 import ai.neargo.shop.food.entity.FnbReservationTable;
 import ai.neargo.shop.food.entity.FnbTable;
@@ -69,7 +69,6 @@ class ReservationLifecycleTest {
     final AtomicReference<FnbReservation> saved=new AtomicReference<>();
     final ReservationServiceImpl service;
     final StoreCardQueryPort stores=mock(StoreCardQueryPort.class);
-    final OutboxPublisher outbox=mock(OutboxPublisher.class);
 
     ReservationLifecycleTest() {
         var card=mock(StoreCard.class); when(card.entityNo()).thenReturn("E"); when(card.active()).thenReturn(true);
@@ -93,7 +92,7 @@ class ReservationLifecycleTest {
             var row=new FnbReservationTable(); row.setTableNo("T"); return List.of(row);
         });
         service=new ReservationServiceImpl(rows,memberships,areas,tables,occupancies,actions,checks,policies,idem,
-                new ObjectMapper(),stores,outbox,manager);
+                new ObjectMapper(),stores,manager);
     }
     CreateReq request() {
         Instant start=Instant.now().plusSeconds(600).truncatedTo(ChronoUnit.MILLIS);
@@ -125,12 +124,12 @@ class ReservationLifecycleTest {
         code(() -> service.noShow("E","S","staff",number,new TransitionReq(0L,"missing"),"missing"),ErrorCode.CONFLICT);
         assertThat(saved.get().getStatus()).isEqualTo("CONFIRMED");
     }
-    @Test void cancellationEndsLocalHoldThroughOwnerStateAndEmitsAuditAndOutbox() {
+    @Test void cancellationEndsLocalHoldThroughOwnerStateAndEmitsAudit() {
         create(); var row=saved.get();
         var result=service.cancel("E","S","staff",row.getReservationNo(),new TransitionReq(0L,"guest cancelled"),"cancel");
         assertThat(result.reservation().status()).isEqualTo("CANCELLED");
         assertThat(result.reservation().version()).isEqualTo(1L);
-        verify(outbox,times(2)).publish(any(),any());
+        verify(actions,times(2)).insert(any(FnbActionLog.class));
     }
     @Test void paidOrExternallyHeldLegacyReservationsCannotBeMutated() {
         create(); saved.get().setResourceHoldNo("shared-authority");

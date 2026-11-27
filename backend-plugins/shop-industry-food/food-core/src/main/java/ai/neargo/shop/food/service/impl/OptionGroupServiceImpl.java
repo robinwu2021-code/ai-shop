@@ -6,8 +6,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.CreateOptionGroupReq;
 import ai.neargo.shop.food.dto.ReplaceOptionGroupItemsReq;
 import ai.neargo.shop.food.dto.OptionGroupMutationVO;
@@ -37,7 +35,6 @@ import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.OptionGroupService;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.OptionGroupChanged;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.math.BigDecimal;
@@ -64,22 +61,21 @@ public class OptionGroupServiceImpl implements OptionGroupService {
     private final OptionGroupItemMapper items;
     private final ActionLogMapper actions;
     private final IdempotencyService idempotency;
-    private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final TransactionTemplate writeTransaction;
     private final TransactionTemplate readTransaction;
 
     public OptionGroupServiceImpl(OptionGroupMapper groups, OptionGroupItemMapper items, ActionLogMapper actions,
-            IdempotencyService idempotency, OutboxPublisher publisher, ObjectMapper json,
+            IdempotencyService idempotency, ObjectMapper json,
             PlatformTransactionManager manager, DishMapper dishes, DishOptionGroupMapper bindings,
             ModifierMapper modifiers, GoodsCatalogQueryPort catalog, SpecValueCatalogQueryPort specs) {
-        this(groups, items, actions, idempotency, publisher, json, manager, dishes, bindings, modifiers,
+        this(groups, items, actions, idempotency, json, manager, dishes, bindings, modifiers,
                 catalog, specs, (entity, store) -> CatalogCurrencySession.legacy(catalog, entity, store));
     }
 
     /** Currency-aware wiring keeps legacy construction and original command semantics available. */
     public OptionGroupServiceImpl(OptionGroupMapper groups, OptionGroupItemMapper items, ActionLogMapper actions,
-            IdempotencyService idempotency, OutboxPublisher publisher, ObjectMapper json,
+            IdempotencyService idempotency, ObjectMapper json,
             PlatformTransactionManager manager, DishMapper dishes, DishOptionGroupMapper bindings,
             ModifierMapper modifiers, GoodsCatalogQueryPort catalog, SpecValueCatalogQueryPort specs,
             CatalogCurrencyService currencies) {
@@ -93,7 +89,6 @@ public class OptionGroupServiceImpl implements OptionGroupService {
         this.items = items;
         this.actions = actions;
         this.idempotency = idempotency;
-        this.publisher = publisher;
         this.json = json;
         this.writeTransaction = new TransactionTemplate(manager);
         this.writeTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -249,8 +244,6 @@ public class OptionGroupServiceImpl implements OptionGroupService {
         audit.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(before)));
         audit.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(after)));
         actions.insert(audit);
-        publisher.publish(new OptionGroupChanged(entity, store, group, audit.getAction(), row.getVersion(),
-                audit.getActionNo(), after), new PublishOptions("FOOD_OPTION_GROUP:" + group, 1));
         return new OptionGroupMutationVO(group, row.getVersion());
     }
 
@@ -313,9 +306,6 @@ public class OptionGroupServiceImpl implements OptionGroupService {
                 FoodCommandFingerprint.scope("CREATE_OPTION_GROUP", entity, store), key));
         audit.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(after)));
         actions.insert(audit);
-        publisher.publish(new OptionGroupChanged(entity, store, row.getGroupNo(), audit.getAction(),
-                row.getVersion(), audit.getActionNo(), after),
-                new PublishOptions("FOOD_OPTION_GROUP:" + row.getGroupNo(), 1));
         return new CreateOptionGroupResultVO(row.getGroupNo(), row.getVersion(), row.getStatus());
     }
 

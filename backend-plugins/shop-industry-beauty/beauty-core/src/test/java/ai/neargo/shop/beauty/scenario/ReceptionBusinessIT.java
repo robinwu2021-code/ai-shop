@@ -93,7 +93,7 @@ class ReceptionBusinessIT extends ReceptionFixture {
             assertThat(result.status()).isEqualTo("CHECKED_IN");
         });
     }
-    @Test void exceptionReplayIsAtomicWithActionAndOutbox() {
+    @Test void exceptionReplayIsAtomicWithAction() {
         business().run(c -> {
             owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
             var appointments = c.getBean(AppointmentService.class);
@@ -110,9 +110,6 @@ class ReceptionBusinessIT extends ReceptionFixture {
             assertThat(reception.coordinateReceptionException("E", "S", "A", req, "EX")).isEqualTo(result);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log "
                     + "WHERE action='RECEPTION_EXCEPTION_REQUESTED'", Integer.class)).isOne();
-            assertThat(sql.queryForObject("SELECT payload FROM sys_outbox "
-                    + "WHERE event_type='BEAUTY_RECEPTION_STATE_CHANGED'", String.class))
-                    .doesNotContain("private-reason", "proof", "frozenPlan");
             assertThat(owner.accepts).hasSize(2);
         });
     }
@@ -262,21 +259,21 @@ class ReceptionBusinessIT extends ReceptionFixture {
             }
         });
     }
-    @Test void arrivalAndExceptionOutboxFailuresRollBackAllLocalEffects() {
+    @Test void arrivalAndExceptionAuditFailuresRollBackAllLocalEffects() {
         business().run(c -> {
             var root = create(c); login(LoginUser.merchant("A", "operator"));
-            var reception = c.getBean(ReceptionService.class); failOutbox = true;
+            var reception = c.getBean(ReceptionService.class); failAudit = true;
             assertThatThrownBy(() -> reception.checkIn("E", "S", "A",
-                    request(root.appointmentNo(), root.revision()), "ARRIVE")).hasMessage("reception-outbox-rollback");
+                    request(root.appointmentNo(), root.revision()), "ARRIVE")).hasMessage("reception-audit-rollback");
             assertThat(sql.queryForObject("SELECT status FROM bty_appointment", String.class)).isEqualTo("CONFIRMED");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation", Integer.class)).isZero();
             assertThatThrownBy(() -> reception.coordinateReceptionException("E", "S", "A",
                     new ReceptionExceptionReq(root.appointmentNo(), "LATE", "KEEP_WAITING", "reason", root.revision()),
-                    "EX")).hasMessage("reception-outbox-rollback");
+                    "EX")).hasMessage("reception-audit-rollback");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation", Integer.class)).isZero();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action IN "
                     + "('CHECKED_IN','RECEPTION_EXCEPTION_REQUESTED')", Integer.class)).isZero();
-            failOutbox = false;
+            failAudit = false;
             assertThat(reception.checkIn("E", "S", "A", request(root.appointmentNo(), root.revision()), "ARRIVE")
                     .status()).isEqualTo("CHECKED_IN");
         });

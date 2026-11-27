@@ -48,7 +48,7 @@ public class DevSeeder {
                                  SkuMapper skuMapper,
                                  CategoryMapper categoryMapper, StaffMapper staffMapper,
                                  RoleMemberMapper roleMemberMapper,
-                                 ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
+                                 ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysAuthCodeMapper authCodeMapper,
                                  ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper settingMapper,
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
@@ -299,9 +299,9 @@ public class DevSeeder {
         mapper.insert(row);
     }
 
-    private void seedAuthCode(ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper mapper,
+    private void seedAuthCode(ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysAuthCodeMapper mapper,
                               String code, String name, int sort, boolean enabled) {
-        var c = new ai.neargo.shop.merchant.entity.SysAuthCode();
+        var c = new ai.neargo.shop.merchant.dictionary.entity.SysAuthCode();
         c.setCode(code);
         c.setName(name);
         c.setRequiredQualification(AUTH_QUALIFICATION.get(code));
@@ -309,8 +309,8 @@ public class DevSeeder {
         c.setEnabled(enabled);
         // 同上：真库由 V5 灌，这里只补 H2
         if (mapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.merchant.entity.SysAuthCode>lambdaQuery()
-                .eq(ai.neargo.shop.merchant.entity.SysAuthCode::getCode, code)) == 0) {
+                .<ai.neargo.shop.merchant.dictionary.entity.SysAuthCode>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.dictionary.entity.SysAuthCode::getCode, code)) == 0) {
             mapper.insert(c);
         }
     }

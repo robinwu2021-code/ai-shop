@@ -41,7 +41,7 @@ class ResourcePlanContractTest {
     void exactBytesRoundTripWithoutMerchantOrPersistence() {
         var plan = call("decode", JSON);
         assertThat(call("encode", field(plan, "demands"), field(plan, "qualifications"))).isEqualTo(JSON);
-        assertThatThrownBy(() -> Class.forName("ai.neargo.shop.merchant.policy.ResourceDemandNormalizer"))
+        assertThatThrownBy(() -> Class.forName("ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer"))
                 .isInstanceOf(ClassNotFoundException.class);
         assertThatThrownBy(() -> Class.forName("com.baomidou.mybatisplus.core.mapper.BaseMapper"))
                 .isInstanceOf(ClassNotFoundException.class);

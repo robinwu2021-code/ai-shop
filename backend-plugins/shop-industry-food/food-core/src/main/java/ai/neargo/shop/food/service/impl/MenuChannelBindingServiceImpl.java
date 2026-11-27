@@ -5,8 +5,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.CreateMenuChannelBindingReq;
 import ai.neargo.shop.food.dto.MenuChannelBindingVO;
 import ai.neargo.shop.food.dto.UpdateMenuChannelBindingReq;
@@ -22,7 +20,6 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.MenuChannelBindingService;
 import ai.neargo.shop.food.spi.MenuChannelAuthorityPort;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.MenuChannelBindingChanged;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.Optional;
@@ -43,16 +40,15 @@ public class MenuChannelBindingServiceImpl implements MenuChannelBindingService 
     private final MenuStoreMapper stores;
     private final ActionLogMapper actions;
     private final IdempotencyService idem;
-    private final OutboxPublisher outbox;
     private final ObjectMapper json;
     private final Supplier<MenuChannelAuthorityPort> authority;
     private final TransactionTemplate write;
     private final TransactionTemplate read;
     public MenuChannelBindingServiceImpl(MenuChannelBindingMapper bindings,MenuMapper menus,MenuStoreMapper stores,
-            ActionLogMapper actions,IdempotencyService idem,OutboxPublisher outbox,ObjectMapper json,
+            ActionLogMapper actions,IdempotencyService idem,ObjectMapper json,
             PlatformTransactionManager manager,Supplier<MenuChannelAuthorityPort> authority) {
         this.bindings=bindings; this.menus=menus; this.stores=stores; this.actions=actions;
-        this.idem=idem; this.outbox=outbox; this.json=json; this.authority=authority;
+        this.idem=idem; this.json=json; this.authority=authority;
         write=new TransactionTemplate(manager); write.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
         read=new TransactionTemplate(manager); read.setReadOnly(true);
         read.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
@@ -171,8 +167,6 @@ public class MenuChannelBindingServiceImpl implements MenuChannelBindingService 
         log.setRequestNo(FoodCommandFingerprint.hash(FoodCommandFingerprint.scope(action,entity,store),key));
         if(before!=null) log.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(before)));
         log.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(after))); actions.insert(log);
-        outbox.publish(new MenuChannelBindingChanged(entity,store,after.bindingNo(),action,after.version(),
-                log.getActionNo(),after),new PublishOptions("FOOD_MENU_CHANNEL_BINDING:"+after.bindingNo(),1));
     }
     private static MenuChannelBindingVO view(FnbMenuChannelBinding row) {
         return new MenuChannelBindingVO(row.getBindingNo(),row.getMenuNo(),row.getStoreNo(),row.getProvider(),

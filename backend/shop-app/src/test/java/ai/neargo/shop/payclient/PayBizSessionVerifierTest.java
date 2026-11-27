@@ -1,5 +1,6 @@
 package ai.neargo.shop.payclient;
 
+import ai.neargo.shop.merchantbridge.PayBizSessionVerifier;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.auth.store.SubjectKind;

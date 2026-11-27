@@ -2,9 +2,9 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.support.TestStoreCategory;
-import ai.neargo.shop.merchant.entity.MchEntityPlan;
+import ai.neargo.shop.merchant.plan.entity.MchEntityPlan;
 import ai.neargo.shop.merchant.entity.MchStore;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
 import ai.neargo.shop.merchant.service.MerchantPlanService;
 import ai.neargo.shop.support.TestLogin;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;

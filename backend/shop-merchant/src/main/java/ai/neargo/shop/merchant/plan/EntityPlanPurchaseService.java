@@ -19,6 +19,10 @@ public interface EntityPlanPurchaseService {
     }
   }
 
+  record CatalogBinding(String skuNo, String skuVersionNo, String planVersionNo, List<String> entitlementCodes) {
+    public CatalogBinding { entitlementCodes = List.copyOf(entitlementCodes); }
+  }
+
   record Offer(
       String offerNo,
       long version,
@@ -29,7 +33,12 @@ public interface EntityPlanPurchaseService {
       int storeQuota,
       int staffQuota,
       boolean crossStoreStats,
-      boolean enabled) {}
+      boolean enabled, CatalogBinding catalog) {
+    public Offer(String offerNo, long version, String planCode, String name, int days, Money price,
+        int storeQuota, int staffQuota, boolean crossStoreStats, boolean enabled) {
+      this(offerNo,version,planCode,name,days,price,storeQuota,staffQuota,crossStoreStats,enabled,null);
+    }
+  }
 
   record OfferEdit(
       @NotBlank @Size(max = 64) String offerNo,
@@ -38,7 +47,12 @@ public interface EntityPlanPurchaseService {
       @NotBlank @Size(max = 100) String name,
       @Min(1) @Max(3660) int days,
       @NotNull Money price,
-      boolean enabled) {}
+      boolean enabled, @Size(max=64) String skuVersionNo) {
+    public OfferEdit(String offerNo, long expectedVersion, String planCode, String name, int days,
+        Money price, boolean enabled) {
+      this(offerNo,expectedVersion,planCode,name,days,price,enabled,null);
+    }
+  }
 
   record Buy(
       @NotBlank @Size(max = 64) String requestNo,
@@ -94,7 +108,24 @@ public interface EntityPlanPurchaseService {
       Instant dueAt,
       OfflineCollectionTerms instructions,
       List<ClaimView> claims,
-      List<ActionView> actions,String purchaseSource) {}
+      List<ActionView> actions,String purchaseSource,boolean mallOffline) {
+    public OrderView(String orderNo,String requestNo,String entityNo,String storeNo,Offer offer,String status,Instant dueAt,
+        OfflineCollectionTerms instructions,List<ClaimView> claims,List<ActionView> actions,String purchaseSource) {
+      this(orderNo,requestNo,entityNo,storeNo,offer,status,dueAt,instructions,claims,actions,purchaseSource,false);
+    }
+  }
+
+  record ReviewQuota(String planCode, Long stores, Long staff, Boolean crossStore, Long storeOverride,
+      Long staffOverride, boolean overridesKnown, Long expiry, String grantedBy) {}
+  record CloseRefundReview(@NotBlank String refundNo, @NotBlank String quotaRevision,
+      @NotBlank @Size(max=500) String reason) {}
+  record RefundDecision(String result, String operatorNo, Instant reviewedAt, CloseRefundReview command,
+      ReviewQuota retainedQuota) {}
+  record RefundReview(String orderNo, String storeNo, String entityNo, Offer offer, String refundNo,
+      String status, ReviewQuota before, ReviewQuota current, String quotaRevision, RefundDecision decision) {}
+
+  RefundReview refundReview(Actor operator, String orderNo);
+  RefundReview closeRefundReview(Actor operator, String orderNo, CloseRefundReview command);
 
   List<Offer> offers(Actor actor);
 
@@ -141,6 +172,7 @@ public interface EntityPlanPurchaseService {
   ActionView confirm(Actor operator, String orderNo, Confirm command);
 
   OrderView recover(Actor operator, String orderNo);
+  default RecoverySweep recoverRefunds(String afterRefundNo,int limit){return new RecoverySweep(0,0,afterRefundNo);}
   record RecoverySweep(int visited,int failed,String nextOrderNo){}
   default RecoverySweep recoverPending(String afterOrderNo,int limit){throw new UnsupportedOperationException();}
 

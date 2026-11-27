@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Entity quota offline purchase for separate Flutter App",
-    "version": "2026-11-11",
-    "description": "Implemented and locally verified, not deployed; not a store mall plan."
+    "version": "2026-11-27",
+    "description": "Entity quota offers bind a published mall SKU. Store and assisted purchases share the store order, payment attempt and plan entitlement delivery."
   },
   "paths": {
     "/biz/plan/purchases/offers": {
@@ -637,6 +637,117 @@
         "x-required-capability": "biz:store:admin"
       }
     },
+    "/ops/merchant-plan-purchases/{entityNo}/offers": {
+      "get": {
+        "operationId": "get_entity_plan_offers",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Read entity plan offers.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business response envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Offer"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:read"
+      },
+      "put": {
+        "operationId": "put_entity_plan_offers",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Save the offer at its expected version. Enabling a v2 offer requires a published SKU version.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business response envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Offer"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "system:param:update",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfferEdit"
+              }
+            }
+          }
+        }
+      }
+    },
     "/ops/merchant-plan-purchases/{entityNo}/assistance-context": {
       "get": {
         "operationId": "get_plan_assistance_context",
@@ -1077,6 +1188,130 @@
         "x-required-capability": "merchant:merchant:ban + commerce:mall:offline:refund:confirm"
       }
     },
+    "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/refund-review": {
+      "get": {
+        "operationId": "get_entity_plan_refund_review",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Inspect the original order and compare pre-purchase and current quotas.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operator review record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RefundReview"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:read"
+      },
+      "post": {
+        "operationId": "post_entity_plan_refund_review",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Close the review and retain the quota at the revision inspected by the operator.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operator review record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RefundReview"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "commerce:refund:review + merchant:merchant:ban",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseRefundReview"
+              }
+            }
+          }
+        }
+      }
+    },
     "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/recover": {
       "post": {
         "operationId": "recover_plan_purchase",
@@ -1404,9 +1639,65 @@
           "offerVersion"
         ]
       },
+      "OfferEdit": {
+        "type": "object",
+        "properties": {
+          "offerNo": {
+            "type": "string"
+          },
+          "planCode": {
+            "enum": [
+              "PRO",
+              "CHAIN"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skuVersionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "offerNo",
+          "planCode",
+          "name",
+          "days",
+          "price",
+          "enabled",
+          "expectedVersion"
+        ]
+      },
       "Offer": {
         "type": "object",
         "properties": {
+          "catalog": {
+            "type": ["object", "null"],
+            "properties": {
+              "skuNo": {"type": "string"},
+              "skuVersionNo": {"type": "string"},
+              "planVersionNo": {"type": "string"},
+              "entitlementCodes": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": ["skuNo", "skuVersionNo", "planVersionNo", "entitlementCodes"]
+          },
           "offerNo": {
             "type": "string"
           },
@@ -1576,6 +1867,173 @@
           "instructions"
         ]
       },
+      "ReviewQuota": {
+        "type": "object",
+        "properties": {
+          "planCode": {
+            "type": "string"
+          },
+          "stores": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "staff": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "crossStore": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "storeOverride": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "staffOverride": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "overridesKnown": {
+            "type": "boolean"
+          },
+          "expiry": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "grantedBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "planCode",
+          "stores",
+          "staff",
+          "crossStore",
+          "storeOverride",
+          "staffOverride",
+          "overridesKnown",
+          "expiry",
+          "grantedBy"
+        ]
+      },
+      "CloseRefundReview": {
+        "type": "object",
+        "properties": {
+          "refundNo": {
+            "type": "string"
+          },
+          "quotaRevision": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "refundNo",
+          "quotaRevision",
+          "reason"
+        ]
+      },
+      "RefundDecision": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "const": "KEEP_CURRENT"
+          },
+          "operatorNo": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "command": {
+            "$ref": "#/components/schemas/CloseRefundReview"
+          },
+          "retainedQuota": {
+            "$ref": "#/components/schemas/ReviewQuota"
+          }
+        },
+        "required": [
+          "result",
+          "operatorNo",
+          "reviewedAt",
+          "command",
+          "retainedQuota"
+        ]
+      },
+      "RefundReview": {
+        "type": "object",
+        "properties": {
+          "orderNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/Offer"
+          },
+          "refundNo": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "REFUND_REVIEW",
+              "REFUND_REVIEWED"
+            ]
+          },
+          "before": {
+            "$ref": "#/components/schemas/ReviewQuota"
+          },
+          "current": {
+            "$ref": "#/components/schemas/ReviewQuota"
+          },
+          "quotaRevision": {
+            "type": "string"
+          },
+          "decision": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RefundDecision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "orderNo",
+          "storeNo",
+          "entityNo",
+          "offer",
+          "refundNo",
+          "status",
+          "before",
+          "current",
+          "quotaRevision",
+          "decision"
+        ]
+      },
       "OrderView": {
         "type": "object",
         "properties": {
@@ -1601,9 +2059,13 @@
               "AWAITING_PAYMENT",
               "SUBMITTED",
               "CONFIRMING",
+              "PAID_PENDING",
               "APPLIED",
               "UNMATCHED",
               "REVIEW_REQUIRED",
+              "REFUND_PENDING",
+              "REFUND_REVIEW",
+              "REFUND_REVIEWED",
               "CANCELLATION_REQUESTED",
               "CLOSING",
               "CANCELLED",

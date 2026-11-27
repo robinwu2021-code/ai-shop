@@ -1,5 +1,6 @@
 package ai.neargo.shop.payclient;
 
+import ai.neargo.shop.merchantbridge.PayBizSessionVerifier;
 import ai.neargo.shop.auth.AbstractTokenAuthFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

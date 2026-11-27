@@ -151,8 +151,7 @@ class FoodOptionGroupPrimaryDatabaseTest {
                         assertThat(sql.queryForObject("SELECT JSON_LENGTH(selection_rules) FROM fnb_option_group",
                                 Integer.class)).isEqualTo(2);
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_option_group", Integer.class)).isOne();
-                        for (String table : List.of("fnb_action_log",
-                                "sys_outbox", "sys_idempotent")) {
+                        for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class))
                                     .as(table).isEqualTo(2);
                         }

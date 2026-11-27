@@ -32,6 +32,8 @@ class ModuleTxManagerConventionTest {
     private static final Map<String, String> MODULE_SOURCES = Map.of(
             "shop-core/src/main/java/ai/neargo/shop/user", "ModuleDataSources.PLATFORM_TX_MANAGER",
             "shop-merchant/src/main/java/ai/neargo/shop/merchant", "ModuleDataSources.PLATFORM_TX_MANAGER",
+            // 网关里 B 端登录与身份、换号注销、PIN 找回、门店换主体：读写的都是平台基础库的表
+            "shop-gateway/src/main/java/ai/neargo/shop/merchantbridge", "ModuleDataSources.PLATFORM_TX_MANAGER",
             "invoice/invoice-domain/src/main/java/ai/neargo/shop/invoice", "ModuleDataSources.INVOICE_TX_MANAGER",
             "shop-core/src/main/java/ai/neargo/shop/printing", "ModuleDataSources.PRINT_TX_MANAGER",
             "shop-core/src/main/java/ai/neargo/shop/product", "ModuleDataSources.TRADE_TX_MANAGER",
@@ -59,7 +61,9 @@ class ModuleTxManagerConventionTest {
             // 平台商城库、基础能力库
             "EntityPlanPurchaseServiceImpl.java", "PlanPaymentApprovalSubject.java", "AuthCodeAdminServiceImpl.java",
             "StoreIndustryAdminServiceImpl.java", "StoreOpeningApprovalSubject.java",
-            "StoreDirectoryPortImpl.java", "StoreOwnershipWritePortImpl.java");
+            "StoreDirectoryPortImpl.java", "StoreOwnershipWritePortImpl.java",
+            // C 端账号包里：收货地址（门店交易库）、收藏（会员营销库）
+            "AddressServiceImpl.java", "StoreFavoriteServiceImpl.java");
 
     /**
      * 商户域里表在门店交易库的类（资源、排班、预约占用、门店分类）：它们点名交易句柄（ADR-068），不是平台句柄。
@@ -106,7 +110,7 @@ class ModuleTxManagerConventionTest {
             try (var files = Files.walk(root)) {
                 for (Path file : files.filter(p -> p.toString().endsWith(".java"))
                         .filter(p -> !p.toString().contains(PRIMARY_PACKAGE))
-                        .filter(p -> !(p.toString().contains("/shop/merchant/")
+                        .filter(p -> !((p.toString().contains("/shop/merchant/") || p.toString().contains("/shop/user/"))
                                 && MERCHANT_NOT_PLATFORM.contains(p.getFileName().toString())
                                 && !MERCHANT_TRADE.contains(p.getFileName().toString())))
                         .filter(p -> !(p.toString().contains("/shop/product/")

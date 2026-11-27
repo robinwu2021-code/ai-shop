@@ -19,8 +19,11 @@ import javax.sql.DataSource;
 @ConditionalOnProperty(prefix = "commerce", name = "enabled", havingValue = "true")
 public class CommercePersistenceAutoConfiguration {
     @Bean
-    CommerceMigrationInitializer commerceMigrationInitializer(
-            DataSource ds, FlywayMigrationInitializer hostInitializer) {
+    org.springframework.beans.factory.InitializingBean commerceMigrationInitializer(
+            DataSource ds, FlywayMigrationInitializer hostInitializer,
+            org.springframework.beans.factory.ObjectProvider<CommerceMallDatabaseAutoConfiguration.MallStorage> storage) {
+        // The split mall schema is installed from db/mall. The host initializer still runs for its own pool.
+        if (storage.getIfAvailable() != null) return () -> {};
         return new CommerceMigrationInitializer(ds, hostInitializer);
     }
 

@@ -2,7 +2,6 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
-import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Plan;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Receipt;
 import ai.neargo.shop.spi.product.GoodsQueryPort.SkuSnapshot;
@@ -14,7 +13,6 @@ import ai.neargo.shop.spi.trade.IndustryChannelOrderSourcePort.CollectionFacts;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderSourcePort.Data;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderSourcePort.PlatformAcceptance;
 import ai.neargo.shop.spi.trade.IndustryOrderPort;
-import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.trade.entity.OrdChannelImport;
 import ai.neargo.shop.trade.entity.OrdChannelQuote;
 import ai.neargo.shop.trade.entity.OrdIndustryOrderSource;
@@ -48,7 +46,6 @@ public final class IndustryChannelOrderCommitter {
     private final OrderItemMapper items;
     private final IndustryOrderSourceMapper sources;
     private final OrderStatusLogMapper logs;
-    private final OutboxEventBus events;
 
     public IndustryChannelOrderCommitter(
             IndustryChannelOrderStore store,
@@ -56,15 +53,13 @@ public final class IndustryChannelOrderCommitter {
             StoreOrderMapper subOrders,
             OrderItemMapper items,
             IndustryOrderSourceMapper sources,
-            OrderStatusLogMapper logs,
-            OutboxEventBus events) {
+            OrderStatusLogMapper logs) {
         this.store = store;
         this.orders = orders;
         this.subOrders = subOrders;
         this.items = items;
         this.sources = sources;
         this.logs = logs;
-        this.events = events;
     }
 
     record BoundAllocations(
@@ -315,18 +310,6 @@ public final class IndustryChannelOrderCommitter {
                     log.setAt(store.clock.millis());
                     log.setCreatedAt(store.now());
                     logs.insert(log);
-                    events.publish(
-                            new OrderEvents.ChannelOrderAccepted(
-                                    row.getOrderNo(),
-                                    row.getSubOrderNo(),
-                                    row.getEntityNo(),
-                                    row.getStoreNo(),
-                                    ref.sourceSystem(),
-                                    ref.sourceNo(),
-                                    ref.sourceVersion(),
-                                    receipt,
-                                    data.currency(),
-                                    totals.merchantReceivableMinor()));
                     return accepted(store.required(ref, false), ref);
                 });
     }

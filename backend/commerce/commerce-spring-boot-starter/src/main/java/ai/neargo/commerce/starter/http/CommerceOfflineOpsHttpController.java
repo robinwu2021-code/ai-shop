@@ -229,9 +229,11 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
             @RequestBody String body) {
         var d = json.read(body, ConfirmRequest.class);
         var actor = context.operator("commerce:mall:offline:confirm");
+        String approvalNo = null;
         if (gate != null) {
-            var held = gate.hold(OpsApprovalGatePort.MALL_OFFLINE_CONFIRM, actor, code(store), code(order), d.actionNo(), d);
-            if (held.isPresent()) return ok(held.get());
+            var decision = gate.decide(OpsApprovalGatePort.MALL_OFFLINE_CONFIRM, actor, code(store), code(order), d.actionNo(), d);
+            if (decision.held().isPresent()) return ok(decision.held().get());
+            approvalNo = decision.approvalNo();
         }
         return ok(
                 offline.confirm(
@@ -246,7 +248,7 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
                                 d.bankReference(),
                                 d.evidenceKey(),
                                 d.historical(),
-                                d.reason(),d.collectorNo(),d.collectionReference(),Boolean.TRUE.equals(d.testPayment()))));
+                                d.reason(),d.collectorNo(),d.collectionReference(),Boolean.TRUE.equals(d.testPayment())), approvalNo));
     }
 
     public record VoidRequest(

@@ -10,6 +10,9 @@ import ai.neargo.shop.community.mapper.CommunityMappers.*;
 import ai.neargo.shop.config.SessionProfiles;
 import ai.neargo.shop.merchant.auth.MerchantIdentityLoader;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
+import ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.PlanDefMapper;
 import ai.neargo.shop.user.auth.ConsumerIdentityLoader;
 import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
 

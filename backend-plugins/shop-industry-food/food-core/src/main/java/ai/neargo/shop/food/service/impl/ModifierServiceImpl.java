@@ -6,8 +6,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.CreateModifierReq;
 import ai.neargo.shop.food.dto.CreateModifierResultVO;
 import ai.neargo.shop.food.dto.ListModifiersQuery;
@@ -24,7 +22,6 @@ import ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.ModifierService;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.ModifierChanged;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -48,22 +45,21 @@ public class ModifierServiceImpl implements ModifierService {
     private final ModifierComponentMapper components;
     private final ActionLogMapper actions;
     private final IdempotencyService idem;
-    private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final GoodsCatalogQueryPort catalog;
     private final TransactionTemplate write;
     private final TransactionTemplate read;
 
     public ModifierServiceImpl(ModifierMapper heads, ModifierComponentMapper components, ActionLogMapper actions,
-            IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            IdempotencyService idem, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog) {
-        this(heads, components, actions, idem, publisher, json, manager, catalog, (entity, store) ->
+        this(heads, components, actions, idem, json, manager, catalog, (entity, store) ->
                 CatalogCurrencySession.legacy(catalog, entity, store));
     }
 
     /** Currency-aware wiring keeps legacy construction and original command semantics available. */
     public ModifierServiceImpl(ModifierMapper heads, ModifierComponentMapper components, ActionLogMapper actions,
-            IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            IdempotencyService idem, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog,
             CatalogCurrencyService currencies) {
         this.currencies = currencies;
@@ -71,7 +67,6 @@ public class ModifierServiceImpl implements ModifierService {
         this.components = components;
         this.actions = actions;
         this.idem = idem;
-        this.publisher = publisher;
         this.json = json;
         this.catalog = catalog;
         write = new TransactionTemplate(manager);
@@ -242,8 +237,6 @@ public class ModifierServiceImpl implements ModifierService {
         if (before != null) audit.setBeforeRef(FoodCommandFingerprint.hash(json.writeValueAsString(before)));
         audit.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(after)));
         actions.insert(audit);
-        publisher.publish(new ModifierChanged(entity, store, after.configNo(), action, after.version(),
-                audit.getActionNo(), after), new PublishOptions("FOOD_MODIFIER:" + after.configNo(), 1));
     }
 
     private static CreateModifierReq normalize(CreateModifierReq input) {

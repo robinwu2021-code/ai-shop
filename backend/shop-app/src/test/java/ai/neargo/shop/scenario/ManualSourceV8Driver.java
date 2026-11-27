@@ -91,12 +91,10 @@ public final class ManualSourceV8Driver {
                                 "--spring.datasource.url="
                                         + System.getenv("MANUAL_UPGRADE_MYSQL_URL"),
                                 "--shop.member-code.enabled=true",
-                                "--shop.catalog.publication.archive-only=true",
                                 "--shop.member.guest.credential-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
                                 "--shop.beauty.enabled=true",
                                 "--shop.beauty.deployment=embedded",
                                 "--shop.beauty.migration.mode=migrate",
-                                "--shop.beauty.publication.archive-only=true",
                                 "--shop.inventory.enabled=true",
                                 "--shop.inventory.flyway-enabled=false",
                                 "--shop.inventory.datasource.url="

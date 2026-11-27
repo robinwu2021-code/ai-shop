@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.beauty.entity.BtyActionLog;
+import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
@@ -14,12 +16,8 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.transaction.support.TransactionSynchronization;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -74,8 +72,7 @@ class BeautyCatalogIT {
                 type("ai.neargo.shop.beauty.config.BeautyPersistenceConfiguration"),
                 type("ai.neargo.shop.beauty.config.BeautyWriteGuardConfiguration"),
                 type("ai.neargo.shop.beauty.config.BeautyPolicyConfiguration"),
-                type("ai.neargo.shop.beauty.config.BeautyDefinitionConfiguration"),
-                        BeautyPolicyPublicationIT.Routed.class)
+                type("ai.neargo.shop.beauty.config.BeautyDefinitionConfiguration"))
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withBean("serviceProductFacts", port, () -> facts)
                 .withPropertyValues("shop.beauty.enabled=true", "spring.datasource.url=" + fixture.source.getUrl(),
@@ -153,7 +150,6 @@ class BeautyCatalogIT {
                     .isEqualTo(2);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_service_requirement", Integer.class)).isEqualTo(2);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log", Integer.class)).isEqualTo(2);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(2);
             assertThatThrownBy(() -> definition(context, "STALE", 1)).isInstanceOf(BizException.class);
         });
     }
@@ -202,39 +198,24 @@ class BeautyCatalogIT {
                 assertThat(winners).isOne();
             }
             for (String table : List.of("bty_service_definition", "bty_service_definition_version",
-                    "bty_service_requirement", "bty_action_log", "sys_idempotent", "sys_outbox")) {
+                    "bty_service_requirement", "bty_action_log", "sys_idempotent")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isOne();
             }
         });
     }
 
     @Test
-    void definitionOutboxFailureAfterFlushRollsBackHeadChildrenAuditAndIdempotency() {
+    void definitionFailureBeforeCommitRollsBackHeadChildrenAuditAndIdempotency() {
         runner().withInitializer(application -> application.getBeanFactory().addBeanPostProcessor(
-                new BeanPostProcessor() {
-                    @Override
-                    public Object postProcessAfterInitialization(Object bean, String name) {
-                        if (!name.equals("beautyOutboxPublisher")) { return bean; }
-                        OutboxPublisher delegate = (OutboxPublisher) bean;
-                        return (OutboxPublisher) (event, options) -> {
-                            var receipt = delegate.publish(event, options);
-                            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                                @Override
-                                public void beforeCommit(boolean readOnly) {
-                                    var transactionSql = new JdbcTemplate(application.getBean(DataSource.class));
-                                    assertThat(transactionSql.queryForObject("SELECT COUNT(*) FROM sys_outbox",
-                                            Integer.class)).isOne();
-                                    throw new IllegalStateException("after-definition-outbox");
-                                }
-                            });
-                            return receipt;
-                        };
-                    }
-                })).run(context -> {
+                BeautyFailureInjection.afterCall(BeautyMappers.ActionLogMapper.class, "insert",
+                        row -> row instanceof BtyActionLog log
+                                && "DEFINITION_VERSION_PUBLISHED".equals(log.getAction()),
+                        () -> BeautyFailureInjection.failBeforeCommit("after-definition-audit"))))
+                .run(context -> {
                     assertThatThrownBy(() -> definition(context, "ROLLBACK", 0))
-                            .hasMessage("after-definition-outbox");
+                            .hasMessage("after-definition-audit");
                     for (String table : List.of("bty_service_definition", "bty_service_definition_version",
-                            "bty_service_requirement", "bty_action_log", "sys_idempotent", "sys_outbox")) {
+                            "bty_service_requirement", "bty_action_log", "sys_idempotent")) {
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table,
                                 Integer.class)).as(table).isZero();
                     }

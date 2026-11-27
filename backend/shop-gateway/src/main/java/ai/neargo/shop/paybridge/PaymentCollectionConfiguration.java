@@ -7,6 +7,7 @@ import ai.neargo.shop.event.outbox.runtime.OutboxProperties;
 import ai.neargo.shop.message.MessageService;
 import ai.neargo.shop.paybridge.impl.PaymentCollectionServiceImpl;
 import ai.neargo.shop.spi.pay.MarketPort;
+import ai.neargo.shop.trade.service.StoreOrderSettlementService;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -40,8 +41,8 @@ public class PaymentCollectionConfiguration {
     @Bean
     PaymentCollectionService paymentCollectionService(
             DataSource ds, PlatformTransactionManager tx, OutboxEventBus events,
-            PaymentCollectionProperties properties) {
-        return new PaymentCollectionServiceImpl(ds, tx, events, properties);
+            PaymentCollectionProperties properties, StoreOrderSettlementService settlements) {
+        return new PaymentCollectionServiceImpl(ds, tx, events, properties, settlements);
     }
 
     @Bean

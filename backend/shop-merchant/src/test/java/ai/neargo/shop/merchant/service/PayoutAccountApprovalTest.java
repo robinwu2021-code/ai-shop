@@ -16,9 +16,9 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.approval.PayoutAccountApprovalSubject;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchPayoutAccount;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPayoutAccount;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
-import ai.neargo.shop.merchant.service.impl.PayoutAccountServiceImpl;
+import ai.neargo.shop.merchant.paymerchant.impl.PayoutAccountServiceImpl;
 import ai.neargo.shop.spi.approval.ApprovalApplyException;
 import ai.neargo.shop.spi.approval.ApprovalPort;
 import ai.neargo.shop.spi.approval.ApprovalSubject;
@@ -37,7 +37,7 @@ class PayoutAccountApprovalTest {
 
     static final String NAME = "深圳市虹选科技有限公司";
 
-    MerchantMappers.PayoutAccountMapper accounts = mock(MerchantMappers.PayoutAccountMapper.class);
+    ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.PayoutAccountMapper accounts = mock(ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.PayoutAccountMapper.class);
     MerchantMappers.MchEntityMapper entities = mock(MerchantMappers.MchEntityMapper.class);
     ApprovalPort port = mock(ApprovalPort.class);
     PayoutAccountServiceImpl service = new PayoutAccountServiceImpl(accounts, entities,

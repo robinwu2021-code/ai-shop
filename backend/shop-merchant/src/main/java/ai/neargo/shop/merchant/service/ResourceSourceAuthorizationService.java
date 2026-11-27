@@ -1,6 +1,6 @@
 package ai.neargo.shop.merchant.service;
 
-import ai.neargo.shop.merchant.policy.ResourcePlanCodec.FrozenPlan;
+import ai.neargo.shop.merchant.booking.policy.ResourcePlanCodec.FrozenPlan;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Execution;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Scope;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort.Decision;

@@ -98,7 +98,7 @@ public final class CatalogSupport {
                     "platform catalog capability required: " + capability);
     }
 
-    private void authorizeWrite(ActorContext a, String capability) {
+    public void authorizeWrite(ActorContext a, String capability) {
         if (capability != null) {
             authorize(a, capability);
             return;
@@ -115,11 +115,21 @@ public final class CatalogSupport {
         return code(ids.nextBusinessNo(namespace), 64);
     }
 
+    public Collection<CatalogState.Category> readCategories(ActorContext actor) {
+        authorize(actor, "read");
+        return uow.required(() -> repository.loadCategories(actor.tenantNo()));
+    }
+
+    public CatalogState overview(ActorContext actor) {
+        authorize(actor, "read");
+        return uow.required(() -> repository.overview(actor.tenantNo(), clock::millis));
+    }
+
     public CatalogState read(ActorContext a) {
         authorize(a, "read");
         // Host callers may use READ_COMMITTED. Current locking reads keep all nine tables
         // in one catalogue generation instead of relying on the caller's isolation level.
-        return uow.required(() -> repository.load(a.tenantNo(), CatalogLockMode.SHARED));
+        return uow.required(() -> repository.overview(a.tenantNo(), clock::millis));
     }
 
     public <T> T write(
@@ -131,16 +141,57 @@ public final class CatalogSupport {
             String eventType,
             String operationNo,
             Function<CatalogState, T> action) {
+        return write(a, capability, reason, entityKind, aggregate, eventType, operationNo, true, null, action);
+    }
+
+    public DraftSaveResult writeCategory(ActorContext actor, CategoryDraft draft, boolean recordHistory,
+            Function<CatalogState, DraftSaveResult> action) {
+        return write(actor, "edit", draft.reason(), "CATEGORY", draft.categoryCode(), "CATEGORY_SAVED",
+                null, recordHistory, null, action);
+    }
+
+    public PublicationResult publishIndustry(ActorContext actor, IndustryPublicationCommand command,
+            Function<CatalogState, PublicationResult> action) {
+        var journal = repository.changeJournal();
+        if (journal == null)
+            return write(actor, "publish", command.reason(), "TYPE", command.typeCode(),
+                    "INDUSTRY_PUBLISHED", command.operationNo(), action);
+        authorize(actor, "publish");
+        uow.requireOutsideTransaction();
+        var result = write(actor, "publish", command.reason(), "TYPE", command.typeCode(),
+                "INDUSTRY_PUBLISHED", command.operationNo(), true, command, action);
+        uow.required(() -> {
+            journal.finishPending(actor.tenantNo());
+            return null;
+        });
+        return result;
+    }
+
+    private <T> T write(ActorContext a, String capability, String reason, String entityKind,
+            String aggregate, String eventType, String operationNo, boolean recordHistory,
+            IndustryPublicationCommand command,
+            Function<CatalogState, T> action) {
         authorizeWrite(a, capability);
         text(reason, 1024, "reason");
         return uow.required(
                 () -> {
                     authorizeWrite(a, capability);
-                    var before = repository.load(a.tenantNo(), CatalogLockMode.EXCLUSIVE);
+                    var before = "CATEGORY".equals(entityKind)
+                            ? repository.lockCategoryTree(a.tenantNo())
+                            : repository.lockForWrite(a.tenantNo(), clock::millis);
+                    if (command != null) {
+                        var prior = repository.changeJournal().publication(a.tenantNo(), command);
+                        if (prior.isPresent()) {
+                            // Only publishIndustry supplies a command and returns PublicationResult.
+                            @SuppressWarnings("unchecked") T replay = (T) prior.get();
+                            return replay;
+                        }
+                    }
                     var after = before.copy();
                     var result = action.apply(after);
                     var writeContext = new CatalogWriteContext(a.principalNo(), clock.instant());
                     repository.save(a.tenantNo(), before, after, writeContext);
+                    if (!recordHistory) return result;
                     long beforeVersion = version(before, entityKind, aggregate),
                             afterVersion = version(after, entityKind, aggregate);
                     var refs =
@@ -166,8 +217,7 @@ public final class CatalogSupport {
                             result instanceof PublicationResult publication
                                     ? publication.publicationNo()
                                     : nextId("catalog-audit");
-                    events.append(
-                            new CommerceEvent(
+                    var change = new CommerceEvent(
                                     auditNo,
                                     a.tenantNo(),
                                     "CATALOG_" + entityKind,
@@ -176,7 +226,10 @@ public final class CatalogSupport {
                                     eventType,
                                     1,
                                     payload,
-                                    writeContext.occurredAt()));
+                                    writeContext.occurredAt());
+                    var journal = repository.changeJournal();
+                    if (journal == null) events.append(change);
+                    else journal.append(change, command, result instanceof PublicationResult p ? p : null);
                     return result;
                 });
     }

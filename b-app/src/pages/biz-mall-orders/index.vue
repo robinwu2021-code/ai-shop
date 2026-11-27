@@ -4,6 +4,7 @@
     <sh-empty v-if="!rows.length" :pending="!loaded" :failed="failed" @retry="load"
       :text="String(t('bizMall.orders.empty'))"></sh-empty>
     <view v-for="r in rows" :key="r.order?.orderNo" class="sh-card" @tap="open(r.order?.orderNo)">
+      <text v-if="r.title" class="txt-strong">{{ r.title }}</text>
       <view class="sh-row sh-row--between">
         <text class="txt-caption sh-num">{{ r.order?.orderNo }}</text>
         <text class="txt-strong sh-num">{{ mallMoney(r.order?.payable) }}</text>

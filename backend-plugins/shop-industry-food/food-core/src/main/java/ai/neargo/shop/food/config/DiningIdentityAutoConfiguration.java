@@ -3,7 +3,6 @@ package ai.neargo.shop.food.config;
 import ai.neargo.common.data.scope.DataScopeRegistrar;
 import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.common.config.ModuleDataSources;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.mapper.DiningIdentityMappers.AuthorizationMapper;
 import ai.neargo.shop.food.mapper.DiningIdentityMappers.DeviceMapper;
 import ai.neargo.shop.food.mapper.DiningIdentityMappers.OperationMapper;
@@ -39,7 +38,6 @@ public class DiningIdentityAutoConfiguration {
             OperationMapper operations,
             GuestSessionMapper sessions,
             CheckMapper checks,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher outbox,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json) {
         return new DiningIdentityServiceImpl(
@@ -48,7 +46,6 @@ public class DiningIdentityAutoConfiguration {
                 operations,
                 sessions,
                 checks,
-                outbox,
                 manager,
                 json,
                 Clock.systemUTC());

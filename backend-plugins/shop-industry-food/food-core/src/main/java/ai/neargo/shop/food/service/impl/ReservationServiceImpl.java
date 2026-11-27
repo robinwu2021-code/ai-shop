@@ -6,8 +6,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
 import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled;
 import ai.neargo.shop.food.dto.GetPolicyQuery;
@@ -36,7 +34,6 @@ import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.ReservationChanged;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -99,7 +96,6 @@ public class ReservationServiceImpl implements ReservationService {
     private final IdempotencyService idem;
     private final ObjectMapper json;
     private final StoreCardQueryPort stores;
-    private final OutboxPublisher outbox;
     private final TableResourceLocks locks;
     private final TransactionTemplate tx;
 
@@ -115,7 +111,6 @@ public class ReservationServiceImpl implements ReservationService {
             IdempotencyService idem,
             ObjectMapper json,
             StoreCardQueryPort stores,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher outbox,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.reservations = reservations;
         this.memberships = memberships;
@@ -126,7 +121,6 @@ public class ReservationServiceImpl implements ReservationService {
         this.idem = idem;
         this.json = json;
         this.stores = stores;
-        this.outbox = outbox;
         locks = new TableResourceLocks(areas, tables);
         tx = new TransactionTemplate(manager);
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -514,17 +508,6 @@ public class ReservationServiceImpl implements ReservationService {
         action.setReason(reason);
         action.setAfterRef(FoodCommandFingerprint.hash(json.writeValueAsString(detail(row))));
         actions.insert(action);
-        outbox.publish(
-                new ReservationChanged(
-                        row.getEntityNo(),
-                        row.getStoreNo(),
-                        row.getReservationNo(),
-                        operation,
-                        row.getVersion(),
-                        action.getActionNo(),
-                        detail(row),
-                        reason),
-                new PublishOptions("FOOD_RESERVATION:" + row.getReservationNo(), 1));
     }
 
     private static Map<String, Long> versions(List<TableVersionReq> rows) {

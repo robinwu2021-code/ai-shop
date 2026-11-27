@@ -14,7 +14,6 @@ import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.dto.CheckDetailVO;
 import ai.neargo.shop.food.dto.CheckResultVO;
 import ai.neargo.shop.food.dto.CheckVO;
@@ -165,7 +164,7 @@ class DiningQueueContractTest {
             doAnswer(call -> ((Supplier<?>)call.getArgument(5)).get()).when(idem)
                     .execute(anyString(),anyString(),anyString(),anyString(),any(),any());
             service=new QueueServiceImpl(tickets,policyRows,actions,policies,checks,stores,idem,
-                    mock(OutboxPublisher.class),json,new Transactions());
+                    json,new Transactions());
         }
         CheckVO check() { return new CheckVO("CHECK","S",DATE,"OPEN","PREPAY",2,List.of("T"),0); }
     }

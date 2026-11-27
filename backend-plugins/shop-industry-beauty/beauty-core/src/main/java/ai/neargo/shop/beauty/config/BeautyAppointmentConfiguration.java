@@ -29,7 +29,6 @@ import ai.neargo.shop.beauty.service.impl.ServiceSubmissionQuery;
 import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
 import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
 import ai.neargo.shop.common.config.ModuleDataSources;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
 import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
@@ -93,9 +92,8 @@ public class BeautyAppointmentConfiguration {
             AppointmentPersistence db,
             AppointmentAccess access,
             ObjectProvider<ResourceBookingPort> owner,
-            @Qualifier("beautyOutboxPublisher") OutboxPublisher publisher,
             ReceptionAccess receptionAccess) {
-        return new AppointmentCoordinator(db, access, owner, publisher, receptionAccess);
+        return new AppointmentCoordinator(db, access, owner, receptionAccess);
     }
     @Bean
     AppointmentSourceAuthority appointmentSourceAuthority(AppointmentPersistence db, AppointmentAccess access,

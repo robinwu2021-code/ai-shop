@@ -27,10 +27,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.AfterCommit;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.spi.beauty.BeautyReceptionStateChanged;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourcePlanContract;
 import ai.neargo.svc.client.CallOutcome;
@@ -59,7 +56,6 @@ public final class ReceptionCoordinator {
     private final AppointmentCoordinator appointments;
     private final BeautyMappers.ReceptionOperationMapper operations;
     private final BeautyMappers.ArrivalChallengeMapper challenges;
-    private final OutboxPublisher publisher;
     private final Clock clock;
     private final ReceptionReassignment reassignment;
     private final AppointmentMatching matching;
@@ -68,12 +64,12 @@ public final class ReceptionCoordinator {
     public ReceptionCoordinator(AppointmentPersistence db, AppointmentAccess access, ReceptionAccess receptionAccess,
             ReceptionIdentity identities, CustomerOwnership ownership, ReceptionPreparation preparations,
             AppointmentCoordinator appointments, BeautyMappers.ReceptionOperationMapper operations,
-            BeautyMappers.ArrivalChallengeMapper challenges, OutboxPublisher publisher, Clock clock,
+            BeautyMappers.ArrivalChallengeMapper challenges, Clock clock,
             ReceptionReassignment reassignment, AppointmentMatching matching,
             AppointmentPreparation appointmentPreparation, WorkOrderCoordinator workOrders) {
         this.db = db; this.access = access; this.receptionAccess = receptionAccess; this.identities = identities;
         this.ownership = ownership; this.preparations = preparations; this.appointments = appointments;
-        this.operations = operations; this.challenges = challenges; this.publisher = publisher; this.clock = clock;
+        this.operations = operations; this.challenges = challenges; this.clock = clock;
         this.reassignment = reassignment; this.matching = matching;
         this.appointmentPreparation = appointmentPreparation; this.workOrders = workOrders;
     }
@@ -485,8 +481,6 @@ public final class ReceptionCoordinator {
         return row.getActionNo();
     }
     private void publish(BtyAppointment root, BtyReceptionOperation op, long revision, String state) {
-        publisher.publish(new BeautyReceptionStateChanged(root.getAppointmentNo(), root.getEntityNo(),
-                root.getStoreNo(), revision, state), new PublishOptions("BEAUTY:RECEPTION:" + op.getOperationNo(), 1));
         String requestId = MDC.get("requestId");
         String operationNo = op.getOperationNo();
         String appointmentNo = root.getAppointmentNo();

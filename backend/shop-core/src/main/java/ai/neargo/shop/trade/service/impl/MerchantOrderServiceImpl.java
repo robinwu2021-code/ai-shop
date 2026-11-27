@@ -20,6 +20,7 @@ import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.order.mapper.InvoiceRequestMapper;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.event.SubOrderCompletion;
 import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.command.ShipCommand;
 import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
@@ -509,9 +510,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         if (eventBus == null) {
             return;
         }
-        eventBus.publish(new ai.neargo.shop.spi.trade.OrderEvents.SubOrderCompleted(
-                sub.getSubOrderNo(), sub.getOrderNo(), sub.getEntityNo(),
-                sub.getUserNo(), sub.getFulfillment()));
+        SubOrderCompletion.publishIfCompleted(eventBus, sub);
     }
 
     private void notifyShipping(OrdSubOrder sub) {

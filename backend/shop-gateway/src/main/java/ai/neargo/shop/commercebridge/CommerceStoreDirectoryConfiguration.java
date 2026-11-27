@@ -1,5 +1,8 @@
 package ai.neargo.shop.commercebridge;
 
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.core.env.Environment;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +21,10 @@ import javax.sql.DataSource;
 class CommerceStoreDirectoryConfiguration {
     @Bean
     ShopCommerceStoreAdapter commerceStoreDirectory(
-            DataSource ds, PlatformTransactionManager manager) {
+            DataSource ds, PlatformTransactionManager manager, Environment env, BeanFactory beans) {
+        if (env.containsProperty("shop.modules.platform.datasource"))
+            return new ShopCommerceStoreAdapter(beans.getBean(ModuleDataSources.PLATFORM_DATA_SOURCE, DataSource.class),
+                    beans.getBean(ModuleDataSources.PLATFORM_TX_MANAGER, PlatformTransactionManager.class));
         return new ShopCommerceStoreAdapter(ds, manager);
     }
 }

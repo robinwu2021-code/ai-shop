@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class J2MultiStoreE2eTest extends E2eBase {
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
 
     @BeforeEach
     void setUp() {

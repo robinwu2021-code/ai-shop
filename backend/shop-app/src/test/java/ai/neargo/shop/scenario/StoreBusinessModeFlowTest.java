@@ -2,9 +2,9 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.entity.MchStore;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;

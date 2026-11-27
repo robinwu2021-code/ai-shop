@@ -68,7 +68,7 @@ public class ApprovalOutcomes {
 
     /**
      * 对账结论落地（回调丢失时补上）。与回调走同一段收尾逻辑：{@link #finished} 按「只从未结束推进」去重，回调与对账谁先到都只生效一次。
-     * 还在审批中、或 OpsKit 查不到（送审还在发件箱里重试）的不处理。
+     * 还在审批中、或 OpsKit 查不到的不在这里处理：PENDING_SUBMIT 由 {@link OpsKitReconcileJob} 补投，PENDING 查不到只告警。
      */
     public void reconciled(ApprovalLinkStore.Row row, Reconciler.Outcome o) {
         Finished.Result r = switch (o.state()) {
@@ -81,7 +81,7 @@ public class ApprovalOutcomes {
         };
         if (r == null) {
             if (o.state() == Reconciler.State.NOT_FOUND && ApprovalLinkStore.PENDING.equals(row.status())) {
-                log.warn("[opskit] 对账：{} {} revision {} 已送审但 OpsKit 查不到", row.subjectType(), row.subjectRef(), row.revision());
+                log.warn("[opskit] 对账：{} {} revision {} 已送审但 OpsKit 查不到，需人工核对", row.subjectType(), row.subjectRef(), row.revision());
             }
             return;
         }

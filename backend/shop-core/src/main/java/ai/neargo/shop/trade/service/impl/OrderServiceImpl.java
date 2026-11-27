@@ -41,7 +41,6 @@ import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.trade.CheckoutPort.PromotionOption;
 import ai.neargo.shop.spi.trade.CheckoutPort.QuoteLine;
-import ai.neargo.shop.spi.trade.ManualServiceAdmissionEvents.CounterOrderCreated;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
@@ -2789,14 +2788,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
         // ⑦ 发事件（只写 outbox，与业务同事务）
         if (counter && "GUEST".equals(counterPlan.party().kind())) {
-            eventBus.publish(
-                    new CounterOrderCreated(
-                            orderNo,
-                            counterPlan.subOrderNo(),
-                            counterPlan.operationNo(),
-                            checkoutScope.entityNo(),
-                            checkoutScope.storeNo(),
-                            counterPlan.party()));
+            // 柜台散客单不发下单事件：没有消费者
         } else if (pointsStaged) {
             var draft = pointsPlacementDraft(orderNo, userNo, cmd, payMode, split, discounts,
                     pointDecisions, pointLines, pointRules, subOrderNoOf, subOrderNos,

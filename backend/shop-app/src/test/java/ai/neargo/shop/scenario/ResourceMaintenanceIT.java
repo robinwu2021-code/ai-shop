@@ -19,7 +19,7 @@ import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
-import ai.neargo.shop.merchant.port.ResourceFactsPortImpl;
+import ai.neargo.shop.merchant.booking.port.ResourceFactsPortImpl;
 import ai.neargo.shop.spi.resource.ResourceFactsPort;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
@@ -59,7 +59,7 @@ class ResourceMaintenanceIT {
     }
     @BeforeEach
     void database() throws Exception {
-        required("service.impl.ResourceServiceImpl");
+        required("booking.impl.ResourceServiceImpl");
         String admin = System.getProperty("resource-maintenance.test.admin-url");
         database = "resource_maintenance_" + UUID.randomUUID().toString().replace("-", "");
         new JdbcTemplate(new DriverManagerDataSource(admin, "root", ""))
@@ -92,10 +92,10 @@ class ResourceMaintenanceIT {
     }
     private ApplicationContextRunner runner() {
         return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
-                required("service.impl.ResourceServiceImpl"), ResourceFactsPortImpl.class, Mappers.class)
+                required("booking.impl.ResourceServiceImpl"), ResourceFactsPortImpl.class, Mappers.class)
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
-                        "spring.datasource.password=", "shop.resource.publication.archive-only=true");
+                        "spring.datasource.password=");
     }
     private Object req(String type, String value) { return json.readValue(value, required("dto." + type)); }
     private Object call(ApplicationContext context, String name, Object... args) {
@@ -140,8 +140,6 @@ class ResourceMaintenanceIT {
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_resource", Integer.class)).isOne();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_staff_log WHERE action='RESOURCE_SAVED'",
                     Integer.class)).isOne();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE "
-                    + "event_type='MERCHANT_RESOURCE_CHANGED' AND status='ARCHIVED'", Integer.class)).isOne();
             assertThatThrownBy(() -> save(ctx, body(null, 0, "ROOM", 3, "ACTIVE"), "CREATE"))
                     .isInstanceOf(BizException.class);
         });
@@ -241,15 +239,6 @@ class ResourceMaintenanceIT {
         });
     }
     @Test
-    void strictPublicationFailureRollsBackResourceAuditAndKey() {
-        runner().withPropertyValues("shop.resource.publication.archive-only=false").run(ctx -> {
-            assertThatThrownBy(() -> create(ctx)).isInstanceOf(RuntimeException.class);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_resource", Integer.class)).isZero();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_staff_log", Integer.class)).isZero();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isZero();
-        });
-    }
-    @Test
     void nativeActualWorkWithoutAnyFutureBucketFencesRealResourceDisable() {
         runner().run(ctx -> {
             String no = create(ctx).get("resourceNo").asText();
@@ -317,7 +306,7 @@ class ResourceMaintenanceIT {
     @TestConfiguration(proxyBeanMethods = false)
     @org.springframework.context.annotation.Import({ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class,
             ai.neargo.shop.common.config.PlatformJdbcConfiguration.class})
-    @MapperScan(basePackageClasses = MerchantMappers.class)
+    @MapperScan(basePackageClasses = {MerchantMappers.class, ai.neargo.shop.merchant.booking.mapper.BookingMappers.class})
     static class Mappers {
         @Bean
         IdempotencyService idempotency(SqlSessionFactory factory, ObjectMapper json) {

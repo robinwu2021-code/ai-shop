@@ -13,6 +13,10 @@ import java.util.*;
 public final class RefundSnapshot {
     private RefundSnapshot() {}
 
+    public static String freezeOperation(String refundNo) {
+        return "freeze-" + FactDigest.of(List.of(refundNo)).substring(0, 48);
+    }
+
     public record Payment(String attemptNo, VerifiedPaymentFact fact) {}
 
     public record Source(

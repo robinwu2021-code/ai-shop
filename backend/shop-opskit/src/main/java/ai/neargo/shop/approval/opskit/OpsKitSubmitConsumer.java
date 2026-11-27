@@ -59,9 +59,14 @@ public class OpsKitSubmitConsumer implements OutboxConsumer {
     @Override
     public void consume(SysOutbox event) {
         JsonNode p = JSON.readTree(event.getPayload());
-        String type = p.path("subjectType").asString();
-        String ref = p.path("subjectRef").asString();
-        long revision = p.path("revision").asLong();
+        deliver(p.path("subjectType").asString(), p.path("subjectRef").asString(), p.path("revision").asLong());
+    }
+
+    /**
+     * 投递一次送审。发件箱消费与对账补投（{@link OpsKitReconcileJob}）共用这一条路：只投 PENDING_SUBMIT 的关联，
+     * 幂等键固定为 {@code subjectType:ref:revision}，OpsKit 收过就重放同一张单，{@code markSubmitted} 只从 PENDING_SUBMIT 推进。
+     */
+    public void deliver(String type, String ref, long revision) {
         var row = links.find(type, ref, revision).orElse(null);
         if (row == null || !ApprovalLinkStore.PENDING_SUBMIT.equals(row.status())) {
             return; // 已投递过，或业务已撤销

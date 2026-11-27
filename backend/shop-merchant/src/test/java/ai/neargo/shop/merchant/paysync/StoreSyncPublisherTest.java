@@ -3,7 +3,11 @@ package ai.neargo.shop.merchant.paysync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -149,6 +153,38 @@ class StoreSyncPublisherTest {
         // 同一家店有了新修订号，照常入队
         when(reader.changedAfter(any(), anyInt())).thenReturn(List.of(row(7, T.minusSeconds(1))));
         assertThat(p.scanCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("★★★ 第 2 家门店发布失败：本批停在它前面，游标不越过它；下一轮从它重试并继续")
+    void publishFailureStopsBatchAndNextScanRetriesFromFailedStore() {
+        var reader = mock(StoreSnapshotReader.class);
+        var outbox = mock(OutboxEventBus.class);
+        var rows = List.of(row(1, T.minusMinutes(3)), row(2, T.minusMinutes(2)), row(3, T.minusMinutes(1)));
+        var asked = new ArrayList<Cursor>();
+        when(reader.dbNow()).thenReturn(T);
+        when(reader.changedAfter(any(), anyInt())).thenAnswer(a -> {
+            Cursor c = a.getArgument(0);
+            asked.add(c);
+            return rows.stream().filter(r -> r.changedAt().isAfter(c.changedAt())
+                    || (r.changedAt().isEqual(c.changedAt()) && r.id() > c.id())).toList();
+        });
+        doNothing().doThrow(new IllegalStateException("broker not confirmed")).doNothing()
+                .when(outbox).publish(any(), any());
+        var p = new StoreSyncPublisher(reader, outbox, NearPayStoreSyncTest.PROPS, (LockingTaskExecutor) null);
+
+        assertThat(p.scanCount()).isEqualTo(1);
+        assertThat(p.cursor()).isEqualTo(new Cursor(T.minusMinutes(3), 1));
+        verify(outbox, never()).publish(eq("NPS:ST3:" + rows.get(2).revision()), any());
+
+        assertThat(p.scanCount()).isEqualTo(2);
+        assertThat(asked.get(1)).isEqualTo(new Cursor(T.minusMinutes(3), 1));
+        var nos = ArgumentCaptor.forClass(String.class);
+        verify(outbox, times(4)).publish(nos.capture(), any());
+        assertThat(nos.getAllValues()).containsExactly("NPS:ST1:" + rows.get(0).revision(),
+                "NPS:ST2:" + rows.get(1).revision(), "NPS:ST2:" + rows.get(1).revision(),
+                "NPS:ST3:" + rows.get(2).revision());
+        assertThat(p.cursor()).isEqualTo(new Cursor(T.minusMinutes(1).minusSeconds(5), 0));
     }
 
     @Test

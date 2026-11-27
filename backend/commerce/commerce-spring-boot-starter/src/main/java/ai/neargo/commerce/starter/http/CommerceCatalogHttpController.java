@@ -23,7 +23,7 @@ public final class CommerceCatalogHttpController extends MallHttpSupport {
 
     @GetMapping("/ops/business-types")
     public Object types() {
-        return ok(catalog.overview(context.operator("commerce:catalog:read")).businessTypes());
+        return ok(catalog.businessTypes(context.operator("commerce:catalog:read")));
     }
 
     @PostMapping("/ops/business-types")

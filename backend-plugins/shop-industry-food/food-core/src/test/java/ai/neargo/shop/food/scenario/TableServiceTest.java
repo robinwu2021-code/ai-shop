@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
@@ -14,9 +13,6 @@ import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.transaction.PlatformTransactionManager;
-import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
-import tools.jackson.databind.ObjectMapper;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ai.neargo.shop.food.dto.CreateTableAreaReq;
@@ -190,7 +186,6 @@ class TableServiceTest extends FoodWriteGuardFixture {
             assertThat(s.setStatusTableArea("E", "A", a.areaNo(), "actor", req, "same").area()).isEqualTo(a);
             assertThat(s.setStatusTableArea("E", "A", a.areaNo(), "actor", req, "same").area()).isEqualTo(a);
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log", Integer.class)).isOne();
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isOne();
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isEqualTo(2);
         });
     }
@@ -215,35 +210,6 @@ class TableServiceTest extends FoodWriteGuardFixture {
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isZero();
         });
     }
-    @Test void auditRetainsBeforeAndAfterContentsInOriginalOutbox() {
-        run(c -> {
-            var f = fixture(c);
-            var service = c.getBean(TableService.class);
-            var area = create(service, "A1");
-            var edit = service.saveTableArea("E", "A", area.areaNo(), "actor",
-                    new SaveTableAreaReq("包间", 9, area.version()), "edit");
-            service.setStatusTableArea("E", "A", area.areaNo(), "actor",
-                    new SetStatusTableAreaReq("DISABLED", edit.area().version(), "停用原因"), "off");
-            var json = c.getBean(ObjectMapper.class);
-            var events = f.sql().queryForList("SELECT payload FROM sys_outbox ORDER BY id", String.class)
-                    .stream().map(json::readTree).toList();
-            assertThat(events).hasSize(3);
-            assertThat(events.get(0).get("after")).isNotNull();
-            assertThat(events.get(0).get("before").isNull()).isTrue();
-            assertThat(events.get(0).get("after").get("code").asString()).isEqualTo("A1");
-            assertThat(events.get(1).get("before").get("name").asString()).isEqualTo("大厅");
-            assertThat(events.get(1).get("before").get("sortNo").asInt()).isEqualTo(2);
-            assertThat(events.get(1).get("after").get("name").asString()).isEqualTo("包间");
-            assertThat(events.get(1).get("after").get("sortNo").asInt()).isEqualTo(9);
-            assertThat(events.get(2).get("before").get("status").asString()).isEqualTo("ACTIVE");
-            assertThat(events.get(2).get("after").get("status").asString()).isEqualTo("DISABLED");
-            assertThat(events.get(2).get("reason").asString()).isEqualTo("停用原因");
-            for (var event : events) {
-                assertThat(f.sql().queryForObject("SELECT operator_no FROM fnb_action_log WHERE action_no=?",
-                        String.class, event.get("operationNo").asString())).isEqualTo("actor");
-            }
-        });
-    }
     @Test void missingSourceStillCreatesAreaWithoutAnOutboxEvent() {
         // 866e3870f：归档类事实（FoodOutboxRouting.ARCHIVE_ONLY）不依赖发件箱，业务照常写入、不产生事件；
         // 与 FoodOutboxWiringTest#ordinaryMaintenanceDoesNotNeedOrWriteAnOutbox 同一规则。
@@ -255,7 +221,7 @@ class TableServiceTest extends FoodWriteGuardFixture {
                     assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
                 });
     }
-    @Test void rollbackAfterEventFlush() {
+    @Test void rollbackAfterAuditFlush() {
         run(c -> {
             var f = fixture(c);
             c.getBean(StorePolicyPublicationTest.Signals.class).afterFlush.set(true);
@@ -265,7 +231,7 @@ class TableServiceTest extends FoodWriteGuardFixture {
         });
     }
     private void empty(Fixture f) {
-        for (String table : List.of("fnb_table_area", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
+        for (String table : List.of("fnb_table_area", "fnb_action_log", "sys_idempotent")) {
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isZero();
         }
     }
@@ -300,7 +266,7 @@ class TableServiceTest extends FoodWriteGuardFixture {
                         .filteredOn(TableAreaResultVO.class::isInstance).hasSize(1);
             }
             assertThat(f.sql().queryForObject("SELECT version FROM fnb_table_area", Long.class)).isEqualTo(1);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(2);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log", Integer.class)).isEqualTo(2);
         });
     }
     private Object concurrent(TableService s, CyclicBarrier barrier, TableAreaVO area, String key) throws Exception {
@@ -333,23 +299,16 @@ class TableServiceTest extends FoodWriteGuardFixture {
             return factory;
         }
         @Bean TableService tableService(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions, IdempotencyService idem,
-                @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, PlatformTransactionManager manager,
-                StorePolicyPublicationTest.Signals signals, DataSource source) {
-            OutboxPublisher checked = (event, options) -> {
-                int beforeCount = signals.afterFlush.get()
-                        ? new JdbcTemplate(source).queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class) : 0;
-                var receipt = publisher.publish(event, options);
+                PlatformTransactionManager manager, StorePolicyPublicationTest.Signals signals) {
+            ActionLogMapper checked = FoodAuditFault.afterInsert(actions, () -> {
                 if (signals.afterFlush.get()) TransactionSynchronizationManager.registerSynchronization(
                         new TransactionSynchronization() {
                             @Override public void beforeCommit(boolean readOnly) {
-                                assertThat(new JdbcTemplate(source).queryForObject(
-                                        "SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(beforeCount + 1);
                                 throw new IllegalStateException("after-policy-event-flush");
                             }
                         });
-                return receipt;
-            };
-            return new TableServiceImpl(areas, tables, actions, idem, checked, manager);
+            });
+            return new TableServiceImpl(areas, tables, checked, idem, manager);
         }
     }
 }

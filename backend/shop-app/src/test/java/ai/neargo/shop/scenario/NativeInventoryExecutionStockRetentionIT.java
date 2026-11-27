@@ -74,9 +74,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 @EnabledIfSystemProperty(named = "beauty.execution.test.native", matches = "true")
 @TestPropertySource(properties = {
     "shop.inventory.stock-authority=INVENTORY",
-    "spring.main.allow-bean-definition-overriding=false",
-    "shop.personnel.publication.archive-only=true", "shop.schedule.publication.archive-only=true",
-    "shop.resource.publication.archive-only=true"
+    "spring.main.allow-bean-definition-overriding=false"
 })
 class NativeInventoryExecutionStockRetentionIT extends ManualSourceHostFixture {
     @Autowired PersonnelService personnel;

@@ -4,8 +4,6 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.AuthorizeCartSessionReq;
 import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.CartResultVO;
@@ -45,8 +43,6 @@ import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.DiningIdentityService;
 import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.CartChanged;
-import ai.neargo.shop.spi.food.DiningSessionChanged;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -108,7 +104,6 @@ public class CheckCartServiceImpl implements CheckCartService, ai.neargo.shop.fo
     private final TableResourceLocks resources;
     private final ActionLogMapper actions;
     private final IdempotencyService idem;
-    private final OutboxPublisher publisher;
     private final CatalogService catalog;
     private final StoreCardQueryPort stores;
     private final ObjectMapper json;
@@ -127,7 +122,6 @@ public class CheckCartServiceImpl implements CheckCartService, ai.neargo.shop.fo
             TableMapper tables,
             ActionLogMapper actions,
             IdempotencyService idem,
-            OutboxPublisher publisher,
             CatalogService catalog,
             StoreCardQueryPort stores,
             ObjectMapper json,
@@ -142,7 +136,6 @@ public class CheckCartServiceImpl implements CheckCartService, ai.neargo.shop.fo
         resources = new TableResourceLocks(areas, tables);
         this.actions = actions;
         this.idem = idem;
-        this.publisher = publisher;
         this.catalog = catalog;
         this.stores = stores;
         this.json = json;
@@ -394,17 +387,6 @@ public class CheckCartServiceImpl implements CheckCartService, ai.neargo.shop.fo
                                     audit.setOperatorNo(actor);
                                     audit.setRequestNo(FoodCommandFingerprint.hash(key));
                                     actions.insert(audit);
-                                    publisher.publish(
-                                            new DiningSessionChanged(
-                                                    entity,
-                                                    store,
-                                                    guest.getTableNo(),
-                                                    req.sessionNo(),
-                                                    "GRANT_CART",
-                                                    req.version() + 1,
-                                                    audit.getActionNo()),
-                                            new PublishOptions(
-                                                    "FOOD_GUEST_SESSION:" + req.sessionNo(), 1));
                                     return new CartSessionGrantVO(
                                             req.sessionNo(), check, req.version() + 1);
                                 }));
@@ -1076,15 +1058,6 @@ public class CheckCartServiceImpl implements CheckCartService, ai.neargo.shop.fo
                 FoodCommandFingerprint.hash(
                         row.getCartNo(), row.getVersion().toString(), row.getStatus()));
         actions.insert(log);
-        publisher.publish(
-                new CartChanged(
-                        row.getEntityNo(),
-                        row.getStoreNo(),
-                        row.getCartNo(),
-                        operation,
-                        row.getVersion(),
-                        log.getActionNo()),
-                new PublishOptions("FOOD_CART:" + row.getCartNo(), 1));
         return log.getActionNo();
     }
 

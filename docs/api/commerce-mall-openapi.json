@@ -1686,7 +1686,12 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProductDraft"
+                "$ref": "#/components/schemas/ProductDraft",
+                "properties": {
+                  "kind": {
+                    "$ref": "#/components/schemas/ProductKind"
+                  }
+                }
               }
             }
           }
@@ -10421,6 +10426,14 @@
           "carrierCode": {
             "type": "string"
           },
+          "deviceSerials": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "uniqueItems": true
+          },
           "trackingNo": {
             "type": "string"
           },
@@ -10450,7 +10463,13 @@
             "type": "string"
           },
           "kind": {
-            "$ref": "#/components/schemas/ProductKind"
+            "enum": [
+              "PLAN",
+              "END_ACCESS",
+              "HARDWARE",
+              "BUNDLE",
+              "SERVICE"
+            ]
           },
           "name": {
             "type": "string"
@@ -11223,7 +11242,11 @@
             "type": "string"
           },
           "scope": {
-            "$ref": "#/components/schemas/EndScope"
+            "enum": [
+              "STORE",
+              "SYSTEM",
+              "ENTITY"
+            ]
           },
           "allowedBusinessTypes": {
             "type": "array",

@@ -44,7 +44,7 @@ class MerchantPlanQuotaFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
 
     @Autowired
     private ai.neargo.shop.merchant.service.MerchantPlanService planService;
@@ -172,8 +172,8 @@ class MerchantPlanQuotaFlowTest {
         // 删掉订阅行，模拟「V150 的回填漏了这个主体」
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                 planMapper.delete(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.merchant.entity.MchEntityPlan>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchEntityPlan::getEntityNo, merchantNo)));
+                        .<ai.neargo.shop.merchant.plan.entity.MchEntityPlan>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.plan.entity.MchEntityPlan::getEntityNo, merchantNo)));
 
         var plan = planService.current(merchantNo);
         // 兜底视图：FREE、额度取配置，来源标 CONFIG（**能看出它不是真订阅**）

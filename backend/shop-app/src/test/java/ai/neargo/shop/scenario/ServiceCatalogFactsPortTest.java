@@ -18,7 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 /** Real owner beans and SQL, without directory/product/price test doubles; H2 is not native deployment proof. */
-@SpringBootTest(properties = "shop.catalog.publication.archive-only=true")
+@SpringBootTest
 @ActiveProfiles("test")
 class ServiceCatalogFactsPortTest {
     @Autowired

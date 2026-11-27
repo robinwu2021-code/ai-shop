@@ -5,8 +5,6 @@ import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceCredentialVO;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceSessionReq;
@@ -28,8 +26,6 @@ import ai.neargo.shop.food.mapper.FoodMappers.CheckMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.DiningIdentityService;
-import ai.neargo.shop.spi.food.DiningDeviceChanged;
-import ai.neargo.shop.spi.food.DiningSessionChanged;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
@@ -68,7 +64,6 @@ public class DiningIdentityServiceImpl implements DiningIdentityService {
     private final OperationMapper operations;
     private final GuestSessionMapper sessions;
     private final CheckMapper checks;
-    private final OutboxPublisher outbox;
     private final TransactionTemplate tx;
     private final ObjectMapper json;
     private final Clock clock;
@@ -79,7 +74,6 @@ public class DiningIdentityServiceImpl implements DiningIdentityService {
             OperationMapper operations,
             GuestSessionMapper sessions,
             CheckMapper checks,
-            OutboxPublisher outbox,
             PlatformTransactionManager manager,
             ObjectMapper json,
             Clock clock) {
@@ -88,7 +82,6 @@ public class DiningIdentityServiceImpl implements DiningIdentityService {
         this.operations = operations;
         this.sessions = sessions;
         this.checks = checks;
-        this.outbox = outbox;
         this.json = json;
         this.clock = clock;
         tx = new TransactionTemplate(manager);
@@ -159,7 +152,6 @@ public class DiningIdentityServiceImpl implements DiningIdentityService {
                                     conflict();
                                 }
                             }
-                            publish(row, "REGISTERED", actor);
                             raw.set(credential);
                             return view(row);
                         });
@@ -191,7 +183,6 @@ public class DiningIdentityServiceImpl implements DiningIdentityService {
                     if (devices.updateById(row) != 1) {
                         conflict();
                     }
-                    publish(row, "REVOKED", actor);
                     return view(row);
                 });
     }
@@ -320,7 +311,6 @@ public class DiningIdentityServiceImpl implements DiningIdentityService {
                     if (authorizations.updateById(grant) != 1) {
                         conflict();
                     }
-                    sessionEvent(session, "PARTY_REVOKED");
                     return view(session, grant);
                 });
     }
@@ -415,7 +405,6 @@ public class DiningIdentityServiceImpl implements DiningIdentityService {
         grant.setIssuedBy(actor);
         grant.setStatus("ACTIVE");
         authorizations.insert(grant);
-        sessionEvent(session, scope + "_CREATED");
         raw.set(secret);
         return view(session, grant);
     }
@@ -603,32 +592,6 @@ public class DiningIdentityServiceImpl implements DiningIdentityService {
                         throw BizException.of(ErrorCode.CONFLICT);
                     }
                 });
-    }
-
-    private void publish(FnbDiningDevice d, String action, String actor) {
-        outbox.publish(
-                new DiningDeviceChanged(
-                        d.getEntityNo(),
-                        d.getStoreNo(),
-                        d.getDeviceNo(),
-                        action,
-                        d.getVersion(),
-                        d.getGeneration(),
-                        BizKey.next("FIDE")),
-                new PublishOptions("FOOD_DEVICE:" + d.getDeviceNo(), 1));
-    }
-
-    private void sessionEvent(FnbGuestSession s, String action) {
-        outbox.publish(
-                new DiningSessionChanged(
-                        s.getEntityNo(),
-                        s.getStoreNo(),
-                        s.getTableNo(),
-                        s.getSessionNo(),
-                        action,
-                        s.getVersion(),
-                        BizKey.next("FIDE")),
-                new PublishOptions("FOOD_GUEST_SESSION:" + s.getSessionNo(), 1));
     }
 
     private void init(BaseEntity row, String actor) {

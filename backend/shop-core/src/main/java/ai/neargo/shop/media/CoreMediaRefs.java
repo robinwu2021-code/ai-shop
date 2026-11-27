@@ -19,8 +19,6 @@ public class CoreMediaRefs implements MediaRefSource {
     @Override
     public List<MediaRefColumn> columns() {
         return List.of(
-                // A brand keeps its uploaded logo even when no store or product reuses it.
-                of("mch_brand", "logo", "品牌 · 标识图片", "brand_no"),
                 // —— 商品 ——
                 of("prd_goods", "cover", "商品 · 主图", "goods_no"),
                 of("prd_goods", "images", "商品 · 图集", "goods_no"),
@@ -62,9 +60,6 @@ public class CoreMediaRefs implements MediaRefSource {
                 of("rvw_review", "avatar", "评价 · 头像快照", "review_no"),
                 // 评价正文可能嵌图片地址
                 of("rvw_review", "content", "评价 · 正文内嵌", "review_no"),
-
-                // —— 用户 ——
-                of("usr_account", "avatar", "用户 · 头像", "user_no"),
 
                 // —— 营销 ——
                 of("mkt_group_buy", "cover", "拼团 · 封面", "group_no"),

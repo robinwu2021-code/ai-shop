@@ -72,7 +72,7 @@ public final class BeautySchemaValidator {
 
     private static final String V9_1 = "db/industry/beauty/V9_1__beauty_appointment_work_order_no.sql";
     private static final String V9_1_SHA256 =
-            "3e7eebae45e90d24e5ae696a974537ec9c4c3ced8d2677332618f40a15fb610f";
+            "1019e3104433abff0e80c38305a41bbf5116684d0e4015e3817602c69b4aed30";
 
     private static final String V9 = "db/industry/beauty/V9__beauty_manual_source_observation.sql";
     private static final String V9_SHA256 =

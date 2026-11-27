@@ -101,9 +101,9 @@ public class FoodOperationsConfiguration {
     QueueService queueService(FoodMappers.QueueTicketMapper tickets,FoodMappers.StorePolicyMapper policies,
             FoodMappers.ActionLogMapper actions,StoreOperationService operations,CheckService checks,
             ObjectProvider<StoreCardQueryPort> stores,IdempotencyService idem,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher outbox,ObjectMapper json,
+            ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
-        return new QueueServiceImpl(tickets,policies,actions,operations,checks,numbers -> stores.getObject().cards(numbers),idem,outbox,json,manager);
+        return new QueueServiceImpl(tickets,policies,actions,operations,checks,numbers -> stores.getObject().cards(numbers),idem,json,manager);
     }
     @Bean @ConditionalOnMissingBean(DiningPickupVerificationService.class)
     DiningPickupVerificationService diningPickupVerificationService(FoodMappers.OrderBatchMapper batches,

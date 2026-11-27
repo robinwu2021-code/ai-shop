@@ -1,4 +1,6 @@
 package ai.neargo.shop.merchantbridge;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import ai.neargo.commerce.api.subscription.StoreRelinkFacade;
 import ai.neargo.commerce.core.subscription.StoreRelinkService;
@@ -12,7 +14,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Component
 public class ShopStoreRelinkAuthority implements StoreRelinkService.Authority {
     private final JdbcTemplate jdbc;
-    public ShopStoreRelinkAuthority(JdbcTemplate jdbc) {this.jdbc=jdbc;}
+    public ShopStoreRelinkAuthority(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc) {this.jdbc=jdbc;}
     @Override public void verify(StoreRelinkFacade.Command c) {
         if(!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Claim transaction required");
         var rows=jdbc.queryForList("SELECT * FROM mch_store_entity_claim WHERE tenant_no=? AND claim_no=? AND state='PAY_PREPARED' FOR UPDATE",c.store().tenantNo(),c.changeNo());

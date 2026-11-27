@@ -2,15 +2,9 @@ package ai.neargo.shop.food.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.event.DomainEvent;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceCredentialVO;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceSessionReq;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.RegisterDeviceReq;
@@ -31,7 +25,6 @@ import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -39,6 +32,8 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import tools.jackson.databind.json.JsonMapper;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,7 +53,8 @@ import java.util.UUID;
 class DiningIdentityServiceTest {
     DiningIdentityService service;
     JdbcTemplate jdbc;
-    OutboxPublisher outbox;
+    /** Fails the grant insert, the last write of party creation, inside its transaction. */
+    boolean failGrant;
     final MutableClock clock = new MutableClock();
 
     @BeforeEach
@@ -107,15 +103,26 @@ class DiningIdentityServiceTest {
         factory.setDataSource(source);
         factory.setConfiguration(config);
         var template = new SqlSessionTemplate(factory.getObject());
-        outbox = mock(OutboxPublisher.class);
+        var grants = template.getMapper(AuthorizationMapper.class);
+        AuthorizationMapper checkedGrants = (AuthorizationMapper) Proxy.newProxyInstance(
+                AuthorizationMapper.class.getClassLoader(), new Class<?>[] {AuthorizationMapper.class},
+                (proxy, method, args) -> {
+                    if (failGrant && "insert".equals(method.getName())) {
+                        throw new IllegalStateException("grant write failed");
+                    }
+                    try {
+                        return method.invoke(grants, args);
+                    } catch (InvocationTargetException ex) {
+                        throw ex.getCause();
+                    }
+                });
         service =
                 new DiningIdentityServiceImpl(
                         template.getMapper(DeviceMapper.class),
-                        template.getMapper(AuthorizationMapper.class),
+                        checkedGrants,
                         template.getMapper(OperationMapper.class),
                         template.getMapper(GuestSessionMapper.class),
                         mock(CheckMapper.class),
-                        outbox,
                         new DataSourceTransactionManager(source),
                         JsonMapper.builder().build(),
                         clock);
@@ -172,16 +179,6 @@ class DiningIdentityServiceTest {
                                 byte[].class,
                                 session.party().sessionNo()))
                 .containsExactly(sha256(session.accessToken()));
-        var emitted = ArgumentCaptor.forClass(DomainEvent.class);
-        verify(outbox, atLeastOnce()).publish(emitted.capture(), any());
-        for (var event : emitted.getAllValues()) {
-            assertThat(JsonMapper.builder().build().writeValueAsString(event))
-                    .doesNotContain(
-                            device.rawCredential(),
-                            session.accessToken(),
-                            "credentialHash",
-                            "tokenHash");
-        }
         assertThat(device.toString()).doesNotContain(device.rawCredential());
         assertThat(session.toString()).doesNotContain(session.accessToken());
         service.validateDeviceSession(session.party().sessionNo());
@@ -300,10 +297,8 @@ class DiningIdentityServiceTest {
     }
 
     @Test
-    void sourceEventFailureRollsBackPartyAndItsCredentialHashAndOperationReceipt() {
-        doThrow(new IllegalStateException("event owner unavailable"))
-                .when(outbox)
-                .publish(any(), any());
+    void grantFailureRollsBackPartyAndItsCredentialHashAndOperationReceipt() {
+        failGrant = true;
         assertThatThrownBy(
                         () ->
                                 service.createStaffParty(

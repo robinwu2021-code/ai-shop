@@ -19,6 +19,8 @@ export const merchantHttp: MerchantApi = {
   entityPlanPurchase: (e,o) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}`),
   confirmEntityPlanPurchase: (e,o,c) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/confirm`,c),
   declineEntityPlanPurchase: (e,o,claimNo,reason) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/decline`,{claimNo,reason}),
+  entityPlanRefundReview: (e,o) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/refund-review`),
+  closeEntityPlanRefundReview: (e,o,c) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/refund-review`,c),
   recoverEntityPlanPurchase: (e,o) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/recover`),
   cancelEntityPlanPurchase: (e,o,c) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/cancel`,c),
   reserveEntityPlanEvidence: (e,o,purpose="PLATFORM_RECEIPT") => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/evidence`,{},{purpose}),

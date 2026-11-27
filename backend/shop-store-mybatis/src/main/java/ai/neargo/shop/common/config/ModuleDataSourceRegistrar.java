@@ -34,7 +34,8 @@ import org.springframework.transaction.support.AbstractPlatformTransactionManage
  *
  * <p>每个具名数据源注册一组 bean：{@code <名>DataSource}、{@code <名>SqlSessionFactory}、
  * {@code <名>TxManager}。每个模块得到三个别名（见 {@link ModuleDataSources}），指向它绑定的那一组；
- * 没绑定就指向主库的 {@code dataSource / sqlSessionFactory / transactionManager}。
+ * 没绑定就指向主库的 {@code dataSource / sqlSessionFactory / transactionManager}
+ * （从支付域分出来的模块例外，指向支付域现有的那一组，见 {@link ModuleDataSources#unboundTarget}）。
  *
  * <p>为什么用别名而不是「没配就再建一个指向主库的池」：同一个库上两个事务管理器会让原本同事务的写
  * 静默变成两个事务，而库是同一个，什么都不会报。别名保证不配时一个字节都不变。
@@ -73,11 +74,12 @@ public class ModuleDataSourceRegistrar implements ImportBeanDefinitionRegistrar,
                         + " 指向的数据源没有定义：请配置 shop.datasources." + bound + ".url");
             }
             boolean own = bound != null && !bound.isBlank();
-            registry.registerAlias(own ? ModuleDataSources.dataSource(bound) : "dataSource",
+            String[] unbound = ModuleDataSources.unboundTarget(module);
+            registry.registerAlias(own ? ModuleDataSources.dataSource(bound) : unbound[0],
                     ModuleDataSources.dataSource(module));
-            registry.registerAlias(own ? ModuleDataSources.sqlSessionFactory(bound) : "sqlSessionFactory",
+            registry.registerAlias(own ? ModuleDataSources.sqlSessionFactory(bound) : unbound[1],
                     ModuleDataSources.sqlSessionFactory(module));
-            registry.registerAlias(own ? ModuleDataSources.txManager(bound) : "transactionManager",
+            registry.registerAlias(own ? ModuleDataSources.txManager(bound) : unbound[2],
                     ModuleDataSources.txManager(module));
         }
     }
@@ -90,6 +92,9 @@ public class ModuleDataSourceRegistrar implements ImportBeanDefinitionRegistrar,
             throw new IllegalStateException("shop.datasources." + name + ".url 没有配置");
         }
         String dataSource = ModuleDataSources.dataSource(name);
+        if (registry.containsBeanDefinition(dataSource)) {
+            return;   // 注册器会被每个引入它的配置类各触发一次（平台装配、支付装配），只登记一遍
+        }
         registry.registerBeanDefinition(dataSource, BeanDefinitionBuilder
                 .genericBeanDefinition(HikariDataSource.class, () -> pool(name, source))
                 .setDestroyMethodName("close").getBeanDefinition());

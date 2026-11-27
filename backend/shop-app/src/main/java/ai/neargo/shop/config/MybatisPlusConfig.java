@@ -1,5 +1,6 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.common.config.PayMerchantTableMapper;
 import ai.neargo.shop.common.config.PlatformSqlMapper;
 import ai.neargo.shop.common.config.PlatformTableMapper;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
@@ -55,7 +56,7 @@ import org.springframework.context.annotation.Import;
          *
          *   beauty    —— 与商品订单共主库，由美业条件配置及结构校验后注册。
          *
-         *   invoice / printing / user —— 可在配置里选数据源的模块（ADR-066），由
+         *   invoice / printing —— 可在配置里选数据源的模块（ADR-066），由
          *                ModuleMapperScanConfig 绑到各自的句柄；不配时句柄就是主库工厂。
          *
          * 漏掉哪一个，那个域的 Mapper 都会被注册到平台工厂上。
@@ -65,14 +66,18 @@ import org.springframework.context.annotation.Import;
          */
         excludeFilters = {@ComponentScan.Filter(
                 type = FilterType.REGEX,
-                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce|beauty|invoice|printing|user)\\..*"),
+                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce|beauty|invoice|printing)\\..*"),
                 // 表在平台基础库的 Mapper 按标记排除（它们和别的库的 Mapper 混在同一个包里），
                 // 由 ModuleMapperScanConfig 按同一个标记收到平台句柄上
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformTableMapper.class),
                 // 门店交易库的同理（ADR-068）
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class),
                 // 行业库的同理：由各行业插件的持久化配置收到行业句柄上
-                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = IndustryTableMapper.class)})
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = IndustryTableMapper.class),
+
+                // 标记接口本身也继承 BaseMapper、又在本扫描根之下：不排除的话它自己会被注册成一个 Mapper。
+                // 支付商户库的那个标记由 PayDataSourceConfig 收取，这里只负责不把它扫进来
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PayMerchantTableMapper.class)})
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *

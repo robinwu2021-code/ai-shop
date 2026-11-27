@@ -20,6 +20,9 @@ public interface RefundFacade {
     RefundView request(ActorContext actor, RefundCommand command);
 
     RefundView approve(ActorContext operator, RefundApprovalCommand command);
+    default RefundView approve(ActorContext actor, RefundApprovalCommand command, String approvalNo) {
+        return approve(actor, command);
+    }
 
     default RefundView reject(ActorContext operator, RefundRejectionCommand command) {
         throw new UnsupportedOperationException("REFUND_REVIEW_UNAVAILABLE");

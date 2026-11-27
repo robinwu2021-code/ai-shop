@@ -9566,6 +9566,12 @@
           "ar": "باقة"
         },
         {
+          "key": "bizMall.order.awaitingShipment",
+          "zh-CN": "待发货",
+          "en": "Awaiting shipment",
+          "ar": "بانتظار الشحن"
+        },
+        {
           "key": "bizMall.order.createdAt",
           "zh-CN": "下单时间",
           "en": "Ordered at",
@@ -9644,6 +9650,12 @@
           "ar": "الدفع بالتحويل البنكي"
         },
         {
+          "key": "bizMall.pay.transferRemark",
+          "zh-CN": "转账附言（订单号）",
+          "en": "Transfer reference (order number)",
+          "ar": "مرجع التحويل (رقم الطلب)"
+        },
+        {
           "key": "bizMall.payment.CANCEL_PENDING",
           "zh-CN": "取消处理中",
           "en": "Cancelling",
@@ -9678,6 +9690,12 @@
           "zh-CN": "待付款",
           "en": "Awaiting payment",
           "ar": "بانتظار الدفع"
+        },
+        {
+          "key": "bizMall.store.buy",
+          "zh-CN": "购买",
+          "en": "Buy",
+          "ar": "شراء"
         },
         {
           "key": "bizMall.store.cannotProcure",
@@ -36373,35 +36391,35 @@
       "class": "MchAdmissionPolicy",
       "zh": "准入策略：按 legal_form 档位配置，不按商户配置。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.funds.entity"
     },
     {
       "table": "mch_appointment_slot",
       "class": "MchAppointmentSlot",
       "zh": "门店的预约时段与名额。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_booking_hold",
       "class": "MchBookingHold",
       "zh": "资源集合持有凭证。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_booking_hold_unit",
       "class": "MchBookingHoldUnit",
       "zh": "资源持有分配历史明细。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_booking_owner",
       "class": "MchBookingOwner",
       "zh": "稳定资源仲裁归属。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_channel_area",
@@ -36422,28 +36440,28 @@
       "class": "MchDebt",
       "zh": "商家欠款账户：退款追不回来时先记在账上，从后续货款里扣。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.funds.entity"
     },
     {
       "table": "mch_debt_txn",
       "class": "MchDebtTxn",
       "zh": "欠款流水。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.funds.entity"
     },
     {
       "table": "mch_deposit",
       "class": "MchDeposit",
       "zh": "保证金账户，一商户一行。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.funds.entity"
     },
     {
       "table": "mch_deposit_txn",
       "class": "MchDepositTxn",
       "zh": "保证金流水。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.funds.entity"
     },
     {
       "table": "mch_entity",
@@ -36471,7 +36489,7 @@
       "class": "MchEntityPlan",
       "zh": "主体的增值包订阅（P-11.2，V150）。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.plan.entity"
     },
     {
       "table": "mch_fulfillment_channel",
@@ -36499,14 +36517,14 @@
       "class": "MchPaymentMerchant",
       "zh": "商家支付进件 —— **每通道一条**。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.paymerchant.entity"
     },
     {
       "table": "mch_payout_account",
       "class": "MchPayoutAccount",
       "zh": "供应商收款账户（ADR-011 自营供应商模式 · V358）。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.paymerchant.entity"
     },
     {
       "table": "mch_personnel",
@@ -36534,7 +36552,7 @@
       "class": "MchPersonnelSkill",
       "zh": "项目服务资格。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_personnel_store",
@@ -36555,49 +36573,49 @@
       "class": "MchResource",
       "zh": "人员或物理资源的稳定主档。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_bucket",
       "class": "MchResourceBucket",
       "zh": "跨店统一容量仲裁桶。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_command",
       "class": "MchResourceCommand",
       "zh": "资源持久命令与结果。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_occupation",
       "class": "MchResourceOccupation",
       "zh": "Permanent actual-resource evidence; lifecycle changes never release original identity.",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_occupation_bucket",
       "class": "MchResourceOccupationBucket",
       "zh": "Permanent actual-resource evidence; lifecycle changes never release original identity.",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_occupation_segment",
       "class": "MchResourceOccupationSegment",
       "zh": "Permanent actual-resource evidence; lifecycle changes never release original identity.",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_resource_occupation_unit",
       "class": "MchResourceOccupationUnit",
       "zh": "Permanent actual-resource evidence; lifecycle changes never release original identity.",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_role",
@@ -36611,14 +36629,14 @@
       "class": "MchScheduleChangeLog",
       "zh": "班表调整历史。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_schedule_rule",
       "class": "MchScheduleRule",
       "zh": "资源周班表规则。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
       "table": "mch_service_area",
@@ -36681,7 +36699,7 @@
       "class": "MchViolation",
       "zh": "商家违规与处置记录。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.violation"
     },
     {
       "table": "mkt_attribution",
@@ -38487,7 +38505,7 @@
       "class": "SysAuthCode",
       "zh": "类目授权码。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.dictionary.entity"
     },
     {
       "table": "sys_banned_word",
@@ -38578,7 +38596,7 @@
       "class": "SysMerchantPlanDef",
       "zh": "增值包档位定义（P-11.2.3，V150）。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.plan.entity"
     },
     {
       "table": "sys_notify_log",
@@ -38669,7 +38687,7 @@
       "class": "SysStoreIndustry",
       "zh": "平台行业与子行业（V643，TDD-子行业与能力端验收）。",
       "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
+      "package": "ai.neargo.shop.merchant.dictionary.entity"
     },
     {
       "table": "trd_cart_item",
@@ -46438,6 +46456,20 @@
         "module": "shop-inventory"
       },
       {
+        "host": "MchAppointmentSlot",
+        "name": "OPEN",
+        "value": "OPEN",
+        "zh": "可约",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchAppointmentSlot",
+        "name": "CLOSED",
+        "value": "CLOSED",
+        "zh": "停约。",
+        "module": "shop-merchant"
+      },
+      {
         "host": "StoreVO",
         "name": "OTHER",
         "value": "OTHER",
@@ -46459,90 +46491,6 @@
         "module": "shop-merchant"
       },
       {
-        "host": "MchAppointmentSlot",
-        "name": "OPEN",
-        "value": "OPEN",
-        "zh": "可约",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchAppointmentSlot",
-        "name": "CLOSED",
-        "value": "CLOSED",
-        "zh": "停约。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDebtTxn",
-        "name": "INCUR",
-        "value": "INCUR",
-        "zh": "产生：退款追不回来",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDebtTxn",
-        "name": "OFFSET",
-        "value": "OFFSET",
-        "zh": "从后续货款里抵扣",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDebtTxn",
-        "name": "DEPOSIT",
-        "value": "DEPOSIT",
-        "zh": "从保证金里抵扣",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDebtTxn",
-        "name": "WRITE_OFF",
-        "value": "WRITE_OFF",
-        "zh": "核销：认了这笔收不回来。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDebtTxn",
-        "name": "SRC_REFUND",
-        "value": "REFUND",
-        "zh": "源头类型：退款追偿",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDepositTxn",
-        "name": "PAY",
-        "value": "PAY",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDepositTxn",
-        "name": "REFUND",
-        "value": "REFUND",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDepositTxn",
-        "name": "FREEZE",
-        "value": "FREEZE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDepositTxn",
-        "name": "UNFREEZE",
-        "value": "UNFREEZE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchDepositTxn",
-        "name": "DEDUCT",
-        "value": "DEDUCT",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
         "host": "MchEntity",
         "name": "PENDING_LICENSE",
         "value": "PENDING_LICENSE",
@@ -46557,69 +46505,6 @@
         "module": "shop-merchant"
       },
       {
-        "host": "MchEntityPlan",
-        "name": "FREE",
-        "value": "FREE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "PRO",
-        "value": "PRO",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "CHAIN",
-        "value": "CHAIN",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "ACTIVE",
-        "value": "ACTIVE",
-        "zh": "正常生效",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "GRACE",
-        "value": "GRACE",
-        "zh": "到期后的宽限期：**能力全部保留**。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "EXPIRED",
-        "value": "EXPIRED",
-        "zh": "宽限期也过了：降级到 FREE，但**不关店**",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "BY_SELF_PAID",
-        "value": "SELF_PAID",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "BY_PLATFORM",
-        "value": "PLATFORM",
-        "zh": "平台授予（谈下来的连锁客户不走自助付费）——**催收要跳过这一类**",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchEntityPlan",
-        "name": "BY_TRIAL",
-        "value": "TRIAL",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
         "host": "MchFulfillmentChannel",
         "name": "SCOPE_ALL",
         "value": "ALL",
@@ -46631,118 +46516,6 @@
         "name": "SCOPE_SUBSET",
         "value": "SUBSET",
         "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPaymentMerchant",
-        "name": "WECHAT",
-        "value": "WECHAT",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPaymentMerchant",
-        "name": "ALIPAY",
-        "value": "ALIPAY",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPaymentMerchant",
-        "name": "MICRO",
-        "value": "MICRO",
-        "zh": "微信小微商户档（通道进件档，不是法律形态）。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPaymentMerchant",
-        "name": "INDIVIDUAL",
-        "value": "INDIVIDUAL",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPaymentMerchant",
-        "name": "ENTERPRISE",
-        "value": "ENTERPRISE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPaymentMerchant",
-        "name": "NONE",
-        "value": "NONE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPaymentMerchant",
-        "name": "APPLYING",
-        "value": "APPLYING",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPaymentMerchant",
-        "name": "ACTIVE",
-        "value": "ACTIVE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPaymentMerchant",
-        "name": "REJECTED",
-        "value": "REJECTED",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPaymentMerchant",
-        "name": "FROZEN",
-        "value": "FROZEN",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPayoutAccount",
-        "name": "PENDING",
-        "value": "PENDING",
-        "zh": "已提交，等运营核。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPayoutAccount",
-        "name": "ACTIVE",
-        "value": "ACTIVE",
-        "zh": "生效中。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPayoutAccount",
-        "name": "REJECTED",
-        "value": "REJECTED",
-        "zh": "已驳回，必须带原因 —— 原文回商家 B 端。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPayoutAccount",
-        "name": "DISABLED",
-        "value": "DISABLED",
-        "zh": "已停用：被新账户顶替，或运营主动停。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPayoutAccount",
-        "name": "PERSONAL_BANK_CARD",
-        "value": "PERSONAL_BANK_CARD",
-        "zh": "个人银行卡。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchPayoutAccount",
-        "name": "CORPORATE",
-        "value": "CORPORATE",
-        "zh": "对公账户。",
         "module": "shop-merchant"
       },
       {
@@ -47054,24 +46827,248 @@
         "module": "shop-merchant"
       },
       {
-        "host": "MchViolation",
-        "name": "BREACH",
-        "value": "BREACH",
+        "host": "MchDebtTxn",
+        "name": "INCUR",
+        "value": "INCUR",
+        "zh": "产生：退款追不回来",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDebtTxn",
+        "name": "OFFSET",
+        "value": "OFFSET",
+        "zh": "从后续货款里抵扣",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDebtTxn",
+        "name": "DEPOSIT",
+        "value": "DEPOSIT",
+        "zh": "从保证金里抵扣",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDebtTxn",
+        "name": "WRITE_OFF",
+        "value": "WRITE_OFF",
+        "zh": "核销：认了这笔收不回来。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDebtTxn",
+        "name": "SRC_REFUND",
+        "value": "REFUND",
+        "zh": "源头类型：退款追偿",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDepositTxn",
+        "name": "PAY",
+        "value": "PAY",
         "zh": "",
         "module": "shop-merchant"
       },
       {
-        "host": "MchViolation",
-        "name": "SUSPEND",
-        "value": "SUSPEND",
+        "host": "MchDepositTxn",
+        "name": "REFUND",
+        "value": "REFUND",
         "zh": "",
         "module": "shop-merchant"
       },
       {
-        "host": "MchViolation",
-        "name": "STORE_OFFLINE",
-        "value": "STORE_OFFLINE",
-        "zh": "门店强制下线：作用在 storeNo 那家店上，不动主体。",
+        "host": "MchDepositTxn",
+        "name": "FREEZE",
+        "value": "FREEZE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDepositTxn",
+        "name": "UNFREEZE",
+        "value": "UNFREEZE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchDepositTxn",
+        "name": "DEDUCT",
+        "value": "DEDUCT",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPaymentMerchant",
+        "name": "WECHAT",
+        "value": "WECHAT",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPaymentMerchant",
+        "name": "ALIPAY",
+        "value": "ALIPAY",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPaymentMerchant",
+        "name": "MICRO",
+        "value": "MICRO",
+        "zh": "微信小微商户档（通道进件档，不是法律形态）。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPaymentMerchant",
+        "name": "INDIVIDUAL",
+        "value": "INDIVIDUAL",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPaymentMerchant",
+        "name": "ENTERPRISE",
+        "value": "ENTERPRISE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPaymentMerchant",
+        "name": "NONE",
+        "value": "NONE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPaymentMerchant",
+        "name": "APPLYING",
+        "value": "APPLYING",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPaymentMerchant",
+        "name": "ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPaymentMerchant",
+        "name": "REJECTED",
+        "value": "REJECTED",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPaymentMerchant",
+        "name": "FROZEN",
+        "value": "FROZEN",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "PENDING",
+        "value": "PENDING",
+        "zh": "已提交，等运营核。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "ACTIVE",
+        "value": "ACTIVE",
+        "zh": "生效中。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "REJECTED",
+        "value": "REJECTED",
+        "zh": "已驳回，必须带原因 —— 原文回商家 B 端。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "DISABLED",
+        "value": "DISABLED",
+        "zh": "已停用：被新账户顶替，或运营主动停。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "PERSONAL_BANK_CARD",
+        "value": "PERSONAL_BANK_CARD",
+        "zh": "个人银行卡。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "CORPORATE",
+        "value": "CORPORATE",
+        "zh": "对公账户。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "FREE",
+        "value": "FREE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "PRO",
+        "value": "PRO",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "CHAIN",
+        "value": "CHAIN",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "ACTIVE",
+        "value": "ACTIVE",
+        "zh": "正常生效",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "GRACE",
+        "value": "GRACE",
+        "zh": "到期后的宽限期：**能力全部保留**。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "EXPIRED",
+        "value": "EXPIRED",
+        "zh": "宽限期也过了：降级到 FREE，但**不关店**",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "BY_SELF_PAID",
+        "value": "SELF_PAID",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "BY_PLATFORM",
+        "value": "PLATFORM",
+        "zh": "平台授予（谈下来的连锁客户不走自助付费）——**催收要跳过这一类**",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchEntityPlan",
+        "name": "BY_TRIAL",
+        "value": "TRIAL",
+        "zh": "",
         "module": "shop-merchant"
       },
       {
@@ -47100,6 +47097,27 @@
         "name": "FROM_CONFIG",
         "value": "CONFIG",
         "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchViolation",
+        "name": "BREACH",
+        "value": "BREACH",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchViolation",
+        "name": "SUSPEND",
+        "value": "SUSPEND",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchViolation",
+        "name": "STORE_OFFLINE",
+        "value": "STORE_OFFLINE",
+        "zh": "门店强制下线：作用在 storeNo 那家店上，不动主体。",
         "module": "shop-merchant"
       },
       {
@@ -48220,6 +48238,7 @@
         "name": "EndScope",
         "values": [
           "STORE",
+          "ENTITY",
           "SYSTEM"
         ],
         "zh": "",
@@ -50279,6 +50298,7 @@
           "PLAN",
           "END_ACCESS",
           "HARDWARE",
+          "SERVICE",
           "BUNDLE"
         ],
         "zh": "",
@@ -52734,7 +52754,8 @@
         "client": "ops-web",
         "values": [
           "STORE",
-          "SYSTEM"
+          "SYSTEM",
+          "ENTITY"
         ],
         "zh": "业务端作用域"
       },
@@ -52875,7 +52896,8 @@
           "PLAN",
           "END_ACCESS",
           "HARDWARE",
-          "BUNDLE"
+          "BUNDLE",
+          "SERVICE"
         ],
         "zh": "商品种类"
       },
@@ -61312,6 +61334,22 @@
       "module": "shop-gateway"
     },
     {
+      "host": "InventoryProductEvents",
+      "name": "SUBSCRIPTION_GROUP",
+      "type": "String",
+      "value": "\"inventory-product\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "InventoryProductEvents",
+      "name": "TYPES",
+      "type": "Set<String>",
+      "value": "Set.of(\"SKU_UPSERTED\", \"SKU_RETIRED\", \"GOODS_ON_SALE_CHANGED\", \"SKU_INV_MODE_CHANGED\")",
+      "zh": "与 shop.events.outbox-event-types 默认值一致，由 InventoryProductBrokerTest 守着。",
+      "module": "shop-gateway"
+    },
+    {
       "host": "SettleBatchJob",
       "name": "NAME",
       "type": "String",
@@ -61520,6 +61558,22 @@
       "module": "shop-gateway"
     },
     {
+      "host": "PrintFactEvents",
+      "name": "SUBSCRIPTION_GROUP",
+      "type": "String",
+      "value": "\"print-facts\"",
+      "zh": "",
+      "module": "shop-gateway"
+    },
+    {
+      "host": "PrintFactEvents",
+      "name": "TYPES",
+      "type": "Set<String>",
+      "value": "Set.of(\"ORDER_PRINT_FACT_READY\", \"ORDER_PRINT_CONTROL_CHANGED\", \"BUSINESS_PRINT_FACT_READY\")",
+      "zh": "与 shop.events.outbox-event-types 默认值一致，由 PrintFactBrokerTest 守着。",
+      "module": "shop-gateway"
+    },
+    {
       "host": "ReportDailyRollupJob",
       "name": "WATERMARK_KEY",
       "type": "String",
@@ -61576,22 +61630,6 @@
       "module": "shop-merchant"
     },
     {
-      "host": "MchAdmissionPolicy",
-      "name": "UNLIMITED",
-      "type": "long",
-      "value": "0L",
-      "zh": "0 表示「不限 / 免缴」，三个额度字段共用这一约定。",
-      "module": "shop-merchant"
-    },
-    {
-      "host": "MchPaymentMerchant",
-      "name": "ENTITY_LEVEL",
-      "type": "String",
-      "value": "\"\"",
-      "zh": "主体级默认号的 storeNo 取值：空串，不是 null。",
-      "module": "shop-merchant"
-    },
-    {
       "host": "MchRole",
       "name": "BUILTIN_ENTITY",
       "type": "String",
@@ -61645,6 +61683,22 @@
       "type": "java.util.Set<String>",
       "value": "java.util.Set.of(MANAGER, CLERK, PICKER, COURIER, CS)",
       "zh": "预置的可授予角色。",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "MchAdmissionPolicy",
+      "name": "UNLIMITED",
+      "type": "long",
+      "value": "0L",
+      "zh": "0 表示「不限 / 免缴」，三个额度字段共用这一约定。",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "MchPaymentMerchant",
+      "name": "ENTITY_LEVEL",
+      "type": "String",
+      "value": "\"\"",
+      "zh": "主体级默认号的 storeNo 取值：空串，不是 null。",
       "module": "shop-merchant"
     },
     {
@@ -61729,6 +61783,14 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "PAY_MERCHANT",
+      "type": "String",
+      "value": "\"payMerchant\"",
+      "zh": "支付商户库上的模块：支付开通与进件（支付商户、渠道商户号、开通的产品、进件）。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "TRADE",
       "type": "String",
       "value": "\"trade\"",
@@ -61788,6 +61850,30 @@
       "name": "PRINT_SQL_SESSION_FACTORY",
       "type": "String",
       "value": "\"printSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PAY_MERCHANT_TX_MANAGER",
+      "type": "String",
+      "value": "\"payMerchantTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PAY_MERCHANT_DATA_SOURCE",
+      "type": "String",
+      "value": "\"payMerchantDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "PAY_MERCHANT_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"payMerchantSqlSessionFactory\"",
       "zh": "",
       "module": "shop-store-mybatis"
     },
@@ -61867,7 +61953,7 @@
       "host": "ModuleDataSources",
       "name": "MODULES",
       "type": "List<String>",
-      "value": "List.of(INVOICE, PRINT, PLATFORM, TRADE, INDUSTRY)",
+      "value": "List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, INDUSTRY)",
       "zh": "守卫测试也读这份清单。",
       "module": "shop-store-mybatis"
     },
@@ -61893,6 +61979,14 @@
       "type": "int",
       "value": "10",
       "zh": "一条事件最多投几次。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "BrokerSubscriptions",
+      "name": "PHASE",
+      "type": "int",
+      "value": "0",
+      "zh": "中间件实现用 PHASE + 1，在订阅登记之后启动。",
       "module": "shop-store-mybatis"
     },
     {

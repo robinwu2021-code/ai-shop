@@ -105,7 +105,7 @@ public class ManualExecutionSourceIT {
     private String executionSnapshot;
 
     @Configuration(proxyBeanMethods = false)
-    @MapperScan("ai.neargo.shop.merchant.mapper")
+    @MapperScan({"ai.neargo.shop.merchant.mapper", "ai.neargo.shop.merchant.booking.mapper"})
     static class ActualMerchantMappers {}
 
     @BeforeEach

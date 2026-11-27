@@ -143,13 +143,23 @@ public final class DefaultMallFacade implements MallFacade {
 
     public QuoteView quoteOffline(ActorContext actor, QuoteCommand command,
             OfflineCollectionTerms terms) {
+        return quoteOffline(actor,command,terms,false);
+    }
+
+    public QuoteView quoteOffline(ActorContext actor, QuoteCommand command,
+            OfflineCollectionTerms terms, boolean entityPlan) {
         Objects.requireNonNull(terms);
         if (command == null || !terms.currency().equals(command.currency())) throw fail("CURRENCY_MISMATCH");
-        return quote(actor, command, null, terms);
+        return quote(actor, command, null, terms, entityPlan);
     }
 
     private QuoteView quote(ActorContext actor, QuoteCommand command, UpgradeCommand upgrade,
             OfflineCollectionTerms terms) {
+        return quote(actor,command,upgrade,terms,false);
+    }
+
+    private QuoteView quote(ActorContext actor, QuoteCommand command, UpgradeCommand upgrade,
+            OfflineCollectionTerms terms, boolean entityPlan) {
         if (command == null
                 || command.lines() == null
                 || command.lines().isEmpty()
@@ -202,7 +212,7 @@ public final class DefaultMallFacade implements MallFacade {
                     var policy = moneyPolicies.policy(actor.tenantNo(), command.currency())
                             .filter(p -> command.currency().equals(p.currency()))
                             .orElseThrow(() -> fail("MONEY_POLICY_UNAVAILABLE"));
-                    long creditLeft = Math.addExact(historicalAvailable, convertedValue);
+                    long creditLeft = entityPlan ? 0 : Math.addExact(historicalAvailable, convertedValue);
                     creditLeft -= creditLeft % policy.cashQuantum();
                     var lines = new ArrayList<Line>();
                     int planComponents = 0;
@@ -341,7 +351,7 @@ public final class DefaultMallFacade implements MallFacade {
                                     balance.version(),
                                     type.catalogVersion(),
                                     type.version(),
-                                    upgrade == null
+                                    entityPlan ? "entity-plan-cash-v1" : upgrade == null
                                             ? "mall-allocation-v1"
                                             : "mall-upgrade-exact-duration-v1",
                                     "historical-fifo-v1",
@@ -399,7 +409,7 @@ public final class DefaultMallFacade implements MallFacade {
         String hash = requestHash(command);
         boolean freshClaim =
                 repo.claimOrder(
-                        actor.tenantNo(), idempotencyOwner(q), command.idempotencyKey(), hash, at);
+                        q, idempotencyOwner(q), command.idempotencyKey(), hash, at);
         var account = account(store);
         var balance = repo.lockBalance(q.store(), q.currency());
         var sources = repo.lockSources(q.store(), at);
@@ -440,7 +450,7 @@ public final class DefaultMallFacade implements MallFacade {
             validateAddress(command.shippingAddress().orElseThrow(() -> fail("SHIPPING_REQUIRED")));
         var order =
                 new Order(
-                        ids.nextBusinessNo("mall-order"),
+                        repo.orderNo(q, ids),
                         q,
                         command.idempotencyKey(),
                         hash,

@@ -20,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -58,6 +60,27 @@ class WxShippingSourceIsolationFlowTest {
         assertThat(current.getStatus()).isEqualTo("PENDING");
         assertThat(json.valueToTree(current).path("sourceSnapshot").asString(""))
                 .contains(replacement).contains(number(sub, "B")).doesNotContain(number(sub, "A"));
+    }
+
+    @Test
+    void remoteSendHoldsNoDatabaseTransaction() {
+        String sub = OrderLogisticsFixture.seed(jdbc, ledger, true);
+        ship(sub, "T");
+        drain();
+        TrdShippingUpload pending = row(sub);
+        AtomicReference<Boolean> activeDuringSend = new AtomicReference<>();
+        WxShippingPort probe = new WxShippingPort() {
+            public boolean enabled() { return true; }
+            public Result upload(Command command) {
+                activeDuringSend.set(TransactionSynchronizationManager.isActualTransactionActive());
+                return Result.ok();
+            }
+        };
+        ReflectionTestUtils.setField(uploads, "shipping", probe);
+        try { assertThat(uploads.upload(pending, "物流商品", number(sub, "T"), "STO", "LG-OPENID")).isTrue(); }
+        finally { ReflectionTestUtils.setField(uploads, "shipping", original); }
+        assertThat(activeDuringSend.get()).isFalse();
+        assertThat(row(sub).getStatus()).isEqualTo("SUCCESS");
     }
 
     @Test
@@ -96,6 +119,25 @@ class WxShippingSourceIsolationFlowTest {
             sending.get(10, TimeUnit.SECONDS);
             ReflectionTestUtils.setField(uploads, "shipping", original);
         }
+    }
+
+    /** 上传成功与运单记“已上传”同库同事务：不再经发件箱绕一圈，也不等投递。 */
+    @Test
+    void successfulUploadMarksWaybillInSameTransaction() {
+        String sub = OrderLogisticsFixture.seed(jdbc, ledger, true);
+        ship(sub, "J");
+        drain();
+        WxShippingPort ok = new WxShippingPort() {
+            public boolean enabled() { return true; }
+            public Result upload(Command command) { return Result.ok(); }
+        };
+        ReflectionTestUtils.setField(uploads, "shipping", ok);
+        try { uploads.upload(row(sub), "物流商品", number(sub, "J"), "STO", "LG-OPENID"); }
+        finally { ReflectionTestUtils.setField(uploads, "shipping", original); }
+        assertThat(jdbc.queryForObject("SELECT wx_uploaded_at FROM lgs_waybill WHERE biz_ref=?",
+                Long.class, sub)).isNotNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE event_type='WX_SHIPPING_UPLOADED' "
+                + "AND aggregate_id=?", Integer.class, "O-" + sub)).isZero();
     }
 
     @Test

@@ -239,6 +239,27 @@ class MerchantRoleFlowTest {
     }
 
     @Test
+    @DisplayName("预置角色的「几个人在用」只数本商家 —— 别家的店长不算进来")
+    void builtinRoleUsageCountsOnlyOwnMerchant() throws Exception {
+        String other = merchant("18700270031", "别家店");
+        String otherStaff = json.readTree(mvc().perform(post("/biz/staff")
+                        .header("Authorization", "Bearer " + other)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"loginPhone\":\"18700270032\"}"))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("mchAccountNo").asString();
+        mvc().perform(post("/biz/staff/" + otherStaff + "/store")
+                        .header("Authorization", "Bearer " + other)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"storeNo\":\"" + firstStore(other) + "\",\"role\":\"MANAGER\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String owner = merchant("18700270033", "本家店");
+        mvc().perform(get("/biz/roles").header("Authorization", "Bearer " + owner))
+                .andExpect(jsonPath("$.data[?(@.roleCode=='MANAGER')].usedBy").value(0));
+    }
+
+    @Test
     @DisplayName("★★ 可勾权限点由后端给全 —— 端上拿预置角色并集会漏掉 biz:finance")
     void assignablePermsComeFromBackend() throws Exception {
         String owner = merchant("18700270007", "可勾清单店");

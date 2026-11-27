@@ -5,6 +5,7 @@ import ai.neargo.shop.user.entity.UsrMpSession;
 import ai.neargo.shop.user.entity.UsrAddress;
 import ai.neargo.shop.user.entity.UsrIdentity;
 import ai.neargo.shop.user.entity.UsrStoreFavorite;
+import ai.neargo.shop.common.config.PlatformTableMapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Delete;
@@ -23,13 +24,13 @@ public final class UserMappers {
     private UserMappers() {
     }
 
-    public interface UserMapper extends BaseMapper<UsrAccount> {
+    public interface UserMapper extends PlatformTableMapper<UsrAccount> {
         /** Serialize first-phone registration against the technical account. */
         @Select("SELECT * FROM usr_account WHERE user_no=#{userNo} AND deleted=0 FOR UPDATE")
         UsrAccount lockByUserNo(String userNo);
     }
 
-    public interface MpSessionMapper extends BaseMapper<UsrMpSession> {
+    public interface MpSessionMapper extends PlatformTableMapper<UsrMpSession> {
     }
 
     /**
@@ -38,7 +39,7 @@ public final class UserMappers {
      * <p>只做单表读写 —— 「按手机号找人、找不到就建」那段逻辑有分支与并发，
      * 属于 Service。
      */
-    public interface PersonMapper extends BaseMapper<ai.neargo.shop.user.entity.UsrPerson> {
+    public interface PersonMapper extends PlatformTableMapper<ai.neargo.shop.user.entity.UsrPerson> {
     }
 
     /** 人档合并留痕。常年应该是空的 */
@@ -47,7 +48,7 @@ public final class UserMappers {
     }
 
     /** 登录凭证。一个人多条，唯一键 (identity_type, identity_value)。 */
-    public interface IdentityMapper extends BaseMapper<UsrIdentity> {
+    public interface IdentityMapper extends PlatformTableMapper<UsrIdentity> {
 
         /**
          * <b>物理</b>删除某人的全部凭证 —— 注销账号专用。

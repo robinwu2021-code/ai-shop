@@ -1,0 +1,50 @@
+CREATE TABLE `commerce_event_inbox` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `tenant_no` VARCHAR(32) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL,
+  `updated_at` DATETIME(3) NOT NULL,
+  `created_by` VARCHAR(64) NULL,
+  `updated_by` VARCHAR(64) NULL,
+  `version` BIGINT NOT NULL,
+  `deleted` TINYINT NOT NULL,
+  `source_system` VARCHAR(32) NOT NULL,
+  `event_id` VARCHAR(128) NOT NULL,
+  `event_type` VARCHAR(64) NOT NULL,
+  `aggregate_no` VARCHAR(64) NOT NULL,
+  `payload_hash` VARCHAR(128) NOT NULL,
+  `status` VARCHAR(16) NOT NULL,
+  `received_at` BIGINT NOT NULL,
+  `processed_at` BIGINT NULL,
+  UNIQUE KEY uk_0 (`tenant_no`,`source_system`,`event_id`),
+  PRIMARY KEY (`id`),
+  CHECK (deleted = 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE `commerce_outbox` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `tenant_no` VARCHAR(32) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL,
+  `updated_at` DATETIME(3) NOT NULL,
+  `created_by` VARCHAR(64) NULL,
+  `updated_by` VARCHAR(64) NULL,
+  `version` BIGINT NOT NULL,
+  `deleted` TINYINT NOT NULL,
+  `event_no` VARCHAR(64) NOT NULL,
+  `aggregate_type` VARCHAR(32) NOT NULL,
+  `aggregate_no` VARCHAR(64) NOT NULL,
+  `aggregate_version` BIGINT NOT NULL,
+  `event_type` VARCHAR(64) NOT NULL,
+  `payload` JSON NOT NULL,
+  `status` VARCHAR(16) NOT NULL,
+  `retry_count` INT NOT NULL,
+  `next_retry_at` BIGINT NOT NULL,
+  UNIQUE KEY uk_0 (`tenant_no`,`event_no`),
+  UNIQUE KEY uk_1 (`tenant_no`,`aggregate_type`,`aggregate_no`,`aggregate_version`,`event_type`),
+  PRIMARY KEY (`id`),
+  `schema_version` INT NOT NULL,
+  `occurred_at` BIGINT NOT NULL,
+  `published_at` BIGINT NULL,
+  CHECK (deleted = 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE INDEX idx_pending ON commerce_outbox (tenant_no,status,next_retry_at);

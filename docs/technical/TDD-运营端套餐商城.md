@@ -127,3 +127,77 @@
 边界：原有 mall_order 唯一键仍是 tenant_no/buyer_user_no/idempotency_key。不同运营对同店使用相同键的双创建不属于本次修复，也未宣称支持；本次不改唯一键、历史订单或资金事实。专项合计25项（22项报价回归＋3项原生MySQL并发/回放）通过。
 
 线上结果：原单付款指引回读一致；明确未发生银行转账，经RECONCILIATION测试资料正式作废，订单和支付轴CLOSED，付款尝试FAILED且paidAt=null，原FREE版本未变。API/OPS均UP，部署锁已释放；独立PAY/inventory未重启。完整新店同店购买与真实实收仍未完成。
+
+### v2 商品、SKU 与行业套餐发布（迁移中）
+
+商城配置启用后，商品、SKU、套餐草稿、发布与停售共用商城目录仓储和商城事务管理器；货币策略沿用宿主注入。商品、SKU 及组成保留原业务键、乐观锁和发布前校验。v2 的端权益组成存为 ENTITLEMENT。
+
+套餐每版一行。新草稿从同一套餐继承额度、试用和排序字段；发布更新选中版本的生效区间、销售状态和行版本，替换旧当前版时结束原区间。总览与编辑按同一套字段投影。
+
+验收入口为 MallCatalogPublicationMysqlTest.publishesEditedSkuAndPlansAndReadsTheDictionaryVersionInOverview。在独立测试库中编辑商品、SKU，发布后经 Facade 总览核对套餐与在售 SKU，并直接核对基础能力库 attrs.plan_catalog_version。商城事务保存发布命令、选中版本和结果。基础能力库以旧版本为条件更新 attrs.plan_catalog_version，并记下 attrs.plan_catalog_publication_no。写字典失败后，同一命令重试或读取总览会先补完待同步版本。上述用例覆盖字典更新失败及恢复后的总览。
+
+
+### v2 门店交易与订阅切库边界
+
+订单在报价时预分配订单号，确认后从 QUOTE 进入 ORDERED；财务历史只查询 ORDERED。线下核款的申请与处置按记录类型区分。退款复核按原请求的冻结证据计算。门店端开通使用商城履约任务登记排期，商城事务提交后更新平台授权段，失败任务由商城恢复作业继续处理。
+
+商城库通过 shop.modules.mall.datasource 指定，基础能力库通过 shop.modules.foundation.datasource 指定。平台授权使用平台模块的数据源。空库建表顺序见 [商城库初始化](../../backend/commerce/commerce-persistence/src/main/resources/db/mall/README.md)。绑定数据源前须完成历史数据迁移与对账。
+
+### v2 商城剩余任务（2026-11-27）
+
+目录发布后从总览读回 `attrs.plan_catalog_version`、主体套餐自购和代购进入门店订单、线下收款开通权益、退款撤权与额度复核结单，均已在独立 MySQL 测试库验证。目录回读见 [商城发布用例](../../backend/commerce/commerce-persistence/src/test/java/ai/neargo/commerce/persistence/MallCatalogPublicationMysqlTest.java)，主体套餐从购买到复核见 [统一订单用例](../../backend/shop-app/src/test/java/ai/neargo/shop/pay/service/impl/EntityPlanUnifiedCheckoutMysqlTest.java)。
+
+| 顺序 | 剩余任务 | 验收条件 |
+|---|---|---|
+| 1 | 核实生产收款事件身份，落实订阅操作跨门店的请求号查重。已接通的线下收款恢复可作为回归用例。 | 查单与通知指向同一实收。验证同键同内容重试、同键异参、跨门店复用请求号和事务回滚；据此确定持久化位置与唯一键。线上支付渠道另用真实交易验收。 |
+| 2 | 验收独立库下的开店、归属转移和组合履约。现有门店授权失败重试已有测试。 | 开店中断可补齐免费档，归属转移期间并发写入仍受正确主体约束。两店购买同一 SKU 分别授权，发布新版后旧单按原权益交付，硬件加 plan 的发货与授权可分别恢复。 |
+| 3 | 有业务数据后绑定实际在售主体报价并回填历史交易。此项可与前两项分开推进。 | 每个在售报价核对实际发布的 SKU 版本、plan 版本、权益代码和销售条件。保留历史订单号、支付尝试号与付款指引；无法确定版本的订单单列差异。 |
+| 4 | 在目标环境演练切库、对账和回退。 | 用同一停写时点的快照运行下文对账脚本，核对目录、订单、退款、订阅、额度和授权，另核对历史已撤销授权。处理差异后切换数据源，验证发布回读、支付履约及退款撤权，并演练回退。 |
+
+普通门店转账单发出指引后进入 `PAYING`，买家按原单附言转账并上传凭证。运营从待核队列查看原订单、买家凭证和银行流水，再关联平台收款凭证。支付域已匹配、商城尚未查到同一收款号成功结果时，核款动作保留 `ACCEPTED`，恢复任务继续查原付款尝试。商城确认实收后，硬件等待发货，套餐按下单时冻结的 plan 权益代码开通。独立库使用商城本地的 `commerce_event_inbox` 和 `commerce_outbox` 保存交易事实去重与权益通知，部署脚本见商城库初始化第 7 项。历史切库对账还须核对去重记录、待发布事件和发布状态。
+
+新建主体套餐购买单在报价快照记录 `quote.mallOffline=true`。门店自购与运营代购按同一订单号查询 `mall_offline_payment` 的申报和核款动作，凭证预留与归属写入 `mall_offline_evidence`。运营待审队列按订单归属读取对应库的申报。核款受理与申报进入审核在商城库同事务提交，商城按已保存的动作向支付域核款。商户域凭已匹配实收和原订单恢复额度交付，按购买前额度快照防止重复开通。切换前已发单的快照没有该标记，沿用原申报、凭证及核款动作查询与重试，包括已有商城订单号的过渡期订单。
+
+新单的作废动作使用同一商城表的 `VOID` 记录，操作人、动作号、原付款尝试和银行对账凭证一并冻结。商户库的 `CLOSING` 记录供恢复任务继续解除主体购买占用。运营在原订单上查实收和已退金额，有差额或在途退款时须先完成退款。主体套餐详情与商城订单详情使用同一个补证入口，按门店、订单、原核款动作追加资料。切换时已由旧库受理的作废动作继续按旧动作号恢复。
+
+目标表与事务边界见 [商城库字段设计](design/数据库设计/字段/04-平台商城库.md)。第 2 项已有 [平台门店授权测试](../../backend/commerce/commerce-persistence/src/test/java/ai/neargo/commerce/persistence/PlatformEndActivationMysqlTest.java)。目标库建表顺序见 [商城库初始化](../../backend/commerce/commerce-persistence/src/main/resources/db/mall/README.md)。
+
+#### 主体套餐归属与交易交接
+
+商户域沿用 sys_merchant_plan_def、mch_plan_offer 和 mch_entity_plan。以主体号持有免费档、付费档与试用资格；续费保留已用试用标记及主体专属额度覆盖。购买时选定的门店用于校验买家归属和确定交易上下文。
+
+**当前实现进度**
+
+运营在主体报价上选择已发布且在售的 SKU 版本。保存和新购都核对币种、价格、档位与期限。该 SKU 包含一个付费 PLAN 组成项，报价冻结 SKU 号、SKU 版本、plan 版本及其权益代码。已有在售报价须在运营端绑定实际版本后才能接受新购，旧购买请求按其原快照重放。
+
+门店自购和运营代购使用同一商城报价、下单与线下收款入口。商城分配订单号，订单行冻结门店购买的 SKU，支付尝试以 PLATFORM_MALL 登记。商户购买记录沿用商城订单号，记录主体、门店、买家、代购人、原请求和付款前套餐，保留主体范围内的并发购买限制。主体报价按现金全额收款。
+
+匹配实收后，商户域锁定主体并复核所有权和付款前套餐，在同一事务内更新主体额度并将核款动作记为 ENTITY_GRANTED。商城据此开放该单的数字履约，按订单组成快照生成门店订阅周期，将冻结的权益代码交给平台授权。授权待恢复期间购买单维持 PAID_PENDING，待平台授权任务完成后转为 APPLIED。迟付、金额不匹配、归属变化沿用原处置。历史单沿用原支付尝试；既有报价待有数据时绑定，历史回填另行验收。
+
+已交付的主体套餐沿用商城原单退款入口。门店申请、运营审核后，商城按所选订阅周期冻结剩余权益。线下出款成功并核实退款事实后，该周期转为 REFUNDED。商户恢复任务按退款号读取成功事实，并检查本次撤权的门店授权任务。撤权待重试时购买单显示 REFUND_PENDING。
+
+主体额度生效时在同一事务冻结原档位、基础额度、到期日、授予来源及生效后的订阅行版本。撤权完成且主体订阅仍匹配该次生效记录时，商户域恢复原快照，在购买单上登记退款号。独立设置的额度覆盖和首次试用记录沿用当前值。主体已续购、被运营调整或历史单缺少恢复快照时，保留当前额度并转为 REFUND_REVIEW。商城在原退款记录登记处理结果，跨库回执重试按同一退款号接续。
+
+运营在主体套餐原订单详情查看退款号、门店、购买前基础额度及当前额度。新单同时冻结购买前的单独约定额度；历史快照缺少的字段显示“未留存”。具有商城退款复核和商户管理权限的运营填写复核说明，确认保留当前额度。提交按商户数据范围、原订单、退款号和查看时的订阅版本校验。商户库在同一事务保存复核人、时间、说明及结单时保留的额度，并将购买单转为 REFUND_REVIEWED。同一运营重交相同决定可读回原记录，竞争提交不能覆盖已经结单的决定。
+
+#### 门店收款确认入口核对
+
+仓库内，支付对账作业遇到 PLATFORM_MALL 支付流水时，把支付流水号交给 ShopMallPaymentRecovery。它用流水号找到支付域的租户、订单号和支付尝试号，查到 SUCCESS 后，门店商城分支调用 PaymentFacade.refresh。商城按冻结的支付尝试重新查单，查到成功后以支付操作号生成稳定的内部事件号。支付域收到的原始通知号未作为这条商城路径的幂等键。商城处理抛错时，支付交接保留待处理状态，供后续恢复。
+
+代码依据见 [支付对账分流](../../backend/shop-gateway/src/main/java/ai/neargo/shop/paybridge/OrderPaidReconciler.java)、[支付交接与恢复](../../backend/shop-gateway/src/main/java/ai/neargo/shop/commercebridge/port/ShopMallPaymentRecovery.java)、[支付尝试查询](../../backend/shop-gateway/src/main/java/ai/neargo/shop/commercebridge/ShopMallPlatformPaymentAdapter.java) 和 [商城收款确认](../../backend/commerce/commerce-core/src/main/java/ai/neargo/commerce/core/fulfillment/CommerceFulfillmentService.java)。
+
+FulfillmentFacade.confirmPayment 仍接受带事件号的已核实事实。当前仓库的生产源码中只找到接口声明与实现。确定收款凭据模型前，还需核实仓库外是否有调用方依赖该契约。订阅请求的跨门店查重另行确认。
+
+#### 门店商城历史对账
+
+在同一停写时点取得旧库、商城库、基础能力库和平台基础库的快照。各库可在不同实例。每个连接文件在 MySQL 的 `[client]` 段指定只读用户、连接参数和对应的 `database`，文件保存在仓库外。仓库根目录执行：
+
+```bash
+python3 scripts/reconcile-mall-v2.py --tenant MAIN \
+  --legacy /path/legacy.cnf --mall /path/mall.cnf \
+  --foundation /path/foundation.cnf --platform /path/platform.cnf
+```
+
+脚本按租户和业务键逐行比对，输出各项两侧行数、差异数、缺失或多出的业务键，以及值有变化的字段名。退出码 0 表示所列检查一致，1 表示存在差异，2 表示检查未完成或该租户在各项检查中均无记录。`--limit` 控制明细行数，汇总始终统计全部差异。
+
+核对范围包括行业目录版本、已落单的订单及其行和组成金额、原生退款与退款行、线下退款快照、订阅账户和周期、额度账户与批次和流水、平台已开通端的排期及客户端绑定。已生成订单号的报价按 QUOTE 排除。同一原生退款附有线下出款时，原生退款金额和出款快照分别核对。授权段按门店、周期、权益、排期版本和段序比对，旧库 NORMAL 对应新库 SCHEDULED、ACTIVE 或 ENDED。传入 `--merchant /path/merchant.cnf` 可对比切换前旧库与切换后商户域的档位定义、报价版本和主体套餐实例，覆盖首店前无门店的主体、额度覆盖及首次试用标记。同一参数也开启主体购买单与商城付款尝试对账，按订单号比对支付尝试号、收款方、金额、币种及冻结参数，兼容旧版仅记录实收的商城行。切库验收前先恢复 PREPARED 中断单。主体交易历史回填、历史作废授权段、线上支付渠道实收及切换回退另行验收。

@@ -1,5 +1,6 @@
 package ai.neargo.shop.portal.service;
 
+import ai.neargo.shop.portal.service.CustomerReportingService;
 import ai.neargo.shop.portal.service.CustomerReportingService.*;
 import ai.neargo.shop.portal.service.impl.CustomerReportingServiceImpl;
 import ai.neargo.shop.common.BizException;

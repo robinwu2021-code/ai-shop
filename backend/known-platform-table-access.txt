@@ -1,0 +1,26 @@
+# 不在平台句柄下、却直接访问平台基础库表的源文件（PlatformTableAccessTest）。只准变短。
+# 做法：改走平台句柄下的端口或服务；或者这段代码本身就属于平台，搬进平台句柄下的包。
+# 标注：merchant/plan/impl/EntityPlanPurchaseServiceImpl 待退役、并入商城（另一会话负责），退役后自然划掉；
+#       merchant/booking/* 属于预约资源（门店交易库），跨库加锁的改法默认「读一次 + 版本比对」，随预约模块对齐时做。
+commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/JdbcEndAccessRepository.java
+commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/JdbcSubscriptionRepository.java
+commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/subscription/MchStoreEndGrantRepository.java
+shop-core/src/main/java/ai/neargo/shop/platform/auth/OpsApiKeyStore.java
+shop-core/src/main/java/ai/neargo/shop/platform/entity/SysOpsStaff.java
+shop-core/src/main/java/ai/neargo/shop/promotion/approval/EnrollmentApprovalSubject.java
+shop-gateway/src/main/java/ai/neargo/shop/commercebridge/HostStoreCreationAuthority.java
+shop-gateway/src/main/java/ai/neargo/shop/commercebridge/ShopCommerceStoreAdapter.java
+shop-gateway/src/main/java/ai/neargo/shop/commercebridge/approval/MallGateSubject.java
+shop-gateway/src/main/java/ai/neargo/shop/paybridge/PayMerchantBackfillRunner.java
+shop-gateway/src/main/java/ai/neargo/shop/paybridge/PayMerchantComparator.java
+shop-gateway/src/main/java/ai/neargo/shop/paybridge/PaymentCollectionProjection.java
+shop-gateway/src/main/java/ai/neargo/shop/paybridge/PaymentCollectionSourceBootstrap.java
+shop-gateway/src/main/java/ai/neargo/shop/paybridge/impl/PaymentCollectionServiceImpl.java
+shop-gateway/src/main/java/ai/neargo/shop/payclient/PaymentReadRouter.java
+shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ResourceBookingServiceImpl.java
+shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ResourceServiceImpl.java
+shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ScheduleServiceImpl.java
+shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/mapper/BookingMappers.java
+shop-merchant/src/main/java/ai/neargo/shop/merchant/plan/impl/EntityPlanPurchaseServiceImpl.java
+shop-gateway/src/main/java/ai/neargo/shop/portal/service/impl/CustomerReportingServiceImpl.java
+shop-store-mybatis/src/main/java/ai/neargo/shop/archive/impl/ArchiveServiceImpl.java

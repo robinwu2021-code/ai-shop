@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.port;
 
+import ai.neargo.shop.merchant.funds.port.AdmissionPortImpl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,8 +11,8 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.AdmissionPolicyMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.DepositMapper;
+import ai.neargo.shop.merchant.funds.mapper.FundsMappers.AdmissionPolicyMapper;
+import ai.neargo.shop.merchant.funds.mapper.FundsMappers.DepositMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.PickupQueryPort;

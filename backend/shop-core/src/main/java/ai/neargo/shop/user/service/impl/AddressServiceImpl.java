@@ -1,6 +1,5 @@
 package ai.neargo.shop.user.service.impl;
 
-import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.user.service.AddressService;
 
 import ai.neargo.shop.auth.SecurityUtils;
@@ -39,7 +38,7 @@ public class AddressServiceImpl implements AddressService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
+    @Transactional
     public List<AddressVO> save(SaveCommand cmd) {
         boolean creating = cmd.addressId() == null || cmd.addressId().isBlank();
         /*
@@ -124,7 +123,7 @@ public class AddressServiceImpl implements AddressService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
+    @Transactional
     public List<AddressVO> archive(String addressId) {
         UsrAddress row = requireOwn(addressId);
         addressMapper.deleteById(row.getId());   // 逻辑删除
@@ -132,7 +131,7 @@ public class AddressServiceImpl implements AddressService {
     }
 
     @Override
-    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
+    @Transactional
     public List<AddressVO> setDefault(String addressId) {
         UsrAddress row = requireOwn(addressId);
         row.setIsDefault(true);

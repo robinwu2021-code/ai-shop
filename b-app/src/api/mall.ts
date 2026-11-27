@@ -88,6 +88,7 @@ export interface MallReadiness {
   available?: boolean;
   /** 不可买的原因码 */
   reasons?: string[];
+  paymentOptions?: {channel: string; payMethod: string; currency: string}[];
 }
 
 /** 列表里的一个可售 SKU */
@@ -96,6 +97,8 @@ export interface MallStorefrontSku {
   sku?: MallSku;
   /** 在线支付口径的可购买判断 */
   readiness?: MallReadiness;
+  /** 门店可用的线下收款方式。 */
+  offlineReadiness?: MallReadiness | null;
 }
 
 /** 列表里的一件商品及其可售 SKU */
@@ -227,6 +230,8 @@ export interface MallOrder {
 
 /** 订单概览：总状态 + 资金 / 交付 / 退款三个独立维度 */
 export interface MallOrderSummary {
+  /** 下单时的首行商品标题 */
+  title?: string | null;
   /** 订单 */
   order?: MallOrder;
   /** 资金维度：UNPAID / PAYING / PAYMENT_UNKNOWN / CANCEL_PENDING / PAID / CLOSED */
@@ -255,6 +260,8 @@ export interface MallShipment {
 
 /** 订单详情 */
 export interface MallOrderDetail {
+  /** 按购买时版本冻结的商品明细 */
+  lines?: { productNo: string; skuNo: string; skuVersionNo: string; title: string; quantity: number }[];
   /** 概览与三维状态 */
   summary?: MallOrderSummary;
   /** 冻结报价 */
@@ -267,6 +274,7 @@ export interface MallOrderDetail {
 
 /** 已发出的付款指引（收款账户按发出时的档案版本冻结） */
 export interface MallOfflineInstructions {
+  collectionMethod?: string;
   /** 订单号 */
   orderNo: string;
   /** 应转账金额 */

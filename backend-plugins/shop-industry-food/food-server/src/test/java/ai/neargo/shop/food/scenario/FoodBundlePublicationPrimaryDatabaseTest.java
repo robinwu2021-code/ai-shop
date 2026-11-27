@@ -212,9 +212,11 @@ class FoodBundlePublicationPrimaryDatabaseTest {
                         assertThat(sql.queryForObject("SELECT version FROM fnb_bundle", Long.class)).isEqualTo(4);
                         assertThat(sql.queryForObject("SELECT config_version FROM fnb_bundle", Long.class))
                                 .isEqualTo(1);
-                        for (String table : List.of("fnb_action_log", "sys_outbox", "sys_idempotent")) {
+                        for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(5);
                         }
+                        // Only the three bundle publications emit an event; bundle edits no longer do.
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(3);
                         assertThat(bridgeFailure.get()).isNull();
                         for (String table : List.of("prd_goods", "ord_order")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();

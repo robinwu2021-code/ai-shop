@@ -46,13 +46,25 @@ class ModuleDataSourceRegistrarTest {
         runner.run(context -> {
             assertThat(context).hasNotFailed();
             for (String module : ModuleDataSources.MODULES) {
-                assertThat(context.getBean(ModuleDataSources.dataSource(module)))
-                        .isSameAs(context.getBean("dataSource"));
+                String[] target = ModuleDataSources.unboundTarget(module);
+                // 句柄是别名：指向谁由模块决定，这里先核对别名本身
+                assertThat(context.getBeanFactory().getAliases(target[0])).contains(ModuleDataSources.dataSource(module));
+                assertThat(context.getBeanFactory().getAliases(target[1]))
+                        .contains(ModuleDataSources.sqlSessionFactory(module));
+                assertThat(context.getBeanFactory().getAliases(target[2])).contains(ModuleDataSources.txManager(module));
+                if (!context.containsBean(target[0])) {
+                    continue;   // 支付域的那一组由宿主装配，这个最小上下文里没有
+                }
+                assertThat(context.getBean(ModuleDataSources.dataSource(module))).isSameAs(context.getBean(target[0]));
                 assertThat(context.getBean(ModuleDataSources.sqlSessionFactory(module)))
-                        .isSameAs(context.getBean("sqlSessionFactory"));
-                assertThat(context.getBean(ModuleDataSources.txManager(module)))
-                        .isSameAs(context.getBean("transactionManager"));
+                        .isSameAs(context.getBean(target[1]));
+                assertThat(context.getBean(ModuleDataSources.txManager(module))).isSameAs(context.getBean(target[2]));
             }
+            // 从支付域分出来的模块没绑定时落在支付域的事务里，不是主库
+            assertThat(ModuleDataSources.unboundTarget(ModuleDataSources.PAY_MERCHANT))
+                    .containsExactly("payDataSource", "paySqlSessionFactory", "payTxManager");
+            assertThat(ModuleDataSources.unboundTarget(ModuleDataSources.PLATFORM))
+                    .containsExactly("dataSource", "sqlSessionFactory", "transactionManager");
             // 不配时不多出任何数据源或事务管理器
             assertThat(context.getBeansOfType(DataSource.class)).hasSize(1);
             assertThat(context.getBeansOfType(PlatformTransactionManager.class)).hasSize(1);

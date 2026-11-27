@@ -17,6 +17,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 运营端的顾客浏览：经营主体、注册、品牌、会员列表与详情。
+ *
+ * <p>是实时查询，不是报表（报表按日摄入、可重算，放报表模块）；跨域的入口组合按 Java 规范 §7.1 放在门户层。
+ * 现在仍是一条 SQL 联平台基础库的表（账号、主体、门店、品牌）和会员营销库的表（会员），走主库连接；
+ * 要改成分别调平台与会员的端口再拼（TDD-平台基础库换表 §2 第 1 步）。
+ */
 @Service
 @Profile("ops")
 @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)

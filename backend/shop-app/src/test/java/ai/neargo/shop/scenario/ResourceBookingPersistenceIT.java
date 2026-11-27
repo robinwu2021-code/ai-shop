@@ -56,14 +56,14 @@ class ResourceBookingPersistenceIT {
     @TestConfiguration(proxyBeanMethods = false)
     @org.springframework.context.annotation.Import({ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class,
             ai.neargo.shop.common.config.PlatformJdbcConfiguration.class})
-    @MapperScan("ai.neargo.shop.merchant.mapper")
+    @MapperScan({"ai.neargo.shop.merchant.mapper", "ai.neargo.shop.merchant.booking.mapper"})
     static class Mappers {
     }
 
     @BeforeEach
     void database() throws Exception {
         for (String type : TYPES) {
-            required("entity.Mch" + type);
+            required("booking.entity.Mch" + type);
         }
         String admin = System.getProperty("resource-booking.test.admin-url");
         assertThat(admin).isNotBlank();
@@ -299,7 +299,7 @@ class ResourceBookingPersistenceIT {
                         "spring.datasource.password=").run(context -> {
                     for (int i = 0; i < TABLES.size(); i++) {
                         String table = TABLES.get(i);
-                        var bean = new BeanWrapperImpl(required("entity.Mch" + TYPES.get(i)));
+                        var bean = new BeanWrapperImpl(required("booking.entity.Mch" + TYPES.get(i)));
                         var expected = data(table);
                         switch (table) {
                             case "mch_booking_owner" -> expected.putAll(Map.of("current_hold_no", "H",
@@ -317,7 +317,7 @@ class ResourceBookingPersistenceIT {
                         }
                         expected.forEach((column, value) -> bean.setPropertyValue(camel(column), value));
                         var mapper = (BaseMapper<Object>) context.getBean(
-                                required("mapper.MerchantMappers$" + TYPES.get(i) + "Mapper"));
+                                required("booking.mapper.BookingMappers$" + TYPES.get(i) + "Mapper"));
                         assertThat(mapper.insert(bean.getWrappedInstance())).isOne();
                         Long id = (Long) bean.getPropertyValue("id");
                         var loaded = new BeanWrapperImpl(mapper.selectById(id));

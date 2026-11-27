@@ -11,8 +11,6 @@ import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.service.SalesRestrictionService;
 import ai.neargo.shop.food.service.impl.SalesRestrictionServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -20,7 +18,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
@@ -52,8 +49,6 @@ class SalesRestrictionServiceTest extends FoodWriteGuardFixture {
             var template = c.getBean(SqlSessionTemplate.class);
             template.getConfiguration().addMapper(SalesRestrictionMapper.class);
             var fail = new AtomicBoolean();
-            var outbox = c.getBean("foodOutboxPublisher", OutboxPublisher.class);
-            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_SALES_RESTRICTION_CHANGED"));
             GoodsCatalogQueryPort goods = new GoodsCatalogQueryPort() {
                 @Override public SkuIdentityFact getSku(String e, String s, String sku) {
                     assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
@@ -66,12 +61,10 @@ class SalesRestrictionServiceTest extends FoodWriteGuardFixture {
                 }
             };
             var service = new SalesRestrictionServiceImpl(template.getMapper(SalesRestrictionMapper.class),
-                    template.getMapper(StorePolicyMapper.class), c.getBean(ActionLogMapper.class),
-                    c.getBean(IdempotencyService.class), (event, options) -> {
-                        var receipt = outbox.publish(event, options);
-                        if (fail.get()) throw new IllegalStateException("after-restriction-outbox");
-                        return receipt;
-                    }, c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
+                    template.getMapper(StorePolicyMapper.class),
+                    FoodAuditFault.failAfterInsert(c.getBean(ActionLogMapper.class), fail::get,
+                            "after-restriction-audit"),
+                    c.getBean(IdempotencyService.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
                     Clock.fixed(Instant.parse("2026-10-21T12:00:00Z"), ZoneOffset.UTC), goods);
             task.accept(new Context(f, service, fail));
         });
@@ -80,7 +73,7 @@ class SalesRestrictionServiceTest extends FoodWriteGuardFixture {
         return new SalesRestrictionReq("S1", mode, no, version,
                 mode.equals("QUOTA") ? new BigDecimal("2") : null, null, null, expiry, "test", "POS", "DINE_IN");
     }
-    @Test void rejectsUnsupportedScopesWithoutPersistenceOrOutboxAndKeepsNullWildcards() {
+    @Test void rejectsUnsupportedScopesWithoutPersistenceAndKeepsNullWildcards() {
         run(c -> {
             for (var scope:List.of(List.of("WEB","PICKUP"),List.of("H5","PICK_UP"),
                     List.of("h5","PICKUP"),List.of("CHANNEL","DINE_IN"))) {
@@ -91,7 +84,7 @@ class SalesRestrictionServiceTest extends FoodWriteGuardFixture {
                 assertThatThrownBy(() -> c.service.evaluate("E","A","S1",scope.get(0),scope.get(1)))
                         .isInstanceOf(RuntimeException.class);
             }
-            for (String table:List.of("fnb_sales_restriction","fnb_action_log","sys_outbox","sys_idempotent")) {
+            for (String table:List.of("fnb_sales_restriction","fnb_action_log","sys_idempotent")) {
                 assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isZero();
             }
             var wildcard=new SalesRestrictionReq("S1","SOLD_OUT",null,null,null,null,null,null,"all",null,null);
@@ -144,12 +137,12 @@ class SalesRestrictionServiceTest extends FoodWriteGuardFixture {
             assertThat(c.service.evaluate("E", "A", "S1", "POS", "DINE_IN").remainingQuota()).isNull();
         });
     }
-    @Test void outboxFailureRollsBackRestrictionAuditAndIdempotency() {
+    @Test void auditFailureRollsBackRestrictionAuditAndIdempotency() {
         run(c -> {
             c.fail.set(true);
             assertThatThrownBy(() -> c.service.manage("E", "A", "U", req("SOLD_OUT", null, null, null), "fail"))
                     .isInstanceOf(IllegalStateException.class);
-            for (String table : List.of("fnb_sales_restriction", "fnb_action_log", "sys_idempotent", "sys_outbox")) {
+            for (String table : List.of("fnb_sales_restriction", "fnb_action_log", "sys_idempotent")) {
                 assertThat(c.fixture.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
             }
         });

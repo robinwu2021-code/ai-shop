@@ -21,16 +21,15 @@ import ai.neargo.shop.beauty.dto.PreviewAppointmentReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentChangeReq;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentReq;
 import ai.neargo.shop.beauty.dto.RecordNoShowReq;
+import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
+import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.beauty.service.ServiceOperationRecoveryService;
 import ai.neargo.shop.beauty.service.impl.AppointmentRecovery;
 import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
@@ -58,26 +57,20 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
@@ -93,22 +86,11 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
     private String revokedActor;
     private boolean occupied;
     private boolean otherOccupied;
-    private boolean failOutbox;
+    private boolean failTerminal;
     private long quotePrice = 1000;
     private Long goodsRevision = 7L;
     private final OffsetDateTime start = OffsetDateTime.now(ZoneOffset.UTC).plusDays(1)
             .truncatedTo(ChronoUnit.DAYS).plusHours(10);
-
-    @Configuration(proxyBeanMethods = false)
-    static class OutboxRoute {
-        @Bean
-        UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper mapper) {
-            var facade = new UnifiedOutboxFacade(mapper);
-            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, mapper), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:BEAUTY_APPOINTMENT_OPERATION_COMPLETED"));
-            return facade;
-        }
-    }
 
     @BeforeEach
     void database() throws Exception {
@@ -136,7 +118,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
     }
     private ApplicationContextRunner business() {
         return runner().withUserConfiguration(BeautyCatalogConfiguration.class, BeautyAppointmentConfiguration.class,
-                        BeautyWriteGuardConfiguration.class, OutboxRoute.class)
+                        BeautyWriteGuardConfiguration.class)
                 .withBean(ObjectMapper.class, () -> json)
                 .withBean(ResourceBookingPort.class, () -> owner)
                 .withBean(CustomerIdentityPort.class, () -> (context, q) -> {
@@ -576,45 +558,28 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
 
 
     @Test
-    void terminalSourceOutboxRollsBackWithFenceAndReplaysExactlyOnce() {
+    void terminalSourceRollsBackWithFenceAndReplaysExactlyOnce() {
         business().withInitializer(application -> application.getBeanFactory().addBeanPostProcessor(
-                new BeanPostProcessor() {
-                    @Override
-                    public Object postProcessAfterInitialization(Object bean, String name) {
-                        if (!name.equals("beautyOutboxPublisher")) { return bean; }
-                        OutboxPublisher delegate = (OutboxPublisher) bean;
-                        return (OutboxPublisher) (event, options) -> {
-                            var receipt = delegate.publish(event, options);
-                            if (failOutbox) {
-                                TransactionSynchronizationManager.registerSynchronization(
-                                        new TransactionSynchronization() {
-                                            @Override public void beforeCommit(boolean readOnly) {
-                                                throw new IllegalStateException("source-outbox-rollback");
-                                            }
-                                        });
-                            }
-                            return receipt;
-                        };
-                    }
-                })).run(context -> {
+                BeautyFailureInjection.afterCall(BeautyMappers.AppointmentOperationMapper.class, "updateById",
+                        row -> failTerminal && row instanceof BtyAppointmentOperation op
+                                && Set.of("SUCCEEDED", "REJECTED", "RELEASE_REQUIRED").contains(op.getState()),
+                        () -> BeautyFailureInjection.failBeforeCommit("source-terminal-rollback"))))
+                .run(context -> {
             owner.authority = context.getBean(ResourceSourceAuthorityPort.class);
             var service = context.getBean(AppointmentService.class);
             var p = service.previewMyAppointment("USR1", preview(1));
             var req = new CreateMyAppointmentReq(p.previewNo(), List.of(), null);
-            failOutbox = true;
-            assertThatThrownBy(() -> service.createMyAppointment("USR1", req, "OUTBOX"))
-                    .hasMessage("source-outbox-rollback");
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
+            failTerminal = true;
+            assertThatThrownBy(() -> service.createMyAppointment("USR1", req, "TERMINAL"))
+                    .hasMessage("source-terminal-rollback");
             assertThat(sql.queryForObject("SELECT status FROM bty_appointment", String.class)).isEqualTo("HELD");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_resource_fence "
                     + "WHERE active_intent_no IS NOT NULL", Integer.class)).isOne();
-            failOutbox = false;
-            var done = service.createMyAppointment("USR1", req, "OUTBOX");
+            failTerminal = false;
+            var done = service.createMyAppointment("USR1", req, "TERMINAL");
             assertThat(done.status()).isEqualTo("CONFIRMED");
-            service.createMyAppointment("USR1", req, "OUTBOX");
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isOne();
-            assertThat(sql.queryForObject("SELECT payload FROM sys_outbox", String.class))
-                    .contains(done.operationNo()).doesNotContain("USR1", "MEMBER_TICKET", "demands", "priceMinor");
+            assertThat(service.createMyAppointment("USR1", req, "TERMINAL").operationNo())
+                    .isEqualTo(done.operationNo());
         });
     }
 

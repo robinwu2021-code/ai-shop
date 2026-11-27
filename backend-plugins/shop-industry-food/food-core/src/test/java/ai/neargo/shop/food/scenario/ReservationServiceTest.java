@@ -2,7 +2,6 @@ package ai.neargo.shop.food.scenario;
 
 import org.mockito.Mockito;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.mapper.ReservationTableMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
@@ -98,7 +97,7 @@ class ReservationServiceTest extends FoodWriteGuardFixture {
                     Mockito.mock(CheckService.class),
                     Mockito.mock(StoreOperationService.class),
                     Mockito.mock(IdempotencyService.class),new ObjectMapper(),
-                    Mockito.mock(StoreCardQueryPort.class),Mockito.mock(OutboxPublisher.class),
+                    Mockito.mock(StoreCardQueryPort.class),
                     Mockito.mock(PlatformTransactionManager.class));
         }
     }

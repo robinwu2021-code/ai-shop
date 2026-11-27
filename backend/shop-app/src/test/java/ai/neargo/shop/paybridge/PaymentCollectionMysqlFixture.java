@@ -219,7 +219,8 @@ final class PaymentCollectionMysqlFixture implements AutoCloseable {
                         json,
                         new StaticListableBeanFactory().getBeanProvider(OutboxPump.class));
         bus.setUnified(facade);
-        service = new PaymentCollectionServiceImpl(ds, manager, bus, properties);
+        service = new PaymentCollectionServiceImpl(ds, manager, bus, properties,
+                mock(ai.neargo.shop.trade.service.StoreOrderSettlementService.class));
         var props = new OutboxProperties();
         props.setRecoveryInterval(Duration.ofMillis(100));
         runner = new OutboxRunner(facade, Clock.systemUTC(), props);

@@ -1,6 +1,6 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.merchant.entity.MchDepositTxn;
+import ai.neargo.shop.merchant.funds.entity.MchDepositTxn;
 import ai.neargo.shop.merchant.service.AdmissionService;
 import ai.neargo.shop.merchant.service.DebtService;
 import org.junit.jupiter.api.AfterEach;

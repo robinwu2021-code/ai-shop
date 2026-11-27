@@ -1,5 +1,7 @@
 package ai.neargo.shop.message;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.idem.EventIdempotency;
 import ai.neargo.shop.message.notify.OutboxChannelOutcomes;
 import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.event.outbox.OutboxLease;
@@ -105,11 +107,30 @@ public class NotificationConsumer implements OutboxConsumer {
         this.shipNotify = shipNotify;
     }
 
+    /** 外部通道按“事件号 + 通道 + 收件人”去重（ADR-067 决策 8）；没有时不去重。 */
+    private EventIdempotency sends;
+
+    @Autowired(required = false)
+    public void setSends(EventIdempotency sends) { this.sends = sends; }
+
+    /** 这个事件是不是第一次给这个收件人发这个通道。 */
+    private boolean firstSend(String channel, String recipient) {
+        return sends == null || sends.firstSend(channel, recipient);
+    }
+
     @Override
     public String handlerId() { return "notification"; }
 
     @Override
     public boolean externalWorkflow() { return true; }
+
+    /** 只发通知：提交后收，不进发件箱（ADR-067）。外部通道的去重见 ADR-067 决策 8，另做。 */
+    @Override
+    public boolean afterCommitOnly() { return true; }
+
+    /** MQ 队列按这些事件类型绑定（ADR-067），与 {@link #supports} 同一份清单。 */
+    @Override
+    public Set<String> eventTypes() { return NotifyScene.ALL; }
 
     @Override
     public boolean supports(String eventType) {
@@ -202,7 +223,7 @@ public class NotificationConsumer implements OutboxConsumer {
                  * 只对快递单发 —— 自送/自提没有「物流轨迹」可看，短信的价值在那条链。
                  * 整条链封在 ShipRecipientNotify 里、自己吞异常，不影响上面已发的站内信与推送。
                  */
-                if (byExpress) {
+                if (byExpress && firstSend("SHIP_RECIPIENT", nz(text(payload, "subOrderNo"), text(payload, "orderNo")))) {
                     OutboxLease.check();
                     shipNotify.notify(nz(text(payload, "subOrderNo"), text(payload, "orderNo")));
                 }
@@ -333,8 +354,10 @@ public class NotificationConsumer implements OutboxConsumer {
                     try {
                         switch (ch) {
                             case MchNotifyPref.CH_WEBHOOK -> {
-                                OutboxLease.check();
-                                weComOrderAlert.paid(entityNo, storeNo, subOrderNo, paid);
+                                if (firstSend("WEBHOOK", storeNo)) {
+                                    OutboxLease.check();
+                                    weComOrderAlert.paid(entityNo, storeNo, subOrderNo, paid);
+                                }
                             }
                             case MchNotifyPref.CH_SMS ->
                                     smsOrderPaid(entityNo, storeNo, subOrderNo, paid);
@@ -728,6 +751,9 @@ public class NotificationConsumer implements OutboxConsumer {
         }
         String yuan = "%.2f".formatted(payAmountMinor / 100.0);
         for (String phone : to) {
+            if (!firstSend("SMS:ORDER_PAID", phone)) {
+                continue;
+            }
             try {
                 OutboxLease.check();
                 smsPort.sendOrderPaid(phone, subOrderNo, yuan);
@@ -751,6 +777,9 @@ public class NotificationConsumer implements OutboxConsumer {
             return;
         }
         for (String phone : to) {
+            if (!firstSend("SMS:AFTER_SALE", phone)) {
+                continue;
+            }
             try {
                 smsPort.sendAfterSaleApplied(phone, afterSaleNo);
             } catch (OutboxLeaseLostException e) {
@@ -775,6 +804,9 @@ public class NotificationConsumer implements OutboxConsumer {
         String to = recipients.email(storeNo).orElse(null);
         if (to == null) {
             return;     // 没填地址 —— 不是失败，没必要留痕
+        }
+        if (!firstSend("MAIL:ORDER_PAID", to)) {
+            return;
         }
         try {
             String amount = "￥%.2f".formatted(payAmountMinor / 100.0);

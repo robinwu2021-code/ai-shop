@@ -49,7 +49,7 @@ class BizRoleForbiddenFlowTest {
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStaffLogMapper staffLogMapper;
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

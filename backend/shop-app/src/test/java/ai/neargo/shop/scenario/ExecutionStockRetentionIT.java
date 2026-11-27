@@ -108,9 +108,7 @@ import java.util.Locale;
 /** Native real source/stock fixture; uses actual migration installation, never inserted history markers. */
 @EnabledIfSystemProperty(named = "beauty.execution.test.native", matches = "true")
 @TestPropertySource(properties = {
-    "shop.inventory.stock-authority=PLATFORM",
-        "shop.personnel.publication.archive-only=true", "shop.schedule.publication.archive-only=true",
-        "shop.resource.publication.archive-only=true"
+    "shop.inventory.stock-authority=PLATFORM"
 })
 class ExecutionStockRetentionIT extends ManualSourceHostFixture {
     @Autowired PersonnelService personnel;

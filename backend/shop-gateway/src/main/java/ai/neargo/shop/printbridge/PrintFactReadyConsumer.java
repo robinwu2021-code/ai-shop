@@ -26,6 +26,12 @@ public class PrintFactReadyConsumer implements OutboxConsumer {
         return "print-fact-ready";
     }
 
+    /** 事实与控制变更同组，中间件里才不会乱序（ADR-067）。 */
+    @Override
+    public String subscriptionGroup() {
+        return PrintFactEvents.SUBSCRIPTION_GROUP;
+    }
+
     public boolean supports(String type) {
         return "ORDER_PRINT_FACT_READY".equals(type) || "BUSINESS_PRINT_FACT_READY".equals(type);
     }

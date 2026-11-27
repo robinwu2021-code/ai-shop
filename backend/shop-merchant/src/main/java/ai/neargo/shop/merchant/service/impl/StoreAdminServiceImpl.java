@@ -7,10 +7,10 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.StoreVO;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.paymerchant.CollectingMerchants;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
-import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.StoreSlugs;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
@@ -45,7 +45,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     @org.springframework.beans.factory.annotation.Autowired
     public void setOwnership(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership) {this.ownership=ownership;}
     private final MchStoreRoleMapper roleMapper;
-    private final MchPaymentMapper paymentMapper;
+    private final CollectingMerchants collectingMerchants;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
 
     /**
@@ -66,7 +66,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
 
     public StoreAdminServiceImpl(MerchantStoreCreation commerce, StoreCategoryService categories,
                                  MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
-                                 MchPaymentMapper paymentMapper,
+                                 CollectingMerchants collectingMerchants,
                                  ai.neargo.shop.merchant.service.MerchantPlanService planService,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper,
                                  ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
@@ -79,7 +79,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
-        this.paymentMapper = paymentMapper;
+        this.collectingMerchants = collectingMerchants;
         this.planService = planService;
         this.storeLinkService = storeLinkService;
     }
@@ -321,9 +321,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
              * 某家门店单独进件的号是那家店的结算账户，绑给别的店 = 这家店的钱进了那家店的户（F03 · Review R03）。
              */
             String dedicatedTo = DataScopeContext.executeWithoutScope(() ->
-                            paymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                                    .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                                    .eq(MchPaymentMerchant::getPayMerchantNo, payMerchantNo)))
+                            collectingMerchants.byPayMerchantNo(merchantNo, payMerchantNo))
                     .stream()
                     .map(p -> p.getStoreNo() == null ? MchPaymentMerchant.ENTITY_LEVEL : p.getStoreNo())
                     .findFirst()
@@ -372,9 +370,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
 
     private Set<String> activePayMerchantNos(String merchantNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                        paymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                                .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                                .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)))
+                        collectingMerchants.active(merchantNo))
                 .stream()
                 .map(MchPaymentMerchant::getPayMerchantNo)
                 .filter(x -> x != null && !x.isBlank())

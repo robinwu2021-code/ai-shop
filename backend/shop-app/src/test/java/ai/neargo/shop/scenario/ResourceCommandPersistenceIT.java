@@ -54,7 +54,7 @@ class ResourceCommandPersistenceIT {
     @TestConfiguration(proxyBeanMethods = false)
     @org.springframework.context.annotation.Import({ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class,
             ai.neargo.shop.common.config.PlatformJdbcConfiguration.class})
-    @MapperScan("ai.neargo.shop.merchant.mapper")
+    @MapperScan({"ai.neargo.shop.merchant.mapper", "ai.neargo.shop.merchant.booking.mapper"})
     static class Mappers {
     }
 
@@ -93,7 +93,7 @@ class ResourceCommandPersistenceIT {
     private ApplicationContextRunner runner() {
         return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                 Mappers.class, required("ai.neargo.shop.merchant.config.PersonnelDataScopeRegistration"),
-                required("ai.neargo.shop.merchant.service.impl.ResourceCommandServiceImpl"))
+                required("ai.neargo.shop.merchant.booking.impl.ResourceCommandServiceImpl"))
                 .withBean(AuditMetaObjectHandler.class).withPropertyValues("spring.datasource.url=" + url,
                         "spring.datasource.username=root", "spring.datasource.password=");
     }

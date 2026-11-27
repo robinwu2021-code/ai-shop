@@ -10,8 +10,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.auth.BizContext;
-import ai.neargo.shop.event.OutboxConsumer;
-import ai.neargo.shop.event.SysOutbox;
 import java.util.concurrent.Executors;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -96,7 +94,7 @@ class StoreSalesCatalogIT {
                 type("ai.neargo.shop.product.service.impl.StoreSalesCatalogServiceImpl"), Mappers.class)
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + source.getUrl(), "spring.datasource.username=root",
-                        "spring.datasource.password=", "shop.catalog.publication.archive-only=true");
+                        "spring.datasource.password=");
     }
     private Object call(ApplicationContext context, String method, Object... args) {
         Object service = context.getBean(type("ai.neargo.shop.product.service.StoreSalesCatalogService"));
@@ -125,7 +123,6 @@ class StoreSalesCatalogIT {
                     .isEqualTo(json.writeValueAsString(first));
             assertThat(read(context, NOW)).contains("面部护理", "SKU", "WINDOWED");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_store_catalog_version", Integer.class)).isOne();
-            assertThat(sql.queryForObject("SELECT status FROM sys_outbox", String.class)).isEqualTo("ARCHIVED");
         });
     }
     @Test
@@ -219,22 +216,6 @@ class StoreSalesCatalogIT {
         }
     }
     @Test
-    void declaredConsumerConflictRollsBackHeadVersionAndIdempotency() {
-        runner().withBean(OutboxConsumer.class, () -> new OutboxConsumer() {
-            public boolean supports(String eventType) {
-                return eventType.equals("PRODUCT_STORE_CATALOG_VERSION_PUBLISHED");
-            }
-            public void consume(SysOutbox event) { throw new AssertionError("archive must never deliver"); }
-        }).run(context -> {
-            assertThatThrownBy(() -> publish(context, 0, "2026-10-20T00:00:00Z", DEFINITION, "ROLLBACK"))
-                    .isInstanceOf(IllegalStateException.class);
-            for (String table : List.of("prd_store_catalog", "prd_store_catalog_version",
-                    "sys_idempotent", "sys_outbox")) {
-                assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
-            }
-        });
-    }
-    @Test
     void simultaneousFirstPublicationHasExactlyOneWinnerAndNoOrphans() {
         runner().run(context -> {
             var ready = new CountDownLatch(2);
@@ -252,8 +233,7 @@ class StoreSalesCatalogIT {
                 go.countDown();
                 assertThat(work.get(0).get(20, TimeUnit.SECONDS) ^ work.get(1).get(20, TimeUnit.SECONDS)).isTrue();
             }
-            for (String table : List.of("prd_store_catalog", "prd_store_catalog_version",
-                    "sys_idempotent", "sys_outbox")) {
+            for (String table : List.of("prd_store_catalog", "prd_store_catalog_version", "sys_idempotent")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isOne();
             }
         });

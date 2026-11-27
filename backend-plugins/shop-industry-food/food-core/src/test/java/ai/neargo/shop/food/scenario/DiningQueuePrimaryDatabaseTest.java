@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.dto.QueueContracts.SeatQueueReq;
+import ai.neargo.shop.food.entity.FnbActionLog;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.QueueTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
@@ -13,7 +13,6 @@ import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.impl.QueueServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.DiningQueueChanged;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 import ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard;
 import java.util.LinkedHashMap;
@@ -34,7 +33,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
-/** Native owner + queue + idempotency + audit + outbox rollback against the disposable primary MySQL. */
+/** Native owner + queue + idempotency + audit + owner-event rollback against the disposable primary MySQL. */
 @EnabledIfEnvironmentVariable(named="FOOD_TEST_DISPOSABLE",matches="true")
 class DiningQueuePrimaryDatabaseTest extends FoodWriteGuardFixture {
     @Test void tableConflictRollsBackOriginalKeyAndCanRetryAnotherTable() {
@@ -52,7 +51,7 @@ class DiningQueuePrimaryDatabaseTest extends FoodWriteGuardFixture {
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log WHERE object_type='QUEUE' AND action='QUEUE_SEATING'",Integer.class)).isZero();
         });
     }
-    @Test void failureAfterBothOwnerEventsRollsBackEveryFactAndOriginalKey() {
+    @Test void failureAfterOwnerEventAndQueueAuditRollsBackEveryFactAndOriginalKey() {
         run((c,f,checks,queue,helper,fail) -> {
             var table=helper.table(c,"T1");
             var before=new LinkedHashMap<String,List<Map<String,Object>>>();
@@ -62,7 +61,7 @@ class DiningQueuePrimaryDatabaseTest extends FoodWriteGuardFixture {
             fail.set(true);
             var request=new SeatQueueReq(0L,helper.open(table,2,"EXCLUSIVE"));
             assertThatThrownBy(() -> queue.seat("E","A","actor","Q",request))
-                    .isInstanceOf(IllegalStateException.class).hasMessage("after-queue-event-flush");
+                    .isInstanceOf(IllegalStateException.class).hasMessage("after-queue-audit-flush");
             for(var entry:before.entrySet()) assertThat(f.sql().queryForList("SELECT * FROM "+entry.getKey()+" ORDER BY id"))
                     .as(entry.getKey()).isEqualTo(entry.getValue());
             fail.set(false);
@@ -91,26 +90,31 @@ class DiningQueuePrimaryDatabaseTest extends FoodWriteGuardFixture {
             f.sql().update("INSERT INTO fnb_queue_ticket(entity_no,created_at,created_by,updated_at,updated_by,ticket_no,"
                     +"store_no,business_date,party_size,status,request_key,request_hash) "
                     +"VALUES('E',NOW(),'actor',NOW(),'actor','Q','A','2026-10-24',2,'CALLED',?,?)","1".repeat(64),"2".repeat(64));
-            var fail=new AtomicBoolean(); var actual=c.getBean("foodOutboxPublisher",OutboxPublisher.class);
-            OutboxPublisher publisher=(event,options) -> {
-                var result=actual.publish(event,options);
-                if(fail.get() && event instanceof DiningQueueChanged) {
+            var fail=new AtomicBoolean(); var audits=c.getBean(ActionLogMapper.class);
+            // The queue audit row is the last write of the seating transaction; fail at commit after it.
+            ActionLogMapper actions=(ActionLogMapper)java.lang.reflect.Proxy.newProxyInstance(
+                    ActionLogMapper.class.getClassLoader(),new Class<?>[]{ActionLogMapper.class},(proxy,method,args) -> {
+                Object result;
+                try { result=method.invoke(audits,args); }
+                catch(java.lang.reflect.InvocationTargetException ex) { throw ex.getCause(); }
+                if(fail.get() && "insert".equals(method.getName()) && args!=null && args.length==1
+                        && args[0] instanceof FnbActionLog log && "QUEUE_SEATED".equals(log.getAction())) {
                     TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                         @Override public void beforeCommit(boolean readOnly) {
                             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_check",Integer.class)).isOne();
-                            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE event_type IN "
-                                    +"('FOOD_CHECK_CHANGED','DINING_QUEUE_CHANGED')",Integer.class)).isEqualTo(2);
-                            throw new IllegalStateException("after-queue-event-flush");
+                            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE "
+                                    +"event_type='FOOD_CHECK_CHANGED'",Integer.class)).isOne();
+                            throw new IllegalStateException("after-queue-audit-flush");
                         }
                     });
                 }
                 return result;
-            };
+            });
             StoreCardQueryPort stores=numbers -> Map.of("A",new StoreCard("A","Store","E",null,"ACTIVE",true,null,null,null,null,0,0));
             var checks=c.getBean(CheckService.class);
             var queue=new QueueServiceImpl(c.getBean(QueueTicketMapper.class),c.getBean(StorePolicyMapper.class),
-                    c.getBean(ActionLogMapper.class),c.getBean(StoreOperationService.class),checks,stores,
-                    c.getBean(IdempotencyService.class),publisher,c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class));
+                    actions,c.getBean(StoreOperationService.class),checks,stores,
+                    c.getBean(IdempotencyService.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class));
             test.run(c,f,checks,queue,helper,fail);
         });
     }

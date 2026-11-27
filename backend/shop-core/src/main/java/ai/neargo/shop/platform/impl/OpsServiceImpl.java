@@ -91,6 +91,7 @@ public class OpsServiceImpl implements OpsService {
     /** 改角色/数据域之后清它 —— 身份也是现算的了（见 LiveIdentityResolver） */
     private final ai.neargo.shop.platform.perm.StaffIdentityResolver identityResolver;
     private final AuditLogMapper auditLogMapper;
+    private final ai.neargo.shop.spi.platform.AuditLogPort auditLogPort;
     private final MerchantApplyMapper applyMapper;
     private final MerchantAdminPort merchantAdminPort;
     private MerchantQueryPort merchantQueries;
@@ -121,15 +122,9 @@ public class OpsServiceImpl implements OpsService {
      * 运营告警（新入驻意向）。**走 spi Port 而不是直接用 message 域的 Service** ——
      * 业务域之间不许互相依赖，跨域只走 spi 的 Port/Event（ArchitectureTest 那一条）。
      *
-     * <p><b>{@code @Lazy} 不是随手加的</b>：message 域<b>已经</b>通过
-     * {@code AuditLogPort} 依赖了本域（审计要写 sys_audit_log），链路是
-     * {@code MessageServiceImpl → AuditLogPortImpl → OpsServiceImpl}。
-     * 本域再构造期注入 message 侧的实现，这个环就闭合了，整个上下文起不来
-     * （实测：{@code BeanCurrentlyInCreationException}）。
-     *
-     * <p>在<b>新引入依赖的这一端</b>打破它 —— 这条 Port 只在「有人报名了」
-     * 那一刻用一次，晚一点解析毫无代价；而反过来让 message 侧延迟拿审计口，
-     * 影响的是每一条消息。
+     * <p>{@code @Lazy}：这条 Port 只在「有人报名了」那一刻用一次，晚一点解析毫无代价。
+     * 原先它还用来打破 {@code MessageServiceImpl → AuditLogPortImpl → OpsServiceImpl} 的环；
+     * 审计写入已收进 {@code AuditLogPortImpl} 自己，那个环已不存在。
      */
     private final ai.neargo.shop.spi.notify.OpsAlertPort opsAlertPort;
 
@@ -142,6 +137,7 @@ public class OpsServiceImpl implements OpsService {
                           RolePermResolver rolePermResolver,
                           ai.neargo.shop.platform.perm.StaffIdentityResolver identityResolver,
                           AuditLogMapper auditLogMapper,
+                          ai.neargo.shop.spi.platform.AuditLogPort auditLogPort,
                           MerchantApplyMapper applyMapper, MerchantAdminPort merchantAdminPort,
                           TokenStore tokenStore, ai.neargo.shop.auth.TokenStores tokenStores,  ObjectMapper json, ObjectMapper objectMapper,
                           ai.neargo.shop.platform.IndustryService industryService,
@@ -178,6 +174,7 @@ public class OpsServiceImpl implements OpsService {
         this.identityResolver = identityResolver;
         this.rolePermResolver = rolePermResolver;
         this.auditLogMapper = auditLogMapper;
+        this.auditLogPort = auditLogPort;
         this.applyMapper = applyMapper;
         this.merchantAdminPort = merchantAdminPort;
         this.tokenStore = tokenStore;
@@ -1090,29 +1087,7 @@ public class OpsServiceImpl implements OpsService {
     @Override
     public void audit(String action, String target, String detail, boolean critical,
                        String beforeJson, String afterJson) {
-        LoginUser operator = SecurityUtils.currentUser().orElse(null);
-        SysAuditLog log = new SysAuditLog();
-        log.setStaffNo(operator == null ? "SYSTEM" : operator.userNo());
-        log.setStaffName(operator == null ? "系统" : operator.nickname());
-        log.setOpAction(action);
-        log.setTarget(target);
-        log.setDetail(detail);
-        log.setAt(System.currentTimeMillis());
-        log.setTenantNo("MAIN");
-        log.setCreatedAt(LocalDateTime.now());
-        log.setCritical(critical);
-        log.setBeforeJson(beforeJson);
-        log.setAfterJson(afterJson);
-        /*
-         * IP/操作端不直接碰 HttpServletRequest —— platform 是领域代码，
-         * 不能依赖 web 运行时（ArchitectureTest.domainsMustNotTouchWebRuntime）。
-         * 认证过滤器把这两样塞进 RequestMetaContext，这里只读；非请求线程
-         * （SYSTEM 触发、后台任务）取不到就是 null，不是 bug。
-         */
-        RequestMetaContext.Meta meta = RequestMetaContext.current();
-        log.setIp(meta == null ? null : meta.ip());
-        log.setClientType(meta == null ? null : meta.clientType());
-        DataScopeContext.executeWithoutScope(() -> auditLogMapper.insert(log));
+        auditLogPort.record(action, target, detail, critical, beforeJson, afterJson);
     }
 
     @Override

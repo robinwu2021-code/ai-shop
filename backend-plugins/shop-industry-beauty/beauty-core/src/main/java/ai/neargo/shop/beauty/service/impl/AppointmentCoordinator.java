@@ -10,10 +10,7 @@ import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.event.AfterCommit;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.spi.beauty.BeautyAppointmentOperationCompleted;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
 import ai.neargo.shop.spi.resource.ResourceCommandFactsPort;
@@ -33,14 +30,13 @@ public final class AppointmentCoordinator {
     private final AppointmentPersistence db;
     private final AppointmentAccess access;
     private final ObjectProvider<ResourceBookingPort> owner;
-    private final OutboxPublisher publisher;
     private final ReceptionAccess receptionAccess;
     public AppointmentCoordinator(AppointmentPersistence db, AppointmentAccess access,
-            ObjectProvider<ResourceBookingPort> owner, OutboxPublisher publisher, ReceptionAccess receptionAccess) {
+            ObjectProvider<ResourceBookingPort> owner, ReceptionAccess receptionAccess) {
         this.db = db;
         this.access = access;
         this.owner = owner;
-        this.publisher = publisher; this.receptionAccess = receptionAccess;
+        this.receptionAccess = receptionAccess;
     }
 
     public BtyAppointmentOperation advance(String operationNo) {
@@ -334,11 +330,6 @@ public final class AppointmentCoordinator {
             }
             AppointmentPersistence.require(db.operations.updateById(op) == 1);
             db.clearCurrent(root);
-            publisher.publish(new BeautyAppointmentOperationCompleted(root.getAppointmentNo(), root.getEntityNo(),
-                    root.getStoreNo(), op.getOperationNo(), op.getAction(), op.getState(), root.getStatus(),
-                    root.getVersion(), db.current(root).getArrangementRevision()),
-                    new PublishOptions("BEAUTY:APPOINTMENT:" + IdempotencyScope.requestHash(root.getEntityNo(),
-                            root.getStoreNo(), root.getAppointmentNo()), 1));
             String state = op.getState();
             String appointmentState = root.getStatus();
             String requestId = MDC.get("requestId");

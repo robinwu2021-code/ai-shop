@@ -214,8 +214,6 @@ final class ManualCounterDiscountFixture {
         assertThat(flow.jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id IN (?,?)"
                 + " AND event_type IN ('ORDER_PAID','SUB_ORDER_PAID')", Long.class,
                 created.orderNo(), created.subOrderNo())).isZero();
-        assertThat(flow.jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=?"
-                + " AND event_type='MANUAL_SERVICE_RECEIPT_RECORDED'", Long.class, created.orderNo())).isEqualTo(1);
     }
 
     /**
@@ -239,7 +237,6 @@ final class ManualCounterDiscountFixture {
             var app = new SpringApplication(ShopApplication.class, CheckoutFlowFixture.ClockConfig.class);
             app.setAdditionalProfiles("test");
             app.setDefaultProperties(Map.of("shop.member-code.enabled", "true",
-                    "shop.catalog.publication.archive-only", "true",
                     "shop.member.guest.credential-key", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="));
             app.addInitializers(context -> context.addBeanFactoryPostProcessor(factory ->
                     factory.addBeanPostProcessor(new BeanPostProcessor() {

@@ -6,7 +6,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Fulfillments;
-import ai.neargo.shop.merchant.entity.MchAppointmentSlot;
+import ai.neargo.shop.merchant.booking.entity.MchAppointmentSlot;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.StoreFulfillmentService;
 import ai.neargo.shop.merchant.service.AppointmentSlotService;
@@ -77,7 +77,7 @@ class AppointmentSlotFlowTest {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired
-    private MerchantMappers.AppointmentSlotMapper slotMapper;
+    private ai.neargo.shop.merchant.booking.mapper.BookingMappers.AppointmentSlotMapper slotMapper;
     @Autowired
     private ProductMappers.GoodsMapper goodsMapper;
     @Autowired

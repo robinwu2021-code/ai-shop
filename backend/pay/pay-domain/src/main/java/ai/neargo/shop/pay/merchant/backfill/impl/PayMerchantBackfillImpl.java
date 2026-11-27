@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.merchant.backfill.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.channel.entity.PayChannelProduct;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelProductMapper;
@@ -44,7 +45,7 @@ public class PayMerchantBackfillImpl implements PayMerchantBackfill {
     public PayMerchantBackfillImpl(PayMerchantMapper merchants, PayMerchantProductMapper merchantProducts,
                                    PayOnboardingMapper onboardings, PayOnboardingVersionMapper versions,
                                    PayChannelProductMapper products, PayMerchantStatusLogMapper statusLogs,
-                                   @Qualifier("payTxManager") PlatformTransactionManager payTxManager) {
+                                   @Qualifier(ModuleDataSources.PAY_MERCHANT_TX_MANAGER) PlatformTransactionManager payTxManager) {
         this.merchants = merchants;
         this.merchantProducts = merchantProducts;
         this.statusLogs = statusLogs;

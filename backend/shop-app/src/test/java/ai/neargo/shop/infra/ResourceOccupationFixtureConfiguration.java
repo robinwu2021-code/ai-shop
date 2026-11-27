@@ -12,8 +12,8 @@ import org.springframework.core.type.AnnotationMetadata;
 public class ResourceOccupationFixtureConfiguration {
     static class Imports implements ImportSelector {
         @Override public String[] selectImports(AnnotationMetadata metadata) {
-            return new String[]{"ai.neargo.shop.merchant.policy.ResourceOccupationGuard",
-                    "ai.neargo.shop.merchant.policy.ResourceOccupationSchemaVerifier"};
+            return new String[]{"ai.neargo.shop.merchant.booking.policy.ResourceOccupationGuard",
+                    "ai.neargo.shop.merchant.booking.policy.ResourceOccupationSchemaVerifier"};
         }
     }
 }

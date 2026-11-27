@@ -26,6 +26,12 @@ public class PrintControlChangedConsumer implements OutboxConsumer {
         return "print-control-changed";
     }
 
+    /** 事实与控制变更同组，中间件里才不会乱序（ADR-067）。 */
+    @Override
+    public String subscriptionGroup() {
+        return PrintFactEvents.SUBSCRIPTION_GROUP;
+    }
+
     public boolean supports(String type) {
         return "ORDER_PRINT_CONTROL_CHANGED".equals(type);
     }

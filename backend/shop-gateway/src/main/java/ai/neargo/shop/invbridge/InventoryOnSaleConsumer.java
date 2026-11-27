@@ -52,6 +52,10 @@ public class InventoryOnSaleConsumer implements OutboxConsumer {
     @Override
     public String targetSource() { return "INVENTORY"; }
 
+    /** 商品→库存四个投影写同一份物料，同组才不会在中间件里乱序（ADR-067）。 */
+    @Override
+    public String subscriptionGroup() { return InventoryProductEvents.SUBSCRIPTION_GROUP; }
+
     @Override
     public boolean supports(String eventType) {
         return GOODS_ON_SALE_CHANGED.equals(eventType);

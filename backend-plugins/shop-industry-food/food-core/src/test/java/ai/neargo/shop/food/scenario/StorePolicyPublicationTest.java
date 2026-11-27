@@ -311,7 +311,7 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
             // 门面不允许同一类型既「仅归档」又有消费者，有订阅者时不登记仅归档路由
             if (!subscribed && env.getProperty("test.policy.archive", Boolean.class, true)) {
                 facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED",
-                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_TABLE_AREA_CHANGED", "PLATFORM:FOOD_TABLE_CHANGED", "PLATFORM:FOOD_DINING_SESSION_CHANGED", "PLATFORM:FOOD_CHECK_CHANGED"));
+                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_CHECK_CHANGED"));
             }
             return facade;
         }

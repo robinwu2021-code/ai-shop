@@ -16,11 +16,8 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.beauty.BeautyPolicyVersionPublished;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -38,18 +35,16 @@ public class StorePolicyServiceImpl implements StorePolicyService {
     private final BeautyMappers.StorePolicyVersionMapper versions;
     private final BeautyMappers.ActionLogMapper actions;
     private final IdempotencyService idempotency;
-    private final OutboxPublisher publisher;
     private final DataSource source;
     private final ObjectMapper json;
 
     public StorePolicyServiceImpl(BeautyMappers.StorePolicyMapper policies,
             BeautyMappers.StorePolicyVersionMapper versions, BeautyMappers.ActionLogMapper actions,
-            IdempotencyService idempotency, OutboxPublisher publisher, DataSource source, ObjectMapper json) {
+            IdempotencyService idempotency, DataSource source, ObjectMapper json) {
         this.policies = policies;
         this.versions = versions;
         this.actions = actions;
         this.idempotency = idempotency;
-        this.publisher = publisher;
         this.source = source;
         this.json = json;
     }
@@ -161,9 +156,6 @@ public class StorePolicyServiceImpl implements StorePolicyService {
         action.setSafeSnapshot(json.writeValueAsString(Map.of("policyVersionNo", versionNo, "hash", snapshot)));
         action.setRequestRef(IdempotencyScope.requestHash(key));
         actions.insert(action);
-        publisher.publish(new BeautyPolicyVersionPublished(head.getPolicyNo(), entity, store, versionNo,
-                revision, snapshot),
-                new PublishOptions("BEAUTY:POLICY:" + IdempotencyScope.requestHash(entity, store), 1));
         return new PolicyVersionVO(head.getPolicyNo(), versionNo, revision, req.validFrom(), snapshot);
     }
 }

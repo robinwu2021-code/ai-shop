@@ -80,9 +80,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 /** Actual prepared HUMAN source, historic outbox producer and both physical owners; source only. */
 @EnabledIfSystemProperty(named = "beauty.execution.test.native", matches = "true")
 @TestPropertySource(properties = {
-    "shop.inventory.stock-authority=DUAL",
-    "shop.personnel.publication.archive-only=true", "shop.schedule.publication.archive-only=true",
-    "shop.resource.publication.archive-only=true"
+    "shop.inventory.stock-authority=DUAL"
 })
 class DualExecutionStockRetentionIT extends DualExecutionStockRetentionFixture {
     @MockitoSpyBean ServiceExecutionPreparationPort preparationBridge;

@@ -1,5 +1,9 @@
 package ai.neargo.shop.event;
 
+import ai.neargo.shop.event.broker.BrokerMessage;
+import ai.neargo.shop.event.broker.BrokerProperties;
+import ai.neargo.shop.event.broker.MessageBroker;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.spi.pay.CallSources;
@@ -63,7 +67,8 @@ public class OutboxDispatcher {
     public OutboxDispatcher(SysOutboxMapper mapper, List<OutboxConsumer> consumers,
                             PlatformTransactionManager transactionManager) {
         this.mapper = mapper;
-        this.consumers = consumers;
+        // 通知类消费者提交后另走一路（AfterCommitNotifications），这里只投必达的
+        this.consumers = consumers.stream().filter(c -> !c.afterCommitOnly()).toList();
         this.perEventTransaction = new TransactionTemplate(transactionManager);
         this.perEventTransaction.setPropagationBehavior(Propagation.REQUIRES_NEW.value());
     }
@@ -71,6 +76,19 @@ public class OutboxDispatcher {
     private UnifiedOutboxFacade unified;
     @Autowired(required = false)
     public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
+
+    /** 配了消息中间件、且事件类型在 {@code shop.events.outbox-event-types} 名单里时，改由中间件投递（ADR-067）。 */
+    private MessageBroker broker;
+    private BrokerProperties brokerProperties;
+
+    @Autowired(required = false)
+    public void setBroker(MessageBroker broker) { this.broker = broker; }
+
+    @Autowired(required = false)
+    public void setBrokerProperties(BrokerProperties brokerProperties) { this.brokerProperties = brokerProperties; }
+
+    /** 发件箱实际投递的消费者（不含通知类）。 */
+    List<OutboxConsumer> deliveryConsumers() { return consumers; }
 
     /**
      * 投递待发送事件。由定时任务调用；测试直接调它，不必等调度。
@@ -151,11 +169,16 @@ public class OutboxDispatcher {
     }
 
     private void deliver(SysOutbox event) {
+        if (broker != null && brokerProperties != null && brokerProperties.relays(event.getEventType())) {
+            // 中间件确认接收才算投出；没确认就抛 BrokerException，走下面同一套退避重投
+            broker.publish(BrokerMessage.of(event));
+            return;
+        }
         for (OutboxConsumer consumer : consumers) {
             if (consumer.supports(event.getEventType())) {
                 // 消费里调支付，来源记成这个事件类型（CallSources.OUTBOX，开发计划 M2.1）
                 CallSources.asOutbox(event.getEventType(), () -> {
-                    consumer.consume(event);
+                    DeliveryContext.run(event.getEventNo(), () -> consumer.consume(event));
                     return null;
                 });
             }

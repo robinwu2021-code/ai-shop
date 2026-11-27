@@ -553,6 +553,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                 o -> {
                     if (o.axes().payment() != Payment.PAID || o.axes().refund() != Refund.NONE)
                         throw fail("INVALID_STATE");
+                    if ("entity-plan-cash-v1".equals(o.quote().pricingPolicyVersion())
+                            && !repo.entityPlanGrantReady(q.tenantNo(),q.orderNo())) return result(o);
                     var components = orders.components(o.quote().store(), o.orderNo());
                     if (!digitalDone(components)) {
                         var batch = new ArrayList<SubscriptionService.FrozenDelivery>();
@@ -842,6 +844,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                             c,
                                             null,
                                             null);
+                            repo.prepareShipment(o, next);
                             repo.save(c.tenantNo(), next);
                             return new Dispatch(next, true);
                         });

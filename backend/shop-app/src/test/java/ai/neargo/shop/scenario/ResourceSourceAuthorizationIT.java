@@ -13,9 +13,9 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Demand;
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Interval;
-import ai.neargo.shop.merchant.policy.ResourcePlanCodec;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer.Demand;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer.Interval;
+import ai.neargo.shop.merchant.booking.policy.ResourcePlanCodec;
 import ai.neargo.shop.merchant.service.ResourceAdmissionService.Qualification;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort.Binding;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort.Decision;
@@ -63,7 +63,7 @@ class ResourceSourceAuthorizationIT {
     @TestConfiguration(proxyBeanMethods = false)
     @org.springframework.context.annotation.Import({ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class,
             ai.neargo.shop.common.config.PlatformJdbcConfiguration.class})
-    @MapperScan("ai.neargo.shop.merchant.mapper")
+    @MapperScan({"ai.neargo.shop.merchant.mapper", "ai.neargo.shop.merchant.booking.mapper"})
     static class Mappers {
     }
 
@@ -106,8 +106,8 @@ class ResourceSourceAuthorizationIT {
     private ApplicationContextRunner emptyRunner() {
         return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                 Mappers.class, required("ai.neargo.shop.merchant.config.PersonnelDataScopeRegistration"),
-                required("ai.neargo.shop.merchant.service.impl.ResourceCommandServiceImpl"),
-                required("ai.neargo.shop.merchant.service.impl.ResourceSourceAuthorizationServiceImpl"))
+                required("ai.neargo.shop.merchant.booking.impl.ResourceCommandServiceImpl"),
+                required("ai.neargo.shop.merchant.booking.impl.ResourceSourceAuthorizationServiceImpl"))
                 .withBean(AuditMetaObjectHandler.class).withBean(Clock.class, () -> clock)
                 .withPropertyValues("spring.datasource.url=" + url,
                         "spring.datasource.username=root", "spring.datasource.password=");

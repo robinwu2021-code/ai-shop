@@ -2,12 +2,8 @@ package ai.neargo.shop.printing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.printing.mapper.PrintMappers.AttemptMapper;
 import ai.neargo.shop.printing.mapper.PrintMappers.DeviceMapper;
 import ai.neargo.shop.printing.mapper.PrintMappers.JobMapper;
@@ -66,7 +62,6 @@ class PrintDeliveryTest {
                     "不代表收款");
     PrintService service;
     JdbcTemplate jdbc;
-    private OutboxPublisher outbox;
     TestClock clock;
     DeviceMapper devices;
     JobMapper jobs;
@@ -130,7 +125,6 @@ class PrintDeliveryTest {
         var session = new SqlSessionTemplate(factory.getObject());
         devices = session.getMapper(DeviceMapper.class);
         jobs = session.getMapper(JobMapper.class);
-        outbox = mock(OutboxPublisher.class);
         clock = new TestClock();
         service =
                 new PrintServiceImpl(
@@ -141,7 +135,6 @@ class PrintDeliveryTest {
                         session.getMapper(AttemptMapper.class),
                         JsonMapper.builder().build(),
                         clock,
-                        outbox,
                         new DataSourceTransactionManager(source));
         service.bindDevice(
                 OWNER,
@@ -337,14 +330,6 @@ class PrintDeliveryTest {
         assertThat(service.configuration(OWNER).devices().getFirst().online()).isFalse();
     }
 
-    @Test
-    void outboxFailureRollsBackTheWholeLogicalJob() {
-        doThrow(new IllegalStateException("outbox unavailable")).when(outbox).publish(any(), any());
-        assertThatThrownBy(
-                        () -> service.enqueue(OWNER, new Enqueue("EVENT", null, "PART", DOCUMENT)))
-                .isInstanceOf(IllegalStateException.class);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM prn_job", Integer.class)).isZero();
-    }
 
     @Test
     void identicalBindingRetryDoesNotInvalidateDeviceGrantEpoch() {

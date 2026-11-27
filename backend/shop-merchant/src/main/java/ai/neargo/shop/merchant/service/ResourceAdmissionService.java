@@ -1,7 +1,7 @@
 package ai.neargo.shop.merchant.service;
 
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Demand;
-import ai.neargo.shop.merchant.policy.ResourceDemandNormalizer.Plan;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer.Demand;
+import ai.neargo.shop.merchant.booking.policy.ResourceDemandNormalizer.Plan;
 import ai.neargo.shop.merchant.service.ResourceCommandService.Execution;
 import java.util.List;
 

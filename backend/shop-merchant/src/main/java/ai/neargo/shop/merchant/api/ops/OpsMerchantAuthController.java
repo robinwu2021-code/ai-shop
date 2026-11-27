@@ -179,7 +179,7 @@ public class OpsMerchantAuthController {
         auditLogPort.record("MERCHANT_VIOLATION", merchantNo,
                 (req.storeNo() == null ? "" : "门店 " + req.storeNo() + "｜")
                         + req.type() + "/" + req.action() + "：" + req.detail(),
-                ai.neargo.shop.merchant.entity.MchViolation.STORE_OFFLINE.equals(req.action()));
+                ai.neargo.shop.merchant.violation.MchViolation.STORE_OFFLINE.equals(req.action()));
         return vo;
     }
 

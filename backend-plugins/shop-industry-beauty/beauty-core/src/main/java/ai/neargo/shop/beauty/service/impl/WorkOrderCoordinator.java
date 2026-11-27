@@ -31,10 +31,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.AfterCommit;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.spi.beauty.BeautyReceptionStateChanged;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourcePlanContract;
 
@@ -76,7 +73,6 @@ public final class WorkOrderCoordinator {
     private final BeautyMappers.WorkOrderContextMapper contexts;
     private final BeautyMappers.ServiceTaskMapper tasks;
     private final BeautyMappers.ServiceSubmissionMapper submissions;
-    private final OutboxPublisher publisher;
     private final Clock clock;
     public WorkOrderCoordinator(AppointmentPersistence db, AppointmentAccess access, ReceptionAccess receptionAccess,
             ReceptionIdentity identities, CustomerOwnership ownership, ReceptionPreparation operations,
@@ -84,13 +80,13 @@ public final class WorkOrderCoordinator {
             ReceptionReassignment reassignment, AppointmentCoordinator appointments,
             BeautyMappers.ReceptionOperationMapper receptionRows, BeautyMappers.WorkOrderMapper orders,
             BeautyMappers.WorkOrderContextMapper contexts, BeautyMappers.ServiceTaskMapper tasks,
-            BeautyMappers.ServiceSubmissionMapper submissions, OutboxPublisher publisher, Clock clock) {
+            BeautyMappers.ServiceSubmissionMapper submissions, Clock clock) {
         this.db = db; this.access = access; this.receptionAccess = receptionAccess; this.identities = identities;
         this.ownership = ownership; this.operations = operations; this.preparation = preparation;
         this.reassignment = reassignment;
         this.appointments = appointments; this.receptionRows = receptionRows; this.orders = orders;
         this.contexts = contexts; this.tasks = tasks; this.submissions = submissions;
-        this.publisher = publisher; this.clock = clock;
+        this.clock = clock;
     }
     public WorkOrderVO openFromAppointment(String entity, String store, String actor, String number,
             OpenAppointmentWorkOrderReq req, String key, String endpoint) {
@@ -727,8 +723,6 @@ public final class WorkOrderCoordinator {
         log.setExpectedRevision(0L); log.setResultRevision(1L);
         log.setSafeSnapshot(db.json.writeValueAsString(new SafeScope("OPEN", 1, result.taskNos())));
         db.actions.insert(log);
-        publisher.publish(new BeautyReceptionStateChanged(root.getWorkOrderNo(), scope.entityNo(), scope.storeNo(),
-                1, "OPEN"), new PublishOptions("BEAUTY:RECEPTION:" + op.getOperationNo(), 1));
         op.setPhase("SUCCEEDED"); op.setWorkOrderNo(root.getWorkOrderNo());
         op.setResult(db.json.writeValueAsString("RECEIVE_WALK_IN".equals(op.getAction())
                 ? new WalkInVO(op.getOperationNo(), "SUCCEEDED", op.getAppointmentNo(), result,

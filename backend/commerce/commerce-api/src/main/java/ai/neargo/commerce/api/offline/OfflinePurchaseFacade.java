@@ -64,6 +64,8 @@ public interface OfflinePurchaseFacade {
      * never from the caller. A merchant ACCOUNT quotes for itself; an OPERATOR quotes as assisted STORE purchase.
      */
     QuoteView quote(ActorContext actor, QuoteCommand command);
+    /** An entity-wide offer is paid in cash. Store credit stays with the store. */
+    default QuoteView quoteEntityPlan(ActorContext actor, QuoteCommand command) { throw new UnsupportedOperationException(); }
     /** Verified real receipts and buyer-safe exception refund progress, scoped to this order. */
     default List<ai.neargo.commerce.api.port.OfflineCollectionPort.CashReceipt> cashReceipts(ActorContext actor,OrderQuery order){throw new UnsupportedOperationException();}
     default List<ai.neargo.commerce.api.port.OfflineCashRefundPort.View> cashRefunds(ActorContext actor,OrderQuery order){throw new UnsupportedOperationException();}
@@ -131,6 +133,9 @@ public interface OfflinePurchaseFacade {
     /** Read-only durable outcome for an operator; absent means no action has been recorded. */
     Optional<ActionView> action(ActorContext actor, OrderQuery order, String actionNo);
     ActionView confirm(ActorContext actor,ReviewCommand command);
+    default ActionView confirm(ActorContext actor, ReviewCommand command, String approvalNo) {
+        return confirm(actor, command);
+    }
     ActionView voidOrder(ActorContext actor,VoidCommand command);
     /** Trusted staged recovery consumes saved authorization, never synthesizes a new actor. */
     void recover(FulfillmentQuery query);

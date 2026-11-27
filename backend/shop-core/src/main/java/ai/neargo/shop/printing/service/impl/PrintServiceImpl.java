@@ -6,8 +6,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.printing.entity.PrnAttempt;
 import ai.neargo.shop.printing.entity.PrnDevice;
 import ai.neargo.shop.printing.entity.PrnJob;
@@ -20,7 +18,6 @@ import ai.neargo.shop.printing.mapper.PrintMappers.RouteMapper;
 import ai.neargo.shop.printing.mapper.PrintMappers.TemplateMapper;
 import ai.neargo.shop.printing.policy.PrintDocumentPolicy;
 import ai.neargo.shop.printing.service.PrintService;
-import ai.neargo.shop.spi.printing.PrintJobChanged;
 import ai.neargo.shop.spi.printing.PrintPort.Acknowledge;
 import ai.neargo.shop.spi.printing.PrintPort.AttemptVO;
 import ai.neargo.shop.spi.printing.PrintPort.Claim;
@@ -67,7 +64,6 @@ public class PrintServiceImpl implements PrintService {
     private final AttemptMapper attempts;
     private final ObjectMapper json;
     private final Clock clock;
-    private final OutboxPublisher events;
     private final TransactionTemplate tx;
 
     public PrintServiceImpl(
@@ -78,7 +74,6 @@ public class PrintServiceImpl implements PrintService {
             AttemptMapper attempts,
             ObjectMapper json,
             Clock clock,
-            OutboxPublisher events,
             PlatformTransactionManager manager) {
         this.devices = devices;
         this.templates = templates;
@@ -87,7 +82,6 @@ public class PrintServiceImpl implements PrintService {
         this.attempts = attempts;
         this.json = json;
         this.clock = clock;
-        this.events = events;
         this.tx = new TransactionTemplate(manager);
         this.tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
@@ -244,7 +238,6 @@ public class PrintServiceImpl implements PrintService {
             var response=deviceVO(device);
             history.add(new ResolutionAudit(req.requestKey(),scope.actorNo(),req.activeAttemptNo(),req.reason(),req.evidenceRef(),response));
             device.setExecutionResolutionHistory(json.writeValueAsString(history));checked(devices.updateById(device));
-            publish(row);
             return response;
         });
     }
@@ -313,7 +306,6 @@ public class PrintServiceImpl implements PrintService {
                 attempt.setFinishedAt(now());
                 checked(attempts.updateById(attempt));
             }
-            publish(row);
         }
     }
 
@@ -533,7 +525,6 @@ public class PrintServiceImpl implements PrintService {
                                 row.setLegacyStatus("PENDING");
                                 row.setAttemptCount(0);
                                 jobs.insert(row);
-                                publish(row);
                             }
                             result.add(view(scope, row));
                         }
@@ -585,7 +576,6 @@ public class PrintServiceImpl implements PrintService {
                     // audited reprint.
                     row.setLegacyStatus("PENDING");
                     checked(jobs.updateById(row));
-                    publish(row);
                     return view(scope, row);
                 });
     }
@@ -640,7 +630,6 @@ public class PrintServiceImpl implements PrintService {
                     row.setLegacyStatus("PENDING");
                     row.setAttemptCount(0);
                     jobs.insert(row);
-                    publish(row);
                     return view(scope, row);
                 });
     }
@@ -709,7 +698,6 @@ public class PrintServiceImpl implements PrintService {
                     row.setLeaseToken(attempt.getLeaseToken());
                     row.setLeaseUntil(now().plusSeconds(60));
                     checked(jobs.updateById(row));
-                    publish(row);
                     return new Claim(
                             row.getJobNo(),
                             no,
@@ -787,7 +775,6 @@ public class PrintServiceImpl implements PrintService {
                                 new ai.neargo.shop.print.api.PrintScope(device.getTenantNo(),scope.entityNo(),scope.storeNo()),
                                 no,attempt.getAttemptNo());
                     }
-                    publish(row);
                     return view(scope, row);
                 });
     }
@@ -812,7 +799,6 @@ public class PrintServiceImpl implements PrintService {
                 attempt.setFinishedAt(now());
                 checked(attempts.updateById(attempt));
             }
-            publish(row);
         }
     }
 
@@ -957,18 +943,6 @@ public class PrintServiceImpl implements PrintService {
         row.setUpdatedBy(scope.actorNo());
         row.setVersion(0L);
         row.setDeleted(0);
-    }
-
-    private void publish(PrnJob row) {
-        events.publish(
-                new PrintJobChanged(
-                        row.getEntityNo(),
-                        row.getStoreNo(),
-                        row.getJobNo(),
-                        row.getLegacyStatus(),
-                        row.getDeviceNo(),
-                        row.getAttemptCount()),
-                new PublishOptions("PRINT:" + row.getJobNo(), 1));
     }
 
     private static String tenantNo() {

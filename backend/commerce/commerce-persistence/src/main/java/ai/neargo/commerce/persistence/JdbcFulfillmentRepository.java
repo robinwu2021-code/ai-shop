@@ -23,7 +23,14 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
     private final JdbcTemplate jdbc;
     private final JsonMapper json = JsonMapper.builder().build();
 
+    private final boolean platformMall;
+
     public JdbcFulfillmentRepository(DataSource ds) {
+        this(ds, false);
+    }
+
+    public JdbcFulfillmentRepository(DataSource ds, boolean platformMall) {
+        this.platformMall = platformMall;
         this.ds = ds;
         jdbc = new JdbcTemplate(ds);
     }
@@ -38,6 +45,14 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
 
     private <T> T decode(String s, Class<T> t) {
         return json.readValue(s, t);
+    }
+
+    @Override public boolean entityPlanGrantReady(String tenant, String orderNo) {
+        guard(tenant);
+        return Boolean.TRUE.equals(jdbc.queryForObject("""
+                SELECT COALESCE(schedule_preview_snapshot->>'$.entityPlanGranted'='true',0) FROM mall_order
+                WHERE tenant_no=? AND order_no=? AND stage='ORDERED' AND pricing_policy_version='entity-plan-cash-v1'
+                """, Boolean.class, tenant, orderNo));
     }
 
     public Optional<Location> locate(String t, String no) {
@@ -76,8 +91,10 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                         + " mall_order_component c ON c.tenant_no=t.tenant_no AND"
                         + " c.order_component_no=t.order_component_no JOIN mall_order_item i ON"
                         + " i.tenant_no=c.tenant_no AND i.order_item_no=c.order_item_no WHERE"
-                        + " t.tenant_no=? AND i.order_no=? AND (t.task_type<>'DIGITAL' OR"
-                        + " t.dispatch_state='LEGACY_UNKNOWN') ORDER BY t.id FOR UPDATE",
+                        + " t.tenant_no=? AND i.order_no=? AND "
+                        + (platformMall ? "t.task_type<>'DIGITAL'"
+                            : "(t.task_type<>'DIGITAL' OR t.dispatch_state='LEGACY_UNKNOWN')")
+                        + " ORDER BY t.id FOR UPDATE",
                 (org.springframework.jdbc.core.RowCallbackHandler)
                         r -> {
                             if (r.getString(1) == null)
@@ -121,21 +138,17 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
             ((ObjectNode) requestTree.get("inventory")).remove("operatorNo");
         if (immutable.shipment() != null && immutable.shipment().operatorNo() == null)
             ((ObjectNode) requestTree.get("shipment")).remove("operatorNo");
+        if (immutable.shipment() != null && immutable.shipment().deviceSerials().isEmpty())
+            ((ObjectNode) requestTree.get("shipment")).remove("deviceSerials");
         String request = encode(requestTree),
                 hash = ai.neargo.commerce.core.spi.FactDigest.of(List.of(request));
         boolean pay = op.kind().equals("PAYMENT");
         String table = pay ? "mall_payment_ref" : "mall_fulfillment_task",
                 key = pay ? "payment_attempt_no" : "task_no";
-        var existing =
-                jdbc.query(
-                        "SELECT request_hash FROM "
-                                + table
-                                + " WHERE tenant_no=? AND "
-                                + key
-                                + "=? FOR UPDATE",
-                        (r, n) -> Optional.ofNullable(r.getString(1)),
-                        t,
-                        op.operationNo());
+        String evidence = platformMall ? "request_snapshot=CAST(? AS JSON)" : "request_hash=?";
+        var existing = jdbc.queryForList("SELECT " + evidence + " FROM " + table
+                        + " WHERE tenant_no=? AND " + key + "=? FOR UPDATE", Boolean.class,
+                platformMall ? request : hash, t, op.operationNo());
         Object result = pay ? op.paymentResult() : op.inventoryResult();
         String outcome = result == null ? null : encode(result),
                 status =
@@ -145,7 +158,7 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                                         ? op.paymentResult().status().name()
                                         : op.inventoryResult().status().name();
         if (!existing.isEmpty()) {
-            if (!existing.getFirst().orElse("").equals(hash))
+            if (!Boolean.TRUE.equals(existing.getFirst()))
                 throw new MallException("OPERATION_CONFLICT");
             jdbc.update(
                     "UPDATE "
@@ -158,6 +171,15 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                     status,
                     t,
                     op.operationNo());
+        } else if (pay && platformMall) {
+            var c = op.payment();
+            jdbc.update("""
+                    INSERT INTO mall_payment_ref(tenant_no,payment_attempt_no,order_no,receiver_account_no,
+                        payment_business_type,currency,amount_minor,status,request_snapshot,outcome_snapshot,
+                        created_at,updated_at,version,deleted)
+                    VALUES (?,?,?,?,'PLATFORM_MALL',?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0)
+                    """, t, op.operationNo(), op.orderNo(), c.platformMerchantNo(), c.amount().currency(),
+                    c.amount().minor(), status, request, outcome);
         } else if (pay) {
             var c = op.payment();
             jdbc.update(
@@ -184,7 +206,15 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                             t,
                             op.componentNo(),
                             op.kind());
-            jdbc.update(
+            if (platformMall) {
+                jdbc.update("""
+                        INSERT INTO mall_fulfillment_task(tenant_no,task_no,order_component_no,unit_seq,
+                            task_type,status,attempt_count,next_retry_at,order_no,request_snapshot,outcome_snapshot,
+                            created_at,updated_at,version,deleted)
+                        VALUES (?,?,?,?,?,?,1,0,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0)
+                        """, t, op.operationNo(), op.componentNo(), seq, op.kind(), status,
+                        op.orderNo(), request, outcome);
+            } else jdbc.update(
                     "INSERT INTO"
                         + " mall_fulfillment_task(tenant_no,created_at,updated_at,version,deleted,task_no,order_component_no,unit_seq,task_type,status,attempt_count,next_retry_at,order_no,request_snapshot,request_hash,outcome_snapshot,dispatch_state)"
                         + " VALUES"
@@ -411,6 +441,15 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
             for (var cycle : c.snapshot().allocation().cycles()) {
                 String ref = c.orderComponentNo() + ":" + cycle.sequence();
                 String request = encode(c.snapshot());
+                if (platformMall) {
+                    jdbc.update("""
+                            INSERT INTO mall_fulfillment_task(tenant_no,task_no,order_component_no,unit_seq,
+                                task_type,status,attempt_count,next_retry_at,order_no,request_snapshot,
+                                created_at,updated_at,version,deleted)
+                            VALUES (?,?,?,?,'DIGITAL','PENDING',0,0,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0)
+                            """, t, ref, c.orderComponentNo(), cycle.sequence(), o.orderNo(), request);
+                    continue;
+                }
                 jdbc.update(
                         "INSERT INTO"
                             + " mall_fulfillment_task(tenant_no,created_at,updated_at,version,deleted,task_no,order_component_no,unit_seq,task_type,status,attempt_count,next_retry_at,order_no,request_snapshot,request_hash,dispatch_state)"
@@ -446,7 +485,9 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                 changed(
                         jdbc.update(
                                 "UPDATE mall_fulfillment_task SET"
-                                    + " status='SUCCEEDED',result_no=?,dispatch_state='LOCAL_COMMITTED',attempt_count=attempt_count+1,version=version+1,updated_at=UTC_TIMESTAMP(3)"
+                                    + " status='SUCCEEDED',result_no=?,"
+                                    + (platformMall ? "" : "dispatch_state='LOCAL_COMMITTED',")
+                                    + "attempt_count=attempt_count+1,version=version+1,updated_at=UTC_TIMESTAMP(3)"
                                     + " WHERE tenant_no=? AND task_no=? AND task_type='DIGITAL' AND"
                                     + " status='PENDING'",
                                 source,
@@ -489,7 +530,9 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
         var scopes =
                 jdbc.queryForList(
                         "SELECT policy_snapshot FROM mall_refund WHERE tenant_no=? AND order_no=?"
-                                + " AND reviewed_by IS NOT NULL AND status IN"
+                                + (platformMall ? " AND JSON_CONTAINS_PATH(policy_snapshot,'one','$.refundNo')" : "")
+                                + (platformMall ? " AND command_snapshot->>'$.reviewer' IS NOT NULL" : " AND reviewed_by IS NOT NULL")
+                                + " AND status IN"
                                 + " ('APPROVED','DISPATCHING','UNKNOWN','SUCCEEDED') FOR SHARE",
                         String.class,
                         o.quote().store().tenantNo(),
@@ -514,6 +557,7 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
         return jdbc
                 .queryForList(
                         "SELECT policy_snapshot FROM mall_refund WHERE tenant_no=? AND order_no=?"
+                                + (platformMall ? " AND JSON_CONTAINS_PATH(policy_snapshot,'one','$.refundNo')" : "")
                                 + " AND status='SUCCEEDED' FOR SHARE",
                         String.class,
                         o.quote().store().tenantNo(),
@@ -523,10 +567,55 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                 .anyMatch(p -> p.late());
     }
 
+    public void prepareShipment(Order o, Operation op) {
+        var c = op.shipment();
+        if (!platformMall) {
+            if (!c.deviceSerials().isEmpty()) throw new MallException("SHIPMENT_SERIALS_UNSUPPORTED");
+            return;
+        }
+        String t = o.quote().store().tenantNo();
+        guard(t);
+        jdbc.update("""
+                INSERT INTO mall_shipment(tenant_no,shipment_no,order_no,address_snapshot,carrier_code,
+                    tracking_no,status,created_at,updated_at,version,deleted)
+                VALUES (?,?,?,?,?,?,'PENDING',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0)
+                """, t, op.operationNo(), o.orderNo(), encode(o.shippingAddress()), c.carrierCode(),
+                c.trackingNo());
+        record Item(String no, String sku, String name) {}
+        var item = jdbc.queryForObject("""
+                SELECT i.order_item_no,i.sku_no,i.sku_snapshot->>'$.sku.title' name
+                FROM mall_order_item i JOIN mall_order_component p
+                ON p.tenant_no=i.tenant_no AND p.order_item_no=i.order_item_no
+                WHERE i.tenant_no=? AND i.order_no=? AND p.order_component_no=?
+                """, (r,i) -> new Item(r.getString(1), r.getString(2), r.getString(3)),
+                t, o.orderNo(), c.orderComponentNo());
+        int rows = Math.max(1, c.deviceSerials().size());
+        for (int i = 0; i < rows; i++) {
+            jdbc.update("""
+                    INSERT INTO mall_shipment_item(tenant_no,shipment_no,line_no,order_no,order_item_no,sku_no,
+                        sku_name_snapshot,device_sn,qty,status,created_at,updated_at,deleted,version)
+                    VALUES (?,?,?,?,?,?,?,?,?,'PENDING',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0)
+                    """, t, op.operationNo(), i + 1, o.orderNo(), item.no(), item.sku(), item.name(),
+                    c.deviceSerials().isEmpty() ? null : c.deviceSerials().get(i),
+                    c.deviceSerials().isEmpty() ? c.quantity() : 1);
+        }
+    }
+
     public void shipment(Order o, Operation op) {
         String t = o.quote().store().tenantNo();
         guard(t);
         var c = op.shipment();
+        if (platformMall) {
+            changed(jdbc.update("""
+                    UPDATE mall_shipment SET status='SHIPPED',shipped_at=?,version=version+1,updated_at=UTC_TIMESTAMP(3)
+                    WHERE tenant_no=? AND shipment_no=? AND order_no=? AND status='PENDING'
+                    """, System.currentTimeMillis(),t,op.operationNo(),o.orderNo()));
+            jdbc.update("""
+                    UPDATE mall_shipment_item SET status='SHIPPED',version=version+1,updated_at=UTC_TIMESTAMP(3)
+                    WHERE tenant_no=? AND shipment_no=? AND status='PENDING'
+                    """, t, op.operationNo());
+            return;
+        }
         jdbc.update(
                 "INSERT INTO"
                     + " mall_shipment(tenant_no,created_at,updated_at,version,deleted,shipment_no,order_no,shipment_items,address_snapshot,carrier_code,tracking_no,status,shipped_at)"

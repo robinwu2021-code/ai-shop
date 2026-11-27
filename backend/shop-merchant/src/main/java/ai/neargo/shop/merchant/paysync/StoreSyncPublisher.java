@@ -51,7 +51,10 @@ public class StoreSyncPublisher {
     private final OutboxEventBus outbox;
     private final StoreSyncProperties props;
     private final LockingTaskExecutor locks;
-    /** 进程内游标；为空时从数据库时间往前一天开始（已入队的修订不会重复入队） */
+    /**
+     * 进程内游标，不落库。为空（首次启动、重启后）时从数据库时间往前一天开始：一天内的变更会被重读，
+     * 事件号相同、由 outbox 按事件号去重；停机超过一天期间的变更不会被增量扫到，要运营端全量同步（{@link #publishAll}）补。
+     */
     private volatile Cursor cursor;
     /**
      * 本实例增量扫描已入队的「门店 → 修订号」。追平后游标回看 LOOKBACK 秒，最近变更的门店每轮都会被重新读到；
@@ -122,11 +125,30 @@ public class StoreSyncPublisher {
         scanCount();
     }
 
-    /** 一轮增量扫描；返回本轮真正新入队的门店数（测试用） */
+    /**
+     * 一轮增量扫描；返回本轮真正新入队的门店数（测试用）。
+     *
+     * <p>游标契约：只有某家门店的事件已被持久接收（{@code OutboxEventBus.publish(eventNo, event)}
+     * 正常返回——发件箱路径是事务外 insertIfAbsent 已提交，将来路由到消息中间件则是 broker 已确认），游标才可越过它。
+     * 某家发布抛异常时本批就停在它前面：游标停在上一家成功的 (变更时间, 门店 id)，一家都没成功则不动，
+     * 下一轮从失败那家重试并继续，不会跳过。
+     */
     int scanCount() {
         Cursor from = cursor != null ? cursor : new Cursor(reader.dbNow().minusDays(1), 0);
         List<Changed> changed = reader.changedAfter(from, BATCH);
-        int queued = enqueue(changed, null);
+        int queued = 0;
+        Changed lastOk = null;
+        for (Changed c : changed) {
+            try {
+                if (publishOne(c, null)) queued++;
+            } catch (RuntimeException e) {
+                cursor = lastOk == null ? from : new Cursor(lastOk.changedAt(), lastOk.id());
+                log.warn("[nearpay-store-sync] publish failed at store {} revision {}, {} queued before it; retry next scan: {}",
+                        c.storeNo(), c.revision(), queued, e.getMessage());
+                return queued;
+            }
+            lastOk = c;
+        }
         if (changed.size() >= BATCH) {
             Changed last = changed.getLast();
             cursor = new Cursor(last.changedAt(), last.id());
@@ -147,23 +169,28 @@ public class StoreSyncPublisher {
         return enqueue(reader.all(storeNos), request);
     }
 
-    /** 每条独立入队（outbox 行在各自语句内提交） */
+    /** 每条独立入队（outbox 行在各自语句内提交）；失败直接抛给调用方 */
     int enqueue(List<Changed> changed, String fullRequest) {
         int n = 0;
         for (var c : changed) {
-            if (fullRequest == null && Long.valueOf(c.revision()).equals(published.get(c.storeNo()))) continue;
-            String no = "NPS:" + c.storeNo() + ":" + c.revision() + (fullRequest == null ? "" : ":FULL:" + fullRequest);
-            var event=new StoreChanged(c.storeNo(),c.entityNo(),c.revision());
-            if(unified!=null && unified.enabled("PLATFORM")) {
-                unified.accept("PLATFORM",new OutboxEnvelope(fit("U:"+no),
-                        "MERCHANT_STORE_SYNC",fit(no),event.aggregateType(),event.aggregateId(),event.eventType(),1,
-                        "MERCHANT_STORE:"+c.storeNo(),0,new ObjectMapper().writeValueAsString(event),
-                        Instant.ofEpochMilli(c.revision())));
-            } else outbox.publish(fit(no),event);
-            if (fullRequest == null) published.put(c.storeNo(), c.revision());
-            n++;
+            if (publishOne(c, fullRequest)) n++;
         }
         return n;
+    }
+
+    /** 发布一家门店；正常返回即已被持久接收。返回 false 表示本实例已发过同一修订、跳过。 */
+    private boolean publishOne(Changed c, String fullRequest) {
+        if (fullRequest == null && Long.valueOf(c.revision()).equals(published.get(c.storeNo()))) return false;
+        String no = "NPS:" + c.storeNo() + ":" + c.revision() + (fullRequest == null ? "" : ":FULL:" + fullRequest);
+        var event = new StoreChanged(c.storeNo(), c.entityNo(), c.revision());
+        if (unified != null && unified.enabled("PLATFORM")) {
+            unified.accept("PLATFORM", new OutboxEnvelope(fit("U:" + no),
+                    "MERCHANT_STORE_SYNC", fit(no), event.aggregateType(), event.aggregateId(), event.eventType(), 1,
+                    "MERCHANT_STORE:" + c.storeNo(), 0, new ObjectMapper().writeValueAsString(event),
+                    Instant.ofEpochMilli(c.revision())));
+        } else outbox.publish(fit(no), event);
+        if (fullRequest == null) published.put(c.storeNo(), c.revision());
+        return true;
     }
 
     /** sys_outbox.event_no 是 varchar(64)：超长时换成稳定哈希（同一输入同一事件号，幂等不变）。 */

@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.mapper.onboarding;
 
+import ai.neargo.shop.common.config.PayMerchantTableMapper;
 import ai.neargo.shop.pay.onboarding.entity.PayOnboarding;
 import ai.neargo.shop.pay.onboarding.entity.PayOnboardingMaterial;
 import ai.neargo.shop.pay.onboarding.entity.PayOnboardingVersion;
@@ -11,12 +12,12 @@ public final class OnboardingMappers {
     private OnboardingMappers() {
     }
 
-    public interface PayOnboardingMapper extends BaseMapper<PayOnboarding> {
+    public interface PayOnboardingMapper extends PayMerchantTableMapper<PayOnboarding> {
     }
 
-    public interface PayOnboardingVersionMapper extends BaseMapper<PayOnboardingVersion> {
+    public interface PayOnboardingVersionMapper extends PayMerchantTableMapper<PayOnboardingVersion> {
     }
 
-    public interface PayOnboardingMaterialMapper extends BaseMapper<PayOnboardingMaterial> {
+    public interface PayOnboardingMaterialMapper extends PayMerchantTableMapper<PayOnboardingMaterial> {
     }
 }

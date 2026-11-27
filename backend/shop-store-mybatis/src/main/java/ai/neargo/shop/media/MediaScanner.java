@@ -1,5 +1,8 @@
 package ai.neargo.shop.media;
 
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
+import ai.neargo.shop.common.config.PlatformJdbcConfiguration;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import org.slf4j.Logger;
@@ -35,6 +38,7 @@ public class MediaScanner {
 
     private final List<MediaRefSource> sources;
     private final MediaRefMapper refMapper;
+    private final JdbcTemplate platform;
     private final SysMediaAssetMapper assetMapper;
     private final int graceHours;
     private final double abnormalRatio;
@@ -42,11 +46,13 @@ public class MediaScanner {
     public MediaScanner(
             List<MediaRefSource> sources,
             MediaRefMapper refMapper,
+            @Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate platform,
             SysMediaAssetMapper assetMapper,
             @Value("${shop.media.scan.grace-hours:72}") int graceHours,
             @Value("${shop.media.scan.abnormal-ratio-alert:0.5}") double abnormalRatio) {
         this.sources = sources;
         this.refMapper = refMapper;
+        this.platform = platform;
         this.assetMapper = assetMapper;
         this.graceHours = graceHours;
         this.abnormalRatio = abnormalRatio;
@@ -148,7 +154,8 @@ public class MediaScanner {
             for (MediaRefColumn col : source.columns()) {
                 List<Map<String, Object>> rows;
                 try {
-                    rows = refMapper.scanColumn(col.table(), col.column(), col.keyColumn());
+                    rows = col.onPlatform() ? scanPlatform(col)
+                            : refMapper.scanColumn(col.table(), col.column(), col.keyColumn());
                 } catch (Exception e) {
                     /*
                      * **不能吞掉**：一列扫不出来就意味着它引用的图全会被判成孤儿。
@@ -176,5 +183,19 @@ public class MediaScanner {
 
     /** @param abnormal 可回收占比是否超过阈值 —— 运营端据此置顶红条并禁用批量回收 */
     public record Result(int total, int referenced, int marked, int rescued, boolean abnormal) {
+    }
+
+    /**
+     * 平台基础库上的一列，走平台句柄的连接。SQL 与 {@link MediaRefMapper#scanColumn} 逐字相同；
+     * 表名列名只来自代码常量（{@link MediaRefColumn} 的约定），这里再按标识符格式校验一遍，因为要拼进 SQL。
+     */
+    private List<Map<String, Object>> scanPlatform(MediaRefColumn col) {
+        for (String identifier : List.of(col.table(), col.column(), col.keyColumn())) {
+            if (!identifier.matches("[a-z][a-z0-9_]*")) {
+                throw new IllegalStateException("不是合法的列或表名：" + identifier);
+            }
+        }
+        return platform.queryForList("SELECT " + col.keyColumn() + " AS biz_key, " + col.column() + " AS val FROM "
+                + col.table() + " WHERE " + col.column() + " IS NOT NULL");
     }
 }

@@ -69,7 +69,6 @@ import tools.jackson.databind.ObjectMapper;
  * The only fault injection drops a response after the real owner returns from its committed transaction. */
 @SpringBootTest(properties = {"shop.member-code.enabled=true", "shop.beauty.enabled=true",
         "shop.beauty.deployment=embedded", "shop.beauty.migration.mode=migrate",
-        "shop.beauty.publication.archive-only=true",
         "shop.member.guest.credential-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="})
 @ActiveProfiles("test")
 @EnabledIfSystemProperty(named = "beauty.reception.test.native", matches = "true")

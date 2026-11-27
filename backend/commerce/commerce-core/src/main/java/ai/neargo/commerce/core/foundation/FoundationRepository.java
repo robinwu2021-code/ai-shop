@@ -16,5 +16,11 @@ public interface FoundationRepository {
 
     Map<String, GrantState> grantStates(StoreRef store);
 
+    default boolean separateActivation() { return false; }
+
+    default List<AccessSegment> activatedSegments(StoreRef store, String code) {
+        return segments(store, code);
+    }
+
     List<AccessSegment> segments(StoreRef store, String code);
 }

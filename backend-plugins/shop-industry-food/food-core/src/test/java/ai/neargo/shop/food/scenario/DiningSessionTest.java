@@ -8,7 +8,6 @@ import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.config.FoodDataScopeRegistration;
 import ai.neargo.shop.food.dto.CreateTableReq;
 import ai.neargo.shop.food.dto.DiningSessionVO;
@@ -34,7 +33,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -44,7 +42,6 @@ import org.springframework.boot.test.context.assertj.AssertableApplicationContex
 import org.springframework.boot.test.context.runner.ContextConsumer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -81,7 +78,7 @@ class DiningSessionTest extends FoodWriteGuardFixture {
             code(() -> s.rotateTableToken("E","A",t.tableNo(),"actor",r,"rotate"),ErrorCode.CONFLICT);
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_table_token",Integer.class)).isOne();
             assertThat(f.sql().queryForObject("SELECT version FROM fnb_table",Long.class)).isEqualTo(1);
-            for(String sql:List.of("SELECT result_json FROM sys_idempotent", "SELECT payload FROM sys_outbox")) {
+            for(String sql:List.of("SELECT result_json FROM sys_idempotent")) {
                 for(String value:f.sql().queryForList(sql,String.class)) assertThat(value).doesNotContain(token.token());
             }
             assertThat(token.toString()).doesNotContain(token.token());
@@ -137,7 +134,7 @@ class DiningSessionTest extends FoodWriteGuardFixture {
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_guest_session",Integer.class)).isZero();
         });
     }
-    @Test void failuresAfterOutboxFlushRollBackEveryCredentialMutation() {
+    @Test void failuresAfterAuditFlushRollBackEveryCredentialMutation() {
         for(String action:List.of("rotate","start","revoke","end")) {
             run(c -> {
                 var f=fixture(c);var t=table(c);var service=c.getBean(DiningSessionService.class);
@@ -146,7 +143,7 @@ class DiningSessionTest extends FoodWriteGuardFixture {
                         new RotateTableTokenReq(EXPIRY,0L),"initial");
                 if(action.equals("end")) session=service.startSession("E","A",null,
                         new StartDiningSessionReq(token.token(),null),"initial-session");
-                int events=f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class);
+                int audits=f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log",Integer.class);
                 long version=f.sql().queryForObject("SELECT version FROM fnb_table",Long.class);
                 var finalToken=token;var finalSession=session;
                 c.getBean(StorePolicyPublicationTest.Signals.class).afterFlush.set(true);
@@ -158,10 +155,10 @@ class DiningSessionTest extends FoodWriteGuardFixture {
                         case "revoke" -> service.revokeTableToken("E","A",t.tableNo(),"actor",new RevokeTableTokenReq(1L,"撤销"),"fail");
                         default -> service.endSession(finalSession.sessionNo(),finalSession.accessToken(),null,"fail");
                     }
-                }).isInstanceOf(IllegalStateException.class).hasMessage("after-session-event-flush");
+                }).isInstanceOf(IllegalStateException.class).hasMessage("after-session-audit-flush");
                 assertThat(f.sql().queryForObject("SELECT version FROM fnb_table",Long.class)).isEqualTo(version);
-                for(String table:List.of("sys_outbox","sys_idempotent","fnb_action_log"))
-                    assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isEqualTo(events);
+                for(String table:List.of("sys_idempotent","fnb_action_log"))
+                    assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isEqualTo(audits);
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_table_token WHERE revoked_at IS NOT NULL",Integer.class)).isZero();
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_guest_session WHERE revoked_at IS NOT NULL",Integer.class)).isZero();
                 if(action.equals("start")) assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_guest_session",Integer.class)).isZero();
@@ -267,24 +264,17 @@ class DiningSessionTest extends FoodWriteGuardFixture {
                 GuestSessionMapper guests,
                 ActionLogMapper actions,
                 IdempotencyService idem,
-                @Qualifier("foodOutboxPublisher") OutboxPublisher pub,
                 PlatformTransactionManager manager,
-                StorePolicyPublicationTest.Signals signals, DataSource source) {
-            OutboxPublisher checked=(event,options) -> {
-                int before=signals.afterFlush.get() ? new JdbcTemplate(source)
-                        .queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class):0;
-                var result=pub.publish(event,options);
+                StorePolicyPublicationTest.Signals signals) {
+            ActionLogMapper checked=FoodAuditFault.afterInsert(actions,() -> {
                 if(signals.afterFlush.get()) TransactionSynchronizationManager
                         .registerSynchronization(new TransactionSynchronization() {
                             @Override public void beforeCommit(boolean readOnly) {
-                                assertThat(new JdbcTemplate(source)
-                                        .queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isEqualTo(before+1);
-                                throw new IllegalStateException("after-session-event-flush");
+                                throw new IllegalStateException("after-session-audit-flush");
                             }
                         });
-                return result;
-            };
-            return new DiningSessionServiceImpl(areas,tables,tokens,guests,actions,idem,checked,manager);
+            });
+            return new DiningSessionServiceImpl(areas,tables,tokens,guests,checked,idem,manager);
         }
     }
 }

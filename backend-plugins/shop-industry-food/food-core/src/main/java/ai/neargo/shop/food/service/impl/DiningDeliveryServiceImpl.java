@@ -5,8 +5,6 @@ import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.CartVO;
 import ai.neargo.shop.food.dto.DiningDeliveryContracts.DeliverySnapshot;
@@ -18,7 +16,6 @@ import ai.neargo.shop.food.mapper.FoodMappers.CheckCartMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.DiningDeliveryService;
-import ai.neargo.shop.spi.food.CartChanged;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
@@ -46,7 +43,6 @@ public class DiningDeliveryServiceImpl implements DiningDeliveryService {
     private final CheckCartService carts;
     private final CheckCartMapper cartRows;
     private final DiningDeliveryMapper addresses;
-    private final OutboxPublisher outbox;
     private final ObjectMapper json;
     private final TransactionTemplate tx;
     private final Clock clock;
@@ -55,14 +51,12 @@ public class DiningDeliveryServiceImpl implements DiningDeliveryService {
             CheckCartService carts,
             CheckCartMapper cartRows,
             DiningDeliveryMapper addresses,
-            OutboxPublisher outbox,
             ObjectMapper json,
             PlatformTransactionManager manager,
             Clock clock) {
         this.carts = carts;
         this.cartRows = cartRows;
         this.addresses = addresses;
-        this.outbox = outbox;
         this.json = json;
         this.tx = new TransactionTemplate(manager);
         this.clock = clock;
@@ -206,15 +200,6 @@ public class DiningDeliveryServiceImpl implements DiningDeliveryService {
                                     } else if (addresses.updateById(address) != 1) {
                                         conflict();
                                     }
-                                    outbox.publish(
-                                            new CartChanged(
-                                                    row.getEntityNo(),
-                                                    store,
-                                                    cart,
-                                                    "DELIVERY_ADDRESS_CHANGED",
-                                                    row.getVersion(),
-                                                    BizKey.next("FDLV")),
-                                            new PublishOptions("FOOD_CART:" + cart, 1));
                                     return result;
                                 }));
     }

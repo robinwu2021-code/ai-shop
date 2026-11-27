@@ -1,4 +1,5 @@
 package ai.neargo.shop.merchantbridge;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.brand.BrandFinancialChangeService;
 import ai.neargo.shop.merchant.brand.ManagementModels.Actor;
 import ai.neargo.shop.payclient.StoredValueFinanceAppService;
@@ -7,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
 /** Every Core state transition commits before the next Pay call; retries retain the original actor, command and binding. */
 @Service
-@Transactional(propagation=Propagation.NOT_SUPPORTED)
+@Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER, propagation=Propagation.NOT_SUPPORTED)
 public class BrandFinancialChangeCoordinator {
  private final BrandFinancialChangeService journal;private final StoredValueFinanceAppService pay;
  public BrandFinancialChangeCoordinator(BrandFinancialChangeService journal,StoredValueFinanceAppService pay){this.journal=journal;this.pay=pay;}

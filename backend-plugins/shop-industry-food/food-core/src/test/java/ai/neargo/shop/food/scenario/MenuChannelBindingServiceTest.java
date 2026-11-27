@@ -5,12 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.dto.CreateMenuChannelBindingReq;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import org.mybatis.spring.SqlSessionTemplate;
 import java.util.List;
-import java.util.Set;
 import ai.neargo.shop.food.dto.UpdateMenuChannelBindingReq;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuMapper;
@@ -54,7 +51,6 @@ class MenuChannelBindingServiceTest extends FoodWriteGuardFixture {
             var template=c.getBean(SqlSessionTemplate.class);
             for(var type:List.of(MenuMapper.class,MenuStoreMapper.class,MenuChannelBindingMapper.class))
                 if(!template.getConfiguration().hasMapper(type)) template.getConfiguration().addMapper(type);
-            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_MENU_CHANNEL_BINDING_CHANGED"));
             var allow=new AtomicBoolean(); var fail=new AtomicBoolean(); var outage=new AtomicBoolean();
             MenuChannelAuthorityPort authority=new MenuChannelAuthorityPort() {
                 @Override public boolean authorized(String e,String s,String p,String a,String x) {
@@ -65,13 +61,10 @@ class MenuChannelBindingServiceTest extends FoodWriteGuardFixture {
                 }
                 @Override public boolean pricePolicyAuthorized(String e,String s,String b,String p) { return false; }
             };
-            var outbox=c.getBean("foodOutboxPublisher",OutboxPublisher.class);
             var service=new MenuChannelBindingServiceImpl(template.getMapper(MenuChannelBindingMapper.class),
                     template.getMapper(MenuMapper.class),template.getMapper(MenuStoreMapper.class),
-                    c.getBean(ActionLogMapper.class),c.getBean(IdempotencyService.class),(event,options) -> {
-                        var receipt=outbox.publish(event,options);
-                        if(fail.get()) throw new IllegalStateException("after-binding-outbox"); return receipt;
-                    },c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class),() -> authority);
+                    FoodAuditFault.failAfterInsert(c.getBean(ActionLogMapper.class),fail::get,"after-binding-audit"),
+                    c.getBean(IdempotencyService.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class),() -> authority);
             test.accept(new State(f,service,allow,fail,outage));
         });
     }
@@ -160,7 +153,7 @@ class MenuChannelBindingServiceTest extends FoodWriteGuardFixture {
         var head=sql.queryForMap("SELECT version,config_version,status FROM fnb_menu WHERE menu_no='MENU'");
         var bindings=sql.queryForList("SELECT binding_no,version,status FROM fnb_menu_channel_binding "
                 + "ORDER BY binding_no");
-        var tables=List.of("sys_idempotent","sys_outbox","fnb_action_log");
+        var tables=List.of("sys_idempotent","fnb_action_log");
         var counts=tables.stream().map(table -> sql.queryForObject("SELECT COUNT(*) FROM "+table,Long.class)).toList();
         code(action,ErrorCode.CONFLICT);
         assertThat(sql.queryForMap("SELECT version,config_version,status FROM fnb_menu WHERE menu_no='MENU'"))

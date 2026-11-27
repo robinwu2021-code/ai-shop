@@ -3,9 +3,9 @@ package ai.neargo.shop.merchant.service;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchPayoutAccount;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPayoutAccount;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
-import ai.neargo.shop.merchant.service.impl.PayoutAccountServiceImpl;
+import ai.neargo.shop.merchant.paymerchant.impl.PayoutAccountServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,14 +32,14 @@ class PayoutAccountServiceTest {
     private static final String NAME = "深圳市虹选科技有限公司";
     private static final String CARD = "6222021234567890123";
 
-    private MerchantMappers.PayoutAccountMapper accounts;
+    private ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.PayoutAccountMapper accounts;
     private MerchantMappers.MchEntityMapper entities;
     private PayoutAccountCipher cipher;
     private PayoutAccountServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        accounts = mock(MerchantMappers.PayoutAccountMapper.class);
+        accounts = mock(ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.PayoutAccountMapper.class);
         entities = mock(MerchantMappers.MchEntityMapper.class);
         /*
          * **用真的 cipher 而不是 mock。**

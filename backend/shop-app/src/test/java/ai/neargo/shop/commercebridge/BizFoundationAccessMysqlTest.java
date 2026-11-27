@@ -268,9 +268,9 @@ class BizFoundationAccessMysqlTest {
                             new ai.neargo.shop.spi.pay.PayApplymentGateway.ApplymentResult(
                                     "APPLYING", null, null));
             var service =
-                    new ai.neargo.shop.merchant.service.impl.MerchantPaymentServiceImpl(
+                    new ai.neargo.shop.merchant.paymerchant.impl.MerchantPaymentServiceImpl(
                             f.mybatis.getMapper(
-                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper
+                                    ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper
                                             .class),
                             f.mybatis.getMapper(MchEntityMapper.class),
                             mock(ai.neargo.shop.spi.platform.MasterDataPort.class),
@@ -521,7 +521,6 @@ class BizFoundationAccessMysqlTest {
                             null,
                             null,
                             null,
-                            null,
                             (ai.neargo.shop.merchant.service.PayMerchantMirror) entityNo -> {},
                             new org.springframework.beans.factory.support.StaticListableBeanFactory().getBeanProvider(ai.neargo.shop.spi.pay.PayMerchantReadSwitch.class),
                             new org.springframework.beans.factory.support.StaticListableBeanFactory().getBeanProvider(ai.neargo.shop.spi.pay.PayMerchantQueryPort.class));
@@ -598,6 +597,7 @@ class BizFoundationAccessMysqlTest {
         services.register(ApplyTransactions.class,
                 ai.neargo.shop.platform.port.MarketContactPolicyPortImpl.class);
         services.registerBean("dataSource", DataSource.class, () -> f.ds);
+        services.registerAlias("dataSource", "platformDataSource");
         services.registerBean(StoreOwnershipWritePort.class, () -> new StoreOwnershipWritePortImpl(f.jdbc));
         services.registerBean(ai.neargo.shop.platform.MarketPhonePolicyService.class,
                 () -> mock(ai.neargo.shop.platform.MarketPhonePolicyService.class));
@@ -607,7 +607,8 @@ class BizFoundationAccessMysqlTest {
                     () -> port instanceof ai.neargo.shop.spi.user.MerchantQueryPort queries
                             ? queries : mock(ai.neargo.shop.spi.user.MerchantQueryPort.class));
         }
-        services.registerBean(DataSourceTransactionManager.class, () -> f.manager);
+        services.registerBean("transactionManager", DataSourceTransactionManager.class, () -> f.manager);
+        services.registerAlias("transactionManager", "platformTxManager");
         services.registerBean(
                 OpsServiceImpl.class,
                 () ->
@@ -619,6 +620,10 @@ class BizFoundationAccessMysqlTest {
                                 f.mybatis.getMapper(
                                         ai.neargo.shop.platform.mapper.PlatformMappers
                                                 .AuditLogMapper.class),
+                                new ai.neargo.shop.platform.port.AuditLogPortImpl(
+                                        f.mybatis.getMapper(
+                                                ai.neargo.shop.platform.mapper.PlatformMappers
+                                                        .AuditLogMapper.class)),
                                 f.mybatis.getMapper(MerchantApplyMapper.class),
                                 port,
                                 null,

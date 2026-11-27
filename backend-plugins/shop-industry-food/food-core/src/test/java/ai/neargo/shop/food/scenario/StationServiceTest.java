@@ -8,8 +8,6 @@ import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.StationContracts.CreateStationReq;
 import ai.neargo.shop.food.dto.StationContracts.UpdateStationReq;
 import ai.neargo.shop.food.dto.StationContracts.ReplaceStationRoutesReq;
@@ -23,7 +21,6 @@ import ai.neargo.shop.food.service.impl.StationServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import org.junit.jupiter.api.Test;
@@ -59,7 +56,6 @@ class StationServiceTest extends FoodWriteGuardFixture {
                     f.sql().execute("CREATE TABLE fnb_sku_station (" + common + "sku_no VARCHAR(32),"
                             + "station_no VARCHAR(32),task_role VARCHAR(16),route_version BIGINT,store_no VARCHAR(32),"
                             + "UNIQUE(store_no,sku_no,station_no,task_role))");
-                    c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_STATION_CHANGED"));
                     test.accept(c, f);
                 });
     }
@@ -107,7 +103,7 @@ class StationServiceTest extends FoodWriteGuardFixture {
             code(() -> s.replaceRoutes("E","A","SKU","actor",routes(3,a),"disabled"),ErrorCode.BAD_REQUEST);
         });
     }
-    @Test void authorityReadsOutsideTransactionAndOutboxFailureRollsBackRoutesAndReceipt() {
+    @Test void authorityReadsOutsideTransactionAndAuditFailureRollsBackRoutesAndReceipt() {
         run((c,f) -> {
             var s=c.getBean(StationService.class); var state=c.getBean(State.class);
             String a=s.createStation("E","A","actor",new CreateStationReq("热厨","HOT"),"a").configNo();
@@ -165,8 +161,7 @@ class StationServiceTest extends FoodWriteGuardFixture {
             var b=new MapperFactoryBean<>(SkuStationMapper.class); b.setSqlSessionTemplate(t); return b;
         }
         @Bean StationService stationService(StationMapper heads,SkuStationMapper routes,ActionLogMapper actions,
-                IdempotencyService idem,@Qualifier("foodOutboxPublisher") OutboxPublisher outbox,
-                ObjectMapper json,PlatformTransactionManager manager,State state) {
+                IdempotencyService idem,ObjectMapper json,PlatformTransactionManager manager,State state) {
             var catalog=mock(GoodsCatalogQueryPort.class);
             when(catalog.getSku(anyString(),anyString(),anyString())).thenAnswer(i -> {
                 assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
@@ -174,12 +169,8 @@ class StationServiceTest extends FoodWriteGuardFixture {
                 return new GoodsCatalogQueryPort.SkuIdentityFact(i.getArgument(2),"G",
                         i.getArgument(0),i.getArgument(1),0);
             });
-            OutboxPublisher checked=(event,options) -> {
-                var result=outbox.publish(event,options);
-                if(state.fail.get()) throw new IllegalStateException("after-station-outbox");
-                return result;
-            };
-            return new StationServiceImpl(heads,routes,actions,idem,checked,json,manager,catalog);
+            ActionLogMapper checked=FoodAuditFault.failAfterInsert(actions,state.fail::get,"after-station-audit");
+            return new StationServiceImpl(heads,routes,checked,idem,json,manager,catalog);
         }
     }
 }

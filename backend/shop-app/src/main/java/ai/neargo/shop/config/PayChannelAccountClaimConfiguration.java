@@ -1,4 +1,5 @@
 package ai.neargo.shop.config;
+import ai.neargo.shop.merchantbridge.PayBizSessionVerifier;
 
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.payclient.*;

@@ -4,15 +4,19 @@ import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.OutboxEventBus;
-import ai.neargo.shop.spi.trade.OrderEvents;
+import ai.neargo.shop.spi.logistics.WaybillWxUploadPort;
 import ai.neargo.shop.spi.trade.WxShippingPort;
 import ai.neargo.shop.trade.entity.TrdShippingUpload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -28,14 +32,21 @@ public class WxShippingUploadService {
     private final WxShippingPort shipping;
     private final OutboxEventBus events;
     private final ObjectMapper json;
+    private final ObjectProvider<WaybillWxUploadPort> waybills;
+    private final TransactionTemplate transaction;
 
     public WxShippingUploadService(ShippingUploadQueue queue, ShippingUploadSources sources,
-                                   WxShippingPort shipping, OutboxEventBus events, ObjectMapper json) {
+                                   WxShippingPort shipping, OutboxEventBus events, ObjectMapper json,
+                                   ObjectProvider<WaybillWxUploadPort> waybills, PlatformTransactionManager manager) {
         this.queue = queue;
         this.sources = sources;
         this.shipping = shipping;
         this.events = events;
         this.json = json;
+        this.waybills = waybills;
+        this.transaction = new TransactionTemplate(manager);
+        this.transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+        this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
@@ -84,28 +95,48 @@ public class WxShippingUploadService {
         }
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    /**
+     * Three steps so no pooled connection is held across the WeChat call: a short transaction validates the
+     * frozen snapshot and builds the command, the remote call runs with no transaction, and a second short
+     * transaction applies the version-conditional finish and marks the waybill uploaded (so a late old send still
+     * cannot acknowledge a replacement source, and the ledger success and the waybill mark commit together).
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public boolean upload(TrdShippingUpload row, String itemDesc,
                           String trackingNo, String expressCompany, String payerOpenid) {
         if (!TrdShippingUpload.PENDING.equals(row.getStatus())) { return true; }
         ShippingUploadSnapshot frozen = ShippingUploadSnapshot.parse(row.getSourceSnapshot(), json);
-        if (!current(row, frozen)) { return false; }
-        if (frozen != null && frozen.blocker() != null) { queue.blocked(row, frozen.blocker()); return false; }
-        WxShippingPort.Command command = frozen == null
+        WxShippingPort.Command command = transaction.execute(status ->
+                prepare(row, frozen, itemDesc, trackingNo, expressCompany, payerOpenid));
+        if (command == null) { return false; }
+        OutboxLease.check();
+        WxShippingPort.Result response = shipping.upload(command);
+        Outcome outcome = outcomeOf(row.getAttempts() == null ? 0 : row.getAttempts(), response);
+        return Boolean.TRUE.equals(transaction.execute(status -> finish(row, frozen, response, outcome)));
+    }
+
+    private WxShippingPort.Command prepare(TrdShippingUpload row, ShippingUploadSnapshot frozen, String itemDesc,
+                                           String trackingNo, String expressCompany, String payerOpenid) {
+        if (!current(row, frozen)) { return null; }
+        if (frozen != null && frozen.blocker() != null) { queue.blocked(row, frozen.blocker()); return null; }
+        return frozen == null
                 ? new WxShippingPort.Command(row.getOutTradeNo(), row.getLogisticsType(), itemDesc,
                         trackingNo, expressCompany, payerOpenid)
                 : new WxShippingPort.Command(row.getOutTradeNo(), row.getLogisticsType(), itemDesc,
                         trackingNo, expressCompany, payerOpenid, frozen.shipments(), frozen.deliveryMode(),
                         frozen.allDelivered(), frozen.shipments().stream().anyMatch(s -> s.sourceShipmentNo() != null));
-        OutboxLease.check();
-        WxShippingPort.Result response = shipping.upload(command);
-        Outcome outcome = outcomeOf(row.getAttempts() == null ? 0 : row.getAttempts(), response);
+    }
+
+    private boolean finish(TrdShippingUpload row, ShippingUploadSnapshot frozen,
+                           WxShippingPort.Result response, Outcome outcome) {
         if (!queue.finish(row, outcome, response.success() ? null : response.code(), response.message())) {
             return false;
         }
         if (response.success()) {
-            events.publish(new OrderEvents.WxShippingUploaded(row.getOrderNo(), row.getOutTradeNo(),
-                    System.currentTimeMillis(), frozen == null ? List.of() : frozen.shipments()));
+            // 上传台账与运单同库：同一事务里直接记“已上传”，不经发件箱
+            long at = System.currentTimeMillis();
+            waybills.ifAvailable(w -> w.markUploaded(row.getOutTradeNo(), at,
+                    frozen == null ? List.of() : frozen.shipments()));
         }
         return outcome.giveUp();
     }

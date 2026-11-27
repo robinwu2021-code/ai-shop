@@ -61,7 +61,6 @@ import javax.sql.DataSource;
         properties = {
             "spring.datasource.url=${CHECKOUT_NATIVE_MYSQL_URL}",
             "shop.member-code.enabled=true",
-            "shop.catalog.publication.archive-only=true",
             "shop.member.guest.credential-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             "shop.inventory.enabled=true",
             "shop.inventory.flyway-enabled=false",

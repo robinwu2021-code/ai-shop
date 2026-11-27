@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.onboarding.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -84,7 +85,7 @@ public class OnboardingServiceImpl implements OnboardingService {
                                  @Value("${shop.pay.stub-channels:WECHAT,ALIPAY}") List<String> stubChannels,
                                  @Value("${shop.pay.wechat.mode:direct}") String wechatMode,
                                  @Value("${shop.pay.wechat.mchid:}") String wechatMchid,
-                                 @Qualifier("payTxManager") PlatformTransactionManager payTxManager) {
+                                 @Qualifier(ModuleDataSources.PAY_MERCHANT_TX_MANAGER) PlatformTransactionManager payTxManager) {
         this.onboardings = onboardings;
         this.versions = versions;
         this.materials = materials;

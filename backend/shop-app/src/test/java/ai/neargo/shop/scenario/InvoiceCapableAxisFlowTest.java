@@ -1,9 +1,9 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

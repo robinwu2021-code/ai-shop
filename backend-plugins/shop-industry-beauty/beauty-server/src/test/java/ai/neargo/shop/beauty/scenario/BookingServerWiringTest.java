@@ -13,7 +13,6 @@ import ai.neargo.shop.beauty.port.AppointmentSourceAuthorityPortImpl;
 import ai.neargo.shop.beauty.port.RemoteResourceBookingPort;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
 import ai.neargo.shop.beauty.service.WorkOrderService;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.spi.resource.ResourceBookingPort;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
 import ai.neargo.shop.svc.InternalHttp;
@@ -37,8 +36,7 @@ class BookingServerWiringTest {
                 .withBean("dataSource", DataSource.class, () -> mock(DataSource.class))
                 .withBean("transactionManager", PlatformTransactionManager.class,
                         () -> mock(PlatformTransactionManager.class))
-                .withBean(ServiceCatalogQueryService.class, () -> mock(ServiceCatalogQueryService.class))
-                .withBean("beautyOutboxPublisher", OutboxPublisher.class, () -> mock(OutboxPublisher.class));
+                .withBean(ServiceCatalogQueryService.class, () -> mock(ServiceCatalogQueryService.class));
         for (Class type : new Class[] {BeautyMappers.AppointmentMapper.class,
                 BeautyMappers.AppointmentPreparationMapper.class, BeautyMappers.AppointmentOperationMapper.class,
                 BeautyMappers.AppointmentCurrentMapper.class, BeautyMappers.AppointmentArrangementMapper.class,

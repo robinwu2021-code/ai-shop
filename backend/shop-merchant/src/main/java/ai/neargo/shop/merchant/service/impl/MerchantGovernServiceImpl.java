@@ -7,15 +7,16 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
-import ai.neargo.shop.merchant.entity.MchViolation;
+import ai.neargo.shop.merchant.violation.MchViolation;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.ViolationMapper;
+import ai.neargo.shop.merchant.paymerchant.CollectingMerchants;
+import ai.neargo.shop.merchant.dictionary.DictionaryCatalog;
+import ai.neargo.shop.merchant.violation.ViolationLedger;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
 import ai.neargo.shop.spi.platform.MerchantApplyQueryPort;
@@ -64,12 +65,12 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
      */
     private final org.springframework.beans.factory.ObjectProvider<
             ai.neargo.shop.spi.marketing.StoreVisitQueryPort> visitQueryPort;
-    private final MchPaymentMapper paymentMapper;
-    private final ViolationMapper violationMapper;
+    private final CollectingMerchants collectingMerchants;
+    private final ViolationLedger violations;
     private final MerchantApplyQueryPort applyPort;
     private final ObjectMapper json;
     /** 门槛码字典：商家侧「我传这张证能换来什么」靠它 */
-    private final ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper;
+    private final DictionaryCatalog dictionary;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper;
     /** 通过审核时要把内容写回门面表 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeProfileMapper;
@@ -104,8 +105,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     public MerchantGovernServiceImpl(MchEntityMapper merchantMapper,
                                      MchEntityCommunityMapper communityMapper,
-                                     MchPaymentMapper paymentMapper,
-                                     ViolationMapper violationMapper,
+                                     CollectingMerchants collectingMerchants,
+                                     ViolationLedger violations,
                                      MerchantApplyQueryPort applyPort,
                                      ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper,
                                      ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeProfileMapper,
@@ -118,7 +119,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
             ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort,
             org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.product.StoreShelfPort> shelfPort,
-            ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
+            DictionaryCatalog dictionary,
             ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
             org.springframework.beans.factory.ObjectProvider<
                     ai.neargo.shop.spi.marketing.StoreVisitQueryPort> visitQueryPort,
@@ -126,7 +127,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         this.payMirror = payMirror;
         this.channelPickupMapper = channelPickupMapper;
         this.visitQueryPort = visitQueryPort;
-        this.authCodeMapper = authCodeMapper;
+        this.dictionary = dictionary;
         this.serviceAreaMapper = serviceAreaMapper;
         this.communityNamePort = communityNamePort;
         this.merchantQueryPort = merchantQueryPort;
@@ -136,8 +137,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         this.qualificationMapper = qualificationMapper;
         this.merchantMapper = merchantMapper;
         this.communityMapper = communityMapper;
-        this.paymentMapper = paymentMapper;
-        this.violationMapper = violationMapper;
+        this.collectingMerchants = collectingMerchants;
+        this.violations = violations;
         this.applyPort = applyPort;
         this.json = json;
         this.storeAuditMapper = storeAuditMapper;
@@ -256,11 +257,6 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     @Override
     public List<ViolationVO> violations(String merchantNo) {
-        var w = Wrappers.<MchViolation>lambdaQuery();
-        if (merchantNo != null && !merchantNo.isBlank()) {
-            w.eq(MchViolation::getEntityNo, merchantNo);
-        }
-        w.orderByDesc(MchViolation::getId);
         /*
          * **不绕过**：这是运营端的全量处置队列（merchantNo 可空 = 全平台），
          * 正是数据域该起作用的地方。这一页上有商家名、门店名与处置理由 ——
@@ -268,7 +264,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
          *
          * `merchantNo` 参数照旧：它是运营主动筛某一家，与数据域是两回事。
          */
-        List<MchViolation> rows = violationMapper.selectList(w);
+        List<MchViolation> rows = violations.list(merchantNo);
         return rows.stream().map(v -> new ViolationVO(v.getViolationNo(), v.getEntityNo(),
                 nameOf(v.getEntityNo()), v.getStoreNo(), v.getType(), v.getAction(), v.getDetail(),
                 v.getOperatorNo(), v.getAt() == null ? 0L : v.getAt())).toList();
@@ -307,7 +303,10 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         v.setDetail(detail.trim());
         v.setOperatorNo(operatorNo);
         v.setAt(System.currentTimeMillis());
-        DataScopeContext.executeWithoutScope(() -> violationMapper.insert(v));
+        DataScopeContext.executeWithoutScope(() -> {
+            violations.record(v);
+            return null;
+        });
 
         /*
          * 副作用是**处置的一部分**，不是可选项：
@@ -557,43 +556,20 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     @Override
     public ai.neargo.shop.common.PageData<OnboardingRowVO> onboardingBoard(String status, String payChannel,
                                                                             String keyword, long page, long size) {
-        var w = Wrappers.<MchPaymentMerchant>lambdaQuery();
-        if (status != null && !status.isBlank()) {
-            // 与商家列表同一口径：前端可能传逗号分隔多态（如「审核中+被拒」并列取）
-            List<String> statuses = java.util.Arrays.stream(status.split(","))
-                    .map(String::trim).filter(s -> !s.isBlank()).toList();
-            if (statuses.size() == 1) {
-                w.eq(MchPaymentMerchant::getApplyStatus, statuses.get(0));
-            } else if (!statuses.isEmpty()) {
-                w.in(MchPaymentMerchant::getApplyStatus, statuses);
-            }
-        }
-        w.eq(payChannel != null && !payChannel.isBlank(), MchPaymentMerchant::getPayChannel, payChannel);
+        List<String> statuses = status == null || status.isBlank() ? List.of()
+                // 与商家列表同一口径：前端可能传逗号分隔多态（如「审核中+被拒」并列取）
+                : java.util.Arrays.stream(status.split(",")).map(String::trim).filter(s -> !s.isBlank()).toList();
         // 关键词按店名匹配时，主体号在另一张表 —— 先把名字命中的主体号捞出来，再并进 or
         Set<String> nameMatch = (keyword == null || keyword.isBlank()) ? Set.of()
                 : merchantMapper.selectList(
                         Wrappers.<MchEntity>lambdaQuery().like(MchEntity::getName, keyword))
                 .stream().map(MchEntity::getEntityNo).collect(java.util.stream.Collectors.toSet());
-        if (keyword != null && !keyword.isBlank()) {
-            w.and(x -> {
-                x.like(MchPaymentMerchant::getEntityNo, keyword)
-                        .or().like(MchPaymentMerchant::getPayMerchantNo, keyword)
-                        .or().like(MchPaymentMerchant::getSubMchid, keyword);
-                if (!nameMatch.isEmpty()) {
-                    x.or().in(MchPaymentMerchant::getEntityNo, nameMatch);
-                }
-            });
-        }
-        // 卡住的（APPLYING/REJECTED）最需要人管，字典序恰好把它们排到 ACTIVE/NONE 前面；同态内新→旧
-        w.orderByAsc(MchPaymentMerchant::getApplyStatus).orderByDesc(MchPaymentMerchant::getId);
-
         /*
          * ★ **接数据域**（与本类的 list() 同一口径）：配了「只看某商家」的运营，
          * 就该只看到那一家的进件。第一版这里解了域、理由写的是「跨主体只读」——
          * 那等于让被限定的运营看到全平台的收款开户状态，而且不报错。
          */
-        var p = paymentMapper.selectPage(
-                com.baomidou.mybatisplus.extension.plugins.pagination.Page.of(page, size), w);
+        var p = collectingMerchants.pageForOps(statuses, payChannel, keyword, nameMatch, page, size);
 
         long now = System.currentTimeMillis();
         Set<String> entityNos = p.getRecords().stream().map(MchPaymentMerchant::getEntityNo)
@@ -681,9 +657,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
         // 「能不能收钱」看进件是否开通 —— 与 B 端工作台那张卡同一个判断
         boolean settleReady = DataScopeContext.executeWithoutScope(() ->
-                paymentMapper.selectCount(Wrappers.<ai.neargo.shop.merchant.entity.MchPaymentMerchant>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchPaymentMerchant::getEntityNo, m.getEntityNo())
-                        .eq(ai.neargo.shop.merchant.entity.MchPaymentMerchant::getApplyStatus, ACTIVE))) > 0;
+                collectingMerchants.hasActive(m.getEntityNo()));
 
         // 只取仍然有效的：过期/吊销的资质拿来比对授权，等于让已经失效的证继续开门
         List<String> quals = DataScopeContext.executeWithoutScope(() ->
@@ -897,20 +871,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
      */
     private String activePayMerchantNo(MchStore store) {
         // 带上主体：门店换了主体后，旧主体为这家店开的号不再是它的（F02 · Review R26）
-        var own = paymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                .eq(MchPaymentMerchant::getEntityNo, store.getEntityNo())
-                .eq(MchPaymentMerchant::getStoreNo, store.getStoreNo())
-                .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)
-                .last("LIMIT 1"));
-        if (own != null) {
-            return own.getPayMerchantNo();
-        }
-        var fallback = paymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                .eq(MchPaymentMerchant::getEntityNo, store.getEntityNo())
-                .eq(MchPaymentMerchant::getStoreNo, MchPaymentMerchant.ENTITY_LEVEL)
-                .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)
-                .last("LIMIT 1"));
-        return fallback == null ? null : fallback.getPayMerchantNo();
+        return collectingMerchants.activePayMerchantNoForStore(store.getEntityNo(), store.getStoreNo()).orElse(null);
     }
 
     // ---------------------------------------------------------------- 门面内容审核（P-10.1）
@@ -1070,10 +1031,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     @Override
     public List<AuthCodeVO> authCodeCatalog() {
-        return DataScopeContext.executeWithoutScope(() -> authCodeMapper.selectList(
-                        Wrappers.<ai.neargo.shop.merchant.entity.SysAuthCode>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.SysAuthCode::getEnabled, true)
-                                .orderByAsc(ai.neargo.shop.merchant.entity.SysAuthCode::getSort)))
+        return DataScopeContext.executeWithoutScope(dictionary::enabledAuthCodes)
                 .stream()
                 .map(c -> new AuthCodeVO(c.getCode(), c.getName(),
                         c.getRequiredQualification(), c.getQualType()))

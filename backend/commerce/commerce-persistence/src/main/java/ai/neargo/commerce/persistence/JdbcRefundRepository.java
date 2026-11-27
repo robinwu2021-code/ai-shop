@@ -8,6 +8,7 @@ import ai.neargo.commerce.api.mall.MallException;
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.core.mall.*;
 import ai.neargo.commerce.core.spi.Period;
+import ai.neargo.commerce.core.spi.SubscriptionRepository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -22,12 +23,24 @@ public final class JdbcRefundRepository implements RefundRepository {
     private final DataSource ds;
     private final JdbcTemplate jdbc;
     private final JsonMapper json = JsonMapper.builder().build();
-    private final JdbcSubscriptionRepository subscriptions;
+    private final SubscriptionRepository subscriptions;
+
+    private final boolean mallDatabase;
+    private final String quoteColumn;
+    private final String nativeOnly;
 
     public JdbcRefundRepository(DataSource ds, CommerceIdGenerator ids) {
+        this(ds, ids, new JdbcSubscriptionRepository(ds, ids), false);
+    }
+
+    public JdbcRefundRepository(DataSource ds, CommerceIdGenerator ids, SubscriptionRepository subscriptions,
+            boolean mallDatabase) {
         this.ds = ds;
         this.jdbc = new JdbcTemplate(ds);
-        this.subscriptions = new JdbcSubscriptionRepository(ds, ids);
+        this.subscriptions = subscriptions;
+        this.mallDatabase = mallDatabase;
+        quoteColumn = mallDatabase ? "command_snapshot->'$.quotes'" : "review_quotes_snapshot";
+        nativeOnly = mallDatabase ? " AND JSON_CONTAINS_PATH(policy_snapshot,'one','$.refundNo')" : "";
     }
 
     private void guard(String tenant) {
@@ -50,18 +63,23 @@ public final class JdbcRefundRepository implements RefundRepository {
         guard(tenant);
         return jdbc
                 .query(
-                        "SELECT * FROM mall_refund WHERE tenant_no=? AND refund_no=? FOR UPDATE",
+                        "SELECT r.*, " + quoteColumn + " AS frozen_quotes, "
+                                + (mallDatabase
+                                    ? "command_snapshot->>'$.reviewer' AS approver,command_snapshot->>'$.evidence' AS approval_evidence,command_snapshot->'$.payment'"
+                                    : "reviewed_by AS approver,review_evidence AS approval_evidence,command_snapshot")
+                                + " AS payment_intent FROM mall_refund r WHERE tenant_no=? AND refund_no=?"
+                                + nativeOnly + " FOR UPDATE",
                         (r, n) -> {
                             var original = decode(r.getString("policy_snapshot"), Preview.class);
                             String reviewNo = r.getString("approved_review_quote_no");
                             var chosen = original;
-                            if (reviewNo != null) chosen = Arrays.stream(decode(r.getString("review_quotes_snapshot"), ReviewQuote[].class))
+                            if (reviewNo != null) chosen = Arrays.stream(decode(r.getString("frozen_quotes"), ReviewQuote[].class))
                                     .filter(q -> reviewNo.equals(q.reviewQuoteNo()) && original.digest().equals(q.requestDigest()))
                                     .findFirst().orElseThrow(() -> new MallException("REVIEW_EVIDENCE_MISSING")).preview();
                             return new State(chosen, r.getString("status"), r.getLong("approved_cash_minor"),
-                                    r.getLong("restore_credit_minor"), r.getString("reviewed_by"),
-                                    r.getString("reviewed_by") == null ? r.getString("reason") : r.getString("review_evidence"),
-                                    decode(r.getString("command_snapshot"), PaymentRefundCommand.class),
+                                    r.getLong("restore_credit_minor"), r.getString("approver"),
+                                    r.getString("approver") == null ? r.getString("reason") : r.getString("approval_evidence"),
+                                    decode(r.getString("payment_intent"), PaymentRefundCommand.class),
                                     decode(r.getString("verified_fact_snapshot"), VerifiedRefundFact.class),
                                     r.getObject("reviewed_at", Long.class), original.digest(), reviewNo);
                         },
@@ -74,7 +92,7 @@ public final class JdbcRefundRepository implements RefundRepository {
     public List<State> forOrder(MallSnapshot.Order order) {
         var store = order.quote().store();
         guard(store.tenantNo());
-        return jdbc.queryForList("SELECT refund_no FROM mall_refund WHERE tenant_no=? AND store_no=? AND order_no=? ORDER BY id FOR UPDATE",
+        return jdbc.queryForList("SELECT refund_no FROM mall_refund WHERE tenant_no=? AND store_no=? AND order_no=?" + nativeOnly + " ORDER BY id FOR UPDATE",
                 String.class, store.tenantNo(), store.storeNo(), order.orderNo())
                 .stream().map(no -> find(store.tenantNo(), no).orElseThrow()).toList();
     }
@@ -84,7 +102,7 @@ public final class JdbcRefundRepository implements RefundRepository {
         var rows =
                 jdbc.queryForList(
                         "SELECT refund_no FROM mall_refund WHERE tenant_no=? AND order_no=? AND"
-                                + " refund_no LIKE ? ORDER BY id DESC LIMIT 1 FOR UPDATE",
+                                + " refund_no LIKE ?" + nativeOnly + " ORDER BY id DESC LIMIT 1 FOR UPDATE",
                         String.class,
                         tenant,
                         orderNo,
@@ -180,15 +198,14 @@ public final class JdbcRefundRepository implements RefundRepository {
                                 .findFirst()
                                 .orElseThrow(() -> new MallException("INVALID_TASK_GROUP"));
                 String raw = (String) row.get("request_snapshot");
+                String snapshotHash = taskHash(raw);
                 if (!"PENDING".equals(row.get("status"))
-                        || !"LOCAL_PENDING".equals(row.get("dispatch_state"))
+                        || !mallDatabase && !"LOCAL_PENDING".equals(row.get("dispatch_state"))
                         || !c.orderComponentNo().equals(row.get("order_component_no"))
                         || ((Number) row.get("unit_seq")).intValue() != cycle.sequence()
                         || raw == null
                         || !c.snapshot().equals(decode(raw, MallSnapshot.Component.class))
-                        || !ai.neargo.commerce.core.spi.FactDigest.of(
-                                        List.of(encode(decode(raw, MallSnapshot.Component.class))))
-                                .equals(row.get("request_hash"))
+                        || !mallDatabase && !snapshotHash.equals(row.get("request_hash"))
                         || row.get("result_no") != null)
                     throw new MallException("INVALID_TASK_GROUP");
                 if (!jdbc.queryForList(
@@ -205,7 +222,7 @@ public final class JdbcRefundRepository implements RefundRepository {
                                 c.orderComponentNo(),
                                 cycle.sequence(),
                                 ((Number) row.get("version")).longValue(),
-                                (String) row.get("request_hash"),
+                                snapshotHash,
                                 cycle.cash(),
                                 cycle.credit(),
                                 !RefundPolicy.parse(line.sku().refundPolicySnapshot())
@@ -217,39 +234,46 @@ public final class JdbcRefundRepository implements RefundRepository {
         return List.copyOf(expected.values());
     }
 
-    public void freezeTasks(State s) {
-        guard(s.preview().store().tenantNo());
-        for (var t : s.preview().pendingTasks())
-            changed(
-                    jdbc.update(
-                            "UPDATE mall_fulfillment_task SET"
-                                + " status='FROZEN',dispatch_state='REFUND_FROZEN',version=version+1,updated_at=UTC_TIMESTAMP(3)"
-                                + " WHERE tenant_no=? AND order_no=? AND task_no=? AND version=?"
-                                + " AND request_hash=? AND status='PENDING' AND"
-                                + " dispatch_state='LOCAL_PENDING'",
-                            s.preview().store().tenantNo(),
-                            s.preview().orderNo(),
-                            t.taskNo(),
-                            t.version(),
-                            t.requestHash()));
+    private String taskHash(String raw) {
+        return raw == null ? null : ai.neargo.commerce.core.spi.FactDigest.of(
+                List.of(encode(decode(raw, MallSnapshot.Component.class))));
+    }
+
+    private void transitionTasks(State state, boolean freezing, boolean success) {
+        String tenant = state.preview().store().tenantNo();
+        guard(tenant);
+        String previous = freezing ? "PENDING" : "FROZEN";
+        String next = freezing ? "FROZEN" : success ? "CANCELLED" : "PENDING";
+        for (var task : state.preview().pendingTasks()) {
+            if (mallDatabase) {
+                var raw = jdbc.queryForObject("""
+                        SELECT request_snapshot FROM mall_fulfillment_task
+                        WHERE tenant_no=? AND order_no=? AND task_no=? FOR UPDATE
+                        """, String.class, tenant, state.preview().orderNo(), task.taskNo());
+                if (!task.requestHash().equals(taskHash(raw))) throw new MallException("VERSION_CONFLICT");
+                changed(jdbc.update("""
+                        UPDATE mall_fulfillment_task SET status=?,version=version+1,updated_at=UTC_TIMESTAMP(3)
+                        WHERE tenant_no=? AND order_no=? AND task_no=? AND version=? AND status=?
+                        """, next, tenant, state.preview().orderNo(), task.taskNo(),
+                        freezing ? task.version() : task.version() + 1, previous));
+            } else {
+                changed(jdbc.update("""
+                        UPDATE mall_fulfillment_task SET status=?,dispatch_state=?,version=version+1,updated_at=UTC_TIMESTAMP(3)
+                        WHERE tenant_no=? AND order_no=? AND task_no=? AND request_hash=? AND status=? AND dispatch_state=?
+                        """ + (freezing ? " AND version=?" : " AND version>=?"),
+                        next, freezing ? "REFUND_FROZEN" : success ? "REFUND_CANCELLED" : "LOCAL_PENDING",
+                        tenant, state.preview().orderNo(), task.taskNo(), task.requestHash(), previous,
+                        freezing ? "LOCAL_PENDING" : "REFUND_FROZEN", task.version()));
+            }
+        }
+    }
+
+    public void freezeTasks(State state) {
+        transitionTasks(state, true, false);
     }
 
     public void resolveTasks(State s, boolean success) {
-        guard(s.preview().store().tenantNo());
-        for (var t : s.preview().pendingTasks())
-            changed(
-                    jdbc.update(
-                            "UPDATE mall_fulfillment_task SET"
-                                + " status=?,dispatch_state=?,version=version+1,updated_at=UTC_TIMESTAMP(3)"
-                                + " WHERE tenant_no=? AND order_no=? AND task_no=? AND"
-                                + " request_hash=? AND status='FROZEN' AND"
-                                + " dispatch_state='REFUND_FROZEN'",
-                            success ? "CANCELLED" : "PENDING",
-                            success ? "REFUND_CANCELLED" : "LOCAL_PENDING",
-                            s.preview().store().tenantNo(),
-                            s.preview().orderNo(),
-                            t.taskNo(),
-                            t.requestHash()));
+        transitionTasks(s, false, success);
         if (success)
             for (String c :
                     s.preview().pendingTasks().stream()
@@ -273,7 +297,7 @@ public final class JdbcRefundRepository implements RefundRepository {
 
     public Optional<ReviewQuote> reviewQuote(String tenant, String refundNo, String reviewNo) {
         guard(tenant);
-        String raw = jdbc.queryForObject("SELECT review_quotes_snapshot FROM mall_refund WHERE tenant_no=? AND refund_no=? FOR UPDATE", String.class, tenant, refundNo);
+        String raw = jdbc.queryForObject("SELECT " + quoteColumn + " FROM mall_refund WHERE tenant_no=? AND refund_no=? FOR UPDATE", String.class, tenant, refundNo);
         return raw == null ? Optional.empty() : Arrays.stream(decode(raw, ReviewQuote[].class))
                 .filter(q -> reviewNo.equals(q.reviewQuoteNo())).findFirst();
     }
@@ -284,18 +308,30 @@ public final class JdbcRefundRepository implements RefundRepository {
         var state = find(p.store().tenantNo(), p.refundNo()).orElseThrow();
         if (!"REQUESTED".equals(state.status()) || !state.requestDigest().equals(quote.requestDigest()))
             throw new MallException("VERSION_CONFLICT");
-        String raw = jdbc.queryForObject("SELECT review_quotes_snapshot FROM mall_refund WHERE tenant_no=? AND refund_no=? FOR UPDATE", String.class, p.store().tenantNo(), p.refundNo());
+        String raw = jdbc.queryForObject("SELECT " + quoteColumn + " FROM mall_refund WHERE tenant_no=? AND refund_no=? FOR UPDATE", String.class, p.store().tenantNo(), p.refundNo());
         var quotes = new ArrayList<ReviewQuote>(raw == null ? List.of() : Arrays.asList(decode(raw, ReviewQuote[].class)));
         if (quotes.stream().anyMatch(q -> q.reviewQuoteNo().equals(quote.reviewQuoteNo())))
             throw new MallException("IDEMPOTENCY_CONFLICT");
         quotes.add(quote);
-        changed(jdbc.update("UPDATE mall_refund SET review_quotes_snapshot=?,version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE tenant_no=? AND refund_no=? AND status='REQUESTED'", encode(quotes), p.store().tenantNo(), p.refundNo()));
+        changed(jdbc.update("UPDATE mall_refund SET " + (mallDatabase
+                ? "command_snapshot=JSON_SET(command_snapshot,'$.quotes',CAST(? AS JSON))"
+                : "review_quotes_snapshot=?") + ",version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE tenant_no=? AND refund_no=? AND status='REQUESTED'", encode(quotes), p.store().tenantNo(), p.refundNo()));
     }
 
     public void create(State s) {
         var p = s.preview();
         guard(p.store().tenantNo());
-        jdbc.update(
+        if (mallDatabase) {
+            jdbc.update("""
+                    INSERT INTO mall_refund
+                      (tenant_no,created_at,updated_at,created_by,updated_by,version,deleted,refund_no,order_no,store_no,
+                       refund_channel,reason,policy_snapshot,requested_cash_minor,approved_cash_minor,restore_credit_minor,
+                       status,reviewed_at,command_snapshot)
+                    VALUES (?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?,0,0,?,?,?,'ORIGINAL',?,?,?,?,?,?,?,CAST(? AS JSON))
+                    """, p.store().tenantNo(), p.buyerNo(), p.buyerNo(), p.refundNo(), p.orderNo(),
+                    p.store().storeNo(), s.reviewEvidence() == null ? "preview" : s.reviewEvidence(), encode(p),
+                    p.cashLimit(), s.approvedCash(), s.restoredCredit(), s.status(), s.reviewedAt(), decision(s));
+        } else jdbc.update(
                 "INSERT INTO"
                     + " mall_refund(tenant_no,created_at,updated_at,created_by,updated_by,version,deleted,refund_no,order_no,store_no,reason,policy_snapshot,requested_cash_minor,approved_cash_minor,restore_credit_minor,status,idempotency_key,reviewed_by,reviewed_at,command_snapshot,review_evidence)"
                     + " VALUES"
@@ -331,11 +367,38 @@ public final class JdbcRefundRepository implements RefundRepository {
                     encode(source));
     }
 
+    private String decision(State state) {
+        var fields = new LinkedHashMap<String, Object>();
+        if (state.reviewer() != null) {
+            fields.put("reviewer", state.reviewer());
+            fields.put("evidence", state.reviewEvidence());
+        }
+        if (state.command() != null) fields.put("payment", state.command());
+        return encode(fields);
+    }
+
     public void save(State s) {
+        save(s, null);
+    }
+
+    @Override
+    public void save(State s, String approvalNo) {
         var p = s.preview();
         guard(p.store().tenantNo());
         var before = find(p.store().tenantNo(), p.refundNo()).orElseThrow();
-        changed(
+        if (mallDatabase) {
+            changed(jdbc.update("""
+                    UPDATE mall_refund SET status=?,approved_review_quote_no=?,approved_cash_minor=?,restore_credit_minor=?,
+                        review_no=COALESCE(review_no,?),
+                        reviewed_at=COALESCE(reviewed_at,?), reason=IF(? IS NULL,?,reason),
+                        command_snapshot=JSON_MERGE_PATCH(command_snapshot,CAST(? AS JSON)),
+                        verified_fact_snapshot=?,pay_refund_no=?,version=version+1,updated_at=UTC_TIMESTAMP(3)
+                    WHERE tenant_no=? AND refund_no=?
+                    """, s.status(), s.reviewQuoteNo(), s.approvedCash(), s.restoredCredit(), approvalNo, s.reviewedAt(),
+                    s.reviewer(), s.reviewEvidence() == null ? "preview" : s.reviewEvidence(), decision(s),
+                    encode(s.fact()), s.fact() == null ? null : s.fact().providerRefundNo(), p.store().tenantNo(),
+                    p.refundNo()));
+        } else changed(
                 jdbc.update(
                         "UPDATE mall_refund SET"
                             + " status=?,approved_review_quote_no=?,approved_cash_minor=?,restore_credit_minor=?,reviewed_by=?,reviewed_at=IF(?"

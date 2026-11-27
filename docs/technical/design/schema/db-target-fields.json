@@ -9702,6 +9702,82 @@
 "业务单号 索引"
 ]
 },
+"mall_catalog_change": {
+"fields": [
+[
+"tenant_no",
+"varchar(32)",
+"租户号",
+"新增"
+],
+[
+"change_no",
+"varchar(64)",
+"本次业务变更编号",
+"新增"
+],
+[
+"aggregate_kind",
+"varchar(64)",
+"对象类型",
+"新增"
+],
+[
+"aggregate_no",
+"varchar(64)",
+"对象业务编号",
+"新增"
+],
+[
+"change_type",
+"varchar(64)",
+"编辑或发布动作",
+"新增"
+],
+[
+"detail",
+"json",
+"操作人、原因、前后版本及发布的版本编号",
+"新增"
+],
+[
+"occurred_at",
+"datetime(3)",
+"操作发生时间",
+"新增"
+],
+[
+"catalog_version",
+"bigint",
+"行业发布的目标目录版本，其他操作留空",
+"新增"
+],
+[
+"publication_command",
+"json",
+"原行业发布请求",
+"新增"
+],
+[
+"publication_result",
+"json",
+"行业发布或 SKU 发布生成的业务结果",
+"新增"
+],
+[
+"dictionary_pending",
+"boolean",
+"商城已提交且字典版本待确认",
+"新增"
+]
+],
+"keys": [
+"租户 + 变更编号唯一",
+"租户 + 对象类型 + 对象编号 + 目录版本唯一",
+"租户 + 待确认标识 + 主键索引"
+],
+"remark": "发布业务记录与商城变更同事务写入。基础能力库按原目录版本推进字典版本并记录发布编号，商城核对字典后置为已确认。本表使用发生时间和业务详情中的操作人，保留原始变更内容。"
+},
 "mall_category": {
 "fields": [
 [
@@ -9861,13 +9937,13 @@
 [
 "order_no",
 "varchar(64)",
-"商城订单号",
+"商城订单号；仅按门店归属的端开通任务可空",
 "原有"
 ],
 [
 "order_component_no",
 "varchar(64)",
-"对应的订单组成项编号",
+"订单组成项号；独立端开通任务可空",
 "原有"
 ],
 [
@@ -9879,13 +9955,13 @@
 [
 "task_type",
 "varchar(16)",
-"任务类型：OPEN_SUBSCRIPTION 开通订阅、SHIP_HARDWARE 发硬件",
+"DIGITAL 交付订阅来源，END_ACTIVATION 应用门店端排期，RESERVE、RELEASE、SHIP 对应库存动作",
 "原有"
 ],
 [
 "status",
 "varchar(16)",
-"状态：PENDING 待执行、RUNNING 执行中、DONE 完成、FAILED 失败待人工",
+"端开通任务 PENDING 待开通、DONE 已完成。数字交付另有 SUCCEEDED、FROZEN、CANCELLED，库存任务记录库存回执状态",
 "原有"
 ],
 [
@@ -9915,7 +9991,7 @@
 [
 "request_snapshot",
 "json",
-"履约请求内容快照",
+"数字交付为订单组成项快照；库存动作为 Operation；端开通为门店、权益、端与客户端、来源操作号、版本、生效时刻、撤回来源及目标开通段",
 "原有"
 ],
 [
@@ -9926,11 +10002,12 @@
 ]
 ],
 "keys": [
-"租户 + 任务编号唯一",
-"租户 + 订单组成项 + 份序号唯一",
-"租户 + 状态 + 下次重试时间 索引"
+"租户 + 任务号唯一",
+"租户 + 订单组成项 + 份序号 + 任务类型唯一",
+"租户 + 订单 + 主键索引",
+"任务类型 + 状态 + 下次重试时间 + 主键索引"
 ],
-"remark": "去掉 lease_until（任务抢占锁）、request_hash、dispatch_state（技术件）；attempt_count/next_retry_at 也偏技术，若有统一任务调度可再去掉。"
+"remark": "商城购买事务提交端开通任务。平台开通成功后商城标记 DONE，恢复作业按门店顺序补办 PENDING 任务。"
 },
 "mall_offline_evidence": {
 "fields": [
@@ -10054,12 +10131,12 @@
 [
 "review_no",
 "varchar(64)",
-"审核服务里的审核单号",
+"审批门禁核对本次动作后返回的真实审批单号；直接核款留空",
 "新增"
 ],
 [
 "review_note",
-"varchar(500)",
+"varchar(1024)",
 "审核结论说明（给商户看的驳回原因等）",
 "并入自 mch_plan_purchase_claim"
 ],
@@ -10089,10 +10166,10 @@
 ]
 ],
 "keys": [
-"租户 + 订单号 + 记录编号唯一",
-"租户 + 状态 索引，用于运营待处理列表"
+"租户 + 订单号 + 记录类型 + 记录编号唯一",
+"租户 + 记录类型 + 状态 + 订单号 + 记录编号索引"
 ],
-"remark": "认领与处理动作合为一张，用 record_type 区分；旧 command_json/claim_snapshot 并入 action_snapshot。凭证文件在 mall_offline_evidence，旧 mch_plan_purchase_evidence 的提交人、用途属于每份凭证，写在凭证表上。"
+"remark": "认领与处理动作合为一张，用 record_type 区分；旧 command_json/claim_snapshot 并入 action_snapshot。凭证文件在 mall_offline_evidence，旧 mch_plan_purchase_evidence 的提交人、用途属于每份凭证，写在凭证表上。v2 独立库的这两张表由 `db/mall/offline/V1__offline_payment.sql` 建立。申报、核款、作废与补证沿用既有业务状态与申报内容快照，状态变更和凭证关联共用商城事务。财务订单列表只取 `stage=ORDERED` 的单据。"
 },
 "mall_order": {
 "fields": [
@@ -10281,14 +10358,46 @@
 "bigint",
 "关单时间",
 "原有"
+],
+[
+"ordered_at",
+"datetime(3)",
+"实际提交订单的时间，供财务排序与线下付款期限核算",
+"新增"
+],
+[
+"quote_context",
+"json",
+"冻结买方、账户与目录版本、支付精度以及订阅额度计算输入",
+"新增"
+],
+[
+"idempotency_owner",
+"varchar(128)",
+"买方或代买身份摘要",
+"下单幂等约束"
+],
+[
+"idempotency_key",
+"varchar(128)",
+"下单方的请求标识，报价时为空",
+"下单幂等约束"
+],
+[
+"request_hash",
+"varchar(128)",
+"下单请求的报价与收货地址摘要",
+"下单幂等约束"
 ]
 ],
 "keys": [
 "租户 + 订单号唯一",
 "租户 + 报价编号唯一",
-"租户 + 门店 + 支付状态 索引"
+"租户 + 下单方 + 幂等键唯一",
+"租户 + 门店 + 阶段 + 订单号索引",
+"阶段 + 报价失效时间 + id 索引"
 ],
-"remark": "去掉了 idempotency_key、request_hash（技术件）；报价行明细由 mall_order_item 承担，旧 line_snapshot/conversion_snapshot 不再整块保存，折算落 mch_subscription_conversion。旧报价的 account_version/credit_account_version 属并发校验，未搬，如需定格请放在 mch_subscription_reservation。mch_plan_purchase 的 payment_no 由 mall_payment_ref 承担。"
+"remark": "报价时分配订单、行和组成项编号，落单在同一事务内占用订阅账户、预留额度并把原单改为 ORDERED。`ordered_at` 记录实际下单时刻，供财务查询和线下付款期限使用；恢复任务分批标记到期报价。冻结行存在 mall_order_item，`quote_context` 保存下单时必须核对的账户和目录版本、历史额度批次、折算测算来源、价格精度及买方身份；实际折算记录由结算事务写入 mch_subscription_conversion。订单使用租户 + `idempotency_owner` + `idempotency_key` 唯一约束，`request_hash` 比较同一请求的报价与地址。代客下单按门店买方与运营发起人的组合隔离。商城表实现见 `db/mall/order/V1__mall_order.sql`。"
 },
 "mall_order_component": {
 "fields": [
@@ -10567,7 +10676,7 @@
 [
 "product_type",
 "varchar(16)",
-"商品类型：PLAN 套餐、HARDWARE 硬件、SERVICE 服务",
+"商品类型：PLAN 套餐、END_ACCESS 端权益、HARDWARE 硬件、BUNDLE 组合；可读取已有 SERVICE 服务",
 "原有"
 ],
 [
@@ -10689,7 +10798,7 @@
 [
 "status",
 "varchar(24)",
-"状态：REQUESTED 已申请、REVIEWING 审核中、APPROVED 已核准、REJECTED 已驳回、REFUNDING 退款中、REFUNDED 已退、FAILED 失败",
+"原路状态：PREVIEW 测算、REQUESTED 待审、DECLINED 审核驳回、APPROVED 已核准、DISPATCHING 已发起、UNKNOWN 结果待查、SUCCEEDED 已退、REJECTED 资金拒绝。独立线下退款：PREPARED、AWAITING_PAYOUT、PAYOUT_ACCEPTED、REFUNDED、REJECTED",
 "原有"
 ],
 [
@@ -10713,7 +10822,7 @@
 [
 "command_snapshot",
 "json",
-"发起退款时的申请内容快照",
+"原路退款冻结支付指令、业务核价及决定，线下出款命令与核验尝试保存在 offlinePayout",
 "原有"
 ],
 [
@@ -10726,9 +10835,10 @@
 "keys": [
 "租户 + 退款单号唯一",
 "租户 + 订单号 索引",
-"租户 + 支付退款单号唯一"
+"租户 + 支付退款单号唯一",
+"同一租户和支付单号最多一笔在途线下出款"
 ],
-"remark": "去掉 idempotency_key；审核过程（reviewed_by、review_evidence、review_quotes_snapshot）交给审核服务，本表只留 review_no 与结论。active_payment_no 与 payment_no 同义，只留一个。"
+"remark": "落库脚本为 `db/mall/refund/V1__mall_refund.sql`。租户和退款编号标识同一次申请。门禁按业务对象、请求内容和当前修订核对已放行审批，将审批服务返回的编号与业务决定同事务写入 review_no；直接审核留空。退款业务校验和恢复使用的核价单、审批人和最终意见作为操作快照写入 `command_snapshot`，与支付退款指令分开。线下退款在同一快照的 `offlinePayout` 中保存已受理的出款和每次核验结果。同一收款单同时只允许一笔未结束的出款，函数唯一索引按 `payment_no` 约束，终态释放占用。原路退款转线下出款时复用退款编号、订单与冻结支付指令，原退款进度和出款进度分别恢复。"
 },
 "mall_refund_item": {
 "fields": [
@@ -10783,13 +10893,13 @@
 [
 "rights_action",
 "varchar(24)",
-"权益处理：REVOKE 立即收回、SHORTEN 缩短周期、KEEP 保留",
+"权益处理：FREEZE_REMAINING 冻结未使用周期，按支付结果撤销或解冻",
 "原有"
 ],
 [
 "status",
 "varchar(24)",
-"状态：PENDING 待处理、DONE 已完成、FAILED 失败",
+"状态：随所属原路退款单推进，从 PREVIEW 到 SUCCEEDED、REJECTED 或 DECLINED",
 "原有"
 ],
 [
@@ -10822,12 +10932,6 @@
 "order_no",
 "varchar(64)",
 "商城订单号",
-"原有"
-],
-[
-"shipment_items",
-"json",
-"本次发出的硬件清单快照（组成项、硬件 SKU、数量、序列号）",
 "原有"
 ],
 [
@@ -10872,10 +10976,16 @@
 "租户 + 订单号 索引",
 "物流公司 + 物流单号 索引"
 ],
-"remark": "shipment_items 若要按序列号查设备或单件退回，应拆成发货明细表，清单中暂无。"
+"remark": "收货地址在订单建立时定格。实际发货按操作号建立 PENDING 发货单并占用序列号，收到库存成功回执后记 SHIPPED 和发货时刻。"
 },
 "mall_shipment_item": {
 "fields": [
+[
+"tenant_no",
+"varchar(32)",
+"与发货单、订单相同的租户号",
+"新增"
+],
 [
 "shipment_no",
 "varchar(64)",
@@ -10915,7 +11025,7 @@
 [
 "device_sn",
 "varchar(64)",
-"设备序列号；非硬件为空",
+"设备序列号，按数量发货时为空",
 "新增"
 ],
 [
@@ -10927,7 +11037,7 @@
 [
 "status",
 "varchar(16)",
-"状态：SHIPPED 已发出 / RECEIVED 已签收 / RETURNED 已退回",
+"PENDING 已占用待发货 / SHIPPED 已发出；接收及退回状态预留",
 "新增"
 ],
 [
@@ -10938,10 +11048,10 @@
 ]
 ],
 "keys": [
-"发货 + 第几件唯一",
-"设备序列号唯一"
+"租户 + 发货单号 + 行号唯一",
+"设备序列号全局唯一"
 ],
-"remark": "取代发货上原来那段发货明细的内容。终端激活、保修按序列号查这张表。"
+"remark": "每件有序列号的设备单独一行，数量为一；无序列号的硬件按本次数量一行登记。"
 },
 "mall_sku": {
 "fields": [
@@ -15147,8 +15257,8 @@
 ],
 [
 "store_no",
-"varchar(64)",
-"门店号",
+"varchar(32)",
+"平台门店业务号",
 "原有"
 ],
 [
@@ -15164,9 +15274,15 @@
 "原有"
 ],
 [
+"client_id",
+"varchar(128)",
+"开通时定格的端客户端，访问时与凭据请求核对",
+"新增"
+],
+[
 "entitlement_version",
 "bigint",
-"开通时依据的权益定义版本",
+"已应用的门店端权益版本，访问凭据带上该版本",
 "并入自 mch_end_schedule_event"
 ],
 [
@@ -15178,7 +15294,7 @@
 [
 "schedule_revision",
 "bigint",
-"门店该端时间表的版本号，每次调整递增",
+"首次写入该段时的门店权益版本",
 "原有"
 ],
 [
@@ -15190,7 +15306,7 @@
 [
 "schedule_event_no",
 "varchar(64)",
-"产生本段的时间表变更号",
+"产生该段的商城开通任务编号",
 "原有"
 ],
 [
@@ -15207,8 +15323,8 @@
 ],
 [
 "stacking_policy_version",
-"varchar(64)",
-"计算叠加时所用的叠加规则版本",
+"varchar(32)",
+"计算叠加时使用的规则版本",
 "并入自 mch_end_schedule_event"
 ],
 [
@@ -15238,17 +15354,17 @@
 [
 "reason",
 "varchar(512)",
-"原因说明文字",
+"撤销或替换时记录本次来源操作号",
 "原有"
 ]
 ],
 "keys": [
-"开通段号唯一",
-"门店 + 端 + 时间表版本 + 段序号唯一",
-"按来源操作号查询的索引",
-"门店 + 端 + 状态 + 起止时间查询索引"
+"租户 + 开通段号唯一",
+"租户 + 订阅期号 + 权益编码 + 时间表版本 + 段序号唯一",
+"租户 + 来源操作号索引",
+"租户 + 门店 + 权益编码 + 状态 + 起止时间索引"
 ],
-"remark": "改动前后的时间表快照（before/after/duration_check snapshot）归统一审计，不落本表。"
+"remark": "开通段与商城购买分两次提交。平台按门店加锁，整次替换同一版本的端排期。撤回来源的段保留撤销状态，只因顺延而被替换的段标记逻辑删除。"
 },
 "mch_store_fulfillment": {
 "fields": [
@@ -15449,7 +15565,7 @@
 "keys": [
 "租户 + 门店唯一"
 ],
-"remark": "legacy_contract_ref、migration_batch_no 只为迁移追溯，迁移完成后可清理。旧 mch_entity_plan 的 trial_used（一主体只试用一次）建议补在这里或主体级。"
+"remark": "legacy_contract_ref、migration_batch_no 用于门店订阅的迁移追溯。主体试用资格由商户域 mch_entity_plan.trial_used 按主体登记。"
 },
 "mch_subscription_conversion": {
 "fields": [
@@ -15528,7 +15644,7 @@
 [
 "status",
 "varchar(16)",
-"状态：PENDING 待生效、APPLIED 已生效、REVERSED 已冲回",
+"COMPLETED 表示已交付新周期并完成旧周期折算",
 "原有"
 ]
 ],
@@ -15713,8 +15829,9 @@
 ],
 "keys": [
 "租户 + 流水编号唯一",
-"租户 + 业务单据 + 流水类型 + 顺序唯一",
-"租户 + 门店 + 创建时间 索引"
+"租户 + 流水类型 + 业务单据 + 额度批次 + 顺序唯一",
+"租户 + 门店 + 创建时间索引",
+"租户 + 订单组成项索引"
 ]
 },
 "mch_subscription_credit_lot": {
@@ -15832,7 +15949,7 @@
 [
 "source_type",
 "varchar(24)",
-"来源：ORDER 购买、TRIAL 试用、PLATFORM_GRANT 平台赠送、MIGRATION 迁移、CONVERSION 折算",
+"FREE 建店初始免费来源、ORDER 商城订单组成项、GRANT 运营授予",
 "原有"
 ],
 [
@@ -15946,7 +16063,7 @@
 [
 "state",
 "varchar(24)",
-"状态：SCHEDULED 待生效、ACTIVE 生效中、GRACE 宽限期、EXPIRED 已到期、CONVERTED 已折算、REVOKED 已收回",
+"NORMAL 正常，FROZEN 退款冻结，REFUNDED 已退款，CONVERTED 已折算，REVOKED 已收回；起止时间决定是否在有效期内",
 "原有"
 ],
 [
@@ -15958,7 +16075,7 @@
 [
 "source_policy_snapshot",
 "json",
-"交付时定格的权益与退款规则",
+"policy 为规则版本，gift 标记赠送，ends 含权益 code 与端 end 的绑定",
 "原有"
 ],
 [
@@ -15975,9 +16092,10 @@
 ]
 ],
 "keys": [
-"租户 + 周期编号唯一",
-"租户 + 门店 + 周期串 + 实际开始时间 索引",
-"租户 + 来源单据编号 索引"
+"租户 + 周期号唯一",
+"租户 + 履约任务号唯一",
+"租户 + 来源类型 + 来源号 + 串键唯一",
+"租户 + 门店 + 串键 + 状态 + 实际起止索引"
 ]
 },
 "mch_subscription_reservation": {
@@ -16039,7 +16157,7 @@
 [
 "status",
 "varchar(24)",
-"状态：HELD 已锁定、CONSUMED 已付款转正、RELEASED 已释放",
+"RESERVED 已预留、CONSUMED 已付款转正、RELEASED 已释放",
 "原有"
 ],
 [
@@ -39933,7 +40051,7 @@
 [
 "attrs",
 "json",
-"按字典类型而异的属性：市场的币种与小数位、时区；渠道的适配器编码与平台凭据密钥编号 sec_key_id；产品的退款规则与交易模式；计量单位是否可拆分；授权码需要的证件类型；区划经纬度与是否村级等",
+"按字典类型而异的属性：BUSINESS_TYPE 的 TYPE 条目保存 plan_catalog_version（行业发布版本，与行 version 分开）、plan_catalog_publication_no（最近一次完成的发布号）、change_reason（最近一次类型维护原因）；市场的币种与小数位、时区；渠道的适配器编码与平台凭据密钥编号 sec_key_id；产品的退款规则与交易模式；计量单位是否可拆分；授权码需要的证件类型；区划经纬度与是否村级等",
 "新增"
 ],
 [
@@ -40526,7 +40644,7 @@
 [
 "tier_code",
 "varchar(16)",
-"档位编码：FREE 免费、PRO 专业、CHAIN 连锁",
+"档位编码：FREE、BASE、PRO、GROWTH、CHAIN；PAYMENT 行业使用 FREE、BASE",
 "原有"
 ],
 [
@@ -40551,25 +40669,25 @@
 "store_quota",
 "int",
 "本档可开门店数额度",
-"并入自 sys_merchant_plan_def"
+"行业套餐字段；主体档位由商户域保留"
 ],
 [
 "staff_quota",
 "int",
 "本档可建子账号数额度",
-"并入自 sys_merchant_plan_def"
+"行业套餐字段；主体档位由商户域保留"
 ],
 [
 "cross_store_stats",
 "tinyint",
 "是否有跨店总览与对比：1 有、0 无",
-"并入自 sys_merchant_plan_def"
+"行业套餐字段；主体档位由商户域保留"
 ],
 [
 "trial_days",
 "int",
 "可试用天数，0 为不可试用",
-"并入自 sys_merchant_plan_def"
+"行业套餐字段；主体档位由商户域保留"
 ],
 [
 "policy_version",
@@ -40627,11 +40745,11 @@
 ]
 ],
 "keys": [
-"租户 + plan 编号 + 版本编号唯一",
+"租户 + plan 编号 + 版本序号唯一",
 "租户 + 版本编号唯一",
-"租户 + 经营类型 + 档位 + 状态 索引，用于取当前生效版"
+"租户 + 经营类型 + 档位 + 状态 + 生效起点 索引，用于取当前生效版"
 ],
-"remark": "每行一版后原 current_version_no 去掉，当前版按状态与生效起止取。mch_entity_plan 是主体的订阅实例而非定义，其订阅状态、起止、授予来源应落在 mch_subscription_period；trial_used（一主体只试用一次）在本库目前没有归宿，需在订阅账户上补一个属性。mch_plan_offer 的 snapshot_json 结构不明，未搬。"
+"remark": "门店行业套餐当前版按状态与生效区间获取。主体套餐定义、报价及主体订阅实例保留在商户域，商城交易冻结购买时的报价与权益条件。"
 },
 "sys_media_asset": {
 "fields": [
@@ -41677,7 +41795,8 @@
 ]
 ],
 "keys": [
-"租户 + plan 版本编号 + 端编码唯一"
+"租户 + plan 版本编号 + 端编码唯一",
+"租户 + plan 版本编号 + 权益编码唯一"
 ]
 },
 "sys_role": {

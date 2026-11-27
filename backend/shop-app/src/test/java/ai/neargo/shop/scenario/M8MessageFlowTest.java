@@ -166,41 +166,22 @@ class M8MessageFlowTest {
     }
 
     @Test
-    @DisplayName("投递失败的事件保留在待发送队列，不会被标记为已发送")
-    void failedDeliveryStaysPending() throws Exception {
+    @DisplayName("通知提交后就到，发件箱投递不再调通知：通知失败拖不住它，重投也不重复发（ADR-067）")
+    void notificationIsNotHostageToOutbox() throws Exception {
         String token = login("18700127005");
         String orderNo = buyAndPay(token, "m8-fail");
+        assertThat(countOf(messages(token), "支付成功")).as("提交后已送达，不等发件箱").isEqualTo(1);
         var event = outbox.selectOne(Wrappers.<SysOutbox>lambdaQuery()
                 .eq(SysOutbox::getAggregateId, orderNo)
                 .eq(SysOutbox::getEventType, "ORDER_PAID"));
-        assertThat(event).isNotNull();
-        assertThat(event.getStatus()).isEqualTo(SysOutbox.PENDING);
+        assertThat(event).as("已支付还有必达消费者，照旧落发件箱").isNotNull();
         String eventNo = event.getEventNo();
-        doThrow(new IllegalStateException("M8 transient notification failure"))
-                .doCallRealMethod().when(notifications)
+        doThrow(new IllegalStateException("M8 transient notification failure")).when(notifications)
                 .consume(argThat(row -> eventNo.equals(row.getEventNo())));
         try {
-            // Scope delivery and assertions to this real payment event. Other tests may have
-            // unrelated failures still waiting for their backoff; they must not be discarded.
-            var failed = dispatcher.dispatchOne(event.getId());
-            assertThat(failed.sent()).isFalse();
-            assertThat(failed.retryAfter()).isNotNull();
-            assertThat(failed.retryAfter().toMillis()).isPositive();
-            var pending = outbox.selectById(event.getId());
-            assertThat(pending.getStatus()).isEqualTo(SysOutbox.PENDING);
-            assertThat(pending.getRetryCount()).isEqualTo(1);
-            assertThat(pending.getNextRetryAt()).isNotNull();
-            assertThat(pending.getSentAt()).isNull();
-            assertThat(pending.getLastError()).contains("M8 transient notification failure");
-            assertThat(countOf(messages(token), "支付成功")).isZero();
-
-            // Simulate the scheduled retry of the same event after its recorded backoff.
-            var retried = dispatcher.dispatchOne(event.getId());
-            assertThat(retried.sent()).isTrue();
-            assertThat(retried.retryAfter()).isNull();
+            var result = dispatcher.dispatchOne(event.getId());
+            assertThat(result.sent()).isTrue();
             assertThat(outbox.selectById(event.getId()).getStatus()).isEqualTo(SysOutbox.SENT);
-            assertThat(countOf(messages(token), "支付成功")).isEqualTo(1);
-            dispatcher.dispatchOne(event.getId());
             assertThat(countOf(messages(token), "支付成功")).isEqualTo(1);
         } finally {
             doCallRealMethod().when(notifications)

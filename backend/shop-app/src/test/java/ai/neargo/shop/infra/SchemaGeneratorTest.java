@@ -182,7 +182,7 @@ class SchemaGeneratorTest {
         try (var c = java.sql.DriverManager.getConnection("jdbc:h2:mem:occupation_projection_" + System.nanoTime() + ";MODE=MySQL", "sa", "")) {
             org.h2.tools.RunScript.execute(c, Files.newBufferedReader(root.resolve("backend/shop-app/src/test/resources/schema-test.sql")));
             var source = new org.springframework.jdbc.datasource.SingleConnectionDataSource(c, true);
-            var type = Class.forName("ai.neargo.shop.merchant.policy.ResourceOccupationSchemaVerifier");
+            var type = Class.forName("ai.neargo.shop.merchant.booking.policy.ResourceOccupationSchemaVerifier");
             var verifier = type.getConstructor(javax.sql.DataSource.class, String.class, String.class)
                     .newInstance(source, "flyway_schema_history", "");
             assertThat(type.getMethod("installation").invoke(verifier).toString()).isEqualTo("UNSUPPORTED");

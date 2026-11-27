@@ -101,14 +101,7 @@ public final class IndustryPublicationService {
     public PublicationResult publish(ActorContext a, IndustryPublicationCommand d) {
         if (d.operationNo() != null) code(d.operationNo(), 64);
         unique(d.candidateSkuVersionNos());
-        return s.write(
-                a,
-                "publish",
-                d.reason(),
-                "TYPE",
-                d.typeCode(),
-                "INDUSTRY_PUBLISHED",
-                d.operationNo(),
+        return s.publishIndustry(a, d,
                 state -> {
                     var type = require(state.types, d.typeCode());
                     expected(d.expectedCatalogVersion(), type.catalogVersion());

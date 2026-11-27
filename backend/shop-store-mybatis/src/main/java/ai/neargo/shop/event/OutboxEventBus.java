@@ -53,6 +53,49 @@ public class OutboxEventBus {
     @Autowired(required = false)
     public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
 
+    private AfterCommitNotifications notifications;
+
+    @Autowired(required = false)
+    public void setNotifications(AfterCommitNotifications notifications) { this.notifications = notifications; }
+
+    /** 用时才取，理由同 {@link #pumpProvider}：消费者里有依赖本类的。 */
+    private ObjectProvider<OutboxConsumer> consumers;
+
+    @Autowired(required = false)
+    public void setConsumers(ObjectProvider<OutboxConsumer> consumers) { this.consumers = consumers; }
+
+    /** 每个事件类型的走法；消费者集合启动后不变，算一次缓存。 */
+    private final java.util.Map<String, Route> routes = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** @param afterCommit 有通知类消费者 @param durable 有必达（发件箱）消费者 */
+    private record Route(boolean afterCommit, boolean durable) { }
+
+    /**
+     * 有通知类消费者就登记提交后通知；返回还要不要落发件箱。
+     * 只有通知类消费者时不落；没有任何消费者时照旧落（存档语义不变）。
+     */
+    private boolean persistAfterNotifying(String eventNo, DomainEvent event) {
+        if (notifications == null || consumers == null) {
+            return true;
+        }
+        Route route = route(event.eventType());
+        if (route.afterCommit()) {
+            notifications.publish(eventNo, event);
+        }
+        return route.durable() || !route.afterCommit();
+    }
+
+    private Route route(String eventType) {
+        return routes.computeIfAbsent(eventType, t -> {
+            boolean afterCommit = false, durable = false;
+            for (OutboxConsumer c : consumers.orderedStream().toList()) {
+                if (!c.supports(t)) continue;
+                if (c.afterCommitOnly()) afterCommit = true; else durable = true;
+            }
+            return new Route(afterCommit, durable);
+        });
+    }
+
     /** Only obsolete failed targets are skipped; successful and in-flight targets are preserved. */
     public void supersedeFailed(String aggregateType, String aggregateId, java.util.Set<String> handlers,
                                 String reason) {
@@ -67,6 +110,9 @@ public class OutboxEventBus {
     public void publish(String eventNo, DomainEvent event) {
         if (eventNo == null || eventNo.isBlank() || event == null) throw new IllegalArgumentException("event identity required");
         if (unified != null && unified.isMaintenance()) throw new IllegalStateException("Outbox maintenance");
+        if (!persistAfterNotifying(eventNo, event)) {
+            return;
+        }
         String payload = toJson(event);
         SysOutbox row = new SysOutbox();
         row.setEventNo(eventNo);
@@ -91,8 +137,15 @@ public class OutboxEventBus {
         }
     }
 
+    /**
+     * 唯一的发布入口（ADR-067）。按订阅者决定走法：有通知类消费者 → 提交后交给它们；
+     * 有必达消费者 → 落发件箱；只有通知类 → 不落发件箱；一个消费者都没有 → 照旧落库（存档语义不变）。
+     */
     public void publish(DomainEvent event) {
         if (unified != null && unified.isMaintenance()) { throw new IllegalStateException("Outbox maintenance"); }
+        if (!persistAfterNotifying(null, event)) {
+            return;
+        }
         if (unified != null && unified.enabled("PLATFORM")) {
             unified.publish("PLATFORM", event);
             return;

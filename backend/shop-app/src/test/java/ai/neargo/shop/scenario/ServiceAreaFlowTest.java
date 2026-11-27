@@ -729,7 +729,7 @@ class ServiceAreaFlowTest {
     private ai.neargo.shop.merchant.service.StoreAdminService storeAdmin;
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
 
     private static ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand areasCmd(String... communityNos) {
         return new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
@@ -804,9 +804,9 @@ class ServiceAreaFlowTest {
         String m = merchant("ONSITE");
         String a = store(m);
         // 这个夹具的主体没走真实激活（没有 ensureFreePlan 建的订阅行）—— 补一行，建店才过得了额度闸
-        var plan = new ai.neargo.shop.merchant.entity.MchEntityPlan();
+        var plan = new ai.neargo.shop.merchant.plan.entity.MchEntityPlan();
         plan.setEntityNo(m);
-        plan.setPlanCode(ai.neargo.shop.merchant.entity.MchEntityPlan.FREE);
+        plan.setPlanCode(ai.neargo.shop.merchant.plan.entity.MchEntityPlan.FREE);
         plan.setStatus("ACTIVE");
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> planMapper.insert(plan));
         ai.neargo.shop.support.TestPlan.grantQuota(planMapper, m, 3);

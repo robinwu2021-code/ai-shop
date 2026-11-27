@@ -372,6 +372,11 @@ public final class CommerceRefundService implements RefundFacade {
     }
 
     public RefundView approve(ActorContext actor, RefundApprovalCommand c) {
+        return approve(actor, c, null);
+    }
+
+    @Override
+    public RefundView approve(ActorContext actor, RefundApprovalCommand c, String approvalNo) {
         if (c == null
                 || !text(c.reviewEvidence())
                 || c.reviewEvidence().length() > 1024
@@ -431,7 +436,7 @@ public final class CommerceRefundService implements RefundFacade {
                                         actor.principalNo(),
                                         c.reviewEvidence());
                         refunds.freezeTasks(approved);
-                        refunds.save(approved);
+                        refunds.save(approved, approvalNo);
                         mall.transition(
                                 o,
                                 new OrderState.Axes(
@@ -481,13 +486,13 @@ public final class CommerceRefundService implements RefundFacade {
                     schedule.persistTransition(
                             subscriptions.lock(p.store()),
                             codes,
-                            "freeze-" + FactDigest.of(List.of(p.refundNo())).substring(0, 48),
+                            RefundSnapshot.freezeOperation(p.refundNo()),
                             Instant.ofEpochMilli(cut),
                             Set.of(),
                             history,
                             calculation,
                             actor.principalNo());
-                    refunds.save(approved);
+                    refunds.save(approved, approvalNo);
                     mall.transition(
                             o,
                             new OrderState.Axes(

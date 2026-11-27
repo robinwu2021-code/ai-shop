@@ -26,6 +26,15 @@ async function evidence(store: string, order: string, purpose: "PLATFORM_RECEIPT
 beforeEach(() => resetMall());
 
 describe("目录：草稿 → 发布", () => {
+  it("业务端保存沿用商城的作用域规则", async () => {
+    const draft = { code: "DEVEND", entitlementCode: "DEVEND_USE", name: "Dev end",
+      allowedBusinessTypes: ["RETAIL"], releaseStatus: "PLANNED" as const, saleEnabled: false,
+      bootstrapRequired: false, enabled: true, deploymentNo: null, expectedVersion: 0, reason: "test" };
+    expect(await reason(api.saveMallBusinessEnd({ ...draft, scope: "ENTITY" }))).toBe("INVALID_ARGUMENT");
+    expect(await reason(api.saveMallBusinessEnd({ ...draft, scope: "SYSTEM", saleEnabled: true }))).toBe("INVALID_ARGUMENT");
+    expect(await reason(api.saveMallBusinessEnd({ ...draft, scope: "SYSTEM", bootstrapRequired: true }))).toBe("INVALID_ARGUMENT");
+    expect((await api.saveMallBusinessEnd({ ...draft, scope: "SYSTEM" })).version).toBe(1);
+  });
   it("新建经营类型必须停用；乐观锁错版本 → VERSION_CONFLICT；同时生成门店初始化档和四档行业 Plan", async () => {
     expect(await reason(api.createMallBusinessType({ typeCode: "SALON", name: "美业", sortOrder: 3, enabled: true, expectedVersion: 0, reason: "r" })))
       .toBe("INVALID_ARGUMENT");
@@ -105,7 +114,7 @@ describe("目录：草稿 → 发布", () => {
     const sku = await api.saveMallSkuVersion("MP-FNB-PLAN", {
       skuNo: "SKU-FNB-GROWTH", skuVersionNo: null, title: "成长 30 天", price: { currency: "TWD", minor: "1200" },
       listPrice: { currency: "TWD", minor: "1200" }, allowedBusinessTypes: ["FNB"], maxPerOrder: 1, expectedVersion: 0,
-      components: [{ kind: "PLAN", planVersionNo: plan.GROWTH.draftVersionNo!, periodDays: 30, unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_PAYMENT" }],
+      components: [{ kind: "PLAN", planVersionNo: plan.GROWTH.draftVersionNo!, periodDays: 30, unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_FULFILLMENT" }],
       refundPolicy: { unusedDigital: "MANUAL_ONLY", usedDigital: "MANUAL_ONLY" }, reason: "设置售价",
     });
     const skuVersion = (await api.mallCatalog()).skuVersions!.find((row) => row.draft?.skuVersionNo === sku.draftVersionNo)!;
@@ -162,11 +171,13 @@ describe("目录：草稿 → 发布", () => {
   it("SKU：退款政策只认两种；发布后只读；停售不改已落单的快照", async () => {
     const base = { skuNo: "SKU-POS-HW-1", skuVersionNo: "SV-POS-HW-1-1", title: "收银机", listPrice: { currency: "TWD", minor: "1200000" },
       price: { currency: "TWD", minor: "990000" }, allowedBusinessTypes: ["RETAIL"],
-      components: [{ kind: "HARDWARE" as const, hardwareSkuNo: "HW-POS-01", unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_SHIPMENT" }],
+      components: [{ kind: "HARDWARE" as const, hardwareSkuNo: "HW-POS-01", unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_FULFILLMENT" }],
       maxPerOrder: 5, expectedVersion: 1, reason: "r" };
     expect(await reason(api.saveMallSkuVersion("MP-POS-HW", { ...base, refundPolicy: { unusedDigital: "AUTO" as never, usedDigital: "MANUAL_ONLY" } })))
       .toBe("INVALID_REFUND_POLICY");
-    const pub = await api.publishMallSkuVersion("SV-POS-HW-1-1", { operationNo: "OP-S", expectedVersion: 1, expectedSkuVersion: 1, reason: "上架" });
+    const edited = await api.saveMallSkuVersion("MP-POS-HW", { ...base, refundPolicy: { unusedDigital: "MANUAL_ONLY", usedDigital: "MANUAL_ONLY" } });
+    expect(edited.version).toBe(2);
+    const pub = await api.publishMallSkuVersion("SV-POS-HW-1-1", { operationNo: "OP-S", expectedVersion: edited.version, expectedSkuVersion: 1, reason: "上架" });
     expect(pub.publishedVersionNos).toEqual(["SV-POS-HW-1-1"]);
     expect(await reason(api.saveMallSkuVersion("MP-POS-HW", { ...base, expectedVersion: 2, refundPolicy: { unusedDigital: "MANUAL_ONLY", usedDigital: "MANUAL_ONLY" } })))
       .toBe("IMMUTABLE_VERSION");
@@ -379,7 +390,7 @@ describe("SKU 组件名称", () => {
       price: { currency: "TWD", minor: "100" }, allowedBusinessTypes: ["RETAIL"],
       refundPolicy: { unusedDigital: "MANUAL_ONLY", usedDigital: "MANUAL_ONLY" }, maxPerOrder: 1, expectedVersion: 0, reason: "r" };
     const hw = { componentNo: null, kind: "HARDWARE" as const, planVersionNo: null, entitlementCode: null, hardwareSkuNo: "HW-1",
-      periodDays: null, unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_SHIPMENT" };
+      periodDays: null, unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_FULFILLMENT" };
     expect(await reason(api.saveMallSkuVersion("MP-POS-HW", { ...base, components: [{ ...hw, title: " " }] }))).toBe("INVALID_ARGUMENT");
     expect(await reason(api.saveMallSkuVersion("MP-POS-HW", { ...base, components: [{ ...hw, title: "x".repeat(65) }] }))).toBe("INVALID_ARGUMENT");
     const r = await api.saveMallSkuVersion("MP-POS-HW", { ...base, components: [{ ...hw, title: "收银机" }, { ...hw, title: null }] });

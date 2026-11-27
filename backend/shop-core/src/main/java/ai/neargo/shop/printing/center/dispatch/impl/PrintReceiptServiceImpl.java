@@ -262,14 +262,6 @@ public class PrintReceiptServiceImpl implements PrintReceiptService {
                             transition.reason(),
                             null));
             if (!before.equals("COMPLETED") && job.getStatus().equals("COMPLETED")) {
-                events.publish(
-                        new PrintTaskCompleted(
-                                scope,
-                                job.getJobNo(),
-                                job.getRootJobNo(),
-                                PrintJobKind.valueOf(job.getJobKind()),
-                                evidence,
-                                instant(job.getConfirmedAt())));
                 if ("REPRINT".equals(job.getJobKind())) {
                     var root =
                             jobs.selectOne(

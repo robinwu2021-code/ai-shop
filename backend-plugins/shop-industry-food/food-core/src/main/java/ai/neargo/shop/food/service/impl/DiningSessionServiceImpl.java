@@ -4,8 +4,6 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
 import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled;
 import ai.neargo.shop.food.dto.DiningSessionTableVO;
@@ -30,8 +28,6 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.TableResourceLocks;
 import ai.neargo.shop.food.service.DiningSessionService;
 import ai.neargo.shop.idem.IdempotencyService;
-import ai.neargo.shop.spi.food.DiningSessionChanged;
-import ai.neargo.shop.spi.food.TableChanged;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -67,17 +63,15 @@ public class DiningSessionServiceImpl implements DiningSessionService {
     private final GuestSessionMapper sessions;
     private final ActionLogMapper actions;
     private final IdempotencyService idem;
-    private final OutboxPublisher publisher;
     private final TransactionTemplate tx;
     private final TableResourceLocks locks;
     private static final SecureRandom RANDOM=new SecureRandom();
 
     public DiningSessionServiceImpl(TableAreaMapper areas,TableMapper tables,TableTokenMapper tokens,
             GuestSessionMapper sessions,ActionLogMapper actions,IdempotencyService idem,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.tables=tables;this.tokens=tokens;this.sessions=sessions;this.actions=actions;
-        this.idem=idem;this.publisher=publisher;this.locks=new TableResourceLocks(areas,tables);
+        this.idem=idem;this.locks=new TableResourceLocks(areas,tables);
         this.tx=new TransactionTemplate(manager);tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
     @Override public TableTokenVO rotateTableToken(String entity,String store,String table,String actor,
@@ -218,14 +212,10 @@ public class DiningSessionServiceImpl implements DiningSessionService {
     }
     private String tableEvent(FnbTable row,String actor,String action,String reason,TableVO before,String key) {
         String op=audit(row.getEntityNo(),row.getStoreNo(),"TABLE",row.getTableNo(),actor,action,reason,key);
-        publisher.publish(new TableChanged(row.getEntityNo(),row.getStoreNo(),row.getTableNo(),action,row.getVersion(),
-                op,before,view(row),reason),new PublishOptions("FOOD_TABLE:"+row.getTableNo(),1));
         return op;
     }
     private String sessionEvent(FnbGuestSession row,String actor,String action,String key) {
         String op=audit(row.getEntityNo(),row.getStoreNo(),"GUEST_SESSION",row.getSessionNo(),actor,action,null,key);
-        publisher.publish(new DiningSessionChanged(row.getEntityNo(),row.getStoreNo(),row.getTableNo(),
-                row.getSessionNo(),action,row.getVersion(),op),new PublishOptions("FOOD_GUEST_SESSION:"+row.getSessionNo(),1));
         return op;
     }
     private String audit(String entity,String store,String type,String object,String actor,String action,String reason,String key) {

@@ -19,6 +19,8 @@ import ai.neargo.commerce.persistence.JdbcSubscriptionRepository;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.common.ApiResponseWrapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
+import ai.neargo.shop.merchant.plan.mapper.PlanMappers.PlanDefMapper;
 import ai.neargo.shop.merchant.port.MerchantPortImpl;
 import ai.neargo.shop.merchant.service.*;
 import ai.neargo.shop.merchant.service.impl.MerchantServiceImpl;
@@ -75,7 +77,8 @@ class FoundationQueryMysqlTest {
                                     f.ds,
                                     new JdbcCommerceUnitOfWork(f.ds, f.manager),
                                     new JdbcCommerceEventPersistence(f.ds),
-                                    authority);
+                                    authority, services.getDefaultListableBeanFactory().getBeanProvider(ai.neargo.commerce.core.catalog.CatalogRepository.class),
+                                    services.getDefaultListableBeanFactory().getBeanProvider(ai.neargo.commerce.core.spi.SubscriptionRepository.class));
             var creation =
                     new MerchantStoreCreation(true, Optional.of(authority), Optional.of(facade));
             var entities = f.mybatis.getMapper(MchEntityMapper.class);
@@ -96,8 +99,9 @@ class FoundationQueryMysqlTest {
                             null,
                             null,
                             null,
-                            f.mybatis.getMapper(EntityPlanMapper.class),
-                            f.mybatis.getMapper(PlanDefMapper.class),
+                            new ai.neargo.shop.merchant.plan.impl.EntityPlanProvisionerImpl(
+                                    f.mybatis.getMapper(EntityPlanMapper.class),
+                                    f.mybatis.getMapper(PlanDefMapper.class)),
                             null,
                             null,
                             null,

@@ -41,3 +41,13 @@ it("keeps paged entity purchase errors visible instead of returning a mock empty
  const fetch=vi.fn().mockResolvedValue({ok:false,status:403,json:async()=>({code:10403,msg:"Forbidden"})});vi.stubGlobal("fetch",fetch);
  await expect(merchantHttp.entityPlanPurchasePage("E1")).rejects.toThrow();expect(fetch).toHaveBeenCalledTimes(1);
 });
+it("closes the original refund review against the inspected quota revision",async()=>{
+ const fetch=vi.fn().mockResolvedValue({ok:true,status:200,json:async()=>({code:0,data:{status:"REFUND_REVIEWED"}})});
+ vi.stubGlobal("fetch",fetch);
+ const command={refundNo:"R",quotaRevision:"42:3",reason:"Retain renewal"};
+ await merchantHttp.entityPlanRefundReview("E/1","O/1");
+ await merchantHttp.closeEntityPlanRefundReview("E/1","O/1",command);
+ expect(fetch.mock.calls[0][0]).toContain("/E%2F1/O%2F1/refund-review");
+ expect(fetch.mock.calls[1][0]).toBe(fetch.mock.calls[0][0]);
+ expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual(command);
+});
