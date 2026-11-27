@@ -291,7 +291,7 @@
 | 1a | 公共能力表访问守卫 | **已做（2026-11-27，1309e568a）**：`CommonTableAccessTest`，基线 `backend/known-common-table-access.txt` 200 条、只准变短；后续各项让基线变短 | 小 |
 | 1b | 字典收敛 | **已做（2026-11-27，10ead5ef7）**：`spi.dict.DictionaryPort` 一个端口，唯一实现 `DictionaryPortImpl` 按类型汇集三个来源；行业实为两个概念（经营类型树、进件行业），`cim_provider` 是销售渠道方、不并；三个旧端口方法与四处渠道常量别名删掉，见下方“1b 字典” | 中 |
 | 1c | 设置收敛 | **已做（2026-11-27，77d04fc9c）**：结算、提现改经 `SettingPort` 读写 `sys_setting`，删 `PaySettingService`/`PaySetting`；pay-svc 桩清单加回 `SettingPort`。`pay_setting` 不再读写、未删表；上线前查生产 `sys_setting` 有无 V285 前的四个旧键 | 小 |
-| 1d | 发号仓储 | 仓储去掉按归属（CORE/PAY）切表；三种按范围计数收进 `DocumentNumberService` | 中 |
+| 1d | 发号仓储 | **已做（2026-11-27，44d906f85）**：仓储不再按归属切表，CORE/PAY 共用 `sys_sequence` + `core_document_number`（支付数据源与主库同一个库，只分事务，所以不跨库）；订单号段 `SeqSegmentSource` 改调仓储 `claimSegment`，删第二份 `SeqMapper` 与 `SysSequence`。**新增迁移 V706**（见下）。「三种按范围计数」逐个核过，只有订单号段是重复的发号，已收；另三处不属发号：`ord_points_source_counter`（积分来源事实的流序号，属事件组）、`mkt_counter_campaign_fence`（营销活动并发围栏，靠同事务行锁，不能挪进独立事务的发号）、`pay_sequence` / `pay_checkout_display_revision`（本仓库没有读写代码，只在库里） | 中 |
 | 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准）。**暂停（2026-11-27）**：门店审核已走 `ApprovalPort`；支付两人复核可并入但与 OpsKit“可本人审批”冲突；储值活动审批与改价是商户侧审批，`ApprovalPort` 承载不了。方案与步骤见下方“1e 审批”，等 §3 Q12–Q14 | 中 |
 | 1f | 撤中转 | **已做（2026-11-27，69b2bedd8）**：PAY 权益中转、NearPay 接收端、进销存回写按原事件号经 `OutboxEventBus.forward` 直发中间件；餐饮包装含路由决定未删，见下方“1f 撤中转” | 中 |
 | 1g | 接口级防重迁移 | `sys_idempotent` / `IdempotencyService` 的 50 个使用文件按域分批改用统一防重，每批一提交。**已做（2026-11-27）**：Q11 定 A，统一端口 `RequestIdempotencyPort`；端口与主干 18e27062a、美业 2821a4f2f、餐饮 288d997c9、删转发器 260735a0b，做法见下方“1g” | 大 |
@@ -299,6 +299,10 @@
 | 1i | 审计提交后写 | **已做（2026-11-27，267f86839）**：`AuditLogPortImpl` 提交后在后台线程写 `sys_audit_log`，回滚不写、失败只记日志；只动统一审计，各域操作日志不动（D4 未定，不影响） | 小 |
 
 建议分组：会话甲 1a、1c、1i、1d；会话乙 1b、1e、1h；会话丙 1f、1g。
+
+**1d 的库表变更（V706，2026-11-27）**：`V706__merge_pay_document_numbers.sql` 把 `pay_document_sequence` 的游标并进 `sys_sequence`（同名时取较大值）、
+`pay_document_number` 的登记行并进 `core_document_number`。单据类型前缀在枚举里唯一，登记行不会撞键。旧两表不删、不再读写，删表另起迁移。
+上线即生效：V706 跑完、新代码起来之后，支付单据的历史号照常能查、新号接着旧游标往后发。已在本机 MySQL 9.7.4 临时库实跑；生产正式库 `pay_document_number` 94 行、`pay_document_sequence` 13 行（清单盘点数）。
 
 **第 2 阶段：等决定后做**
 
