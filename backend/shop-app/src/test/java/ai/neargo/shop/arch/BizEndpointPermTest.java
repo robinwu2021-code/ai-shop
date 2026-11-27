@@ -674,6 +674,7 @@ class BizEndpointPermTest {
                     put("/biz/activity-presets", BizPerms.CAMPAIGN);
                     put("/biz/card-product-presets", BizPerms.GOODS);
                     put("/biz/marketing-summary", BizPerms.CAMPAIGN);
+                    put("/biz/activities/{activityNo}/effect", BizPerms.CAMPAIGN);
                     put("/biz/activities/{activityNo}/publish", BizPerms.CAMPAIGN);
                     put("/biz/activities", BizPerms.CAMPAIGN);
                     put("/biz/activities/{activityNo}", BizPerms.CAMPAIGN);

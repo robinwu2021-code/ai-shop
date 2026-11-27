@@ -499,6 +499,7 @@ class CommerceAccessSecurityFlowTest {
                                     MemberTagService.class,
                                     MemberSegmentService.class,
                                     MemberReachService.class,
+                                    ScheduledReachService.class,
                                     MemberAudienceService.class,
                                     PlaceResolver.class,
                                     GeoPlaceMapper.class,
@@ -559,6 +560,7 @@ class CommerceAccessSecurityFlowTest {
                     b.registerSingleton("dataSource", f.ds);
                     b.registerSingleton("ownershipWrites", new StoreOwnershipWritePortImpl(f.jdbc));
                     b.registerSingleton("transactionManager", f.manager);
+                    b.registerAlias("transactionManager", "platformTxManager");
                     b.registerSingleton("uow", new JdbcCommerceUnitOfWork(f.ds, f.manager));
                     b.registerSingleton("resolver", resolver);
                     b.registerSingleton("verifier", sessions);
@@ -638,6 +640,7 @@ class CommerceAccessSecurityFlowTest {
                     b -> {
                         b.registerSingleton("dataSource", f.ds);
                         b.registerSingleton("transactionManager", f.manager);
+                        b.registerAlias("transactionManager", "platformTxManager");
                         b.registerSingleton("resolver", BizIdentityResolver.NONE);
                         b.registerSingleton("tokenStore", f.store);
                         b.registerSingleton("entities", entities);

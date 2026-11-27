@@ -31,7 +31,8 @@ import ai.neargo.shop.promotion.service.ActivityPricingService;
 import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.promotion.service.UnifiedOrderActivityPricingService;
 import ai.neargo.shop.spi.marketing.CampaignPort;
-import ai.neargo.shop.spi.marketing.PosActivityPort;
+import ai.neargo.shop.spi.marketing.PosActivityPort.Line;
+import ai.neargo.shop.spi.marketing.PosActivityPort.Use;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.pay.MarketPort;
 import ai.neargo.shop.promotion.service.MarketingEffectProjector;
@@ -59,7 +60,7 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 @Service
-public class ActivityPricingServiceImpl implements ActivityPricingService, PosActivityPort {
+public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @Autowired
     @Qualifier("sqlSessionFactory")
@@ -169,8 +170,6 @@ public class ActivityPricingServiceImpl implements ActivityPricingService, PosAc
     }
 
     private static BizException posUnavailable() { return BizException.of(ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE); }
-
-    @Override public void cancel(String orderNo) { release(orderNo); }
 
     private void currentCounterReads() {
         if (!TransactionSynchronizationManager.isActualTransactionActive()

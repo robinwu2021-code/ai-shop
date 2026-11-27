@@ -2,6 +2,9 @@ package ai.neargo.shop.promotion.service;
 
 import ai.neargo.shop.spi.marketing.CampaignPort;
 
+import ai.neargo.shop.spi.marketing.PosActivityPort.Line;
+import ai.neargo.shop.spi.marketing.PosActivityPort.Use;
+import java.util.Set;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +20,10 @@ import java.util.Map;
  * 所以路由那边按<b>同类取最优</b>合并（既有口径），而不是相加。
  */
 public interface ActivityPricingService {
+    Set<String> itemOffers(String tenant, List<String> activityNos);
+    Use apply(String tenant, String entity, String store, String orderNo, String subOrderNo,
+            String userNo, String currency, String activityNo, long expectedMinor, List<Line> lines);
+
     /**
      * Reject unsupported scoped offers without evaluating cashier or fabricated guest audiences.
      */

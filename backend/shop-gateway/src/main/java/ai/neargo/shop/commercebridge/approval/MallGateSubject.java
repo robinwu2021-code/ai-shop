@@ -1,5 +1,8 @@
 package ai.neargo.shop.commercebridge.approval;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import ai.neargo.shop.spi.approval.ApprovalApplyException;
 import ai.neargo.shop.spi.approval.ApprovalSubject;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -32,14 +35,14 @@ public abstract class MallGateSubject implements ApprovalSubject {
     private final JdbcTemplate platform;
     protected final boolean split;
 
-    @org.springframework.stereotype.Component
+    @Component
     static final class Databases {
         final JdbcTemplate mall;
         final JdbcTemplate platform;
         final boolean split;
 
         Databases(JdbcTemplate legacy, org.springframework.beans.factory.BeanFactory beans,
-                @org.springframework.beans.factory.annotation.Value("${shop.modules.mall.datasource:}") String mallName) {
+                @Value("${shop.modules.mall.datasource:}") String mallName) {
             split = !mallName.isBlank();
             mall = split ? new JdbcTemplate(beans.getBean(mallName + "DataSource", javax.sql.DataSource.class)) : legacy;
             platform = split ? new JdbcTemplate(beans.getBean("platformDataSource", javax.sql.DataSource.class)) : legacy;
