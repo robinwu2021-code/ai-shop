@@ -3,6 +3,11 @@ package ai.neargo.shop.event.broker;
 import ai.neargo.shop.event.DeliveryContext;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.outbox.DeliveryResult;
+import ai.neargo.shop.event.outbox.OutboxEnvelope;
+import ai.neargo.shop.event.outbox.OutboxHandler;
+import ai.neargo.shop.event.outbox.runtime.BrokerRelay;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.spi.pay.CallSources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +49,12 @@ public class BrokerSubscriptions implements SmartLifecycle {
     private final ObjectProvider<OutboxConsumer> consumers;
     private final BrokerProperties props;
     private final Environment env;
+    private static final String PLATFORM = "PLATFORM";
     private volatile boolean running;
+    private ObjectProvider<UnifiedOutboxFacade> unifiedFacades;
+
+    /** 统一投递模式的门面；旧模式下不用。 */
+    public void setUnifiedFacade(ObjectProvider<UnifiedOutboxFacade> facades) { this.unifiedFacades = facades; }
     private TransactionTemplate perMessage;
 
     /**
@@ -76,11 +86,7 @@ public class BrokerSubscriptions implements SmartLifecycle {
         if (broker == null) {
             return;
         }
-        if (!props.getOutboxEventTypes().isEmpty()
-                && "unified".equalsIgnoreCase(env.getProperty("shop.outbox.sources.platform.mode", "legacy"))) {
-            throw new IllegalStateException("shop.events.outbox-event-types 只支持旧投递模式；"
-                    + "shop.outbox.sources.platform.mode=unified 时两套投递会抢同一批事件");
-        }
+        boolean unified = "unified".equalsIgnoreCase(env.getProperty("shop.outbox.sources.platform.mode", "legacy"));
         int count = 0;
         Map<String, List<OutboxConsumer>> groups = new LinkedHashMap<>();
         Map<String, Set<String>> groupTypes = new LinkedHashMap<>();
@@ -93,6 +99,9 @@ public class BrokerSubscriptions implements SmartLifecycle {
                         handler(List.of(c), false));
                 count++;
                 continue;
+            }
+            if (unified) {
+                continue;   // 统一模式下必达消费者已包成门面里的处理者，按处理者订阅（见 subscribeUnified）
             }
             Set<String> relayed = new LinkedHashSet<>();
             for (String t : props.getOutboxEventTypes()) {
@@ -108,7 +117,60 @@ public class BrokerSubscriptions implements SmartLifecycle {
                     transactional(handler(g.getValue(), true)));
             count++;
         }
+        if (unified) {
+            count += subscribeUnified(broker);
+        }
         log.info("[events] 已登记 {} 个中间件订阅；发件箱改由中间件投递的类型：{}", count, props.getOutboxEventTypes());
+    }
+
+    /**
+     * 统一投递模式：门面里每个本地处理者一个保序订阅（按流键分区），并给门面装上中转，
+     * 让运行器把名单里的“事件 × 处理者”投递改发中间件、目标就是这个处理者（ADR-067）。
+     */
+    private int subscribeUnified(MessageBroker broker) {
+        if (props.getOutboxEventTypes().isEmpty()) {
+            return 0;
+        }
+        UnifiedOutboxFacade facade = unifiedFacades == null ? null : unifiedFacades.getIfAvailable();
+        if (facade == null || !facade.enabled(PLATFORM)) {
+            throw new IllegalStateException("统一投递模式下配置了 shop.events.outbox-event-types，但没有可用的 PLATFORM 发件箱门面");
+        }
+        int count = 0;
+        for (String id : facade.localHandlerIds(PLATFORM)) {
+            OutboxHandler handler = facade.handler(PLATFORM, id);
+            Set<String> relayed = new LinkedHashSet<>();
+            for (String t : props.getOutboxEventTypes()) {
+                if (handler.supports(t)) relayed.add(t);
+            }
+            if (!relayed.isEmpty()) {
+                broker.subscribe(new BrokerSubscription(id, relayed, true), unifiedHandler(handler));
+                count++;
+            }
+        }
+        facade.setRelay(new BrokerRelay() {
+            @Override public boolean relays(String eventType) { return props.relays(eventType); }
+            @Override public void publish(OutboxEnvelope envelope, String handlerId) {
+                broker.publish(BrokerMessage.of(envelope, handlerId));
+            }
+        });
+        return count;
+    }
+
+    /** 处理结果映射成中间件动作：成功/警告确认；永久失败直接死信；可重试/结果未知退回重投。 */
+    static Consumer<BrokerMessage> unifiedHandler(OutboxHandler handler) {
+        return message -> {
+            OutboxEnvelope envelope = message.toOutboxEnvelope();
+            DeliveryResult[] result = new DeliveryResult[1];
+            DeliveryContext.run(envelope.eventNo(), () -> result[0] = handler.handle(envelope));
+            DeliveryResult r = result[0];
+            switch (r == null ? DeliveryResult.Kind.OUTCOME_UNKNOWN : r.kind()) {
+                case SENT, WARNING -> { }
+                case PERMANENT -> throw new BrokerDeadLetterException(handler.handlerId() + " 永久失败："
+                        + r.errorCode() + " " + r.detail());
+                default -> throw new IllegalStateException(handler.handlerId() + " 暂时失败，退回重投："
+                        + (r == null ? "null" : r.kind() + " " + r.errorCode()));
+            }
+        };
     }
 
     private Consumer<BrokerMessage> transactional(Consumer<BrokerMessage> handler) {

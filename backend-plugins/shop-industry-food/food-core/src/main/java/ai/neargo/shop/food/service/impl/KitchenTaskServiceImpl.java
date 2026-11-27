@@ -56,7 +56,7 @@ import ai.neargo.shop.food.policy.StationPublicationDocuments;
 import ai.neargo.shop.food.service.FoodStationRuntimeService;
 import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.service.ServiceSlotService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
@@ -105,7 +105,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
     private final ServiceEventMapper events;
     private final CourseMapper courses;
     private final CheckMapper checks;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final OutboxPublisher outbox;
     private final ObjectMapper json;
     private final TransactionTemplate write;
@@ -155,7 +155,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
             ServiceEventMapper events,
             CourseMapper courses,
             CheckMapper checks,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager,
             OutboxPublisher outbox) {
@@ -187,7 +187,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
             ServiceEventMapper events,
             CourseMapper courses,
             CheckMapper checks,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager,
             OutboxPublisher outbox,

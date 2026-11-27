@@ -185,6 +185,11 @@ class OpsKitApprovalFlowTest {
             assertThat(OpsKitProcessRegistrar.defaultTemplate(new LeveledSubject(level), 10).get("rules"))
                     .isEqualTo(Map.of("selfApproval", true, "crossStepExclusive", false));
         }
+        var separated = new LeveledSubject(ApprovalSubject.Level.FUNDS) {
+            @Override public boolean separateApprovers() { return true; }
+        };
+        assertThat(OpsKitProcessRegistrar.defaultTemplate(separated, 10).get("rules"))
+                .isEqualTo(Map.of("selfApproval", false, "crossStepExclusive", true));
     }
 
     @Test
@@ -205,7 +210,7 @@ class OpsKitApprovalFlowTest {
     }
 
     /** 只改等级与复核人的替身。 */
-    static final class LeveledSubject implements ApprovalSubject {
+    static class LeveledSubject implements ApprovalSubject {
         private final Level level;
         LeveledSubject(Level level) { this.level = level; }
         @Override public String subjectType() { return TYPE; }

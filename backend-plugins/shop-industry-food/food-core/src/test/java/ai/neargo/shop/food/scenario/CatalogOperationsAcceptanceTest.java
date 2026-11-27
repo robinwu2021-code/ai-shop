@@ -13,7 +13,7 @@ import ai.neargo.shop.food.mapper.ReservationTableMapper;
 import ai.neargo.shop.food.service.*;
 import ai.neargo.shop.food.service.impl.*;
 import ai.neargo.shop.food.spi.QueueNotificationPort;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 import ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard;
 import java.math.BigDecimal;
@@ -83,17 +83,17 @@ class CatalogOperationsAcceptanceTest extends FoodWriteGuardFixture {
     }
     private ServiceSlotServiceImpl slots(AssertableApplicationContext c, Fixture f, Instant now) {
         return new ServiceSlotServiceImpl(new FoodBusinessOperationsMapper(f.source()),
-                c.getBean(IdempotencyService.class), Clock.fixed(now, ZoneOffset.UTC), json(c));
+                c.getBean(RequestIdempotencyPort.class), Clock.fixed(now, ZoneOffset.UTC), json(c));
     }
     private ReservationServiceImpl reservations(AssertableApplicationContext c) {
         return new ReservationServiceImpl(c.getBean(ReservationMapper.class), c.getBean(ReservationTableMapper.class),
                 c.getBean(TableAreaMapper.class), c.getBean(TableMapper.class), c.getBean(TableOccupancyMapper.class),
                 c.getBean(ActionLogMapper.class), mock(CheckService.class), c.getBean(StoreOperationService.class),
-                c.getBean(IdempotencyService.class), json(c), stores(), manager(c));
+                c.getBean(RequestIdempotencyPort.class), json(c), stores(), manager(c));
     }
     private TableServiceImpl guardedTables(AssertableApplicationContext c) {
         return new TableServiceImpl(c.getBean(TableAreaMapper.class), c.getBean(TableMapper.class), c.getBean(ActionLogMapper.class),
-                c.getBean(IdempotencyService.class), manager(c), c.getBean(ReservationTableMapper.class));
+                c.getBean(RequestIdempotencyPort.class), manager(c), c.getBean(ReservationTableMapper.class));
     }
     private TableVO table(AssertableApplicationContext c) {
         return c.getBean(TableService.class).createTable("E", "A", "actor",
@@ -198,7 +198,7 @@ class CatalogOperationsAcceptanceTest extends FoodWriteGuardFixture {
             var line = new OrderLineInput("line-1", "menu", "item", "revision", "goods", "sku", BigDecimal.ONE,
                     null, null, List.of(), List.of());
             var preorders = new ReservationPreorderServiceImpl(new FoodBusinessOperationsMapper(f.source()), manager(c),
-                    c.getBean(IdempotencyService.class), mock(CheckCartService.class, call -> { throw new AssertionError("Draft must not write cart"); }),
+                    c.getBean(RequestIdempotencyPort.class), mock(CheckCartService.class, call -> { throw new AssertionError("Draft must not write cart"); }),
                     mock(DiningOrderService.class, call -> { throw new AssertionError("Draft must not place order"); }), json(c),
                     Clock.fixed(request.startAt().minusSeconds(3600), ZoneOffset.UTC));
             String number = reservation.reservation().reservationNo();
@@ -224,7 +224,7 @@ class CatalogOperationsAcceptanceTest extends FoodWriteGuardFixture {
     private QueueServiceImpl queue(AssertableApplicationContext c, QueueNotificationServiceImpl notices) {
         var queue = new QueueServiceImpl(c.getBean(QueueTicketMapper.class), c.getBean(StorePolicyMapper.class),
                 c.getBean(ActionLogMapper.class), c.getBean(StoreOperationService.class), mock(CheckService.class), stores(),
-                c.getBean(IdempotencyService.class), json(c), manager(c));
+                c.getBean(RequestIdempotencyPort.class), json(c), manager(c));
         queue.setNotifications(notices); return queue;
     }
     private QueueNotificationServiceImpl notices(AssertableApplicationContext c, Fixture f, QueueNotificationPort provider, Instant now) {

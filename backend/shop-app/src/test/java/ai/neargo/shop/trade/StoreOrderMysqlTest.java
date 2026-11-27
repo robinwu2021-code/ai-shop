@@ -21,7 +21,7 @@ import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.OutboxPump;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.invoicebridge.InvoiceAutoIssueConsumer;
 import ai.neargo.shop.invoicebridge.port.SubOrderInvoiceSourcePortImpl;
 import ai.neargo.shop.numbering.DocumentNumberFormatter;
@@ -909,7 +909,7 @@ class StoreOrderMysqlTest {
                 InvoiceDataFillMapper fills, GoodsMapper goodsRows, SkuMapper skuRows, SkuPricingPolicyMapper policies,
                 PlatformTransactionManager tx, FakeInvoices invoices, StoreOrderSettlementService settlements) {
             var policyPort = new GoodsPricingPolicyPortImpl(new GoodsPricingPolicyServiceImpl(goodsRows, skuRows,
-                    policies, mock(IdempotencyService.class), tx));
+                    policies, mock(RequestIdempotencyPortImpl.class), tx));
             var goods = mock(GoodsQueryPort.class);
             when(goods.snapshot(anyList(), anyMap())).thenAnswer(inv -> {
                 var out = new java.util.HashMap<String, SkuSnapshot>();

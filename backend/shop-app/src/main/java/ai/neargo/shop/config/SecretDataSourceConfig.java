@@ -3,6 +3,7 @@ package ai.neargo.shop.config;
 import ai.neargo.secret.core.DatabaseKeyVault;
 import ai.neargo.secret.core.DefaultKeyRegistry;
 import ai.neargo.secret.core.DefaultSecretVault;
+import ai.neargo.secret.core.DigestCredentialVerifier;
 import ai.neargo.secret.core.InjectedMasterKeyProvider;
 import ai.neargo.secret.core.MasterKeyBook;
 import ai.neargo.secret.core.MasterKeyProvider;
@@ -177,6 +178,13 @@ public class SecretDataSourceConfig {
     @Bean
     DatabaseKeyVault secretKeyVault(SecretStoreMappers db, DefaultKeyRegistry registry, SecretSettings settings) {
         return new DatabaseKeyVault(db, registry, settings);
+    }
+
+    /** API Key 类凭据（运营接口密钥）：只存摘要的 DIGEST 档，不需要主密钥（TDD-基础能力库对齐 §2.2「1h 开放应用」） */
+    @Bean
+    DigestCredentialVerifier secretCredentialVerifier(SecretStoreMappers db, SecretSettings settings,
+                                                      @Qualifier("secretTxManager") PlatformTransactionManager tx) {
+        return new DigestCredentialVerifier(db, settings, tx);
     }
 
     @Bean

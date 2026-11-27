@@ -54,7 +54,7 @@ import ai.neargo.shop.food.policy.MenuDefinitionPolicy;
 import ai.neargo.shop.food.service.MenuService;
 import ai.neargo.shop.food.policy.MenuWorkingDefinitionAccess;
 import ai.neargo.shop.food.entity.FnbConfigRevision;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.food.MenuChanged;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -85,7 +85,7 @@ public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess
     private final MenuStoreMapper bindings;
     private final StorePolicyMapper policies;
     private final ActionLogMapper actions;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final Clock clock;
@@ -93,7 +93,7 @@ public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess
     private final TransactionTemplate read;
 
     public MenuServiceImpl(MenuMapper heads, MenuStoreMapper bindings, StorePolicyMapper policies,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, Clock clock, MenuScheduleMapper weeks,
             MenuExceptionMapper exceptions, MenuCompositionSource composition, MenuContextMapper contexts,
             MenuChannelBindingMapper channels, Supplier<MenuChannelAuthorityPort> channelAuthority) {
@@ -104,7 +104,7 @@ public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess
 
     /** Currency-aware wiring keeps legacy construction and original command semantics available. */
     public MenuServiceImpl(MenuMapper heads, MenuStoreMapper bindings, StorePolicyMapper policies,
-            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            ActionLogMapper actions, RequestIdempotencyPort idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, Clock clock, MenuScheduleMapper weeks,
             MenuExceptionMapper exceptions, MenuCompositionSource composition, MenuContextMapper contexts,
             MenuChannelBindingMapper channels, Supplier<MenuChannelAuthorityPort> channelAuthority,

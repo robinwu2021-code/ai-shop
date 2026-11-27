@@ -42,7 +42,7 @@ import ai.neargo.shop.food.service.CheckBusinessGuardService;
 import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.DiningIdentityService;
 import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -103,7 +103,7 @@ public class CheckCartServiceImpl implements CheckCartService, ai.neargo.shop.fo
     private final TableOccupancyMapper occupancies;
     private final TableResourceLocks resources;
     private final ActionLogMapper actions;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final CatalogService catalog;
     private final StoreCardQueryPort stores;
     private final ObjectMapper json;
@@ -121,7 +121,7 @@ public class CheckCartServiceImpl implements CheckCartService, ai.neargo.shop.fo
             TableAreaMapper areas,
             TableMapper tables,
             ActionLogMapper actions,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             CatalogService catalog,
             StoreCardQueryPort stores,
             ObjectMapper json,

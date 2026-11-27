@@ -1,6 +1,7 @@
 package ai.neargo.shop.event.broker;
 
 import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -17,8 +18,10 @@ public class EventBrokerConfiguration {
     BrokerSubscriptions brokerSubscriptions(ObjectProvider<MessageBroker> brokers,
                                             ObjectProvider<OutboxConsumer> consumers,
                                             BrokerProperties props, Environment env,
-                                            ObjectProvider<PlatformTransactionManager> transactions) {
+                                            ObjectProvider<PlatformTransactionManager> transactions,
+                                            ObjectProvider<UnifiedOutboxFacade> facades) {
         var subscriptions = new BrokerSubscriptions(brokers, consumers, props, env);
+        subscriptions.setUnifiedFacade(facades);
         // 与 OutboxDispatcher 同一个事务管理器（主库那个）
         subscriptions.setTransactionManager(transactions.getIfAvailable());
         return subscriptions;

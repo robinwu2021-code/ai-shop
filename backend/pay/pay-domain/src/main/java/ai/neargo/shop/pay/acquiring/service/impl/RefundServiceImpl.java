@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.acquiring.service.impl;
 
+import ai.neargo.shop.pay.acquiring.policy.RefundReviewRouting;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -28,6 +29,7 @@ import ai.neargo.shop.pay.service.RefundExecutionService;
 import ai.neargo.shop.pay.service.impl.RefundPaymentStore;
 import ai.neargo.shop.spi.settle.RefundRequest;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import java.util.Set;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -54,12 +56,14 @@ public class RefundServiceImpl implements RefundService {
     private final RefundPaymentStore store;
     private final TransactionTemplate tx;
     private final boolean reviewEnabled;
+    private final RefundReviewRouting reviewRouting;
 
     public RefundServiceImpl(CallerPolicy policy, PayOrderMapper orders, PayRefundMapper refunds,
                              RefundReviewRuleMapper rules, PaymentMapper attempts, ApprovalService approvals,
                              @Lazy RefundExecutionService executions, @Lazy RefundPaymentStore store,
                              @Qualifier("payTxManager") PlatformTransactionManager payTxManager,
-                             @Value("${shop.pay.refund.review:false}") boolean reviewEnabled) {
+                             @Value("${shop.pay.refund.review:false}") boolean reviewEnabled,
+                             RefundReviewRouting reviewRouting) {
         this.policy = policy;
         this.orders = orders;
         this.refunds = refunds;
@@ -70,6 +74,7 @@ public class RefundServiceImpl implements RefundService {
         this.store = store;
         this.tx = new TransactionTemplate(payTxManager);
         this.reviewEnabled = reviewEnabled;
+        this.reviewRouting = reviewRouting;
     }
 
     @Override
@@ -182,7 +187,7 @@ public class RefundServiceImpl implements RefundService {
         reserve.setId(o.getId());
         reserve.setReservedRefundMinor(nz(o.getReservedRefundMinor()) + amount);
         DataScopeContext.executeWithoutScope(() -> orders.updateById(reserve));
-        if (decision.review()) {
+        if (decision.review() && !reviewRouting.external()) {
             PayApproval a = approvals.open("REFUND", pr.getId(), pr.getPayRefundNo() + "|" + amount, amount,
                     o.getCurrency(), requestedBy);
             PayRefund link = new PayRefund();
@@ -242,15 +247,44 @@ public class RefundServiceImpl implements RefundService {
         switch (a.getStatus()) {
             case "PENDING_SECOND" -> status(pr, PayRefundStatus.PENDING_SECOND_REVIEW, null);
             case "APPROVED" -> status(pr, PayRefundStatus.APPROVED, null);
-            case "REJECTED" -> {
-                // 执行行判失败（售后侧据此知道没退成）—— 结果入口随之释放占用；之后退款单改记为驳回
-                store.reject(pr.getOutRefundNo(), "REFUND_REVIEW_REJECTED");
-                status(pr, PayRefundStatus.REJECTED, reason);
-            }
+            case "REJECTED" -> reject(pr, reason);
             default -> {
             }
         }
         return byId(pr.getId());
+    }
+
+    @Override
+    public PayRefund applyApproval(String payRefundNo, boolean approve, String reason) {
+        return tx.execute(s -> {
+            PayRefund pr = DataScopeContext.executeWithoutScope(() -> refunds.selectOne(Wrappers.<PayRefund>lambdaQuery()
+                    .eq(PayRefund::getPayRefundNo, payRefundNo)));
+            if (pr == null) {
+                throw BizException.of(ErrorCode.PAY_ORDER_NOT_FOUND);
+            }
+            PayRefundStatus now = PayRefundStatus.valueOf(pr.getStatus());
+            // 放行之后退款会往下走（已发渠道、成功、渠道失败），重投的放行都算已生效
+            boolean alreadyApplied = approve ? Set.of(PayRefundStatus.APPROVED, PayRefundStatus.DISPATCHED,
+                    PayRefundStatus.SUCCEEDED, PayRefundStatus.FAILED).contains(now) : now == PayRefundStatus.REJECTED;
+            if (alreadyApplied) {
+                return pr;
+            }
+            if (now != PayRefundStatus.PENDING_REVIEW && now != PayRefundStatus.PENDING_SECOND_REVIEW) {
+                throw BizException.of(ErrorCode.PAY_ORDER_STATE, pr.getStatus());
+            }
+            if (approve) {
+                status(pr, PayRefundStatus.APPROVED, null);
+            } else {
+                reject(pr, reason);
+            }
+            return byId(pr.getId());
+        });
+    }
+
+    /** 执行行判失败（售后侧据此知道没退成）—— 结果入口随之释放占用；之后退款单改记为驳回 */
+    private void reject(PayRefund pr, String reason) {
+        store.reject(pr.getOutRefundNo(), "REFUND_REVIEW_REJECTED");
+        status(pr, PayRefundStatus.REJECTED, reason);
     }
 
     private void status(PayRefund pr, PayRefundStatus to, String failedReason) {

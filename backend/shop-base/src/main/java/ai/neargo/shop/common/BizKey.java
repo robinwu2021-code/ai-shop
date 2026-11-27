@@ -45,6 +45,8 @@ public final class BizKey {
     public static final String STORED_VALUE_PLAN_VERSION = "SVNV";
     public static final String STORED_VALUE_RELEASE_LINK = "SVLK";
     public static final String STORED_VALUE_ACTIVITY_APPROVAL = "SVAP";
+    /** 轻量审批单（{@code sys_approval}）：店内、商户侧的快速审批 */
+    public static final String LIGHT_APPROVAL = "LAP";
     public static final String STORED_VALUE_ISSUE_POLICY = "SVIP";
     public static final String STORED_VALUE_POLICY_VERSION = "SVPV";
     public static final String STORED_VALUE_ISSUER = "SVI";

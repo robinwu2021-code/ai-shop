@@ -34,7 +34,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.OptionGroupService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.math.BigDecimal;
@@ -60,13 +60,13 @@ public class OptionGroupServiceImpl implements OptionGroupService {
     private final OptionGroupMapper groups;
     private final OptionGroupItemMapper items;
     private final ActionLogMapper actions;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final ObjectMapper json;
     private final TransactionTemplate writeTransaction;
     private final TransactionTemplate readTransaction;
 
     public OptionGroupServiceImpl(OptionGroupMapper groups, OptionGroupItemMapper items, ActionLogMapper actions,
-            IdempotencyService idempotency, ObjectMapper json,
+            RequestIdempotencyPort idempotency, ObjectMapper json,
             PlatformTransactionManager manager, DishMapper dishes, DishOptionGroupMapper bindings,
             ModifierMapper modifiers, GoodsCatalogQueryPort catalog, SpecValueCatalogQueryPort specs) {
         this(groups, items, actions, idempotency, json, manager, dishes, bindings, modifiers,
@@ -75,7 +75,7 @@ public class OptionGroupServiceImpl implements OptionGroupService {
 
     /** Currency-aware wiring keeps legacy construction and original command semantics available. */
     public OptionGroupServiceImpl(OptionGroupMapper groups, OptionGroupItemMapper items, ActionLogMapper actions,
-            IdempotencyService idempotency, ObjectMapper json,
+            RequestIdempotencyPort idempotency, ObjectMapper json,
             PlatformTransactionManager manager, DishMapper dishes, DishOptionGroupMapper bindings,
             ModifierMapper modifiers, GoodsCatalogQueryPort catalog, SpecValueCatalogQueryPort specs,
             CatalogCurrencyService currencies) {

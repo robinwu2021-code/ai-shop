@@ -83,4 +83,16 @@ public class SecKeyVersion extends SecBaseEntity {
 
     /** 只用于显示的前缀（AppSecret 的 sk_live_ / sk_test_）；不参与任何运算，不属于材料 */
     private String displayPrefix;
+
+    /** DIGEST 档（db/secret V3）：出示串的 SHA-256 小写十六进制 */
+    private String materialDigest;
+
+    /** DIGEST 档（db/secret V3）：namespace|owner_type|external_key_id，凭据号唯一 */
+    private String credentialKey;
+
+    /** DIGEST 档（db/secret V3）：凭据给人看的名字 */
+    private String label;
+
+    /** DIGEST 档（db/secret V3）：调用方模块定义的权限范围 */
+    private String scope;
 }

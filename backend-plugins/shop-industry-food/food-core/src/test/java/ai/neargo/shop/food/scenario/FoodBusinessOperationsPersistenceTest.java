@@ -18,7 +18,7 @@ import ai.neargo.shop.food.service.DiningReturnService;
 import ai.neargo.shop.food.service.QueueService;
 import ai.neargo.shop.food.service.impl.BusinessOperationsServiceImpl;
 import ai.neargo.shop.food.service.impl.ServiceSlotServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -121,14 +121,14 @@ public class FoodBusinessOperationsPersistenceTest {
         slots =
                 new ServiceSlotServiceImpl(
                         mapper,
-                        mock(IdempotencyService.class),
+                        mock(RequestIdempotencyPort.class),
                         Clock.fixed(Instant.parse("2026-10-24T00:00:00Z"), ZoneOffset.UTC),
                         json);
         ops =
                 new BusinessOperationsServiceImpl(
                         mapper,
                         manager,
-                        mock(IdempotencyService.class),
+                        mock(RequestIdempotencyPort.class),
                         json,
                         mock(DiningOrderService.class),
                         mock(DiningReturnService.class),

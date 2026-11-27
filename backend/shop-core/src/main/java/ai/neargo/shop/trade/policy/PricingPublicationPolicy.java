@@ -26,7 +26,7 @@ import ai.neargo.shop.common.pricing.PricingCapabilities;
 import ai.neargo.shop.common.pricing.PricingRuleCatalog;
 import ai.neargo.shop.common.pricing.PricingConfigCompiler;
 import ai.neargo.shop.common.pricing.SystemConstraints;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.trade.dto.PricingConfigCommands;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.Context;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.ResetReq;
@@ -64,7 +64,7 @@ public class PricingPublicationPolicy {
     private final PricingTemplateRevisionMapper templateRevisions;
     private final StorePricingConfigMapper stores;
     private final StorePricingRevisionMapper storeRevisions;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final TransactionTemplate transactions;
     private final ObjectMapper json;
     private final PricingConfigCompiler compiler = new PricingConfigCompiler();
@@ -72,7 +72,7 @@ public class PricingPublicationPolicy {
             .build();
 
     public PricingPublicationPolicy(PricingTemplateMapper templates, PricingTemplateRevisionMapper templateRevisions,
-            StorePricingConfigMapper stores, StorePricingRevisionMapper storeRevisions, IdempotencyService idempotency,
+            StorePricingConfigMapper stores, StorePricingRevisionMapper storeRevisions, RequestIdempotencyPort idempotency,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json) {
         this.templates = templates;

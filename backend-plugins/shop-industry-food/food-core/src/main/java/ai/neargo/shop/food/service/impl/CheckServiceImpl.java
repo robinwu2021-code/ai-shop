@@ -51,7 +51,7 @@ import ai.neargo.shop.food.policy.TableResourceLocks;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.StoreOperationService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.food.CheckChanged;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -111,7 +111,7 @@ public class CheckServiceImpl implements CheckService {
     private final GuestSessionMapper sessions;
     private final ActionLogMapper actions;
     private final StoreOperationService policies;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final OutboxPublisher publisher;
     private final ObjectMapper json;
     private final TransactionTemplate tx;
@@ -128,7 +128,7 @@ public class CheckServiceImpl implements CheckService {
             GuestSessionMapper sessions,
             ActionLogMapper actions,
             StoreOperationService policies,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
@@ -160,7 +160,7 @@ public class CheckServiceImpl implements CheckService {
             GuestSessionMapper sessions,
             ActionLogMapper actions,
             StoreOperationService policies,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,

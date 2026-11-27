@@ -51,6 +51,11 @@ public final class UnifiedOutboxFacade {
     }
     private final Map<BatchKey, Batch> batches = new ConcurrentHashMap<>();
     private volatile Consumer<String> wakeup = source -> { };
+    private volatile BrokerRelay relay;
+
+    /** 装上后，名单里的投递由运行器改发中间件（ADR-067）；{@code null} = 全部本地执行。 */
+    public void setRelay(BrokerRelay relay) { this.relay = relay; }
+    public BrokerRelay relay() { return relay; }
 
     public UnifiedOutboxFacade(ObjectMapper json) { this.json = json; }
 

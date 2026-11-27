@@ -15,7 +15,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuChannelBindingMapper;
 import ai.neargo.shop.food.service.impl.MenuChannelBindingServiceImpl;
 import ai.neargo.shop.food.spi.MenuChannelAuthorityPort;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
@@ -64,7 +64,7 @@ class MenuChannelBindingServiceTest extends FoodWriteGuardFixture {
             var service=new MenuChannelBindingServiceImpl(template.getMapper(MenuChannelBindingMapper.class),
                     template.getMapper(MenuMapper.class),template.getMapper(MenuStoreMapper.class),
                     FoodAuditFault.failAfterInsert(c.getBean(ActionLogMapper.class),fail::get,"after-binding-audit"),
-                    c.getBean(IdempotencyService.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class),() -> authority);
+                    c.getBean(RequestIdempotencyPort.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class),() -> authority);
             test.accept(new State(f,service,allow,fail,outage));
         });
     }

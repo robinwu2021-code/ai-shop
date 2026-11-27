@@ -1,6 +1,9 @@
 package ai.neargo.shop.event;
 
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.event.broker.BrokerMessage;
+import ai.neargo.shop.event.broker.BrokerProperties;
+import ai.neargo.shop.event.broker.MessageBroker;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import org.springframework.beans.factory.annotation.Autowired;
 import tools.jackson.databind.ObjectMapper;
@@ -63,6 +66,16 @@ public class OutboxEventBus {
 
     @Autowired(required = false)
     public void setConsumers(ObjectProvider<OutboxConsumer> consumers) { this.consumers = consumers; }
+
+    /** 配了消息中间件时，{@link #forward} 对名单里的类型直接发中间件。 */
+    private MessageBroker broker;
+    private BrokerProperties brokerProperties;
+
+    @Autowired(required = false)
+    public void setBroker(MessageBroker broker) { this.broker = broker; }
+
+    @Autowired(required = false)
+    public void setBrokerProperties(BrokerProperties brokerProperties) { this.brokerProperties = brokerProperties; }
 
     /** 每个事件类型的走法；消费者集合启动后不变，算一次缓存。 */
     private final java.util.Map<String, Route> routes = new java.util.concurrent.ConcurrentHashMap<>();
@@ -135,6 +148,23 @@ public class OutboxEventBus {
                 || !java.util.Objects.equals(existing.getPayload(), payload)) {
             throw new IllegalStateException("event number replay has different immutable facts: " + eventNo);
         }
+    }
+
+    /**
+     * 转发一条<b>源头已在自己库里持久化</b>的事件（源头有自己的发件箱、发不出会按原事件号重发），如 PAY 权益事件。
+     *
+     * <p>类型在中间件名单里：直接发中间件，确认即返回，不再落本库发件箱 —— 落了就是两个发件箱接力（清单 §〇 C 类“撤中转”）。
+     * 不在名单里（含 {@code transport=local}）：同 {@link #publish(String, DomainEvent)}，进程内投递仍要靠本库发件箱。
+     * 两条路都保留原事件号，下游按它幂等。中间件没确认就抛出，源头照它的退避重发。
+     */
+    public void forward(String eventNo, DomainEvent event) {
+        if (broker != null && brokerProperties != null && event != null && brokerProperties.relays(event.eventType())) {
+            if (eventNo == null || eventNo.isBlank()) throw new IllegalArgumentException("event identity required");
+            broker.publish(new BrokerMessage(eventNo, event.aggregateType(), event.aggregateId(), event.eventType(),
+                    toJson(event)));
+            return;
+        }
+        publish(eventNo, event);
     }
 
     /**

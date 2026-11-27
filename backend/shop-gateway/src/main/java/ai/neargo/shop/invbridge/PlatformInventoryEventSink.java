@@ -12,7 +12,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * 进销存事件的平台出口：转成平台的领域事件，写进 {@code sys_outbox}。
+ * 进销存事件的平台出口：库存库发件箱（{@code inv_outbox}）的中转在这里把事件按原事件号发出 ——
+ * 类型在中间件名单里直发中间件，否则写进 {@code sys_outbox}（{@link OutboxEventBus#forward}，清单 §〇 C3）。
  *
  * <h2>为什么要有它</h2>
  * {@link InventoryEventSink} 是本域留给装配方的 SPI，而<b>此前一个实现都没有</b>。
@@ -39,6 +40,9 @@ public class PlatformInventoryEventSink implements InventoryEventSink {
     /** 聚合类型：平台侧按它分流，进销存的事件统一挂这一个 */
     private static final String AGGREGATE = "INVENTORY";
 
+    /** 库存键与平台键都以 {@code EVT} 开头、格式相同，加命名空间免得在平台侧撞号 */
+    static final String EVENT_NO_PREFIX = "INV-";
+
     private final OutboxEventBus bus;
 
     public PlatformInventoryEventSink(OutboxEventBus bus) {
@@ -48,7 +52,7 @@ public class PlatformInventoryEventSink implements InventoryEventSink {
     /**
      * {@inheritDoc}
      *
-     * <p><b>返回 true 只表示「已经进了平台 outbox」，不表示送到了谁手上。</b>
+     * <p><b>返回 true 只表示「中间件已确认或已进了平台 outbox」，不表示送到了谁手上。</b>
      * 那正是 outbox 的语义：写库即算交付，之后的投递与重试是投递器的事。
      * 在这里等真正的下游确认，等于把两条链的事务绑在一起 ——
      * 而下游是谁、有没有人，本来就不该由进销存关心。
@@ -70,7 +74,8 @@ public class PlatformInventoryEventSink implements InventoryEventSink {
             return true;
         }
         try {
-            bus.publish(new InventoryDomainEvent(ownerId, eventType, payload));
+            // 沿用库存库发件箱的事件号：名单内类型直发中间件，否则落平台发件箱时按号去重（重投不再多出一条）
+            bus.forward(EVENT_NO_PREFIX + eventNo, new InventoryDomainEvent(ownerId, eventType, payload));
             return true;
         } catch (RuntimeException e) {
             // 返回 false 让它留在 inv_outbox 里重投 —— 别把异常吞掉当成功

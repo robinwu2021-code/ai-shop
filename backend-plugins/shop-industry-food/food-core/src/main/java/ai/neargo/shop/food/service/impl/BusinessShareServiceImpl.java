@@ -31,7 +31,7 @@ import ai.neargo.shop.food.policy.BusinessSharePolicy;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.BusinessShareService;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.trade.IndustryOrderPort;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Allocation;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Result;
@@ -94,7 +94,7 @@ public class BusinessShareServiceImpl implements BusinessShareService {
     private final OrderLineMapper lines;
     private final CoreOrderBindingMapper bindings;
     private final CoreLineAllocationMapper allocations;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final TransactionTemplate write;
 
@@ -105,7 +105,7 @@ public class BusinessShareServiceImpl implements BusinessShareService {
             OrderLineMapper lines,
             CoreOrderBindingMapper bindings,
             CoreLineAllocationMapper allocations,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager) {
         this.plans = plans;

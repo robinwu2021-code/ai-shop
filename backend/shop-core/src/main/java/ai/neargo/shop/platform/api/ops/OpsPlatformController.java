@@ -1,5 +1,6 @@
 package ai.neargo.shop.platform.api.ops;
 
+import ai.neargo.shop.platform.AuditLogService;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.platform.IndustryService;
 import ai.neargo.shop.platform.OpsService;
@@ -41,14 +42,17 @@ import java.util.List;
 public class OpsPlatformController {
 
     private final OpsService opsService;
+    private final AuditLogService auditLogService;
 
     private final ai.neargo.shop.auth.LoginAuditor auditor;
     private final IndustryService industryService;
     private final ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService;
 
     public OpsPlatformController(OpsService opsService, IndustryService industryService,
-                                 ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService, ai.neargo.shop.auth.LoginAuditor auditor) {
+                                 ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService, ai.neargo.shop.auth.LoginAuditor auditor,
+                                 AuditLogService auditLogService) {
         this.opsService = opsService;
+        this.auditLogService = auditLogService;
         this.auditor = auditor;
         this.industryService = industryService;
         this.serviceScopeAdminService = serviceScopeAdminService;
@@ -279,7 +283,7 @@ public class OpsPlatformController {
                                            @RequestParam(required = false) Boolean critical,
                                            @RequestParam(defaultValue = "1") long page,
                                            @RequestParam(defaultValue = "20") long size) {
-        return opsService.auditLogs(target, keyword, critical, page, size);
+        return auditLogService.page(target, keyword, critical, page, size);
     }
 
     @GetMapping("/ops/merchant/apply")

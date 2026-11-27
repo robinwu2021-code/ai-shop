@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.port;
 
+import ai.neargo.shop.spi.dict.DictionaryPort;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.shop.common.Fulfillments;
@@ -15,6 +16,7 @@ import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.PayChannels;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
@@ -1049,7 +1051,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      *
      * <p>顺序：门店显式绑定的号 → 本店专属号 → 默认门店绑定的号 → 主体级号；同档按建档先后（id 升序），
      * 不取决于数据库返回顺序。别家门店的专属号永不参与。渠道为真实通道时只在同渠道里找；
-     * {@link #CHANNEL_FREE_PAY_CHANNELS} 与空渠道不按渠道过滤。
+     * {@link PayChannels#NO_CHANNEL_ACCOUNT} 与空渠道不按渠道过滤。
      *
      * @param activeOnly 结算取号只认 ACTIVE；能力 / 额度沿用原口径，不限状态（审核中的号也有它的支付方式与额度）
      */
@@ -1074,7 +1076,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     /** 旧解析本体，不看读切 */
     private Optional<MchPaymentMerchant> legacyAccountOf(String merchantNo, String storeNo, String channel,
                                                          boolean activeOnly) {
-        boolean anyChannel = channel == null || channel.isBlank() || CHANNEL_FREE_PAY_CHANNELS.contains(channel);
+        boolean anyChannel = channel == null || channel.isBlank() || PayChannels.NO_CHANNEL_ACCOUNT.contains(channel);
         String store = storeNo == null ? "" : storeNo;
         List<MchPaymentMerchant> candidates = DataScopeContext.executeWithoutScope(() ->
                         collectingMerchants.all(merchantNo))
@@ -1204,29 +1206,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return Optional.of(new StoreProfile(store.getStoreNo(), store.getEntityNo(), store.getName(),
                     store.getAddress(), market, store.getIndustryCode(), store.getSubIndustryCode()));
         });
-    }
-
-    private ai.neargo.shop.merchant.dictionary.DictionaryCatalog dictionary;
-
-    /** 行业表（V643）；setter 注入，不动构造函数 */
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setDictionary(ai.neargo.shop.merchant.dictionary.DictionaryCatalog dictionary) {
-        this.dictionary = dictionary;
-    }
-
-    @Override
-    public List<IndustryRow> industries() {
-        if (dictionary == null) {
-            return List.of();
-        }
-        return DataScopeContext.executeWithoutScope(dictionary::storeIndustries)
-                .stream()
-                .map(r -> new IndustryRow(r.getIndustryCode(),
-                        r.getSubIndustryCode() == null || r.getSubIndustryCode().isEmpty() ? null
-                                : r.getSubIndustryCode(),
-                        r.getBusinessTypeCode(), r.getNameZh(), r.getNameTw(), r.getNameEn(),
-                        r.getSort() == null ? 0 : r.getSort(), Integer.valueOf(1).equals(r.getEnabled())))
-                .toList();
     }
 
     @Override
@@ -1368,8 +1347,16 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         return activate(cmd, true);
     }
 
+    /** 经营类型与子行业读统一字典（TDD-基础能力库对齐 §2.3 1b）；setter 注入，不动构造函数 */
+    private DictionaryPort dictionary;
+
+    @Autowired
+    void setDictionary(DictionaryPort dictionary) {
+        this.dictionary = dictionary;
+    }
+
     @Override public void validateInitialStore(InitialStore store) {
-        var rows=industries();
+        var rows=dictionary.storeIndustries();
         var parent=rows.stream().filter(r->r.industryCode().equals(store.industryCode()) && r.subIndustryCode()==null)
                 .findFirst().orElseThrow(()->BizException.of(ErrorCode.BAD_REQUEST));
         var child=rows.stream().filter(r->r.industryCode().equals(store.industryCode()) && store.subIndustryCode().equals(r.subIndustryCode()))
@@ -2137,7 +2124,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      * 旧解析本就不按渠道过滤、也不对应任何收款号，照旧口径（{@code "*"} = 不问具体渠道的整体开关）。
      */
     private boolean readFromPay(String channel) {
-        if (channel == null || channel.isBlank() || CHANNEL_FREE_PAY_CHANNELS.contains(channel)) {
+        if (channel == null || channel.isBlank() || PayChannels.NO_CHANNEL_ACCOUNT.contains(channel)) {
             return false;
         }
         PayMerchantReadSwitch s = readSwitch.getIfAvailable();

@@ -9,7 +9,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 import ai.neargo.shop.merchant.dto.SaveScheduleRuleReq;
 import ai.neargo.shop.merchant.dto.ScheduleQuery;
@@ -53,7 +53,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleChangeLogMapper changes;
     private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents;
     private final ScheduleWindowsPort windows;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final ObjectMapper json;
     private final DataSource source;
     private final TransactionTemplate writes;
@@ -62,7 +62,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     public ScheduleServiceImpl(ResourceOccupationGuard occupations, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
             MerchantMappers.PersonnelStoreMapper assignments, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleRuleMapper rules,
             ai.neargo.shop.merchant.booking.mapper.BookingMappers.ScheduleChangeLogMapper changes, ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents,
-            ScheduleWindowsPort windows, IdempotencyService idempotency, ObjectMapper json,
+            ScheduleWindowsPort windows, RequestIdempotencyPort idempotency, ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.occupations = occupations;

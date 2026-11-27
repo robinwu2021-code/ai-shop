@@ -47,7 +47,8 @@ class SettingKeyOwnershipTest {
     private static final Map<String, String> SETTING_SERVICES = new LinkedHashMap<>() {{
         put("SettingPort", "sys_setting");
         put("SettingService", "sys_setting");
-        put("PaySettingService", "pay_setting");
+        // 2026-11-27：PaySettingService（pay_setting）并入统一设置，支付改走 SettingPort（TDD-基础能力库对齐 1c）。
+        // 再出现第二个设置服务时，登记在这里
     }};
 
     @Test

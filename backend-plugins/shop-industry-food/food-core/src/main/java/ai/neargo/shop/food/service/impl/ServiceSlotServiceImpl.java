@@ -14,7 +14,7 @@ import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
 import ai.neargo.shop.food.service.ServiceSlotService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -34,13 +34,13 @@ import java.util.Set;
 public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLifecycle {
     private final BusinessCommandJournal journal;
     private final FoodBusinessOperationsMapper mapper;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final Clock clock;
     private final ObjectMapper json;
 
     public ServiceSlotServiceImpl(
             FoodBusinessOperationsMapper mapper,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             Clock clock,
             ObjectMapper json) {
         this.mapper = mapper;

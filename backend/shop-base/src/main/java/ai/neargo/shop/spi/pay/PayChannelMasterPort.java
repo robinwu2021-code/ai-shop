@@ -25,9 +25,6 @@ import java.util.List;
  */
 public interface PayChannelMasterPort {
 
-    /** 通道展示名。查不到时返回通道码本身，不返回 null —— 界面上宁可显示 WECHAT 也别显示空 */
-    String channelName(String payChannel);
-
     /**
      * 启用中的通道码。
      *

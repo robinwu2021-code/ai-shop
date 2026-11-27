@@ -79,6 +79,11 @@ public class RemoteOpsPaymentAppService implements OpsPaymentAppService {
     }
 
     @Override
+    public RefundRow applyRefundApproval(String payRefundNo, boolean approve, String reason) {
+        return unwrap(() -> pay.applyRefundApproval(payRefundNo, new OperatorReq(null, approve, reason, null)));
+    }
+
+    @Override
     public List<ExceptionRow> exceptions(String status, int limit) {
         return unwrap(() -> pay.exceptions(status, limit));
     }

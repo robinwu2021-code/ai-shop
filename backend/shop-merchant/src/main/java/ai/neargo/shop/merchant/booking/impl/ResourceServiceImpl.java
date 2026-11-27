@@ -11,7 +11,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.merchant.dto.ResourceQuery;
 import ai.neargo.shop.merchant.dto.ResourceVO;
 import ai.neargo.shop.merchant.dto.SaveResourceReq;
@@ -44,7 +44,7 @@ public class ResourceServiceImpl implements ResourceService {
     private final MerchantMappers.PersonnelMapper people;
     private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents;
     private final MerchantMappers.MchStaffLogMapper audit;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final ObjectMapper json;
     private final DataSource source;
     private final TransactionTemplate writes;
@@ -52,7 +52,7 @@ public class ResourceServiceImpl implements ResourceService {
 
     public ResourceServiceImpl(ResourceOccupationGuard occupations, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
             ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents, MerchantMappers.MchStaffLogMapper audit,
-            IdempotencyService idempotency, ObjectMapper json, @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source,
+            RequestIdempotencyPort idempotency, ObjectMapper json, @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.occupations = occupations;
         this.resources = resources;

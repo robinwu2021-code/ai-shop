@@ -1,11 +1,14 @@
-package ai.neargo.shop.idem;
+package ai.neargo.shop.idem.port;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.idem.SysIdempotent;
+import ai.neargo.shop.idem.SysIdempotentMapper;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -14,6 +17,9 @@ import java.util.function.Supplier;
 
 /**
  * 幂等执行器：{@code Idempotency-Key} 命中就返回首次结果，否则执行并记账。
+ *
+ * <p>统一防重端口 {@link RequestIdempotencyPort} 的唯一实现，回执表 {@code sys_idempotent}。
+ * 调用方只依赖端口（守卫 {@code RequestIdempotencyPortGuardTest}）；回执不清理，见端口第 8 条。
  *
  * <p>用法（下单/支付/退款/核销必接）：
  * <pre>{@code
@@ -24,8 +30,8 @@ import java.util.function.Supplier;
  * 后插的撞 {@link DuplicateKeyException} → 回查首次结果。
  * 若首次还没执行完，后者拿到的是空结果 —— 此时宁可让它重试，也不能放它进去执行第二遍。
  */
-@Service
-public class IdempotencyService {
+@Component
+public class RequestIdempotencyPortImpl implements RequestIdempotencyPort {
 
     /** 24h：足够覆盖用户手滑重提交与端侧重试，又不会让表无限膨胀。 */
     private static final int TTL_HOURS = 24;
@@ -33,16 +39,18 @@ public class IdempotencyService {
     private final SysIdempotentMapper mapper;
     private final ObjectMapper json;
 
-    public IdempotencyService(SysIdempotentMapper mapper, ObjectMapper json) {
+    public RequestIdempotencyPortImpl(SysIdempotentMapper mapper, ObjectMapper json) {
         this.mapper = mapper;
         this.json = json;
     }
 
+    @Override
     public <T> T execute(String idemKey, String endpoint, String userNo, Class<T> type, Supplier<T> action) {
         return execute(idemKey, endpoint, userNo, null, type, action);
     }
 
     /** Preserve old callers while allowing checkout to reject changed content under an existing key. */
+    @Override
     public <T> T execute(String idemKey, String endpoint, String userNo, String requestHash,
                          Class<T> type, Supplier<T> action) {
         if (idemKey == null || idemKey.isBlank()) {
@@ -72,6 +80,7 @@ public class IdempotencyService {
      * Recovery must not depend on mutable drafts or remote services still accepting the original command.
      * A concurrent first attempt may still be absent; callers must retain transactional execute afterwards.
      */
+    @Override
     public <T> Optional<T> findCompleted(String idemKey, String endpoint, String userNo, String requestHash,
             Class<T> type) {
         if (idemKey == null || idemKey.isBlank()) return Optional.empty();
@@ -116,13 +125,6 @@ public class IdempotencyService {
             return result == null ? "null" : json.writeValueAsString(result);
         } catch (Exception e) {
             throw new IllegalStateException("idempotent result serialize failed", e);
-        }
-    }
-
-    /** 同 key 的首次请求尚未完成。 */
-    public static class ConcurrentRequestException extends RuntimeException {
-        public ConcurrentRequestException() {
-            super("duplicated request in flight");
         }
     }
 }

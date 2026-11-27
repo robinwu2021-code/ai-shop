@@ -9985,10 +9985,6 @@ CREATE TABLE IF NOT EXISTS ord_manual_price_adjustment
     policy_version BIGINT NOT NULL,
     operation_key CHAR(64) NOT NULL,
     request_hash CHAR(64) NOT NULL,
-    status VARCHAR(16) NOT NULL,
-    approval_mode VARCHAR(24) NOT NULL,
-    approved_by VARCHAR(32) NULL,
-    approved_at DATETIME(3) NULL,
     evaluated_at DATETIME(3) NOT NULL,
     expires_at DATETIME(3) NOT NULL,
     created_at DATETIME(3) NOT NULL,
@@ -13336,6 +13332,43 @@ CREATE TABLE IF NOT EXISTS sys_ops_api_key
     CONSTRAINT uk_ops_api_key_hash UNIQUE (secret_hash)
 );
 
+CREATE TABLE IF NOT EXISTS sys_approval
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    approval_no VARCHAR(64) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NULL,
+    store_no VARCHAR(32) NULL,
+    process_code VARCHAR(64) NOT NULL,
+    subject_type VARCHAR(64) NOT NULL,
+    subject_ref VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    amount_minor BIGINT NULL,
+    currency CHAR(3) NULL,
+    reason_code VARCHAR(32) NULL,
+    reason VARCHAR(512) NULL,
+    proposal TEXT NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    submitted_name VARCHAR(128) NULL,
+    approval_mode VARCHAR(24) NOT NULL,
+    approved_via VARCHAR(16) NULL,
+    status VARCHAR(24) NOT NULL,
+    approver_no VARCHAR(64) NULL,
+    approver_name VARCHAR(128) NULL,
+    decided_at DATETIME(3) NULL,
+    decision_comment VARCHAR(255) NULL,
+    expires_at DATETIME(3) NULL,
+    consumed_at DATETIME(3) NULL,
+    result_ref VARCHAR(64) NULL,
+    instance_no VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sys_approval_no UNIQUE (approval_no),
+    CONSTRAINT uk_sys_approval_subject_revision UNIQUE (tenant_no, subject_type, subject_ref, revision)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -14383,11 +14416,17 @@ CREATE TABLE IF NOT EXISTS sec_key_version
     deleted TINYINT NOT NULL DEFAULT 0,
     storage_tier VARCHAR(8) NOT NULL DEFAULT 'L2',
     display_prefix VARCHAR(16) NULL,
+    material_digest CHAR(64) NULL,
+    credential_key VARCHAR(120) NULL,
+    label VARCHAR(80) NULL,
+    scope VARCHAR(255) NULL,
+    CONSTRAINT uk_sec_key_version_4 UNIQUE (credential_key),
+    CONSTRAINT uk_sec_key_version_3 UNIQUE (material_digest),
     PRIMARY KEY (id),
     CONSTRAINT uk_sec_key_version_1 UNIQUE (sec_key_id,version_index),
     CONSTRAINT uk_sec_key_version_2 UNIQUE (active_key),
-    CONSTRAINT ck_sec_key_version_1 CHECK (sec_secret_blob_id IS NOT NULL OR public_material IS NOT NULL),
-    CONSTRAINT ck_sec_key_version_2 CHECK (enabled_by IS NULL OR enabled_by <> entered_by)
+    CONSTRAINT ck_sec_key_version_2 CHECK (enabled_by IS NULL OR enabled_by <> entered_by),
+    CONSTRAINT ck_sec_key_version_1 CHECK (sec_secret_blob_id IS NOT NULL OR public_material IS NOT NULL OR material_digest IS NOT NULL)
 );
 
 CREATE TABLE IF NOT EXISTS sec_key_event

@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.channel;
 
+import ai.neargo.shop.common.PayChannels;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -47,9 +48,6 @@ public class TestPayGateway implements PayGateway {
 
     private static final Logger log = LoggerFactory.getLogger(TestPayGateway.class);
 
-    /** 通道码。与 {@code sys_pay_channel.pay_channel} 一致，V288 种的那条 */
-    public static final String CHANNEL = "TEST";
-
     /**
      * 通道侧的「订单本」。
      *
@@ -76,7 +74,7 @@ public class TestPayGateway implements PayGateway {
 
     @Override
     public String payChannel() {
-        return CHANNEL;
+        return PayChannels.TEST;
     }
 
     /**

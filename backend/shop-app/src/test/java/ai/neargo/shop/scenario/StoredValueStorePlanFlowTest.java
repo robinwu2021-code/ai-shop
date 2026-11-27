@@ -59,7 +59,7 @@ class StoredValueStorePlanFlowTest {
         var repeated=direct.confirmOffline(ctx,entity,command);
         assertThat(repeated.rechargeNo()).isEqualTo(first.rechargeNo());
         assertThat(repeated.documentNo()).isEqualTo(first.documentNo());
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_document_number WHERE source_no=?",Integer.class,first.rechargeNo())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM core_document_number WHERE source_no=?",Integer.class,first.rechargeNo())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT collection_method FROM sv_recharge WHERE recharge_no=?",String.class,first.rechargeNo())).isEqualTo("MERCHANT_OFFLINE");
         assertThat(jdbc.queryForObject("SELECT actual_amount_minor FROM sv_recharge WHERE recharge_no=?",Long.class,first.rechargeNo())).isEqualTo(10000);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_recharge WHERE user_no=?",Integer.class,user)).isEqualTo(1);
@@ -76,7 +76,7 @@ class StoredValueStorePlanFlowTest {
         assertThatThrownBy(()->direct.confirmOffline(ctx,entity,command)).isInstanceOf(BizException.class);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_recharge WHERE user_no=? AND source_kind='PLAN'",Integer.class,user)).isZero();
         String failedNo=ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.no("PR",java.util.List.of(ctx.tenantNo(),entity,ctx.actorNo(),ctx.requestId()),json);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_document_number WHERE source_no=?",Integer.class,failedNo)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM core_document_number WHERE source_no=?",Integer.class,failedNo)).isZero();
         assertThat(accounts.balance(ctx,new BalanceQuery(user,entity,"CNY",store)).availableMinor()).isEqualTo(Long.MAX_VALUE-5000);
     }
 

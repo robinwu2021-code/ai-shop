@@ -36,7 +36,7 @@ import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.ModifierService;
 import ai.neargo.shop.food.service.impl.ConfigRevisionServiceImpl;
 import ai.neargo.shop.food.service.impl.ModifierServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.CatalogMarketContracts.SkuFacts;
 import ai.neargo.shop.spi.product.CatalogMarketContracts.GoodsFacts;
 import ai.neargo.shop.spi.product.CatalogMarketContracts.GoodsQuery;
@@ -116,7 +116,7 @@ class CatalogCurrencyBusinessTest {
 
     static ModifierServiceImpl modifiers(AssertableApplicationContext c, Sources source, ActionLogMapper actions) {
         return new ModifierServiceImpl(c.getBean(ModifierMapper.class), c.getBean(ModifierComponentMapper.class),
-                actions, c.getBean(IdempotencyService.class),
+                actions, c.getBean(RequestIdempotencyPort.class),
                 c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
                 source.currencies);
     }
@@ -125,7 +125,7 @@ class CatalogCurrencyBusinessTest {
         return new ConfigRevisionServiceImpl(c.getBean(ConfigRevisionMapper.class), c.getBean(ModifierMapper.class),
                 c.getBean(ModifierComponentMapper.class), c.getBean(OptionGroupMapper.class),
                 c.getBean(OptionGroupItemMapper.class), c.getBean(ActionLogMapper.class),
-                c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
+                c.getBean(RequestIdempotencyPort.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
                 c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
                 (e, ids) -> List.of(), source.clock, null, null, null, null, null, () -> null, null,
                 source.currencies);

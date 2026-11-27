@@ -33,7 +33,7 @@ import ai.neargo.shop.food.policy.TableResourceLocks;
 import ai.neargo.shop.food.service.CheckService;
 import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.StoreOperationService;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -93,7 +93,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final ActionLogMapper actions;
     private final CheckService checks;
     private final StoreOperationService policies;
-    private final IdempotencyService idem;
+    private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final StoreCardQueryPort stores;
     private final TableResourceLocks locks;
@@ -108,7 +108,7 @@ public class ReservationServiceImpl implements ReservationService {
             ActionLogMapper actions,
             CheckService checks,
             StoreOperationService policies,
-            IdempotencyService idem,
+            RequestIdempotencyPort idem,
             ObjectMapper json,
             StoreCardQueryPort stores,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {

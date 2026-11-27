@@ -32,7 +32,7 @@ import ai.neargo.shop.trade.mapper.TradeMappers.PriceQuoteLineMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.PriceQuoteAllocationMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.StorePricingConfigMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.StorePricingRevisionMapper;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +51,7 @@ public class PricingQuoteServiceImpl implements PricingQuoteService {
     private final PriceQuoteAllocationMapper allocations;
     private final StorePricingConfigMapper configs;
     private final StorePricingRevisionMapper revisions;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final PricingQuoteAssembler assembler;
     private final TransactionTemplate transactions;
     private final Clock clock;
@@ -59,14 +59,14 @@ public class PricingQuoteServiceImpl implements PricingQuoteService {
     @Autowired
     public PricingQuoteServiceImpl(PriceQuoteMapper quotes, PriceQuoteLineMapper lines,
             PriceQuoteAllocationMapper allocations, StorePricingConfigMapper configs,
-            StorePricingRevisionMapper revisions, IdempotencyService idempotency, PricingQuoteAssembler assembler,
+            StorePricingRevisionMapper revisions, RequestIdempotencyPort idempotency, PricingQuoteAssembler assembler,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this(quotes, lines, allocations, configs, revisions, idempotency, assembler, manager, Clock.systemUTC());
     }
 
     public PricingQuoteServiceImpl(PriceQuoteMapper quotes, PriceQuoteLineMapper lines,
             PriceQuoteAllocationMapper allocations, StorePricingConfigMapper configs,
-            StorePricingRevisionMapper revisions, IdempotencyService idempotency, PricingQuoteAssembler assembler,
+            StorePricingRevisionMapper revisions, RequestIdempotencyPort idempotency, PricingQuoteAssembler assembler,
             PlatformTransactionManager manager, Clock clock) {
         this.quotes = quotes;
         this.lines = lines;

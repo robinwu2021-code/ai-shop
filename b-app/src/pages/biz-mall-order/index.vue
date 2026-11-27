@@ -108,9 +108,10 @@
 // 凭证按后端要求逐张「预留 → 传原始字节」，全部传完才申报；中途失败整份不报，免得报出没有凭证的申报。
 import MallAfterSale from "./MallAfterSale.vue";
 import { computed, ref } from "vue";
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { useMallOrderStore } from "@/shared/use-mall-order-store";
 import { useMerchantStore } from "@/stores/merchant";
 import { prompt } from "@ai-shop/ui/prompt";
 import {
@@ -263,7 +264,7 @@ async function submit() {
 onLoad((q) => {
   orderNo.value = decodeURIComponent(String(q?.orderNo ?? ""));
 });
-onShow(load);
+useMallOrderStore(() => merchant.storeNo, load);
 </script>
 
 <style scoped>

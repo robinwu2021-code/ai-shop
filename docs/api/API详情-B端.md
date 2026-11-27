@@ -12473,7 +12473,7 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `collectionMethod` | `string` | 否 | — |
+| `collectionMethod` | `string` | 否 | 该付款指引使用的线下收款方式 |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
 | `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
@@ -12494,7 +12494,7 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `collectionMethod` | `string` | 否 | — |
+| `collectionMethod` | `string` | 否 | 该付款指引使用的线下收款方式 |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
 | `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
@@ -12582,9 +12582,9 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `hardwareItems` | `object`（见下）\[\] | 否 | — |
-| `deliveredSources` | `object`（见下）\[\] | 否 | — |
-| `refunds` | [`MallRefundResult`](#mallrefundresult)\[\] | 否 | — |
+| `hardwareItems` | `object`（见下）\[\] | 否 | 原订单的硬件组件、SKU 和数量 |
+| `deliveredSources` | `object`（见下）\[\] | 否 | 订单已交付的权益周期、权益代码和状态 |
+| `refunds` | [`MallRefundResult`](#mallrefundresult)\[\] | 否 | 关联原订单的退款记录 |
 | `lines` | `object`（见下）\[\] | 否 | 按购买时版本冻结的商品明细 |
 | `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
 | `quote` | [`MallQuote`](#mallquote) | 否 | 冻结报价 |
@@ -12630,9 +12630,9 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `hardware` | `object`（见下） | 否 | — |
-| `sourcePeriodNos` | `string`\[\] | 是 | — |
+| `refundNo` | `string` | 是 | 本次退款申请的编号 |
+| `hardware` | `object`（见下） | 否 | 本次退款涉及的硬件订单组件及数量 |
+| `sourcePeriodNos` | `string`\[\] | 是 | 本次退款涉及的已交付权益周期编号 |
 
 `hardware` 的字段：
 
@@ -12647,7 +12647,7 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `cashLimit` | [`MallMoney`](#mallmoney) | 是 | — |
+| `cashLimit` | [`MallMoney`](#mallmoney) | 是 | 所选组件可退的最高现金金额 |
 
 
 #### POST `/biz/stores/{storeNo}/mall/orders/{orderNo}/refunds`
@@ -12660,11 +12660,11 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `hardware` | `object`（见下） | 否 | — |
-| `sourcePeriodNos` | `string`\[\] | 是 | — |
-| `reason` | `string` | 是 | — |
-| `cashAmount` | [`MallMoney`](#mallmoney) | 是 | — |
+| `refundNo` | `string` | 是 | 本次退款申请的编号 |
+| `hardware` | `object`（见下） | 否 | 本次退款涉及的硬件订单组件及数量 |
+| `sourcePeriodNos` | `string`\[\] | 是 | 本次退款涉及的已交付权益周期编号 |
+| `reason` | `string` | 是 | 申请退款的原因 |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 是 | 本次申请退还的现金金额 |
 
 `hardware` 的字段：
 
@@ -12679,11 +12679,11 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `reviewStatus` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `hardware` | `object`（见下） | 否 | — |
-| `sourcePeriodNos` | `string`\[\] | 否 | — |
+| `refundNo` | `string` | 是 | 本次退款申请的编号 |
+| `reviewStatus` | `string` | 是 | 运营对本次申请的审核状态 |
+| `status` | `string` | 是 | 本次退款的资金处理状态 |
+| `hardware` | `object`（见下） | 否 | 本次退款涉及的硬件订单组件及数量 |
+| `sourcePeriodNos` | `string`\[\] | 否 | 本次退款涉及的已交付权益周期编号 |
 
 `hardware` 的字段：
 
@@ -14691,7 +14691,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `collectionMethod` | `string` | 否 | — |
+| `collectionMethod` | `string` | 否 | 该付款指引使用的线下收款方式 |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
 | `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
@@ -14714,11 +14714,13 @@ Delivery state of an inventory/order synchronization event.
 
 ### MallOrderDetail
 
+订单详情
+
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `hardwareItems` | `object`（见下）\[\] | 否 | — |
-| `deliveredSources` | `object`（见下）\[\] | 否 | — |
-| `refunds` | [`MallRefundResult`](#mallrefundresult)\[\] | 否 | — |
+| `hardwareItems` | `object`（见下）\[\] | 否 | 原订单的硬件组件、SKU 和数量 |
+| `deliveredSources` | `object`（见下）\[\] | 否 | 订单已交付的权益周期、权益代码和状态 |
+| `refunds` | [`MallRefundResult`](#mallrefundresult)\[\] | 否 | 关联原订单的退款记录 |
 | `lines` | `object`（见下）\[\] | 否 | 按购买时版本冻结的商品明细 |
 | `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
 | `quote` | [`MallQuote`](#mallquote) | 否 | 冻结报价 |
@@ -14871,7 +14873,7 @@ Delivery state of an inventory/order synchronization event.
 |---|---|:---:|---|
 | `available` | `boolean` | 否 | 在线支付是否可买 |
 | `reasons` | `string`\[\] | 否 | 不可买的原因码 |
-| `paymentOptions` | `object`（见下）\[\] | 否 | — |
+| `paymentOptions` | `object`（见下）\[\] | 否 | 报价允许的支付渠道、方式及币种 |
 
 `paymentOptions[]` 的字段：
 
@@ -14885,17 +14887,17 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `cashLimit` | [`MallMoney`](#mallmoney) | 是 | — |
+| `cashLimit` | [`MallMoney`](#mallmoney) | 是 | 所选组件可退的最高现金金额 |
 
 ### MallRefundRequest
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `hardware` | `object`（见下） | 否 | — |
-| `sourcePeriodNos` | `string`\[\] | 是 | — |
-| `reason` | `string` | 是 | — |
-| `cashAmount` | [`MallMoney`](#mallmoney) | 是 | — |
+| `refundNo` | `string` | 是 | 本次退款申请的编号 |
+| `hardware` | `object`（见下） | 否 | 本次退款涉及的硬件订单组件及数量 |
+| `sourcePeriodNos` | `string`\[\] | 是 | 本次退款涉及的已交付权益周期编号 |
+| `reason` | `string` | 是 | 申请退款的原因 |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 是 | 本次申请退还的现金金额 |
 
 `hardware` 的字段：
 
@@ -14908,11 +14910,11 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `reviewStatus` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `hardware` | `object`（见下） | 否 | — |
-| `sourcePeriodNos` | `string`\[\] | 否 | — |
+| `refundNo` | `string` | 是 | 本次退款申请的编号 |
+| `reviewStatus` | `string` | 是 | 运营对本次申请的审核状态 |
+| `status` | `string` | 是 | 本次退款的资金处理状态 |
+| `hardware` | `object`（见下） | 否 | 本次退款涉及的硬件订单组件及数量 |
+| `sourcePeriodNos` | `string`\[\] | 否 | 本次退款涉及的已交付权益周期编号 |
 
 `hardware` 的字段：
 
@@ -14923,13 +14925,13 @@ Delivery state of an inventory/order synchronization event.
 
 ### MallRefundSelection
 
-订单详情
+本次退款选择的订单组件
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `hardware` | `object`（见下） | 否 | — |
-| `sourcePeriodNos` | `string`\[\] | 是 | — |
+| `refundNo` | `string` | 是 | 本次退款申请的编号 |
+| `hardware` | `object`（见下） | 否 | 本次退款涉及的硬件订单组件及数量 |
+| `sourcePeriodNos` | `string`\[\] | 是 | 本次退款涉及的已交付权益周期编号 |
 
 `hardware` 的字段：
 

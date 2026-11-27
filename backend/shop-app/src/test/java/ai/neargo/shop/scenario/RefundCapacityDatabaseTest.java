@@ -138,7 +138,7 @@ class RefundCapacityDatabaseTest {
             return () -> {
                 String schema = new ClassPathResource("schema-test.sql")
                         .getContentAsString(StandardCharsets.UTF_8);
-                for (String table : List.of("pay_document_sequence", "pay_document_number")) {
+                for (String table : List.of("sys_sequence", "core_document_number")) {
                     var ddl = Pattern.compile("CREATE TABLE IF NOT EXISTS " + table + "\\b.*?;", Pattern.DOTALL)
                             .matcher(schema);
                     assertThat(ddl.find()).as("Numbering schema for %s", table).isTrue();

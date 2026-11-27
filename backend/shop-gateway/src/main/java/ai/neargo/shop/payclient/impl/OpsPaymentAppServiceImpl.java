@@ -62,6 +62,11 @@ public class OpsPaymentAppServiceImpl implements OpsPaymentAppService {
     }
 
     @Override
+    public RefundRow applyRefundApproval(String payRefundNo, boolean approve, String reason) {
+        return ops.applyRefundApproval(payRefundNo, approve, reason);
+    }
+
+    @Override
     public List<ExceptionRow> exceptions(String status, int limit) {
         return ops.exceptions(status, limit);
     }

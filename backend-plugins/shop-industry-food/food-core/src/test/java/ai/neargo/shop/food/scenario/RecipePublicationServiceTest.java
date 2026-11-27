@@ -25,7 +25,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.RecipeMapper;
 import ai.neargo.shop.food.policy.RecipePublicationSource;
 import ai.neargo.shop.food.service.RecipeService;
 import ai.neargo.shop.food.service.impl.ConfigRevisionServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
@@ -105,7 +105,7 @@ class RecipePublicationServiceTest {
             var publisher = new ConfigRevisionServiceImpl(template.getMapper(ConfigRevisionMapper.class),
                     template.getMapper(ModifierMapper.class), template.getMapper(ModifierComponentMapper.class),
                     c.getBean(OptionGroupMapper.class), c.getBean(OptionGroupItemMapper.class),
-                    c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class), checked,
+                    c.getBean(ActionLogMapper.class), c.getBean(RequestIdempotencyPort.class), checked,
                     c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), goods,
                     new OptionGroupServiceTest.Sources(), Clock.fixed(NOW.toInstant(), ZoneOffset.UTC), null,
                     new RecipePublicationSource(c.getBean(RecipeMapper.class), c.getBean(RecipeLineMapper.class),
@@ -197,9 +197,11 @@ class RecipePublicationServiceTest {
             assertThatThrownBy(() -> t.publications().publishRecipe("E", "A", t.recipe(), "actor", req(1), "p"))
                     .isInstanceOf(IllegalStateException.class);
             assertThat(t.drafts().getRecipe("E", "A", t.recipe()).recipe().version()).isEqualTo(1);
-            for (String table : List.of("sys_idempotent", "sys_outbox", "fnb_action_log")) {
+            for (String table : List.of("sys_idempotent", "fnb_action_log")) {
                 assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(2);
             }
+            // 草稿写不再发事件（cf7eea13b 删了只存档的 *_CHANGED），失败的发布也已回滚：发件箱一条都没有
+            assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
             assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isZero();
             t.fail().set(false);
             assertThat(t.publications().publishRecipe("E", "A", t.recipe(), "actor", req(1), "p")

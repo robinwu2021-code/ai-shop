@@ -11,7 +11,7 @@ import ai.neargo.shop.pay.entity.StlPointsPool;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsAccountMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsLedgerMapper;
-import ai.neargo.shop.pay.setting.PaySettingService;
+import ai.neargo.shop.spi.platform.SettingPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,7 +50,7 @@ class PointsRevokeFlowTest {
     @Autowired
     private ai.neargo.shop.pay.mapper.SettleMappers.PointsPoolMapper poolMapper;
     @Autowired
-    private PaySettingService paySettings;
+    private SettingPort paySettings;
 
     @Test
     @DisplayName("★★★ 待生效的分：从 pending 扣回，且转正任务不再把它转正")

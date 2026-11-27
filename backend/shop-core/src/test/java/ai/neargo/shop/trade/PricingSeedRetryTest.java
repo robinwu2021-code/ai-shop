@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import ai.neargo.shop.common.pricing.PricingCapabilities;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.trade.dto.PricingConfigCommands.Context;
 import ai.neargo.shop.trade.mapper.TradeMappers.PricingTemplateMapper;
@@ -40,7 +40,7 @@ class PricingSeedRetryTest {
         when(mapper.selectList(any())).thenReturn(List.of());
         var attempts = new AtomicInteger();
         var report = new ImportReport(ImportMode.DRAFT, "TEST", "hash", 20, 3, 2, List.of());
-        var idempotency = new IdempotencyService(mock(SysIdempotentMapper.class), JsonMapper.builder().build()) {
+        var idempotency = new RequestIdempotencyPortImpl(mock(SysIdempotentMapper.class), JsonMapper.builder().build()) {
             @Override
             public <T> T execute(String key, String endpoint, String actor, String hash, Class<T> type,
                     Supplier<T> action) {

@@ -21,7 +21,7 @@ import ai.neargo.shop.food.service.FoodMaintenanceService.Report;
 import ai.neargo.shop.food.service.impl.BusinessReturnApprovalServiceImpl;
 import ai.neargo.shop.food.service.impl.FoodReturnStockServiceImpl;
 import ai.neargo.shop.food.service.impl.ProductionConsumptionServiceImpl;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.food.FoodLocalStockPort;
 import ai.neargo.shop.spi.inventory.InventoryProductionPort;
 import ai.neargo.shop.spi.inventory.InventoryProductionPort.*;
@@ -491,7 +491,7 @@ public class OrderOperationsAcceptanceTest {
             db.update("INSERT INTO fnb_order_batch(entity_no,store_no,batch_no,check_no,status) VALUES ('E','S','B1','C1','ACCEPTED')");
             db.update("INSERT INTO fnb_order_line(entity_no,batch_no,food_line_no,seat_no,qty,unit) VALUES ('E','B1','L1','SEAT1',1.25,'EA')");
             db.update("INSERT INTO fnb_core_order_binding VALUES ('E','B1','CORE1')");
-            service = new CheckCollaborationServiceImpl(new FoodBusinessOperationsMapper(ds),guard,mock(IdempotencyService.class),new ObjectMapper(),new DataSourceTransactionManager(ds));
+            service = new CheckCollaborationServiceImpl(new FoodBusinessOperationsMapper(ds),guard,mock(RequestIdempotencyPort.class),new ObjectMapper(),new DataSourceTransactionManager(ds));
         }
         String text(String sql) { return db.queryForObject(sql,String.class); }
         long count(String table) { return db.queryForObject("SELECT COUNT(*) FROM "+table,Long.class); }

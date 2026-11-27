@@ -6,7 +6,7 @@ import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.common.pricing.TaxSettingDefinition;
 import ai.neargo.shop.event.OutboxEventBus;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.spi.platform.SettingPort.VersionedValue;
@@ -51,7 +51,7 @@ public class PricingTaxSettingServiceImpl implements PricingTaxSettingService {
     private static final String DEFAULT_KEY = "pricing.tax.default";
     private final SettingPort settings;
     private final AuditLogPort audit;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final TransactionTemplate transactions;
     private final TransactionTemplate auditTransactions;
     private final ObjectMapper json;
@@ -65,7 +65,7 @@ public class PricingTaxSettingServiceImpl implements PricingTaxSettingService {
     public PricingTaxSettingServiceImpl(
             SettingPort settings,
             AuditLogPort audit,
-            IdempotencyService idempotency,
+            RequestIdempotencyPort idempotency,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json) {
         this.settings = settings;

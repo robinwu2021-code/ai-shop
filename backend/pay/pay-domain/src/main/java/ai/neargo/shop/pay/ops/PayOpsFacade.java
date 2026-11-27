@@ -70,6 +70,14 @@ public class PayOpsFacade {
                         r.getHitReasons(), null));
     }
 
+    /** 审批服务的复核结果回写（复核在审批服务时，TDD-基础能力库对齐 §2.2 1e）；同一结果可重投 */
+    public RefundRow applyRefundApproval(String payRefundNo, boolean approve, String reason) {
+        PayRefund r = refunds.applyApproval(payRefundNo, approve, reason);
+        return new RefundRow(r.getPayRefundNo(), null, r.getAmountMinor() == null ? 0 : r.getAmountMinor(),
+                r.getCurrency(), r.getStatus(), r.getReason(), r.getRequestedBy(), r.getSourceType(), r.getHitReasons(),
+                null);
+    }
+
     public List<ExceptionRow> exceptions(String status, int limit) {
         return query.exceptions(status, limit);
     }

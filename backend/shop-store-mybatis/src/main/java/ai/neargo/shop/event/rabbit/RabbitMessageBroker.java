@@ -1,5 +1,6 @@
 package ai.neargo.shop.event.rabbit;
 
+import ai.neargo.shop.event.broker.BrokerDeadLetterException;
 import ai.neargo.shop.event.broker.BrokerException;
 import ai.neargo.shop.event.broker.BrokerMessage;
 import ai.neargo.shop.event.broker.BrokerSubscription;
@@ -8,6 +9,7 @@ import ai.neargo.shop.event.broker.MessageBroker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.Declarables;
@@ -63,7 +65,8 @@ public class RabbitMessageBroker implements MessageBroker, SmartLifecycle {
     public void publish(BrokerMessage message) {
         CorrelationData correlation = new CorrelationData(message.eventNo());
         try {
-            template.send(props.getExchange(), message.eventType(), EventMessages.toMessage(message, json), correlation);
+            template.send(props.getExchange(), EventMessages.routingKey(message), EventMessages.toMessage(message, json),
+                    correlation);
             CorrelationData.Confirm confirm = correlation.getFuture().get(CONFIRM_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             if (!confirm.ack()) {
                 throw new BrokerException("RabbitMQ 拒收 " + message.eventType() + " " + message.eventNo()
@@ -107,7 +110,14 @@ public class RabbitMessageBroker implements MessageBroker, SmartLifecycle {
         for (String queue : RabbitTopology.listenQueues(r.subscription(), props)) {
             SimpleMessageListenerContainer c = new SimpleMessageListenerContainer(connections);
             c.setQueueNames(queue);
-            c.setMessageListener(m -> r.handler().accept(EventMessages.fromMessage(m, json)));
+            c.setMessageListener(m -> {
+                try {
+                    r.handler().accept(EventMessages.fromMessage(m, json));
+                } catch (BrokerDeadLetterException e) {
+                    // 永久失败：不重投，直接转该订阅的死信
+                    throw new AmqpRejectAndDontRequeueException(e.getMessage(), e);
+                }
+            });
             c.setAcknowledgeMode(AcknowledgeMode.AUTO);
             c.setDefaultRequeueRejected(true);
             c.setConcurrentConsumers(r.subscription().ordered() ? 1 : Math.max(1, props.getConcurrency()));

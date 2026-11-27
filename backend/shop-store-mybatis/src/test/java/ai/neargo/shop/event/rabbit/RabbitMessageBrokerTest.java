@@ -35,6 +35,21 @@ class RabbitMessageBrokerTest {
     }
 
     @Test
+    @DisplayName("统一模式的定向消息：路由键 @处理者，排序键用流键，信封字段往返不丢")
+    void targetedMessageRoundTrip() {
+        var envelope = new ai.neargo.shop.event.outbox.OutboxEnvelope("EV-9", "PLATFORM", "EV-9", "DINING", "C-1",
+                "DINING_ORDER_ACCEPTED", 2, "STORE:S1:CHECK:C-1", 7, "{}", java.time.Instant.parse("2026-11-27T00:00:00Z"));
+        var message = BrokerMessage.of(envelope, "food-kitchen-accepted-v1");
+        assertThat(EventMessages.routingKey(message)).isEqualTo("@food-kitchen-accepted-v1");
+        Message m = EventMessages.toMessage(message, json);
+        assertThat((String) m.getMessageProperties().getHeader(EventMessages.AGGREGATE_HEADER))
+                .isEqualTo("STORE:S1:CHECK:C-1");
+        var back = EventMessages.fromMessage(m, json);
+        assertThat(back).isEqualTo(message);
+        assertThat(back.toOutboxEnvelope()).isEqualTo(envelope);
+    }
+
+    @Test
     @DisplayName("不保序订阅：一条仲裁队列，投递上限 + 死信，按事件类型绑定")
     void plainTopology() {
         var d = RabbitTopology.forSubscription(
@@ -46,7 +61,8 @@ class RabbitMessageBrokerTest {
                 .containsEntry("x-dead-letter-exchange", "shop.events.dlx")
                 .doesNotContainKey("x-single-active-consumer");
         assertThat(d.getDeclarablesByType(Binding.class)).filteredOn(b -> b.getExchange().equals("shop.events"))
-                .extracting(Binding::getRoutingKey).containsExactlyInAnyOrder("ORDER_ARRIVED", "REVIEW_CREATED");
+                .extracting(Binding::getRoutingKey)
+                .containsExactlyInAnyOrder("ORDER_ARRIVED", "REVIEW_CREATED", "@notification");
         assertThat(RabbitTopology.listenQueues(
                 new BrokerSubscription("notification", Set.of("X"), false), props)).containsExactly("shop.events.notification");
     }
@@ -62,10 +78,8 @@ class RabbitMessageBrokerTest {
         assertThat(hash.getType()).isEqualTo("x-consistent-hash");
         assertThat(hash.getArguments()).containsEntry("hash-header", EventMessages.AGGREGATE_HEADER);
         assertThat(d.getDeclarablesByType(Binding.class)).filteredOn(b -> b.getExchange().equals("shop.events"))
-                .singleElement().satisfies(b -> {
-                    assertThat(b.getDestination()).isEqualTo("shop.events.card-sale.hash");
-                    assertThat(b.getRoutingKey()).isEqualTo("ORDER_PAID");
-                });
+                .allSatisfy(b -> assertThat(b.getDestination()).isEqualTo("shop.events.card-sale.hash"))
+                .extracting(Binding::getRoutingKey).containsExactlyInAnyOrder("ORDER_PAID", "@card-sale");
         assertThat(RabbitTopology.listenQueues(s, props))
                 .containsExactly("shop.events.card-sale.p0", "shop.events.card-sale.p1", "shop.events.card-sale.p2");
         assertThat(d.getDeclarablesByType(Queue.class)).filteredOn(q -> q.getName().contains(".p"))

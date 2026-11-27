@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderPort.Scope;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
@@ -87,7 +87,7 @@ class IndustryChannelOrderPolicyTest {
                 new IndustryChannelOrderPolicyServiceImpl(
                         session.getMapper(ChannelPolicyMapper.class),
                         owners,
-                        new IdempotencyService(session.getMapper(SysIdempotentMapper.class), json),
+                        new RequestIdempotencyPortImpl(session.getMapper(SysIdempotentMapper.class), json),
                         new DataSourceTransactionManager(data));
     }
 

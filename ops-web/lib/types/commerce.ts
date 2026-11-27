@@ -710,6 +710,7 @@ export interface MallPaymentAttempt {
 
 /** 发货 */
 export interface MallShipment {
+  /** 提交发货时使用的请求操作号 */
   requestOperationNo?: string | null;
   /** 操作号 */
   operationNo?: string;
@@ -729,7 +730,9 @@ export interface MallShipment {
 
 /** 退款 */
 export interface MallRefundView {
+  /** 本次退款涉及的硬件订单组件及数量 */
   hardware?: { orderComponentNo: string; quantity: number } | null;
+  /** 本次退款涉及的已交付权益周期编号 */
   sourcePeriodNos?: string[];
   /** 退款号 */
   refundNo?: string;
@@ -770,7 +773,9 @@ export interface MallOrderSummary {
 
 /** 订单详情：三个独立维度 + 冻结报价 + 实际动作 */
 export interface MallOrderDetailView {
+  /** 订单已交付的权益周期、权益代码和状态 */
   deliveredSources?: { orderComponentNo: string; periodNo: string; planVersionNo?: string | null; entitlementCodes: string[]; lifecycle: string }[];
+  /** 原订单的硬件组件、SKU 和数量 */
   hardwareItems?: { orderComponentNo: string; hardwareSkuNo: string; quantity: number }[];
   /** 概览与三维状态 */
   summary?: MallOrderSummary;

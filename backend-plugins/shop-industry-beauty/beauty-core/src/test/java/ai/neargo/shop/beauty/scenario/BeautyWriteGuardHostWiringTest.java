@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.beauty.config.BeautySchemaReady;
 import ai.neargo.shop.beauty.config.BeautyWriteGuardConfiguration;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -49,13 +49,13 @@ class BeautyWriteGuardHostWiringTest {
     @Test
     void coexistsWithLateHostMapperScanner() {
         runner().withUserConfiguration(HostScanner.class).run(context -> {
-            assertThat(context).hasNotFailed().hasSingleBean(IdempotencyService.class)
+            assertThat(context).hasNotFailed().hasSingleBean(RequestIdempotencyPort.class)
                     .hasSingleBean(SysIdempotentMapper.class);
         });
     }
     @Test
     void standaloneStillBuildsWriteGuardWithoutHostScanner() {
-        runner().run(context -> assertThat(context).hasNotFailed().hasSingleBean(IdempotencyService.class));
+        runner().run(context -> assertThat(context).hasNotFailed().hasSingleBean(RequestIdempotencyPort.class));
     }
     @Configuration(proxyBeanMethods = false)
     @MapperScan(basePackages = "ai.neargo.shop.idem", markerInterface = BaseMapper.class,

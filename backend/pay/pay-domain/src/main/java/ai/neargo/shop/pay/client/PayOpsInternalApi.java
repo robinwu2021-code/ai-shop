@@ -51,6 +51,11 @@ public interface PayOpsInternalApi {
     @PostExchange(PREFIX + "/refunds/{payRefundNo}/review")
     PortResult<RefundRow> reviewRefund(@PathVariable("payRefundNo") String payRefundNo, @RequestBody OperatorReq req);
 
+    /** 审批服务的复核结果回写；{@code operatorNo} 不用（结果来自审批服务，谁批的记在审批单上） */
+    @PostExchange(PREFIX + "/refunds/{payRefundNo}/approval-outcome")
+    PortResult<RefundRow> applyRefundApproval(@PathVariable("payRefundNo") String payRefundNo,
+                                              @RequestBody OperatorReq req);
+
     @GetExchange(PREFIX + "/exceptions")
     PortResult<List<ExceptionRow>> exceptions(@RequestParam(value = "status", required = false) String status,
                                               @RequestParam("limit") int limit);

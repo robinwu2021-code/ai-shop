@@ -1,5 +1,6 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.platform.SettingService;
 import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -49,7 +50,7 @@ public class DevSeeder {
                                  CategoryMapper categoryMapper, StaffMapper staffMapper,
                                  RoleMemberMapper roleMemberMapper,
                                  ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysAuthCodeMapper authCodeMapper,
-                                 ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper settingMapper,
+                                 SettingService settings,
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
@@ -133,9 +134,9 @@ public class DevSeeder {
              * 少了它，机审词表为空 = 全放行，而「命中转人审」那组用例会绿着通过 ——
              * 测试绿而功能没生效，是最坏的一种绿。
              */
-            seedSetting(settingMapper, "store.sensitive-words",
+            seedSetting(settings, "store.sensitive-words",
                     "[\"最低价\",\"全网第一\",\"国家级\",\"绝对\",\"包治\",\"微信\",\"加V\",\"私聊\"]");
-            seedSetting(settingMapper, "review.score-config",
+            seedSetting(settings, "review.score-config",
                     "{\"weightProduct\":50,\"weightFulfill\":30,\"weightService\":20,"
                             + "\"newMerchantProtectDays\":30,\"decayHalfLifeDays\":180}");
             /*
@@ -143,7 +144,7 @@ public class DevSeeder {
              * 的兜底，于是「选 PLATFORM 被拒」那条用例在 H2 上永远失败 ——
              * 而失败的原因看起来会是校验没生效，其实是种子少了一行。
              */
-            seedSetting(settingMapper, "merchant.service-scope-enabled", "[\"COMMUNITY\",\"CITY\"]");
+            seedSetting(settings, "merchant.service-scope-enabled", "[\"COMMUNITY\",\"CITY\"]");
 
             communityMapper.insert(community("C0001", "阳光花园", "杭州市西湖区文一西路 100 号", 30280000, 120100000));
             communityMapper.insert(community("C0002", "翡翠城", "杭州市西湖区文二西路 200 号", 30285000, 120105000));
@@ -286,17 +287,11 @@ public class DevSeeder {
         roleMemberMapper.insert(m);
     }
 
-    private void seedSetting(ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper mapper,
-                             String key, String value) {
-        if (mapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.platform.entity.SysSetting>lambdaQuery()
-                .eq(ai.neargo.shop.platform.entity.SysSetting::getSettingKey, key)) > 0) {
-            return;
+    /** 经统一设置写（sys_setting 只经 SettingService 读写，TDD-基础能力库对齐 1a 守卫）；已配过就不覆盖。 */
+    private void seedSetting(SettingService settings, String key, String value) {
+        if (settings.get(key, null) == null) {
+            settings.put(key, value, "SYSTEM");
         }
-        var row = new ai.neargo.shop.platform.entity.SysSetting();
-        row.setSettingKey(key);
-        row.setSettingValue(value);
-        mapper.insert(row);
     }
 
     private void seedAuthCode(ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysAuthCodeMapper mapper,

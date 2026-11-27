@@ -16,7 +16,12 @@ public enum StorageTier {
     /** 外部密钥服务（Vault / 云凭据管家），库里只存路径 */
     L4(true),
     /** KMS / HSM 内生成、永不导出；只能调它做运算 */
-    L5(false);
+    L5(false),
+    /**
+     * 只存摘要（API Key 类凭据，Q15）：版本上只有出示串的 SHA-256，没有密文。材料从来不在库里，
+     * {@link KeyRegistry#materialOf} 对它拒绝；验证走 {@link CredentialVerifier}
+     */
+    DIGEST(false);
 
     private final boolean exportable;
 
@@ -24,7 +29,7 @@ public enum StorageTier {
         this.exportable = exportable;
     }
 
-    /** 材料能否进进程内存。L5 为 false：{@link KeyRegistry#materialOf} 对它没有意义 */
+    /** 材料能否进进程内存。L5、DIGEST 为 false：{@link KeyRegistry#materialOf} 对它们没有意义 */
     public boolean exportable() {
         return exportable;
     }

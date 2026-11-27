@@ -32,6 +32,9 @@ public interface OpsPaymentAppService {
 
     RefundRow reviewRefund(String payRefundNo, boolean approve, String reason);
 
+    /** 审批服务的退款复核结果回写（TDD-基础能力库对齐 §2.2 1e）；同一结果可重投 */
+    RefundRow applyRefundApproval(String payRefundNo, boolean approve, String reason);
+
     List<ExceptionRow> exceptions(String status, int limit);
 
     void refundException(Long id);

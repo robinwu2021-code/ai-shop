@@ -366,7 +366,7 @@ ORDER_COUPON协调切片验收后仍不能关闭JB-020：真实服务核销意�
 | app.payclient.impl | EntitlementBatchAppServiceImpl / RemoteEntitlementBatchAppService | 批量发行服务互斥接线 |
 | app.portal.internal | InternalEntitlementFactsEndpoint | 核心真实来源、授权与事件接收端点 |
 | app.paybridge | EntitlementEventReceiverService / impl | 核心事务内接收、去重、冲突验证 |
-| app.paybridge.port | LocalPayEntitlementEventBridgePortImpl | 嵌入式形态的核心事件事务 |
+| ~~app.paybridge.port~~ | ~~LocalPayEntitlementEventBridgePortImpl~~ | 已删（2026-11-27，基础能力库对齐 1f）：内嵌形态由中转直接经 `OutboxEventBus.forward` 发出 |
 
 PayEntitlementOutboxRelay由组合根显式创建，独立形态只在pay-svc运行，主应用不重复扫描支付事件。
 领域PortImpl只由所属组合根绑定，避免本地和HTTP实现同时成为候选Bean。

@@ -36,4 +36,10 @@ public interface RefundService {
 
     /** 运营复核一步（两人）。驳回即失败、释放占用 */
     PayRefund review(PayCaller caller, String payRefundNo, boolean approve, String reason);
+
+    /**
+     * 审批服务的结果回写（复核在审批服务时，TDD-基础能力库对齐 §2.2 1e）：待复核 → 放行或驳回，驳回即失败、释放占用。
+     * 审批服务会重投同一结果：已是该结果时原样返回；已是相反结果或已执行 → {@code PAY_ORDER_STATE}。
+     */
+    PayRefund applyApproval(String payRefundNo, boolean approve, String reason);
 }

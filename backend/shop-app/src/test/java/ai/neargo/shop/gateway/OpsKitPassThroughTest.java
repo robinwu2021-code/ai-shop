@@ -3,11 +3,15 @@ package ai.neargo.shop.gateway;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.auth.store.TokenHash;
+import ai.neargo.secret.api.CredentialVerifier;
+import ai.neargo.secret.api.CredentialVerifier.NewCredential;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.platform.auth.OpsApiKeyStore;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -32,7 +36,7 @@ import org.springframework.web.context.WebApplicationContext;
  * 审批页面经网关透传到 OpsKit（TDD-OpsKit审批对接 AC2）：网关只认会话、不判权限码；令牌与请求体原样转发，
  * OpsKit 的状态码、错误体与 traceId / Idempotent-Replayed 原样回到页面。下游是桩服务。
  */
-@SpringBootTest(properties = "shop.gateway.ops.opskit-proxy.enabled=true")
+@SpringBootTest(properties = {"shop.gateway.ops.opskit-proxy.enabled=true", "shop.secret.env=SANDBOX"})
 @ActiveProfiles("test")
 @DisplayName("网关 · OpsKit 审批透传")
 class OpsKitPassThroughTest {
@@ -46,6 +50,8 @@ class OpsKitPassThroughTest {
     TokenStore tokenStore;
     @Autowired
     JdbcTemplate jdbc;
+    @Autowired
+    CredentialVerifier credentials;
 
     @DynamicPropertySource
     static void target(DynamicPropertyRegistry registry) {
@@ -123,12 +129,10 @@ class OpsKitPassThroughTest {
 
     @Test
     void employeeKeyNeverReachesDownstream() throws Exception {
-        String key = "oak_" + "b".repeat(43);
-        long now = System.currentTimeMillis();
-        jdbc.update("""
-                INSERT INTO sys_ops_api_key (key_no,staff_no,secret_hash,label,access_level,issued_by,created_at,expires_at)
-                SELECT ?, staff_no, ?, 'gateway test', 'MANAGE', staff_no, ?, ? FROM sys_ops_staff WHERE username='admin'
-                """, UUID.randomUUID().toString(), TokenHash.of(key), now, now + 60_000);
+        String key = "oak_" + ("b" + UUID.randomUUID().toString().replace("-", "")).repeat(2).substring(0, 43);
+        long adminId = jdbc.queryForObject("SELECT id FROM sys_ops_staff WHERE username='admin'", Long.class);
+        credentials.register(new NewCredential(OpsApiKeyStore.owner(adminId), UUID.randomUUID().toString(),
+                "gateway test", "MANAGE", Duration.ofMinutes(1), "admin"), TokenHash.of(key));
         var response = mvc().perform(MockMvcRequestBuilders.post("/ops/opskit/v1/workspaces/ext:PLATFORM/todos/count")
                 .header("Authorization", "Bearer " + key)).andReturn().getResponse();
         assertThat(response.getStatus()).isEqualTo(403);

@@ -10,7 +10,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.merchant.dto.AssignPersonnelReq;
 import ai.neargo.shop.merchant.dto.ChangePersonnelStatusReq;
 import ai.neargo.shop.merchant.dto.CreatePersonnelReq;
@@ -68,7 +68,7 @@ public class PersonnelServiceImpl implements PersonnelService {
     private final MerchantMappers.MchStaffLogMapper audit;
     private final MerchantStaffService staff;
     private final GoodsQueryPort products;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final DataSource source;
     private final ObjectMapper json;
     private final TransactionTemplate writes;
@@ -79,7 +79,7 @@ public class PersonnelServiceImpl implements PersonnelService {
             ai.neargo.shop.merchant.booking.mapper.BookingMappers.PersonnelSkillMapper skills, MerchantMappers.PersonnelAccountMapper links,
             ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents,
             MerchantMappers.MchAccountMapper accounts, MerchantMappers.MchStaffLogMapper audit,
-            MerchantStaffService staff, GoodsQueryPort products, IdempotencyService idempotency,
+            MerchantStaffService staff, GoodsQueryPort products, RequestIdempotencyPort idempotency,
             @Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource source, ObjectMapper json,
             @Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager manager) {
         this.occupations = occupations;

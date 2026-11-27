@@ -88,6 +88,7 @@ export interface MallReadiness {
   available?: boolean;
   /** 不可买的原因码 */
   reasons?: string[];
+  /** 报价允许的支付渠道、方式及币种 */
   paymentOptions?: {channel: string; payMethod: string; currency: string}[];
 }
 
@@ -258,18 +259,44 @@ export interface MallShipment {
   status?: string;
 }
 
-/** 订单详情 */
+/** 本次退款选择的订单组件 */
 export interface MallRefundSelection {
+  /** 本次退款申请的编号 */
   refundNo: string;
+  /** 本次退款涉及的硬件订单组件及数量 */
   hardware?: { orderComponentNo: string; quantity: number };
+  /** 本次退款涉及的已交付权益周期编号 */
   sourcePeriodNos: string[];
 }
-export interface MallRefundPreview { cashLimit: MallMoney }
-export interface MallRefundResult { refundNo: string; reviewStatus: string; status: string; hardware?: { orderComponentNo: string; quantity: number }; sourcePeriodNos?: string[] }
-export interface MallRefundRequest extends MallRefundSelection { reason: string; cashAmount: MallMoney }
+export interface MallRefundPreview {
+  /** 所选组件可退的最高现金金额 */
+  cashLimit: MallMoney;
+}
+export interface MallRefundResult {
+  /** 本次退款申请的编号 */
+  refundNo: string;
+  /** 运营对本次申请的审核状态 */
+  reviewStatus: string;
+  /** 本次退款的资金处理状态 */
+  status: string;
+  /** 本次退款涉及的硬件订单组件及数量 */
+  hardware?: { orderComponentNo: string; quantity: number };
+  /** 本次退款涉及的已交付权益周期编号 */
+  sourcePeriodNos?: string[];
+}
+export interface MallRefundRequest extends MallRefundSelection {
+  /** 申请退款的原因 */
+  reason: string;
+  /** 本次申请退还的现金金额 */
+  cashAmount: MallMoney;
+}
+/** 订单详情 */
 export interface MallOrderDetail {
+  /** 原订单的硬件组件、SKU 和数量 */
   hardwareItems?: { orderComponentNo: string; hardwareSkuNo: string; quantity: number }[];
+  /** 订单已交付的权益周期、权益代码和状态 */
   deliveredSources?: { orderComponentNo: string; periodNo: string; planVersionNo?: string; entitlementCodes: string[]; lifecycle: string }[];
+  /** 关联原订单的退款记录 */
   refunds?: MallRefundResult[];
   /** 按购买时版本冻结的商品明细 */
   lines?: { productNo: string; skuNo: string; skuVersionNo: string; title: string; quantity: number }[];
@@ -285,6 +312,7 @@ export interface MallOrderDetail {
 
 /** 已发出的付款指引（收款账户按发出时的档案版本冻结） */
 export interface MallOfflineInstructions {
+  /** 该付款指引使用的线下收款方式 */
   collectionMethod?: string;
   /** 订单号 */
   orderNo: string;

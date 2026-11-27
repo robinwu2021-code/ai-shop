@@ -40,7 +40,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PriceTaxMode;
 import ai.neargo.shop.common.pricing.PricingCapabilities;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.platform.impl.SettingServiceImpl;
 import ai.neargo.shop.platform.mapper.PlatformMappers.SettingMapper;
@@ -63,7 +63,7 @@ class PricingTaxSettingServiceTest {
     private static DataSourceTransactionManager manager;
     private static SettingServiceImpl storage;
     private static SettingPort settings;
-    private static IdempotencyService idempotency;
+    private static RequestIdempotencyPortImpl idempotency;
     private static PricingTaxSettingService service;
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -93,7 +93,7 @@ class PricingTaxSettingServiceTest {
         manager = new DataSourceTransactionManager(data);
         storage = new SettingServiceImpl(session.getMapper(SettingMapper.class));
         settings = new SettingPortImpl(storage);
-        idempotency = new IdempotencyService(session.getMapper(SysIdempotentMapper.class), JSON);
+        idempotency = new RequestIdempotencyPortImpl(session.getMapper(SysIdempotentMapper.class), JSON);
         service = build(settings, mock(AuditLogPort.class));
     }
 

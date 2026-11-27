@@ -43,6 +43,8 @@ public class SecretException extends RuntimeException {
         /** 密钥不可用于新调用（已到期 / 暂停 / 吊销） */
         KEY_UNUSABLE,
         /** 用途或算法不符：HMAC 密钥不能加密、加密密钥不能算 mac（{@link KeyVault}） */
-        WRONG_USAGE
+        WRONG_USAGE,
+        /** 唯一性冲突：凭据号或凭据摘要已被占用（{@link CredentialVerifier}） */
+        DUPLICATE
     }
 }

@@ -9,8 +9,10 @@ import ai.neargo.shop.pay.entity.StlWithdraw;
 import ai.neargo.shop.pay.mapper.SettleMappers.PaymentMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.SettleInvoiceMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.WithdrawMapper;
+import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.support.TestLogin;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -70,6 +72,9 @@ class OpsFinanceGovernFlowTest {
 
     @Autowired
     private SettleService settleService;
+
+    @Autowired
+    private SettingPort settings;
 
     @Autowired
     private WithdrawMapper withdrawMapper;
@@ -281,6 +286,26 @@ class OpsFinanceGovernFlowTest {
                 .andReturn().getResponse().getContentAsString());
         assertThat(reread.get("rate").asLong()).isEqualTo(1500L);
         assertThat(reread.get("updatedAt").asString()).isNotBlank();
+        assertThat(settings.get("finance.tax-rule", "{}"))
+                .as("支付设置并入统一设置：个税规则落在 sys_setting，与其他平台参数同一处").contains("\"rate\":1500");
+    }
+
+    @Test
+    @DisplayName("平台开票信息落在统一设置里：支付不再另存一份")
+    void invoiceTitleLandsInUnifiedSettings() {
+        String before = settings.get("finance.invoice-title", null);
+        try {
+            settleService.savePlatformInvoiceTitle(
+                    Map.of("companyName", "统一设置有限公司", "taxNo", "91310000UNIFIED01"), "OPS-UNIFIED");
+            assertThat(settings.get("finance.invoice-title", "{}")).contains("统一设置有限公司");
+            assertThat(settleService.platformInvoiceTitle()).containsEntry("taxNo", "91310000UNIFIED01");
+        } finally {
+            if (before != null) {
+                settings.put("finance.invoice-title", before, "OPS-UNIFIED");
+            } else {
+                jdbc.update("DELETE FROM sys_setting WHERE setting_key = 'finance.invoice-title'");
+            }
+        }
     }
 
     // ---------------------------------------------------------------- 装配 · 退款回退
