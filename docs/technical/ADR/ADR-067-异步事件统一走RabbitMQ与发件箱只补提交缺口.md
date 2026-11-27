@@ -132,4 +132,6 @@
    进默认名单（`SHOP_EVENTS_OUTBOX_TYPES` 可覆盖；`transport=local` 时名单不起作用）。库存的四个投影写同一份物料，
    新增 `OutboxConsumer.subscriptionGroup()` 让它们合成一个保序订阅 `inventory-product`，组内按原顺序逐个调 ——
    否则各自一条队列，同一 SKU 的建档与下架可能乱序。上下架按商品号发，与按 SKU 的三类不保证先后，与改造前按聚合分线的行为一致。
+   **第二个域（2026-11-27）：打印事实**：`ORDER_PRINT_FACT_READY`、`ORDER_PRINT_CONTROL_CHANGED`、`BUSINESS_PRINT_FACT_READY` 进默认名单。
+   事实建任务、控制变更作用于已建任务，同一订单控制若先到会给已取消的单子建出任务，所以两个消费者同组 `print-facts`。
 5. 撤中转（清单 §〇 C 类）。
