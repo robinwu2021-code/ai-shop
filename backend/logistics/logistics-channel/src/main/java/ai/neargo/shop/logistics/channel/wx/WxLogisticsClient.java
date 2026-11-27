@@ -19,6 +19,10 @@ import java.util.Map;
  *
  * <p>换 token（trace_waybill）、查状态（query_trace）、插件展示共用这一份 stable_token 缓存 ——
  * 各自取各自的，一个小程序同时持有好几份 token，互相不知道。
+ *
+ * <p><b>单独开关 {@code shop.wx.logistics.enabled}，默认关</b>（2026-11-27 用户要求先屏蔽微信相关外呼）：
+ * 关着时即使配了小程序凭据（登录要用）也按「未配置」处理 —— 各网关走已有的未配置分支，记原因、不外呼。
+ * 恢复只需把它设成 true（环境变量 {@code SHOP_WX_LOGISTICS_ENABLED}）。
  */
 @Component
 public class WxLogisticsClient {
@@ -26,6 +30,7 @@ public class WxLogisticsClient {
     private final String host;
     private final String appid;
     private final String secret;
+    private final boolean enabled;
     private final ObjectMapper json = new ObjectMapper();
     private final HttpClient http = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
@@ -35,18 +40,23 @@ public class WxLogisticsClient {
 
     public WxLogisticsClient(@Value("${shop.wx.host:https://api.weixin.qq.com}") String host,
                              @Value("${shop.wx.appid:}") String appid,
-                             @Value("${shop.wx.secret:}") String secret) {
+                             @Value("${shop.wx.secret:}") String secret,
+                             @Value("${shop.wx.logistics.enabled:false}") boolean enabled) {
         this.host = host;
+        this.enabled = enabled;
         this.appid = appid == null ? "" : appid.trim();
         this.secret = secret == null ? "" : secret.trim();
     }
 
     public boolean configured() {
-        return !appid.isEmpty() && !secret.isEmpty();
+        return enabled && !appid.isEmpty() && !secret.isEmpty();
     }
 
     /** POST 一个 open_msg 接口，返回原始 JSON。网络异常与取 token 失败原样抛出（调用方归为可重试） */
     JsonNode post(String api, Map<String, Object> body, Duration timeout) throws Exception {
+        if (!enabled) {
+            throw new IllegalStateException("微信物流通道未启用（shop.wx.logistics.enabled=false），不外呼：" + api);
+        }
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(host + "/cgi-bin/express/delivery/open_msg/" + api + "?access_token=" + accessToken()))
                 .timeout(timeout)
