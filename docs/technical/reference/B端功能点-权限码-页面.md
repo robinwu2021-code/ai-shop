@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**56 个权限码 × 6 个角色 × 542 个受控功能点**
+统计：**56 个权限码 × 6 个角色 × 543 个受控功能点**
 （另有 0 个登录即可、40 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -25,7 +25,7 @@
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 53 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 40 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 40 | ✅ | — | — | — | — | — |
-| `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 37 | ✅ | ✅ | — | — | — | — |
+| `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 38 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 24 | ✅ | ✅ | — | — | — | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 19 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
@@ -382,6 +382,7 @@
 | —（b-app 未接） | — | `/biz/quote/{}/revise` | — | — |
 | —（b-app 未接） | — | `/biz/activity-presets` | — | — |
 | —（b-app 未接） | — | `/biz/marketing-summary` | — | — |
+| —（b-app 未接） | — | `/biz/activities/{}/effect` | — | — |
 | —（b-app 未接） | — | `/biz/activities/{}/publish` | — | — |
 | —（b-app 未接） | — | `/biz/pricing-manual-adjustments` | — | — |
 | —（b-app 未接） | — | `/biz/pricing-manual-adjustments/{}` | — | — |
@@ -1028,6 +1029,7 @@
 
 | 端点 | 权限码 | 可用角色 |
 |---|---|---|
+| `/biz/activities/{}/effect` | `biz:campaign` | 老板、店长 |
 | `/biz/activities/{}/publish` | `biz:campaign` | 老板、店长 |
 | `/biz/activity-presets` | `biz:campaign` | 老板、店长 |
 | `/biz/auth/pos-pin` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
