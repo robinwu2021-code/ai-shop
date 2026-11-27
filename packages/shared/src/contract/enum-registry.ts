@@ -947,6 +947,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "b-app:MallOfflineClaimStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["SUBMITTED", "REVIEWING", "CONFIRMED", "MISMATCHED", "DECLINED"],
     note: "商家线下付款申报状态，同 ops-web:MallOfflineClaimStatus；申报不是到账，DECLINED 后用新申报号重报" },
   { decl: "ops-web:MallUnusedRefundPolicy", dom: "commerce", shape: "CLASS", verdict: "OK", note: "SKU 未使用数字权益的退款口径；已使用部分固定 MANUAL_ONLY" },
+  { decl: "shared:ReachDeliveryStatus", dom: "member", shape: "STATUS", verdict: "OK", words: ["SCHEDULED", "SENDING", "SENT"], note: "预约、投递中、已发送与撤销，对应会员触达任务。" },
 // 元器件的端上枚举（shared:Elec*）2026-09-30 随小程序迁到独立项目 ai-hxkey，登记在那边；
   // 这里只留运营端（ops-web:Elec*）的那几条 —— 运营端仍在 ai-shop。
 ];

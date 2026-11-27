@@ -115,7 +115,9 @@ export interface MemberSourceItem {
   occurredAt: number;
 }
 export interface MemberDetail {
+  /** 按当前经营主体规则评定的权益等级。 */
   gradeCode?: string | null;
+  /** 评定该会员等级所用的规则版本号。 */
   levelRuleVersionNo?: string | null;
   /** 会员本身 */
   member: Member;
@@ -143,6 +145,8 @@ export interface MemberLastReach {
   /** 归到这次的下单时刻。没下为空 */
   orderedAt?: number | null;
 }
+/** 会员触达任务的投递状态。 */
+export type ReachDeliveryStatus = "SCHEDULED" | "SENDING" | "SENT" | "CANCELLED";
 /**
  * 一次触达（原型 m19 / m20）：发出 · 来了 · 成单。
  *
@@ -150,8 +154,11 @@ export interface MemberLastReach {
  * 数字还会涨；不写的话商家第二天看到 2 单就判定这次失败了。
  */
 export interface ReachTask {
-  deliveryStatus?: "SCHEDULED" | "SENDING" | "SENT" | "CANCELLED";
+  /** 触达任务当前投递状态。 */
+  deliveryStatus?: ReachDeliveryStatus;
+  /** 预约投递时刻，Unix 毫秒。 */
   scheduledAt?: number | null;
+  /** 解释预约时间所用的门店时区。 */
   scheduleZone?: string | null;
   /** 批次号 */
   taskNo: string;
@@ -287,7 +294,9 @@ export interface MyMembership {
  * 实际上两份指标一直都在算，**切回来一个数都不少**。
  */
 export interface MemberSetting {
+  /** 当前发布的权益等级规则版本号。 */
   activeGradeVersionNo?: string | null;
+  /** 各权益等级的累计成交订单数下限。 */
   gradeThresholds?: { code: string; minOrders: number }[];
   /** `ENTITY` 按主体（默认）/ `STORE` 按门店 */
   memberScope: string;

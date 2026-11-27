@@ -126,6 +126,7 @@ async function send() {
 }
 
 onShow(() => {
+  void merchant.ensureStores();
   const pending = takePendingAudience();
   if (pending) {
     items.value = pending.items;

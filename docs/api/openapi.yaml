@@ -3369,10 +3369,12 @@ components:
           type:
             - "string"
             - "null"
+          description: "按当前经营主体规则评定的权益等级。"
         levelRuleVersionNo:
           type:
             - "string"
             - "null"
+          description: "评定该会员等级所用的规则版本号。"
         member:
           "$ref": "#/components/schemas/Member"
           description: "会员本身"
@@ -3463,24 +3465,30 @@ components:
         - "WAKEUP"
         - "COUPON"
       description: "触达场景：`NOTICE` 店铺公告 / `WAKEUP` 唤回 / `COUPON` 发券通知。频次闸按它分档"
+    ReachDeliveryStatus:
+      type: "string"
+      enum:
+        - "SCHEDULED"
+        - "SENDING"
+        - "SENT"
+        - "CANCELLED"
+      description: "会员触达任务的投递状态。"
     ReachTask:
       type: "object"
       properties:
         deliveryStatus:
-          type: "string"
-          enum:
-            - "SCHEDULED"
-            - "SENDING"
-            - "SENT"
-            - "CANCELLED"
+          "$ref": "#/components/schemas/ReachDeliveryStatus"
+          description: "触达任务当前投递状态。"
         scheduledAt:
           type:
             - "number"
             - "null"
+          description: "预约投递时刻，Unix 毫秒。"
         scheduleZone:
           type:
             - "string"
             - "null"
+          description: "解释预约时间所用的门店时区。"
         taskNo:
           type: "string"
           description: "批次号"
@@ -3724,6 +3732,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "当前发布的权益等级规则版本号。"
         gradeThresholds:
           type: "array"
           items:
@@ -3737,6 +3746,7 @@ components:
               - "code"
               - "minOrders"
             additionalProperties: false
+          description: "各权益等级的累计成交订单数下限。"
         memberScope:
           type: "string"
           description: "`ENTITY` 按主体（默认）/ `STORE` 按门店"
@@ -11058,6 +11068,7 @@ components:
                 - "decidedAt"
               additionalProperties: false
             - type: "null"
+          description: "原核销的返券决定，包括来源、冲回券额和决定时刻。"
         couponTitle:
           type:
             - "string"

@@ -1137,8 +1137,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `segmentNo` | `string,null` | 否 | — |
-| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 否 | — |
+| `segmentNo` | `string,null` | 否 | 定向发放的会员人群号。 |
+| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 否 | 本次发放选择的受众条件。 |
 | `reachableOnly` | `boolean` | 否 | 默认关闭。开启时按发券当时的 COUPON 场景判断站内消息资格。 |
 
 **出参**（`data`）
@@ -6202,12 +6202,12 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 是 | — |
-| `audienceDesc` | `string` | 否 | — |
-| `scene` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
-| `body` | `string` | 是 | — |
-| `localTime` | `string` | 是 | — |
+| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 是 | 预约投递的受众条件。 |
+| `audienceDesc` | `string` | 否 | 用于展示的受众说明。 |
+| `scene` | `string` | 是 | 校验消息资格的通知场景。 |
+| `title` | `string` | 是 | 通知标题。 |
+| `body` | `string` | 是 | 通知正文。 |
+| `localTime` | `string` | 是 | 门店市场时区下的预约日期和时间。 |
 
 **出参**（`data`）
 
@@ -6215,7 +6215,7 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `taskNo` | `string` | 是 | — |
+| `taskNo` | `string` | 是 | 用于查询或撤销预约的触达任务号。 |
 
 
 #### POST `/biz/member-reach/send`
@@ -6267,9 +6267,9 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `deliveryStatus` | `SCHEDULED` \| `SENDING` \| `SENT` \| `CANCELLED` | 否 | — |
-| `scheduledAt` | `number,null` | 否 | — |
-| `scheduleZone` | `string,null` | 否 | — |
+| `deliveryStatus` | [`ReachDeliveryStatus`](#reachdeliverystatus) | 否 | 触达任务当前投递状态。 |
+| `scheduledAt` | `number,null` | 否 | 预约投递时刻，Unix 毫秒。 |
+| `scheduleZone` | `string,null` | 否 | 解释预约时间所用的门店时区。 |
 | `taskNo` | `string` | 是 | 批次号 |
 | `scene` | [`ReachScene`](#reachscene) | 是 | `NOTICE` / `WAKEUP` / `COUPON` |
 | `title` | `string` | 是 | 消息标题 |
@@ -6401,8 +6401,8 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `activeGradeVersionNo` | `string,null` | 否 | — |
-| `gradeThresholds` | `object`（见下）\[\] | 否 | — |
+| `activeGradeVersionNo` | `string,null` | 否 | 当前发布的权益等级规则版本号。 |
+| `gradeThresholds` | `object`（见下）\[\] | 否 | 各权益等级的累计成交订单数下限。 |
 | `memberScope` | `string` | 是 | `ENTITY` 按主体（默认）/ `STORE` 按门店 |
 | `autoJoinOnOrder` | `boolean` | 是 | 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 |
 | `sleepDays` | `number` | 是 | 分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡 |
@@ -6430,8 +6430,8 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `activeGradeVersionNo` | `string,null` | 否 | — |
-| `gradeThresholds` | `object`（见下）\[\] | 否 | — |
+| `activeGradeVersionNo` | `string,null` | 否 | 当前发布的权益等级规则版本号。 |
+| `gradeThresholds` | `object`（见下）\[\] | 否 | 各权益等级的累计成交订单数下限。 |
 | `memberScope` | `string` | 是 | `ENTITY` 按主体（默认）/ `STORE` 按门店 |
 | `autoJoinOnOrder` | `boolean` | 是 | 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 |
 | `sleepDays` | `number` | 是 | 分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡 |
@@ -6597,8 +6597,8 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `gradeCode` | `string,null` | 否 | — |
-| `levelRuleVersionNo` | `string,null` | 否 | — |
+| `gradeCode` | `string,null` | 否 | 按当前经营主体规则评定的权益等级。 |
+| `levelRuleVersionNo` | `string,null` | 否 | 评定该会员等级所用的规则版本号。 |
 | `member` | [`Member`](#member) | 是 | 会员本身 |
 | `stores` | [`MemberStoreStat`](#memberstorestat)\[\] | 是 | 他在各门店的往来。单店主体没有这一段 |
 | `sources` | [`MemberSourceItem`](#membersourceitem)\[\] | 是 | 来源轨迹：他是怎么来的 |
@@ -13718,8 +13718,8 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `segmentNo` | `string,null` | 否 | — |
-| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 否 | — |
+| `segmentNo` | `string,null` | 否 | 定向发放的会员人群号。 |
+| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 否 | 本次发放选择的受众条件。 |
 | `reachableOnly` | `boolean` | 否 | 默认关闭。开启时按发券当时的 COUPON 场景判断站内消息资格。 |
 
 ### CouponRedeemResult
@@ -15259,8 +15259,8 @@ SKU 组件：一件 SKU 交付哪些东西
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `gradeCode` | `string,null` | 否 | — |
-| `levelRuleVersionNo` | `string,null` | 否 | — |
+| `gradeCode` | `string,null` | 否 | 按当前经营主体规则评定的权益等级。 |
+| `levelRuleVersionNo` | `string,null` | 否 | 评定该会员等级所用的规则版本号。 |
 | `member` | [`Member`](#member) | 是 | 会员本身 |
 | `stores` | [`MemberStoreStat`](#memberstorestat)\[\] | 是 | 他在各门店的往来。单店主体没有这一段 |
 | `sources` | [`MemberSourceItem`](#membersourceitem)\[\] | 是 | 来源轨迹：他是怎么来的 |
@@ -15347,8 +15347,8 @@ SKU 组件：一件 SKU 交付哪些东西
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `activeGradeVersionNo` | `string,null` | 否 | — |
-| `gradeThresholds` | `object`（见下）\[\] | 否 | — |
+| `activeGradeVersionNo` | `string,null` | 否 | 当前发布的权益等级规则版本号。 |
+| `gradeThresholds` | `object`（见下）\[\] | 否 | 各权益等级的累计成交订单数下限。 |
 | `memberScope` | `string` | 是 | `ENTITY` 按主体（默认）/ `STORE` 按门店 |
 | `autoJoinOnOrder` | `boolean` | 是 | 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 |
 | `sleepDays` | `number` | 是 | 分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡 |
@@ -16295,7 +16295,7 @@ Processing state of the order points refund projection.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `couponReturn` | `object`（见下） \| `null` | 否 | — |
+| `couponReturn` | `object`（见下） \| `null` | 否 | 原核销的返券决定，包括来源、冲回券额和决定时刻。 |
 | `couponTitle` | `string,null` | 否 | 这一单用过、现在已回到券包的券名 |
 | `pointsReturned` | `number,null` | 否 | 退回的抵扣积分（该单 REFUND 流水之和） |
 | `pointsClawedBack` | `number,null` | 否 | 收回的本单赠送积分（该单 CLAWBACK 流水之和） |
@@ -16923,6 +16923,17 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 | `platformRate` | `number` | 是 | 平台客流费率（万分比）。平台分发带来的订单 |
 | `note` | `string` | 是 | 费率说明文案。**须写明「以下单时快照为准，调整不影响历史订单」** |
 
+### ReachDeliveryStatus
+
+会员触达任务的投递状态。
+
+枚举取值：
+
+- `SCHEDULED`
+- `SENDING`
+- `SENT`
+- `CANCELLED`
+
 ### ReachOrderedMember
 
 效果页上下单的一个人
@@ -16987,9 +16998,9 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `deliveryStatus` | `SCHEDULED` \| `SENDING` \| `SENT` \| `CANCELLED` | 否 | — |
-| `scheduledAt` | `number,null` | 否 | — |
-| `scheduleZone` | `string,null` | 否 | — |
+| `deliveryStatus` | [`ReachDeliveryStatus`](#reachdeliverystatus) | 否 | 触达任务当前投递状态。 |
+| `scheduledAt` | `number,null` | 否 | 预约投递时刻，Unix 毫秒。 |
+| `scheduleZone` | `string,null` | 否 | 解释预约时间所用的门店时区。 |
 | `taskNo` | `string` | 是 | 批次号 |
 | `scene` | [`ReachScene`](#reachscene) | 是 | `NOTICE` / `WAKEUP` / `COUPON` |
 | `title` | `string` | 是 | 消息标题 |
@@ -17373,18 +17384,18 @@ near-pay 来源主体的资料审核结果；不代表门店可收款。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 是 | — |
-| `audienceDesc` | `string` | 否 | — |
-| `scene` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
-| `body` | `string` | 是 | — |
-| `localTime` | `string` | 是 | — |
+| `audiences` | [`AudienceItem`](#audienceitem)\[\] | 是 | 预约投递的受众条件。 |
+| `audienceDesc` | `string` | 否 | 用于展示的受众说明。 |
+| `scene` | `string` | 是 | 校验消息资格的通知场景。 |
+| `title` | `string` | 是 | 通知标题。 |
+| `body` | `string` | 是 | 通知正文。 |
+| `localTime` | `string` | 是 | 门店市场时区下的预约日期和时间。 |
 
 ### ScheduledReachResult
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `taskNo` | `string` | 是 | — |
+| `taskNo` | `string` | 是 | 用于查询或撤销预约的触达任务号。 |
 
 ### ScopeCandidatePage
 

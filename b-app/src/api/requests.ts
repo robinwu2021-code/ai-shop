@@ -36,7 +36,9 @@ import type { OfflineRecordMethod, OfflineRecordStatus } from "./pay";
 import type { ZipPick } from "@shared/ports/zip-media";
 
 export interface CouponIssueReq {
+  /** 定向发放的会员人群号。 */
   segmentNo?: string | null;
+  /** 本次发放选择的受众条件。 */
   audiences?: AudienceItem[];
   /** 默认关闭。开启时按发券当时的 COUPON 场景判断站内消息资格。 */
   reachableOnly?: boolean;
@@ -1303,10 +1305,16 @@ export interface PayStoreMethodPreferencesReq {
 
 
 export interface ScheduledReachReq {
+  /** 预约投递的受众条件。 */
   audiences: AudienceItem[];
+  /** 用于展示的受众说明。 */
   audienceDesc?: string;
+  /** 校验消息资格的通知场景。 */
   scene: string;
+  /** 通知标题。 */
   title: string;
+  /** 通知正文。 */
   body: string;
+  /** 门店市场时区下的预约日期和时间。 */
   localTime: string;
 }

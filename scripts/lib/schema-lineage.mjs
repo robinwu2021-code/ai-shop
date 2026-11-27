@@ -4,6 +4,7 @@ import { AUDIT } from './ddl.mjs';
 const tenant = [{ from: "tenant_no", to: "tenant_no" }];
 
 export const KEY_OWNERS = {
+  "reach_no": { "table": "mbr_reach_log" },
   "ownership_change_no": { "table": "mch_store_entity_claim", "col": "claim_no", "scope": tenant },
   "active_job_no": {
     "table": "prn_job",
@@ -454,6 +455,7 @@ export const KEY_OWNERS = {
 
 
 export const NAME_COLLISIONS = {
+  "pay_fact_no": "活动预留确认或释放的权威结果号，由参与或释放协议决定具体来源。",
   "approval_no": "pmt_sv_approval 持有本地储值活动审批编号；approval_link 保存外部 OpsKit 审批编号。两套编号分别发放。",
   "pay_order_no": "payment_collection_receipt与payment_collection_stream保存独立PAY服务签发的订单号；必须按environment+pay_order_no关联，不是本地商城订单或本地表的单列外键。",
   "print_fact_no": "订单支付事实由ord_print_fact持有，退款和充值事实由biz_print_fact持有；完整打印引用按sourceType、租户、主体、门店、场景和版本选择来源，不能仅按同名编号跨表join。",
@@ -609,7 +611,8 @@ export const COLLISION_MEMBERS = {
     "pmt_sv_release_link",
     "pmt_sv_approval",
     "ord_pricing_fee_scope",
-    "ord_pricing_fee_application"
+    "ord_pricing_fee_application",
+    "mbr_level_rule"
   ],
   "quote_no": [
     "mkt_quote",
@@ -680,7 +683,8 @@ export const COLLISION_MEMBERS = {
     "pmt_activity_reservation",
     "sv_recharge",
     "sv_lot",
-    "sv_release_tier"
+    "sv_release_tier",
+    "pmt_reservation"
   ],
   "plan_no": [
     "pts_topup_plan",
@@ -733,7 +737,8 @@ export const COLLISION_MEMBERS = {
     "ord_pricing_fee_revision",
     "ord_pricing_fee_scope",
     "ord_pricing_fee_application",
-    "mch_schedule_rule"
+    "mch_schedule_rule",
+    "mbr_level_rule"
   ],
   "subject_no": [
     "sys_role_member",
@@ -775,7 +780,8 @@ export const COLLISION_MEMBERS = {
     "sv_issue_policy",
     "prn_operation",
     "prn_incident",
-    "prn_action_log"
+    "prn_action_log",
+    "pmt_quota"
   ],
   "document_no": [
     "core_document_number",
@@ -916,7 +922,10 @@ export const COLLISION_MEMBERS = {
     "pmt_activity_scope",
     "pmt_recharge_tier",
     "pmt_activity_reservation",
-    "sv_recharge_plan_version"
+    "sv_recharge_plan_version",
+    "pmt_reservation",
+    "mbr_level_rule",
+    "pmt_coupon_version"
   ],
   "resource_no": [
     "pay_ent_command_dedup",
@@ -975,14 +984,16 @@ export const COLLISION_MEMBERS = {
     "ent_grant",
     "sv_recharge",
     "ent_sale_reservation",
-    "sv_issue_quota_reservation"
+    "sv_issue_quota_reservation",
+    "pmt_reservation"
   ],
   "source_decision_no": [
     "ent_grant",
     "ent_use_intent",
     "ent_use_reversal",
     "ent_sale_reservation",
-    "ent_migration_import"
+    "ent_migration_import",
+    "sv_voucher"
   ],
   "operation_no": [
     "ord_order",
@@ -1050,7 +1061,8 @@ export const COLLISION_MEMBERS = {
   ],
   "sort_no": [
     "sys_market",
-    "mkt_content_slot"
+    "mkt_content_slot",
+    "pmt_activity_scope"
   ],
   "message_no": [
     "stl_channel_message",
@@ -1125,7 +1137,8 @@ export const COLLISION_MEMBERS = {
   "apply_no": [
     "mch_entity_apply",
     "cmt_community_apply",
-    "pmt_apply"
+    "pmt_apply",
+    "ord_pos_activity_line"
   ],
   "ref_no": [
     "stl_points_pool",
@@ -1183,6 +1196,7 @@ export const COLLISION_MEMBERS = {
     "mch_debt_txn"
   ],
   "source_no": [
+    "ent_use_reversal",
     "mbr_member_source",
     "mch_debt_txn",
     "ord_refund_obligation",
@@ -1201,7 +1215,8 @@ export const COLLISION_MEMBERS = {
     "pmt_brand_coupon_source",
     "pmt_brand_coupon_command",
     "pmt_brand_cost_source",
-    "pmt_brand_cost_fact"
+    "pmt_brand_cost_fact",
+    "pmt_reservation"
   ],
   "log_no": [
     "mch_staff_log",
@@ -1213,7 +1228,8 @@ export const COLLISION_MEMBERS = {
     "mch_booking_owner",
     "mch_resource_command",
     "mch_booking_hold",
-    "mch_resource_occupation"
+    "mch_resource_occupation",
+    "pmt_activity_scope"
   ],
   "claim_no": [
     "mch_store_entity_claim",
@@ -1335,11 +1351,21 @@ export const COLLISION_MEMBERS = {
     "rtl_channel_selection",
     "rtl_channel_selection_revision",
     "rtl_channel_selection_draft"
+  ],
+  "pay_fact_no": [
+    "pmt_activity_reservation",
+    "pmt_reservation"
   ]
 };
 
 // Source-table exceptions take precedence over global collision suppression.
 export const TABLE_KEY_OWNERS = {
+  "ord_pos_activity_line": {
+    "apply_no": { "table": "pmt_apply", "scope": [{ "from": "tenant_no", "to": "tenant_no" }] }
+  },
+  "pmt_reservation": {
+    "tier_no": { "table": "pmt_recharge_tier", "scope": [{ "from": "tenant_no", "to": "tenant_no" }, { "from": "version_no", "to": "version_no" }] }
+  },
   "mkt_quote_revision": {
     "quote_no": {
       "table": "mkt_quote",

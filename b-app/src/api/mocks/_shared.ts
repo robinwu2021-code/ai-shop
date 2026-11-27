@@ -32,6 +32,7 @@ import {
   toCommunity,
   allCommunitySeeds,
 } from "@shared/mock/db";
+import type { ReachDeliveryStatus } from "@shared/types/member";
 import { currentCurrency, money } from "@shared/utils/money";
 import { isPhone } from "@shared/utils/validate";
 // 能力位被拒要抛**带业务码**的错（70023），页面据此渲染示例态而不是错误页
@@ -516,7 +517,7 @@ import type { ReachScene } from "@shared/types";
 
 interface MockReachRow { memberNo: string; opened: boolean; orderedMinor: number | null; orderedAt: number | null }
 interface MockReachTask {
-  deliveryStatus?: "SCHEDULED" | "CANCELLED" | "SENT";
+  deliveryStatus?: ReachDeliveryStatus;
   scheduledAt?: number; scheduleZone?: string;
 
   taskNo: string; scene: ReachScene; title: string; body: string; audienceDesc: string;

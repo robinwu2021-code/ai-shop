@@ -335,4 +335,7 @@ export type {SvFinancialPermissionResult} from "./stored-value-finance";
 
 export type {SvFinancialBrandOriginal} from "./stored-value-finance";
 
-export interface ScheduledReachResult { taskNo: string }
+export interface ScheduledReachResult {
+  /** 用于查询或撤销预约的触达任务号。 */
+  taskNo: string;
+}

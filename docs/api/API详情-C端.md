@@ -5310,7 +5310,7 @@ Processing state of the order points refund projection.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `couponReturn` | `object`（见下） \| `null` | 否 | — |
+| `couponReturn` | `object`（见下） \| `null` | 否 | 原核销的返券决定，包括来源、冲回券额和决定时刻。 |
 | `couponTitle` | `string,null` | 否 | 这一单用过、现在已回到券包的券名 |
 | `pointsReturned` | `number,null` | 否 | 退回的抵扣积分（该单 REFUND 流水之和） |
 | `pointsClawedBack` | `number,null` | 否 | 收回的本单赠送积分（该单 CLAWBACK 流水之和） |
