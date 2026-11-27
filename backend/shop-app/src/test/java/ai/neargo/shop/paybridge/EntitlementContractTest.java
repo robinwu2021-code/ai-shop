@@ -76,13 +76,17 @@ class EntitlementContractTest {
     }
 
     @Test
-    void cancellationCannotCarryACommitDecisionAndReversalIsCouponOnly() {
+    void cancellationRejectsCommitAndReversalAcceptsCouponsAndStoredValue() {
         var commit = new DecisionRef("d1", Instant.now(), 2, DecisionType.USE_COMMIT);
         assertThatThrownBy(() -> new EntitlementUsePort.CancelUse("op1", source, commit))
                 .isInstanceOf(IllegalArgumentException.class);
         var reverse = new DecisionRef("r1", Instant.now(), 2, DecisionType.ORDER_REVERSE);
+        for (AssetKind kind : List.of(AssetKind.ORDER_COUPON, AssetKind.STORED_VALUE)) {
+            roundTrip(new EntitlementUsePort.OrderBenefitReverse("usage1", "refund1", source,
+                    kind, 100L, reverse), EntitlementUsePort.OrderBenefitReverse.class);
+        }
         assertThatThrownBy(() -> new EntitlementUsePort.OrderBenefitReverse("usage1", "refund1", source,
-                AssetKind.STORED_VALUE, 100L, reverse))
+                AssetKind.PAID_CARD, 100L, reverse))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new EntitlementGrantPort.GrantDecision("g1", source, commit))
                 .isInstanceOf(IllegalArgumentException.class);

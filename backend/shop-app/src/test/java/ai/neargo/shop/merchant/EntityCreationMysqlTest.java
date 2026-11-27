@@ -8,6 +8,7 @@ import ai.neargo.shop.merchant.dto.EntityStoresVO;
 import ai.neargo.shop.merchant.dto.EntityVO;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
+import ai.neargo.shop.merchant.plan.impl.EntityPlanProvisionerImpl;
 import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
 import ai.neargo.shop.merchant.plan.mapper.PlanMappers.PlanDefMapper;
 import ai.neargo.shop.merchant.port.MerchantPortImpl;
@@ -81,8 +82,8 @@ class EntityCreationMysqlTest {
         merchants.setDefaultStoreReadDataSource(ds);
         ReflectionTestUtils.setField(merchants,"merchantMapper",sessions.getMapper(MchEntityMapper.class));
         ReflectionTestUtils.setField(merchants,"staffMapper",sessions.getMapper(MchAccountMapper.class));
-        ReflectionTestUtils.setField(merchants,"entityPlanMapper",sessions.getMapper(EntityPlanMapper.class));
-        ReflectionTestUtils.setField(merchants,"planDefMapper",sessions.getMapper(PlanDefMapper.class));
+        ReflectionTestUtils.setField(merchants, "planProvisioner", new EntityPlanProvisionerImpl(
+                sessions.getMapper(EntityPlanMapper.class), sessions.getMapper(PlanDefMapper.class)));
         entities=mock(MerchantEntityService.class);
         when(entities.detail(anyString(),anyString())).thenAnswer(call->{
             String owner=call.getArgument(0),no=call.getArgument(1);
