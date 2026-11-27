@@ -99,7 +99,7 @@ public final class FoodMappers {
                 @Param("cart") String cart, @Param("buyer") String buyer);
     }
 
-    public interface SettlementMapper extends BaseMapper<FnbSettlement> {
+    public interface SettlementMapper extends TradeTableMapper<FnbSettlement> {
         @Select("SELECT COUNT(*) FROM fnb_return WHERE tenant_no='MAIN' AND entity_no=#{entity} "
                 + "AND batch_no=#{batch} AND deleted=0 AND status NOT IN ('REJECTED','CANCELLED') "
                 + "AND (status<>'CLOSED' OR financial_status IS NULL OR financial_status<>'NONE')")
@@ -114,7 +114,7 @@ public final class FoodMappers {
         long activeFullScopeCount(@Param("entity") String entity, @Param("store") String store,
                 @Param("root") String root, @Param("scope") String scope);
     }
-    public interface ChargeIntentMapper extends BaseMapper<FnbChargeIntent> { }
+    public interface ChargeIntentMapper extends TradeTableMapper<FnbChargeIntent> { }
 
     public interface OrderBatchMapper extends TradeTableMapper<FnbOrderBatch> {
         /** 批次所在门店与状态：出品在行业库，按批次号回交易库取门店与接单状态（不联表）。 */
@@ -126,7 +126,7 @@ public final class FoodMappers {
                 + "</script>")
         List<BatchState> states(@Param("entity") String entity, @Param("batches") Collection<String> batches);
     }
-    public interface CoreOrderBindingMapper extends BaseMapper<FnbCoreOrderBinding> { }
+    public interface CoreOrderBindingMapper extends TradeTableMapper<FnbCoreOrderBinding> { }
     public interface OrderLineMapper extends TradeTableMapper<FnbOrderLine> {
         /** 某门店某 SKU 的点菜行：出品耗料按商品筛选时先在交易库取行号，再到行业库取事件。 */
         @Select("SELECT l.food_line_no FROM fnb_order_line l JOIN fnb_order_batch b ON b.tenant_no=l.tenant_no "
@@ -428,8 +428,8 @@ public final class FoodMappers {
 
     public interface SalesRestrictionMapper extends TradeTableMapper<FnbSalesRestriction> { }
     public interface SalesQuotaClaimMapper extends TradeTableMapper<FnbSalesQuotaClaim> { }
-    public interface ReturnMapper extends BaseMapper<FnbReturn> { }
-    public interface ReturnItemMapper extends BaseMapper<FnbReturnItem> {
+    public interface ReturnMapper extends TradeTableMapper<FnbReturn> { }
+    public interface ReturnItemMapper extends TradeTableMapper<FnbReturnItem> {
         /** 已由厨房确认取消的主菜数量（原在出品单 Mapper 上；退菜是交易的事实，不在行业库）。 */
         @Select("SELECT COALESCE(SUM(i.qty),0) FROM fnb_return_item i JOIN fnb_return r "
                 + "ON r.entity_no=i.entity_no AND r.return_no=i.return_no AND r.tenant_no=i.tenant_no "

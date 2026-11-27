@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -68,7 +70,7 @@ public class StoreOperationServiceImpl implements StoreOperationService {
     public StoreOperationServiceImpl(StorePolicyMapper policies, ActionLogMapper actions,
             ServiceCalendarMapper calendars,
             RequestIdempotencyPort idempotency, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
-            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            ObjectMapper json, @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager) {
         this(policies, actions, calendars, idempotency, publisher, json, manager, Clock.systemUTC());
     }
 
@@ -246,7 +248,7 @@ public class StoreOperationServiceImpl implements StoreOperationService {
     private static boolean blank(String value) { return value == null || value.isBlank(); }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.INDUSTRY_TX_MANAGER, readOnly = true)
     public StoreOperationPolicyResultVO getPolicy(String entityNo, String storeNo, GetPolicyQuery query) {
         if (entityNo == null || entityNo.isBlank() || storeNo == null || storeNo.isBlank()) {
             throw BizException.of(ErrorCode.FORBIDDEN);

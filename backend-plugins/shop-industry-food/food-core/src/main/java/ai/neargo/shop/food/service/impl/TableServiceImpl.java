@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -67,12 +69,12 @@ public class TableServiceImpl implements TableService {
 
     public TableServiceImpl(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
             RequestIdempotencyPort idempotency,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager) {
         this(areas, tables, actions, idempotency, manager, null);
     }
     @Autowired
     public TableServiceImpl(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
-            RequestIdempotencyPort idempotency, @Qualifier("transactionManager") PlatformTransactionManager manager,
+            RequestIdempotencyPort idempotency, @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
             ReservationTableMapper reservationTables) {
         this.reservationTables = reservationTables;
         this.areas = areas;
@@ -86,7 +88,7 @@ public class TableServiceImpl implements TableService {
     }
 
     @Override
-    @Transactional(transactionManager="transactionManager", readOnly=true)
+    @Transactional(transactionManager = ModuleDataSources.INDUSTRY_TX_MANAGER, readOnly=true)
     public PageData<TableAreaVO> listTableAreas(String entityNo, String storeNo, ListTableAreasQuery query) {
         scope(entityNo, storeNo);
         int page = query == null || query.page() == null ? 1 : query.page();
@@ -258,7 +260,7 @@ public class TableServiceImpl implements TableService {
     }
     private static boolean validStatus(String status) { return "ACTIVE".equals(status) || "DISABLED".equals(status); }
     @Override
-    @Transactional(transactionManager="transactionManager", readOnly=true)
+    @Transactional(transactionManager = ModuleDataSources.INDUSTRY_TX_MANAGER, readOnly=true)
     public PageData<TableVO> listTables(String entityNo, String storeNo, ListTablesQuery query) {
         scope(entityNo, storeNo);
         int page = query == null || query.page() == null ? 1 : query.page();
@@ -285,7 +287,7 @@ public class TableServiceImpl implements TableService {
     }
 
     @Override
-    @Transactional(transactionManager="transactionManager", readOnly=true)
+    @Transactional(transactionManager = ModuleDataSources.INDUSTRY_TX_MANAGER, readOnly=true)
     public TableResultVO getTable(String entityNo, String currentStoreNo, String tableNo) {
         scope(entityNo, currentStoreNo);
         identifier(tableNo);

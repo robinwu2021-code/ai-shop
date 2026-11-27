@@ -291,6 +291,22 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   - 测试：新增 `FoodBusinessOperationsPersistenceTest#reservationIsReleasedWhenTheCallingOrderTransactionRollsBack`；`CatalogOperationsAcceptanceTest` 建时段不再写回执的断言改为 0。food-core 758 个通过。
   - 已知缺口：① 测试里两个句柄同库，回滚补偿与提交后写入的分库行为要等「同库不同池」测试（P0-6）覆盖；② 购物车放弃、到店单或预点单失效而没走释放的预占，目前没有按来源的释放扫描（来源有购物车、到店单、预点单、延时事件四种，需按来源分别判断）。
 
+### 每个库一个数据源（2026-11-27）
+
+原则（ADR-066）：每个库对应一个句柄（数据源 + 工厂 + 事务管理器）；代码只点名句柄，不点名主库。句柄未绑定时是主库的别名（过渡期行为不变），绑定后就是独立的连接池与事务。
+
+| 库 | 句柄 | 餐饮现状 |
+|---|---|---|
+| 行业库 | `industry` | 桌台、区域、占台、换台记录、订位、时段容量、排队、寄存、出品整组、厨显、权益、交接、门店策略、配置修订都已点名。本次补：桌台管理 `TableServiceImpl`、门店策略 `StoreOperationServiceImpl`、工位 `StationServiceImpl` 由主库事务改为 `industryTxManager` |
+| 门店交易库 | `trade` | 本次补：结账 `SettlementMapper`、收款意图 `ChargeIntentMapper`、订单绑定 `CoreOrderBindingMapper`、退菜 `ReturnMapper`/`ReturnItemMapper`/`FoodReturnAmendmentMapper` 由主库改挂交易句柄 |
+| 平台基础库 | `platform`（已有） | 未接：门店设备、身份授权、桌台令牌、顾客会话、离线草稿签名（`DiningIdentityMappers`、`TableTokenMapper`、`GuestSessionMapper`、`OfflineDraftMapper` 的签名部分）——表要换成 `mch_store_device`、`guest_session`，随 P3 |
+| 基础能力库 | `common`（已有） | 未接：动作日志 `ActionLogMapper` 要换成统一审计 `sys_audit_log`；命令回执 `fnb_business_command` 按 §8-Q1 逐步退役。随 P3 |
+| 库存库 | 无（库存模块自有） | 未接：库存与同步镜像、配方、出品耗料、退菜回库处置，随 P3 由库存模块承接 |
+| 账务结算库、支付库 | 无 | 未接：营业日关账的结算、余额、异常、调整，随 P3 |
+| 主库 | `dataSource` | 只剩餐饮私有 Flyway 历史与启动校验（P0-1、P4 处理）、发件箱（按 §2.3 改为提交后直接调用） |
+
+测试：共用测试配置 `FoodWriteGuardFixture.Shared` 引入 `ModuleDataSourceRegistrar`，句柄按应用同样的规则注册；同库不同池测试（P0-6）在它上面绑定即可。
+
 ### 事务拆分记录
 
 | 服务 | 类 | 处理 |

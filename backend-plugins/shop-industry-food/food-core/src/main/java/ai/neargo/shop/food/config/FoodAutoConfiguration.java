@@ -263,7 +263,7 @@ public class FoodAutoConfiguration {
     @ConditionalOnMissingBean(StationService.class)
     StationService stationService(StationMapper stations, SkuStationMapper routes, ActionLogMapper actions,
             RequestIdempotencyPort idem, ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> goods) {
         return new StationServiceImpl(stations, routes, actions, idem, json, manager, lazyGoods(goods));
     }
@@ -389,7 +389,7 @@ public class FoodAutoConfiguration {
     StoreOperationService storeOperationService(StorePolicyMapper policies, ActionLogMapper actions,
             ServiceCalendarMapper calendars,
             RequestIdempotencyPort idempotency, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
-            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            ObjectMapper json, @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager) {
         return new StoreOperationServiceImpl(policies, actions, calendars, idempotency, publisher, json, manager);
     }
 
@@ -398,7 +398,7 @@ public class FoodAutoConfiguration {
     @ConditionalOnMissingBean(TableService.class)
     TableService tableService(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
             RequestIdempotencyPort idem, ReservationTableMapper reservationTables,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager) {
         return new TableServiceImpl(areas, tables, actions, idem, manager, reservationTables);
     }
 

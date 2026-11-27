@@ -94,7 +94,8 @@ abstract class FoodWriteGuardFixture {
     public interface SourceMapper extends BaseMapper<SourceRow> { }
 
     @Configuration(proxyBeanMethods = false)
-    @Import(PrimaryPersistenceConfiguration.class)
+    // 各库句柄（trade、industry 等）按 ADR-066 注册；不绑定时是主库的别名，绑定后就是独立的连接池与事务管理器。
+    @Import({PrimaryPersistenceConfiguration.class, ai.neargo.shop.common.config.ModuleDataSourceRegistrar.class})
     static class Shared {
         @Bean ObjectMapper json() { return new ObjectMapper(); }
         @Bean AuditMetaObjectHandler auditMetaObjectHandler() { return new AuditMetaObjectHandler(); }
