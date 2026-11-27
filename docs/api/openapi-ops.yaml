@@ -14872,6 +14872,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "提交发货时使用的请求操作号"
         operationNo:
           type: "string"
           description: "操作号"
@@ -14913,10 +14914,12 @@ components:
                 - "quantity"
               additionalProperties: false
             - type: "null"
+          description: "本次退款涉及的硬件订单组件及数量"
         sourcePeriodNos:
           type: "array"
           items:
             type: "string"
+          description: "本次退款涉及的已交付权益周期编号"
         refundNo:
           type: "string"
           description: "退款号"
@@ -15022,6 +15025,7 @@ components:
               - "entitlementCodes"
               - "lifecycle"
             additionalProperties: false
+          description: "订单已交付的权益周期、权益代码和状态"
         hardwareItems:
           type: "array"
           items:
@@ -15038,6 +15042,7 @@ components:
               - "hardwareSkuNo"
               - "quantity"
             additionalProperties: false
+          description: "原订单的硬件组件、SKU 和数量"
         summary:
           "$ref": "#/components/schemas/MallOrderSummary"
           description: "概览与三维状态"
@@ -17163,6 +17168,7 @@ components:
                 - "entitlementCodes"
               additionalProperties: false
             - type: "null"
+          description: "报价关联的已发布 SKU、套餐版本和权益代码"
         offerNo:
           type: "string"
           description: "主体套餐销售报价编号。"
@@ -17210,6 +17216,7 @@ components:
       properties:
         skuVersionNo:
           type: "string"
+          description: "本次报价绑定的已发布 SKU 版本号"
         offerNo:
           type: "string"
           description: "要新增或更新的销售报价编号。"

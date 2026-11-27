@@ -980,7 +980,7 @@ for (const f of javaFiles()) {
   // `extends BaseMapper<...>` **可能换行、实体名可能带包**（CouponMappers.CouponIssueMapper
   // 两样都占）。原来的单行 `<(\w+)>` 对它一个字都匹配不到 —— 于是那个 Mapper 根本没登记，
   // 简名查找就落到了另一个同名的上，报出一张它从没碰过的表。
-  for (const m of src.matchAll(/interface\s+(\w+)\s+extends\s+BaseMapper<\s*((?:\w+\.)*\w+)\s*>/g)) {
+  for (const m of src.matchAll(/interface\s+(\w+)\s+extends\s+(?:BaseMapper|PlatformTableMapper|TradeTableMapper|IndustryTableMapper|PayMerchantTableMapper)<\s*((?:\w+\.)*\w+)\s*>/g)) {
     const list = mapperEntity.get(m[1]!) ?? [];
     list.push({ entity: m[2]!.split(".").pop()!, pkg });
     mapperEntity.set(m[1]!, list);

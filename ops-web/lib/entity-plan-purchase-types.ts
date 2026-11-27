@@ -6,6 +6,7 @@ export type PlanMoney = {
   minor:number;
 };
 export type EntityPlanOffer={
+  /** 报价关联的已发布 SKU、套餐版本和权益代码 */
   catalog?:{skuNo:string;skuVersionNo:string;planVersionNo:string;entitlementCodes:string[]}|null;
   /** 主体套餐销售报价编号。 */
   offerNo:string;
@@ -29,6 +30,7 @@ export type EntityPlanOffer={
   enabled:boolean;
 };
 export type EntityPlanOfferEdit={
+  /** 本次报价绑定的已发布 SKU 版本号 */
   skuVersionNo?:string;
   /** 要新增或更新的销售报价编号。 */
   offerNo:string;

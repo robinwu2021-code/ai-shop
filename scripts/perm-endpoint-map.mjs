@@ -34,8 +34,9 @@ export const RULES = [
   ["GET", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/receipt-documentation$/, "commerce:mall:order:read"],
   ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/receipt-documentation$/, "commerce:mall:offline:confirm"],
   // 主体购买沿用真实Controller权限；复合授权仍由运行时同时校验，表册不改变授权。
-  ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}(?:\/\{orderNo\}(?:\/(?:cash-receipts|cash-refunds|evidence\/url))?|\/offers)?$/, "merchant:merchant:read"],
+  ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}(?:\/\{orderNo\}(?:\/(?:cash-receipts|cash-refunds|refund-review|evidence\/url))?|\/offers)?$/, "merchant:merchant:read"],
   ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/assistance-context$/, "commerce:mall:assisted:purchase", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/refund-review$/, "commerce:refund:review", "同时要求merchant:merchant:ban"],
   ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/assisted$/, "commerce:mall:assisted:purchase", "同时要求merchant:merchant:ban"],
   ["PUT", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/offers$/, "system:param:update"],
   ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/cash-refunds(?:\/\{refundNo\}\/(?:payout|recover))?$/, "commerce:mall:offline:refund:confirm", "同时要求merchant:merchant:ban"],
