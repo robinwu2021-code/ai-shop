@@ -459,6 +459,31 @@ class MallFulfillmentMysqlTest {
     }
 
     @Test
+    void resumesSeparatePlatformActivationFromCommittedPlan() {
+        try (var db = new MysqlDatabase()) {
+            var calls = new java.util.concurrent.atomic.AtomicInteger();
+            var activation = new PaidStoreActivationPort() {
+                @Override public boolean separateDatabase() { return true; }
+                @Override public void activate(StoreRef store, String entity, String order, long boughtAt, long at) {
+                    if (calls.incrementAndGet() == 1) throw new IllegalStateException("platform unavailable");
+                }
+            };
+            var f = setup(db, false, null, m -> {}, true, activation);
+            start(f);
+            f.svc.confirmPayment(paid(f, 8800));
+            var query = new FulfillmentQuery("tenant-a", f.order.orderNo());
+            assertThrows(IllegalStateException.class, () -> f.svc.fulfill(query));
+            assertEquals(2, count(db, "SELECT COUNT(*) FROM mch_subscription_period"));
+            assertNotEquals("COMPLETED", db.jdbc.queryForObject("SELECT fulfillment_status FROM mall_order", String.class));
+            f.svc.recover(query);
+            f.svc.recover(query);
+            assertEquals("COMPLETED", db.jdbc.queryForObject("SELECT fulfillment_status FROM mall_order", String.class));
+            assertEquals(2, count(db, "SELECT COUNT(*) FROM mch_subscription_period"));
+            assertEquals(2, calls.get());
+        }
+    }
+
+    @Test
     void operatingActivationDoesNotRunForPartialHardwareFulfillment() {
         try(var db=new MysqlDatabase()) {
             var calls=new java.util.concurrent.atomic.AtomicInteger();

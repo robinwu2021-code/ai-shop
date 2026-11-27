@@ -462,6 +462,11 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
     onSuccess: () => { refresh(); notify.success(c.toastIssued); },
   });
 
+  const resume = useMutation({
+    mutationFn: () => api.recoverOfflineOrder(storeNo, orderNo),
+    onSuccess: () => refresh(),
+  });
+
   if (notOffline) return null;
 
   const decline = (cl: MallOfflineClaimView) => confirm({
@@ -479,8 +484,8 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
     { header: c.colSubmittedAt, cell: (x) => fmtAt(x.submittedAt) },
     { header: c.colActions, stickyEnd: "always", cell: (x) => (x.status === "SUBMITTED" || x.status === "REVIEWING") ? (
       <span className="flex gap-2">
-        {allow("commerce:mall:offline:confirm") && <Button size="sm" disabled={mode !== null} onClick={() => { setClaimFor(x.claimNo); setMode("confirm"); }}>{c.btnConfirmClaim}</Button>}
-        {allow("commerce:mall:offline:review") && <Button size="sm" variant="outline" disabled={mode !== null} onClick={() => decline(x)}>{c.btnDecline}</Button>}
+        {!paid && allow("commerce:mall:offline:confirm") && <Button size="sm" disabled={mode !== null} onClick={() => { setClaimFor(x.claimNo); setMode("confirm"); }}>{c.btnConfirmClaim}</Button>}
+        {!paid && allow("commerce:mall:offline:review") && <Button size="sm" variant="outline" disabled={mode !== null} onClick={() => decline(x)}>{c.btnDecline}</Button>}
       </span>
     ) : null },
   ];
@@ -528,6 +533,10 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
       <DataTable columns={claimColumns} rows={claims.data} loading={claims.isLoading} error={claims.error && !notOffline ? showErr(claims.error) : undefined}
         onRetry={() => claims.refetch()} rowKey={(x) => x.claimNo} empty={ins.data?.collectionMethod === "SALES_COLLECTION" || d.quote?.collectionMethod === "SALES_COLLECTION" ? c.salesClaimsNotRequired : c.claimsEmpty} />
 
+      {paid && pendingClaims > 0 && allow("commerce:mall:offline:confirm") && (
+        <Button size="sm" loading={resume.isPending} onClick={() => resume.mutate()}>{c.btnResumeConfirmation}</Button>
+      )}
+      {resume.error && <Notice tone="danger">{resume.error.message}</Notice>}
       {lastAction && <div className="mt-2"><ActionResult c={c} r={lastAction} /></div>}
 
       {!paid && !closed && ins.data && (

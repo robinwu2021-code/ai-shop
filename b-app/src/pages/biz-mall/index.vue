@@ -36,9 +36,10 @@
 // 首期只走线下银行转账，点进去即报价下单；能不能付款以报价结果为准 ——
 // 门店转账购买按 offlineReadiness 中的银行转账选项开放。
 import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { useMallOrderStore } from "@/shared/use-mall-order-store";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { mallMoney } from "@/shared/mall";
@@ -108,7 +109,7 @@ function goOrders() {
   uni.navigateTo({ url: ROUTES.bizMallOrders });
 }
 
-onShow(load);
+useMallOrderStore(() => merchant.storeNo, load);
 </script>
 
 <style scoped>

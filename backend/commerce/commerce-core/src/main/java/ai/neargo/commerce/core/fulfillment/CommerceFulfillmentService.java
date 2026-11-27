@@ -547,7 +547,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
 
     public FulfillmentResult fulfill(FulfillmentQuery q) {
         if (q == null) throw fail("INVALID_REQUEST");
-        return locked(
+        if (activation.separateDatabase()) uow.requireOutsideTransaction();
+        var result = locked(
                 q.tenantNo(),
                 q.orderNo(),
                 o -> {
@@ -588,25 +589,40 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         repo.digitalCompleted(o);
                         repo.settleHolds(o, true);
                     }
-                    return refresh(o);
+                    return refresh(o, false);
                 });
+        return finishCommitted(q, result);
     }
 
-    private FulfillmentResult refresh(Order o) {
+    private FulfillmentResult finishCommitted(FulfillmentQuery query, FulfillmentResult previous) {
+        if (!activation.separateDatabase() || previous == null
+                || previous.digitalStatus() != AsyncStatus.SUCCEEDED
+                || previous.hardwareStatus() != AsyncStatus.SUCCEEDED) return previous;
+        return locked(query.tenantNo(), query.orderNo(), o -> {
+            if (o.axes().payment() != Payment.PAID || o.axes().refund() != Refund.NONE
+                    || o.axes().fulfillment() == Fulfillment.COMPLETED) return result(o);
+            return refresh(o, true);
+        });
+    }
+
+    private FulfillmentResult refresh(Order o, boolean componentsCommitted) {
         var r = result(o);
         boolean all =
                 r.digitalStatus() == AsyncStatus.SUCCEEDED
                         && r.hardwareStatus() == AsyncStatus.SUCCEEDED;
+        boolean paidPlan = all && o.axes().refund() == Refund.NONE
+                && orders.components(o.quote().store(), o.orderNo()).stream().anyMatch(part ->
+                        part.snapshot().allocation().component().kind() == ComponentKind.PLAN
+                                && part.snapshot().plan().tier() != PlanTier.FREE);
+        // The unfinished order remains the retry point until the platform write succeeds.
+        if (paidPlan && activation.separateDatabase() && !componentsCommitted) return r;
         var after =
                 transition(
                         o,
                         Payment.PAID,
                         all ? Fulfillment.COMPLETED : Fulfillment.PARTIAL,
                         o.axes().refund());
-        if (all && o.axes().refund() == Refund.NONE
-                && orders.components(o.quote().store(),o.orderNo()).stream().anyMatch(part ->
-                    part.snapshot().allocation().component().kind() == ComponentKind.PLAN
-                    && part.snapshot().plan().tier() != PlanTier.FREE)) {
+        if (paidPlan) {
             activation.activate(o.quote().store(),o.quote().entityNo(),o.orderNo(),o.quote().valuationAt(),clock.millis());
         }
         return result(after);
@@ -735,7 +751,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
     }
 
     private void applyInventory(String t, Operation requested, InventoryOutcome r) {
-        locked(
+        if (activation.separateDatabase()) uow.requireOutsideTransaction();
+        FulfillmentResult result = locked(
                 t,
                 requested.orderNo(),
                 o -> {
@@ -749,10 +766,11 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                     repo.save(t, op.inventoryResult(r));
                     if (op.kind().equals("SHIP") && r.status() == AsyncStatus.SUCCEEDED) {
                         repo.shipment(o, op);
-                        refresh(o);
+                        return refresh(o, false);
                     }
                     return null;
                 });
+        finishCommitted(new FulfillmentQuery(t, requested.orderNo()), result);
     }
 
     public FulfillmentResult confirmShipment(HardwareShipmentCommand c) {
