@@ -290,7 +290,7 @@
 |---|---|---|---|
 | 1a | 公共能力表访问守卫 | **已做（2026-11-27，1309e568a）**：`CommonTableAccessTest`，基线 `backend/known-common-table-access.txt` 200 条、只准变短；后续各项让基线变短 | 小 |
 | 1b | 字典收敛 | **已做（2026-11-27，10ead5ef7）**：`spi.dict.DictionaryPort` 一个端口，唯一实现 `DictionaryPortImpl` 按类型汇集三个来源；行业实为两个概念（经营类型树、进件行业），`cim_provider` 是销售渠道方、不并；三个旧端口方法与四处渠道常量别名删掉，见下方“1b 字典” | 中 |
-| 1c | 设置收敛 | `PaySettingService`（9 个文件用）并入 `SettingService`，行为不变 | 小 |
+| 1c | 设置收敛 | **已做（2026-11-27，77d04fc9c）**：结算、提现改经 `SettingPort` 读写 `sys_setting`，删 `PaySettingService`/`PaySetting`；pay-svc 桩清单加回 `SettingPort`。`pay_setting` 不再读写、未删表；上线前查生产 `sys_setting` 有无 V285 前的四个旧键 | 小 |
 | 1d | 发号仓储 | 仓储去掉按归属（CORE/PAY）切表；三种按范围计数收进 `DocumentNumberService` | 中 |
 | 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准）。**暂停（2026-11-27）**：门店审核已走 `ApprovalPort`；支付两人复核可并入但与 OpsKit“可本人审批”冲突；储值活动审批与改价是商户侧审批，`ApprovalPort` 承载不了。方案与步骤见下方“1e 审批”，等 §3 Q12–Q14 | 中 |
 | 1f | 撤中转 | **已做（2026-11-27，69b2bedd8）**：PAY 权益中转、NearPay 接收端、进销存回写按原事件号经 `OutboxEventBus.forward` 直发中间件；餐饮包装含路由决定未删，见下方“1f 撤中转” | 中 |
