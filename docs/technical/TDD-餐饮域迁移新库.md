@@ -27,7 +27,7 @@
 
 | AC | 验收标准（Given / When / Then） | 落点 |
 |---|---|---|
-| AC1 | Given `trade`、`industry` 各连同一个库的**另一个连接池** When 跑餐饮测试 Then 全部通过（原来靠同一事务的地方都已拆开或改成交易先、行业跟） | P0-4 事务拆分；`FoodSeparatePoolsTest` |
+| AC1 | Given `industry` 绑到按 `db/n_industry` 新建的库、`trade` 仍连主库 When 跑餐饮的跨域流程测试 Then 全部通过（补偿、补做在真实分库下生效） | P0-4 事务拆分；P1 新库测试（用户 2026-11-27 定：不做同库不同池，改完直接在新库测） |
 | AC2 | Given 行业句柄下的任一 SQL When 静态扫描 Then 只碰行业库的表；交易句柄、主库句柄下的 SQL 不碰行业表 | P0-3 跨库语句拆分；`FoodIndustryTableAccessTest` |
 | AC3 | Given 启动 When 校验表结构 Then 每个句柄只在自己连的库上校验自己那部分表；行业部分按 `n_industry` 的结构校验 | P0-1 / P1-4 `FoodSchemaValidator` |
 | AC4 | Given 本机测试库按 `db/n_industry/V1`、`V2` 建 When 执行 Then 行业库全部表建成，餐饮 27 张旧表都有承接 | P1-1 建表脚本 |
@@ -108,7 +108,7 @@ P1 本身照做：餐饮的行业 Mapper 对齐新结构，并在「`industry` �
 | P0-3 | 修改 / 新增 | `FoodMappers`、`FoodBusinessOperationsMapper`、新 `FoodIndustryOperationsMapper` | §1.2 的跨库语句拆成两次查询；`FoodBusinessOperationsMapper` 里只碰行业表的 18 条搬到新的行业 JDBC Mapper（`industry` 数据源） |
 | P0-4 | 修改 | §1.3 的服务类 | 按 §2.3 的三类处理 |
 | P0-5 | 新增 | `food-core/src/test/.../FoodIndustryTableAccessTest.java` | 守卫：行业句柄下的语句只碰行业表，其他句柄不碰行业表（AC2） |
-| P0-6 | 新增 | `food-core/src/test/.../FoodSeparatePoolsTest.java` | `trade`、`industry` 各绑同一库的另一池，跑跨句柄的代表流程（AC1） |
+| ~~P0-6~~ | 取消 | — | 原拟「同库不同池」测试。用户 2026-11-27 定：迁移本来就是要上新库，改完直接在新库测试；分库下的事务行为由 P1 新库测试覆盖（AC1） |
 
 ### 2.3 事务：按耦合簇处理，不用分布式事务
 
@@ -173,7 +173,7 @@ P1 本身照做：餐饮的行业 Mapper 对齐新结构，并在「`industry` �
 | P1-3 | 修改 / 新增 | 9 组合并涉及的实体、Mapper、服务 | 按 §2.5 |
 | P1-4 | 修改 | `FoodSchemaValidator` | 行业部分改按 `n_industry` 结构在 `industry` 数据源上校验；主库不再要求行业旧表 |
 | P1-5 | 新增 | `deploy/ume/food-industry-cutover/` | .61 的 `n_industry`：建缺表（`fnb_queue_ticket`、`fnb_custody`、`fnb_custody_movement`、`ind_assignment`）、补 `V2` 的列与唯一键；可重复执行；现场旧表为空，不导数 |
-| P1-6 | 修改 | 餐饮测试夹具 | 用到行业表的测试改为在 `industry` 数据源上按 `db/n_industry` 建表 |
+| P1-6 | 修改 | 餐饮测试夹具 | 用到行业表的测试改为在 `industry` 数据源上按 `db/n_industry` 建表。新库测试用本机 MySQL（`FOOD_TEST_DISPOSABLE`）：每次新建一次性的行业库，按 `V1`、`V2` 建表，`industry` 句柄绑到它，`trade` 仍连主库（P2 前）。这就是真实的两库，事务分开 |
 
 P1 之后，餐饮只能跑在「`industry` 绑定到按 `n_industry` 建的库」上（同平台基础库换表的前提）。
 
@@ -215,7 +215,7 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 
 | AC | 测试 | 跑过 |
 |---|---|---|
-| AC1 | `FoodSeparatePoolsTest` | 待实现 |
+| AC1 | P1 新库测试（`industry` 绑一次性新库） | 待实现 |
 | AC2 | `FoodIndustryTableAccessTest` | 待实现 |
 | AC3 | `FoodSchemaValidatorTest`（扩展） | 待实现 |
 | AC4 | 本机 MySQL 执行 `db/n_industry/V1`、`V2` | 待实现 |
@@ -344,3 +344,4 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 | 2026-11-27 | 用户定：行业为主的命令用业务键回查（§8-Q1） |
 | 2026-11-27 | 用户定：出品整组迁到行业库，跨库场景降到最低，交易库只保留订单（ADR-068 修订一，§2.3） |
 | 2026-11-27 | 用户定：订单域与业务域分开，跨域用补偿不用事务；占台、换台记录、订位、时段随桌台归行业库（ADR-068 修订二，§2.7） |
+| 2026-11-27 | 用户定：不做同库不同池测试，改完直接在新库测试（P0-6 取消，AC1 由 P1 新库测试覆盖） |
