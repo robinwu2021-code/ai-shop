@@ -48,6 +48,9 @@ public class ShippingUploadPortImpl implements ShippingUploadPort, OutboxConsume
     }
 
     @Override public String handlerId() { return "wx-shipping-queue"; }
+
+    /** 与物流登记（{@code ShipmentRegistrar}）同组，理由见那边（ADR-067）。 */
+    @Override public String subscriptionGroup() { return "order-shipping"; }
     // The upload queue commits in its own REQUIRES_NEW action transaction.
     @Override public boolean externalWorkflow() { return true; }
 

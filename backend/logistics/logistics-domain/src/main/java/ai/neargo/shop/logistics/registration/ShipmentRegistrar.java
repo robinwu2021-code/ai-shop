@@ -59,6 +59,13 @@ public class ShipmentRegistrar implements OutboxConsumer {
     @Override
     public String handlerId() { return "logistics-register"; }
 
+    /**
+     * 与微信发货上传入队（{@code ShippingUploadPortImpl}）同组（ADR-067）：上传成功要回写这里登记的运单，
+     * 原来两者同一事务提交、上传事件提交后才发；分两条队列会让上传先于登记完成，运单“已上传”就补不上。
+     */
+    @Override
+    public String subscriptionGroup() { return "order-shipping"; }
+
     @Override
     public boolean supports(String eventType) {
         return SHIPPED.equals(eventType);
