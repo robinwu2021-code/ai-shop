@@ -292,7 +292,7 @@
 | 1b | 字典收敛 | **已做（2026-11-27，10ead5ef7）**：`spi.dict.DictionaryPort` 一个端口，唯一实现 `DictionaryPortImpl` 按类型汇集三个来源；行业实为两个概念（经营类型树、进件行业），`cim_provider` 是销售渠道方、不并；三个旧端口方法与四处渠道常量别名删掉，见下方“1b 字典” | 中 |
 | 1c | 设置收敛 | `PaySettingService`（9 个文件用）并入 `SettingService`，行为不变 | 小 |
 | 1d | 发号仓储 | 仓储去掉按归属（CORE/PAY）切表；三种按范围计数收进 `DocumentNumberService` | 中 |
-| 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准） | 中 |
+| 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准）。**暂停（2026-11-27）**：门店审核已走 `ApprovalPort`；支付两人复核可并入但与 OpsKit“可本人审批”冲突；储值活动审批与改价是商户侧审批，`ApprovalPort` 承载不了。方案与步骤见下方“1e 审批”，等 §3 Q12–Q14 | 中 |
 | 1f | 撤中转 | **已做（2026-11-27，69b2bedd8）**：PAY 权益中转、NearPay 接收端、进销存回写按原事件号经 `OutboxEventBus.forward` 直发中间件；餐饮包装含路由决定未删，见下方“1f 撤中转” | 中 |
 | 1g | 接口级防重迁移 | `sys_idempotent` / `IdempotencyService` 的 50 个使用文件按域分批改用统一防重，每批一提交。**暂停（2026-11-27）**：要保留的语义见下方“1g”，形态等 §3 Q11 | 大 |
 | 1h | 开放应用 | 三套应用凭据（`pay_app`、`inv_open_credential`、`sys_ops_api_key`）收敛；若设计已定归密钥库，则做迁移接口，不在本库落表 | 中 |
@@ -407,6 +407,36 @@
 - 不在本项：`sys_business_type`（商城库、商城会话）、`cim_provider`（插件工程）；运营端维护两张旧表的写入口不动（写仍归属主，读走端口）。
 
 
+#### 1e 审批（会话乙，2026-11-27）
+
+档位：设计（本节只写方案与待定；代码等 Q12–Q14）。
+
+**四条审批逐条看**（设计：重审批走独立的审批与工单服务 OpsKit，业务表只存审批单号；店内快速审批是基础能力库的轻量审批 `sys_approval`）：
+
+| 审批 | 现在怎么做 | 谁批 | 节奏 | 落点 |
+|---|---|---|---|---|
+| 门店审核（开店） | `StoreOperationalReviewServiceImpl` 已走 `ApprovalPort`（OpsKit 未启用时走原流程） | 运营 | 异步 | **已收敛**，不动 |
+| 支付两人复核 | `pay_approval` + `pay.approval.ApprovalService`，只有退款复核在用（`RefundServiceImpl.open/review`），运营端 `OpsPaymentController.reviewRefund` 调两次 | 运营，申请人、一审、二审三人互不相同（服务层 + 表 CHECK） | 同步逐步 | 设计定为退役、归 OpsKit（清单：`pay_approval` “由独立的审核与工单服务承担”）。做法同已接入的结算放款：网关 `paybridge.approval` 加 `PayRefundReviewApprovalSubject`（三级·资金，固定两步），退款建单后在平台事务里送审，生效调支付侧“按审批结果放行/驳回” |
+| 储值活动审批 | `pmt_sv_approval`（`StoredValueActivityJournal`），B 端管理层在 App 里批 | 商户管理层 | 同步 | 审批人不是运营员工，OpsKit 的提交人/审批人是运营员工号 —— 现有 `ApprovalPort` 承载不了 |
+| 改价 | `ord_manual_price_adjustment.approval_mode`：店主发起即批准，店员发起由店主复核 | 店主 | 店内即时 | 设计明说归轻量审批 `sys_approval`（“退菜、改价、退款、现金收支这类店内快速审批”），不是 OpsKit |
+
+**结论**：“以 `ApprovalPort` 为准收成一个端口”只对运营侧审批成立（门店审核已是，支付两人复核可以并进来）。
+储值活动审批与改价是商户侧审批，要么 OpsKit 支持商户侧审批人，要么由轻量审批承接 —— 后者就是第二个端口，与“一个端口”冲突。
+
+**支付两人复核并入 `ApprovalPort` 的步骤**（Q12 定了再做）：
+
+1. 支付侧 `RefundService` 加“审批结果回写”（按退款单号放行或驳回，幂等，与 `review` 共用状态迁移），`PayOpsInternalApi` 加对应内部端点（独立部署时网关经它调）。
+2. 网关加 `PayRefundReviewApprovalSubject` 与补送任务（同 `SettleApprovalSubmitter`：待复核却没有审批单的，重新送）。
+3. 主题启用后，退款建单不再开 `pay_approval`；未启用时保持现状。存量 PENDING 的 `pay_approval` 走完旧流程后，删 `ApprovalService` 与 `pay_approval`。
+
+**待定**：
+
+| # | 问题 | 建议 |
+|---|---|---|
+| Q12 | OpsKit 审批默认“一律可以本人审批”，而支付退款复核要求申请人、一审、二审三人互不相同。退款复核切到 OpsKit 时，OpsKit 要不要强制同一流程内不同人 | 要：资金类（三级）在 OpsKit 流程上设“审批人不得为提交人且两步不同人”；做不到就退款复核暂不切 |
+| Q13 | 储值活动审批（商户管理层批）归哪 | 归轻量审批 `sys_approval`，与改价一起；不走 OpsKit |
+| Q14 | 轻量审批要不要和 `ApprovalPort` 合成一个接口 | 不合：两者的审批人、节奏、存储都不同；`ApprovalPort` 管运营侧，另设轻量审批端口管店内。若坚持一个端口，就在 `ApprovalPort` 上加“同步裁决”一族方法，由两个实现按主题分派 |
+
 ## §3 待你定
 
 | # | 问题 | 建议 |
@@ -422,6 +452,9 @@
 | Q8 | 报表脏日丢一次能否靠每日重算兜底 | 有重算就降到 ②，十几个事件的跨库部分随之变少 |
 | Q9 | 是否引入 MQ（已定 RabbitMQ 4）；生产由谁部署（.80 / UME 166 目前没有） | 引入，按 §1.5 默认 `local`；见 ADR-067（提案，待确认）。部署负责人待定 |
 | Q11 | 接口级防重（1g）怎么统一：A. 做成基础能力的一个端口（语义即 §2.2 1g 的 S1–S8），回执存基础能力库一张请求回执表、24 小时清理，设计 §6.9 的“不建表”改为“不在业务库建表”，调用方迁移只是换端口；B. 照设计定稿逐接口加业务唯一键、重复时重读业务数据重建响应 | A：约 100 处调用机械可分批、对外语义不变；B 要约 40 个接口所在文件各加迁移与测试，原始响应重放与 24 小时语义消失，餐饮/美业要各模块做 |
+| Q12 | 1e：退款两人复核切到 OpsKit 时，OpsKit 要不要强制“审批人不得为提交人、两步不同人”（支付现行规则；OpsKit 默认可本人审批） | 要；做不到就退款复核暂不切 |
+| Q13 | 1e：储值活动审批（商户管理层批）归哪 | 归轻量审批 `sys_approval`，与改价一起，不走 OpsKit |
+| Q14 | 1e：轻量审批（店内、商户侧）要不要和 `ApprovalPort` 合成一个接口 | 不合，另设轻量审批端口；坚持一个就给 `ApprovalPort` 加“同步裁决”一族、按主题分派两个实现 |
 | Q10 | 商户来单通知（`SUB_ORDER_PAID`）改成提交后发、不落发件箱，接受“提交后、发送前进程崩溃漏一次” | **已定（2026-11-27）**：统一走 MQ，来单属 MQ 直发 |
 
 ## §5 对账三 · 实现 → 需求
