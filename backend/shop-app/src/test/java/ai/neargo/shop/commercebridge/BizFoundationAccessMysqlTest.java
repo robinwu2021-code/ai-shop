@@ -599,6 +599,8 @@ class BizFoundationAccessMysqlTest {
                 ai.neargo.shop.platform.port.MarketContactPolicyPortImpl.class);
         services.registerBean("dataSource", DataSource.class, () -> f.ds);
         services.registerAlias("dataSource", "platformDataSource");
+        services.registerBean(ai.neargo.shop.spi.dict.DictionaryPort.class,
+                () -> mock(ai.neargo.shop.spi.dict.DictionaryPort.class));
         services.registerBean(StoreOwnershipWritePort.class, () -> new StoreOwnershipWritePortImpl(f.jdbc));
         services.registerBean(ai.neargo.shop.platform.MarketPhonePolicyService.class,
                 () -> mock(ai.neargo.shop.platform.MarketPhonePolicyService.class));
