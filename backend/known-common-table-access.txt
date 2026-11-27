@@ -150,5 +150,3 @@
 开放应用 pay/pay-guard/src/main/java/ai/neargo/shop/pay/api/guard/open/service/impl/PartnerKeyServiceImpl.java
 开放应用 pay/pay-guard/src/main/java/ai/neargo/shop/pay/api/guard/sign/ResponseSigner.java
 开放应用 pay/pay-guard/src/main/java/ai/neargo/shop/pay/api/guard/web/CallerArgumentResolver.java
-权限 shop-app/src/main/java/ai/neargo/shop/config/DevSeeder.java
-权限 shop-core/src/main/java/ai/neargo/shop/platform/impl/OpsServiceImpl.java

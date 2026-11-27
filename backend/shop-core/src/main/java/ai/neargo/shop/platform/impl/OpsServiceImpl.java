@@ -12,11 +12,8 @@ import ai.neargo.shop.common.ratelimit.RateLimiter;
 import ai.neargo.shop.spi.notify.MailPort;
 import ai.neargo.shop.spi.notify.OpsAlertPort;
 import ai.neargo.shop.platform.OpsService;
-import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.platform.perm.RolePermResolver;
-import ai.neargo.shop.platform.perm.entity.SysRoleMember;
-import ai.neargo.shop.platform.perm.mapper.PermMappers.RoleMemberMapper;
+import ai.neargo.shop.platform.perm.OpsStaffRoles;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
@@ -50,14 +47,11 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.Set;
-import java.util.LinkedHashSet;
 import java.security.SecureRandom;
 import java.util.regex.Pattern;
 
@@ -83,7 +77,7 @@ public class OpsServiceImpl implements OpsService {
     private final OpsLoginGuard loginGuard;
     private final OpsLoginChallenges loginChallenges;
     private final OpsApiKeyStore apiKeys;
-    private final RoleMemberMapper roleMemberMapper;
+    private final OpsStaffRoles staffRoles;
     private final RolePermResolver rolePermResolver;
     /** 改角色/数据域之后清它 —— 身份也是现算的了（见 LiveIdentityResolver） */
     private final ai.neargo.shop.platform.perm.StaffIdentityResolver identityResolver;
@@ -129,7 +123,7 @@ public class OpsServiceImpl implements OpsService {
 
     private static final String MAIL_DELIVERY = "mail";
 
-    public OpsServiceImpl(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper,
+    public OpsServiceImpl(StaffMapper staffMapper, OpsStaffRoles staffRoles,
                           RolePermResolver rolePermResolver,
                           ai.neargo.shop.platform.perm.StaffIdentityResolver identityResolver,
                           ai.neargo.shop.spi.platform.AuditLogPort auditLogPort,
@@ -165,7 +159,7 @@ public class OpsServiceImpl implements OpsService {
         this.industryService = industryService;
         this.objectMapper = objectMapper;
         this.staffMapper = staffMapper;
-        this.roleMemberMapper = roleMemberMapper;
+        this.staffRoles = staffRoles;
         this.identityResolver = identityResolver;
         this.rolePermResolver = rolePermResolver;
         this.auditLogPort = auditLogPort;
@@ -304,7 +298,7 @@ public class OpsServiceImpl implements OpsService {
      * 另一条路就成了绕过那条规矩的门。
      */
     private LoginResultVO issue(SysOpsStaff staff) {
-        List<String> roles = readList(staff.getRoles());
+        List<String> roles = staffRoles.of(staff.getStaffNo());
         List<String> perms = rolePermResolver.of(roles);
         String token = tokenStore.issue(TokenStore.SessionData.of(
                 LoginUser.operator(staff.getStaffNo(), staff.getRealName(), roles, perms,
@@ -331,17 +325,18 @@ public class OpsServiceImpl implements OpsService {
     public StaffVO me() {
         LoginUser user = SecurityUtils.requireUser();
         SysOpsStaff staff = requireStaff(user.userNo());
-        List<String> roles = readList(staff.getRoles());
+        List<String> roles = staffRoles.of(staff.getStaffNo());
         return toVO(staff, roles, rolePermResolver.of(roles));
     }
 
     @Override
     public List<StaffVO> staffList() {
-        return DataScopeContext.executeWithoutScope(() ->
-                        staffMapper.selectList(Wrappers.<SysOpsStaff>lambdaQuery()
-                                .orderByAsc(SysOpsStaff::getId))).stream()
+        List<SysOpsStaff> staffs = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectList(Wrappers.<SysOpsStaff>lambdaQuery().orderByAsc(SysOpsStaff::getId)));
+        Map<String, List<String>> rolesByStaff = staffRoles.of(staffs.stream().map(SysOpsStaff::getStaffNo).toList());
+        return staffs.stream()
                 .map(s -> {
-                    List<String> roles = readList(s.getRoles());
+                    List<String> roles = rolesByStaff.getOrDefault(s.getStaffNo(), List.of());
                     return toVO(s, roles, rolePermResolver.of(roles));
                 }).toList();
     }
@@ -1158,7 +1153,7 @@ public class OpsServiceImpl implements OpsService {
         audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用", true,
                 objectMapper.writeValueAsString(Map.of("status", enabled ? "DISABLED" : "ACTIVE")),
                 objectMapper.writeValueAsString(Map.of("status", enabled ? "ACTIVE" : "DISABLED")));
-        List<String> roles = readList(staff.getRoles());
+        List<String> roles = staffRoles.of(staff.getStaffNo());
         return toVO(staff, roles, rolePermResolver.of(roles));
     }
 
@@ -1182,7 +1177,7 @@ public class OpsServiceImpl implements OpsService {
         audit("STAFF_2FA_EXEMPT", staffNo, (exempt ? "加入" : "移出") + "免二次验证白名单：" + reason.trim(), true,
                 objectMapper.writeValueAsString(Map.of("secondFactorExempt", before)),
                 objectMapper.writeValueAsString(Map.of("secondFactorExempt", exempt)));
-        List<String> roles = readList(staff.getRoles());
+        List<String> roles = staffRoles.of(staff.getStaffNo());
         return toVO(staff, roles, rolePermResolver.of(roles));
     }
 
@@ -1206,22 +1201,9 @@ public class OpsServiceImpl implements OpsService {
         if (staffNo.equals(SecurityUtils.currentUserNo())) {
             throw BizException.of(ErrorCode.STAFF_SELF_OPERATION);
         }
-        String before = staff.getRoles();
-        staff.setRoles("[\"" + role + "\"]");
-        staffMapper.updateById(staff);
-        /*
-         * **同步 sys_role_member**。
-         *
-         * 判权读 sys_ops_staff.roles，而动态菜单读 sys_role_member ——
-         * 只写一处的后果是「改完角色，他的权限变了、菜单没变」：
-         * 新角色该看的菜单不出现，旧角色的还在，而两边的数据各自都说得通。
-         *
-         * 这正是 DevSeeder 那里刚写过的「员工与他的角色是同一件事，
-         * 分两处写必然漏一处」—— 而我在写接口这一侧漏了。
-         * 两张表并存是迁移期的过渡（roles 列保留但停写），
-         * 过渡期内**每一处改角色的地方都要同时写两边**。
-         */
-        syncRoleMember(staffNo, List.of(role));
+        String before = writeList(staffRoles.of(staffNo));
+        // 角色只在 sys_role_member（TDD-基础能力库对齐 2a、Q3）：判权与菜单读同一处，sys_ops_staff.roles 停写
+        staffRoles.set(staffNo, List.of(role));
         /*
          * **不再踢会话**（2026-08-13）：角色与数据域已经改成每请求现算
          * （`LiveIdentityResolver`），会话里只剩「他是谁」。改完清一次快照，
@@ -1273,11 +1255,10 @@ public class OpsServiceImpl implements OpsService {
         staff.setUsername(username);
         staff.setRealName(realName);
         staff.setPassword(passwordHasher.encode(initial));
-        staff.setRoles(writeList(want));
         staff.setStatus("ACTIVE");
         staff.setMustChangePassword(true);
         staffMapper.insert(staff);
-        syncRoleMember(staff.getStaffNo(), want);
+        staffRoles.set(staff.getStaffNo(), want);
 
         // 审计里**不写密码**。写了就等于把「一次性」这件事作废
         audit("STAFF_CREATE", staff.getStaffNo(), username + " / " + String.join(",", want));
@@ -1352,10 +1333,8 @@ public class OpsServiceImpl implements OpsService {
         if (staffNo.equals(SecurityUtils.currentUserNo())) {
             throw BizException.of(ErrorCode.STAFF_SELF_OPERATION);
         }
-        String before = staff.getRoles();
-        staff.setRoles(writeList(want));
-        staffMapper.updateById(staff);
-        syncRoleMember(staffNo, want);
+        List<String> before = staffRoles.of(staffNo);
+        staffRoles.set(staffNo, want);
         /*
          * **不再踢会话**（2026-08-13）：角色与数据域已经改成每请求现算
          * （`LiveIdentityResolver`），会话里只剩「他是谁」。改完清一次快照，
@@ -1364,8 +1343,8 @@ public class OpsServiceImpl implements OpsService {
          * 要立刻收回权限（开错了），走运营端那个显式的「强制重新登录」按钮。
          */
         identityResolver.invalidate();
-        audit("STAFF_ROLES", staffNo, before + " → " + writeList(want), true,
-                objectMapper.writeValueAsString(Map.of("roles", readList(before))),
+        audit("STAFF_ROLES", staffNo, writeList(before) + " → " + writeList(want), true,
+                objectMapper.writeValueAsString(Map.of("roles", before)),
                 objectMapper.writeValueAsString(Map.of("roles", want)));
         return toVO(staff, want, rolePermResolver.of(want));
     }
@@ -1498,7 +1477,7 @@ public class OpsServiceImpl implements OpsService {
     public StaffVO setStaffScope(String staffNo, String merchantNo, String communityNo,
                                  String pickupNo) {
         SysOpsStaff staff = requireStaff(staffNo);
-        List<String> roles = readList(staff.getRoles());
+        List<String> roles = staffRoles.of(staff.getStaffNo());
         boolean anyScope = notBlank(merchantNo) || notBlank(communityNo) || notBlank(pickupNo);
         /*
          * 给全量角色配数据域**直接拒绝**，而不是存下来。
@@ -1553,41 +1532,6 @@ public class OpsServiceImpl implements OpsService {
      * <p>先删后插而不是增量比对：运营端一个人只有一个角色（下拉单选），
      * 增量比对是为多选设计的复杂度，这里用不上。
      */
-    /**
-     * 同步 {@code sys_role_member} 到给定角色集合。
-     *
-     * <p><b>按集合增删，不是清空重插</b>：{@code granted_at} / {@code granted_by} 是审计信息 ——
-     * 清空重插会把「这个角色是三个月前谁给的」改成「今天我给的」，
-     * 而那正是权限审计要查的东西。只动真正变化的那几行。
-     */
-    private void syncRoleMember(String staffNo, List<String> roles) {
-        List<SysRoleMember> existing = roleMemberMapper.selectList(
-                Wrappers.<SysRoleMember>lambdaQuery()
-                        .eq(SysRoleMember::getEndCode, "OPS")
-                        .eq(SysRoleMember::getSubjectNo, staffNo));
-        Set<String> want = new LinkedHashSet<>(roles);
-        Set<String> have = existing.stream().map(SysRoleMember::getRoleCode)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-
-        for (SysRoleMember m : existing) {
-            if (!want.contains(m.getRoleCode())) {
-                roleMemberMapper.deleteById(m.getId());
-            }
-        }
-        for (String role : want) {
-            if (have.contains(role)) {
-                continue;
-            }
-            SysRoleMember m = new SysRoleMember();
-            m.setEndCode("OPS");
-            m.setSubjectNo(staffNo);
-            m.setRoleCode(role);
-            m.setGrantedBy(SecurityUtils.currentUserNo());
-            m.setGrantedAt(System.currentTimeMillis());
-            roleMemberMapper.insert(m);
-        }
-    }
-
     private static boolean notBlank(String v) {
         return v != null && !v.isBlank();
     }

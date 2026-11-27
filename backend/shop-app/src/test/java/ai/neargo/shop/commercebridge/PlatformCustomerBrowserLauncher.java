@@ -100,18 +100,20 @@ public final class PlatformCustomerBrowserLauncher {
       new ResourceDatabasePopulator(new FileSystemResource(System.getenv("PLATFORM_MENU_SEED_FILE"))).execute(ds);
       var hash=new PasswordHasher();String password="local-browser-only";
       String[][] identities={{"admin","SUPER_ADMIN"},{"bd","BD"},{"goods","GOODS_OPS"},{"support","SUPPORT"},{"campaign","CAMPAIGN_OPS"},{"community","COMMUNITY_OPS"},{"auditor","AUDITOR"},{"finance","FINANCE"},{"risk","RISK"},{"analyst","ANALYST"},{"tech","TECH_OPS"},{"elec","ELEC_ADMIN"}};
-      for(var i:identities)jdbc.update("INSERT INTO sys_ops_staff(staff_no,username,password,real_name,roles,created_at,updated_at) VALUES(?,?,?,?,?,NOW(),NOW())","LOCAL_"+i[0],i[0],hash.encode(password),"Local "+i[0],"[\""+i[1]+"\"]");
+      for(var i:identities){jdbc.update("INSERT INTO sys_ops_staff(staff_no,username,password,real_name,roles,created_at,updated_at) VALUES(?,?,?,?,?,NOW(),NOW())","LOCAL_"+i[0],i[0],hash.encode(password),"Local "+i[0],"[\""+i[1]+"\"]");
+        jdbc.update("INSERT INTO sys_role_member(end_code,subject_no,role_code,created_at,updated_at) VALUES('OPS',?,?,NOW(),NOW())","LOCAL_"+i[0],i[1]);}
       var cfg=new MybatisConfiguration();var factory=new MybatisSqlSessionFactoryBean();factory.setConfiguration(cfg);factory.setDataSource(ds);
       var plugins=new com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor();plugins.addInnerInterceptor(new com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor());factory.setPlugins(plugins);
       factory.setGlobalConfig(new com.baomidou.mybatisplus.core.config.GlobalConfig().setMetaObjectHandler(new AuditMetaObjectHandler()));
       var sql=new SqlSessionTemplate(factory.getObject());
       for(var mapper:List.of(StaffMapper.class,RolePointMapper.class,FunctionPointMapper.class,RoleMapper.class,RoleMemberMapper.class))cfg.addMapper(mapper);
       var perms=new RolePermResolver(sql.getMapper(RolePointMapper.class),sql.getMapper(FunctionPointMapper.class),sql.getMapper(RoleMapper.class),0);
-      var identitiesResolver=new StaffIdentityResolver(sql.getMapper(StaffMapper.class),perms,0);
+      var staffRoles=new ai.neargo.shop.platform.perm.OpsStaffRoles(sql.getMapper(RoleMemberMapper.class));
+      var identitiesResolver=new StaffIdentityResolver(sql.getMapper(StaffMapper.class),perms,staffRoles,0);
       var memory=new MemoryTokenStore(Duration.ofHours(2));
       var tokens=new RealmRoutingTokenStore(Map.of(Realm.OPERATOR,memory,Realm.CONSUMER,new MemoryTokenStore(Duration.ofHours(1)),Realm.MERCHANT,new MemoryTokenStore(Duration.ofHours(1))));
       var json=tools.jackson.databind.json.JsonMapper.builder().build();
-      var ops=new OpsServiceImpl(sql.getMapper(StaffMapper.class),sql.getMapper(RoleMemberMapper.class),perms,identitiesResolver,
+      var ops=new OpsServiceImpl(sql.getMapper(StaffMapper.class),staffRoles,perms,identitiesResolver,
           null,null,null,tokens,TokenStores.single(tokens),json,json,null,null,hash,null,null,null,null,"mail",null,"",new OpsLoginGuard(),new OpsLoginChallenges(),new ai.neargo.shop.platform.auth.OpsApiKeyStore(jdbc, null));
       web.getEnvironment().setActiveProfiles("ops");
       web.addBeanFactoryPostProcessor(b->{

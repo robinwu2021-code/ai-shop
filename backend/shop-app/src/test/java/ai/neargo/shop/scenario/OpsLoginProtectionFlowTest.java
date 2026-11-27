@@ -61,6 +61,11 @@ class OpsLoginProtectionFlowTest {
         jdbc.update("INSERT INTO sys_ops_staff (staff_no, username, password, real_name, roles, status, created_at, updated_at)"
                 + " SELECT ?, ?, ?, '登录防护', roles, 'ACTIVE', NOW(), NOW() FROM sys_ops_staff WHERE username='admin'",
                 "ST-LG-" + id, user, hasher.encode(RIGHT));
+        // 角色在 sys_role_member（TDD-基础能力库对齐 2a）：照 admin 的角色抄一份
+        jdbc.update("INSERT INTO sys_role_member (end_code, subject_no, role_code, created_at, updated_at)"
+                + " SELECT 'OPS', ?, role_code, NOW(), NOW() FROM sys_role_member"
+                + " WHERE end_code='OPS' AND deleted=0 AND subject_no=(SELECT staff_no FROM sys_ops_staff WHERE username='admin')",
+                "ST-LG-" + id);
     }
 
     @AfterEach

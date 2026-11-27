@@ -1,5 +1,6 @@
 package ai.neargo.shop.platform.auth;
 
+import ai.neargo.shop.platform.perm.OpsStaffRoles;
 import ai.neargo.auth.store.IdentityLoader;
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LivePermResolver;
@@ -11,8 +12,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,11 +40,12 @@ public class OperatorIdentityLoader implements IdentityLoader<LoginUser> {
 
     private final PlatformMappers.StaffMapper staffs;
     private final LivePermResolver perms;
-    private final ObjectMapper json = new ObjectMapper();
+    private final OpsStaffRoles staffRoles;
 
-    public OperatorIdentityLoader(PlatformMappers.StaffMapper staffs, LivePermResolver perms) {
+    public OperatorIdentityLoader(PlatformMappers.StaffMapper staffs, LivePermResolver perms, OpsStaffRoles staffRoles) {
         this.staffs = staffs;
         this.perms = perms;
+        this.staffRoles = staffRoles;
     }
 
     @Override
@@ -61,7 +61,8 @@ public class OperatorIdentityLoader implements IdentityLoader<LoginUser> {
         if (staff == null || !ACTIVE.equals(staff.getStatus())) {
             return Optional.empty();
         }
-        List<String> roles = readRoles(staffNo, staff.getRoles());
+        // 角色取自 sys_role_member（TDD-基础能力库对齐 2a），不再读 sys_ops_staff.roles
+        List<String> roles = staffRoles.of(staffNo);
         List<String> resolved = strict ? perms.resolveFresh(roles) : perms.resolve(roles);
         if (resolved == null) {
             if (strict) throw new ai.neargo.shop.auth.store.FreshAccountReadUnavailable();
@@ -75,27 +76,6 @@ public class OperatorIdentityLoader implements IdentityLoader<LoginUser> {
                 staff.getStaffNo(), staff.getRealName(), roles, resolved,
                 StaffScopes.of(staff.getMerchantNo(), staff.getCommunityNo(),
                         staff.getPickupNo(), resolved)));
-    }
-
-    /**
-     * {@code roles} 是 JSON 数组。解析不了当作空 —— 与登录路径的处理一致。
-     *
-     * <p><b>但必须留一条日志。</b>静默兜底会让「这一列坏了」与「这个人本来就没角色」
-     * 长得一模一样：那个人悄无声息地失去全部权限，而运营看到的是「他说他点不动」，
-     * 库里那一列却明明写着角色。<b>兜底可以，无声不行。</b>
-     */
-    private List<String> readRoles(String staffNo, String jsonArray) {
-        if (jsonArray == null || jsonArray.isBlank()) {
-            return List.of();
-        }
-        try {
-            return json.readValue(jsonArray, new TypeReference<List<String>>() {
-            });
-        } catch (Exception e) {
-            log.warn("roles 列不是合法 JSON，按空角色处理 staffNo={} 异常={}",
-                    staffNo, e.getClass().getSimpleName());
-            return List.of();
-        }
     }
 
     /** 这个加载器认 OPS 类主体。**显式写出来** —— 组合加载器按它分发。 */

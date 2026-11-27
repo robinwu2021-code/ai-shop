@@ -49,6 +49,7 @@ class OpsApiKeyFlowTest {
                 SELECT ?, ?, password, 'Key test', '["BD"]', 'ACTIVE', NOW(), NOW()
                 FROM sys_ops_staff WHERE username='admin'
                 """, staffNo, staffNo);
+        roles("BD");
         keys = "/ops/staffs/" + staffNo + "/api-keys";
     }
 
@@ -73,13 +74,13 @@ class OpsApiKeyFlowTest {
         postAs("/ops/industries/RETAIL/enabled", key, "{}")
                 .andExpect(jsonPath("$.code").value(10403));
         postAs("/biz/auth/switch", key, "{}").andExpect(status().isUnauthorized());
-        jdbc.update("UPDATE sys_ops_staff SET roles='[]' WHERE staff_no=?", staffNo);
+        roles();
         getAs("/ops/stores", key).andExpect(jsonPath("$.code").value(10403));
     }
 
     @Test
     void allowsManagementSubjectToRoleAndRejectsExpiredOrRevokedKeys() throws Exception {
-        jdbc.update("UPDATE sys_ops_staff SET roles='[\"SUPER_ADMIN\"]' WHERE staff_no=?", staffNo);
+        roles("SUPER_ADMIN");
         String keyNo = UUID.randomUUID().toString();
         String key = issueKey(keyNo, "MANAGE");
         getAs(keys, key).andExpect(jsonPath("$.code").value(10403));
@@ -148,9 +149,7 @@ class OpsApiKeyFlowTest {
                     VALUES (?,?,?,'SINGLE_USER',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
                     """, merchant, merchant, merchant);
         }
-        jdbc.update("""
-                UPDATE sys_ops_staff SET roles='["CAMPAIGN_OPS"]' WHERE staff_no=?
-                """, staffNo);
+        roles("CAMPAIGN_OPS");
         String session = TestLogin.operator(mvc, json, staffNo, "admin123");
         getAs("/ops/coupon-issues?couponNo=KEY-TEST-OTHER", session)
                 .andExpect(jsonPath("$.data.total").value(1));
@@ -255,5 +254,14 @@ class OpsApiKeyFlowTest {
             request.contentType(MediaType.APPLICATION_JSON).content(body);
         }
         return mvc.perform(request);
+    }
+
+    /** 账号的角色在 sys_role_member（TDD-基础能力库对齐 2a），不再看 sys_ops_staff.roles */
+    private void roles(String... roleCodes) {
+        jdbc.update("DELETE FROM sys_role_member WHERE end_code='OPS' AND subject_no=?", staffNo);
+        for (String role : roleCodes) {
+            jdbc.update("INSERT INTO sys_role_member (end_code, subject_no, role_code, created_at, updated_at)"
+                    + " VALUES ('OPS', ?, ?, NOW(), NOW())", staffNo, role);
+        }
     }
 }
