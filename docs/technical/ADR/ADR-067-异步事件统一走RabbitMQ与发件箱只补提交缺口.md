@@ -128,4 +128,8 @@
    收到后带事件号、调用来源调原 `consume`。RabbitMQ 下保序订阅 = 一致性哈希交换机（按头 `x-aggregate-id`）+ N 条单活分区队列
    （默认 4），**服务端需启用 `rabbitmq_consistent_hash_exchange` 插件**。名单默认为空，即全部仍进程内投递，按域逐个加；
    与统一投递模式（ADR-039）同开会在启动时拒绝。发布同时校验发布确认与不可路由退回：没有订阅能收的消息算发布失败。
+   **首个切换的域（2026-11-27）：商品 → 库存**：`SKU_UPSERTED`、`SKU_RETIRED`、`GOODS_ON_SALE_CHANGED`、`SKU_INV_MODE_CHANGED`
+   进默认名单（`SHOP_EVENTS_OUTBOX_TYPES` 可覆盖；`transport=local` 时名单不起作用）。库存的四个投影写同一份物料，
+   新增 `OutboxConsumer.subscriptionGroup()` 让它们合成一个保序订阅 `inventory-product`，组内按原顺序逐个调 ——
+   否则各自一条队列，同一 SKU 的建档与下架可能乱序。上下架按商品号发，与按 SKU 的三类不保证先后，与改造前按聚合分线的行为一致。
 5. 撤中转（清单 §〇 C 类）。

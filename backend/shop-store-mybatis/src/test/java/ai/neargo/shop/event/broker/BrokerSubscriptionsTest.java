@@ -76,6 +76,32 @@ class BrokerSubscriptionsTest {
     }
 
     @Test
+    @DisplayName("同一订阅组的必达消费者合成一个保序订阅：一条队列、同一聚合按序，组内按原顺序逐个调")
+    void groupedDurableConsumersShareOneOrderedSubscription() {
+        var broker = new FakeBroker();
+        var props = new BrokerProperties();
+        props.setOutboxEventTypes(Set.of("SKU_UPSERTED", "SKU_RETIRED"));
+        orchestration(broker, props, new MockEnvironment(),
+                grouped("inv-item", "inventory-product", "SKU_UPSERTED"),
+                grouped("inv-retire", "inventory-product", "SKU_RETIRED")).start();
+
+        assertThat(broker.subs.keySet()).containsExactly(
+                new BrokerSubscription("inventory-product", Set.of("SKU_UPSERTED", "SKU_RETIRED"), true));
+        broker.publish(new BrokerMessage("EV-1", "SKU", "S-1", "SKU_UPSERTED", "{}"));
+        broker.publish(new BrokerMessage("EV-2", "SKU", "S-1", "SKU_RETIRED", "{}"));
+        assertThat(seen).containsExactly("inv-item:SKU_UPSERTED@EV-1", "inv-retire:SKU_RETIRED@EV-2");
+    }
+
+    private OutboxConsumer grouped(String id, String group, String type) {
+        return new OutboxConsumer() {
+            @Override public String handlerId() { return id; }
+            @Override public String subscriptionGroup() { return group; }
+            @Override public boolean supports(String t) { return type.equals(t); }
+            @Override public void consume(SysOutbox e) { seen.add(id + ":" + e.getEventType() + "@" + DeliveryContext.eventNo()); }
+        };
+    }
+
+    @Test
     @DisplayName("没有中间件实现：什么都不登记")
     @SuppressWarnings("unchecked")
     void noBrokerNoop() {

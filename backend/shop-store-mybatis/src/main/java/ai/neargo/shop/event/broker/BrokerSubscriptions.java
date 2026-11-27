@@ -10,7 +10,11 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.env.Environment;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -60,12 +64,15 @@ public class BrokerSubscriptions implements SmartLifecycle {
                     + "shop.outbox.sources.platform.mode=unified 时两套投递会抢同一批事件");
         }
         int count = 0;
+        Map<String, List<OutboxConsumer>> groups = new LinkedHashMap<>();
+        Map<String, Set<String>> groupTypes = new LinkedHashMap<>();
         for (OutboxConsumer c : consumers.orderedStream().toList()) {
             if (c.afterCommitOnly()) {
                 if (c.eventTypes().isEmpty()) {
                     throw new IllegalStateException("通知类消费者 " + c.handlerId() + " 必须声明 eventTypes()，中间件按它绑定");
                 }
-                broker.subscribe(new BrokerSubscription(c.handlerId(), c.eventTypes(), false), handler(c, false));
+                broker.subscribe(new BrokerSubscription(c.handlerId(), c.eventTypes(), false),
+                        handler(List.of(c), false));
                 count++;
                 continue;
             }
@@ -74,30 +81,41 @@ public class BrokerSubscriptions implements SmartLifecycle {
                 if (c.supports(t)) relayed.add(t);
             }
             if (!relayed.isEmpty()) {
-                broker.subscribe(new BrokerSubscription(c.handlerId(), relayed, true), handler(c, true));
-                count++;
+                groups.computeIfAbsent(c.subscriptionGroup(), k -> new ArrayList<>()).add(c);
+                groupTypes.computeIfAbsent(c.subscriptionGroup(), k -> new LinkedHashSet<>()).addAll(relayed);
             }
+        }
+        for (var g : groups.entrySet()) {
+            broker.subscribe(new BrokerSubscription(g.getKey(), groupTypes.get(g.getKey()), true),
+                    handler(g.getValue(), true));
+            count++;
         }
         log.info("[events] 已登记 {} 个中间件订阅；发件箱改由中间件投递的类型：{}", count, props.getOutboxEventTypes());
     }
 
-    static Consumer<BrokerMessage> handler(OutboxConsumer consumer, boolean fromOutbox) {
+    /** 组内按顺序逐个调支持该类型的消费者；任何一个抛错整条重投（已成功的靠自身幂等），与进程内投递一致。 */
+    static Consumer<BrokerMessage> handler(List<OutboxConsumer> members, boolean fromOutbox) {
         return message -> {
-            SysOutbox envelope = message.toEnvelope();
-            if (envelope.getEventType() == null || !consumer.supports(envelope.getEventType())) {
-                return;
-            }
-            Runnable call = () -> DeliveryContext.run(envelope.getEventNo(), () -> consumer.consume(envelope));
-            if (fromOutbox) {
-                // 与进程内投递一致：消费里调支付，来源记成这个事件类型
-                CallSources.asOutbox(envelope.getEventType(), () -> {
-                    call.run();
-                    return null;
-                });
-            } else {
-                call.run();
+            for (OutboxConsumer consumer : members) {
+                deliverTo(consumer, message.toEnvelope(), fromOutbox);
             }
         };
+    }
+
+    private static void deliverTo(OutboxConsumer consumer, SysOutbox envelope, boolean fromOutbox) {
+        if (envelope.getEventType() == null || !consumer.supports(envelope.getEventType())) {
+            return;
+        }
+        Runnable call = () -> DeliveryContext.run(envelope.getEventNo(), () -> consumer.consume(envelope));
+        if (fromOutbox) {
+            // 与进程内投递一致：消费里调支付，来源记成这个事件类型
+            CallSources.asOutbox(envelope.getEventType(), () -> {
+                call.run();
+                return null;
+            });
+        } else {
+            call.run();
+        }
     }
 
     @Override
