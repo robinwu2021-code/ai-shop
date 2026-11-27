@@ -220,6 +220,8 @@
 
 ### 2.1 剩余任务（2026-11-27 汇总，v2 @ 9f7090530 之后）
 
+> 按能力分的完成状态见 [基础能力功能清单](基础能力功能清单.md)。
+
 本会话已做：E 类删除、D 类提交后发、同库 2 处直调、发布入口统一、外部通道去重、中间件统一封装（`MessageBroker`）
 与 RabbitMQ 实现、发件箱按名单改发中间件、商品→库存域进名单、兜底作业核实。下面是还没做的，按“卡在哪”分组。
 
@@ -251,7 +253,7 @@
 | C3 | **已做（2026-11-27）**：某店发布失败即停在它前面、下一轮重试，游标只越过已持久接收的门店；A13 可改 MQ 直发（near-pay 侧按修订号幂等待确认） | 清单 A13 |
 | C4 | `CompensationSweeper` 的“卡住数”改读死信队列（现读发件箱 `FAILED`），在物流事件切中间件前做。**暂缓**：物流事件要等 A5（生产作业）才切中间件，现在改无处可用 | 清单 A8 |
 | C5 | 撤中转：PAY 权益三个中转改由源头发；进销存回写改由库存库发件箱发；删 `PrintingConfiguration`/`FoodWriteGuardConfiguration` 的包装转发。`PlatformPublicationPublisher` **已删（2026-11-27）** | 清单 §〇 C |
-| C6 | **已做（2026-11-27）**：22 个测试去掉无人读取的 `*.publication.archive-only` 属性。`BeautyOutboxConfiguration` 仍在用（美业服务单独启动时补发件箱门面），保留。`CATALOG_SOURCE_CHANGED` **不矛盾**：只存档名单是默认值，商城插件装上时经 `OutboxRouteContribution` 把路由撤出名单。**但查出新问题**：商城渠道源与餐饮渠道源的消费者（`CommerceProductSourceEventConsumer`、`CommerceTaxSourceEventConsumer`、`FoodCatalogSourceEventConsumer` 等）实现的是统一模式的 `OutboxHandler` 而不是 `OutboxConsumer`，默认旧投递模式下不运行，`BrokerSubscriptions` 也不接管 —— 这些事件类型（清单 B13）进中间件名单前，要先把它们接到 `OutboxConsumer` 或让订阅编排认 `OutboxHandler` | §1.4 |
+| C6 | **已做（2026-11-27）**：22 个测试去掉无人读取的 `*.publication.archive-only` 属性。`BeautyOutboxConfiguration` 仍在用（美业服务单独启动时补发件箱门面），保留。`CATALOG_SOURCE_CHANGED` **不矛盾**：只存档名单是默认值，商城插件装上时经 `OutboxRouteContribution` 把路由撤出名单。**但查出新问题**：商城渠道源与餐饮渠道源的消费者（`CommerceProductSourceEventConsumer`、`CommerceTaxSourceEventConsumer`、`FoodCatalogSourceEventConsumer` 等）实现的是统一模式的 `OutboxHandler` 而不是 `OutboxConsumer`，默认旧投递模式下不运行，`BrokerSubscriptions` 也不接管 —— 这些事件类型（清单 B13）进中间件名单前，要先把它们接到 `OutboxConsumer` 或让订阅编排认 `OutboxHandler`。**后者已做（2026-11-27，db01df756）**：统一投递模式的处理者可经中间件投递；商城、餐饮各自要不要切，由各模块定 | §1.4 |
 | C7 | **已做（2026-11-27）**：收成 `trade.event.SubOrderCompletion.publishIfCompleted`；逐字段比对 5 处未发现缺漏，统一为“子单已 COMPLETED 才发” | 清单 N4 |
 | C8 | **已做（2026-11-27）**：拆成“短事务校验 → 无事务调微信 → 短事务按版本条件收尾并记运单已上传” | 清单 S2 |
 | C9 | 存量投完后删 `WxUploadedConsumer`（只为消化切换前的 `WX_SHIPPING_UPLOADED`） | §1.5 ① |
