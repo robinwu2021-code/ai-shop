@@ -15,6 +15,9 @@ import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
 import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentInitiationPort;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentPort;
+import java.util.function.Function;
 import ai.neargo.shop.paybridge.service.PaymentDispatchService;
 import ai.neargo.shop.payclient.OrdinaryPaymentPayerResolver;
 import org.springframework.stereotype.Component;
@@ -176,13 +179,12 @@ public class SettlePortImpl implements SettlePort {
      * 确认支付按「订单号 + 下单人」向 near-pay 取成功记录（{@link ai.neargo.shop.spi.settle.OrdinaryPaymentPort#success}）。
      * 内嵌形态为空，照旧读写本进程的支付域。
      */
-    public record StandalonePayments(ai.neargo.shop.spi.settle.OrdinaryPaymentInitiationPort initiation,
-            ai.neargo.shop.spi.settle.OrdinaryPaymentPort payments,
-            java.util.function.Function<String, String> buyerOf) {
+    public record StandalonePayments(OrdinaryPaymentInitiationPort initiation, OrdinaryPaymentPort payments,
+            Function<String, String> buyerOf) {
         PaymentReceipt success(String orderNo) {
             String buyer = buyerOf.apply(orderNo);
             if (buyer == null) return null;
-            var found = payments.success(new ai.neargo.shop.spi.settle.OrdinaryPaymentPort.OrderReference(orderNo, buyer));
+            var found = payments.success(new OrdinaryPaymentPort.OrderReference(orderNo, buyer));
             var p = found == null || !found.found() ? null : found.payment();
             return p == null || p.amountMinor() == null ? null : new PaymentReceipt(p.paymentNo(), p.orderNo(),
                     p.userNo(), p.payChannel(), p.tradeNo(), p.amountMinor(), p.currency(), p.status(),
