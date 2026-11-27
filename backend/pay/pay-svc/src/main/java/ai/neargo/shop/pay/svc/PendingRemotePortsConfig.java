@@ -70,6 +70,12 @@ public class PendingRemotePortsConfig {
         ai.neargo.shop.spi.user.PayoutAccountPort.class,        // 1
         // 积分签约按门店核验；独立支付进程未接业务流量，缺少远程目录时必须明确失败。
         ai.neargo.shop.spi.user.StoreDirectoryPort.class,
+        /*
+         * 2026-11-27 补（TDD-基础能力库对齐 1c）：支付的 pay_setting 并入统一设置，结算（开票抬头）与提现（个税规则）
+         * 改经 SettingPort 读写 sys_setting。它的实现是 shop-core 的统一 SettingService，这个进程不引；
+         * 公共能力有了自己的句柄（common）之后，这里换成直连基础能力库的实现，而不是 HTTP 客户端。
+         */
+        ai.neargo.shop.spi.platform.SettingPort.class,          // 2
     };
 
     @Bean

@@ -21,7 +21,7 @@ import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsAccountMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsLedgerMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsPoolMapper;
-import ai.neargo.shop.pay.setting.PaySettingService;
+import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import tools.jackson.databind.ObjectMapper;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -61,7 +61,7 @@ public class PointsServiceImpl implements PointsService {
     private final BillMapper billMapper;
     private final MerchantQueryPort merchantQuery;
     /** 支付域自己的设置（2026-09-01 从 sys_setting 搬过来，见 V285） */
-    private final PaySettingService paySettings;
+    private final SettingPort paySettings;
     private final ObjectMapper json = new ObjectMapper();
 
     public PointsServiceImpl(PointsAccountMapper accountMapper,
@@ -69,7 +69,7 @@ public class PointsServiceImpl implements PointsService {
                              PointsPoolMapper poolMapper,
                              BillMapper billMapper,
                              MerchantQueryPort merchantQuery,
-                             PaySettingService paySettings) {
+                             SettingPort paySettings) {
         this.accountMapper = accountMapper;
         this.ledgerMapper = ledgerMapper;
         this.poolMapper = poolMapper;

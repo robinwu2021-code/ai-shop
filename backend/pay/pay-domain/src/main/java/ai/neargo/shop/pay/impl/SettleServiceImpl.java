@@ -42,7 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import ai.neargo.shop.pay.setting.PaySettingService;
+import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.pay.settle.refund.RefundBasisStore;
 
 /**
@@ -99,7 +99,7 @@ public class SettleServiceImpl implements SettleService {
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
     private final ai.neargo.shop.pay.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper;
     /** 支付域自己的设置（2026-09-01 从 sys_setting 搬过来，见 V285） */
-    private final PaySettingService paySettings;
+    private final SettingPort settings;
 
     /**
      * 向通道发退款要它。
@@ -125,7 +125,7 @@ public class SettleServiceImpl implements SettleService {
                              PickupQueryPort pickupPort,
                              ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
                              ai.neargo.shop.pay.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper,
-                             PaySettingService paySettings,
+                             SettingPort settings,
                              ai.neargo.shop.pay.service.FeeRuleService feeRuleService,
                              SettlementPointsFundingService pointsFunding,
                              PayChannelMasterService channelMaster,
@@ -152,7 +152,7 @@ public class SettleServiceImpl implements SettleService {
         this.channelMaster = channelMaster;
         this.channelRates = channelRates;
         this.pointsFunding = pointsFunding;
-        this.paySettings = paySettings;
+        this.settings = settings;
         this.feeRuleService = feeRuleService;
         this.purchaseInvoiceMapper = purchaseInvoiceMapper;
         this.billMapper = billMapper;
@@ -1442,7 +1442,7 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     public java.util.Map<String, String> platformInvoiceTitle() {
-        return parseFlatJson(paySettings.get(TITLE_KEY, TITLE_DEFAULT));
+        return parseFlatJson(settings.get(TITLE_KEY, TITLE_DEFAULT));
     }
 
     @Override
@@ -1460,7 +1460,7 @@ public class SettleServiceImpl implements SettleService {
             sb.append(sb.length() > 1 ? "," : "").append('"').append(k).append("\":\"")
                     .append(v == null ? "" : v.replace("\"", "")).append('"');
         }
-        paySettings.put(TITLE_KEY, sb.append("}").toString(), operatorNo);
+        settings.put(TITLE_KEY, sb.append("}").toString(), operatorNo);
         return platformInvoiceTitle();
     }
 
