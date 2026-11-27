@@ -76,7 +76,7 @@
 
 - 商品可以先改造、先在测试里验证；
 - **上线必须与交易同批**：在交易对齐新库之前，交易句柄绑不了 `n_trade`，商品单独上线会让下单锁库存跨库、失去原子性。（v2 已删旧库配置，交易迁完之前本来也不会上线。）
-- 测试里两个句柄绑同一个 H2 库：建表脚本 = 现有的测试建表脚本去掉旧的 `prd_*`，再加上从 `05-n_trade.sql` 生成的商品新表。别的领域的 SQL 不查 `prd_*`（§1），所以两套表在一个测试库里不冲突。
+- 测试里两个句柄仍落在同一个 H2 库（shop）：`backend/scripts/gen-product-test-schema.py` 从 `05-n_trade.sql` 的全部 `prd_*` 与 `07-n_member.sql` 的评价、收藏表生成 `schema-product-test.sql`，h2db profile 在 `schema-test.sql` **之前**执行，同名的旧建表语句因此跳过（不 DROP：内存库跨测试上下文存活，DROP 会删掉别的上下文造的演示数据）。新设计去掉但代码还在用的列作「过渡列」临时补上并在文件头列出；只在旧库有的商品表暂不动，代码不再用时再去掉。别的领域的 SQL 不查 `prd_*`（§1），所以新旧两套表在一个测试库里不冲突；漂移测试只比 `schema-test.sql` 与迁移，不受影响。
 - `StockPortImpl` 等商品服务上的 `TRADE_TX_MANAGER` 改为 `PRODUCT_TX_MANAGER`；绑到同一数据源时它们是同一个 bean。
 
 **跨库的 4 个类**：评价（`n_member`）读商品（`n_trade`）的地方，改为经端口按商品号读，不在一个事务里写两个库。
@@ -148,7 +148,13 @@
 - `ProductDatabaseIsolationTest`（L3 五条）与基线 `product-db-isolation-baseline.txt`：现状 89 条违规（R1 11、R2 28、R4 2、R5 48），即第 3、4 步的工作清单，只许减少。
 - `ModuleTxManagerConventionTest`：商品包改为点名 `PRODUCT_TX_MANAGER`。
 
+### 第 2 步（测试库）
+
+- `backend/scripts/gen-product-test-schema.py` → `schema-product-test.sql`（25 张表：n_trade 的 21 张 `prd_*` + 评价 3 张 + 收藏），挂进 `check-generated-docs`；`application-h2db.yml` 的 `schema-locations` 把它排在 `schema-test.sql` 之前。过渡列：`prd_sku.stock`、`prd_sku.locked_stock`、`prd_store_catalog.current_version_no`。
+
 ### 偏差说明
+
+- 测试库没有按原方案「去掉旧 `prd_*`、两个句柄绑同一个 H2」，而是同一个 H2 库里追加一份按新设计生成的建表脚本：改动更小，漂移测试不受影响，且能逐批迁移。
 
 - 原方案新建 `member` 句柄；实现时发现已有 `memberMarketing` 句柄目标就是会员营销库，改为复用，只加标记接口。
 

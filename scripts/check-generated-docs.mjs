@@ -71,6 +71,8 @@ const GENERATORS = [
   ["scripts/gen-ops-feature-list.py", ["docs/technical/reference/运营端-功能清单.md"]],
   // 旧库下线的工作清单（用户 2026-11-27：业务不再访问旧库）：每迁一个模块就会变，不重跑就推不上去
   ["scripts/gen-legacy-db-usage.py", ["docs/technical/design/旧库调用清单.md"]],
+  // 商品领域的测试建表脚本按新库设计 DDL 生成：设计改了不重跑，测试就会跑在过时的表上
+  ["backend/scripts/gen-product-test-schema.py", ["backend/shop-app/src/test/resources/schema-product-test.sql"]],
   /*
    * 三端对齐文档的**状态列**。整份文档是手写的，只有那一列是生成的 ——
    * 登记在这里是因为它会烂：原先它抄自平台端功能清单，而那份文档
