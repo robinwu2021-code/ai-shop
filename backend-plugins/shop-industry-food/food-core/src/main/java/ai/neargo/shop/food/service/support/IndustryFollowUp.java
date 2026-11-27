@@ -27,4 +27,24 @@ public final class IndustryFollowUp {
                     }
                 });
     }
+
+    /**
+     * 业务先、订单后：行业写入已提交，订单域事务随后回滚时执行补偿（反向操作，可重复执行）。
+     * 没有交易事务时不登记（调用方自己负责）。补偿失败只抛给回滚的调用方，漏掉的由各自的扫描兜底。
+     */
+    public static void compensateOnRollback(Runnable compensation) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status == STATUS_ROLLED_BACK) compensation.run();
+                    }
+                });
+    }
+
+    /** 当前是否在订单域（调用方）的事务里：在则把行业写入延后到提交后，不在则立即执行。 */
+    public static boolean inTradeTransaction() {
+        return TransactionSynchronizationManager.isActualTransactionActive();
+    }
 }

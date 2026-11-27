@@ -1,7 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
-import ai.neargo.shop.common.config.ModuleDataSources;
-import ai.neargo.shop.food.service.support.BusinessCommandJournal;
+import ai.neargo.shop.food.service.support.CommandBusinessKey;
 import ai.neargo.shop.food.service.support.IndustryFollowUp;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -13,12 +12,12 @@ import ai.neargo.shop.food.dto.ServiceSlotContracts.SlotVO;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
 import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
-import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
 import ai.neargo.shop.food.service.ServiceSlotService;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import tools.jackson.databind.ObjectMapper;
@@ -32,12 +31,20 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 
-@Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
+/**
+ * 时段与容量在业务域（行业库，ADR-068 修订二），订单、购物车、到店单在订单域。容量按「预占—确认」处理：
+ *
+ * <ul>
+ *   <li>预占、改数量：先在行业库提交；调用方的订单事务随后回滚时撤回（{@link IndustryFollowUp#compensateOnRollback}）。
+ *   <li>确认（接单消耗、绑批次）与释放：订单事务里只做校验读取，写入在订单提交后执行，按目标状态可重复。
+ *   <li>不用永久命令回执：预占按来源号、确认与释放按目标状态、建时段按请求键派生的时段号查回首次结果。
+ * </ul>
+ */
 public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLifecycle {
-    private final BusinessCommandJournal journal;
     private final FoodBusinessOperationsMapper mapper;
     private final FoodIndustryOperationsMapper industry;
     private final RequestIdempotencyPort idem;
+    private final TransactionTemplate industryTx;
     private final Clock clock;
     private final ObjectMapper json;
 
@@ -46,10 +53,11 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
             FoodIndustryOperationsMapper industry,
             RequestIdempotencyPort idem,
             Clock clock,
-            ObjectMapper json) {
+            ObjectMapper json,
+            PlatformTransactionManager industryManager) {
         this.mapper = mapper;
         this.industry = industry;
-        journal = new BusinessCommandJournal(mapper, json);
+        this.industryTx = new TransactionTemplate(industryManager);
         this.idem = idem;
         this.clock = clock;
         this.json = json;
@@ -65,13 +73,31 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
         var row = claims.getFirst();
         var slot = slot(e, store, row.text("slot_no"), true);
         if (!"RESERVED".equals(row.text("status"))) conflict();
-        BigDecimal delta = quantity.subtract(row.decimal("quantity"));
+        BigDecimal original = row.decimal("quantity");
+        BigDecimal delta = quantity.subtract(original);
         if (delta.signum() > 0 && !clock.instant().isBefore(slot.instant("order_cutoff_at")))
             conflict();
-        if (industry.changeReservedCapacity(e, row.text("slot_no"), delta, actor) != 1
-                || industry.resizeReservedCapacity(
-                                e, store, source, quantity, row.number("version"), actor)
-                        != 1) conflict();
+        resize(e, store, actor, source, row.text("slot_no"), delta, quantity, row.number("version"));
+        // 订单事务回滚：把数量改回原值（按当前版本，可重复；已不是预占的不动）。
+        IndustryFollowUp.compensateOnRollback(
+                () -> {
+                    var current = industry.capacityBySource(e, store, source);
+                    if (current.size() == 1
+                            && "RESERVED".equals(current.getFirst().text("status"))
+                            && current.getFirst().decimal("quantity").compareTo(quantity) == 0)
+                        resize(e, store, actor, source, current.getFirst().text("slot_no"),
+                                original.subtract(quantity), original, current.getFirst().number("version"));
+                });
+    }
+
+    private void resize(String e, String store, String actor, String source, String slotNo,
+            BigDecimal delta, BigDecimal quantity, long version) {
+        industryTx.executeWithoutResult(
+                status -> {
+                    if (industry.changeReservedCapacity(e, slotNo, delta, actor) != 1
+                            || industry.resizeReservedCapacity(e, store, source, quantity, version, actor)
+                                    != 1) conflict();
+                });
     }
 
     @Override
@@ -135,21 +161,21 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                 || !"ACCEPTED".equals(original.text("status"))
                 || "RELEASED".equals(row.text("status"))
                 || row.text("batch_no") != null && !batch.equals(row.text("batch_no"))) conflict();
-        if ("RESERVED".equals(row.text("status")))
-            transition(
-                    e,
-                    store,
-                    actor,
-                    row.text("claim_no"),
-                    row.number("version"),
-                    "CONSUME",
-                    "SLOT_ACCEPT_" + batch);
-        if (industry.bindCapacityBatch(e, store, cart, batch, actor) != 1) conflict();
-        // 定时出品单在行业库：交易提交后再建（按批次号可重复执行）；漏建由定时出品任务按已绑定时段补。
+        // 接单在订单域先提交；随后在业务域确认消耗、绑批次、建定时出品单（都按目标状态或批次号可重复）。
+        String claimNo = row.text("claim_no");
         LocalDateTime dispatchAt =
                 local(slot(e, store, row.text("slot_no"), false).instant("dispatch_at"));
         IndustryFollowUp.afterTradeCommit(
-                () -> industry.createScheduledDispatch(e, store, batch, dispatchAt, actor));
+                () -> {
+                    var current = one(industry.serviceSlotSelectCapacityClaim3(e, store, claimNo));
+                    if ("RESERVED".equals(current.text("status")))
+                        transitionNow(e, store, actor, claimNo, number(current, "version"), "CONSUME");
+                    industryTx.executeWithoutResult(
+                            status -> {
+                                if (industry.bindCapacityBatch(e, store, cart, batch, actor) != 1) conflict();
+                            });
+                    industry.createScheduledDispatch(e, store, batch, dispatchAt, actor);
+                });
     }
 
     @Override
@@ -177,9 +203,17 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
         // Capacity already dispatched remains consumed; cancellation cannot undo the production
         // window.
         if (!clock.instant().isBefore(serviceSlot.instant("dispatch_at"))) return;
-        if (industry.releaseConsumedCapacity(e, row.text("slot_no"), row.decimal("quantity"), actor)
-                        != 1
-                || industry.markCapacityReleased(e, row.text("claim_no"), actor) != 1) conflict();
+        // 取消在订单域先提交；随后在业务域释放已消耗的容量（已释放的不再释放）。
+        String claimNo = row.text("claim_no"), slotNo = row.text("slot_no");
+        BigDecimal qty = row.decimal("quantity");
+        IndustryFollowUp.afterTradeCommit(
+                () -> industryTx.executeWithoutResult(
+                        status -> {
+                            var current = one(industry.serviceSlotSelectCapacityClaim3(e, store, claimNo));
+                            if ("RELEASED".equals(current.text("status"))) return;
+                            if (industry.releaseConsumedCapacity(e, slotNo, qty, actor) != 1
+                                    || industry.markCapacityReleased(e, claimNo, actor) != 1) conflict();
+                        }));
     }
 
     private static void requirePrimary() {
@@ -203,16 +237,21 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                 || !req.orderCutoffAt().isAfter(clock.instant())) bad();
         quantity(req.capacity());
         valid(req.unit());
-        return journal.execute(
-                key,
-                FoodCommandFingerprint.scope("CREATE_SERVICE_SLOT", e, s),
-                a,
-                FoodCommandFingerprint.hash(json.writeValueAsString(req)),
-                SlotVO.class,
-                () -> {
+        // 时段号由请求键派生：重放时时段已在就按它返回（同键不同内容按冲突拒绝）。
+        String no = CommandBusinessKey.derive("FSLT", "CREATE_SERVICE_SLOT", e, s, a, key);
+        var existing = industry.serviceSlotSelectServiceSlot(e, s, no, false);
+        if (!existing.isEmpty()) {
+            var slot = get(e, s, no);
+            if (!slot.startsAt().equals(req.startsAt())
+                    || !slot.endsAt().equals(req.endsAt())
+                    || slot.capacity().compareTo(req.capacity()) != 0
+                    || !slot.unit().equals(req.unit())) conflict();
+            return slot;
+        }
+        return industryTx.execute(
+                status -> {
                     var stores = industry.serviceSlotSelectStorePolicy(e, s);
                     if (stores.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
-                    String no = BizKey.next("FSLT");
                     industry.serviceSlotInsertServiceSlot(
                             e,
                             s,
@@ -252,13 +291,10 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
         if (req == null) bad();
         valid(req.slotNo(), req.sourceNo());
         quantity(req.quantity());
-        return journal.execute(
-                key,
-                FoodCommandFingerprint.scope("RESERVE_SERVICE_SLOT", e, s),
-                a,
-                FoodCommandFingerprint.hash(json.writeValueAsString(req)),
-                ClaimVO.class,
-                () -> {
+        // 预占先在业务域提交（来源号是业务键，重放按来源查回）；调用方的订单事务回滚时撤回本次预占。
+        var created = new java.util.concurrent.atomic.AtomicBoolean();
+        ClaimVO result = industryTx.execute(
+                status -> {
                     var row = slot(e, s, req.slotNo(), true);
                     var old = industry.serviceSlotSelectCapacityClaim(e, s, req.sourceNo());
                     if (!old.isEmpty()) {
@@ -279,8 +315,17 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                     industry.serviceSlotInsertCapacityClaim(
                             e, s, no, req.slotNo(), req.sourceNo(), req.quantity(), a, a);
                     industry.serviceSlotUpdateServiceSlot(req.quantity(), a, e, req.slotNo());
+                    created.set(true);
                     return claim(one(industry.serviceSlotSelectCapacityClaim2(e, no)));
                 });
+        if (created.get())
+            IndustryFollowUp.compensateOnRollback(
+                    () -> {
+                        var current = industry.serviceSlotSelectCapacityClaim3(e, s, result.claimNo());
+                        if (!current.isEmpty() && "RESERVED".equals(current.getFirst().text("status")))
+                            transitionNow(e, s, a, result.claimNo(), number(current.getFirst(), "version"), "RELEASE");
+                    });
+        return result;
     }
 
     @Override
@@ -288,13 +333,26 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
             String e, String s, String a, String no, long expected, String action, String key) {
         valid(e, s, a, no, key);
         if (!Set.of("CONSUME", "RELEASE").contains(action)) bad();
-        return journal.execute(
-                key,
-                FoodCommandFingerprint.scope("SERVICE_SLOT_" + action, e, s),
-                a,
-                FoodCommandFingerprint.hash(no, Long.toString(expected)),
-                ClaimVO.class,
-                () -> {
+        if (!IndustryFollowUp.inTradeTransaction()) return transitionNow(e, s, a, no, expected, action);
+        // 在订单事务里：现在只校验，写入等订单提交后执行（按目标状态可重复），返回将达到的结果。
+        var row = one(industry.serviceSlotSelectCapacityClaim3(e, s, no));
+        String target = "CONSUME".equals(action) ? "CONSUMED" : "RELEASED";
+        if (target.equals(row.text("status"))) return claim(row);
+        if (number(row, "version") != expected || !"RESERVED".equals(row.text("status"))) conflict();
+        IndustryFollowUp.afterTradeCommit(() -> transitionNow(e, s, a, no, expected, action));
+        return new ClaimVO(
+                no,
+                (String) row.text("slot_no"),
+                (String) row.text("source_no"),
+                decimal(row, "quantity"),
+                target,
+                expected + 1);
+    }
+
+    /** 业务域里把预占转为消耗或释放；已是目标状态的按原结果返回。 */
+    private ClaimVO transitionNow(String e, String s, String a, String no, long expected, String action) {
+        return industryTx.execute(
+                status -> {
                     var before = one(industry.serviceSlotSelectCapacityClaim3(e, s, no));
                     slot(e, s, (String) before.text("slot_no"), true);
                     var row = one(industry.serviceSlotSelectCapacityClaim4(e, s, no));
@@ -319,6 +377,30 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                             target,
                             expected + 1);
                 });
+    }
+
+    /**
+     * 接单后补做（订单域为准）：来源购物车已接单、容量仍是预占未绑批次的，消耗容量、绑批次、建定时出品单。
+     * 预占超过两分钟才处理，给接单提交后的那一步留出时间。返回补做的条数。
+     */
+    public int recoverBindings(int limit) {
+        int done = 0;
+        var before = LocalDateTime.ofInstant(clock.instant().minusSeconds(120), ZoneOffset.UTC);
+        for (var row : industry.reservedUnboundClaims(before, limit)) {
+            String e = row.text("entity_no"), store = row.text("store_no"), cart = row.text("source_no");
+            var batches = mapper.acceptedBatchesForCart(e, store, cart);
+            if (batches.size() != 1) continue;
+            String batch = batches.getFirst().text("batch_no");
+            transitionNow(e, store, "SYSTEM", row.text("claim_no"), number(row, "version"), "CONSUME");
+            industryTx.executeWithoutResult(
+                    status -> {
+                        if (industry.bindCapacityBatch(e, store, cart, batch, "SYSTEM") != 1) conflict();
+                    });
+            industry.createScheduledDispatch(
+                    e, store, batch, local(slot(e, store, row.text("slot_no"), false).instant("dispatch_at")), "SYSTEM");
+            done++;
+        }
+        return done;
     }
 
     @Override

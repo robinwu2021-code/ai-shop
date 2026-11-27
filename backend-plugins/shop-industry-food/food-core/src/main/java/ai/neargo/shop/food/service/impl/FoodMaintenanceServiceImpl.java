@@ -36,6 +36,8 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
     public FoodMaintenanceServiceImpl withReturnStock(Supplier<FoodReturnStockService> source) {
         this.returnStock=source;return this;
     }
+    private Supplier<ai.neargo.shop.food.service.ServiceSlotService> slots=()->null;
+    public FoodMaintenanceServiceImpl withSlots(Supplier<ai.neargo.shop.food.service.ServiceSlotService> source){slots=source;return this;}
     private Supplier<ai.neargo.shop.food.service.CheckService> tables=()->null;
     public FoodMaintenanceServiceImpl withTables(Supplier<ai.neargo.shop.food.service.CheckService> source){tables=source;return this;}
     /** 开台到建账单之间正常只有几秒；超过这个时长仍没有账单的占台按补偿结束。 */
@@ -47,8 +49,10 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
         if (task == null || limit < 1 || limit > 200) throw BizException.of(ErrorCode.BAD_REQUEST);
         return switch (task) {
             case SCHEDULED_DISPATCH -> {
+                // 先补做接单后没绑上的时段容量（会补建定时出品单），再推进到点的定时出品。
+                int bound = slots.get() instanceof ServiceSlotServiceImpl local ? local.recoverBindings(limit) : 0;
                 var report = require(dispatch, task).runDue(limit);
-                yield new Report(report.completed(), report.pending());
+                yield new Report(bound + report.completed(), report.pending());
             }
             case QUEUE_NOTICE -> new Report(require(notices, task).runDue(limit), 0);
             case PRODUCTION_RECOVERY -> {

@@ -108,8 +108,9 @@ public class FoodBusinessOperationsConfiguration {
             FoodBusinessOperationsMapper mapper,
             FoodIndustryOperationsMapper industry,
             RequestIdempotencyPort idem,
-            ObjectMapper json) {
-        return new ServiceSlotServiceImpl(mapper, industry, idem, Clock.systemUTC(), json);
+            ObjectMapper json,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager industryManager) {
+        return new ServiceSlotServiceImpl(mapper, industry, idem, Clock.systemUTC(), json, industryManager);
     }
 
     @Bean

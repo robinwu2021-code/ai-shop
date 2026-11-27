@@ -176,7 +176,7 @@ public class ServiceEntitlementPersistenceTest {
         var manager = new DataSourceTransactionManager(ds);
         tx = new TransactionTemplate(manager);
         var operations = new FoodBusinessOperationsMapper(ds);
-        slots = new ServiceSlotServiceImpl(operations, new FoodIndustryOperationsMapper(ds), mock(RequestIdempotencyPort.class), CLOCK, json);
+        slots = new ServiceSlotServiceImpl(operations, new FoodIndustryOperationsMapper(ds), mock(RequestIdempotencyPort.class), CLOCK, json, manager);
         service =
                 new ServiceEntitlementServiceImpl(
                         new ServiceEntitlementMapper(ds),

@@ -1288,4 +1288,15 @@ public class FoodBusinessOperationsMapper {
                 rule,
                 check);
     }
+
+    /** 来源（购物车）已接单的批次：容量绑定补做用。 */
+    public List<FoodBusinessOperationRow> acceptedBatchesForCart(String e, String store, String cart) {
+        return rows(
+                db.queryForList(
+                        "SELECT batch_no FROM fnb_order_batch WHERE entity_no=? AND store_no=? AND cart_no=?"
+                                + " AND status='ACCEPTED' AND deleted=0",
+                        e,
+                        store,
+                        cart));
+    }
 }

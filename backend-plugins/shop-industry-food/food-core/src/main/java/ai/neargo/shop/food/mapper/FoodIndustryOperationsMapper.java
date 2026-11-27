@@ -677,4 +677,14 @@ public class FoodIndustryOperationsMapper {
                             + " WHERE o.ended_at IS NULL AND o.deleted=0 ORDER BY o.check_no LIMIT ?",
                         limit));
     }
+
+    /** 早于截止时间仍是预占、没绑批次的容量占用：接单后补做绑定用。 */
+    public List<FoodBusinessOperationRow> reservedUnboundClaims(LocalDateTime before, int limit) {
+        return rows(
+                db.queryForList(
+                        "SELECT entity_no,store_no,source_no,claim_no,slot_no,version FROM fnb_capacity_claim"
+                            + " WHERE status='RESERVED' AND batch_no IS NULL AND created_at<? ORDER BY id LIMIT ?",
+                        before,
+                        limit));
+    }
 }

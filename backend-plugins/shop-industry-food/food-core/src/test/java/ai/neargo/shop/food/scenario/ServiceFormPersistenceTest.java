@@ -117,7 +117,8 @@ public class ServiceFormPersistenceTest {
                         new FoodIndustryOperationsMapper(ds),
                         mock(RequestIdempotencyPort.class),
                         Clock.fixed(now, ZoneOffset.UTC),
-                        json);
+                        json,
+                        manager);
         var card = mock(StoreCard.class);
         when(card.entityNo()).thenReturn("E");
         when(card.active()).thenReturn(true);

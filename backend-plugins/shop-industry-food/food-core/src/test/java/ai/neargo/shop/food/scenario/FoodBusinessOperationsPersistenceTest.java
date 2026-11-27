@@ -125,7 +125,8 @@ public class FoodBusinessOperationsPersistenceTest {
                         new FoodIndustryOperationsMapper(ds),
                         mock(RequestIdempotencyPort.class),
                         Clock.fixed(Instant.parse("2026-10-24T00:00:00Z"), ZoneOffset.UTC),
-                        json);
+                        json,
+                        manager);
         ops =
                 new BusinessOperationsServiceImpl(
                         mapper,
@@ -196,6 +197,34 @@ public class FoodBusinessOperationsPersistenceTest {
         assertThat(replayed).isEqualTo(released);
         assertThat(slots.get("E", "S", slot.slotNo()).reserved())
                 .isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    /** 预占先在业务域提交；调用方订单事务回滚时撤回预占（ADR-068 修订二）。 */
+    @Test
+    void reservationIsReleasedWhenTheCallingOrderTransactionRollsBack() {
+        var slot = slot();
+        assertThatThrownBy(
+                        () ->
+                                tx.execute(
+                                        t -> {
+                                            slots.reserve(
+                                                    "E",
+                                                    "S",
+                                                    "A",
+                                                    new ClaimReq(slot.slotNo(), "CART-RB", BigDecimal.ONE),
+                                                    "reserve-rb");
+                                            throw new IllegalStateException("order failed");
+                                        }))
+                .hasMessage("order failed");
+        // 两个句柄同库时预占随订单事务一起回滚；分库时由回滚补偿释放。两种情况都不留下预占。
+        assertThat(
+                        db.queryForObject(
+                                "SELECT COUNT(*) FROM fnb_capacity_claim WHERE source_no='CART-RB'"
+                                        + " AND status='RESERVED'",
+                                Integer.class))
+                .isZero();
+        assertThat(db.queryForObject("SELECT reserved_qty FROM fnb_service_slot", BigDecimal.class))
+                .isZero();
     }
 
     @Test

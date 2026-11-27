@@ -85,7 +85,7 @@ class CatalogOperationsAcceptanceTest extends FoodWriteGuardFixture {
     private ServiceSlotServiceImpl slots(AssertableApplicationContext c, Fixture f, Instant now) {
         return new ServiceSlotServiceImpl(new FoodBusinessOperationsMapper(f.source()),
                 new FoodIndustryOperationsMapper(f.source()),
-                c.getBean(RequestIdempotencyPort.class), Clock.fixed(now, ZoneOffset.UTC), json(c));
+                c.getBean(RequestIdempotencyPort.class), Clock.fixed(now, ZoneOffset.UTC), json(c), manager(c));
     }
     private ReservationServiceImpl reservations(AssertableApplicationContext c) {
         return new ReservationServiceImpl(c.getBean(ReservationMapper.class), c.getBean(ReservationTableMapper.class),
@@ -132,7 +132,8 @@ class CatalogOperationsAcceptanceTest extends FoodWriteGuardFixture {
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_capacity_claim", Integer.class)).isZero();
             assertThat(f.sql().queryForObject("SELECT reserved_qty FROM fnb_service_slot", BigDecimal.class)).isZero();
             assertThat(f.sql().queryForObject("SELECT consumed_qty FROM fnb_service_slot", BigDecimal.class)).isZero();
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_business_command", Integer.class)).isOne();
+            // 时段在业务域、按请求键派生的时段号回查（TDD-餐饮域迁移新库 §8-Q1），建时段与预占都不再写永久命令回执。
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_business_command", Integer.class)).isZero();
         });
     }
 

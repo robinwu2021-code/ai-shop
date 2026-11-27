@@ -283,7 +283,13 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - 扫码会话（`DiningSessionServiceImpl`）：令牌与顾客会话归平台（P3 迁），这里先去掉跨库锁桌台。令牌轮换、撤销与开会话靠令牌行自身的行锁排队；桌台只读一次比对版本与启用状态，版本号在提交后带原版本条件再加。
 - 排队入座（`QueueServiceImpl#seat`）：① 行业事务里把排号标为入座中并记下请求 → ② 事务外补偿开台（请求键 `QUEUE_SEAT:排号`）→ ③ 标为已入座。开台被明确拒绝时退回已叫号并清掉请求；结果不明时保持入座中，由原有的 `recoverSeating` 继续。排队服务改用 `industryTxManager`。`DiningQueueContractTest` 两条按新顺序重写。
 - 订位到店（`ReservationServiceImpl#arrive`）：① 行业事务里锁桌、核对时段与重叠、标为已到店 → ② 补偿开台（占桌按订位截止时间分配，请求键 `RSV-订位号`）→ ③ 挂账单号。开台被明确拒绝时退回原状态；结果不明时用同一请求重试接上。订位服务改用 `industryTxManager`。
-- 未做：时段容量（在下单与接单的事务里被调用）。
+- 时段容量（`ServiceSlotServiceImpl`，预占—确认）：
+  - 预占、改数量先在行业库提交；调用方订单事务回滚时由 `IndustryFollowUp.compensateOnRollback` 撤回预占或改回数量。
+  - 确认消耗、绑批次、建定时出品单、取消后释放：订单事务里只校验读取，写入在订单提交后执行，按目标状态可重复。
+  - 去掉时段服务的永久命令回执：预占按来源号、转换按目标状态、建时段按请求键派生的时段号查回。
+  - 补做：`recoverBindings`（来源购物车已接单、容量仍预占未绑批次超过两分钟的）随定时出品任务每轮执行。
+  - 测试：新增 `FoodBusinessOperationsPersistenceTest#reservationIsReleasedWhenTheCallingOrderTransactionRollsBack`；`CatalogOperationsAcceptanceTest` 建时段不再写回执的断言改为 0。food-core 758 个通过。
+  - 已知缺口：① 测试里两个句柄同库，回滚补偿与提交后写入的分库行为要等「同库不同池」测试（P0-6）覆盖；② 购物车放弃、到店单或预点单失效而没走释放的预占，目前没有按来源的释放扫描（来源有购物车、到店单、预点单、延时事件四种，需按来源分别判断）。
 
 ### 事务拆分记录
 
