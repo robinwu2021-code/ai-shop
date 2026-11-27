@@ -34,6 +34,8 @@ public class EntityPlanPurchaseConfiguration {
   @Bean
   EntityPlanPurchaseService entityPlanPurchaseService(
       JdbcTemplate jdbc,
+      org.springframework.beans.factory.BeanFactory beans,
+      @Value("${shop.modules.mall.datasource:}") String mallName,
       @Qualifier("transactionManager") PlatformTransactionManager tx,
       ObjectMapper json,
       PlatformPaymentPort payments,
@@ -55,6 +57,7 @@ public class EntityPlanPurchaseConfiguration {
         ownership,
         entity -> entities.financialVisibleEntity(entity)!=null,
         Clock.systemUTC(),
-        profile, reviews);
+        profile, reviews, mallName.isBlank() ? null
+            : new JdbcTemplate(beans.getBean(mallName + "DataSource", javax.sql.DataSource.class)));
   }
 }
