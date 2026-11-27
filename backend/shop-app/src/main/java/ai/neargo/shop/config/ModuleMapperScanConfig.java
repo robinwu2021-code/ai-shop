@@ -38,7 +38,7 @@ import org.springframework.context.annotation.Import;
         sqlSessionFactoryRef = ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
 @MapperScan(basePackages = "ai.neargo.shop.merchant.mapper", markerInterface = PlatformSqlMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
-// 门店交易库的 Mapper（ADR-067）：按标记收，不按包。交易相关的几个包里混着别的库的表，
+// 门店交易库的 Mapper（ADR-068）：按标记收，不按包。交易相关的几个包里混着别的库的表，
 // 「先留原表」的也留在主库，见 docs/technical/零售域-旧表新表对照.md
 @MapperScan(basePackages = {"ai.neargo.shop.trade", "ai.neargo.shop.product", "ai.neargo.shop.fulfillment",
         "ai.neargo.shop.community", "ai.neargo.shop.marketing.group", "ai.neargo.shop.promotion.mapper",

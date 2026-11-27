@@ -758,7 +758,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                     root.appointmentNo(), req, "OPEN")).hasMessage("reception-outbox-rollback");
             for (String table : List.of("bty_work_order", "bty_work_order_context", "bty_service_task",
                     "bty_service_submission")) { assertThat(count(table)).isZero(); }
-            // 开单分步提交（ADR-067）：预约上的开单标记在交易事务里已经提交，工单那一步回滚；
+            // 开单分步提交（ADR-068）：预约上的开单标记在交易事务里已经提交，工单那一步回滚；
             // 接待操作带着预留的工单号，重试时直接补建工单
             String reserved = sql.queryForObject("SELECT work_order_no FROM bty_reception_operation "
                     + "WHERE action='OPEN_WORK_ORDER'", String.class);

@@ -1,4 +1,4 @@
--- Beauty V9.1: the appointment records the work order it opened (ADR-067: appointments in the store trade
+-- Beauty V9.1: the appointment records the work order it opened (ADR-068: appointments in the store trade
 -- database, service execution in the industry database). Appointment guards read this column instead of
 -- joining work orders. V1-V11 remain frozen; numbered before the optional V10-V11 extensions; existing one-per-appointment work orders are copied over.
 

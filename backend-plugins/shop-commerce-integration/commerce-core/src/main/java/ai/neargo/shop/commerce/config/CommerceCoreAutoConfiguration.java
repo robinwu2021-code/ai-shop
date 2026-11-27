@@ -112,7 +112,7 @@ import javax.sql.DataSource;
 /** 默认无装配、无迁移；核心仅依赖本域契约与原平台持久化能力。 */
 @AutoConfiguration(afterName = "ai.neargo.shop.common.config.PrimaryPersistenceConfiguration")
 @ConditionalOnProperty(prefix = "shop.commerce", name = "enabled", havingValue = "true")
-// 渠道连接主流程的表（渠道订单、门店连接、账号、映射、同步范围、商品发布与目录快照）在门店交易库（ADR-067）：
+// 渠道连接主流程的表（渠道订单、门店连接、账号、映射、同步范围、商品发布与目录快照）在门店交易库（ADR-068）：
 // 按标记收到交易句柄；请求流水、对外操作、回调收件、修订、对账、凭据等技术表暂留主库
 @MapperScan(
         basePackages = "ai.neargo.shop.commerce.mapper",

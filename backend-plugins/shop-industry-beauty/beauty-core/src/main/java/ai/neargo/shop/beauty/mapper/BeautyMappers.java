@@ -717,7 +717,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 @Param("entityNo") String entityNo,
                 @Param("items") List<String> items);
 
-        /** Parent scope is checked before exposing affected task references (industry store, ADR-067). */
+        /** Parent scope is checked before exposing affected task references (industry store, ADR-068). */
         @Select(
                 """
                 SELECT t.task_no FROM bty_service_task t JOIN bty_work_order w

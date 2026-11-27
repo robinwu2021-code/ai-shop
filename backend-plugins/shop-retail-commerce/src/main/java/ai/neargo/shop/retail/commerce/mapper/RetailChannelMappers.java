@@ -5,7 +5,7 @@ import ai.neargo.shop.retail.commerce.entity.RetailChannelImportGuard;
 import ai.neargo.shop.retail.commerce.entity.RetailChannelOrderSource;
 import ai.neargo.shop.retail.commerce.entity.RetailChannelParty;
 
-/** Retail channel source tables live in the store trade database (ADR-067): bound to the trade module handle. */
+/** Retail channel source tables live in the store trade database (ADR-068): bound to the trade module handle. */
 public final class RetailChannelMappers {
     private RetailChannelMappers() {}
 

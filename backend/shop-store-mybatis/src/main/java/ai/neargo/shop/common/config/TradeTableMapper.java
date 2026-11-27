@@ -3,7 +3,7 @@ package ai.neargo.shop.common.config;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**
- * 标记：这个 Mapper 的表在门店交易库（ADR-066 的 trade 模块，ADR-067）。
+ * 标记：这个 Mapper 的表在门店交易库（ADR-066 的 trade 模块，ADR-068）。
  *
  * <p>和 {@link PlatformTableMapper} 同一个用意：交易相关的包（trade、product、fulfillment、community、
  * 商户域的资源预约）里混着别的库的表 —— 打印事实、开票资料、物流、评价、积分、专题 ——

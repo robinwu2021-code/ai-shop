@@ -27,7 +27,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnFoodEnabled
 @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
-// 餐饮的菜品、菜单、购物车、批次、账单、退菜、订位等交易表在门店交易库（ADR-067）：按标记收到交易句柄；
+// 餐饮的菜品、菜单、购物车、批次、账单、退菜、订位等交易表在门店交易库（ADR-068）：按标记收到交易句柄；
 // 桌台、工位、出品单、上菜道次、厨显事件、门店策略、排队、寄存在行业库：按标记收到行业句柄；
 // 库存同步、结账表头、收款意图等还没去处的表留在原模板
 @MapperScan(basePackages = "ai.neargo.shop.food.mapper", markerInterface = TradeTableMapper.class,

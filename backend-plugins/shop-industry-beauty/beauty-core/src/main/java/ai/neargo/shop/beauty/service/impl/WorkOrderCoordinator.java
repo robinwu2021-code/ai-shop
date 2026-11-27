@@ -525,7 +525,7 @@ public final class WorkOrderCoordinator {
         return openPrepared(observed, actor, op, prepared, original.openingRevision());
     }
     /**
-     * 开工单分三步（ADR-067：预约在门店交易库；工单、服务执行与接待操作在行业库）。
+     * 开工单分三步（ADR-068：预约在门店交易库；工单、服务执行与接待操作在行业库）。
      * <ol>
      *   <li>行业事务：在接待操作上预留工单号（只做一次），并预检这些预约明细上没有孤儿任务；</li>
      *   <li>交易事务：锁预约、校验，把预留的号记到预约上；已经记过就跳过校验。走入单在这一步之后越过

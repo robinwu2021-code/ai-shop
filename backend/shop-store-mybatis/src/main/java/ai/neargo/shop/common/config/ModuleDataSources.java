@@ -27,7 +27,7 @@ public final class ModuleDataSources {
     public static final String TRADE = "trade";
     /**
      * 行业库上的行业模块：餐饮的桌台、工位、出品单、厨显、人头权益、宴会、排队、寄存、服务交接，
-     * 美业的服务执行，以及两个行业共用的门店经营策略、提成规则（ADR-067）。代码在行业插件里，
+     * 美业的服务执行，以及两个行业共用的门店经营策略、提成规则（ADR-068）。代码在行业插件里，
      * 各插件的持久化配置按 {@link IndustryTableMapper} 收到这个句柄上。
      */
     public static final String INDUSTRY = "industry";

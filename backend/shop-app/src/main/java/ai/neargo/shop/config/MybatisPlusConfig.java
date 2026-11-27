@@ -69,7 +69,7 @@ import org.springframework.context.annotation.Import;
                 // 表在平台基础库的 Mapper 按标记排除（它们和别的库的 Mapper 混在同一个包里），
                 // 由 ModuleMapperScanConfig 按同一个标记收到平台句柄上
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformTableMapper.class),
-                // 门店交易库的同理（ADR-067）
+                // 门店交易库的同理（ADR-068）
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class),
                 // 行业库的同理：由各行业插件的持久化配置收到行业句柄上
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = IndustryTableMapper.class)})

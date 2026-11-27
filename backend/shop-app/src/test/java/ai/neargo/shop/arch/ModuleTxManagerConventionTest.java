@@ -62,7 +62,7 @@ class ModuleTxManagerConventionTest {
             "StoreDirectoryPortImpl.java", "StoreOwnershipWritePortImpl.java");
 
     /**
-     * 商户域里表在门店交易库的类（资源、排班、预约占用、门店分类）：它们点名交易句柄（ADR-067），不是平台句柄。
+     * 商户域里表在门店交易库的类（资源、排班、预约占用、门店分类）：它们点名交易句柄（ADR-068），不是平台句柄。
      * 这几个类还对平台基础库的人员、门店加锁，并经主库事件表登记发布 —— 换库前要拆，见 TDD-零售域对齐门店交易库 §2.4 T13、T4。
      */
     private static final java.util.Set<String> MERCHANT_TRADE = java.util.Set.of(
