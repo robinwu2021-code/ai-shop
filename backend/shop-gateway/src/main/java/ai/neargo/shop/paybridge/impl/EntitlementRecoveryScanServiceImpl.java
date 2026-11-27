@@ -3,6 +3,7 @@ import ai.neargo.shop.paybridge.mapper.LegacyCouponHistoricalReturnMapper;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.paybridge.StoredValueRefundRecoveryOwner;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.promotion.entity.PmtRechargeIntent;
 import ai.neargo.shop.promotion.entity.PmtBenefitIntent;
@@ -33,18 +34,21 @@ public class EntitlementRecoveryScanServiceImpl implements EntitlementRecoverySc
     private final LegacyCouponCheckoutMapper legacy;
     private final ai.neargo.shop.paybridge.mapper.LegacyCouponHistoricalReturnMapper historical;
     private final Clock legacyClock;
+    private final StoredValueRefundRecoveryOwner refunds;
     private final PmtRechargeIntentMapper recharges;
     private final PmtBenefitIntentMapper benefits;
     private final EntitlementServiceOrderMapper services;
     private final EntitlementOrderUseMapper orders;
     public EntitlementRecoveryScanServiceImpl(PmtRechargeIntentMapper recharges,PmtBenefitIntentMapper benefits,
             EntitlementServiceOrderMapper services,EntitlementOrderUseMapper orders,LegacyCouponCheckoutMapper legacy,ai.neargo.shop.paybridge.mapper.LegacyCouponHistoricalReturnMapper historical,
-            @Qualifier("legacyCouponCheckoutClock") ObjectProvider<Clock> clocks) {
+            @Qualifier("legacyCouponCheckoutClock") ObjectProvider<Clock> clocks, StoredValueRefundRecoveryOwner refunds) {
+        this.refunds = refunds;
         this.recharges=recharges; this.benefits=benefits; this.services=services; this.orders=orders;this.legacy=legacy;this.historical=historical;this.legacyClock=clocks.getIfAvailable(Clock::systemUTC);
     }
     @Override public ScanPage scan(String tenant,Kind kind,long afterId,int limit) {
         if(!"MAIN".equals(tenant)) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if(kind==null || afterId<0 || limit<1 || limit>100) throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (kind == Kind.SERVICE_REFUND && !refunds.owns(tenant)) return new ScanPage(List.of(), 0);
         List<Row> rows=DataScopeContext.executeWithoutScope(() -> switch(kind) {
             case HISTORICAL_COUPON_RETURN -> historical.selectList(Wrappers.<ai.neargo.shop.trade.entity.PmtMigrationReturn>lambdaQuery()
                     .eq(ai.neargo.shop.trade.entity.PmtMigrationReturn::getTenantNo,tenant)

@@ -37,7 +37,7 @@ import org.springframework.stereotype.Service;
 @Service("storedValueSettlementDecisionService")
 public class StoredValueSettlementDecisionServiceImpl implements StoredValueSettlementDecisionService {
  private final StoredValueSettlementRepository repo;private final StoredValueSettlementAudit audit;private final DocumentNumberCoordinator numbers;private final EntitlementCommandDeduplicator commands;
- public StoredValueSettlementDecisionServiceImpl(StoredValueSettlementRepository repo,StoredValueSettlementAudit audit,@Qualifier("payDocumentNumberCoordinator") DocumentNumberCoordinator numbers,EntitlementCommandDeduplicator commands){this.repo=repo;this.audit=audit;this.numbers=numbers;this.commands=commands;}
+ public StoredValueSettlementDecisionServiceImpl(StoredValueSettlementRepository repo,StoredValueSettlementAudit audit,@Qualifier("memberMarketingDocumentNumberCoordinator") DocumentNumberCoordinator numbers,EntitlementCommandDeduplicator commands){this.repo=repo;this.audit=audit;this.numbers=numbers;this.commands=commands;}
  public Bill reconcile(Decision c){
   if(c.side()==null)throw BizException.of(ErrorCode.BAD_REQUEST);var a=c.authority();var before=repo.bill(a,c.billNo(),false);String entity=text(before,"PAYER".equals(c.side())?"payer_entity_no":"payee_entity_no");requireParty(a,before,entity,"sv.settlement.reconcile");
   return mutate(a,before,"SV_SETTLEMENT_RECONCILE",c.commandKey(),Arrays.asList(a.principalNo(),c.billNo(),c.expectedRevision(),c.side(),c.reason()),c.expectedRevision(),row->{

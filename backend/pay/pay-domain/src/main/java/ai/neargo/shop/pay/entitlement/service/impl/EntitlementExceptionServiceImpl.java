@@ -42,7 +42,7 @@ public class EntitlementExceptionServiceImpl implements EntitlementExceptionServ
         this.actions=actions;
         this.exceptions=exceptions; this.grants=grants; this.json=json;
     }
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public ExceptionView captureGrantFailure(EntitlementContext ctx,String entity,String no) {
         if(!"MAIN".equals(ctx.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         var grant=grants.lock(ctx.tenantNo(),no);

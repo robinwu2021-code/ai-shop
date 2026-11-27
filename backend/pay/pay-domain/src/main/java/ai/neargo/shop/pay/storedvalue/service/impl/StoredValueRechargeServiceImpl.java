@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** New promises require a real core source. Existing received promises survive changes to live activity flags. */
 @Service
-@Transactional(transactionManager = "payTxManager", propagation = Propagation.NOT_SUPPORTED)
+@Transactional(transactionManager = "memberMarketingTxManager", propagation = Propagation.NOT_SUPPORTED)
 public class StoredValueRechargeServiceImpl implements StoredValueRechargeService {
     private final StoredValueRechargeWriter writer;
     private final RechargeSourcePort sources;

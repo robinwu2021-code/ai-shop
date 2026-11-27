@@ -61,7 +61,7 @@ class EntitlementMigrationAliasNativeMysqlTest {
         try(var context=new AnnotationConfigApplicationContext()) {
             context.register(Transactions.class,EntitlementCommandDeduplicator.class,EntitlementMigrationAliasWriter.class,
                     LegacyMigrationEvidenceReader.class);
-            context.registerBean("payTxManager",PlatformTransactionManager.class,()->new DataSourceTransactionManager(ds));
+            context.registerBean("memberMarketingTxManager",PlatformTransactionManager.class,()->new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class,()->new ObjectMapper());
             // The local writer only uses AAD binding and must not decrypt or fetch a remote source.
             context.registerBean(LegacySnapshotCipher.class,()->new LegacySnapshotCipher("",""));
@@ -90,7 +90,7 @@ class EntitlementMigrationAliasNativeMysqlTest {
             var pmt2=stage(stages,"P2","PMT","T2","B2");
             var mkt2=stage(stages,"M2","MKT_LEGACY","T2","B2");
             var second=new MigrationAliasViews.Recognize(new MigrationAliasViews.Pair("P2","M2"),0,0,"second native pair");
-            var tx=new TransactionTemplate(context.getBean("payTxManager",PlatformTransactionManager.class));
+            var tx=new TransactionTemplate(context.getBean("memberMarketingTxManager",PlatformTransactionManager.class));
             tx.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
             try(var other=Executors.newSingleThreadExecutor()) {
                 assertThatThrownBy(()->tx.executeWithoutResult(status -> {

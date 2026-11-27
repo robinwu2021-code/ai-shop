@@ -60,8 +60,8 @@ class PayRightsWorkbenchReservationTest {
  static class InfrastructureConfig {
   @Bean Fixture fixture(){return new Fixture();}
   @Bean("payTxManager") DataSourceTransactionManager manager(Fixture f){return f.manager;}
-  @Bean("payDocumentNumbers") JdbcDocumentNumberRepository lookup(Fixture f){return f.repository;}
-  @Bean("payDocumentNumberCoordinator") DocumentNumberCoordinator numbers(Fixture f){return f.numbers;}
+  @Bean({"payDocumentNumbers","memberMarketingDocumentNumbers"}) JdbcDocumentNumberRepository lookup(Fixture f){return f.repository;}
+  @Bean({"payDocumentNumberCoordinator","memberMarketingDocumentNumberCoordinator"}) DocumentNumberCoordinator numbers(Fixture f){return f.numbers;}
   @Bean PayRightsDocumentNumbers aliases(Fixture f){return new PayRightsDocumentNumbers(f.numbers);}
   @Bean PointsPostingService points(Fixture f){
    var store=mock(PostingStore.class);
@@ -70,7 +70,7 @@ class PayRightsWorkbenchReservationTest {
   }
  }
  static Object transactional(Object target,Fixture f,boolean transaction) {
-  var factory=new ProxyFactory(target);factory.addAdvisor(new PayRightsNumberReservations(f.numbers));
+  var factory=new ProxyFactory(target);factory.addAdvisor(new PayRightsNumberReservations(f.numbers, f.numbers));
   if(transaction)factory.addAdvisor(new DefaultPointcutAdvisor(new TransactionInterceptor(f.manager,new MatchAlwaysTransactionAttributeSource())));
   return factory.getProxy();
  }

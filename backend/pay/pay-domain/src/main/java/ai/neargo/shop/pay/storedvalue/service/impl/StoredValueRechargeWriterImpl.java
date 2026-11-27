@@ -62,7 +62,7 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
         if (r != null && !entity.equals(r.getEntityNo())) throw BizException.of(ErrorCode.NOT_FOUND);
         return r != null;
     }
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public RechargeView create(EntitlementContext ctx, String entity, CreateRecharge c, SourceFact source) {
         commands.execute(scope(ctx, entity), "SV_CREATE", ctx.requestId(), c, source.rechargeNo(), RechargeView.class,
                 () -> {
@@ -76,7 +76,7 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
         var actual = recharges.lock(ctx.tenantNo(), source.rechargeNo()); requireCreate(actual, ctx, entity, c);
         return view(actual);
     }
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public RechargeView submit(EntitlementContext ctx, String entity, SubmitRecharge c) {
         issuerLedger.beforeOriginal(ctx,entity,c.rechargeNo());
         return commands.execute(scope(ctx, entity), "SV_SUBMIT", ctx.requestId(), c, c.rechargeNo(),
@@ -90,7 +90,7 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
                     save(r, ctx); return view(r);
                 });
     }
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public RechargeView receive(EntitlementContext ctx, String entity, ReceiveRecharge c) {
         issuerLedger.beforeOriginal(ctx,entity,c.rechargeNo());
         return commands.execute(scope(ctx, entity), "SV_RECEIVE", ctx.requestId(), c, c.rechargeNo(),
@@ -113,7 +113,7 @@ public class StoredValueRechargeWriterImpl implements StoredValueRechargeWriter 
                     return view(r);
                 });
     }
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public RechargeView cancel(EntitlementContext ctx, String entity, CancelRecharge c, SourceFact source) {
         issuerLedger.beforeOriginal(ctx,entity,c.rechargeNo());
         return commands.execute(scope(ctx, entity), "SV_CANCEL", ctx.requestId(), c, c.rechargeNo(),

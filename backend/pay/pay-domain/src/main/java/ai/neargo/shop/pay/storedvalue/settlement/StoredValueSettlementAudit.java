@@ -14,7 +14,7 @@ import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.*;
 public class StoredValueSettlementAudit {
  private final StoredValueSettlementRepository repository;private final DocumentNumberCoordinator numbers;
  private static final Set<String> FIELDS=Set.of("sourceWatermark","itemCount","paymentNo","amountMinor","side","disputeNo","originalClearingNo","adjustmentClearingNo","nextPeriod","state","registeredMinor","confirmedMinor","decision");
- public StoredValueSettlementAudit(StoredValueSettlementRepository repository,@org.springframework.beans.factory.annotation.Qualifier("payDocumentNumberCoordinator") DocumentNumberCoordinator numbers){this.repository=repository;this.numbers=numbers;}
+ public StoredValueSettlementAudit(StoredValueSettlementRepository repository,@org.springframework.beans.factory.annotation.Qualifier("memberMarketingDocumentNumberCoordinator") DocumentNumberCoordinator numbers){this.repository=repository;this.numbers=numbers;}
  public void append(Authority a,Map<String,Object> bill,String type,String command,String reason,Map<String,Object> snapshot){
   if(!repository.database().payTransactionActive())throw new IllegalStateException("Pay transaction required");
   if(!FIELDS.containsAll(snapshot.keySet()))throw new IllegalArgumentException("Private evidence is not an event snapshot");

@@ -83,7 +83,7 @@ class LegacyCouponUseNativeMysqlTest {
                     ai.neargo.shop.pay.entitlement.event.PayEntitlementEventPublisher.class,
                     EntitlementPostingServiceImpl.class,PayEntitlementFeatureGate.class);
             context.getBeanFactory().registerSingleton("payOperationsDocuments", org.mockito.Mockito.mock(PayOperationsDocuments.class));
-            context.registerBean("payTxManager",PlatformTransactionManager.class,()->new DataSourceTransactionManager(ds));
+            context.registerBean("memberMarketingTxManager",PlatformTransactionManager.class,()->new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class,()->new ObjectMapper());
             context.registerBean(PayEntitlementProperties.class,()->props);
             context.registerBean(LegacyCouponCheckoutSourcePort.class,()->source);

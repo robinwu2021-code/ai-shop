@@ -23,9 +23,9 @@ public class LegacyCouponTemplateManagementServiceImpl implements LegacyCouponTe
             EntitlementIssuePolicyService policies,EntitlementCommandDeduplicator commands,LegacyCouponTemplateStatsMapper stats,ai.neargo.shop.pay.mapper.entitlement.EntIssueRecipientMapper recipients,ai.neargo.shop.pay.mapper.entitlement.EntTemplateMapper heads) {
         this.owners=owners;this.catalog=catalog;this.policies=policies;this.commands=commands;this.stats=stats;this.recipients=recipients;this.heads=heads;
     }
-    @Transactional(value="payTxManager",readOnly=true)
+    @Transactional(value="memberMarketingTxManager",readOnly=true)
     public Snapshot get(CatalogScope scope,Reference ref) {verify(scope,ref);return snapshot(scope,ref.targetNo());}
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public Snapshot status(CatalogScope scope,Reference ref,String status,String key) {
         verify(scope,ref);
         if(!java.util.Set.of("ACTIVE","PAUSED","ENDED").contains(status)) throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -37,7 +37,7 @@ public class LegacyCouponTemplateManagementServiceImpl implements LegacyCouponTe
             return snapshot(scope,ref.targetNo());
         });
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public Snapshot save(CatalogScope scope,Reference ref,DefinitionChange change,String key) {
         verify(scope,ref);var d=change.definition();rules.validate(d);
         if(!"ORDER_COUPON".equals(d.kind()) || !"MERCHANT".equals(d.funder()) || !"CNY".equals(d.currency())
@@ -65,7 +65,7 @@ public class LegacyCouponTemplateManagementServiceImpl implements LegacyCouponTe
             return snapshot(scope,ref.targetNo());
         });
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public Snapshot archive(CatalogScope scope,Reference ref,boolean archived,String key) {
         if(scope==null || !scope.platformActor()) throw BizException.of(ErrorCode.FORBIDDEN);
         verify(scope,ref);

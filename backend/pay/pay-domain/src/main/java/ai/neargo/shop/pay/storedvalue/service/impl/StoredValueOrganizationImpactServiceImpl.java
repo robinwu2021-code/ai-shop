@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StoredValueOrganizationImpactServiceImpl implements StoredValueOrganizationImpactService {
  private final SvOrganizationImpactMapper rows;
  public StoredValueOrganizationImpactServiceImpl(SvOrganizationImpactMapper rows){this.rows=rows;}
- @Transactional(transactionManager="payTxManager",readOnly=true)
+ @Transactional(transactionManager="memberMarketingTxManager",readOnly=true)
  public Impact inspect(String tenant,String entity,String store){
   ContractChecks.id(tenant);ContractChecks.id(entity);ContractChecks.id(store);
   var facts=rows.obligations(tenant,entity,store);boolean brand=rows.brandSchema()>0&&rows.activeBrandIssuers(tenant)>0;

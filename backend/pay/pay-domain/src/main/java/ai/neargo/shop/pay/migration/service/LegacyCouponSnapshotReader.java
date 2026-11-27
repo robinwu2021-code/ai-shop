@@ -26,7 +26,7 @@ public class LegacyCouponSnapshotReader {
     private final ObjectMapper json;
     public LegacyCouponSnapshotReader(EntInstanceMapper instances,EntLegacyCouponOperationMapper operations,
             PayEntitlementFeatureGate features,ObjectMapper json) {this.instances=instances;this.operations=operations;this.features=features;this.json=json;}
-    @Transactional(transactionManager="payTxManager",propagation=Propagation.REQUIRES_NEW,isolation=Isolation.REPEATABLE_READ,readOnly=true)
+    @Transactional(transactionManager="memberMarketingTxManager",propagation=Propagation.REQUIRES_NEW,isolation=Isolation.REPEATABLE_READ,readOnly=true)
     public Snapshot read(EntitlementContext ctx,Owned command) {
         var asset=instances.selectOne(Wrappers.<EntInstance>lambdaQuery().eq(EntInstance::getTenantNo,ctx.tenantNo())
                 .eq(EntInstance::getInstanceNo,command.targetInstanceNo()).eq(EntInstance::getUserNo,command.userNo())

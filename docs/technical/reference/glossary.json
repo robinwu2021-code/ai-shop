@@ -54343,6 +54343,17 @@
         "zh": "榜单口径。"
       },
       {
+        "name": "ReachDeliveryStatus",
+        "client": "shared",
+        "values": [
+          "SCHEDULED",
+          "SENDING",
+          "SENT",
+          "CANCELLED"
+        ],
+        "zh": "会员触达任务的投递状态。"
+      },
+      {
         "name": "ReachScene",
         "client": "shared",
         "values": [
@@ -61930,6 +61941,54 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "MEMBER_MARKETING_MAPPER_PATTERN",
+      "type": "String",
+      "value": "\"ai\\\\.neargo\\\\.shop\\\\.pay\\\\.mapper\\\\.(entitlement|storedvalue)\\\\..*\"",
+      "zh": "储值和权益共用核销、事件、编号与发行账簿。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "MEMBER_MARKETING_BINDING",
+      "type": "String",
+      "value": "\"shop.modules.member-marketing.datasource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "MEMBER_MARKETING",
+      "type": "String",
+      "value": "\"memberMarketing\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "MEMBER_MARKETING_TX_MANAGER",
+      "type": "String",
+      "value": "\"memberMarketingTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "MEMBER_MARKETING_DATA_SOURCE",
+      "type": "String",
+      "value": "\"memberMarketingDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "MEMBER_MARKETING_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"memberMarketingSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "INVOICE_TX_MANAGER",
       "type": "String",
       "value": "\"invoiceTxManager\"",
@@ -62028,7 +62087,7 @@
       "host": "ModuleDataSources",
       "name": "MODULES",
       "type": "List<String>",
-      "value": "List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT)",
+      "value": "List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT, MEMBER_MARKETING)",
       "zh": "守卫测试也读这份清单。",
       "module": "shop-store-mybatis"
     },

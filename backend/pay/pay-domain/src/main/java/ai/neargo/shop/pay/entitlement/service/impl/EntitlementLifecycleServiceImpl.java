@@ -55,7 +55,7 @@ public class EntitlementLifecycleServiceImpl implements EntitlementLifecycleServ
     }
 
     @Override
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public int expireDue(EntitlementContext context, int limit) {
         if(!"MAIN".equals(context.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if (limit < 1 || limit > 100) throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -80,7 +80,7 @@ public class EntitlementLifecycleServiceImpl implements EntitlementLifecycleServ
     }
 
     @Override
-    @Transactional(value = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(value = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public void reserve(EntitlementContext context, EntInstance asset, EntitlementDefinition rule,
                         LocalDate day, int units) {
         if ("PERIOD_DAILY".equals(rule.usageModel())) {
@@ -110,7 +110,7 @@ public class EntitlementLifecycleServiceImpl implements EntitlementLifecycleServ
     }
 
     @Override
-    @Transactional(value = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(value = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public void settle(EntitlementContext context, EntInstance asset, EntitlementDefinition rule, LocalDate day,
                        int units, boolean commit, Instant firstUseAt) {
         if ("PERIOD_DAILY".equals(rule.usageModel())) {
@@ -141,7 +141,7 @@ public class EntitlementLifecycleServiceImpl implements EntitlementLifecycleServ
     }
 
     @Override
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public FreezeView freeze(CatalogScope scope,String no,FreezeCommand command,String key) {
         if(scope==null || !scope.platformActor()) throw BizException.of(ErrorCode.FORBIDDEN);
         if(!"MAIN".equals(scope.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
@@ -192,7 +192,7 @@ public class EntitlementLifecycleServiceImpl implements EntitlementLifecycleServ
         return new UsageQuota.Daily(bucket.getLimitUnits(), bucket.getReservedUnits(), bucket.getUsedUnits());
     }
     @Override
-    @Transactional(value = "payTxManager", readOnly = true)
+    @Transactional(value = "memberMarketingTxManager", readOnly = true)
     public ReminderPage expiringSoon(EntitlementContext context, long afterId, int limit) {
         if (!"MAIN".equals(context.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if (afterId < 0 || limit < 1 || limit > 100) throw BizException.of(ErrorCode.BAD_REQUEST);

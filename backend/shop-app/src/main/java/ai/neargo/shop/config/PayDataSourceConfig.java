@@ -72,13 +72,16 @@ import javax.sql.DataSource;
 @MapperScan(basePackages = "ai.neargo.shop.pay.mapper",
         // 表在支付商户库的 Mapper 按标记排除，由下面那个扫描收到支付商户模块的句柄上（ADR-066）；
         // 模块没绑定时句柄就是 paySqlSessionFactory，和现在一样
-        excludeFilters = @ComponentScan.Filter(
+        excludeFilters = {@ComponentScan.Filter(
                 type = FilterType.ASSIGNABLE_TYPE,
                 classes = PayMerchantTableMapper.class),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = ModuleDataSources.MEMBER_MARKETING_MAPPER_PATTERN)},
         sqlSessionFactoryRef = "paySqlSessionFactory")
 @MapperScan(basePackages = "ai.neargo.shop.pay.mapper",
         markerInterface = PayMerchantTableMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.PAY_MERCHANT_SQL_SESSION_FACTORY)
+@MapperScan(basePackages = {"ai.neargo.shop.pay.mapper.entitlement", "ai.neargo.shop.pay.mapper.storedvalue"},
+        sqlSessionFactoryRef = ModuleDataSources.MEMBER_MARKETING_SQL_SESSION_FACTORY)
 public class PayDataSourceConfig {
 
     /**

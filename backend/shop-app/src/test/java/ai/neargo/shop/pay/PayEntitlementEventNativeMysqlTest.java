@@ -69,7 +69,7 @@ class PayEntitlementEventNativeMysqlTest {
         factory.setConfiguration(config);
         SqlSessionFactory sessions = factory.getObject();
         try (var context = new AnnotationConfigApplicationContext()) {
-            context.registerBean("payTxManager", PlatformTransactionManager.class,
+            context.registerBean("memberMarketingTxManager", PlatformTransactionManager.class,
                     () -> new DataSourceTransactionManager(ds));
             registerMapper(context, PayEntOutboxMapper.class, sessions);
             registerMapper(context, PayEntInboxMapper.class, sessions);
@@ -79,7 +79,7 @@ class PayEntitlementEventNativeMysqlTest {
             var inbox = context.getBean(PayEntInboxMapper.class);
             var sys = context.getBean(SysOutboxMapper.class);
             var jdbc = new JdbcTemplate(ds);
-            var tx = new TransactionTemplate(context.getBean("payTxManager", PlatformTransactionManager.class));
+            var tx = new TransactionTemplate(context.getBean("memberMarketingTxManager", PlatformTransactionManager.class));
             ObjectMapper json = new ObjectMapper();
             @SuppressWarnings("unchecked")
             ObjectProvider<OutboxPump> noPump = mock(ObjectProvider.class);

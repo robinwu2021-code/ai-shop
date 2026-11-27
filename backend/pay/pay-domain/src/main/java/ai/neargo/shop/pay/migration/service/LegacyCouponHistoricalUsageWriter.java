@@ -26,7 +26,7 @@ public class LegacyCouponHistoricalUsageWriter {
     public LegacyCouponHistoricalUsageWriter(EntUsageMapper usages,EntMigrationUsageMapper mappings,EntOwnerRegistryMapper owners) {
         this.usages=usages;this.mappings=mappings;this.owners=owners;
     }
-    @Transactional(transactionManager="payTxManager",propagation=Propagation.MANDATORY)
+    @Transactional(transactionManager="memberMarketingTxManager",propagation=Propagation.MANDATORY)
     public void write(EntitlementContext ctx,String importNo,String batch,String planHash,List<LegacyCouponHistoricalUsageProjector.Fact> facts) {
         for(var fact:facts.stream().sorted(Comparator.comparing(LegacyCouponHistoricalUsageProjector.Fact::sourceUsageNo)).toList()) {
             var claim=new EntOwnerRegistry();EntitlementRecords.audit(claim,ctx);claim.setSourceSystem("PMT");claim.setSourceKind("USAGE");

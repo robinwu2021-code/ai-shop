@@ -66,7 +66,7 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
         this.credits=credits; this.commands=commands; this.features=features; this.json=json; this.writer=writer;
     }
 
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public void bindCustomer(EntitlementContext ctx,String customer,String user){
         ai.neargo.shop.spi.entitlement.ContractChecks.id(customer);ai.neargo.shop.spi.entitlement.ContractChecks.id(user);
         identities.ensure(ctx.tenantNo(),customer,user);
@@ -77,7 +77,7 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
         identities.bindDirectory(ctx.tenantNo(),customer,user,ctx.actorNo(),LocalDateTime.now(ZoneOffset.UTC));
     }
 
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public RechargeView create(EntitlementContext ctx, String entity, Create c) {
         String no=no("PR", List.of(ctx.tenantNo(), entity, ctx.actorNo(), ctx.requestId()), json);
         var scope=new CatalogScope(ctx.tenantNo(),entity,ctx.actorNo(),false);
@@ -110,7 +110,7 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
     }
 
     /** Receipt and posting commit in one Pay-local transaction; Core facts are resolved before entry. */
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public RechargeView confirmOffline(EntitlementContext ctx,String entity,Create command) {
         var current=create(ctx,entity,command);
         if(current.status()==RechargeState.CREDITED)return current;
@@ -141,7 +141,7 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
         var r=recharges.find(ctx.tenantNo(),prior.get().rechargeNo());
         return new ReplayResult(true,r==null?prior.get():view(owned(ctx,entity,r.getRechargeNo())));
     }
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public RechargeView cancelCreation(EntitlementContext ctx,String entity,Replay c){
         String no=no("PR",List.of(ctx.tenantNo(),entity,ctx.actorNo(),ctx.requestId()),json);
         var cancelled=new RechargeView(no,RechargeState.CANCELLED,null,entity,c.storeNo(),null,null,null,null,null,0);

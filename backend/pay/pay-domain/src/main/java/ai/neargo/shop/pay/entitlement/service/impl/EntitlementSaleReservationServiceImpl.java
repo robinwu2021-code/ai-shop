@@ -30,7 +30,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Immutable prepayment promises survive later publication and issuance gate changes. */
 @Service
-@Transactional(value = "payTxManager", propagation = Propagation.NOT_SUPPORTED)
+@Transactional(value = "memberMarketingTxManager", propagation = Propagation.NOT_SUPPORTED)
 public class EntitlementSaleReservationServiceImpl implements EntitlementSaleReservationService {
     private final EntSaleReservationMapper reservations;
     private final EntitlementSaleReservationWriter writer;

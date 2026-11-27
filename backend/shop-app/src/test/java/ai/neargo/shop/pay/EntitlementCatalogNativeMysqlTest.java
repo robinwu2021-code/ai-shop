@@ -76,7 +76,7 @@ class EntitlementCatalogNativeMysqlTest {
                 properties.getEntitlement().getCatalog().setEnabled(true);
                 return properties;
             });
-            context.registerBean("payTxManager", PlatformTransactionManager.class,
+            context.registerBean("memberMarketingTxManager", PlatformTransactionManager.class,
                     () -> new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class, () -> JsonMapper.builder().build());
             registerMapper(context, EntTemplateMapper.class, sessions);
@@ -108,7 +108,7 @@ class EntitlementCatalogNativeMysqlTest {
             assertThat(catalog.getVersion(scope, published.versionNo())).isEqualTo(published);
             assertThat(catalog.create(scope, definition, key).revision()).isZero();
             String rollback = UUID.randomUUID().toString();
-            var manager = context.getBean("payTxManager", PlatformTransactionManager.class);
+            var manager = context.getBean("memberMarketingTxManager", PlatformTransactionManager.class);
             assertThatThrownBy(() -> new TransactionTemplate(manager).execute(status -> {
                 catalog.create(scope, definition, rollback);
                 throw new IllegalStateException("abort outer pay transaction");

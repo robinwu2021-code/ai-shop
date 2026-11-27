@@ -44,12 +44,13 @@ import org.springframework.util.ClassUtils;
 @Component
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 public class PayOperationsNumberReservations extends DefaultPointcutAdvisor {
-    public PayOperationsNumberReservations(@Qualifier("payDocumentNumberCoordinator") DocumentNumberCoordinator numbers) {
+    public PayOperationsNumberReservations(@Qualifier("payDocumentNumberCoordinator") DocumentNumberCoordinator numbers,
+            @Qualifier("memberMarketingDocumentNumberCoordinator") DocumentNumberCoordinator memberNumbers) {
         super(new StaticMethodMatcherPointcut() {
             @Override public boolean matches(Method method, Class<?> targetClass) {
                 return owns(targetClass.getSimpleName(), method.getName());
             }
-        }, (MethodInterceptor) invocation -> reserve(numbers, invocation));
+        }, (MethodInterceptor) invocation -> reserve(numbers, memberNumbers, invocation));
         setOrder(Ordered.HIGHEST_PRECEDENCE);
     }
     static boolean owns(String type, String method) {
@@ -97,12 +98,14 @@ public class PayOperationsNumberReservations extends DefaultPointcutAdvisor {
             default -> throw new IllegalArgumentException("Unknown operation number budget");
         };
     }
-    private static Object reserve(DocumentNumberCoordinator numbers, MethodInvocation invocation) throws Throwable {
+    private static Object reserve(DocumentNumberCoordinator numbers, DocumentNumberCoordinator memberNumbers,
+            MethodInvocation invocation) throws Throwable {
         try {
-            String type = invocation.getThis().getClass().getSimpleName();
-            // Spring's target is the original service; avoid relying on proxy-generated class names.
-            type = ClassUtils.getUserClass(invocation.getThis()).getSimpleName();
-            return numbers.withReservation(budget(type, invocation.getMethod().getName(), invocation.getArguments()), () -> {
+            String type = ClassUtils.getUserClass(invocation.getThis()).getSimpleName();
+            var counts = budget(type, invocation.getMethod().getName(), invocation.getArguments());
+            var coordinator = counts.keySet().stream().allMatch(PayDocumentNumberConfiguration::memberMarketing)
+                    ? memberNumbers : numbers;
+            return coordinator.withReservation(counts, () -> {
                 try { return invocation.proceed(); }
                 catch (Throwable failure) { throw new InvocationFailure(failure); }
             });

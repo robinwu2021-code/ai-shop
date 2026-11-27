@@ -35,7 +35,7 @@ public class EntitlementMigrationPlanWriter {
             EntMigrationAliasMapper aliases,EntitlementCommandDeduplicator commands,ObjectMapper json) {
         this.plans=plans;this.stages=stages;this.aliases=aliases;this.commands=commands;this.json=json;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public PlanView claim(CatalogScope scope,PlanCommand command,String key,EntMigrationPlan candidate,
                           List<EntMigrationStage> expected,EntMigrationAlias alias) {
         return commands.execute(scope,OPERATION,key,command,candidate.getPlanNo(),PlanView.class,()->{

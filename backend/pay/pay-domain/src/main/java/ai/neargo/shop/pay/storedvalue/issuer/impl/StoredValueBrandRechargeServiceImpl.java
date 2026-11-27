@@ -31,8 +31,8 @@ public class StoredValueBrandRechargeServiceImpl implements StoredValueBrandRech
     private final StoredValueBrandRechargeOptions offers;private final SvRechargeMapper recharges;
     private final DocumentNumberGenerator generator;private final DocumentNumberService numbers;private final DocumentNumberCoordinator coordinator;
     public StoredValueBrandRechargeServiceImpl(IssuerRepository db,StoredValueBrandRechargeWriter writer,StoredValueBrandRechargeOptions offers,SvRechargeMapper recharges,
-            @Qualifier("payDocumentNumberGenerator")DocumentNumberGenerator generator,@Qualifier("payDocumentNumbers")DocumentNumberService numbers,
-            @Qualifier("payDocumentNumberCoordinator")DocumentNumberCoordinator coordinator){
+            @Qualifier("memberMarketingDocumentNumberGenerator")DocumentNumberGenerator generator,@Qualifier("memberMarketingDocumentNumbers")DocumentNumberService numbers,
+            @Qualifier("memberMarketingDocumentNumberCoordinator")DocumentNumberCoordinator coordinator){
         this.db=db;this.writer=writer;this.offers=offers;this.recharges=recharges;this.generator=generator;this.numbers=numbers;this.coordinator=coordinator;
     }
     public CursorPage<Option> options(Query q,String cursor,int size){return offers.options(q,cursor,size);}

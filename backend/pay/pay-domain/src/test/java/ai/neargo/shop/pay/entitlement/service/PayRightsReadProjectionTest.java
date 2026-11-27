@@ -63,7 +63,7 @@ class PayRightsReadProjectionTest {
   ReflectionTestUtils.setField(writer,"documentNumbers",mock(PayRightsDocumentNumbers.class));
   var issuerLedger=mock(StoredValueIssuerLedgerBridge.class);
   ReflectionTestUtils.setField(writer,"issuerLedger",issuerLedger);
-  var factory=new ProxyFactory(writer);factory.addAdvisor(new PayRightsNumberReservations(coordinator));var proxy=(StoredValueRechargeWriter)factory.getProxy();
+  var factory=new ProxyFactory(writer);factory.addAdvisor(new PayRightsNumberReservations(coordinator, coordinator));var proxy=(StoredValueRechargeWriter)factory.getProxy();
   var result=new TransactionTemplate(manager).execute(tx->proxy.cancel(new EntitlementContext("MAIN","ACTOR","REQ","0".repeat(64)),"ENTITY",new CancelRecharge("internal",0,"cancel"),null));
   assertEquals(RechargeState.CANCELLED,result.status());
   verify(issuerLedger).beforeOriginal(any(EntitlementContext.class),eq("ENTITY"),eq("internal"));

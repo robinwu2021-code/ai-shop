@@ -35,7 +35,7 @@ public class LegacyCouponReversalRecorder {
         return "CR" + EntitlementRecords.digest(protocol + ":" + decisionNo).substring(0, 62);
     }
 
-    @Transactional(transactionManager="payTxManager", propagation=Propagation.MANDATORY)
+    @Transactional(transactionManager="memberMarketingTxManager", propagation=Propagation.MANDATORY)
     public boolean record(EntitlementContext ctx, EntUsage usage, String decisionNo, String reason,
                           String sourceNo, String snapshot, LocalDateTime occurredAt) {
         return record(ctx, usage, decisionNo, reason, sourceNo, snapshot, occurredAt, usage.getAmountMinor(), 1);

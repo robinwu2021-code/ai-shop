@@ -23,7 +23,7 @@ public class StoredValueSchemaDdl {
         "ALTER TABLE sv_account DROP INDEX uk_sv_owner, DROP INDEX uk_sv_customer_owner",
         "ALTER TABLE sv_account DROP INDEX uk_sv_owner",
         "ALTER TABLE sv_account DROP INDEX uk_sv_customer_owner");
-    public StoredValueSchemaDdl(@Qualifier("payTxManager") PlatformTransactionManager manager){
+    public StoredValueSchemaDdl(@Qualifier("memberMarketingTxManager") PlatformTransactionManager manager){
         if(!(manager instanceof DataSourceTransactionManager data))throw new IllegalStateException("Pay JDBC datasource required");
         source=java.util.Objects.requireNonNull(data.getDataSource());
     }

@@ -71,15 +71,15 @@ public class EntitlementUseWriter {
         this.json = json;
     }
 
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public void proposal(EntUseProposal proposal) { changed(proposals.insert(proposal)); }
 
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public HoldView prepare(EntitlementContext context, Prepared frozen) {
         return prepare(context, frozen, null);
     }
 
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public HoldView prepare(EntitlementContext context, Prepared frozen, BrandCouponUseProof brandProof) {
         var c = frozen.command();
         var fence = fences.lock(context, "USE", c.operationNo(), c.sourceRef(), c.userNo(), c.entityNo());
@@ -143,7 +143,7 @@ public class EntitlementUseWriter {
         return view(original);
     }
 
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public HoldView finish(EntitlementContext context, String operation, SourceRef source,
                            DecisionRef decision, boolean commit, SourceDecision truth) {
         var known = intents.find(context.tenantNo(), operation);
@@ -195,7 +195,7 @@ public class EntitlementUseWriter {
         return view(row);
     }
 
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public boolean cancelAbsent(EntitlementContext context, String operation, SourceRef source, SourceDecision truth) {
         var fence = fences.lock(context, "USE", operation, source, truth.userNo(), truth.entityNo());
         if (intents.lock(context.tenantNo(), operation) != null) return false;

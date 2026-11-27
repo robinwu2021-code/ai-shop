@@ -14,7 +14,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 支付域的每一个 {@code @Transactional} 都必须点名 {@code payTxManager}。
+ * 支付域事务必须点名对应的事务管理器；会员营销表使用独立模块句柄。
  *
  * <h2>为什么漏一个就等于没隔离</h2>
  * {@code PayDataSourceConfig} 给支付域配了独立的数据源与事务管理器，
@@ -40,11 +40,8 @@ class PayTxManagerConventionTest {
     private static final Path BACKEND = Paths.get(System.getProperty("user.dir")).getParent();
     private static final Path SETTLE = BACKEND.resolve("pay/pay-domain/src/main/java");
 
-    /** 支付域自己的事务管理器 bean 名。改名的话这里和装配要一起改 */
-    private static final String TX = "payTxManager";
-
     @Test
-    @DisplayName("★★★ 支付域的 @Transactional 必须点名 payTxManager —— 漏一个就等于没隔离")
+    @DisplayName("支付与会员营销事务必须点名各自的管理器")
     void everySettleTransactionNamesItsManager() throws IOException {
         List<String> bare = new ArrayList<>();
         int total = 0;
@@ -53,14 +50,16 @@ class PayTxManagerConventionTest {
             for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
                 String src = Files.readString(f, StandardCharsets.UTF_8);
                 String[] lines = src.split("\n");
+                boolean memberMarketing = f.toString().matches(".*?/pay/(entitlement|storedvalue|migration)/.*");
+                String manager = memberMarketing ? "memberMarketingTxManager" : "payTxManager";
                 for (int i = 0; i < lines.length; i++) {
                     String t = lines[i].trim();
                     if (!t.startsWith("@Transactional")) {
                         continue;   // 注释里提到它是正常的
                     }
                     total++;
-                    if (!t.contains(TX)) {
-                        bare.add(SETTLE.relativize(f) + ":" + (i + 1) + "  " + t);
+                    if (!t.contains(manager)) {
+                        bare.add(SETTLE.relativize(f) + ":" + (i + 1) + "  expected " + manager + "  " + t);
                     }
                 }
             }
@@ -76,12 +75,7 @@ class PayTxManagerConventionTest {
                 .isPositive();
 
         assertThat(bare)
-                .as("这些 @Transactional 没点名 %s，它们仍然跑在**平台的**事务管理器上：\n  %s\n"
-                        + "  今天不会有任何症状（库是同一个，结果一模一样），\n"
-                        + "  要等拆库那天才炸，而那时症状是「某几个接口报连不上表」，\n"
-                        + "  离真因隔着一次装配改动和几个月。\n"
-                        + "  → 写成 @Transactional(\"%s\")。",
-                        TX, bare, TX)
+                .as("事务管理器与写入域不匹配：%s", bare)
                 .isEmpty();
     }
 }

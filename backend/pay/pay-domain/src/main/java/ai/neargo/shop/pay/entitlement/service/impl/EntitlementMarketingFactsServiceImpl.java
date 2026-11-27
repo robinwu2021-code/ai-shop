@@ -41,7 +41,7 @@ public class EntitlementMarketingFactsServiceImpl implements EntitlementMarketin
         this.facts=facts; this.json=json;
     }
     @Override
-    @Transactional(value="payTxManager",readOnly=true,isolation=Isolation.REPEATABLE_READ)
+    @Transactional(value="memberMarketingTxManager",readOnly=true,isolation=Isolation.REPEATABLE_READ)
     public UsageEffects usage(EntitlementContext ctx,String entity,String no,String after,int limit) {
         if(!"MAIN".equals(ctx.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         ContractChecks.id(entity); ContractChecks.id(no);

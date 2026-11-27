@@ -45,10 +45,10 @@ public class StoredValueNumberedPlanRechargeServiceImpl implements StoredValueNu
     public StoredValueNumberedPlanRechargeServiceImpl(
             @Qualifier("storedValuePlanRechargeServiceImpl") StoredValuePlanRechargeService direct,
             SvRechargeMapper recharges,
-            @Qualifier("payDocumentNumberGenerator") DocumentNumberGenerator generator,
-            @Qualifier("payDocumentNumbers") DocumentNumberService numbers,
-            @Qualifier("payTxManager") PlatformTransactionManager manager,ObjectMapper json,
-            @Qualifier("payDocumentNumberCoordinator") DocumentNumberCoordinator coordinator) {
+            @Qualifier("memberMarketingDocumentNumberGenerator") DocumentNumberGenerator generator,
+            @Qualifier("memberMarketingDocumentNumbers") DocumentNumberService numbers,
+            @Qualifier("memberMarketingTxManager") PlatformTransactionManager manager,ObjectMapper json,
+            @Qualifier("memberMarketingDocumentNumberCoordinator") DocumentNumberCoordinator coordinator) {
         this.direct=direct;this.recharges=recharges;this.generator=generator;this.numbers=numbers;
         this.transaction=new TransactionTemplate(manager);this.json=json;this.coordinator=coordinator;
     }

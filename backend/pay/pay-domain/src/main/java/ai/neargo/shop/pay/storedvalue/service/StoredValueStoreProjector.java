@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StoredValueStoreProjector {
     private final SvUserStoreIndexMapper index;
     public StoredValueStoreProjector(SvUserStoreIndexMapper index) { this.index = index; }
-    @Transactional(transactionManager = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public void credit(EntitlementContext ctx, SvRecharge recharge, LocalDateTime at) {
         var claim = new SvUserStoreIndex(); StoredValueFacts.audit(claim, ctx, at);
         claim.setUserNo(recharge.getUserNo());claim.setCustomerNo(recharge.customerIdentity()); claim.setEntityNo(recharge.getEntityNo());
@@ -34,7 +34,7 @@ public class StoredValueStoreProjector {
         row.setUpdatedAt(at); row.setUpdatedBy(ctx.actorNo());
         if (index.updateById(row) != 1) StoredValueFacts.conflict();
     }
-    @Transactional(transactionManager = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public void consume(EntitlementContext ctx, String user, String entity, String store, String storeName,
                          LocalDateTime at) {
         var claim = new SvUserStoreIndex(); StoredValueFacts.audit(claim, ctx, at);

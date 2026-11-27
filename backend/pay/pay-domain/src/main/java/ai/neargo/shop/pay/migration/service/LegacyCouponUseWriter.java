@@ -41,7 +41,7 @@ public class LegacyCouponUseWriter {
         this.operations=operations; this.instances=instances; this.ledger=ledger; this.posting=posting;
         this.features=features; this.json=json;this.usageRecorder=usageRecorder;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public Operation prepare(EntitlementContext ctx,Prepare command,CheckoutFact fact) {
         var row=claim(ctx,command,fact);
         if(!"PREPARING".equals(row.getStatus())) return view(row,json);
@@ -58,7 +58,7 @@ public class LegacyCouponUseWriter {
         row.setHeldAt(EntitlementRecords.now()); row.setStatus("HELD"); update(ctx,row);
         return view(row,json);
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public Operation settle(EntitlementContext ctx,Complete command,CheckoutFact fact,Decision decision) {
         EntLegacyCouponOperation row;
         if(decision.outcome()==Outcome.ABORT) {
@@ -68,7 +68,7 @@ public class LegacyCouponUseWriter {
         settleLocked(ctx,row,fact,decision);
         return view(row,json);
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public Operation reverse(EntitlementContext ctx,Complete command,CheckoutFact fact,Decision original,Reversal reversal) {
         var row=required(ctx,command); validate(row,ctx,command,fact);
         if("REVERSED".equals(row.getStatus())) {
@@ -113,7 +113,7 @@ public class LegacyCouponUseWriter {
         return view(row,json);
     }
     /** Repair a missing read projection on an already accepted decision; never re-post money or notify. */
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public Operation replay(EntitlementContext ctx,Complete command,boolean reverse) {
         var row=required(ctx,command);
         String accepted=reverse?row.getReverseDecisionNo():row.getCommitDecisionNo();
@@ -122,7 +122,7 @@ public class LegacyCouponUseWriter {
         return view(row,json);
     }
     /** Only the original durable terminal operation and its ledger may reconstruct a read fact. */
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public boolean repairUsage(EntitlementContext ctx,String operationNo) {
         var row=operations.lock(ctx.tenantNo(),operationNo);
         return row!=null && usageRecorder.record(ctx,row,false);

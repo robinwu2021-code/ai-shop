@@ -46,7 +46,7 @@ public class LegacyCouponIssueWriter {
         this.issues=issues;this.templates=templates;this.policies=policies;this.recipients=recipients;this.commands=commands;
         this.batches=batches;this.grants=grants;this.owners=owners;this.grantRows=grantRows;this.stats=stats;this.definitions=definitions;this.events=events;this.json=json;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public View prepare(CatalogScope scope,Command command,String key,LegacyCouponAudiencePort.Fact fact,CatalogViews.PublishedVersionView version) {
         String no="LI"+EntitlementRecords.digest(scope.tenantNo()+":"+scope.entityNo()+":"+scope.actorNo()+":"+key).substring(0,62);
         return commands.execute(scope,OPERATION,key,command,no,View.class,()->{
@@ -87,7 +87,7 @@ public class LegacyCouponIssueWriter {
             return view(row,frozen,nativeBatch,false);
         });
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public View finish(CatalogScope scope,String no) {
         var row=issues.lock(scope.tenantNo(),scope.entityNo(),no);if(row==null) throw BizException.of(ErrorCode.NOT_FOUND);
         if("COMPLETED".equals(row.getStatus())) return effects(json.readValue(row.getResultSnapshot(),View.class));

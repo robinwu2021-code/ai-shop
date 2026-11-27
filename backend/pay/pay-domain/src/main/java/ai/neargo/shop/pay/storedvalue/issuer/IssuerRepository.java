@@ -19,7 +19,7 @@ public class IssuerRepository {
     private final TransactionTemplate transaction;
     private final ObjectMapper json;
 
-    public IssuerRepository(@Qualifier("payTxManager") PlatformTransactionManager manager, ObjectMapper json) {
+    public IssuerRepository(@Qualifier("memberMarketingTxManager") PlatformTransactionManager manager, ObjectMapper json) {
         if (!(manager instanceof DataSourceTransactionManager data))
             throw new IllegalStateException("Issuer transactions require the Pay JDBC datasource");
         this.jdbc = new JdbcTemplate(Objects.requireNonNull(data.getDataSource()));

@@ -66,7 +66,7 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         this.identities=identities;this.accounts = accounts; this.recharges = recharges; this.lots = lots; this.vouchers = vouchers;
         this.entries = entries; this.journal = journal; this.stores = stores; this.events = events; this.json = json; this.statements=statements;
     }
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public RechargeView creditReceived(EntitlementContext ctx, CreditRecharge c) {
         var original = recharges.find(ctx.tenantNo(), c.rechargeNo());
         requireReceived(original, c, json);

@@ -18,7 +18,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** A committed financial voucher and its user-facing read projection share the same transaction. */
 @Component
-@Transactional(transactionManager="payTxManager",propagation=Propagation.MANDATORY)
+@Transactional(transactionManager="memberMarketingTxManager",propagation=Propagation.MANDATORY)
 public class StoredValueStatementProjector {
     private final SvStatementMapper statements;
     private final ObjectMapper json;

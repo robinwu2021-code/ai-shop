@@ -32,7 +32,7 @@ public class EntitlementSourceFence {
         var row = fences.find(context.tenantNo(), purpose, operationNo);
         return row != null && operationNo.equals(row.getOperationNo()) ? row : null;
     }
-    @Transactional(value = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(value = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public PayEntSourceFence lock(EntitlementContext context, String purpose, String operationNo,
                                   SourceRef source, String user, String entity) {
         if (!List.of("GRANT", "USE").contains(purpose)) throw new IllegalArgumentException("Invalid source purpose");
@@ -64,7 +64,7 @@ public class EntitlementSourceFence {
     public boolean cancelled(PayEntSourceFence row) { return row != null && "CANCELLED".equals(row.getStatus()); }
 
     /** Only aggregate writers call this after validating terminal source truth and checking their own row. */
-    @Transactional(value = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(value = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public void cancel(EntitlementContext context, PayEntSourceFence row, SourceDecision truth) {
         if (truth == null || truth.status() != State.CANCELLED || !row.getUserNo().equals(truth.userNo())
                 || !row.getEntityNo().equals(truth.entityNo())) conflict();

@@ -23,6 +23,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementCapabilityPort;
 import ai.neargo.shop.spi.trade.PricingFundingCapabilities;
 import ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers;
 import ai.neargo.shop.numbering.DocumentNumberService;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import ai.neargo.shop.spi.storedvalue.StoredValueCustomerBindingPort;
 import ai.neargo.shop.payclient.port.RemoteEntitlementCapabilityPort;
 import ai.neargo.shop.pay.migration.service.EntitlementOwnerRegistryService;
@@ -119,6 +120,9 @@ class EntitlementRuntimeRoutingTest {
             .withBean(EntitlementUseWriter.class, () -> mock(EntitlementUseWriter.class))
             .withBean(PayRightsDocumentNumbers.class, () -> mock(PayRightsDocumentNumbers.class))
             .withBean("payDocumentNumbers", DocumentNumberService.class, () -> mock(DocumentNumberService.class))
+            .withBean("memberMarketingDocumentNumberCoordinator", DocumentNumberCoordinator.class,
+                    () -> mock(DocumentNumberCoordinator.class))
+            .withBean("memberMarketingDocumentNumbers", DocumentNumberService.class, () -> mock(DocumentNumberService.class))
             .withBean(EntitlementSourceFence.class, () -> mock(EntitlementSourceFence.class))
             .withBean(PayEntOutboxMapper.class, () -> mock(PayEntOutboxMapper.class))
             .withBean(PayEntitlementEventBridgePort.class, () -> mock(PayEntitlementEventBridgePort.class))

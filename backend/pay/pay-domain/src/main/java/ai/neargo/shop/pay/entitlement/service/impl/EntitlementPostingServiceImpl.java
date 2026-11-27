@@ -17,7 +17,7 @@ public class EntitlementPostingServiceImpl implements EntitlementPostingService 
     private final EntLedgerMapper ledger;
     public EntitlementPostingServiceImpl(EntLedgerMapper ledger) { this.ledger = ledger; }
 
-    @Transactional(value = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(value = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public void post(EntitlementContext context, EntInstance asset, String type, String operation,
                      int unitsDelta, int reservedDelta, String bucketKey, String originEntryNo) {
         var row = new EntLedger();

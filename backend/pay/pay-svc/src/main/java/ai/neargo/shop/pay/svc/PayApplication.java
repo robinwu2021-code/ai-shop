@@ -33,7 +33,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 而这个进程刻意不引 shop-app。**装配所需的每一样都要在这边重新声明一次** ——
  * 这正是「独立形态」的实际含义，也是它比设计文档更能说明问题的地方。
  */
-@org.mybatis.spring.annotation.MapperScan("ai.neargo.shop.pay.mapper")
+
 /*
  * 审计填充器同理：它在 ai.neargo.shop.common，不在本进程的扫描包里。
  * 排掉框架那份（见下方 exclude）之后若不显式引入，就没有任何填充器 ——

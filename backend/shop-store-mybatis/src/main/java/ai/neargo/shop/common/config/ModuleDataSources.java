@@ -26,6 +26,14 @@ public final class ModuleDataSources {
      */
     public static final String PAY_MERCHANT = "payMerchant";
 
+    /** 储值和权益共用核销、事件、编号与发行账簿。 */
+    public static final String MEMBER_MARKETING_MAPPER_PATTERN = "ai\\.neargo\\.shop\\.pay\\.mapper\\.(entitlement|storedvalue)\\..*";
+    public static final String MEMBER_MARKETING_BINDING = "shop.modules.member-marketing.datasource";
+    public static final String MEMBER_MARKETING = "memberMarketing";
+    public static final String MEMBER_MARKETING_TX_MANAGER = "memberMarketingTxManager";
+    public static final String MEMBER_MARKETING_DATA_SOURCE = "memberMarketingDataSource";
+    public static final String MEMBER_MARKETING_SQL_SESSION_FACTORY = "memberMarketingSqlSessionFactory";
+
     public static final String INVOICE_TX_MANAGER = "invoiceTxManager";
     public static final String INVOICE_DATA_SOURCE = "invoiceDataSource";
     public static final String INVOICE_SQL_SESSION_FACTORY = "invoiceSqlSessionFactory";
@@ -40,7 +48,7 @@ public final class ModuleDataSources {
     public static final String PLATFORM_SQL_SESSION_FACTORY = "platformSqlSessionFactory";
 
     /** 守卫测试也读这份清单；常量名与这里的规则对不上会在那里变红。 */
-    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT);
+    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT, MEMBER_MARKETING);
 
     private ModuleDataSources() {
     }
@@ -52,7 +60,7 @@ public final class ModuleDataSources {
      * 从支付域里分出来的模块没绑定时必须仍在支付的事务里，落到主库会让支付的写悄悄并进平台事务。
      */
     public static String[] unboundTarget(String module) {
-        return PAY_MERCHANT.equals(module)
+        return PAY_MERCHANT.equals(module) || MEMBER_MARKETING.equals(module)
                 ? new String[] {"payDataSource", "paySqlSessionFactory", "payTxManager"}
                 : new String[] {"dataSource", "sqlSessionFactory", "transactionManager"};
     }

@@ -42,7 +42,7 @@ public class LegacyCouponUsageRecorder {
         this.usages=usages;this.json=json;this.ledger=ledger;this.events=events;
     }
 
-    @Transactional(transactionManager="payTxManager",propagation=Propagation.MANDATORY)
+    @Transactional(transactionManager="memberMarketingTxManager",propagation=Propagation.MANDATORY)
     public boolean record(EntitlementContext ctx,EntLegacyCouponOperation operation,boolean notify) {
         if(!List.of("COMMITTED","REVERSED").contains(operation.getStatus())) return false;
         var entry=ledger.selectOne(Wrappers.<EntLedger>lambdaQuery().eq(EntLedger::getTenantNo,ctx.tenantNo())

@@ -100,7 +100,7 @@ class LegacyCouponHistoricalReturnNativeMysqlTest {
             when(docs.internal(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString())).thenAnswer(invocation -> invocation.getArgument(2));
             context.getBeanFactory().registerSingleton("payOperationsDocuments", docs);
-            context.registerBean("payTxManager",PlatformTransactionManager.class,()->new DataSourceTransactionManager(ds));
+            context.registerBean("memberMarketingTxManager",PlatformTransactionManager.class,()->new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class,()->json);
             context.registerBean(LegacySnapshotCipher.class,()->new LegacySnapshotCipher("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","NATIVE"));
             context.registerBean(EntitlementMigrationService.class,()->migration);

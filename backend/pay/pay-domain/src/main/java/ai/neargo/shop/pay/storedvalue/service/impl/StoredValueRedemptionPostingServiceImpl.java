@@ -91,7 +91,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
         this.allocations = allocations; this.vouchers = vouchers; this.entries = entries; this.journal = journal;
         this.usages = usages; this.policy = policy; this.stores = stores; this.events = events; this.json = json; this.statements=statements;
     }
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public HoldView prepare(EntitlementContext ctx, Prepared frozen) {
         var c = frozen.command();
         var fence = fences.lock(ctx, "USE", c.operationNo(), c.sourceRef(), c.userNo(), c.entityNo());
@@ -135,7 +135,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
         original.setStatus("HELD"); original.setUpdatedAt(now()); original.setUpdatedBy(ctx.actorNo());
         changed(intents.updateById(original)); return view(original);
     }
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public HoldView finish(EntitlementContext ctx, String operation, SourceRef source, DecisionRef decision,
                            boolean commit, SourceDecision truth) {
         var known = intents.find(ctx.tenantNo(), operation);

@@ -13574,6 +13574,14 @@ CREATE TABLE IF NOT EXISTS mbr_reach_recipient
     PRIMARY KEY (task_no, member_no)
 );
 
+CREATE TABLE IF NOT EXISTS ord_service_refund_recovery_owner
+(
+    tenant_no VARCHAR(64) NOT NULL,
+    scan_owner VARCHAR(16) NOT NULL,
+    PRIMARY KEY (tenant_no),
+    CONSTRAINT ck_service_refund_scan_owner CHECK ((CASE scan_owner WHEN 'PAY' THEN TRUE WHEN 'PAUSED' THEN TRUE WHEN 'TARGET' THEN TRUE ELSE CASE WHEN scan_owner IS NULL THEN NULL ELSE FALSE END END))
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -21762,6 +21770,7 @@ WHERE EXISTS (SELECT 1 FROM sys_function_point WHERE point_code = 'ACT__IAM_STAF
       WHERE role_code = 'SUPER_ADMIN' AND point_code = 'ACT__IAM_STAFF_API_KEY_MANAGE' AND end_code = 'OPS'
   );
 UPDATE ent_use_reversal SET source_type='AFTER_SALE', source_no=after_sale_no;
+INSERT IGNORE INTO ord_service_refund_recovery_owner (tenant_no, scan_owner) VALUES ('MAIN', 'PAY');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

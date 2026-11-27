@@ -1,0 +1,50 @@
+{
+  "backend": "a6d417719a755b4108dd33116fad73dfbbf82fd5",
+  "handheld": "3b46d4d9109b7994bc20c889fb0fdf1bb08ac661",
+  "device": "Android API 34 AVD",
+  "database": "Spring test profile, independent H2",
+  "zone": "Asia/Shanghai",
+  "identifiers": {
+    "coupon": "PC261127RG6QNW4XAV",
+    "entity": "M261127Y5RYCQFP5Q",
+    "a": "PT2611275TG96WCSGA",
+    "store": "ST261127NZGTD527NH",
+    "b": "PT26112760E3AWAJCE",
+    "segment": "SG2611278HJSAHYW0H"
+  },
+  "orders": [
+    {
+      "sub": "QA-SUB-0",
+      "activity": "a",
+      "paidDate": "2026-11-22",
+      "currency": "TWD",
+      "quantity": 2,
+      "paidMinor": 1700,
+      "discountMinor": 200,
+      "refund": {
+        "no": "QA-REF-1",
+        "date": "2026-11-25",
+        "quantity": 1,
+        "minor": 850
+      }
+    },
+    {
+      "sub": "QA-SUB-1",
+      "activity": "a",
+      "paidDate": "2026-11-24",
+      "currency": "USD",
+      "quantity": 1,
+      "paidMinor": 190,
+      "discountMinor": 10
+    },
+    {
+      "sub": "QA-SUB-2",
+      "activity": "b",
+      "paidDate": "2026-11-22",
+      "currency": "TWD",
+      "quantity": 1,
+      "paidMinor": 400,
+      "discountMinor": 50
+    }
+  ]
+}

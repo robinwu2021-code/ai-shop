@@ -71,7 +71,7 @@ class PayRightsPointsNumberingTest {
             doAnswer(a->{assertTrue(coordinator.find(DocumentType.POINTS_VOUCHER,source()).isPresent());return null;})
                 .when(store).applyConditions(any(),anyString());
             var factory=new ProxyFactory(service);
-            var advisor=new PayRightsNumberReservations(coordinator);
+            var advisor=new PayRightsNumberReservations(coordinator, coordinator);
             assertEquals(org.springframework.core.Ordered.HIGHEST_PRECEDENCE,advisor.getOrder());
             factory.addAdvisor(advisor);
             var tx=new TransactionInterceptor(manager,new MatchAlwaysTransactionAttributeSource());

@@ -29,7 +29,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Message-only recovery. No dependencies on issuance, use, account or remote bridge writers. */
 @Service("entitlementEventDeliveryService")
-@Transactional("payTxManager")
+@Transactional("memberMarketingTxManager")
 public class EntitlementEventDeliveryServiceImpl implements EntitlementEventDeliveryService {
     @org.springframework.beans.factory.annotation.Autowired
     private PayOperationsDocuments documents;
@@ -43,7 +43,7 @@ public class EntitlementEventDeliveryServiceImpl implements EntitlementEventDeli
             PayEntExceptionActionMapper actions,ObjectMapper json,EntitlementCursorCodec cursors) {
         this.outbox=outbox; this.exceptions=exceptions; this.actions=actions; this.json=json; this.cursors=cursors;
     }
-    @Transactional(value="payTxManager",readOnly=true)
+    @Transactional(value="memberMarketingTxManager",readOnly=true)
     public DeadLetterPage deadLetters(ai.neargo.shop.pay.entitlement.dto.OperatorEntityScope scope,String cursor,int limit) {
         if(!TENANT.equals(scope.tenantNo())) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         if(scope.entityNos()!=null) throw BizException.of(ErrorCode.FORBIDDEN);

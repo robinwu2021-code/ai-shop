@@ -68,9 +68,10 @@ public class ModuleDataSourceRegistrar implements ImportBeanDefinitionRegistrar,
 
         sources.forEach((name, source) -> registerSource(registry, name, source));
         for (String module : ModuleDataSources.MODULES) {
-            String bound = modules.containsKey(module) ? modules.get(module).getDatasource() : null;
+            String key = ModuleDataSources.MEMBER_MARKETING.equals(module) ? "member-marketing" : module;
+            String bound = modules.containsKey(key) ? modules.get(key).getDatasource() : null;
             if (bound != null && !bound.isBlank() && !sources.containsKey(bound)) {
-                throw new IllegalStateException("shop.modules." + module + ".datasource=" + bound
+                throw new IllegalStateException("shop.modules." + key + ".datasource=" + bound
                         + " 指向的数据源没有定义：请配置 shop.datasources." + bound + ".url");
             }
             boolean own = bound != null && !bound.isBlank();

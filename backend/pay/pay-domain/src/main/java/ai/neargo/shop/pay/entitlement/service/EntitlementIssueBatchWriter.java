@@ -43,7 +43,7 @@ public class EntitlementIssueBatchWriter {
         this.batches = batches; this.grants = grants; this.commands = commands; this.features = features;
         this.json = json; this.events = events;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public BatchView create(CatalogScope scope, CreateBatch c, String key, String no, BatchSnapshot snapshot) {
         return commands.execute(scope, "ISSUE_BATCH", key, c, no, BatchView.class, () -> {
             features.requireIssuance();
@@ -74,7 +74,7 @@ public class EntitlementIssueBatchWriter {
             return view(row);
         });
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public boolean step(CatalogScope scope, String no, int expectedCursor) {
         no=documentNumbers.resolve(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_ISSUE_BATCH,scope.tenantNo(),no);
         var row = owned(scope, no, true);

@@ -37,7 +37,7 @@ public class EntitlementOwnerRegistryServiceImpl implements EntitlementOwnerRegi
         this.owners=owners; this.templates=templates; this.instances=instances; this.usages=usages;
     }
     @Override
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public OwnerRef registerLegacy(CatalogScope scope,SourceIdentity source,String batch) {
         if(scope==null || !scope.platformActor()) throw BizException.of(ErrorCode.FORBIDDEN);
         supported(scope.tenantNo()); ContractChecks.present(source); ContractChecks.id(batch);

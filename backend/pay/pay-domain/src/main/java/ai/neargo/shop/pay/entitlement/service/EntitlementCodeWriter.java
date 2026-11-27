@@ -42,7 +42,7 @@ public class EntitlementCodeWriter {
         this.tokens = tokens; this.instances = instances; this.features = features;
         this.signer = signer; this.json = json;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public CodeView issue(EntitlementContext ctx, String user, String instance, String keyHash, String payloadHash) {
         var asset = owned(ctx, user, instance, true);
         var prior = unscoped(() -> tokens.findRequest(ctx.tenantNo(), user, keyHash));
@@ -60,7 +60,7 @@ public class EntitlementCodeWriter {
         row.setTokenHash(digest(signer.token(row))); changed(unscoped(() -> tokens.insert(row)));
         return view(row);
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public ResolvedCode resolve(EntitlementContext ctx, String entity, String store, String hash, String operation) {
         var row = unscoped(() -> tokens.lock(ctx.tenantNo(), hash));
         if (row == null || !entity.equals(row.getEntityNo()) || !now().isBefore(row.getExpiresAt())
@@ -81,7 +81,7 @@ public class EntitlementCodeWriter {
         }
         return new ResolvedCode(row.getUserNo(), row.getInstanceNo(), instant(row.getExpiresAt()));
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public int invalidate(EntitlementContext ctx, String user, String instance) {
         owned(ctx, user, instance, true);
         return unscoped(() -> tokens.update(Wrappers.<EntCodeToken>lambdaUpdate()

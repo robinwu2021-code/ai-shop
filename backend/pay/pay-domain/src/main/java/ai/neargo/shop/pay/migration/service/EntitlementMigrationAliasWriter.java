@@ -33,7 +33,7 @@ public class EntitlementMigrationAliasWriter {
             EntitlementCommandDeduplicator commands,LegacyMigrationEvidenceReader evidence,ObjectMapper json) {
         this.aliases=aliases; this.stages=stages; this.commands=commands; this.evidence=evidence; this.json=json;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public AliasView recognize(CatalogScope scope,Recognize command,String key,EntMigrationStage pmt,EntMigrationStage mkt,
                                LegacyCouponAliasComparator.Comparison compared,Instant at) {
         String no="MA"+EntitlementRecords.digest(json.writeValueAsString(

@@ -100,7 +100,7 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
         return writer.prepare(context, new PreparedGrant(c, version.templateNo(), d, fact.paidAt(), exposure(d, c.quantity())));
     }
     @Override
-    @Transactional(value="payTxManager",propagation=Propagation.NOT_SUPPORTED)
+    @Transactional(value="memberMarketingTxManager",propagation=Propagation.NOT_SUPPORTED)
     public GrantView commit(EntitlementContext context, GrantDecision c) {
         return finish(context, c.grantNo(), c.sourceRef(), c.decisionRef(), true);
     }

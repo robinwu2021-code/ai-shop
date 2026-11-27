@@ -51,7 +51,7 @@ public class LegacyCouponMigrationImportWriter {
         this.versions=versions;this.instances=instances;this.policies=policies;this.recipients=recipients;this.owners=owners;
         this.commands=commands;this.posting=posting;this.json=json;this.history=history;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public ImportView importPlan(CatalogScope scope,ImportCommand command,String key,EntMigrationPlan expected,
             LegacyCouponTargetPlan plan,List<EntMigrationStage> evidence,List<CommitProof> proofs,List<LegacyCouponHistoricalUsageProjector.Fact> historicalFacts) {
         String no="MI"+EntitlementRecords.digest(scope.tenantNo()+":"+plan.planNo()).substring(0,62);

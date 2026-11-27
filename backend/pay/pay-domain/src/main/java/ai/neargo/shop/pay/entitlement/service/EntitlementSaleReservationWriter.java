@@ -34,7 +34,7 @@ public class EntitlementSaleReservationWriter {
         this.reservations = reservations; this.policies = policies; this.json = json;
     }
 
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public SaleView reserve(EntitlementContext ctx, ReserveSale c, String currency, String template,
                             EntitlementDefinition definition) {
         var candidate = candidate(ctx, c, currency);
@@ -48,7 +48,7 @@ public class EntitlementSaleReservationWriter {
         return view(row);
     }
 
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public SaleView release(EntitlementContext ctx, ReserveSale c, String currency, DecisionRef decision) {
         reservations.claim(candidate(ctx, c, currency));
         var row = reservations.lock(ctx.tenantNo(), c.reservationNo());
@@ -67,7 +67,7 @@ public class EntitlementSaleReservationWriter {
         return view(row);
     }
 
-    @Transactional(value = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(value = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public String transfer(EntitlementContext ctx, PreparedGrant prepared) {
         var grant = prepared.command();
         var c = new ReserveSale(ReserveSale.number(grant.sourceRef()), grant.sourceRef(), grant.templateVersionNo(),

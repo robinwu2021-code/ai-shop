@@ -35,7 +35,7 @@ public class EntitlementCommandDeduplicator {
      * Replay uses tenant + operation + opaque key; identity and the complete logical payload are fingerprinted.
      * The caller includes target IDs in payload, but not newly generated IDs that differ on each retry.
      */
-    @Transactional(transactionManager = "payTxManager", propagation = Propagation.REQUIRED)
+    @Transactional(transactionManager = "memberMarketingTxManager", propagation = Propagation.REQUIRED)
     public <T> T execute(CatalogScope scope, String operation, String key, Object payload, String resourceNo,
                           Class<T> responseType, Supplier<T> work) {
         if (!id(operation) || !id(key) || !id(resourceNo) || scope == null || payload == null

@@ -79,7 +79,7 @@ class StoredValueCreditNativeMysqlTest {
             context.register(Transactions.class, StoredValueCreditServiceImpl.class, StoredValuePostingServiceImpl.class,
                     StoredValueStoreProjector.class, PayEntitlementEventPublisher.class, StoredValueRechargeWriterImpl.class,
                     EntitlementCommandDeduplicator.class);
-            context.registerBean("payTxManager", PlatformTransactionManager.class,
+            context.registerBean("memberMarketingTxManager", PlatformTransactionManager.class,
                     () -> new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class, () -> JsonMapper.builder().build());
             register(context, SvAccountMapper.class, sessions); register(context, SvRechargeMapper.class, sessions);

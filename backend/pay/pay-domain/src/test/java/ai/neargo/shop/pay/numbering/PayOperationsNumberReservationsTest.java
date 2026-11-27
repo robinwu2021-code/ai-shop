@@ -42,7 +42,7 @@ class PayOperationsNumberReservationsTest {
             }
         };
         var coordinator = new DocumentNumberCoordinator(repository, checkedGenerator, manager);
-        var documents = new PayOperationsDocuments(coordinator);
+        var documents = new PayOperationsDocuments(coordinator, coordinator);
         var mapper = mock(EntMigrationStageMapper.class);
         var row = new EntMigrationStage(); row.setTenantNo("MAIN"); row.setEntityNo("M1");
         row.setStageNo("MS-internal-stable"); row.setRequestKey("REQUEST"); row.setCommandHash("a".repeat(64));
@@ -52,7 +52,7 @@ class PayOperationsNumberReservationsTest {
         var target = new EntitlementMigrationStageWriter(mapper);
         var field = EntitlementMigrationStageWriter.class.getDeclaredField("documents"); field.setAccessible(true); field.set(target, documents);
         var factory = new ProxyFactory(target); factory.setProxyTargetClass(true);
-        factory.addAdvisor(new PayOperationsNumberReservations(coordinator));
+        factory.addAdvisor(new PayOperationsNumberReservations(coordinator, coordinator));
         factory.addAdvice(new TransactionInterceptor(manager, new AnnotationTransactionAttributeSource()));
         var writer = (EntitlementMigrationStageWriter) factory.getProxy();
         assertThat(writer.claim(row)).isSameAs(row);
@@ -92,7 +92,7 @@ class PayOperationsNumberReservationsTest {
     }
     @Test void projectionsBatchNumbersAndNeverReadOrGeneratePerRow() {
         var numbers = mock(DocumentNumberCoordinator.class);
-        var documents = new PayOperationsDocuments(numbers);
+        var documents = new PayOperationsDocuments(numbers, numbers);
         var one = new DocumentSource("MAIN", "PAY", "SETTLEMENT_BILL", "internal1");
         var two = new DocumentSource("MAIN", "PAY", "SETTLEMENT_BILL", "historical");
         when(numbers.findAll(DocumentType.SETTLEMENT_BILL, List.of(one,two))).thenReturn(Map.of(one,"STS20261020000001"));

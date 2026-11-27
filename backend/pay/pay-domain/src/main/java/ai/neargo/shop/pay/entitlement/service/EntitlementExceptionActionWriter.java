@@ -25,11 +25,11 @@ public class EntitlementExceptionActionWriter {
     public EntitlementExceptionActionWriter(PayEntExceptionMapper exceptions,PayEntExceptionActionMapper actions,ObjectMapper json) {
         this.exceptions=exceptions; this.actions=actions; this.json=json;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public ExceptionView begin(CatalogScope scope,String no,RecoveryCommand c,String key) {
         return begin(scope,no,c,key,"RETRY_GRANT");
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public ExceptionView begin(CatalogScope scope,String no,RecoveryCommand c,String key,String mode) {
         if(!java.util.Set.of("RETRY_GRANT","QUERY_SOURCE").contains(mode)) throw BizException.of(ErrorCode.BAD_REQUEST);
         var row=owned(scope,no);
@@ -57,11 +57,11 @@ public class EntitlementExceptionActionWriter {
         EntitlementRecords.changed(exceptions.updateById(row));
         return null;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public ExceptionView finish(CatalogScope scope,String no,String key,boolean resolved) {
         return finish(scope,no,key,resolved,null);
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public ExceptionView finish(CatalogScope scope,String no,String key,boolean resolved,String sourceStatus) {
         var row=owned(scope,no); var action=actions.lock(scope.tenantNo(),key);
         if(action==null || !no.equals(action.getExceptionNo()) || !scope.actorNo().equals(action.getActorNo())) {

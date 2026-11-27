@@ -21281,6 +21281,26 @@
 "门店 + 状态索引"
 ]
 },
+"ord_service_refund_recovery_owner": {
+"fields": [
+[
+"tenant_no",
+"varchar(64)",
+"租户号",
+"V720"
+],
+[
+"scan_owner",
+"varchar(16)",
+"退款恢复扫描方或暂停状态",
+"V720"
+]
+],
+"keys": [
+"tenant_no 主键"
+],
+"remark": "PAY、PAUSED、TARGET 三种状态。"
+},
 "ord_refund_obligation": {
 "fields": [
 [

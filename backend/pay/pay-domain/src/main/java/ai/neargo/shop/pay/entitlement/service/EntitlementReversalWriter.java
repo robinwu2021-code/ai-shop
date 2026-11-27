@@ -50,7 +50,7 @@ public class EntitlementReversalWriter {
         this.reversals = reversals; this.intents = intents; this.allocations = allocations; this.instances = instances;
         this.usages = usages; this.ledger = ledger; this.posting = posting; this.events = events; this.json = json;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public UseReceipt apply(EntitlementContext ctx, OrderBenefitReverse c, String originalOperation) {
         var origin = intents.lock(ctx.tenantNo(), originalOperation);
         if (origin == null || !"COMMITTED".equals(origin.getStatus()) || !c.usageNo().equals(origin.getUsageNo())) {

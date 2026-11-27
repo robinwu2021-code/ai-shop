@@ -130,7 +130,7 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
     }
 
     @Override
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public TemplateView changeStatus(CatalogScope scope, String templateNo, long expectedRevision,
                                       String status, String requestKey) {
         if (status == null || !List.of("ACTIVE", "PAUSED", "ENDED").contains(status)) {

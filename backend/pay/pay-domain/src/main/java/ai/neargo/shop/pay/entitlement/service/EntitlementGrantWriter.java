@@ -57,7 +57,7 @@ public class EntitlementGrantWriter {
         this.grants = grants; this.instances = instances; this.ledger = ledger;
         this.policies = policies; this.events = events; this.json = json;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public GrantView prepare(EntitlementContext context, PreparedGrant prepared) {
         var c = prepared.command();
         var fence = fences.lock(context, "GRANT", c.grantNo(), c.sourceRef(), c.recipientUserNo(), c.entityNo());
@@ -83,7 +83,7 @@ public class EntitlementGrantWriter {
         changed(grants.updateById(original));
         return view(original);
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public GrantView finish(EntitlementContext context, String no, SourceRef source, DecisionRef decision,
                             boolean issue, SourceDecision truth) {
         var known = grants.find(context.tenantNo(), no);
@@ -135,7 +135,7 @@ public class EntitlementGrantWriter {
         if (!issue) fences.cancel(context, fence, truth);
         return view(row);
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public boolean abortAbsent(EntitlementContext context, String no, SourceRef source, SourceDecision truth) {
         var fence = fences.lock(context, "GRANT", no, source, truth.userNo(), truth.entityNo());
         if (grants.lock(context.tenantNo(), no) != null) return false;

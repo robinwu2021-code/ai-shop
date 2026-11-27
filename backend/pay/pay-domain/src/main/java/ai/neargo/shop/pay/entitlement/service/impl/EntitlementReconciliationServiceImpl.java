@@ -65,14 +65,14 @@ public class EntitlementReconciliationServiceImpl implements EntitlementReconcil
     }
 
     @Override
-    @Transactional(value="payTxManager",isolation=Isolation.REPEATABLE_READ)
+    @Transactional(value="memberMarketingTxManager",isolation=Isolation.REPEATABLE_READ)
     public RunView checkRights(CatalogScope scope,CheckRights c,String key) {
         if(c==null) throw BizException.of(ErrorCode.BAD_REQUEST);
         return check(scope,new Check("RIGHTS",null,c.bizDate(),c.marketZone(),c.afterInstanceNo(),c.limit()),key);
     }
 
     @Override
-    @Transactional(value="payTxManager",isolation=Isolation.REPEATABLE_READ)
+    @Transactional(value="memberMarketingTxManager",isolation=Isolation.REPEATABLE_READ)
     public RunView check(CatalogScope scope,Check c,String key) {
         platform(scope);
         if(c==null || key==null || key.isBlank() || key.length()>64) throw BizException.of(ErrorCode.BAD_REQUEST);

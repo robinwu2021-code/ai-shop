@@ -1,7 +1,7 @@
 package ai.neargo.shop.paybridge.impl;
 
 import ai.neargo.shop.paybridge.EntitlementRecoveryService;
-import ai.neargo.shop.paybridge.EntitlementServiceUseCoordinator;
+import ai.neargo.shop.paybridge.StoredValueRefundRecoveryOwner;
 import ai.neargo.shop.paybridge.StoredValueRechargeCoordinator;
 import ai.neargo.shop.paybridge.EntitlementOrderCoordinator;
 import ai.neargo.shop.paybridge.ActivityBenefitCoordinator;
@@ -25,14 +25,14 @@ public class EntitlementRecoveryServiceImpl implements EntitlementRecoveryServic
     private final ai.neargo.shop.paybridge.LegacyCouponHistoricalReturnCoordinator historical;
     private final LegacyCouponOrderCreationCoordinator legacy;
     private final StoredValueRechargeCoordinator recharge;
-    private final EntitlementServiceUseCoordinator serviceUses;
+    private final StoredValueRefundRecoveryOwner refunds;
     private final EntitlementOrderCoordinator uses;
     private final ActivityBenefitCoordinator benefits;
     public EntitlementRecoveryServiceImpl(EntitlementRecoveryScanService scans,StoredValueRechargeCoordinator recharge,
             EntitlementOrderCoordinator uses,ActivityBenefitCoordinator benefits,LegacyCouponCheckoutJournal legacyJournal,
             LegacyCouponOrderCreationCoordinator legacy,ai.neargo.shop.paybridge.LegacyCouponHistoricalReturnCoordinator historical,
-            EntitlementServiceUseCoordinator serviceUses) {
-        this.serviceUses = serviceUses;
+            StoredValueRefundRecoveryOwner refunds) {
+        this.refunds = refunds;
         this.scans=scans; this.recharge=recharge; this.uses=uses; this.benefits=benefits;this.legacyJournal=legacyJournal;this.legacy=legacy;this.historical=historical;
     }
     @Override public Result recover(String tenant,Kind kind,long afterId,int limit) {
@@ -46,7 +46,7 @@ public class EntitlementRecoveryServiceImpl implements EntitlementRecoveryServic
                     case LEGACY_COUPON -> legacyJournal.decideForRecovery(ctx,row.resourceNo())
                             ?legacy.recover(ctx,row.resourceNo()).status().name():"PENDING";
                     case RECHARGE -> recharge.recover(ctx,row.entityNo(),row.resourceNo()).status();
-                    case SERVICE_REFUND -> serviceUses.recoverRefund(ctx,row.entityNo(),row.resourceNo()).status();
+                    case SERVICE_REFUND -> refunds.recover(ctx,row.entityNo(),row.resourceNo());
                     case SERVICE_USE,ORDER_USE -> uses.recover(ctx,row.entityNo(),row.resourceNo()).status().name();
                     case ACTIVITY_BENEFIT -> benefits.recover(ctx,row.resourceNo()).status();
                 };

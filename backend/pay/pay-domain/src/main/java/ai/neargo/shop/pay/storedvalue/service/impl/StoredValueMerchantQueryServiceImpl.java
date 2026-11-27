@@ -28,7 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class StoredValueMerchantQueryServiceImpl implements StoredValueMerchantQueryService {
     @org.springframework.beans.factory.annotation.Autowired
-    @org.springframework.beans.factory.annotation.Qualifier("payDocumentNumbers")
+    @org.springframework.beans.factory.annotation.Qualifier("memberMarketingDocumentNumbers")
     private ai.neargo.shop.numbering.DocumentNumberService documentNumbers;
     @org.springframework.beans.factory.annotation.Autowired
     private ai.neargo.shop.pay.mapper.entitlement.EntUsageMapper usages;

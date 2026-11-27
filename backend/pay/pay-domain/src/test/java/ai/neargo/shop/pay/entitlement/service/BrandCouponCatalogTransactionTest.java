@@ -162,7 +162,7 @@ class BrandCouponCatalogTransactionTest {
                     localTransaction();return jdbc.update("INSERT INTO write_probe VALUES('VERSION')");
                 });
                 context.register(Transactions.class);
-                context.registerBean("payTxManager",DataSourceTransactionManager.class,()->new DataSourceTransactionManager(ds));
+                context.registerBean("memberMarketingTxManager",DataSourceTransactionManager.class,()->new DataSourceTransactionManager(ds));
                 context.registerBean(BrandCouponSourcePort.class,()->source);
                 context.registerBean(EntitlementCommandDeduplicator.class,()->new EntitlementCommandDeduplicator(receipts,json));
                 context.registerBean(EntitlementCatalogService.class,()->new EntitlementCatalogServiceImpl(heads,versions,

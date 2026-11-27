@@ -16,7 +16,7 @@ public class EntitlementMigrationStageWriter {
     private PayOperationsDocuments documents;
     private final EntMigrationStageMapper stages;
     public EntitlementMigrationStageWriter(EntMigrationStageMapper stages) { this.stages=stages; }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public EntMigrationStage claim(EntMigrationStage candidate) {
         stages.claim(candidate);
         var stored=stages.lockRequest(candidate.getTenantNo(),candidate.getRequestKey());

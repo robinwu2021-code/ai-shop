@@ -36,7 +36,7 @@ public class EntitlementIssuePolicyServiceImpl implements EntitlementIssuePolicy
         this.templates = templates; this.policies = policies; this.recipients = recipients;
         this.commands = commands; this.features = features;
     }
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public PolicyView save(CatalogScope scope, String no, SavePolicy command, String key) {
         id(no);
         if (command == null || command.expectedRevision() < 0 || command.perUserLimit() < 1
@@ -71,7 +71,7 @@ public class EntitlementIssuePolicyServiceImpl implements EntitlementIssuePolicy
         return new PolicyView(no, p.getLimitCount(), p.getHeldCount(), p.getIssuedCount(), p.getMaxExposureMinor(),
                 p.getHeldExposureMinor(), p.getUsedExposureMinor(), p.getPerUserLimit(), p.getEnabled() == 1, p.getVersion());
     }
-    @Override @Transactional(value = "payTxManager", propagation = Propagation.MANDATORY)
+    @Override @Transactional(value = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public void reserve(CatalogScope scope, String no, String user, int quantity, long amount) {
         inputs(no, user, quantity, amount); features.requireIssuance();
         var head = owned(scope, no, true);
@@ -82,7 +82,7 @@ public class EntitlementIssuePolicyServiceImpl implements EntitlementIssuePolicy
         changed(policies.reserve(scope.tenantNo(), no, quantity, amount, scope.actorNo(), now()));
         changed(recipients.reserve(scope.tenantNo(), no, user, quantity, row.getPerUserLimit(), scope.actorNo(), now()));
     }
-    @Override @Transactional(value = "payTxManager", propagation = Propagation.MANDATORY)
+    @Override @Transactional(value = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public void settle(CatalogScope scope, String no, String user, int quantity, long amount, boolean issue) {
         inputs(no, user, quantity, amount); owned(scope, no, true);
         if (policies.lock(scope.tenantNo(), no) == null) conflict();

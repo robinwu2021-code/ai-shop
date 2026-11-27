@@ -113,7 +113,7 @@ class EntitlementUseNativeMysqlTest {
                 LocalDateTime.now(ZoneOffset.UTC));
         try (var beans = new AnnotationConfigApplicationContext()) {
             beans.register(Transactions.class);
-            beans.registerBean("payTxManager", DataSourceTransactionManager.class,
+            beans.registerBean("memberMarketingTxManager", DataSourceTransactionManager.class,
                     () -> new DataSourceTransactionManager(ds));
             beans.registerBean(ObjectMapper.class, () -> json);
             for (var mapper : List.of(EntInstanceMapper.class, EntLedgerMapper.class, EntPeriodBucketMapper.class,

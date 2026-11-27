@@ -41,7 +41,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Actual source and consumer consent are read before any pay write lock; deadline never releases an existing hold. */
 @Service
-@Transactional(transactionManager = "payTxManager", propagation = Propagation.NOT_SUPPORTED)
+@Transactional(transactionManager = "memberMarketingTxManager", propagation = Propagation.NOT_SUPPORTED)
 public class StoredValueRedemptionServiceImpl implements StoredValueRedemptionService {
     private final ObjectProvider<EntitlementUseSourcePort> sources;
     private final ObjectProvider<SourceDecisionPort> decisions;

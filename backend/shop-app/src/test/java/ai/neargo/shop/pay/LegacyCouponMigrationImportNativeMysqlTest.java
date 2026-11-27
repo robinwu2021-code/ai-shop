@@ -90,7 +90,7 @@ class LegacyCouponMigrationImportNativeMysqlTest {
                     EntitlementMigrationPlanWriter.class,EntitlementMigrationPlanServiceImpl.class,
                     LegacyCouponMigrationImportWriter.class,LegacyCouponMigrationImportServiceImpl.class,LegacyCouponHistoricalUsageWriter.class,
                     EntitlementPostingServiceImpl.class,EntitlementOwnerRegistryServiceImpl.class);
-            context.registerBean("payTxManager",PlatformTransactionManager.class,()->new DataSourceTransactionManager(ds));
+            context.registerBean("memberMarketingTxManager",PlatformTransactionManager.class,()->new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class,()->json);
             context.registerBean(LegacySnapshotCipher.class,()->new LegacySnapshotCipher("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","NATIVE"));
             context.registerBean(EntitlementMigrationService.class,()->migration);

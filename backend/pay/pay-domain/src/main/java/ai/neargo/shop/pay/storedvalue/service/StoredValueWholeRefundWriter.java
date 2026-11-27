@@ -57,7 +57,7 @@ public class StoredValueWholeRefundWriter {
     private final StoredValueClearingService clearing;
     private final ObjectMapper json;
 
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public UseReceipt apply(EntitlementContext ctx, OrderBenefitReverse c, String originalOperation) {
         var intent = intents.lock(ctx.tenantNo(), originalOperation);
         if (intent == null || !"COMMITTED".equals(intent.getStatus()) || !"STORED_VALUE".equals(intent.getAssetKind())

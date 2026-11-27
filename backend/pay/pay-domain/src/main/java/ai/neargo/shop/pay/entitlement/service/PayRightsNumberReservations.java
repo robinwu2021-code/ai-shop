@@ -45,7 +45,8 @@ public class PayRightsNumberReservations extends DefaultPointcutAdvisor {
         entry("StatementConfirmationStateImpl", "confirm"),
         entry("PointsWorkbenchServiceImpl", "draftStatements", "changeStatement", "reviseRefund", "prepareReceivable")
     );
-    public PayRightsNumberReservations(@Qualifier("payDocumentNumberCoordinator") DocumentNumberCoordinator numbers) {
+    public PayRightsNumberReservations(@Qualifier("payDocumentNumberCoordinator") DocumentNumberCoordinator numbers,
+            @Qualifier("memberMarketingDocumentNumberCoordinator") DocumentNumberCoordinator memberNumbers) {
         super(new StaticMethodMatcherPointcut() {
             @Override public boolean matches(Method method, Class<?> targetClass) {
                 return targetClass.getName().startsWith("ai.neargo.shop.pay.")
@@ -55,7 +56,8 @@ public class PayRightsNumberReservations extends DefaultPointcutAdvisor {
             var counts = counts(ClassUtils.getUserClass(invocation.getThis()).getSimpleName(),
                     invocation.getMethod().getName(), invocation.getArguments());
             if (counts.isEmpty()) return invocation.proceed();
-            return numbers.withReservation(counts, () -> {
+            var coordinator = counts.containsKey(DocumentType.POINTS_VOUCHER) ? numbers : memberNumbers;
+            return coordinator.withReservation(counts, () -> {
                 try { return invocation.proceed(); }
                 catch (RuntimeException | Error e) { throw e; }
                 catch (Throwable e) { throw new IllegalStateException(e); }

@@ -1113,3 +1113,4 @@ usr_session,shop 库,143,平台基础,保留,,平台基础,平台基础库,会�
 usr_store_favorite,shop 库,0,平台基础,改归属,抽象,会员营销,会员营销库,会员,mbr_favorite,收藏：商品与门店,按电商、餐饮、美业的业务抽象复核后采纳
 usr_store_view,shop 库,0,平台基础,改归属,抽象,会员营销,会员营销库,会员,mbr_store_view,到店足迹,按电商、餐饮、美业的业务抽象复核后采纳
 usr_test_identity,shop 库,9,平台基础,退役,抽象,,,,,不建表：放基础能力库的系统设置，一条一行，运营可随时增删停用,独立复核后采纳
+ord_service_refund_recovery_owner,shop 库,,交易,保留,,交易,门店交易库,订单恢复,ord_service_refund_recovery_owner,按租户控制储值退款恢复扫描归属,V720

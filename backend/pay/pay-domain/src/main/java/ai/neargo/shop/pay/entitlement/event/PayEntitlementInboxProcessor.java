@@ -25,7 +25,7 @@ public class PayEntitlementInboxProcessor {
         this.json = json;
     }
 
-    @Transactional(transactionManager = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public boolean process(String tenantNo, String consumer, String eventNo, Object payload, Runnable action) {
         if (!id(tenantNo) || !id(consumer) || !id(eventNo) || payload == null || action == null)
             throw new IllegalArgumentException("Pay inbox identity and action are required");

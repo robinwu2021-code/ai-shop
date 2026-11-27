@@ -32,7 +32,7 @@ public class PayEntitlementEventPublisher {
         this.relayProvider = relayProvider;
     }
 
-    @Transactional(transactionManager = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = "memberMarketingTxManager", propagation = Propagation.MANDATORY)
     public void publish(PayEntitlementEvent event) {
         validate(event);
         String payload = json.writeValueAsString(event);

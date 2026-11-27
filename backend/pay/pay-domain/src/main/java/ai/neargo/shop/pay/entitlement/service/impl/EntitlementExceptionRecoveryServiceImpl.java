@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
 import tools.jackson.databind.ObjectMapper;
 @Service
-@Transactional(value="payTxManager",propagation=Propagation.NOT_SUPPORTED)
+@Transactional(value="memberMarketingTxManager",propagation=Propagation.NOT_SUPPORTED)
 public class EntitlementExceptionRecoveryServiceImpl implements EntitlementExceptionRecoveryService {
     private final EntitlementExceptionActionWriter writer;
     private final EntitlementExceptionService exceptions;

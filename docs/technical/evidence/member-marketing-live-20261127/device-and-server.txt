@@ -1,0 +1,16 @@
+V12 SG2611278HJSAHYW0H matched=3 reachable=2
+issue AudienceIssueResult(issued=2, skipped=1, skips=[ReachSkip(reason=UNREACHABLE, count=1)])
+issue AudienceIssueResult(issued=2, skipped=1, skips=[ReachSkip(reason=UNREACHABLE, count=1)])
+T07 plan ReachPlan(matched=3, reachable=2, pushable=0, skips=[ReachSkip(reason=OPT_OUT, count=1)])
+T07 cancel ReachResult(taskNo=RC261127H02QYGR9J1, sent=0, pushed=0, skipped=0, skips=[], status=CANCELLED, title=Scheduled QA, matched=3, at=1795831200000, zone=Asia/Shanghai)
+T07 send ReachResult(taskNo=RC261127WE2CTB8GBA, sent=2, pushed=0, skipped=1, skips=[ReachSkip(reason=OPT_OUT, count=1)], status=SENT, title=, matched=0, at=null, zone=null)
+T10 PT2611275TG96WCSGA TWD EffectPeriod(date=2026-11-22, covered=true, orders=1, averagePaid=850.00, averageDiscount=100.00, memberPercent=100.00, discountPercent=11.76)
+T10 PT2611275TG96WCSGA USD EffectPeriod(date=2026-11-24, covered=true, orders=1, averagePaid=190.00, averageDiscount=10.00, memberPercent=0.00, discountPercent=5.26)
+T10 PT26112760E3AWAJCE TWD EffectPeriod(date=2026-11-22, covered=true, orders=1, averagePaid=400.00, averageDiscount=50.00, memberPercent=0.00, discountPercent=12.50)
+PASS
+
+GROWTH_IMMEDIATE_REPEAT {"code":0,"msg":"success","data":{"taskNo":"RC261127VAQ8SV1XRW","sent":0,"pushed":0,"skipped":3,"skips":[{"reason":"TOO_SOON","count":2},{"reason":"OPT_OUT","count":1}]}}
+GROWTH_COUPON [{issue_no=PI261127AGS2S2T02W, issued_count=2, skipped_count=1, copies=2}]
+GROWTH_REACH [{task_no=RC261127WE2CTB8GBA, delivery_status=SENT, matched_count=3, sent_count=2, skipped_count=1}, {task_no=RC261127VAQ8SV1XRW, delivery_status=SENT, matched_count=3, sent_count=0, skipped_count=3}, {task_no=RC261127H02QYGR9J1, delivery_status=CANCELLED, matched_count=3, sent_count=0, skipped_count=0}]
+GROWTH_NOTIFY [{total=2, distinct_messages=2}]
+GROWTH_INBOX [{delivered=2, unique_deliveries=2}]

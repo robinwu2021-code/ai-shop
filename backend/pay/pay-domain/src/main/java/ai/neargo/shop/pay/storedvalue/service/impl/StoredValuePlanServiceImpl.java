@@ -53,7 +53,7 @@ public class StoredValuePlanServiceImpl implements StoredValuePlanService {
         this.cursors = cursors; this.features = features; this.json = json;
     }
 
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public View create(CatalogScope scope, Create c, String key) {
         merchant(scope); ContractChecks.id(key); features.requireStoredValue();
         String planNo = no("SP", List.of(scope.tenantNo(), scope.entityNo(), scope.actorNo(), key), json);
@@ -108,7 +108,7 @@ public class StoredValuePlanServiceImpl implements StoredValuePlanService {
         return new CursorPage<>(shown.stream().map(this::view).toList(), next);
     }
 
-    @Override @Transactional("payTxManager")
+    @Override @Transactional("memberMarketingTxManager")
     public View status(CatalogScope scope, String planNo, Status c, String key) {
         merchant(scope); ContractChecks.id(key);
         return commands.execute(scope, "SV_PLAN_STATUS", key, List.of(planNo, c), planNo, View.class, () -> {

@@ -37,7 +37,7 @@ public class LegacyCouponHistoricalReturnWriter {
         this.mappings=mappings;this.receipts=receipts;this.imports=imports;this.baselines=baselines;this.instances=instances;
         this.usages=usages;this.ledger=ledger;this.posting=posting;this.events=events;this.json=json;
     }
-    @Transactional("payTxManager")
+    @Transactional("memberMarketingTxManager")
     public LegacyCouponHistoricalReturnPort.Receipt restore(EntitlementContext ctx,Fact fact) {
         var mapped=mappings.lock(ctx.tenantNo(),fact.sourceUsageNo());
         if(mapped==null) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);

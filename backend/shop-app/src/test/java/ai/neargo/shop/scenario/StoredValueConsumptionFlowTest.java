@@ -25,6 +25,10 @@ import ai.neargo.shop.pay.storedvalue.service.StoredValueCreditService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueQueryService;
 import ai.neargo.shop.paybridge.EntitlementServiceUseCoordinator;
 import ai.neargo.shop.paybridge.EntitlementRecoveryService;
+import ai.neargo.shop.paybridge.StoredValueRefundRecoveryOwner;
+import ai.neargo.shop.paybridge.impl.EntitlementRecoveryScanServiceImpl;
+import ai.neargo.shop.paybridge.impl.EntitlementRecoveryServiceImpl;
+import ai.neargo.shop.trade.service.EntitlementRecoveryScanService;
 import ai.neargo.shop.trade.dto.EntitlementRecoveryWork.Kind;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -42,6 +46,12 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.test.context.support.TestPropertySourceUtils;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -73,6 +83,9 @@ class StoredValueConsumptionFlowTest {
     @Autowired StoredValueQueryService queries;
     @Autowired EntitlementServiceUseCoordinator coordinator;
     @Autowired EntitlementRecoveryService recovery;
+    @Autowired EntitlementRecoveryScanService scans;
+    @Autowired StoredValueRefundRecoveryOwner oldWorker;
+    @Autowired ApplicationContext app;
     @Autowired MemberCodeResolveService members;
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
@@ -399,6 +412,72 @@ class StoredValueConsumptionFlowTest {
         assertThat(balance()).isEqualTo(1100);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_voucher WHERE biz_no=?", Integer.class,
                 refund.refundCommand().reverseNo())).isOne();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void restartedTargetResumesOriginalRefundWhileOldWorkerHoldsPointer(boolean creditedBeforeRestart)
+            throws Exception {
+        var order = authorized("handoff");
+        var used = coordinator.submit(ctx, entity, store, new ServiceUseSubmit(order.serviceOrderNo(),
+                order.preview().ref(), order.command().authorizationRef(), order.preview().assetRevision()));
+        var decision = services.decideRefund(ctx, entity, store, order.serviceOrderNo(),
+                facts.query(ctx, entity, order.operationNo())).refundCommand();
+        var pointer = scans.scan("MAIN", Kind.SERVICE_REFUND, 0, 100).records().stream()
+                .filter(row -> row.resourceNo().equals(order.operationNo())).findFirst().orElseThrow();
+        if (creditedBeforeRestart) uses.reverse(ctx, decision);
+        try {
+            setRefundOwner("PAUSED");
+            assertThat(recovery.recover("MAIN", Kind.SERVICE_REFUND, 0, 100).scanned()).isZero();
+            try (var target = startTargetWorker()) {
+                assertThat(target.getBean(EntitlementRecoveryService.class)
+                        .recover("MAIN", Kind.SERVICE_REFUND, 0, 100).scanned()).isZero();
+            }
+            setRefundOwner("TARGET");
+            try (var restarted = startTargetWorker();
+                    var workers = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+                var start = new java.util.concurrent.CountDownLatch(1);
+                var stale = workers.submit(() -> {
+                    start.await();
+                    return oldWorker.recover(ctx, pointer.entityNo(), pointer.resourceNo());
+                });
+                var current = workers.submit(() -> {
+                    start.await();
+                    return restarted.getBean(EntitlementRecoveryService.class).recover("MAIN", Kind.SERVICE_REFUND, 0, 100);
+                });
+                start.countDown();
+                assertThat(stale.get(20, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo("PENDING");
+                assertThat(current.get(20, java.util.concurrent.TimeUnit.SECONDS).completed()).isPositive();
+                assertThat(restarted.getBean(EntitlementRecoveryScanService.class)
+                        .scan("MAIN", Kind.SERVICE_REFUND, 0, 100).records())
+                        .noneMatch(row -> row.resourceNo().equals(order.operationNo()));
+            }
+        } finally {
+            setRefundOwner("PAY");
+        }
+        assertThat(coordinator.refund(ctx, entity, store, order.serviceOrderNo()).status()).isEqualTo("REFUNDED");
+        assertThat(uses.queryReverse(ctx, entity, decision.reverseNo()).usageNo()).isEqualTo(used.usageNo());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_voucher WHERE biz_no=? AND usage_no=?",
+                Integer.class, decision.reverseNo(), used.usageNo())).isOne();
+        assertThat(balance()).isEqualTo(1100);
+    }
+
+    private void setRefundOwner(String owner) {
+        assertThat(jdbc.update("UPDATE ord_service_refund_recovery_owner SET scan_owner=? WHERE tenant_no='MAIN'",
+                owner)).isOne();
+    }
+
+    @EnableTransactionManagement(proxyTargetClass = true)
+    static class WorkerTransactions {}
+
+    private AnnotationConfigApplicationContext startTargetWorker() {
+        var worker = new AnnotationConfigApplicationContext();
+        worker.setParent(app);
+        TestPropertySourceUtils.addInlinedPropertiesToEnvironment(worker, "shop.modules.member-marketing.datasource=member");
+        worker.register(WorkerTransactions.class, StoredValueRefundRecoveryOwner.class,
+                EntitlementRecoveryScanServiceImpl.class, EntitlementRecoveryServiceImpl.class);
+        worker.refresh();
+        return worker;
     }
 
     @Test void directoryKeepsStableTiesAndCursorsCannotChangeMemberOrQueryKind() {
