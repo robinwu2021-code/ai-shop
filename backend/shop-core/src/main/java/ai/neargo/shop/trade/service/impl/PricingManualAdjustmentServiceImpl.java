@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.approval.LightApprovalPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizIdentityResolver;
@@ -68,8 +69,13 @@ public class PricingManualAdjustmentServiceImpl implements PricingManualAdjustme
     private final PricingQuoteService quotes;
     private final PricingQuoteAssembler assembler;
     private final RequestIdempotencyPort idem;
+    /** 改价的审批事实只在轻量审批里（TDD-基础能力库对齐 §2.2 1e） */
+    private final LightApprovalPort approvals;
     private final TransactionTemplate tx;
     private final Clock clock;
+    /** 轻量审批里的对象类型与流程编码 */
+    static final String APPROVAL_SUBJECT="ORD_MANUAL_PRICE_ADJUSTMENT";
+    static final String PROCESS_PRICE_ADJUST="PRICE_ADJUST";
     private final PricingManualPlanCompiler compiler=new PricingManualPlanCompiler();
     private final JsonMapper json=JsonMapper.builder().build();
 
@@ -77,13 +83,16 @@ public class PricingManualAdjustmentServiceImpl implements PricingManualAdjustme
     public PricingManualAdjustmentServiceImpl(PolicyMapper policies,AdjustmentMapper adjustments,
             ObjectProvider<BizIdentityResolver> identities,PricingPreparationService preparations,
             PricingQuoteService quotes,PricingQuoteAssembler assembler,RequestIdempotencyPort idem,
+            LightApprovalPort approvals,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this(policies,adjustments,Objects.requireNonNullElse(identities.getIfUnique(),BizIdentityResolver.NONE),
-                preparations,quotes,assembler,idem,manager,Clock.systemUTC());
+                preparations,quotes,assembler,idem,approvals,manager,Clock.systemUTC());
     }
     public PricingManualAdjustmentServiceImpl(PolicyMapper policies,AdjustmentMapper adjustments,
             BizIdentityResolver identities,PricingPreparationService preparations,PricingQuoteService quotes,
-            PricingQuoteAssembler assembler,RequestIdempotencyPort idem,PlatformTransactionManager manager,Clock clock) {
+            PricingQuoteAssembler assembler,RequestIdempotencyPort idem,LightApprovalPort approvals,
+            PlatformTransactionManager manager,Clock clock) {
+        this.approvals=approvals;
         this.policies=policies; this.adjustments=adjustments; this.identities=identities;
         this.preparations=preparations; this.quotes=quotes; this.assembler=assembler; this.idem=idem; this.clock=clock;
         tx=new TransactionTemplate(manager); tx.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
@@ -135,7 +144,7 @@ public class PricingManualAdjustmentServiceImpl implements PricingManualAdjustme
         String requestHash=PricingSnapshotHash.of(List.of(scope,actor,req));
         var existing=db(() -> adjustments.selectList(scopeQuery(scope)
                 .eq(OrdManualPriceAdjustment::getOperationKey,operationKey)));
-        if(!existing.isEmpty()) return replay(existing.getFirst(),actor,requestHash);
+        if(!existing.isEmpty()) return replay(withApproval(existing.getFirst()),actor,requestHash);
         var prepared=preparations.staff(scope,req.source());
         if(!scope.equals(prepared.source().scope())
                 || !req.source().equals(prepared.source().source())) throw conflict();
@@ -156,7 +165,7 @@ public class PricingManualAdjustmentServiceImpl implements PricingManualAdjustme
                     || !policy.getVersion().equals(current.getVersion())) throw conflict();
             var found=adjustments.selectList(scopeQuery(scope)
                     .eq(OrdManualPriceAdjustment::getOperationKey,operationKey));
-            if(!found.isEmpty()) return replay(found.getFirst(),actor,requestHash);
+            if(!found.isEmpty()) return replay(withApproval(found.getFirst()),actor,requestHash);
             var row=new OrdManualPriceAdjustment(); row.setTenantNo(scope.tenantNo());
             row.setAdjustmentNo(no); row.setEntityNo(scope.entityNo()); row.setStoreNo(scope.storeNo());
             row.setActorNo(actor); row.setSubjectNo(prepared.source().subjectNo());
@@ -173,12 +182,12 @@ public class PricingManualAdjustmentServiceImpl implements PricingManualAdjustme
             row.setEvaluatedAt(utc(now)); row.setExpiresAt(utc(expires));
             // No trusted cumulative business-day quota exists yet: employees never self-authorize nonzero amounts.
             boolean ownerOriginated=proposer.owner();
-            row.setStatus(ownerOriginated?"APPROVED":"PENDING");
-            row.setApprovalMode(ownerOriginated?"OWNER_ORIGINATED":"OWNER_REVIEW");
-            if(ownerOriginated) { row.setApprovedBy(actor); row.setApprovedAt(utc(now)); }
             row.setCreatedBy(actor); row.setUpdatedBy(actor); row.setVersion(0L);
             if(adjustments.insert(row)!=1) throw conflict();
-            return view(row);
+            approvals.submit(new LightApprovalPort.Submit(scope.tenantNo(),scope.entityNo(),scope.storeNo(),
+                    PROCESS_PRICE_ADJUST,APPROVAL_SUBJECT,no,0L,assessment.discountMinor(),policy.getCurrency(),
+                    req.reasonCode(),req.reason(),actor,ownerOriginated,LightApprovalPort.VIA_APP,expires));
+            return view(withApproval(row));
         });
     }
 
@@ -198,12 +207,14 @@ public class PricingManualAdjustmentServiceImpl implements PricingManualAdjustme
             if(!policy.getPolicyNo().equals(row.getPolicyNo()) || !policy.getVersion().equals(row.getPolicyVersion()))
                 throw conflict();
             var locked=load(scope,no,true);
-            if("APPROVED".equals(locked.getStatus()) && actor.equals(locked.getApprovedBy())) return view(locked);
-            if(!"PENDING".equals(locked.getStatus()) || locked.getVersion()!=version
+            if(LightApprovalPort.APPROVED.equals(locked.getStatus()) && actor.equals(locked.getApprovedBy()))
+                return view(locked);
+            if(!LightApprovalPort.PENDING.equals(locked.getStatus()) || locked.getVersion()!=version
                     || !fresh(locked)) throw conflict();
-            locked.setStatus("APPROVED"); locked.setApprovedBy(actor); locked.setApprovedAt(utc(clock.instant()));
-            locked.setUpdatedBy(actor); if(adjustments.updateById(locked)!=1) throw conflict();
-            return view(locked);
+            var approval=approvals.latest(scope.tenantNo(),APPROVAL_SUBJECT,no).orElseThrow(PricingManualAdjustmentServiceImpl::conflict);
+            approvals.decide(approval.approvalNo(),new LightApprovalPort.Decision(actor,true,null,
+                    LightApprovalPort.VIA_APP));
+            return view(withApproval(locked));
         });
     }
 
@@ -314,11 +325,23 @@ public class PricingManualAdjustmentServiceImpl implements PricingManualAdjustme
             var query=scopeQuery(scope).eq(OrdManualPriceAdjustment::getAdjustmentNo,no);
             if(lock) query.last("FOR UPDATE");
             var rows=adjustments.selectList(query); if(rows.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
-            return rows.getFirst();
+            return withApproval(rows.getFirst());
         });
     }
     private AdjustmentVO replay(OrdManualPriceAdjustment row,String actor,String hash) {
         if(!actor.equals(row.getActorNo()) || !hash.equals(row.getRequestHash())) throw conflict(); return view(row);
+    }
+    /**
+     * 填上审批事实（读自轻量审批）。没有审批单（业务行写成了、审批单没写成）时四项留空：
+     * 校验按“未批准”处理，不会误放行。
+     */
+    private OrdManualPriceAdjustment withApproval(OrdManualPriceAdjustment row) {
+        approvals.latest(row.getTenantNo(),APPROVAL_SUBJECT,row.getAdjustmentNo()).ifPresent(a -> {
+            row.setStatus(a.status());
+            row.setApprovalMode(LightApprovalPort.MODE_AUTO.equals(a.approvalMode())?"OWNER_ORIGINATED":"OWNER_REVIEW");
+            if(a.approved()) { row.setApprovedBy(a.approverNo()); row.setApprovedAt(utc(a.decidedAt())); }
+        });
+        return row;
     }
     private boolean fresh(OrdManualPriceAdjustment row) {
         return row.getExpiresAt()!=null && clock.instant().isBefore(row.getExpiresAt().toInstant(ZoneOffset.UTC));

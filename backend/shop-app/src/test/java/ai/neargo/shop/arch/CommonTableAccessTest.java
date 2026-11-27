@@ -78,9 +78,11 @@ class CommonTableAccessTest {
                         "shop-core/src/main/java/ai/neargo/shop/platform/port/OnboardIndustryDictionarySource.java",
                         "shop-merchant/src/main/java/ai/neargo/shop/merchant/port/StoreIndustryDictionarySource.java",
                         "pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/port/PayChannelDictionarySource.java")));
-        GROUPS.put("审批", new Group(List.of("approval_link", "pay_terminal_manager_authorization",
+        GROUPS.put("审批", new Group(List.of("approval_link", "sys_approval", "pay_terminal_manager_authorization",
                 "ord_manual_price_adjustment"),
-                List.of("shop-opskit/src/main/java/ai/neargo/shop/approval/opskit/ApprovalLinkStore.java")));
+                List.of("shop-opskit/src/main/java/ai/neargo/shop/approval/opskit/ApprovalLinkStore.java",
+                        // 轻量审批 sys_approval 的唯一实现（TDD-基础能力库对齐 §2.2 1e）
+                        "shop-core/src/main/java/ai/neargo/shop/platform/port/LightApprovalPortImpl.java")));
         GROUPS.put("发号", new Group(List.of("sys_sequence", "pay_checkout_display_revision", "pay_document_sequence",
                 "pay_sequence", "mkt_counter_campaign_fence", "core_document_number", "pay_document_number"),
                 List.of("shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/")));

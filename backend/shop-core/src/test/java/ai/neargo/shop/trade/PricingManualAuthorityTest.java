@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade;
 
+import ai.neargo.shop.spi.approval.LightApprovalPort;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,7 +47,8 @@ class PricingManualAuthorityTest {
         var preparations=mock(PricingPreparationService.class); var quotes=mock(PricingQuoteService.class);
         var service=new PricingManualAdjustmentServiceImpl(policies,adjustments,BizIdentityResolver.NONE,
                 preparations,quotes,new PricingQuoteAssembler(),mock(RequestIdempotencyPortImpl.class),
-                new TestTransactions(),Clock.fixed(PricingManualPlanCompilerTest.NOW,ZoneOffset.UTC));
+                mock(LightApprovalPort.class),new TestTransactions(),
+                Clock.fixed(PricingManualPlanCompilerTest.NOW,ZoneOffset.UTC));
         var request=new Request(PricingManualPlanCompilerTest.SOURCE,ManualKind.AMOUNT,10L,null,
                 "PRICE_CORRECTION","Actual concession reason");
         assertThatThrownBy(() -> service.propose(PricingManualPlanCompilerTest.SCOPE,"FORGED",request,"KEY"))
@@ -72,6 +74,14 @@ class PricingManualAuthorityTest {
         assertThat(f.service.approve(PricingManualPlanCompilerTest.SCOPE,"OWNER",
                 proposed.adjustmentNo(),0,"A").status())
                 .isEqualTo("APPROVED");
+        // 审批事实只在轻量审批：一张人工批准的审批单，改价行本身不改（TDD-基础能力库对齐 §2.2 1e）
+        assertThat(f.approvals.rows).singleElement().satisfies(a -> {
+            assertThat(a.status()).isEqualTo(LightApprovalPort.APPROVED);
+            assertThat(a.approvalMode()).isEqualTo(LightApprovalPort.MODE_MANUAL);
+            assertThat(a.submittedBy()).isEqualTo("STAFF");
+            assertThat(a.approverNo()).isEqualTo("OWNER");
+        });
+        verify(f.adjustments,never()).updateById(any(OrdManualPriceAdjustment.class));
         var quote=f.service.quote(PricingManualPlanCompilerTest.SCOPE,"STAFF",proposed.adjustmentNo(),"Q");
         assertThat(quote.totals().discountMinor()).isEqualTo(101);
         assertThat(quote.totals().receivableMinor()).isEqualTo(899);
@@ -106,6 +116,8 @@ class PricingManualAuthorityTest {
         var proposed=f.service.propose(PricingManualPlanCompilerTest.SCOPE,"OWNER",request(101),"P");
         assertThat(proposed.status()).isEqualTo("APPROVED");
         assertThat(proposed.approvedBy()).isEqualTo("OWNER");
+        assertThat(f.approvals.rows).singleElement().extracting(LightApprovalPort.Approval::approvalMode)
+                .isEqualTo(LightApprovalPort.MODE_AUTO);
         var quote=f.service.quote(PricingManualPlanCompilerTest.SCOPE,"OWNER",proposed.adjustmentNo(),"Q");
         assertThat(quote.totals().discountMinor()).isEqualTo(101);
         assertThat(quote.totals().receivableMinor()).isEqualTo(899);
@@ -147,6 +159,8 @@ class PricingManualAuthorityTest {
         final PricingPreparationService preparations=mock(PricingPreparationService.class);
         final PricingQuoteService quotes=mock(PricingQuoteService.class);
         final OrdManualPricePolicy policy=new OrdManualPricePolicy();
+        final InMemoryLightApprovals approvals=
+                new InMemoryLightApprovals(Clock.fixed(PricingManualPlanCompilerTest.NOW,ZoneOffset.UTC));
         final PricingManualAdjustmentServiceImpl service;
         Fixture() throws Exception {
             when(identities.resolve("STAFF","A")).thenReturn(new BizContext("E",Set.of(),Set.of(),Set.of("A"),
@@ -186,7 +200,7 @@ class PricingManualAuthorityTest {
                 when(quotes.get(any(),anyString())).thenReturn(stored); return stored;
             });
             service=new PricingManualAdjustmentServiceImpl(policies,adjustments,identities,preparations,quotes,
-                    assembler,idem,new TestTransactions(),
+                    assembler,idem,approvals,new TestTransactions(),
                     Clock.fixed(PricingManualPlanCompilerTest.NOW,ZoneOffset.UTC));
         }
     }
