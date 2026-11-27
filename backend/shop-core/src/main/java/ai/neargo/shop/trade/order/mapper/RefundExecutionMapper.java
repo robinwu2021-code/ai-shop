@@ -22,7 +22,7 @@ public interface RefundExecutionMapper extends BaseMapper<OrdRefundExecution> {
     @Select("SELECT e.after_sale_no FROM ord_points_refund_execution e"
             + " JOIN ord_after_sale a ON a.after_sale_no=e.after_sale_no AND a.deleted=0 AND a.status='REFUNDING'"
             + " LEFT JOIN ord_points_refund_binding p ON p.after_sale_no=e.after_sale_no"
-            + " AND p.phase IN ('COMPENSATED_PENDING_OPERATOR','CASH_FAILED_PENDING_OPERATOR')"
+            + " AND p.phase IN ('" + OrdRefundExecution.COMPENSATED_PENDING_OPERATOR + "','" + OrdRefundExecution.CASH_FAILED_PENDING_OPERATOR + "')"
             + " WHERE e.deleted=0 AND e.state<>'ABORTED' AND p.after_sale_no IS NULL"
             + " ORDER BY COALESCE(e.last_attempt_at,0),e.id LIMIT #{limit} FOR UPDATE")
     List<String> pendingNos(int limit);

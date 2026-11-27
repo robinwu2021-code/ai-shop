@@ -140,8 +140,8 @@ public class TradeStatusWriter {
                 return DataScopeContext.executeWithoutScope(() -> casMapper.orderStatus(no));
             }
             @Override public boolean cas(Aggregate aggregate, String no, String from, String to) {
-                boolean valid = delivery ? "WAIT_FULFILL".equals(from) && "FULFILLING".equals(to)
-                        : List.of("WAIT_FULFILL", "FULFILLING").contains(from)
+                boolean valid = delivery ? OrdSubOrder.WAIT_FULFILL.equals(from) && "FULFILLING".equals(to)
+                        : List.of(OrdSubOrder.WAIT_FULFILL, "FULFILLING").contains(from)
                           && List.of("FULFILLING", "COMPLETED").contains(to);
                 if (aggregate != Aggregate.ORDER || !sub.getSubOrderNo().equals(no) || !valid) return false;
                 return DataScopeContext.executeWithoutScope(() -> casMapper.casChannelFulfillment(

@@ -11,6 +11,9 @@ import tools.jackson.databind.annotation.JsonDeserialize;
 
 /** Scoped original-source pickup verification; payment authorization and code assignment remain original-owner facts. */
 public interface IndustryFulfillmentPort {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    String BUYER_CONFIRM_PENDING = "BUYER_CONFIRM_PENDING";
+    String HANDOVER_COMPLETE = "HANDOVER_COMPLETE";
     record Reference(Scope scope,PricingSourceRef source,String orderNo,String subOrderNo) {
         @JsonAnySetter public void unknown(String name,Object value) { throw new IllegalArgumentException(name); }
     }

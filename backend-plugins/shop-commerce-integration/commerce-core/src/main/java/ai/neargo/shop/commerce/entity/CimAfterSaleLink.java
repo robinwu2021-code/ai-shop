@@ -13,6 +13,10 @@ import java.time.LocalDateTime;
 @Setter
 @TableName("cim_after_sale_link")
 public class CimAfterSaleLink extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String RETURN_IN_PROGRESS = "RETURN_IN_PROGRESS";
+    public static final String WAITING_FUNDS = "WAITING_FUNDS";
+    public static final String WAITING_ORIGINAL_DECISION = "WAITING_ORIGINAL_DECISION";
     private String caseNo;
     private String entityNo;
     private String storeNo;

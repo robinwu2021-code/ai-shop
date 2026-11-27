@@ -17,6 +17,15 @@ import java.time.LocalDateTime;
 @Setter
 @TableName("cim_order_link")
 public class CimOrderLink extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String PLATFORM_CONFIRMED = "PLATFORM_CONFIRMED";
+    public static final String PLATFORM_REJECTED = "PLATFORM_REJECTED";
+    public static final String UNCONFIRMED = "UNCONFIRMED";
+    public static final String WAITING_CANCELLATION = "WAITING_CANCELLATION";
+    public static final String WAITING_CONFIRMATION = "WAITING_CONFIRMATION";
+    public static final String WAITING_DECISION = "WAITING_DECISION";
+    public static final String WAITING_MAPPING = "WAITING_MAPPING";
+    public static final String WAITING_OWNER = "WAITING_OWNER";
     private String channelOrderNo;
     private String entityNo;
     private String storeNo;

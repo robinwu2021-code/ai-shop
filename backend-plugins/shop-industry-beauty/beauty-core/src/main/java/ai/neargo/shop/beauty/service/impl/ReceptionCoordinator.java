@@ -109,7 +109,7 @@ public final class ReceptionCoordinator {
             }
             if (succeeded(op)) { return walkInView(op); }
             // Expiry forbids new effects, but never prevents reading an already accepted command's outcome.
-            if ("RESOURCE_PENDING".equals(op.getPhase())) {
+            if (BtyReceptionOperation.RESOURCE_PENDING.equals(op.getPhase())) {
                 var accepted = appointmentPreparation.linkedReception(op);
                 if (accepted.getReceipt() != null && "PENDING".equals(accepted.getState())) {
                     appointments.recover(accepted);
@@ -126,7 +126,7 @@ public final class ReceptionCoordinator {
                 }
                 op = walkInOperation(entity, store, op.getOperationNo());
             }
-            if ("RESOURCE_PENDING".equals(op.getPhase())) {
+            if (BtyReceptionOperation.RESOURCE_PENDING.equals(op.getPhase())) {
                 var linked = appointmentPreparation.linkedReception(op);
                 if ("PENDING".equals(linked.getState())) { linked = appointments.advance(linked.getOperationNo()); }
                 if ("RELEASE_REQUIRED".equals(linked.getState())) {
@@ -140,7 +140,7 @@ public final class ReceptionCoordinator {
                     var fence = db.fences.selectScopedForUpdate(entity, store, root.getAppointmentNo());
                     var current = db.currents.selectScopedForUpdate(entity, store, root.getAppointmentNo());
                     var locked = operations.selectScopedForUpdate(entity, store, active.getOperationNo());
-                    if (!"RESOURCE_PENDING".equals(locked.getPhase())) { return locked; }
+                    if (!BtyReceptionOperation.RESOURCE_PENDING.equals(locked.getPhase())) { return locked; }
                     var original = appointmentPreparation.linkedReception(locked);
                     var receipt = appointments.verifiedReceipt(original, true);
                     AppointmentPersistence.require("SUCCEEDED".equals(receipt.status())
@@ -149,14 +149,14 @@ public final class ReceptionCoordinator {
                             && fence.getActiveIntentNo() == null && current.getOperationNo() == null);
                     locked.setFrozenPayload(db.json.writeValueAsString(walkInPayload(locked)
                             .withRevisions(root.getVersion(), null)));
-                    locked.setPhase("ARRIVAL_PENDING");
+                    locked.setPhase(BtyReceptionOperation.ARRIVAL_PENDING);
                     AppointmentPersistence.require(operations.updateById(locked) == 1);
                     clearRetry(locked);
                     return locked;
                 });
             }
-            if ("ARRIVAL_PENDING".equals(op.getPhase())) { op = arriveWalkIn(op, actor); }
-            if ("OPEN_PENDING".equals(op.getPhase())) {
+            if (BtyReceptionOperation.ARRIVAL_PENDING.equals(op.getPhase())) { op = arriveWalkIn(op, actor); }
+            if (BtyReceptionOperation.OPEN_PENDING.equals(op.getPhase())) {
                 workOrders.openReception(entity, store, actor, op.getOperationNo());
                 op = walkInOperation(entity, store, op.getOperationNo());
             }
@@ -179,7 +179,7 @@ public final class ReceptionCoordinator {
                     root.getAppointmentNo());
             var op = operations.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), observed.getOperationNo());
             AppointmentPersistence.require(sameWalkIn(observed, op));
-            if (!"ARRIVAL_PENDING".equals(op.getPhase())) { return op; }
+            if (!BtyReceptionOperation.ARRIVAL_PENDING.equals(op.getPhase())) { return op; }
             var payload = walkInPayload(op);
             AppointmentPersistence.require(payload.arrivalRevision() != null
                     && root.getVersion().equals(payload.arrivalRevision()) && "CONFIRMED".equals(root.getStatus())
@@ -194,7 +194,7 @@ public final class ReceptionCoordinator {
                     root.getAppointmentNo(), root.getVersion(), "CONFIRMED", now(), actor, now()) == 1);
             op.setFrozenPayload(db.json.writeValueAsString(payload.withRevisions(payload.arrivalRevision(),
                     root.getVersion() + 1)));
-            op.setPhase("OPEN_PENDING"); AppointmentPersistence.require(operations.updateById(op) == 1);
+            op.setPhase(BtyReceptionOperation.OPEN_PENDING); AppointmentPersistence.require(operations.updateById(op) == 1);
             action(root, op, "CHECKED_IN", null, "{\"state\":\"CHECKED_IN\"}", root.getVersion() + 1);
             publish(root, op, root.getVersion() + 1, "CHECKED_IN");
             return op;

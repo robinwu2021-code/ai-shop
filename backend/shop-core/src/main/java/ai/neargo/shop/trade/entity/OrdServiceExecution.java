@@ -13,6 +13,9 @@ import java.time.LocalDateTime;
 @Setter
 @TableName("ord_service_execution")
 public class OrdServiceExecution extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String STARTED_SUSPENDED = "STARTED_SUSPENDED";
+    public static final String SUSPEND_REQUESTED = "SUSPEND_REQUESTED";
     @TableField(updateStrategy = FieldStrategy.NEVER)
     private String executionNo;
 

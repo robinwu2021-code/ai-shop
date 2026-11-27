@@ -49,7 +49,7 @@ public final class CustomerReportingFixture {
     db.update("UPDATE mbr_member_store SET order_count=3,total_spent_minor=7800,d90_order_count=2,d90_spent_minor=6000,level='REGULAR',is_first_store=1,first_order_at=100,last_order_at=500 WHERE member_no='M1'");
     db.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
       org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(connection,
-          new ClassPathResource("db/migration/V721__member_store_profile_metrics.sql"));
+          new ClassPathResource("db/migration/V725__member_store_profile_metrics.sql"));
       return null;
     });
     operating(db,"MAIN","OE1","U1","Linked operating entity","TW","E1","ENABLED");operating(db,"MAIN","OE0","U1","Independent operating entity","TW",null,"ENABLED");operating(db,"MAIN","OE2","U2","Out of scope","CN","E2","ENABLED");operating(db,"MAIN","OFF","U1","Disabled","TW","E1","DISABLED");operating(db,"OTHER","OE1","FU1","Foreign operating entity","CN","FE1","ENABLED");

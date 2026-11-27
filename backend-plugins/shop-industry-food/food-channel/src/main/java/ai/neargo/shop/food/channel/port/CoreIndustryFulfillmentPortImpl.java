@@ -28,12 +28,12 @@ public class CoreIndustryFulfillmentPortImpl implements IndustryFulfillmentPort 
             var result=ServiceCalls.call(ServiceName.PLATFORM,call);
             if (result==null || !ref.equals(result.reference()) || result.status()==null
                     || !Set.of("NOT_STARTED","NOT_READY_CODE","PREPARED","UNKNOWN","VERIFIED",
-                    "BUYER_CONFIRM_PENDING","PARTIAL","HANDOVER_COMPLETE").contains(result.status()) || result.subOrderVersion()<0
+                    IndustryFulfillmentPort.BUYER_CONFIRM_PENDING,"PARTIAL",IndustryFulfillmentPort.HANDOVER_COMPLETE).contains(result.status()) || result.subOrderVersion()<0
                     || result.inventoryLifecycleVersion()<2 || result.inventoryLifecycleVersion()>3) invalid();
             if (!result.pending() && result.lines().isEmpty() && (result.fulfillmentNo()==null || result.inventoryReservationNo()==null
                     || !("COMMITTED".equals(result.inventoryState()) || "ISSUED_UNPAID".equals(result.inventoryState()))
                     || "VERIFIED".equals(result.status()) && !"COMPLETED".equals(result.subOrderStatus())
-                    || "BUYER_CONFIRM_PENDING".equals(result.status()) && (!result.requireBuyerConfirm()
+                    || IndustryFulfillmentPort.BUYER_CONFIRM_PENDING.equals(result.status()) && (!result.requireBuyerConfirm()
                     || !"FULFILLING".equals(result.subOrderStatus())))) invalid();
             return result;
         } catch (ServiceCallException failure) {

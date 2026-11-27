@@ -80,11 +80,11 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
                                                 .in(
                                                         "import_status",
                                                         "RECEIVED",
-                                                        "WAITING_MAPPING",
-                                                        "WAITING_OWNER",
+                                                        CimOrderLink.WAITING_MAPPING,
+                                                        CimOrderLink.WAITING_OWNER,
                                                         "PREPARED",
-                                                        "WAITING_CONFIRMATION",
-                                                        "WAITING_CANCELLATION")
+                                                        CimOrderLink.WAITING_CONFIRMATION,
+                                                        CimOrderLink.WAITING_CANCELLATION)
                                                 .le("next_attempt_at", now())
                                                 .orderByAsc("next_attempt_at", "id")
                                                 .last("LIMIT " + limit)));
@@ -95,7 +95,7 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
                 claim = data.db.commands.atomic(() -> claim(candidate));
                 if (claim != null && process(claim)) completed++;
             } catch (RuntimeException unavailable) {
-                if (claim != null) defer(claim, "WAITING_OWNER");
+                if (claim != null) defer(claim, CimOrderLink.WAITING_OWNER);
             }
         }
         return completed;
@@ -117,11 +117,11 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
                         true);
         if (!Set.of(
                                 "RECEIVED",
-                                "WAITING_MAPPING",
-                                "WAITING_OWNER",
+                                CimOrderLink.WAITING_MAPPING,
+                                CimOrderLink.WAITING_OWNER,
                                 "PREPARED",
-                                "WAITING_CONFIRMATION",
-                                "WAITING_CANCELLATION")
+                                CimOrderLink.WAITING_CONFIRMATION,
+                                CimOrderLink.WAITING_CANCELLATION)
                         .contains(row.getImportStatus())
                 || row.getNextAttemptAt() == null
                 || row.getNextAttemptAt().isAfter(now())
@@ -202,7 +202,7 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
                         .toList();
         require(providers.size() <= 1);
         if (providers.isEmpty()) {
-            defer(claim, "WAITING_OWNER");
+            defer(claim, CimOrderLink.WAITING_OWNER);
             return false;
         }
         var owner = providers.getFirst();
@@ -210,7 +210,7 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
         if (row.getImportSnapshot() == null) {
             var gateway = data.gateways.get(claim.query().profileNo());
             if (gateway == null) {
-                defer(claim, "WAITING_OWNER");
+                defer(claim, CimOrderLink.WAITING_OWNER);
                 return false;
             }
             var latest = gateway.readOrder(claim.query());
@@ -223,7 +223,7 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
             try {
                 lines = mappings.resolve(row, latest.document());
             } catch (RuntimeException unresolved) {
-                defer(claim, "WAITING_MAPPING");
+                defer(claim, CimOrderLink.WAITING_MAPPING);
                 return false;
             }
             command =
@@ -265,7 +265,7 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
                         command.entityNo(),
                         command.storeNo(),
                         command.original().documentHash());
-        if ("WAITING_CANCELLATION".equals(row.getImportStatus())) {
+        if (CimOrderLink.WAITING_CANCELLATION.equals(row.getImportStatus())) {
             ChannelOrderIngestPort.Prepared actual = null;
             try {
                 actual = owner.getImport(reference);
@@ -288,7 +288,7 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
                             claim.snapshot().document().state()
                                             == ChannelOrderGateway.State.CANCELLED
                                     ? "PLATFORM_CANCELLED"
-                                    : "PLATFORM_REJECTED");
+                                    : CimOrderLink.PLATFORM_REJECTED);
             require(cancelled != null && reference.equals(cancelled.reference()));
             CommerceValidation.text(cancelled.cancellationReceiptRef(), 256);
             return data.db.commands.atomic(
@@ -327,7 +327,7 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
                         && reference.equals(prepared.reference())
                         && prepared.status() != null);
         if (prepared.status() == ChannelOrderIngestPort.Status.WAITING_OWNER) {
-            defer(claim, "WAITING_OWNER");
+            defer(claim, CimOrderLink.WAITING_OWNER);
             return false;
         }
         if (prepared.status() == ChannelOrderIngestPort.Status.CANCELLED) {
@@ -348,7 +348,7 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
                         || row.getPlatformAcceptanceReceiptRef() != null;
         if (!externallyAccepted
                 && !ChannelPreparationPolicy.ready(prepared, reference, clock.instant())) {
-            defer(claim, "WAITING_OWNER");
+            defer(claim, CimOrderLink.WAITING_OWNER);
             return false;
         }
         if (externallyAccepted) {
@@ -432,7 +432,7 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
                                                                                     .getDecisionOperationNo()
                                                                             != null
                                                             ? "PREPARED"
-                                                            : "WAITING_DECISION")
+                                                            : CimOrderLink.WAITING_DECISION)
                                             .set(
                                                     "preparation_receipt_ref",
                                                     proof.preparationReceiptRef())
@@ -514,9 +514,9 @@ public final class ChannelOrderImportService implements ChannelRecoveryPort {
                     var row = current(claim);
                     if (row == null) return null;
                     String nextStatus =
-                            "WAITING_CANCELLATION".equals(claim.row().getImportStatus())
-                                            && "WAITING_OWNER".equals(status)
-                                    ? "WAITING_CANCELLATION"
+                            CimOrderLink.WAITING_CANCELLATION.equals(claim.row().getImportStatus())
+                                            && CimOrderLink.WAITING_OWNER.equals(status)
+                                    ? CimOrderLink.WAITING_CANCELLATION
                                     : status;
                     boolean terminal =
                             Set.of("CANCELLED", "WAITING_REVISION", "WAITING_AFTER_SALE")

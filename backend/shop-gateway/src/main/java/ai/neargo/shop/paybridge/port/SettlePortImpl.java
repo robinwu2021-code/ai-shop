@@ -145,18 +145,53 @@ public class SettlePortImpl implements SettlePort {
 
     @Override
     public PayInitResult initPayment(PaymentOpen cmd) {
+        if (standalone != null) {
+            // 独立形态：向渠道下单在 near-pay 里做，本进程不持有渠道凭据也不记本地支付账
+            return standalone.initiation().initiate(cmd);
+        }
         return paymentDispatch.initiateLegacy(cmd, payerResolver.resolve(cmd));
     }
 
     @Override
     public PaymentReceipt successPayment(String orderNo) {
+        if (standalone != null) {
+            return standalone.success(orderNo);
+        }
         return paymentLedger.successPayment(orderNo);
     }
 
     @Override
     public PaymentReceipt successPayment(String orderNo, String channel, String tradeNo) {
+        if (standalone != null) {
+            PaymentReceipt receipt = standalone.success(orderNo);
+            return receipt != null && java.util.Objects.equals(channel, receipt.payChannel())
+                    && java.util.Objects.equals(tradeNo, receipt.tradeNo()) ? receipt : null;
+        }
         return paymentLedger.successPayment(orderNo, channel, tradeNo);
     }
+
+    /**
+     * 独立形态（{@code shop.pay.deployment=standalone}）下普通订单的支付走 near-pay：
+     * 发起支付用 {@link ai.neargo.shop.spi.settle.OrdinaryPaymentInitiationPort}，
+     * 确认支付按「订单号 + 下单人」向 near-pay 取成功记录（{@link ai.neargo.shop.spi.settle.OrdinaryPaymentPort#success}）。
+     * 内嵌形态为空，照旧读写本进程的支付域。
+     */
+    public record StandalonePayments(ai.neargo.shop.spi.settle.OrdinaryPaymentInitiationPort initiation,
+            ai.neargo.shop.spi.settle.OrdinaryPaymentPort payments,
+            java.util.function.Function<String, String> buyerOf) {
+        PaymentReceipt success(String orderNo) {
+            String buyer = buyerOf.apply(orderNo);
+            if (buyer == null) return null;
+            var found = payments.success(new ai.neargo.shop.spi.settle.OrdinaryPaymentPort.OrderReference(orderNo, buyer));
+            var p = found == null || !found.found() ? null : found.payment();
+            return p == null || p.amountMinor() == null ? null : new PaymentReceipt(p.paymentNo(), p.orderNo(),
+                    p.userNo(), p.payChannel(), p.tradeNo(), p.amountMinor(), p.currency(), p.status(),
+                    p.documentNo(), p.outTradeNo());
+        }
+    }
+    private StandalonePayments standalone;
+    @Autowired(required = false)
+    public void setStandalonePayments(StandalonePayments standalone) { this.standalone = standalone; }
 
     @Override
     public PaymentReceipt paymentByOutTradeNo(String outTradeNo) {

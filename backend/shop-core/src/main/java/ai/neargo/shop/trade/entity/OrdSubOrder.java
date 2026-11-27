@@ -40,7 +40,7 @@ public class OrdSubOrder extends BaseEntity {
     private String caller;
 
     public static final String WAIT_PAY = "WAIT_PAY";
-    public static final String WAIT_FULFILL = "WAIT_FULFILL";
+    public static final String WAIT_FULFILL = ai.neargo.shop.spi.trade.IndustryOrderPort.WAIT_FULFILL;
     public static final String FULFILLING = "FULFILLING";
     public static final String COMPLETED = "COMPLETED";
     public static final String CANCELLED = "CANCELLED";

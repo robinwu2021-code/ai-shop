@@ -99,6 +99,7 @@ const EXEMPT: Record<string, string> = {
   ord_ent_source_decision: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
   pmt_activity_audience: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
   pmt_activity_goods: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",
+  sys_approval: "内部审批事实。业务入口校验商户与门店后按原审批号，或按租户与业务对象查询，无通用运营列表。",
   pmt_quota: "活动总量与个人计数同事务；授权来自活动发布、可信订单和参与者校验，按租户与额度对象读取，无独立列表。",
   pmt_reservation: "按已验证的活动来源和本人身份读原预留；内部超时核对跨参与者扫描，随后按原租户和预留凭证结算。",
   pmt_activity_participant: "Core协调/投影记录，先校验可信订单或活动主体/本人，再按tenant与原业务号读取；无通用跨主体列表。",

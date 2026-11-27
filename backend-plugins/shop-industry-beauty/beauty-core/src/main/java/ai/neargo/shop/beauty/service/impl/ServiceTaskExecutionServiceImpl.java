@@ -387,7 +387,7 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         start.setAction("START");
         start.setRequestKeyHash(keyHash);
         start.setPayloadHash(binding.payloadHash());
-        start.setStatus("EXECUTION_PENDING");
+        start.setStatus(BtyServiceTask.EXECUTION_PENDING);
         start.setFrozenCommand(ServiceExecutionContract.canonical(command));
         start.setNextRetryAt(now());
         require(submissions.insert(start) == 1);
@@ -588,8 +588,8 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
             row.setObservedGrantRevision(grant.grantRevision());
             row.setObservedGrantState(grant.state().name());
             boolean prepared = grant.state() == ServiceExecutionPort.GrantState.PREPARED;
-            row.setIntentState(row.getSuspensionIntentRevision() != null ? "SUSPEND_REQUESTED"
-                    : prepared ? "PREPARED_OBSERVED" : "EXECUTION_PENDING");
+            row.setIntentState(row.getSuspensionIntentRevision() != null ? BtyServiceTask.SUSPEND_REQUESTED
+                    : prepared ? BtyServiceTask.PREPARED_OBSERVED : BtyServiceTask.EXECUTION_PENDING);
             row.setNextRetryAt(now().plusSeconds(30));
             row.setUpdatedAt(now());
             row.setUpdatedBy(actor);
@@ -597,8 +597,8 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
                     row.getObservationEpoch()) == 1);
             require(submissions.completeExecutionOriginal(row.getEntityNo(), row.getStoreNo(), row.getSubmissionNo(),
                     locked.start().getVersion(), row.getExecutionNo(), row.getBindingHash(), row.getPayloadHash(),
-                    row.getSuspensionIntentRevision() != null ? "EXECUTION_SUSPENDED"
-                            : prepared ? "EXECUTION_PREPARED" : "EXECUTION_PENDING",
+                    row.getSuspensionIntentRevision() != null ? BtyServiceTask.EXECUTION_SUSPENDED
+                            : prepared ? BtyServiceTask.EXECUTION_PREPARED : BtyServiceTask.EXECUTION_PENDING,
                     grant.reasonCode(), row.getNextRetryAt(), now(), actor) == 1);
             return new ExecutionPreparation(binding, grant, row.getSuspensionIntentRevision() != null
                     ? "SOURCE_SUSPENDED" : prepared ? null : "SOURCE_UNKNOWN");

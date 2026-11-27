@@ -46,7 +46,7 @@ public class IndustryTransactionRecoveryServiceImpl implements IndustryTransacti
                                 .le(OrdIndustryOrderSource::getNextRecoveryAt,now))
                         .and(q -> q.eq(OrdIndustryOrderSource::getStatus,"PREPARED")
                                 .or(b -> b.eq(OrdIndustryOrderSource::getStatus,"BOUND")
-                                        .in(OrdIndustryOrderSource::getPaymentState,"OPENING","OPEN","DISPATCHING","READY","UNKNOWN","UNPAID","SUCCESS")
+                                        .in(OrdIndustryOrderSource::getPaymentState,"OPENING","OPEN",OrdIndustryOrderSource.DISPATCHING,"READY","UNKNOWN","UNPAID","SUCCESS")
                                         .apply("EXISTS (SELECT 1 FROM ord_order o WHERE o.order_no=ord_industry_order_source.order_no"
                                                 + " AND o.deleted=0 AND o.status IN ('WAIT_PAY','PAID'))")
                                         .apply("EXISTS (SELECT 1 FROM ord_sub_order s WHERE s.sub_order_no=ord_industry_order_source.sub_order_no"

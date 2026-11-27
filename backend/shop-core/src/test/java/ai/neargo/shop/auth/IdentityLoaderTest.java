@@ -1,5 +1,6 @@
 package ai.neargo.shop.auth;
 
+import ai.neargo.shop.platform.perm.OpsStaffRoles;
 import ai.neargo.shop.platform.auth.OperatorIdentityLoader;
 import ai.neargo.shop.platform.entity.SysOpsStaff;
 import ai.neargo.shop.platform.mapper.PlatformMappers;
@@ -62,28 +63,32 @@ class IdentityLoaderTest {
 
     // ── 运营端 ──────────────────────────────────────────────────────────
 
-    private static SysOpsStaff staff(String no, String roles, String status,
-                                     String merchantNo) {
+    /** 账号与它在 sys_role_member 里的角色（TDD-基础能力库对齐 2a：角色不再读 sys_ops_staff.roles） */
+    private record Stored(SysOpsStaff staff, List<String> roles) {
+    }
+
+    private static Stored staff(String no, List<String> roles, String status, String merchantNo) {
         SysOpsStaff s = new SysOpsStaff();
         s.setStaffNo(no);
         s.setRealName("管理员");
-        s.setRoles(roles);
         s.setStatus(status);
         s.setMerchantNo(merchantNo);
-        return s;
+        return new Stored(s, roles);
     }
 
-    private OperatorIdentityLoader operatorLoader(SysOpsStaff stored, List<String> resolved) {
+    private OperatorIdentityLoader operatorLoader(Stored stored, List<String> resolved) {
         PlatformMappers.StaffMapper mapper = mock(PlatformMappers.StaffMapper.class);
-        when(mapper.selectOne(ArgumentMatchers.any())).thenReturn(stored);
-        LivePermResolver perms = roles -> resolved;
-        return new OperatorIdentityLoader(mapper, perms);
+        when(mapper.selectOne(ArgumentMatchers.any())).thenReturn(stored.staff());
+        OpsStaffRoles roles = mock(OpsStaffRoles.class);
+        when(roles.of(stored.staff().getStaffNo())).thenReturn(stored.roles());
+        LivePermResolver perms = r -> resolved;
+        return new OperatorIdentityLoader(mapper, perms, roles);
     }
 
     @Test
     @DisplayName("★ 运营端：角色现读、权限现算 —— 改了角色下一个请求就生效")
     void operatorResolvesRolesAndPermsLive() {
-        LoginUser u = operatorLoader(staff("S1", "[\"GOODS_OPS\"]", "ACTIVE", null),
+        LoginUser u = operatorLoader(staff("S1", List.of("GOODS_OPS"), "ACTIVE", null),
                 List.of("product:sku:read")).load("S1").orElseThrow();
 
         assertEquals(Realm.OPERATOR, u.realm());
@@ -95,11 +100,11 @@ class IdentityLoaderTest {
     @Test
     @DisplayName("★ 运营端：数据域也现算，且与登录路径共用 StaffScopes")
     void operatorScopeIsComputed() {
-        LoginUser limited = operatorLoader(staff("S1", "[\"GOODS_OPS\"]", "ACTIVE", "M0001"),
+        LoginUser limited = operatorLoader(staff("S1", List.of("GOODS_OPS"), "ACTIVE", "M0001"),
                 List.of("product:sku:read")).load("S1").orElseThrow();
         assertFalse(limited.dataScope().all(), "配了归属键就该受限");
 
-        LoginUser superAdmin = operatorLoader(staff("S2", "[\"SUPER_ADMIN\"]", "ACTIVE", "M0001"),
+        LoginUser superAdmin = operatorLoader(staff("S2", List.of("SUPER_ADMIN"), "ACTIVE", "M0001"),
                 List.of("*")).load("S2").orElseThrow();
         assertTrue(superAdmin.dataScope().all(),
                 "全量角色一律不受限 —— 与 setStaffScope 拒绝给全量角色配数据域是同一条规矩");
@@ -108,7 +113,7 @@ class IdentityLoaderTest {
     @Test
     @DisplayName("★ 运营端：权限解析不出时给空权限，不能抛")
     void operatorPermResolutionFailureDegrades() {
-        LoginUser u = operatorLoader(staff("S1", "[\"GOODS_OPS\"]", "ACTIVE", null), null)
+        LoginUser u = operatorLoader(staff("S1", List.of("GOODS_OPS"), "ACTIVE", null), null)
                 .load("S1").orElseThrow();
         assertTrue(u.perms().isEmpty(),
                 "抛出去会让整个运营端 500；空权限至少让报错指向「权限」");
@@ -117,14 +122,14 @@ class IdentityLoaderTest {
     @Test
     @DisplayName("运营端：停用的账号加载不到")
     void operatorDisabled() {
-        assertTrue(operatorLoader(staff("S1", "[]", "DISABLED", null), List.of())
+        assertTrue(operatorLoader(staff("S1", List.of(), "DISABLED", null), List.of())
                 .load("S1").isEmpty());
     }
 
     @Test
-    @DisplayName("运营端：roles 是坏 JSON 时当作空，不炸")
-    void operatorBadRolesJson() {
-        LoginUser u = operatorLoader(staff("S1", "不是JSON", "ACTIVE", null), List.of())
+    @DisplayName("运营端：sys_role_member 里没有角色行时当作空角色，不炸")
+    void operatorWithoutRoleMembers() {
+        LoginUser u = operatorLoader(staff("S1", List.of(), "ACTIVE", null), List.of())
                 .load("S1").orElseThrow();
         assertTrue(u.roles().isEmpty());
     }

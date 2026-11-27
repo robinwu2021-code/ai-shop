@@ -11,6 +11,8 @@ import lombok.Setter;
 @Setter
 @TableName("bty_service_step")
 public class BtyServiceStep extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String IN_PROGRESS = "IN_PROGRESS";
     /** 可信经营主体数据域。 */
     private String entityNo;
     /** 步骤号。 */

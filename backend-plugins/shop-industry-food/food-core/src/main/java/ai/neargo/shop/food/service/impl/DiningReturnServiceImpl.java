@@ -138,7 +138,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
             if (row == null) throw conflict();
             replay(row, hash, access.buyerNo(), normalized.batchNo());
         }
-        if ("CANCEL_PENDING".equals(row.getStatus())) return refresh(row, true);
+        if (FnbReturn.CANCEL_PENDING.equals(row.getStatus())) return refresh(row, true);
         Frozen frozen = frozen(row);
         try {
             IndustryAfterSalePort.Lookup known = core().queryApply(query(frozen));
@@ -148,7 +148,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
             // in-flight call
             // can still arrive later, so CANCEL_PENDING recovery continues querying the original
             // stable key.
-            if ("CANCEL_PENDING".equals(reload(row).getStatus())) return refresh(reload(row), true);
+            if (FnbReturn.CANCEL_PENDING.equals(reload(row).getStatus())) return refresh(reload(row), true);
             return merge(row, core().apply(frozen.command()), false);
         } catch (BizException rejected) {
             // Preserve original policy/ownership rejections; retaining intent never turns rejection
@@ -166,7 +166,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
         outside();
         buyer(access);
         FnbReturn row = authorizedReturn(access, number);
-        return refresh(row, "CANCEL_PENDING".equals(row.getStatus()));
+        return refresh(row, FnbReturn.CANCEL_PENDING.equals(row.getStatus()));
     }
 
     @Override
@@ -189,7 +189,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                                                                 FnbReturn::getReturnNo,
                                                                 row.getReturnNo())
                                                         .isNull(FnbReturn::getCoreCaseRef)
-                                                        .set(FnbReturn::getStatus, "CANCEL_PENDING")
+                                                        .set(FnbReturn::getStatus, FnbReturn.CANCEL_PENDING)
                                                         .set(
                                                                 FnbReturn::getFinancialStatus,
                                                                 "UNKNOWN")
@@ -224,7 +224,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                                                 .eq(FnbReturn::getStoreNo, store)
                                                 .eq(FnbReturn::getReturnNo, number)));
         if (row == null) throw missing();
-        if ("NOT_REQUESTED".equals(row.getFinancialStatus())) throw unsupported();
+        if (FnbReturn.NOT_REQUESTED.equals(row.getFinancialStatus())) throw unsupported();
         return view(row, null);
     }
 
@@ -244,10 +244,10 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                                                 .eq(FnbReturn::getStoreNo, store)
                                                 .eq(FnbReturn::getReturnNo, number)));
         if (original == null || original.getRequestSnapshot() == null) throw missing();
-        if ("NOT_REQUESTED".equals(original.getFinancialStatus())) throw unsupported();
+        if (FnbReturn.NOT_REQUESTED.equals(original.getFinancialStatus())) throw unsupported();
         frozen(original); // Persisted buyer/binding/key are verified without creating a current
         // security principal.
-        return refresh(original, "CANCEL_PENDING".equals(original.getStatus()));
+        return refresh(original, FnbReturn.CANCEL_PENDING.equals(original.getStatus()));
     }
 
     private FnbReturn prepare(
@@ -320,7 +320,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                                 .eq(FnbReturn::getEntityNo, batch.getEntityNo())
                                 .eq(FnbReturn::getStoreNo, batch.getStoreNo())
                                 .eq(FnbReturn::getBatchNo, batch.getBatchNo())
-                                .eq(FnbReturn::getFinancialStatus, "NOT_REQUESTED"));
+                                .eq(FnbReturn::getFinancialStatus, FnbReturn.NOT_REQUESTED));
         var claimedDishNos = new HashSet<String>();
         for (var claim : businessClaims) {
             if (List.of("CANCELLED", "REJECTED").contains(claim.getStatus())
@@ -529,7 +529,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                                             }
                                             row.setCoreCaseRef(result.afterSaleNo());
                                             if (clearCancel
-                                                    || !"CANCEL_PENDING".equals(row.getStatus()))
+                                                    || !FnbReturn.CANCEL_PENDING.equals(row.getStatus()))
                                                 row.setStatus(result.status());
                                             row.setFinancialStatus(financial(result));
                                             row.setUpdatedBy(row.getBuyerNo());
@@ -566,7 +566,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                                                             FnbReturn::getReturnNo,
                                                             original.getReturnNo())
                                                     .isNull(FnbReturn::getCoreCaseRef)
-                                                    .ne(FnbReturn::getStatus, "CANCEL_PENDING")
+                                                    .ne(FnbReturn::getStatus, FnbReturn.CANCEL_PENDING)
                                                     .set(FnbReturn::getStatus, "UNKNOWN")
                                                     .set(FnbReturn::getFinancialStatus, "UNKNOWN")
                                                     .set(
@@ -609,7 +609,7 @@ public class DiningReturnServiceImpl implements DiningReturnService {
                                                 .eq(FnbReturn::getReturnNo, number)
                                                 .eq(FnbReturn::getBuyerNo, access.buyerNo())));
         if (row == null || row.getBatchNo() == null) throw missing();
-        if ("NOT_REQUESTED".equals(row.getFinancialStatus())) throw unsupported();
+        if (FnbReturn.NOT_REQUESTED.equals(row.getFinancialStatus())) throw unsupported();
         var batch = authorizedBatch(access, row.getBatchNo());
         if (!row.getEntityNo().equals(batch.getEntityNo())
                 || !row.getStoreNo().equals(batch.getStoreNo())) throw forbidden();

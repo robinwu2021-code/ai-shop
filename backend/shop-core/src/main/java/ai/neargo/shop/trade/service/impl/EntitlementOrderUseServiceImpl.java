@@ -218,7 +218,7 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
         var decision = decisions.record(tenant, c.sourceRef(), "USE", type, c.authorizationRef(), null,
                 c.userNo(), c.entityNo(), c.storeNo(), c.currency(), c.amountMinor(), row.getOrderSnapshotHash(), at);
         row.setDecisionSnapshot(json.writeValueAsString(decision));
-        row.setStatus(paid ? "COMMIT_DECIDED" : "CANCEL_DECIDED"); update(row, "ORDER");
+        row.setStatus(paid ? OrdEntOrderUse.COMMIT_DECIDED : OrdEntOrderUse.CANCEL_DECIDED); update(row, "ORDER");
         events.publish(new UseDecided(tenant, c.entityNo(), c.operationNo()));
     }
     @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
@@ -226,8 +226,8 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
         var known = require(ctx.tenantNo(), entity, result.operationNo());
         lockOrder(ctx.tenantNo(), known.getOrderNo());
         var row = byOrder(ctx.tenantNo(), known.getOrderNo(), true);
-        String expected = result.status() == State.COMMITTED ? "COMMIT_DECIDED"
-                : result.status() == State.RELEASED ? "CANCEL_DECIDED" : null;
+        String expected = result.status() == State.COMMITTED ? OrdEntOrderUse.COMMIT_DECIDED
+                : result.status() == State.RELEASED ? OrdEntOrderUse.CANCEL_DECIDED : null;
         if (expected == null) return;
         if (row.getStatus().equals(result.status().name())) return;
         if (!expected.equals(row.getStatus())) conflict();

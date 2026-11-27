@@ -53,7 +53,7 @@ export const mallMock: MallApi = {
   async mMallStorefront(storeNo) {
     return { ...storefront, store: { tenantNo: "MAIN", storeNo: storeNo || currentStoreNo() } };
   },
-  async mMallSubscriptionVersion(storeNo) { return { storeNo, entitlementVersion: null }; },
+  async mMallSubscriptionVersion(storeNo) { return { storeNo: storeNo || currentStoreNo(), entitlementVersion: null }; },
   async mMallOfflineUpgradeQuote() { throw new Error("NO_UPGRADE_SOURCE"); },
   async mMallOfflineQuote(storeNo, body) {
     const store = storeNo || currentStoreNo();

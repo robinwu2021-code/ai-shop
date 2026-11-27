@@ -1,7 +1,6 @@
 package ai.neargo.shop.platform.perm;
 
 import ai.neargo.common.data.scope.DataScopeSpec;
-import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.auth.LiveIdentityResolver;
 import ai.neargo.shop.platform.entity.SysOpsStaff;
 import ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper;
@@ -9,7 +8,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -44,15 +42,17 @@ public class StaffIdentityResolver implements LiveIdentityResolver {
     private final AtomicReference<Snapshot> cache = new AtomicReference<>();
     private final StaffMapper staffMapper;
     private final RolePermResolver rolePermResolver;
+    private final OpsStaffRoles staffRoles;
     private final long ttlMs;
 
     /** 取当前时间。留一个缝是为了能测过期 —— 让测试等 60 秒不现实 */
     LongSupplier clock = System::currentTimeMillis;
 
-    public StaffIdentityResolver(StaffMapper staffMapper, RolePermResolver rolePermResolver,
+    public StaffIdentityResolver(StaffMapper staffMapper, RolePermResolver rolePermResolver, OpsStaffRoles staffRoles,
                                  @Value("${shop.perm.cache-ttl-ms:60000}") long ttlMs) {
         this.staffMapper = staffMapper;
         this.rolePermResolver = rolePermResolver;
+        this.staffRoles = staffRoles;
         this.ttlMs = ttlMs;
     }
 
@@ -104,13 +104,15 @@ public class StaffIdentityResolver implements LiveIdentityResolver {
     }
 
     private Snapshot load() {
+        Map<String, List<String>> roles = staffRoles.all();
         Map<String, Identity> byStaffNo = staffMapper.selectList(Wrappers.emptyWrapper()).stream()
-                .collect(Collectors.toMap(SysOpsStaff::getStaffNo, this::identityOf, (a, b) -> a));
+                .collect(Collectors.toMap(SysOpsStaff::getStaffNo,
+                        s -> identityOf(s, roles.getOrDefault(s.getStaffNo(), List.of())), (a, b) -> a));
         return new Snapshot(byStaffNo, clock.getAsLong());
     }
 
-    private Identity identityOf(SysOpsStaff staff) {
-        List<String> roles = readRoles(staff.getRoles());
+    /** 角色取自 sys_role_member（{@link OpsStaffRoles}），不再读 sys_ops_staff.roles（TDD-基础能力库对齐 2a） */
+    private Identity identityOf(SysOpsStaff staff, List<String> roles) {
         return new Identity(roles, scopeOf(staff, rolePermResolver.of(roles)));
     }
 
@@ -128,18 +130,4 @@ public class StaffIdentityResolver implements LiveIdentityResolver {
                 staff.getMerchantNo(), staff.getCommunityNo(), staff.getPickupNo(), perms);
     }
 
-    /** `["A","B"]` → List。与 OpsServiceImpl 的 readList 同一口径 */
-    private static List<String> readRoles(String json) {
-        if (json == null || json.isBlank()) {
-            return List.of();
-        }
-        List<String> out = new ArrayList<>();
-        for (String part : json.replace("[", "").replace("]", "").split(",")) {
-            String v = part.trim().replace("\"", "");
-            if (!v.isEmpty()) {
-                out.add(v);
-            }
-        }
-        return out;
-    }
 }

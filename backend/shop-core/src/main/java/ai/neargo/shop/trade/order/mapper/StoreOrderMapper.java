@@ -47,7 +47,7 @@ public interface StoreOrderMapper extends TradeTableMapper<OrdSubOrder> {
               AND f.source_no = s.source_no AND f.source_version = s.source_version AND f.source_hash = s.source_hash
             WHERE s.tenant_no = #{tenantNo} AND s.entity_no = #{entityNo} AND s.store_no = #{storeNo}
               AND s.order_no = #{orderNo} AND s.sub_order_no = #{subOrderNo}
-              AND s.deleted = 0 AND f.deleted = 0 AND f.status IN ('BUYER_CONFIRM_PENDING', 'VERIFIED')
+              AND s.deleted = 0 AND f.deleted = 0 AND f.status IN ('${@ai.neargo.shop.trade.entity.OrdIndustryFulfillment@BUYER_CONFIRM_PENDING}', 'VERIFIED')
               AND f.inventory_receipt_json IS NOT NULL
             """)
     long countIndustryFulfillmentReceipts(@Param("tenantNo") String tenantNo, @Param("entityNo") String entityNo,

@@ -19,7 +19,7 @@ public final class BusinessReturnDocuments {
 
     public static Frozen read(FnbReturn row, ObjectMapper json) {
         if (row == null
-                || !"NOT_REQUESTED".equals(row.getFinancialStatus())
+                || !FnbReturn.NOT_REQUESTED.equals(row.getFinancialStatus())
                 || row.getCoreCaseRef() != null
                 || row.getRequestSnapshot() == null) throw conflict();
         try {
@@ -40,10 +40,10 @@ public final class BusinessReturnDocuments {
                     || frozen.items().isEmpty()
                     || frozen.items().size() > 256
                     || !Set.of(
-                                    "BUSINESS_REQUESTED",
+                                    FnbReturn.BUSINESS_REQUESTED,
                                     "CANCELLED",
-                                    "APPROVAL_PENDING",
-                                    "APPROVAL_UNKNOWN",
+                                    FnbReturn.APPROVAL_PENDING,
+                                    FnbReturn.APPROVAL_UNKNOWN,
                                     "APPROVED")
                             .contains(row.getStatus())) {
                 throw conflict();

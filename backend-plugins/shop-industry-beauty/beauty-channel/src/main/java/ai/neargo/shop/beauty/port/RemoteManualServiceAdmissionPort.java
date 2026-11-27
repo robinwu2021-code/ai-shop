@@ -155,7 +155,7 @@ public final class RemoteManualServiceAdmissionPort implements ManualServiceAdmi
                 api::confirm,
                 result ->
                         request.operation().equals(result.operation())
-                                && !"AWAITING_RECEIPT".equals(result.admissionState())
+                                && !ManualServiceAdmissionPort.AWAITING_RECEIPT.equals(result.admissionState())
                                 && (result.method() == request.method()
                                         && Objects.equals(
                                                 result.declaredMinor(), request.declaredMinor())
@@ -215,8 +215,8 @@ public final class RemoteManualServiceAdmissionPort implements ManualServiceAdmi
                     && facts.manualObservationHash() == null
                     && facts.orderRevision() == 0
                     && facts.admissionRevision() == 0
-                    && "AWAITING_RECEIPT".equals(facts.admissionState())
-                    && "AWAITING_RECEIPT".equals(receipt.admissionState())
+                    && ManualServiceAdmissionPort.AWAITING_RECEIPT.equals(facts.admissionState())
+                    && ManualServiceAdmissionPort.AWAITING_RECEIPT.equals(receipt.admissionState())
                     && receipt.reasonCode() == null;
         }
         return facts.dueMinor() != null

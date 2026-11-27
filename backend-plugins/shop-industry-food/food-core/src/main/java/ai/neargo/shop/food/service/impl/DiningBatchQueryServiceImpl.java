@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.entity.FnbReturn;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
@@ -43,7 +44,7 @@ public class DiningBatchQueryServiceImpl implements DiningBatchQueryService {
         if(page<1 || page>10000 || size<1 || size>100) bad();
         if(query.checkNo()!=null) key(query.checkNo());
         if(query.originalCheckNo()!=null) key(query.originalCheckNo());
-        if(query.status()!=null && !Set.of("PREPARED","PLACING","UNKNOWN","BOUND","ACCEPTED","CANCEL_PENDING",
+        if(query.status()!=null && !Set.of("PREPARED","PLACING","UNKNOWN","BOUND","ACCEPTED",FnbReturn.CANCEL_PENDING,
                 "CANCELLED","FAILED").contains(query.status())) bad();
         if(query.orderSource()!=null && !Set.of("POS","WAITER","KIOSK","QR","H5","APP")
                 .contains(query.orderSource())) bad();

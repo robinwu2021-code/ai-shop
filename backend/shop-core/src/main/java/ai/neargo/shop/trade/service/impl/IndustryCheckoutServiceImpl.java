@@ -148,7 +148,7 @@ public class IndustryCheckoutServiceImpl implements IndustryCheckoutService {
         boolean dispatch = transaction(() -> {
             var locked = binding(command.identity(), command.orderNo(), true);
             if (!"OPEN".equals(locked.getPaymentState())) return false;
-            locked.setPaymentState("DISPATCHING"); touch(locked); return true;
+            locked.setPaymentState(OrdIndustryOrderSource.DISPATCHING); touch(locked); return true;
         });
         if (!dispatch) return queryPayment(command.identity(), command.orderNo());
         var original = bound(command.identity(), command.orderNo());
@@ -158,7 +158,7 @@ public class IndustryCheckoutServiceImpl implements IndustryCheckoutService {
                     || !Objects.equals(original.binding().getPaymentChannel(), result.payChannel())) throw conflict();
             transaction(() -> {
                 var locked = binding(command.identity(), command.orderNo(), true);
-                if (!"DISPATCHING".equals(locked.getPaymentState())) throw conflict();
+                if (!OrdIndustryOrderSource.DISPATCHING.equals(locked.getPaymentState())) throw conflict();
                 locked.setPaymentState(result.success() ? "READY" : "UNKNOWN");
                 locked.setPayParamsJson(result.success() && result.payParams() != null
                         ? json.writeValueAsString(result.payParams()) : null);
@@ -168,7 +168,7 @@ public class IndustryCheckoutServiceImpl implements IndustryCheckoutService {
         } catch (RuntimeException uncertain) {
             transaction(() -> {
                 var locked = binding(command.identity(), command.orderNo(), true);
-                if ("DISPATCHING".equals(locked.getPaymentState())) { locked.setPaymentState("UNKNOWN"); touch(locked); }
+                if (OrdIndustryOrderSource.DISPATCHING.equals(locked.getPaymentState())) { locked.setPaymentState("UNKNOWN"); touch(locked); }
                 return null;
             });
             return view(bound(command.identity(), command.orderNo()), false);
@@ -298,7 +298,7 @@ public class IndustryCheckoutServiceImpl implements IndustryCheckoutService {
     private View view(Bound bound, boolean receiptSuccess) {
         var source = bound.binding(); var order = bound.order();
         String status = Objects.requireNonNullElse(source.getPaymentState(), "NOT_STARTED");
-        if (Set.of("OPENING", "DISPATCHING", "OPEN").contains(status)) status = "UNKNOWN";
+        if (Set.of("OPENING", OrdIndustryOrderSource.DISPATCHING, "OPEN").contains(status)) status = "UNKNOWN";
         Map<String, Object> params = Map.of();
         if (source.getPayParamsJson() != null && Set.of("READY", "UNPAID").contains(status)
                 && order.getPayDeadlineAt() != null && order.getPayDeadlineAt() > System.currentTimeMillis()) {
@@ -354,7 +354,7 @@ public class IndustryCheckoutServiceImpl implements IndustryCheckoutService {
         transaction(() -> {
             var source = binding(identity, no, true);
             // A concurrent channel query cannot erase an in-flight dispatch or its returned original parameters.
-            if (!"DISPATCHING".equals(source.getPaymentState()) || "SUCCESS".equals(state)) {
+            if (!OrdIndustryOrderSource.DISPATCHING.equals(source.getPaymentState()) || "SUCCESS".equals(state)) {
                 source.setPaymentState(state); touch(source);
             }
             return null;

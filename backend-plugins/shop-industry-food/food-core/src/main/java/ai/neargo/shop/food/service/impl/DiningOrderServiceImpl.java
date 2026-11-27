@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.entity.FnbReturn;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -477,7 +478,7 @@ public class DiningOrderServiceImpl implements DiningOrderService {
                                                                     routes))));
         }
         if (List.of("CANCELLED", "FAILED").contains(batch.getStatus())) return view(batch, null);
-        if ("CANCEL_PENDING".equals(batch.getStatus()))
+        if (FnbReturn.CANCEL_PENDING.equals(batch.getStatus()))
             return recoverOriginal(entity, store, batch.getBatchNo());
         if (binding(batch) != null) return currentStaff(batch);
         var command =
@@ -580,7 +581,7 @@ public class DiningOrderServiceImpl implements DiningOrderService {
                                     audit.setBeforeRef(hash);
                                     audit.setAfterRef(batch.getQuoteHash());
                                     if (actions.insert(audit) != 1) throw conflict();
-                                    batch.setStatus("CANCEL_PENDING");
+                                    batch.setStatus(FnbReturn.CANCEL_PENDING);
                                     batch.setUpdatedBy(actor);
                                     if (batches.updateById(batch) != 1) throw conflict();
                                     return null;
@@ -601,7 +602,7 @@ public class DiningOrderServiceImpl implements DiningOrderService {
         if (!"MAIN".equals(identity.tenantNo())) throw unsupported();
         var batch = scopedBatch(identity.entityNo(), identity.storeNo(), key);
         if (!"POSTPAY".equals(batch.getPayMode())
-                || !"CANCEL_PENDING".equals(batch.getStatus())
+                || !FnbReturn.CANCEL_PENDING.equals(batch.getStatus())
                 || cancellation(batch) == null
                 || binding(batch) != null
                 || !List.of("POS", "WAITER").contains(batch.getSource())
@@ -715,7 +716,7 @@ public class DiningOrderServiceImpl implements DiningOrderService {
                                         lockStore(original.getEntityNo(), original.getStoreNo());
                                         cart(original.getStoreNo(), original.getCartNo(), true);
                                         var locked = reload(original);
-                                        if (!"CANCEL_PENDING".equals(locked.getStatus()))
+                                        if (!FnbReturn.CANCEL_PENDING.equals(locked.getStatus()))
                                             return null;
                                         var rejected = new FnbActionLog();
                                         stamp(
@@ -971,7 +972,7 @@ public class DiningOrderServiceImpl implements DiningOrderService {
         // The original key and persisted buyer/source are authority; recovery never asks for a
         // fresh quote or place.
         Result result =
-                "CANCEL_PENDING".equals(original.getStatus())
+                FnbReturn.CANCEL_PENDING.equals(original.getStatus())
                                 && "MERCHANT".equals(original.getActorRealm())
                         ? cancelPending(original)
                         : "MERCHANT".equals(original.getActorRealm())
@@ -1012,7 +1013,7 @@ public class DiningOrderServiceImpl implements DiningOrderService {
                                                                 "PREPARED",
                                                                 "PLACING",
                                                                 "UNKNOWN",
-                                                                "CANCEL_PENDING")
+                                                                FnbReturn.CANCEL_PENDING)
                                                         .contains(locked.getStatus())) {
                                                     throw conflict();
                                                 }
@@ -1517,7 +1518,7 @@ public class DiningOrderServiceImpl implements DiningOrderService {
                 && result.acceptedUnpaid()
                 && "WAIT_PAY".equals(result.status())
                 && result.fulfillmentStatus() != null
-                && List.of("WAIT_FULFILL", "FULFILLING", "COMPLETED")
+                && List.of(IndustryOrderPort.WAIT_FULFILL, "FULFILLING", "COMPLETED")
                         .contains(result.fulfillmentStatus());
     }
 

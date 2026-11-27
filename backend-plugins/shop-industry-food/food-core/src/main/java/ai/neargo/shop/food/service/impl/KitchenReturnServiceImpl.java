@@ -190,7 +190,7 @@ public class KitchenReturnServiceImpl implements KitchenReturnService {
                                     }
                                     if (!req.version().equals(row.getVersion())
                                             || !"PENDING".equals(row.getKitchenStatus())
-                                            || Set.of("CANCELLED", "REJECTED", "CANCEL_PENDING")
+                                            || Set.of("CANCELLED", "REJECTED", FnbReturn.CANCEL_PENDING)
                                                     .contains(row.getStatus())) throw conflict();
                                     var source = items(entity, number);
                                     if (source.isEmpty() || source.size() != desired.size())

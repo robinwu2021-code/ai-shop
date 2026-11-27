@@ -138,7 +138,7 @@ public class ChannelAuthorizationServiceImpl
                             var account = account(entity, accountNo, true);
                             if (!req.version().equals(account.getVersion())
                                     || account.getActiveOperationNo() != null
-                                    || !Set.of("DRAFT", "ACTIVE", "REVOKED", "AUTH_REJECTED")
+                                    || !Set.of("DRAFT", "ACTIVE", "REVOKED", CimAccount.AUTH_REJECTED)
                                             .contains(account.getStatus())) conflict();
                             var gateway = gateway(account.getProfileNo());
                             profile(account.getProfileNo());
@@ -214,7 +214,7 @@ public class ChannelAuthorizationServiceImpl
                         () -> {
                             var account = account(entity, accountNo, true);
                             if (!req.version().equals(account.getVersion())
-                                    || !Set.of("ACTIVE", "AUTH_REJECTED")
+                                    || !Set.of("ACTIVE", CimAccount.AUTH_REJECTED)
                                             .contains(account.getStatus())
                                     || account.getActiveOperationNo() != null
                                     || account.getActiveAuthorizationNo() == null) conflict();
@@ -462,7 +462,7 @@ public class ChannelAuthorizationServiceImpl
                     String accountStatus =
                             grant != null
                                     ? "ACTIVE"
-                                    : "REJECTED".equals(status) ? "AUTH_REJECTED" : "AUTH_UNKNOWN";
+                                    : "REJECTED".equals(status) ? CimAccount.AUTH_REJECTED : "AUTH_UNKNOWN";
                     setAccount(
                             account,
                             accountStatus,
@@ -772,7 +772,7 @@ public class ChannelAuthorizationServiceImpl
                                             Long.toString(account.getVersion() + 1)));
                     setAccount(
                             account,
-                            "AUTH_REJECTED",
+                            CimAccount.AUTH_REJECTED,
                             null,
                             account.getActiveAuthorizationNo(),
                             op.getCreatedBy());

@@ -3393,8 +3393,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             if (init.outTradeNo() == null || init.outTradeNo().isBlank()) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
-            var receipt = settlePort.paymentByOutTradeNo(init.outTradeNo());
-            if (receipt == null || !"SUCCESS".equals(receipt.status())
+            // 按订单取成功记录再核对商户单号：内嵌、独立（near-pay）两种形态都成立；按商户单号直查只认本地账
+            var receipt = settlePort.successPayment(orderNo);
+            if (receipt == null || !Objects.equals(init.outTradeNo(), receipt.outTradeNo())
+                    || !"SUCCESS".equals(receipt.status())
                     || !Objects.equals(orderNo, receipt.orderNo())
                     || !Objects.equals(order.getUserNo(), receipt.userNo())
                     || !Objects.equals(init.payChannel(), receipt.payChannel())
@@ -3410,7 +3412,27 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
     @Override
     public OrderVO payResult(String orderNo) {
+        confirmIfPaid(orderNo);
         return detail(orderNo, null);
+    }
+
+    /**
+     * 付款页轮询时顺带确认一次：订单还是待支付、而支付侧（内嵌的本地账或独立部署的 near-pay）已有成功记录，
+     * 就把订单推成已支付。独立形态下 near-pay 不会回调本进程改订单，没有这一步订单要等兜底任务才会变。
+     * markPaid 幂等；确认不了（支付还没成、支付服务暂时不可用）就照旧返回当前状态，不报错。
+     */
+    private void confirmIfPaid(String orderNo) {
+        OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
+        if (order == null || !OrdOrder.WAIT_PAY.equals(order.getStatus())) return;
+        try {
+            SettlePort.PaymentReceipt receipt = paymentLifecycle.readConfirmed(orderNo, null, null);
+            if (receipt != null && "SUCCESS".equals(receipt.status())) {
+                orderServiceProvider.getObject().markPaid(orderNo, receipt.payChannel(), receipt.tradeNo());
+            }
+        } catch (RuntimeException notYet) {
+            log.info("[payResult] {} 暂未确认支付：{}", orderNo, notYet.getMessage());
+        }
     }
 
     @Override

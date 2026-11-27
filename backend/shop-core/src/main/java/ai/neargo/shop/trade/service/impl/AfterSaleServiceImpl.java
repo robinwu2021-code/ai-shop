@@ -1472,8 +1472,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                                 .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
                                 .notInSql(OrdAfterSale::getAfterSaleNo,
                                         "SELECT after_sale_no FROM ord_points_refund_binding"
-                                        + " WHERE phase IN ('COMPENSATED_PENDING_OPERATOR',"
-                                        + " 'CASH_FAILED_PENDING_OPERATOR')")
+                                        + " WHERE phase IN ('" + OrdRefundExecution.COMPENSATED_PENDING_OPERATOR + "',"
+                                        + " '" + OrdRefundExecution.CASH_FAILED_PENDING_OPERATOR + "')")
                                 .lt(OrdAfterSale::getUpdatedAt, cutoff)
                                 .orderByAsc(OrdAfterSale::getUpdatedAt)
                                 .last("limit " + Math.max(1, limit))), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo)

@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.entity.OrdIndustryOrderSource;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -93,7 +94,7 @@ public final class IndustryChannelStockPreparation {
                 () -> {
                     store.activeGuard(ref);
                     var row = store.required(ref, true);
-                    if (!Set.of("WAITING_STOCK", "PREPARING", "PREPARED").contains(row.getStatus())
+                    if (!Set.of(OrdIndustryOrderSource.WAITING_STOCK, "PREPARING", "PREPARED").contains(row.getStatus())
                             || row.getPolicyNo() == null
                             || row.getLeaseUntil() != null
                                     && row.getLeaseUntil().isAfter(store.now())) return null;
@@ -231,7 +232,7 @@ public final class IndustryChannelStockPreparation {
                                                             ready
                                                                     ? "PREPARED"
                                                                     : "EXPIRED".equals(state)
-                                                                            ? "WAITING_STOCK"
+                                                                            ? OrdIndustryOrderSource.WAITING_STOCK
                                                                             : "RECOVERY_REQUIRED")
                                                     .setSql("version=version+1"))
                                     == 1);

@@ -1568,7 +1568,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         boolean blocked =
                 closed
                         || !"PAID".equals(order.getStatus())
-                        || !Set.of("WAIT_FULFILL", "FULFILLING").contains(sub.getStatus())
+                        || !Set.of(OrdSubOrder.WAIT_FULFILL, "FULFILLING").contains(sub.getStatus())
                         || afterSales.stream()
                                 .anyMatch(
                                         a ->

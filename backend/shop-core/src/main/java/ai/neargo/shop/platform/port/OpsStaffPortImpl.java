@@ -1,5 +1,7 @@
 package ai.neargo.shop.platform.port;
 
+import ai.neargo.shop.platform.perm.OpsStaffRoles;
+import java.util.Map;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.common.security.rbac.Permissions;
 import ai.neargo.shop.platform.entity.SysOpsStaff;
@@ -11,8 +13,6 @@ import ai.neargo.shop.platform.perm.RolePermResolver;
 import ai.neargo.shop.spi.platform.OpsStaffPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -30,22 +30,22 @@ public class OpsStaffPortImpl implements OpsStaffPort {
 
     private final StaffMapper staffMapper;
     private final RolePermResolver rolePermResolver;
-    private final ObjectMapper json;
+    private final OpsStaffRoles staffRoles;
 
-    public OpsStaffPortImpl(StaffMapper staffMapper, RolePermResolver rolePermResolver,
-                            ObjectMapper json) {
+    public OpsStaffPortImpl(StaffMapper staffMapper, RolePermResolver rolePermResolver, OpsStaffRoles staffRoles) {
         this.staffMapper = staffMapper;
         this.rolePermResolver = rolePermResolver;
-        this.json = json;
+        this.staffRoles = staffRoles;
     }
 
     @Override
     public List<String> staffNosWithPerm(String permCode) {
+        Map<String, List<String>> roles = staffRoles.all();
         return DataScopeContext.executeWithoutScope(() ->
                 staffMapper.selectList(Wrappers.<SysOpsStaff>lambdaQuery()
                                 .eq(SysOpsStaff::getStatus, "ACTIVE")).stream()
                         .filter(s -> {
-                            List<String> perms = rolePermResolver.of(readRoles(s.getRoles()));
+                            List<String> perms = rolePermResolver.of(roles.getOrDefault(s.getStaffNo(), List.of()));
                             return perms != null && !perms.isEmpty()
                                     && Permissions.matches(perms, permCode);
                         })
@@ -55,9 +55,10 @@ public class OpsStaffPortImpl implements OpsStaffPort {
 
     @Override public List<String> staffNosWithPermForEntity(String permCode,String entityNo) {
         ContractChecks.id(entityNo);
+        Map<String, List<String>> roles = staffRoles.all();
         return DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(Wrappers.<SysOpsStaff>lambdaQuery()
                 .eq(SysOpsStaff::getTenantNo,"MAIN").eq(SysOpsStaff::getStatus,"ACTIVE")).stream().filter(staff -> {
-                    var perms=rolePermResolver.of(readRoles(staff.getRoles()));
+                    var perms=rolePermResolver.of(roles.getOrDefault(staff.getStaffNo(), List.of()));
                     if(perms==null || perms.isEmpty() || !Permissions.matches(perms,permCode)) return false;
                     var scope=StaffScopes.of(staff.getMerchantNo(),staff.getCommunityNo(),staff.getPickupNo(),perms);
                     return scope.all() || scope.rules().stream().anyMatch(rule -> ScopeDim.MERCHANT.equals(rule.dim())
@@ -65,16 +66,4 @@ public class OpsStaffPortImpl implements OpsStaffPort {
                 }).map(SysOpsStaff::getStaffNo).distinct().toList());
     }
 
-    /** roles 列存的是 JSON 数组（如 {@code ["CS","ADMIN"]}），坏数据当无角色处理。 */
-    private List<String> readRoles(String jsonArray) {
-        if (jsonArray == null || jsonArray.isBlank()) {
-            return List.of();
-        }
-        try {
-            return json.readValue(jsonArray, new TypeReference<List<String>>() {
-            });
-        } catch (Exception e) {
-            return List.of();
-        }
-    }
 }

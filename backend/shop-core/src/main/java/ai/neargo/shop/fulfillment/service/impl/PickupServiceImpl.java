@@ -1,5 +1,6 @@
 package ai.neargo.shop.fulfillment.service.impl;
 
+import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.fulfillment.service.PickupService;
 
@@ -170,7 +171,7 @@ public class PickupServiceImpl implements PickupService {
             case "WAIT_PAY" -> {
                 return VerifyResultVO.fail(VerifyResultVO.NOT_PAID, order.subOrderNo());
             }
-            case "WAIT_FULFILL" -> {
+            case OrdSubOrder.WAIT_FULFILL -> {
                 /*
                  * **货还没到这个点上。**
                  *
@@ -218,7 +219,7 @@ public class PickupServiceImpl implements PickupService {
         Map<String, PickingRowVO> agg = new LinkedHashMap<>();
         Map<String, List<PickingRowVO.Buyer>> buyers = new LinkedHashMap<>();
 
-        for (PickupOrder o : orderPort.ordersOfPickup(requireScope(pickupNo), "WAIT_FULFILL")) {
+        for (PickupOrder o : orderPort.ordersOfPickup(requireScope(pickupNo), OrdSubOrder.WAIT_FULFILL)) {
             for (PickupOrder.Item item : o.items()) {
                 String key = item.skuNo() == null ? item.goodsNo() + "|" + item.spec()
                         : item.skuNo();

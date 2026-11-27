@@ -252,10 +252,10 @@ public final class ChannelOrderServiceImpl implements ChannelOrderService, Chann
             order.setActiveRevisionNo(BizKey.next("CIOV"));
             order.setImportStatus(
                     d.state() == ChannelOrderGateway.State.CANCELLED ? "CANCELLED" : "RECEIVED");
-            order.setAcceptanceStatus("UNCONFIRMED");
+            order.setAcceptanceStatus(CimOrderLink.UNCONFIRMED);
             order.setPlatformStatus(d.state().name());
-            order.setFulfillmentStatus("UNCONFIRMED");
-            order.setFinancialEvidenceStatus("UNCONFIRMED");
+            order.setFulfillmentStatus(CimOrderLink.UNCONFIRMED);
+            order.setFinancialEvidenceStatus(CimOrderLink.UNCONFIRMED);
             order.setAttemptNo(0L);
             order.setFence(0L);
             order.setNextAttemptAt(now());
@@ -324,9 +324,9 @@ public final class ChannelOrderServiceImpl implements ChannelOrderService, Chann
                 observedAcceptance
                         || unchanged
                                 && order.getPlatformAcceptanceReceiptRef() != null
-                                && "PLATFORM_CONFIRMED".equals(order.getAcceptanceStatus());
+                                && CimOrderLink.PLATFORM_CONFIRMED.equals(order.getAcceptanceStatus());
         boolean terminalRejection =
-                unchanged && "PLATFORM_REJECTED".equals(order.getAcceptanceStatus());
+                unchanged && CimOrderLink.PLATFORM_REJECTED.equals(order.getAcceptanceStatus());
         boolean retargeted =
                 unchanged
                         && d.state() == ChannelOrderGateway.State.WAITING_ACCEPTANCE
@@ -343,15 +343,15 @@ public final class ChannelOrderServiceImpl implements ChannelOrderService, Chann
                                 || retargeted);
         String status =
                 d.state() == ChannelOrderGateway.State.CANCELLED
-                        ? started ? "WAITING_CANCELLATION" : "CANCELLED"
+                        ? started ? CimOrderLink.WAITING_CANCELLATION : "CANCELLED"
                         : reusable
                                 ? "CONFIRMED".equals(order.getAcceptanceStatus())
                                         ? "CONFIRMED"
                                         : terminalAcceptance
-                                                ? "WAITING_CONFIRMATION"
+                                                ? CimOrderLink.WAITING_CONFIRMATION
                                                 : terminalRejection
-                                                        ? "WAITING_CANCELLATION"
-                                                        : "WAITING_OWNER"
+                                                        ? CimOrderLink.WAITING_CANCELLATION
+                                                        : CimOrderLink.WAITING_OWNER
                                 : started
                                         ? "WAITING_AMENDMENT"
                                         : d.state() == ChannelOrderGateway.State.CANCELLED
@@ -368,7 +368,7 @@ public final class ChannelOrderServiceImpl implements ChannelOrderService, Chann
                                         .set(
                                                 "acceptance_status",
                                                 observedAcceptance
-                                                        ? "PLATFORM_CONFIRMED"
+                                                        ? CimOrderLink.PLATFORM_CONFIRMED
                                                         : order.getAcceptanceStatus())
                                         .set(
                                                 "platform_acceptance_receipt_ref",

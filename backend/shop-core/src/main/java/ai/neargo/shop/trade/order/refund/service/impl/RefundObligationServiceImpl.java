@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.order.refund.service.impl;
 
+import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.marketing.CouponPort;
@@ -71,7 +72,7 @@ public class RefundObligationServiceImpl implements RefundObligationService {
                     && !scope.subOrderNos().isEmpty() && scope.subOrderNos().stream().allMatch(sub ->
                         "CANCELLED".equals(mapper.childStatus(sub))
                         || mapper.itemCount(sub)>0 && mapper.unrefundedItems(sub)==0);
-            String state=eligible?"PENDING":"NOT_REQUIRED";
+            String state=eligible?"PENDING":RefundObligationMapper.NOT_REQUIRED;
             mapper.create(no,scope.couponNo()==null?scope.orderNo():scope.couponNo(),(String)row.get("input_hash"),
                     payload,state,eligible?null:"POLICY:"+no);
             return null;
@@ -92,11 +93,11 @@ public class RefundObligationServiceImpl implements RefundObligationService {
                 if(cash==null && row.get("preparation_json") instanceof String prep) {
                     cash=json.readValue(prep,ai.neargo.shop.spi.points.PointsRefundPort.RefundPreparation.class).netCashMinor();
                 }
-                boolean confirmed="CASH_CONFIRMED".equals(row.get("state")) || "COMMITTED".equals(row.get("state"));
-                boolean manual=List.of("COMPENSATED_PENDING_OPERATOR","CASH_FAILED_PENDING_OPERATOR")
+                boolean confirmed=OrdRefundExecution.CASH_CONFIRMED.equals(row.get("state")) || "COMMITTED".equals(row.get("state"));
+                boolean manual=List.of(OrdRefundExecution.COMPENSATED_PENDING_OPERATOR,OrdRefundExecution.CASH_FAILED_PENDING_OPERATOR)
                         .contains(row.get("phase"));
                 boolean unknown=List.of("CASH_OPENING","CASH_PENDING").contains(row.get("state"));
-                String cashStatus=cash!=null && cash==0?"NOT_REQUIRED":confirmed?"CONFIRMED":unknown?"UNKNOWN":"PENDING";
+                String cashStatus=cash!=null && cash==0?RefundObligationMapper.NOT_REQUIRED:confirmed?"CONFIRMED":unknown?"UNKNOWN":"PENDING";
                 var stock=mapper.rows(no).stream().filter(task -> "STOCK".equals(task.get("kind"))).findFirst().orElse(null);
                 String resource=stock==null?"MANAGED_SEPARATELY":terminal((String)stock.get("state"))?"DONE":"PENDING";
                 return new Progress(2,"REFUNDED".equals(row.get("after_sale_status")) && confirmed?"DONE":"PENDING",
@@ -107,7 +108,7 @@ public class RefundObligationServiceImpl implements RefundObligationService {
             var row=executions.read(no);
             if(row==null) return null;
             int version=row.getClosureVersion()==null?1:row.getClosureVersion();
-            String cash=row.getAmountMinor()==0?"NOT_REQUIRED":"SUCCEEDED".equals(row.getStatus())?"CONFIRMED":row.getStatus();
+            String cash=row.getAmountMinor()==0?RefundObligationMapper.NOT_REQUIRED:"SUCCEEDED".equals(row.getStatus())?"CONFIRMED":row.getStatus();
             return new Progress(version,row.getClosureStatus(),cash,version==2?(settled(no)?"SETTLED":"PENDING"):null,
                     row.getPaymentNo(),row.getStatus(),row.getResourceStatus(),row.getResourceErrorCode());
         });
@@ -141,7 +142,7 @@ public class RefundObligationServiceImpl implements RefundObligationService {
                     System.currentTimeMillis()+120000)));
         }
     }
-    private static boolean terminal(String state) {return "SUCCEEDED".equals(state)||"NOT_REQUIRED".equals(state);}
+    private static boolean terminal(String state) {return "SUCCEEDED".equals(state)||RefundObligationMapper.NOT_REQUIRED.equals(state);}
     private static long number(Map<String,Object> row,String key) {return ((Number)row.get(key)).longValue();}
     private static void require(boolean valid,String error) {if(!valid) throw new IllegalStateException(error);}
 }

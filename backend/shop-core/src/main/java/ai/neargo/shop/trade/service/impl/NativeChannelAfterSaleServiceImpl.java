@@ -277,12 +277,12 @@ public final class NativeChannelAfterSaleServiceImpl implements NativeChannelAft
                             row.setCurrency(original.currency());
                             row.setFundsStatus(
                                     command.action() == Action.REJECT
-                                            ? "NOT_REQUIRED"
-                                            : "WAITING_FUNDS_OWNER");
+                                            ? OrdChannelAfterSale.NOT_REQUIRED
+                                            : OrdChannelAfterSale.WAITING_FUNDS_OWNER);
                             row.setInventoryStatus(
                                     command.action() == Action.REJECT
-                                            ? "NOT_REQUIRED"
-                                            : "WAITING_ORIGINAL_ACTION");
+                                            ? OrdChannelAfterSale.NOT_REQUIRED
+                                            : OrdChannelAfterSale.WAITING_ORIGINAL_ACTION);
                             row.setCreatedBy(actor);
                             row.setUpdatedBy(actor);
                             cases.insert(row);

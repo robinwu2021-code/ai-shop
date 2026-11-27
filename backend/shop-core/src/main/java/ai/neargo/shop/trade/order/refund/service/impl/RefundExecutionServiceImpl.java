@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.order.refund.service.impl;
 
+import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.points.PointsRefundPort;
@@ -115,7 +116,7 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     @Override public CashIntent beginCash(String as) {
         return DataScopeContext.executeWithoutScope(() -> {
             var head=locked(as);
-            require(List.of("PREPARED","CASH_OPENING","CASH_PENDING","CASH_CONFIRMED","COMMITTED")
+            require(List.of("PREPARED","CASH_OPENING","CASH_PENDING",OrdRefundExecution.CASH_CONFIRMED,"COMMITTED")
                     .contains(head.get("state")),"REFUND_EXECUTION_PHASE_CONFLICT");
             var saved=snapshot(head);
             if ("PREPARED".equals(head.get("state"))) {
@@ -171,11 +172,11 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     @Override public void confirmCash(String as,RefundEvidence evidence) {
         DataScopeContext.executeWithoutScope(() -> {
             var head=locked(as);
-            require(List.of("CASH_PENDING","CASH_CONFIRMED","COMMITTED").contains(head.get("state")),
+            require(List.of("CASH_PENDING",OrdRefundExecution.CASH_CONFIRMED,"COMMITTED").contains(head.get("state")),
                     "REFUND_EXECUTION_PHASE_CONFLICT");
             verified(head,evidence);
             if ("CASH_PENDING".equals(head.get("state"))) {
-                change(head,"CASH_CONFIRMED",(String)head.get("cash_payment_no"),number(head,"net_cash_minor"),null);
+                change(head,OrdRefundExecution.CASH_CONFIRMED,(String)head.get("cash_payment_no"),number(head,"net_cash_minor"),null);
             }
             return null;
         });
@@ -193,12 +194,12 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
                     && "POINTS_CONFIRMED".equals(binding.get("phase"))
                     && head.get("cash_payment_no")==null,
                     "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
-            if("CASH_CONFIRMED".equals(head.get("state")) || "COMMITTED".equals(head.get("state"))) {
+            if(OrdRefundExecution.CASH_CONFIRMED.equals(head.get("state")) || "COMMITTED".equals(head.get("state"))) {
                 require(number(head,"net_cash_minor")==0,"REFUND_EXECUTION_CASH_CONFLICT");
                 return null;
             }
             require("PREPARED".equals(head.get("state")),"REFUND_EXECUTION_PHASE_CONFLICT");
-            change(head,"CASH_CONFIRMED",null,0L,null);
+            change(head,OrdRefundExecution.CASH_CONFIRMED,null,0L,null);
             return null;
         });
     }
@@ -208,7 +209,7 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             if ("COMMITTED".equals(head.get("state"))) {
                 return json.readValue((String)head.get("result_json"),LedgerResult.class);
             }
-            require("CASH_CONFIRMED".equals(head.get("state")),"REFUND_EXECUTION_NOT_CONFIRMED");
+            require(OrdRefundExecution.CASH_CONFIRMED.equals(head.get("state")),"REFUND_EXECUTION_NOT_CONFIRMED");
             var sub=store.lockSub((String)head.get("sub_order_no"));
             if(pointsIntegrated(sub)) {
                 require("POINTS_CONFIRMED".equals(pointsDecision(as,sub.getSubOrderNo()).get("phase")),
@@ -248,10 +249,10 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             require(proof != null && "ABORTED".equals(proof.state())
                     && as.equals(proof.afterSaleNo())
                     && saved.plan().subOrderNo().equals(proof.subOrderNo())
-                    && ("COMPENSATED_PENDING_OPERATOR".equals(binding.get("phase"))
-                        || "CASH_FAILED_PENDING_OPERATOR".equals(binding.get("phase")))
+                    && (OrdRefundExecution.COMPENSATED_PENDING_OPERATOR.equals(binding.get("phase"))
+                        || OrdRefundExecution.CASH_FAILED_PENDING_OPERATOR.equals(binding.get("phase")))
                     && proof.collectionRequired()
-                        == "COMPENSATED_PENDING_OPERATOR".equals(binding.get("phase"))
+                        == OrdRefundExecution.COMPENSATED_PENDING_OPERATOR.equals(binding.get("phase"))
                     && proof.compensationSucceeded() == proof.collectionRequired()
                     && "CASH_PENDING".equals(head.get("state"))
                     && proof.cashRefundPaymentNo() != null

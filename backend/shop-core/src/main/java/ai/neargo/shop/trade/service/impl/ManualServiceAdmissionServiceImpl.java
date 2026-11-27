@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.BoundActionContext;
@@ -316,7 +317,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                 return previous;
                                             }
                                             var facts = facts(op, parent, subs.getFirst());
-                                            if (!"WAIT_OFFLINE_PAY".equals(parent.getStatus())
+                                            if (!OrdOrder.WAIT_OFFLINE_PAY.equals(parent.getStatus())
                                                     || !"WAIT_PAY".equals(facts.child().getStatus())
                                                     || parent.getVersion()
                                                             != request.expectedOrderRevision()
@@ -355,7 +356,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                             row.setRecordedAt(utc(clock.now()));
                                             row.setNote(request.note());
                                             row.setReceiptProvenance("MANUAL_DECLARATION");
-                                            row.setPhase("STOCK_PENDING");
+                                            row.setPhase(ManualServiceAdmissionPort.STOCK_PENDING);
                                             row.setAdmissionRevision(1L);
                                             row.setOrderRevision(parent.getVersion());
                                             row.setQuoteHash(facts.quote().getQuoteHash());
@@ -394,7 +395,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                             status(
                                                     parent.getOrderNo(),
                                                     "PAYMENT",
-                                                    "WAIT_OFFLINE_PAY",
+                                                    OrdOrder.WAIT_OFFLINE_PAY,
                                                     "PAID",
                                                     actor.actorNo());
                                             status(
@@ -535,7 +536,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                 current,
                                                 null,
                                                 null,
-                                                "AWAITING_RECEIPT",
+                                                ManualServiceAdmissionPort.AWAITING_RECEIPT,
                                                 List.of(),
                                                 false,
                                                 null);
@@ -546,7 +547,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                 current,
                                                 parent,
                                                 null,
-                                                "AWAITING_RECEIPT",
+                                                ManualServiceAdmissionPort.AWAITING_RECEIPT,
                                                 List.of(),
                                                 true,
                                                 null);
@@ -656,7 +657,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                         : (actual.outcome() == Outcome.REJECTED
                                         || actual.outcome() == Outcome.APPLIED)
                                 ? "SUSPENDED"
-                                : "STOCK_PENDING";
+                                : ManualServiceAdmissionPort.STOCK_PENDING;
         return unscoped(
                 () ->
                         writes.execute(
@@ -672,7 +673,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                             && Objects.equals(
                                                     current.getStockObservationHash(),
                                                     actual.observationHash())) {
-                                        if ("STOCK_PENDING".equals(phase)) {
+                                        if (ManualServiceAdmissionPort.STOCK_PENDING.equals(phase)) {
                                             long expected = current.getVersion();
                                             current.setNextRetryAt(
                                                     utc(clock.now().plusSeconds(30)));
@@ -695,7 +696,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                             Math.addExact(current.getAdmissionRevision(), 1));
                                     current.setUpdatedAt(utc(clock.now()));
                                     current.setNextRetryAt(
-                                            "STOCK_PENDING".equals(phase)
+                                            ManualServiceAdmissionPort.STOCK_PENDING.equals(phase)
                                                     ? utc(clock.now().plusSeconds(30))
                                                     : null);
                                     changed(declarations.advanceAdmission(current, expected));
@@ -969,7 +970,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                     op.getSubOrderNo(),
                     parent == null ? 0 : parent.getVersion(),
                     0,
-                    "AWAITING_RECEIPT",
+                    ManualServiceAdmissionPort.AWAITING_RECEIPT,
                     null,
                     null,
                     null,
@@ -977,7 +978,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                     "CNY",
                     null,
                     null,
-                    "AWAITING_RECEIPT",
+                    ManualServiceAdmissionPort.AWAITING_RECEIPT,
                     null);
         }
         return new ManualAdmissionView(

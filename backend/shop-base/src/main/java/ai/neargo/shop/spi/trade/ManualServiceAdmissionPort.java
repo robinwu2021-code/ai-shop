@@ -18,6 +18,9 @@ import java.util.Objects;
 
 /** Merchant declarations remain separate from Pay receipts and never authorize service start. */
 public interface ManualServiceAdmissionPort {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    String AWAITING_RECEIPT = "AWAITING_RECEIPT";
+    String STOCK_PENDING = "STOCK_PENDING";
     /** Freeze ordinary shared pricing after actual current merchant authorization. */
     CheckoutQuote prepare(CheckoutScope scope, PrepareCheckoutReq request);
 
@@ -414,7 +417,7 @@ public interface ManualServiceAdmissionPort {
                     || (orderNo == null) != (subOrderNo == null)) {
                 throw invalidResponse();
             }
-            if ("AWAITING_RECEIPT".equals(admissionState)) {
+            if (AWAITING_RECEIPT.equals(admissionState)) {
                 if (admissionRevision != 0
                         || receiptProvenance != null
                         || manualDeclarationNo != null
@@ -422,7 +425,7 @@ public interface ManualServiceAdmissionPort {
                         || declaredMinor != null
                         || receivedAt != null
                         || recordedAt != null
-                        || !"AWAITING_RECEIPT".equals(operationState)) {
+                        || !AWAITING_RECEIPT.equals(operationState)) {
                     throw invalidResponse();
                 }
             } else {
@@ -438,7 +441,7 @@ public interface ManualServiceAdmissionPort {
                         || !time(receivedAt)
                         || !time(recordedAt)
                         || receivedAt.isAfter(recordedAt)
-                        || !("UNKNOWN".equals(admissionState) ? "STOCK_PENDING" : admissionState)
+                        || !("UNKNOWN".equals(admissionState) ? STOCK_PENDING : admissionState)
                                 .equals(operationState)) {
                     throw invalidResponse();
                 }
@@ -630,7 +633,7 @@ public interface ManualServiceAdmissionPort {
 
     private static boolean state(String value) {
         return value != null
-                && List.of("AWAITING_RECEIPT", "ADMITTED", "SUSPENDED", "CANCELLED", "UNKNOWN")
+                && List.of(AWAITING_RECEIPT, "ADMITTED", "SUSPENDED", "CANCELLED", "UNKNOWN")
                         .contains(value);
     }
 

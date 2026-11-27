@@ -138,6 +138,9 @@ describe("B 端门店维度", () => {
       const rest = mock.slice(m.index);
       const end = rest.indexOf("\n  async ");
       const body = end < 0 ? rest : rest.slice(0, end);
+      // 商城夹具未设置历史订阅，所有门店升级报价均按无来源拒绝。
+      if (name === "mMallOfflineUpgradeQuote"
+          && /^async mMallOfflineUpgradeQuote\(\)\s*\{\s*throw new Error\("NO_UPGRADE_SOURCE"\);\s*\}\s*,?\s*$/.test(body)) continue;
       if (!/currentStoreNo\(|scopedToStore\(|scopedBalances\(|STORAGE\.storeNo/.test(body)) {
         blind.push(name);
       }

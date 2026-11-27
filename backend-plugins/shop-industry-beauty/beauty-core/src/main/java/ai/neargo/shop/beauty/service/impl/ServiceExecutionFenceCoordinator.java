@@ -1,5 +1,6 @@
 package ai.neargo.shop.beauty.service.impl;
 
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
 import ai.neargo.shop.beauty.entity.BtyServiceExecutionFence;
 import ai.neargo.shop.beauty.entity.BtySourceObservation;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
@@ -168,7 +169,7 @@ public final class ServiceExecutionFenceCoordinator {
         if (List.of("SOURCE_HASH_CONFLICT", "SOURCE_REVISION_REGRESSION").contains(Objects.toString(failure, ""))) {
             return "SOURCE_REVISION_CONFLICT";
         }
-        if (List.of("SUSPENDED", "CANCELLED", "AWAITING_RECEIPT").contains(
+        if (List.of("SUSPENDED", "CANCELLED", ManualServiceAdmissionPort.AWAITING_RECEIPT).contains(
                 Objects.toString(row.getManualAdmissionState(), ""))) return "SOURCE_SUSPENDED";
         return null;
     }

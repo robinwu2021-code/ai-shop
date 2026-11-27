@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.job;
 
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.api.JobHandler;
 import ai.neargo.job.api.JobInvocation;
@@ -128,7 +129,7 @@ public class RefundRetryJob implements JobHandler {
                     stockAdvanced++;
                     recovered(runId, "stock", no);
                 } else {
-                    alerts += pending(runId, "stock", no, "STOCK_PENDING");
+                    alerts += pending(runId, "stock", no, ManualServiceAdmissionPort.STOCK_PENDING);
                 }
             } catch (RuntimeException failure) {
                 alerts += pending(runId, "stock", no, reason(failure, "STOCK_RECOVERY_FAILED"));

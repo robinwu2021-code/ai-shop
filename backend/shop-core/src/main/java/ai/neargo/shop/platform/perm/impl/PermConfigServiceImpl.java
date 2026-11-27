@@ -361,8 +361,11 @@ public class PermConfigServiceImpl implements PermConfigService {
                 objectMapper.writeValueAsString(Map.of("name", r.getName(), "roleCode", roleCode)), null);
     }
 
+    /**
+     * 不开事务（TDD-基础能力库对齐 2a）：这里在基础能力库只读角色成员，写的是平台基础库的运营会话。
+     * 包在 common 事务里的话，两个库分开后吊销落在一个无关的事务里；审计已是业务提交后写（1i）。
+     */
     @Override
-    @Transactional(transactionManager = ModuleDataSources.COMMON_TX_MANAGER)
     public int forceLogoutRole(String roleCode, String operatorNo) {
         // 角色必须存在：对着一个打错的角色码点「强制下线」，返回 0 会被当成「没人在线」
         requireRole(roleCode);

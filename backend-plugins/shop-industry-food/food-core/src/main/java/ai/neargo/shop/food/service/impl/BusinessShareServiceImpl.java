@@ -85,9 +85,9 @@ public class BusinessShareServiceImpl implements BusinessShareService {
         orderSources = owners::getIfAvailable;
     }
 
-    private static final String DRAFT = "DRAFT_BUSINESS_ONLY";
-    private static final String CONFIRMED = "CONFIRMED_BUSINESS_ONLY";
-    private static final String CANCELLED = "CANCELLED_BUSINESS_ONLY";
+    private static final String DRAFT = FnbBusinessSharePlan.DRAFT_BUSINESS_ONLY;
+    private static final String CONFIRMED = FnbBusinessSharePlan.CONFIRMED_BUSINESS_ONLY;
+    private static final String CANCELLED = FnbBusinessSharePlan.CANCELLED_BUSINESS_ONLY;
     private final BusinessSharePlanMapper plans;
     private final CheckMapper checks;
     private final OrderBatchMapper batches;

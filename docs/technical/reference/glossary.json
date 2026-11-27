@@ -45476,6 +45476,34 @@
         "module": "shop-core"
       },
       {
+        "host": "OrdEntOrderUse",
+        "name": "CANCEL_DECIDED",
+        "value": "CANCEL_DECIDED",
+        "zh": "状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdEntOrderUse",
+        "name": "COMMIT_DECIDED",
+        "value": "COMMIT_DECIDED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdEntServiceOrder",
+        "name": "CANCEL_DECIDED",
+        "value": "CANCEL_DECIDED",
+        "zh": "状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdEntServiceOrder",
+        "name": "COMMIT_DECIDED",
+        "value": "COMMIT_DECIDED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "OrdAfterSale",
         "name": "APPLIED",
         "value": "APPLIED",
@@ -45623,6 +45651,27 @@
         "module": "shop-core"
       },
       {
+        "host": "OrdChannelAfterSale",
+        "name": "NOT_REQUIRED",
+        "value": "NOT_REQUIRED",
+        "zh": "状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdChannelAfterSale",
+        "name": "WAITING_FUNDS_OWNER",
+        "value": "WAITING_FUNDS_OWNER",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdChannelAfterSale",
+        "name": "WAITING_ORIGINAL_ACTION",
+        "value": "WAITING_ORIGINAL_ACTION",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "OrdExpressPickup",
         "name": "PROVIDER_KUAIDI100",
         "value": "KUAIDI100",
@@ -45668,6 +45717,41 @@
         "host": "OrdExpressPickup",
         "name": "FAILED",
         "value": "FAILED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdIndustryFulfillment",
+        "name": "PROOF_VALIDATED",
+        "value": "PROOF_VALIDATED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdIndustryOrderSource",
+        "name": "DISPATCHING",
+        "value": "DISPATCHING",
+        "zh": "状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdIndustryOrderSource",
+        "name": "UNCONFIRMED",
+        "value": "UNCONFIRMED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdIndustryOrderSource",
+        "name": "WAITING_FUNDING",
+        "value": "WAITING_FUNDING",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdIndustryOrderSource",
+        "name": "WAITING_STOCK",
+        "value": "WAITING_STOCK",
         "zh": "",
         "module": "shop-core"
       },
@@ -45840,6 +45924,20 @@
         "module": "shop-core"
       },
       {
+        "host": "OrdServiceExecution",
+        "name": "STARTED_SUSPENDED",
+        "value": "STARTED_SUSPENDED",
+        "zh": "状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdServiceExecution",
+        "name": "SUSPEND_REQUESTED",
+        "value": "SUSPEND_REQUESTED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "OrdStatusLog",
         "name": "BY_USER",
         "value": "USER",
@@ -45871,13 +45969,6 @@
         "host": "OrdSubOrder",
         "name": "WAIT_PAY",
         "value": "WAIT_PAY",
-        "zh": "",
-        "module": "shop-core"
-      },
-      {
-        "host": "OrdSubOrder",
-        "name": "WAIT_FULFILL",
-        "value": "WAIT_FULFILL",
         "zh": "",
         "module": "shop-core"
       },
@@ -45963,13 +46054,6 @@
         "name": "POINTS_PROCESSING",
         "value": "POINTS_PROCESSING",
         "zh": "",
-        "module": "shop-core"
-      },
-      {
-        "host": "ContractOrderStatus",
-        "name": "WAIT_OFFLINE_PAY",
-        "value": "WAIT_OFFLINE_PAY",
-        "zh": "待当面收款（线下支付，由主单状态推出。",
         "module": "shop-core"
       },
       {
@@ -46093,6 +46177,27 @@
       },
       {
         "host": "OrdRefundExecution",
+        "name": "CASH_CONFIRMED",
+        "value": "CASH_CONFIRMED",
+        "zh": "状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
+        "name": "CASH_FAILED_PENDING_OPERATOR",
+        "value": "CASH_FAILED_PENDING_OPERATOR",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
+        "name": "COMPENSATED_PENDING_OPERATOR",
+        "value": "COMPENSATED_PENDING_OPERATOR",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
         "name": "PREPARED",
         "value": "PREPARED",
         "zh": "",
@@ -46201,13 +46306,6 @@
         "name": "WAIT_PAY",
         "value": "WAIT_PAY",
         "zh": "待付款",
-        "module": "shop-core"
-      },
-      {
-        "host": "LegacyOrderStatusView",
-        "name": "WAIT_OFFLINE_PAY",
-        "value": "WAIT_OFFLINE_PAY",
-        "zh": "等商家当面收款（线下支付）。",
         "module": "shop-core"
       },
       {
@@ -61260,6 +61358,30 @@
       "module": "shop-core"
     },
     {
+      "host": "OrdIndustryFulfillment",
+      "name": "BUYER_CONFIRM_PENDING",
+      "type": "String",
+      "value": "ai.neargo.shop.spi.trade.IndustryFulfillmentPort.BUYER_CONFIRM_PENDING",
+      "zh": "状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrdIndustryFulfillment",
+      "name": "HANDOVER_COMPLETE",
+      "type": "String",
+      "value": "ai.neargo.shop.spi.trade.IndustryFulfillmentPort.HANDOVER_COMPLETE",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrdSubOrder",
+      "name": "WAIT_FULFILL",
+      "type": "String",
+      "value": "ai.neargo.shop.spi.trade.IndustryOrderPort.WAIT_FULFILL",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
       "host": "OrdSubOrder",
       "name": "PAID",
       "type": "Set<String>",
@@ -61321,6 +61443,14 @@
       "type": "Set<String>",
       "value": "Set.of(OrdAfterSale.CLOSED, OrdAfterSale.REJECTED, OrdAfterSale.REFUNDED)",
       "zh": "进了这些状态，这张售后就不再占着订单（与 activeOf 的口径一致）",
+      "module": "shop-core"
+    },
+    {
+      "host": "ContractOrderStatus",
+      "name": "WAIT_OFFLINE_PAY",
+      "type": "String",
+      "value": "ai.neargo.shop.trade.entity.OrdOrder.WAIT_OFFLINE_PAY",
+      "zh": "待当面收款（线下支付，由主单状态推出。",
       "module": "shop-core"
     },
     {
@@ -61409,6 +61539,14 @@
       "type": "List<String>",
       "value": "List.of( OrdAfterSale.REASON_DAMAGED, OrdAfterSale.REASON_QUALITY, OrdAfterSale.REASON_EXPIRED)",
       "zh": "质量原因：损坏 / 变质 / 过期。",
+      "module": "shop-core"
+    },
+    {
+      "host": "LegacyOrderStatusView",
+      "name": "WAIT_OFFLINE_PAY",
+      "type": "String",
+      "value": "ai.neargo.shop.trade.entity.OrdOrder.WAIT_OFFLINE_PAY",
+      "zh": "等商家当面收款（线下支付）。",
       "module": "shop-core"
     },
     {

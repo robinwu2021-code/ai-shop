@@ -63,8 +63,8 @@ public final class ChannelFulfillmentEvidenceStore {
                         && List.of(
                                         "PARTIAL",
                                         "VERIFIED",
-                                        "BUYER_CONFIRM_PENDING",
-                                        "HANDOVER_COMPLETE")
+                                        OrdIndustryFulfillment.BUYER_CONFIRM_PENDING,
+                                        OrdIndustryFulfillment.HANDOVER_COMPLETE)
                                 .contains(original.getStatus())
                         && List.of("PICKUP", "DELIVERY_HANDOVER").contains(command.kind())
                         && original.getInventoryReceiptJson() != null

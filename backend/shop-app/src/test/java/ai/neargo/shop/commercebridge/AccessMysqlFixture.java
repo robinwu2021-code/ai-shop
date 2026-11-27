@@ -93,7 +93,8 @@ final class AccessMysqlFixture implements AutoCloseable {
                             "sys_merchant_plan_def",
                             "mch_store",
                             "mch_store_role",
-                            "mch_role", "ops_session", "sys_ops_staff", "sys_role", "sys_role_point", "sys_function_point")) {
+                            "mch_role", "ops_session", "sys_ops_staff", "sys_role", "sys_role_point", "sys_function_point",
+                            "sys_role_member")) {
                 var m =
                         Pattern.compile("(?s)CREATE TABLE IF NOT EXISTS " + table + "\\s*\\(.*?\n\\);")
                                 .matcher(ddl);
@@ -149,7 +150,8 @@ final class AccessMysqlFixture implements AutoCloseable {
                         ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper.class,
                         ai.neargo.shop.platform.perm.mapper.PermMappers.RoleMapper.class,
                         ai.neargo.shop.platform.perm.mapper.PermMappers.RolePointMapper.class,
-                        ai.neargo.shop.platform.perm.mapper.PermMappers.FunctionPointMapper.class)) cfg.addMapper(type);
+                        ai.neargo.shop.platform.perm.mapper.PermMappers.FunctionPointMapper.class,
+                        ai.neargo.shop.platform.perm.mapper.PermMappers.RoleMemberMapper.class)) cfg.addMapper(type);
         loader =
                 new CompositeIdentityLoader<>(
                         new MerchantIdentityLoader(mybatis.getMapper(MchAccountMapper.class)),

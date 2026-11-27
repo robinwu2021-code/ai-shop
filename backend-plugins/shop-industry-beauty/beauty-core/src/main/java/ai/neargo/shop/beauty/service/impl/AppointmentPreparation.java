@@ -230,14 +230,14 @@ public final class AppointmentPreparation {
                     if (outer.getAppointmentOperationNo() != null) {
                         return db.operation(outer.getAppointmentOperationNo());
                     }
-                    AppointmentPersistence.require("OPEN_PENDING".equals(outer.getPhase()));
+                    AppointmentPersistence.require(BtyReceptionOperation.OPEN_PENDING.equals(outer.getPhase()));
                 }
                 lockedCheck.run();
                 AppointmentPersistence.require(current.getOperationNo() == null);
                 var op = prepareLocked(preview, root, action, key, hash, hold, requestEvidence,
                         BizKey.next("BTOP"));
                 if (outer != null) {
-                    outer.setAppointmentOperationNo(op.getOperationNo()); outer.setPhase("RESOURCE_PENDING");
+                    outer.setAppointmentOperationNo(op.getOperationNo()); outer.setPhase(BtyReceptionOperation.RESOURCE_PENDING);
                     AppointmentPersistence.require(receptions.updateById(outer) == 1);
                 }
                 return op;
@@ -336,7 +336,7 @@ public final class AppointmentPreparation {
                         payload.appointmentRequestHash(), null, "{\"receptionOperationNo\":\"" + number + "\"}",
                         payload.appointmentOperationNo());
                 outer.setAppointmentNo(root.getAppointmentNo()); outer.setAppointmentOperationNo(op.getOperationNo());
-                outer.setPhase("RESOURCE_PENDING"); outer.setNextRetryAt(AppointmentPersistence.now());
+                outer.setPhase(BtyReceptionOperation.RESOURCE_PENDING); outer.setNextRetryAt(AppointmentPersistence.now());
                 AppointmentPersistence.require(receptions.updateById(outer) == 1);
                 // Head acquisition or earlier writes may wait; expiry must roll the entire preparation back.
                 var at = clock.instant();
