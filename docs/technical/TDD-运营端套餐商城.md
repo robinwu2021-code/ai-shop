@@ -155,6 +155,14 @@
 | 4 | 实现并验证上述写入路径 | 按确认的归属、凭据及事务方案接入实际调用入口，在独立数据库中验证开店、购买、退款和撤权；对失败后重试核对订单、资金和权益。 |
 | 5 | 历史迁移对账与切库演练 | 在演练库回填历史数据，按租户比对目录版本、订单与退款金额、订阅周期、额度余额和已开通授权段。验证发布后总览读回新版本、支付后履约、退款后撤销和切换回退。 |
 
+#### 门店收款确认入口核对
+
+仓库内，支付对账作业遇到 PLATFORM_MALL 支付流水时，把支付流水号交给 ShopMallPaymentRecovery。它用流水号找到支付域的租户、订单号和支付尝试号，查到 SUCCESS 后，门店商城分支调用 PaymentFacade.refresh。商城按冻结的支付尝试重新查单，查到成功后以支付操作号生成稳定的内部事件号。支付域收到的原始通知号未作为这条商城路径的幂等键。商城处理抛错时，支付交接保留待处理状态，供后续恢复。
+
+代码依据见 [支付对账分流](../../backend/shop-gateway/src/main/java/ai/neargo/shop/paybridge/OrderPaidReconciler.java)、[支付交接与恢复](../../backend/shop-gateway/src/main/java/ai/neargo/shop/commercebridge/port/ShopMallPaymentRecovery.java)、[支付尝试查询](../../backend/shop-gateway/src/main/java/ai/neargo/shop/commercebridge/ShopMallPlatformPaymentAdapter.java) 和 [商城收款确认](../../backend/commerce/commerce-core/src/main/java/ai/neargo/commerce/core/fulfillment/CommerceFulfillmentService.java)。
+
+FulfillmentFacade.confirmPayment 仍接受带事件号的已核实事实。当前仓库的生产源码中只找到接口声明与实现。确定收款凭据模型前，还需核实仓库外是否有调用方依赖该契约。订阅请求的跨门店查重另行确认。
+
 #### 门店商城历史对账
 
 在同一停写时点取得旧库、商城库、基础能力库和平台基础库的快照。各库可在不同实例。每个连接文件在 MySQL 的 `[client]` 段指定只读用户、连接参数和对应的 `database`，文件保存在仓库外。仓库根目录执行：
