@@ -17,7 +17,7 @@ final class CatalogQueryService {
     }
 
     CatalogOverview overview(ActorContext actor) {
-        var s = support.read(actor);
+        var s = support.overview(actor);
         return new CatalogOverview(
                 s.types.values().stream().map(t -> new BusinessTypeView(t.draft(), t.version(), t.catalogVersion())).toList(),
                 s.ends.values().stream().map(e -> new BusinessEndView(e.draft(), e.version())).toList(),
@@ -26,7 +26,7 @@ final class CatalogQueryService {
                 s.products.values().stream().map(p -> new ProductView(p.draft(),p.saleStatus(),p.version())).toList(),
                 s.skus.values().stream().map(v -> new SkuDefinitionView(v.skuNo(),v.productNo(),v.title(),v.maxPerOrder(),v.currentVersionNo(),v.saleStatus(),v.version())).toList(),
                 s.skuVersions.values().stream().map(v -> new SkuVersionView(v.draft(),v.status(),v.revision(),v.version())).toList(),
-                ai.neargo.commerce.core.catalog.category.CategoryService.views(s));
+                ai.neargo.commerce.core.catalog.category.CategoryService.views(s.categories.values()));
     }
 
     CatalogView catalog(ActorContext actor, String type) {

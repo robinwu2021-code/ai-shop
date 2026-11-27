@@ -64,7 +64,8 @@ public final class CommerceOpsMallHttpController extends MallHttpSupport {
             String operationNo,
             String carrierCode,
             String trackingNo,
-            long quantity) {}
+            long quantity,
+            java.util.List<String> deviceSerials) {}
 
     @PostMapping("/{orderNo}/shipments")
     public Object ship(
@@ -85,7 +86,7 @@ public final class CommerceOpsMallHttpController extends MallHttpSupport {
                         d.carrierCode(),
                         d.trackingNo(),
                         d.quantity(),
-                        actor.principalNo()));
+                        actor.principalNo(), d.deviceSerials()));
         return ok(queries.order(actor, query));
     }
 
@@ -127,9 +128,11 @@ public final class CommerceOpsMallHttpController extends MallHttpSupport {
         var d = json.read(body, ApproveRequest.class);
         var actor = context.operator("commerce:refund:review");
         available();
+        String approvalNo = null;
         if (gate != null) {
-            var held = gate.hold(OpsApprovalGatePort.MALL_REFUND_APPROVE, actor, code(store), code(order), code(refund), d);
-            if (held.isPresent()) return ok(held.get());
+            var decision = gate.decide(OpsApprovalGatePort.MALL_REFUND_APPROVE, actor, code(store), code(order), code(refund), d);
+            if (decision.held().isPresent()) return ok(decision.held().get());
+            approvalNo = decision.approvalNo();
         }
         return ok(
                 refunds.approve(
@@ -142,7 +145,7 @@ public final class CommerceOpsMallHttpController extends MallHttpSupport {
                                 d.cashAmount(),
                                 d.restoreCredit(),
                                 d.reviewEvidence(),
-                                d.reviewQuoteNo())));
+                                d.reviewQuoteNo()), approvalNo));
     }
 
     public record RejectRequest(String requestDigest, String reviewEvidence) {}

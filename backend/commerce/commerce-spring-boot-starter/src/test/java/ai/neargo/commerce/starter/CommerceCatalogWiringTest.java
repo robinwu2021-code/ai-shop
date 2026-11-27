@@ -34,9 +34,8 @@ class CommerceCatalogWiringTest {
                 .run(c -> assertNotNull(c.getStartupFailure()));
     }
 
-    @Test
-    void explicitTrustedWiringProducesTheSingleFacade() {
-        runner().withPropertyValues("commerce.enabled=true", "commerce.catalog.enabled=true")
+    private ApplicationContextRunner trustedCatalog() {
+        return runner().withPropertyValues("commerce.enabled=true", "commerce.catalog.enabled=true")
                 .withBean(
                         CatalogRepository.class,
                         () ->
@@ -62,7 +61,7 @@ class CommerceCatalogWiringTest {
                 .withBean(
                         CommerceIdGenerator.class,
                         () -> namespace -> java.util.UUID.randomUUID().toString())
-                .withBean(CatalogAuthorizationPort.class, () -> (a, p) -> false)
+                .withBean(CatalogAuthorizationPort.class, () -> (a, p) -> a.principalNo().equals("operator"))
                 .withBean(
                         BusinessEndReadinessPort.class,
                         () ->
@@ -96,7 +95,12 @@ class CommerceCatalogWiringTest {
                                             String t, String n, java.time.Instant i) {
                                         throw new UnsupportedOperationException();
                                     }
-                                })
+                                });
+    }
+
+    @Test
+    void explicitTrustedWiringProducesTheSingleFacade() {
+        trustedCatalog()
                 .run(
                         c -> {
                             assertNull(c.getStartupFailure());
@@ -104,6 +108,42 @@ class CommerceCatalogWiringTest {
                             assertInstanceOf(
                                     DefaultCatalogFacade.class, c.getBean(CatalogFacade.class));
                         });
+    }
+
+    @Test
+    void configuredCatalogUsesTheMallForCategoriesAndTheFoundationForTypes() {
+        try (var mall = new CommerceMigrationStartupTest.Database();
+                var foundation = new CommerceMigrationStartupTest.Database()) {
+            mall.jdbc.execute("""
+                    CREATE TABLE mall_category (
+                    id bigint primary key auto_increment,tenant_no varchar(32),category_code varchar(32),
+                    parent_code varchar(32),`level` int,names json,icon varchar(512),sort_order int,
+                    status varchar(16),version bigint,created_by varchar(64),updated_by varchar(64),
+                    created_at datetime(3),updated_at datetime(3),deleted tinyint)
+                    """);
+            foundation.jdbc.execute("""
+                    CREATE TABLE sys_dict_item (item_code varchar(64),name varchar(64),sort_no int,
+                    status varchar(16),version bigint,attrs json,tenant_no varchar(32),
+                    dict_type varchar(32),item_level varchar(16),deleted tinyint)
+                    """);
+            trustedCatalog().withPropertyValues("shop.modules.mall.datasource=testMall",
+                            "shop.modules.foundation.datasource=testFoundation")
+                    .withBean("testMallDataSource", javax.sql.DataSource.class, () -> mall.ds)
+                    .withBean("testFoundationDataSource", javax.sql.DataSource.class, () -> foundation.ds)
+                    .withBean("testMallTxManager", org.springframework.transaction.PlatformTransactionManager.class,
+                            () -> new org.springframework.jdbc.datasource.DataSourceTransactionManager(mall.ds))
+                    .run(context -> {
+                        assertNull(context.getStartupFailure());
+                        var facade = context.getBean(CatalogFacade.class);
+                        var actor = new ai.neargo.commerce.api.common.ActorContext("A",
+                                ai.neargo.commerce.api.common.SubjectKind.OPERATOR, "operator", "session");
+                        facade.saveCategory(actor, new CategoryDraft("cat", null, Map.of("en", "Cat"),
+                                null, 0, true, 0, "create"));
+                        assertEquals("ACTIVE", mall.jdbc.queryForObject("SELECT status FROM mall_category", String.class));
+                        assertEquals("cat", facade.categories(actor).getFirst().categoryCode());
+                        assertTrue(facade.businessTypes(actor).isEmpty());
+                    });
+        }
     }
 
     @Test

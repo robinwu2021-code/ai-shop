@@ -34,22 +34,28 @@ public class MallApprovalGate implements OpsApprovalGatePort {
 
     @Override
     public Optional<Object> hold(String action, ActorContext operator, String storeNo, String orderNo, String subjectNo, Object request) {
+        return decide(action, operator, storeNo, orderNo, subjectNo, request).held();
+    }
+
+    @Override
+    public Decision decide(String action, ActorContext operator, String storeNo, String orderNo,
+            String subjectNo, Object request) {
         var subject = subjects.get(action);
-        if (subject == null || subjectNo == null || subjectNo.isBlank() || !support.enabled(subject.subjectType())) return Optional.empty();
+        if (subject == null || subjectNo == null || subjectNo.isBlank() || !support.enabled(subject.subjectType())) return new Decision(Optional.empty(), null);
         var ref = new MallGateSubject.Ref(operator.tenantNo(), storeNo, orderNo, subjectNo);
-        if (!subject.awaiting(ref)) return Optional.empty();
+        if (!subject.awaiting(ref)) return new Decision(Optional.empty(), null);
         var proposal = MallGateSubject.proposal(request);
         long revision = subject.revision(ref, proposal);
-        if (revision < 0) return Optional.empty(); // 对象不存在：交给商城报错
+        if (revision < 0) return new Decision(Optional.empty(), null); // 对象不存在：交给商城报错
         var latest = approvals.getObject().latest(subject.subjectType(), ref.toString())
                 .filter(l -> l.revision() == revision);
         if (latest.isPresent()) {
             String status = latest.get().status();
-            if (RELEASED.contains(status)) return Optional.empty();
-            return Optional.of(view(subject, ref, WAITING.contains(status) ? "PENDING" : status, latest.get().reason()));
+            if (RELEASED.contains(status)) return new Decision(Optional.empty(), latest.get().approvalNo());
+            return new Decision(Optional.of(view(subject, ref, WAITING.contains(status) ? "PENDING" : status, latest.get().reason())), null);
         }
         support.submit(subject.subjectType(), ref.toString(), revision, operator.principalNo(), null, proposal);
-        return Optional.of(view(subject, ref, "SUBMITTED", null));
+        return new Decision(Optional.of(view(subject, ref, "SUBMITTED", null)), null);
     }
 
     private static Map<String, Object> view(MallGateSubject subject, MallGateSubject.Ref ref, String status, String reason) {

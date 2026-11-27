@@ -462,16 +462,6 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     var entity = authorize(a);
     if (c == null || c.requestNo() == null || !c.requestNo().matches("[A-Za-z0-9_-]{1,64}"))
       throw bad();
-    // Resolve the trusted version before the write, but never disclose instructions until issuance.
-    Offer offer =
-        offers(a).stream()
-            .filter(
-                o ->
-                    o.offerNo().equals(c.offerNo())
-                        && o.version() == c.offerVersion()
-                        && o.enabled())
-            .findFirst()
-            .orElse(null);
     var replay =
         one(
             "SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND creator_no=?"
@@ -484,6 +474,16 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       checkReplay(replay, a, request, ownerAccount);
       return issue(creator, str(replay, "order_no"));
     }
+    // Resolve the trusted version before the write, but never disclose instructions until issuance.
+    Offer offer =
+        offers(a).stream()
+            .filter(
+                o ->
+                    o.offerNo().equals(c.offerNo())
+                        && o.version() == c.offerVersion()
+                        && o.enabled())
+            .findFirst()
+            .orElse(null);
     if (offer == null || !currency(entity).equals(offer.price().currency())) throw bad();
     validMoney(offer.price(), true);
     OfflineCollectionTerms terms =

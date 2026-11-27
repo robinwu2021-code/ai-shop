@@ -389,6 +389,7 @@ class EntityPlanPurchaseMysqlTest {
     assertEquals("P", order.instructions().profileNo());
     svc.saveOffer(
         ops, new OfferEdit("PRO30", 1, "PRO", "updated", 30, new Money("TWD", 29900), false));
+    db.execute("RENAME TABLE mch_plan_offer TO retired_plan_offer");
     var replay = svc.assistedBuy(ops, command);
     assertEquals(order.orderNo(), replay.orderNo());
     assertEquals(1, replay.offer().version());

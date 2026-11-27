@@ -29,9 +29,33 @@ public abstract class MallGateSubject implements ApprovalSubject {
             .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS).build();
 
     protected final JdbcTemplate db;
+    private final JdbcTemplate platform;
+    protected final boolean split;
+
+    @org.springframework.stereotype.Component
+    static final class Databases {
+        final JdbcTemplate mall;
+        final JdbcTemplate platform;
+        final boolean split;
+
+        Databases(JdbcTemplate legacy, org.springframework.beans.factory.BeanFactory beans,
+                @org.springframework.beans.factory.annotation.Value("${shop.modules.mall.datasource:}") String mallName) {
+            split = !mallName.isBlank();
+            mall = split ? new JdbcTemplate(beans.getBean(mallName + "DataSource", javax.sql.DataSource.class)) : legacy;
+            platform = split ? new JdbcTemplate(beans.getBean("platformDataSource", javax.sql.DataSource.class)) : legacy;
+        }
+    }
+
+    protected MallGateSubject(JdbcTemplate db, JdbcTemplate platform, boolean split) {
+        this.db = db;
+        this.platform = platform;
+        this.split = split;
+    }
 
     protected MallGateSubject(JdbcTemplate db) {
         this.db = db;
+        this.platform = db;
+        this.split = false;
     }
 
     /** 门禁对应的商城动作（{@code OpsApprovalGatePort} 常量）。 */
@@ -105,7 +129,7 @@ public abstract class MallGateSubject implements ApprovalSubject {
 
     /** 范围标签：门店所属主体（被限定范围的运营据此可见）+ 门店。 */
     java.util.Set<String> scopes(Ref r) {
-        var entity = db.queryForList("SELECT entity_no FROM mch_store WHERE store_no=? AND deleted=0", String.class, r.store());
+        var entity = platform.queryForList("SELECT entity_no FROM mch_store WHERE tenant_no=? AND store_no=? AND deleted=0", String.class, r.tenant(), r.store());
         return entity.isEmpty() || entity.getFirst() == null ? java.util.Set.of("store:" + r.store())
                 : java.util.Set.of("merchant:" + entity.getFirst(), "store:" + r.store());
     }

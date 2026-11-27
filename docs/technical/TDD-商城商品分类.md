@@ -50,7 +50,7 @@
 2. 修改：可改上级（不得是自己或自己的下级 → `CATEGORY_CYCLE`；移动后整棵子树深度仍 ≤3）、名称、图标、排序、状态。
 3. 停用：仍有 `ENABLED` 下级 → `CATEGORY_HAS_CHILDREN`；仍有在售商品（`saleStatus=ON_SALE`）引用 → `CATEGORY_IN_USE`。
 4. 商品保存：`categoryCode` 必须是存在且 `ENABLED` 的分类（任意一级），否则 `CATEGORY_UNAVAILABLE`。已发布的商品、SKU 不回溯校验。
-5. 权限：读 = 目录读；写 = 目录编辑（`CatalogSupport.authorize(a,"edit")`），与行业、商品同一套。审计事件 `CATEGORY_SAVED`。
+5. 权限：读 = 目录读；写 = 目录编辑（`CatalogSupport.authorize(a,"edit")`），与行业、商品同一套。原商城写审计事件 `CATEGORY_SAVED`；v2 的记录方式见下方。
 
 **接口**
 - `GET /ops/biz-mall/categories` → `CategoryView[]`（扁平，带 `level/parentCode/version`），按 `(level, sortOrder, code)`。
@@ -91,3 +91,15 @@
 | 多语言名称 | `names` ⊂ {zh-CN, zh-TW, en}，≥1，≤64 | `CategoryTest.namesAndCodeAreValidated`；OpenAPI `propertyNames` |
 
 未覆盖：宿主 MySQL 上 V631 只做了 H2 投影（schema-test.sql）与生成物校验，没在真库上重放；部署 166 前在预发布库验证。
+
+## v2 商城库迁移（2026-11-26）
+
+| 验收项 | 存储与事务 | 验证 |
+|---|---|---|
+| 运营端类目创建、编辑、移动、停用 | 商城事务锁本租户类目树；停用时锁在售商品引用。租户、类目编码和预期版本约束更新，移动子树时一起更新层级和版本。库内启用值为 `ACTIVE`，接口为 `ENABLED`。按用户决定，仅在行上保留创建人、修改人、时间及版本，v2 类目操作无需事件表。 | `CategoryMysqlTest.savesAndReadsOverviewAcrossTheMallAndDictionaryDatabases`、`CategoryTest` |
+| 运营端目录总览 | 商城读八张目录表。端来自 `mall_end_entitlement`，套餐定义和版本来自 `sys_industry_plan`，成员按 `sys_plan_version_end.sort` 排序。当前版取查询时刻处于生效区间的 ACTIVE 版，起点含、终点不含；重叠时优先高修订号，无当前版时展示最新修订的定义。商品与 SKU 沿用其持久化快照列。 | 同一 MySQL 用例覆盖经营类型、端、套餐、SKU、组件、类目和租户隔离。 |
+| 经营类型与行业发布版本 | 经基础能力库连接读 `sys_dict_item` 的 BUSINESS_TYPE / TYPE 条目；行版本与 `attrs.plan_catalog_version` 各自返回。字典初始化或迁入时必须保留行业发布版本，未发布填 0。子行业维护校验仅查询字典。 | `CommerceCatalogWiringTest.configuredCatalogUsesTheMallForCategoriesAndTheFoundationForTypes`、`StoreIndustryAdminServiceTest` |
+
+通过 `shop.modules.mall.datasource` 和 `shop.modules.foundation.datasource` 分别指定两组已配置的 `shop.datasources` 名称。指定商城数据源后，类目列表、类目写入和总览走新库；字典与商城分别读取。商品编辑、套餐发布和交易仍使用原有装配，本批只验证已迁移入口。后续迁移发布动作时需接同一行业版本字段，再做从发布到总览的联调。
+
+2026-11-26 验证：类目、总览、行业发布、Spring 装配、子行业维护和 MVC 契约共 42 个不同测试通过。子行业维护中的两个原生用例单独在 127.0.0.1:3308 的临时库执行。OpenAPI 3.1 校验通过 9 份实际 MVC 响应；运营端商城类型文件通过 TypeScript 检查。

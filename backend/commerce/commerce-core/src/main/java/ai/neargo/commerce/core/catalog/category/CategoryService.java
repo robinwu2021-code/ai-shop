@@ -22,16 +22,19 @@ public final class CategoryService {
 
     private final CatalogSupport s;
 
-    public CategoryService(CatalogSupport s) {
+    private final boolean recordHistory;
+
+    public CategoryService(CatalogSupport s, boolean recordHistory) {
+        this.recordHistory = recordHistory;
         this.s = s;
     }
 
     public List<CategoryView> list(ActorContext a) {
-        return views(s.read(a));
+        return views(s.readCategories(a));
     }
 
-    public static List<CategoryView> views(CatalogState state) {
-        return state.categories.values().stream().sorted(ORDER).map(CategoryService::view).toList();
+    public static List<CategoryView> views(Collection<CatalogState.Category> categories) {
+        return categories.stream().sorted(ORDER).map(CategoryService::view).toList();
     }
 
     static CategoryView view(CatalogState.Category c) {
@@ -58,14 +61,7 @@ public final class CategoryService {
                             text(name, 64, "name");
                         });
         check(d.icon() == null || (!d.icon().isBlank() && d.icon().length() <= 512), "icon max 512");
-        return s.write(
-                a,
-                "edit",
-                d.reason(),
-                "CATEGORY",
-                code,
-                "CATEGORY_SAVED",
-                null,
+        return s.writeCategory(a, d, recordHistory,
                 state -> {
                     var old = state.categories.get(code);
                     expected(d.expectedVersion(), old == null ? 0 : old.version());
@@ -89,11 +85,7 @@ public final class CategoryService {
                                                 code.equals(c.draft().parentCode())
                                                         && c.draft().enabled()))
                             fail(CatalogErrorCode.CATEGORY_HAS_CHILDREN, "enabled children remain");
-                        if (state.products.values().stream()
-                                .anyMatch(
-                                        p ->
-                                                "ON_SALE".equals(p.saleStatus())
-                                                        && code.equals(p.draft().categoryCode())))
+                        if (s.repository.hasOnSaleProduct(a.tenantNo(), code, state))
                             fail(CatalogErrorCode.CATEGORY_IN_USE, "on-sale products use category");
                     }
                     long version = old == null ? 1 : old.version() + 1;

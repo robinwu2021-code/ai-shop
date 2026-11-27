@@ -37,7 +37,11 @@ class JdbcCatalogFixture {
     boolean failAudit;
 
     JdbcCatalogFixture(MysqlDatabase db) {
-        repo = new JdbcCatalogRepository(db.ds);
+        this(db, null);
+    }
+
+    JdbcCatalogFixture(MysqlDatabase db, JdbcCatalogRepository repository) {
+        repo = repository == null ? new JdbcCatalogRepository(db.ds) : repository;
         uow = new JdbcCommerceUnitOfWork(db.ds, new DataSourceTransactionManager(db.ds));
         var eventDelegate = new JdbcCommerceEventPersistence(db.ds);
         var events =
@@ -62,17 +66,10 @@ class JdbcCatalogFixture {
                         eventDelegate.markPublished(t, n, at);
                     }
                 };
-        facade =
-                new DefaultCatalogFacade(
-                        repo,
-                        uow,
-                        (a, c) ->
-                                capabilities.contains(c)
-                                        && "trusted".equals(a.accountSessionFingerprint()),
-                        readiness,
-                        events,
-                        Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC),
-                        ids);
+        var support = new CatalogSupport(repo, uow,
+                (a, c) -> capabilities.contains(c) && "trusted".equals(a.accountSessionFingerprint()),
+                readiness, events, Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC), ids);
+        facade = new DefaultCatalogFacade(support, repository == null ? null : support);
     }
 
     final BusinessEndReadinessPort readiness =

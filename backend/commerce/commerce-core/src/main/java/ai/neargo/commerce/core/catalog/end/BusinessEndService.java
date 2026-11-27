@@ -20,7 +20,7 @@ public final class BusinessEndService {
         code(d.code(), 64);
         code(d.entitlementCode(), 64);
         text(d.name(), 64, "name");
-        check(d.scope() != null, "end scope required");
+        check(d.scope() == EndScope.STORE || d.scope() == EndScope.SYSTEM, "unsupported end scope");
         check(d.releaseStatus() != null, "end release status required");
         unique(d.allowedBusinessTypes());
         check(!d.allowedBusinessTypes().isEmpty(), "end type scope required");

@@ -18,4 +18,11 @@ public interface OpsApprovalGatePort {
      * @return empty = proceed now; present = held (submitted or waiting for approval), respond with it
      */
     Optional<Object> hold(String action, ActorContext operator, String storeNo, String orderNo, String subjectNo, Object request);
+    record Decision(Optional<Object> held, String approvalNo) {}
+
+    default Decision decide(String action, ActorContext operator, String storeNo, String orderNo,
+            String subjectNo, Object request) {
+        return new Decision(hold(action, operator, storeNo, orderNo, subjectNo, request), null);
+    }
+
 }

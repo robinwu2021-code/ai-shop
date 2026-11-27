@@ -34,6 +34,7 @@ class PlatformTableAccessTest {
     private static final Path KNOWN = BACKEND.resolve("known-platform-table-access.txt");
 
     private static final List<String> PLATFORM_CODE = List.of(
+            "commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/platform/",
             "shop-merchant/src/main/java/ai/neargo/shop/merchant/", "shop-core/src/main/java/ai/neargo/shop/user/",
             "shop-auth-store/", "shop-base-auth/", "shop-gateway/src/main/java/ai/neargo/shop/merchantbridge/");
     /**

@@ -127,3 +127,20 @@
 边界：原有 mall_order 唯一键仍是 tenant_no/buyer_user_no/idempotency_key。不同运营对同店使用相同键的双创建不属于本次修复，也未宣称支持；本次不改唯一键、历史订单或资金事实。专项合计25项（22项报价回归＋3项原生MySQL并发/回放）通过。
 
 线上结果：原单付款指引回读一致；明确未发生银行转账，经RECONCILIATION测试资料正式作废，订单和支付轴CLOSED，付款尝试FAILED且paidAt=null，原FREE版本未变。API/OPS均UP，部署锁已释放；独立PAY/inventory未重启。完整新店同店购买与真实实收仍未完成。
+
+### v2 商品、SKU 与行业套餐发布（迁移中）
+
+商城配置启用后，商品、SKU、套餐草稿、发布与停售共用商城目录仓储和商城事务管理器；货币策略沿用宿主注入。商品、SKU 及组成保留原业务键、乐观锁和发布前校验。v2 的端权益组成存为 ENTITLEMENT。
+
+套餐每版一行。新草稿从同一套餐继承额度、试用和排序字段；发布更新选中版本的生效区间、销售状态和行版本，替换旧当前版时结束原区间。总览与编辑按同一套字段投影。
+
+验收入口为 MallCatalogPublicationMysqlTest.publishesEditedSkuAndPlansAndReadsTheDictionaryVersionInOverview。在独立测试库中编辑商品、SKU，发布后经 Facade 总览核对套餐与在售 SKU，并直接核对基础能力库 attrs.plan_catalog_version。商城事务保存发布命令、选中版本和结果。基础能力库以旧版本为条件更新 attrs.plan_catalog_version，并记下 attrs.plan_catalog_publication_no。写字典失败后，同一命令重试或读取总览会先补完待同步版本。上述用例覆盖字典更新失败及恢复后的总览。
+
+
+### v2 门店交易与订阅切库边界
+
+订单在报价时预分配订单号，确认后从 QUOTE 进入 ORDERED；财务历史只查询 ORDERED。线下核款的申请与处置按记录类型区分。退款复核按原请求的冻结证据计算。门店端开通使用商城履约任务登记排期，商城事务提交后更新平台授权段，失败任务由商城恢复作业继续处理。
+
+商城库通过 shop.modules.mall.datasource 指定，基础能力库通过 shop.modules.foundation.datasource 指定。平台授权使用平台模块的数据源。空库建表顺序见 [商城库初始化](../../backend/commerce/commerce-persistence/src/main/resources/db/mall/README.md)。绑定数据源前须完成历史数据迁移与对账。
+
+尚待业务确定的切换点包括主体套餐归属、收款事实与订阅请求的幂等凭据。门店创建与免费订阅、转移归属，以及业务写入时的端权限锁，都依赖原有事务边界。独立部署这些数据库时需要保留相应的原子提交或持锁语义。

@@ -77,7 +77,8 @@ class FoundationQueryMysqlTest {
                                     f.ds,
                                     new JdbcCommerceUnitOfWork(f.ds, f.manager),
                                     new JdbcCommerceEventPersistence(f.ds),
-                                    authority);
+                                    authority, services.getDefaultListableBeanFactory().getBeanProvider(ai.neargo.commerce.core.catalog.CatalogRepository.class),
+                                    services.getDefaultListableBeanFactory().getBeanProvider(ai.neargo.commerce.core.spi.SubscriptionRepository.class));
             var creation =
                     new MerchantStoreCreation(true, Optional.of(authority), Optional.of(facade));
             var entities = f.mybatis.getMapper(MchEntityMapper.class);

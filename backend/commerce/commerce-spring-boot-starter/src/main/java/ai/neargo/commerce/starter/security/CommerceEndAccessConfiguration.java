@@ -5,6 +5,10 @@ import ai.neargo.commerce.api.port.EndAccessAuthorityPort;
 import ai.neargo.commerce.core.access.EndAccessService;
 import ai.neargo.commerce.core.spi.CommerceUnitOfWork;
 import ai.neargo.commerce.persistence.JdbcEndAccessRepository;
+import ai.neargo.commerce.persistence.JdbcCommerceUnitOfWork;
+import ai.neargo.commerce.persistence.JdbcPlatformEndAccessRepository;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.properties.bind.*;
@@ -45,13 +49,22 @@ public class CommerceEndAccessConfiguration {
             EndAccessAuthorityPort authority,
             CommerceEndContextService codec,
             Environment env,
-            ObjectProvider<Clock> clocks) {
+            ObjectProvider<Clock> clocks, BeanFactory beans) {
         var ttl =
                 Binder.get(env)
                         .bind("commerce.access.end-context-ttl", Duration.class)
                         .orElse(Duration.ofMinutes(5));
+        EndAccessService.Repository grants;
+        if (env.containsProperty("shop.modules.mall.datasource")) {
+            var platform = beans.getBean("platformDataSource", DataSource.class);
+            grants = new JdbcPlatformEndAccessRepository(platform);
+            uow = new JdbcCommerceUnitOfWork(platform,
+                    beans.getBean("platformTxManager", PlatformTransactionManager.class));
+        } else {
+            grants = new JdbcEndAccessRepository(ds);
+        }
         return new EndAccessService(
-                new JdbcEndAccessRepository(ds),
+                grants,
                 uow,
                 authority,
                 codec,

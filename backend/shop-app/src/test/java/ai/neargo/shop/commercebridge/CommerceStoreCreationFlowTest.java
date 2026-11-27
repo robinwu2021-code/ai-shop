@@ -8,6 +8,8 @@ import ai.neargo.commerce.persistence.*;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysStoreIndustryMapper;
+import ai.neargo.shop.merchant.dictionary.mapper.DictionaryMappers.SysAuthCodeMapper;
+import ai.neargo.shop.merchant.dictionary.impl.DictionaryCatalogImpl;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
 import ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper;
@@ -102,6 +104,7 @@ class CommerceStoreCreationFlowTest {
                     new DriverManagerDataSource(
                             url.replace("/?", "/" + name + "?"), user, password);
             context.registerBean("dataSource", DataSource.class, () -> ds);
+            context.registerAlias("dataSource", "platformDataSource");
             var jdbc = new JdbcTemplate(ds);
             var schema =
                     new ClassPathResource("schema-test.sql")
@@ -156,7 +159,7 @@ class CommerceStoreCreationFlowTest {
             var sessions = new SqlSessionTemplate(factory.getObject());
             for (var mapper :
                     List.of(
-                            MchEntityMapper.class, SysStoreIndustryMapper.class,
+                            MchEntityMapper.class, SysStoreIndustryMapper.class, SysAuthCodeMapper.class,
                             ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper.class,
                             ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class,
                             MchStoreMapper.class,
@@ -176,7 +179,8 @@ class CommerceStoreCreationFlowTest {
                                     ds,
                                     new JdbcCommerceUnitOfWork(ds, txManager),
                                     new JdbcCommerceEventPersistence(ds),
-                                    authority);
+                                    authority, context.getDefaultListableBeanFactory().getBeanProvider(ai.neargo.commerce.core.catalog.CatalogRepository.class),
+                                    context.getDefaultListableBeanFactory().getBeanProvider(ai.neargo.commerce.core.spi.SubscriptionRepository.class));
             var creation =
                     new MerchantStoreCreation(true, Optional.of(authority), Optional.of(facade));
             var master=org.mockito.Mockito.mock(ai.neargo.shop.spi.platform.MasterDataPort.class);
@@ -186,11 +190,14 @@ class CommerceStoreCreationFlowTest {
             org.mockito.Mockito.when(marketPolicy.policy("TW")).thenReturn(new ai.neargo.shop.platform.MarketPhonePolicyService.Policy("TW","+886",true,false,false,true));
             org.mockito.Mockito.when(marketPolicy.policy("CN")).thenReturn(new ai.neargo.shop.platform.MarketPhonePolicyService.Policy("CN","+86",false,true,true,true));
             context.registerBean(ai.neargo.shop.platform.MarketPhonePolicyService.class,()->marketPolicy);
+            context.register(DictionaryCatalogImpl.class);
+            context.registerBean(SysAuthCodeMapper.class, () -> sessions.getMapper(SysAuthCodeMapper.class));
             context.registerBean(SysStoreIndustryMapper.class,()->sessions.getMapper(SysStoreIndustryMapper.class));
             context.registerBean(ai.neargo.shop.spi.user.StoreOwnershipWritePort.class,()->org.mockito.Mockito.mock(ai.neargo.shop.spi.user.StoreOwnershipWritePort.class));
             context.register(Transactions.class,
                     ai.neargo.shop.platform.port.MarketContactPolicyPortImpl.class);
-            context.registerBean(DataSourceTransactionManager.class, () -> txManager);
+            context.registerBean("transactionManager", DataSourceTransactionManager.class, () -> txManager);
+            context.registerAlias("transactionManager", "platformTxManager");
             context.registerBean(
                     MerchantPortImpl.class,
                     () ->
@@ -256,6 +263,7 @@ class CommerceStoreCreationFlowTest {
                         if(type==MerchantAdminPort.class) values[k]=context.getBean(MerchantAdminPort.class);
                         else if(type==ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper.class) values[k]=sessions.getMapper(ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper.class);
                         else if(type==ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class) values[k]=sessions.getMapper(ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class);
+                        else if(type==ai.neargo.shop.spi.platform.AuditLogPort.class) values[k]=new ai.neargo.shop.platform.port.AuditLogPortImpl(sessions.getMapper(ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class));
                         else if(type==tools.jackson.databind.ObjectMapper.class) values[k]=new tools.jackson.databind.ObjectMapper();
                         else if(type==String.class) values[k]="response";
                         else if(type==ai.neargo.shop.platform.MasterDataService.class) {
@@ -525,7 +533,7 @@ class CommerceStoreCreationFlowTest {
             var operatorCommand=new ai.neargo.shop.platform.OpsService.SubmitApplyCommand("operator-owner","Test entity","NATURAL_PERSON", "TEST", "09 raw / ext",null,null,null,"PLATFORM",List.of(),List.of(),false,null,null,List.of(),"TW",draft);
             setOperator("maker",ai.neargo.shop.auth.Perms.MERCHANT_APPLY_ONBEHALF,ai.neargo.shop.auth.Perms.MERCHANT_APPLY_AUDIT);
             jdbc.update("INSERT INTO sys_store_industry(industry_code,sub_industry_code,business_type_code,name_zh,name_tw,enabled,created_at,updated_at) VALUES ('RETAIL_TEST','NOT_PUBLISHED','FOOD','Food','Food',1,NOW(),NOW()),('DISABLED','','RETAIL','Disabled','Disabled',0,NOW(),NOW()),('DISABLED','SHOP','RETAIL','Disabled child','Disabled child',1,NOW(),NOW()),('EMPTY','','FOOD','Empty','Empty',1,NOW(),NOW()),('EMPTY','CHILD','FOOD','Unpublished','Unpublished',1,NOW(),NOW())");
-            var setup=new OpsStoreSetupQuery(ds,new JdbcCommerceUnitOfWork(ds,txManager),context.getBean(ai.neargo.shop.spi.user.MerchantQueryPort.class));
+            var setup=new OpsStoreSetupQuery(new ai.neargo.commerce.persistence.JdbcCatalogRepository(ds),new JdbcCommerceUnitOfWork(ds,txManager),context.getBean(ai.neargo.shop.spi.user.MerchantQueryPort.class));
             var choices=tx.execute(status->setup.choices(authority.lockCreator("operator-owner")));
             assertEquals(5,choices.size());
             assertTrue(choices.stream().filter(OpsStoreSetupQuery.Choice::available).allMatch(r->r.industryCode().equals("RETAIL_TEST")));

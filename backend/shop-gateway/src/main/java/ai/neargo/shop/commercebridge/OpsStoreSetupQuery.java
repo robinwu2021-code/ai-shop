@@ -4,12 +4,11 @@ import ai.neargo.commerce.api.common.PlanTier;
 import ai.neargo.commerce.api.common.ActorContext;
 import ai.neargo.commerce.core.catalog.CatalogLockMode;
 import ai.neargo.commerce.core.spi.CommerceUnitOfWork;
-import ai.neargo.commerce.persistence.JdbcCatalogRepository;
+import ai.neargo.commerce.core.catalog.CatalogRepository;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.sql.DataSource;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -17,11 +16,11 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(prefix="commerce", name={"enabled", "catalog.enabled", "mall.http.enabled"}, havingValue="true")
 public class OpsStoreSetupQuery {
-    private final JdbcCatalogRepository catalog;
+    private final CatalogRepository catalog;
     private final CommerceUnitOfWork uow;
     private final MerchantQueryPort merchants;
-    public OpsStoreSetupQuery(DataSource ds, CommerceUnitOfWork uow, MerchantQueryPort merchants) {
-        catalog=new JdbcCatalogRepository(ds);this.uow=uow;this.merchants=merchants;
+    public OpsStoreSetupQuery(CatalogRepository catalog, CommerceUnitOfWork uow, MerchantQueryPort merchants) {
+        this.catalog=catalog;this.uow=uow;this.merchants=merchants;
     }
     public record Choice(String industryCode, String subIndustryCode, String businessTypeCode,
                          String nameZh, String nameTw, String nameEn, int sort,

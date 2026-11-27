@@ -1,10 +1,15 @@
 package ai.neargo.shop.commercebridge;
 
 import ai.neargo.shop.auth.PermChecker;
+import ai.neargo.shop.common.config.ModuleDataSources;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.api.subscription.StoreProvisioningFacade;
 import ai.neargo.commerce.core.access.EndScheduleService;
+import ai.neargo.commerce.core.catalog.CatalogRepository;
+import ai.neargo.commerce.core.spi.SubscriptionRepository;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.commerce.core.spi.CommerceUnitOfWork;
 import ai.neargo.commerce.core.subscription.*;
 import ai.neargo.commerce.persistence.*;
@@ -28,7 +33,7 @@ import javax.sql.DataSource;
 class CommerceStoreCreationConfiguration {
     @Bean
     @DependsOn("commerceMigrationInitializer")
-    HostStoreCreationAuthority hostStoreCreationAuthority(DataSource ds, MarketPort markets, PermChecker permissions) {
+    HostStoreCreationAuthority hostStoreCreationAuthority(@Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource ds, MarketPort markets, PermChecker permissions) {
         // Market currency is immutable in the host contract. Resolve it before any store
         // transaction.
         var currencies =
@@ -42,14 +47,15 @@ class CommerceStoreCreationConfiguration {
             DataSource ds,
             CommerceUnitOfWork uow,
             CommerceEventPersistencePort events,
-            HostStoreCreationAuthority authority) {
+            HostStoreCreationAuthority authority,
+            ObjectProvider<CatalogRepository> catalogs, ObjectProvider<SubscriptionRepository> subscriptions) {
         CommerceIdGenerator ids = namespace -> UUID.randomUUID().toString();
         var clock = Clock.systemUTC();
-        var repo = new JdbcSubscriptionRepository(ds, ids);
+        var repo = subscriptions.getIfAvailable(() -> new JdbcSubscriptionRepository(ds, ids));
         var schedule = new EndScheduleService(repo, uow, events, ids, clock);
         var subscription =
                 new SubscriptionService(
-                        repo, new JdbcCatalogRepository(ds), uow, schedule, events, ids, clock);
+                        repo, catalogs.getIfAvailable(() -> new JdbcCatalogRepository(ds)), uow, schedule, events, ids, clock);
         return new StoreProvisioningService(subscription, authority);
     }
 }

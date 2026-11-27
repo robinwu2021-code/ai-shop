@@ -3,7 +3,6 @@ package ai.neargo.shop.commercebridge.approval;
 import ai.neargo.commerce.starter.http.OpsApprovalGatePort;
 import java.util.ArrayList;
 import java.util.Map;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /** T9b · 商城线下付款核款（审核 {@code commerce:mall:offline:review} → 复核 {@code commerce:mall:offline:confirm}）。拟定结果 = 「确认收款」请求体。对象号末段为确认动作号。 */
@@ -12,8 +11,8 @@ public class MallOfflinePaymentApprovalSubject extends MallGateSubject {
 
     public static final String SUBJECT_TYPE = "shop.mall_offline_payment";
 
-    public MallOfflinePaymentApprovalSubject(JdbcTemplate db) {
-        super(db);
+    public MallOfflinePaymentApprovalSubject(Databases databases) {
+        super(databases.mall, databases.platform, databases.split);
     }
 
     @Override public String subjectType() { return SUBJECT_TYPE; }
@@ -29,7 +28,9 @@ public class MallOfflinePaymentApprovalSubject extends MallGateSubject {
         var order = db.queryForList("SELECT CONCAT(version,':',pay_status) FROM mall_order WHERE tenant_no=? AND store_no=? AND order_no=?",
                 String.class, r.tenant(), r.store(), r.order());
         if (order.isEmpty()) return null;
-        var claims = db.queryForList("SELECT claim_no,claim_snapshot FROM mall_offline_claim WHERE tenant_no=? AND order_no=? ORDER BY claim_no",
+        var claims = db.queryForList(split
+                ? "SELECT claim_no,action_snapshot AS claim_snapshot FROM mall_offline_payment WHERE tenant_no=? AND order_no=? AND record_type='CLAIM' ORDER BY claim_no"
+                : "SELECT claim_no,claim_snapshot FROM mall_offline_claim WHERE tenant_no=? AND order_no=? ORDER BY claim_no",
                 r.tenant(), r.order());
         var sb = new StringBuilder(order.getFirst());
         claims.forEach(c -> sb.append('|').append(c.get("claim_no")).append('=').append(c.get("claim_snapshot")));
@@ -38,7 +39,9 @@ public class MallOfflinePaymentApprovalSubject extends MallGateSubject {
 
     @Override
     boolean awaiting(Ref r) {
-        Integer n = db.queryForObject("SELECT COUNT(*) FROM mall_offline_action WHERE tenant_no=? AND order_no=? AND action_no=?",
+        Integer n = db.queryForObject(split
+                ? "SELECT COUNT(*) FROM mall_offline_payment WHERE tenant_no=? AND order_no=? AND action_no=? AND record_type='ACTION'"
+                : "SELECT COUNT(*) FROM mall_offline_action WHERE tenant_no=? AND order_no=? AND action_no=?",
                 Integer.class, r.tenant(), r.order(), r.subject());
         return n != null && n == 0;
     }

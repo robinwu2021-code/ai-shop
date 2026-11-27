@@ -15,6 +15,7 @@ import java.util.*;
 
 public final class DefaultCatalogFacade implements CatalogFacade {
     private final CatalogQueryService queries;
+    private final CatalogSupport mallCatalog;
     private final BusinessTypeService types;
     private final CategoryService categories;
     private final BusinessEndService ends;
@@ -35,13 +36,18 @@ public final class DefaultCatalogFacade implements CatalogFacade {
     public DefaultCatalogFacade(CatalogRepository r, CommerceUnitOfWork u, CatalogAuthorizationPort a,
             BusinessEndReadinessPort readiness, CommerceEventPersistencePort events, Clock clock,
             CommerceIdGenerator ids, MoneyPolicyPort moneyPolicies) {
-        var support = new CatalogSupport(r, u, a, readiness, events, clock, ids, moneyPolicies);
-        queries = new CatalogQueryService(support);
-        types = new BusinessTypeService(support);
-        categories = new CategoryService(support);
-        ends = new BusinessEndService(support);
-        skus = new SkuPublicationService(support);
-        industries = new IndustryPublicationService(support, skus);
+        this(new CatalogSupport(r, u, a, readiness, events, clock, ids, moneyPolicies), null);
+    }
+
+    public DefaultCatalogFacade(CatalogSupport support, CatalogSupport mallCatalog) {
+        this.mallCatalog = mallCatalog;
+        var migrated = mallCatalog == null ? support : mallCatalog;
+        queries = new CatalogQueryService(migrated);
+        types = new BusinessTypeService(migrated, mallCatalog != null);
+        categories = new CategoryService(migrated, mallCatalog == null);
+        ends = new BusinessEndService(migrated);
+        skus = new SkuPublicationService(migrated);
+        industries = new IndustryPublicationService(migrated, skus);
     }
 
     public DraftSaveResult saveBusinessType(ActorContext a, BusinessTypeDraft d) {
@@ -85,6 +91,14 @@ public final class DefaultCatalogFacade implements CatalogFacade {
     }
 
     public java.util.List<BusinessEndDeploymentOption> deploymentOptions(ActorContext actor) { return queries.deploymentOptions(actor); }
+
+    @Override
+    public List<BusinessTypeView> businessTypes(ActorContext actor) {
+        if (mallCatalog == null) return CatalogFacade.super.businessTypes(actor);
+        mallCatalog.authorize(actor, "read");
+        return mallCatalog.repository.businessTypes(actor.tenantNo()).stream()
+                .map(t -> new BusinessTypeView(t.draft(), t.version(), t.catalogVersion())).toList();
+    }
 
     public CatalogOverview overview(ActorContext actor) { return queries.overview(actor); }
 

@@ -16,7 +16,10 @@ public class CommerceStoreRelinkAutoConfiguration {
     @ConditionalOnBean(StoreRelinkService.Authority.class)
     @ConditionalOnMissingBean(StoreRelinkFacade.class)
     @DependsOn("commerceMigrationInitializer")
-    StoreRelinkFacade commerceStoreRelink(DataSource ds, StoreRelinkService.Authority authority) {
-        return new StoreRelinkService(new JdbcStoreRelinkRepository(ds),authority);
+    StoreRelinkFacade commerceStoreRelink(DataSource ds, StoreRelinkService.Authority authority,
+            org.springframework.beans.factory.ObjectProvider<CommerceMallDatabaseAutoConfiguration.MallStorage> storage) {
+        var mall = storage.getIfAvailable();
+        var repository = mall == null ? new JdbcStoreRelinkRepository(ds) : new JdbcStoreRelinkRepository(mall.mall(), true);
+        return new StoreRelinkService(repository, authority);
     }
 }

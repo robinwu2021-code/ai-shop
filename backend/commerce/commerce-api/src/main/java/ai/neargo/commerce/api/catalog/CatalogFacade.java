@@ -28,6 +28,10 @@ public interface CatalogFacade {
         return overview(actor).categories();
     }
 
+    default java.util.List<BusinessTypeView> businessTypes(ActorContext actor) {
+        return overview(actor).businessTypes();
+    }
+
     default CatalogOverview overview(ActorContext actor) {
         throw new UnsupportedOperationException("CATALOG_OVERVIEW_UNAVAILABLE");
     }
