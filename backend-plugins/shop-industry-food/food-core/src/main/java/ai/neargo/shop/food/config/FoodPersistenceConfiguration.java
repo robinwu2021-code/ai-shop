@@ -1,6 +1,7 @@
 package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.IndustryTableMapper;
 import ai.neargo.shop.common.config.TradeTableMapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
@@ -27,11 +28,15 @@ import org.springframework.transaction.PlatformTransactionManager;
 @ConditionalOnFoodEnabled
 @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
 // 餐饮的菜品、菜单、购物车、批次、账单、退菜、订位等交易表在门店交易库（ADR-067）：按标记收到交易句柄；
-// 桌台、厨房、KDS、门店策略（行业库）与库存同步等还没去处的表留在原模板
+// 桌台、工位、出品单、上菜道次、厨显事件、门店策略、排队、寄存在行业库：按标记收到行业句柄；
+// 库存同步、结账表头、收款意图等还没去处的表留在原模板
 @MapperScan(basePackages = "ai.neargo.shop.food.mapper", markerInterface = TradeTableMapper.class,
         sqlSessionTemplateRef = "foodTradeSqlSessionTemplate")
+@MapperScan(basePackages = "ai.neargo.shop.food.mapper", markerInterface = IndustryTableMapper.class,
+        sqlSessionTemplateRef = "foodIndustrySqlSessionTemplate")
 @MapperScan(basePackages = "ai.neargo.shop.food.mapper", markerInterface = BaseMapper.class,
-        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class),
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
+                classes = {TradeTableMapper.class, IndustryTableMapper.class}),
         sqlSessionTemplateRef = "foodSqlSessionTemplate")
 public class FoodPersistenceConfiguration {
     @Bean
@@ -45,7 +50,7 @@ public class FoodPersistenceConfiguration {
     /** Explicit registration keeps immutable publications outside generic BaseMapper update/delete APIs. */
     @Bean
     MapperFactoryBean<ConfigRevisionMapper> foodConfigRevisionMapper(
-            @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate template) {
+            @Qualifier("foodIndustrySqlSessionTemplate") SqlSessionTemplate template) {
         var factory = new MapperFactoryBean<>(ConfigRevisionMapper.class);
         factory.setSqlSessionTemplate(template);
         return factory;
@@ -82,6 +87,18 @@ public class FoodPersistenceConfiguration {
         if (!schema.ready() || factory.getConfiguration().getEnvironment().getDataSource() != source
                 || !(manager instanceof DataSourceTransactionManager trade) || trade.getDataSource() != source)
             throw new IllegalStateException("Food trade mappers require one trade factory, datasource and transaction manager");
+        return new SqlSessionTemplate(factory);
+    }
+
+    /** 行业句柄上的模板：同一条要求，工厂、数据源、事务管理器必须是同一个库（未绑定时就是主库）。 */
+    @Bean
+    SqlSessionTemplate foodIndustrySqlSessionTemplate(
+            @Qualifier(ModuleDataSources.INDUSTRY_SQL_SESSION_FACTORY) SqlSessionFactory factory,
+            @Qualifier(ModuleDataSources.INDUSTRY_DATA_SOURCE) DataSource source,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager, FoodSchemaReady schema) {
+        if (!schema.ready() || factory.getConfiguration().getEnvironment().getDataSource() != source
+                || !(manager instanceof DataSourceTransactionManager industry) || industry.getDataSource() != source)
+            throw new IllegalStateException("Food industry mappers require one industry factory, datasource and transaction manager");
         return new SqlSessionTemplate(factory);
     }
 

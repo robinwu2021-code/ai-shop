@@ -1,4 +1,5 @@
 package ai.neargo.shop.food.mapper;
+import ai.neargo.shop.common.config.IndustryTableMapper;
 import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.food.dto.ProductionContracts.ListQuery;
 import ai.neargo.shop.food.entity.FnbProductionConsumptionLine;
@@ -300,10 +301,10 @@ public final class FoodMappers {
     public interface ServiceCalendarMapper extends TradeTableMapper<FnbServiceCalendar> {
     }
 
-    public interface StorePolicyMapper extends BaseMapper<FnbStorePolicy> {
+    public interface StorePolicyMapper extends IndustryTableMapper<FnbStorePolicy> {
     }
 
-    public interface TableMapper extends BaseMapper<FnbTable> {
+    public interface TableMapper extends IndustryTableMapper<FnbTable> {
         @Select("SELECT COUNT(*) FROM fnb_table_occupancy WHERE entity_no=#{entity} "
                 + "AND table_no=#{table} AND ended_at IS NULL")
         long liveOccupancies(@Param("entity") String entity, @Param("table") String table);
@@ -315,7 +316,7 @@ public final class FoodMappers {
                 @Param("version") long version, @Param("actor") String actor);
     }
 
-    public interface TableAreaMapper extends BaseMapper<FnbTableArea> {
+    public interface TableAreaMapper extends IndustryTableMapper<FnbTableArea> {
         @Select("SELECT COUNT(*) FROM fnb_table t WHERE t.entity_no=#{entity} AND t.store_no=#{store} "
                 + "AND t.area_no=#{area} AND t.deleted=0 AND t.status='ACTIVE'")
         long activeTables(@Param("entity") String entity, @Param("store") String store, @Param("area") String area);
@@ -331,7 +332,7 @@ public final class FoodMappers {
         int replaceDraftRows(@Param("entity") String entity, @Param("menu") String menu);
     }
     public interface MenuChannelBindingMapper extends TradeTableMapper<FnbMenuChannelBinding> { }
-    public interface StationMapper extends BaseMapper<FnbStation> {
+    public interface StationMapper extends IndustryTableMapper<FnbStation> {
         @Select("SELECT id FROM fnb_store_policy WHERE entity_no=#{entity} AND store_no=#{store} "
                 + "AND deleted=0 ORDER BY id FOR UPDATE")
         List<Long> lockStore(@Param("entity") String entity, @Param("store") String store);
@@ -408,7 +409,7 @@ public final class FoodMappers {
     public interface ReturnMapper extends BaseMapper<FnbReturn> { }
     public interface ReturnItemMapper extends BaseMapper<FnbReturnItem> { }
 
-    public interface CourseMapper extends BaseMapper<FnbCourse> { }
+    public interface CourseMapper extends IndustryTableMapper<FnbCourse> { }
     public interface KitchenTaskMapper extends TradeTableMapper<FnbKitchenTask> {
         @Select("<script>SELECT b.batch_no FROM fnb_kitchen_task t "
                 + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
@@ -421,7 +422,7 @@ public final class FoodMappers {
         List<String> activeBatchNos(@Param("entity") String entity,@Param("store") String store,
                 @Param("station") String station);
     }
-    public interface KitchenTicketMapper extends BaseMapper<FnbKitchenTicket> {
+    public interface KitchenTicketMapper extends IndustryTableMapper<FnbKitchenTicket> {
         @Select("SELECT COALESCE(SUM(i.qty),0) FROM fnb_return_item i JOIN fnb_return r "
                 + "ON r.entity_no=i.entity_no AND r.return_no=i.return_no AND r.tenant_no=i.tenant_no "
                 + "WHERE i.tenant_no='MAIN' AND i.entity_no=#{entity} AND i.food_line_no=#{line} "
@@ -434,7 +435,7 @@ public final class FoodMappers {
                 + "AND r.status<>'CANCELLED' ORDER BY r.config_no,r.effective_at DESC,r.revision DESC")
         List<FnbConfigRevision> stationPublications(@Param("entity") String entity);
     }
-    public interface ServiceEventMapper extends BaseMapper<FnbServiceEvent> {
+    public interface ServiceEventMapper extends IndustryTableMapper<FnbServiceEvent> {
         record ProductionSource(String entityNo, String storeNo, String eventNo) {}
 
         @Select("SELECT e.id AS source_id,e.event_no AS source_event_no,e.task_no,e.action,"
@@ -502,6 +503,6 @@ public final class FoodMappers {
                 @Param("offset") long offset,@Param("size") int size);
     }
     public interface ProductionConsumptionLineMapper extends BaseMapper<FnbProductionConsumptionLine> { }
-    public interface QueueTicketMapper extends TradeTableMapper<FnbQueueTicket> { }
+    public interface QueueTicketMapper extends IndustryTableMapper<FnbQueueTicket> { }
     public interface ReturnStockDispositionMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbReturnStockDisposition> {}
 }

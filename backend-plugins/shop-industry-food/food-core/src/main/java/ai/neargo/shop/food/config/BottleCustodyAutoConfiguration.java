@@ -43,7 +43,7 @@ public class BottleCustodyAutoConfiguration {
             ai.neargo.shop.food.spi.FoodMaterialSource materials,
             ObjectMapper json,
             ObjectProvider<Clock> clocks,
-            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager) {
         return new BottleCustodyServiceImpl(
                 custodies,
                 movements,

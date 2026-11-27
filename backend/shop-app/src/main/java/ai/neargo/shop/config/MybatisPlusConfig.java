@@ -3,6 +3,7 @@ package ai.neargo.shop.config;
 import ai.neargo.shop.common.config.PlatformSqlMapper;
 import ai.neargo.shop.common.config.PlatformTableMapper;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
+import ai.neargo.shop.common.config.IndustryTableMapper;
 import ai.neargo.shop.common.config.TradeSqlMapper;
 import ai.neargo.shop.common.config.TradeTableMapper;
 import org.mybatis.spring.annotation.MapperScan;
@@ -69,7 +70,9 @@ import org.springframework.context.annotation.Import;
                 // 由 ModuleMapperScanConfig 按同一个标记收到平台句柄上
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PlatformTableMapper.class),
                 // 门店交易库的同理（ADR-067）
-                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class)})
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class),
+                // 行业库的同理：由各行业插件的持久化配置收到行业句柄上
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = IndustryTableMapper.class)})
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *

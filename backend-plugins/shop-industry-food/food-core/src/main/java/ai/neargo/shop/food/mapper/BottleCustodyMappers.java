@@ -1,6 +1,6 @@
 package ai.neargo.shop.food.mapper;
 
-import ai.neargo.shop.common.config.TradeTableMapper;
+import ai.neargo.shop.common.config.IndustryTableMapper;
 import ai.neargo.shop.food.entity.FnbBottleCustody;
 import ai.neargo.shop.food.entity.FnbBottleMovement;
 
@@ -9,7 +9,7 @@ import ai.neargo.shop.food.entity.FnbBottleMovement;
 public final class BottleCustodyMappers {
     private BottleCustodyMappers() {}
 
-    public interface CustodyMapper extends TradeTableMapper<FnbBottleCustody> {}
+    public interface CustodyMapper extends IndustryTableMapper<FnbBottleCustody> {}
 
-    public interface MovementMapper extends TradeTableMapper<FnbBottleMovement> {}
+    public interface MovementMapper extends IndustryTableMapper<FnbBottleMovement> {}
 }

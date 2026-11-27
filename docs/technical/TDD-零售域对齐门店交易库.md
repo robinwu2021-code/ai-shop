@@ -533,6 +533,40 @@
 验证（2026-11-27，本机，H2）：`InventoryDeliveryGuardTest`、`ExecutionStockRetentionExhaustionTest`、`InventorySharedSourceTest`、`ArchitectureTest`、`ModuleTxManagerConventionTest`、`MapperSmokeTest` 共 35 个，0 失败、1 跳过（`ArchitectureTest` 原有）。
 **没验证**：履约归属那条查询的真实路径在 `DualExecutionStockRetentionIT`（28 个），它要 MySQL，本机整类跳过。
 
+### 第二段准备 · 提交十二：行业库句柄
+
+照交易句柄的做法建 `industry` 句柄（ADR-066），不改表。未绑定时 `industryDataSource`、`industrySqlSessionFactory`、`industryTxManager` 都是主库的别名，行为不变。
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `shop-store-mybatis/.../ModuleDataSources.java` | 加 `INDUSTRY` 与三个句柄名，进 `MODULES`（注册器与守卫自动覆盖） |
+| 新增 | `shop-store-mybatis/.../IndustryTableMapper.java` | 标记接口 |
+| 修改 | `shop-app/.../MybatisPlusConfig.java` | 全局扫描按标记排除 |
+| 修改 | `food-core/.../FoodPersistenceConfiguration.java`、`beauty-core/.../BeautyPersistenceConfiguration.java` | 各加一个行业扫描和行业模板（同样校验工厂、数据源、事务管理器是同一个库）；主库扫描同时排除两种标记 |
+| 修改 | 餐饮 `FoodMappers`、`BottleCustodyMappers` | 10 个 Mapper 改继承 `IndustryTableMapper`：门店策略、桌台、区域、工位、上菜道次、出品单、服务事件（原在主库）；排队、寄存、寄存流水（原在交易句柄，按方案移到行业库）。`ConfigRevisionMapper` 改用行业模板 |
+| 修改 | 餐饮 `FoodKdsAutoConfiguration`、`BottleCustodyAutoConfiguration` | 厨显、工位运行态两个 JDBC 类改用行业数据源；厨显、工位运行态、寄存三处事务改点名 `industryTxManager`（它们只写行业库的表） |
+| 修改 | 美业 `BeautyMappers`、`StorePolicyServiceImpl` | 门店策略与版本两个 Mapper 改继承 `IndustryTableMapper`，门店策略服务的事务点名行业句柄 |
+
+**没改的**：
+- 美业服务执行（工单、任务、步骤、绑定、提交、参与）：随「美业拆事务」一起改，要先把 `AppointmentPersistence` 拆开。
+- 餐饮人头权益、宴会、服务交接与责任：在 `ServiceEntitlementMapper`、`FoodBusinessOperationsMapper` 这两个 JDBC 类里，同一个类又写交易表，要先拆类。
+
+**跨库写的点（行业库句柄绑定之前要拆开）**：这批行业库的表大多和交易表在同一个事务里写，现在同库，所以没问题；绑定以后就是跨库写。
+
+| 服务 | 同一个事务里 | 拆法 |
+|---|---|---|
+| `QueueServiceImpl` | 叫号入座：改排队号的同时开到店单（`CheckService.openQueuedCheck`） | 先开到店单（交易），再改排队号（行业），中途失败按排队号补做。建议稿 C1 原写「不和到店单同写」，有误，已更正 |
+| `CheckServiceImpl`、`CheckCartServiceImpl`、`ReservationServiceImpl`、`TableServiceImpl` | 开台、订位：到店单、占台、座位（交易）+ 桌台状态（行业） | 桌台状态改成读交易的占台推出，或提交后同步 |
+| `KitchenTaskServiceImpl`、`KitchenReturnServiceImpl`、`ProductionConsumptionServiceImpl`、`BusinessCloseServiceImpl` | 厨房任务、订单批次（交易）+ 出品单、服务事件（行业） | 出品单与服务事件改成提交后写，或随厨房任务留交易库（要回设计改出品单去向） |
+| `ConfigRevisionServiceImpl`、`MenuWithdrawalSourceServiceImpl` | 菜单（交易）+ 配置修订（行业） | 先发布菜单，再写修订 |
+| `StationServiceImpl`、`StoreOperationServiceImpl`、`SalesRestrictionServiceImpl` 等 | 工位（行业）+ 菜品工位（交易）、营业日历（交易）；门店策略多数是只读 | 只读的不用改；写的按先后两步 |
+
+验证（2026-11-27，本机，H2）：
+- 后端 `ArchitectureTest`、`ModuleTxManagerConventionTest`、`ModuleDataSourceRegistrarTest`、`MapperSmokeTest`：0 失败（`ArchitectureTest` 原有 1 个跳过）。
+- 餐饮插件（`food-embedded,food-verify`）：71 个，1 个错误。是 `FoodStandaloneLoggingTest` 等日志滚动时超时，单独重跑通过；改动前的基线是 0 失败。
+- 美业插件：5 个模块，只有 `BeautyBm04AssemblyTest` 1 个错误，和基线相同（夹具读主迁移文件，路径不存在）。
+- **没验证**：行业句柄绑到另一个数据源的情形；带餐饮或美业插件起整个应用（插件迁移只能在 MySQL 上跑）。
+
 ### 偏差说明
 
 - `tradeJdbcTemplate` 放进了已有的 `PlatformJdbcConfiguration`，而不是 §2.2 写的新类 `TradeJdbcConfiguration`：主库那个 `JdbcTemplate` 的 `@Primary` 声明在这个类里，模块的模板放在一处更不容易漏。类名以后可改成 `ModuleJdbcConfiguration`。
@@ -561,6 +595,8 @@
 | 2026-11-27 | 第一段提交十一实现（网关碰交易表的几处：库存投递守卫拆查询，其余逐处定不改的理由），与提交十一起提交 |
 | 2026-11-27 | 用户定：美业服务执行整段留行业库；按建议稿定 Q4–Q11，ADR-067 采纳（第 2 条按行业改写） |
 | 2026-11-27 | 用户定：账务结算库只管支付收款；提成规则移到行业库 `ind_commission_rule`；交易库 74 → 67、行业库 14 → 23 |
+| 2026-11-27 | 状态短值换值表初版；用户定状态值只从枚举与静态常量取 |
+| 2026-11-27 | 第二段准备提交十二：行业库句柄，餐饮 10 个、美业 2 个 Mapper 与 4 处只写行业表的事务接上；跨库写的点记表 |
 
 ## §8 待确认
 

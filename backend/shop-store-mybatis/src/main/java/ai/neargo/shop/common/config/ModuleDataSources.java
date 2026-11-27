@@ -25,6 +25,12 @@ public final class ModuleDataSources {
      * 这些子模块同在一个库、下单等事务里互相写，共用一个句柄。哪些 Mapper 归它，看 {@link TradeTableMapper}。
      */
     public static final String TRADE = "trade";
+    /**
+     * 行业库上的行业模块：餐饮的桌台、工位、出品单、厨显、人头权益、宴会、排队、寄存、服务交接，
+     * 美业的服务执行，以及两个行业共用的门店经营策略、提成规则（ADR-067）。代码在行业插件里，
+     * 各插件的持久化配置按 {@link IndustryTableMapper} 收到这个句柄上。
+     */
+    public static final String INDUSTRY = "industry";
 
     public static final String INVOICE_TX_MANAGER = "invoiceTxManager";
     public static final String INVOICE_DATA_SOURCE = "invoiceDataSource";
@@ -38,9 +44,12 @@ public final class ModuleDataSources {
     public static final String TRADE_TX_MANAGER = "tradeTxManager";
     public static final String TRADE_DATA_SOURCE = "tradeDataSource";
     public static final String TRADE_SQL_SESSION_FACTORY = "tradeSqlSessionFactory";
+    public static final String INDUSTRY_TX_MANAGER = "industryTxManager";
+    public static final String INDUSTRY_DATA_SOURCE = "industryDataSource";
+    public static final String INDUSTRY_SQL_SESSION_FACTORY = "industrySqlSessionFactory";
 
     /** 守卫测试也读这份清单；常量名与这里的规则对不上会在那里变红。 */
-    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM, TRADE);
+    public static final List<String> MODULES = List.of(INVOICE, PRINT, PLATFORM, TRADE, INDUSTRY);
 
     private ModuleDataSources() {
     }

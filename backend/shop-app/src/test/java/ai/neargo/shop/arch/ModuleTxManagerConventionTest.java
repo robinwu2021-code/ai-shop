@@ -159,6 +159,12 @@ class ModuleTxManagerConventionTest {
         assertThat(ModuleDataSources.TRADE_DATA_SOURCE).isEqualTo(ModuleDataSources.dataSource(ModuleDataSources.TRADE));
         assertThat(ModuleDataSources.TRADE_SQL_SESSION_FACTORY)
                 .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.TRADE));
+        assertThat(ModuleDataSources.INDUSTRY_TX_MANAGER)
+                .isEqualTo(ModuleDataSources.txManager(ModuleDataSources.INDUSTRY));
+        assertThat(ModuleDataSources.INDUSTRY_DATA_SOURCE)
+                .isEqualTo(ModuleDataSources.dataSource(ModuleDataSources.INDUSTRY));
+        assertThat(ModuleDataSources.INDUSTRY_SQL_SESSION_FACTORY)
+                .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.INDUSTRY));
         assertThat(ModuleDataSources.PRINT_SQL_SESSION_FACTORY)
                 .isEqualTo(ModuleDataSources.sqlSessionFactory(ModuleDataSources.PRINT));
     }

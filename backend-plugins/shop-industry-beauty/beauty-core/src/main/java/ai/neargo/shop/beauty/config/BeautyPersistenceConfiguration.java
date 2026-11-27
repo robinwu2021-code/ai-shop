@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.common.config.ModuleDataSources;
+import ai.neargo.shop.common.config.IndustryTableMapper;
 import ai.neargo.shop.common.config.TradeTableMapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
@@ -22,11 +23,15 @@ import javax.sql.DataSource;
 /** Beauty owns mapper activation, while the platform retains the primary factory and transaction manager. */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBeautyEnabled
-// 美业的预约、工单、服务任务、服务定义在门店交易库（ADR-067）：按标记收到交易句柄；门店策略（行业库）与设计里还没去处的表留在原模板
+// 美业的预约、服务定义在门店交易库（ADR-067）：按标记收到交易句柄；门店策略在行业库：按标记收到行业句柄；
+// 设计里还没去处的表留在原模板。工单、服务任务等服务执行的表按方案也归行业库，随「美业拆事务」改标记
 @MapperScan(basePackages = "ai.neargo.shop.beauty.mapper", markerInterface = TradeTableMapper.class,
         sqlSessionTemplateRef = "beautyTradeSqlSessionTemplate")
+@MapperScan(basePackages = "ai.neargo.shop.beauty.mapper", markerInterface = IndustryTableMapper.class,
+        sqlSessionTemplateRef = "beautyIndustrySqlSessionTemplate")
 @MapperScan(basePackages = "ai.neargo.shop.beauty.mapper", markerInterface = BaseMapper.class,
-        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TradeTableMapper.class),
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
+                classes = {TradeTableMapper.class, IndustryTableMapper.class}),
         sqlSessionTemplateRef = "beautySqlSessionTemplate")
 public class BeautyPersistenceConfiguration {
     @Bean
@@ -73,6 +78,23 @@ public class BeautyPersistenceConfiguration {
                 || trade.getDataSource() != source) {
             throw new IllegalStateException(
                     "Beauty trade mappers require one trade factory, datasource and transaction manager");
+        }
+        return new SqlSessionTemplate(factory);
+    }
+
+    @Bean
+    SqlSessionTemplate beautyIndustrySqlSessionTemplate(
+            @Qualifier(ModuleDataSources.INDUSTRY_SQL_SESSION_FACTORY) SqlSessionFactory factory,
+            @Qualifier(ModuleDataSources.INDUSTRY_DATA_SOURCE) DataSource source,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
+            BeautySchemaReady schema) {
+        // 同一条要求：工厂、数据源、事务管理器必须是同一个库（行业句柄未绑定时就是主库）
+        if (!"9".equals(schema.version())
+                || factory.getConfiguration().getEnvironment().getDataSource() != source
+                || !(manager instanceof DataSourceTransactionManager industry)
+                || industry.getDataSource() != source) {
+            throw new IllegalStateException(
+                    "Beauty industry mappers require one industry factory, datasource and transaction manager");
         }
         return new SqlSessionTemplate(factory);
     }

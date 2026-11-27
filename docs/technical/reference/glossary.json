@@ -61737,6 +61737,14 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "INDUSTRY",
+      "type": "String",
+      "value": "\"industry\"",
+      "zh": "行业库上的行业模块：餐饮的桌台、工位、出品单、厨显、人头权益、宴会、排队、寄存、服务交接， 美业的服务执行，以及两个行业共用的门店经营策略、提成规则（ADR-067）。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "INVOICE_TX_MANAGER",
       "type": "String",
       "value": "\"invoiceTxManager\"",
@@ -61833,9 +61841,33 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "INDUSTRY_TX_MANAGER",
+      "type": "String",
+      "value": "\"industryTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "INDUSTRY_DATA_SOURCE",
+      "type": "String",
+      "value": "\"industryDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "INDUSTRY_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"industrySqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "MODULES",
       "type": "List<String>",
-      "value": "List.of(INVOICE, PRINT, PLATFORM, TRADE)",
+      "value": "List.of(INVOICE, PRINT, PLATFORM, TRADE, INDUSTRY)",
       "zh": "守卫测试也读这份清单。",
       "module": "shop-store-mybatis"
     },

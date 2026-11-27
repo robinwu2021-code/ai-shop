@@ -1,5 +1,7 @@
 package ai.neargo.shop.beauty.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.beauty.dto.PolicyVersionVO;
 import ai.neargo.shop.beauty.dto.StorePolicyQuery;
@@ -53,7 +55,7 @@ public class StorePolicyServiceImpl implements StorePolicyService {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    @Transactional(transactionManager = ModuleDataSources.INDUSTRY_TX_MANAGER, readOnly = true)
     public StorePolicyVO getPolicy(String entityNo, String currentStoreNo, String actorNo, StorePolicyQuery query) {
         IdempotencyScope.endpoint("BEAUTY", "GET_STORE_POLICY", entityNo, currentStoreNo);
         if (actorNo == null || actorNo.isBlank() || query == null) { throw BizException.of(ErrorCode.BAD_REQUEST); }
@@ -84,7 +86,7 @@ public class StorePolicyServiceImpl implements StorePolicyService {
     }
 
     @Override
-    @Transactional(transactionManager = "transactionManager")
+    @Transactional(transactionManager = ModuleDataSources.INDUSTRY_TX_MANAGER)
     public PolicyVersionVO publishPolicyVersion(String entityNo, String currentStoreNo, String actorNo,
             PublishStorePolicyVersionReq req, String idempotencyKey) {
         String key = IdempotencyScope.requireKey(idempotencyKey);

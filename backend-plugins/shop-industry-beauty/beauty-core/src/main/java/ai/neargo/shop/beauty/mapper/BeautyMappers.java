@@ -31,6 +31,7 @@ import ai.neargo.shop.beauty.entity.BtyTradeBinding;
 import ai.neargo.shop.beauty.entity.BtyWorkOrder;
 import ai.neargo.shop.beauty.entity.BtyWorkOrderContext;
 
+import ai.neargo.shop.common.config.IndustryTableMapper;
 import ai.neargo.shop.common.config.TradeTableMapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
@@ -49,7 +50,7 @@ public final class BeautyMappers {
     }
 
     /** Locks an authorized existing head; first creation is arbitrated by its scoped business unique key. */
-    public interface StorePolicyMapper extends BaseMapper<BtyStorePolicy> {
+    public interface StorePolicyMapper extends IndustryTableMapper<BtyStorePolicy> {
         @Select(
                 """
                 SELECT * FROM bty_store_policy
@@ -131,7 +132,7 @@ public final class BeautyMappers {
     }
 
     /** Published policy snapshots are immutable; application code uses append and scoped reads only. */
-    public interface StorePolicyVersionMapper extends BaseMapper<BtyStorePolicyVersion> {
+    public interface StorePolicyVersionMapper extends IndustryTableMapper<BtyStorePolicyVersion> {
     }
 
     /** Published execution snapshots are immutable; application code uses append and scoped reads only. */
