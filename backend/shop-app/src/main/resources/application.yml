@@ -481,6 +481,10 @@ shop:
       # 而那些事件将来会驱动结算与发货状态。
       token: ${WX_PUSH_TOKEN:}
     stub: ${SHOP_WX_STUB:true}
+    # 微信物流查询组件 / 关注运单（logistics-channel 的 WxLogisticsClient）。**默认关**（2026-11-27 先屏蔽微信相关外呼）：
+    # 它不看 stub，只要配了 appid+secret 就会真调微信；关着时各网关按「未配置」记原因、不外呼。恢复设 true。
+    logistics:
+      enabled: ${SHOP_WX_LOGISTICS_ENABLED:false}
     login:
       stub: ${SHOP_WX_LOGIN_STUB:${SHOP_WX_STUB:true}}
     subscribe:
