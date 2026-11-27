@@ -2,7 +2,6 @@ package ai.neargo.shop.platform;
 
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 
-import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
 import ai.neargo.shop.platform.dto.OpsVOs.StaffVO;
@@ -364,5 +363,4 @@ public interface OpsService {
     void audit(String action, String target, String detail, boolean critical,
                String beforeJson, String afterJson);
 
-    PageData<AuditLogVO> auditLogs(String target, String keyword, Boolean critical, long page, long size);
 }

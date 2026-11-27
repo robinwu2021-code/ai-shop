@@ -618,9 +618,6 @@ class BizFoundationAccessMysqlTest {
                                 null,
                                 null,
                                 null,
-                                f.mybatis.getMapper(
-                                        ai.neargo.shop.platform.mapper.PlatformMappers
-                                                .AuditLogMapper.class),
                                 new ai.neargo.shop.platform.port.AuditLogPortImpl(
                                         f.mybatis.getMapper(
                                                 ai.neargo.shop.platform.mapper.PlatformMappers

@@ -83,12 +83,14 @@ class CommonTableAccessTest {
                 List.of("shop-opskit/src/main/java/ai/neargo/shop/approval/opskit/ApprovalLinkStore.java",
                         // 轻量审批 sys_approval 的唯一实现（TDD-基础能力库对齐 §2.2 1e）
                         "shop-core/src/main/java/ai/neargo/shop/platform/port/LightApprovalPortImpl.java")));
+        // mkt_counter_campaign_fence 不算：它是营销活动的并发围栏（同事务行锁），不是计数，留在会员营销（TDD 1d 盘点）
         GROUPS.put("发号", new Group(List.of("sys_sequence", "pay_checkout_display_revision", "pay_document_sequence",
-                "pay_sequence", "mkt_counter_campaign_fence", "core_document_number", "pay_document_number"),
+                "pay_sequence", "core_document_number", "pay_document_number"),
                 List.of("shop-store-mybatis/src/main/java/ai/neargo/shop/numbering/")));
         GROUPS.put("审计", new Group(List.of("pay_operation_audit", "pay_merchant_status_log",
                 "pay_pos_configuration_audit", "sys_audit_log"),
-                List.of("shop-core/src/main/java/ai/neargo/shop/platform/port/AuditLogPortImpl.java")));
+                List.of("shop-core/src/main/java/ai/neargo/shop/platform/port/AuditLogPortImpl.java",
+                        "shop-core/src/main/java/ai/neargo/shop/platform/impl/AuditLogServiceImpl.java")));
         GROUPS.put("设置", new Group(List.of("sys_setting", "pay_setting", "sys_channel_category_rule"),
                 List.of("shop-core/src/main/java/ai/neargo/shop/platform/impl/SettingServiceImpl.java")));
     }

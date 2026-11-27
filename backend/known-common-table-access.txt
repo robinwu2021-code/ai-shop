@@ -108,7 +108,6 @@
 事件 shop-opskit/src/main/java/ai/neargo/shop/approval/opskit/DbEventLedger.java
 事件 shop-opskit/src/main/java/ai/neargo/shop/approval/opskit/OpsKitSubmitConsumer.java
 事件 shop-store-mybatis/src/main/java/ai/neargo/shop/common/config/PlatformWritePrerequisites.java
-发号 shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java
 字典 ../backend-plugins/shop-commerce-integration/commerce-core/src/main/java/ai/neargo/shop/commerce/config/CommerceCoreAutoConfiguration.java
 字典 ../backend-plugins/shop-commerce-integration/commerce-core/src/main/java/ai/neargo/shop/commerce/config/CommerceSchemaValidator.java
 字典 ../backend-plugins/shop-commerce-integration/commerce-core/src/main/java/ai/neargo/shop/commerce/mapper/CommerceMappers.java
@@ -169,7 +168,6 @@
 审批 shop-core/src/main/java/ai/neargo/shop/trade/service/impl/PricingManualAdjustmentServiceImpl.java
 审计 pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/backfill/impl/PayMerchantBackfillImpl.java
 审计 pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/service/impl/OnboardingServiceImpl.java
-审计 shop-core/src/main/java/ai/neargo/shop/platform/impl/OpsServiceImpl.java
 开放应用 inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/service/impl/OpenApiCredentialServiceImpl.java
 开放应用 inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/service/impl/ServicePlatformServiceImpl.java
 开放应用 pay/pay-domain/src/main/java/ai/neargo/shop/pay/acquiring/port/InternalCallers.java
@@ -196,4 +194,3 @@
 权限 shop-core/src/main/java/ai/neargo/shop/platform/impl/OpsServiceImpl.java
 权限 shop-gateway/src/main/java/ai/neargo/shop/gateway/iam/function/FunctionModuleSync.java
 权限 shop-gateway/src/main/java/ai/neargo/shop/gateway/iam/resource/JdbcResourceStore.java
-设置 shop-app/src/main/java/ai/neargo/shop/config/DevSeeder.java
