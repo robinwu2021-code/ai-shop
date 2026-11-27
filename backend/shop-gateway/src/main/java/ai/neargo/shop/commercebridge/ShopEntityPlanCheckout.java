@@ -19,10 +19,13 @@ public final class ShopEntityPlanCheckout implements EntityPlanCheckout {
   private final MallFacade orders;
   private final OfflinePurchaseFacade offline;
   private final PaymentFacade payments;
+  private final ShopEntityPlanOfflineRecords records;
+  public ai.neargo.shop.merchant.plan.EntityPlanOfflineRecords offlineRecords() { return records; }
 
   public ShopEntityPlanCheckout(JdbcTemplate db, ObjectMapper json, ai.neargo.commerce.starter.http.MallHttpContextPort authority,
       MallFacade orders, OfflinePurchaseFacade offline, PaymentFacade payments) {
     this.db=db;
+    this.records=new ShopEntityPlanOfflineRecords(db,json,offline);
     this.json=json;
     this.authority=authority;
     this.orders=orders;
@@ -46,7 +49,7 @@ public final class ShopEntityPlanCheckout implements EntityPlanCheckout {
     String no=db.queryForObject("""
         SELECT order_no FROM mall_order WHERE tenant_no=? AND entity_no=? AND store_no=? AND quote_no=? AND stage='QUOTE'
         """,String.class,store.tenantNo(),buyer.entityNo(),store.storeNo(),quoted.quoteNo());
-    return new Quote(quoted.quoteNo(),no);
+    return new Quote(quoted.quoteNo(),no,true);
   }
 
   public PaymentIntentCommand issue(Quote quote, String storeNo, boolean assisted, boolean interactive) {

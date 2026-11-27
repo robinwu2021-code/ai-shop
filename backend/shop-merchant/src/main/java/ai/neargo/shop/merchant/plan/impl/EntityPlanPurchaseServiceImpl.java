@@ -25,6 +25,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   private static final String TENANT = "MAIN";
   private final JdbcTemplate db;
   private final TransactionTemplate tx;
+  private final TransactionTemplate outsideMerchant;
   private final ObjectMapper json;
   private final PlatformPaymentPort payments;
   private final OfflineCollectionPort money;
@@ -112,6 +113,8 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     this.mallReceipts = mall == null ? null : new EntityPlanMallReceipts(mall, json);
     this.db = db;
     this.tx = new TransactionTemplate(manager);
+    this.outsideMerchant = new TransactionTemplate(manager);
+    outsideMerchant.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
     this.json = json;
     this.payments = payments;
     this.money = money;
@@ -383,12 +386,15 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     }
     reportEqual(sql,args,"p.entity_no",f.entityNo());
     reportEqual(sql,args,"JSON_UNQUOTE(JSON_EXTRACT(p.snapshot_json,'$.storeNo'))",f.storeNo());
-    reportEqual(sql,args,"p.order_no",f.orderNo()); reportEqual(sql,args,"p.status",f.status());
+    reportEqual(sql,args,"p.order_no",f.orderNo());
+    if (f.status()!=null && Set.of("SUBMITTED","CONFIRMING","PAID_PENDING","UNMATCHED").contains(f.status())) {
+      sql.append(" AND (p.status IN ('AWAITING_PAYMENT','CANCELLATION_REQUESTED','SUBMITTED') OR p.status=?)");
+      args.add(f.status());
+    }
+    else reportEqual(sql,args,"p.status",f.status());
     reportEqual(sql,args,"JSON_UNQUOTE(JSON_EXTRACT(p.snapshot_json,'$.offer.price.currency'))",f.currency());
     if (f.createdFrom()!=null) { sql.append(" AND p.created_at>=?"); args.add(f.createdFrom()); }
     if (f.createdTo()!=null) { sql.append(" AND p.created_at<?"); args.add(f.createdTo()); }
-    if (f.pendingOnly()) sql.append(" AND EXISTS (SELECT 1 FROM mch_plan_purchase_claim c"
-        + " WHERE c.tenant_no=p.tenant_no AND c.order_no=p.order_no AND c.status='SUBMITTED')");
     if (q.after()!=null) {
       var c=q.after(); sql.append(" AND (p.created_at<? OR (p.created_at=? AND ");
       args.add(c.createdAt()); args.add(c.createdAt());
@@ -396,8 +402,27 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       else { sql.append("p.order_no<?"); args.add(c.orderNo()); }
       sql.append("))");
     }
-    sql.append(" ORDER BY p.created_at DESC,p.order_no DESC LIMIT ?"); args.add(q.limit());
-    return db.queryForList(sql.toString(),args.toArray()).stream().map(this::reportRow).toList();
+    var result=new ArrayList<Row>();
+    int batch=Math.max(32,q.limit());
+    Row last=null;
+    while (result.size()<q.limit()) {
+      var pageArgs=new ArrayList<>(args);
+      String next="";
+      if(last!=null) {
+        next=" AND (p.created_at,p.order_no)<(?,?)";
+        pageArgs.add(last.createdAt());
+        pageArgs.add(last.orderNo());
+      }
+      pageArgs.add(batch);
+      var rows=reportRows(db.queryForList(sql+next+" ORDER BY p.created_at DESC,p.order_no DESC LIMIT ?",pageArgs.toArray()));
+      for(var row:rows) {
+        if ((f.status()==null || f.status().equals(row.status())) && (!f.pendingOnly() || "SUBMITTED".equals(row.claimStatus()))) result.add(row);
+        if(result.size()==q.limit())break;
+      }
+      if(rows.size()<batch) break;
+      last=rows.getLast();
+    }
+    return result;
   }
 
   @Override
@@ -406,15 +431,23 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     if (nos==null || nos.size()>500) throw bad();
     if (nos.isEmpty()) return List.of();
     var args=new ArrayList<Object>(); args.add(tenant); args.addAll(nos);
-    return db.queryForList(REPORT_SELECT+" AND p.order_no IN ("+reportMarks(nos.size())
-        +") ORDER BY p.created_at DESC,p.order_no DESC",args.toArray()).stream().map(this::reportRow).toList();
+    return reportRows(db.queryForList(REPORT_SELECT+" AND p.order_no IN ("+reportMarks(nos.size())
+        +") ORDER BY p.created_at DESC,p.order_no DESC",args.toArray()));
   }
 
-  private Row reportRow(Map<String,Object> r) {
+  private List<Row> reportRows(List<Map<String,Object>> rows) {
+    var orders=rows.stream().filter(r->json.readTree(str(r,"snapshot_json")).path("quote").path("mallOffline").asBoolean(false))
+        .map(r->str(r,"order_no")).toList();
+    var states=orders.isEmpty()?Map.<String,EntityPlanOfflineRecords.PaymentState>of():checkout.offlineRecords().states(orders);
+    return rows.stream().map(r->reportRow(r,states.get(str(r,"order_no")))).toList();
+  }
+
+  private Row reportRow(Map<String,Object> r,EntityPlanOfflineRecords.PaymentState state) {
+    var claim=state==null?str(r,"claim_status"):state.claim();
     var snap=json.readTree(str(r,"snapshot_json")); var price=snap.path("offer").path("price");
     var store=snap.path("storeNo");
     return new Row(Model.ENTITY,str(r,"order_no"),str(r,"entity_no"),store.isNull() || store.isMissingNode()?null:store.asText(),
-        price.path("currency").asText(),price.path("minor").asText(),str(r,"status"),str(r,"claim_status"),number(r,"created_at"));
+        price.path("currency").asText(),price.path("minor").asText(),displayedStatus(str(r,"status"),claim,state==null?null:state.action()),claim,number(r,"created_at"));
   }
 
   private static String reportMarks(int n) { return String.join(",",Collections.nCopies(n,"?")); }
@@ -725,11 +758,35 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                 intent.orderNo()));
   }
 
+  private boolean mallOffline(Snapshot s) {
+    return s.quote()!=null && Boolean.TRUE.equals(s.quote().mallOffline());
+  }
+
+  // Serialize acceptance with cancellation and refund on the purchase row. Only the mall writes
+  // during this stage. The ledger and grant workflow start after the merchant lock is released.
+  private <T>T stageOffline(Actor actor,String no,Function<Map<String,Object>,T> stage) {
+    return write(()->{
+      var locked=row(actor,no,true);
+      return outsideMerchant.execute(ignored->stage.apply(locked));
+    });
+  }
+
+  private static String displayedStatus(String status,String claim,String action) {
+    if(awaitingReceipt(status) && action!=null) {
+      switch(action) {
+        case "ACCEPTED": return "CONFIRMING";
+        case "APPLIED": return "PAID_PENDING";
+        case "UNMATCHED": return "UNMATCHED";
+      }
+    }
+    return awaitingReceipt(status) && "SUBMITTED".equals(claim) ? "SUBMITTED" : status;
+  }
+
   @Override
   public OrderView order(Actor a, String no) {
     var r = row(a, no, false);
     var s = snapshot(r);
-    var claims =
+    var claims = mallOffline(s) ? checkout.offlineRecords().claims(a,no) :
         db
             .queryForList(
                 "SELECT * FROM mch_plan_purchase_claim WHERE tenant_no=? AND order_no=? ORDER BY"
@@ -749,13 +806,22 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
             .stream()
             .map(this::actionView)
             .toList();
+    String lastConfirmation=null;
+    if(mallOffline(s)) {
+      var combined=new ArrayList<>(actions); // Merchant closure actions have their own recovery path.
+      for(var action:checkout.offlineRecords().actions(no)) {
+        lastConfirmation=action.status();
+        combined.add(paymentView(r,action));
+      }
+      actions=combined;
+    }
     return new OrderView(
         no,
         str(r, "request_no"),
         s.entityNo(),
         s.storeNo(),
         s.offer(),
-        str(r, "status"),
+        displayedStatus(str(r,"status"),claims.stream().anyMatch(c->"SUBMITTED".equals(c.status()))?"SUBMITTED":null,lastConfirmation),
         s.intent().expiresAt(),
         "PREPARED".equals(str(r, "status")) ? null : s.intent().offline(),
         claims,
@@ -763,6 +829,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   }
 
   private PrivateEvidencePort.Scope scope(Actor a, Snapshot s, String purpose) {
+    if (mallOffline(s)) return checkout.offlineRecords().scope(a,s.storeNo(),s.intent().orderNo(),purpose);
     return new PrivateEvidencePort.Scope(
         new StoreRef(TENANT, s.storeNo()),
         s.entityNo(),
@@ -778,6 +845,12 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
 
   private PrivateEvidencePort.Scope reserved(Actor a, String no, String key, boolean own) {
     var s = snapshot(row(a, no, false));
+    if (mallOffline(s)) {
+      var record=checkout.offlineRecords().evidence(no,key);
+      if (record==null || !s.entityNo().equals(record.entityNo()) || !s.storeNo().equals(record.store().storeNo())
+          || own && !record.equals(scope(a,s,record.purpose()))) throw denied();
+      return record;
+    }
     var r =
         one(
             "SELECT * FROM mch_plan_purchase_evidence WHERE tenant_no=? AND order_no=? AND"
@@ -811,6 +884,10 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     var s = snapshot(row(a, no, false));
     String key =
         media.newKey(scope(a, s, evidencePurpose), UUID.randomUUID().toString().replace("-", ""));
+    if (mallOffline(s)) {
+      checkout.offlineRecords().reserve(scope(a,s,evidencePurpose),key,clock.millis());
+      return key;
+    }
     write(
         () ->
             db.update(
@@ -877,6 +954,14 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     validMoney(c.amount(), true);
     validTime(c.paidAt());
     requireEvidence(a, no, c.evidenceKey());
+    var current=row(a,no,false);
+    var snap=snapshot(current);
+    if (mallOffline(snap)) {
+      return stageOffline(a,no,locked->{
+        boolean open=snapshot(locked).refundNo()==null && Set.of("AWAITING_PAYMENT","CANCELLATION_REQUESTED","CANCELLED","REFUNDED").contains(str(locked,"status"));
+        return checkout.offlineRecords().submit(a,snap.storeNo(),no,c,clock.millis(),open);
+      });
+    }
     return write(
         () -> {
           var order = row(a, no, true);
@@ -913,6 +998,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   public ClaimView decline(Actor a, String no, String claimNo, String reason) {
     operator(a);
     if (reason == null || reason.isBlank() || reason.length() > 500) throw bad();
+    if(mallOffline(snapshot(row(a,no,false)))) return checkout.offlineRecords().decline(a,no,claimNo,reason);
     return write(
         () -> {
           var order = row(a, no, true);
@@ -952,6 +1038,27 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     validTime(c.paidAt());
     requireEvidence(a, no, c.evidenceKey());
     if (c.reason() == null || c.reason().isBlank()) throw bad();
+    var initial=row(a,no,false);
+    var snap=snapshot(initial);
+    if(mallOffline(snap)) {
+      stageOffline(a,no,locked->{
+        if (one("SELECT action_no FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND action_no=? AND kind='VOID'",TENANT,no,c.actionNo())!=null) throw bad();
+        var status=str(locked,"status");
+        boolean closed=Set.of("CANCELLED","REFUNDED").contains(status);
+        boolean open=snapshot(locked).refundNo()==null && (awaitingReceipt(status) || closed)
+            && (c.claimNo()!=null || "OPS".equals(snap.creatorKind()) || closed);
+        checkout.offlineRecords().accept(a,snap.storeNo(),snap.intent(),c,clock.millis(),open);
+        return null;
+      });
+      try {
+        recoverMallActions(no);
+      } catch (ai.neargo.commerce.api.mall.MallException | org.springframework.dao.DataAccessException failure) {
+        var outcome=mallConfirmation(a,no,c.actionNo());
+        if (!Set.of("REJECTED","PAID_PENDING").contains(outcome.status())) throw failure;
+        return outcome;
+      }
+      return mallConfirmation(a,no,c.actionNo());
+    }
     write(
         () -> {
           var order = row(a, no, true);
@@ -1065,6 +1172,11 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
         });
       }
     }
+    applyReceipt(no,s,actionNo,c,accepted,result);
+  }
+
+  private void applyReceipt(String no,Snapshot s,String actionNo,Confirm c,long accepted,OfflineCollectionPort.ManualResult result) {
+    boolean mall=mallOffline(s);
     write(
         () -> {
           // Entity -> subscription -> order, the same ownership barrier as creation/quota writes.
@@ -1085,13 +1197,14 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                   "SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND order_no=? FOR UPDATE",
                   TENANT,
                   no);
-          var live =
+          var live = mall ? current :
               one(
                   "SELECT * FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND"
                       + " action_no=? FOR UPDATE",
                   TENANT,
                   no,
                   actionNo);
+          if(mall && snapshot(current).quotaBefore()!=null) return null;
           if ("MATCHED".equals(result.disposition())) {
             if (!"PAID_PENDING".equals(str(live, "status")) || !result.paymentNo().equals(str(live,"payment_no"))) return null;
           } else if (!"ACCEPTED".equals(str(live, "status"))) return null;
@@ -1171,22 +1284,24 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
               status = s.quote() == null ? "APPLIED" : "ENTITY_GRANTED";
             }
           }
-          db.update(
-              "UPDATE mch_plan_purchase_action SET status=?,payment_no=? WHERE tenant_no=? AND"
-                  + " order_no=? AND action_no=?",
-              status,
-              result.paymentNo(),
-              TENANT,
-              no,
-              actionNo);
-          db.update(
-              "UPDATE mch_plan_purchase_claim SET status=?,review_note=? WHERE tenant_no=? AND"
-                  + " order_no=? AND claim_no=?",
-              "ENTITY_GRANTED".equals(status) ? "PAID_PENDING" : status,
-              c.reason(),
-              TENANT,
-              no,
-              c.claimNo());
+          if (!mall) {
+            db.update(
+                "UPDATE mch_plan_purchase_action SET status=?,payment_no=? WHERE tenant_no=? AND"
+                    + " order_no=? AND action_no=?",
+                status,
+                result.paymentNo(),
+                TENANT,
+                no,
+                actionNo);
+            db.update(
+                "UPDATE mch_plan_purchase_claim SET status=?,review_note=? WHERE tenant_no=? AND"
+                    + " order_no=? AND claim_no=?",
+                "ENTITY_GRANTED".equals(status) ? "PAID_PENDING" : status,
+                c.reason(),
+                TENANT,
+                no,
+                c.claimNo());
+          }
           db.update(
               "UPDATE mch_plan_purchase SET status=?,payment_no=?,open_entity=? WHERE tenant_no=?"
                   + " AND order_no=?",
@@ -1197,6 +1312,12 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
               no);
           return null;
         });
+    if (mall) {
+      var purchase=one("SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND order_no=?",TENANT,no);
+      if ("PAID_PENDING".equals(str(purchase,"status")) && snapshot(purchase).quotaBefore()!=null && checkout.fulfill(no))
+        db.update("UPDATE mch_plan_purchase SET status='APPLIED',open_entity=NULL WHERE tenant_no=? AND order_no=? AND payment_no=? AND status='PAID_PENDING'",TENANT,no,result.paymentNo());
+      return;
+    }
     if (s.quote() != null) {
       var state=one("SELECT status FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND action_no=?",TENANT,no,actionNo);
       if ("ENTITY_GRANTED".equals(str(state,"status"))) finishDigitalGrant(no,actionNo);
@@ -1226,6 +1347,10 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     if ("CLOSING".equals(str(r, "status"))) {
       advanceVoid(no);
       return order(a, no);
+    }
+    if(mallOffline(snapshot(r))) {
+      recoverMallActions(no);
+      return order(a,no);
     }
     for (var action :
         db.queryForList(
@@ -1353,6 +1478,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       String no=str(r,"order_no");
       if ("PREPARED".equals(str(r,"status"))) issuePayment(snapshot(r),false);
       else if("CLOSING".equals(str(r,"status")))advanceVoid(no);
+      else if(mallOffline(snapshot(r))) recoverMallActions(no);
       else for(var action:db.queryForList("SELECT action_no FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND status IN ('ACCEPTED','PAID_PENDING','ENTITY_GRANTED') AND kind='CONFIRM'",TENANT,no))advance(no,str(action,"action_no"));
     }catch(RuntimeException retry){failed++;}
     return new RecoverySweep(rows.size(),failed,rows.isEmpty()?after:str(rows.getLast(),"order_no"));
@@ -1371,6 +1497,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
           if ("CANCELLATION_REQUESTED".equals(str(r, "status"))
               || "CANCELLED".equals(str(r, "status"))) return null;
           if (!Set.of("PREPARED", "AWAITING_PAYMENT").contains(str(r, "status"))) throw bad();
+          if (mallOffline(snapshot(r)) && mallReviewPending(no,str(r,"status"))) throw bad();
           // Issued account instructions cannot prove no payment arrived. Only request a bank check.
           db.update(
               "UPDATE mch_plan_purchase SET status='CANCELLATION_REQUESTED' WHERE tenant_no=? AND"
@@ -1413,6 +1540,8 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
             return null;
           }
           if(snapshot(r).refundNo()!=null) throw bad();
+          if(mallOffline(snapshot(r)) && (mallReviewPending(no,str(r,"status"))
+              || checkout.offlineRecords().actions(no).stream().anyMatch(action->c.actionNo().equals(action.actionNo())))) throw bad();
           if (previous != null&&!returning) throw bad();
           if(!Set.of("PREPARED","AWAITING_PAYMENT","CANCELLATION_REQUESTED","UNMATCHED","REVIEW_REQUIRED","REFUNDED").contains(str(r,"status"))||!Objects.equals(priorStatus,str(r,"status")))throw bad();
           db.update(
@@ -1525,6 +1654,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     if (!TENANT.equals(tenant)) return Optional.empty();
     var r = one("SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND order_no=?", TENANT, no);
     if (r == null) return Optional.empty();
+    if(mallOffline(snapshot(r))) return Optional.of(applyMallPayment(no,paymentNo,r));
     if (checkout != null && snapshot(r).quote() != null && awaitingReceipt(str(r,"status"))) {
       checkout.confirmedReceipt(no,paymentNo).ifPresent(receipt -> write(()->{
         var current=one("SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND order_no=? FOR UPDATE",TENANT,no);
@@ -1546,6 +1676,56 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
             TENANT,
             no)) advance(no, str(action, "action_no"));
     return Optional.of(one("SELECT action_no FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND payment_no=? AND status IN ('APPLIED','REVIEW_REQUIRED','UNMATCHED') LIMIT 1",TENANT,no,paymentNo)!=null);
+  }
+
+  private boolean mallReviewPending(String no,String orderStatus) {
+    var state=checkout.offlineRecords().states(List.of(no)).get(no);
+    if (state==null) return false;
+    String displayed=displayedStatus(orderStatus,state.claim(),state.action());
+    return "SUBMITTED".equals(state.claim()) || "ACCEPTED".equals(state.action()) || !orderStatus.equals(displayed);
+  }
+
+  private ActionView mallConfirmation(Actor actor,String no,String actionNo) {
+    var order=row(actor,no,false);
+    var action=checkout.offlineRecords().actions(no).stream().filter(v->v.actionNo().equals(actionNo)).findFirst().orElseThrow();
+    return paymentView(order,action);
+  }
+
+  private ActionView paymentView(Map<String,Object> order,ActionView action) {
+    if(!"APPLIED".equals(action.status())) return action;
+    String status=str(order,"status");
+    String shown=Objects.equals(action.paymentNo(),str(order,"payment_no"))
+        && Set.of("REVIEW_REQUIRED","PAID_PENDING").contains(status) ? status
+        : awaitingReceipt(status) ? "PAID_PENDING" : action.status();
+    return new ActionView(action.actionNo(),shown,action.paymentNo(),action.reason());
+  }
+
+  private void recoverMallActions(String no) {
+    checkout.offlineRecords().resume(no);
+    for(var action:checkout.offlineRecords().actions(no))
+      if(action.paymentNo()!=null) recoverPayment(TENANT,no,action.paymentNo());
+  }
+
+  private boolean applyMallPayment(String no,String paymentNo,Map<String,Object> order) {
+    String status=str(order,"status");
+    if(paymentNo.equals(str(order,"payment_no")) && !awaitingReceipt(status) && !"PAID_PENDING".equals(status)) return true;
+    var snap=snapshot(order);
+    var receipt=checkout.confirmedReceipt(no,paymentNo);
+    if(receipt.isPresent() && receipt.get().confirmation().amount().equals(snap.offer().price())) {
+      db.update("UPDATE mch_plan_purchase SET status='PAID_PENDING',payment_no=? WHERE tenant_no=? AND order_no=? AND status IN ('AWAITING_PAYMENT','SUBMITTED','CANCELLATION_REQUESTED')",
+          paymentNo,TENANT,no);
+      var r=receipt.get();
+      applyReceipt(no,snap,r.confirmation().actionNo(),r.confirmation(),r.acceptedAt(),new OfflineCollectionPort.ManualResult("MATCHED",paymentNo));
+    } else {
+      var action=checkout.offlineRecords().actions(no).stream().filter(a->paymentNo.equals(a.paymentNo())).findFirst();
+      if(action.isEmpty())return false;
+      boolean unmatched="UNMATCHED".equals(action.get().status());
+      if(!unmatched && money.receipts(TENANT,no).stream().noneMatch(r->paymentNo.equals(r.paymentNo()) && r.exceptionCash()))return false;
+      db.update("UPDATE mch_plan_purchase SET status=?,payment_no=? WHERE tenant_no=? AND order_no=? AND status IN ('AWAITING_PAYMENT','SUBMITTED','CANCELLATION_REQUESTED','CANCELLED','REFUNDED') AND COALESCE(snapshot_json->>'$.refundNo','null')='null'",
+          unmatched?"UNMATCHED":"REVIEW_REQUIRED",paymentNo,TENANT,no);
+    }
+    var after=one("SELECT status,payment_no FROM mch_plan_purchase WHERE tenant_no=? AND order_no=?",TENANT,no);
+    return paymentNo.equals(str(after,"payment_no")) && !awaitingReceipt(str(after,"status")) && !"PAID_PENDING".equals(str(after,"status"));
   }
 
   private static boolean awaitingReceipt(String status) {

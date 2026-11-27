@@ -2,6 +2,7 @@ package ai.neargo.shop.pay.service.impl;
 
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.mall.*;
+import ai.neargo.commerce.api.mall.reporting.PurchaseReporting.*;
 import ai.neargo.commerce.api.offline.OfflinePurchaseFacade;
 import ai.neargo.commerce.core.fulfillment.CommerceRefundService;
 import ai.neargo.commerce.api.port.*;
@@ -23,7 +24,7 @@ import java.time.*;
 import java.util.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -34,8 +35,8 @@ import static org.mockito.Mockito.*;
 
 @EnabledIfEnvironmentVariable(named="COMMERCE_MYSQL_URL",matches=".+")
 class EntityPlanUnifiedCheckoutMysqlTest {
-  @ParameterizedTest @ValueSource(booleans={false,true})
-  void paidStoreOrderActivatesFrozenRightsAndEntityQuota(boolean assisted) throws Exception {
+  @ParameterizedTest @CsvSource({"false,false,false","true,false,false","true,false,true","false,true,false"})
+  void paidStoreOrderActivatesFrozenRightsAndEntityQuota(boolean assisted,boolean legacy,boolean interruptConfirmation) throws Exception {
     try (var ledger=new PlatformOfflineCollectionMysqlTest.Fixture(); var mall=new PlatformCollectionMysqlTest.Fixture()) {
       var host=ledger.base;
       EntityPlanOfflineLedgerMysqlTest.seedMerchant(host.jdbc);
@@ -111,18 +112,50 @@ class EntityPlanUnifiedCheckoutMysqlTest {
       assertEquals("SV1",mall.jdbc.queryForObject("SELECT sku_version_no FROM mall_order_item WHERE order_no=?",String.class,no));
       assertEquals(0,host.jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_end_grant",Integer.class));
       var at=clock.instant();
-      if (!assisted) service.submit(owner,no,new Claim("C",amount,at,"BANK",service.reserveEvidence(owner,no)));
+      // Simulate an already-issued mall order whose snapshot predates the offline-record cutover.
+      if(legacy) host.jdbc.update("UPDATE mch_plan_purchase SET snapshot_json=JSON_REMOVE(snapshot_json,'$.quote.mallOffline') WHERE order_no=?",no);
+      var queue=new Query(new Access("MAIN",false,Set.of("E1")),new Filter("E1","S1",no,"SUBMITTED","TWD",null,null,true),null,1);
+      if (!assisted) {
+        var key=service.reserveEvidence(owner,no);
+        when(media.stored(any(),eq(key))).thenReturn(false,true);
+        var upload=new PrivateEvidencePort.Upload(()->new java.io.ByteArrayInputStream(new byte[]{1}),1,"image/png");
+        doNothing().when(media).store(any(),eq(key),eq(upload));
+        service.uploadEvidence(owner,no,key,upload);
+        service.uploadEvidence(owner,no,key,upload);
+        verify(media,times(1)).store(any(),eq(key),eq(upload));
+        when(media.signedRead(any(),eq(key))).thenReturn("signed-buyer-proof");
+        assertEquals("signed-buyer-proof",service.readEvidence(ops,no,key));
+        var first=new Claim("FIRST",amount,at,"BANK",key);
+        assertEquals(service.submit(owner,no,first),service.submit(owner,no,first));
+        assertEquals("SUBMITTED",service.searchOperatorOrders(ops,queue).getFirst().claimStatus());
+        assertEquals("DECLINED",service.decline(ops,no,"FIRST","请核对流水号").status());
+        assertTrue(service.searchOperatorOrders(ops,queue).isEmpty());
+        service.submit(owner,no,new Claim("C",amount,at,"BANK",service.reserveEvidence(owner,no)));
+        assertEquals("SUBMITTED",service.order(owner,no).status());
+      }
       if (assisted) {
         var operator=ctx.operator("commerce:mall:offline:confirm");
         var target=new ai.neargo.commerce.api.mall.OrderQuery(store.store(),no);
         var evidence=offline.reserveEvidence(operator,target,"PLATFORM_RECEIPT");
         var review=new ai.neargo.commerce.api.offline.OfflinePurchaseFacade.ReviewCommand(target,"CONF",null,
             amount,at,"platform-mch","BANK",evidence.assetKey(),false,"verified");
+        assertThrows(ai.neargo.shop.common.BizException.class,()->service.readEvidence(owner,no,evidence.assetKey()));
+        var replay=new Confirm("CONF",null,amount,at,"BANK",evidence.assetKey(),"verified");
+        if(interruptConfirmation) {
+          mall.jdbc.execute("CREATE TRIGGER lost_result BEFORE UPDATE ON mall_offline_payment FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='interrupted after ledger commit'");
+          assertThrows(org.springframework.dao.DataAccessException.class,()->service.confirm(ops,no,replay));
+          assertEquals("CONFIRMING",service.order(ops,no).status());
+          assertEquals("ACCEPTED",service.order(ops,no).actions().getFirst().status());
+          assertEquals(1,host.jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE status='SUCCESS'",Integer.class));
+          mall.jdbc.execute("DROP TRIGGER lost_result");
+          assertEquals("APPLIED",service.recover(ops,no).status());
+        }
         var receipt=offline.confirm(operator,review);
         assertEquals("APPLIED",receipt.status());
-        assertEquals(0,host.jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_end_grant",Integer.class));
+        if (!interruptConfirmation) assertEquals(0,host.jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_end_grant",Integer.class));
         assertEquals(Optional.of(true),service.recoverPayment("MAIN",no,receipt.paymentNo()));
         assertEquals(Optional.of(true),service.recoverPayment("MAIN",no,receipt.paymentNo()));
+        assertEquals(receipt.paymentNo(),service.confirm(ops,no,replay).paymentNo());
       } else {
         var confirm=new Confirm("CONF","C",amount,at,"BANK",service.reserveEvidence(ops,no),"verified");
         host.jdbc.execute("CREATE TRIGGER unavailable BEFORE INSERT ON mch_store_end_grant FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='activation unavailable'");
@@ -133,6 +166,11 @@ class EntityPlanUnifiedCheckoutMysqlTest {
         new JdbcEndActivation(mall.ds,host.ds,ids).retryPendingAll(10);
         assertEquals("APPLIED",service.confirm(ops,no,confirm).status());
       }
+      assertEquals("CONF",service.order(ops,no).actions().getFirst().actionNo());
+      assertEquals("CONF",service.order(owner,no).actions().getFirst().actionNo());
+      assertEquals(legacy?0:1,mall.jdbc.queryForObject("SELECT COUNT(*) FROM mall_offline_payment WHERE record_type='ACTION' AND order_no=?",Integer.class,no));
+      if (!legacy) for(String table:List.of("mch_plan_purchase_claim","mch_plan_purchase_action","mch_plan_purchase_evidence"))
+        assertEquals(0,host.jdbc.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE order_no=?",Integer.class,no));
       assertEquals("COMPLETED",mall.jdbc.queryForObject("SELECT fulfillment_status FROM mall_order WHERE order_no=? AND pay_status='PAID' AND cash_paid_minor=19900",String.class,no));
       assertEquals(1,host.jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE status='SUCCESS'",Integer.class));
       assertEquals(1,host.jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_end_grant WHERE store_no='S1' AND entitlement_code='POS_USE' AND state IN ('ACTIVE','SCHEDULED')",Integer.class));
