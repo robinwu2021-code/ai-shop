@@ -3,6 +3,13 @@
   "commit": "6ce4114771c1f68c524c461ae606f620a4734d50",
   "calls": [
     {
+      "commit": "30f43a232a1e119445167e6428458d74b0030386",
+      "source": "handheld-pos/android/feature/promos/src/main/kotlin/ai/neargo/pos/feature/promos/RemotePromos.kt",
+      "endpoints": [
+        ["GET", "/biz/activities/{activityNo}/effect"]
+      ]
+    },
+    {
       "commit": "417094a4441f6c13a12b1503c4dbb255d0c3f872",
       "source": "handheld-pos/android/feature/auth/src/main/kotlin/ai/neargo/pos/feature/auth/lock/StaffPosPin.kt",
       "endpoints": [
