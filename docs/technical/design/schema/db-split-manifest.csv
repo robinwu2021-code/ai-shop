@@ -417,7 +417,7 @@ mch_entity,shop 库,751,平台基础,保留,,平台基础,平台基础库,商户
 mch_entity_apply,shop 库,16,平台基础,退役,抽象,,,,,由独立的审核与工单服务承担（含申请内容、审核、通过后的执行编排），本库不建表；业务表只存审核单号,平台基础库主数据设计优化
 mch_entity_community,shop 库,0,平台基础,并入,抽象,,,,,mch_store_service_area（小区是经营范围的一级）,主体覆盖的小区与经营范围项记的是同一件事
 mch_entity_creation_request,shop 库,5,平台基础,并入,去冗余,,,,,独立的审核与工单服务（含通过后的执行编排）,
-mch_entity_plan,shop 库,18,平台商城,并入,去冗余,,,,,sys_industry_plan(+version)（旧 plan 定义）,
+mch_entity_plan,shop 库,18,平台商城,保留,,商户域,,主体套餐,mch_entity_plan,商户域保留原表；商城承接交易,
 mch_entity_profile_projection,shop 库,6,平台基础,并入,抽象,,,,,mch_entity（支付进件状态与已核准的资料版本）,支付侧审核结果的投影与主体一对一
 mch_fulfillment_channel,shop 库,5,平台基础,保留,,平台基础,平台基础库,商户与门店,mch_store_fulfillment,门店履约方式：这家店开了哪些（自提、配送、快递、堂食、到店服务）及各自的配置,平台基础库主数据设计优化
 mch_login_log,shop 库,430,平台基础,保留,,平台基础,平台基础库,会话与登录,mch_login_log,B 端登录日志,B 端与运营端的认证、角色权限各用一套
@@ -435,7 +435,7 @@ mch_personnel_account,shop 库,2,平台基础,并入,抽象,,,,,mch_personnel,�
 mch_personnel_position,shop 库,2,平台基础,保留,,平台基础,平台基础库,人员,mch_personnel_position,人员岗位：一个任职下的岗位,账号与人员恢复成两张
 mch_personnel_skill,shop 库,0,平台基础,改归属,抽象,零售,门店交易库,资源预约,mch_personnel_skill,服务资格：这位人员能做哪个商品、哪个 SKU、什么级别，预约时用来筛可选的技师,三库说明文档复核后采纳（2026-11-26）
 mch_personnel_store,shop 库,2,平台基础,保留,,平台基础,平台基础库,人员,mch_personnel_store,人员任职：在哪家店上班、级别、是否对外展示,账号与人员恢复成两张
-mch_plan_offer,shop 库,4,平台商城,并入,去冗余,,,,,sys_industry_plan(+version)（旧 plan 定义）,
+mch_plan_offer,shop 库,4,平台商城,保留,,商户域,,主体套餐,mch_plan_offer,商户域保留原表；商城承接交易,
 mch_plan_purchase,shop 库,4,平台商城,并入,去冗余,,,,,mall_order,
 mch_plan_purchase_action,shop 库,4,平台商城,并入,去冗余,,,,,mall_offline_payment / claim / evidence,
 mch_plan_purchase_claim,shop 库,2,平台商城,并入,去冗余,,,,,mall_offline_payment / claim / evidence,
@@ -1073,7 +1073,7 @@ sys_legal_form,shop 库,3,平台基础,并入,抽象,,,,,基础能力库 sys_dic
 sys_market,shop 库,6,平台基础,并入,抽象,,,,,sys_dict_item（统一字典）,字典、事件、轻量审批用统一模型；App 不在这里管
 sys_media_asset,shop 库,33,平台基础,保留,,平台服务,平台服务库,地理、媒体、短链与导出,sys_media_asset,,
 sys_media_purge_batch,shop 库,0,平台基础,并入,抽象,,,,,任务库 job_log,清理批次是一次任务运行
-sys_merchant_plan_def,shop 库,3,平台商城,并入,去冗余,,,,,sys_industry_plan(+version)（旧 plan 定义）,
+sys_merchant_plan_def,shop 库,3,平台商城,保留,,商户域,,主体套餐,sys_merchant_plan_def,商户域保留原表；商城承接交易,
 sys_notify_log,shop 库,44,平台基础,保留,,平台服务,平台服务库,通知,notify_delivery,发送记录：一条通知在每个渠道的一次发送，各有成败与服务商回执,平台基础复核后采纳（2026-11-25）
 sys_ops_api_key,shop 库,0,平台基础,并入,抽象,,,,,密钥库 sec_key（运营人员的接口密钥是属于某个运营账号的一把密钥）,接入应用、密钥与支付运营权限的归属
 sys_ops_staff,shop 库,24,平台基础,保留,,平台基础,平台基础库,运营端账号,sys_ops_staff,,

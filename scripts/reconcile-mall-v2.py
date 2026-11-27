@@ -26,7 +26,15 @@ class Projection:
                 f"WHERE tenant_no=CONVERT(X'{tenant_hex}' USING utf8mb4) AND ({self.where}) ORDER BY BINARY k")
 
 
-def comparisons():
+def comparisons(include_merchant):
+    if include_merchant:
+        for table, key, fields, where in [
+            ("sys_merchant_plan_def", "plan_code", "name,store_quota,staff_quota,cross_store_stats,trial_days,enabled,sort,version,deleted", "TRUE"),
+            ("mch_plan_offer", "offer_no", "version,snapshot_json", "TRUE"),
+            ("mch_entity_plan", "entity_no", "plan_code,store_quota,staff_quota,store_quota_override,staff_quota_override,cross_store_stats,status,start_at,expire_at,granted_by,trial_used,downgraded_at,version,deleted", "TRUE"),
+        ]:
+            projection = Projection(table, key, fields, where)
+            yield table, "merchant", projection, projection, fields.split(",")
     yield ("catalog_version", "foundation", Projection("sys_business_type", "business_type_code", "plan_catalog_version"),
            Projection("sys_dict_item", "item_code", "attrs->>'$.plan_catalog_version'",
                       "dict_type='BUSINESS_TYPE' AND item_level='TYPE' AND deleted=0"), ["catalog_version"])
@@ -86,7 +94,7 @@ def rows(stack, config, projection, tenant, side):
 def reconcile(args):
     differences = 0
     compared_rows = 0
-    for name, target, old, new, fields in comparisons():
+    for name, target, old, new, fields in comparisons(args.merchant is not None):
         counts = Counter()
         with ExitStack() as stack:
             streams = (rows(stack, args.legacy, old, args.tenant, "legacy"),
@@ -126,6 +134,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("legacy", "mall", "foundation", "platform"):
         parser.add_argument("--" + name, type=Path, required=True, help="MySQL option file with [client] database")
+    parser.add_argument("--merchant", type=Path, help="merchant domain snapshot for entity-plan checks")
     parser.add_argument("--tenant", required=True)
     parser.add_argument("--limit", type=int, default=100, help="maximum detail lines, always count all differences")
     args = parser.parse_args()

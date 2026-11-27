@@ -15565,7 +15565,7 @@
 "keys": [
 "租户 + 门店唯一"
 ],
-"remark": "legacy_contract_ref、migration_batch_no 只为迁移追溯，迁移完成后可清理。旧 mch_entity_plan 的 trial_used（一主体只试用一次）建议补在这里或主体级。"
+"remark": "legacy_contract_ref、migration_batch_no 用于门店订阅的迁移追溯。主体试用资格由商户域 mch_entity_plan.trial_used 按主体登记。"
 },
 "mch_subscription_conversion": {
 "fields": [
@@ -40669,25 +40669,25 @@
 "store_quota",
 "int",
 "本档可开门店数额度",
-"并入自 sys_merchant_plan_def"
+"行业套餐字段；主体档位由商户域保留"
 ],
 [
 "staff_quota",
 "int",
 "本档可建子账号数额度",
-"并入自 sys_merchant_plan_def"
+"行业套餐字段；主体档位由商户域保留"
 ],
 [
 "cross_store_stats",
 "tinyint",
 "是否有跨店总览与对比：1 有、0 无",
-"并入自 sys_merchant_plan_def"
+"行业套餐字段；主体档位由商户域保留"
 ],
 [
 "trial_days",
 "int",
 "可试用天数，0 为不可试用",
-"并入自 sys_merchant_plan_def"
+"行业套餐字段；主体档位由商户域保留"
 ],
 [
 "policy_version",
@@ -40749,7 +40749,7 @@
 "租户 + 版本编号唯一",
 "租户 + 经营类型 + 档位 + 状态 + 生效起点 索引，用于取当前生效版"
 ],
-"remark": "每行一版后原 current_version_no 去掉，当前版按状态与生效起止取。mch_entity_plan 是主体的订阅实例而非定义，其订阅状态、起止、授予来源应落在 mch_subscription_period；trial_used（一主体只试用一次）在本库目前没有归宿，需在订阅账户上补一个属性。mch_plan_offer 的 snapshot_json 结构不明，未搬。"
+"remark": "门店行业套餐当前版按状态与生效区间获取。主体套餐定义、报价及主体订阅实例保留在商户域，商城交易冻结购买时的报价与权益条件。"
 },
 "sys_media_asset": {
 "fields": [
