@@ -1,6 +1,13 @@
 package ai.neargo.shop.payclient;
 
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.client.PayInternalApi;
+import ai.neargo.shop.paybridge.port.SettlePortImpl;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentInitiationPort;
+import ai.neargo.shop.spi.settle.OrdinaryPaymentPort;
+import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.mapper.TradeMappers;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.pay.client.PaymentInternalApi;
 import ai.neargo.shop.pay.client.port.RemotePaymentPort;
 import ai.neargo.shop.spi.pay.PaymentPort;
@@ -77,15 +84,12 @@ public class PayClientConfig {
      * 由 {@link ai.neargo.shop.paybridge.port.SettlePortImpl} 取用。下单人编号从订单表读（near-pay 按「订单号 + 下单人」核对）。
      */
     @Bean
-    ai.neargo.shop.paybridge.port.SettlePortImpl.StandalonePayments standalonePayments(
-            ai.neargo.shop.spi.settle.OrdinaryPaymentInitiationPort initiation,
-            ai.neargo.shop.spi.settle.OrdinaryPaymentPort payments,
-            ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orders) {
-        return new ai.neargo.shop.paybridge.port.SettlePortImpl.StandalonePayments(initiation, payments,
-                orderNo -> ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
-                    var order = orders.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                            .<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
-                            .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, orderNo).last("LIMIT 1"));
+    SettlePortImpl.StandalonePayments standalonePayments(OrdinaryPaymentInitiationPort initiation,
+            OrdinaryPaymentPort payments, TradeMappers.OrderMapper orders) {
+        return new SettlePortImpl.StandalonePayments(initiation, payments,
+                orderNo -> DataScopeContext.executeWithoutScope(() -> {
+                    var order = orders.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                            .eq(OrdOrder::getOrderNo, orderNo).last("LIMIT 1"));
                     return order == null ? null : order.getUserNo();
                 }));
     }
