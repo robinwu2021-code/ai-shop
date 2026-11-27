@@ -221,6 +221,9 @@
 
 用户 2026-11-26 定：状态取值改成 ≤10 字符的短值，不放宽列宽。
 
+**换值总表（初版 2026-11-27）**：[零售域-状态短值换值表](零售域-状态短值换值表.md)——80 个状态列、57 个超长取值的短值（另 1 个待核），同义合并 5 组，三端涉及 9 个值；每个子模块切换前仍要跑「库里不存在超长旧值」检查，新发现的按该表第 2 节规则补。
+**状态值只从枚举或静态常量取**（用户 2026-11-27 定）：每列一个定义处，Java 与注解 SQL 不写状态字面量，换短值时先把字面量收口到常量再改值；加源码守卫（换值表 §6）。
+
 - **换值表要先补全**。设计里的换值表（`字段设计的待确认事项.md` §5.1）只有 29 个取值，是按字段说明里列出的取值做的；零售域代码里实际在用的长取值远不止这些，勘查已见到的有 `AWAITING_RECEIPT`、`AWAITING_CUSTOMER`、`AWAITING_SEAL`、`WAIT_OFFLINE_PAY`、`WAIT_OFFLINE_REFUND`、`ARBITRATING`、`RETURN_REFUND`、`NOT_REQUIRED`、`PLATFORM_CONFIRMED`、`WAITING_CANCELLATION`、`HANDOVER_COMPLETE`、`STARTED_SUSPENDED`、`SUSPEND_REQUESTED`、`PROOF_VALIDATED`、`PARTIAL_LOCAL_HANDOVER_RECORDED` 等。S0 里先按表逐个状态列从代码（常量、枚举、状态机、SQL 字面量、前端常量与 i18n 键）全量扫出取值，补成一张「旧值 → 短值」总表，交设计方案拥有者并入换值表。
 - **短值要唯一、可读**：同一列里不能撞值；跨表同义的统一写法（设计已把 `AWAITING_PAYMENT`、`PENDING_PAY` 合成 `TO_PAY`）。
 - **改在哪一层**：后端常量与状态机、Mapper 里的 SQL 字面量、对外 DTO、三端的状态常量、筛选项、文案键（i18n 键名若用状态值拼，要一起改并过 i18n 闸门）、报表与对账里按状态值统计的地方。
