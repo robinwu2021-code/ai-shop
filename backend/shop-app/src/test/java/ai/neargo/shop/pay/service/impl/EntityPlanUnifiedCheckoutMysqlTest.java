@@ -175,6 +175,30 @@ class EntityPlanUnifiedCheckoutMysqlTest {
       assertEquals(0,service.recoverRefunds(null,10).failed());
       assertEquals(0,service.recoverRefunds(null,10).visited());
       assertEquals(assisted?"REFUND_REVIEW":"REFUNDED",service.recover(ops,no).status());
+      if (assisted) {
+        var review=service.refundReview(ops,no);
+        assertEquals(no,review.orderNo());
+        assertEquals(preview.refundNo(),review.refundNo());
+        assertEquals(2L,review.before().stores());
+        assertEquals(7L,review.before().staffOverride());
+        assertEquals(20L,review.current().stores());
+        assertThrows(ai.neargo.shop.common.BizException.class,()->service.refundReview(owner,no));
+        assertThrows(ai.neargo.shop.common.BizException.class,()->service.refundReview(new Actor("ops","other",null,true),no));
+        var stale=new CloseRefundReview(review.refundNo(),review.quotaRevision(),"retain negotiated quota");
+        host.jdbc.update("UPDATE mch_entity_plan SET version=version+1 WHERE entity_no='E1'");
+        assertThrows(ai.neargo.shop.common.BizException.class,()->service.closeRefundReview(ops,no,stale));
+        var fresh=service.refundReview(ops,no);
+        var command=new CloseRefundReview(fresh.refundNo(),fresh.quotaRevision(),stale.reason());
+        var closed=service.closeRefundReview(ops,no,command);
+        assertEquals("REFUND_REVIEWED",closed.status());
+        assertEquals("KEEP_CURRENT",closed.decision().result());
+        assertEquals("ops",closed.decision().operatorNo());
+        assertEquals(fresh.current(),closed.decision().retainedQuota());
+        assertEquals(closed,service.closeRefundReview(ops,no,command));
+        assertThrows(ai.neargo.shop.common.BizException.class,()->service.closeRefundReview(ops,no,
+            new CloseRefundReview(fresh.refundNo(),fresh.quotaRevision(),"different")));
+        assertEquals(closed,service.refundReview(ops,no));
+      }
       var restored=host.jdbc.queryForMap("SELECT plan_code,store_quota,staff_quota,staff_quota_override,trial_used,granted_by FROM mch_entity_plan WHERE entity_no='E1'");
       assertEquals(assisted?"CHAIN":"FREE",restored.get("plan_code"));
       assertEquals(assisted?20:2,((Number)restored.get("store_quota")).intValue());

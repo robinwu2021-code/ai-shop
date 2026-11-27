@@ -162,3 +162,16 @@ export type EntityPlanSignedRead={
   url:string;
 };
 export type {EntityPlanPurchaseApi} from "./api/contracts/entity-plan-purchase";
+
+export type PlanReviewQuota = {
+  planCode:string; stores:number|null; staff:number|null; crossStore:boolean|null;
+  storeOverride:number|null; staffOverride:number|null; overridesKnown:boolean;
+  expiry:number|null; grantedBy:string;
+};
+export type ClosePlanRefundReview = {refundNo:string; quotaRevision:string; reason:string};
+export type PlanRefundReview = {
+  orderNo:string; entityNo:string; storeNo:string; offer:EntityPlanOffer; refundNo:string;
+  status:string; before:PlanReviewQuota; current:PlanReviewQuota; quotaRevision:string;
+  decision:null|{result:"KEEP_CURRENT"; operatorNo:string; reviewedAt:string;
+    command:ClosePlanRefundReview; retainedQuota:PlanReviewQuota};
+};

@@ -44,7 +44,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   private int fallbackStoreQuota=1;
 
   public record QuotaBefore(long grantedId,long grantedVersion,String planCode,int stores,int staff,
-      boolean crossStore,String status,Long start,Long expiry,String grant,Long downgraded) {}
+      boolean crossStore,String status,Long start,Long expiry,String grant,Long downgraded,Long storeOverride,Long staffOverride,Boolean overridesKnown) {}
 
   public record Snapshot(
       String entityNo,
@@ -58,10 +58,10 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       String previousGrant,
       PaymentIntentCommand intent,
       String creatorNo,
-      String creatorKind, EntityPlanCheckout.Quote quote, QuotaBefore quotaBefore,String refundNo) {
+      String creatorKind, EntityPlanCheckout.Quote quote, QuotaBefore quotaBefore,String refundNo,RefundDecision refundDecision) {
     Snapshot issued(PaymentIntentCommand payment) {
       return new Snapshot(entityNo,storeNo,buyerNo,buyerKind,ownerAccountNo,offer,previousPlan,previousExpiry,
-          previousGrant,payment,creatorNo,creatorKind,quote,quotaBefore,refundNo);
+          previousGrant,payment,creatorNo,creatorKind,quote,quotaBefore,refundNo,refundDecision);
     }
   }
 
@@ -664,7 +664,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                       grant,
                       intent,
                       creator.userNo(),
-                      creatorKind(creator),purchaseQuote,null,null);
+                      creatorKind(creator),purchaseQuote,null,null,null);
               db.update(
                   "INSERT INTO"
                       + " mch_plan_purchase(tenant_no,order_no,entity_no,buyer_no,buyer_kind,creator_no,creator_kind,request_no,request_json,snapshot_json,status,open_entity,created_at)"
@@ -1162,7 +1162,8 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                     plan==null?fallbackStoreQuota:number(plan,"store_quota").intValue(),
                     plan==null?0:number(plan,"staff_quota").intValue(),plan!=null && bool(plan,"cross_store_stats"),
                     plan==null?"ACTIVE":str(plan,"status"),number(plan,"start_at"),s.previousExpiry(),
-                    s.previousGrant(),number(plan,"downgraded_at"));
+                    s.previousGrant(),number(plan,"downgraded_at"),number(plan,"store_quota_override"),
+                    number(plan,"staff_quota_override"),true);
                 db.update("UPDATE mch_plan_purchase SET snapshot_json=JSON_SET(snapshot_json,'$.quotaBefore',CAST(? AS JSON)) WHERE tenant_no=? AND order_no=?",
                     encode(before),TENANT,no);
               }
@@ -1235,6 +1236,60 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     return order(a, no);
   }
 
+  @Override
+  public RefundReview refundReview(Actor actor, String orderNo) {
+    operator(actor);
+    return write(() -> review(actor, orderNo, null));
+  }
+
+  @Override
+  public RefundReview closeRefundReview(Actor actor, String orderNo, CloseRefundReview command) {
+    operator(actor);
+    if (command == null || command.reason() == null || command.reason().isBlank()
+        || command.reason().length() > 500) throw bad();
+    return write(() -> review(actor, orderNo, command));
+  }
+
+  private RefundReview review(Actor actor, String orderNo, CloseRefundReview command) {
+    boolean closing = command != null;
+    if (closing) one("SELECT entity_no FROM mch_entity WHERE tenant_no=? AND entity_no=? FOR UPDATE",
+        TENANT, actor.entityNo());
+    var plan = one("SELECT * FROM mch_entity_plan WHERE tenant_no=? AND entity_no=? AND deleted=0"
+        + (closing ? " FOR UPDATE" : ""), TENANT, actor.entityNo());
+    var purchase = row(actor, orderNo, closing);
+    var snap = snapshot(purchase);
+    String status = str(purchase, "status");
+    if (!Set.of("REFUND_REVIEW", "REFUND_REVIEWED").contains(status) || snap.refundNo() == null) throw bad();
+    var previous = snap.quotaBefore();
+    var before = new ReviewQuota(snap.previousPlan(), previous == null ? null : (long) previous.stores(),
+        previous == null ? null : (long) previous.staff(), previous == null ? null : previous.crossStore(),
+        previous == null ? null : previous.storeOverride(), previous == null ? null : previous.staffOverride(),
+        previous != null && Boolean.TRUE.equals(previous.overridesKnown()), snap.previousExpiry(), snap.previousGrant());
+    var current = plan == null
+        ? new ReviewQuota("FREE", (long) fallbackStoreQuota, 0L, false, null, null, true, null, "SELF_PAID")
+        : new ReviewQuota(str(plan,"plan_code"), number(plan,"store_quota"), number(plan,"staff_quota"),
+            bool(plan,"cross_store_stats"), number(plan,"store_quota_override"), number(plan,"staff_quota_override"),
+            true, number(plan,"expire_at"), str(plan,"granted_by"));
+    String revision = plan == null ? "fallback:" + fallbackStoreQuota : number(plan,"id") + ":" + number(plan,"version");
+    var decision = snap.refundDecision();
+    if (closing) {
+      if (decision != null) {
+        if (!decision.command().equals(command) || !decision.operatorNo().equals(actor.userNo())) throw bad();
+      } else {
+        if (!"REFUND_REVIEW".equals(status) || !snap.refundNo().equals(command.refundNo())
+            || !revision.equals(command.quotaRevision())) throw bad();
+        decision = new RefundDecision("KEEP_CURRENT", actor.userNo(), clock.instant(), command, current);
+        status = "REFUND_REVIEWED";
+        db.update("""
+            UPDATE mch_plan_purchase SET status=?,snapshot_json=JSON_SET(snapshot_json,'$.refundDecision',CAST(? AS JSON))
+            WHERE tenant_no=? AND entity_no=? AND order_no=?
+            """, status, encode(decision), TENANT, actor.entityNo(), orderNo);
+      }
+    }
+    return new RefundReview(orderNo,snap.storeNo(),snap.entityNo(),snap.offer(),snap.refundNo(),status,
+        before,current,revision,decision);
+  }
+
   @Override public RecoverySweep recoverRefunds(String after,int limit) {
     if(limit<1 || limit>200) throw bad();
     if(checkout==null) return new RecoverySweep(0,0,after);
@@ -1267,7 +1322,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       var snap=snapshot(purchase);
       if(snap.quote()==null || !snap.entityNo().equals(refund.entityNo()) || !snap.storeNo().equals(refund.storeNo())) return null;
       String status=str(purchase,"status");
-      if(refund.refundNo().equals(snap.refundNo())) return status;
+      if(refund.refundNo().equals(snap.refundNo())) return snap.refundDecision()==null ? status : "REFUND_REVIEW";
       if(!Set.of("APPLIED","PAID_PENDING","REFUND_PENDING").contains(status)) return null;
       var before=snap.quotaBefore();
       String outcome="REFUND_REVIEW";

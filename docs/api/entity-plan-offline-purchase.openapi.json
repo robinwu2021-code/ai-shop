@@ -1188,6 +1188,130 @@
         "x-required-capability": "merchant:merchant:ban + commerce:mall:offline:refund:confirm"
       }
     },
+    "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/refund-review": {
+      "get": {
+        "operationId": "get_entity_plan_refund_review",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Inspect the original order and compare pre-purchase and current quotas.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operator review record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RefundReview"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:read"
+      },
+      "post": {
+        "operationId": "post_entity_plan_refund_review",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Close the review and retain the quota at the revision inspected by the operator.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operator review record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RefundReview"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "commerce:refund:review + merchant:merchant:ban",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseRefundReview"
+              }
+            }
+          }
+        }
+      }
+    },
     "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/recover": {
       "post": {
         "operationId": "recover_plan_purchase",
@@ -1743,6 +1867,173 @@
           "instructions"
         ]
       },
+      "ReviewQuota": {
+        "type": "object",
+        "properties": {
+          "planCode": {
+            "type": "string"
+          },
+          "stores": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "staff": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "crossStore": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "storeOverride": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "staffOverride": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "overridesKnown": {
+            "type": "boolean"
+          },
+          "expiry": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "grantedBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "planCode",
+          "stores",
+          "staff",
+          "crossStore",
+          "storeOverride",
+          "staffOverride",
+          "overridesKnown",
+          "expiry",
+          "grantedBy"
+        ]
+      },
+      "CloseRefundReview": {
+        "type": "object",
+        "properties": {
+          "refundNo": {
+            "type": "string"
+          },
+          "quotaRevision": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "refundNo",
+          "quotaRevision",
+          "reason"
+        ]
+      },
+      "RefundDecision": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "const": "KEEP_CURRENT"
+          },
+          "operatorNo": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "command": {
+            "$ref": "#/components/schemas/CloseRefundReview"
+          },
+          "retainedQuota": {
+            "$ref": "#/components/schemas/ReviewQuota"
+          }
+        },
+        "required": [
+          "result",
+          "operatorNo",
+          "reviewedAt",
+          "command",
+          "retainedQuota"
+        ]
+      },
+      "RefundReview": {
+        "type": "object",
+        "properties": {
+          "orderNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/Offer"
+          },
+          "refundNo": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "REFUND_REVIEW",
+              "REFUND_REVIEWED"
+            ]
+          },
+          "before": {
+            "$ref": "#/components/schemas/ReviewQuota"
+          },
+          "current": {
+            "$ref": "#/components/schemas/ReviewQuota"
+          },
+          "quotaRevision": {
+            "type": "string"
+          },
+          "decision": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RefundDecision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "orderNo",
+          "storeNo",
+          "entityNo",
+          "offer",
+          "refundNo",
+          "status",
+          "before",
+          "current",
+          "quotaRevision",
+          "decision"
+        ]
+      },
       "OrderView": {
         "type": "object",
         "properties": {
@@ -1774,6 +2065,7 @@
               "REVIEW_REQUIRED",
               "REFUND_PENDING",
               "REFUND_REVIEW",
+              "REFUND_REVIEWED",
               "CANCELLATION_REQUESTED",
               "CLOSING",
               "CANCELLED",

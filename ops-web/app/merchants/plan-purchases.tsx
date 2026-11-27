@@ -13,6 +13,7 @@ import {Button} from "@/components/ui/button";
 import {Input,Select} from "@/components/ui/input";
 import {DrawerSection,Field} from "@/components/ui/drawer";
 import {CashRefundsSection} from "@/components/offline/cash-refunds";
+import {PlanRefundReviewPanel} from "./plan-refund-review";
 import {EntityAssistedPurchase} from "./plan-assisted-purchase";
 import {PLAN_PURCHASES_COPY} from "./plan-purchases-copy";
 
@@ -80,6 +81,7 @@ export function EntityPlanPurchaseDetail({order:o,onChanged}:{order:EntityPlanPu
   {claim&&!attempt&&allow("commerce:mall:offline:review")&&allow("merchant:merchant:ban")&&<div><Field label={c.reason}><Input disabled={busy} value={f.reason} onChange={v=>set({...f,reason:v.target.value})}/></Field><Button disabled={busy||!f.reason.trim()} onClick={()=>perform(()=>api.declineEntityPlanPurchase(o.entityNo,o.orderNo,claim.claimNo,f.reason.trim()))}>{c.decline}</Button></div>}
   {((canConfirm&&["PREPARED","CONFIRMING","PAID_PENDING","REFUND_PENDING"].includes(o.status))||(canVoid&&o.status==="CLOSING"))&&<Button disabled={busy} onClick={()=>perform(()=>api.recoverEntityPlanPurchase(o.entityNo,o.orderNo))}>{c.recover}</Button>}
 
+  {["REFUND_REVIEW","REFUND_REVIEWED"].includes(o.status)&&allow("merchant:merchant:read")&&<PlanRefundReviewPanel entityNo={o.entityNo} orderNo={o.orderNo} canClose={allow("commerce:refund:review")&&allow("merchant:merchant:ban")} onChanged={onChanged}/>}
   <CashRefundsSection kind="entity" allowUnfulfilledMatchedCash={o.status==="REVIEW_REQUIRED"} scope={o.entityNo} orderNo={o.orderNo} canRelease={closing||["UNMATCHED","REVIEW_REQUIRED"].includes(o.status)} onChanged={onChanged}/>
   {error&&<p role="alert">{error}</p>}
  </section>;

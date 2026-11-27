@@ -1,3 +1,4 @@
+import type {PlanRefundReview,ClosePlanRefundReview} from "../../entity-plan-purchase-types";
 import type {MallEvidencePurpose} from "../../types/commerce";
 import type {
   EntityPlanOffer,EntityPlanOfferEdit,EntityAssistanceContext,EntityAssistedRequest,
@@ -17,6 +18,8 @@ export interface EntityPlanPurchaseApi {
   entityPlanPurchase(entityNo:string,orderNo:string):Promise<EntityPlanPurchase>;
   confirmEntityPlanPurchase(entityNo:string,orderNo:string,command:EntityPlanConfirm):Promise<EntityPlanAction>;
   declineEntityPlanPurchase(entityNo:string,orderNo:string,claimNo:string,reason:string):Promise<unknown>;
+  entityPlanRefundReview(entityNo:string,orderNo:string):Promise<PlanRefundReview>;
+  closeEntityPlanRefundReview(entityNo:string,orderNo:string,command:ClosePlanRefundReview):Promise<PlanRefundReview>;
   recoverEntityPlanPurchase(entityNo:string,orderNo:string):Promise<EntityPlanPurchase>;
   cancelEntityPlanPurchase(entityNo:string,orderNo:string,command:EntityPlanVoid):Promise<EntityPlanPurchase>;
   reserveEntityPlanEvidence(entityNo:string,orderNo:string,purpose?:MallEvidencePurpose):Promise<EntityPlanEvidenceTicket>;

@@ -110,6 +110,18 @@ public interface EntityPlanPurchaseService {
       List<ClaimView> claims,
       List<ActionView> actions,String purchaseSource) {}
 
+  record ReviewQuota(String planCode, Long stores, Long staff, Boolean crossStore, Long storeOverride,
+      Long staffOverride, boolean overridesKnown, Long expiry, String grantedBy) {}
+  record CloseRefundReview(@NotBlank String refundNo, @NotBlank String quotaRevision,
+      @NotBlank @Size(max=500) String reason) {}
+  record RefundDecision(String result, String operatorNo, Instant reviewedAt, CloseRefundReview command,
+      ReviewQuota retainedQuota) {}
+  record RefundReview(String orderNo, String storeNo, String entityNo, Offer offer, String refundNo,
+      String status, ReviewQuota before, ReviewQuota current, String quotaRevision, RefundDecision decision) {}
+
+  RefundReview refundReview(Actor operator, String orderNo);
+  RefundReview closeRefundReview(Actor operator, String orderNo, CloseRefundReview command);
+
   List<Offer> offers(Actor actor);
 
   Offer saveOffer(Actor operator, OfferEdit edit);
