@@ -3,6 +3,7 @@ package ai.neargo.shop.food.service.impl;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.service.support.ReservationPreorderLifecycle;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.food.dto.CheckVO;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
@@ -265,6 +266,11 @@ public class ReservationServiceImpl implements ReservationService {
                 });
     }
 
+    /**
+     * 订位到店（ADR-068 修订二）：① 业务域把订位标为已到店（锁桌、核对时段与重叠）；② 补偿开台（先占桌、后建账单）；
+     * ③ 业务域把账单号挂到订位上。开台被明确拒绝时把订位退回原状态并抛出；结果不明时订位保持已到店、未挂账单，
+     * 用同一请求重试即可接上（开台按请求键重放）。
+     */
     @Override
     public DetailVO arrive(
             String entity, String store, String actor, String number, ArriveReq req, String key) {
@@ -272,68 +278,105 @@ public class ReservationServiceImpl implements ReservationService {
         if (req == null) bad();
         version(req.version());
         var supplied = versions(req.tables());
-        return write(
-                "RESERVATION_ARRIVE",
-                entity,
-                store,
-                actor,
-                key,
-                List.of(number, req),
+        var previous = new java.util.concurrent.atomic.AtomicReference<String>();
+        var arrived =
+                write(
+                        "RESERVATION_ARRIVE",
+                        entity,
+                        store,
+                        actor,
+                        key,
+                        List.of(number, req),
+                        () -> {
+                            var row = mutable(entity, store, number, req.version());
+                            var assigned = tableNos(row);
+                            if (!supplied.keySet().equals(Set.copyOf(assigned))) bad();
+                            var at = now();
+                            if (at.isBefore(row.getStartAt()) || !at.isBefore(row.getEndAt())) conflict();
+                            locks.lock(entity, store, assigned, supplied, true);
+                            // The original appointment interval remains the admission boundary for this
+                            // bounded handoff.
+                            for (String table : assigned) {
+                                if (memberships.overlaps(
+                                                entity,
+                                                store,
+                                                table,
+                                                row.getStartAt(),
+                                                row.getEndAt(),
+                                                number)
+                                        > 0) conflict();
+                            }
+                            payPolicy(entity, store, at);
+                            previous.set(row.getStatus());
+                            row.setStatus("ARRIVED");
+                            update(row, actor);
+                            return detail(row);
+                        });
+        var row = transaction(() -> find(entity, store, number, false));
+        if (row.getCheckNo() != null) return transaction(() -> detail(find(entity, store, number, false)));
+        String pay = payPolicy(entity, store, now());
+        final CheckVO check;
+        try {
+            var opened =
+                    checks.openReservedCheck(
+                            entity,
+                            store,
+                            actor,
+                            new OpenCheckReq(
+                                    tableNos(row),
+                                    row.getPartySize(),
+                                    pay,
+                                    null,
+                                    req.tables(),
+                                    "EXCLUSIVE",
+                                    List.of(),
+                                    null),
+                            "RSV-" + number,
+                            row.getEndAt().toInstant(ZoneOffset.UTC));
+            check = opened == null ? null : opened.check();
+        } catch (BizException rejected) {
+            if (previous.get() != null)
+                transaction(
+                        () -> {
+                            var current = find(entity, store, number, true);
+                            if ("ARRIVED".equals(current.getStatus()) && current.getCheckNo() == null) {
+                                current.setStatus(previous.get());
+                                update(current, actor);
+                            }
+                            return null;
+                        });
+            throw rejected;
+        }
+        if (check == null
+                || !store.equals(check.storeNo())
+                || check.partySize() != row.getPartySize()
+                || !pay.equals(check.payMode())) conflict();
+        return transaction(
                 () -> {
-                    var row = mutable(entity, store, number, req.version());
-                    var assigned = tableNos(row);
-                    if (!supplied.keySet().equals(Set.copyOf(assigned))) bad();
-                    var at = now();
-                    if (at.isBefore(row.getStartAt()) || !at.isBefore(row.getEndAt())) conflict();
-                    locks.lock(entity, store, assigned, supplied, true);
-                    // The original appointment interval remains the admission boundary for this
-                    // bounded handoff.
-                    for (String table : assigned) {
-                        if (memberships.overlaps(
-                                        entity,
-                                        store,
-                                        table,
-                                        row.getStartAt(),
-                                        row.getEndAt(),
-                                        number)
-                                > 0) conflict();
-                    }
-                    var policy =
-                            policies.getPolicy(
-                                    entity,
-                                    store,
-                                    new GetPolicyQuery(at.toInstant(ZoneOffset.UTC)));
-                    if (policy == null
-                            || !("PREPAY".equals(policy.payPolicy())
-                                    || "POSTPAY".equals(policy.payPolicy()))) conflict();
-                    row.setStatus("ARRIVED");
-                    update(row, actor);
-                    var opened =
-                            checks.openReservedCheck(
-                                    entity,
-                                    store,
-                                    actor,
-                                    new OpenCheckReq(
-                                            assigned,
-                                            row.getPartySize(),
-                                            policy.payPolicy(),
-                                            null,
-                                            req.tables(),
-                                            "EXCLUSIVE",
-                                            List.of(),
-                                            null),
-                                    "RSV-" + number,
-                                    row.getEndAt().toInstant(ZoneOffset.UTC));
-                    var check = opened == null ? null : opened.check();
-                    if (check == null
-                            || !store.equals(check.storeNo())
-                            || check.partySize() != row.getPartySize()
-                            || !policy.payPolicy().equals(check.payMode())) conflict();
-                    row.setCheckNo(check.checkNo());
-                    update(row, actor);
-                    audit(row, actor, "RESERVATION_ARRIVE", null, key);
-                    return detail(row);
+                    var current = find(entity, store, number, true);
+                    if (current.getCheckNo() == null) {
+                        current.setCheckNo(check.checkNo());
+                        update(current, actor);
+                        audit(current, actor, "RESERVATION_ARRIVE", null, key);
+                    } else if (!check.checkNo().equals(current.getCheckNo())) conflict();
+                    return detail(current);
                 });
+    }
+
+    private String payPolicy(String entity, String store, LocalDateTime at) {
+        var policy = policies.getPolicy(entity, store, new GetPolicyQuery(at.toInstant(ZoneOffset.UTC)));
+        if (policy == null
+                || !("PREPAY".equals(policy.payPolicy()) || "POSTPAY".equals(policy.payPolicy())))
+            conflict();
+        return policy.payPolicy();
+    }
+
+    private <T> T transaction(Supplier<T> work) {
+        try {
+            return tx.execute(status -> work.get());
+        } catch (ConcurrencyFailureException | DuplicateKeyException conflict) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
     }
 
     private DetailVO write(

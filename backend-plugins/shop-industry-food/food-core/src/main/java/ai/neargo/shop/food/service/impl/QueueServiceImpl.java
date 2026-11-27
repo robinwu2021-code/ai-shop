@@ -319,28 +319,16 @@ public class QueueServiceImpl implements QueueService {
                             if (!"CALLED".equals(current.getStatus())
                                     || !request.version().equals(current.getVersion()))
                                 throw conflict();
-                            // Queue and original check owner share the primary transaction. A table
-                            // conflict rolls
-                            // back both commands, leaving CALLED available for a different
-                            // table/version.
-                            var opened =
-                                    checks.openQueuedCheck(
-                                            entity, store, actor, check, seatKey(number));
-                            var actual = opened == null ? null : opened.check();
-                            if (actual == null
-                                    || !store.equals(actual.storeNo())
-                                    || actual.partySize() != current.getPartySize())
-                                throw conflict();
+                            // 排队在业务域、账单在订单域（ADR-068 修订二）：先把排号标为入座中并记下请求，
+                            // 提交后再开台（开台本身先占桌、后建账单），最后标为已入座。
                             current.setSeatRequest(payload);
                             current.setSeatRequestHash(hash);
                             current.setSeatActorNo(actor);
-                            current.setStatus("SEATED");
-                            current.setCheckNo(actual.checkNo());
+                            current.setStatus("SEATING");
                             update(current, actor);
-                            changed(current, actor, "QUEUE_SEATED", null, seatKey(number));
                             return current;
                         });
-        return resume(entity, store, actor, row);
+        return resume(entity, store, actor, row, true);
     }
 
     @Override
@@ -349,10 +337,15 @@ public class QueueServiceImpl implements QueueService {
         scope(entity, store, actor, false);
         key(number);
         var row = transaction(() -> find(entity, store, number, false));
-        return resume(entity, store, actor, row);
+        return resume(entity, store, actor, row, false);
     }
 
-    private QueueVO resume(String entity, String store, String actor, FnbQueueTicket row) {
+    /**
+     * 入座中的排号继续开台并标为已入座。{@code fromSeat} 为真（本次入座请求）时，开台被明确拒绝（业务异常、
+     * 且原开台没有留下账单）就把排号退回已叫号并抛出，桌台已由开台的补偿释放；结果不明时保持入座中，由恢复入口继续。
+     */
+    private QueueVO resume(
+            String entity, String store, String actor, FnbQueueTicket row, boolean fromSeat) {
         if ("SEATED".equals(row.getStatus())) return view(row);
         if (!"SEATING".equals(row.getStatus())
                 || row.getSeatRequest() == null
@@ -394,6 +387,23 @@ public class QueueServiceImpl implements QueueService {
                             : checks.getCheck(entity, store, original.getFirst().getObjectNo())
                                     .check();
         } catch (RuntimeException unresolved) {
+            if (fromSeat && unresolved instanceof BizException) {
+                transaction(
+                        () -> {
+                            var current = find(entity, store, row.getTicketNo(), true);
+                            if ("SEATING".equals(current.getStatus())
+                                    && row.getSeatRequestHash().equals(current.getSeatRequestHash())
+                                    && current.getCheckNo() == null) {
+                                current.setStatus("CALLED");
+                                current.setSeatRequest(null);
+                                current.setSeatRequestHash(null);
+                                current.setSeatActorNo(null);
+                                update(current, actor);
+                            }
+                            return null;
+                        });
+                throw unresolved;
+            }
             // Never mark occupancy or allow a fresh seating request while the original owner's
             // outcome is unresolved.
             return transaction(() -> view(find(entity, store, row.getTicketNo(), false)));

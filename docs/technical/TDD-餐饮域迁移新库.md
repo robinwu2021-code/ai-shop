@@ -281,7 +281,9 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - 清台补做扫描 `CheckServiceImpl#recoverClosings`：账单状态或服务状态不再是 OPEN 而占台仍在的，结束占台；并入维护任务 `food-table-recovery`。
 - 测试：`eachWriteRollsBackAfterActualOutboxFlush` 中换台、并台按向前补做、改人数按补偿验证；新增 `closingRecoveryEndsOccupancyOfFinishedChecks`。food-core 757 个、food-web 258 个通过。
 - 扫码会话（`DiningSessionServiceImpl`）：令牌与顾客会话归平台（P3 迁），这里先去掉跨库锁桌台。令牌轮换、撤销与开会话靠令牌行自身的行锁排队；桌台只读一次比对版本与启用状态，版本号在提交后带原版本条件再加。
-- 未做：排队入座、订位到店的开台；时段容量。
+- 排队入座（`QueueServiceImpl#seat`）：① 行业事务里把排号标为入座中并记下请求 → ② 事务外补偿开台（请求键 `QUEUE_SEAT:排号`）→ ③ 标为已入座。开台被明确拒绝时退回已叫号并清掉请求；结果不明时保持入座中，由原有的 `recoverSeating` 继续。排队服务改用 `industryTxManager`。`DiningQueueContractTest` 两条按新顺序重写。
+- 订位到店（`ReservationServiceImpl#arrive`）：① 行业事务里锁桌、核对时段与重叠、标为已到店 → ② 补偿开台（占桌按订位截止时间分配，请求键 `RSV-订位号`）→ ③ 挂账单号。开台被明确拒绝时退回原状态；结果不明时用同一请求重试接上。订位服务改用 `industryTxManager`。
+- 未做：时段容量（在下单与接单的事务里被调用）。
 
 ### 事务拆分记录
 

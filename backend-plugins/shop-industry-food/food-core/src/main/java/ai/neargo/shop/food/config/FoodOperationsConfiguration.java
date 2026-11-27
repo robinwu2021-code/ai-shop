@@ -104,7 +104,7 @@ public class FoodOperationsConfiguration {
             FoodMappers.ActionLogMapper actions,StoreOperationService operations,CheckService checks,
             ObjectProvider<StoreCardQueryPort> stores,RequestIdempotencyPort idem,
             ObjectMapper json,
-            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager) {
         return new QueueServiceImpl(tickets,policies,actions,operations,checks,numbers -> stores.getObject().cards(numbers),idem,json,manager);
     }
     @Bean @ConditionalOnMissingBean(DiningPickupVerificationService.class)

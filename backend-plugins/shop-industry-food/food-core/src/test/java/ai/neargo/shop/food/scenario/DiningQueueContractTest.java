@@ -67,12 +67,13 @@ class DiningQueueContractTest {
                 .isInstanceOfSatisfying(BizException.class,e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
         verify(f.tickets,times(1)).insert(any(FnbQueueTicket.class));
     }
-    @Test void seatingCallsOriginalCheckOwnerInsideQueueTransactionWithoutIntermediateIntent() {
+    /** 排队在业务域、账单在订单域（ADR-068 修订二）：先标入座中并记下请求，再在排队事务之外开台，最后标已入座。 */
+    @Test void seatingMarksSeatingThenOpensCheckOutsideQueueTransaction() {
         var f=new Fixture();
-        when(f.checks.openQueuedCheck(anyString(),anyString(),anyString(),any(),anyString())).thenAnswer(call -> {
-            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
-            assertThat(f.row.getStatus()).isEqualTo("CALLED");
-            assertThat(f.row.getSeatRequest()).isNull();
+        when(f.checks.openCheck(anyString(),anyString(),anyString(),any(),anyString())).thenAnswer(call -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            assertThat(f.row.getStatus()).isEqualTo("SEATING");
+            assertThat(f.row.getSeatRequest()).isNotNull();
             assertThat((String)call.getArgument(4)).isEqualTo("QUEUE_SEAT:Q");
             return new CheckResultVO(f.check());
         });
@@ -80,19 +81,20 @@ class DiningQueueContractTest {
         assertThat(result.status()).isEqualTo("SEATED"); assertThat(result.checkNo()).isEqualTo("CHECK");
         assertThat(result.notificationStatus()).isEqualTo("OUTBOX_RECORDED");
         assertThat(f.service.seat("E","S","A","Q",new SeatQueueReq(0L,check("T"))).checkNo()).isEqualTo("CHECK");
-        verify(f.checks,times(1)).openQueuedCheck(anyString(),anyString(),anyString(),any(),anyString());
-        verify(f.checks,never()).openCheck(anyString(),anyString(),anyString(),any(),anyString());
+        verify(f.checks,times(1)).openCheck(anyString(),anyString(),anyString(),any(),anyString());
+        verify(f.checks,never()).openQueuedCheck(anyString(),anyString(),anyString(),any(),anyString());
     }
+    /** 开台被明确拒绝（如桌被占）：排号退回已叫号、清掉入座请求，可换桌再入座。 */
     @Test void ordinaryTableConflictLeavesCalledAndAllowsAnotherTableWithCurrentVersion() {
         var f=new Fixture();
-        when(f.checks.openQueuedCheck(anyString(),anyString(),anyString(),any(),anyString()))
+        when(f.checks.openCheck(anyString(),anyString(),anyString(),any(),anyString()))
                 .thenThrow(BizException.of(ErrorCode.CONFLICT)).thenReturn(new CheckResultVO(f.check()));
         assertThatThrownBy(() -> f.service.seat("E","S","A","Q",new SeatQueueReq(0L,check("T"))))
                 .isInstanceOfSatisfying(BizException.class,e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
         assertThat(f.row.getStatus()).isEqualTo("CALLED");
         assertThat(f.row.getCheckNo()).isNull(); assertThat(f.row.getSeatRequest()).isNull();
-        assertThat(f.service.seat("E","S","A","Q",new SeatQueueReq(0L,check("OTHER"))).status()).isEqualTo("SEATED");
-        verify(f.checks,times(2)).openQueuedCheck(anyString(),anyString(),anyString(),any(),
+        assertThat(f.service.seat("E","S","A","Q",new SeatQueueReq(f.row.getVersion(),check("OTHER"))).status()).isEqualTo("SEATED");
+        verify(f.checks,times(2)).openCheck(anyString(),anyString(),anyString(),any(),
                 org.mockito.ArgumentMatchers.eq("QUEUE_SEAT:Q"));
     }
     @Test void legacyUnknownRetainsFrozenRequestAndOriginalKey() {

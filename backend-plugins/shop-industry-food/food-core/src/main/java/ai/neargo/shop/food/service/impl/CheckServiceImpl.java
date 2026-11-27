@@ -222,7 +222,8 @@ public class CheckServiceImpl implements CheckService {
                 || !reservedUntil.isAfter(Instant.now())
                 || reservedUntil.getNano() % 1_000_000 != 0)
             throw BizException.of(ErrorCode.CONFLICT);
-        return open(entity, store, actor, req, key, "OPEN_RESERVED_CHECK", true, reservedUntil);
+        // 订位到店也走「先占桌、后建账单、失败补偿」，由订位服务在自己的事务之外调用。
+        return open(entity, store, actor, req, key, "OPEN_RESERVED_CHECK", false, reservedUntil);
     }
 
     private CheckResultVO open(
@@ -283,7 +284,7 @@ public class CheckServiceImpl implements CheckService {
                                 originalHash, "RESERVED_UNTIL", reservedUntil.toString());
         if (!queued)
             return openWithCompensation(
-                    entity, store, actor, req, key, action, hash, targets, versions, desired);
+                    entity, store, actor, req, key, action, hash, targets, versions, desired, reservedUntil);
         // 排队入座、订位到店仍在调用方的事务里开台（随排队、订位改补偿时一起改，见 TDD §6）。
         return write(
                 action,
@@ -360,7 +361,8 @@ public class CheckServiceImpl implements CheckService {
             String hash,
             List<String> targets,
             Map<String, Long> versions,
-            List<SeatReq> desired) {
+            List<SeatReq> desired,
+            Instant reservedUntil) {
         scope(entity, store);
         if (actor == null || actor.isBlank() || actor.length() > 32)
             throw BizException.of(ErrorCode.FORBIDDEN);
@@ -377,7 +379,8 @@ public class CheckServiceImpl implements CheckService {
         var at = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         var policy = policies.getPolicy(entity, store, new GetPolicyQuery(at));
         if (!req.payMode().equals(policy.payPolicy())) throw BizException.of(ErrorCode.CONFLICT);
-        occupyFirst(entity, store, actor, req, key, action, hash, checkNo, operationNo, targets, versions);
+        occupyFirst(
+                entity, store, actor, req, key, action, hash, checkNo, operationNo, targets, versions, reservedUntil);
         try {
             return write(
                     action,
@@ -431,14 +434,16 @@ public class CheckServiceImpl implements CheckService {
             String checkNo,
             String operationNo,
             List<String> targets,
-            Map<String, Long> versions) {
+            Map<String, Long> versions,
+            Instant reservedUntil) {
         try {
             industryTx.executeWithoutResult(
                     status -> {
                         if (targets.isEmpty() || !occupancies.activeForCheck(entity, checkNo).isEmpty()) return;
                         var locked = locks.lock(entity, store, targets, versions, true);
                         var allocation =
-                                allocation(entity, locked, req.partySize(), req.sharingMode(), null, null);
+                                allocation(
+                                        entity, locked, req.partySize(), req.sharingMode(), null, reservedUntil);
                         var owner = new FnbCheck();
                         owner.setEntityNo(entity);
                         owner.setStoreNo(store);

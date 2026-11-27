@@ -526,7 +526,7 @@ public class FoodAutoConfiguration {
     ReservationService reservationService(ReservationMapper mapper, ReservationTableMapper reservationTables,
             TableAreaMapper areas, TableMapper tables, TableOccupancyMapper occupancy, ActionLogMapper actions,
             CheckService checks, StoreOperationService policies, RequestIdempotencyPort idem, ObjectMapper json,
-            ObjectProvider<StoreCardQueryPort> stores, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
+            ObjectProvider<StoreCardQueryPort> stores, @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager) {
         return new ReservationServiceImpl(mapper, reservationTables, areas, tables, occupancy, actions,
                 checks, policies, idem, json, numbers -> stores.getObject().cards(numbers), manager);
     }
