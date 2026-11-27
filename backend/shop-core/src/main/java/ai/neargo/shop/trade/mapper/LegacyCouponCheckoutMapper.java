@@ -1,11 +1,11 @@
 package ai.neargo.shop.trade.mapper;
 
 import ai.neargo.shop.trade.entitlement.entity.OrdLegacyCouponCheckout;
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import ai.neargo.shop.common.config.TradeTableMapper;
 import org.apache.ibatis.annotations.*;
 import java.time.LocalDateTime;
 
-public interface LegacyCouponCheckoutMapper extends BaseMapper<OrdLegacyCouponCheckout> {
+public interface LegacyCouponCheckoutMapper extends TradeTableMapper<OrdLegacyCouponCheckout> {
     record SettledReturn(String afterSaleNo, Long amountMinor) {}
     @Select("""
         SELECT s.after_sale_no AS afterSaleNo, CASE WHEN COUNT(l.id)=COUNT(l.coupon_return_minor) THEN SUM(l.coupon_return_minor) END AS amountMinor

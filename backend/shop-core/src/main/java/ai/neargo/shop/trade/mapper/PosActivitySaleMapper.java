@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.mapper;
 
+import ai.neargo.shop.common.config.TradeSqlMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Insert;
@@ -7,7 +8,7 @@ import org.apache.ibatis.annotations.Select;
 
 /** Source facts scoped to a POS store. Refund joins only consume successful, dated original-line records. */
 @org.apache.ibatis.annotations.Mapper
-public interface PosActivitySaleMapper {
+public interface PosActivitySaleMapper extends TradeSqlMapper {
     @Insert("""
         INSERT INTO ord_pos_activity_line(tenant_no,sub_order_no,item_id,apply_no,activity_no,activity_version_no,discount_minor)
         VALUES (#{tenant},#{sub},#{item},#{use},#{activity},#{version},#{discount})

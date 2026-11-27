@@ -346,7 +346,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         return snapshot(row, json);
     }
 
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot decideRefund(EntitlementContext ctx, String entity, String store, String no,
                                               UseFact committed) {
         var row = lock(ctx.tenantNo(), no);
@@ -374,7 +374,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         return snapshot(row, json);
     }
 
-    @Override @Transactional
+    @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER)
     public ServiceOrderSnapshot acknowledgeRefund(EntitlementContext ctx, String entity, String no, String reverseNo) {
         var row = lock(ctx.tenantNo(), no);
         var order = snapshot(row, json);

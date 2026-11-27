@@ -63,7 +63,8 @@ public class LegacyCouponCheckoutJournalImpl implements LegacyCouponCheckoutJour
     private final Clock clock;
     private final OutboxEventBus events;
     public LegacyCouponCheckoutJournalImpl(LegacyCouponCheckoutMapper rows,LegacyCouponIdentityPort identities,
-            OrderMapper orders,SubOrderMapper subs,AfterSaleMapper afterSales,ObjectProvider<PlatformSwitchPort> switches,ObjectMapper json,PlatformTransactionManager transactions,OutboxEventBus events,
+            OrderMapper orders,SubOrderMapper subs,AfterSaleMapper afterSales,ObjectProvider<PlatformSwitchPort> switches,ObjectMapper json,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager transactions,OutboxEventBus events,
             @Qualifier("legacyCouponCheckoutClock") ObjectProvider<Clock> clocks,
             @Value("${shop.core.entitlement.legacy-coupon.enabled:false}") boolean enabled) {
         this.rows=rows;this.identities=identities;this.orders=orders;this.subs=subs;this.afterSales=afterSales;this.switches=switches;this.json=json;this.enabled=enabled;this.events=events;this.clock=clocks.getIfAvailable(Clock::systemUTC);

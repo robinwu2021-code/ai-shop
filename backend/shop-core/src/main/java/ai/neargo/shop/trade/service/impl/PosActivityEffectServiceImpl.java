@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
 import ai.neargo.shop.trade.mapper.PosActivitySaleMapper;
 import ai.neargo.shop.trade.mapper.PosActivitySaleMapper.Line;
@@ -25,7 +26,7 @@ public class PosActivityEffectServiceImpl implements PosActivityEffectService {
         this.facts=facts; this.merchants=merchants;
     }
 
-    @Transactional(readOnly=true)
+    @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, readOnly = true)
     public Effect effect(Scope actor,String store,String activity,LocalDate from,LocalDate through,ZoneId zone) {
         if (through.isBefore(from) || through.isAfter(from.plusDays(365))) throw BizException.of(ErrorCode.BAD_REQUEST);
         if (actor.allowedStores()!=null && !actor.allowedStores().contains(store)
