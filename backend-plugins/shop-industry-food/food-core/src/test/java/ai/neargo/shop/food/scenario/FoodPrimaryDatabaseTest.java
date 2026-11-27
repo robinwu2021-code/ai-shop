@@ -6,6 +6,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
+import ai.neargo.shop.common.config.ModuleDataSourceRegistrar;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.food.config.FoodAutoConfiguration;
 import ai.neargo.shop.food.config.FoodProperties;
@@ -24,6 +25,8 @@ import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -100,7 +103,7 @@ class FoodPrimaryDatabaseTest {
                         AutoConfigurations.of(
                                 FoodAutoConfiguration.class,
                                 ai.neargo.shop.food.config.DiningDeliveryAutoConfiguration.class))
-                .withUserConfiguration(PrimaryPersistenceConfiguration.class)
+                .withUserConfiguration(PrimaryWithModuleHandles.class)
                 .withBean(
                         ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler.class,
                         () ->
@@ -122,6 +125,10 @@ class FoodPrimaryDatabaseTest {
                         "spring.datasource.username=" + ((DriverManagerDataSource) source).getUsername(),
                         "spring.datasource.password=" + ((DriverManagerDataSource) source).getPassword());
     }
+
+    @Configuration(proxyBeanMethods = false)
+    @Import({PrimaryPersistenceConfiguration.class, ModuleDataSourceRegistrar.class})
+    static class PrimaryWithModuleHandles {}
 
     @Test
     void pendingCustodyExtensionPreservesTheOriginalV1OwnerAndRemainingProperty() {
@@ -687,6 +694,44 @@ class FoodPrimaryDatabaseTest {
         assertThatThrownBy(
                         () -> validator.initialize(source, FoodProperties.MigrationMode.VALIDATE))
                 .hasMessageContaining("fnb_table_area.name");
+    }
+
+    @Test
+    void rejectsTradeRelinkDestinationDriftEvenWhenPrimaryCopiesAreIntact() {
+        appliedFood();
+        String tradeDatabase = database + "_trade";
+        var credentials = (DriverManagerDataSource) source;
+        var trade = new DriverManagerDataSource(
+                credentials.getUrl() + "_trade", credentials.getUsername(), credentials.getPassword());
+        var tradeSql = new JdbcTemplate(trade);
+        var adminSql = new JdbcTemplate(admin());
+        adminSql.execute("CREATE DATABASE " + tradeDatabase);
+        try {
+            for (String table : List.of("fnb_order_batch", "fnb_channel_order_source", "fnb_channel_import_guard")) {
+                tradeSql.execute("CREATE TABLE " + table + " LIKE " + database + "." + table);
+            }
+            tradeSql.execute("ALTER TABLE fnb_channel_order_source DROP COLUMN core_acceptance_snapshot");
+            tradeSql.execute("ALTER TABLE fnb_channel_import_guard DROP INDEX uk_fnb_channel_import_guard");
+            runner().withPropertyValues(
+                            "shop.datasources.trade-probe.url=" + trade.getUrl(),
+                            "shop.datasources.trade-probe.username=" + trade.getUsername(),
+                            "shop.datasources.trade-probe.password=" + trade.getPassword(),
+                            "shop.modules.trade.datasource=trade-probe")
+                    .run(context -> {
+                        assertThat(context).hasFailed();
+                        assertThat(context.getStartupFailure())
+                                .hasStackTraceContaining("trade.fnb_channel_order_source.core_acceptance_snapshot")
+                                .hasStackTraceContaining(
+                                        "trade.fnb_channel_import_guard.unique(tenant_no,entity_no,store_no,import_no)");
+                    });
+            assertThat(tableExists("fnb_flyway_history")).isTrue();
+            assertThat(tradeSql.queryForObject(
+                            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?",
+                            Integer.class, FoodSchemaValidator.HISTORY))
+                    .isZero();
+        } finally {
+            adminSql.execute("DROP DATABASE " + tradeDatabase);
+        }
     }
 
     @Test

@@ -31,9 +31,19 @@ public final class FoodSchemaValidator {
     private static final String RESOURCE = "db/industry/food/V1__food_business_tables.sql";
     private static final String SHA256 =
             "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9";
+    private static final Map<String, List<String>> TRADE_RELINK_UNIQUE_KEYS = Map.of(
+            "fnb_order_batch", List.of("batch_no", "store_no,request_key"),
+            "fnb_channel_order_source", List.of("source_no", "tenant_no,entity_no,store_no,import_no",
+                    "tenant_no,channel_store_key,external_order_key", "cart_no", "batch_no"),
+            "fnb_channel_import_guard", List.of("guard_no", "tenant_no,entity_no,store_no,import_no"));
 
     public FoodSchemaReady initialize(DataSource source, FoodProperties.MigrationMode mode) {
+        return initialize(source, source, mode);
+    }
+
+    FoodSchemaReady initialize(DataSource source, DataSource trade, FoodProperties.MigrationMode mode) {
         if (mode == FoodProperties.MigrationMode.OFF) return FoodSchemaReady.off();
+        boolean separateTrade = source != trade;
         if (mode == FoodProperties.MigrationMode.VALIDATE) source = readOnly(source);
         Map<String, Set<String>> expected = expectedColumns();
         Map<String, Set<String>> before = columns(source);
@@ -108,8 +118,29 @@ public final class FoodSchemaValidator {
         missing.addAll(new PlatformWritePrerequisites().missing(source));
         missing.addAll(missingFoodUniqueKeys(source, actual));
         missing.addAll(missingLocalStockContract(source));
+        if (separateTrade) missing.addAll(missingTradeRelinkContract(trade, expected));
         Collections.sort(missing);
         return new FoodSchemaReady(true, current.getVersion().getVersion(), missing);
+    }
+
+    /** Check the relink history tables on the handle that actually serves them. */
+    private static List<String> missingTradeRelinkContract(
+            DataSource trade, Map<String, Set<String>> expected) {
+        Set<String> tables = TRADE_RELINK_UNIQUE_KEYS.keySet();
+        Map<String, Set<String>> actual = columns(trade, tables);
+        List<String> missing = new ArrayList<>();
+        for (String table : tables) {
+            Set<String> fields = actual.get(table);
+            if (fields == null) {
+                missing.add(table);
+                continue;
+            }
+            for (String field : expected.get(table)) {
+                if (!fields.contains(field)) missing.add(table + "." + field);
+            }
+        }
+        missing.addAll(missingUniqueKeys(trade, actual, TRADE_RELINK_UNIQUE_KEYS));
+        return missing.stream().map(issue -> "trade." + issue).toList();
     }
 
     static List<String> missingLocalStockContract(DataSource source) {
@@ -264,12 +295,7 @@ public final class FoodSchemaValidator {
                 List.of("party_no", "tenant_no,entity_no,store_no,channel_store_key,party_key"));
         contracts.put(
                 "fnb_channel_order_source",
-                List.of(
-                        "source_no",
-                        "tenant_no,entity_no,store_no,import_no",
-                        "tenant_no,channel_store_key,external_order_key",
-                        "cart_no",
-                        "batch_no"));
+                TRADE_RELINK_UNIQUE_KEYS.get("fnb_channel_order_source"));
         contracts.put(
                 "fnb_service_entitlement",
                 List.of("entitlement_no", "entity_no,store_no,form_no,attendee_no,sku_no"));
@@ -288,7 +314,7 @@ public final class FoodSchemaValidator {
                 List.of("movement_no", "tenant_no,entity_no,store_no,key_hash"));
         contracts.put(
                 "fnb_channel_import_guard",
-                List.of("guard_no", "tenant_no,entity_no,store_no,import_no"));
+                TRADE_RELINK_UNIQUE_KEYS.get("fnb_channel_import_guard"));
         contracts.put(
                 "fnb_offline_signer",
                 List.of("key_no", "entity_no,store_no,device_no,device_generation"));
@@ -321,6 +347,11 @@ public final class FoodSchemaValidator {
                 "tenant_no,entity_no,store_no,action,operation_key"));
         contracts.put("fnb_stock_movement", List.of("movement_no",
                 "tenant_no,entity_no,store_no,command_no,line_ref"));
+        return missingUniqueKeys(source, actual, contracts);
+    }
+
+    private static List<String> missingUniqueKeys(
+            DataSource source, Map<String, Set<String>> actual, Map<String, List<String>> contracts) {
         List<String> missing = new ArrayList<>();
         try (Connection connection = source.getConnection()) {
             connection.setReadOnly(true);
@@ -354,7 +385,7 @@ public final class FoodSchemaValidator {
             }
         } catch (SQLException ex) {
             throw new IllegalStateException(
-                    "Cannot inspect primary unique keys (SQLState=" + ex.getSQLState() + ")");
+                    "Cannot inspect food unique keys (SQLState=" + ex.getSQLState() + ")");
         }
         return missing;
     }
@@ -384,6 +415,10 @@ public final class FoodSchemaValidator {
     }
 
     private static Map<String, Set<String>> columns(DataSource source) {
+        return columns(source, Set.of());
+    }
+
+    private static Map<String, Set<String>> columns(DataSource source, Set<String> requiredTables) {
         try (Connection connection = source.getConnection()) {
             connection.setReadOnly(true);
             var metadata = connection.getMetaData();
@@ -396,6 +431,8 @@ public final class FoodSchemaValidator {
                             new String[] {"TABLE"})) {
                 while (tables.next()) {
                     String table = tables.getString("TABLE_NAME");
+                    String normalized = table.toLowerCase(Locale.ROOT);
+                    if (!requiredTables.isEmpty() && !requiredTables.contains(normalized)) continue;
                     Set<String> fields = new TreeSet<>();
                     try (var columns =
                             metadata.getColumns(
@@ -408,7 +445,7 @@ public final class FoodSchemaValidator {
                                         columns.getString("COLUMN_NAME").toLowerCase(Locale.ROOT));
                         }
                     }
-                    result.put(table.toLowerCase(Locale.ROOT), fields);
+                    result.put(normalized, fields);
                 }
             }
             return result;
@@ -416,7 +453,7 @@ public final class FoodSchemaValidator {
             // Driver messages may contain connection details. Do not expose them in startup
             // diagnostics.
             throw new IllegalStateException(
-                    "Cannot inspect primary food schema (SQLState=" + ex.getSQLState() + ")");
+                    "Cannot inspect food schema (SQLState=" + ex.getSQLState() + ")");
         }
     }
 

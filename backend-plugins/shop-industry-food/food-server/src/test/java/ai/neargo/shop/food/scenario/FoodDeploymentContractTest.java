@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ai.neargo.shop.auth.AbstractTokenAuthFilter;
+import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.server.FoodApplication;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
@@ -24,6 +25,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import javax.sql.DataSource;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 class FoodDeploymentContractTest {
     private static final String TOKEN = "food-unit-test-service-token";
@@ -44,6 +48,41 @@ class FoodDeploymentContractTest {
                     .doesNotHaveBean(GoodsCatalogQueryPort.class);
             mvc(context).perform(get("/actuator/health/readiness")).andExpect(status().isServiceUnavailable());
         });
+    }
+
+    @Test
+    void unboundTradeAndIndustryHandlesReuseThePrimaryPersistenceGroup() {
+        runner.withPropertyValues("shop.services.internal-token=" + TOKEN,
+                ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY).run(context -> {
+                    assertThat(context).hasNotFailed();
+                    for (String module : new String[] {ModuleDataSources.TRADE, ModuleDataSources.INDUSTRY}) {
+                        assertThat(context.getBean(ModuleDataSources.dataSource(module)))
+                                .isSameAs(context.getBean("dataSource"));
+                        assertThat(context.getBean(ModuleDataSources.sqlSessionFactory(module)))
+                                .isSameAs(context.getBean("sqlSessionFactory"));
+                        assertThat(context.getBean(ModuleDataSources.txManager(module)))
+                                .isSameAs(context.getBean("transactionManager"));
+                    }
+                });
+    }
+
+    @Test
+    void explicitIndustryBindingUsesItsOwnPersistenceGroup() {
+        runner.withPropertyValues("shop.services.internal-token=" + TOKEN,
+                ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY,
+                "shop.datasources.kds-test.url=jdbc:h2:mem:food_server_industry",
+                "shop.datasources.kds-test.username=sa",
+                "shop.modules.industry.datasource=kds-test").run(context -> {
+                    assertThat(context).hasNotFailed();
+                    var industry = context.getBean(ModuleDataSources.INDUSTRY_DATA_SOURCE, DataSource.class);
+                    assertThat(industry).isNotSameAs(context.getBean("dataSource"));
+                    var factory = context.getBean(ModuleDataSources.INDUSTRY_SQL_SESSION_FACTORY, SqlSessionFactory.class);
+                    assertThat(factory.getConfiguration().getEnvironment().getDataSource()).isSameAs(industry);
+                    var manager = context.getBean(ModuleDataSources.INDUSTRY_TX_MANAGER, DataSourceTransactionManager.class);
+                    assertThat(manager.getDataSource()).isSameAs(industry);
+                    assertThat(context.getBean(ModuleDataSources.TRADE_DATA_SOURCE))
+                            .isSameAs(context.getBean("dataSource"));
+                });
     }
 
     @Test

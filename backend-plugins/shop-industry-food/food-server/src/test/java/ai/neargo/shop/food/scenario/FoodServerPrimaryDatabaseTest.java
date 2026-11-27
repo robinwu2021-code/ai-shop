@@ -98,6 +98,7 @@ class FoodServerPrimaryDatabaseTest {
                             "shop.outbox.sources.platform.mode=unified",
                             "shop.outbox.sources.inventory.mode=legacy",
                             "shop.outbox.enabled=false",
+                            "shop.food.commerce.events.enabled=true",
                             "spring.datasource.url=" + url,
                             "spring.datasource.username=root",
                             "spring.datasource.password=",

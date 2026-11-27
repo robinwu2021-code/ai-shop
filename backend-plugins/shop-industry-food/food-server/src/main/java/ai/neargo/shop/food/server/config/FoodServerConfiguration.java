@@ -1,6 +1,7 @@
 package ai.neargo.shop.food.server.config;
 
 import ai.neargo.shop.common.AuditMetaObjectHandler;
+import ai.neargo.shop.common.config.ModuleDataSourceRegistrar;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.food.channel.config.FoodCatalogClientConfiguration;
 import ai.neargo.shop.food.config.FoodAutoConfiguration;
@@ -27,6 +28,7 @@ import java.util.ArrayList;
 @Configuration(proxyBeanMethods = false)
 @Import({
     PrimaryPersistenceConfiguration.class,
+    ModuleDataSourceRegistrar.class,
     FoodAutoConfiguration.class,
     FoodCatalogClientConfiguration.class
 })

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 /** All original rows count, including cancelled and archived business history. */
 @Component
-// Reads food history through foodSqlSessionTemplate, which exists only when food persistence is enabled.
+// The history tables use the same trade template as their writers.
 @org.springframework.context.annotation.Conditional(ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled.class)
 public final class FoodStoreRelinkFactsPortImpl implements StoreRelinkIndustryFactsPort {
     private final JdbcTemplate jdbc;
@@ -20,7 +20,7 @@ public final class FoodStoreRelinkFactsPortImpl implements StoreRelinkIndustryFa
     @Override public java.util.Set<String> businessTypes() { return java.util.Set.of(); }
     public FoodStoreRelinkFactsPortImpl(JdbcTemplate jdbc) { this.jdbc=jdbc; }
     @org.springframework.beans.factory.annotation.Autowired
-    public FoodStoreRelinkFactsPortImpl(@org.springframework.beans.factory.annotation.Qualifier("foodSqlSessionTemplate")
+    public FoodStoreRelinkFactsPortImpl(@org.springframework.beans.factory.annotation.Qualifier("foodTradeSqlSessionTemplate")
             org.mybatis.spring.SqlSessionTemplate template) {
         this(new JdbcTemplate(template.getSqlSessionFactory().getConfiguration().getEnvironment().getDataSource()));
     }
