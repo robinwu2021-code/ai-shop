@@ -142,11 +142,6 @@ public final class ProductMappers {
             extends ProductTableMapper<ai.neargo.shop.product.entity.PrdMerchantSpecValue> {
     }
 
-    /** 类目 × 支付方式（四层判定的第 ① 层）。**没有行即放行**。 */
-    public interface CategoryPayModeMapper
-            extends ProductTableMapper<ai.neargo.shop.product.entity.PrdCategoryPayMode> {
-    }
-
     public interface GoodsDraftMapper extends ProductTableMapper<ai.neargo.shop.product.entity.PrdGoodsDraft> {
         /**
          * 物理删（发布成功 / 内容与线上相同 / 商家丢弃草稿）。

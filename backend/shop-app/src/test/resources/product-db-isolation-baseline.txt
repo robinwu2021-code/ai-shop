@@ -11,7 +11,6 @@ R1 StoreStockSyncMapper 继承 BaseMapper
 R1 TopicGoodsMapper 继承 BaseMapper
 R1 TopicMapper 继承 BaseMapper
 R2 AppealMapper 用到 rvw_appeal，不在 目标库 DDL
-R2 CategoryPayModeMapper 用到 prd_category_pay_mode，不在 05-n_trade.sql
 R2 CategorySpecMapper 用到 prd_category_spec，不在 05-n_trade.sql
 R2 CategorySpecValueMapper 用到 prd_category_spec_value，不在 05-n_trade.sql
 R2 EntityCategoryInvMapper 用到 prd_entity_category_inv，不在 05-n_trade.sql

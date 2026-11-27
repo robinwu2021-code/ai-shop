@@ -22,7 +22,7 @@ public interface PayModeService {
      * 这件商品在这家店支持哪些支付方式。<b>四层取交集</b>：
      *
      * <pre>
-     *   ① 平台 × 类目   prd_category_pay_mode   —— 没有行即放行
+     *   ① 平台 × 类目   prd_category.disallowed_pay_modes —— 列里没有即放行
      *   ② 主体资质      mch_qualification       —— 短期主力，按 expire_at 现算
      *   ③ 门店          mch_store               —— 默认关，商家自己开
      *   ④ 商品          prd_goods.pay_modes     —— 商家愿不愿意

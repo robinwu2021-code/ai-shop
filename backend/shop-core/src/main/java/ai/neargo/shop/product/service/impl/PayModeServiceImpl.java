@@ -4,9 +4,10 @@ import ai.neargo.shop.spi.platform.PlatformSwitchPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
-import ai.neargo.shop.product.entity.PrdCategoryPayMode;
+import ai.neargo.shop.product.entity.PrdCategory;
+import ai.neargo.shop.product.policy.CategoryPayModePolicy;
 import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.mapper.ProductMappers.CategoryPayModeMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.service.PayModeService;
 import ai.neargo.shop.spi.user.QualificationPort;
@@ -27,17 +28,17 @@ import java.util.Set;
 public class PayModeServiceImpl implements PayModeService {
 
     private final GoodsMapper goodsMapper;
-    private final CategoryPayModeMapper catPayModeMapper;
+    private final CategoryMapper categoryMapper;
     private final QualificationPort qualificationPort;
     private final StorePayPort storePayPort;
     private final PlatformSwitchPort switchPort;
     private final ObjectMapper json;
 
-    public PayModeServiceImpl(GoodsMapper goodsMapper, CategoryPayModeMapper catPayModeMapper,
+    public PayModeServiceImpl(GoodsMapper goodsMapper, CategoryMapper categoryMapper,
                               QualificationPort qualificationPort, StorePayPort storePayPort,
                               PlatformSwitchPort switchPort, ObjectMapper json) {
         this.goodsMapper = goodsMapper;
-        this.catPayModeMapper = catPayModeMapper;
+        this.categoryMapper = categoryMapper;
         this.qualificationPort = qualificationPort;
         this.storePayPort = storePayPort;
         this.switchPort = switchPort;
@@ -66,7 +67,7 @@ public class PayModeServiceImpl implements PayModeService {
         if (!readPayModes(goods.getPayModes()).contains(PayModes.OFFLINE)) {
             return out;
         }
-        // ① 平台 × 类目：**没有行即放行**，只有显式插了 allowed=0 才是禁止
+        // ① 平台 × 类目：类目的 disallowed_pay_modes 里没有它即放行
         if (!categoryAllows(goods.getCategoryNo(), PayModes.OFFLINE)) {
             return out;
         }
@@ -122,12 +123,12 @@ public class PayModeServiceImpl implements PayModeService {
         if (categoryNo == null || categoryNo.isBlank()) {
             return true;
         }
-        PrdCategoryPayMode row = DataScopeContext.executeWithoutScope(() ->
-                catPayModeMapper.selectOne(Wrappers.<PrdCategoryPayMode>lambdaQuery()
-                        .eq(PrdCategoryPayMode::getCategoryNo, categoryNo)
-                        .eq(PrdCategoryPayMode::getPayMode, payMode)
+        PrdCategory category = DataScopeContext.executeWithoutScope(() ->
+                categoryMapper.selectOne(Wrappers.<PrdCategory>lambdaQuery()
+                        .select(PrdCategory::getCategoryNo, PrdCategory::getDisallowedPayModes)
+                        .eq(PrdCategory::getCategoryNo, categoryNo)
                         .last("LIMIT 1")));
-        return row == null || !Integer.valueOf(0).equals(row.getAllowed());
+        return category == null || CategoryPayModePolicy.allows(category.getDisallowedPayModes(), payMode);
     }
 
     /** 解析不出来按空处理 —— 存量行是 `["ONLINE"]`，脏数据不该让商品变成不可下单。 */

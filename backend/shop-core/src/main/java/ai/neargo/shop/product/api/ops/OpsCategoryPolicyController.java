@@ -7,8 +7,9 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.dto.CategoryVO;
-import ai.neargo.shop.product.entity.PrdCategoryPayMode;
-import ai.neargo.shop.product.mapper.ProductMappers.CategoryPayModeMapper;
+import ai.neargo.shop.product.entity.PrdCategory;
+import ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper;
+import ai.neargo.shop.product.policy.CategoryPayModePolicy;
 import ai.neargo.shop.product.service.CategoryService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -42,14 +43,14 @@ import java.util.Map;
 public class OpsCategoryPolicyController {
 
     private final CategoryService categoryService;
-    private final CategoryPayModeMapper payModeMapper;
+    private final CategoryMapper categoryMapper;
     private final AuditLogPort auditLogPort;
 
     public OpsCategoryPolicyController(CategoryService categoryService,
-                                       CategoryPayModeMapper payModeMapper,
+                                       CategoryMapper categoryMapper,
                                        AuditLogPort auditLogPort) {
         this.categoryService = categoryService;
-        this.payModeMapper = payModeMapper;
+        this.categoryMapper = categoryMapper;
         this.auditLogPort = auditLogPort;
     }
 
@@ -58,26 +59,25 @@ public class OpsCategoryPolicyController {
     /**
      * 类目 × 支付方式。
      *
-     * <p><b>{@code offlineAllowed} 的默认是「允许」</b>：这张表的语义是
-     * 「没有行即放行，插 allowed=0 才是禁止」。设计成白名单的话，
+     * <p><b>{@code offlineAllowed} 的默认是「允许」</b>：{@code prd_category.disallowed_pay_modes}
+     * 只记被禁的方式，空即放行。设计成白名单的话，
      * 上线当天得先把 57 个类目全配一遍才有人下得了单 ——
      * 而一期只想用「主体资质」那一层做主力。
      */
     @GetMapping("/ops/category-pay-modes")
     @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_READ + "')")
     public List<CategoryPayModeVO> categoryPayModes() {
-        Map<String, PrdCategoryPayMode> rows = new LinkedHashMap<>();
-        for (PrdCategoryPayMode r : DataScopeContext.executeWithoutScope(() ->
-                payModeMapper.selectList(Wrappers.<PrdCategoryPayMode>lambdaQuery()
-                        .eq(PrdCategoryPayMode::getPayMode, PayModes.OFFLINE)))) {
-            rows.put(r.getCategoryNo(), r);
+        Map<String, String> disallowed = new LinkedHashMap<>();
+        for (PrdCategory c : DataScopeContext.executeWithoutScope(() ->
+                categoryMapper.selectList(Wrappers.<PrdCategory>lambdaQuery()
+                        .select(PrdCategory::getCategoryNo, PrdCategory::getDisallowedPayModes)
+                        .isNotNull(PrdCategory::getDisallowedPayModes)))) {
+            disallowed.put(c.getCategoryNo(), c.getDisallowedPayModes());
         }
         List<CategoryPayModeVO> out = new ArrayList<>();
         forEachLeaf((lv1, lv2) -> {
-            PrdCategoryPayMode row = rows.get(lv2.categoryNo());
-            out.add(new CategoryPayModeVO(lv2.categoryNo(), lv2.name(), lv1.name(),
-                    row == null || !Integer.valueOf(0).equals(row.getAllowed()),
-                    row != null));
+            boolean offlineAllowed = CategoryPayModePolicy.allows(disallowed.get(lv2.categoryNo()), PayModes.OFFLINE);
+            out.add(new CategoryPayModeVO(lv2.categoryNo(), lv2.name(), lv1.name(), offlineAllowed, !offlineAllowed));
         });
         return out;
     }
@@ -85,10 +85,8 @@ public class OpsCategoryPolicyController {
     /**
      * 开关一个类目的线下支付。
      *
-     * <p><b>禁止时插行、允许时删行</b>，不是留一行 allowed=1 ——
-     * 这样「有几个类目被禁了」永远等于表里的行数，一眼可查。
-     * 留 allowed=1 的话，那张表会慢慢长成一份「配过但不禁」的噪声清单，
-     * 而真正被禁的那几条埋在里面。
+     * <p><b>禁止时把 OFFLINE 加进列、允许时移出，移空即存 NULL</b> ——
+     * 「有几个类目被禁了」永远等于该列非空的类目数，一眼可查，不会长出「配过但不禁」的噪声。
      */
     @PostMapping("/ops/category-pay-modes/{categoryNo}")
     @PreAuthorize("@perm.can('" + Perms.PRODUCT_CATEGORY_UPDATE + "')")
@@ -97,16 +95,15 @@ public class OpsCategoryPolicyController {
                                                        @RequestBody PayModeReq req) {
         boolean allow = Boolean.TRUE.equals(req.offlineAllowed());
         DataScopeContext.executeWithoutScope(() -> {
-            payModeMapper.delete(Wrappers.<PrdCategoryPayMode>lambdaQuery()
-                    .eq(PrdCategoryPayMode::getCategoryNo, categoryNo)
-                    .eq(PrdCategoryPayMode::getPayMode, PayModes.OFFLINE));
-            if (!allow) {
-                PrdCategoryPayMode row = new PrdCategoryPayMode();
-                row.setCategoryNo(categoryNo);
-                row.setPayMode(PayModes.OFFLINE);
-                row.setAllowed(0);
-                payModeMapper.insert(row);
+            PrdCategory category = categoryMapper.selectOne(Wrappers.<PrdCategory>lambdaQuery()
+                    .eq(PrdCategory::getCategoryNo, categoryNo).last("LIMIT 1"));
+            if (category == null) {
+                throw BizException.of(ErrorCode.CATEGORY_NOT_FOUND);
             }
+            categoryMapper.update(null, Wrappers.<PrdCategory>lambdaUpdate()
+                    .eq(PrdCategory::getCategoryNo, categoryNo)
+                    .set(PrdCategory::getDisallowedPayModes,
+                            CategoryPayModePolicy.with(category.getDisallowedPayModes(), PayModes.OFFLINE, !allow)));
             return null;
         });
         // 关掉一个类目的当面付，等于让那一类商家的一批订单换一条收款路径 —— 必须留痕
@@ -126,7 +123,7 @@ public class OpsCategoryPolicyController {
         }
     }
 
-    /** @param configured 是否**显式配过**。与 offlineAllowed 分开：没配过也是允许，但两者含义不同 */
+    /** @param configured 是否显式禁过（列里有 OFFLINE）。保留字段以兼容运营端页面，取值恒为 !offlineAllowed */
     public record CategoryPayModeVO(String categoryNo, String categoryName, String parentName,
                                     boolean offlineAllowed, boolean configured) {
     }
