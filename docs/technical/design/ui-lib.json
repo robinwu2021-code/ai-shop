@@ -469,7 +469,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 100,
+        "b-app": 101,
         "c-app": 38
       }
     },
@@ -1035,7 +1035,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 184,
+        "b-app": 185,
         "c-app": 37
       }
     },
@@ -2382,7 +2382,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 153,
+        "b-app": 154,
         "c-app": 14,
         "lib": 0
       },
@@ -3884,7 +3884,7 @@
         "sh-section",
         "biz-store-tag"
       ],
-      "libClassHits": 21,
+      "libClassHits": 23,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []

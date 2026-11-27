@@ -36029,13 +36029,6 @@
       "package": "ai.neargo.inventory.domain.entity"
     },
     {
-      "table": "inv_open_credential",
-      "class": "InvOpenCredential",
-      "zh": "Open API 凭证：服务端到服务端，不复用给人用的令牌",
-      "module": "inventory",
-      "package": "ai.neargo.inventory.domain.entity"
-    },
-    {
       "table": "inv_outbound_line",
       "class": "InvOutboundLine",
       "zh": "出库单行",
@@ -39276,6 +39269,34 @@
         "host": "HoldStatus",
         "name": "RELEASED",
         "value": "RELEASED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "CredentialOwnerType",
+        "name": "OWNER",
+        "value": "INV_OWNER",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "CredentialOwnerType",
+        "name": "SYSTEM",
+        "value": "INVENTORY_SYSTEM",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "CredentialStatus",
+        "name": "ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "CredentialStatus",
+        "name": "REVOKED",
+        "value": "REVOKED",
         "zh": "",
         "module": "inventory"
       },
@@ -58273,6 +58294,14 @@
       "module": "shop-base"
     },
     {
+      "host": "DictItem",
+      "name": "ATTR_MICRO_ALLOWED",
+      "type": "String",
+      "value": "\"micro_allowed\"",
+      "zh": "DictType#ONBOARD_INDUSTRY：任一通道允许小微进件（\"true\" / \"false\"）",
+      "module": "shop-base"
+    },
+    {
       "host": "BrandCouponSourceInternal",
       "name": "TEMPLATE_VALIDATION",
       "type": "String",
@@ -62090,6 +62119,14 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "COMMON",
+      "type": "String",
+      "value": "\"common\"",
+      "zh": "基础能力库上的公共能力：权限（运营端角色、功能点、接口资源），以及随后收进来的审计、设置、发号、字典、审批、开放应用 （TDD-基础能力库对齐 Q2：独立句柄，未绑定时指向主库）。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "INVOICE_TX_MANAGER",
       "type": "String",
       "value": "\"invoiceTxManager\"",
@@ -62234,9 +62271,33 @@
     },
     {
       "host": "ModuleDataSources",
+      "name": "COMMON_TX_MANAGER",
+      "type": "String",
+      "value": "\"commonTxManager\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "COMMON_DATA_SOURCE",
+      "type": "String",
+      "value": "\"commonDataSource\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
+      "name": "COMMON_SQL_SESSION_FACTORY",
+      "type": "String",
+      "value": "\"commonSqlSessionFactory\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "ModuleDataSources",
       "name": "MODULES",
       "type": "List<String>",
-      "value": "List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, INDUSTRY)",
+      "value": "List.of(INVOICE, PRINT, PLATFORM, PAY_MERCHANT, TRADE, INDUSTRY, COMMON)",
       "zh": "守卫测试也读这份清单。",
       "module": "shop-store-mybatis"
     },
@@ -62253,6 +62314,14 @@
       "name": "TRADE_JDBC_TEMPLATE",
       "type": "String",
       "value": "\"tradeJdbcTemplate\"",
+      "zh": "",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "PlatformJdbcConfiguration",
+      "name": "COMMON_JDBC_TEMPLATE",
+      "type": "String",
+      "value": "\"commonJdbcTemplate\"",
       "zh": "",
       "module": "shop-store-mybatis"
     },
