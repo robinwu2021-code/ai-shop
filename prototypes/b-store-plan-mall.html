@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>门店开店与方案商城 · 交互原型</title><link rel="stylesheet" href="proto.css"><script src="b-store-plan-mall.js" defer></script></head>
+<body><div class="wrap plan-review"><header class="top"><div class="eyebrow">B APP · INTERACTIVE PROTOTYPE · 2026.11</div><h1>从开店到门店权益</h1><p class="sub">25 个画面 · 8 条主要流程 · 16 组情景。所有门店、订单、日期和金额均为演示数据；不连接真实服务或支付。</p></header>
+<div class="plan-controls" aria-label="原型演示控制"><label>情景 <select id="scenario"></select></label><label>权限 <select id="role"><option value="owner">老板／采购</option><option value="staff">普通店员</option><option value="order">仅看商城订单</option><option value="sources">看来源但不能看订单</option></select></label><label class="plan-permission"><input id="can-purchase" type="checkbox" checked> 采购</label><label class="plan-permission"><input id="can-sources" type="checkbox" checked> 查看权益来源</label><label class="plan-permission"><input id="can-orders" type="checkbox" checked> 查看商城订单</label><label>语言 <select id="language"><option value="zh">简体中文</option><option value="en">English</option><option value="ar">العربية</option></select></label><label>加载状态 <select id="view-state"><option value="normal">正常</option><option value="loading">加载中</option><option value="error">加载失败</option><option value="empty">无数据</option></select></label><label>主题 <select id="theme"><option value="light">浅色</option><option value="dark">深色</option></select></label><button class="plan-reset" id="reset-demo" type="button">重置演示</button></div>
+<p id="scenario-note" class="plan-note" role="status"></p><nav id="map" class="plan-map" aria-label="页面地图"></nav><div class="plan-legend">点击卡片、按钮或下方页面编号即可演示。模拟付款与订单均只存在于当前浏览器页面。</div><main class="grid plan-grid"><figure id="s01"><div class="ph" data-screen="01"></div><figcaption class="cap"><b>P01 登录与注册</b></figcaption></figure>
+<figure id="s02"><div class="ph" data-screen="02"></div><figcaption class="cap"><b>P02 选择与管理门店</b></figcaption></figure>
+<figure id="s03"><div class="ph" data-screen="03"></div><figcaption class="cap"><b>P03 无门店引导</b></figcaption></figure>
+<figure id="s04"><div class="ph" data-screen="04"></div><figcaption class="cap"><b>P04 选择经营类型</b></figcaption></figure>
+<figure id="s05"><div class="ph" data-screen="05"></div><figcaption class="cap"><b>P05 填写门店资料</b></figcaption></figure>
+<figure id="s06"><div class="ph" data-screen="06"></div><figcaption class="cap"><b>P06 选择开店方案</b></figcaption></figure>
+<figure id="s07"><div class="ph" data-screen="07"></div><figcaption class="cap"><b>P07 门店创建结果</b></figcaption></figure>
+<figure id="s08"><div class="ph" data-screen="08"></div><figcaption class="cap"><b>P08 工作台与我的</b></figcaption></figure>
+<figure id="s09"><div class="ph" data-screen="09"></div><figcaption class="cap"><b>P09 门店订阅方案</b></figcaption></figure>
+<figure id="s10"><div class="ph" data-screen="10"></div><figcaption class="cap"><b>P10 行业方案比较</b></figcaption></figure>
+<figure id="s11"><div class="ph" data-screen="11"></div><figcaption class="cap"><b>P11 门店权益</b></figcaption></figure>
+<figure id="s12"><div class="ph" data-screen="12"></div><figcaption class="cap"><b>P12 业务端权益详情</b></figcaption></figure>
+<figure id="s13"><div class="ph" data-screen="13"></div><figcaption class="cap"><b>P13 业务端访问结果</b></figcaption></figure>
+<figure id="s14"><div class="ph" data-screen="14"></div><figcaption class="cap"><b>P14 平台商城</b></figcaption></figure>
+<figure id="s15"><div class="ph" data-screen="15"></div><figcaption class="cap"><b>P15 商城商品详情</b></figcaption></figure>
+<figure id="s16"><div class="ph" data-screen="16"></div><figcaption class="cap"><b>P16 确认商城订单</b></figcaption></figure>
+<figure id="s17"><div class="ph" data-screen="17"></div><figcaption class="cap"><b>P17 升级确认</b></figcaption></figure>
+<figure id="s18"><div class="ph" data-screen="18"></div><figcaption class="cap"><b>P18 支付与交付结果</b></figcaption></figure>
+<figure id="s19"><div class="ph" data-screen="19"></div><figcaption class="cap"><b>P19 商城订单</b></figcaption></figure>
+<figure id="s20"><div class="ph" data-screen="20"></div><figcaption class="cap"><b>P20 商城订单详情</b></figcaption></figure>
+<figure id="s21"><div class="ph" data-screen="21"></div><figcaption class="cap"><b>P21 硬件物流</b></figcaption></figure>
+<figure id="s22"><div class="ph" data-screen="22"></div><figcaption class="cap"><b>P22 申请商城退款</b></figcaption></figure>
+<figure id="s23"><div class="ph" data-screen="23"></div><figcaption class="cap"><b>P23 商城退款详情</b></figcaption></figure>
+<figure id="s24"><div class="ph" data-screen="24"></div><figcaption class="cap"><b>P24 订阅抵扣余额</b></figcaption></figure>
+<figure id="s25"><div class="ph" data-screen="25"></div><figcaption class="cap"><b>P25 抵扣流水</b></figcaption></figure></main><footer>需求基线：B端App-注册开店Plan商城-原型需求包 · 原型演示，非线上报价。<br><a href="../docs/requirements/B端App-注册开店Plan商城-原型需求包.md">需求包</a> · <a href="../docs/requirements/B端App-注册开店Plan商城-原型覆盖.md">流程与状态覆盖</a></footer></div></body></html>

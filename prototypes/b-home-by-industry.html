@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工作台按业态</title>
+<!-- 真源在仓库 prototypes/b-home-by-industry.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 界面原型 · 2026-11-14</div>
+  <h1>工作台：按业态给四版首页</h1>
+  <p class="sub">同一个 <code>pages/home/index</code>，按门店的经营类型换掉「第一屏的主角」。纯支付、零售、餐饮、服务业四版并排，
+    骨架一致（告警 → 主角 → 待办 → 今日 → 业态模块 → 常用），只换每一格里装什么。5 屏 + 对比表。</p>
+</header>
+
+<!-- ───────────── 现状 ───────────── -->
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>现状：一版首页给所有业态</h2></div>
+  <div class="grid">
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">工作台 · 虹选粮油</span><span></span></div>
+        <div class="scr">
+          <div class="note">还没设置收款账户，货款无法到账 · 去处理 ›</div>
+          <div class="stats four">
+            <div><div class="n hot num">3</div><div class="l">待发货</div></div>
+            <div><div class="n num">1</div><div class="l">待配送</div></div>
+            <div><div class="n num">0</div><div class="l">待备货</div></div>
+            <div><div class="n num">2</div><div class="l">售后</div></div>
+          </div>
+          <div class="stats"><div><div class="n num">18</div><div class="l">今日订单</div></div><div><div class="n num">¥2,360</div><div class="l">营业额</div></div><div><div class="n num">4.9</div><div class="l">评分</div></div></div>
+          <div class="card"><div class="hd"><span class="nm">进销存</span><span class="chip">全部 ›</span></div>
+            <div class="stats four"><div><div class="n num">126</div><div class="l">在售</div></div><div><div class="n num">4</div><div class="l">缺货</div></div><div><div class="n num">9</div><div class="l">滞销</div></div><div><div class="n num">2</div><div class="l">在途</div></div></div>
+          </div>
+          <div class="card"><div class="hd"><span class="nm">自带客流</span><span class="nm num">38%</span></div></div>
+          <div class="card"><div class="meta">打印中心 · 店铺公告 · 经营范围 · 店铺 · 配送 · 通知 · 类目 · 规格 · 条码 · 营销</div></div>
+        </div>
+        <div class="tabbar"><span class="on"><i>⌂</i>工作台</span><span><i>≡</i>订单</span><span><i>▦</i>商品</span><span><i>◔</i>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>01 现状</b>待办格 → 今日 → 进销存 → 自带客流 → 10 个入口平铺。</figcaption>
+      <p class="why">这一版本质是「零售电商」首页：待发货、配送、备货、进销存都是卖货的词。
+        餐饮商家看到「待发货 0」，服务业看到「进销存」，纯收款的小摊看到一整屏与他无关的 0 —— 第一屏最常按的那件事（收款、开台、核销预约）反而不在上面。</p>
+    </figure>
+  </div>
+</section>
+
+<!-- ───────────── 四业态 ───────────── -->
+<section>
+  <div class="sec-head"><span class="sec-num">02 — 05</span><h2>四个业态，各自的第一屏</h2></div>
+  <div class="grid">
+
+    <!-- 纯支付 -->
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">老陈水果摊<span class="hm-ind">收款</span></span><span></span></div>
+        <div class="scr">
+          <div class="hm-hero tint">
+            <div class="l"><span>今日实收</span><span>32 笔</span></div>
+            <div class="n">¥1,286.50</div>
+            <div class="s">昨日同时段 ¥1,104.00 · 待结算 ¥3,420.00，明日到账</div>
+          </div>
+          <div class="hm-acts"><div class="btn">收款</div><div class="btn sec">我的收款码</div></div>
+          <div class="hm-sec">最近收款<em>全部流水 ›</em></div>
+          <div class="group">
+            <div class="sl-row"><div class="lg">微</div><div class="bd"><span class="nm num">+¥28.00</span><span class="m">微信 · 收款码</span></div><div class="d">10:42</div></div>
+            <div class="sl-row"><div class="lg">支</div><div class="bd"><span class="nm num">+¥56.50</span><span class="m">支付宝 · 扫顾客码</span></div><div class="d">10:31</div></div>
+          </div>
+          <div class="card"><div class="hd"><span class="nm">退款申请 1 笔待处理</span><span class="chip warn">去处理 ›</span></div></div>
+          <div class="hm-quick"><span><i>¥</i>对账单</span><span><i>⇣</i>结算到账</span><span><i>♪</i>到账播报</span><span><i>▣</i>收款物料</span></div>
+        </div>
+        <div class="tabbar"><span class="on"><i>⌂</i>首页</span><span><i>≡</i>流水</span><span><i>◔</i>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>02 纯支付</b>主角是「今天收了多少」与「收款」按钮。三个 Tab，没有商品、订单。</figcaption>
+      <p class="why">只收款的商家每天只问两件事：今天收了多少、钱什么时候到。所以金额与到账日写在同一块，
+        收款按钮紧跟其下、拇指够得着。流水直接列最近三笔 —— 顾客说「我付了」时店主要能当场对上。
+        退款申请是唯一会让人等的待办，只在有时出现一条；没有待办格。</p>
+    </figure>
+
+    <!-- 零售 -->
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">虹选粮油<span class="hm-ind">零售</span></span><span></span></div>
+        <div class="scr">
+          <div class="hm-quick"><span><i>⌗</i>扫码收银</span><span><i>＋</i>录商品</span><span><i>⇲</i>采购入库</span><span><i>✓</i>盘点</span></div>
+          <div class="hm-sec">待处理<em>点数字进列表</em></div>
+          <div class="stats four">
+            <div><div class="n hot num">3</div><div class="l">待发货</div></div>
+            <div><div class="n num">1</div><div class="l">待配送</div></div>
+            <div><div class="n num">2</div><div class="l">售后</div></div>
+            <div><div class="n num">5</div><div class="l">待回复</div></div>
+          </div>
+          <div class="stats"><div><div class="n num">¥2,360</div><div class="l">今日营业额</div></div><div><div class="n num">18</div><div class="l">订单</div></div><div><div class="n num">¥131</div><div class="l">客单价</div></div></div>
+          <div class="card"><div class="hd"><span class="nm">库存</span><span class="chip">全部 ›</span></div>
+            <div class="stats four"><div><div class="n num">126</div><div class="l">在售</div></div><div><div class="n hot num">4</div><div class="l">缺货</div></div><div><div class="n num">9</div><div class="l">滞销</div></div><div><div class="n num">2</div><div class="l">在途</div></div></div>
+            <div class="meta">收货 2 单 · 东北大米 5kg 剩 3 袋</div>
+          </div>
+          <div class="hm-sec">常用<em>编辑 ›</em></div>
+          <div class="hm-quick"><span><i>◎</i>营销</span><span><i>☖</i>店铺</span><span><i>⇄</i>配送</span><span><i>⎙</i>打印</span></div>
+        </div>
+        <div class="tabbar"><span class="on"><i>⌂</i>工作台</span><span><i>≡</i>订单</span><span><i>▦</i>商品</span><span><i>◔</i>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>03 零售</b>保留现状的「数字即入口」，顶上加一排四个高频动作；10 个入口收成 4 个「常用」。</figcaption>
+      <p class="why">零售是现状最贴合的一版，所以改动最小：一是把收银、录品、入库、盘点提到第一行（现状里它们要进库存页或商品页找），
+        二是今日读数把「评分」换成「客单价」——评分一天不变，客单价才是当天能动的数，
+        三是平铺的 10 个设置类入口收成可编辑的 4 个，其余回「我的」。</p>
+    </figure>
+
+    <!-- 餐饮 -->
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">巷口小馆<span class="hm-ind">餐饮</span></span><span></span></div>
+        <div class="scr">
+          <div class="hm-hero">
+            <div class="l"><span>桌台 · 午市</span><span>12 / 22 桌在用</span></div>
+            <div class="hm-tables">
+              <i class="eat">A1</i><i class="eat">A2</i><i>A3</i><i class="pay">A4</i><i class="eat">A5</i><i>A6</i>
+              <i class="clean">B1</i><i class="eat">B2</i><i class="eat">B3</i><i>B4</i><i class="pay">B5</i><i class="eat">B6</i>
+              <i class="eat">C1</i><i>C2</i><i class="eat">C3</i><i class="eat">C4</i><i>C5</i><i class="clean">C6</i>
+            </div>
+            <div class="hm-legend"><span><b class="eat"></b>就餐</span><span><b class="pay"></b>待结账</span><span><b class="clean"></b>待清台</span><span><b></b>空闲</span></div>
+          </div>
+          <div class="hm-acts"><div class="btn">开台点餐</div><div class="btn sec">快餐收银</div></div>
+          <div class="stats four">
+            <div><div class="n hot num">3</div><div class="l">待接单</div></div>
+            <div><div class="n hot num">2</div><div class="l">催菜</div></div>
+            <div><div class="n num">2</div><div class="l">待结账</div></div>
+            <div><div class="n num">6</div><div class="l">今晚预订</div></div>
+          </div>
+          <div class="stats"><div><div class="n num">¥4,820</div><div class="l">今日营业额</div></div><div><div class="n num">1.6</div><div class="l">翻台率</div></div><div><div class="n num">¥86</div><div class="l">人均</div></div></div>
+          <div class="card"><div class="hd"><span class="nm">估清 3 道</span><span class="chip warn">管理 ›</span></div><div class="meta">酸菜鱼 · 小炒黄牛肉 · 冰粉</div></div>
+        </div>
+        <div class="tabbar"><span class="on"><i>⌂</i>工作台</span><span><i>▤</i>桌台</span><span><i>≡</i>订单</span><span><i>◔</i>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>04 餐饮</b>主角是桌台全景，颜色即状态；待办换成接单、催菜、结账、预订；没有库存卡，换成估清。</figcaption>
+      <p class="why">餐饮老板在高峰时打开 App 是看「哪桌空、哪桌该买单」，所以桌台缩略图放第一屏，点格子直接进那一桌（与平板收银的桌台页同一套颜色）。
+        「待发货 / 待配送」对堂食没有意义，换成外卖与扫码点单的待接单。食材库存不放首页 —— 每天真正要改的是哪几道菜卖完了。</p>
+    </figure>
+
+    <!-- 服务业 -->
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">若木美发<span class="hm-ind">服务</span></span><span></span></div>
+        <div class="scr">
+          <div class="hm-hero">
+            <div class="l"><span>今日预约 9 位</span><span>已完成 3 · 服务中 2</span></div>
+            <div class="group">
+              <div class="frow"><span class="k num">10:30</span><span class="v">王女士 · 烫发 · Tony</span><span class="chip ok">服务中</span></div>
+              <div class="frow"><span class="k num">11:00</span><span class="v">李先生 · 剪发 · Amy</span><span class="chip warn">未到店</span></div>
+              <div class="frow"><span class="k num">13:30</span><span class="v">陈女士 · 护理 · Tony</span><span class="chip">待确认</span></div>
+            </div>
+          </div>
+          <div class="hm-acts"><div class="btn">扫码核销</div><div class="btn sec">新建预约</div></div>
+          <div class="stats four">
+            <div><div class="n hot num">2</div><div class="l">待确认</div></div>
+            <div><div class="n num">5</div><div class="l">待核销</div></div>
+            <div><div class="n num">7</div><div class="l">卡将到期</div></div>
+            <div><div class="n num">3</div><div class="l">待回访</div></div>
+          </div>
+          <div class="stats"><div><div class="n num">¥3,150</div><div class="l">今日营业额</div></div><div><div class="n num">14</div><div class="l">到店</div></div><div><div class="n num">¥2,000</div><div class="l">新增储值</div></div></div>
+          <div class="card"><div class="hd"><span class="nm">技师今日</span><span class="chip">排班 ›</span></div><div class="meta">Tony 满 · Amy 空 2 档 · Ken 休</div></div>
+        </div>
+        <div class="tabbar"><span class="on"><i>⌂</i>工作台</span><span><i>◷</i>预约</span><span><i>☺</i>会员</span><span><i>◔</i>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>05 服务业</b>主角是今天的预约时间线；待办是确认、核销、卡到期、回访；业态模块是技师空档。</figcaption>
+      <p class="why">服务业卖的是时间：首页先回答「接下来谁来、谁的手空着」。核销是到店后最常按的动作，与新建预约并排。
+        储值与次卡是这一行的主要现金流，所以今日读数里放「新增储值」，待办里放「卡将到期」——那是最容易做回头客的一张名单。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ───────────── 对比 ───────────── -->
+<section>
+  <div class="sec-head"><span class="sec-num">06</span><h2>逐格对比</h2></div>
+  <div class="tw">
+  <table class="spec hm-cmp">
+    <tr><th>位置</th><th>纯支付</th><th>零售</th><th>餐饮</th><th>服务业</th></tr>
+    <tr><td>打开时的问题</td><td>今天收了多少，何时到账</td><td>有几单要我处理</td><td>哪桌空，哪桌该结账</td><td>接下来谁来，谁有空</td></tr>
+    <tr><td>开张告警</td><td class="same" colspan="4">四版相同：证照 / 收款通道 / 收款账户 / 协议，只在有问题时出现（零售另有「经营范围」）</td></tr>
+    <tr><td>第一屏主角</td><td>今日实收金额 + 到账</td><td>四个高频动作</td><td>桌台全景</td><td>今日预约时间线</td></tr>
+    <tr><td>主按钮</td><td>收款 · 收款码</td><td>扫码收银 · 录商品 · 入库 · 盘点</td><td>开台点餐 · 快餐收银</td><td>扫码核销 · 新建预约</td></tr>
+    <tr><td>待办格</td><td>无格子；有退款申请时出一条</td><td>待发货 · 待配送 · 售后 · 待回复</td><td>待接单 · 催菜 · 待结账 · 今晚预订</td><td>待确认 · 待核销 · 卡将到期 · 待回访</td></tr>
+    <tr><td>今日三个数</td><td>（并入主角）笔数 · 昨日同时段</td><td>营业额 · 订单 · 客单价</td><td>营业额 · 翻台率 · 人均</td><td>营业额 · 到店 · 新增储值</td></tr>
+    <tr><td>业态模块卡</td><td>最近三笔流水</td><td>库存（在售 / 缺货 / 滞销 / 在途）</td><td>估清菜品</td><td>技师排班空档</td></tr>
+    <tr><td>底部 Tab</td><td>首页 · 流水 · 我的</td><td>工作台 · 订单 · 商品 · 我的</td><td>工作台 · 桌台 · 订单 · 我的</td><td>工作台 · 预约 · 会员 · 我的</td></tr>
+    <tr><td>不出现的</td><td>商品、订单、库存、营销</td><td>—</td><td>发货、配送、进销存</td><td>发货、配送、进销存</td></tr>
+    <tr><td>相对现状改动</td><td>大：新主角，Tab 减为 3</td><td>小：加快捷行、入口收拢</td><td>大：新主角，复用平板桌台状态</td><td>大：新主角，接预约排期</td></tr>
+  </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07</span><h2>四版共用的规矩</h2></div>
+  <div class="tw">
+  <table class="spec">
+    <tr><th>规矩</th><th>说明</th></tr>
+    <tr><td>骨架顺序固定</td><td>告警 → 主角 → 主按钮 → 待办格 → 今日 → 业态模块 → 常用。换业态只换格子里的东西，店员在多家店之间切换时手感不变。</td></tr>
+    <tr><td>业态取自门店</td><td>按当前门店的经营类型选版本（开店时在「选择经营类型」定下），多店老板切店即切版本；没有商品模块的方案落到纯支付版。</td></tr>
+    <tr><td>格子跟权限走</td><td>与现状一致：每一格各按自己的权限码裁剪，看不到的不画，不把「没权限」画成「0」。</td></tr>
+    <tr><td>数字为 0 也留位</td><td>待办格位置固定，商家才能形成肌肉记忆；纯支付版没有待办格，退款申请有才出现。</td></tr>
+    <tr><td>常用入口可编辑</td><td>首页最多 4 个常用，其余设置类入口回「我的」；不再平铺 10 个。</td></tr>
+  </table>
+  </div>
+</section>
+
+<footer>真源：prototypes/b-home-by-industry.html · 登记：prototypes/registry.json · 现状实现：b-app/src/pages/home/index.vue · 相关：b-store-plan-mall（选择经营类型）、food-cashier-tablet（桌台状态色）、merchant-ui-v1（工作台 / 预约排期）<br>演示数据，金额与门店均为虚构。</footer>
+</div>
+</html>
