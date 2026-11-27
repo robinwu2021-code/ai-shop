@@ -303,13 +303,7 @@ public final class FoodSchemaValidator {
                 List.of("attendee_no", "entity_no,store_no,form_no,guest_ref"));
         contracts.put("fnb_service_form", List.of("entity_no,store_no,active_check_no", "form_no"));
         contracts.put("fnb_service_form_batch", List.of("entity_no,store_no,batch_no"));
-        contracts.put("fnb_service_handover", List.of("handover_no"));
-        contracts.put(
-                "fnb_service_handover_item",
-                List.of("entity_no,handover_no,source_kind,source_no", "item_no"));
-        contracts.put(
-                "fnb_service_responsibility",
-                List.of("entity_no,store_no,source_kind,source_no", "responsibility_no"));
+        contracts.put("ind_assignment", List.of("assignment_no"));
         contracts.put("fnb_service_slot", List.of("slot_no"));
         contracts.put(
                 "fnb_channel_party",
@@ -1129,63 +1123,6 @@ public final class FoodSchemaValidator {
                                     "updated_at",
                                     "updated_by",
                                     "version"));
-            expected.computeIfAbsent("fnb_service_handover", key -> new TreeSet<>())
-                    .addAll(
-                            List.of(
-                                    "created_at",
-                                    "created_by",
-                                    "decided_at",
-                                    "decided_by",
-                                    "deleted",
-                                    "entity_no",
-                                    "from_actor",
-                                    "handover_no",
-                                    "id",
-                                    "reason",
-                                    "receiver_no",
-                                    "source_hash",
-                                    "status",
-                                    "store_no",
-                                    "tenant_no",
-                                    "updated_at",
-                                    "updated_by",
-                                    "version"));
-            expected.computeIfAbsent("fnb_service_handover_item", key -> new TreeSet<>())
-                    .addAll(
-                            List.of(
-                                    "created_at",
-                                    "created_by",
-                                    "deleted",
-                                    "entity_no",
-                                    "handover_no",
-                                    "id",
-                                    "item_no",
-                                    "source_hash",
-                                    "source_kind",
-                                    "source_no",
-                                    "store_no",
-                                    "tenant_no",
-                                    "updated_at",
-                                    "updated_by",
-                                    "version"));
-            expected.computeIfAbsent("fnb_service_responsibility", key -> new TreeSet<>())
-                    .addAll(
-                            List.of(
-                                    "created_at",
-                                    "created_by",
-                                    "deleted",
-                                    "entity_no",
-                                    "handover_no",
-                                    "id",
-                                    "owner_no",
-                                    "responsibility_no",
-                                    "source_kind",
-                                    "source_no",
-                                    "store_no",
-                                    "tenant_no",
-                                    "updated_at",
-                                    "updated_by",
-                                    "version"));
             expected.computeIfAbsent("fnb_service_slot", key -> new TreeSet<>())
                     .addAll(
                             List.of(
@@ -1362,6 +1299,25 @@ public final class FoodSchemaValidator {
                                     "cutover_minute",
                                     "pay_policy",
                                     "capabilities",
+                                    "status")));
+            expected.put(
+                    "ind_assignment",
+                    new TreeSet<>(
+                            List.of(
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "assignment_no",
+                                    "target_type",
+                                    "target_no",
+                                    "assignment_kind",
+                                    "personnel_no",
+                                    "started_at",
+                                    "ended_at",
+                                    "previous_assignment_no",
+                                    "handover_no",
+                                    "handover_reason",
+                                    "source_hash",
                                     "status")));
             expected.put(
                     "ind_config_revision",

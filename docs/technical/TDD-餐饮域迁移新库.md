@@ -330,7 +330,13 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   到点时接单建单（`KitchenTaskServiceImpl#accepted`）沿用这张单的单号补制作任务，状态随任务变为排队；还没下达的定时单不当作「原单」（寄存来源查原单时排除）。
   `next_attempt_at` 代码在用（认领租约、失败重试），`V2` 补回；非空即待下达，下达成功清空。认领、完结、重试按读到的 `next_attempt_at` 做比较交换，**不加出品单版本号**，认领期间厨房动作改出品单不冲突；原批次已取消的定时单直接 `CLOSED`。旧状态 `RETRY` 不再单列，由 `last_error` 与 `dispatch_attempts` 体现。
   测试工具 `IndustrySchema` 同时执行 `V2` 对该表的补列、补键。新增 `ScheduledKitchenDispatchMapperTest`。
-- 待做：P1-3 其余四组合并（服务事件、交接、交接明细、责任）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
+- **P1-3 合并 ⑦：服务交接、交接明细、服务责任 → `ind_assignment`**（`assignment_kind='RESPONSIBLE'`）。
+  责任＝对象（`target_type`/`target_no`，沿用 `CHECK`、`BATCH`、`RESERVATION`、`QUEUE`、`PREORDER`）上 `status='ACTIVE'`、`ended_at` 为空的那一条。
+  发起交接：每个对象一条 `PENDING` 指派（`personnel_no`=接收人、`created_by`=发起人、`handover_reason`），指派号由交接单号与对象派生，同一请求并发重放撞唯一键后按单号查回。
+  接收：在行业事务里锁住该对象的全部责任指派（含别的交接的待接收条），锁内复核当前负责人仍是发起人，然后旧责任 `ENDED`、这条 `ACTIVE` 且 `previous_assignment_no` 指向旧条——同一对象上的接收因此串行，旧表靠唯一键保证的「一个对象一个负责人」由行锁保证。取消：待接收的条全部 `CANCELLED`。
+  交接单不单独成行：由明细汇总（有待接收为 `PROPOSED`、已取消为 `CANCELLED`、否则 `ACCEPTED`；决定人按状态推出）。交接单的来源摘要改为各明细来源摘要的摘要（旧的是全部证据 JSON 的摘要，含义不变、取值变）。
+  `V2` 补回 `handover_no`（归组）与 `source_hash`（接收时比对来源）两列及索引。测试：交接夹具改用 `IndustrySchema`，补链式交接与取消用例。
+- 待做：P1-3 合并 ⑥ 服务事件 → 厨显事件（待定，见 §8-Q4）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
 

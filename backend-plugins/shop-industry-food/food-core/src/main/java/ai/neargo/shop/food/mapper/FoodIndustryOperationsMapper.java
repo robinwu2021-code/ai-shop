@@ -3,6 +3,7 @@ package ai.neargo.shop.food.mapper;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
+import ai.neargo.shop.food.service.support.CommandBusinessKey;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -51,153 +52,171 @@ public class FoodIndustryOperationsMapper {
                         s));
     }
 
+    // ---- 服务交接与责任 → ind_assignment（TDD §2.5 合并 ⑦）----
+    // 责任：assignment_kind=RESPONSIBLE、status=ACTIVE、ended_at 为空的那一条；一个对象同一时刻只有一条。
+    // 交接：每个对象一条 PENDING 指派（personnel_no=接收人，created_by=发起人），按 handover_no 归组；
+    // 接收后旧责任 ENDED、这条 ACTIVE（previous_assignment_no 指向旧条）；取消为 CANCELLED。
+
+    private static final String RESPONSIBLE = "assignment_kind='RESPONSIBLE'";
+
+    /** 交接单的来源摘要：各明细来源摘要按对象排序后的摘要。 */
+    public static String handoverHash(List<String> itemHashes) {
+        return FoodCommandFingerprint.hash(itemHashes.toArray(String[]::new));
+    }
+
+    /** 对象当前的负责人（ACTIVE 责任）。 */
     public List<FoodBusinessOperationRow> businessOperationsSelectServiceResponsibility(
             String e, String s, String kind, String sourceNo) {
         return rows(
                 db.queryForList(
-                        "SELECT owner_no FROM fnb_service_responsibility WHERE entity_no=? AND"
-                                + " store_no=? AND source_kind=? AND source_no=?",
+                        "SELECT assignment_no,personnel_no AS owner_no FROM ind_assignment WHERE tenant_no='MAIN'"
+                                + " AND entity_no=? AND store_no=? AND " + RESPONSIBLE + " AND target_type=? AND"
+                                + " target_no=? AND status='ACTIVE' AND ended_at IS NULL AND deleted=0",
                         e,
                         s,
                         kind,
                         sourceNo));
     }
 
-    public int businessOperationsInsertServiceHandover(
+    /**
+     * 锁住对象的全部责任指派（含各交接的待接收条），同一对象上的接收因此串行；返回其中在负责的那条。
+     */
+    public List<FoodBusinessOperationRow> businessOperationsSelectServiceResponsibility2(
+            String e, String s, String kind, String sourceNo) {
+        return rows(
+                        db.queryForList(
+                                "SELECT assignment_no,personnel_no AS owner_no,status,ended_at FROM ind_assignment"
+                                        + " WHERE tenant_no='MAIN' AND entity_no=? AND store_no=? AND " + RESPONSIBLE
+                                        + " AND target_type=? AND target_no=? AND deleted=0 FOR UPDATE",
+                                e,
+                                s,
+                                kind,
+                                sourceNo))
+                .stream()
+                .filter(r -> "ACTIVE".equals(r.text("status")) && r.get("ended_at") == null)
+                .toList();
+    }
+
+    /** 发起交接：每个对象一条待接收指派。指派号由交接单号与对象派生，同一请求并发重放撞唯一键。 */
+    public void businessOperationsInsertServiceHandover(
             String e,
             String s,
             String no,
-            String a,
+            String from,
             String receiverNo,
-            String hash,
             String reason,
-            String a2,
-            String a3) {
-        return db.update(
-                "INSERT INTO fnb_service_handover"
-                    + " (entity_no,store_no,handover_no,from_actor,receiver_no,status,source_hash,reason,created_at,updated_at,created_by,updated_by)"
-                    + " VALUES (?,?,?,?,?,'PROPOSED',?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?)",
-                e,
-                s,
-                no,
-                a,
-                receiverNo,
-                hash,
-                reason,
-                a2,
-                a3);
+            List<String[]> items) {
+        for (String[] item : items)
+            db.update(
+                    "INSERT INTO ind_assignment (tenant_no,entity_no,store_no,assignment_no,target_type,target_no,"
+                            + "assignment_kind,personnel_no,handover_no,handover_reason,source_hash,status,deleted,"
+                            + "version,created_at,updated_at,created_by,updated_by) VALUES ('MAIN',?,?,?,?,?,"
+                            + "'RESPONSIBLE',?,?,?,?,'PENDING',0,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?)",
+                    e,
+                    s,
+                    CommandBusinessKey.derive("FASG", "SERVICE_HANDOVER", e, s, no, item[0] + ":" + item[1]),
+                    item[0],
+                    item[1],
+                    receiverNo,
+                    no,
+                    reason,
+                    item[2],
+                    from,
+                    from);
     }
 
-    public int businessOperationsInsertServiceHandoverItem(
-            String e,
-            String s,
-            String value3,
-            String no,
-            String kind,
-            String sourceNo,
-            String sourceHash,
-            String a,
-            String a2) {
-        return db.update(
-                "INSERT INTO fnb_service_handover_item"
-                    + " (entity_no,store_no,item_no,handover_no,source_kind,source_no,source_hash,created_at,updated_at,created_by,updated_by)"
-                    + " VALUES (?,?,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?)",
-                e,
-                s,
-                value3,
-                no,
-                kind,
-                sourceNo,
-                sourceHash,
-                a,
-                a2);
-    }
-
+    /** 交接明细（按对象排序），列名沿用旧表。 */
     public List<FoodBusinessOperationRow> businessOperationsSelectServiceHandoverItem(
             String e, String no) {
         return rows(
                 db.queryForList(
-                        "SELECT * FROM fnb_service_handover_item WHERE entity_no=? AND"
-                                + " handover_no=? ORDER BY source_kind,source_no",
+                        "SELECT assignment_no AS item_no,handover_no,target_type AS source_kind,target_no AS"
+                                + " source_no,source_hash FROM ind_assignment WHERE tenant_no='MAIN' AND entity_no=?"
+                                + " AND handover_no=? AND deleted=0 ORDER BY target_type,target_no",
                         e,
                         no));
     }
 
-    public List<FoodBusinessOperationRow> businessOperationsSelectServiceResponsibility2(
-            String e, String s, String kind, String sourceNo) {
-        return rows(
-                db.queryForList(
-                        "SELECT owner_no FROM fnb_service_responsibility WHERE entity_no=? AND"
-                                + " store_no=? AND source_kind=? AND source_no=? FOR UPDATE",
-                        e,
-                        s,
-                        kind,
-                        sourceNo));
-    }
-
-    public int businessOperationsInsertServiceResponsibility(
-            String e,
-            String s,
-            String value3,
-            String kind,
-            String sourceNo,
-            String a,
-            String no,
-            String a2,
-            String a3) {
+    /** 接收一条：结束旧责任，这条待接收指派生效。 */
+    public int businessOperationsAcceptHandoverItem(
+            String e, String s, String no, String kind, String sourceNo, String previous, String actor) {
+        if (previous != null
+                && db.update(
+                                "UPDATE ind_assignment SET status='ENDED',ended_at=UTC_TIMESTAMP(3),version=version+1,"
+                                        + "updated_at=UTC_TIMESTAMP(3),updated_by=? WHERE tenant_no='MAIN' AND"
+                                        + " entity_no=? AND assignment_no=? AND status='ACTIVE'",
+                                actor,
+                                e,
+                                previous)
+                        != 1) return 0;
         return db.update(
-                "INSERT INTO fnb_service_responsibility"
-                    + " (entity_no,store_no,responsibility_no,source_kind,source_no,owner_no,handover_no,created_at,updated_at,created_by,updated_by)"
-                    + " VALUES (?,?,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?)",
+                "UPDATE ind_assignment SET status='ACTIVE',started_at=UTC_TIMESTAMP(3),previous_assignment_no=?,"
+                        + "version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by=? WHERE tenant_no='MAIN' AND"
+                        + " entity_no=? AND store_no=? AND handover_no=? AND target_type=? AND target_no=? AND"
+                        + " status='PENDING'",
+                previous,
+                actor,
                 e,
                 s,
-                value3,
-                kind,
-                sourceNo,
-                a,
                 no,
-                a2,
-                a3);
-    }
-
-    public int businessOperationsUpdateServiceResponsibility(
-            String a, String no, String a2, String e, String s, String kind, String sourceNo) {
-        return db.update(
-                "UPDATE fnb_service_responsibility SET"
-                    + " owner_no=?,handover_no=?,version=version+1,updated_by=?,updated_at=UTC_TIMESTAMP(3)"
-                    + " WHERE entity_no=? AND store_no=? AND source_kind=? AND source_no=?",
-                a,
-                no,
-                a2,
-                e,
-                s,
                 kind,
                 sourceNo);
     }
 
-    public int businessOperationsUpdateServiceHandover(
-            String value1, String a, String a2, String e, String no) {
+    /** 取消：全部待接收指派置为已取消。 */
+    public int businessOperationsCancelHandover(String e, String s, String no, String actor) {
         return db.update(
-                "UPDATE fnb_service_handover SET"
-                    + " status=?,version=version+1,decided_by=?,decided_at=UTC_TIMESTAMP(3),updated_by=?,updated_at=UTC_TIMESTAMP(3)"
-                    + " WHERE entity_no=? AND handover_no=?",
-                value1,
-                a,
-                a2,
+                "UPDATE ind_assignment SET status='CANCELLED',version=version+1,updated_at=UTC_TIMESTAMP(3),"
+                        + "updated_by=? WHERE tenant_no='MAIN' AND entity_no=? AND store_no=? AND handover_no=?"
+                        + " AND status='PENDING'",
+                actor,
                 e,
+                s,
                 no);
     }
 
+    /**
+     * 交接单（由明细汇总，列名沿用旧表）：任一条待接收为 PROPOSED，已取消为 CANCELLED，否则 ACCEPTED；
+     * 发起人取 created_by，接收人取 personnel_no，决定人按状态推出（接收是接收人、取消是发起人）。
+     */
     public List<FoodBusinessOperationRow> businessOperationsSelectServiceHandover(
             String e, String s, String no, boolean lock) {
-        return rows(
+        var items =
                 db.queryForList(
-                        "SELECT * FROM fnb_service_handover WHERE entity_no=? AND store_no=? AND"
-                                + " handover_no=?"
+                        "SELECT handover_no,target_type,target_no,created_by,personnel_no,handover_reason,source_hash,"
+                                + "status,version,created_at FROM ind_assignment WHERE tenant_no='MAIN' AND entity_no=?"
+                                + " AND store_no=? AND handover_no=? AND deleted=0 ORDER BY target_type,target_no"
                                 + (lock ? " FOR UPDATE" : ""),
                         e,
                         s,
-                        no));
+                        no);
+        return items.isEmpty() ? List.of() : List.of(handoverOf(rows(items)));
+    }
+
+    private static FoodBusinessOperationRow handoverOf(List<FoodBusinessOperationRow> items) {
+        var first = items.getFirst();
+        var statuses = items.stream().map(r -> r.text("status")).toList();
+        String status =
+                statuses.contains("PENDING")
+                        ? "PROPOSED"
+                        : statuses.contains("CANCELLED") ? "CANCELLED" : "ACCEPTED";
+        String from = first.text("created_by");
+        String receiver = first.text("personnel_no");
+        var row = new java.util.LinkedHashMap<String, Object>();
+        row.put("handover_no", first.text("handover_no"));
+        row.put("from_actor", from);
+        row.put("receiver_no", receiver);
+        row.put("status", status);
+        row.put("source_hash", handoverHash(items.stream().map(r -> r.text("source_hash")).toList()));
+        row.put("reason", first.text("handover_reason"));
+        row.put("decided_by", switch (status) {
+            case "ACCEPTED" -> receiver;
+            case "CANCELLED" -> from;
+            default -> null;
+        });
+        row.put("version", items.stream().mapToLong(r -> r.number("version")).min().orElseThrow());
+        row.put("created_at", first.get("created_at"));
+        return new FoodBusinessOperationRow(row);
     }
 
     /** 出品单的下达防重键：接单建单与定时出品同一个键，同一批次只会有一张制作单。 */
@@ -289,17 +308,33 @@ public class FoodIndustryOperationsMapper {
                 lease);
     }
 
+    /** 营业日内发起的交接（日结看有没有未决的），列为交接单号、状态、来源摘要、版本。 */
     public List<FoodBusinessOperationRow> closePendingHandovers(
             String entity, String store, LocalDateTime from, LocalDateTime until) {
-        return rows(
-                db.queryForList(
-                        "SELECT handover_no,status,source_hash,version FROM fnb_service_handover"
-                            + " WHERE entity_no=? AND store_no=? AND created_at>=? AND created_at<?"
-                            + " ORDER BY handover_no",
-                        entity,
-                        store,
-                        from,
-                        until));
+        var groups = new java.util.TreeMap<String, List<FoodBusinessOperationRow>>();
+        for (var row :
+                rows(
+                        db.queryForList(
+                                "SELECT handover_no,target_type,target_no,created_by,personnel_no,handover_reason,"
+                                        + "source_hash,status,version,created_at FROM ind_assignment WHERE"
+                                        + " tenant_no='MAIN' AND entity_no=? AND store_no=? AND handover_no IS NOT NULL"
+                                        + " AND created_at>=? AND created_at<? AND deleted=0 ORDER BY"
+                                        + " handover_no,target_type,target_no",
+                                entity,
+                                store,
+                                from,
+                                until)))
+            groups.computeIfAbsent(row.text("handover_no"), k -> new java.util.ArrayList<>()).add(row);
+        return groups.values().stream()
+                .map(FoodIndustryOperationsMapper::handoverOf)
+                .map(h -> {
+                    // 有序：日结摘要按 JSON 计算，列序必须稳定。
+                    var row = new java.util.LinkedHashMap<String, Object>();
+                    for (String column : List.of("handover_no", "status", "source_hash", "version"))
+                        row.put(column, h.get(column));
+                    return new FoodBusinessOperationRow(row);
+                })
+                .toList();
     }
 
     /**

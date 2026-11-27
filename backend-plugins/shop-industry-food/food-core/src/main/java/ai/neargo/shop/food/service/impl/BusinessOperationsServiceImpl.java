@@ -141,24 +141,16 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
                 conflict();
             facts.add(ev);
         }
-        String hash = FoodCommandFingerprint.hash(json.writeValueAsString(facts));
+        // 交接单的来源摘要由各明细来源摘要得出（明细已按对象排序），存储只留明细这一份。
+        String hash = FoodIndustryOperationsMapper.handoverHash(facts.stream().map(Evidence::sourceHash).toList());
         try {
             industryTx.executeWithoutResult(
-                    t -> {
-                        industry.businessOperationsInsertServiceHandover(
-                                e, s, no, a, req.receiverNo(), hash, req.reason(), a, a);
-                        for (var ev : facts)
-                            industry.businessOperationsInsertServiceHandoverItem(
-                                    e,
-                                    s,
-                                    BizKey.next("FHIT"),
-                                    no,
-                                    ev.source().kind(),
-                                    ev.source().sourceNo(),
-                                    ev.sourceHash(),
-                                    a,
-                                    a);
-                    });
+                    t -> industry.businessOperationsInsertServiceHandover(
+                            e, s, no, a, req.receiverNo(), req.reason(),
+                            facts.stream()
+                                    .map(ev -> new String[] {
+                                        ev.source().kind(), ev.source().sourceNo(), ev.sourceHash()})
+                                    .toList()));
         } catch (DuplicateKeyException concurrent) {
             // 同一请求并发重放：另一路已建成，按单号查回。
             return proposedAgain(e, s, a, no, req, sources);
@@ -242,25 +234,18 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
                                     || ev.currentOwner() != null
                                             && !row.text("from_actor").equals(ev.currentOwner()))
                                 conflict();
-                            var old =
+                            // 锁住对象的全部责任指派，再按锁内的负责人复核（同一对象上的接收串行）。
+                            var owners =
                                     industry.businessOperationsSelectServiceResponsibility2(
                                             e, s, ev.source().kind(), ev.source().sourceNo());
-                            if (old.isEmpty())
-                                industry.businessOperationsInsertServiceResponsibility(
-                                        e,
-                                        s,
-                                        BizKey.next("FRSP"),
-                                        ev.source().kind(),
-                                        ev.source().sourceNo(),
-                                        a,
-                                        no,
-                                        a,
-                                        a);
-                            else
-                                industry.businessOperationsUpdateServiceResponsibility(
-                                        a, no, a, e, s, ev.source().kind(), ev.source().sourceNo());
+                            if (!owners.isEmpty() && !row.text("from_actor").equals(owners.getFirst().text("owner_no")))
+                                conflict();
+                            if (industry.businessOperationsAcceptHandoverItem(
+                                            e, s, no, ev.source().kind(), ev.source().sourceNo(),
+                                            owners.isEmpty() ? null : owners.getFirst().text("assignment_no"), a)
+                                    != 1) conflict();
                         }
-                    industry.businessOperationsUpdateServiceHandover(target, a, a, e, no);
+                    else if (industry.businessOperationsCancelHandover(e, s, no, a) != items.size()) conflict();
                 });
         if (accept) assignChecks(e, s, a, items);
         audit(

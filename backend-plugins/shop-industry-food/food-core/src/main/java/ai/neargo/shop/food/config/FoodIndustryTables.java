@@ -27,6 +27,7 @@ public final class FoodIndustryTables {
                     "fnb_queue_ticket",
                     "ind_config_revision",
                     "ind_store_policy",
+                    "ind_assignment",
                     // 厨显：.61 已按独立表建（01-industry-kds.sql）
                     "fnb_kds_cursor",
                     "fnb_kds_voice_command",
@@ -43,9 +44,6 @@ public final class FoodIndustryTables {
                     "fnb_service_calendar",
                     // 过渡：合并与改名完成前的旧表（§2.5）
                     "fnb_service_event",
-                    "fnb_service_handover",
-                    "fnb_service_handover_item",
-                    "fnb_service_responsibility",
                     // P1-2 改名：寄存（原 fnb_bottle_custody、fnb_bottle_movement）
                     "fnb_custody",
                     "fnb_custody_movement");
@@ -58,7 +56,8 @@ public final class FoodIndustryTables {
 
     /** 合并掉的旧表（TDD §2.5）：并入行业库的新表后退役。主库里可能还留着，校验器不再要求、也不当作未知表。 */
     public static final Set<String> MERGED = Set.of("fnb_dining_entitlement", "fnb_banquet_plan_revision", "fnb_config_revision", "fnb_store_policy",
-            "fnb_scheduled_dispatch");
+            "fnb_scheduled_dispatch", "fnb_service_handover", "fnb_service_handover_item",
+            "fnb_service_responsibility");
 
     /** 主库里不再要求的旧表：改名的与合并掉的。 */
     public static Set<String> retired() {

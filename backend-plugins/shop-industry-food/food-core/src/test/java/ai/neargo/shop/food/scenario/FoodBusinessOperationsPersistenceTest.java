@@ -94,7 +94,7 @@ public class FoodBusinessOperationsPersistenceTest {
                                 "ADD COLUMN batch_no VARCHAR(32) NULL; ALTER TABLE"
                                     + " fnb_capacity_claim");
         for (String sql : migration.split(";")) if (!sql.isBlank()) ddl.execute(sql);
-        IndustrySchema.create(ds, "ind_store_policy");
+        IndustrySchema.create(ds, "ind_store_policy", "ind_assignment");
         db.update("INSERT INTO ind_store_policy (tenant_no,entity_no,policy_no,store_no,industry_code)"
                 + " VALUES ('MAIN','E','P','S','FNB')");
         ddl.execute(
@@ -272,7 +272,7 @@ public class FoodBusinessOperationsPersistenceTest {
                 .isInstanceOf(BizException.class);
         assertThat(
                         db.queryForObject(
-                                "SELECT COUNT(*) FROM fnb_service_handover", Integer.class))
+                                "SELECT COUNT(DISTINCT handover_no) FROM ind_assignment", Integer.class))
                 .isEqualTo(1);
         var accept = new DecisionReq(0, "accept");
         var accepted = ops.accept("E", "S", "B", first.handoverNo(), accept, "accept-1");
@@ -280,8 +280,40 @@ public class FoodBusinessOperationsPersistenceTest {
                 .isEqualTo(accepted);
         assertThat(
                         db.queryForObject(
-                                "SELECT COUNT(*) FROM fnb_service_responsibility", Integer.class))
+                                "SELECT COUNT(*) FROM ind_assignment WHERE status='ACTIVE'", Integer.class))
                 .isEqualTo(1);
+    }
+
+    /** 合并 ⑦（TDD §2.5）：再次交接接收后，上一任责任结束，新责任指向它；取消只动待接收的条。 */
+    @Test
+    void chainedHandoverEndsPreviousResponsibilityAndCancelLeavesItUntouched() {
+        var source = List.of(new Source("CHECK", "CHECK"));
+        var first = ops.propose("E", "S", "A", new HandoverReq("B", source, "to B"), "h1");
+        ops.accept("E", "S", "B", first.handoverNo(), new DecisionReq(0, "ok"), "a1");
+        var second = ops.propose("E", "S", "B", new HandoverReq("C", source, "to C"), "h2");
+        // 发起人不是当前负责人的交接被拒。
+        assertThatThrownBy(() -> ops.propose("E", "S", "A", new HandoverReq("C", source, "stale"), "h3"))
+                .isInstanceOf(BizException.class);
+        var cancelled = ops.cancel("E", "S", "B", second.handoverNo(), new DecisionReq(0, "no"), "c2");
+        assertThat(cancelled.status()).isEqualTo("CANCELLED");
+        assertThat(ops.evidence("E", "S", new Source("CHECK", "CHECK")).currentOwner()).isEqualTo("B");
+        var third = ops.propose("E", "S", "B", new HandoverReq("C", source, "to C again"), "h4");
+        ops.accept("E", "S", "C", third.handoverNo(), new DecisionReq(0, "ok"), "a3");
+        assertThat(ops.evidence("E", "S", new Source("CHECK", "CHECK")).currentOwner()).isEqualTo("C");
+        assertThat(db.queryForList(
+                        "SELECT personnel_no FROM ind_assignment WHERE status='ACTIVE' AND ended_at IS NULL",
+                        String.class))
+                .containsExactly("C");
+        String endedB = db.queryForObject(
+                "SELECT assignment_no FROM ind_assignment WHERE handover_no=? AND status='ENDED'", String.class,
+                first.handoverNo());
+        assertThat(db.queryForObject(
+                        "SELECT previous_assignment_no FROM ind_assignment WHERE handover_no=?", String.class,
+                        third.handoverNo()))
+                .isEqualTo(endedB);
+        assertThat(db.queryForObject(
+                        "SELECT status FROM ind_assignment WHERE handover_no=?", String.class, second.handoverNo()))
+                .isEqualTo("CANCELLED");
     }
 
     @Test
