@@ -288,7 +288,7 @@
 
 | # | 事项 | 产出与验收 | 量级 |
 |---|---|---|---|
-| 1a | 公共能力表访问守卫 | 新守卫：公共能力表只经唯一实现访问，以现状为基线、只准变短；先建守卫，后续各项让基线变短 | 小 |
+| 1a | 公共能力表访问守卫 | **已做（2026-11-27，1309e568a）**：`CommonTableAccessTest`，基线 `backend/known-common-table-access.txt` 200 条、只准变短；后续各项让基线变短 | 小 |
 | 1b | 字典收敛 | 行业三套、渠道三套收成一个字典端口；调用方改走端口；删重复常量 | 中 |
 | 1c | 设置收敛 | `PaySettingService`（9 个文件用）并入 `SettingService`，行为不变 | 小 |
 | 1d | 发号仓储 | 仓储去掉按归属（CORE/PAY）切表；三种按范围计数收进 `DocumentNumberService` | 中 |
@@ -389,6 +389,6 @@
 
 | AC | 测试 | 跑过 |
 |---|---|---|
-| K1 | 待建守卫 | — |
+| K1 | `CommonTableAccessTest`（基线未清零前只保证不新增越界） | 2026-11-27 通过 1/1 |
 | K2 | `OpsPermConfigFlowTest`、`OpsStaffWriteFlowTest`、`OpsPlatformConfigFlowTest` 等 | — |
 | K3 | 待建守卫 | — |
