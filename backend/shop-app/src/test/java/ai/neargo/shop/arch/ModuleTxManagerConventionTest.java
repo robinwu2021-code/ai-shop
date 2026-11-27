@@ -38,7 +38,10 @@ class ModuleTxManagerConventionTest {
             "shop-core/src/main/java/ai/neargo/shop/printing", "ModuleDataSources.PRINT_TX_MANAGER",
             "shop-core/src/main/java/ai/neargo/shop/product", "ModuleDataSources.TRADE_TX_MANAGER",
             "shop-core/src/main/java/ai/neargo/shop/trade", "ModuleDataSources.TRADE_TX_MANAGER",
-            "shop-core/src/main/java/ai/neargo/shop/fulfillment", "ModuleDataSources.TRADE_TX_MANAGER");
+            "shop-core/src/main/java/ai/neargo/shop/fulfillment", "ModuleDataSources.TRADE_TX_MANAGER",
+            // 基础能力库的权限（运营端角色、功能点、接口资源）：TDD-基础能力库对齐 2a
+            "shop-core/src/main/java/ai/neargo/shop/platform/perm", "ModuleDataSources.COMMON_TX_MANAGER",
+            "shop-gateway/src/main/java/ai/neargo/shop/gateway/iam", "ModuleDataSources.COMMON_TX_MANAGER");
 
     /** 发票留在主库的那部分（申请事件、邮件投递、通道申请）的入口：这个包里用主库事务是本意。 */
     private static final String PRIMARY_PACKAGE = "/invoice/legacy/";

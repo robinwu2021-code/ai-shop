@@ -20,6 +20,7 @@ public class PlatformJdbcConfiguration {
 
     public static final String PLATFORM_JDBC_TEMPLATE = "platformJdbcTemplate";
     public static final String TRADE_JDBC_TEMPLATE = "tradeJdbcTemplate";
+    public static final String COMMON_JDBC_TEMPLATE = "commonJdbcTemplate";
 
     @Bean
     @Primary
@@ -34,6 +35,11 @@ public class PlatformJdbcConfiguration {
 
     @Bean(TRADE_JDBC_TEMPLATE)
     JdbcTemplate tradeJdbcTemplate(@Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
+    }
+
+    @Bean(COMMON_JDBC_TEMPLATE)
+    JdbcTemplate commonJdbcTemplate(@Qualifier(ModuleDataSources.COMMON_DATA_SOURCE) DataSource dataSource) {
         return new JdbcTemplate(dataSource);
     }
 }

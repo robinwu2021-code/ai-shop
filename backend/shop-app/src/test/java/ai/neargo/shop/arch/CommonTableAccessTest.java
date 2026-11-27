@@ -60,7 +60,10 @@ class CommonTableAccessTest {
     static {
         GROUPS.put("权限", new Group(List.of("sys_api_resource", "sys_api_resource_point", "sys_function",
                 "sys_function_point", "sys_role", "sys_role_member", "sys_role_point"),
-                List.of("shop-core/src/main/java/ai/neargo/shop/platform/perm/")));
+                List.of("shop-core/src/main/java/ai/neargo/shop/platform/perm/",
+                        // 网关的接口资源登记与功能点模块回填，直连时走 common 句柄（TDD-基础能力库对齐 2a）
+                        "shop-gateway/src/main/java/ai/neargo/shop/gateway/iam/resource/JdbcResourceStore.java",
+                        "shop-gateway/src/main/java/ai/neargo/shop/gateway/iam/function/FunctionModuleSync.java")));
         GROUPS.put("开放应用", new Group(List.of("pay_app", "pay_app_grant", "inv_open_credential"), List.of()));
         GROUPS.put("事件", new Group(List.of("sys_outbox", "sys_outbox_stream", "sys_outbox_delivery",
                 "pay_biz_notify_attempt", "sys_outbox_operation", "sys_event_consumed", "pay_approval_event",
