@@ -620,6 +620,9 @@ shop:
       # 每天一次：分层按「多少天没来」算，时间本身就会改变它，没有事件能触发。
       # 放在凌晨 3 点 —— 商家早上打开会员页看到的是今天的数
       cron: ${SHOP_JOB_MEMBER_LEVEL_RECOMPUTE_CRON:0 0 3 * * *}
+    opskit-approval-reconcile:
+      # 每天一次（只在 -P opskit 且 shop.opskit.enabled 时有这个任务）：补丢失的审批回调、补投没到 OpsKit 的送审
+      cron: ${SHOP_JOB_OPSKIT_APPROVAL_RECONCILE_CRON:0 0 3 * * *}
     period-cutoff:
       # 一分钟一轮：集单到点截单、未达起订量的期超时自动取消并退款。
       # 截单归属看订单时间与 cutoff_at，不看这个任务跑到没有 —— 晚一分钟扫到不改变谁属于哪一期

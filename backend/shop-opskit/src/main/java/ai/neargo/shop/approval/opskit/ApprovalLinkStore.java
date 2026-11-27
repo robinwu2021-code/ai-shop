@@ -3,6 +3,7 @@ package ai.neargo.shop.approval.opskit;
 import ai.neargo.shop.spi.approval.ApprovalPort.Link;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -85,11 +86,14 @@ public class ApprovalLinkStore {
                 status, cut(reason), instanceNo, subjectType, subjectRef, revision, PENDING_SUBMIT, PENDING) == 1;
     }
 
-    /** 对账候选：送审后超过 {@code olderThanHours} 小时仍未结束的。 */
-    public java.util.List<Row> stalePending(int olderThanHours, int limit) {
-        return db.query("SELECT " + COLS + " FROM approval_link WHERE status IN (?,?) AND updated_at < DATE_SUB(NOW(), INTERVAL ? HOUR)"
-                        + " ORDER BY updated_at LIMIT ?",
-                ApprovalLinkStore::row, PENDING_SUBMIT, PENDING, olderThanHours, limit);
+    /**
+     * 对账候选：PENDING_SUBMIT 超过 {@code submitOlderThanHours} 小时（送审没投出去）、
+     * PENDING 超过 {@code pendingOlderThanHours} 小时（已送审、回调可能丢了）仍未结束的。
+     */
+    public List<Row> stalePending(int submitOlderThanHours, int pendingOlderThanHours, int limit) {
+        return db.query("SELECT " + COLS + " FROM approval_link WHERE (status=? AND updated_at < DATE_SUB(NOW(), INTERVAL ? HOUR))"
+                        + " OR (status=? AND updated_at < DATE_SUB(NOW(), INTERVAL ? HOUR)) ORDER BY updated_at LIMIT ?",
+                ApprovalLinkStore::row, PENDING_SUBMIT, submitOlderThanHours, PENDING, pendingOlderThanHours, limit);
     }
 
     private static String cut(String s) {
