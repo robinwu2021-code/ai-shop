@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
 import ai.neargo.shop.food.mapper.ServiceEntitlementMapper;
 import ai.neargo.shop.food.mapper.ServiceFormMapper;
@@ -37,10 +39,12 @@ import javax.sql.DataSource;
         name = {"shop.food.enabled", "shop.food.service-entitlements.enabled"},
         havingValue = "true")
 public class FoodServiceEntitlementAutoConfiguration {
+    /** 人头权益与宴会方案在行业库：点名行业句柄的数据源，不再落到未点名的主库。 */
     @Bean
-    @ConditionalOnBean(DataSource.class)
+    @ConditionalOnBean(name = ModuleDataSources.INDUSTRY_DATA_SOURCE)
     @ConditionalOnMissingBean(ServiceEntitlementMapper.class)
-    ServiceEntitlementMapper serviceEntitlementMapper(DataSource source) {
+    ServiceEntitlementMapper serviceEntitlementMapper(
+            @Qualifier(ModuleDataSources.INDUSTRY_DATA_SOURCE) DataSource source) {
         return new ServiceEntitlementMapper(source);
     }
 
@@ -63,7 +67,7 @@ public class FoodServiceEntitlementAutoConfiguration {
             ServiceEntitlementMapper mapper,
             ServiceFormMapper forms,
             FoodBusinessOperationsMapper operations,
-            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             ConfigRevisionService revisions,
             ai.neargo.shop.food.spi.FoodMaterialSource materials,
             CatalogPriceSourcePort markets,

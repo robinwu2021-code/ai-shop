@@ -5,6 +5,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.dto.KitchenContracts.TicketVO;
 import ai.neargo.shop.food.dto.PrintDocumentReq;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.service.FoodPrintService;
 import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.service.ScheduledDiningDispatchService;
@@ -24,6 +25,7 @@ import java.util.function.Supplier;
 /** Short committed leases surround owner calls; ticket and print identities survive every retry. */
 public class ScheduledDiningDispatchServiceImpl implements ScheduledDiningDispatchService {
     private final FoodBusinessOperationsMapper mapper;
+    private final FoodIndustryOperationsMapper industry;
     private final TransactionTemplate tx;
     private final KitchenTaskService kitchen;
     private final Supplier<PrintPort> printing;
@@ -32,12 +34,15 @@ public class ScheduledDiningDispatchServiceImpl implements ScheduledDiningDispat
 
     public ScheduledDiningDispatchServiceImpl(
             FoodBusinessOperationsMapper mapper,
+            FoodIndustryOperationsMapper industry,
             PlatformTransactionManager manager,
             KitchenTaskService kitchen,
             Supplier<PrintPort> printing,
             FoodPrintService documents,
             Clock clock) {
         this.mapper = mapper;
+        this.industry = industry;
+        // 定时出品单的认领与完结都在行业库；manager 是行业句柄的事务管理器。
         tx = new TransactionTemplate(manager);
         this.kitchen = kitchen;
         this.printing = printing;
@@ -51,7 +56,15 @@ public class ScheduledDiningDispatchServiceImpl implements ScheduledDiningDispat
         if (TransactionSynchronizationManager.isActualTransactionActive())
             throw new IllegalStateException("Dispatch owner calls cannot hold a FOOD transaction");
         var now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
-        var candidates = mapper.dueScheduledDispatch(now, limit);
+        // 补建：时段占用已在交易库绑定批次，但提交后建定时出品单那一步没成功（建单按批次号可重复）。
+        for (var bound : mapper.boundScheduledBatches(now.minusDays(1), now, limit))
+            industry.createScheduledDispatch(
+                    bound.text("entity_no"),
+                    bound.text("store_no"),
+                    bound.text("batch_no"),
+                    LocalDateTime.ofInstant(bound.instant("dispatch_at"), ZoneOffset.UTC),
+                    "SYSTEM");
+        var candidates = industry.dueScheduledDispatch(now, limit);
         int claimed = 0, completed = 0, pending = 0;
         for (var row : candidates) {
             String e = row.text("entity_no"),
@@ -61,7 +74,7 @@ public class ScheduledDiningDispatchServiceImpl implements ScheduledDiningDispat
             if (!Boolean.TRUE.equals(
                     tx.execute(
                             t ->
-                                    mapper.claimScheduledDispatch(
+                                    industry.claimScheduledDispatch(
                                                     e,
                                                     store,
                                                     batch,
@@ -77,7 +90,7 @@ public class ScheduledDiningDispatchServiceImpl implements ScheduledDiningDispat
                 if ("CANCELLED".equals(original.getFirst().get("status"))) {
                     tx.execute(
                             t ->
-                                    mapper.finishScheduledDispatch(
+                                    industry.finishScheduledDispatch(
                                             e, store, batch, version + 1, "CANCELLED", null, now));
                     completed++;
                     continue;
@@ -86,14 +99,14 @@ public class ScheduledDiningDispatchServiceImpl implements ScheduledDiningDispat
                 print(e, store, batch, ticket);
                 tx.execute(
                         t ->
-                                mapper.finishScheduledDispatch(
+                                industry.finishScheduledDispatch(
                                         e, store, batch, version + 1, "COMPLETED", null, now));
                 completed++;
             } catch (RuntimeException failure) {
                 String error = failure.getClass().getSimpleName();
                 tx.execute(
                         t ->
-                                mapper.finishScheduledDispatch(
+                                industry.finishScheduledDispatch(
                                         e,
                                         store,
                                         batch,

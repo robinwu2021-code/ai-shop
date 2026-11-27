@@ -11,8 +11,8 @@ import java.util.List;
 import javax.sql.DataSource;
 
 /**
- * Uses the same explicit primary JDBC mapper boundary as existing service admissions and their
- * permanent command journal.
+ * 人头权益、权益事件、宴会方案修订与到场确认：都在行业库（ADR-068），只走行业句柄。
+ * 到店单、账单、购物车、点菜行在门店交易库，经 {@link ServiceFormMapper} 读写。
  */
 public final class ServiceEntitlementMapper {
     private final JdbcTemplate db;
@@ -103,18 +103,6 @@ public final class ServiceEntitlementMapper {
                 quantity);
     }
 
-    public List<FoodBusinessOperationRow> line(String e, String s, String batch, String line) {
-        return rows(
-                "SELECT l.*,b.status AS batch_status,b.store_no FROM fnb_order_line l JOIN"
-                    + " fnb_order_batch b ON b.entity_no=l.entity_no AND b.batch_no=l.batch_no AND"
-                    + " b.deleted=0 WHERE l.entity_no=? AND b.store_no=? AND b.batch_no=? AND"
-                    + " l.food_line_no=? AND l.deleted=0 FOR UPDATE",
-                e,
-                s,
-                batch,
-                line);
-    }
-
     public List<FoodBusinessOperationRow> eventByLine(
             String e, String s, String batch, String line) {
         return rows(
@@ -160,38 +148,6 @@ public final class ServiceEntitlementMapper {
                 snapshot,
                 actor,
                 reason);
-    }
-
-    public List<FoodBusinessOperationRow> cart(String e, String s, String cart, boolean lock) {
-        return rows(
-                "SELECT * FROM fnb_check_cart WHERE entity_no=? AND store_no=? AND cart_no=? AND"
-                        + " deleted=0"
-                        + (lock ? " FOR UPDATE" : ""),
-                e,
-                s,
-                cart);
-    }
-
-    public int extendForm(
-            String e,
-            String s,
-            String form,
-            long version,
-            LocalDateTime oldUntil,
-            LocalDateTime until,
-            String actor) {
-        return db.update(
-                "UPDATE fnb_service_form SET"
-                    + " ends_at=?,version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by=? WHERE"
-                    + " entity_no=? AND store_no=? AND form_no=? AND version=? AND status='ACTIVE'"
-                    + " AND ends_at=?",
-                until,
-                actor,
-                e,
-                s,
-                form,
-                version,
-                oldUntil);
     }
 
     public void extendEntitlements(

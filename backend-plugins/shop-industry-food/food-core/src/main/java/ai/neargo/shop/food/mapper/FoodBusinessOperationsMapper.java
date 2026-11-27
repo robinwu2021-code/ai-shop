@@ -266,26 +266,15 @@ public class FoodBusinessOperationsMapper {
                 line);
     }
 
-    public Long checkCollaborationCountDiningEntitlement(String e, String check) {
-        return db.queryForObject(
-                "SELECT COUNT(*) FROM fnb_dining_entitlement WHERE entity_no=? AND check_no=? AND"
-                        + " status='ACTIVE' AND deleted=0",
-                Long.class,
-                e,
-                check);
-    }
-
-    public List<FoodBusinessOperationRow> checkCollaborationSelectTable(
-            String e, String store, String check) {
+    public List<FoodBusinessOperationRow> checkCollaborationSelectOccupiedTables(
+            String e, String check) {
         return rows(
                 db.queryForList(
-                        "SELECT t.table_no FROM fnb_table t JOIN fnb_table_occupancy o ON"
-                            + " o.entity_no=t.entity_no AND o.table_no=t.table_no WHERE"
-                            + " o.entity_no=? AND t.store_no=? AND o.check_no=? AND o.ended_at IS"
-                            + " NULL AND o.deleted=0 AND t.deleted=0 ORDER BY t.table_no FOR"
-                            + " UPDATE",
+                        // 只读占台（门店交易库）；桌台在行业库，不再联表。账单号已按门店校验过。
+                        "SELECT o.table_no FROM fnb_table_occupancy o WHERE o.entity_no=? AND"
+                            + " o.check_no=? AND o.ended_at IS NULL AND o.deleted=0 ORDER BY"
+                            + " o.table_no FOR UPDATE",
                         e,
-                        store,
                         check));
     }
 
@@ -306,16 +295,6 @@ public class FoodBusinessOperationsMapper {
                 actor,
                 e,
                 check);
-    }
-
-    public int checkCollaborationUpdateTable(String actor, String e, String store, String tableNo) {
-        return db.update(
-                "UPDATE fnb_table SET version=version+1,updated_by=?,updated_at=UTC_TIMESTAMP(3)"
-                        + " WHERE entity_no=? AND store_no=? AND table_no=?",
-                actor,
-                e,
-                store,
-                tableNo);
     }
 
     public int checkCollaborationUpdateGuestSession(
@@ -812,15 +791,6 @@ public class FoodBusinessOperationsMapper {
                         no));
     }
 
-    public List<FoodBusinessOperationRow> serviceSlotSelectStorePolicy(String e, String s) {
-        return rows(
-                db.queryForList(
-                        "SELECT policy_no FROM fnb_store_policy WHERE entity_no=? AND store_no=?"
-                                + " AND deleted=0 ORDER BY policy_no LIMIT 1 FOR UPDATE",
-                        e,
-                        s));
-    }
-
     public int serviceSlotInsertServiceSlot(
             String e,
             String s,
@@ -978,130 +948,6 @@ public class FoodBusinessOperationsMapper {
                         no));
     }
 
-    public List<FoodBusinessOperationRow> businessOperationsSelectServiceResponsibility(
-            String e, String s, String kind, String sourceNo) {
-        return rows(
-                db.queryForList(
-                        "SELECT owner_no FROM fnb_service_responsibility WHERE entity_no=? AND"
-                                + " store_no=? AND source_kind=? AND source_no=?",
-                        e,
-                        s,
-                        kind,
-                        sourceNo));
-    }
-
-    public int businessOperationsInsertServiceHandover(
-            String e,
-            String s,
-            String no,
-            String a,
-            String receiverNo,
-            String hash,
-            String reason,
-            String a2,
-            String a3) {
-        return db.update(
-                "INSERT INTO fnb_service_handover"
-                    + " (entity_no,store_no,handover_no,from_actor,receiver_no,status,source_hash,reason,created_at,updated_at,created_by,updated_by)"
-                    + " VALUES (?,?,?,?,?,'PROPOSED',?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?)",
-                e,
-                s,
-                no,
-                a,
-                receiverNo,
-                hash,
-                reason,
-                a2,
-                a3);
-    }
-
-    public int businessOperationsInsertServiceHandoverItem(
-            String e,
-            String s,
-            String value3,
-            String no,
-            String kind,
-            String sourceNo,
-            String sourceHash,
-            String a,
-            String a2) {
-        return db.update(
-                "INSERT INTO fnb_service_handover_item"
-                    + " (entity_no,store_no,item_no,handover_no,source_kind,source_no,source_hash,created_at,updated_at,created_by,updated_by)"
-                    + " VALUES (?,?,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?)",
-                e,
-                s,
-                value3,
-                no,
-                kind,
-                sourceNo,
-                sourceHash,
-                a,
-                a2);
-    }
-
-    public List<FoodBusinessOperationRow> businessOperationsSelectServiceHandoverItem(
-            String e, String no) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_service_handover_item WHERE entity_no=? AND"
-                                + " handover_no=? ORDER BY source_kind,source_no",
-                        e,
-                        no));
-    }
-
-    public List<FoodBusinessOperationRow> businessOperationsSelectServiceResponsibility2(
-            String e, String s, String kind, String sourceNo) {
-        return rows(
-                db.queryForList(
-                        "SELECT owner_no FROM fnb_service_responsibility WHERE entity_no=? AND"
-                                + " store_no=? AND source_kind=? AND source_no=? FOR UPDATE",
-                        e,
-                        s,
-                        kind,
-                        sourceNo));
-    }
-
-    public int businessOperationsInsertServiceResponsibility(
-            String e,
-            String s,
-            String value3,
-            String kind,
-            String sourceNo,
-            String a,
-            String no,
-            String a2,
-            String a3) {
-        return db.update(
-                "INSERT INTO fnb_service_responsibility"
-                    + " (entity_no,store_no,responsibility_no,source_kind,source_no,owner_no,handover_no,created_at,updated_at,created_by,updated_by)"
-                    + " VALUES (?,?,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?)",
-                e,
-                s,
-                value3,
-                kind,
-                sourceNo,
-                a,
-                no,
-                a2,
-                a3);
-    }
-
-    public int businessOperationsUpdateServiceResponsibility(
-            String a, String no, String a2, String e, String s, String kind, String sourceNo) {
-        return db.update(
-                "UPDATE fnb_service_responsibility SET"
-                    + " owner_no=?,handover_no=?,version=version+1,updated_by=?,updated_at=UTC_TIMESTAMP(3)"
-                    + " WHERE entity_no=? AND store_no=? AND source_kind=? AND source_no=?",
-                a,
-                no,
-                a2,
-                e,
-                s,
-                kind,
-                sourceNo);
-    }
-
     public int businessOperationsUpdateCheck(
             String a, String a2, String e, String s, String sourceNo) {
         return db.update(
@@ -1113,19 +959,6 @@ public class FoodBusinessOperationsMapper {
                 e,
                 s,
                 sourceNo);
-    }
-
-    public int businessOperationsUpdateServiceHandover(
-            String value1, String a, String a2, String e, String no) {
-        return db.update(
-                "UPDATE fnb_service_handover SET"
-                    + " status=?,version=version+1,decided_by=?,decided_at=UTC_TIMESTAMP(3),updated_by=?,updated_at=UTC_TIMESTAMP(3)"
-                    + " WHERE entity_no=? AND handover_no=?",
-                value1,
-                a,
-                a2,
-                e,
-                no);
     }
 
     public List<FoodBusinessOperationRow> businessOperationsSelectOperationCase(
@@ -1189,18 +1022,6 @@ public class FoodBusinessOperationsMapper {
                 a,
                 e,
                 no);
-    }
-
-    public List<FoodBusinessOperationRow> businessOperationsSelectServiceHandover(
-            String e, String s, String no, boolean lock) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_service_handover WHERE entity_no=? AND store_no=? AND"
-                                + " handover_no=?"
-                                + (lock ? " FOR UPDATE" : ""),
-                        e,
-                        s,
-                        no));
     }
 
     public List<FoodBusinessOperationRow> businessOperationsSelectOperationCase2(
@@ -1320,6 +1141,24 @@ public class FoodBusinessOperationsMapper {
                         batch));
     }
 
+    /**
+     * 已绑定批次、计划出品时间落在窗口内的时段占用：定时出品单（行业库）在交易提交后才建，
+     * 定时出品任务用它补建漏掉的。
+     */
+    public List<FoodBusinessOperationRow> boundScheduledBatches(
+            LocalDateTime since, LocalDateTime until, int limit) {
+        return rows(
+                db.queryForList(
+                        "SELECT c.entity_no,c.store_no,c.batch_no,s.dispatch_at FROM"
+                            + " fnb_capacity_claim c JOIN fnb_service_slot s ON"
+                            + " s.entity_no=c.entity_no AND s.slot_no=c.slot_no WHERE c.batch_no IS"
+                            + " NOT NULL AND c.status='CONSUMED' AND s.dispatch_at>=? AND"
+                            + " s.dispatch_at<=? ORDER BY s.dispatch_at,c.id LIMIT ?",
+                        since,
+                        until,
+                        limit));
+    }
+
     public int bindCapacityBatch(
             String e, String store, String source, String batch, String actor) {
         return db.update(
@@ -1357,74 +1196,6 @@ public class FoodBusinessOperationsMapper {
                 claim);
     }
 
-    public int createScheduledDispatch(
-            String entity, String store, String batch, LocalDateTime dispatchAt, String actor) {
-        return db.update(
-                "INSERT INTO fnb_scheduled_dispatch"
-                    + " (entity_no,store_no,batch_no,status,dispatch_at,next_attempt_at,created_at,updated_at,created_by,updated_by)"
-                    + " VALUES (?,?,?,'PENDING',?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?) ON"
-                    + " DUPLICATE KEY UPDATE batch_no=VALUES(batch_no)",
-                entity,
-                store,
-                batch,
-                dispatchAt,
-                dispatchAt,
-                actor,
-                actor);
-    }
-
-    public List<FoodBusinessOperationRow> dueScheduledDispatch(LocalDateTime now, int limit) {
-        return rows(
-                db.queryForList(
-                        "SELECT * FROM fnb_scheduled_dispatch WHERE status IN ('PENDING','RETRY')"
-                                + " AND dispatch_at<=? AND next_attempt_at<=? ORDER BY"
-                                + " next_attempt_at,id LIMIT ?",
-                        now,
-                        now,
-                        limit));
-    }
-
-    public int claimScheduledDispatch(
-            String entity,
-            String store,
-            String batch,
-            long version,
-            LocalDateTime now,
-            LocalDateTime lease) {
-        return db.update(
-                "UPDATE fnb_scheduled_dispatch SET"
-                    + " next_attempt_at=?,version=version+1,attempts=attempts+1,updated_at=UTC_TIMESTAMP(3),updated_by='SYSTEM'"
-                    + " WHERE entity_no=? AND store_no=? AND batch_no=? AND version=? AND"
-                    + " next_attempt_at<=? AND status IN ('PENDING','RETRY')",
-                lease,
-                entity,
-                store,
-                batch,
-                version,
-                now);
-    }
-
-    public int finishScheduledDispatch(
-            String entity,
-            String store,
-            String batch,
-            long version,
-            String status,
-            String error,
-            LocalDateTime next) {
-        return db.update(
-                "UPDATE fnb_scheduled_dispatch SET"
-                    + " status=?,last_error=?,next_attempt_at=?,version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by='SYSTEM'"
-                    + " WHERE entity_no=? AND store_no=? AND batch_no=? AND version=?",
-                status,
-                error,
-                next,
-                entity,
-                store,
-                batch,
-                version);
-    }
-
     public List<FoodBusinessOperationRow> reservationActivePreorders(
             String entity, String store, String reservation) {
         return rows(
@@ -1456,19 +1227,6 @@ public class FoodBusinessOperationsMapper {
                             + " case_no,source_kind,source_no,status,source_hash,resolution_hash,version"
                             + " FROM fnb_operation_case WHERE entity_no=? AND store_no=? AND"
                             + " created_at>=? AND created_at<? ORDER BY case_no",
-                        entity,
-                        store,
-                        from,
-                        until));
-    }
-
-    public List<FoodBusinessOperationRow> closePendingHandovers(
-            String entity, String store, LocalDateTime from, LocalDateTime until) {
-        return rows(
-                db.queryForList(
-                        "SELECT handover_no,status,source_hash,version FROM fnb_service_handover"
-                            + " WHERE entity_no=? AND store_no=? AND created_at>=? AND created_at<?"
-                            + " ORDER BY handover_no",
                         entity,
                         store,
                         from,

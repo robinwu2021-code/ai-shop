@@ -2,6 +2,7 @@ package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.mapper.ServiceFormMapper;
 import ai.neargo.shop.food.service.BusinessOperationsService;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
@@ -61,6 +62,14 @@ public class FoodBusinessOperationsConfiguration {
         return new FoodBusinessOperationsMapper(source);
     }
 
+    /** 业务操作里只碰行业库的部分（交接、责任、定时出品、门店策略、桌台、堂食权益）。 */
+    @Bean
+    @ConditionalOnMissingBean(FoodIndustryOperationsMapper.class)
+    FoodIndustryOperationsMapper foodIndustryOperationsMapper(
+            @Qualifier(ModuleDataSources.INDUSTRY_DATA_SOURCE) DataSource source) {
+        return new FoodIndustryOperationsMapper(source);
+    }
+
     @Bean
     @ConditionalOnMissingBean(CheckBusinessGuardService.class)
     CheckBusinessGuardService checkBusinessGuardService(FoodBusinessOperationsMapper mapper) {
@@ -71,11 +80,12 @@ public class FoodBusinessOperationsConfiguration {
     @ConditionalOnMissingBean(CheckCollaborationService.class)
     CheckCollaborationService checkCollaborationService(
             FoodBusinessOperationsMapper mapper,
+            FoodIndustryOperationsMapper industry,
             CheckBusinessGuardService guard,
             RequestIdempotencyPort idem,
             ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
-        return new CheckCollaborationServiceImpl(mapper, guard, idem, json, manager);
+        return new CheckCollaborationServiceImpl(mapper, industry, guard, idem, json, manager);
     }
 
     @Bean
@@ -94,14 +104,18 @@ public class FoodBusinessOperationsConfiguration {
     @Bean
     @ConditionalOnMissingBean(ServiceSlotService.class)
     ServiceSlotServiceImpl serviceSlotService(
-            FoodBusinessOperationsMapper mapper, RequestIdempotencyPort idem, ObjectMapper json) {
-        return new ServiceSlotServiceImpl(mapper, idem, Clock.systemUTC(), json);
+            FoodBusinessOperationsMapper mapper,
+            FoodIndustryOperationsMapper industry,
+            RequestIdempotencyPort idem,
+            ObjectMapper json) {
+        return new ServiceSlotServiceImpl(mapper, industry, idem, Clock.systemUTC(), json);
     }
 
     @Bean
     @ConditionalOnMissingBean(BusinessOperationsService.class)
     BusinessOperationsService businessOperationsService(
             FoodBusinessOperationsMapper mapper,
+            FoodIndustryOperationsMapper industry,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
             RequestIdempotencyPort idem,
             ObjectMapper json,
@@ -109,19 +123,26 @@ public class FoodBusinessOperationsConfiguration {
             DiningReturnService returns,
             QueueService queues) {
         return new BusinessOperationsServiceImpl(
-                mapper, manager, idem, json, orders, returns, queues);
+                mapper, industry, manager, idem, json, orders, returns, queues);
     }
 
     @Bean
     @ConditionalOnMissingBean(ScheduledDiningDispatchService.class)
     ScheduledDiningDispatchService scheduledDiningDispatchService(
             FoodBusinessOperationsMapper mapper,
-            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
+            FoodIndustryOperationsMapper industry,
+            @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
             KitchenTaskService kitchen,
             ObjectProvider<PrintPort> printing,
             FoodPrintService documents) {
         return new ScheduledDiningDispatchServiceImpl(
-                mapper, manager, kitchen, printing::getIfAvailable, documents, Clock.systemUTC());
+                mapper,
+                industry,
+                manager,
+                kitchen,
+                printing::getIfAvailable,
+                documents,
+                Clock.systemUTC());
     }
 
     @Bean

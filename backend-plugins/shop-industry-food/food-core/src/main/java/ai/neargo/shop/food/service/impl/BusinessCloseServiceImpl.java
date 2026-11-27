@@ -33,6 +33,7 @@ import ai.neargo.shop.food.entity.FnbSettlementItem;
 import ai.neargo.shop.food.entity.FnbStorePolicy;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.BusinessDayMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CloseAdjustmentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CloseBalanceMapper;
@@ -101,6 +102,14 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
     @Autowired(required = false)
     public void setOperationSources(FoodBusinessOperationsMapper mapper) {
         operationSources = mapper;
+    }
+
+    /** 未决的服务交接在行业库：关账只读它，不跨库加锁。 */
+    private FoodIndustryOperationsMapper industrySources;
+
+    @Autowired(required = false)
+    public void setIndustrySources(FoodIndustryOperationsMapper mapper) {
+        industrySources = mapper;
     }
 
     private final BusinessDayMapper days;
@@ -1103,8 +1112,10 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
                 if (Set.of("ACTIVE", "CANCELLING", "BOOKED").contains(row.text("status")))
                     issues.add(new Issue("SYNC", row.text("form_no")));
             var handovers =
-                    operationSources.closePendingHandovers(
-                            entity, store, d.getStartsAt(), d.getEndsAt());
+                    industrySources == null
+                            ? List.<FoodBusinessOperationRow>of()
+                            : industrySources.closePendingHandovers(
+                                    entity, store, d.getStartsAt(), d.getEndsAt());
             operationRows.addAll(handovers);
             for (var row : handovers)
                 if ("PROPOSED".equals(row.get("status")))

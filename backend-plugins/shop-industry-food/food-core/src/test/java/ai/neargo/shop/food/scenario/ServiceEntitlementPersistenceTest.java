@@ -35,6 +35,7 @@ import ai.neargo.shop.food.dto.ServiceEntitlementContracts.Plan;
 import ai.neargo.shop.food.dto.ServiceEntitlementContracts.QuoteRef;
 import ai.neargo.shop.food.dto.ServiceSlotContracts.CreateReq;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.mapper.ServiceEntitlementMapper;
 import ai.neargo.shop.food.mapper.ServiceFormMapper;
 import ai.neargo.shop.food.policy.MenuPublicationDocuments;
@@ -175,7 +176,7 @@ public class ServiceEntitlementPersistenceTest {
         var manager = new DataSourceTransactionManager(ds);
         tx = new TransactionTemplate(manager);
         var operations = new FoodBusinessOperationsMapper(ds);
-        slots = new ServiceSlotServiceImpl(operations, mock(RequestIdempotencyPort.class), CLOCK, json);
+        slots = new ServiceSlotServiceImpl(operations, new FoodIndustryOperationsMapper(ds), mock(RequestIdempotencyPort.class), CLOCK, json);
         service =
                 new ServiceEntitlementServiceImpl(
                         new ServiceEntitlementMapper(ds),

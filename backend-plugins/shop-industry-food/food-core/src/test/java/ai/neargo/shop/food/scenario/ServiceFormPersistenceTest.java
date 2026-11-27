@@ -14,6 +14,7 @@ import ai.neargo.shop.food.dto.ServiceFormContracts.Kind;
 import ai.neargo.shop.food.dto.ServiceFormContracts.OrganizationReq;
 import ai.neargo.shop.food.dto.ServiceFormContracts.VersionReq;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.mapper.ServiceFormMapper;
 import ai.neargo.shop.food.service.ReservationService;
 import ai.neargo.shop.food.service.impl.ServiceFormServiceImpl;
@@ -113,6 +114,7 @@ public class ServiceFormPersistenceTest {
         var slot =
                 new ServiceSlotServiceImpl(
                         mapper,
+                        new FoodIndustryOperationsMapper(ds),
                         mock(RequestIdempotencyPort.class),
                         Clock.fixed(now, ZoneOffset.UTC),
                         json);

@@ -8,6 +8,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.dto.*;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.*;
 import ai.neargo.shop.food.mapper.ReservationTableMapper;
 import ai.neargo.shop.food.service.*;
@@ -83,6 +84,7 @@ class CatalogOperationsAcceptanceTest extends FoodWriteGuardFixture {
     }
     private ServiceSlotServiceImpl slots(AssertableApplicationContext c, Fixture f, Instant now) {
         return new ServiceSlotServiceImpl(new FoodBusinessOperationsMapper(f.source()),
+                new FoodIndustryOperationsMapper(f.source()),
                 c.getBean(RequestIdempotencyPort.class), Clock.fixed(now, ZoneOffset.UTC), json(c));
     }
     private ReservationServiceImpl reservations(AssertableApplicationContext c) {

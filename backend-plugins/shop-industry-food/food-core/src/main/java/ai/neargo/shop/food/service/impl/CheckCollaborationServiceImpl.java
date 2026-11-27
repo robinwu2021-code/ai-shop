@@ -15,6 +15,7 @@ import ai.neargo.shop.food.dto.CheckCollaborationContracts.ReceivableBatch;
 import ai.neargo.shop.food.dto.CheckCollaborationContracts.ReceivablePreview;
 import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
 import ai.neargo.shop.food.service.CheckCollaborationService;
@@ -59,18 +60,21 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
 
     private final BusinessCommandJournal journal;
     private final FoodBusinessOperationsMapper mapper;
+    private final FoodIndustryOperationsMapper industry;
     private final CheckBusinessGuardService guard;
     private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
 
     public CheckCollaborationServiceImpl(
             FoodBusinessOperationsMapper mapper,
+            FoodIndustryOperationsMapper industry,
             CheckBusinessGuardService guard,
             RequestIdempotencyPort idem,
             ObjectMapper json,
             PlatformTransactionManager manager) {
         this.tx = new TransactionTemplate(manager);
         this.mapper = mapper;
+        this.industry = industry;
         journal = new BusinessCommandJournal(mapper, json);
         this.guard = guard;
         this.idem = idem;
@@ -209,7 +213,9 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
             String key) {
         validate(e, store, actor, check, key);
         if (reason == null || reason.isBlank()) bad();
-        return tx.execute(
+        List<String> released = new ArrayList<>();
+        OperationVO result =
+                tx.execute(
                 t ->
                         journal.execute(
                                 key,
@@ -232,16 +238,15 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
                                         if (mapper.checkCollaborationCountReturnItem(e, line) > 0)
                                             conflict();
                                     }
-                                    if (mapper.checkCollaborationCountDiningEntitlement(e, check)
+                                    // 堂食权益在行业库：只读判断，不跨库加锁。
+                                    if (industry.checkCollaborationCountDiningEntitlement(e, check)
                                             > 0) conflict();
                                     var tables =
-                                            mapper.checkCollaborationSelectTable(e, store, check);
+                                            mapper.checkCollaborationSelectOccupiedTables(e, check);
                                     if (mapper.checkCollaborationCountTableOccupancy(e, check) > 0)
                                         conflict();
                                     mapper.checkCollaborationUpdateTableOccupancy(actor, e, check);
-                                    for (var row : tables)
-                                        mapper.checkCollaborationUpdateTable(
-                                                actor, e, store, row.text("table_no"));
+                                    for (var row : tables) released.add(row.text("table_no"));
                                     mapper.checkCollaborationUpdateGuestSession(
                                             actor, e, store, check);
                                     mapper.checkCollaborationUpdateCheckCart(
@@ -263,6 +268,10 @@ public class CheckCollaborationServiceImpl implements CheckCollaborationService 
                                             "SERVICE_RELEASED");
                                     return new OperationVO(op, "SUCCEEDED", expected + 1, check);
                                 }));
+        // 交易先、行业跟：占台已在交易库结束，提交后再给行业库的桌台加版本，让并发的桌台编辑看到变化。
+        // 只加版本、可重复执行；重放时 released 为空，不重复触碰。
+        for (String table : released) industry.checkCollaborationUpdateTable(actor, e, store, table);
+        return result;
     }
 
     @Override

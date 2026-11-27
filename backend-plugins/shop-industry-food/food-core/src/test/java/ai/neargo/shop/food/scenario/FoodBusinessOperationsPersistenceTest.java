@@ -13,6 +13,7 @@ import ai.neargo.shop.food.dto.ServiceSlotContracts.ClaimReq;
 import ai.neargo.shop.food.dto.ServiceSlotContracts.CreateReq;
 import ai.neargo.shop.food.dto.ServiceSlotContracts.SlotVO;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.service.DiningOrderService;
 import ai.neargo.shop.food.service.DiningReturnService;
 import ai.neargo.shop.food.service.QueueService;
@@ -121,12 +122,14 @@ public class FoodBusinessOperationsPersistenceTest {
         slots =
                 new ServiceSlotServiceImpl(
                         mapper,
+                        new FoodIndustryOperationsMapper(ds),
                         mock(RequestIdempotencyPort.class),
                         Clock.fixed(Instant.parse("2026-10-24T00:00:00Z"), ZoneOffset.UTC),
                         json);
         ops =
                 new BusinessOperationsServiceImpl(
                         mapper,
+                        new FoodIndustryOperationsMapper(ds),
                         manager,
                         mock(RequestIdempotencyPort.class),
                         json,

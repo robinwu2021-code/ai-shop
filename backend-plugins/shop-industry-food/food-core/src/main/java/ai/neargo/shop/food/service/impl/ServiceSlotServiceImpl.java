@@ -2,6 +2,7 @@ package ai.neargo.shop.food.service.impl;
 
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.food.service.support.BusinessCommandJournal;
+import ai.neargo.shop.food.service.support.IndustryFollowUp;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -11,6 +12,7 @@ import ai.neargo.shop.food.dto.ServiceSlotContracts.CreateReq;
 import ai.neargo.shop.food.dto.ServiceSlotContracts.SlotVO;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
 import ai.neargo.shop.food.service.ServiceSlotService;
@@ -34,16 +36,19 @@ import java.util.Set;
 public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLifecycle {
     private final BusinessCommandJournal journal;
     private final FoodBusinessOperationsMapper mapper;
+    private final FoodIndustryOperationsMapper industry;
     private final RequestIdempotencyPort idem;
     private final Clock clock;
     private final ObjectMapper json;
 
     public ServiceSlotServiceImpl(
             FoodBusinessOperationsMapper mapper,
+            FoodIndustryOperationsMapper industry,
             RequestIdempotencyPort idem,
             Clock clock,
             ObjectMapper json) {
         this.mapper = mapper;
+        this.industry = industry;
         journal = new BusinessCommandJournal(mapper, json);
         this.idem = idem;
         this.clock = clock;
@@ -140,12 +145,11 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                     "CONSUME",
                     "SLOT_ACCEPT_" + batch);
         if (mapper.bindCapacityBatch(e, store, cart, batch, actor) != 1) conflict();
-        mapper.createScheduledDispatch(
-                e,
-                store,
-                batch,
-                local(slot(e, store, row.text("slot_no"), false).instant("dispatch_at")),
-                actor);
+        // 定时出品单在行业库：交易提交后再建（按批次号可重复执行）；漏建由定时出品任务按已绑定时段补。
+        LocalDateTime dispatchAt =
+                local(slot(e, store, row.text("slot_no"), false).instant("dispatch_at"));
+        IndustryFollowUp.afterTradeCommit(
+                () -> industry.createScheduledDispatch(e, store, batch, dispatchAt, actor));
     }
 
     @Override
@@ -206,7 +210,7 @@ public class ServiceSlotServiceImpl implements ServiceSlotService, ServiceSlotLi
                 FoodCommandFingerprint.hash(json.writeValueAsString(req)),
                 SlotVO.class,
                 () -> {
-                    var stores = mapper.serviceSlotSelectStorePolicy(e, s);
+                    var stores = industry.serviceSlotSelectStorePolicy(e, s);
                     if (stores.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
                     String no = BizKey.next("FSLT");
                     mapper.serviceSlotInsertServiceSlot(

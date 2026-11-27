@@ -404,4 +404,51 @@ public class ServiceFormMapper {
                 check,
                 version);
     }
+
+    // 以下三条原在 ServiceEntitlementMapper：点菜行、购物车、到店单都在门店交易库。
+    public List<FoodBusinessOperationRow> line(String e, String s, String batch, String line) {
+        return rows(
+                db.queryForList(
+                        "SELECT l.*,b.status AS batch_status,b.store_no FROM fnb_order_line l JOIN"
+                            + " fnb_order_batch b ON b.entity_no=l.entity_no AND b.batch_no=l.batch_no"
+                            + " AND b.deleted=0 WHERE l.entity_no=? AND b.store_no=? AND b.batch_no=?"
+                            + " AND l.food_line_no=? AND l.deleted=0 FOR UPDATE",
+                        e,
+                        s,
+                        batch,
+                        line));
+    }
+
+    public List<FoodBusinessOperationRow> cart(String e, String s, String cart, boolean lock) {
+        return rows(
+                db.queryForList(
+                        "SELECT * FROM fnb_check_cart WHERE entity_no=? AND store_no=? AND cart_no=?"
+                                + " AND deleted=0"
+                                + (lock ? " FOR UPDATE" : ""),
+                        e,
+                        s,
+                        cart));
+    }
+
+    public int extendForm(
+            String e,
+            String s,
+            String form,
+            long version,
+            LocalDateTime oldUntil,
+            LocalDateTime until,
+            String actor) {
+        return db.update(
+                "UPDATE fnb_service_form SET"
+                    + " ends_at=?,version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by=? WHERE"
+                    + " entity_no=? AND store_no=? AND form_no=? AND version=? AND status='ACTIVE'"
+                    + " AND ends_at=?",
+                until,
+                actor,
+                e,
+                s,
+                form,
+                version,
+                oldUntil);
+    }
 }

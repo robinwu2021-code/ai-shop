@@ -13,6 +13,7 @@ import ai.neargo.shop.food.dto.BusinessOperationsContracts.HandoverVO;
 import ai.neargo.shop.food.dto.BusinessOperationsContracts.Source;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.BusinessOperationsService;
 import ai.neargo.shop.food.service.DiningOrderService;
@@ -37,6 +38,7 @@ import java.util.Set;
 public class BusinessOperationsServiceImpl implements BusinessOperationsService {
     private final BusinessCommandJournal journal;
     private final FoodBusinessOperationsMapper mapper;
+    private final FoodIndustryOperationsMapper industry;
     private final TransactionTemplate tx;
     private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
@@ -46,6 +48,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
 
     public BusinessOperationsServiceImpl(
             FoodBusinessOperationsMapper mapper,
+            FoodIndustryOperationsMapper industry,
             PlatformTransactionManager manager,
             RequestIdempotencyPort idem,
             ObjectMapper json,
@@ -53,6 +56,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
             DiningReturnService returns,
             QueueService queues) {
         this.mapper = mapper;
+        this.industry = industry;
         journal = new BusinessCommandJournal(mapper, json);
         tx = new TransactionTemplate(manager);
         this.idem = idem;
@@ -92,7 +96,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
         }
         var row = one(mapper.sourceEvidence(source.kind(), e, s, source.sourceNo(), lock));
         var owners =
-                mapper.businessOperationsSelectServiceResponsibility(
+                industry.businessOperationsSelectServiceResponsibility(
                         e, s, source.kind(), source.sourceNo());
         String owner =
                 owners.isEmpty()
@@ -138,7 +142,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
                                     String hash =
                                             FoodCommandFingerprint.hash(
                                                     json.writeValueAsString(facts));
-                                    mapper.businessOperationsInsertServiceHandover(
+                                    industry.businessOperationsInsertServiceHandover(
                                             e,
                                             s,
                                             no,
@@ -149,7 +153,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
                                             a,
                                             a);
                                     for (var ev : facts)
-                                        mapper.businessOperationsInsertServiceHandoverItem(
+                                        industry.businessOperationsInsertServiceHandoverItem(
                                                 e,
                                                 s,
                                                 BizKey.next("FHIT"),
@@ -207,7 +211,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
                                 () -> {
                                     var initial = handoverRow(e, s, no, false);
                                     var items =
-                                            mapper.businessOperationsSelectServiceHandoverItem(
+                                            industry.businessOperationsSelectServiceHandoverItem(
                                                     e, no);
                                     var snapshots = new ArrayList<Evidence>();
                                     for (var item : items)
@@ -236,14 +240,14 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
                                                                     .equals(ev.currentOwner()))
                                                 conflict();
                                             var old =
-                                                    mapper
+                                                    industry
                                                             .businessOperationsSelectServiceResponsibility2(
                                                                     e,
                                                                     s,
                                                                     ev.source().kind(),
                                                                     ev.source().sourceNo());
                                             if (old.isEmpty())
-                                                mapper
+                                                industry
                                                         .businessOperationsInsertServiceResponsibility(
                                                                 e,
                                                                 s,
@@ -255,7 +259,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
                                                                 a,
                                                                 a);
                                             else
-                                                mapper
+                                                industry
                                                         .businessOperationsUpdateServiceResponsibility(
                                                                 a,
                                                                 no,
@@ -268,7 +272,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
                                                 mapper.businessOperationsUpdateCheck(
                                                         a, a, e, s, ev.source().sourceNo());
                                         }
-                                    mapper.businessOperationsUpdateServiceHandover(
+                                    industry.businessOperationsUpdateServiceHandover(
                                             accept ? "ACCEPTED" : "CANCELLED", a, a, e, no);
                                     audit(
                                             e,
@@ -448,7 +452,7 @@ public class BusinessOperationsServiceImpl implements BusinessOperationsService 
     }
 
     private FoodBusinessOperationRow handoverRow(String e, String s, String no, boolean lock) {
-        return one(mapper.businessOperationsSelectServiceHandover(e, s, no, lock));
+        return one(industry.businessOperationsSelectServiceHandover(e, s, no, lock));
     }
 
     private FoodBusinessOperationRow caseRow(String e, String s, String no, boolean lock) {

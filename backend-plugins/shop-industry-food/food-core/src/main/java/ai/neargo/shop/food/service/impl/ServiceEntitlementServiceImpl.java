@@ -277,7 +277,7 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                                             .isBefore(entitlement.instant("valid_until")));
                     var check = one(forms.check(e, s, form.text("check_no"), true));
                     open(check);
-                    var line = one(mapper.line(e, s, req.batchNo(), req.foodLineNo()));
+                    var line = one(forms.line(e, s, req.batchNo(), req.foodLineNo()));
                     require(
                             "ACCEPTED".equals(line.text("batch_status"))
                                     && entitlement.text("goods_no").equals(line.text("goods_no"))
@@ -395,7 +395,7 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
                                     "SERVICE_EXTENSION_CONSUME:" + event);
                     require("CONSUMED".equals(used.status()));
                     require(
-                            mapper.extendForm(
+                            forms.extendForm(
                                             e,
                                             s,
                                             formNo,
@@ -742,7 +742,7 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
         require(
                 check.number("party_size") == form.number("actual_persons")
                         && Instant.parse(evidence.quote().expiresAt()).isAfter(clock.instant()));
-        var cart = one(mapper.cart(e, s, evidence.cart().cartNo(), lock));
+        var cart = one(forms.cart(e, s, evidence.cart().cartNo(), lock));
         require(
                 form.text("check_no").equals(cart.text("check_no"))
                         && cart.number("version") == evidence.cart().version()
