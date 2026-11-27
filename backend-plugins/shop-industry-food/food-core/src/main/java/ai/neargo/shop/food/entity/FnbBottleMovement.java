@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 /** Original physical custody ledger, separate from SKU sellable inventory. */
 @Getter
 @Setter
-@TableName("fnb_bottle_movement")
+@TableName("fnb_custody_movement")
 public class FnbBottleMovement extends BaseEntity {
     private String movementNo;
     private String entityNo;

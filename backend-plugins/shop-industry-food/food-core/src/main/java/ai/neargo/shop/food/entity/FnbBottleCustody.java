@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 /** Original physical custody ledger, separate from SKU sellable inventory. */
 @Getter
 @Setter
-@TableName("fnb_bottle_custody")
+@TableName("fnb_custody")
 public class FnbBottleCustody extends BaseEntity {
     private String custodyNo;
     private String entityNo;

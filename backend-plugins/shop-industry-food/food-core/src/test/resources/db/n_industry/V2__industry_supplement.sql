@@ -95,6 +95,7 @@ CREATE TABLE fnb_kds_voice_command (
 -- 二、ADR-068 第 4 条（防重列与唯一约束保留）：代码在用、设计稿去掉了的防重列。
 ALTER TABLE fnb_kitchen_ticket ADD COLUMN dispatch_key VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '下达防重键（接单事件、定时出品）', ADD UNIQUE KEY uk_kitchen_ticket_dispatch_key (dispatch_key);
 ALTER TABLE fnb_queue_ticket ADD COLUMN request_key CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '取号请求防重键', ADD COLUMN request_hash CHAR(64) NULL COMMENT '取号请求摘要', ADD COLUMN seat_request_hash CHAR(64) NULL COMMENT '入座请求摘要', ADD UNIQUE KEY uk_queue_ticket_request (entity_no, store_no, request_key);
+ALTER TABLE fnb_custody_movement ADD COLUMN key_hash VARCHAR(64) NOT NULL COMMENT '寄存动作防重键摘要', ADD COLUMN request_hash VARCHAR(64) NOT NULL COMMENT '寄存动作请求摘要', ADD UNIQUE KEY uk_custody_movement_key (tenant_no, entity_no, store_no, key_hash);
 
 -- 三、ADR-068 修订一：制作任务归行业库（设计 DDL 里原拟并入 n_trade.ord_execution）。
 CREATE TABLE `fnb_kitchen_task` (
@@ -545,61 +546,4 @@ CREATE TABLE `fnb_service_responsibility` (
   UNIQUE KEY `uk_food_service_responsibility` (`responsibility_no`),
   UNIQUE KEY `uk_food_responsibility_source` (`entity_no`,`store_no`,`source_kind`,`source_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE `fnb_bottle_custody` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'BaseEntityè‡ªå¢žç‰©ç†ä¸»é”®ï¼Œä¸å¯¹å¤–ä¸è¿›URL',
-  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT 'æ²¿ç”¨BaseEntityï¼Œä¸€æœŸMAINï¼›ä¸æ˜¯entity_noï¼Œä¸å¦å¯ç§Ÿæˆ·ä½“ç³»',
-  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'å½“å‰ä¸»ä½“æˆ–ä¸šåŠ¡å‘ç”Ÿæ—¶ä¸»ä½“å¿«ç…§ï¼Œä¸ç­‰äºŽè´¦å·å’Œæ”¯ä»˜å•†æˆ·å·',
-  `created_at` datetime(3) NOT NULL COMMENT 'æ²¿ç”¨MetaObjectHandleråŠçŽ°æœ‰LocalDateTimeæŒä¹…åŒ–çº¦å®š',
-  `created_by` varchar(32) NOT NULL COMMENT 'å½“å‰è®¤è¯ä¸šåŠ¡é”®ï¼›æŒ‰çŽ°æœ‰å¡«å……è§„åˆ™ï¼Œä½œä¸šSYSTEM',
-  `updated_at` datetime(3) NOT NULL COMMENT 'æ²¿ç”¨å…¬å…±å¡«å……',
-  `updated_by` varchar(32) NOT NULL COMMENT 'æ²¿ç”¨å…¬å…±å¡«å……',
-  `version` bigint NOT NULL DEFAULT '0' COMMENT 'BaseEntityä¹è§‚é”',
-  `deleted` int NOT NULL DEFAULT '0' COMMENT 'BaseEntityé€»è¾‘åˆ é™¤ï¼›ç­¾æ ¸å’Œäº‹å®žè¡¨ç¦æ­¢ä¸šåŠ¡å½’æ¡£è¦†ç›–åŽ†å²',
-  `custody_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'å¯„å­˜',
-  `store_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'é—¨åº—',
-  `owner_ref` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'æŽˆæƒå®¢æˆ·',
-  `sku_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'å•†å“',
-  `unit` varchar(16) NOT NULL COMMENT 'å•ä½',
-  `remaining_qty` decimal(18,6) NOT NULL COMMENT 'ä½™é‡',
-  `expires_at` datetime(3) NOT NULL COMMENT 'æœŸé™',
-  `status` varchar(16) NOT NULL COMMENT 'ACTIVE/CLOSED',
-  `deposited_qty` decimal(18,6) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_food_1` (`custody_no`),
-  KEY `ix_food_audit` (`entity_no`,`created_at`,`id`),
-  KEY `ix_food_store` (`entity_no`,`store_no`,`updated_at`,`id`),
-  KEY `idx_fnb_bottle_owner` (`tenant_no`,`entity_no`,`store_no`,`owner_ref`,`id`),
-  CONSTRAINT `fnb_bottle_custody_chk_1` CHECK ((`remaining_qty` >= 0))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='é…’æ°´å¯„å­˜';
-
-CREATE TABLE `fnb_bottle_movement` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `tenant_no` varchar(32) COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN',
-  `entity_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `store_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `created_at` datetime(3) NOT NULL,
-  `created_by` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `updated_at` datetime(3) NOT NULL,
-  `updated_by` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `version` bigint NOT NULL DEFAULT '0',
-  `deleted` int NOT NULL DEFAULT '0',
-  `movement_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `custody_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `action` varchar(24) COLLATE utf8mb4_bin NOT NULL,
-  `quantity` decimal(20,6) NOT NULL,
-  `remaining_qty` decimal(20,6) NOT NULL,
-  `unit` varchar(16) COLLATE utf8mb4_bin NOT NULL,
-  `actor_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `recipient_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
-  `reason` varchar(255) COLLATE utf8mb4_bin NOT NULL,
-  `original_receipt_ref` varchar(128) COLLATE utf8mb4_bin DEFAULT NULL,
-  `key_hash` varchar(64) COLLATE utf8mb4_bin NOT NULL,
-  `request_hash` varchar(64) COLLATE utf8mb4_bin NOT NULL,
-  `result_snapshot` longtext COLLATE utf8mb4_bin NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_fnb_bottle_movement_no` (`movement_no`),
-  UNIQUE KEY `uk_fnb_bottle_movement_key` (`tenant_no`,`entity_no`,`store_no`,`key_hash`),
-  KEY `idx_fnb_bottle_movement_owner` (`tenant_no`,`entity_no`,`store_no`,`custody_no`,`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 

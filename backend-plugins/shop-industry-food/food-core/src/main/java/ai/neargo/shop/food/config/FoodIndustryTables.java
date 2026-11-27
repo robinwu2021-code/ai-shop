@@ -49,6 +49,13 @@ public final class FoodIndustryTables {
                     "fnb_service_handover",
                     "fnb_service_handover_item",
                     "fnb_service_responsibility",
-                    "fnb_bottle_custody",
-                    "fnb_bottle_movement");
+                    // P1-2 改名：寄存（原 fnb_bottle_custody、fnb_bottle_movement）
+                    "fnb_custody",
+                    "fnb_custody_movement");
+
+    /** 已改名的旧表 → 行业库新表。主库里可能还留着旧表（私有迁移建的），校验器不再要求、也不当作未知表。 */
+    public static final java.util.Map<String, String> RENAMED =
+            java.util.Map.of(
+                    "fnb_bottle_custody", "fnb_custody",
+                    "fnb_bottle_movement", "fnb_custody_movement");
 }

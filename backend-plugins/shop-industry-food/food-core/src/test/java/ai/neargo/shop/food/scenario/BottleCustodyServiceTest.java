@@ -105,7 +105,10 @@ class BottleCustodyServiceTest extends FoodWriteGuardFixture {
                                                                 "(?i)ENGINE=InnoDB DEFAULT"
                                                                         + " CHARSET=utf8mb4"
                                                                         + " COLLATE=utf8mb4_bin",
-                                                                "");
+                                                                "")
+                                                // P1-2：寄存两张表在行业库改名（结构差异由 FoodIndustryDatabaseTest 在新库上覆盖）。
+                                                + "\nALTER TABLE fnb_bottle_custody RENAME TO fnb_custody;"
+                                                + "\nALTER TABLE fnb_bottle_movement RENAME TO fnb_custody_movement;";
                                 new ResourceDatabasePopulator(
                                                 new ByteArrayResource(
                                                         ddl.getBytes(StandardCharsets.UTF_8)))
@@ -238,7 +241,7 @@ class BottleCustodyServiceTest extends FoodWriteGuardFixture {
                                     c.fixture()
                                             .sql()
                                             .queryForObject(
-                                                    "SELECT COUNT(*) FROM fnb_bottle_custody",
+                                                    "SELECT COUNT(*) FROM fnb_custody",
                                                     Integer.class))
                             .isOne();
                     assertThat(taken.custody().customerNo()).isEqualTo("CUSTOMER");
@@ -253,7 +256,7 @@ class BottleCustodyServiceTest extends FoodWriteGuardFixture {
                             .sql()
                             .execute(
                                     "INSERT INTO"
-                                        + " fnb_bottle_custody(tenant_no,entity_no,store_no,custody_no,owner_ref,sku_no,unit,remaining_qty,expires_at,status,created_at,created_by,updated_at,updated_by)"
+                                        + " fnb_custody(tenant_no,entity_no,store_no,custody_no,owner_ref,sku_no,unit,remaining_qty,expires_at,status,created_at,created_by,updated_at,updated_by)"
                                         + " VALUES('MAIN','E','S','OLD','CUSTOMER','SKU','PIECE',2,'2026-10-30"
                                         + " 05:00:00','ACTIVE','2026-10-29"
                                         + " 05:00:00','A','2026-10-29 05:00:00','A')");
@@ -296,7 +299,7 @@ class BottleCustodyServiceTest extends FoodWriteGuardFixture {
                                     c.fixture()
                                             .sql()
                                             .queryForObject(
-                                                    "SELECT COUNT(*) FROM fnb_bottle_movement",
+                                                    "SELECT COUNT(*) FROM fnb_custody_movement",
                                                     Integer.class))
                             .isOne();
                 });
@@ -376,7 +379,7 @@ class BottleCustodyServiceTest extends FoodWriteGuardFixture {
                     c.fixture()
                             .sql()
                             .update(
-                                    "UPDATE fnb_bottle_custody SET version=128 WHERE custody_no=?",
+                                    "UPDATE fnb_custody SET version=128 WHERE custody_no=?",
                                     number);
                     assertThat(
                                     c.service()
@@ -443,7 +446,7 @@ class BottleCustodyServiceTest extends FoodWriteGuardFixture {
                                     c.fixture()
                                             .sql()
                                             .queryForObject(
-                                                    "SELECT COUNT(*) FROM fnb_bottle_movement",
+                                                    "SELECT COUNT(*) FROM fnb_custody_movement",
                                                     Integer.class))
                             .isEqualTo(2);
                 });

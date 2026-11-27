@@ -56,6 +56,7 @@ public final class FoodSchemaValidator {
         boolean separateIndustry = source != industry;
         if (mode == FoodProperties.MigrationMode.VALIDATE) source = readOnly(source);
         Map<String, Set<String>> expected = expectedColumns();
+        expected.keySet().removeAll(FoodIndustryTables.RENAMED.keySet());
         Map<String, Set<String>> before = columns(source);
         require(before.containsKey("prd_goods"), "missing primary fact: prd_goods");
         require(before.containsKey("ord_order"), "missing primary fact: ord_order");
@@ -68,7 +69,10 @@ public final class FoodSchemaValidator {
                 "missing fnb_flyway_history; publish food migrations first");
         Set<String> unknown = new TreeSet<>(before.keySet());
         unknown.removeIf(
-                n -> !n.startsWith("fnb_") || n.equals(HISTORY) || expected.containsKey(n));
+                n -> !n.startsWith("fnb_")
+                        || n.equals(HISTORY)
+                        || expected.containsKey(n)
+                        || FoodIndustryTables.RENAMED.containsKey(n));
         require(unknown.isEmpty(), "unknown food tables: " + unknown);
         // Local object, deliberately NOT a Spring Flyway bean. No platform
         // locations/baseline/repair.
@@ -326,9 +330,9 @@ public final class FoodSchemaValidator {
         contracts.put(
                 "fnb_banquet_attendance_confirmation",
                 List.of("confirmation_no", "entity_no,store_no,form_no,plan_no"));
-        contracts.put("fnb_bottle_custody", List.of("custody_no"));
+        contracts.put("fnb_custody", List.of("custody_no"));
         contracts.put(
-                "fnb_bottle_movement",
+                "fnb_custody_movement",
                 List.of("movement_no", "tenant_no,entity_no,store_no,key_hash"));
         contracts.put(
                 "fnb_channel_import_guard",
@@ -1293,7 +1297,7 @@ public final class FoodSchemaValidator {
                             "unit",
                             "expires_at",
                             "status"));
-            expected.put("fnb_bottle_custody", custody);
+            expected.put("fnb_custody", custody);
             var custodyMovement = new TreeSet<>(common);
             custodyMovement.addAll(
                     List.of(
@@ -1311,7 +1315,7 @@ public final class FoodSchemaValidator {
                             "key_hash",
                             "request_hash",
                             "result_snapshot"));
-            expected.put("fnb_bottle_movement", custodyMovement);
+            expected.put("fnb_custody_movement", custodyMovement);
             expected.put(
                     "fnb_service_entitlement",
                     new TreeSet<>(

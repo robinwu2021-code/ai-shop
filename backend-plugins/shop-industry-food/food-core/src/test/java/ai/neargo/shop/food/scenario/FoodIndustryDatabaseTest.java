@@ -54,6 +54,8 @@ class FoodIndustryDatabaseTest {
                     .baselineVersion("0").load().migrate();
             var primarySql = new JdbcTemplate(primarySource);
             for (String table : FoodIndustryTables.NAMES) primarySql.execute("DROP TABLE IF EXISTS " + table);
+            for (String table : FoodIndustryTables.RENAMED.keySet())
+                primarySql.execute("DROP TABLE IF EXISTS " + table);
             new ResourceDatabasePopulator(
                             new ClassPathResource("db/n_industry/V1__industry_design.sql"),
                             new ClassPathResource("db/n_industry/V2__industry_supplement.sql"))
