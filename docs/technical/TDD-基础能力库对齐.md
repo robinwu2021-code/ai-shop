@@ -289,7 +289,7 @@
 | # | 事项 | 产出与验收 | 量级 |
 |---|---|---|---|
 | 1a | 公共能力表访问守卫 | **已做（2026-11-27，1309e568a）**：`CommonTableAccessTest`，基线 `backend/known-common-table-access.txt` 200 条、只准变短；后续各项让基线变短 | 小 |
-| 1b | 字典收敛 | 行业三套、渠道三套收成一个字典端口；调用方改走端口；删重复常量 | 中 |
+| 1b | 字典收敛 | **已做（2026-11-27，10ead5ef7）**：`spi.dict.DictionaryPort` 一个端口，唯一实现 `DictionaryPortImpl` 按类型汇集三个来源；行业实为两个概念（经营类型树、进件行业），`cim_provider` 是销售渠道方、不并；三个旧端口方法与四处渠道常量别名删掉，见下方“1b 字典” | 中 |
 | 1c | 设置收敛 | `PaySettingService`（9 个文件用）并入 `SettingService`，行为不变 | 小 |
 | 1d | 发号仓储 | 仓储去掉按归属（CORE/PAY）切表；三种按范围计数收进 `DocumentNumberService` | 中 |
 | 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准） | 中 |
