@@ -196,14 +196,14 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
                                             .last("FOR UPDATE"));
                     if (!existing.isEmpty()) return day(existing.getFirst());
                     // Freeze policy already effective at the beginning of this local business day.
+                    // 门店策略在行业库：只读一次，不跨库加锁；建日的串行由上面锁住的营业日行保证。
                     var candidates =
                             policies.selectList(
                                     Wrappers.<FnbStorePolicy>lambdaQuery()
                                             .eq(FnbStorePolicy::getEntityNo, entity)
                                             .eq(FnbStorePolicy::getStoreNo, store)
                                             .orderByDesc(FnbStorePolicy::getEffectiveFrom)
-                                            .orderByDesc(FnbStorePolicy::getPolicyNo)
-                                            .last("FOR UPDATE"));
+                                            .orderByDesc(FnbStorePolicy::getPolicyNo));
                     var policy =
                             candidates.stream()
                                     .filter(
