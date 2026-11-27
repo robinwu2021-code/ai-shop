@@ -18,6 +18,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.function.Supplier;
@@ -55,8 +56,9 @@ public class ScheduledDiningDispatchServiceImpl implements ScheduledDiningDispat
         if (limit < 1 || limit > 200) throw BizException.of(ErrorCode.BAD_REQUEST);
         if (TransactionSynchronizationManager.isActualTransactionActive())
             throw new IllegalStateException("Dispatch owner calls cannot hold a FOOD transaction");
-        var now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
-        // 补建：时段占用已在交易库绑定批次，但提交后建定时出品单那一步没成功（建单按批次号可重复）。
+        // 毫秒精度：认领与完结按 next_attempt_at 做比较交换，库里是 DATETIME(3)。
+        var now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
+        // 补建：时段占用已在行业库绑定批次，但提交后登记定时出品那一步没成功（按下达防重键可重复）。
         for (var bound : industry.boundScheduledBatches(now.minusDays(1), now, limit))
             industry.createScheduledDispatch(
                     bound.text("entity_no"),
@@ -66,54 +68,33 @@ public class ScheduledDiningDispatchServiceImpl implements ScheduledDiningDispat
                     "SYSTEM");
         var candidates = industry.dueScheduledDispatch(now, limit);
         int claimed = 0, completed = 0, pending = 0;
+        var lease = now.plusMinutes(2);
         for (var row : candidates) {
             String e = row.text("entity_no"),
                     store = row.text("store_no"),
-                    batch = row.text("batch_no");
-            long version = row.number("version");
+                    batch = row.text("batch_no"),
+                    ticketNo = row.text("ticket_no");
+            var seen = LocalDateTime.ofInstant(row.instant("next_attempt_at"), ZoneOffset.UTC);
             if (!Boolean.TRUE.equals(
-                    tx.execute(
-                            t ->
-                                    industry.claimScheduledDispatch(
-                                                    e,
-                                                    store,
-                                                    batch,
-                                                    version,
-                                                    now,
-                                                    now.plusMinutes(2))
-                                            == 1))) continue;
+                    tx.execute(t -> industry.claimScheduledDispatch(e, ticketNo, seen, lease) == 1))) continue;
             claimed++;
             try {
                 var original = mapper.capacityOriginalBatch(e, store, batch);
                 if (original.size() != 1)
                     throw new IllegalStateException("Missing original scheduled batch");
                 if ("CANCELLED".equals(original.getFirst().get("status"))) {
-                    tx.execute(
-                            t ->
-                                    industry.finishScheduledDispatch(
-                                            e, store, batch, version + 1, "CANCELLED", null, now));
+                    tx.execute(t -> industry.cancelScheduledDispatch(e, ticketNo, lease));
                     completed++;
                     continue;
                 }
                 var ticket = kitchen.accepted(e, store, batch, "SCHEDULED_DISPATCH:" + batch);
                 print(e, store, batch, ticket);
-                tx.execute(
-                        t ->
-                                industry.finishScheduledDispatch(
-                                        e, store, batch, version + 1, "COMPLETED", null, now));
+                tx.execute(t -> industry.completeScheduledDispatch(e, ticketNo, lease));
                 completed++;
             } catch (RuntimeException failure) {
                 String error = failure.getClass().getSimpleName();
                 tx.execute(
-                        t ->
-                                industry.finishScheduledDispatch(
-                                        e,
-                                        store,
-                                        batch,
-                                        version + 1,
-                                        "RETRY",
-                                        error,
-                                        now.plusMinutes(2)));
+                        t -> industry.retryScheduledDispatch(e, ticketNo, lease, error, now.plusMinutes(2)));
                 pending++;
             }
         }

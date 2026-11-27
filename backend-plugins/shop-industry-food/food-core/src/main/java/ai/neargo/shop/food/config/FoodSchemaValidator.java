@@ -298,7 +298,6 @@ public final class FoodSchemaValidator {
                         "approval_no",
                         "entity_no,store_no,operation_key",
                         "entity_no,store_no,return_no"));
-        contracts.put("fnb_scheduled_dispatch", List.of("entity_no,store_no,batch_no"));
         contracts.put(
                 "fnb_service_attendee",
                 List.of("attendee_no", "entity_no,store_no,form_no,guest_ref"));
@@ -1051,24 +1050,6 @@ public final class FoodSchemaValidator {
                                     "request_snapshot",
                                     "return_no",
                                     "source_hash",
-                                    "status",
-                                    "store_no",
-                                    "tenant_no",
-                                    "updated_at",
-                                    "updated_by",
-                                    "version"));
-            expected.computeIfAbsent("fnb_scheduled_dispatch", key -> new TreeSet<>())
-                    .addAll(
-                            List.of(
-                                    "attempts",
-                                    "batch_no",
-                                    "created_at",
-                                    "created_by",
-                                    "dispatch_at",
-                                    "entity_no",
-                                    "id",
-                                    "last_error",
-                                    "next_attempt_at",
                                     "status",
                                     "store_no",
                                     "tenant_no",

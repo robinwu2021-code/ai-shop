@@ -326,7 +326,11 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   营业日自身冻结起止时间，旧日子不依赖策略历史。
   设计 DDL 的唯一键 `(tenant_no, entity_no, store_no)` 不含行业，餐饮与美业同店会冲突，`V2` 改为 `(tenant_no, entity_no, store_no, industry_code)`；校验器同步。
   测试：发布改为原地更新语义并加未来时间拒绝；依赖历史的两条查询用例与日历来源的多版本用例改写或删除。
-- 待做：P1-3 其余五组合并（定时出品、服务事件、交接、交接明细、责任）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
+- **P1-3 合并 ⑤：定时出品 → 出品单（`fnb_kitchen_ticket`）**。时段绑定批次后登记一张 `status='SCHEDULED'`、`kind='MAKE'` 的出品单（`dispatch_at` 计划时刻、`dispatch_key` 与接单建单同一个键，重复登记不多建）。
+  到点时接单建单（`KitchenTaskServiceImpl#accepted`）沿用这张单的单号补制作任务，状态随任务变为排队；还没下达的定时单不当作「原单」（寄存来源查原单时排除）。
+  `next_attempt_at` 代码在用（认领租约、失败重试），`V2` 补回；非空即待下达，下达成功清空。认领、完结、重试按读到的 `next_attempt_at` 做比较交换，**不加出品单版本号**，认领期间厨房动作改出品单不冲突；原批次已取消的定时单直接 `CLOSED`。旧状态 `RETRY` 不再单列，由 `last_error` 与 `dispatch_attempts` 体现。
+  测试工具 `IndustrySchema` 同时执行 `V2` 对该表的补列、补键。新增 `ScheduledKitchenDispatchMapperTest`。
+- 待做：P1-3 其余四组合并（服务事件、交接、交接明细、责任）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
 

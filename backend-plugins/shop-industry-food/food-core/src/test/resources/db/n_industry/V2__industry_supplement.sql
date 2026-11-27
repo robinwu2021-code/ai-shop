@@ -94,6 +94,8 @@ CREATE TABLE fnb_kds_voice_command (
 
 -- 二、ADR-068 第 4 条（防重列与唯一约束保留）：代码在用、设计稿去掉了的防重列。
 ALTER TABLE fnb_kitchen_ticket ADD COLUMN dispatch_key VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '下达防重键（接单事件、定时出品）', ADD UNIQUE KEY uk_kitchen_ticket_dispatch_key (dispatch_key);
+-- 合并 ⑤ 定时出品 → 出品单（TDD §2.5）：next_attempt_at 是定时下达的认领租约与重试时刻，代码在用；空表示无待下达。
+ALTER TABLE fnb_kitchen_ticket ADD COLUMN next_attempt_at DATETIME(3) NULL COMMENT '定时下达的下次尝试时刻（认领租约、失败重试），空为无待下达', ADD KEY ix_kitchen_ticket_dispatch_due (next_attempt_at, id);
 ALTER TABLE fnb_queue_ticket ADD COLUMN request_key CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '取号请求防重键', ADD COLUMN request_hash CHAR(64) NULL COMMENT '取号请求摘要', ADD COLUMN seat_request_hash CHAR(64) NULL COMMENT '入座请求摘要', ADD UNIQUE KEY uk_queue_ticket_request (entity_no, store_no, request_key);
 ALTER TABLE fnb_custody_movement ADD COLUMN key_hash VARCHAR(64) NOT NULL COMMENT '寄存动作防重键摘要', ADD COLUMN request_hash VARCHAR(64) NOT NULL COMMENT '寄存动作请求摘要', ADD UNIQUE KEY uk_custody_movement_key (tenant_no, entity_no, store_no, key_hash);
 
@@ -330,27 +332,6 @@ CREATE TABLE `fnb_service_calendar` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='é¤é¥®æŽ¥å•æ—¥åŽ†ä¾‹å¤–';
 
 -- 五、过渡：9 组合并（TDD §2.5）与寄存改名完成前，代码仍读写的旧表；每完成一组就从这里删掉对应的表。
-CREATE TABLE `fnb_scheduled_dispatch` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN',
-  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-  `store_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-  `batch_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-  `status` varchar(16) NOT NULL,
-  `dispatch_at` datetime(3) NOT NULL,
-  `next_attempt_at` datetime(3) NOT NULL,
-  `attempts` int NOT NULL DEFAULT '0',
-  `last_error` varchar(64) DEFAULT NULL,
-  `created_at` datetime(3) NOT NULL,
-  `updated_at` datetime(3) NOT NULL,
-  `created_by` varchar(32) NOT NULL,
-  `updated_by` varchar(32) NOT NULL,
-  `version` bigint NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_food_scheduled_dispatch` (`entity_no`,`store_no`,`batch_no`),
-  KEY `ix_food_scheduled_due` (`status`,`next_attempt_at`,`id`),
-  CONSTRAINT `fnb_scheduled_dispatch_chk_1` CHECK ((`status` in (_latin1'PENDING',_latin1'RETRY',_latin1'COMPLETED',_latin1'CANCELLED')))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `fnb_service_event` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'BaseEntityè‡ªå¢žç‰©ç†ä¸»é”®ï¼Œä¸å¯¹å¤–ä¸è¿›URL',

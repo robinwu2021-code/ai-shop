@@ -28,7 +28,54 @@ final class IndustrySchema {
         String scripts = read("db/n_industry/V1__industry_design.sql") + "\n"
                 + read("db/n_industry/V2__industry_supplement.sql");
         var db = new JdbcTemplate(source);
-        for (String table : tables) db.execute(h2(table, scripts));
+        for (String table : tables) {
+            db.execute(h2(table, scripts));
+            for (String clause : alterations(table, scripts)) db.execute(clause);
+        }
+    }
+
+    /**
+     * {@code V2} 对设计表的补列与补键（{@code ALTER TABLE t ADD COLUMN …, ADD [UNIQUE] KEY …}），逐条改成 H2 能执行的语句。
+     * 删索引不跟（H2 上多一个旧唯一键不影响单行业的场景测试）。
+     */
+    private static java.util.List<String> alterations(String table, String scripts) {
+        var result = new java.util.ArrayList<String>();
+        Matcher m = Pattern.compile("(?m)^ALTER TABLE " + table + " (.*);$").matcher(scripts);
+        while (m.find()) {
+            for (String clause : clauses(m.group(1))) {
+                clause = clause.trim()
+                        .replaceAll("\\s+CHARACTER SET \\w+", "")
+                        .replaceAll("\\s+COLLATE \\w+", "")
+                        .replaceAll("\\s+COMMENT '[^']*'", "");
+                Matcher key = Pattern.compile("ADD (UNIQUE )?KEY (\\w+) \\((.*)\\)").matcher(clause);
+                if (clause.startsWith("ADD COLUMN ")) result.add("ALTER TABLE " + table + " " + clause);
+                else if (key.matches())
+                    result.add(key.group(1) == null
+                            ? "CREATE INDEX " + table + "__" + key.group(2) + " ON " + table + " (" + key.group(3) + ")"
+                            : "ALTER TABLE " + table + " ADD CONSTRAINT " + table + "__" + key.group(2)
+                                    + " UNIQUE (" + key.group(3) + ")");
+            }
+        }
+        return result;
+    }
+
+    /** 按顶层逗号切子句（括号与引号里的逗号不切）。 */
+    private static java.util.List<String> clauses(String body) {
+        var parts = new java.util.ArrayList<String>();
+        int depth = 0, start = 0;
+        boolean quoted = false;
+        for (int i = 0; i < body.length(); i++) {
+            char c = body.charAt(i);
+            if (c == '\'') quoted = !quoted;
+            else if (!quoted && c == '(') depth++;
+            else if (!quoted && c == ')') depth--;
+            else if (!quoted && depth == 0 && c == ',') {
+                parts.add(body.substring(start, i));
+                start = i + 1;
+            }
+        }
+        parts.add(body.substring(start));
+        return parts;
     }
 
     private static String h2(String table, String scripts) {

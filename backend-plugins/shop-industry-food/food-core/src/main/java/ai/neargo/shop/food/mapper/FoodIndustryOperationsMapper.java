@@ -1,6 +1,8 @@
 package ai.neargo.shop.food.mapper;
 
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
+import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -198,72 +200,93 @@ public class FoodIndustryOperationsMapper {
                         no));
     }
 
+    /** 出品单的下达防重键：接单建单与定时出品同一个键，同一批次只会有一张制作单。 */
+    public static String kitchenDispatchKey(String entity, String store, String batch) {
+        return FoodCommandFingerprint.hash("kitchen-dispatch:v1", entity, store, batch);
+    }
+
+    /**
+     * 定时出品登记为出品单的 {@code SCHEDULED} 状态（TDD §2.5 合并 ⑤，原 {@code fnb_scheduled_dispatch}）。
+     * 按下达防重键可重复：已登记或已下达的批次不再建。
+     */
     public int createScheduledDispatch(
             String entity, String store, String batch, LocalDateTime dispatchAt, String actor) {
         return db.update(
-                "INSERT INTO fnb_scheduled_dispatch"
-                    + " (entity_no,store_no,batch_no,status,dispatch_at,next_attempt_at,created_at,updated_at,created_by,updated_by)"
-                    + " VALUES (?,?,?,'PENDING',?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?) ON"
-                    + " DUPLICATE KEY UPDATE batch_no=VALUES(batch_no)",
+                "INSERT INTO fnb_kitchen_ticket (tenant_no,entity_no,store_no,ticket_no,batch_no,dispatch_key,kind,"
+                        + "status,dispatch_at,next_attempt_at,dispatch_attempts,created_at,updated_at,created_by,"
+                        + "updated_by,version,deleted) VALUES ('MAIN',?,?,?,?,?,'MAKE','SCHEDULED',?,?,0,"
+                        + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?,0,0) ON DUPLICATE KEY UPDATE batch_no=VALUES(batch_no)",
                 entity,
                 store,
+                BizKey.next("FKIT"),
                 batch,
+                kitchenDispatchKey(entity, store, batch),
                 dispatchAt,
                 dispatchAt,
                 actor,
                 actor);
     }
 
+    /** 到点待下达的定时出品：{@code next_attempt_at} 非空即待下达（下达成功后清空）。 */
     public List<FoodBusinessOperationRow> dueScheduledDispatch(LocalDateTime now, int limit) {
         return rows(
                 db.queryForList(
-                        "SELECT * FROM fnb_scheduled_dispatch WHERE status IN ('PENDING','RETRY')"
-                                + " AND dispatch_at<=? AND next_attempt_at<=? ORDER BY"
-                                + " next_attempt_at,id LIMIT ?",
+                        "SELECT entity_no,store_no,batch_no,ticket_no,next_attempt_at FROM fnb_kitchen_ticket"
+                                + " WHERE next_attempt_at<=? AND dispatch_at<=? AND kind='MAKE' AND deleted=0"
+                                + " ORDER BY next_attempt_at,id LIMIT ?",
                         now,
                         now,
                         limit));
     }
 
+    /**
+     * 认领：以读到的 {@code next_attempt_at} 做比较交换，推到租约到期时刻。不加出品单版本号，
+     * 认领期间厨房动作改出品单不受影响。
+     */
     public int claimScheduledDispatch(
-            String entity,
-            String store,
-            String batch,
-            long version,
-            LocalDateTime now,
-            LocalDateTime lease) {
+            String entity, String ticket, LocalDateTime seen, LocalDateTime lease) {
         return db.update(
-                "UPDATE fnb_scheduled_dispatch SET"
-                    + " next_attempt_at=?,version=version+1,attempts=attempts+1,updated_at=UTC_TIMESTAMP(3),updated_by='SYSTEM'"
-                    + " WHERE entity_no=? AND store_no=? AND batch_no=? AND version=? AND"
-                    + " next_attempt_at<=? AND status IN ('PENDING','RETRY')",
+                "UPDATE fnb_kitchen_ticket SET next_attempt_at=?,"
+                        + "dispatch_attempts=COALESCE(dispatch_attempts,0)+1,updated_at=UTC_TIMESTAMP(3),"
+                        + "updated_by='SYSTEM' WHERE entity_no=? AND ticket_no=? AND next_attempt_at=?",
                 lease,
                 entity,
-                store,
-                batch,
-                version,
-                now);
+                ticket,
+                seen);
     }
 
-    public int finishScheduledDispatch(
-            String entity,
-            String store,
-            String batch,
-            long version,
-            String status,
-            String error,
-            LocalDateTime next) {
+    /** 下达完成：清空待下达标记；出品单状态已由建单改为排队。 */
+    public int completeScheduledDispatch(String entity, String ticket, LocalDateTime lease) {
         return db.update(
-                "UPDATE fnb_scheduled_dispatch SET"
-                    + " status=?,last_error=?,next_attempt_at=?,version=version+1,updated_at=UTC_TIMESTAMP(3),updated_by='SYSTEM'"
-                    + " WHERE entity_no=? AND store_no=? AND batch_no=? AND version=?",
-                status,
+                "UPDATE fnb_kitchen_ticket SET next_attempt_at=NULL,last_error=NULL,updated_at=UTC_TIMESTAMP(3),"
+                        + "updated_by='SYSTEM' WHERE entity_no=? AND ticket_no=? AND next_attempt_at=?",
+                entity,
+                ticket,
+                lease);
+    }
+
+    /** 原批次已取消：还没下达的定时出品单直接完结。 */
+    public int cancelScheduledDispatch(String entity, String ticket, LocalDateTime lease) {
+        return db.update(
+                "UPDATE fnb_kitchen_ticket SET status='CLOSED',next_attempt_at=NULL,version=version+1,"
+                        + "updated_at=UTC_TIMESTAMP(3),updated_by='SYSTEM' WHERE entity_no=? AND ticket_no=?"
+                        + " AND status='SCHEDULED' AND next_attempt_at=?",
+                entity,
+                ticket,
+                lease);
+    }
+
+    /** 下达失败：记原因，到点重试。 */
+    public int retryScheduledDispatch(
+            String entity, String ticket, LocalDateTime lease, String error, LocalDateTime next) {
+        return db.update(
+                "UPDATE fnb_kitchen_ticket SET last_error=?,next_attempt_at=?,updated_at=UTC_TIMESTAMP(3),"
+                        + "updated_by='SYSTEM' WHERE entity_no=? AND ticket_no=? AND next_attempt_at=?",
                 error,
                 next,
                 entity,
-                store,
-                batch,
-                version);
+                ticket,
+                lease);
     }
 
     public List<FoodBusinessOperationRow> closePendingHandovers(

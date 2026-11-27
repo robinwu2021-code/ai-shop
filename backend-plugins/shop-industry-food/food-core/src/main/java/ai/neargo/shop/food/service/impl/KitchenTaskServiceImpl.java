@@ -51,6 +51,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
 import ai.neargo.shop.food.policy.CustodyFulfillmentPolicy;
+import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.KitchenQuantityPolicy;
 import ai.neargo.shop.food.policy.StationPublicationDocuments;
@@ -279,7 +280,10 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                                             .eq(FnbKitchenTicket::getEntityNo, entity)
                                             .eq(FnbKitchenTicket::getBatchNo, batchNo)
                                             .eq(FnbKitchenTicket::getKind, "MAKE"));
-                    if (!existing.isEmpty()) return ticket(entity, existing.getFirst());
+                    // 定时出品先登记为 SCHEDULED 出品单（TDD §2.5 合并 ⑤）：到点沿用同一单号补任务，其余直接查回。
+                    var scheduled = existing.isEmpty() ? null : existing.getFirst();
+                    if (scheduled != null && !"SCHEDULED".equals(scheduled.getStatus()))
+                        return ticket(entity, scheduled);
                     var frozen = json.readTree(batch.getFrozenRequest()).get("kitchenRoutes");
                     if (frozen == null || frozen.isNull()) throw conflict();
                     var routes = json.treeToValue(frozen, FrozenRoutes.class);
@@ -291,17 +295,19 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                                             .eq(FnbOrderLine::getBatchNo, batchNo)
                                             .orderByAsc(FnbOrderLine::getFoodLineNo));
                     if (orderLines.isEmpty()) throw conflict();
-                    var head = new FnbKitchenTicket();
-                    stamp(head, "SYSTEM");
-                    head.setEntityNo(entity);
-                    head.setTicketNo(BizKey.next("FKIT"));
-                    head.setBatchNo(batchNo);
-                    head.setDispatchKey(
-                            FoodCommandFingerprint.hash(
-                                    "kitchen-dispatch:v1", entity, store, batchNo));
-                    head.setKind("MAKE");
-                    head.setStatus("QUEUED");
-                    tickets.insert(head);
+                    var head = scheduled;
+                    if (head == null) {
+                        head = new FnbKitchenTicket();
+                        stamp(head, "SYSTEM");
+                        head.setEntityNo(entity);
+                        head.setTicketNo(BizKey.next("FKIT"));
+                        head.setBatchNo(batchNo);
+                        head.setDispatchKey(
+                                FoodIndustryOperationsMapper.kitchenDispatchKey(entity, store, batchNo));
+                        head.setKind("MAKE");
+                        head.setStatus("QUEUED");
+                        tickets.insert(head);
+                    }
                     for (var line : orderLines) {
                         var parts =
                                 components.selectList(
@@ -1141,7 +1147,8 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                         Wrappers.<FnbKitchenTicket>lambdaQuery()
                                 .eq(FnbKitchenTicket::getEntityNo, entity)
                                 .eq(FnbKitchenTicket::getBatchNo, batchNo)
-                                .eq(FnbKitchenTicket::getKind, "MAKE"));
+                                .eq(FnbKitchenTicket::getKind, "MAKE")
+                                .ne(FnbKitchenTicket::getStatus, "SCHEDULED"));
         if (original == null) throw conflict();
         var originals = ticketTasks(entity, original.getTicketNo());
         var orderLines =
