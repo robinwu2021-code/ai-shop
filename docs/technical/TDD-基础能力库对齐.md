@@ -252,7 +252,7 @@
 | C2 | **已做（2026-11-27）**：对账对 PENDING_SUBMIT 行（超 2 小时）经同一幂等路径补投；改为带作业声明的 `JobHandler`。**未对真实 OpsKit 客户端编译**（`-P opskit` 的依赖本机拉不到，只在桩上跑过 7 个单测）；生产仍待 A5 | 清单 A12 |
 | C3 | **已做（2026-11-27）**：某店发布失败即停在它前面、下一轮重试，游标只越过已持久接收的门店；A13 可改 MQ 直发（near-pay 侧按修订号幂等待确认） | 清单 A13 |
 | C4 | `CompensationSweeper` 的“卡住数”改读死信队列（现读发件箱 `FAILED`），在物流事件切中间件前做。**暂缓**：物流事件要等 A5（生产作业）才切中间件，现在改无处可用 | 清单 A8 |
-| C5 | 撤中转：PAY 权益三个中转改由源头发；进销存回写改由库存库发件箱发；删 `PrintingConfiguration`/`FoodWriteGuardConfiguration` 的包装转发。`PlatformPublicationPublisher` **已删（2026-11-27）** | 清单 §〇 C |
+| C5 | **已做（2026-11-27，69b2bedd8）**，见 §2.2 1f；`FoodWriteGuardConfiguration` 的包装含餐饮路由决定，留给餐饮模块。`PlatformPublicationPublisher` **已删（2026-11-27）** | 清单 §〇 C |
 | C6 | **已做（2026-11-27）**：22 个测试去掉无人读取的 `*.publication.archive-only` 属性。`BeautyOutboxConfiguration` 仍在用（美业服务单独启动时补发件箱门面），保留。`CATALOG_SOURCE_CHANGED` **不矛盾**：只存档名单是默认值，商城插件装上时经 `OutboxRouteContribution` 把路由撤出名单。**但查出新问题**：商城渠道源与餐饮渠道源的消费者（`CommerceProductSourceEventConsumer`、`CommerceTaxSourceEventConsumer`、`FoodCatalogSourceEventConsumer` 等）实现的是统一模式的 `OutboxHandler` 而不是 `OutboxConsumer`，默认旧投递模式下不运行，`BrokerSubscriptions` 也不接管 —— 这些事件类型（清单 B13）进中间件名单前，要先把它们接到 `OutboxConsumer` 或让订阅编排认 `OutboxHandler`。**后者已做（2026-11-27，db01df756）**：统一投递模式的处理者可经中间件投递；商城、餐饮各自要不要切，由各模块定 | §1.4 |
 | C7 | **已做（2026-11-27）**：收成 `trade.event.SubOrderCompletion.publishIfCompleted`；逐字段比对 5 处未发现缺漏，统一为“子单已 COMPLETED 才发” | 清单 N4 |
 | C8 | **已做（2026-11-27）**：拆成“短事务校验 → 无事务调微信 → 短事务按版本条件收尾并记运单已上传” | 清单 S2 |
@@ -293,8 +293,8 @@
 | 1c | 设置收敛 | `PaySettingService`（9 个文件用）并入 `SettingService`，行为不变 | 小 |
 | 1d | 发号仓储 | 仓储去掉按归属（CORE/PAY）切表；三种按范围计数收进 `DocumentNumberService` | 中 |
 | 1e | 审批端口 | 支付两人复核、储值活动审批、门店审核、改价收成一个审批端口（OpsKit 已有的 `ApprovalPort` 为准） | 中 |
-| 1f | 撤中转 | PAY 权益三个中转改由源头发；进销存回写改由库存库发件箱发；删两个包装转发器 | 中 |
-| 1g | 接口级防重迁移 | `sys_idempotent` / `IdempotencyService` 的 50 个使用文件按域分批改用统一防重，每批一提交 | 大 |
+| 1f | 撤中转 | **已做（2026-11-27，69b2bedd8）**：PAY 权益中转、NearPay 接收端、进销存回写按原事件号经 `OutboxEventBus.forward` 直发中间件；餐饮包装含路由决定未删，见下方“1f 撤中转” | 中 |
+| 1g | 接口级防重迁移 | `sys_idempotent` / `IdempotencyService` 的 50 个使用文件按域分批改用统一防重，每批一提交。**暂停（2026-11-27）**：要保留的语义见下方“1g”，形态等 §3 Q11 | 大 |
 | 1h | 开放应用 | 三套应用凭据（`pay_app`、`inv_open_credential`、`sys_ops_api_key`）收敛；若设计已定归密钥库，则做迁移接口，不在本库落表 | 中 |
 | 1i | 审计提交后写 | 审计改为业务提交后写（失败不连累业务）；范围按 D4 | 小 |
 
@@ -324,6 +324,50 @@
 **每项的完成标准**：先写失败测试再改；相关测试与 `ArchitectureTest`、`BrokerIsolationTest` 通过；
 功能清单与本节状态同步更新；按模块提交、`git push --no-verify origin v2`。
 
+#### 1f 撤中转（会话丙，2026-11-27）
+
+调用链与事务边界逐处核过，结论与做法：
+
+- **PAY 权益（C1、C2）**：PAY 发件箱 `pay_ent_outbox` 在支付库，用独立连接池与 `payTxManager`（`PayDataSourceConfig`：跨域事务刻意写不出）。
+  所以源头**不能**在支付事务里直接写平台发件箱 —— 那会先于支付提交落库，支付回滚时下游收到不存在的事实；也**不能**去掉 `pay_ent_outbox`，
+  否则“支付提交后、发出前”崩溃即丢。它正是 ADR-067 决策 4 说的“产生它的业务库里的待投递记录”，`PayEntitlementOutboxRelay` 是它的中转程序。
+  撤掉的是第二跳：新增 `OutboxEventBus.forward(eventNo, event)`，名单内类型（13 个权益/旧券类型已在默认名单）**直发中间件**、确认即返回，
+  不再先落 `sys_outbox` 再由平台投递器转一次；不在名单（含 `transport=local`）时同 `publish(eventNo, event)` 落平台发件箱，进程内投递仍靠它。
+  内嵌部署删掉 `LocalPayEntitlementEventBridgePortImpl`，`EntitlementRuntimeRouting` 直接把 `events::forward` 交给中转；
+  独立部署的 pay-svc 没有平台库，仍经 HTTP 推到 `EntitlementEventReceiverServiceImpl`，接收端（内部调用校验后）同样 `forward`。
+  原事件号全程不变，下游三个消费者本就按它核对；顺手修掉中转测试构造器里 `bus.publish(event)` 另发新号的写法。
+  不丢：中间件确认或平台行落库才标 `SENT`，否则 PAY 侧照原退避重发；不重：重发同号，中间件路径下游按事件号幂等，落库路径 `insertIfAbsent` 去重。
+- **进销存回写（C3）**：`PlatformInventoryEventSink` 原来每投一次 `publish(event)` 新发一个号，`inv_outbox` 在标 `SENT` 前失败重投会在平台侧多出一条。
+  改为 `forward("INV-" + 原号, …)`：同样名单内直发中间件、否则落平台发件箱按号去重。加 `INV-` 是因为两边的键都是 `EVT` + 时间、格式相同。
+- **包装转发（C4）**：`PrintingConfiguration` 的 `printingOutboxPublisher` 已随 cf7eea13b 删掉。
+  `FoodWriteGuardConfiguration.foodOutboxPublisher` **不是纯转发**：它按 `FoodOutboxRouting.ARCHIVE_ONLY` 丢弃只存档类型、并要求统一 `PLATFORM` 源已注册，
+  是餐饮的路由决定，归餐饮模块（第 4 阶段），**未删**。
+- `DualWriteStockPort`（F3）迁移期保留，不在本项。
+
+#### 1g 接口级防重：要保留的语义与待定形态（会话丙，2026-11-27）
+
+现状：`IdempotencyService` + `sys_idempotent`，生产代码 47 个文件（主干 `shop-core` 9、`shop-merchant` 3、装配 2、美业 5、餐饮 24 个服务 + 4 个配置），
+调用约 100 处（`execute` 69、`findCompleted` 33），含下单 `POST /mp/order`、定价发布/税设置/手工调价、门店资源/排班/人员、餐饮全部配置写入。
+
+迁移后必须逐条保持（每条要有测试）：
+
+| # | 语义 |
+|---|---|
+| S1 | 同键 + 同端点 + 同人：只执行一次，之后返回**首次结果原样**（`result_json` 反序列化），不再执行 |
+| S2 | 同键、请求内容不同（`requestHash` 不同）→ `CONFLICT` |
+| S3 | 同键、换了人 → `NOT_FOUND`（不泄露别人的结果） |
+| S4 | 首次还没完成时的并发重复 → `ConcurrentRequestException`，绝不放行第二次 |
+| S5 | 不带键 → 不防重，直接执行 |
+| S6 | 回执与业务写在**同一事务**：业务回滚则回执回滚 |
+| S7 | `findCompleted`：只读已完成回执，不占位、不加锁 |
+| S8 | 回执 24 小时有效，覆盖手滑重提交与端侧重试 |
+
+`EventIdempotency` 不能直接当“统一防重”：它的键是事件号 + 处理者、不存结果、永不过期（类注释写明刻意不合并：24 小时过期会清掉事件记录，积压重投时同一笔钱记两遍）。
+
+**冲突**：[平台基础库-表清单与说明](design/平台基础库-表清单与说明.md) §6.9、§7.6（用户 2026-11-25 定）是“请求防重不建表、`sys_idempotent` 退役，
+靠业务表唯一键，重复请求只能重读业务数据拼返回值”。照它改，S1–S4、S7 要逐接口重做：每张会被重复提交的表加来自请求的唯一键（迁移，契约档 1），
+每个接口写“按键重读并重建响应”，原始响应与 24 小时语义都没有了；餐饮、美业的接口还归各自模块。见 §3 Q11。**Q11 定之前 1g 不动代码。**
+
 ## §3 待你定
 
 | # | 问题 | 建议 |
@@ -338,6 +382,7 @@
 | Q7 | 打印失败要不要挡住开票 | 不挡：发票打印留在 ③ |
 | Q8 | 报表脏日丢一次能否靠每日重算兜底 | 有重算就降到 ②，十几个事件的跨库部分随之变少 |
 | Q9 | 是否引入 MQ（已定 RabbitMQ 4）；生产由谁部署（.80 / UME 166 目前没有） | 引入，按 §1.5 默认 `local`；见 ADR-067（提案，待确认）。部署负责人待定 |
+| Q11 | 接口级防重（1g）怎么统一：A. 做成基础能力的一个端口（语义即 §2.2 1g 的 S1–S8），回执存基础能力库一张请求回执表、24 小时清理，设计 §6.9 的“不建表”改为“不在业务库建表”，调用方迁移只是换端口；B. 照设计定稿逐接口加业务唯一键、重复时重读业务数据重建响应 | A：约 100 处调用机械可分批、对外语义不变；B 要约 40 个接口所在文件各加迁移与测试，原始响应重放与 24 小时语义消失，餐饮/美业要各模块做 |
 | Q10 | 商户来单通知（`SUB_ORDER_PAID`）改成提交后发、不落发件箱，接受“提交后、发送前进程崩溃漏一次” | **已定（2026-11-27）**：统一走 MQ，来单属 MQ 直发 |
 
 ## §5 对账三 · 实现 → 需求
