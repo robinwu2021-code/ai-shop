@@ -646,7 +646,12 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   private OrderView issue(Actor a, String no) {
     var row = row(a, no, false);
     if (!"PREPARED".equals(str(row, "status"))) return order(a, no);
-    var intent = snapshot(row).intent();
+    issuePayment(snapshot(row).intent());
+    return order(a, no);
+  }
+
+  private void issuePayment(PaymentIntentCommand intent) {
+    if (mallReceipts != null) mallReceipts.prepare(intent);
     var result = payments.create(intent);
     if (result == null
         || result.status() != AsyncStatus.PENDING
@@ -660,8 +665,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                 "UPDATE mch_plan_purchase SET status='AWAITING_PAYMENT' WHERE tenant_no=? AND"
                     + " order_no=? AND status='PREPARED'",
                 TENANT,
-                no));
-    return order(a, no);
+                intent.orderNo()));
   }
 
   @Override
@@ -1144,7 +1148,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     var rows=db.queryForList("SELECT order_no,status,snapshot_json FROM mch_plan_purchase WHERE tenant_no=? AND order_no>? AND status IN ('PREPARED','CONFIRMING','PAID_PENDING','CLOSING') ORDER BY order_no LIMIT ?",TENANT,after==null?"":after,limit);int failed=0;
     for(var r:rows)try{
       String no=str(r,"order_no");
-      if("PREPARED".equals(str(r,"status"))){var intent=snapshot(r).intent();var result=payments.create(intent);if(result==null||result.status()!=AsyncStatus.PENDING||!intent.amount().equals(result.amount())||!intent.orderNo().equals(result.orderNo())||!intent.platformMerchantNo().equals(result.platformMerchantNo()))throw new IllegalStateException("PAYMENT_ISSUANCE_UNKNOWN");write(()->db.update("UPDATE mch_plan_purchase SET status='AWAITING_PAYMENT' WHERE tenant_no=? AND order_no=? AND status='PREPARED'",TENANT,no));}
+      if ("PREPARED".equals(str(r,"status"))) issuePayment(snapshot(r).intent());
       else if("CLOSING".equals(str(r,"status")))advanceVoid(no);
       else for(var action:db.queryForList("SELECT action_no FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND status IN ('ACCEPTED','PAID_PENDING') AND kind='CONFIRM'",TENANT,no))advance(no,str(action,"action_no"));
     }catch(RuntimeException retry){failed++;}
@@ -1236,6 +1240,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     var v = decode(row.get("closure_json"), VoidAction.class);
     var c = v.command();
     // Idempotently establish the original intent, including an interrupted issuance.
+    if (mallReceipts != null) mallReceipts.prepare(s.intent());
     payments.create(s.intent());
     var already=payments.query(new PaymentQuery(TENANT,no,s.intent().paymentAttemptNo(),s.intent()));
     if(v.returnedFunds()){
@@ -1247,6 +1252,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     }catch(IllegalArgumentException refusal){reject(no,c.actionNo(),refusal,v.previousStatus()==null?"CANCELLATION_REQUESTED":v.previousStatus(),true);return;}
     var closed=payments.query(new PaymentQuery(TENANT,no,s.intent().paymentAttemptNo(),s.intent()));
     if(closed==null||closed.closureReference().isEmpty()||!closed.definitivelyClosed()&&!(v.returnedFunds()&&closed.status()==AsyncStatus.SUCCEEDED))throw new IllegalStateException("PAYMENT_CLOSURE_UNKNOWN");
+    if (mallReceipts != null) mallReceipts.close(s.intent(), closed.closureReference().orElseThrow());
     write(
         () -> {
           db.update(

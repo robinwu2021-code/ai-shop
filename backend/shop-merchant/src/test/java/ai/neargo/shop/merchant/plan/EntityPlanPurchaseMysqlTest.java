@@ -24,7 +24,8 @@ class EntityPlanPurchaseMysqlTest {
   EntityPlanPurchaseService svc;
   final Actor buyer = new Actor("U1", "E1", "S1", false), ops = new Actor("OP1", "E1", null, true);
   final Instant now = Instant.parse("2026-11-11T00:00:00Z");
-  int receipts;
+  int receipts, issuanceCalls;
+  boolean interruptIssuance;
   boolean cut, mismatch, closed;
   String refusal;
   long currentTime;
@@ -105,6 +106,8 @@ class EntityPlanPurchaseMysqlTest {
     PlatformPaymentPort payments =
         new PlatformPaymentPort() {
           public PaymentOutcome create(PaymentIntentCommand c) {
+            issuanceCalls++;
+            if (interruptIssuance) throw new IllegalStateException("issuance interrupted");
             return new PaymentOutcome(
                 c.orderNo(),
                 Optional.of("PAY1"),
@@ -496,6 +499,29 @@ class EntityPlanPurchaseMysqlTest {
   }
 
   @Test
+  void checkoutPersistsOneFrozenMallAttemptBeforeIssuanceAndRecoversByOrder() {
+    mall.execute("CREATE TRIGGER stop_prepare BEFORE INSERT ON mall_payment_ref FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='unavailable'");
+    assertThrows(org.springframework.dao.DataAccessException.class, this::purchase);
+    assertEquals(0, issuanceCalls);
+    var no = db.queryForObject("SELECT order_no FROM mch_plan_purchase WHERE status='PREPARED'", String.class);
+    assertNull(svc.order(buyer, no).instructions());
+    mall.execute("DROP TRIGGER stop_prepare");
+    interruptIssuance = true;
+    assertThrows(IllegalStateException.class, this::purchase);
+    assertEquals("CREATED", mall.queryForObject("SELECT status FROM mall_payment_ref WHERE payment_attempt_no=?", String.class, no));
+    mall.update("UPDATE mall_payment_ref SET request_snapshot=JSON_SET(request_snapshot,'$.buyerNo','OTHER')");
+    interruptIssuance = false;
+    assertEquals(1, svc.recoverPending(null, 10).failed());
+    assertEquals(1, issuanceCalls);
+    mall.update("UPDATE mall_payment_ref SET request_snapshot=JSON_SET(request_snapshot,'$.buyerNo','U1')");
+    assertEquals(0, svc.recoverPending(null, 10).failed());
+    assertEquals(no, purchase());
+    assertNotNull(svc.order(buyer, no).instructions());
+    assertEquals(2, issuanceCalls);
+    assertEquals(1, mall.queryForObject("SELECT COUNT(*) FROM mall_payment_ref", Integer.class));
+  }
+
+  @Test
   void matchedCashSurvivesBothMerchantCommitFailuresAndGrantsOnce() {
     var no = purchase();
     claim(no);
@@ -506,6 +532,11 @@ class EntityPlanPurchaseMysqlTest {
         """);
     assertThrows(org.springframework.dao.DataAccessException.class, () -> svc.confirm(ops, no, cmd));
     assertEquals("PAY1", mall.queryForObject("SELECT pay_order_no FROM mall_payment_ref WHERE order_no=?", String.class, no));
+    // Receipt-only v2 rows predate the separate issuance snapshot.
+    mall.update("""
+        UPDATE mall_payment_ref SET request_snapshot=verified_fact_snapshot->'$.command',
+            verified_fact_snapshot=JSON_REMOVE(verified_fact_snapshot,'$.command') WHERE order_no=?
+        """, no);
     db.execute("DROP TRIGGER stop_receipt");
     db.execute("CREATE TRIGGER stop_grant BEFORE UPDATE ON mch_entity_plan FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='unavailable'");
     cut = true; // Recovery now has only the mall receipt.
@@ -657,6 +688,8 @@ class EntityPlanPurchaseMysqlTest {
                 ops, order, new VoidCommand("V1", "BANK-CHECK", evidence(ops, order), "银行确认无入款"))
             .status());
     assertTrue(closed);
+    assertEquals("FENCE1", mall.queryForObject(
+        "SELECT closure_reference FROM mall_payment_ref WHERE order_no=? AND status='CLOSED'", String.class, order));
   }
 
   @Test
