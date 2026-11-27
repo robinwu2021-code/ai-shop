@@ -1,7 +1,8 @@
 package ai.neargo.shop.beauty.config;
 
-import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.idem.SysIdempotentMapper;
+import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,13 +18,13 @@ import tools.jackson.databind.ObjectMapper;
 public class BeautyWriteGuardConfiguration {
     /** Standalone fallback stays local; the host retains sole ownership of its Spring Mapper bean. */
     @Bean
-    @ConditionalOnMissingBean(IdempotencyService.class)
-    IdempotencyService beautyIdempotencyService(
+    @ConditionalOnMissingBean(RequestIdempotencyPort.class)
+    RequestIdempotencyPort beautyRequestIdempotency(
             @Qualifier("beautySqlSessionTemplate") SqlSessionTemplate template, ObjectMapper json) {
         var configuration = template.getSqlSessionFactory().getConfiguration();
         if (!configuration.hasMapper(SysIdempotentMapper.class)) {
             configuration.addMapper(SysIdempotentMapper.class);
         }
-        return new IdempotencyService(template.getMapper(SysIdempotentMapper.class), json);
+        return new RequestIdempotencyPortImpl(template.getMapper(SysIdempotentMapper.class), json);
     }
 }

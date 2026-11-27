@@ -18,7 +18,7 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.MybatisPages;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.ServiceProductFactsPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -43,7 +43,7 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
     private final BeautyMappers.ServiceDefinitionVersionMapper versions;
     private final BeautyMappers.ServiceRequirementMapper requirements;
     private final BeautyMappers.ActionLogMapper actions;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final ObjectProvider<ServiceProductFactsPort> products;
     private final TransactionTemplate transactions;
     private final DataSource source;
@@ -51,7 +51,7 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
 
     public ServiceDefinitionServiceImpl(BeautyMappers.ServiceDefinitionMapper definitions,
             BeautyMappers.ServiceDefinitionVersionMapper versions, BeautyMappers.ServiceRequirementMapper requirements,
-            BeautyMappers.ActionLogMapper actions, IdempotencyService idempotency,
+            BeautyMappers.ActionLogMapper actions, RequestIdempotencyPort idempotency,
             ObjectProvider<ServiceProductFactsPort> products, PlatformTransactionManager manager,
             DataSource source, ObjectMapper json) {
         this.definitions = definitions;

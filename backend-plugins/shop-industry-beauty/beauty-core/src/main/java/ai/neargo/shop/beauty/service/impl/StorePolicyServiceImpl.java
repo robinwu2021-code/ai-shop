@@ -17,7 +17,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -34,13 +34,13 @@ public class StorePolicyServiceImpl implements StorePolicyService {
     private final BeautyMappers.StorePolicyMapper policies;
     private final BeautyMappers.StorePolicyVersionMapper versions;
     private final BeautyMappers.ActionLogMapper actions;
-    private final IdempotencyService idempotency;
+    private final RequestIdempotencyPort idempotency;
     private final DataSource source;
     private final ObjectMapper json;
 
     public StorePolicyServiceImpl(BeautyMappers.StorePolicyMapper policies,
             BeautyMappers.StorePolicyVersionMapper versions, BeautyMappers.ActionLogMapper actions,
-            IdempotencyService idempotency, DataSource source, ObjectMapper json) {
+            RequestIdempotencyPort idempotency, DataSource source, ObjectMapper json) {
         this.policies = policies;
         this.versions = versions;
         this.actions = actions;
