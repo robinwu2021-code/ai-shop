@@ -281,28 +281,21 @@ class MerchantRoleFlowTest {
         for(var option:json.readTree(body).get("data")) actual.add(option.get("code").asText());
         // 门店付款方式只给属主（TDD-门店付款方式-App设置 Q2 / AC6）：老板也不能把它授给店长、店员
         assertThat(actual).doesNotContain(ai.neargo.shop.auth.BizPerms.PAY_STORE_METHOD);
+        // App 里还没有入口的 29 个码不下发（TDD-B端角色页收起未接入App的权限码）：收银建单、预约、服务任务、
+        // 结账规则与税配置、收款记录与 App 外收款、权益、线下实收、报表导出。后端仍接受它们，见 BizPermsTest
+        assertThat(actual).doesNotContain("biz:order:create", "biz:booking:view", "biz:service:task:self",
+                "biz:pricing:config:read", "mch:pay:order:view", "pay:ent:use", "biz:report:export");
         assertThat(actual).containsExactlyInAnyOrderElementsOf(Set.of(
                 "biz:receive","biz:verify","biz:ship","biz:order:view","biz:stock","biz:goods",
                 "biz:campaign","biz:review","biz:aftersale","biz:customer","biz:store","biz:finance",
                 "pay:sv:recharge:create","pay:sv:recharge:receive","pay:sv:recharge:read","pay:sv:account:read",
-                "pay:sv:plan:read","pay:sv:plan:manage","pay:sv:consume:create","pay:ent:use","pay:ent:issue","pay:ent:read","pay:ent:template:read",
-                "pay:ent:template:write","pay:ent:template:publish","pay:ent:issue:manage",
-                "biz:pricing:config:read","biz:pricing:config:update","biz:pricing:config:publish",
-                "biz:pricing:tax:read","biz:report:export",
+                "pay:sv:plan:read","pay:sv:plan:manage","pay:sv:consume:create",
                 // 打印的 9 个码不在这里：测试配置没开打印模块（shop.print.enabled），模块没装的权限码不下发
                 // （TDD-网关层与统一权限 §2.6）—— 勾了也没有入口可用
                 // 商家端支付（TDD-支付服务-I5接入层 S8）：默认只有属主有，老板给收银员建角色时勾这几项
                 "mch:pay:collect","mch:pay:refund","mch:pay:statement","mch:pay:app-grant","mch:pay:qr",
-                // App 外收款记录（TDD-商户App外部记账）：记一笔 / 更正与作废
-                "mch:pay:offline:record","mch:pay:offline:manage",
-                "mch:pay:order:view","pay:cash:receive","trade:checkout:prepare","trade:manual-service:confirm",
-                "biz:booking:view","biz:booking:manage",
-                "biz:service:task:self","biz:service:task:view","biz:service:task:coordinate",
-                "biz:service:task:approve","biz:service:task:close",
                 // 发票（ADR-063）：查 / 开 / 作废折让可授；发票设置（统编、QR 密钥、号段）与跨店税配置一样不下发
-                "biz:invoice:read","biz:invoice:issue","biz:invoice:void",
-                // 门店零售单（TDD-统一订单与开票资料）：建单、改价、自订行选零税率 / 免税都可授
-                "biz:order:create","biz:order:reprice","biz:invoice:tax-override"));
+                "biz:invoice:read","biz:invoice:issue","biz:invoice:void"));
     }
 
     @Test
