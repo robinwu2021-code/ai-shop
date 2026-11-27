@@ -6,10 +6,10 @@ import Page from "@/pages/member-reach/index.vue";
 import { setPendingAudience } from "@/shared/audience";
 
 const mock = vi.hoisted(() => ({
-  show: () => {}, schedule: vi.fn(), send: vi.fn(),
+  show: () => {}, ensureStores: vi.fn(), schedule: vi.fn(), send: vi.fn(),
 }));
 vi.mock("@dcloudio/uni-app", () => ({ onShow: (fn: () => void) => { mock.show = fn; } }));
-vi.mock("@/stores/merchant", () => ({ useMerchantStore: () => ({ can: () => true, currentStore: { timeZone: "Asia/Shanghai" } }) }));
+vi.mock("@/stores/merchant", () => ({ useMerchantStore: () => ({ can: () => true, ensureStores: mock.ensureStores, currentStore: { timeZone: "Asia/Shanghai" } }) }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock("@ai-shop/ui/prompt", () => ({ confirm: async () => true }));
 vi.mock("@/api", () => ({ api: {
@@ -28,6 +28,7 @@ it("schedules the chosen store-local time with the audience rule even when the c
     stubs: { "sh-scaffold": { template: "<main><slot/></main>" }, "biz-audience-picker": true, "sh-stat": true },
   } });
   mock.show();
+  expect(mock.ensureStores).toHaveBeenCalledOnce();
   await flushPromises();
   await page.get("input").setValue("Hello");
   await page.get("switch").trigger("change");

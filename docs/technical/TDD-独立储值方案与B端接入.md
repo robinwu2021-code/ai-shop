@@ -222,3 +222,5 @@ Pay负责储值经济规则、账户与账务；Core提供会员、商家及门�
 目标库启用前，须按发布版本迁入两组 mapper 使用的 `ent_*`、`pay_ent_*`、`sv_*` 物理表、直接 JDBC 使用的发行/清分表，以及对应单据类型的编号映射和号段水位。原 Pay 权益中的券与储值共用意向、核销、去重和事件表，应作为同一写入边界交接。原业务读写继续使用既有表结构，目标模型的 56 张逻辑表不能直接替换这些物理表。已启用储值发行方迁移治理的环境还需保留其原迁移版本证据与账本身份。双端按同一业务水位对账后再放开目标流量。
 
 独立库回归 `StoredValueTargetDatabaseMysqlTest.originalInterfacesPostReleaseConsumeAndRefundOnlyInTheTargetLedger` 使用两个已迁移的 MySQL 9 专项库；源库须保留 V294 的 CN/CNY 市场字典。分别通过 `MM_SOURCE_MYSQL_URL/USER/PASSWORD` 和 `MM_TARGET_MYSQL_URL`、`MM_TEST_MYSQL_USER/PASSWORD` 指定；测试库名须分别以 `mm_source_test_`、`mm_target_test_` 开头。测试通过门店方案确认线下充值并重复提交，在真实权益接口完成占用、释放、扣款和整退，注入写分录失败后检查旧端无新增、目标端保留冻结，并使用原决定重试。独立 Pay 进程的 Mapper 与事务装配另见 `PayMemberMarketingDatabaseTest`。
+
+2026-11-27 在 server UUID 不同的两个本地 MySQL 9.7.4 实例完成上述回归（1 项通过）。单笔本金 1000、赠金 100：一笔占用释放，一笔消费 1000；人为拒写分录时余额仍为 1100、冻结仍为 1000，核销和新增编号映射均为零。用原决定重试后余额为 100；交易侧将 MAIN 的退款恢复归属由 PAY 换到 TARGET，后台按原退款命令入账并确认原单 REFUNDED，重复查询后余额仍为 1100、账序为 3。与本笔开始前的水位相比，目标端新增账户、充值和批次各 1，使用意向和占用各 2，核销 1，凭证、批次明细和展示流水各 3，分录 12，编号映射 5。单店样本未产生跨店清分。源端对应 12 张表增量为零，两端只读账内核对均无差异。
