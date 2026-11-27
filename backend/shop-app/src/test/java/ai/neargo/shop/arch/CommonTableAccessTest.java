@@ -99,7 +99,13 @@ class CommonTableAccessTest {
     private static final List<String> NOT_ACCESS = List.of(
             "shop-app/src/main/java/ai/neargo/shop/config/DataScopeRegistration.java", "/src/main/java/db/migration/");
 
-    private static final Pattern IDENT = Pattern.compile("\\b([a-z]+_[a-z_]+)\\b");
+    /**
+     * 旧表名同时是业务表的列名：{@code pay_channel} 是订单、收款记录上的「付款渠道」列，出现在 {@code @TableField}、
+     * 取列值的地方都不是访问那张旧表（旧表本身本仓库没有读写代码）。
+     */
+    private static final Set<String> COLUMN_NAMED = Set.of("pay_channel");
+    private static final Pattern TABLE_REF = Pattern.compile(
+            "(?i)\\b(?:from|join|into|update|table)\\s+`?([a-z]+_[a-z_]+)\\b");
     private static final Pattern LITERAL = Pattern.compile("(?s)\"\"\"(.*?)\"\"\"|\"((?:[^\"\\\\\\n]|\\\\.)*)\"");
     private static final Pattern TABLE_NAME = Pattern.compile("@TableName\\(\\s*(?:value\\s*=\\s*)?\"(\\w+)\"[^)]*\\)");
     private static final Pattern PACKAGE = Pattern.compile("(?m)^package\\s+([\\w.]+);");
@@ -158,14 +164,24 @@ class CommonTableAccessTest {
                 declared.add(decl.group(1));
             }
             Set<String> groups = new TreeSet<>();
+            // 字面量里的表名：整个字面量就是表名（表名常量、拼 SQL 用的表名），或者在 SQL 的表位置上
+            // （FROM/JOIN/INTO/UPDATE/TABLE 之后）。旧表名又是业务表列名的（见 COLUMN_NAMED），只认表位置。
+            // 相邻字面量拼成一段再看，"... FROM " + "sys_region" 这种拆行写法也认得
+            StringBuilder sql = new StringBuilder();
             Matcher literal = LITERAL.matcher(c);
             while (literal.find()) {
-                Matcher ident = IDENT.matcher(literal.group(1) != null ? literal.group(1) : literal.group(2));
-                while (ident.find()) {
-                    String group = tableGroup.get(ident.group(1));
-                    if (group != null) {
-                        groups.add(group);
-                    }
+                String text = literal.group(1) != null ? literal.group(1) : literal.group(2);
+                String group = COLUMN_NAMED.contains(text.trim()) ? null : tableGroup.get(text.trim());
+                if (group != null) {
+                    groups.add(group);
+                }
+                sql.append(text).append(' ');
+            }
+            Matcher ref = TABLE_REF.matcher(sql);
+            while (ref.find()) {
+                String group = tableGroup.get(ref.group(1));
+                if (group != null) {
+                    groups.add(group);
                 }
             }
             Matcher word = Pattern.compile("\\b([A-Z]\\w*)\\b").matcher(c);
