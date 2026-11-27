@@ -19,7 +19,7 @@ public class CoreIndustryOrderPortImpl implements IndustryOrderPort {
         var result=invoke(() -> api.get().acceptUnpaid(new IndustryOrderInternalApi.Get(identity,order)),order);
         if(result==null || !result.acceptedUnpaid() || result.inventoryLifecycleVersion()!=3
                 || !"POSTPAY".equals(result.orderMode()) || !"WAIT_PAY".equals(result.status())
-                || result.fulfillmentStatus()==null || !Set.of("WAIT_FULFILL","FULFILLING","COMPLETED").contains(result.fulfillmentStatus())) {
+                || result.fulfillmentStatus()==null || !Set.of(IndustryOrderPort.WAIT_FULFILL,"FULFILLING","COMPLETED").contains(result.fulfillmentStatus())) {
             throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
         }
         return result;

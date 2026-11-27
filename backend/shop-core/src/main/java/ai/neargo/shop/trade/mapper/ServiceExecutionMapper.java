@@ -110,7 +110,7 @@ public interface ServiceExecutionMapper extends TradeTableMapper<OrdServiceExecu
     /** Suspension keeps the same reserved unit and never converts uncertainty into release. */
     @Update("""
             UPDATE ord_service_execution SET
-              state=CASE WHEN state='PREPARED' THEN 'SUSPEND_REQUESTED' ELSE 'STARTED_SUSPENDED' END,
+              state=CASE WHEN state='PREPARED' THEN '${@ai.neargo.shop.trade.entity.OrdServiceExecution@SUSPEND_REQUESTED}' ELSE '${@ai.neargo.shop.trade.entity.OrdServiceExecution@STARTED_SUSPENDED}' END,
               reason_code=#{reason}, next_retry_at=#{retryAt}, updated_at=CURRENT_TIMESTAMP(3), version=version+1
             WHERE tenant_no='MAIN' AND entity_no=#{binding.scope.entityNo} AND store_no=#{binding.scope.storeNo}
               AND execution_no=#{binding.executionNo} AND binding_hash=#{bindingHash}
@@ -124,11 +124,11 @@ public interface ServiceExecutionMapper extends TradeTableMapper<OrdServiceExecu
     /** Claim advances a persisted epoch/CAS before owner IO so late workers cannot overwrite newer observations. */
     @Update("""
             UPDATE ord_service_execution SET observation_epoch=observation_epoch+1, next_retry_at=#{leaseUntil},
-              reason_code=CASE WHEN state IN ('SUSPEND_REQUESTED','STARTED_SUSPENDED')
+              reason_code=CASE WHEN state IN ('${@ai.neargo.shop.trade.entity.OrdServiceExecution@SUSPEND_REQUESTED}','${@ai.neargo.shop.trade.entity.OrdServiceExecution@STARTED_SUSPENDED}')
                 THEN reason_code ELSE 'SOURCE_UNKNOWN' END, updated_at=CURRENT_TIMESTAMP(3), version=version+1
             WHERE tenant_no='MAIN' AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
               AND execution_no=#{executionNo} AND version=#{expectedVersion} AND observation_epoch=#{expectedEpoch}
-              AND state IN ('PREPARED','SUSPEND_REQUESTED','STARTED','STARTED_SUSPENDED','RELEASING')
+              AND state IN ('PREPARED','${@ai.neargo.shop.trade.entity.OrdServiceExecution@SUSPEND_REQUESTED}','STARTED','${@ai.neargo.shop.trade.entity.OrdServiceExecution@STARTED_SUSPENDED}','RELEASING')
               AND (next_retry_at IS NULL OR next_retry_at<=#{now})
             """)
     int claimObservation(@Param("scope") ExecutionScope scope, @Param("executionNo") String executionNo,
@@ -142,7 +142,7 @@ public interface ServiceExecutionMapper extends TradeTableMapper<OrdServiceExecu
             WHERE e.tenant_no='MAIN' AND e.entity_no=#{scope.entityNo} AND e.store_no=#{scope.storeNo}
               AND e.execution_no=#{executionNo} AND e.binding_hash=#{bindingHash}
               AND e.version=#{expectedVersion} AND e.observation_epoch=#{expectedEpoch}
-              AND e.state IN ('PREPARED','SUSPEND_REQUESTED','STARTED','STARTED_SUSPENDED','RELEASING')
+              AND e.state IN ('PREPARED','${@ai.neargo.shop.trade.entity.OrdServiceExecution@SUSPEND_REQUESTED}','STARTED','${@ai.neargo.shop.trade.entity.OrdServiceExecution@STARTED_SUSPENDED}','RELEASING')
               AND EXISTS (SELECT 1 FROM ord_service_execution_action a
                   WHERE a.tenant_no=e.tenant_no AND a.entity_no=e.entity_no AND a.store_no=e.store_no
                     AND a.execution_no=e.execution_no AND a.action_no=#{actionNo} AND a.action_hash=#{actionHash}
@@ -159,7 +159,7 @@ public interface ServiceExecutionMapper extends TradeTableMapper<OrdServiceExecu
     @Select("""
             SELECT * FROM ord_service_execution
             WHERE tenant_no='MAIN' AND #{limit} BETWEEN 1 AND 100 AND state IN
-              ('PREPARED','SUSPEND_REQUESTED','STARTED','STARTED_SUSPENDED','RELEASING')
+              ('PREPARED','${@ai.neargo.shop.trade.entity.OrdServiceExecution@SUSPEND_REQUESTED}','STARTED','${@ai.neargo.shop.trade.entity.OrdServiceExecution@STARTED_SUSPENDED}','RELEASING')
               AND (next_retry_at IS NULL OR next_retry_at<=#{now})
               AND (#{afterId}=0 OR
                 (#{afterRetryAt} IS NULL AND (next_retry_at IS NOT NULL OR id>#{afterId})) OR

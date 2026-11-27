@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -673,9 +674,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         // Sort before LIMIT. Fetching a recent-orders page and sorting it in the app hides older refunds.
         String active = "EXISTS (SELECT 1 FROM ord_after_sale a WHERE a.sub_order_no = "
                 + "ord_sub_order.sub_order_no AND a.deleted = 0 AND "
-                + "a.status IN ('APPLIED','RETURNING','WAIT_RECEIPT'))";
+                + "a.status IN ('APPLIED','RETURNING','" + OrdAfterSale.WAIT_RECEIPT + "'))";
         String offlineDue = "EXISTS (SELECT 1 FROM ord_order main WHERE main.order_no = "
-                + "ord_sub_order.order_no AND main.status = 'WAIT_OFFLINE_PAY' AND main.deleted = 0)";
+                + "ord_sub_order.order_no AND main.status = '" + OrdOrder.WAIT_OFFLINE_PAY + "' AND main.deleted = 0)";
         var w = Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getEntityNo, merchantNo);
         if (storeNos != null) w.in(OrdSubOrder::getStoreNo, storeNos);
         w.and(actions -> {
@@ -687,7 +688,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         if (!includeAfterSale) w.apply("NOT " + active);
         String rank = includeAfterSale ? "CASE WHEN " + active + " THEN 0 " : "CASE ";
         w.last("ORDER BY " + rank + "WHEN ord_sub_order.status = 'WAIT_PAY' THEN 1 "
-                + "WHEN ord_sub_order.status = 'WAIT_FULFILL' THEN 2 ELSE 3 END, "
+                + "WHEN ord_sub_order.status = '" + OrdSubOrder.WAIT_FULFILL + "' THEN 2 ELSE 3 END, "
                 + "ord_sub_order.created_at ASC, ord_sub_order.sub_order_no ASC");
         Page<OrdSubOrder> selected = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectPage(Page.of(page, size), w));

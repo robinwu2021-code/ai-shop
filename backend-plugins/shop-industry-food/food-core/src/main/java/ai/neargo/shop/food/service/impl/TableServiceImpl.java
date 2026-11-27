@@ -268,7 +268,7 @@ public class TableServiceImpl implements TableService {
         String turnover = query == null ? null : query.turnoverState();
         String keyword = query == null ? null : query.keyword();
         if (page < 1 || size < 1 || size > 100 || status != null && !validStatus(status)
-                || turnover != null && !Set.of("IDLE", "IN_USE", "NEEDS_CLEANING").contains(turnover)
+                || turnover != null && !Set.of("IDLE", "IN_USE", FnbTable.NEEDS_CLEANING).contains(turnover)
                 || keyword != null && keyword.length() > 64) throw BizException.of(ErrorCode.BAD_REQUEST);
         if (area != null) identifier(area);
         var filter = tableFilter(entityNo, storeNo).eq(area != null, FnbTable::getAreaNo, area)

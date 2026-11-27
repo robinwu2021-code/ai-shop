@@ -551,7 +551,7 @@ public final class ServiceExecutionServiceImpl implements ServiceExecutionServic
             }
         }
         // Preserve an already definitive Core source suspension even when Beauty has not observed it yet.
-        if (List.of("SUSPEND_REQUESTED", "STARTED_SUSPENDED").contains(row.getState()) && row.getReasonCode() != null) {
+        if (List.of(OrdServiceExecution.SUSPEND_REQUESTED, OrdServiceExecution.STARTED_SUSPENDED).contains(row.getState()) && row.getReasonCode() != null) {
             reason = row.getReasonCode();
         }
         one(executions.applyObservation(b.scope(), b.executionNo(), row.getBindingHash(),

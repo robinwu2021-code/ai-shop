@@ -37,7 +37,7 @@ public final class LegacyOrderStatusView {
      * 不推的话，买家的订单列表会把线下单显示成「待付款」，
      * 端上据此画一个「去支付」按钮 —— 而这单只能当面把钱给商家，那个按钮点了没用。
      */
-    public static final String WAIT_OFFLINE_PAY = "WAIT_OFFLINE_PAY";
+    public static final String WAIT_OFFLINE_PAY = ai.neargo.shop.trade.entity.OrdOrder.WAIT_OFFLINE_PAY;
     /** 已付款、等交付方行动。库里叫 {@code WAIT_FULFILL}，同一件事 */
     public static final String PAID = "PAID";
     /**

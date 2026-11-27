@@ -12,6 +12,14 @@ import lombok.Setter;
 @Setter
 @TableName("bty_service_task")
 public class BtyServiceTask extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String EXECUTION_PENDING = "EXECUTION_PENDING";
+    public static final String EXECUTION_PREPARED = "EXECUTION_PREPARED";
+    public static final String EXECUTION_SUSPENDED = "EXECUTION_SUSPENDED";
+    public static final String PREPARED_OBSERVED = "PREPARED_OBSERVED";
+    public static final String SERVICE_FINISHED = "SERVICE_FINISHED";
+    public static final String SOURCE_PENDING = "SOURCE_PENDING";
+    public static final String SUSPEND_REQUESTED = "SUSPEND_REQUESTED";
     /** 可信经营主体数据域。 */
     private String entityNo;
     /** 任务号。 */

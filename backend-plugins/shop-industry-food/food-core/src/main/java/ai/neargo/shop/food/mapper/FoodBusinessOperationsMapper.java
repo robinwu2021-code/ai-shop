@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.mapper;
 
+import ai.neargo.shop.food.entity.FnbBusinessSharePlan;
+import ai.neargo.shop.food.entity.FnbReturn;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -110,7 +112,7 @@ public class FoodBusinessOperationsMapper {
         return db.queryForObject("SELECT COUNT(*) FROM fnb_return r JOIN fnb_order_batch b ON "
                 + "b.tenant_no=r.tenant_no AND b.entity_no=r.entity_no AND b.batch_no=r.batch_no "
                 + "WHERE r.tenant_no='MAIN' AND r.entity_no=? AND r.store_no=? AND r.deleted=0 "
-                + "AND b.deleted=0 AND r.status IN ('BUSINESS_REQUESTED','APPROVAL_PENDING','APPROVAL_UNKNOWN') "
+                + "AND b.deleted=0 AND r.status IN ('" + FnbReturn.BUSINESS_REQUESTED + "','" + FnbReturn.APPROVAL_PENDING + "','" + FnbReturn.APPROVAL_UNKNOWN + "') "
                 + "AND EXISTS(SELECT 1 FROM fnb_order_line l LEFT JOIN fnb_check_line_membership lm ON "
                 + "lm.tenant_no=l.tenant_no AND lm.entity_no=l.entity_no AND lm.active_line_no=l.food_line_no AND lm.deleted=0 "
                 + "LEFT JOIN fnb_check_batch_membership bm ON bm.tenant_no=l.tenant_no AND bm.entity_no=l.entity_no "
@@ -166,9 +168,9 @@ public class FoodBusinessOperationsMapper {
             String value1, String actor, String entity, String store, String check) {
         return db.update(
                 "UPDATE fnb_business_share_plan SET"
-                    + " status='CANCELLED_BUSINESS_ONLY',active_check_no=NULL,cancellation_reason=?,updated_by=?,updated_at=UTC_TIMESTAMP(3),version=version+1"
+                    + " status='" + FnbBusinessSharePlan.CANCELLED_BUSINESS_ONLY + "',active_check_no=NULL,cancellation_reason=?,updated_by=?,updated_at=UTC_TIMESTAMP(3),version=version+1"
                     + " WHERE entity_no=? AND store_no=? AND active_check_no=? AND status IN"
-                    + " ('DRAFT_BUSINESS_ONLY','CONFIRMED_BUSINESS_ONLY')",
+                    + " ('" + FnbBusinessSharePlan.DRAFT_BUSINESS_ONLY + "','" + FnbBusinessSharePlan.CONFIRMED_BUSINESS_ONLY + "')",
                 value1,
                 actor,
                 entity,

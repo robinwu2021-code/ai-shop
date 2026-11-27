@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.mapper;
 
+import ai.neargo.shop.food.entity.FnbReturn;
 import ai.neargo.shop.common.config.TradeTableMapper;
 import ai.neargo.shop.food.dto.BusinessShareContracts.MembershipScope;
 import ai.neargo.shop.food.entity.FnbBusinessSharePlan;
@@ -50,7 +51,7 @@ public interface BusinessSharePlanMapper extends TradeTableMapper<FnbBusinessSha
                 + " AND l.food_line_no=i.food_line_no WHERE r.tenant_no='MAIN' AND r.deleted=0 AND"
                 + " i.deleted=0 AND l.deleted=0 AND r.entity_no=#{entity} AND r.store_no=#{store}"
                 + " AND l.batch_no=#{batch} AND NOT (r.status IN ('REJECTED','CANCELLED') AND"
-                + " r.financial_status IN ('NONE','NOT_REQUESTED')) AND NOT EXISTS (SELECT 1 FROM"
+                + " r.financial_status IN ('NONE','" + FnbReturn.NOT_REQUESTED + "')) AND NOT EXISTS (SELECT 1 FROM"
                 + " fnb_return_amendment a WHERE a.entity_no=r.entity_no AND a.store_no=r.store_no"
                 + " AND a.return_no=r.return_no AND a.status='CONFIRMED' AND a.deleted=0)")
     long blockingReturns(

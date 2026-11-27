@@ -40,7 +40,7 @@ import java.util.function.Supplier;
  */
 public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRecoveryService {
     private static final List<String> ORDER_PENDING =
-            List.of("PREPARED", "PLACING", "UNKNOWN", "CANCEL_PENDING");
+            List.of("PREPARED", "PLACING", "UNKNOWN", FnbReturn.CANCEL_PENDING);
     private static final List<String> CHECKOUT_PENDING = List.of("FROZEN", "COLLECTING", "SETTLED");
     private static final LocalDateTime FINISHED = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
     private final OrderBatchMapper batches;
@@ -204,7 +204,7 @@ public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRe
                                                                     .ne(
                                                                             FnbReturn
                                                                                     ::getFinancialStatus,
-                                                                            "NOT_REQUESTED"))
+                                                                            FnbReturn.NOT_REQUESTED))
                                             .and(
                                                     q ->
                                                             q.isNull(FnbReturn::getNextRecoveryAt)
@@ -313,7 +313,7 @@ public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRe
                                                                     .ne(
                                                                             FnbReturn
                                                                                     ::getFinancialStatus,
-                                                                            "NOT_REQUESTED"))
+                                                                            FnbReturn.NOT_REQUESTED))
                                             .and(
                                                     q ->
                                                             q.isNull(FnbReturn::getNextRecoveryAt)

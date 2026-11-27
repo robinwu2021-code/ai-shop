@@ -625,7 +625,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 work_order_no=#{workOrderNo} AND version=#{expectedVersion}
                 AND scope_revision=#{expectedScopeRevision} AND scope_frozen=0
-                AND status IN ('OPEN','IN_SERVICE','SERVICE_FINISHED') AND #{actorNo} IS NOT NULL AND
+                AND status IN ('OPEN','IN_SERVICE','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SERVICE_FINISHED}') AND #{actorNo} IS NOT NULL AND
                 LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
         int freezeScope(
@@ -663,7 +663,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 work_order_no=#{workOrderNo} AND version=#{expectedVersion}
-                AND scope_revision=#{expectedScopeRevision} AND scope_frozen=1 AND status='SERVICE_FINISHED'
+                AND scope_revision=#{expectedScopeRevision} AND scope_frozen=1 AND status='${@ai.neargo.shop.beauty.entity.BtyServiceTask@SERVICE_FINISHED}'
                 AND finished_at IS NOT NULL AND #{closedAt}>=finished_at AND #{actorNo} IS NOT NULL AND
                 LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 AND EXISTS (SELECT 1 FROM bty_service_task t WHERE t.tenant_no='MAIN' AND t.entity_no=#{entityNo}
@@ -917,7 +917,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 SET s.status='DONE', s.finished_at=#{finishedAt}, s.result_snapshot=#{resultSnapshot},
                 s.version=s.version+1, s.updated_by=#{actorNo}, s.updated_at=#{updatedAt}
                 WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.step_no=#{stepNo} AND s.task_no=#{taskNo}
-                AND s.deleted=0 AND s.version=#{expectedVersion} AND s.status='IN_PROGRESS'
+                AND s.deleted=0 AND s.version=#{expectedVersion} AND s.status='${@ai.neargo.shop.beauty.entity.BtyServiceStep@IN_PROGRESS}'
                 AND s.started_at IS NOT NULL AND #{finishedAt}>=s.started_at AND earlier_step.id IS NULL
                 AND t.deleted=0 AND t.status='IN_SERVICE' AND t.scope_revision<=w.scope_revision
                 AND w.deleted=0 AND w.store_no=#{storeNo} AND w.scope_frozen=0 AND w.status IN ('OPEN','IN_SERVICE')
@@ -968,7 +968,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 WHERE p.tenant_no='MAIN' AND p.entity_no=#{entityNo} AND p.participation_no=#{participationNo}
                 AND p.deleted=0 AND p.version=#{expectedVersion} AND p.ended_at IS NULL AND #{endedAt}>=p.started_at
                 AND t.deleted=0 AND w.deleted=0 AND w.store_no=#{storeNo}
-                AND w.status IN ('OPEN','IN_SERVICE','SERVICE_FINISHED') AND #{actorNo} IS NOT NULL AND
+                AND w.status IN ('OPEN','IN_SERVICE','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SERVICE_FINISHED}') AND #{actorNo} IS NOT NULL AND
                 LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
         int endParticipation(
@@ -996,7 +996,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                   AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.schema'))='START_MANUAL_V1'
                   AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.intent.binding.executionNo'))=#{executionNo}
                   AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.bindingHash'))=#{bindingHash}
-                  AND status IN ('EXECUTION_PENDING','EXECUTION_PREPARED','EXECUTION_SUSPENDED')
+                  AND status IN ('${@ai.neargo.shop.beauty.entity.BtyServiceTask@EXECUTION_PENDING}','${@ai.neargo.shop.beauty.entity.BtyServiceTask@EXECUTION_PREPARED}','${@ai.neargo.shop.beauty.entity.BtyServiceTask@EXECUTION_SUSPENDED}')
                 """)
         int completeExecutionOriginal(
                 @Param("entityNo") String entityNo,
@@ -1017,7 +1017,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 long expectedVersion, String executionNo, String bindingHash, String payloadHash,
                 String reason, LocalDateTime now, String actor) {
             return completeExecutionOriginal(entityNo, storeNo, submissionNo, expectedVersion, executionNo,
-                    bindingHash, payloadHash, "EXECUTION_SUSPENDED", reason, now, now, actor);
+                    bindingHash, payloadHash, BtyServiceTask.EXECUTION_SUSPENDED, reason, now, now, actor);
         }
 
         /** Keyset traversal stays inside one read-only RR manifest up to its captured maximum. */
@@ -1058,7 +1058,7 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 """
                 SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND store_no=#{storeNo} AND work_order_no=#{workOrderNo} AND deleted=0
-                  AND action IN ('SUBMIT_SOURCE','ADD_SOURCE') AND status IN ('RECEIVED','SOURCE_PENDING','RECOVERING')
+                  AND action IN ('SUBMIT_SOURCE','ADD_SOURCE') AND status IN ('RECEIVED','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SOURCE_PENDING}','RECOVERING')
                 ORDER BY id
                 """)
         List<BtyServiceSubmission> selectActiveForWorkOrder(
@@ -1081,7 +1081,7 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
      AND JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.admissionKind'))='MANUAL_OFFLINE'
      AND JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.sourceMode')) IN ('MANUAL_PREPARE','MANUAL_EXISTING')
      AND JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.party.kind')) IN ('USER','GUEST')))
-  AND (s.status IN ('RECEIVED','SOURCE_PENDING') OR
+  AND (s.status IN ('RECEIVED','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SOURCE_PENDING}') OR
     (s.status='RECOVERING' AND s.next_retry_at<=#{now}))
   AND #{leaseUntil}>#{now}
   AND EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=s.tenant_no
@@ -1110,7 +1110,7 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
      AND JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.admissionKind'))='MANUAL_OFFLINE'
      AND JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.sourceMode')) IN ('MANUAL_PREPARE','MANUAL_EXISTING')
      AND JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.party.kind')) IN ('USER','GUEST')))
-  AND ((#{targetStatus}='SOURCE_PENDING' AND #{nextRetryAt}>#{now} AND #{failureCode} IS NOT NULL)
+  AND ((#{targetStatus}='${@ai.neargo.shop.beauty.entity.BtyServiceTask@SOURCE_PENDING}' AND #{nextRetryAt}>#{now} AND #{failureCode} IS NOT NULL)
     OR (#{targetStatus}='BOUND' AND #{nextRetryAt} IS NULL AND #{failureCode} IS NULL)
     OR (#{targetStatus}='REJECTED' AND #{nextRetryAt} IS NULL AND #{failureCode} IS NOT NULL))
   AND EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=s.tenant_no
@@ -1203,7 +1203,7 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                 """
                 <script>
                 SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
-                AND store_no=#{storeNo} AND deleted=0 AND status IN ('RECEIVED','SOURCE_PENDING','RECOVERING')
+                AND store_no=#{storeNo} AND deleted=0 AND status IN ('RECEIVED','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SOURCE_PENDING}','RECOVERING')
                 AND next_retry_at IS NOT NULL AND next_retry_at &lt;= #{now}
                 AND (work_order_no IS NULL OR EXISTS (SELECT 1 FROM bty_work_order w
                 WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo} AND w.deleted=0
@@ -1227,12 +1227,12 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                 failure_code=#{failureCode}, version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0
                 AND submission_no=#{submissionNo} AND version=#{expectedVersion} AND status=#{expectedStatus}
-                AND ((status='RECEIVED' AND #{targetStatus} IN ('RECEIVED','SOURCE_PENDING','REJECTED'))
-                OR (status='SOURCE_PENDING' AND #{targetStatus} IN
-                ('SOURCE_PENDING','RECOVERING','BOUND','REJECTED'))
+                AND ((status='RECEIVED' AND #{targetStatus} IN ('RECEIVED','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SOURCE_PENDING}','REJECTED'))
+                OR (status='${@ai.neargo.shop.beauty.entity.BtyServiceTask@SOURCE_PENDING}' AND #{targetStatus} IN
+                ('${@ai.neargo.shop.beauty.entity.BtyServiceTask@SOURCE_PENDING}','RECOVERING','BOUND','REJECTED'))
                 OR (status='RECOVERING' AND #{targetStatus} IN
-                ('RECOVERING','SOURCE_PENDING','BOUND','REJECTED')))
-                AND ((#{targetStatus} IN ('RECEIVED','SOURCE_PENDING','RECOVERING') AND
+                ('RECOVERING','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SOURCE_PENDING}','BOUND','REJECTED')))
+                AND ((#{targetStatus} IN ('RECEIVED','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SOURCE_PENDING}','RECOVERING') AND
                 CAST(#{nextRetryAt} AS DATETIME(3))>CAST(#{updatedAt} AS DATETIME(3)))
                 OR (#{targetStatus} IN ('BOUND','REJECTED') AND #{nextRetryAt} IS NULL))
                 AND (#{targetStatus}<>'REJECTED' OR (#{failureCode} IS NOT NULL AND
@@ -1568,7 +1568,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                   AND i.source_revision=JSON_EXTRACT(a.receipt,'$.binding.sourceRevision')
                   AND i.frozen_plan=p.frozen_plan
                 WHERE r.tenant_no='MAIN' AND r.deleted=0 AND r.action='RECEIVE_WALK_IN' AND r.endpoint='BAPI-048'
-                  AND r.phase='RESOURCE_PENDING' AND r.next_retry_at<=#{now}
+                  AND r.phase='${@ai.neargo.shop.beauty.entity.BtyReceptionOperation@RESOURCE_PENDING}' AND r.next_retry_at<=#{now}
                   AND (r.lease_until IS NULL OR r.lease_until<#{now})
                   AND (r.failure_code IS NULL OR r.failure_code NOT IN
                     ('RESOURCE_RELEASE_REQUIRED','ARRIVAL_REQUIRES_RESCHEDULE'))
@@ -1610,7 +1610,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 UPDATE bty_reception_operation SET lease_until=#{until},version=version+1
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                   AND operation_no=#{operationNo} AND deleted=0 AND version=#{version}
-                  AND action='RECEIVE_WALK_IN' AND endpoint='BAPI-048' AND phase='RESOURCE_PENDING'
+                  AND action='RECEIVE_WALK_IN' AND endpoint='BAPI-048' AND phase='${@ai.neargo.shop.beauty.entity.BtyReceptionOperation@RESOURCE_PENDING}'
                   AND next_retry_at<=#{now} AND (lease_until IS NULL OR lease_until<#{now})
                 """)
         int claimResource(
@@ -1812,7 +1812,7 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                 """
                 SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND deleted=0
                   AND #{limit} BETWEEN 1 AND 100
-                  AND intent_state IN ('FROZEN','EXECUTION_PENDING','PREPARED_OBSERVED','SUSPEND_REQUESTED')
+                  AND intent_state IN ('FROZEN','${@ai.neargo.shop.beauty.entity.BtyServiceTask@EXECUTION_PENDING}','${@ai.neargo.shop.beauty.entity.BtyServiceTask@PREPARED_OBSERVED}','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SUSPEND_REQUESTED}')
                   AND (observed_grant_state IS NULL OR observed_grant_state NOT IN ('RELEASED','FULFILLED'))
                   AND (next_retry_at IS NULL OR next_retry_at<=#{now})
                   AND (#{afterId}=0 OR
@@ -1870,7 +1870,7 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                 """
                 SELECT COUNT(*) FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND store_no=#{storeNo} AND work_order_no=#{workOrderNo}
-                  AND intent_state IN ('FROZEN','EXECUTION_PENDING','PREPARED_OBSERVED','SUSPEND_REQUESTED')
+                  AND intent_state IN ('FROZEN','${@ai.neargo.shop.beauty.entity.BtyServiceTask@EXECUTION_PENDING}','${@ai.neargo.shop.beauty.entity.BtyServiceTask@PREPARED_OBSERVED}','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SUSPEND_REQUESTED}')
                 """)
         int activeForWorkOrder(
                 @Param("entityNo") String entityNo,
@@ -1879,7 +1879,7 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
 
         @Update(
                 """
-                UPDATE bty_service_execution_fence SET intent_state='SUSPEND_REQUESTED',
+                UPDATE bty_service_execution_fence SET intent_state='${@ai.neargo.shop.beauty.entity.BtyServiceTask@SUSPEND_REQUESTED}',
                   source_fence_revision=source_fence_revision+1,version=version+1,
                   suspension_intent_revision=#{row.suspensionIntentRevision},
                   suspension_manual_epoch=#{row.suspensionManualEpoch},
@@ -1893,7 +1893,7 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                   AND binding_hash=#{row.bindingHash} AND payload_hash=#{row.payloadHash}
                   AND source_intent_hash=#{row.sourceIntentHash} AND version=#{expectedVersion}
                   AND source_fence_revision=#{expectedIntentRevision} AND suspension_intent_revision IS NULL
-                  AND intent_state IN ('FROZEN','EXECUTION_PENDING','PREPARED_OBSERVED') AND deleted=0
+                  AND intent_state IN ('FROZEN','${@ai.neargo.shop.beauty.entity.BtyServiceTask@EXECUTION_PENDING}','${@ai.neargo.shop.beauty.entity.BtyServiceTask@PREPARED_OBSERVED}') AND deleted=0
                 """)
         int suspendOriginal(
                 @Param("row") BtyServiceExecutionFence row,

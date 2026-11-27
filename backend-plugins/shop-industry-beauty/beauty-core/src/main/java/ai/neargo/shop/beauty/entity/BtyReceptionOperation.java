@@ -11,6 +11,10 @@ import lombok.Setter;
 @Setter
 @TableName("bty_reception_operation")
 public class BtyReceptionOperation extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String ARRIVAL_PENDING = "ARRIVAL_PENDING";
+    public static final String OPEN_PENDING = "OPEN_PENDING";
+    public static final String RESOURCE_PENDING = "RESOURCE_PENDING";
     /** entity_no; scoped internal persistence only. */
     private String entityNo;
     /** store_no; scoped internal persistence only. */

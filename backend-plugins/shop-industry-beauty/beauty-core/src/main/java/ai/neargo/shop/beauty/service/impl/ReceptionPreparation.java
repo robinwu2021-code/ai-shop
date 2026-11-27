@@ -136,7 +136,7 @@ public final class ReceptionPreparation {
         op.setKeyHash(IdempotencyScope.requestHash(IdempotencyScope.requireKey(key))); op.setRequestHash(hash);
         op.setAppointmentNo(payload instanceof WalkInPayload ? null : payload.appointmentNo());
         op.setPhase(
-                payload instanceof WorkOrderCoordinator.OpenPayload ? "OPEN_PENDING" : "RECEIVED");
+                payload instanceof WorkOrderCoordinator.OpenPayload ? BtyReceptionOperation.OPEN_PENDING : "RECEIVED");
         if (identity != null) { op.setIdentityKind(identity.kind()); op.setIdentityRef(identity.reference()); }
         op.setDerivedKeyHash(derived(entity, store, endpoint, key));
         op.setFrozenPayload(db.json.writeValueAsString(payload));

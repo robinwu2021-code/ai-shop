@@ -250,8 +250,8 @@ public class BusinessReturnServiceImpl implements BusinessReturnService {
                                 row.setRequestHash(requestHash);
                                 row.setRequestSnapshot(json.writeValueAsString(frozen));
                                 row.setReason(normalized.reason());
-                                row.setStatus("BUSINESS_REQUESTED");
-                                row.setFinancialStatus("NOT_REQUESTED");
+                                row.setStatus(FnbReturn.BUSINESS_REQUESTED);
+                                row.setFinancialStatus(FnbReturn.NOT_REQUESTED);
                                 row.setKitchenStatus("PENDING");
                                 if (returns.insert(row) != 1) throw conflict();
                                 for (var selected : source) {
@@ -355,10 +355,10 @@ public class BusinessReturnServiceImpl implements BusinessReturnService {
                         return view(row);
                     }
                     if (!request.version().equals(row.getVersion())
-                            || !"BUSINESS_REQUESTED".equals(row.getStatus())
+                            || !FnbReturn.BUSINESS_REQUESTED.equals(row.getStatus())
                             || !"PENDING".equals(row.getKitchenStatus())
                             || row.getCoreCaseRef() != null
-                            || !"NOT_REQUESTED".equals(row.getFinancialStatus())) throw conflict();
+                            || !FnbReturn.NOT_REQUESTED.equals(row.getFinancialStatus())) throw conflict();
                     if (returns.update(
                                     null,
                                     Wrappers.<FnbReturn>lambdaUpdate()
@@ -367,9 +367,9 @@ public class BusinessReturnServiceImpl implements BusinessReturnService {
                                             .eq(FnbReturn::getStoreNo, store)
                                             .eq(FnbReturn::getReturnNo, number)
                                             .eq(FnbReturn::getVersion, request.version())
-                                            .eq(FnbReturn::getStatus, "BUSINESS_REQUESTED")
+                                            .eq(FnbReturn::getStatus, FnbReturn.BUSINESS_REQUESTED)
                                             .eq(FnbReturn::getKitchenStatus, "PENDING")
-                                            .eq(FnbReturn::getFinancialStatus, "NOT_REQUESTED")
+                                            .eq(FnbReturn::getFinancialStatus, FnbReturn.NOT_REQUESTED)
                                             .isNull(FnbReturn::getCoreCaseRef)
                                             .set(FnbReturn::getStatus, "CANCELLED")
                                             .set(FnbReturn::getVersion, request.version() + 1)
@@ -621,7 +621,7 @@ public class BusinessReturnServiceImpl implements BusinessReturnService {
             if (Set.of("CANCELLED", "REJECTED")
                             .contains(Objects.requireNonNullElse(prior.getStatus(), ""))
                     && "PENDING".equals(prior.getKitchenStatus())
-                    && Set.of("NONE", "NOT_REQUESTED")
+                    && Set.of("NONE", FnbReturn.NOT_REQUESTED)
                             .contains(Objects.requireNonNullElse(prior.getFinancialStatus(), "")))
                 continue;
             var frozen = BusinessReturnDocuments.read(prior, json);

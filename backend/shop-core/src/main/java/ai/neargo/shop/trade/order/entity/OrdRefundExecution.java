@@ -10,6 +10,10 @@ import lombok.Setter;
 @Setter
 @TableName("ord_refund_execution")
 public class OrdRefundExecution extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String CASH_CONFIRMED = "CASH_CONFIRMED";
+    public static final String CASH_FAILED_PENDING_OPERATOR = "CASH_FAILED_PENDING_OPERATOR";
+    public static final String COMPENSATED_PENDING_OPERATOR = "COMPENSATED_PENDING_OPERATOR";
     public static final String PREPARED = "PREPARED";
     public static final String PROCESSING = "PROCESSING";
     public static final String UNKNOWN = "UNKNOWN";

@@ -612,7 +612,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                             && (!"DELIVERY_HANDOVER".equals(c.kind())
                                     || OrdSubOrder.WAIT_FULFILL.equals(f.sub().getStatus()))) {
                         row.setInventoryReceiptJson(json.writeValueAsString(proof));
-                        row.setStatus("PROOF_VALIDATED");
+                        row.setStatus(OrdIndustryFulfillment.PROOF_VALIDATED);
                         row.setUpdatedAt(LocalDateTime.now());
                         if (journal.updateById(row) != 1) throw conflict();
                     }
@@ -631,7 +631,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                                 buyerConfirm(f.sub())
                                                 && !OrdSubOrder.COMPLETED.equals(
                                                         f.sub().getStatus())
-                                        ? "BUYER_CONFIRM_PENDING"
+                                        ? OrdIndustryFulfillment.BUYER_CONFIRM_PENDING
                                         : "VERIFIED");
                     } else {
                         if (complete
@@ -659,7 +659,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                                     != 1) throw conflict();
                             f.sub().setVersion(f.sub().getVersion() + 1);
                         }
-                        row.setStatus(complete ? "HANDOVER_COMPLETE" : "PARTIAL");
+                        row.setStatus(complete ? OrdIndustryFulfillment.HANDOVER_COMPLETE : "PARTIAL");
                     }
                     row.setInventoryReceiptJson(json.writeValueAsString(proof));
                     row.setUpdatedAt(LocalDateTime.now());
@@ -918,7 +918,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                             buyerConfirm(facts.sub())
                                             && !OrdSubOrder.COMPLETED.equals(
                                                     facts.sub().getStatus())
-                                    ? "BUYER_CONFIRM_PENDING"
+                                    ? OrdIndustryFulfillment.BUYER_CONFIRM_PENDING
                                     : "VERIFIED");
                     row.setUpdatedAt(LocalDateTime.now());
                     if (journal.updateById(row) != 1) throw conflict();
@@ -1108,7 +1108,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                         ? null
                         : json.readValue(row.getInventoryReceiptJson(), Snapshot.class);
         String status = row.getStatus();
-        if ("BUYER_CONFIRM_PENDING".equals(status)
+        if (OrdIndustryFulfillment.BUYER_CONFIRM_PENDING.equals(status)
                 && OrdSubOrder.COMPLETED.equals(facts.sub().getStatus())) status = "VERIFIED";
         return new Receipt(
                 row.getFulfillmentNo(),
@@ -1232,7 +1232,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
     }
 
     private static boolean terminal(OrdIndustryFulfillment row) {
-        return Set.of("VERIFIED", "BUYER_CONFIRM_PENDING", "PARTIAL", "HANDOVER_COMPLETE")
+        return Set.of("VERIFIED", OrdIndustryFulfillment.BUYER_CONFIRM_PENDING, "PARTIAL", OrdIndustryFulfillment.HANDOVER_COMPLETE)
                 .contains(row.getStatus());
     }
 

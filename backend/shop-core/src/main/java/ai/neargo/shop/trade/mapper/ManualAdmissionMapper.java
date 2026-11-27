@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.mapper;
 
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
 import ai.neargo.shop.trade.entity.OrdManualServiceAdmission;
 import ai.neargo.shop.trade.entity.OrdManualServiceAdmissionAction;
 import ai.neargo.shop.trade.entity.OrdOrder;
@@ -70,7 +71,7 @@ public interface ManualAdmissionMapper extends BaseMapper<OrdManualServiceAdmiss
 
     @Select(
             "SELECT * FROM ord_manual_service_admission WHERE tenant_no='MAIN' AND"
-                    + " phase='STOCK_PENDING' AND (next_retry_at IS NULL OR"
+                    + " phase='" + ManualServiceAdmissionPort.STOCK_PENDING + "' AND (next_retry_at IS NULL OR"
                     + " next_retry_at<=CURRENT_TIMESTAMP(3)) AND deleted=0 ORDER BY next_retry_at,id"
                     + " LIMIT #{limit}")
     List<OrdManualServiceAdmission> pending(@Param("limit") int limit);
@@ -118,13 +119,13 @@ public interface ManualAdmissionMapper extends BaseMapper<OrdManualServiceAdmiss
                     + " offline_confirmed_by=#{actor},offline_confirmed_at=#{recorded},"
                     + "updated_at=CURRENT_TIMESTAMP(3),version=version+1"
                     + " WHERE o.tenant_no='MAIN' AND o.order_no=#{order} AND o.deleted=0 AND"
-                    + " o.version=#{revision} AND o.status='WAIT_OFFLINE_PAY' AND"
+                    + " o.version=#{revision} AND o.status='" + OrdOrder.WAIT_OFFLINE_PAY + "' AND"
                     + " o.admission_kind='MANUAL_OFFLINE' AND o.pay_channel IS NULL AND o.pay_trade_no"
                     + " IS NULL AND o.points_integrated=0 AND EXISTS (SELECT 1 FROM"
                     + " ord_manual_service_admission d WHERE d.tenant_no=o.tenant_no AND"
                     + " d.order_no=o.order_no AND d.declaration_no=#{declaration} AND"
                     + " d.payload_hash=#{payload} AND d.admission_kind='MANUAL_OFFLINE' AND"
-                    + " d.phase='STOCK_PENDING' AND d.order_revision=#{revision} AND"
+                    + " d.phase='" + ManualServiceAdmissionPort.STOCK_PENDING + "' AND d.order_revision=#{revision} AND"
                     + " d.declared_minor=o.pay_amount AND d.currency=o.currency AND d.deleted=0) AND"
                     + " NOT EXISTS (SELECT 1 FROM ord_checkout_payment_request p WHERE"
                     + " p.tenant_no=o.tenant_no AND p.order_no=o.order_no AND p.deleted=0) AND NOT"
@@ -151,7 +152,7 @@ public interface ManualAdmissionMapper extends BaseMapper<OrdManualServiceAdmiss
                     + " s.points_deduct_minor=0 AND EXISTS (SELECT 1 FROM ord_manual_service_admission"
                     + " d WHERE d.tenant_no=s.tenant_no AND d.order_no=s.order_no AND"
                     + " d.sub_order_no=s.sub_order_no AND d.declaration_no=#{declaration} AND"
-                    + " d.payload_hash=#{payload} AND d.phase='STOCK_PENDING' AND"
+                    + " d.payload_hash=#{payload} AND d.phase='" + ManualServiceAdmissionPort.STOCK_PENDING + "' AND"
                     + " d.admission_kind='MANUAL_OFFLINE' AND d.deleted=0)")
     int confirmChild(
             @Param("order") String order,

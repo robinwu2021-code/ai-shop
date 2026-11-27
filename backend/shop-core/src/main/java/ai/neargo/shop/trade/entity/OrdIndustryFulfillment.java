@@ -10,6 +10,10 @@ import lombok.Setter;
 @Setter
 @TableName("ord_industry_fulfillment")
 public class OrdIndustryFulfillment extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String BUYER_CONFIRM_PENDING = ai.neargo.shop.spi.trade.IndustryFulfillmentPort.BUYER_CONFIRM_PENDING;
+    public static final String HANDOVER_COMPLETE = ai.neargo.shop.spi.trade.IndustryFulfillmentPort.HANDOVER_COMPLETE;
+    public static final String PROOF_VALIDATED = "PROOF_VALIDATED";
     private String fulfillmentNo;
     private String entityNo;
     private String storeNo;

@@ -49,9 +49,9 @@ public final class ReceptionRecovery {
                     completed++;
                 } else {
                     pending++;
-                    if ("ARRIVAL_PENDING".equals(projected.getPhase())
+                    if (BtyReceptionOperation.ARRIVAL_PENDING.equals(projected.getPhase())
                             || "RESOURCE_RELEASE_REQUIRED".equals(projected.getFailureCode())) {
-                        String nextAction = "ARRIVAL_PENDING".equals(projected.getPhase())
+                        String nextAction = BtyReceptionOperation.ARRIVAL_PENDING.equals(projected.getPhase())
                                 ? "AUTHENTICATED_OPERATION_RECOVERY" : "AUTHENTICATED_CANCEL";
                         LOG.info("beauty.reception.recovery_handoff operationNo={} nextAction={}",
                                 projected.getOperationNo(), nextAction);
@@ -67,7 +67,7 @@ public final class ReceptionRecovery {
                 db.tx(() -> {
                     var locked = rows.selectScopedForUpdate(row.getEntityNo(), row.getStoreNo(), row.getOperationNo());
                     if (!Objects.equals(lease, locked.getLeaseUntil())) { return null; }
-                    boolean retry = "RESOURCE_PENDING".equals(locked.getPhase()) && locked.getFailureCode() == null;
+                    boolean retry = BtyReceptionOperation.RESOURCE_PENDING.equals(locked.getPhase()) && locked.getFailureCode() == null;
                     rows.update(null, Wrappers.<BtyReceptionOperation>lambdaUpdate()
                             .eq(BtyReceptionOperation::getId, locked.getId())
                             .eq(BtyReceptionOperation::getVersion, locked.getVersion())
@@ -90,7 +90,7 @@ public final class ReceptionRecovery {
                     root.getAppointmentNo());
             var row = rows.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
                     observed.getOperationNo());
-            if (!"RESOURCE_PENDING".equals(row.getPhase()) || !Objects.equals(lease, row.getLeaseUntil())
+            if (!BtyReceptionOperation.RESOURCE_PENDING.equals(row.getPhase()) || !Objects.equals(lease, row.getLeaseUntil())
                     || !row.getVersion().equals(observed.getVersion())) { return row; }
             AppointmentPersistence.require(row.getRequestHash().equals(observed.getRequestHash())
                     && row.getFrozenPayload().equals(observed.getFrozenPayload())
@@ -105,7 +105,7 @@ public final class ReceptionRecovery {
                         && root.getHoldNo() != null && row.getWorkOrderNo() == null);
                 var p = db.json.readValue(row.getFrozenPayload(), WalkInPayload.class);
                 row.setFrozenPayload(db.json.writeValueAsString(p.withRevisions(root.getVersion(), null)));
-                row.setPhase("ARRIVAL_PENDING");
+                row.setPhase(BtyReceptionOperation.ARRIVAL_PENDING);
             } else if ("RELEASE_REQUIRED".equals(linked.getState())) {
                 row.setFailureCode("RESOURCE_RELEASE_REQUIRED");
             } else {

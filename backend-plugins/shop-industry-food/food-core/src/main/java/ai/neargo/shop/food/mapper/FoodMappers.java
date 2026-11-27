@@ -87,7 +87,7 @@ public final class FoodMappers {
     public interface CheckCartMapper extends TradeTableMapper<FnbCheckCart> {
         @Select("SELECT COUNT(*) FROM fnb_order_batch WHERE tenant_no='MAIN' AND entity_no=#{entity} "
                 + "AND cart_no=#{cart} AND deleted=0 AND status IN "
-                + "('PREPARED','PLACING','UNKNOWN','BOUND','ACCEPTED','CANCEL_PENDING')")
+                + "('PREPARED','PLACING','UNKNOWN','BOUND','ACCEPTED','" + FnbReturn.CANCEL_PENDING + "')")
         long activePlacementCount(@Param("entity") String entity, @Param("cart") String cart);
         @Select("SELECT COUNT(*) FROM fnb_order_batch b JOIN fnb_core_order_binding o "
                 + "ON o.tenant_no=b.tenant_no AND o.entity_no=b.entity_no AND o.batch_no=b.batch_no "

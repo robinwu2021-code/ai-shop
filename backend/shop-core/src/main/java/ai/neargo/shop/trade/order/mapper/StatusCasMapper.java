@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.order.mapper;
 
+import ai.neargo.shop.trade.entity.OrdIndustryFulfillment;
+import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 
 import org.apache.ibatis.annotations.Mapper;
@@ -25,7 +27,7 @@ public interface StatusCasMapper {
             "UPDATE ord_sub_order SET fulfillment = #{target}, updated_at = CURRENT_TIMESTAMP,"
                 + " version = version + 1 WHERE sub_order_no = #{no} AND deleted = 0 AND"
                 + " admission_kind='LEGACY_FUNDED' AND version = #{expectedVersion} AND status ="
-                + " 'WAIT_FULFILL' AND open_after_sale_no IS NULL AND (express_no IS NULL OR"
+                + " '" + OrdSubOrder.WAIT_FULFILL + "' AND open_after_sale_no IS NULL AND (express_no IS NULL OR"
                 + " express_no = '')")
     int changeFulfillment(
             @Param("no") String no,
@@ -47,7 +49,7 @@ public interface StatusCasMapper {
     @Update(
             "UPDATE ord_sub_order SET prepared_at = #{at}, updated_at = CURRENT_TIMESTAMP, version"
                 + " = version + 1 WHERE sub_order_no = #{no} AND deleted = 0 AND status ="
-                + " 'WAIT_FULFILL' AND admission_kind='LEGACY_FUNDED' AND prepared_at IS NULL AND"
+                + " '" + OrdSubOrder.WAIT_FULFILL + "' AND admission_kind='LEGACY_FUNDED' AND prepared_at IS NULL AND"
                 + " open_after_sale_no IS NULL")
     int prepareIfEligible(@Param("no") String no, @Param("at") long preparedAt);
 
@@ -57,7 +59,7 @@ public interface StatusCasMapper {
     @Update(
             "UPDATE ord_order SET status = #{to}, updated_at = #{now}, version = version + 1 WHERE"
                 + " order_no = #{no} AND status = #{from} AND (admission_kind='LEGACY_FUNDED' OR"
-                + " (#{to}='CANCELLED' AND status='WAIT_OFFLINE_PAY' AND receipt_provenance IS"
+                + " (#{to}='CANCELLED' AND status='" + OrdOrder.WAIT_OFFLINE_PAY + "' AND receipt_provenance IS"
                 + " NULL))")
     int casPayment(
             @Param("no") String no,
@@ -97,7 +99,7 @@ public interface StatusCasMapper {
             + "AND EXISTS (SELECT 1 FROM ord_industry_fulfillment f WHERE f.tenant_no=s.tenant_no "
             + "AND f.entity_no=s.entity_no AND f.store_no=s.store_no AND f.sub_order_no=s.sub_order_no "
             + "AND f.order_no=s.order_no AND f.fulfillment_no=#{fulfillmentNo} AND f.fulfillment_kind=#{kind} "
-            + "AND f.status='PROOF_VALIDATED' AND f.inventory_receipt_json IS NOT NULL "
+            + "AND f.status='" + OrdIndustryFulfillment.PROOF_VALIDATED + "' AND f.inventory_receipt_json IS NOT NULL "
             + "AND EXISTS (SELECT 1 FROM ord_channel_import i WHERE i.tenant_no=f.tenant_no "
             + "AND i.entity_no=f.entity_no AND i.store_no=f.store_no AND i.order_no=f.order_no "
             + "AND i.sub_order_no=f.sub_order_no AND i.source_system=f.source_system "

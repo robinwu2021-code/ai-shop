@@ -1,5 +1,6 @@
 package ai.neargo.shop.commerce.service.impl;
 
+import ai.neargo.shop.commerce.entity.CimOrderLink;
 import ai.neargo.shop.commerce.dto.InboundContracts;
 import ai.neargo.shop.commerce.entity.CimAccount;
 import ai.neargo.shop.commerce.entity.CimAuthorizationRevision;
@@ -243,7 +244,7 @@ public final class ChannelInboundServiceImpl implements ChannelInboundService, C
                                                         "status",
                                                         "NEW",
                                                         "RETRY",
-                                                        "WAITING_OWNER",
+                                                        CimOrderLink.WAITING_OWNER,
                                                         "PROCESSING")
                                                 .le("next_attempt_at", CatalogPersistence.now())
                                                 .orderByAsc("next_attempt_at", "id")
@@ -309,7 +310,7 @@ public final class ChannelInboundServiceImpl implements ChannelInboundService, C
                                         .eq("entity_no", candidate.getEntityNo())
                                         .eq("event_no", candidate.getEventNo())
                                         .eq("version", candidate.getVersion())
-                                        .in("status", "NEW", "RETRY", "WAITING_OWNER", "PROCESSING")
+                                        .in("status", "NEW", "RETRY", CimOrderLink.WAITING_OWNER, "PROCESSING")
                                         .and(
                                                 q ->
                                                         q.isNull("lease_until")
@@ -346,7 +347,7 @@ public final class ChannelInboundServiceImpl implements ChannelInboundService, C
                         candidate.getEventNo(),
                         true);
         var now = CatalogPersistence.now();
-        if (!Set.of("NEW", "RETRY", "WAITING_OWNER", "PROCESSING").contains(row.getStatus())
+        if (!Set.of("NEW", "RETRY", CimOrderLink.WAITING_OWNER, "PROCESSING").contains(row.getStatus())
                 || row.getNextAttemptAt() == null
                 || row.getNextAttemptAt().isAfter(now)
                 || row.getLeaseUntil() != null && row.getLeaseUntil().isAfter(now)) return null;
@@ -612,7 +613,7 @@ public final class ChannelInboundServiceImpl implements ChannelInboundService, C
                 () -> {
                     var row = event(entity, store, no, true);
                     if (!request.version().equals(row.getVersion())
-                            || !Set.of("NEW", "RETRY", "WAITING_OWNER").contains(row.getStatus()))
+                            || !Set.of("NEW", "RETRY", CimOrderLink.WAITING_OWNER).contains(row.getStatus()))
                         throw BizException.of(ErrorCode.CONFLICT);
                     events.update(
                             Wrappers.<CimInboundEvent>update()

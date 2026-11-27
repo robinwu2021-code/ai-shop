@@ -13,6 +13,8 @@ import java.util.List;
 
 /** Source-authorized formal order creation; no client price or debit authorization is accepted. */
 public interface IndustryOrderPort {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    String WAIT_FULFILL = "WAIT_FULFILL";
     enum Mode {
         PREPAY,
         POSTPAY

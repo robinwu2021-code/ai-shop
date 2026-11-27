@@ -191,7 +191,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         if (size < 1 || size > 50) badRequest();
         var rows = orders.selectList(Wrappers.<OrdEntServiceOrder>lambdaQuery()
                 .eq(OrdEntServiceOrder::getTenantNo, tenant).eq(OrdEntServiceOrder::getUserNo, user)
-                .and(q -> q.in(OrdEntServiceOrder::getStatus, "PENDING", "COMMIT_DECIDED", "CANCEL_DECIDED")
+                .and(q -> q.in(OrdEntServiceOrder::getStatus, "PENDING", OrdEntServiceOrder.COMMIT_DECIDED, OrdEntServiceOrder.CANCEL_DECIDED)
                         .or(x -> x.in(OrdEntServiceOrder::getStatus, "PREVIEWED", "AUTHORIZED")
                                 .gt(OrdEntServiceOrder::getPreviewExpiresAt, now())
                                 .gt(OrdEntServiceOrder::getDeadline, now())))
@@ -312,7 +312,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         } else if (fact.rule() == null || !"MERCHANT".equals(fact.rule().funder())
                 || !Set.of("SERVICE_UNITS", "GIFT").contains(fact.rule().benefitMode())
                 || !view.command().assetKind().name().equals(fact.rule().kind())) conflict();
-        if (Set.of("COMMIT_DECIDED", "COMMITTED").contains(row.getStatus())) return view;
+        if (Set.of(OrdEntServiceOrder.COMMIT_DECIDED, "COMMITTED").contains(row.getStatus())) return view;
         if (!"PENDING".equals(row.getStatus())) conflict();
         decide(row, view, true, null); return snapshot(row, json);
     }
@@ -320,7 +320,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
     public ServiceOrderSnapshot cancel(EntitlementContext ctx, String entity, String store, String no, String reason) {
         if (reason == null || reason.isBlank() || reason.length() > 100) badRequest();
         var row = lock(ctx.tenantNo(), no); merchant(row, ctx, entity, store); var view = snapshot(row, json);
-        if (Set.of("CANCEL_DECIDED", "RELEASED").contains(row.getStatus())) return view;
+        if (Set.of(OrdEntServiceOrder.CANCEL_DECIDED, "RELEASED").contains(row.getStatus())) return view;
         if (!Set.of("CREATED", "PREVIEWED", "AUTHORIZED", "PENDING").contains(row.getStatus())) conflict();
         decide(row, view, false, reason); return snapshot(row, json);
     }
@@ -329,8 +329,8 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         var known = orders.findOperation(ctx.tenantNo(), result.operationNo());
         if (known == null || !entity.equals(known.getEntityNo())) notFound();
         var row = lock(ctx.tenantNo(), known.getServiceOrderNo());
-        String expected = result.status() == State.COMMITTED ? "COMMIT_DECIDED"
-                : result.status() == State.RELEASED ? "CANCEL_DECIDED" : null;
+        String expected = result.status() == State.COMMITTED ? OrdEntServiceOrder.COMMIT_DECIDED
+                : result.status() == State.RELEASED ? OrdEntServiceOrder.CANCEL_DECIDED : null;
         if (expected == null || row.getStatus().equals(result.status().name())) return;
         if (!expected.equals(row.getStatus())) conflict();
         row.setStatus(result.status().name()); update(row, ctx.actorNo());
@@ -342,7 +342,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
                 row.getEntityNo(), row.getStoreNo(), view.fact().currency(), amount(view.fact()), row.getSourceHash(),
                 Instant.now());
         row.setDecisionSnapshot(json.writeValueAsString(decision));
-        row.setStatus(commit ? "COMMIT_DECIDED" : "CANCEL_DECIDED"); row.setCancellationReason(reason);
+        row.setStatus(commit ? OrdEntServiceOrder.COMMIT_DECIDED : OrdEntServiceOrder.CANCEL_DECIDED); row.setCancellationReason(reason);
         update(row, row.getOperatorNo());
         events.publish(new UseDecided(row.getTenantNo(), row.getEntityNo(), row.getOperationNo()));
     }

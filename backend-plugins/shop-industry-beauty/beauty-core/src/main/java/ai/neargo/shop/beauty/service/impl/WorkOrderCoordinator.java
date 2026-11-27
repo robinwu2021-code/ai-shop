@@ -457,17 +457,17 @@ public final class WorkOrderCoordinator {
                                             changed.getOperationNo()
                                                     .equals(locked.getAppointmentOperationNo()));
                                     var persisted = payload(locked);
-                                    if ("RESOURCE_PENDING".equals(locked.getPhase())) {
+                                    if (BtyReceptionOperation.RESOURCE_PENDING.equals(locked.getPhase())) {
                                         AppointmentPersistence.require(
                                                 persisted.equals(payload(active)));
                                         locked.setFrozenPayload(
                                                 db.json.writeValueAsString(opening));
-                                        locked.setPhase("OPEN_PENDING");
+                                        locked.setPhase(BtyReceptionOperation.OPEN_PENDING);
                                         AppointmentPersistence.require(
                                                 receptionRows.updateById(locked) == 1);
                                     } else {
                                         AppointmentPersistence.require(
-                                                "OPEN_PENDING".equals(locked.getPhase())
+                                                BtyReceptionOperation.OPEN_PENDING.equals(locked.getPhase())
                                                         && persisted.equals(opening));
                                     }
                                     return null;
@@ -515,7 +515,7 @@ public final class WorkOrderCoordinator {
         AppointmentPersistence.require("RECEIVE_WALK_IN".equals(op.getAction()) && "BAPI-048".equals(op.getEndpoint()));
         if (succeeded(op)) { return result(op); }
         var original = db.json.readValue(op.getFrozenPayload(), WalkInPayload.class);
-        AppointmentPersistence.require("OPEN_PENDING".equals(op.getPhase()) && original.openingRevision() != null);
+        AppointmentPersistence.require(BtyReceptionOperation.OPEN_PENDING.equals(op.getPhase()) && original.openingRevision() != null);
         var observed = scoped(entity, store, op.getAppointmentNo());
         var prepared = preparedForIdentity(observed, preparation.fromAppointment(observed), canonical(op));
         return openPrepared(observed, actor, op, prepared, original.openingRevision());
@@ -590,7 +590,7 @@ public final class WorkOrderCoordinator {
             if (walkIn) {
                 var original = db.json.readValue(op.getFrozenPayload(), WalkInPayload.class);
                 AppointmentPersistence.require("BAPI-048".equals(op.getEndpoint())
-                        && "OPEN_PENDING".equals(op.getPhase()) && original.openingRevision() == revision
+                        && BtyReceptionOperation.OPEN_PENDING.equals(op.getPhase()) && original.openingRevision() == revision
                         && original.appointmentNo().equals(op.getAppointmentNo())
                         && original.appointmentOperationNo().equals(op.getAppointmentOperationNo()));
             }

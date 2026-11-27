@@ -124,7 +124,7 @@ public class BusinessReturnApprovalServiceImpl implements BusinessReturnApproval
                                 return prior;
                             }
                             if (!req.version().equals(current.getVersion())
-                                    || !"BUSINESS_REQUESTED".equals(current.getStatus()))
+                                    || !FnbReturn.BUSINESS_REQUESTED.equals(current.getStatus()))
                                 throw conflict();
                             var batch = batch(e, s, current.getBatchNo(), true);
                             if (req.replacementCartNo() != null) {
@@ -155,10 +155,10 @@ public class BusinessReturnApprovalServiceImpl implements BusinessReturnApproval
                             created.setStatus(
                                     "HANDLED".equals(current.getKitchenStatus())
                                             ? "PREPARED"
-                                            : "WAIT_KITCHEN");
+                                            : FnbReturn.WAIT_KITCHEN);
                             stamp(created, actor);
                             if (intents.insert(created) != 1) throw conflict();
-                            current.setStatus("APPROVAL_PENDING");
+                            current.setStatus(FnbReturn.APPROVAL_PENDING);
                             current.setApprovalRef(created.getApprovalNo());
                             current.setUpdatedBy(actor);
                             if (returns.updateById(current) != 1) throw conflict();
@@ -273,7 +273,7 @@ public class BusinessReturnApprovalServiceImpl implements BusinessReturnApproval
                                 if (intents.updateById(current) != 1) throw conflict();
                                 var original = head(e, s, number, true);
                                 original.setStatus(
-                                        confirmed.pending() ? "APPROVAL_UNKNOWN" : "APPROVED");
+                                        confirmed.pending() ? FnbReturn.APPROVAL_UNKNOWN : "APPROVED");
                                 original.setUpdatedBy(initial.getActorNo());
                                 if (returns.updateById(original) != 1) throw conflict();
                                 if (checkGuard != null)
@@ -370,7 +370,7 @@ public class BusinessReturnApprovalServiceImpl implements BusinessReturnApproval
                                                 .in(
                                                         FnbReturnAmendment::getStatus,
                                                         List.of(
-                                                                "WAIT_KITCHEN",
+                                                                FnbReturn.WAIT_KITCHEN,
                                                                 "PREPARED",
                                                                 "UNKNOWN"))
                                                 .orderByAsc(FnbReturnAmendment::getUpdatedAt)

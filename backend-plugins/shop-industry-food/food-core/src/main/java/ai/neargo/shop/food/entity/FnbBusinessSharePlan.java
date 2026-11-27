@@ -15,6 +15,10 @@ import lombok.Setter;
 @Setter
 @TableName("fnb_business_share_plan")
 public class FnbBusinessSharePlan extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String CANCELLED_BUSINESS_ONLY = "CANCELLED_BUSINESS_ONLY";
+    public static final String CONFIRMED_BUSINESS_ONLY = "CONFIRMED_BUSINESS_ONLY";
+    public static final String DRAFT_BUSINESS_ONLY = "DRAFT_BUSINESS_ONLY";
     private String entityNo;
     private String storeNo;
     private String checkNo;

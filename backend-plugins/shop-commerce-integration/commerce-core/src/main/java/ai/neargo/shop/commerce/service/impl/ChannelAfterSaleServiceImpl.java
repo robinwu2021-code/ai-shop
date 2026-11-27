@@ -223,7 +223,7 @@ public final class ChannelAfterSaleServiceImpl
             row.setCurrency(d.currency());
             row.setMerchantRefundMinor(d.merchantRefundMinor());
             row.setRequestedAt(LocalDateTime.ofInstant(d.requestedAt(), ZoneOffset.UTC));
-            row.setDecisionStatus("WAITING_ORIGINAL_DECISION");
+            row.setDecisionStatus(CimAfterSaleLink.WAITING_ORIGINAL_DECISION);
             row.setLocalFundsStatus("UNKNOWN");
             row.setLocalInventoryStatus("UNKNOWN");
             links.insert(row);
@@ -399,7 +399,7 @@ public final class ChannelAfterSaleServiceImpl
         require(
                 row.getVersion().equals(request.version())
                         && !"CONFLICT".equals(row.getDecisionStatus())
-                        && Set.of("REQUESTED", "RETURN_IN_PROGRESS")
+                        && Set.of("REQUESTED", CimAfterSaleLink.RETURN_IN_PROGRESS)
                                 .contains(row.getSupplierState()));
         var sourceQuery =
                 new ChannelAfterSaleSourcePort.Query(
@@ -484,7 +484,7 @@ public final class ChannelAfterSaleServiceImpl
         op.setSemanticKey(ChannelIdentity.hash(caseNo));
         op.setRequestHash(PricingSnapshotHash.of(publication));
         op.setRequestRef("AFTER_SALE:" + caseNo);
-        op.setStatus(refund ? "WAITING_FUNDS" : "QUEUED");
+        op.setStatus(refund ? CimAfterSaleLink.WAITING_FUNDS : "QUEUED");
         op.setCurrentAttemptNo(0L);
         op.setFence(0L);
         op.setNextRecoveryAt(now());
@@ -514,7 +514,7 @@ public final class ChannelAfterSaleServiceImpl
                                         .set(
                                                 "payload_json",
                                                 orders.db.json.writeValueAsString(publication))
-                                        .set("decision_status", refund ? "WAITING_FUNDS" : "QUEUED")
+                                        .set("decision_status", refund ? CimAfterSaleLink.WAITING_FUNDS : "QUEUED")
                                         .setSql("version=version+1"))
                         == 1);
         for (var selected : mapped) {
@@ -640,7 +640,7 @@ public final class ChannelAfterSaleServiceImpl
                                                 .in(
                                                         "status",
                                                         "QUEUED",
-                                                        "WAITING_FUNDS",
+                                                        CimAfterSaleLink.WAITING_FUNDS,
                                                         "RUNNING",
                                                         "UNKNOWN")
                                                 .le("next_recovery_at", now())
@@ -651,7 +651,7 @@ public final class ChannelAfterSaleServiceImpl
             Claim claim = null;
             try {
                 Fresh fresh = null;
-                if (Set.of("QUEUED", "WAITING_FUNDS").contains(candidate.getStatus()))
+                if (Set.of("QUEUED", CimAfterSaleLink.WAITING_FUNDS).contains(candidate.getStatus()))
                     fresh = refresh(candidate);
                 var original = fresh;
                 claim = orders.db.commands.atomic(() -> claim(candidate, original));
@@ -742,7 +742,7 @@ public final class ChannelAfterSaleServiceImpl
                         candidate.getStoreNo(),
                         candidate.getBusinessRef(),
                         true);
-        if (!Set.of("QUEUED", "WAITING_FUNDS", "RUNNING", "UNKNOWN").contains(op.getStatus())
+        if (!Set.of("QUEUED", CimAfterSaleLink.WAITING_FUNDS, "RUNNING", "UNKNOWN").contains(op.getStatus())
                 || op.getNextRecoveryAt() == null
                 || op.getNextRecoveryAt().isAfter(now())
                 || op.getLeaseUntil() != null && op.getLeaseUntil().isAfter(now())) return null;
@@ -766,7 +766,7 @@ public final class ChannelAfterSaleServiceImpl
             require(
                     row.getSourceDecisionHash().equals(fresh.source().decisionHash())
                             && publication.caseHash().equals(revision(row).getContentHash())
-                            && Set.of("REQUESTED", "RETURN_IN_PROGRESS")
+                            && Set.of("REQUESTED", CimAfterSaleLink.RETURN_IN_PROGRESS)
                                     .contains(row.getSupplierState()));
             var grant =
                     grant(
@@ -794,7 +794,7 @@ public final class ChannelAfterSaleServiceImpl
                                     .eq("tenant_no", "MAIN")
                                     .eq("id", op.getId())
                                     .eq("version", op.getVersion())
-                                    .set("status", "WAITING_FUNDS")
+                                    .set("status", CimAfterSaleLink.WAITING_FUNDS)
                                     .set("next_recovery_at", now().plusMinutes(1))
                                     .setSql("version=version+1"));
                     return null;
@@ -1009,7 +1009,7 @@ public final class ChannelAfterSaleServiceImpl
                                     .eq("entity_no", candidate.getEntityNo())
                                     .eq("operation_no", candidate.getOperationNo())
                                     .eq("version", candidate.getVersion())
-                                    .in("status", "QUEUED", "WAITING_FUNDS")
+                                    .in("status", "QUEUED", CimAfterSaleLink.WAITING_FUNDS)
                                     .set("next_recovery_at", now().plusMinutes(1))
                                     .setSql("version=version+1"));
                     return null;
@@ -1082,7 +1082,7 @@ public final class ChannelAfterSaleServiceImpl
             require(Set.of("REFUND_ONLY", "RETURN_REFUND").contains(query.type()));
         if (query.status() != null)
             require(
-                    Set.of("REQUESTED", "RETURN_IN_PROGRESS", "REFUNDED", "REJECTED", "CLOSED")
+                    Set.of("REQUESTED", CimAfterSaleLink.RETURN_IN_PROGRESS, "REFUNDED", "REJECTED", "CLOSED")
                             .contains(query.status()));
         require(query.from() == null || query.to() == null || !query.to().isBefore(query.from()));
         return orders.db.commands.query(

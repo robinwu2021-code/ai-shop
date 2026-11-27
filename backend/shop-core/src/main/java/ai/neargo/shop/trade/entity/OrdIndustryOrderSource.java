@@ -10,6 +10,11 @@ import lombok.Setter;
 @Setter
 @TableName("ord_industry_order_source")
 public class OrdIndustryOrderSource extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String DISPATCHING = "DISPATCHING";
+    public static final String UNCONFIRMED = "UNCONFIRMED";
+    public static final String WAITING_FUNDING = "WAITING_FUNDING";
+    public static final String WAITING_STOCK = "WAITING_STOCK";
     /** Immutable selected stock owner, independent of the legacy stock authority protocol. */
     @com.baomidou.mybatisplus.annotation.TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
     private String inventoryOwner;

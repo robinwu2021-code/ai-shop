@@ -10,6 +10,8 @@ import lombok.Setter;
 @Setter
 @TableName("fnb_table")
 public class FnbTable extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String NEEDS_CLEANING = "NEEDS_CLEANING";
     private String entityNo;
     private String tableNo;
     private String storeNo;

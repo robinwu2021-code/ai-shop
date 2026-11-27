@@ -19,7 +19,7 @@ public final class ContractOrderStatus {
     public static final String WAIT_PAY = "WAIT_PAY";
     public static final String POINTS_PROCESSING = "POINTS_PROCESSING";
     /** 待当面收款（线下支付，由主单状态推出；库里子单没有这个值） */
-    public static final String WAIT_OFFLINE_PAY = "WAIT_OFFLINE_PAY";
+    public static final String WAIT_OFFLINE_PAY = ai.neargo.shop.trade.entity.OrdOrder.WAIT_OFFLINE_PAY;
     /** 已付款、等交付方行动（库里子单叫 WAIT_FULFILL） */
     public static final String PAID = "PAID";
     /** 交付方已行动、等交接完成（显示成「已发货/已到自提点/待服务」由履约方式派生） */

@@ -157,10 +157,10 @@ public final class ChannelOrderDecisionService implements ChannelRecoveryPort {
                         && row.getDecisionOperationNo() == null
                         && Set.of(
                                         "RECEIVED",
-                                        "WAITING_MAPPING",
-                                        "WAITING_OWNER",
+                                        CimOrderLink.WAITING_MAPPING,
+                                        CimOrderLink.WAITING_OWNER,
                                         "PREPARED",
-                                        "WAITING_DECISION")
+                                        CimOrderLink.WAITING_DECISION)
                                 .contains(row.getImportStatus()));
         var snapshot =
                 data.db.json.readValue(
@@ -464,7 +464,7 @@ public final class ChannelOrderDecisionService implements ChannelRecoveryPort {
                     Wrappers.<CimOrderLink>update()
                             .eq("tenant_no", "MAIN")
                             .eq("id", order.getId())
-                            .set("import_status", "WAITING_OWNER")
+                            .set("import_status", CimOrderLink.WAITING_OWNER)
                             .set("next_attempt_at", now())
                             .set("version", order.getVersion() + 1));
             later(op);
@@ -737,17 +737,17 @@ public final class ChannelOrderDecisionService implements ChannelRecoveryPort {
                     conflict
                             ? "CONFLICT"
                             : accept
-                                    ? "WAITING_CONFIRMATION"
+                                    ? CimOrderLink.WAITING_CONFIRMATION
                                     : order.getImportSnapshot() == null
                                             ? "REJECTED"
-                                            : "WAITING_CANCELLATION";
+                                            : CimOrderLink.WAITING_CANCELLATION;
             var update =
                     Wrappers.<CimOrderLink>update()
                             .eq("tenant_no", "MAIN")
                             .eq("id", order.getId())
                             .set(
                                     "acceptance_status",
-                                    accept ? "PLATFORM_CONFIRMED" : "PLATFORM_REJECTED")
+                                    accept ? CimOrderLink.PLATFORM_CONFIRMED : CimOrderLink.PLATFORM_REJECTED)
                             .set("import_status", businessStatus)
                             .set("next_attempt_at", conflict ? null : now())
                             .set("lease_until", null)

@@ -18,7 +18,7 @@ public final class TableOccupancyPolicy {
         for(var table:tables) {
             if(table.getCapacity()==null || table.getCapacity()<1 || table.getResourceNo()!=null)
                 throw BizException.of(ErrorCode.FORBIDDEN);
-            if("NEEDS_CLEANING".equals(table.getTurnoverState())) throw BizException.of(ErrorCode.CONFLICT);
+            if(FnbTable.NEEDS_CLEANING.equals(table.getTurnoverState())) throw BizException.of(ErrorCode.CONFLICT);
             long occupied=0;
             for(var row:active.get(table.getTableNo())) {
                 if(row.getResourceClaimNo()!=null) throw BizException.of(ErrorCode.FORBIDDEN);

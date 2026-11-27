@@ -13,6 +13,13 @@ import lombok.Setter;
 @Setter
 @TableName("fnb_return")
 public class FnbReturn extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String APPROVAL_PENDING = "APPROVAL_PENDING";
+    public static final String APPROVAL_UNKNOWN = "APPROVAL_UNKNOWN";
+    public static final String BUSINESS_REQUESTED = "BUSINESS_REQUESTED";
+    public static final String CANCEL_PENDING = "CANCEL_PENDING";
+    public static final String NOT_REQUESTED = "NOT_REQUESTED";
+    public static final String WAIT_KITCHEN = "WAIT_KITCHEN";
     /** Recovery lease; only the recovery scanner moves it, entity write-back never does (C2). */
     @TableField(updateStrategy = FieldStrategy.NEVER)
     private LocalDateTime nextRecoveryAt;

@@ -27,12 +27,12 @@ public final class ChannelOrderMaintenanceService implements ChannelRecoveryPort
     private static final Set<String> RECOVERABLE =
             Set.of(
                     "RECEIVED",
-                    "WAITING_MAPPING",
-                    "WAITING_OWNER",
+                    CimOrderLink.WAITING_MAPPING,
+                    CimOrderLink.WAITING_OWNER,
                     "PREPARED",
-                    "WAITING_DECISION",
-                    "WAITING_CONFIRMATION",
-                    "WAITING_CANCELLATION");
+                    CimOrderLink.WAITING_DECISION,
+                    CimOrderLink.WAITING_CONFIRMATION,
+                    CimOrderLink.WAITING_CANCELLATION);
     private final ChannelOrderServiceImpl data;
     private final Clock clock;
 
@@ -163,11 +163,11 @@ public final class ChannelOrderMaintenanceService implements ChannelRecoveryPort
                                                     .eq("version", row.getVersion())
                                                     .set(
                                                             "import_status",
-                                                            "WAITING_DECISION"
+                                                            CimOrderLink.WAITING_DECISION
                                                                             .equals(
                                                                                     row
                                                                                             .getImportStatus())
-                                                                    ? "WAITING_OWNER"
+                                                                    ? CimOrderLink.WAITING_OWNER
                                                                     : row.getImportStatus())
                                                     .set("next_attempt_at", now())
                                                     .set("version", row.getVersion() + 1))

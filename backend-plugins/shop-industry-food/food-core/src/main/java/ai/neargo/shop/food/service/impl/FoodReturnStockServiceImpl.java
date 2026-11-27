@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.entity.FnbReturn;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.food.entity.*;
@@ -57,7 +58,7 @@ public final class FoodReturnStockServiceImpl implements FoodReturnStockService 
                     .eq(FnbReturnStockDisposition::getEntityNo,entity).eq(FnbReturnStockDisposition::getStoreNo,store)
                     .eq(FnbReturnStockDisposition::getOperationKey,key));
             if(old!=null){if(!hash.equals(old.getRequestHash()))throw conflict();return old;}
-            if(!"HANDLED".equals(head.getKitchenStatus())||Set.of("REJECTED","CANCELLED","CANCEL_PENDING").contains(head.getStatus()))throw conflict();
+            if(!"HANDLED".equals(head.getKitchenStatus())||Set.of("REJECTED","CANCELLED",FnbReturn.CANCEL_PENDING).contains(head.getStatus()))throw conflict();
             var item=returnItems.selectOne(Wrappers.<FnbReturnItem>lambdaQuery().eq(FnbReturnItem::getTenantNo,"MAIN")
                     .eq(FnbReturnItem::getEntityNo,entity).eq(FnbReturnItem::getReturnNo,number)
                     .eq(FnbReturnItem::getReturnItemNo,input.returnItemNo()).last("FOR UPDATE"));

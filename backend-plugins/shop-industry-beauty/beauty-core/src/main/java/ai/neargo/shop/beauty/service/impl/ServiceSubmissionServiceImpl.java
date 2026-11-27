@@ -1027,7 +1027,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
     }
 
     private BtyServiceSubmission pending(BtyServiceSubmission lease, String actor, String reason) {
-        return completeLease(lease, actor, "SOURCE_PENDING", reason, now().plusSeconds(30));
+        return completeLease(lease, actor, BtyServiceTask.SOURCE_PENDING, reason, now().plusSeconds(30));
     }
 
     /** Completes only the current lease; a lost race returns the already committed current row. */

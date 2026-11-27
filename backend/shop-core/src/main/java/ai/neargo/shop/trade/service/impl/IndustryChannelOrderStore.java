@@ -359,8 +359,8 @@ public final class IndustryChannelOrderStore {
                                                         facts.data().externalOrderRef()));
                                         row.setOrderNo(order.value());
                                         row.setSubOrderNo(sub.value());
-                                        row.setStatus("WAITING_FUNDING");
-                                        row.setFundingStatus("UNCONFIRMED");
+                                        row.setStatus(OrdIndustryOrderSource.WAITING_FUNDING);
+                                        row.setFundingStatus(OrdIndustryOrderSource.UNCONFIRMED);
                                         row.setReservedMinor(0L);
                                         row.setFence(0L);
                                         imports.insert(row);
@@ -433,7 +433,7 @@ public final class IndustryChannelOrderStore {
                     IndustryChannelOrderFacts.collection(ref, original, collection, clock);
                     if (row.getPolicyNo() != null)
                         return admitCollectionRevision(ref, row, policy, original, collection);
-                    if (!"WAITING_FUNDING".equals(row.getStatus())) return row;
+                    if (!OrdIndustryOrderSource.WAITING_FUNDING.equals(row.getStatus())) return row;
                     long amount = original.totals().merchantReceivableMinor();
                     boolean allowed =
                             policy != null
@@ -456,7 +456,7 @@ public final class IndustryChannelOrderStore {
                                         .eq("tenant_no", ref.scope().tenantNo())
                                         .eq("id", row.getId())
                                         .eq("version", row.getVersion())
-                                        .set("status", "WAITING_FUNDING")
+                                        .set("status", OrdIndustryOrderSource.WAITING_FUNDING)
                                         .set("funding_status", "WAITING_ADMISSION")
                                         .setSql("version=version+1"));
                         return required(ref, false);
@@ -489,7 +489,7 @@ public final class IndustryChannelOrderStore {
                                                     .eq("tenant_no", ref.scope().tenantNo())
                                                     .eq("id", row.getId())
                                                     .eq("version", row.getVersion())
-                                                    .set("status", "WAITING_STOCK")
+                                                    .set("status", OrdIndustryOrderSource.WAITING_STOCK)
                                                     .set(
                                                             "funding_status",
                                                             collection.collection()

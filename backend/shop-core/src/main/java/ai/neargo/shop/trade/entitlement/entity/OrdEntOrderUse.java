@@ -10,6 +10,9 @@ import lombok.Setter;
 @Setter
 @TableName("ord_ent_order_use")
 public class OrdEntOrderUse extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String CANCEL_DECIDED = "CANCEL_DECIDED";
+    public static final String COMMIT_DECIDED = "COMMIT_DECIDED";
     private String operationNo;
     private String orderNo;
     private String entityNo;

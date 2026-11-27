@@ -15,6 +15,10 @@ import lombok.Setter;
 @Setter
 @TableName("ord_channel_after_sale")
 public class OrdChannelAfterSale extends BaseEntity {
+    /** 状态取值（零售域状态短值换值表）：只在这里写字面量，别处引用本常量。 */
+    public static final String NOT_REQUIRED = "NOT_REQUIRED";
+    public static final String WAITING_FUNDS_OWNER = "WAITING_FUNDS_OWNER";
+    public static final String WAITING_ORIGINAL_ACTION = "WAITING_ORIGINAL_ACTION";
     private String decisionNo;
     private String entityNo;
     private String storeNo;
