@@ -2,7 +2,6 @@
 R1 AppealMapper 继承 BaseMapper
 R1 ExecutionRetentionMapper 继承 BaseMapper
 R1 GoodsFavoriteMapper 继承 BaseMapper
-R1 PrdEntBindingCommandMapper 继承 BaseMapper
 R1 ReviewLikeMapper 继承 BaseMapper
 R1 ReviewMapper 继承 BaseMapper
 R1 StockRestoreMapper 继承 BaseMapper
@@ -20,11 +19,8 @@ R2 GoodsFavoriteMapper 用到 prd_goods_favorite，不在 目标库 DDL
 R2 MerchantSpecMapper 用到 prd_merchant_spec，不在 05-n_trade.sql
 R2 MerchantSpecOverrideMapper 用到 prd_merchant_spec_override，不在 05-n_trade.sql
 R2 MerchantSpecValueMapper 用到 prd_merchant_spec_value，不在 05-n_trade.sql
-R2 PrdEntBindingCommandMapper 用到 prd_ent_binding_command，不在 目标库 DDL
-R2 PrdEntitlementBindingMapper 用到 prd_entitlement_binding，不在 05-n_trade.sql
 R2 ReviewLikeMapper 用到 rvw_review_like，不在 目标库 DDL
 R2 ReviewMapper 用到 rvw_review，不在 目标库 DDL
-R2 SkuPricingPolicyMapper 用到 prd_sku_pricing_policy，不在 05-n_trade.sql
 R2 SpecTemplateMapper 用到 prd_spec_template，不在 05-n_trade.sql
 R2 StockRestoreMapper 用到 prd_stock_restore，不在 目标库 DDL
 R2 StockSyncLogMapper 用到 prd_stock_sync_log，不在 目标库 DDL

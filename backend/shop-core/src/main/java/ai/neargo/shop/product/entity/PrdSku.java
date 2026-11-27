@@ -171,4 +171,31 @@ public class PrdSku extends BaseEntity {
 
     /** 到货时间。一期只做「截单必须早于到货」的校验基准，不驱动履约批次。 */
     private java.time.LocalDateTime arriveAt;
+
+    public static final String STATUS_ACTIVE = "ACTIVE";
+    public static final String STATUS_DISABLED = "DISABLED";
+
+    /** SKU 状态：{@link #STATUS_ACTIVE} 可售 / {@link #STATUS_DISABLED} 停用。卡类 SKU 停用即停售它绑的权益。 */
+    private String status;
+
+    /*
+     * ---- 定价策略（原 prd_sku_pricing_policy，门店交易库并入本表）----
+     * 两列同时为空 = 商家还没配，结算时按「策略缺失」拦下，不默认任何税类。
+     * 版本复用本行的乐观锁 version：任何对这个 SKU 的修改都让在途的策略编辑冲突重来。
+     */
+    /** 税类编码（{@code TaxClass} 枚举名），结算时决定税率。 */
+    private String taxClass;
+    /** 是否可参加促销。 */
+    private Boolean promotionEligible;
+
+    /*
+     * ---- 卡类权益绑定（原 prd_entitlement_binding，门店交易库并入本表）----
+     * entitlementVersionNo 为空 = 未绑定（老卡按旧路径卖）；绑定后不可再变回未绑定。
+     */
+    /** 绑定的支付库权益定义版本号。 */
+    private String entitlementVersionNo;
+    /** 绑定时的权益规则快照（JSON），下单时冻结用。 */
+    private String entitlementRuleSnapshot;
+    /** 每卖出一件发放的权益实例数。 */
+    private Integer entitlementUnits;
 }

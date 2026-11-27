@@ -23,7 +23,7 @@ class PrivateOwnerDataScopeTest {
             "ord_industry_fulfillment", "ord_industry_order_source",
             "ord_manual_price_adjustment", "ord_manual_price_policy", "ord_price_quote",
             "ord_pricing_funding_source", "ord_store_pricing_config", "ord_store_pricing_revision",
-            "prd_sku_pricing_policy", "prn_attempt", "prn_device", "prn_job", "prn_route", "prn_template");
+            "prd_sku", "prn_attempt", "prn_device", "prn_job", "prn_route", "prn_template");
 
     @Autowired private DataScopeTableRegistry registry;
     @Autowired private DataScopeHandler handler;

@@ -4,7 +4,6 @@ import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
@@ -15,10 +14,8 @@ import ai.neargo.shop.product.dto.GoodsPricingPolicyCommands.PolicyVO;
 import ai.neargo.shop.product.dto.GoodsPricingPolicyCommands.SaveReq;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.entity.PrdSkuPricingPolicy;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.SkuPricingPolicyMapper;
 import ai.neargo.shop.product.service.GoodsPricingPolicyService;
 import ai.neargo.shop.spi.product.GoodsPricingPolicyFacts;
 import ai.neargo.shop.spi.product.GoodsPricingPolicyPort.Policy;
@@ -31,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -42,7 +40,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** Store-owned SKU metadata; CAS and receipt commit together, without changing price or stock. */
+/**
+ * Store-owned SKU metadata; CAS and receipt commit together, without changing price or stock.
+ *
+ * <p>门店交易库里策略是 {@code prd_sku} 的两列（{@code tax_class}、{@code promotion_eligible}），
+ * 写在本市场那一行上。商品归属唯一一家门店（{@link #owned} 校验 goods.store_no），
+ * 所以原表的 store_no 维度并进 SKU 不丢信息。策略编号用 sku_no，版本用该行的乐观锁 version；
+ * 未配时对外版本为 0，第一次保存必须带 0。
+ */
 @Service
 public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService {
     /**
@@ -58,21 +63,19 @@ public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService 
 
     private final GoodsMapper goods;
     private final SkuMapper skus;
-    private final SkuPricingPolicyMapper policies;
     private final RequestIdempotencyPort idempotency;
     private final TransactionTemplate transactions;
-    public GoodsPricingPolicyServiceImpl(GoodsMapper goods, SkuMapper skus, SkuPricingPolicyMapper policies,
+    public GoodsPricingPolicyServiceImpl(GoodsMapper goods, SkuMapper skus,
             RequestIdempotencyPort idempotency, @Qualifier(ModuleDataSources.PRODUCT_TX_MANAGER) PlatformTransactionManager manager) {
-        this.goods = goods; this.skus = skus; this.policies = policies; this.idempotency = idempotency;
+        this.goods = goods; this.skus = skus; this.idempotency = idempotency;
         this.transactions = new TransactionTemplate(manager);
     }
     @Override public PolicyVO get(Context context, String goodsNo, String skuNo) {
         if (context == null) throw bad();
         var ref = ref(goodsNo, skuNo);
-        owned(context.scope(), ref);
-        var row = row(context.scope(), ref);
-        if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
-        return PolicyVO.from(policy(context.scope(), ref, row));
+        var sku = owned(context.scope(), ref);
+        if (!configured(sku)) throw BizException.of(ErrorCode.NOT_FOUND);
+        return PolicyVO.from(policy(context.scope(), ref, sku));
     }
     @Override public PolicyVO save(Context context, String goodsNo, String skuNo, SaveReq request, String key) {
         if (context == null || request == null || request.promotionEligible() == null || request.taxClass() == null
@@ -97,31 +100,16 @@ public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService 
         }
     }
     private PolicyVO change(Context context, SkuRef ref, SaveReq request) {
-        var scope = context.scope(); owned(scope, ref);
-        var original = row(scope, ref);
-        long version = original == null ? 0 : original.getVersion();
-        if (version != request.expectedVersion()) throw conflict();
-        var now = LocalDateTime.now();
-        if (original == null) {
-            original = new PrdSkuPricingPolicy();
-            original.setPolicyNo(BizKey.next(BizKey.SKU_PRICING_POLICY)); original.setTenantNo(scope.tenantNo());
-            original.setEntityNo(scope.entityNo()); original.setStoreNo(scope.storeNo());
-            original.setGoodsNo(ref.goodsNo()); original.setSkuNo(ref.skuNo());
-            original.setPromotionEligible(request.promotionEligible()); original.setTaxClass(request.taxClass().name());
-            original.setVersion(1L); original.setDeleted(0); original.setCreatedAt(now); original.setUpdatedAt(now);
-            original.setCreatedBy(context.actorNo()); original.setUpdatedBy(context.actorNo());
-            var inserted = original;
-            if (DataScopeContext.executeWithoutScope(() -> policies.insert(inserted)) != 1) throw conflict();
-        } else {
-            var update = new UpdateWrapper<PrdSkuPricingPolicy>().eq("tenant_no", scope.tenantNo())
-                    .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo())
-                    .eq("goods_no", ref.goodsNo()).eq("sku_no", ref.skuNo()).eq("deleted", 0)
-                    .eq("version", version).set("version", version + 1)
-                    .set("promotion_eligible", request.promotionEligible()).set("tax_class", request.taxClass().name())
-                    .set("updated_at", now).set("updated_by", context.actorNo());
-            if (DataScopeContext.executeWithoutScope(() -> policies.update(null, update)) != 1) throw conflict();
-        }
-        return PolicyVO.from(policy(scope, ref, row(scope, ref)));
+        var scope = context.scope();
+        var sku = owned(scope, ref);
+        long rowVersion = sku.getVersion() == null ? 0 : sku.getVersion();
+        if (exposedVersion(sku) != request.expectedVersion()) throw conflict();
+        var update = new UpdateWrapper<PrdSku>().eq("id", sku.getId()).eq("deleted", 0)
+                .eq("version", rowVersion).set("version", rowVersion + 1)
+                .set("promotion_eligible", request.promotionEligible()).set("tax_class", request.taxClass().name())
+                .set("updated_at", LocalDateTime.now()).set("updated_by", context.actorNo());
+        if (DataScopeContext.executeWithoutScope(() -> skus.update(null, update)) != 1) throw conflict();
+        return PolicyVO.from(policy(scope, ref, owned(scope, ref)));
     }
     @Override
     @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER, readOnly = true)
@@ -131,8 +119,7 @@ public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService 
         catch (RuntimeException invalid) { throw blocked(); }
         var result = new ArrayList<Policy>();
         for (var ref : refs) {
-            owned(scope, ref);
-            result.add(policy(scope, ref, row(scope, ref)));
+            result.add(policy(scope, ref, owned(scope, ref)));
         }
         return GoodsPricingPolicyFacts.freeze(scope, result);
     }
@@ -140,17 +127,27 @@ public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService 
     public Map<String, TaxClass> taxClasses(Scope scope, Collection<String> skuNos) {
         var out = new HashMap<String, TaxClass>();
         if (skuNos.isEmpty()) return out;
-        for (var row : DataScopeContext.executeWithoutScope(() -> policies.selectList(
-                new QueryWrapper<PrdSkuPricingPolicy>().select("sku_no", "tax_class")
+        var rows = DataScopeContext.executeWithoutScope(() -> skus.selectList(
+                new QueryWrapper<PrdSku>().select("sku_no", "goods_no", "tax_class")
                         .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo())
-                        .eq("store_no", scope.storeNo()).in("sku_no", skuNos).eq("deleted", 0)))) {
-            out.put(row.getSkuNo(), TaxClass.valueOf(row.getTaxClass()));
+                        .eq("market", homeMarket).in("sku_no", skuNos).isNotNull("tax_class").eq("deleted", 0)));
+        if (rows.isEmpty()) return out;
+        // 原表按 store_no 取；策略并进 SKU 后，门店维度由商品归属给出
+        var goodsNos = new HashSet<String>();
+        rows.forEach(row -> goodsNos.add(row.getGoodsNo()));
+        var storeGoods = new HashSet<String>();
+        DataScopeContext.executeWithoutScope(() -> goods.selectList(new QueryWrapper<PrdGoods>().select("goods_no")
+                .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo())
+                .in("goods_no", goodsNos).eq("deleted", 0))).forEach(g -> storeGoods.add(g.getGoodsNo()));
+        for (var row : rows) {
+            if (storeGoods.contains(row.getGoodsNo())) out.put(row.getSkuNo(), TaxClass.valueOf(row.getTaxClass()));
         }
         return out;
     }
-        private void owned(Scope scope, SkuRef ref) {
+    private PrdSku owned(Scope scope, SkuRef ref) {
         var sku = DataScopeContext.executeWithoutScope(() -> skus.selectOne(new QueryWrapper<PrdSku>()
-                .select("sku_no", "goods_no", "entity_no", "market")
+                .select("id", "tenant_no", "sku_no", "goods_no", "entity_no", "market", "tax_class",
+                        "promotion_eligible", "version")
                 .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo()).eq("goods_no", ref.goodsNo())
                 .eq("sku_no", ref.skuNo()).eq("market", homeMarket).eq("deleted", 0)));
         var owner = DataScopeContext.executeWithoutScope(() -> goods.selectOne(new QueryWrapper<PrdGoods>()
@@ -163,22 +160,25 @@ public class GoodsPricingPolicyServiceImpl implements GoodsPricingPolicyService 
                 || !scope.entityNo().equals(owner.getEntityNo()) || !scope.storeNo().equals(owner.getStoreNo())) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        return sku;
     }
-    private PrdSkuPricingPolicy row(Scope scope, SkuRef ref) {
-        return DataScopeContext.executeWithoutScope(() -> policies.selectOne(new QueryWrapper<PrdSkuPricingPolicy>()
-                .eq("tenant_no", scope.tenantNo()).eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo())
-                .eq("goods_no", ref.goodsNo()).eq("sku_no", ref.skuNo()).eq("deleted", 0)));
+    private static boolean configured(PrdSku sku) {
+        return sku.getTaxClass() != null && sku.getPromotionEligible() != null;
     }
-    private Policy policy(Scope scope, SkuRef ref, PrdSkuPricingPolicy row) {
+    /** 未配时对外是 0；配过之后是该行的 version（第一次保存即 ≥ 1，不会与「未配」混淆）。 */
+    private static long exposedVersion(PrdSku sku) {
+        return !configured(sku) || sku.getVersion() == null ? 0 : sku.getVersion();
+    }
+    private Policy policy(Scope scope, SkuRef ref, PrdSku sku) {
         try {
-            if (row == null || !scope.tenantNo().equals(row.getTenantNo())
-                    || !scope.entityNo().equals(row.getEntityNo()) || !scope.storeNo().equals(row.getStoreNo())
-                    || !ref.goodsNo().equals(row.getGoodsNo()) || !ref.skuNo().equals(row.getSkuNo())
-                    || row.getPromotionEligible() == null || row.getVersion() == null) {
+            if (sku == null || !configured(sku) || !scope.tenantNo().equals(sku.getTenantNo())
+                    || !scope.entityNo().equals(sku.getEntityNo())
+                    || !ref.goodsNo().equals(sku.getGoodsNo()) || !ref.skuNo().equals(sku.getSkuNo())
+                    || sku.getVersion() == null) {
                 throw new IllegalArgumentException();
             }
-            var value = new Policy(row.getPolicyNo(), row.getGoodsNo(), row.getSkuNo(), row.getVersion(),
-                    row.getPromotionEligible(), TaxClass.valueOf(row.getTaxClass()));
+            var value = new Policy(sku.getSkuNo(), sku.getGoodsNo(), sku.getSkuNo(), sku.getVersion(),
+                    sku.getPromotionEligible(), TaxClass.valueOf(sku.getTaxClass()));
             GoodsPricingPolicyFacts.freeze(scope, List.of(value)); return value;
         } catch (RuntimeException invalid) { throw blocked(); }
     }

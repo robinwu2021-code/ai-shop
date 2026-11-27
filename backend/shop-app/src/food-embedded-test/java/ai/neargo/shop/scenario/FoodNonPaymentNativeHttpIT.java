@@ -568,8 +568,8 @@ class FoodNonPaymentNativeHttpIT extends FoodEmbeddedStartupIT {
                         Map.of("version", draft.path("version").asLong(), "line", line),
                         token);
         if (sql.queryForObject(
-                        "SELECT COUNT(*) FROM prd_sku_pricing_policy WHERE sku_no=? AND"
-                                + " entity_no='M0001' AND store_no=?",
+                        "SELECT COUNT(*) FROM prd_sku WHERE sku_no=? AND entity_no='M0001' AND"
+                                + " tax_class IS NOT NULL AND goods_no IN (SELECT goods_no FROM prd_goods WHERE store_no=?)",
                         Integer.class,
                         sku,
                         STORE)
@@ -1925,8 +1925,8 @@ class FoodNonPaymentNativeHttpIT extends FoodEmbeddedStartupIT {
             prepareStock(sku);
             recipes.add(Map.of("skuNo", sku, "recipeNo", recipe(token, sku)));
             if (sql.queryForObject(
-                            "SELECT COUNT(*) FROM prd_sku_pricing_policy WHERE sku_no=? AND"
-                                    + " entity_no='M0001' AND store_no=?",
+                            "SELECT COUNT(*) FROM prd_sku WHERE sku_no=? AND entity_no='M0001' AND"
+                                    + " tax_class IS NOT NULL AND goods_no IN (SELECT goods_no FROM prd_goods WHERE store_no=?)",
                             Integer.class,
                             sku,
                             STORE)

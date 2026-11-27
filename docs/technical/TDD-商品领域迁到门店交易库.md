@@ -159,11 +159,20 @@
 - 后续（不在商品范围）：媒体模块 `CoreMediaRefs` 按表名清理无主图片，仍登记旧表 `prd_spu_std`（其覆盖测试扫的是旧迁移）；媒体随它自己的迁移改成按句柄查新库。
 - 其余改名表都牵涉合表，放批次 2：`prd_store_price` → `prd_store_sku`（并入门店库存）、`prd_category_spec` → `prd_spec_usage`（类目改为范围）、`prd_category_spec_value` 在零售定稿里并入 `prd_spec_usage`。
 
+### 第 3 步 · 批次 2（合表）
+
+- **2-a 类目付款方式**：`prd_category_pay_mode` → `prd_category.disallowed_pay_modes`（JSON 数组，只记禁止的，空为 NULL 即全部放行；语义与原表「没有行即放行」一致）。读写集中在 `CategoryPayModePolicy`；`OpsCategoryPolicyController`、`PayModeServiceImpl` 改读类目表；删 `PrdCategoryPayMode` 与其 Mapper。运营端接口出参不变（`configured` 恒等于 `!offlineAllowed`）。基线 −1。
+- **2-b SKU 定价策略**：`prd_sku_pricing_policy` → `prd_sku.tax_class` / `promotion_eligible`，写在本市场那一行。原表的 `store_no` 维度不丢：服务本来就要求商品归属这家门店（`goods.store_no`），一个 SKU 只属一家店。策略编号改用 `sku_no`；版本复用该行乐观锁 `version`，未配时对外为 0。行为差异：同一 SKU 的其他修改（改价、条码）也会让在途的策略编辑冲突重来。`taxClasses` 的门店过滤改为经 `prd_goods.store_no`。删 `PrdSkuPricingPolicy` 与其 Mapper、数据范围登记；`PrivateOwnerDataScopeTest` 改为校验 `prd_sku` 同样拒绝仅位置授权。`BizKey.SKU_PRICING_POLICY` 暂留（术语表由它生成），再无写入方。
+- **2-b 卡类权益绑定**：`prd_entitlement_binding` → `prd_sku.entitlement_version_no` / `entitlement_rule_snapshot` / `entitlement_units`；币种从冻结的规则快照里取（写入时已校验与市场币种一致）。原表的 `status`（代码只写 ACTIVE）与「停用绑定」改为停用 SKU（`prd_sku.status = DISABLED`），同样不能借此退回旧的无权益卖法。专用防重表 `prd_ent_binding_command`（不在新库设计）改走公共的 `RequestIdempotencyPort`。基线 −4。
+- 公共防重表 `sys_idempotent` 目前在主库、不与商品事务同库（定价策略原本就是如此）；它属于公共能力，随防重服务化处理，不进门店交易库。
+
 ### 偏差说明
 
 - 测试库没有按原方案「去掉旧 `prd_*`、两个句柄绑同一个 H2」，而是同一个 H2 库里追加一份按新设计生成的建表脚本：改动更小，漂移测试不受影响，且能逐批迁移。
 
 - 原方案新建 `member` 句柄；实现时发现已有 `memberMarketing` 句柄目标就是会员营销库，改为复用，只加标记接口。
+
+- 批次 2-b 定价策略的版本：原表有独立版本，并进 SKU 后复用行版本（设计 DDL 无专用列；加列属于改表结构，需另行确认）。
 
 ## §7 确认与完成
 

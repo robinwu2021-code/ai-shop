@@ -12,14 +12,11 @@ import ai.neargo.shop.product.dto.GoodsPricingPolicyCommands.Context;
 import ai.neargo.shop.product.dto.GoodsPricingPolicyCommands.SaveReq;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.SkuPricingPolicyMapper;
 import ai.neargo.shop.product.service.impl.GoodsPricingPolicyServiceImpl;
 import ai.neargo.shop.spi.product.GoodsPricingPolicyPort.Scope;
 import ai.neargo.shop.spi.product.GoodsPricingPolicyPort.SkuRef;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -49,34 +46,31 @@ class GoodsPricingPolicyPersistenceTest {
         root.execute("CREATE DATABASE " + url.substring(url.lastIndexOf('/') + 1) + "_product");
         var source = new DriverManagerDataSource(url + "_product", "root", ""); jdbc = new JdbcTemplate(source);
         assertThat(jdbc.queryForObject("SELECT VERSION()", String.class)).contains("MariaDB");
-        for (String sql : Files.readString(Path.of("../shop-app/src/main/resources/db/migration/"
-                + "V559__sku_pricing_policy.sql")).split(";")) {
-            if (!sql.isBlank()) jdbc.execute(sql);
-        }
         jdbc.execute("CREATE TABLE prd_goods(id BIGINT AUTO_INCREMENT PRIMARY KEY,goods_no VARCHAR(32),"
                 + "entity_no VARCHAR(32),store_no VARCHAR(32),tenant_no VARCHAR(32),deleted TINYINT DEFAULT 0)");
         jdbc.execute("CREATE TABLE prd_sku(id BIGINT AUTO_INCREMENT PRIMARY KEY,sku_no VARCHAR(32),"
                 + "goods_no VARCHAR(32),"
-                + "entity_no VARCHAR(32),market VARCHAR(8),tenant_no VARCHAR(32),deleted TINYINT DEFAULT 0)");
+                + "entity_no VARCHAR(32),market VARCHAR(8),tenant_no VARCHAR(32),tax_class VARCHAR(24),"
+                + "promotion_eligible TINYINT,version BIGINT NOT NULL DEFAULT 0,updated_at DATETIME(3),"
+                + "updated_by VARCHAR(64),deleted TINYINT DEFAULT 0) ENGINE=InnoDB");
         jdbc.execute("CREATE TABLE IF NOT EXISTS sys_idempotent(id BIGINT AUTO_INCREMENT PRIMARY KEY,"
                 + "idem_key VARCHAR(128),endpoint VARCHAR(128),user_no VARCHAR(64),request_hash CHAR(64),"
                 + "result_json LONGTEXT,created_at DATETIME,expire_at DATETIME,"
                 + "UNIQUE(idem_key,endpoint)) ENGINE=InnoDB");
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
-        for (var mapper : List.of(GoodsMapper.class, SkuMapper.class, SkuPricingPolicyMapper.class,
+        for (var mapper : List.of(GoodsMapper.class, SkuMapper.class,
                 SysIdempotentMapper.class)) config.addMapper(mapper);
         var factory = new MybatisSqlSessionFactoryBean();
         factory.setDataSource(source); factory.setConfiguration(config);
         var session = new SqlSessionTemplate(factory.getObject());
         service = new GoodsPricingPolicyServiceImpl(
                 session.getMapper(GoodsMapper.class), session.getMapper(SkuMapper.class),
-                session.getMapper(SkuPricingPolicyMapper.class),
                 new RequestIdempotencyPortImpl(session.getMapper(SysIdempotentMapper.class), JsonMapper.builder().build()),
                 new DataSourceTransactionManager(source));
     }
     @BeforeEach void reset() {
-        for (String table : List.of("prd_sku_pricing_policy", "prd_goods", "prd_sku", "sys_idempotent")) {
+        for (String table : List.of("prd_goods", "prd_sku", "sys_idempotent")) {
             jdbc.execute("DELETE FROM " + table);
         }
         jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,store_no,tenant_no) VALUES('G','E','S','MAIN')");
@@ -131,7 +125,7 @@ class GoodsPricingPolicyPersistenceTest {
         jdbc.update("UPDATE prd_goods SET store_no='OTHER'");
         assertThatThrownBy(() -> service.save(CONTEXT, "G", "A", CREATE, "FIRST"))
                 .isInstanceOf(BizException.class);
-        assertThat(jdbc.queryForObject("SELECT version FROM prd_sku_pricing_policy", Long.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT version FROM prd_sku", Long.class)).isEqualTo(1);
     }
     @Test void completeBatchAndStableOrderingAreRequired() {
         jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,tenant_no) VALUES('B','G','E','CN','MAIN')");
@@ -164,6 +158,6 @@ class GoodsPricingPolicyPersistenceTest {
         assertThatThrownBy(() -> service.save(CONTEXT, "G", "A", new SaveReq(1, true, TaxClass.STANDARD), "STALE"))
                 .isInstanceOf(BizException.class);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM prd_sku_pricing_policy", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM prd_sku WHERE tax_class IS NOT NULL", Integer.class)).isZero();
     }
 }

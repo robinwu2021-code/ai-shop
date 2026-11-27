@@ -605,7 +605,6 @@ public class DataScopeRegistration implements DataScopeRegistrar {
         registry.register("ord_pricing_funding_source", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("ord_store_pricing_config", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("ord_store_pricing_revision", Map.of(ScopeDim.MERCHANT, "entity_no"));
-        registry.register("prd_sku_pricing_policy", Map.of(ScopeDim.MERCHANT, "entity_no"));
 
         registry.register("pmt_apply", Map.of(
                 ScopeDim.SELF, "user_no",

@@ -5,7 +5,6 @@ import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.entity.PrdExecutionRetention;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.entity.PrdSkuPricingPolicy;
 import ai.neargo.shop.product.entity.PrdSpecTemplate;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdStoreCatalog;
@@ -23,9 +22,6 @@ import org.apache.ibatis.annotations.Update;
 public final class ProductMappers {
 
     private ProductMappers() {
-    }
-
-    public interface SkuPricingPolicyMapper extends ProductTableMapper<PrdSkuPricingPolicy> {
     }
 
     public interface StoreCatalogMapper extends ProductTableMapper<PrdStoreCatalog> {
