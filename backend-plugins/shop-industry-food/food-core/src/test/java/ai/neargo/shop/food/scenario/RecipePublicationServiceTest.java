@@ -59,15 +59,7 @@ class RecipePublicationServiceTest {
         var fixture = new RecipeServiceTest();
         try {
             fixture.run((c, f) -> {
-            f.sql().execute("CREATE TABLE fnb_config_revision(id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-                    + "tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),created_at DATETIME(3),"
-                    + "created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),version BIGINT DEFAULT 0,"
-                    + "deleted INT DEFAULT 0,revision_no VARCHAR(32) UNIQUE,"
-                    + "config_kind VARCHAR(24),config_no VARCHAR(32),"
-                    + "revision BIGINT,content_schema INT,definition_snapshot TEXT,content_hash VARCHAR(64),"
-                    + "effective_at DATETIME(3),status VARCHAR(16),previous_revision_no VARCHAR(32),"
-                    + "scope_store_nos TEXT,"
-                    + "UNIQUE(entity_no,config_kind,config_no,revision))");
+            IndustrySchema.create(f.sql().getDataSource(), "ind_config_revision");
             f.sql().execute("CREATE TABLE fnb_dish_option_group(id BIGINT AUTO_INCREMENT PRIMARY KEY,"
                     + "entity_no VARCHAR(32),tenant_no VARCHAR(32),created_at DATETIME(3),created_by VARCHAR(32),"
                     + "updated_at DATETIME(3),updated_by VARCHAR(32),version BIGINT DEFAULT 0,deleted INT DEFAULT 0,"
@@ -169,7 +161,7 @@ class RecipePublicationServiceTest {
             t.f().sql().update("UPDATE fnb_recipe SET recipe_code=''");
             assertThatThrownBy(() -> t.publications().publishRecipe("E", "A", t.recipe(), "actor", req(1), "bad"))
                     .isInstanceOf(IllegalStateException.class);
-            assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isZero();
+            assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isZero();
         });
     }
     @Test void materialChangesAndAuthorityFailureCannotCreatePublication() {
@@ -180,7 +172,7 @@ class RecipePublicationServiceTest {
             t.outage().set(true);
             assertThatThrownBy(() -> t.publications().publishRecipe("E", "A", t.recipe(), "actor", req(1), "down"))
                     .isInstanceOf(IllegalStateException.class);
-            assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isZero();
+            assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isZero();
         });
     }
     @Test void sameVersionDefinitionRaceAndStaleVersionCannotSlipPastLockedRecapture() {
@@ -188,7 +180,7 @@ class RecipePublicationServiceTest {
             t.during()[0] = () -> t.f().sql().update("UPDATE fnb_recipe_line SET qty=0.5");
             code(() -> t.publications().publishRecipe("E", "A", t.recipe(), "actor", req(1), "race"),
                     ErrorCode.CONFLICT);
-            assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isZero();
+            assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isZero();
         });
     }
     @Test void outboxFailureRollsBackAllPublicationFactsAndSameKeyCanRetry() {
@@ -202,7 +194,7 @@ class RecipePublicationServiceTest {
             }
             // 草稿写不再发事件（cf7eea13b 删了只存档的 *_CHANGED），失败的发布也已回滚：发件箱一条都没有
             assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
-            assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isZero();
+            assertThat(t.f().sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isZero();
             t.fail().set(false);
             assertThat(t.publications().publishRecipe("E", "A", t.recipe(), "actor", req(1), "p")
                     .publication().revision()).isEqualTo(1);

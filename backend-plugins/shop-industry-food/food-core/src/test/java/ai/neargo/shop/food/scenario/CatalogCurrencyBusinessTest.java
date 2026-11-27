@@ -159,7 +159,7 @@ class CatalogCurrencyBusinessTest {
             var document = foreignMenu(json, source);
             MenuSourceVerificationTest.insert(f.sql(), json, "R1", 1,
                     ConfigRevisionServiceTest.NOW.minusDays(1), document);
-            f.sql().update("UPDATE fnb_config_revision SET content_schema=6 WHERE revision_no='R1'");
+            f.sql().update("UPDATE ind_config_revision SET schema_version=6 WHERE policy_version_no='R1'");
             var service = publications(c, source);
             var query = new Query("E", "A", "M", "R1", Kind.MENU, "M", null, null, Mode.CURRENT);
             var proof = service.verifyMenuResource(query);
@@ -195,7 +195,7 @@ class CatalogCurrencyBusinessTest {
             var parent = pubs.publishModifier("E", "A", combo.configNo(), "actor", publish(0), "pp");
             var content = pubs.getRevision("E", "A", parent.publication().revisionNo());
             assertThat(content.definitionSnapshot()).contains("\"contentSchema\":6", "\"currency\":\"AED\"");
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision WHERE content_schema=6",
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision WHERE schema_version=6",
                     Integer.class)).isEqualTo(2);
             source.offline = true;
             assertThat(pubs.getRevision("E", "A", parent.publication().revisionNo())).isEqualTo(content);
@@ -219,7 +219,7 @@ class CatalogCurrencyBusinessTest {
                     List.of(new ModifierComponentInput(child.configNo(), BigDecimal.ONE))), "foreign-parent");
             assertThatThrownBy(() -> publications(c, source).publishModifier("E", "A", combo.configNo(), "actor",
                     publish(0), "foreign-publication")).isInstanceOf(BizException.class);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isOne();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isOne();
         });
     }
 
@@ -239,7 +239,7 @@ class CatalogCurrencyBusinessTest {
             assertThatThrownBy(() -> pub.republishRevision("E", "A", first.publication().revisionNo(), "actor",
                     new RepublishConfigReq(2L, ConfigRevisionServiceTest.NOW, "restore", null), "bad"))
                     .isInstanceOf(BizException.class);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isEqualTo(2);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isEqualTo(2);
         });
     }
 

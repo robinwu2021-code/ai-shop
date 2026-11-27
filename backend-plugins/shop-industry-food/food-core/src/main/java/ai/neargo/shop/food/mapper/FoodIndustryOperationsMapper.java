@@ -636,9 +636,10 @@ public class FoodIndustryOperationsMapper {
     public List<FoodBusinessOperationRow> serviceFormMenuRevision(String e, String revision) {
         return rows(
                 db.queryForList(
-                        "SELECT config_no,definition_snapshot,content_hash,status FROM"
-                                + " fnb_config_revision WHERE entity_no=? AND revision_no=? AND"
-                                + " config_kind='MENU' AND status IN ('EFFECTIVE','SCHEDULED')",
+                        "SELECT policy_no AS config_no,definition_snapshot,snapshot_hash AS content_hash,"
+                                + "status FROM ind_config_revision WHERE tenant_no='MAIN' AND entity_no=? AND"
+                                + " policy_version_no=? AND config_kind='MENU' AND status IN"
+                                + " ('EFFECTIVE','SCHEDULED')",
                         e,
                         revision));
     }

@@ -183,9 +183,9 @@ class FoodPrimaryDatabaseTest {
                                             json.readTree(station));
                             sql.update(
                                     "INSERT INTO"
-                                        + " fnb_config_revision(entity_no,created_at,created_by,updated_at,updated_by,"
-                                        + "revision_no,config_kind,config_no,revision,content_schema,definition_snapshot,content_hash,effective_at,status,scope_store_nos)"
-                                        + " VALUES('E',NOW(),'A',NOW(),'A','REV','STATION','STATION',1,5,?,?,NOW(),'PUBLISHED','[\"S\"]')",
+                                        + " ind_config_revision(tenant_no,entity_no,created_at,created_by,updated_at,updated_by,"
+                                        + "policy_version_no,config_kind,policy_no,revision_index,schema_version,definition_snapshot,snapshot_hash,effective_at,status,scope_store_nos)"
+                                        + " VALUES('MAIN','E',NOW(),'A',NOW(),'A','REV','STATION','STATION',1,5,?,?,NOW(),'PUBLISHED','[\"S\"]')",
                                     station,
                                     hash);
                             String frozen =

@@ -1382,7 +1382,9 @@ public final class FoodSchemaValidator {
                                     "effective_at",
                                     "status",
                                     "actor_no",
-                                    "reason")));
+                                    "reason",
+                                    "previous_revision_no",
+                                    "scope_store_nos")));
             expected.put(
                     "fnb_banquet_plan_revision",
                     new TreeSet<>(

@@ -243,27 +243,40 @@ public final class FoodMappers {
         @Delete("DELETE FROM fnb_option_group_item WHERE entity_no=#{entity} AND group_no=#{group}")
         int replaceDraftRows(@Param("entity") String entity, @Param("group") String group);
     }
-    /** No generic update/delete API is exposed for publication facts. */
+    /**
+     * No generic update/delete API is exposed for publication facts.
+     *
+     * <p>配置修订已并入行业配置修订 ind_config_revision（TDD §2.5）：revision_no→policy_version_no、
+     * config_no→policy_no、revision→revision_index、content_schema→schema_version、content_hash→snapshot_hash。
+     * 查询按旧列名取别名（{@link #COLUMNS}），实体与服务不变；写入显式填 tenant_no='MAIN'（唯一键不约束空值）。
+     */
     public interface ConfigRevisionMapper {
+        String COLUMNS = "r.id,r.tenant_no,r.entity_no,r.created_at,r.created_by,r.updated_at,r.updated_by,"
+                + "r.version,r.deleted,r.policy_version_no AS revision_no,r.config_kind,r.policy_no AS config_no,"
+                + "r.revision_index AS revision,r.schema_version AS content_schema,r.definition_snapshot,"
+                + "r.snapshot_hash AS content_hash,r.effective_at,r.status,r.previous_revision_no,r.scope_store_nos";
         // Fetch only timeline metadata; materialize large immutable JSON only for intersecting effective windows.
         // 菜单号由交易库的 MenuStoreMapper#activeMenuNos 给出，这里只查行业库的发布修订。
-        @Select("<script>SELECT r.revision_no,r.entity_no,r.config_kind,r.config_no,r.revision,r.effective_at,"
-                + "r.status,r.scope_store_nos FROM fnb_config_revision r "
-                + "WHERE r.entity_no=#{entity} AND r.config_kind='MENU' AND r.deleted=0 "
-                + "AND r.status!='CANCELLED' AND r.config_no IN "
+        @Select("<script>SELECT r.policy_version_no AS revision_no,r.entity_no,r.config_kind,"
+                + "r.policy_no AS config_no,r.revision_index AS revision,r.effective_at,"
+                + "r.status,r.scope_store_nos FROM ind_config_revision r "
+                + "WHERE r.tenant_no='MAIN' AND r.entity_no=#{entity} AND r.config_kind='MENU' AND r.deleted=0 "
+                + "AND r.status!='CANCELLED' AND r.policy_no IN "
                 + "<foreach collection='menus' item='m' open='(' separator=',' close=')'>#{m}</foreach> "
-                + "ORDER BY r.config_no,r.effective_at,r.revision</script>")
+                + "ORDER BY r.policy_no,r.effective_at,r.revision_index</script>")
         List<FnbConfigRevision> menuTimeline(@Param("entity") String entity, @Param("menus") Collection<String> menus);
 
-        @Select("SELECT * FROM fnb_config_revision WHERE entity_no=#{entity} AND config_kind=#{kind} "
-                + "AND config_no=#{number} AND deleted=0 ORDER BY revision DESC")
+        @Select("SELECT " + COLUMNS + " FROM ind_config_revision r WHERE r.tenant_no='MAIN' "
+                + "AND r.entity_no=#{entity} AND r.config_kind=#{kind} "
+                + "AND r.policy_no=#{number} AND r.deleted=0 ORDER BY r.revision_index DESC")
         List<FnbConfigRevision> findObject(@Param("entity") String entity, @Param("kind") String kind,
                 @Param("number") String number);
-        @Select("SELECT * FROM fnb_config_revision WHERE entity_no=#{entity} AND revision_no=#{number} AND deleted=0")
+        @Select("SELECT " + COLUMNS + " FROM ind_config_revision r WHERE r.tenant_no='MAIN' "
+                + "AND r.entity_no=#{entity} AND r.policy_version_no=#{number} AND r.deleted=0")
         FnbConfigRevision findRevision(@Param("entity") String entity, @Param("number") String number);
-        @Insert("INSERT INTO fnb_config_revision(entity_no,created_at,created_by,updated_at,updated_by,"
-                + "revision_no,config_kind,config_no,revision,content_schema,definition_snapshot,content_hash,"
-                + "effective_at,status,previous_revision_no,scope_store_nos) VALUES(#{entityNo},CURRENT_TIMESTAMP(3),"
+        @Insert("INSERT INTO ind_config_revision(tenant_no,entity_no,created_at,created_by,updated_at,updated_by,"
+                + "policy_version_no,config_kind,policy_no,revision_index,schema_version,definition_snapshot,snapshot_hash,"
+                + "effective_at,status,previous_revision_no,scope_store_nos) VALUES('MAIN',#{entityNo},CURRENT_TIMESTAMP(3),"
                 + "#{createdBy},CURRENT_TIMESTAMP(3),#{createdBy},#{revisionNo},#{configKind},#{configNo},#{revision},"
                 + "#{contentSchema},#{definitionSnapshot},#{contentHash},#{effectiveAt},#{status},"
                 + "#{previousRevisionNo},#{scopeStoreNos})")
@@ -456,9 +469,10 @@ public final class FoodMappers {
         List<String> activeTaskBatchNos(@Param("entity") String entity, @Param("station") String station);
     }
     public interface KitchenTicketMapper extends IndustryTableMapper<FnbKitchenTicket> {
-        @Select("SELECT * FROM fnb_config_revision r WHERE r.tenant_no='MAIN' AND r.entity_no=#{entity} "
+        @Select("SELECT " + ConfigRevisionMapper.COLUMNS + " FROM ind_config_revision r WHERE r.tenant_no='MAIN' "
+                + "AND r.entity_no=#{entity} "
                 + "AND r.config_kind='STATION' AND r.deleted=0 AND r.effective_at<=CURRENT_TIMESTAMP(3) "
-                + "AND r.status<>'CANCELLED' ORDER BY r.config_no,r.effective_at DESC,r.revision DESC")
+                + "AND r.status<>'CANCELLED' ORDER BY r.policy_no,r.effective_at DESC,r.revision_index DESC")
         List<FnbConfigRevision> stationPublications(@Param("entity") String entity);
     }
     public interface ServiceEventMapper extends IndustryTableMapper<FnbServiceEvent> {

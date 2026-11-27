@@ -9,7 +9,7 @@ import lombok.Setter;
 /** Only the append/select Mapper can persist these immutable business facts. */
 @Getter
 @Setter
-@TableName("fnb_config_revision")
+@TableName("ind_config_revision")
 public class FnbConfigRevision extends BaseEntity {
     private String entityNo;
     private String revisionNo;

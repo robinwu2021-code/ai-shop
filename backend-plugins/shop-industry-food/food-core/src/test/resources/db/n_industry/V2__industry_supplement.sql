@@ -327,34 +327,6 @@ CREATE TABLE `fnb_service_calendar` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='é¤é¥®æŽ¥å•æ—¥åŽ†ä¾‹å¤–';
 
 -- 五、过渡：9 组合并（TDD §2.5）与寄存改名完成前，代码仍读写的旧表；每完成一组就从这里删掉对应的表。
-CREATE TABLE `fnb_config_revision` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'BaseEntityè‡ªå¢žç‰©ç†ä¸»é”®ï¼Œä¸å¯¹å¤–ä¸è¿›URL',
-  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT 'æ²¿ç”¨BaseEntityï¼Œä¸€æœŸMAINï¼›ä¸æ˜¯entity_noï¼Œä¸å¦å¯ç§Ÿæˆ·ä½“ç³»',
-  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'å½“å‰ä¸»ä½“æˆ–ä¸šåŠ¡å‘ç”Ÿæ—¶ä¸»ä½“å¿«ç…§ï¼Œä¸ç­‰äºŽè´¦å·å’Œæ”¯ä»˜å•†æˆ·å·',
-  `created_at` datetime(3) NOT NULL COMMENT 'æ²¿ç”¨MetaObjectHandleråŠçŽ°æœ‰LocalDateTimeæŒä¹…åŒ–çº¦å®š',
-  `created_by` varchar(32) NOT NULL COMMENT 'å½“å‰è®¤è¯ä¸šåŠ¡é”®ï¼›æŒ‰çŽ°æœ‰å¡«å……è§„åˆ™ï¼Œä½œä¸šSYSTEM',
-  `updated_at` datetime(3) NOT NULL COMMENT 'æ²¿ç”¨å…¬å…±å¡«å……',
-  `updated_by` varchar(32) NOT NULL COMMENT 'æ²¿ç”¨å…¬å…±å¡«å……',
-  `version` bigint NOT NULL DEFAULT '0' COMMENT 'BaseEntityä¹è§‚é”',
-  `deleted` int NOT NULL DEFAULT '0' COMMENT 'BaseEntityé€»è¾‘åˆ é™¤ï¼›ç­¾æ ¸å’Œäº‹å®žè¡¨ç¦æ­¢ä¸šåŠ¡å½’æ¡£è¦†ç›–åŽ†å²',
-  `revision_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'å¿«ç…§ä¸šåŠ¡å·',
-  `config_kind` varchar(24) NOT NULL COMMENT 'MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION',
-  `config_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'é…ç½®ä¸šåŠ¡å·æˆ–SKUï¼ŒæŒ‰kindå¼•ç”¨',
-  `revision` bigint NOT NULL COMMENT 'å•é…ç½®å•è°ƒå‘å¸ƒä¿®è®¢å·',
-  `content_schema` int NOT NULL COMMENT 'å†»ç»“æ–‡æ¡£ç»“æž„ç‰ˆæœ¬',
-  `definition_snapshot` json NOT NULL COMMENT 'å®Œæ•´èšåˆå®šä¹‰åŠå¼•ç”¨å‘å¸ƒç‰ˆæœ¬ï¼Œä¸å­˜èµ„é‡‘çœŸæº',
-  `content_hash` char(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'è§„èŒƒå†…å®¹æ‘˜è¦',
-  `effective_at` datetime(3) NOT NULL COMMENT 'è®¡åˆ’ç”Ÿæ•ˆ',
-  `status` varchar(16) NOT NULL COMMENT 'SCHEDULED / EFFECTIVE / CANCELLED',
-  `previous_revision_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'å‰ä¿®è®¢',
-  `scope_store_nos` json NOT NULL COMMENT 'å†»ç»“çš„æŽˆæƒé€‚ç”¨é—¨åº—é›†åˆï¼Œé…ç½®å¤´å½’ä¸»ä½“',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_food_1` (`revision_no`),
-  UNIQUE KEY `uk_food_2` (`entity_no`,`config_kind`,`config_no`,`revision`),
-  KEY `ix_food_audit` (`entity_no`,`created_at`,`id`),
-  KEY `ix_food_ref_1` (`entity_no`,`previous_revision_no`,`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='é¤é¥®é…ç½®å‘å¸ƒå¿«ç…§ Config revision';
-
 CREATE TABLE `fnb_store_policy` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'BaseEntityè‡ªå¢žç‰©ç†ä¸»é”®ï¼Œä¸å¯¹å¤–ä¸è¿›URL',
   `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT 'æ²¿ç”¨BaseEntityï¼Œä¸€æœŸMAINï¼›ä¸æ˜¯entity_noï¼Œä¸å¦å¯ç§Ÿæˆ·ä½“ç³»',

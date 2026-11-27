@@ -140,10 +140,10 @@ class MenuSourceVerificationTest {
             OffsetDateTime at,
             String document) {
         sql.update(
-                "INSERT INTO fnb_config_revision"
-                    + " (entity_no,revision_no,config_kind,config_no,revision,"
-                    + "content_schema,definition_snapshot,content_hash,effective_at,status,scope_store_nos)"
-                    + " VALUES ('E',?,'MENU','M',?,4,?,?,?,'EFFECTIVE','[\"A\"]')",
+                "INSERT INTO ind_config_revision"
+                    + " (tenant_no,entity_no,policy_version_no,config_kind,policy_no,revision_index,"
+                    + "schema_version,definition_snapshot,snapshot_hash,effective_at,status,scope_store_nos)"
+                    + " VALUES ('MAIN','E',?,'MENU','M',?,4,?,?,?,'EFFECTIVE','[\"A\"]')",
                 revision,
                 sequence,
                 document,
@@ -296,8 +296,8 @@ class MenuSourceVerificationTest {
                                     ErrorCode.CONFLICT);
                             f.sql()
                                     .update(
-                                            "UPDATE fnb_config_revision SET status='CANCELLED'"
-                                                    + " WHERE revision_no='R1'");
+                                            "UPDATE ind_config_revision SET status='CANCELLED'"
+                                                    + " WHERE policy_version_no='R1'");
                             code(
                                     () ->
                                             s.verifyMenuResource(
@@ -347,7 +347,7 @@ class MenuSourceVerificationTest {
                                     ErrorCode.BAD_REQUEST);
                             f.sql()
                                     .update(
-                                            "UPDATE fnb_config_revision SET content_hash=?",
+                                            "UPDATE ind_config_revision SET snapshot_hash=?",
                                             "0".repeat(64));
                             assertThatThrownBy(
                                             () ->
@@ -567,8 +567,8 @@ class MenuSourceVerificationTest {
                             for (String invalid : List.of("DRAFT", "UNKNOWN")) {
                                 f.sql()
                                         .update(
-                                                "UPDATE fnb_config_revision SET status=? WHERE"
-                                                        + " revision_no='R1'",
+                                                "UPDATE ind_config_revision SET status=? WHERE"
+                                                        + " policy_version_no='R1'",
                                                 invalid);
                                 for (var mode : Mode.values()) {
                                     code(

@@ -357,7 +357,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
         table(db, FnbOrderLine.class, "fnb_order_line"); table(db, FnbOrderComponent.class, "fnb_order_component");
         table(db, FnbKitchenTicket.class, "fnb_kitchen_ticket"); table(db, FnbKitchenTask.class, "fnb_kitchen_task");
         table(db, FnbServiceEvent.class, "fnb_service_event"); table(db, FnbCourse.class, "fnb_course");
-        table(db, FnbConfigRevision.class, "fnb_config_revision");
+        IndustrySchema.create(db.getDataSource(), "ind_config_revision");
         db.execute("CREATE TABLE kitchen_acceptance_outbox(event_no VARCHAR(32),task_no VARCHAR(32),ticket_no VARCHAR(32),action VARCHAR(32),qty DECIMAL(24,6))");
         // Test transport sink: real JDBC writes prove event publication shares business rollback.
         OutboxPublisher outbox = (event, options) -> {

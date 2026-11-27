@@ -64,15 +64,7 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
                 OptionGroupServiceTest.Groups.class, ModifierServiceTest.Modifiers.class,
                 BundleServiceTest.Bundles.class, Publications.class).run(c -> {
                     var f = new BundleServiceTest().fixture(c);
-                    f.sql().execute("CREATE TABLE fnb_config_revision (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-                            + "tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),created_at DATETIME(3),"
-                            + "created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),"
-                            + "version BIGINT DEFAULT 0,deleted INT DEFAULT 0,revision_no VARCHAR(32) UNIQUE,"
-                            + "config_kind VARCHAR(24),config_no VARCHAR(32),"
-                            + "revision BIGINT,content_schema INT,definition_snapshot TEXT,content_hash VARCHAR(64),"
-                            + "effective_at DATETIME(3),status VARCHAR(16),previous_revision_no VARCHAR(32),"
-                            + "scope_store_nos TEXT,"
-                            + "UNIQUE(entity_no,config_kind,config_no,revision))");
+                    IndustrySchema.create(f.sql().getDataSource(), "ind_config_revision");
                     test.accept(c, f);
                 });
     }
@@ -100,7 +92,7 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
             assertThat(s.getRevision("E", "A", first.revisionNo()).definitionSnapshot()).isEqualTo(frozen);
             code(() -> s.publishBundle("E", "A", "MEAL", "other", req(1), "publish"), ErrorCode.NOT_FOUND);
             code(() -> s.publishBundle("E", "A", "MEAL", "actor", req(2), "publish"), ErrorCode.CONFLICT);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isOne();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isOne();
         });
     }
     @Test void futureVersionsAndSharedHeadPointerNeverBypassStoreTimeResolution() {
@@ -119,7 +111,7 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
             code(() -> s.getRevision("OTHER","A",a.revisionNo()), ErrorCode.NOT_FOUND);
             assertThat(s.listRevisions("E","A",new ListConfigRevisionsQuery("BUNDLE","MEAL",1,20)).total())
                     .isEqualTo(2);
-            assertThat(f.sql().queryForObject("SELECT status FROM fnb_config_revision WHERE revision_no=?",
+            assertThat(f.sql().queryForObject("SELECT status FROM ind_config_revision WHERE policy_version_no=?",
                     String.class,future.revisionNo())).isEqualTo("SCHEDULED");
         });
     }
@@ -135,7 +127,7 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
             f.sql().update("INSERT INTO fnb_bundle(entity_no,sku_no,config_version,status) "
                     + "VALUES('E','SIDE',0,'DRAFT')");
             code(() -> s.publishBundle("E","A","MEAL","actor",req(1),"nested"),ErrorCode.BAD_REQUEST);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision",Integer.class)).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision",Integer.class)).isZero();
         });
     }
     @Test void rereadsWholeDefinitionAfterRemoteAuthorityEvenWhenHeadVersionWasNotBumped() {
@@ -144,7 +136,7 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
             control.duringSku=() -> f.sql().update("UPDATE fnb_bundle_group SET name='raced'");
             code(() -> c.getBean(ConfigRevisionService.class).publishBundle("E","A","MEAL","actor",req(1),"race"),
                     ErrorCode.CONFLICT);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision",Integer.class)).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision",Integer.class)).isZero();
             control.duringSku=() -> { }; control.bad=true;
             assertThatThrownBy(() -> c.getBean(ConfigRevisionService.class)
                     .publishBundle("E","A","MEAL","actor",req(1),"bad-fact"))
@@ -157,7 +149,7 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
             assertThatThrownBy(() -> c.getBean(ConfigRevisionService.class)
                     .publishBundle("E","A","MEAL","actor",req(1),"fail"))
                     .isInstanceOf(IllegalStateException.class);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision",Integer.class)).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision",Integer.class)).isZero();
             var v=c.getBean(BundleService.class).getBundle("E","A","MEAL").config();
             assertThat(v.version()).isEqualTo(1); assertThat(v.data().configVersion()).isEqualTo(1);
             assertThat(v.data().publishedRevisionNo()).isNull();
@@ -178,7 +170,7 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
             assertThat(s.publishBundle("E","A","MEAL","actor",req(1),"one")).isEqualTo(one);
             assertThat(s.resolveRevision("E","A","BUNDLE","MEAL",NOW).publication()).isEqualTo(one.publication());
             code(() -> s.publishBundle("E","A","MEAL","actor",req(2),"disabled2"),ErrorCode.NOT_FOUND);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision",Integer.class)).isOne();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision",Integer.class)).isOne();
         });
     }
     @Test void exactSchemaTwoQuantitiesSurviveJsonReformattingAndRejectUnknownSchemaOrTampering() {
@@ -195,13 +187,13 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
             var json=c.getBean(ObjectMapper.class);
             Map<?,?> sorted=json.readValue(original,TreeMap.class);
             String reordered=json.writerWithDefaultPrettyPrinter().writeValueAsString(sorted);
-            f.sql().update("UPDATE fnb_config_revision SET definition_snapshot=?",reordered);
+            f.sql().update("UPDATE ind_config_revision SET definition_snapshot=?",reordered);
             assertThat(s.getRevision("E","A",pub.revisionNo()).definitionSnapshot()).isEqualTo(reordered);
             String unknown=original.replace("\"contentSchema\":2","\"contentSchema\":9");
-            f.sql().update("UPDATE fnb_config_revision SET content_schema=9,definition_snapshot=?,content_hash=?",
+            f.sql().update("UPDATE ind_config_revision SET schema_version=9,definition_snapshot=?,snapshot_hash=?",
                     unknown,PublicationDocuments.hash(json,unknown));
             assertThatThrownBy(() -> s.getRevision("E","A",pub.revisionNo())).isInstanceOf(IllegalStateException.class);
-            f.sql().update("UPDATE fnb_config_revision SET content_schema=2,definition_snapshot=?,content_hash=?",
+            f.sql().update("UPDATE ind_config_revision SET schema_version=2,definition_snapshot=?,snapshot_hash=?",
                     original.replace("SIDE", "FORGED"), PublicationDocuments.hash(json, original));
             assertThatThrownBy(() -> s.getRevision("E","A",pub.revisionNo())).isInstanceOf(IllegalStateException.class);
         });
@@ -211,7 +203,7 @@ class BundlePublicationServiceTest extends FoodWriteGuardFixture {
             prepared(c); var s=c.getBean(ConfigRevisionService.class);
             var first=s.publishBundle("E","A","MEAL","actor",req(1),"a").publication();
             var second=s.publishBundle("E","A","MEAL","actor",req(2),"b").publication();
-            f.sql().update("UPDATE fnb_config_revision SET status='CANCELLED' WHERE revision_no=?",second.revisionNo());
+            f.sql().update("UPDATE ind_config_revision SET status='CANCELLED' WHERE policy_version_no=?",second.revisionNo());
             assertThat(s.getRevision("E","A",second.revisionNo()).publication().status()).isEqualTo("CANCELLED");
             assertThat(s.listRevisions("E","A",new ListConfigRevisionsQuery("BUNDLE","MEAL",1,20)).total())
                     .isEqualTo(2);

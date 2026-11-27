@@ -318,7 +318,8 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - **P1-3 合并 ①：堂食权益 → 人头权益**。旧表 `fnb_dining_entitlement` 代码从未写入，只在放台检查与账单事实检查里计数（结果恒为 0）。并入后改为：交易库按账单取到店单号，行业库数这些到店单上 `entitlement_kind='BUFFET'` 的人头权益（放台检查只数 `status='ACTIVE'`）。旧代码不写放题类权益，行为不变。`FoodIndustryTables.MERGED` 登记退役的旧表；`V2` 删掉该表。测试 `CheckServiceTest`、`PhysicalTableMoveTest` 改按新模型造数据。
 - **P1-3 合并 ②：宴会方案修订 → `ind_config_revision`（`config_kind=BANQUET_PLAN`）**。被修订的对象是到店单：`policy_no`=到店单号、`revision_index`=修订序号、`policy_version_no`=方案号；方案快照（已含币种、预算、人数）进 `definition_snapshot`，摘要进 `snapshot_hash`。读取按原列名取别名，服务不变。新表唯一键带 `tenant_no` 且可为空，写入显式填 `MAIN`（MySQL 唯一键不约束空值）。
 - 测试工具 `IndustrySchema`：H2 场景测试按 `db/n_industry` 建表（清洗 MySQL 方言、索引名加表名前缀、JSON 列按文本建）。
-- 待做：P1-3 其余七组合并、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本。
+- **P1-3 合并 ③：配置修订 → `ind_config_revision`**（工位、菜单、套餐、选项组、加料、配方的发布修订）。`revision_no`→`policy_version_no`、`config_no`→`policy_no`、`revision`→`revision_index`、`content_schema`→`schema_version`、`content_hash`→`snapshot_hash`；实体字段名不变，`ConfigRevisionMapper.COLUMNS` 按旧列名取别名，服务不变；写入显式 `tenant_no='MAIN'`。数据域登记改为新表。8 个测试里的直接 SQL 按同一规则改写，自建旧表改用 `IndustrySchema`。
+- 待做：P1-3 其余六组合并（门店策略、定时出品、服务事件、交接、交接明细、责任）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本。
 
 ### 事务拆分记录
 

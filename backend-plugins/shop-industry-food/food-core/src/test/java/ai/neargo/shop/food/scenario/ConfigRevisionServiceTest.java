@@ -58,13 +58,7 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
     static final OffsetDateTime NOW = OffsetDateTime.parse("2026-10-21T08:00:00Z");
     Fixture fixture(AssertableApplicationContext c) {
         var f = new ModifierServiceTest().fixture(c);
-        f.sql().execute("CREATE TABLE fnb_config_revision (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-                + "tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),created_at DATETIME(3),"
-                + "created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),version BIGINT DEFAULT 0,"
-                + "deleted INT DEFAULT 0,revision_no VARCHAR(32) UNIQUE,config_kind VARCHAR(24),config_no VARCHAR(32),"
-                + "revision BIGINT,content_schema INT,definition_snapshot TEXT,content_hash VARCHAR(64),"
-                + "effective_at DATETIME(3),status VARCHAR(16),previous_revision_no VARCHAR(32),scope_store_nos TEXT,"
-                + "UNIQUE(entity_no,config_kind,config_no,revision))");
+        IndustrySchema.create(f.sql().getDataSource(), "ind_config_revision");
         f.sql().execute("CREATE TABLE fnb_dish_option_group (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
                 + "tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),created_at DATETIME(3),"
                 + "created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),version BIGINT DEFAULT 0,"
@@ -96,7 +90,7 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
                     "E", "A", combo.configNo(), "actor", request(0), "component-mode").publication();
             assertThat(c.getBean(ConfigRevisionService.class).getRevision("E", "A", published.revisionNo())
                     .definitionSnapshot()).contains("COMPONENTS", leaf);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class))
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class))
                     .isEqualTo(2);
         });
     }
@@ -116,7 +110,7 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
             var next = s.publishModifier("E", "A", number, "actor", request(2), "next").publication();
             assertThat(next.revision()).isEqualTo(2);
             assertThat(s.resolveRevision("E", "A", "MODIFIER", number, NOW).publication()).isEqualTo(next);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isEqualTo(2);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isEqualTo(2);
         });
     }
 
@@ -131,7 +125,7 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
                     .isEqualTo(first.revisionNo());
             assertThat(s.resolveRevision("E", "A", "MODIFIER", number, NOW.plusHours(1))
                     .publication().revisionNo()).isEqualTo(future.revisionNo());
-            assertThat(f.sql().queryForObject("SELECT status FROM fnb_config_revision WHERE revision_no=?",
+            assertThat(f.sql().queryForObject("SELECT status FROM ind_config_revision WHERE policy_version_no=?",
                     String.class, future.revisionNo())).isEqualTo("SCHEDULED");
             code(() -> s.resolveRevision("E", "B", "MODIFIER", number, NOW.plusHours(1)), ErrorCode.NOT_FOUND);
             code(() -> s.getRevision("OTHER", "A", first.revisionNo()), ErrorCode.NOT_FOUND);
@@ -183,7 +177,7 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
             c.getBean(Controls.class).duringSku = () -> f.sql().update(
                     "UPDATE fnb_modifier SET name='changed' WHERE modifier_no=?", number);
             code(() -> s.publishModifier("E", "A", number, "actor", request(0), "race"), ErrorCode.CONFLICT);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isZero();
             c.getBean(Controls.class).duringSku = () -> { };
             code(() -> s.publishModifier("E", "A", number, "actor",
                     new PublishConfigReq(1L, NOW.minusDays(1), null), "backdate"), ErrorCode.BAD_REQUEST);
@@ -203,9 +197,9 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
                     json.getTypeFactory().constructMapType(TreeMap.class, String.class, Object.class));
             String normalized = json.writerWithDefaultPrettyPrinter().writeValueAsString(tree);
             assertThat(normalized).isNotEqualTo(original);
-            f.sql().update("UPDATE fnb_config_revision SET definition_snapshot=?", normalized);
+            f.sql().update("UPDATE ind_config_revision SET definition_snapshot=?", normalized);
             assertThat(s.getRevision("E", "A", first.revisionNo()).publication().contentHash()).isEqualTo(first.contentHash());
-            f.sql().update("UPDATE fnb_config_revision SET definition_snapshot=?", normalized.replace("珍珠", "changed"));
+            f.sql().update("UPDATE ind_config_revision SET definition_snapshot=?", normalized.replace("珍珠", "changed"));
             assertThatThrownBy(() -> s.getRevision("E", "A", first.revisionNo()))
                     .isInstanceOf(IllegalStateException.class);
         });
@@ -241,7 +235,7 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
                     new UpdateModifierReq("草稿", "ADDON", "SKU", List.of(), 2L), "restore");
             c.getBean(Controls.class).badSku = true;
             assertThat(s.publishModifier("E", "A", number, "actor", request(0), "publish")).isEqualTo(first);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isOne();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isOne();
         });
     }
 
@@ -251,7 +245,7 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
             var first = s.publishModifier("E", "A", number, "actor", request(0), "now").publication();
             var future = s.publishModifier("E", "A", number, "actor",
                     new PublishConfigReq(1L, NOW.plusHours(1), null), "future").publication();
-            f.sql().update("UPDATE fnb_config_revision SET status='CANCELLED' WHERE revision_no=?", future.revisionNo());
+            f.sql().update("UPDATE ind_config_revision SET status='CANCELLED' WHERE policy_version_no=?", future.revisionNo());
             assertThat(s.listRevisions("E", "A", new ListConfigRevisionsQuery("MODIFIER", number, 1, 20)).total())
                     .isEqualTo(2);
             assertThat(s.getRevision("E", "A", future.revisionNo()).publication().status()).isEqualTo("CANCELLED");
@@ -267,7 +261,7 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
             c.getBean(Controls.class).fail.set(true);
             assertThatThrownBy(() -> s.publishModifier("E", "A", number, "actor", request(0), "fail"))
                     .isInstanceOf(IllegalStateException.class);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isZero();
             assertThat(f.sql().queryForObject("SELECT version FROM fnb_modifier", Long.class)).isZero();
             for (String table : List.of("fnb_action_log", "sys_idempotent")) {
                 assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isOne();

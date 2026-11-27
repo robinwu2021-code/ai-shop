@@ -108,24 +108,24 @@ class CatalogPublicationServiceTest {
             assertThat(service.publishStation("E", "A", "ST", "actor", req, "station-publish")).isEqualTo(first);
             assertThatThrownBy(() -> service.publishStation("E", "A", "ST", "actor", req, "new-command"))
                     .isInstanceOf(IllegalStateException.class);
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class)).isEqualTo(2);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM ind_config_revision", Integer.class)).isEqualTo(2);
         });
     }
     @Test void historicalMenuCannotRepublishCancelledEmbeddedDependency() {
         menu(true,false,t -> {
-            t.sql().update("UPDATE fnb_config_revision SET status='CANCELLED' WHERE revision_no='DEP'");
+            t.sql().update("UPDATE ind_config_revision SET status='CANCELLED' WHERE policy_version_no='DEP'");
             denied(t,"cancelled");
         });
     }
     @Test void historicalMenuCannotRepublishChangedEmbeddedDependencyHash() {
         menu(true,false,t -> {
-            t.sql().update("UPDATE fnb_config_revision SET content_hash=? WHERE revision_no='DEP'","0".repeat(64));
+            t.sql().update("UPDATE ind_config_revision SET snapshot_hash=? WHERE policy_version_no='DEP'","0".repeat(64));
             denied(t,"changed-hash");
         });
     }
     @Test void historicalMenuCannotRepublishDependencyOutsideCurrentStore() {
         menu(true,false,t -> {
-            t.sql().update("UPDATE fnb_config_revision SET scope_store_nos='[\"B\"]' WHERE revision_no='DEP'");
+            t.sql().update("UPDATE ind_config_revision SET scope_store_nos='[\"B\"]' WHERE policy_version_no='DEP'");
             denied(t,"wrong-store");
         });
     }
@@ -143,8 +143,8 @@ class CatalogPublicationServiceTest {
     }
     @Test void historicalMenuAcceptsCurrentEligibleChannelAndAppendsUnchangedFrozenDefinition() {
         menu(false,true,t -> {
-            String bytes=t.sql().queryForObject("SELECT definition_snapshot FROM fnb_config_revision "
-                    +"WHERE revision_no='SOURCE'",String.class);
+            String bytes=t.sql().queryForObject("SELECT definition_snapshot FROM ind_config_revision "
+                    +"WHERE policy_version_no='SOURCE'",String.class);
             var result=t.service().republishRevision("E","A","SOURCE","actor",restore(),"eligible");
             assertThat(result.publication().revision()).isEqualTo(2);
             assertThat(t.service().getRevision("E","A",result.publication().revisionNo()).definitionSnapshot())
@@ -154,13 +154,13 @@ class CatalogPublicationServiceTest {
     @Test void publicationAndHistoricalRestoreRejectDistinctBindingsForTheSameChannelIdentity() {
         menu(false,true,t -> {
             overlappingChannels(t,"ACC");
-            var counts=List.of("fnb_config_revision","fnb_action_log","sys_idempotent","sys_outbox").stream()
+            var counts=List.of("ind_config_revision","fnb_action_log","sys_idempotent","sys_outbox").stream()
                     .map(table -> t.sql().queryForObject("SELECT COUNT(*) FROM "+table,Long.class)).toList();
             assertThatThrownBy(() -> t.service().publishMenu("E","A","MENU","actor",
                     new PublishConfigReq(1L,ConfigRevisionServiceTest.NOW,null),"same-channel-publish"))
                     .isInstanceOfSatisfying(BizException.class,
                             e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
-            assertThat(List.of("fnb_config_revision","fnb_action_log","sys_idempotent","sys_outbox").stream()
+            assertThat(List.of("ind_config_revision","fnb_action_log","sys_idempotent","sys_outbox").stream()
                     .map(table -> t.sql().queryForObject("SELECT COUNT(*) FROM "+table,Long.class)).toList())
                     .isEqualTo(counts);
             denied(t,"same-channel-restore");
@@ -180,11 +180,11 @@ class CatalogPublicationServiceTest {
         });
     }
     private static void overlappingChannels(HistoricalMenu t,String otherAccount) {
-        var original=t.json().readValue(t.sql().queryForObject("SELECT definition_snapshot FROM fnb_config_revision "
-                +"WHERE revision_no='SOURCE'",String.class),MenuPublicationSnapshot.class);
+        var original=t.json().readValue(t.sql().queryForObject("SELECT definition_snapshot FROM ind_config_revision "
+                +"WHERE policy_version_no='SOURCE'",String.class),MenuPublicationSnapshot.class);
         var current=channelSnapshot(original,"MENU","BIND","ACC",0);
         String document=MenuPublicationDocuments.freeze(t.json(),current);
-        t.sql().update("UPDATE fnb_config_revision SET definition_snapshot=?,content_hash=? WHERE revision_no='SOURCE'",
+        t.sql().update("UPDATE ind_config_revision SET definition_snapshot=?,snapshot_hash=? WHERE policy_version_no='SOURCE'",
                 document,PublicationDocuments.hash(t.json(),document));
         var other=channelSnapshot(original,"OTHER_MENU","OTHER_BIND",otherAccount,0);
         t.revisions().append(revision(t.json(),"OTHER_REV","MENU","OTHER_MENU",4,
@@ -217,12 +217,12 @@ class CatalogPublicationServiceTest {
         return new RepublishConfigReq(1L,ConfigRevisionServiceTest.NOW,"Restore historical menu",null);
     }
     private static void denied(HistoricalMenu t,String key) {
-        var counts=List.of("fnb_config_revision","fnb_action_log","sys_idempotent","sys_outbox").stream()
+        var counts=List.of("ind_config_revision","fnb_action_log","sys_idempotent","sys_outbox").stream()
                 .map(table -> t.sql().queryForObject("SELECT COUNT(*) FROM "+table,Long.class)).toList();
         assertThatThrownBy(() -> t.service().republishRevision("E","A","SOURCE","actor",restore(),key))
                 .isInstanceOfSatisfying(BizException.class,
                         e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
-        assertThat(List.of("fnb_config_revision","fnb_action_log","sys_idempotent","sys_outbox").stream()
+        assertThat(List.of("ind_config_revision","fnb_action_log","sys_idempotent","sys_outbox").stream()
                 .map(table -> t.sql().queryForObject("SELECT COUNT(*) FROM "+table,Long.class)).toList())
                 .isEqualTo(counts);
     }
