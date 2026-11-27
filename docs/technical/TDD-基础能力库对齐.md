@@ -247,13 +247,13 @@
 | # | 事项 | 出处 |
 |---|---|---|
 | C1 | 继续按域加中间件名单，每个域先查“哪些消费者写同一份数据、要不要同订阅组”：建议顺序 打印事实（B9）→ 发货快照回写（B11）→ 订单类（B1–B5）→ 权益/旧券（B6–B8）→ 餐饮（B14） | 清单 §〇 B |
-| C2 | 审批对账：OpsKit 查不到时补交一次，并登记作业声明（现只有 `@Scheduled`，`api,ops` 下不跑）；做完可改 MQ 直发 | 清单 A12 |
-| C3 | 门店同步：改成“中间件确认发出才推进游标”；做完可改 MQ 直发 | 清单 A13 |
+| C2 | **已做（2026-11-27）**：对账对 PENDING_SUBMIT 行（超 2 小时）经同一幂等路径补投；改为带作业声明的 `JobHandler`。**未对真实 OpsKit 客户端编译**（`-P opskit` 的依赖本机拉不到，只在桩上跑过 7 个单测）；生产仍待 A5 | 清单 A12 |
+| C3 | **已做（2026-11-27）**：某店发布失败即停在它前面、下一轮重试，游标只越过已持久接收的门店；A13 可改 MQ 直发（near-pay 侧按修订号幂等待确认） | 清单 A13 |
 | C4 | `CompensationSweeper` 的“卡住数”改读死信队列（现读发件箱 `FAILED`），在物流事件切中间件前做。**暂缓**：物流事件要等 A5（生产作业）才切中间件，现在改无处可用 | 清单 A8 |
 | C5 | 撤中转：PAY 权益三个中转改由源头发；进销存回写改由库存库发件箱发；删 `PrintingConfiguration`/`FoodWriteGuardConfiguration` 的包装转发。`PlatformPublicationPublisher` **已删（2026-11-27）** | 清单 §〇 C |
 | C6 | **已做（2026-11-27）**：22 个测试去掉无人读取的 `*.publication.archive-only` 属性。`BeautyOutboxConfiguration` 仍在用（美业服务单独启动时补发件箱门面），保留。`CATALOG_SOURCE_CHANGED` **不矛盾**：只存档名单是默认值，商城插件装上时经 `OutboxRouteContribution` 把路由撤出名单。**但查出新问题**：商城渠道源与餐饮渠道源的消费者（`CommerceProductSourceEventConsumer`、`CommerceTaxSourceEventConsumer`、`FoodCatalogSourceEventConsumer` 等）实现的是统一模式的 `OutboxHandler` 而不是 `OutboxConsumer`，默认旧投递模式下不运行，`BrokerSubscriptions` 也不接管 —— 这些事件类型（清单 B13）进中间件名单前，要先把它们接到 `OutboxConsumer` 或让订阅编排认 `OutboxHandler` | §1.4 |
-| C7 | “子单完成”5 个入口（行业精确完结、行业完结、商户手动完成、改单关单、端口完成）各自拼事件，收成一个出口 | 清单 N4 |
-| C8 | 微信发货上传在数据库事务里调微信接口，高并发时占连接，拆出来 | 清单 S2 |
+| C7 | **已做（2026-11-27）**：收成 `trade.event.SubOrderCompletion.publishIfCompleted`；逐字段比对 5 处未发现缺漏，统一为“子单已 COMPLETED 才发” | 清单 N4 |
+| C8 | **已做（2026-11-27）**：拆成“短事务校验 → 无事务调微信 → 短事务按版本条件收尾并记运单已上传” | 清单 S2 |
 | C9 | 存量投完后删 `WxUploadedConsumer`（只为消化切换前的 `WX_SHIPPING_UPLOADED`） | §1.5 ① |
 | C10 | 本 TDD §2 第 3 步（字典、审批、开放应用各收成一个端口）、第 4 步剩余（仓储去掉按归属切表）；“公共能力表只经唯一实现访问”的守卫 | §2 |
 
