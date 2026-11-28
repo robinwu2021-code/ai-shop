@@ -37,13 +37,17 @@ public class EnrollmentApprovalSubject implements ApprovalSubject {
     private final JdbcTemplate db;
     private final PlatformActivityService activities;
     private final ObjectProvider<ApprovalPort> approvals;
+    /** 商家名在平台基础库，不跨库连表：经商户端口取 */
+    private final ObjectProvider<ai.neargo.shop.spi.user.MerchantQueryPort> merchants;
     private final long recheckMinor;
 
     public EnrollmentApprovalSubject(JdbcTemplate db, @Lazy PlatformActivityService activities, ObjectProvider<ApprovalPort> approvals,
+                                     ObjectProvider<ai.neargo.shop.spi.user.MerchantQueryPort> merchants,
                                      @Value("${shop.approval.enrollment-recheck-minor:10000000}") long recheckMinor) {
         this.db = db;
         this.activities = activities;
         this.approvals = approvals;
+        this.merchants = merchants;
         this.recheckMinor = recheckMinor;
     }
 
@@ -125,12 +129,16 @@ public class EnrollmentApprovalSubject implements ApprovalSubject {
     private Map<String, Object> row(String enrollmentNo) {
         var rows = DataScopeContext.executeWithoutScope(() -> db.queryForList(
                 "SELECT e.enrollment_no,e.activity_no,e.entity_no,e.quota,e.platform_max_minor,e.merchant_max_minor,e.status,e.version,"
-                        + " a.name AS activity_name,a.budget_minor,a.enroll_reserved_minor,m.name AS entity_name"
+                        + " a.name AS activity_name,a.budget_minor,a.enroll_reserved_minor"
                         + " FROM pmt_enrollment e LEFT JOIN pmt_activity a ON a.activity_no=e.activity_no AND a.deleted=0"
-                        + " LEFT JOIN mch_entity m ON m.entity_no=e.entity_no AND m.deleted=0"
                         + " WHERE e.enrollment_no=? AND e.deleted=0", enrollmentNo));
         if (rows.isEmpty()) throw new ApprovalApplyException("NOT_FOUND", "报名不存在：" + enrollmentNo);
-        return rows.getFirst();
+        var row = new java.util.LinkedHashMap<>(rows.getFirst());
+        var port = merchants.getIfAvailable();
+        Object entityNo = row.get("entity_no");
+        row.put("entity_name", port == null || entityNo == null ? null
+                : port.find(entityNo.toString()).map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName).orElse(null));
+        return row;
     }
 
     private List<String> goods(String enrollmentNo) {

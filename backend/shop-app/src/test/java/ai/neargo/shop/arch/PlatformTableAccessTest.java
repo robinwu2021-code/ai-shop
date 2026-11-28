@@ -36,7 +36,10 @@ class PlatformTableAccessTest {
     private static final List<String> PLATFORM_CODE = List.of(
             "commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/platform/",
             "shop-merchant/src/main/java/ai/neargo/shop/merchant/", "shop-core/src/main/java/ai/neargo/shop/user/",
-            "shop-auth-store/", "shop-base-auth/", "shop-gateway/src/main/java/ai/neargo/shop/merchantbridge/");
+            "shop-auth-store/", "shop-base-auth/", "shop-gateway/src/main/java/ai/neargo/shop/merchantbridge/",
+            // 运营账号（新库 ops_staff）：platform 包里混着别的库的表，只按文件登记已接平台句柄的两个
+            "shop-core/src/main/java/ai/neargo/shop/platform/auth/OpsApiKeyStore.java",
+            "shop-core/src/main/java/ai/neargo/shop/platform/entity/SysOpsStaff.java");
     /**
      * 提到平台表名但不是访问：数据域按表名登记（拦截器对每个工厂都生效）；会话存储的表名配置（它本身就是平台句柄的一部分）；
      * 已执行的历史迁移（冻结，只在旧库上跑过）。
