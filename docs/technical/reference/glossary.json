@@ -35709,6 +35709,12 @@
           "ar": "هذا الرقم مرتبط بحساب آخر — تواصل مع الدعم"
         },
         {
+          "key": "err.user.wx_login_disabled",
+          "zh-CN": "微信登录暂未开放，请使用手机号验证码登录",
+          "en": "WeChat sign-in is not available yet. Please sign in with a phone verification code.",
+          "ar": "تسجيل الدخول عبر WeChat غير متاح حاليًا. يرجى تسجيل الدخول برمز التحقق المرسل إلى الهاتف."
+        },
+        {
           "key": "err.user.wx_phone_unavailable",
           "zh-CN": "手机号授权暂不可用，请稍后重试",
           "en": "Phone authorization is unavailable. Please try again later.",
@@ -48854,6 +48860,7 @@
           "ADDRESS_UNRESOLVED",
           "ENTITY_QUOTA_EXCEEDED",
           "WX_PHONE_UNAVAILABLE",
+          "WX_LOGIN_DISABLED",
           "DEREGISTER_HAS_OPEN_ORDERS",
           "DEREGISTER_BLOCKED",
           "PERSON_PHONE_TAKEN",
