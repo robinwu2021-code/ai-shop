@@ -153,7 +153,7 @@ class BrandPromotionCostNativeMysqlTest {
             var organization=mock(BrandPromotionScopePort.class);
             when(organization.find("MAIN","M1","B1","HQ")).thenReturn(new BrandPromotionScopePort.Brand("M1","B1",
                     "HQ",1,1,List.of(new BrandPromotionScopePort.Store("S2","E2",1,"BIND",1,"CN"))));
-            refunds=new RefundQuantityFactsPortImpl(manager,json);
+            refunds=new RefundQuantityFactsPortImpl(manager,json,null,false);
             cost=new BrandPromotionCostServiceImpl(manager,organization,new ActivityCommandDeduplicator(mapper,json),json,
                     refunds);
         }

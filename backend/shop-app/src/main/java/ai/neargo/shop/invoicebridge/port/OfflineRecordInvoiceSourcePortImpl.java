@@ -6,12 +6,15 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.invoice.InvoicePort.Scope;
 import ai.neargo.shop.spi.invoice.InvoiceSourcePort;
 import ai.neargo.shop.trade.entity.OrdOfflineRecord;
+import ai.neargo.shop.trade.mapper.OfflinePaymentMapper;
 import ai.neargo.shop.trade.mapper.OfflineRecordMappers.RecordMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.math.BigDecimal;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,6 +30,8 @@ public class OfflineRecordInvoiceSourcePortImpl implements InvoiceSourcePort {
     static final String SOURCE_TYPE = "OFFLINE_RECORD";
 
     private final RecordMapper records;
+    @Autowired private OfflinePaymentMapper offlinePayments;
+    @Value("${shop.trade.canonical-offline-records:false}") private boolean canonicalOfflineRecords;
 
     public OfflineRecordInvoiceSourcePortImpl(RecordMapper records) {
         this.records = records;
@@ -43,7 +48,9 @@ public class OfflineRecordInvoiceSourcePortImpl implements InvoiceSourcePort {
     }
 
     private InvoiceSource read(Scope scope, String recordNo) {
-        var r = records.selectOne(new QueryWrapper<OrdOfflineRecord>().eq("tenant_no", scope.tenantNo())
+        var r = canonicalOfflineRecords
+                ? offlinePayments.lock(scope.tenantNo(), scope.entityNo(), scope.storeNo(), recordNo)
+                : records.selectOne(new QueryWrapper<OrdOfflineRecord>().eq("tenant_no", scope.tenantNo())
                 .eq("entity_no", scope.entityNo()).eq("store_no", scope.storeNo()).eq("record_no", recordNo)
                 .last("FOR UPDATE"));
         if (r == null || !OrdOfflineRecord.RECORDED.equals(r.getStatus()) || r.getAmountMinor() == null

@@ -60,6 +60,8 @@ ADD_COLUMNS = {
     ],
     'ord_payment': [
         "`request_key` varchar(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '调用方业务身份键（同一来源同一键只记一笔）'",
+        "`offline_request_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '线下记账原请求摘要'",
+        "`offline_history` json NULL COMMENT '线下记账创建、更正、作废和退款留痕'",
     ],
     'ord_refund_obligation': [
         "`input_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '义务输入摘要（防重放）'",
@@ -187,7 +189,7 @@ def fix_column(table, line, statuses):
         ln = re.sub(r'`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\b',
                     '`updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)', ln)
     # D5：外部来源号、人员列放宽到 64
-    if WIDE.match(name):
+    if WIDE.match(name) or (table, name) == ('ord_payment', 'biz_no'):
         ln = re.sub(r'`%s` varchar\((\d+)\)' % name,
                     lambda m: '`%s` varchar(%d)' % (name, max(64, int(m.group(1)))), ln)
     # D6：金额与计数不为空、默认 0。例外：注释写明「空」有含义的（空表示…、未配时…、可不填）保持可空 ——

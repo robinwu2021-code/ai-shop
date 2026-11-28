@@ -30,13 +30,15 @@ public interface RefundExecutionMapper extends BaseMapper<OrdRefundExecution> {
     @Update("UPDATE ord_points_refund_execution SET last_attempt_at=#{at} WHERE after_sale_no=#{as}")
     int attempted(@Param("as") String as, @Param("at") long at);
 
+    String LOCK_SUB = "SELECT * FROM ord_sub_order WHERE sub_order_no=#{sub} AND deleted=0 FOR UPDATE";
+    String FUNDED_SOURCE = "SELECT COUNT(*) FROM ord_order p JOIN ord_after_sale a ON a.order_no=p.order_no"
+            + " AND a.tenant_no=p.tenant_no AND a.deleted=0"
+            + " WHERE p.order_no=#{order} AND p.tenant_no=#{tenant} AND p.deleted=0"
+            + " AND p.admission_kind='LEGACY_FUNDED' AND a.after_sale_no=#{as}"
+            + " AND a.sub_order_no=#{sub} AND a.entity_no=#{entity}";
+
     /** Source identities are immutable; the caller serializes against the current child first. */
-    @Select(
-            "SELECT COUNT(*) FROM ord_order p JOIN ord_after_sale a ON a.order_no=p.order_no"
-                    + " AND a.tenant_no=p.tenant_no AND a.deleted=0"
-                    + " WHERE p.order_no=#{order} AND p.tenant_no=#{tenant} AND p.deleted=0"
-                    + " AND p.admission_kind='LEGACY_FUNDED' AND a.after_sale_no=#{as}"
-                    + " AND a.sub_order_no=#{sub} AND a.entity_no=#{entity}")
+    @Select(FUNDED_SOURCE)
     int fundedSource(
             @Param("order") String order,
             @Param("sub") String sub,
@@ -44,7 +46,7 @@ public interface RefundExecutionMapper extends BaseMapper<OrdRefundExecution> {
             @Param("tenant") String tenant,
             @Param("entity") String entity);
 
-    @Select("SELECT * FROM ord_sub_order WHERE sub_order_no=#{sub} AND deleted=0 FOR UPDATE")
+    @Select(LOCK_SUB)
     OrdSubOrder lockSub(String sub);
 
     @Select("SELECT * FROM ord_after_sale WHERE after_sale_no=#{as} AND deleted=0 FOR UPDATE")

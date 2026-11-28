@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.service.impl;
 import ai.neargo.shop.common.PayChannels;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
@@ -16,6 +17,7 @@ import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStoreCollection;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.OfflineRecordMappers.RecordMapper;
+import ai.neargo.shop.trade.mapper.OfflinePaymentMapper;
 import ai.neargo.shop.trade.mapper.PosActivitySaleMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.StoreCollectionMapper;
@@ -58,7 +60,9 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
 
     @Autowired private PosSaleMemberPort posMembers;
     @Autowired private PosActivitySaleMapper posFacts;
+    @Autowired(required = false) private OfflinePaymentMapper offlinePayments;
     @Value("${shop.trade.canonical-storage:false}") private boolean canonicalStorage;
+    @Value("${shop.trade.canonical-offline-records:false}") private boolean canonicalOfflineRecords;
     private final OrderMapper orders;
     private final SubOrderMapper subOrders;
     private final RecordMapper offline;
@@ -151,8 +155,10 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
                         sub.getSubOrderNo(), order.getCurrency());
                 return false;
             }
-            if (collections.selectCount(new QueryWrapper<OrdStoreCollection>().eq("tenant_no", "MAIN")
-                    .eq("pay_order_no", c.payOrderNo())) > 0) return false;
+            long existing = canonicalOfflineRecords ? offlinePayments.countCollection(c.payOrderNo())
+                    : collections.selectCount(new QueryWrapper<OrdStoreCollection>().eq("tenant_no", "MAIN")
+                            .eq("pay_order_no", c.payOrderNo()));
+            if (existing > 0) return false;
             var row = new OrdStoreCollection();
             row.setTenantNo("MAIN");
             row.setPayOrderNo(c.payOrderNo());
@@ -163,7 +169,8 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
             row.setCurrency(c.currency());
             row.setPaidMinor(c.paidMinor());
             row.setPayChannel(c.payChannel());
-            collections.insert(row);
+            if (canonicalOfflineRecords) offlinePayments.insertCollection(row, BizKey.next(BizKey.OFFLINE_RECORD));
+            else collections.insert(row);
             if (OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) settle(sub, order);
             // 已付清 / 已取消后才到的钱照记（多收、或取消后顾客仍付了）：退还走退款，P3
             else log.warn("[store-order] 收款 {} 到达时订单 {} 已是 {}，只记不转状态", c.payOrderNo(),
@@ -184,7 +191,7 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
 
     @Override
     public long paidMinor(String entityNo, String storeNo, String subOrderNo, String currency) {
-        return unscoped(() -> Math.addExact(offline.sumRecordedOfOrder(entityNo, storeNo, subOrderNo, currency),
+        return unscoped(() -> Math.addExact(sumOffline(entityNo, storeNo, subOrderNo, currency),
                 collectionsOf(subOrderNo).stream().filter(r -> currency.equals(r.getCurrency()))
                         .mapToLong(OrdStoreCollection::getPaidMinor).sum()));
     }
@@ -195,7 +202,7 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
     private void settle(OrdSubOrder sub, OrdOrder order) {
         if (!OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) return;
         String currency = order.getCurrency();
-        long cash = unscoped(() -> offline.sumRecordedOfOrder(sub.getEntityNo(), sub.getStoreNo(),
+        long cash = unscoped(() -> sumOffline(sub.getEntityNo(), sub.getStoreNo(),
                 sub.getSubOrderNo(), currency));
         var collected = unscoped(() -> collectionsOf(sub.getSubOrderNo())).stream()
                 .filter(r -> currency.equals(r.getCurrency())).toList();
@@ -258,8 +265,14 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
     }
 
     private List<OrdStoreCollection> collectionsOf(String subOrderNo) {
+        if (canonicalOfflineRecords) return offlinePayments.collections(subOrderNo);
         return collections.selectList(new QueryWrapper<OrdStoreCollection>().eq("tenant_no", "MAIN")
                 .eq("sub_order_no", subOrderNo));
+    }
+
+    private long sumOffline(String entity, String store, String sub, String currency) {
+        return canonicalOfflineRecords ? offlinePayments.sumRecordedOfOrder("MAIN", entity, store, sub, currency)
+                : offline.sumRecordedOfOrder(entity, store, sub, currency);
     }
 
     private static <T> T unscoped(Supplier<T> action) {

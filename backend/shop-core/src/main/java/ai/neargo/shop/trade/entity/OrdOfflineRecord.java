@@ -67,4 +67,7 @@ public class OrdOfflineRecord extends BaseEntity {
     /** 首次请求体摘要，判「同键不同体」。 */
     @TableField(updateStrategy = FieldStrategy.NEVER)
     private String requestHash;
+
+    @TableField(exist = false)
+    private String offlineHistory;
 }

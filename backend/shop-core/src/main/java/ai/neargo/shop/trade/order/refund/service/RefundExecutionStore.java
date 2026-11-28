@@ -9,6 +9,7 @@ import ai.neargo.shop.trade.order.mapper.RefundExecutionMapper;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -21,31 +22,59 @@ import java.util.Objects;
 @Component
 public class RefundExecutionStore {
     private final RefundExecutionMapper mapper;
+    private final CanonicalRefundExecutionJournal journal;
+    private final boolean canonicalStorage;
 
-    public RefundExecutionStore(RefundExecutionMapper mapper) {
+    public RefundExecutionStore(RefundExecutionMapper mapper, CanonicalRefundExecutionJournal journal,
+            @Value("${shop.trade.canonical-storage:false}") boolean canonicalStorage) {
         this.mapper = mapper;
+        this.journal = journal;
+        this.canonicalStorage = canonicalStorage;
     }
 
     public OrdRefundExecution read(String no) {
+        if (canonicalStorage) {
+            return DataScopeContext.executeWithoutScope(() -> journal.read(no, false));
+        }
         return DataScopeContext.executeWithoutScope(() -> mapper.selectOne(Wrappers.<OrdRefundExecution>lambdaQuery()
                 .eq(OrdRefundExecution::getExecutionNo, no)));
     }
 
     public OrdRefundExecution byAfterSale(String no) {
+        if (canonicalStorage) {
+            return read("RF-" + no);
+        }
         return DataScopeContext.executeWithoutScope(() -> mapper.selectOne(Wrappers.<OrdRefundExecution>lambdaQuery()
                 .eq(OrdRefundExecution::getAfterSaleNo, no)));
     }
 
     public OrdRefundExecution lock(String no) {
+        if (canonicalStorage) {
+            return DataScopeContext.executeWithoutScope(() -> journal.read(no, true));
+        }
         return DataScopeContext.executeWithoutScope(() -> mapper.selectOne(Wrappers.<OrdRefundExecution>lambdaQuery()
                 .eq(OrdRefundExecution::getExecutionNo, no).last("FOR UPDATE")));
     }
 
     public void insert(OrdRefundExecution row) {
+        if (canonicalStorage) {
+            DataScopeContext.executeWithoutScope(() -> {
+                journal.insert(row);
+                return null;
+            });
+            return;
+        }
         DataScopeContext.executeWithoutScope(() -> mapper.insert(row));
     }
 
     public void save(OrdRefundExecution row) {
+        if (canonicalStorage) {
+            DataScopeContext.executeWithoutScope(() -> {
+                journal.save(row);
+                return null;
+            });
+            return;
+        }
         int count = DataScopeContext.executeWithoutScope(() -> mapper.updateById(row));
         if (count != 1) {
             throw BizException.of(ErrorCode.CONFLICT);
@@ -73,7 +102,8 @@ public class RefundExecutionStore {
             return null;
         }
         var child =
-                DataScopeContext.executeWithoutScope(() -> mapper.lockSub(hint.getSubOrderNo()));
+                DataScopeContext.executeWithoutScope(() -> canonicalStorage
+                        ? journal.lockSub(hint.getSubOrderNo()) : mapper.lockSub(hint.getSubOrderNo()));
         var row = lock(no);
         if (row == null) {
             return null;
@@ -89,7 +119,9 @@ public class RefundExecutionStore {
                         && Objects.equals(row.getAfterSaleNo(), hint.getAfterSaleNo())
                         && DataScopeContext.executeWithoutScope(
                                         () ->
-                                                mapper.fundedSource(
+                                                        canonicalStorage
+                                                                ? journal.fundedSource(row, child.getEntityNo())
+                                                                : mapper.fundedSource(
                                                         row.getOrderNo(),
                                                         row.getSubOrderNo(),
                                                         row.getAfterSaleNo(),
@@ -136,6 +168,10 @@ public class RefundExecutionStore {
     }
 
     public List<OrdRefundExecution> due(long now, int limit) {
+        int batchSize = Math.max(1, Math.min(limit, 200));
+        if (canonicalStorage) {
+            return DataScopeContext.executeWithoutScope(() -> journal.due(now, batchSize));
+        }
         return DataScopeContext.executeWithoutScope(() -> mapper.selectList(Wrappers.<OrdRefundExecution>lambdaQuery()
                 .and(q -> q.ne(OrdRefundExecution::getStatus, OrdRefundExecution.FAILED)
                         .ne(OrdRefundExecution::getStatus, OrdRefundExecution.SUCCEEDED)
@@ -149,7 +185,7 @@ public class RefundExecutionStore {
                 .and(q -> q.isNull(OrdRefundExecution::getErrorCode)
                         .or().ne(OrdRefundExecution::getErrorCode, "REFUND_EXECUTION_CONFLICT"))
                 .le(OrdRefundExecution::getNextAttemptAt, now).orderByAsc(OrdRefundExecution::getId)
-                .last("LIMIT " + Math.max(1, Math.min(limit, 200)))));
+                .last("LIMIT " + batchSize)));
     }
 
     private boolean pendingReversal(OrdRefundExecution row) {
@@ -162,6 +198,15 @@ public class RefundExecutionStore {
     public void resources(String no, String status, String error) {
         var row = lockSource(no);
         if (row == null || "REFUND_EXECUTION_CONFLICT".equals(row.getErrorCode())) {
+            return;
+        }
+        if (canonicalStorage) {
+            if (OrdRefundExecution.SUCCEEDED.equals(row.getStatus())) {
+                row.setResourceStatus(status);
+                row.setResourceErrorCode(error);
+                row.setNextAttemptAt(System.currentTimeMillis() + 120_000L);
+                save(row);
+            }
             return;
         }
         DataScopeContext.executeWithoutScope(() -> mapper.update(null, Wrappers.<OrdRefundExecution>lambdaUpdate()
