@@ -433,6 +433,8 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   - `V1__industry_design.sql` 不跟着重生成：它是 P1 开工时的设计稿原样、与 .61 现场一致，改动都在 `V2` 里，部署脚本（P1-5）也按这个差量写。
   - 顺带：`check-generated-docs` 发现 `旧库调用清单.md` 已与源码对不上（本周合并与本 TDD 的改名、换句柄），重跑 `gen-legacy-db-usage.py` 一并提交。
 - 设备出口 D-1～D-6 全部完成。
+- **P1-5 部署脚本**：[`deploy/ume/food-industry-cutover/`](../../deploy/ume/food-industry-cutover/README.md)。.61 的 `n_industry` 尚无应用写入，做法是「确认餐饮相关表全为空 → 备份 → 按定稿结构删表重建 → 逐表核对列与唯一键」，有数据即拒绝执行。定稿结构由 `gen.py` 在一次性库里执行 V1、V2 后 `SHOW CREATE TABLE` 生成，与 `FoodIndustryDatabaseTest` 测过的一致。
+  清单（以 .61 = 设计稿 + `01-industry-kds.sql` 共 17 张为基准）：新建 14 张、结构有变重建 11 张、结构不变重建 2 张、删除退役 3 张（`fnb_kds_event`、`fnb_kds_cursor`、`fnb_station_runtime`）；美业表、`ind_commission_rule`、`n_trade`、旧主库不动。本机按该基准模拟：`check` 差异与清单一致，`apply` 两次均核对通过，有数据时拒绝执行。**现场尚未执行**，须 root 账号先 `check` 核对现场与清单一致再 `apply`。
 - 待做：JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录

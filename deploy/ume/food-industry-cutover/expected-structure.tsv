@@ -1,0 +1,613 @@
+column	fnb_banquet_attendance_confirmation	id	bigint unsigned	NO	<null>
+column	fnb_banquet_attendance_confirmation	tenant_no	varchar(32)	NO	<null>
+column	fnb_banquet_attendance_confirmation	entity_no	varchar(32)	NO	<null>
+column	fnb_banquet_attendance_confirmation	store_no	varchar(32)	NO	<null>
+column	fnb_banquet_attendance_confirmation	form_no	varchar(32)	NO	<null>
+column	fnb_banquet_attendance_confirmation	confirmation_no	varchar(32)	NO	<null>
+column	fnb_banquet_attendance_confirmation	plan_no	varchar(32)	NO	<null>
+column	fnb_banquet_attendance_confirmation	form_version	bigint	NO	<null>
+column	fnb_banquet_attendance_confirmation	actual_persons	int	NO	<null>
+column	fnb_banquet_attendance_confirmation	roster_snapshot	longtext	NO	<null>
+column	fnb_banquet_attendance_confirmation	roster_hash	varchar(64)	NO	<null>
+column	fnb_banquet_attendance_confirmation	quote_no	varchar(32)	NO	<null>
+column	fnb_banquet_attendance_confirmation	quote_hash	varchar(64)	NO	<null>
+column	fnb_banquet_attendance_confirmation	quote_snapshot	longtext	NO	<null>
+column	fnb_banquet_attendance_confirmation	actor_no	varchar(64)	NO	<null>
+column	fnb_banquet_attendance_confirmation	reason	varchar(255)	NO	<null>
+column	fnb_banquet_attendance_confirmation	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_banquet_attendance_confirmation	created_by	varchar(64)	YES	<null>
+column	fnb_banquet_attendance_confirmation	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_banquet_attendance_confirmation	updated_by	varchar(64)	YES	<null>
+column	fnb_banquet_plan	id	bigint unsigned	NO	<null>
+column	fnb_banquet_plan	tenant_no	varchar(32)	NO	<null>
+column	fnb_banquet_plan	entity_no	varchar(32)	NO	<null>
+column	fnb_banquet_plan	plan_no	varchar(32)	NO	<null>
+column	fnb_banquet_plan	reservation_no	varchar(32)	NO	<null>
+column	fnb_banquet_plan	menu_snapshot	json	NO	<null>
+column	fnb_banquet_plan	guaranteed_persons	int	NO	<null>
+column	fnb_banquet_plan	actual_persons	int	NO	0
+column	fnb_banquet_plan	core_quote_ref	varchar(64)	NO	<null>
+column	fnb_banquet_plan	deposit_ref	varchar(64)	YES	<null>
+column	fnb_banquet_plan	status	varchar(10)	NO	<null>
+column	fnb_banquet_plan	deleted	tinyint	NO	0
+column	fnb_banquet_plan	version	bigint	NO	0
+column	fnb_banquet_plan	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_banquet_plan	created_by	varchar(64)	YES	<null>
+column	fnb_banquet_plan	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_banquet_plan	updated_by	varchar(64)	YES	<null>
+column	fnb_capacity_claim	id	bigint	NO	<null>
+column	fnb_capacity_claim	tenant_no	varchar(32)	NO	MAIN
+column	fnb_capacity_claim	entity_no	varchar(32)	NO	<null>
+column	fnb_capacity_claim	created_at	datetime(3)	NO	<null>
+column	fnb_capacity_claim	created_by	varchar(32)	NO	<null>
+column	fnb_capacity_claim	updated_at	datetime(3)	NO	<null>
+column	fnb_capacity_claim	updated_by	varchar(32)	NO	<null>
+column	fnb_capacity_claim	version	bigint	NO	0
+column	fnb_capacity_claim	deleted	int	NO	0
+column	fnb_capacity_claim	store_no	varchar(32)	NO	<null>
+column	fnb_capacity_claim	claim_no	varchar(32)	NO	<null>
+column	fnb_capacity_claim	slot_no	varchar(32)	NO	<null>
+column	fnb_capacity_claim	source_no	varchar(32)	NO	<null>
+column	fnb_capacity_claim	quantity	decimal(18,6)	NO	<null>
+column	fnb_capacity_claim	status	varchar(16)	NO	<null>
+column	fnb_capacity_claim	batch_no	varchar(32)	YES	<null>
+column	fnb_course	id	bigint unsigned	NO	<null>
+column	fnb_course	tenant_no	varchar(32)	NO	<null>
+column	fnb_course	entity_no	varchar(32)	NO	<null>
+column	fnb_course	course_no	varchar(32)	NO	<null>
+column	fnb_course	check_no	varchar(32)	NO	<null>
+column	fnb_course	name	varchar(64)	NO	<null>
+column	fnb_course	sequence_no	int	NO	<null>
+column	fnb_course	status	varchar(10)	NO	<null>
+column	fnb_course	deleted	tinyint	NO	0
+column	fnb_course	version	bigint	NO	0
+column	fnb_course	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_course	created_by	varchar(64)	YES	<null>
+column	fnb_course	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_course	updated_by	varchar(64)	YES	<null>
+column	fnb_custody	id	bigint unsigned	NO	<null>
+column	fnb_custody	tenant_no	varchar(32)	NO	<null>
+column	fnb_custody	entity_no	varchar(32)	NO	<null>
+column	fnb_custody	custody_no	varchar(32)	NO	<null>
+column	fnb_custody	store_no	varchar(32)	NO	<null>
+column	fnb_custody	owner_ref	varchar(64)	NO	<null>
+column	fnb_custody	sku_no	varchar(32)	NO	<null>
+column	fnb_custody	goods_name	varchar(255)	YES	<null>
+column	fnb_custody	custody_kind	varchar(16)	YES	<null>
+column	fnb_custody	unit	varchar(16)	NO	<null>
+column	fnb_custody	deposited_qty	decimal(18,6)	NO	0.000000
+column	fnb_custody	remaining_qty	decimal(18,6)	NO	<null>
+column	fnb_custody	expires_at	datetime(3)	NO	<null>
+column	fnb_custody	status	varchar(10)	NO	<null>
+column	fnb_custody	source_sub_order_no	varchar(32)	YES	<null>
+column	fnb_custody	remark	varchar(255)	YES	<null>
+column	fnb_custody	deleted	tinyint	NO	0
+column	fnb_custody	version	bigint	NO	0
+column	fnb_custody	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_custody	created_by	varchar(64)	YES	<null>
+column	fnb_custody	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_custody	updated_by	varchar(64)	YES	<null>
+column	fnb_custody_movement	id	bigint unsigned	NO	<null>
+column	fnb_custody_movement	tenant_no	varchar(32)	YES	<null>
+column	fnb_custody_movement	entity_no	varchar(32)	YES	<null>
+column	fnb_custody_movement	store_no	varchar(32)	YES	<null>
+column	fnb_custody_movement	movement_no	varchar(32)	YES	<null>
+column	fnb_custody_movement	custody_no	varchar(32)	YES	<null>
+column	fnb_custody_movement	action	varchar(24)	YES	<null>
+column	fnb_custody_movement	quantity	decimal(20,6)	NO	0.000000
+column	fnb_custody_movement	remaining_qty	decimal(20,6)	NO	0.000000
+column	fnb_custody_movement	unit	varchar(16)	YES	<null>
+column	fnb_custody_movement	actor_no	varchar(64)	YES	<null>
+column	fnb_custody_movement	recipient_no	varchar(32)	YES	<null>
+column	fnb_custody_movement	reason	varchar(255)	YES	<null>
+column	fnb_custody_movement	original_receipt_ref	varchar(128)	YES	<null>
+column	fnb_custody_movement	result_snapshot	longtext	YES	<null>
+column	fnb_custody_movement	visit_no	varchar(32)	YES	<null>
+column	fnb_custody_movement	deleted	tinyint	NO	0
+column	fnb_custody_movement	version	bigint	NO	0
+column	fnb_custody_movement	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_custody_movement	created_by	varchar(64)	YES	<null>
+column	fnb_custody_movement	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_custody_movement	updated_by	varchar(64)	YES	<null>
+column	fnb_custody_movement	key_hash	varchar(64)	NO	<null>
+column	fnb_custody_movement	request_hash	varchar(64)	NO	<null>
+column	fnb_kds_subscription	id	bigint unsigned	NO	<null>
+column	fnb_kds_subscription	tenant_no	varchar(32)	NO	MAIN
+column	fnb_kds_subscription	entity_no	varchar(32)	NO	<null>
+column	fnb_kds_subscription	store_no	varchar(32)	NO	<null>
+column	fnb_kds_subscription	device_no	varchar(32)	NO	<null>
+column	fnb_kds_subscription	stations	json	NO	<null>
+column	fnb_kds_subscription	version	bigint	NO	0
+column	fnb_kds_subscription	created_at	datetime(3)	NO	<null>
+column	fnb_kds_subscription	created_by	varchar(32)	NO	<null>
+column	fnb_kds_subscription	updated_at	datetime(3)	NO	<null>
+column	fnb_kds_subscription	updated_by	varchar(32)	NO	<null>
+column	fnb_kds_voice_command	entity_no	varchar(32)	NO	<null>
+column	fnb_kds_voice_command	store_no	varchar(32)	NO	<null>
+column	fnb_kds_voice_command	station_no	varchar(32)	NO	<null>
+column	fnb_kds_voice_command	command_no	varchar(32)	NO	<null>
+column	fnb_kds_voice_command	action	varchar(16)	NO	<null>
+column	fnb_kds_voice_command	status	varchar(16)	NO	<null>
+column	fnb_kds_voice_command	source_version	bigint	NO	<null>
+column	fnb_kds_voice_command	reason	varchar(255)	NO	<null>
+column	fnb_kds_voice_command	device_no	varchar(32)	YES	<null>
+column	fnb_kds_voice_command	voice_text	varchar(128)	YES	<null>
+column	fnb_kds_voice_command	requested_by	varchar(32)	NO	<null>
+column	fnb_kds_voice_command	request_key	varchar(128)	NO	<null>
+column	fnb_kds_voice_command	request_hash	varchar(64)	NO	<null>
+column	fnb_kds_voice_command	created_at	datetime(3)	NO	<null>
+column	fnb_kds_voice_command	claim_actor	varchar(32)	YES	<null>
+column	fnb_kds_voice_command	lease_token	varchar(64)	YES	<null>
+column	fnb_kds_voice_command	lease_until	datetime(3)	YES	<null>
+column	fnb_kds_voice_command	response_code	varchar(64)	YES	<null>
+column	fnb_kitchen_event	id	bigint	NO	<null>
+column	fnb_kitchen_event	tenant_no	varchar(32)	NO	MAIN
+column	fnb_kitchen_event	entity_no	varchar(32)	NO	<null>
+column	fnb_kitchen_event	event_no	varchar(32)	NO	<null>
+column	fnb_kitchen_event	task_no	varchar(32)	NO	<null>
+column	fnb_kitchen_event	event_type	varchar(24)	NO	<null>
+column	fnb_kitchen_event	qty	decimal(18,6)	NO	<null>
+column	fnb_kitchen_event	ready_loss_qty	decimal(24,6)	YES	<null>
+column	fnb_kitchen_event	operation_key	varchar(64)	NO	<null>
+column	fnb_kitchen_event	source_request_hash	varchar(64)	YES	<null>
+column	fnb_kitchen_event	reason	varchar(255)	YES	<null>
+column	fnb_kitchen_event	inventory_doc_no	varchar(32)	YES	<null>
+column	fnb_kitchen_event	custody_snapshot	text	YES	<null>
+column	fnb_kitchen_event	version	bigint	NO	0
+column	fnb_kitchen_event	deleted	int	NO	0
+column	fnb_kitchen_event	created_at	datetime(3)	NO	<null>
+column	fnb_kitchen_event	created_by	varchar(32)	NO	<null>
+column	fnb_kitchen_event	updated_at	datetime(3)	NO	<null>
+column	fnb_kitchen_event	updated_by	varchar(32)	NO	<null>
+column	fnb_kitchen_task	id	bigint	NO	<null>
+column	fnb_kitchen_task	tenant_no	varchar(32)	NO	MAIN
+column	fnb_kitchen_task	entity_no	varchar(32)	NO	<null>
+column	fnb_kitchen_task	created_at	datetime(3)	NO	<null>
+column	fnb_kitchen_task	created_by	varchar(32)	NO	<null>
+column	fnb_kitchen_task	updated_at	datetime(3)	NO	<null>
+column	fnb_kitchen_task	updated_by	varchar(32)	NO	<null>
+column	fnb_kitchen_task	version	bigint	NO	0
+column	fnb_kitchen_task	deleted	int	NO	0
+column	fnb_kitchen_task	task_no	varchar(32)	NO	<null>
+column	fnb_kitchen_task	ticket_no	varchar(32)	NO	<null>
+column	fnb_kitchen_task	food_line_no	varchar(32)	NO	<null>
+column	fnb_kitchen_task	component_no	varchar(32)	YES	<null>
+column	fnb_kitchen_task	station_no	varchar(32)	NO	<null>
+column	fnb_kitchen_task	route_version	bigint	NO	<null>
+column	fnb_kitchen_task	qty	decimal(18,6)	NO	<null>
+column	fnb_kitchen_task	making_qty	decimal(18,6)	NO	<null>
+column	fnb_kitchen_task	ready_qty	decimal(18,6)	NO	<null>
+column	fnb_kitchen_task	served_qty	decimal(18,6)	NO	<null>
+column	fnb_kitchen_task	void_qty	decimal(18,6)	NO	<null>
+column	fnb_kitchen_task	status	varchar(16)	NO	<null>
+column	fnb_kitchen_task	task_part_key	varchar(96)	NO	<null>
+column	fnb_kitchen_task	task_role	varchar(16)	NO	<null>
+column	fnb_kitchen_ticket	id	bigint unsigned	NO	<null>
+column	fnb_kitchen_ticket	tenant_no	varchar(32)	YES	<null>
+column	fnb_kitchen_ticket	entity_no	varchar(32)	YES	<null>
+column	fnb_kitchen_ticket	store_no	varchar(32)	YES	<null>
+column	fnb_kitchen_ticket	ticket_no	varchar(32)	YES	<null>
+column	fnb_kitchen_ticket	batch_no	varchar(32)	YES	<null>
+column	fnb_kitchen_ticket	kind	varchar(16)	YES	<null>
+column	fnb_kitchen_ticket	original_ticket_no	varchar(32)	YES	<null>
+column	fnb_kitchen_ticket	dispatch_at	datetime(3)	YES	<null>
+column	fnb_kitchen_ticket	dispatch_attempts	int	YES	<null>
+column	fnb_kitchen_ticket	last_error	varchar(64)	YES	<null>
+column	fnb_kitchen_ticket	status	varchar(10)	YES	<null>
+column	fnb_kitchen_ticket	deleted	tinyint	NO	0
+column	fnb_kitchen_ticket	version	bigint	NO	0
+column	fnb_kitchen_ticket	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_kitchen_ticket	created_by	varchar(64)	YES	<null>
+column	fnb_kitchen_ticket	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_kitchen_ticket	updated_by	varchar(64)	YES	<null>
+column	fnb_kitchen_ticket	dispatch_key	varchar(64)	YES	<null>
+column	fnb_kitchen_ticket	next_attempt_at	datetime(3)	YES	<null>
+column	fnb_queue_ticket	id	bigint unsigned	NO	<null>
+column	fnb_queue_ticket	tenant_no	varchar(32)	NO	<null>
+column	fnb_queue_ticket	entity_no	varchar(32)	NO	<null>
+column	fnb_queue_ticket	ticket_no	varchar(32)	NO	<null>
+column	fnb_queue_ticket	store_no	varchar(32)	NO	<null>
+column	fnb_queue_ticket	business_date	date	NO	<null>
+column	fnb_queue_ticket	party_size	int	NO	<null>
+column	fnb_queue_ticket	contact_ref	varchar(64)	YES	<null>
+column	fnb_queue_ticket	status	varchar(10)	NO	<null>
+column	fnb_queue_ticket	called_at	datetime(3)	YES	<null>
+column	fnb_queue_ticket	check_no	varchar(32)	YES	<null>
+column	fnb_queue_ticket	seat_request	json	YES	<null>
+column	fnb_queue_ticket	seat_actor_no	varchar(32)	YES	<null>
+column	fnb_queue_ticket	queue_category	varchar(16)	YES	<null>
+column	fnb_queue_ticket	display_no	varchar(16)	YES	<null>
+column	fnb_queue_ticket	user_no	varchar(32)	YES	<null>
+column	fnb_queue_ticket	source	varchar(16)	YES	<null>
+column	fnb_queue_ticket	deleted	tinyint	NO	0
+column	fnb_queue_ticket	version	bigint	NO	0
+column	fnb_queue_ticket	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_queue_ticket	created_by	varchar(64)	YES	<null>
+column	fnb_queue_ticket	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_queue_ticket	updated_by	varchar(64)	YES	<null>
+column	fnb_queue_ticket	request_key	char(64)	YES	<null>
+column	fnb_queue_ticket	request_hash	char(64)	YES	<null>
+column	fnb_queue_ticket	seat_request_hash	char(64)	YES	<null>
+column	fnb_reservation	id	bigint	NO	<null>
+column	fnb_reservation	tenant_no	varchar(32)	NO	MAIN
+column	fnb_reservation	entity_no	varchar(32)	NO	<null>
+column	fnb_reservation	created_at	datetime(3)	NO	<null>
+column	fnb_reservation	created_by	varchar(32)	NO	<null>
+column	fnb_reservation	updated_at	datetime(3)	NO	<null>
+column	fnb_reservation	updated_by	varchar(32)	NO	<null>
+column	fnb_reservation	version	bigint	NO	0
+column	fnb_reservation	deleted	int	NO	0
+column	fnb_reservation	reservation_no	varchar(32)	NO	<null>
+column	fnb_reservation	store_no	varchar(32)	NO	<null>
+column	fnb_reservation	resource_hold_no	varchar(32)	YES	<null>
+column	fnb_reservation	buyer_no	varchar(32)	YES	<null>
+column	fnb_reservation	contact_ref	varchar(64)	NO	<null>
+column	fnb_reservation	party_size	int	NO	<null>
+column	fnb_reservation	start_at	datetime(3)	NO	<null>
+column	fnb_reservation	end_at	datetime(3)	NO	<null>
+column	fnb_reservation	status	varchar(24)	NO	<null>
+column	fnb_reservation	deposit_ref	varchar(64)	YES	<null>
+column	fnb_reservation	check_no	varchar(32)	YES	<null>
+column	fnb_reservation	request_key	varchar(64)	YES	<null>
+column	fnb_reservation	request_hash	varchar(64)	YES	<null>
+column	fnb_reservation_table	id	bigint	NO	<null>
+column	fnb_reservation_table	tenant_no	varchar(32)	NO	MAIN
+column	fnb_reservation_table	entity_no	varchar(32)	NO	<null>
+column	fnb_reservation_table	created_at	datetime(3)	NO	<null>
+column	fnb_reservation_table	created_by	varchar(32)	NO	<null>
+column	fnb_reservation_table	updated_at	datetime(3)	NO	<null>
+column	fnb_reservation_table	updated_by	varchar(32)	NO	<null>
+column	fnb_reservation_table	version	bigint	NO	0
+column	fnb_reservation_table	deleted	int	NO	0
+column	fnb_reservation_table	store_no	varchar(32)	NO	<null>
+column	fnb_reservation_table	reservation_no	varchar(32)	NO	<null>
+column	fnb_reservation_table	table_no	varchar(32)	NO	<null>
+column	fnb_service_calendar	id	bigint	NO	<null>
+column	fnb_service_calendar	tenant_no	varchar(32)	NO	MAIN
+column	fnb_service_calendar	entity_no	varchar(32)	NO	<null>
+column	fnb_service_calendar	created_at	datetime(3)	NO	<null>
+column	fnb_service_calendar	created_by	varchar(32)	NO	<null>
+column	fnb_service_calendar	updated_at	datetime(3)	NO	<null>
+column	fnb_service_calendar	updated_by	varchar(32)	NO	<null>
+column	fnb_service_calendar	version	bigint	NO	0
+column	fnb_service_calendar	deleted	int	NO	0
+column	fnb_service_calendar	calendar_no	varchar(32)	NO	<null>
+column	fnb_service_calendar	store_no	varchar(32)	NO	<null>
+column	fnb_service_calendar	local_date	date	NO	<null>
+column	fnb_service_calendar	mode	varchar(16)	NO	<null>
+column	fnb_service_calendar	intervals	json	NO	<null>
+column	fnb_service_calendar	policy_no	varchar(32)	NO	<null>
+column	fnb_service_entitlement	id	bigint unsigned	NO	<null>
+column	fnb_service_entitlement	tenant_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement	entity_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement	store_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement	entitlement_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement	entitlement_kind	varchar(16)	YES	<null>
+column	fnb_service_entitlement	form_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement	attendee_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement	person_class	varchar(16)	YES	<null>
+column	fnb_service_entitlement	persons	int	NO	0
+column	fnb_service_entitlement	goods_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement	sku_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement	menu_item_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement	unit	varchar(16)	YES	<null>
+column	fnb_service_entitlement	granted_qty	decimal(24,6)	NO	0.000000
+column	fnb_service_entitlement	consumed_qty	decimal(24,6)	NO	0.000000
+column	fnb_service_entitlement	valid_from	datetime(3)	YES	<null>
+column	fnb_service_entitlement	valid_until	datetime(3)	YES	<null>
+column	fnb_service_entitlement	rule_snapshot	json	YES	<null>
+column	fnb_service_entitlement	status	varchar(10)	YES	<null>
+column	fnb_service_entitlement	owner_snapshot	longtext	YES	<null>
+column	fnb_service_entitlement	quote_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement	quote_hash	varchar(64)	YES	<null>
+column	fnb_service_entitlement	source_hash	varchar(64)	YES	<null>
+column	fnb_service_entitlement	version	bigint	NO	0
+column	fnb_service_entitlement	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_service_entitlement	created_by	varchar(64)	YES	<null>
+column	fnb_service_entitlement	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_service_entitlement	updated_by	varchar(64)	YES	<null>
+column	fnb_service_entitlement_event	id	bigint unsigned	NO	<null>
+column	fnb_service_entitlement_event	tenant_no	varchar(32)	NO	<null>
+column	fnb_service_entitlement_event	entity_no	varchar(32)	NO	<null>
+column	fnb_service_entitlement_event	store_no	varchar(32)	NO	<null>
+column	fnb_service_entitlement_event	event_no	varchar(32)	NO	<null>
+column	fnb_service_entitlement_event	form_no	varchar(32)	NO	<null>
+column	fnb_service_entitlement_event	entitlement_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement_event	event_kind	varchar(16)	NO	<null>
+column	fnb_service_entitlement_event	quantity	decimal(24,6)	NO	<null>
+column	fnb_service_entitlement_event	batch_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement_event	food_line_no	varchar(32)	YES	<null>
+column	fnb_service_entitlement_event	quote_no	varchar(32)	NO	<null>
+column	fnb_service_entitlement_event	quote_hash	varchar(64)	NO	<null>
+column	fnb_service_entitlement_event	evidence_snapshot	longtext	NO	<null>
+column	fnb_service_entitlement_event	actor_no	varchar(64)	NO	<null>
+column	fnb_service_entitlement_event	reason	varchar(255)	NO	<null>
+column	fnb_service_entitlement_event	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_service_entitlement_event	created_by	varchar(64)	YES	<null>
+column	fnb_service_entitlement_event	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_service_entitlement_event	updated_by	varchar(64)	YES	<null>
+column	fnb_service_slot	id	bigint	NO	<null>
+column	fnb_service_slot	tenant_no	varchar(32)	NO	MAIN
+column	fnb_service_slot	entity_no	varchar(32)	NO	<null>
+column	fnb_service_slot	created_at	datetime(3)	NO	<null>
+column	fnb_service_slot	created_by	varchar(32)	NO	<null>
+column	fnb_service_slot	updated_at	datetime(3)	NO	<null>
+column	fnb_service_slot	updated_by	varchar(32)	NO	<null>
+column	fnb_service_slot	version	bigint	NO	0
+column	fnb_service_slot	deleted	int	NO	0
+column	fnb_service_slot	store_no	varchar(32)	NO	<null>
+column	fnb_service_slot	slot_no	varchar(32)	NO	<null>
+column	fnb_service_slot	starts_at	datetime(3)	NO	<null>
+column	fnb_service_slot	ends_at	datetime(3)	NO	<null>
+column	fnb_service_slot	order_cutoff_at	datetime(3)	NO	<null>
+column	fnb_service_slot	dispatch_at	datetime(3)	NO	<null>
+column	fnb_service_slot	capacity	decimal(18,6)	NO	<null>
+column	fnb_service_slot	reserved_qty	decimal(18,6)	NO	<null>
+column	fnb_service_slot	consumed_qty	decimal(18,6)	NO	<null>
+column	fnb_service_slot	unit	varchar(16)	NO	<null>
+column	fnb_service_slot	status	varchar(16)	NO	<null>
+column	fnb_station	id	bigint unsigned	NO	<null>
+column	fnb_station	tenant_no	varchar(32)	NO	MAIN
+column	fnb_station	entity_no	varchar(32)	NO	<null>
+column	fnb_station	station_no	varchar(32)	NO	<null>
+column	fnb_station	store_no	varchar(32)	NO	<null>
+column	fnb_station	name	varchar(64)	NO	<null>
+column	fnb_station	station_type	varchar(24)	NO	<null>
+column	fnb_station	enabled	tinyint	NO	<null>
+column	fnb_station	runtime_status	varchar(10)	YES	<null>
+column	fnb_station	published_revision_no	varchar(32)	YES	<null>
+column	fnb_station	deleted	tinyint	NO	0
+column	fnb_station	version	bigint	NO	0
+column	fnb_station	created_at	datetime(3)	NO	<null>
+column	fnb_station	created_by	varchar(32)	NO	<null>
+column	fnb_station	updated_at	datetime(3)	NO	<null>
+column	fnb_station	updated_by	varchar(32)	NO	<null>
+column	fnb_table	id	bigint unsigned	NO	<null>
+column	fnb_table	tenant_no	varchar(32)	NO	<null>
+column	fnb_table	entity_no	varchar(32)	NO	<null>
+column	fnb_table	table_no	varchar(32)	NO	<null>
+column	fnb_table	store_no	varchar(32)	NO	<null>
+column	fnb_table	area_no	varchar(32)	NO	<null>
+column	fnb_table	code	varchar(32)	NO	<null>
+column	fnb_table	name	varchar(64)	NO	<null>
+column	fnb_table	capacity	int	NO	<null>
+column	fnb_table	resource_no	varchar(32)	YES	<null>
+column	fnb_table	sort_no	int	NO	<null>
+column	fnb_table	status	varchar(10)	NO	<null>
+column	fnb_table	turnover_state	varchar(10)	NO	<null>
+column	fnb_table	deleted	tinyint	NO	0
+column	fnb_table	version	bigint	NO	0
+column	fnb_table	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_table	created_by	varchar(64)	YES	<null>
+column	fnb_table	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_table	updated_by	varchar(64)	YES	<null>
+column	fnb_table_area	id	bigint unsigned	NO	<null>
+column	fnb_table_area	tenant_no	varchar(32)	NO	<null>
+column	fnb_table_area	entity_no	varchar(32)	NO	<null>
+column	fnb_table_area	area_no	varchar(32)	NO	<null>
+column	fnb_table_area	store_no	varchar(32)	NO	<null>
+column	fnb_table_area	code	varchar(32)	NO	<null>
+column	fnb_table_area	name	varchar(64)	NO	<null>
+column	fnb_table_area	sort_no	int	NO	<null>
+column	fnb_table_area	status	varchar(10)	NO	<null>
+column	fnb_table_area	deleted	tinyint	NO	0
+column	fnb_table_area	version	bigint	NO	0
+column	fnb_table_area	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_table_area	created_by	varchar(64)	YES	<null>
+column	fnb_table_area	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	fnb_table_area	updated_by	varchar(64)	YES	<null>
+column	fnb_table_occupancy	id	bigint	NO	<null>
+column	fnb_table_occupancy	tenant_no	varchar(32)	NO	MAIN
+column	fnb_table_occupancy	entity_no	varchar(32)	NO	<null>
+column	fnb_table_occupancy	created_at	datetime(3)	NO	<null>
+column	fnb_table_occupancy	created_by	varchar(32)	NO	<null>
+column	fnb_table_occupancy	updated_at	datetime(3)	NO	<null>
+column	fnb_table_occupancy	updated_by	varchar(32)	NO	<null>
+column	fnb_table_occupancy	version	bigint	NO	0
+column	fnb_table_occupancy	deleted	int	NO	0
+column	fnb_table_occupancy	occupancy_no	varchar(32)	NO	<null>
+column	fnb_table_occupancy	table_no	varchar(32)	NO	<null>
+column	fnb_table_occupancy	check_no	varchar(32)	NO	<null>
+column	fnb_table_occupancy	seats	int	NO	<null>
+column	fnb_table_occupancy	started_at	datetime(3)	NO	<null>
+column	fnb_table_occupancy	ended_at	datetime(3)	YES	<null>
+column	fnb_table_occupancy	resource_claim_no	varchar(32)	YES	<null>
+column	fnb_table_occupancy	sharing_mode	varchar(16)	NO	EXCLUSIVE
+column	fnb_table_operation	id	bigint	NO	<null>
+column	fnb_table_operation	tenant_no	varchar(32)	NO	MAIN
+column	fnb_table_operation	entity_no	varchar(32)	NO	<null>
+column	fnb_table_operation	created_at	datetime(3)	NO	<null>
+column	fnb_table_operation	created_by	varchar(32)	NO	<null>
+column	fnb_table_operation	updated_at	datetime(3)	NO	<null>
+column	fnb_table_operation	updated_by	varchar(32)	NO	<null>
+column	fnb_table_operation	version	bigint	NO	0
+column	fnb_table_operation	deleted	int	NO	0
+column	fnb_table_operation	operation_no	varchar(32)	NO	<null>
+column	fnb_table_operation	store_no	varchar(32)	NO	<null>
+column	fnb_table_operation	kind	varchar(24)	NO	<null>
+column	fnb_table_operation	check_no	varchar(32)	NO	<null>
+column	fnb_table_operation	target_check_no	varchar(32)	YES	<null>
+column	fnb_table_operation	request_key	varchar(64)	NO	<null>
+column	fnb_table_operation	request_hash	char(64)	NO	<null>
+column	fnb_table_operation	expected_versions	json	NO	<null>
+column	fnb_table_operation	target_scope	json	NO	<null>
+column	fnb_table_operation	resource_operation_ref	varchar(64)	YES	<null>
+column	fnb_table_operation	status	varchar(24)	NO	<null>
+column	fnb_table_operation	reason	varchar(255)	NO	<null>
+column	ind_assignment	id	bigint unsigned	NO	<null>
+column	ind_assignment	tenant_no	varchar(32)	YES	<null>
+column	ind_assignment	entity_no	varchar(32)	YES	<null>
+column	ind_assignment	store_no	varchar(32)	YES	<null>
+column	ind_assignment	assignment_no	varchar(32)	YES	<null>
+column	ind_assignment	target_type	varchar(24)	YES	<null>
+column	ind_assignment	target_no	varchar(32)	YES	<null>
+column	ind_assignment	assignment_kind	varchar(16)	YES	<null>
+column	ind_assignment	personnel_no	varchar(32)	YES	<null>
+column	ind_assignment	role_code	varchar(32)	YES	<null>
+column	ind_assignment	resource_no	varchar(32)	YES	<null>
+column	ind_assignment	hold_no	varchar(32)	YES	<null>
+column	ind_assignment	appointment_revision	bigint	YES	<null>
+column	ind_assignment	planned_start_at	datetime(3)	YES	<null>
+column	ind_assignment	planned_end_at	datetime(3)	YES	<null>
+column	ind_assignment	started_at	datetime(3)	YES	<null>
+column	ind_assignment	ended_at	datetime(3)	YES	<null>
+column	ind_assignment	previous_assignment_no	varchar(32)	YES	<null>
+column	ind_assignment	handover_reason	varchar(255)	YES	<null>
+column	ind_assignment	status	varchar(10)	YES	<null>
+column	ind_assignment	skill_snapshot	json	YES	<null>
+column	ind_assignment	designated	tinyint	YES	<null>
+column	ind_assignment	deleted	tinyint	NO	0
+column	ind_assignment	version	bigint	NO	0
+column	ind_assignment	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	ind_assignment	created_by	varchar(64)	YES	<null>
+column	ind_assignment	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	ind_assignment	updated_by	varchar(64)	YES	<null>
+column	ind_assignment	handover_no	varchar(32)	YES	<null>
+column	ind_assignment	source_hash	char(64)	YES	<null>
+column	ind_config_revision	id	bigint unsigned	NO	<null>
+column	ind_config_revision	tenant_no	varchar(32)	YES	<null>
+column	ind_config_revision	entity_no	varchar(32)	YES	<null>
+column	ind_config_revision	policy_version_no	varchar(32)	YES	<null>
+column	ind_config_revision	config_kind	varchar(24)	YES	<null>
+column	ind_config_revision	policy_no	varchar(32)	YES	<null>
+column	ind_config_revision	store_no	varchar(32)	YES	<null>
+column	ind_config_revision	revision_index	int	YES	<null>
+column	ind_config_revision	previous_revision_no	varchar(32)	YES	<null>
+column	ind_config_revision	booking_ahead_days	int	YES	<null>
+column	ind_config_revision	cancel_rule	json	YES	<null>
+column	ind_config_revision	allowed_modes	json	YES	<null>
+column	ind_config_revision	definition_snapshot	json	YES	<null>
+column	ind_config_revision	scope_store_nos	json	YES	<null>
+column	ind_config_revision	schema_version	int	YES	<null>
+column	ind_config_revision	snapshot_hash	char(64)	YES	<null>
+column	ind_config_revision	effective_at	datetime(3)	YES	<null>
+column	ind_config_revision	status	varchar(10)	YES	<null>
+column	ind_config_revision	actor_no	varchar(64)	YES	<null>
+column	ind_config_revision	reason	varchar(255)	YES	<null>
+column	ind_config_revision	deleted	tinyint	NO	0
+column	ind_config_revision	version	bigint	NO	0
+column	ind_config_revision	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	ind_config_revision	created_by	varchar(64)	YES	<null>
+column	ind_config_revision	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	ind_config_revision	updated_by	varchar(64)	YES	<null>
+column	ind_store_device	id	bigint unsigned	NO	<null>
+column	ind_store_device	tenant_no	varchar(32)	NO	MAIN
+column	ind_store_device	entity_no	varchar(32)	NO	<null>
+column	ind_store_device	store_no	varchar(32)	NO	<null>
+column	ind_store_device	device_no	varchar(32)	NO	<null>
+column	ind_store_device	device_type	varchar(16)	NO	<null>
+column	ind_store_device	display_name	varchar(64)	NO	<null>
+column	ind_store_device	serial_no	varchar(32)	YES	<null>
+column	ind_store_device	platform	varchar(24)	YES	<null>
+column	ind_store_device	software_version	varchar(32)	YES	<null>
+column	ind_store_device	status	varchar(10)	NO	<null>
+column	ind_store_device	generation	bigint	NO	0
+column	ind_store_device	credential_hash	varbinary(64)	YES	<null>
+column	ind_store_device	credential_version	int	YES	<null>
+column	ind_store_device	enrollment_expires_at	datetime(3)	YES	<null>
+column	ind_store_device	signer_key_no	varchar(32)	YES	<null>
+column	ind_store_device	signer_public_key	varchar(128)	YES	<null>
+column	ind_store_device	signer_public_key_hash	char(64)	YES	<null>
+column	ind_store_device	challenge_no	varchar(32)	YES	<null>
+column	ind_store_device	challenge_expires_at	datetime(3)	YES	<null>
+column	ind_store_device	write_lease_no	varchar(32)	YES	<null>
+column	ind_store_device	write_lease_expires_at	datetime(3)	YES	<null>
+column	ind_store_device	write_accepted_through	bigint	YES	<null>
+column	ind_store_device	last_seen_at	datetime(3)	YES	<null>
+column	ind_store_device	revoked_at	datetime(3)	YES	<null>
+column	ind_store_device	deleted	tinyint	NO	0
+column	ind_store_device	version	bigint	NO	0
+column	ind_store_device	created_at	datetime(3)	NO	<null>
+column	ind_store_device	created_by	varchar(32)	NO	<null>
+column	ind_store_device	updated_at	datetime(3)	NO	<null>
+column	ind_store_device	updated_by	varchar(32)	NO	<null>
+column	ind_store_policy	id	bigint unsigned	NO	<null>
+column	ind_store_policy	tenant_no	varchar(32)	YES	<null>
+column	ind_store_policy	entity_no	varchar(32)	YES	<null>
+column	ind_store_policy	policy_no	varchar(32)	YES	<null>
+column	ind_store_policy	store_no	varchar(32)	YES	<null>
+column	ind_store_policy	industry_code	varchar(16)	YES	<null>
+column	ind_store_policy	timezone	varchar(32)	YES	<null>
+column	ind_store_policy	cutover_minute	int	YES	<null>
+column	ind_store_policy	pay_policy	varchar(16)	YES	<null>
+column	ind_store_policy	capabilities	json	YES	<null>
+column	ind_store_policy	current_policy_version_no	varchar(32)	YES	<null>
+column	ind_store_policy	status	varchar(10)	YES	<null>
+column	ind_store_policy	deleted	tinyint	NO	0
+column	ind_store_policy	version	bigint	NO	0
+column	ind_store_policy	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	ind_store_policy	created_by	varchar(64)	YES	<null>
+column	ind_store_policy	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	ind_store_policy	updated_by	varchar(64)	YES	<null>
+unique	fnb_banquet_attendance_confirmation	PRIMARY	id
+unique	fnb_banquet_attendance_confirmation	uk_fnb_banquet_attendance_no	confirmation_no
+unique	fnb_banquet_attendance_confirmation	uk_fnb_banquet_attendance_plan	entity_no,store_no,form_no,plan_no
+unique	fnb_banquet_plan	PRIMARY	id
+unique	fnb_banquet_plan	uk_food_1	plan_no
+unique	fnb_capacity_claim	PRIMARY	id
+unique	fnb_capacity_claim	uk_food_capacity_batch	entity_no,store_no,batch_no
+unique	fnb_capacity_claim	uk_food_capacity_claim	claim_no
+unique	fnb_capacity_claim	uk_food_capacity_source	entity_no,store_no,source_no
+unique	fnb_course	PRIMARY	id
+unique	fnb_course	uk_food_1	course_no
+unique	fnb_course	uk_food_2	check_no,sequence_no
+unique	fnb_custody	PRIMARY	id
+unique	fnb_custody	uk_food_1	custody_no
+unique	fnb_custody_movement	PRIMARY	id
+unique	fnb_custody_movement	uk_custody_movement_key	tenant_no,entity_no,store_no,key_hash
+unique	fnb_custody_movement	uk_fnb_bottle_movement_no	movement_no
+unique	fnb_kds_subscription	PRIMARY	id
+unique	fnb_kds_subscription	uk_kds_subscription_device	device_no
+unique	fnb_kds_voice_command	PRIMARY	command_no
+unique	fnb_kds_voice_command	uk_kds_voice_key	entity_no,store_no,requested_by,request_key
+unique	fnb_kitchen_event	PRIMARY	id
+unique	fnb_kitchen_event	uk_kitchen_event_no	event_no
+unique	fnb_kitchen_event	uk_kitchen_event_operation	operation_key
+unique	fnb_kitchen_task	PRIMARY	id
+unique	fnb_kitchen_task	uk_food_1	task_no
+unique	fnb_kitchen_task	uk_food_2	ticket_no,task_part_key,station_no,task_role
+unique	fnb_kitchen_ticket	PRIMARY	id
+unique	fnb_kitchen_ticket	uk_food_1	ticket_no
+unique	fnb_kitchen_ticket	uk_kitchen_ticket_dispatch_key	dispatch_key
+unique	fnb_queue_ticket	PRIMARY	id
+unique	fnb_queue_ticket	uk_food_1	ticket_no
+unique	fnb_queue_ticket	uk_queue_ticket_request	entity_no,store_no,request_key
+unique	fnb_reservation	PRIMARY	id
+unique	fnb_reservation	uk_food_1	reservation_no
+unique	fnb_reservation	uk_reservation_request	entity_no,store_no,request_key
+unique	fnb_reservation_table	PRIMARY	id
+unique	fnb_reservation_table	uk_reservation_table	entity_no,reservation_no,table_no,deleted
+unique	fnb_service_calendar	PRIMARY	id
+unique	fnb_service_calendar	uk_food_1	calendar_no
+unique	fnb_service_calendar	uk_food_2	store_no,local_date
+unique	fnb_service_entitlement	PRIMARY	id
+unique	fnb_service_entitlement	uk_fnb_service_entitlement_attendee	entity_no,store_no,form_no,attendee_no,sku_no
+unique	fnb_service_entitlement	uk_fnb_service_entitlement_no	entitlement_no
+unique	fnb_service_entitlement_event	PRIMARY	id
+unique	fnb_service_entitlement_event	uk_fnb_service_entitlement_event_no	event_no
+unique	fnb_service_entitlement_event	uk_fnb_service_entitlement_original_line	entity_no,store_no,event_kind,batch_no,food_line_no
+unique	fnb_service_slot	PRIMARY	id
+unique	fnb_service_slot	uk_food_service_slot	slot_no
+unique	fnb_station	PRIMARY	id
+unique	fnb_station	uk_food_1	station_no
+unique	fnb_table	PRIMARY	id
+unique	fnb_table	uk_food_1	table_no
+unique	fnb_table	uk_food_2	store_no,code
+unique	fnb_table_area	PRIMARY	id
+unique	fnb_table_area	uk_food_1	area_no
+unique	fnb_table_area	uk_food_2	store_no,code
+unique	fnb_table_occupancy	PRIMARY	id
+unique	fnb_table_occupancy	uk_food_1	occupancy_no
+unique	fnb_table_operation	PRIMARY	id
+unique	fnb_table_operation	uk_food_1	operation_no
+unique	fnb_table_operation	uk_food_2	store_no,kind,request_key
+unique	ind_assignment	PRIMARY	id
+unique	ind_assignment	uk_ind_assignment_assignment_n	assignment_no
+unique	ind_config_revision	PRIMARY	id
+unique	ind_config_revision	uk_bty_store_policy_version_1	tenant_no,entity_no,policy_version_no
+unique	ind_config_revision	uk_bty_store_policy_version_2	tenant_no,entity_no,policy_no,revision_index
+unique	ind_store_device	PRIMARY	id
+unique	ind_store_device	uk_store_device_no	device_no
+unique	ind_store_policy	PRIMARY	id
+unique	ind_store_policy	uk_bty_store_policy_1	tenant_no,entity_no,policy_no
+unique	ind_store_policy	uk_ind_store_policy_store_industry	tenant_no,entity_no,store_no,industry_code
