@@ -4,6 +4,7 @@
 做法：在本机 MySQL 新建一次性库，依次执行 V1、V2（与 FoodIndustryDatabaseTest 相同），再逐表 SHOW CREATE TABLE。
 产物与代码测过的结构逐字一致：
     02-rebuild-food-tables.sql   退役表删除 + 餐饮独有的 25 张表按定稿结构重建（只在为空时执行）
+    final-tables.sql             全部 27 张的定稿建表语句（设计 DDL 用，部署不直接执行）
     03-alter-shared-tables.sql   与美业共用、.61 上已有美业数据的 2 张表：逐列改成定稿定义，不动数据
     expected-structure.tsv       每张表的列（名、类型、可空、默认）与唯一键，run.sh 执行后据此核对；缺的唯一键由 run.sh 补
 
@@ -98,7 +99,11 @@ def render_shared(creates):
 
 def main():
     tables, creates, expected = build()
+    final = ('-- 餐饮在行业库的 %d 张表的定稿建表语句（db/n_industry V1、V2 执行后 SHOW CREATE TABLE）。由 gen.py 生成，不要手改。\n'
+             '-- 设计 DDL（scripts/gen-retail-ddl.py）读它；部署用 02、03，不直接执行本文件。\n\n' % len(creates)
+             + '\n\n'.join(c + ';' for _, c in creates) + '\n')
     targets = {HERE / '02-rebuild-food-tables.sql': render(tables, creates),
+               HERE / 'final-tables.sql': final,
                HERE / '03-alter-shared-tables.sql': render_shared(creates),
                HERE / 'shared.txt': '\n'.join(SHARED) + '\n',
                HERE / 'expected-structure.tsv': '\n'.join(expected) + '\n',

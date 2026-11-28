@@ -10,8 +10,9 @@
     docs/technical/零售域-第二段建议方案与表清单.md   A1（D1–D7 统一修法）、A2、A3、A4、A6、B1–B3、C
     docs/technical/零售域-状态短值换值表.md           状态列注释里的取值
 美业服务执行的表取自 docs/technical/design/schema/retail-ddl/beauty-execution-tables.sql。
-设备出口（TDD-餐饮域迁移新库 §2.8）：门店设备、厨显订阅、厨房事件取自 retail-ddl/food-device-tables.sql，
-取代基础 DDL 的 fnb_kds_subscription、fnb_kds_event；平台库去掉搬走的 mch_store_device。
+餐饮（TDD-餐饮域迁移新库）：餐饮在行业库的 27 张一律取 retail-ddl/food-industry-tables.sql 的定稿结构（与代码测过的一致）；
+其中门店设备、厨房事件、语音指令取代基础 DDL 的 fnb_kds_event，ADR-068 修订一、二收回的 8 张按位置补上；
+平台库去掉搬走的 mch_store_device。
 产物：docs/technical/design/schema/ddl/01-n_platform.sql、05-n_trade.sql、06-n_industry.sql。
 """
 import re
@@ -21,14 +22,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'docs/technical/design/schema/ddl'
 BEAUTY = ROOT / 'docs/technical/design/schema/retail-ddl/beauty-execution-tables.sql'
-FOOD_DEVICE = ROOT / 'docs/technical/design/schema/retail-ddl/food-device-tables.sql'
+FOOD_DEVICE = ROOT / 'docs/technical/design/schema/retail-ddl/food-industry-tables.sql'
 # 设备出口（TDD-餐饮域迁移新库 §2.8）：行业库里被取代的表 -> 取代它的表（放在原位置）
 INDUSTRY_REPLACED = {'fnb_kds_subscription': ['ind_store_device', 'fnb_kds_subscription'],
                      'fnb_kds_event': ['fnb_kitchen_event', 'fnb_kds_voice_command']}
-PLATFORM_MOVED = 'mch_store_device'  # 平台库搬到行业库的表
-COLUMN_COMMENT = {  # 改注释：表 -> 列 -> 新注释
-    'fnb_station': {'runtime_status': '当前运行状态：RUNNING 出品中、PAUSED 暂停；空即 RUNNING（开停写在工位上，D-2）'},
+INDUSTRY_ADDED = {  # ADR-068 修订一、二收回行业库的表：接在哪张表之后
+    'fnb_kitchen_ticket': ['fnb_kitchen_task'],
+    'fnb_table': ['fnb_table_occupancy', 'fnb_table_operation', 'fnb_reservation', 'fnb_reservation_table',
+                  'fnb_service_slot', 'fnb_capacity_claim', 'fnb_service_calendar'],
 }
+PLATFORM_MOVED = 'mch_store_device'  # 平台库搬到行业库的表
 STATUS = ROOT / 'docs/technical/零售域-状态短值换值表.md'
 
 # ---------- 表的去留（B1、B3、C1） ----------
@@ -253,12 +256,17 @@ def build(base_dir):
         iorder[k:k + 1] = news
         for n in news:
             ind[n] = device[n]
-    fixed = border + [n for news in INDUSTRY_REPLACED.values() for n in news]
-    for table, comments in COLUMN_COMMENT.items():
-        for col, text in comments.items():
-            cols = ind[table]['cols']
-            k = next(i for i, c in enumerate(cols) if col_name(c) == col)
-            cols[k] = re.sub(r"COMMENT '[^']*'", "COMMENT '%s'" % text, cols[k])
+    for after, news in INDUSTRY_ADDED.items():
+        k = iorder.index(after) + 1
+        iorder[k:k] = news
+        for n in news:
+            ind[n] = device[n]
+    # 其余餐饮表也以定稿结构为准（代码测过的结构，含按 ADR-068 第 4 条补回的防重列与唯一键）
+    for n in device:
+        if n not in ind:
+            raise SystemExit('food table not placed in n_industry: ' + n)
+        ind[n] = device[n]
+    fixed = border + list(device)
     ensure_deleted(ind['ind_assignment'])
     # 加列
     for name, cols in ADD_COLUMNS.items():
@@ -287,7 +295,8 @@ def build(base_dir):
     trade_sql = header + '\n' + '\n'.join(render(n, trade[n]) for n in torder)
     header = ('-- 行业库 n_industry：建库建表（零售域第二段定稿，ADR-068）。由 scripts/gen-retail-ddl.py 生成，不要手改。\n'
               '-- 基础：ai-shop-slim 字段草案生成的 06-n_industry.sql；加上从交易库移来的 5 张与美业服务执行的 9 张（B3、A6）；\n'
-              '-- 设备出口（TDD-餐饮域迁移新库 §2.8）：门店设备从平台库搬来，厨显订阅精简，厨房事件取代厨显事件。\n\n'
+              '-- 餐饮（TDD-餐饮域迁移新库）：门店设备从平台库搬来，厨显订阅精简，厨房事件取代厨显事件；\n'
+              '-- 制作任务、占台、换台记录、订位、订位占桌、时段、容量占用、营业日历按 ADR-068 修订一、二归行业库。\n\n'
               'CREATE DATABASE IF NOT EXISTS `n_industry` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;\n'
               'USE `n_industry`;\n')
     ind_sql = header + '\n' + '\n'.join(render(n, ind[n]) for n in iorder)
