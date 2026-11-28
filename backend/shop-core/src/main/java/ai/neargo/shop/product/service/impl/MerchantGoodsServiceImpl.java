@@ -3479,7 +3479,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             row.setLockedQty(0);
             row.setPrice(price);
             row.setOriginPrice(originPrice);
-            DataScopeContext.executeWithoutScope(() -> storeSkuMapper.insert(row));
+            DataScopeContext.executeWithoutScope(() -> storeSkuMapper.insertRestoringCancelledPrice(row));
         } else {
             // 显式 set：划线价传空要能清掉（updateById 会跳过空字段）；只改价格两列，库存列不碰
             DataScopeContext.executeWithoutScope(() -> storeSkuMapper.update(null,

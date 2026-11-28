@@ -18,6 +18,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+import org.springframework.dao.DuplicateKeyException;
 
 /** product 域的 Mapper 集合。 */
 public final class ProductMappers {
@@ -444,6 +445,27 @@ public final class ProductMappers {
         int fillStoreStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                            @Param("market") String market);
 
+        @Update("""
+                UPDATE prd_store_sku
+                   SET deleted=0, price=#{row.price}, origin_price=#{row.originPrice}, on_sale=NULL,
+                       sellable_qty=#{row.sellableQty}, locked_qty=0, version=version+1, updated_at=CURRENT_TIMESTAMP
+                 WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
+                   AND sku_no=#{row.skuNo} AND market=#{row.market} AND deleted=1
+                   AND sellable_qty IS NULL AND COALESCE(locked_qty, 0)=0
+                """)
+        int restoreCancelledPrice(@Param("row") PrdStoreSku row);
+
+        /** 旧版撤销价格曾软删空库存行，重新设价或设置库存时复用它占用的唯一键。 */
+        default void insertRestoringCancelledPrice(PrdStoreSku row) {
+            try {
+                insert(row);
+            } catch (DuplicateKeyException conflict) {
+                if (restoreCancelledPrice(row) != 1) {
+                    throw conflict;
+                }
+            }
+        }
+
         /**
          * 让这家店的这个 SKU 进入店级库存（库存 0、锁量 0）。<b>一店一 SKU 一行</b>：
          * 已有行（只设过门店价）就补上库存列，没有行才插；已经是店级库存的什么都不动。
@@ -464,7 +486,7 @@ public final class ProductMappers {
                 row.setMarket(market);
                 row.setSellableQty(0);
                 row.setLockedQty(0);
-                insert(row);
+                insertRestoringCancelledPrice(row);
             }
         }
     }
