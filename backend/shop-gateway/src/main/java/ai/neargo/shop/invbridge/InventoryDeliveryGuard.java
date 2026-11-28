@@ -2,9 +2,8 @@ package ai.neargo.shop.invbridge;
 
 import ai.neargo.shop.common.config.ModuleDataSources;
 
-import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
+import ai.neargo.shop.spi.product.InventoryProductPort;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -24,12 +23,12 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnInventory
 public class InventoryDeliveryGuard {
     private final JdbcTemplate jdbc;
-    private final StockLockMapper locks;
+    private final InventoryProductPort products;
     private final ObjectMapper json;
 
-    public InventoryDeliveryGuard(@Qualifier(ModuleDataSources.COMMON_DATA_SOURCE) DataSource platform, StockLockMapper locks, ObjectMapper json) {
+    public InventoryDeliveryGuard(@Qualifier(ModuleDataSources.COMMON_DATA_SOURCE) DataSource platform, InventoryProductPort products, ObjectMapper json) {
         this.jdbc = new JdbcTemplate(platform);
-        this.locks = locks;
+        this.products = products;
         this.json = json;
     }
 
@@ -68,7 +67,7 @@ public class InventoryDeliveryGuard {
         Set<String> lockNos = new HashSet<>();
         for (var candidate : candidates) if (candidate.aggregate() != null) lockNos.add(candidate.aggregate());
         if (lockNos.isEmpty()) return Set.of();
-        return new HashSet<>(DataScopeContext.executeWithoutScope(() -> locks.lockNosHoldingSku(skuNo, lockNos)));
+        return products.lockNosHoldingSku(skuNo, lockNos);
     }
 
     private record Candidate(String type, String aggregate, String payload) { }

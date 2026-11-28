@@ -204,6 +204,14 @@
   - 新表 `tenant_no` 无默认值，两个实体构造时填 `MAIN`。门店换绑检查从 `prd_store_goods` 换到 `prd_catalog_item`；数据域去掉 `prd_store_catalog_version` 的登记。基线 −3。
 - 公共防重表 `sys_idempotent` 目前在主库、不与商品事务同库（定价策略原本就是如此）；它属于公共能力，随防重服务化处理，不进门店交易库。
 
+### 第 4 步 · 别的领域直连商品（2026-11-28，库存同步先保留）
+
+- 新 SPI `InventoryProductPort`（shop-base）＋实现 `InventoryProductPortImpl`（商品领域）：库存对接要的商品、SKU 收成只含字段的事实记录（`GoodsFact`、`SkuFact`、`GoodsStats`），记库存方式的切换、事件与发货守卫要的锁号查询也从这里走；判据仍在 `InvManagedService` 一处。记库存方式与审核状态的取值在接口上给常量。
+- 改走接口的 10 个类：`GoodsChainServiceImpl`、`MerchantChainServiceImpl`、`InvManagedAppService`、`InvManagedBackfillRunner`、`InventoryHealthServiceImpl`、`InventoryOrphanSweepServiceImpl`、`InventoryOverviewQuery`、`InventoryWritebackService`、`InventoryDeliveryGuard`，以及 `DevSeeder`。口径变化：商品链路与在架 SKU 改按本市场那一行计（与 `InvManagedService.skusOf` 同口径），多市场时销量只算本市场。
+- `DevSeeder` 不走建品接口（演示数据要固定编号 G0001/SK0001，测试按编号断言），改为调商品领域的 `ProductDemoSeeder`（同样只在 `shop.seed.enabled=true` 时存在），商品表只由商品领域写。
+- `StoreSalesCatalogServiceImpl` 的数据源与事务改点名商品句柄（R4）；商品与交易绑同一个数据源名时是同一个连接池，结账事务里的判据照旧。`StoreSalesCatalogIT` 补上未绑定时的句柄别名，本机 MySQL 上 7 条全过。
+- **保留未动**（库存同步一组，待定是否下线交库存服务）：`StockSyncAppService`、`StockAlignmentService`、`StockReconcileService`、`StockSyncSweepJob`、`OnlineQuotaPortImpl`、`InventoryBackfillServiceImpl`（商品库存搬进进销存的回填）、`ExecutionStockMirrorEvidenceServiceImpl` 与库存模块的 `ExecutionStockRetentionSchemaVerifier`（执行占用，表待退役）。基线 R5 剩 20 条、R4 剩 1 条，都在这一组。
+
 ### 偏差说明
 
 - 测试库没有按原方案「去掉旧 `prd_*`、两个句柄绑同一个 H2」，而是同一个 H2 库里追加一份按新设计生成的建表脚本：改动更小，漂移测试不受影响，且能逐批迁移。

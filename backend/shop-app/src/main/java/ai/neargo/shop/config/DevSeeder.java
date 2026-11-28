@@ -2,12 +2,8 @@ package ai.neargo.shop.config;
 
 import ai.neargo.shop.merchant.service.AuthCodeAdminService;
 import ai.neargo.shop.platform.SettingService;
-import ai.neargo.shop.product.entity.PrdCategory;
-import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.product.support.ProductDemoSeeder;
+import ai.neargo.shop.product.support.ProductDemoSeeder.SkuSeed;
 import ai.neargo.shop.community.entity.CmtCommunity;
 import ai.neargo.shop.community.entity.CmtPickupPoint;
 import ai.neargo.shop.merchant.entity.MchEntity;
@@ -46,9 +42,9 @@ public class DevSeeder {
 
     @Bean
     ApplicationRunner seedRunner(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
-                                 MchEntityMapper merchantMapper, GoodsMapper goodsMapper,
-                                 SkuMapper skuMapper,
-                                 CategoryMapper categoryMapper, StaffMapper staffMapper,
+                                 MchEntityMapper merchantMapper,
+                                 // 商品表只由商品领域写：类目与演示商品交给它（第 4 批）
+                                 ProductDemoSeeder products, StaffMapper staffMapper,
                                  OpsStaffRoles staffRoles,
                                  AuthCodeAdminService authCodes,
                                  SettingService settings,
@@ -92,26 +88,26 @@ public class DevSeeder {
              * 真库由 V4 灌，这里只服务于**不跑 Flyway 的 H2 测试**；
              * 下面的 count 守卫保证真库上不会重复插。
              */
-            seedCategory(categoryMapper, "CAT100", null, 1, "食品生鲜", "FRESH", null, 10, ACTIVE);
-            seedCategory(categoryMapper, "CAT110", "CAT100", 2, "蔬菜", "FRESH", null, 10, ACTIVE);
-            seedCategory(categoryMapper, "CAT111", "CAT110", 3, "叶菜", "FRESH", "FRESH_VEG", 10, ACTIVE);
-            seedCategory(categoryMapper, "CAT112", "CAT110", 3, "根茎菜", "FRESH", "FRESH_VEG", 20, ACTIVE);
-            seedCategory(categoryMapper, "CAT120", "CAT100", 2, "水果", "FRESH", null, 20, ACTIVE);
-            seedCategory(categoryMapper, "CAT121", "CAT120", 3, "浆果", "FRESH", "FRESH_FRUIT", 10, ACTIVE);
-            seedCategory(categoryMapper, "CAT122", "CAT120", 3, "常温水果", "FRESH", "FRESH_FRUIT", 20, ACTIVE);
-            seedCategory(categoryMapper, "CAT130", "CAT100", 2, "预包装食品", "STANDARD", null, 30, ACTIVE);
-            seedCategory(categoryMapper, "CAT131", "CAT130", 3, "粮油调味", "STANDARD", "PACKAGED_FOOD", 10, ACTIVE);
-            seedCategory(categoryMapper, "CAT132", "CAT130", 3, "休闲零食", "STANDARD", "PACKAGED_FOOD", 20, ACTIVE);
-            seedCategory(categoryMapper, "CAT133", "CAT130", 3, "茶叶", "STANDARD", "PACKAGED_FOOD", 30, ACTIVE);
-            seedCategory(categoryMapper, "CAT200", null, 1, "日用百货", "STANDARD", null, 20, ACTIVE);
-            seedCategory(categoryMapper, "CAT210", "CAT200", 2, "纸品清洁", "STANDARD", null, 10, ACTIVE);
-            seedCategory(categoryMapper, "CAT220", "CAT200", 2, "家居用品", "STANDARD", null, 20, ACTIVE);
-            seedCategory(categoryMapper, "CAT230", "CAT200", 2, "个护化妆", "STANDARD", null, 30, ACTIVE);
+            seedCategory(products, "CAT100", null, 1, "食品生鲜", "FRESH", null, 10, ACTIVE);
+            seedCategory(products, "CAT110", "CAT100", 2, "蔬菜", "FRESH", null, 10, ACTIVE);
+            seedCategory(products, "CAT111", "CAT110", 3, "叶菜", "FRESH", "FRESH_VEG", 10, ACTIVE);
+            seedCategory(products, "CAT112", "CAT110", 3, "根茎菜", "FRESH", "FRESH_VEG", 20, ACTIVE);
+            seedCategory(products, "CAT120", "CAT100", 2, "水果", "FRESH", null, 20, ACTIVE);
+            seedCategory(products, "CAT121", "CAT120", 3, "浆果", "FRESH", "FRESH_FRUIT", 10, ACTIVE);
+            seedCategory(products, "CAT122", "CAT120", 3, "常温水果", "FRESH", "FRESH_FRUIT", 20, ACTIVE);
+            seedCategory(products, "CAT130", "CAT100", 2, "预包装食品", "STANDARD", null, 30, ACTIVE);
+            seedCategory(products, "CAT131", "CAT130", 3, "粮油调味", "STANDARD", "PACKAGED_FOOD", 10, ACTIVE);
+            seedCategory(products, "CAT132", "CAT130", 3, "休闲零食", "STANDARD", "PACKAGED_FOOD", 20, ACTIVE);
+            seedCategory(products, "CAT133", "CAT130", 3, "茶叶", "STANDARD", "PACKAGED_FOOD", 30, ACTIVE);
+            seedCategory(products, "CAT200", null, 1, "日用百货", "STANDARD", null, 20, ACTIVE);
+            seedCategory(products, "CAT210", "CAT200", 2, "纸品清洁", "STANDARD", null, 10, ACTIVE);
+            seedCategory(products, "CAT220", "CAT200", 2, "家居用品", "STANDARD", null, 20, ACTIVE);
+            seedCategory(products, "CAT230", "CAT200", 2, "个护化妆", "STANDARD", null, 30, ACTIVE);
             // 一级不挂 required_code（V22 修的 D2）—— 挂在这里的话，家政会被维修资质卡住
-            seedCategory(categoryMapper, "CAT300", null, 1, "生活服务", "SERVICE", null, 30, ACTIVE);
-            seedCategory(categoryMapper, "CAT310", "CAT300", 2, "家政保洁", "SERVICE", "HOUSEKEEPING", 10, ACTIVE);
+            seedCategory(products, "CAT300", null, 1, "生活服务", "SERVICE", null, 30, ACTIVE);
+            seedCategory(products, "CAT310", "CAT300", 2, "家政保洁", "SERVICE", "HOUSEKEEPING", 10, ACTIVE);
             // 一期停用：执照无预付卡相关项
-            seedCategory(categoryMapper, "CAT400", null, 1, "卡券", "VOUCHER", null, 40, ARCHIVED);
+            seedCategory(products, "CAT400", null, 1, "卡券", "VOUCHER", null, 40, ARCHIVED);
 
             /*
              * 类目授权码。真库由 V5 + V22 灌，这里只服务于**不跑 Flyway 的 H2 测试**。
@@ -193,25 +189,23 @@ public class DevSeeder {
             pickupMapper.insert(pickup("PP0002", "C0002", "翡翠城便利店",
                     "翡翠城 3 号楼底商", "ST-M0001", "07:00-22:00", "每晚 8 点前到货"));
 
-            seedGoods(goodsMapper, skuMapper,
+            products.seedGoods(
                     "G0001", "M0001", "NORMAL", "🍚", "五常大米 10斤装", "东北五常，当季新米",
                     List.of(new SkuSeed("SK0001", "10斤装", 4980L, 5980L, 400),
                             new SkuSeed("SK0002", "20斤装", 9580L, 11800L, 200)));
-            seedGoods(goodsMapper, skuMapper,
+            products.seedGoods(
                     "G0002", "M0001", "NORMAL", "🛢️", "金龙鱼调和油 5L", "家庭装，煎炒烹炸",
                     List.of(new SkuSeed("SK0003", "5L", 6980L, 7980L, 300)));
-            seedGoods(goodsMapper, skuMapper,
+            products.seedGoods(
                     "G0003", "M0002", "FRESH", "🍑", "阳山水蜜桃 4枚礼盒", "次日到货，坏果包赔",
                     List.of(new SkuSeed("SK0004", "4枚装", 5800L, 6800L, 150)));
-            seedGoods(goodsMapper, skuMapper,
+            products.seedGoods(
                     "G0004", "M0002", "FRESH", "🫐", "云南蓝莓 125g×4盒", "当季头茬",
                     List.of(new SkuSeed("SK0005", "4盒装", 3980L, null, 150)));
 
         };
     }
 
-    private record SkuSeed(String skuNo, String spec, long price, Long originPrice, int stock) {
-    }
 
     /** 运营种子账号。**按岗位分角色**，没有「运营」这种什么都能干的大角色 ——
      *  一个能审商家又能改价又能退款的角色，出事时无法定位是谁的职责。 */
@@ -309,31 +303,12 @@ public class DevSeeder {
             // 在它之前，挂着资质码的类目一个都没有商品，闸是否生效谁也没验过
             "DRUG_RETAIL", "药品经营许可证");
 
-    private void seedCategory(CategoryMapper mapper, String no, String parentNo, int level,
+    private void seedCategory(ProductDemoSeeder products, String no, String parentNo, int level,
                               String name, String template, String requiredCode, int sort,
                               String status) {
-        var c = new PrdCategory();
-        c.setCategoryNo(no);
-        c.setParentNo(parentNo);
-        c.setLevel(level);
-        c.setName(name);
-        c.setIcon("");
-        c.setSort(sort);
-        c.setTemplate(template);
-        // 空 = 无门槛。挂了码的类目，商家没拿到对应授权就上不了架
-        c.setRequiredCode(requiredCode);
-        String qualification = requiredCode == null ? null : AUTH_QUALIFICATION.get(requiredCode);
-        c.setQualificationRequired(qualification == null ? null : "[\"" + qualification + "\"]");
-        c.setStatus(status);
-        /*
-         * **幂等**：真库由 V4 灌同一批类目，这里只补 H2。
-         * 无脑 insert 的结果是真库上主键冲突 —— 而它发生在种子重放阶段，
-         * 报出来的是「E2E 种子重放失败」，看不出跟类目有任何关系。
-         */
-        if (mapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<PrdCategory>lambdaQuery().eq(PrdCategory::getCategoryNo, no)) == 0) {
-            mapper.insert(c);
-        }
+        // 资质文案由 AUTH_QUALIFICATION 派生（H2 侧唯一的一份）；写入与幂等判断在商品侧
+        products.seedCategory(no, parentNo, level, name, template, requiredCode,
+                requiredCode == null ? null : AUTH_QUALIFICATION.get(requiredCode), sort, status);
     }
 
     private CmtCommunity community(String no, String name, String address, int latE6, int lngE6) {
@@ -434,57 +409,4 @@ public class DevSeeder {
         return m;
     }
 
-    private void seedGoods(GoodsMapper goodsMapper, SkuMapper skuMapper,
-                           String goodsNo, String merchantNo, String type, String cover,
-                           String title, String subtitle,
-                           List<SkuSeed> skus) {
-        var g = new PrdGoods();
-        g.setGoodsNo(goodsNo);
-        g.setEntityNo(merchantNo);
-        g.setTitle(title);
-        g.setSubtitle(subtitle);
-        // 演示封面用 emoji：真实环境这里是图片 URL，但本地联调要的是"一眼能分辨"，
-        // 而不是四条一模一样的占位。空字符串在端上会走 GOODS_COVER_FALLBACK（🛒），
-        // 满屏同一个购物车比没有图还难看
-        g.setCover(cover);
-        g.setImages("[]");
-        g.setType(type);
-        /*
-         * 无资质门槛的类目，演示商品不该卡在准入上。**类目要与 type 一致**：生鲜挂 CAT120（水果），
-         * 其余挂 CAT210（纸品清洁）。此前一律挂 CAT210，而建库脚本里有一句按类目回填 type 的语句
-         * （CAT210 → NORMAL）——测试里每起一个新的 Spring 上下文都会对共享 H2 重放它，
-         * 于是生鲜的 G0003/G0004 中途变成日用品，生鲜售后规则跟着失效。
-         */
-        g.setCategoryNo("FRESH".equals(type) ? "CAT120" : "CAT210");
-        g.setFulfillments("[\"STORE_PICKUP\"]");
-        g.setSpecGroups("[{\"name\":\"规格\",\"options\":" + optionsJson(skus) + "}]");
-        // 同上：商品评分也是派生的，不灌一个假的评价数
-        g.setRating(50);
-        g.setRatingCount(0);
-        g.setSales(240);
-        g.setLimitPerUser(0);
-        g.setOnSale(true);
-        g.setAuditStatus("APPROVED");
-        goodsMapper.insert(g);
-
-        for (SkuSeed s : skus) {
-            var sku = new PrdSku();
-            sku.setSkuNo(s.skuNo());
-            sku.setGoodsNo(goodsNo);
-            sku.setEntityNo(merchantNo);
-            sku.setMarket("CN");
-            sku.setOptionValues("[\"" + s.spec() + "\"]");
-            sku.setSpec(s.spec());
-            sku.setPrice(s.price());
-            sku.setOriginPrice(s.originPrice());
-            sku.setStock(s.stock());
-            sku.setLockedStock(0);
-            skuMapper.insert(sku);
-        }
-    }
-
-    private String optionsJson(List<SkuSeed> skus) {
-        return skus.stream().map(s -> "\"" + s.spec() + "\"")
-                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
-    }
 }

@@ -20,23 +20,7 @@ R2 StoreStockSyncMapper 用到 prd_store_stock_sync，不在 目标库 DDL
 R2 TopicGoodsMapper 用到 prd_topic_goods，不在 目标库 DDL
 R2 TopicMapper 用到 prd_topic，不在 目标库 DDL
 R4 ExecutionStockRetentionSchemaVerifier.java 注入了没点名句柄的数据源或 JDBC 模板
-R4 StoreSalesCatalogServiceImpl.java 注入了没点名句柄的数据源或 JDBC 模板
-R5 DevSeeder.java import PrdCategory
-R5 DevSeeder.java import PrdGoods
-R5 DevSeeder.java import PrdSku
-R5 DevSeeder.java import ProductMappers.CategoryMapper
-R5 DevSeeder.java import ProductMappers.GoodsMapper
-R5 DevSeeder.java import ProductMappers.SkuMapper
 R5 ExecutionStockMirrorEvidenceServiceImpl.java import ProductMappers.StockLockMapper
-R5 GoodsChainServiceImpl.java import PrdGoods
-R5 GoodsChainServiceImpl.java import PrdSku
-R5 GoodsChainServiceImpl.java import ProductMappers.GoodsMapper
-R5 GoodsChainServiceImpl.java import ProductMappers.SkuMapper
-R5 InvManagedAppService.java import PrdGoods
-R5 InvManagedAppService.java import PrdSku
-R5 InvManagedBackfillRunner.java import PrdGoods
-R5 InvManagedBackfillRunner.java import PrdSku
-R5 InvManagedBackfillRunner.java import ProductMappers.GoodsMapper
 R5 InventoryBackfillServiceImpl.java import PrdGoods
 R5 InventoryBackfillServiceImpl.java import PrdSku
 R5 InventoryBackfillServiceImpl.java import PrdStockLock
@@ -45,19 +29,6 @@ R5 InventoryBackfillServiceImpl.java import ProductMappers.GoodsMapper
 R5 InventoryBackfillServiceImpl.java import ProductMappers.SkuMapper
 R5 InventoryBackfillServiceImpl.java import ProductMappers.StockLockMapper
 R5 InventoryBackfillServiceImpl.java import ProductMappers.StoreSkuMapper
-R5 InventoryDeliveryGuard.java import ProductMappers.StockLockMapper
-R5 InventoryHealthServiceImpl.java import PrdGoods
-R5 InventoryHealthServiceImpl.java import PrdSku
-R5 InventoryHealthServiceImpl.java import ProductMappers.GoodsMapper
-R5 InventoryHealthServiceImpl.java import ProductMappers.SkuMapper
-R5 InventoryOrphanSweepServiceImpl.java import PrdSku
-R5 InventoryOrphanSweepServiceImpl.java import ProductMappers.SkuMapper
-R5 InventoryOverviewQuery.java import PrdSku
-R5 InventoryOverviewQuery.java import ProductMappers.SkuMapper
-R5 InventoryWritebackService.java import PrdGoods
-R5 InventoryWritebackService.java import PrdSku
-R5 MerchantChainServiceImpl.java import PrdGoods
-R5 MerchantChainServiceImpl.java import ProductMappers.GoodsMapper
 R5 OnlineQuotaPortImpl.java import PrdSellRule
 R5 StockAlignmentService.java import PrdSellRule
 R5 StockAlignmentService.java import PrdStoreStockSync

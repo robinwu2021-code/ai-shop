@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.h2.jdbcx.JdbcDataSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import tools.jackson.databind.ObjectMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
+import ai.neargo.shop.spi.product.InventoryProductPort;
 import java.util.Collection;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -18,12 +18,13 @@ class InventoryDeliveryGuardTest {
         db.execute("CREATE TABLE sys_outbox(event_no varchar primary key,event_type varchar,payload varchar,status varchar,aggregate_id varchar)");
         db.execute("CREATE TABLE sys_outbox_delivery(event_no varchar,handler_id varchar,status varchar)");
         db.execute("CREATE TABLE prd_stock_lock(lock_no varchar,sku_no varchar)");
-        // Locks sit in the trade store: the guard reaches them only through the trade mapper.
-        StockLockMapper locks = mock(StockLockMapper.class);
+        // Locks sit in the product store: the guard reaches them only through the product port.
+        InventoryProductPort locks = mock(InventoryProductPort.class);
         when(locks.lockNosHoldingSku(anyString(), anyCollection())).thenAnswer(call -> {
             Collection<String> nos = call.getArgument(1);
             return db.queryForList("SELECT lock_no FROM prd_stock_lock WHERE sku_no=?", String.class,
-                    (String) call.getArgument(0)).stream().filter(nos::contains).toList();
+                    (String) call.getArgument(0)).stream().filter(nos::contains)
+                    .collect(java.util.stream.Collectors.toSet());
         });
         var guard = new InventoryDeliveryGuard(ds, locks, new ObjectMapper());
         db.update("INSERT INTO sys_outbox VALUES('1','INV_MIRROR_RESERVE',?, 'FAILED', 'L1')", "{\"items\":[{\"skuNo\":\"K\"}]}");

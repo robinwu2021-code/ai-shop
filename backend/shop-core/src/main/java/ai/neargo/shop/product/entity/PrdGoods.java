@@ -180,6 +180,8 @@ public class PrdGoods extends BaseEntity {
      */
     private String freightTemplateNo;
 
+    public static final String AUDIT_AUDITING = ai.neargo.shop.spi.product.InventoryProductPort.AUDIT_AUDITING;
+    public static final String AUDIT_APPROVED = ai.neargo.shop.spi.product.InventoryProductPort.AUDIT_APPROVED;
     /** AUDITING / APPROVED / REJECTED —— 商家商品需平台审核（P-3.2.2）。 */
     private String auditStatus;
 

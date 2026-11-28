@@ -99,6 +99,14 @@ class StoreSalesCatalogIT {
     private ApplicationContextRunner runner() {
         return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
                 type("ai.neargo.shop.product.service.impl.StoreSalesCatalogServiceImpl"), Mappers.class)
+                // 商品库句柄未单独绑定时指向主库（与 ModuleDataSourceRegistrar 的未绑定行为一致）
+                .withInitializer(c -> {
+                    var registry = (org.springframework.context.support.GenericApplicationContext) c;
+                    registry.registerAlias("dataSource",
+                            ai.neargo.shop.common.config.ModuleDataSources.PRODUCT_DATA_SOURCE);
+                    registry.registerAlias("transactionManager",
+                            ai.neargo.shop.common.config.ModuleDataSources.PRODUCT_TX_MANAGER);
+                })
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + source.getUrl(), "spring.datasource.username=root",
                         "spring.datasource.password=");

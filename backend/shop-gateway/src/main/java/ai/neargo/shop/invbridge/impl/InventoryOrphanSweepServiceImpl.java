@@ -8,8 +8,7 @@ import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
 import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.shop.invbridge.InventoryOrphanSweepService;
-import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.spi.product.InventoryProductPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -29,14 +28,14 @@ public class InventoryOrphanSweepServiceImpl implements InventoryOrphanSweepServ
 
     private final OwnerMapper ownerMapper;
     private final ItemRefMapper itemRefMapper;
-    private final SkuMapper skuMapper;
+    private final InventoryProductPort products;
     private final InventoryAclService acl;
 
     public InventoryOrphanSweepServiceImpl(OwnerMapper ownerMapper, ItemRefMapper itemRefMapper,
-                                           SkuMapper skuMapper, InventoryAclService acl) {
+                                           InventoryProductPort products, InventoryAclService acl) {
         this.ownerMapper = ownerMapper;
         this.itemRefMapper = itemRefMapper;
-        this.skuMapper = skuMapper;
+        this.products = products;
         this.acl = acl;
     }
 
@@ -115,16 +114,11 @@ public class InventoryOrphanSweepServiceImpl implements InventoryOrphanSweepServ
                 continue;
             }
             /*
-             * executeWithoutScope：这是个跑批，没有用户上下文，而 prd_* 带数据域 ——
+             * 商品侧 aliveSkuNos 绕过数据域：这是个跑批，没有用户上下文，而 prd_* 带数据域 ——
              * 不绕过的话这里拿到的是空集，于是**每一条引用都会被判成孤儿**，
              * 一次跑批把全平台的物料归档掉。它不会报错。
              */
-            for (PrdSku s : DataScopeContext.executeWithoutScope(() ->
-                    skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
-                            .in(PrdSku::getSkuNo, batch)
-                            .eq(PrdSku::getDeleted, 0)))) {
-                alive.add(s.getSkuNo());
-            }
+            alive.addAll(products.aliveSkuNos(batch));
         }
         return alive;
     }

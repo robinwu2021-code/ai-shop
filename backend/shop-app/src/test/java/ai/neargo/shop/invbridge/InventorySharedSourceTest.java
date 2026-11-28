@@ -14,7 +14,8 @@ class InventorySharedSourceTest {
     final InventoryAclService acl = mock(InventoryAclService.class);
     final MerchantQueryPort merchants = mock(MerchantQueryPort.class);
     final InventoryWritebackService writeback = new InventoryWritebackService(sales,
-            mock(InvManagedService.class), acl, merchants, mock(InventoryDeliveryGuard.class),
+            mock(InvManagedService.class), mock(ai.neargo.shop.spi.product.InventoryProductPort.class),
+            acl, merchants, mock(InventoryDeliveryGuard.class),
             mock(StockReconcileService.class));
     @Test void sharedWarehouseCannotBeCopiedIntoIndependentStoreQuotas() {
         when(merchants.storeNos("E")).thenReturn(List.of("A", "B"));
