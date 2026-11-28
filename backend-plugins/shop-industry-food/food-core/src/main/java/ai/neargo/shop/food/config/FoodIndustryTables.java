@@ -31,7 +31,6 @@ public final class FoodIndustryTables {
                     // 厨显：.61 已按独立表建（01-industry-kds.sql）
                     "fnb_kds_cursor",
                     "fnb_kds_voice_command",
-                    "fnb_station_runtime",
                     // 修订一：出品整组
                     "fnb_kitchen_task",
                     // 修订二：占台、换台记录、订位、时段与容量
@@ -57,7 +56,8 @@ public final class FoodIndustryTables {
     /** 合并掉的旧表（TDD §2.5）：并入行业库的新表后退役。主库里可能还留着，校验器不再要求、也不当作未知表。 */
     public static final Set<String> MERGED = Set.of("fnb_dining_entitlement", "fnb_banquet_plan_revision", "fnb_config_revision", "fnb_store_policy",
             "fnb_scheduled_dispatch", "fnb_service_handover", "fnb_service_handover_item",
-            "fnb_service_responsibility", "fnb_service_event");
+            "fnb_service_responsibility", "fnb_service_event",
+            "fnb_station_runtime");
 
     /** 主库里不再要求的旧表：改名的与合并掉的。 */
     public static Set<String> retired() {

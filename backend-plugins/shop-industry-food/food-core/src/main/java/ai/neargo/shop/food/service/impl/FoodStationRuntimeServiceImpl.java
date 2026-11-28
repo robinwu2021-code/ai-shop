@@ -82,7 +82,6 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
                     if (!mapper.stationExists(e, s, station)) {
                         throw BizException.of(ErrorCode.NOT_FOUND);
                     }
-                    mapper.initialize(e, s, station);
                     if (!"RUNNING".equals(mapper.state(e, s, station, true).status())) {
                         conflict();
                     }
@@ -123,7 +122,6 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
         return write(
                 () -> {
                     lockCursor(e, s);
-                    mapper.initialize(e, s, station);
                     var state = mapper.state(e, s, station, true);
                     var old = mapper.original(e, s, actor, key);
                     if (old != null) {
@@ -136,14 +134,17 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
                         conflict();
                     }
                     long version = Math.addExact(state.version(), 1);
-                    mapper.change(
-                            e,
-                            s,
-                            station,
-                            "PAUSE".equals(req.action())
-                                    ? "PAUSED"
-                                    : "RESUME".equals(req.action()) ? "RUNNING" : state.status(),
-                            version);
+                    if (mapper.change(
+                                    e,
+                                    s,
+                                    station,
+                                    "PAUSE".equals(req.action())
+                                            ? "PAUSED"
+                                            : "RESUME".equals(req.action()) ? "RUNNING" : state.status(),
+                                    version)
+                            != 1) {
+                        conflict();
+                    }
                     String no = BizKey.next("KCMD");
                     mapper.insert(
                             e, s, station, no, req, actor, key, hash, version, clock.instant());

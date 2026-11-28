@@ -72,8 +72,8 @@ class FoodStationRuntimeTest {
         }
         jdbc.execute(
                 "CREATE TABLE fnb_station(entity_no VARCHAR(32),store_no VARCHAR(32),station_no"
-                        + " VARCHAR(32),deleted INT)");
-        jdbc.update("INSERT INTO fnb_station VALUES('E','S','ST',0)");
+                        + " VARCHAR(32),deleted INT,runtime_status VARCHAR(10),version BIGINT DEFAULT 0)");
+        jdbc.update("INSERT INTO fnb_station(entity_no,store_no,station_no,deleted) VALUES('E','S','ST',0)");
         transactions = new DataSourceTransactionManager(ds);
         commands = new FoodStationRuntimeMapper(jdbc);
         kdsMapper = new FoodKdsMapper(jdbc);

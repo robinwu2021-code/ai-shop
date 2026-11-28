@@ -46,8 +46,8 @@ class FoodStationRuntimePersistenceTest extends FoodWriteGuardFixture {
         var f = prepare(c);
         new ResourceDatabasePopulator(new FileSystemResource(
                 "src/main/resources/db/industry/food/V18__food_kds_event_subscription.sql")).execute(f.source());
-        f.sql().execute("CREATE TABLE fnb_station(entity_no VARCHAR(32),store_no VARCHAR(32),station_no VARCHAR(32),deleted INT)");
-        f.sql().update("INSERT INTO fnb_station VALUES('E','S','ST',0)");
+        f.sql().execute("CREATE TABLE fnb_station(entity_no VARCHAR(32),store_no VARCHAR(32),station_no VARCHAR(32),deleted INT,runtime_status VARCHAR(10),version BIGINT DEFAULT 0)");
+        f.sql().update("INSERT INTO fnb_station(entity_no,store_no,station_no,deleted) VALUES('E','S','ST',0)");
         var printing = mock(PrintPort.class);
         when(printing.configuration(any())).thenReturn(new PrintPort.Configuration(List.of(
                 new PrintPort.DeviceVO("D", "V", "LAN", "BRIDGE", "ACTIVE", "{}", null, true, 1)), List.of(), List.of()));
@@ -66,6 +66,9 @@ class FoodStationRuntimePersistenceTest extends FoodWriteGuardFixture {
             var request = new ControlReq(0, "PAUSE", "congestion", null, null);
             var paused = f.runtime.control("E", "S", "ADMIN", "ST", request, "pause");
             assertThat(f.runtime.control("E", "S", "ADMIN", "ST", request, "pause")).isEqualTo(paused);
+            // 开停写在工位行上，版本号即工位版本号（TDD §2.8 D-2）。
+            assertThat(f.sql.queryForMap("SELECT runtime_status,version FROM fnb_station WHERE station_no='ST'"))
+                    .containsEntry("runtime_status", "PAUSED").containsEntry("version", 1L);
             f.runtime.control("E", "S", "ADMIN", "ST", new ControlReq(1, "RESUME", "clear", null, null), "resume");
             var events = f.kds.replay("E", "S", "BRIDGE", f.subscription, 0, 10).events();
             assertThat(events).hasSize(2);

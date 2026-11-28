@@ -59,14 +59,7 @@ CREATE TABLE fnb_kds_cursor (
  PRIMARY KEY(entity_no,store_no)
 ) ENGINE=InnoDB;
 
-CREATE TABLE fnb_station_runtime (
- entity_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
- store_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
- station_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
- status VARCHAR(16) NOT NULL,
- version BIGINT NOT NULL,
- PRIMARY KEY(entity_no,store_no,station_no)
-) ENGINE=InnoDB;
+-- 工位运行状态表 fnb_station_runtime 不建（TDD §2.8 D-2）：开停写 fnb_station.runtime_status（RUNNING/PAUSED，空即 RUNNING），用工位版本号。
 
 CREATE TABLE fnb_kds_voice_command (
  entity_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,

@@ -405,7 +405,10 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   厨显推送流 `fnb_kds_event` 与游标暂不动，D-3 改为「拉当前状态」后删除。`V2` 去掉过渡的 `fnb_service_event`，过渡表至此清空。
   测试：按实体建表的两个夹具改为认 `@TableField` 列名；`IndustrySchema` 在一次性 MySQL 上保留 JSON 列（原先一律转成超长 VARCHAR，MySQL 建 `ind_config_revision` 失败，合并 ③ 起 `KitchenLifecycleAcceptanceTest` 在 MySQL 模式下跑不起来）。
   餐饮全量 763 个（跳过 55 个仅 MySQL 用例）无失败；本机 MySQL 上 `FoodIndustryDatabaseTest`、`ProductionConsumptionListMapperTest`、`KitchenLifecycleAcceptanceTest` 通过。
-- 待做：设备出口 D-2～D-6（§2.8）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
+- **D-2 工位运行状态并回工位**（§2.8）。`fnb_station_runtime` 退役（`V2` 不再建，`FoodIndustryTables.MERGED` 登记）；开停写 `fnb_station.runtime_status`（`RUNNING` / `PAUSED`，空即 `RUNNING`，沿用接口现有取值；设计稿注释的 OPEN/CLOSED 在 D-6 对齐），版本号用工位自己的 `version`，按读到的版本比较交换，改不到即冲突。
+  不再需要「先补一行运行状态」：`FoodStationRuntimeMapper#initialize` 删除。代价：开停会推进工位版本号，此后拿旧版本号改工位配置会冲突，需重新读取。
+  测试：两个运行状态夹具的工位表补 `runtime_status`、`version`；补一条断言暂停后工位行状态与版本号。全量 763 个无失败，MySQL 新库测试通过。
+- 待做：设备出口 D-3～D-6（§2.8）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
 

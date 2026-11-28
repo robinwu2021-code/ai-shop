@@ -1144,8 +1144,8 @@ public final class FoodSchemaValidator {
                                     "updated_at",
                                     "updated_by",
                                     "version"));
-            expected.computeIfAbsent("fnb_station_runtime", key -> new TreeSet<>())
-                    .addAll(List.of("entity_no", "station_no", "status", "store_no", "version"));
+            // 工位开停写在工位上（TDD §2.8 D-2），运行状态表退役。
+            expected.computeIfAbsent("fnb_station", key -> new TreeSet<>()).add("runtime_status");
             // END BIZ-01..12 reviewed incremental schema manifest.
             var channelParty = new TreeSet<>(common);
             channelParty.addAll(

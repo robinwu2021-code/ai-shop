@@ -38,8 +38,8 @@ public class FoodStationRuntimeMapper {
     public StateVO state(String e, String s, String station, boolean lock) {
         var rows =
                 jdbc.query(
-                        "SELECT station_no,status,version FROM fnb_station_runtime WHERE"
-                                + " entity_no=? AND store_no=? AND station_no=?"
+                        "SELECT station_no,COALESCE(runtime_status,'RUNNING'),version FROM fnb_station WHERE"
+                                + " entity_no=? AND store_no=? AND station_no=? AND deleted=0"
                                 + (lock ? " FOR UPDATE" : ""),
                         (r, n) -> new StateVO(r.getString(1), r.getString(2), r.getLong(3)),
                         e,
@@ -48,24 +48,21 @@ public class FoodStationRuntimeMapper {
         return rows.isEmpty() ? new StateVO(station, "RUNNING", 0) : rows.getFirst();
     }
 
-    public void initialize(String e, String s, String station) {
-        jdbc.update(
-                "INSERT INTO fnb_station_runtime(entity_no,store_no,station_no,status,version)"
-                        + " VALUES(?,?,?,'RUNNING',0) ON DUPLICATE KEY UPDATE entity_no=entity_no",
-                e,
-                s,
-                station);
-    }
-
-    public void change(String e, String s, String no, String status, long version) {
-        jdbc.update(
-                "UPDATE fnb_station_runtime SET status=?,version=? WHERE entity_no=? AND store_no=?"
-                        + " AND station_no=?",
+    /**
+     * 开停写在工位上（TDD §2.8 D-2）：运行状态 {@code runtime_status}（空即 RUNNING），并发用工位版本号比较交换。
+     *
+     * @return 改到的行数；0 表示版本已被别人改过
+     */
+    public int change(String e, String s, String no, String status, long version) {
+        return jdbc.update(
+                "UPDATE fnb_station SET runtime_status=?,version=? WHERE entity_no=? AND store_no=?"
+                        + " AND station_no=? AND deleted=0 AND version=?",
                 status,
                 version,
                 e,
                 s,
-                no);
+                no,
+                version - 1);
     }
 
     public Map<String, Object> command(String e, String s, String no, boolean lock) {
