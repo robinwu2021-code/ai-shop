@@ -403,22 +403,22 @@
   - ① 本会话实现端口及商品侧落库，提交前请商品会话核对；
   - ② 本会话只定接口、写交接，由商品会话实现。
 
-### 2.8 服务规格方案与修改计划（用户 2026-11-28：按「服务 = 商品 + SKU + 服务规格」制定修改计划）
+### 2.8 服务定义方案与修改计划（用户 2026-11-28：按「服务 = 商品 + SKU + 服务定义」制定修改计划）
 
 **口径**（详见《商品域-多业态商品方案》，P0 时同步改）：
 - **商品与 SKU**：服务是 `prd_goods`（`type=SERVICE`，`inv_mode=OFF`，履约方式为 `APPOINTMENT` 预约或 `STORE_VERIFY` 到店核销）+ 至少一个 `prd_sku`（按时长或技师级别分档；不记库存）。
-- **服务规格**：独立的 `prd_service_spec` 表，存「做这一档要多久、前后缓冲、步骤、注意事项」。按商品写默认行（`sku_no` 为空），按 SKU 写覆盖行。
-- **版本**：服务规格有**自己的版本号**，与商品修订脱钩，不需要结转，不扩展 `ServiceSpec`。
-- **服务要求**：`prd_fulfillment_requirement` 的版本列改指服务规格版本。
+- **服务定义**：独立的 `prd_service_definition` 表，存「做这一档要多久、前后缓冲、步骤、注意事项」。按商品写默认行（`sku_no` 为空），按 SKU 写覆盖行。
+- **版本**：服务定义有**自己的版本号**，与商品修订脱钩，不需要结转，不扩展 `ServiceSpec`。
+- **服务要求**：`prd_fulfillment_requirement` 的版本列改指服务定义版本。
 - **加项与名额**：加项用下单选配；名额用限量（`prd_sales_quota`）；资源空闲由平台预约 `rsv_*` 决定。
-- **引用**：预约项目行、服务任务记「SKU 号 + 服务规格版本号」（`definition_version_no` 只存版本号）。
-- **时长同一事实一处**：有服务规格的商品，时长只由规格发布写，并镜像到 `prd_goods.duration_min` 供展示和现有读方；商家保存商品时忽略时长。没有服务规格的服务（零售到店核销）沿用商品自己的时长。
+- **引用**：预约项目行、服务任务记「SKU 号 + 服务定义版本号」（`definition_version_no` 只存版本号）。
+- **时长同一事实一处**：有服务定义的商品，时长只由规格发布写，并镜像到 `prd_goods.duration_min` 供展示和现有读方；商家保存商品时忽略时长。没有服务定义的服务（零售到店核销）沿用商品自己的时长。
 
-**新表 `prd_service_spec`（草案，P1 定）**：
+**新表 `prd_service_definition`（草案，P1 定）**：
 - 列：
   - `id`、`tenant_no`、`entity_no`、`store_no`、`goods_no`；
   - `sku_no`（空 = 商品默认）；
-  - `spec_version`（按商品递增）；
+  - `definition_version`（按商品递增）；
   - `duration_min`、`buffer_before_min`、`buffer_after_min`；
   - `steps`（JSON）、`notes`（JSON）；
   - `schema_version`、`snapshot_hash`；
@@ -427,7 +427,7 @@
   - `published_by`、`published_at`；
   - 公共列。
 - 唯一约束：
-  - `(tenant_no, goods_no, spec_version, sku_no)`：同一版内每个 SKU 至多一行，默认行用空串代替 NULL，或用生成列；
+  - `(tenant_no, goods_no, definition_version, sku_no)`：同一版内每个 SKU 至多一行，默认行用空串代替 NULL，或用生成列；
   - `(tenant_no, goods_no, source_ref)`：同一操作重放返回同一版本。
 - 检查约束：时长大于 0，缓冲不小于 0。
 
@@ -436,10 +436,10 @@
 | 步 | 内容 | 谁做 | 产出与验证 |
 |---|---|---|---|
 | **P0 文档与对齐** | 改《商品域-多业态商品方案》§3.4、§3.5、§3.6-4；本节定稿；把方案发给商品会话「零售」确认（加表方式、端口、时长镜像、发布是否让 `prd_goods.version` 加一） | 本会话 | 商品会话同意后才进 P1 |
-| **P1 定稿 DDL** | 05 加 `prd_service_spec`，改 `prd_fulfillment_requirement.revision_no` 的注释。生成器没有「新增交易表」的机制：加一个，或按交接文档在 ai-shop-slim 的生成源里加（与商品会话定）。重新生成 05 与派生文档（03-表名对照、01-清单、库、字段）；`gen-product-test-schema.py` 重跑；美业测试副本 `db/n_trade/V1__trade_design.sql` 同步 | 本会话 | `check-generated-docs` 全绿；产品测试库多一张表 |
-| **P2 .61 建表** | `n_trade_v2` 上建 `prd_service_spec`、改注释。新表不涉及数据备份，改注释前导出结构；root 执行；前后只读核对；记入商品交接 §5 | 本会话，**执行前请用户批准** | 逐列核对与定稿一致 |
-| **P3 商品侧代码** | `shop-base` 加 `ServiceSpecPort`（发布 / 当前 / 按版本 / 按时刻列表）；`shop-core` 加实体与 Mapper（`PrdServiceSpec`，`PrdFulfillmentRequirement` 继承 `ProductTableMapper`）和端口实现，详见下方 P3 说明；同步改造现有时长读写，详见下方 P3 说明 | 本会话，提交前发 diff 给商品会话 | 商品测试：发布、版本冲突、按 SKU 覆盖、重放、商家保存忽略时长、镜像时长 |
-| **P4 独立部署** | `ServiceSpecInternalApi` + 宿主内部控制器 + `beauty-server` 客户端，照 `ServiceProductFactsInternalApi` 的写法 | 本会话 | 美业 server 装配测试；宿主内部接口测试 |
+| **P1 定稿 DDL** | 05 加 `prd_service_definition`，改 `prd_fulfillment_requirement.revision_no` 的注释。生成器没有「新增交易表」的机制：加一个，或按交接文档在 ai-shop-slim 的生成源里加（与商品会话定）。重新生成 05 与派生文档（03-表名对照、01-清单、库、字段）；`gen-product-test-schema.py` 重跑；美业测试副本 `db/n_trade/V1__trade_design.sql` 同步 | 本会话 | `check-generated-docs` 全绿；产品测试库多一张表 |
+| **P2 .61 建表** | `n_trade_v2` 上建 `prd_service_definition`、改注释。新表不涉及数据备份，改注释前导出结构；root 执行；前后只读核对；记入商品交接 §5 | 本会话，**执行前请用户批准** | 逐列核对与定稿一致 |
+| **P3 商品侧代码** | `shop-base` 加 `ServiceDefinitionPort`（发布 / 当前 / 按版本 / 按时刻列表）；`shop-core` 加实体与 Mapper（`PrdServiceDefinition`，`PrdFulfillmentRequirement` 继承 `ProductTableMapper`）和端口实现，详见下方 P3 说明；同步改造现有时长读写，详见下方 P3 说明 | 本会话，提交前发 diff 给商品会话 | 商品测试：发布、版本冲突、按 SKU 覆盖、重放、商家保存忽略时长、镜像时长 |
+| **P4 独立部署** | `ServiceDefinitionInternalApi` + 宿主内部控制器 + `beauty-server` 客户端，照 `ServiceProductFactsInternalApi` 的写法 | 本会话 | 美业 server 装配测试；宿主内部接口测试 |
 | **P5 美业侧** | 详见下方 P5 说明 | 本会话 | 美业全套（共用库、独立库两种模式）不新增失败；约束测试照旧 |
 | **P6 数据迁移** | 详见下方 P6 说明 | 本会话，与商品会话对齐 | 演练库跑通、对账报告 |
 | **P7 收尾** | 重新生成旧库调用清单；记录本 TDD 与商品交接；把 diff 发商品会话；征得同意后推送 v2 | 本会话 | 推送前 fetch 并合并，跑生成文档检查 |
@@ -454,7 +454,7 @@
   6. 按 `source_ref` 防重，重放返回原版本。
 - 现有时长读写的改造：
   - `ServiceProductFactsPortImpl`、`ServiceCatalogFactsPortImpl` 按 SKU 取时长：有规格读规格（含覆盖），没有读商品；
-  - `MerchantGoodsServiceImpl` 保存时，对已有服务规格的商品忽略 `ServiceSpec.durationMin`；
+  - `MerchantGoodsServiceImpl` 保存时，对已有服务定义的商品忽略 `ServiceSpec.durationMin`；
   - 商家编辑页上，美业服务的时长改为只读；如果改了 `b-app`，跑 `vue-tsc`。
 
 **P5 美业侧说明**：
@@ -462,12 +462,12 @@
 - 发布入口、幂等、操作日志留在美业，以美业的操作号作为 `source_ref`。
 - 开单核对服务定义时，改成按版本号做乐观核对。
 - 测试：
-  - 美业测试库按定稿 DDL 建 `prd_service_spec` 与 `prd_fulfillment_requirement`；
+  - 美业测试库按定稿 DDL 建 `prd_service_definition` 与 `prd_fulfillment_requirement`；
   - 加一个用 JDBC 读写这两张表的测试版端口；
   - 原来往 `bty_service_definition*` 写种子数据的地方，改用种子数据辅助方法写新表。
 
 **P6 数据迁移说明**：
-- 旧库 `bty_service_definition*`、`bty_service_requirement` 搬到 `prd_service_spec` 与 `prd_fulfillment_requirement`：定义按 SKU 找到所属商品，同一商品下各 SKU 的定义合成默认行加覆盖行，版本按发布时间重新编号。
+- 旧库 `bty_service_definition*`、`bty_service_requirement` 搬到 `prd_service_definition` 与 `prd_fulfillment_requirement`：定义按 SKU 找到所属商品，同一商品下各 SKU 的定义合成默认行加覆盖行，版本按发布时间重新编号。
 - 同时把预约项目行、服务任务、工单冻结范围里的旧版本号（`BTDV…`）换成新版本号。
 - 并入商品迁移脚本 `migrate-product-to-n-trade.py` 或单独成脚本（与商品会话定）。
 
@@ -491,11 +491,16 @@
 - **状态取值**：走枚举或常量。
 - **diff**：商品侧代码提交前发它看。
 
-**待定（P0 里定）**：
+**用户定（2026-11-28）**：
+- 表名用 `prd_service_definition`（服务定义），端口 `ServiceDefinitionPort`。
+- `prd_fulfillment_requirement` **加一列 `definition_version`**：服务的要求挂这一列，非服务留空；`revision_no` 仍只表示商品修订号。
+- 商品会话的 (a)(b)(c) 照它的意见做：生成器加 `TRADE_ADDED`；不让 `prd_goods.version` 加一，商家保存显式不写时长，镜像用定向更新；默认行 `sku_no=''`。
+
+**原待定（已定，留作记录）**：
 - 新表的加法：生成器加机制，还是改 ai-shop-slim 生成源；
-- 发布服务规格是否让 `prd_goods.version` 加一（会让商家手上未发布的商品草稿提示「有人中途改过」）；
+- 发布服务定义是否让 `prd_goods.version` 加一（会让商家手上未发布的商品草稿提示「有人中途改过」）；
 - 默认行的 `sku_no` 用空串还是生成列；
-- 表名 `prd_service_spec` 是否合适。
+- 表名 `prd_service_definition` 是否合适。
 
 ### 2.5 部署
 
