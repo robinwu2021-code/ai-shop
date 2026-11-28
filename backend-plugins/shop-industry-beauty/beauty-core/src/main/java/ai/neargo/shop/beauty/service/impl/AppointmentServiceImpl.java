@@ -149,7 +149,7 @@ public final class AppointmentServiceImpl implements AppointmentService {
         revision(root, req.expectedRevision()); AppointmentPersistence.require("CONFIRMED".equals(root.getStatus()));
         var preview = db.preview(req.previewNo()); preparations.own(preview);
         AppointmentPersistence.require(root.getAppointmentNo().equals(preview.getAppointmentNo())
-                && req.expectedRevision().equals(preview.getExpectedRevision()));
+                && req.expectedRevision().equals(preview.getBasedOnRevision()));
         var op = preparations.prepare(preview, root, req.expectedRevision(), "CHANGE", key, hash,
                 coordinator.hold(root), db.json.writeValueAsString(req));
         return outcome(coordinator.advance(op.getOperationNo()));

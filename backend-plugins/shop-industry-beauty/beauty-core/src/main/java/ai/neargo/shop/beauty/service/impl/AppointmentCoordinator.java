@@ -353,11 +353,17 @@ public final class AppointmentCoordinator {
         var snapshot = db.json.readValue(p.getSnapshot(), AppointmentMatching.Snapshot.class);
         var current = db.current(root);
         long revision = current.getArrangementRevision() + 1;
-        var arrangement = new BtyAppointmentArrangement(); arrangement.setEntityNo(root.getEntityNo());
+        // 草稿升为生效版：同一行写上预约单号、修订号与占用，旧的生效版标为被取代（TDD §2.6 第 4–6 项，步 4-3）
+        var arrangement = db.arrangements.selectByPreviewForUpdate(root.getEntityNo(), root.getStoreNo(),
+                p.getPreviewNo());
+        AppointmentPersistence.require(arrangement != null
+                && BtyAppointmentArrangement.DRAFT.equals(arrangement.getStatus()));
         arrangement.setAppointmentNo(root.getAppointmentNo()); arrangement.setArrangementRevision(revision);
-        arrangement.setPreviewNo(p.getPreviewNo()); arrangement.setHoldNo(hold);
-                arrangement.setSnapshot(p.getSnapshot());
-        db.arrangements.insert(arrangement);
+        arrangement.setHoldNo(hold); arrangement.setAction(op.getAction());
+        arrangement.setStatus(BtyAppointmentArrangement.CONFIRMED);
+        AppointmentPersistence.require(db.arrangements.updateById(arrangement) == 1);
+        db.arrangements.supersedeBefore(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo(), revision,
+                op.getActorNo(), AppointmentPersistence.now());
         int index = 0;
         for (var item : snapshot.items()) {
             var row = new BtyAppointmentItem(); row.setEntityNo(root.getEntityNo());

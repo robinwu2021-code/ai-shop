@@ -88,7 +88,7 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
 
     @BeforeEach
     void database() throws Exception {
-        initialize("BtyAppointmentPreparation", "BtyAppointmentOperation", "BtyReceptionOperation",
+        initialize("BtyAppointmentArrangement", "BtyAppointmentOperation", "BtyReceptionOperation",
                 "BtyArrivalChallenge");
         new ResourceDatabasePopulator(new ClassPathResource("platform-write-fixture.sql")).execute(database.source);
         login(LoginUser.consumer("USR1", "customer"));

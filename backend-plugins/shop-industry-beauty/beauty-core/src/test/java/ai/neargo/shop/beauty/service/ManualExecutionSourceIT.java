@@ -716,13 +716,13 @@ public class ManualExecutionSourceIT {
         seed("ord_appointment_item", "appointment_item_no", "ITEM", "appointment_no", "APPOINTMENT", "sku_no",
                 "SKU", "definition_version_no", "1", "qty", 1, "uom", "COUNT", "sequence_no", 0,
                 "execution_snapshot", "{}");
-        seed("bty_appointment_preparation", "preview_no", "PREVIEW", "store_no", "S", "actor_no", "100",
-                "actor_realm", "MERCHANT", "actor_kind", "MCH", "expected_revision", 1, "policy_version_no", "PV",
+        // 预览即修订（TDD §2.6 第 4–6 项，步 4-3）：确认后的那一版就是当时的预览行
+        seed("ord_appointment_revision", "preview_no", "PREVIEW", "store_no", "S", "actor_no", "100",
+                "actor_realm", "MERCHANT", "actor_kind", "MCH", "based_on_revision", 1, "policy_version_no", "PV",
                 "start_at", start.toLocalDateTime(), "end_at", end.toLocalDateTime(), "timezone", "UTC",
                 "frozen_plan", bookingPlan, "plan_hash", ownerBinding.planHash(), "snapshot", snapshot,
-                "expires_at", end.toLocalDateTime());
-        seed("ord_appointment_revision", "appointment_no", "APPOINTMENT", "arrangement_revision", 1,
-                "preview_no", "PREVIEW", "hold_no", "HOLD", "snapshot", snapshot);
+                "expires_at", end.toLocalDateTime(), "appointment_no", "APPOINTMENT", "arrangement_revision", 1,
+                "hold_no", "HOLD", "status", "CONFIRMED", "action", "CREATE");
         seed("bty_appointment_current", "appointment_no", "APPOINTMENT", "arrangement_revision", 1);
         var accept = new ResourceBookingPort.Accept(new ResourceBookingPort.Scope("MAIN", "E", "S"), "CONFIRM",
                 "BOOK_KEY", "BEAUTY_APPOINTMENT", "APPOINTMENT", 1, 1, null, bookingPlan);
@@ -807,9 +807,8 @@ public class ManualExecutionSourceIT {
         sql.update("UPDATE bty_work_order SET frozen_scope=?", json.writeValueAsString(scope));
         sql.update("UPDATE bty_service_submission SET frozen_command=?,payload_hash=? WHERE action='OPEN'",
                 json.writeValueAsString(draft), IdempotencyScope.requestHash(json.writeValueAsString(draft)));
-        sql.update("UPDATE bty_appointment_preparation SET frozen_plan=?,plan_hash=?,snapshot=?,end_at=?",
+        sql.update("UPDATE ord_appointment_revision SET frozen_plan=?,plan_hash=?,snapshot=?,end_at=?",
                 bookingPlan, planHash, snapshot, second.serviceEndAt().toLocalDateTime());
-        sql.update("UPDATE ord_appointment_revision SET snapshot=?", snapshot);
         var accept = new ResourceBookingPort.Accept(new ResourceBookingPort.Scope("MAIN", "E", "S"), "CONFIRM",
                 "BOOK_KEY", "BEAUTY_APPOINTMENT", "APPOINTMENT", 1, 1, null, bookingPlan);
         var receipt = new ResourceBookingPort.Receipt(binding, "RESOURCE_OWNER", "SUCCEEDED", 1, 1, null, bookingPlan,

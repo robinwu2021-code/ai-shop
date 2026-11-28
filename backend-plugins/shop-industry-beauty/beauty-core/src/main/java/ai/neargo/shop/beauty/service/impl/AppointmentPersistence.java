@@ -2,6 +2,7 @@ package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
+import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.entity.BtyAppointmentPreparation;
@@ -111,9 +112,10 @@ public final class AppointmentPersistence {
                         root.getEntityNo())
                 .eq(BtyAppointmentCurrent::getAppointmentNo, root.getAppointmentNo())));
     }
-    public BtyAppointmentPreparation preview(String number) {
-        var value = read(() -> preparations.selectOne(Wrappers.<BtyAppointmentPreparation>lambdaQuery()
-                .eq(BtyAppointmentPreparation::getTenantNo, "MAIN").eq(BtyAppointmentPreparation::getPreviewNo,
+    /** 预览即草稿修订（TDD §2.6 第 4–6 项，步 4-3）；确认后同一行升为生效版，按预览号仍能找到。 */
+    public BtyAppointmentArrangement preview(String number) {
+        var value = read(() -> arrangements.selectOne(Wrappers.<BtyAppointmentArrangement>lambdaQuery()
+                .eq(BtyAppointmentArrangement::getTenantNo, "MAIN").eq(BtyAppointmentArrangement::getPreviewNo,
                         number)));
         if (value == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
         return value;

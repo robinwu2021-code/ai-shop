@@ -116,7 +116,7 @@ ADD_COLUMNS = {
     'ord_appointment_revision': [
         "`based_on_revision` bigint DEFAULT NULL COMMENT '草稿基于的预约单版本（ord_appointment.version，新约为 0）；转在途与许可时核对预约单仍是这一版'",
         "`actor_kind` varchar(32) DEFAULT NULL COMMENT '发起人类型（同一发起方下的细分，如店主、员工、顾客本人）'",
-        "`action` varchar(24) DEFAULT NULL COMMENT '这次变更做什么：CREATE 新约、RESCHEDULE 改约、RECEPTION_CHANGE 到店后改、CANCEL 取消、NO_SHOW 爽约'",
+        "`action` varchar(24) DEFAULT NULL COMMENT '这次变更做什么：CREATE 新约、CHANGE 改约、RECEPTION_CHANGE 到店后改、CANCEL 取消、NO_SHOW 爽约'",
         "`frozen_plan` longtext NULL COMMENT '冻结的资源计划（原样作资源命令载荷）；取消、爽约是释放命令'",
         "`plan_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源计划摘要，核对回执用'",
         "`command_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源命令号；宿主冻结回调按它找到这一版'",

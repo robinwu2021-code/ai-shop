@@ -94,7 +94,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
 
     @BeforeEach
     void database() throws Exception {
-        initialize("BtyAppointmentPreparation", "BtyAppointmentOperation");
+        initialize("BtyAppointmentArrangement", "BtyAppointmentOperation");
         new ResourceDatabasePopulator(new ClassPathResource("platform-write-fixture.sql")).execute(database.source);
         login(LoginUser.consumer("USR1", "customer"));
         seed("ind_store_policy", "industry_code", "BEAUTY", "policy_no", "P", "store_no", "S", "current_policy_version_no", "PV",
@@ -385,7 +385,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             var p = service.previewMyAppointment("USR1", new PreviewMyAppointmentReq("S",
                     List.of(new AppointmentItemReq("SKU", 1)), start, null));
             assertThat(p.assignments()).extracting(a -> a.personnelNo()).containsExactlyInAnyOrder("P1", "P2");
-            String bytes = sql.queryForObject("SELECT frozen_plan FROM bty_appointment_preparation WHERE preview_no=?",
+            String bytes = sql.queryForObject("SELECT frozen_plan FROM ord_appointment_revision WHERE preview_no=?",
                     String.class, p.previewNo());
             assertThat(ResourcePlanContract.decode(bytes).demands()).hasSize(2);
             assertThatThrownBy(() -> service.previewMyAppointment("USR1", preview(1))).isInstanceOf(BizException.class);
@@ -400,11 +400,11 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             login(LoginUser.merchantByUser("OWNER_USER", "owner"));
             var p = service.previewAppointment("E", "S", "OWNER_USER", new PreviewAppointmentReq("S", "MEMBER_TICKET",
                     List.of(new AppointmentItemReq("SKU", 1)), List.of(), start));
-            assertThat(sql.queryForObject("SELECT customer_ref FROM bty_appointment_preparation WHERE preview_no=?",
+            assertThat(sql.queryForObject("SELECT customer_ref FROM ord_appointment_revision WHERE preview_no=?",
                     String.class, p.previewNo())).isEqualTo("USR1");
             var guest = service.previewAppointment("E", "S", "OWNER_USER", new PreviewAppointmentReq("S", null,
                     List.of(new AppointmentItemReq("SKU", 1)), List.of(), start));
-            assertThat(sql.queryForObject("SELECT guest_ref FROM bty_appointment_preparation WHERE preview_no=?",
+            assertThat(sql.queryForObject("SELECT guest_ref FROM ord_appointment_revision WHERE preview_no=?",
                     String.class, guest.previewNo())).startsWith("BTG");
             var root = service.createAppointment("E", "S", "OWNER_USER",
                     new CreateAppointmentReq(p.previewNo(), "MEMBER_TICKET", List.of(), null), "STAFF_CREATE");
@@ -455,7 +455,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                     new CreateAppointmentReq(beforeClaim.previewNo(), null, List.of(), null, "GUE1"), "changed"))
                     .isInstanceOf(BizException.class);
             var claimed = service.previewAppointment("E", "S", "M1", request);
-            assertThat(sql.queryForObject("SELECT customer_ref FROM bty_appointment_preparation WHERE preview_no=?",
+            assertThat(sql.queryForObject("SELECT customer_ref FROM ord_appointment_revision WHERE preview_no=?",
                     String.class, claimed.previewNo())).isEqualTo("USR1");
             assertThatThrownBy(() -> service.previewAppointment("E", "S", "M1", new PreviewAppointmentReq("S",
                     null, request.items(), List.of(), start, "UNKNOWN"))).isInstanceOf(BizException.class);

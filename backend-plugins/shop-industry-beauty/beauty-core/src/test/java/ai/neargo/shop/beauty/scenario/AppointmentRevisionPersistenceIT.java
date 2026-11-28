@@ -18,8 +18,8 @@ class AppointmentRevisionPersistenceIT extends BeautyExecutionFixture {
     void database() throws Exception {
         initialize("BtyAppointmentArrangement");
         appointment("A", "S");
-        draft("P1", "RESCHEDULE", 0L);
-        draft("P2", "RESCHEDULE", 0L);
+        draft("P1", "CHANGE", 0L);
+        draft("P2", "CHANGE", 0L);
     }
 
     private void draft(String preview, String action, long basedOn) {

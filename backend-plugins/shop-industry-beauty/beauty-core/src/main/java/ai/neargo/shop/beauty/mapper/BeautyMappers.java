@@ -1681,7 +1681,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 """
                 SELECT COUNT(*) FROM bty_appointment_operation a
                 
-                JOIN bty_appointment_preparation p ON p.tenant_no=a.tenant_no AND p.entity_no=a.entity_no
+                JOIN ord_appointment_revision p ON p.tenant_no=a.tenant_no AND p.entity_no=a.entity_no
                   AND p.store_no=a.store_no AND p.preview_no=a.preview_no AND p.deleted=0
                 JOIN ord_appointment root ON root.tenant_no=#{tenantNo} AND root.entity_no=#{entityNo}
                   AND root.store_no=#{storeNo} AND root.appointment_no=#{appointmentNo} AND root.deleted=0

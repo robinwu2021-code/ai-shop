@@ -48,7 +48,7 @@ public class BtyAppointmentArrangement extends BaseEntity {
     private LocalDateTime expiresAt;
     /** 草稿基于的预约单版本（{@code ord_appointment.version}），新约为 0。 */
     private Long basedOnRevision;
-    /** 这次变更做什么：CREATE、RESCHEDULE、RECEPTION_CHANGE、CANCEL、NO_SHOW。 */
+    /** 这次变更做什么：CREATE、CHANGE、RECEPTION_CHANGE、CANCEL、NO_SHOW。 */
     private String action;
     private String frozenPlan;
     private String planHash;
