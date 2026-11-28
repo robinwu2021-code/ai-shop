@@ -23,7 +23,7 @@
 
 对照基准：.61 现场按设计稿 `06-n_industry.sql`（ai-shop-slim 字段草案）建库，再执行过 [`01-industry-kds.sql`](../food-kds-cutover/01-industry-kds.sql)，共 17 张。2026-11-28 现场只读核对确认如此（见文末），下表即现场的变更。
 
-**公共差异**：设计稿上的表都要改的几列——`created_at`、`updated_at` 改为 `datetime(3)`（`updated_at` 原为 `timestamp`），`created_by`、`updated_by` 放宽到 `varchar(64)`，`version` 改为 `bigint`；数量、人数列改为非空、默认 0。下表「公共差异」即指这些。
+**公共差异**：凡有公共列的表（除厨显语音指令外的 26 张）都按设计规则——`created_at`、`updated_at` 改为 `datetime(3)` 默认当前时间（`updated_at` 原为 `timestamp`，随更新刷新），`created_by`、`updated_by` 放宽到 `varchar(64)`，`version` 改为 `bigint`；数量、人数列改为非空、默认 0。下表「公共差异」即指这些。
 
 ### 新建（14 张）
 
@@ -39,7 +39,7 @@
 | `fnb_reservation`、`fnb_reservation_table` | 订位、订位占桌 | ADR-068 修订二 |
 | `fnb_service_slot`、`fnb_capacity_claim`、`fnb_service_calendar` | 时段、容量占用、营业日历 | ADR-068 修订二 |
 
-### 结构有变（11 张：9 张重建、2 张共用表原地改）
+### 结构有变（12 张：10 张重建、2 张共用表原地改）
 
 | 表 | 变化 | 依据 |
 |---|---|---|
@@ -49,10 +49,11 @@
 | `ind_config_revision` | **原地改，不重建（有美业数据）**：补策略号 + 修订序号、版本号两条唯一键（同上）；`actor_no` 放宽到 64；公共差异 | 合并 ②③ |
 | `fnb_service_entitlement` | 加权益号、到店单人头两条唯一键；数量非空；公共差异 | 合并 ① |
 | `fnb_table_area`、`fnb_table`、`fnb_course`、`fnb_banquet_plan`、`fnb_banquet_attendance_confirmation`、`fnb_service_entitlement_event` | 公共差异 | 定稿 DDL 规则 D5、D6 |
+| `fnb_station` | 审计列放宽回设计（`01-industry-kds.sql` 曾收窄为 32 位、无默认）；业务列保持非空；运行状态注释改为 RUNNING/PAUSED | D-2，公共列对齐 |
 
-### 重建：结构不变（2 张）
+### 重建：结构不变（1 张）
 
-`fnb_station`（`01-industry-kds.sql` 已补齐；开停改写 `runtime_status`，D-2）、`fnb_kds_voice_command`。一并重建，保证与定稿逐字一致。
+`fnb_kds_voice_command`。一并重建，保证与定稿逐字一致。
 
 ### 删除（3 张，退役）
 
