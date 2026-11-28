@@ -93,9 +93,9 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
                 "BtyArrivalChallenge");
         new ResourceDatabasePopulator(new ClassPathResource("platform-write-fixture.sql")).execute(database.source);
         login(LoginUser.consumer("USR1", "customer"));
-        seed("bty_store_policy", "policy_no", "P", "store_no", "S", "current_policy_version_no", "PV",
+        seed("ind_store_policy", "industry_code", "BEAUTY", "policy_no", "P", "store_no", "S", "current_policy_version_no", "PV",
                 "status", "ACTIVE", "version", 1L);
-        seed("bty_store_policy_version", "policy_version_no", "PV", "policy_no", "P", "revision_index", 1,
+        seed("ind_config_revision", "config_kind", "STORE_POLICY", "store_no", "S", "policy_version_no", "PV", "policy_no", "P", "revision_index", 1,
                 "booking_ahead_days", 30, "cancel_rule", "{\"freeCancelBeforeMinutes\":60,"
                         + "\"allowCustomerCancel\":true}", "allowed_modes", "[\"PREPAID_SINGLE\"]",
                 "effective_at", T0.minusYears(1), "schema_version", 1, "snapshot_hash", "a".repeat(64));
@@ -112,7 +112,7 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
                 json.writeValueAsString(new PublishServiceDefinitionVersionReq.Duration(17, 3, 4)),
                 json.writeValueAsString(List.of(new PublishServiceDefinitionVersionReq.Requirement("MAIN", "STAFF",
                         "G", 1, 0, 0, 17, "ANY_QUALIFIED")))));
-        sql.update("UPDATE bty_store_policy_version SET snapshot_hash=?", IdempotencyScope.requestHash(
+        sql.update("UPDATE ind_config_revision SET snapshot_hash=?", IdempotencyScope.requestHash(
                 T0.minusYears(1).atOffset(ZoneOffset.UTC).toString(), "30", "60", "true", "PREPAID_SINGLE"));
     }
     void login(LoginUser user) {

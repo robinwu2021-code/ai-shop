@@ -63,6 +63,22 @@ class BeautySchemaMigrationIT {
         } catch (ReflectiveOperationException ex) {
             throw new AssertionError(ex);
         }
+        if ("migrate".equals(mode)) industrySharedTables();
+    }
+
+    /**
+     * 测试里三条句柄都指向同一个库：美业用到的行业共用表（门店策略头与修订，TDD-美业域迁移新库 B-2）
+     * 按行业库设计稿建在这里；生产上它们在 {@code n_industry}，不进美业的私有 Flyway。
+     */
+    void industrySharedTables() {
+        try {
+            for (String statement : BeautyIndustryDatabaseIT.statements("db/n_industry/V1__industry_design.sql"))
+                if (statement.startsWith("CREATE TABLE `ind_store_policy`")
+                        || statement.startsWith("CREATE TABLE `ind_config_revision`"))
+                    execute(statement.replaceFirst("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
+        } catch (java.io.IOException | SQLException ex) {
+            throw new AssertionError(ex);
+        }
     }
 
     private void execute(String sql) throws SQLException {
@@ -85,7 +101,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         initialize("migrate");
         assertEquals(
-                31,
+                33, // 美业 30 张 + bty_flyway_history + 行业共用 ind_store_policy、ind_config_revision
                 count(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE"
                             + " table_schema=DATABASE()"));

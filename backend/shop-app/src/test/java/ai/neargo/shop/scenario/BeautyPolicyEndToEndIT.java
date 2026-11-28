@@ -73,6 +73,7 @@ class BeautyPolicyEndToEndIT {
         new ResourceDatabasePopulator(new FileSystemResource("../../backend-plugins/shop-industry-beauty/"
                 + "beauty-core/src/test/resources/platform-write-fixture.sql")).execute(source);
         var sql = new JdbcTemplate(source);
+        BeautyIndustrySharedTables.create(sql);
         new WebApplicationContextRunner().withUserConfiguration(Host.class, PrimaryPersistenceConfiguration.class)
                 .withConfiguration(AutoConfigurations.of(type("BeautyAutoConfiguration"),
                         type("BeautyPersistenceAutoConfiguration"), type("BeautyBusinessAutoConfiguration"),
@@ -111,14 +112,14 @@ class BeautyPolicyEndToEndIT {
                     mvc.perform(post(path).header("Authorization", "Bearer " + token)
                             .header("Idempotency-Key", "BAD-STORE").header("X-Store-No", "FOREIGN")
                             .contentType("application/json").content(body)).andExpect(status().isForbidden());
-                    for (String table : List.of("bty_store_policy", "bty_store_policy_version", "bty_action_log",
+                    for (String table : List.of("ind_store_policy", "ind_config_revision", "bty_action_log",
                             "sys_idempotent")) {
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class))
                                 .as(table).isOne();
                     }
                     assertThat(sql.queryForObject("SELECT operator_ref FROM bty_action_log", String.class))
                             .isEqualTo("staff");
-                    assertThat(sql.queryForObject("SELECT created_by FROM bty_store_policy_version", String.class))
+                    assertThat(sql.queryForObject("SELECT created_by FROM ind_config_revision", String.class))
                             .isEqualTo("staff");
                 });
     }

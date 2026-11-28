@@ -166,7 +166,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
         });
     }
     @ParameterizedTest
-    @ValueSource(strings = {"bty_service_definition", "bty_store_policy"})
+    @ValueSource(strings = {"bty_service_definition", "ind_store_policy"})
     void changedLocalDefinitionBeforeCreateDoesNotReserveResources(String changedHead) {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);

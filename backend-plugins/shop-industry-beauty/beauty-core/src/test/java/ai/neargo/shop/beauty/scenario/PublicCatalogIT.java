@@ -27,7 +27,7 @@ class PublicCatalogIT extends BeautyExecutionFixture {
     void database() throws Exception {
         required("service.impl.ServiceCatalogQueryServiceImpl");
         initialize("BtyStorePolicy", "BtyStorePolicyVersion", "BtyServiceDefinition", "BtyServiceDefinitionVersion");
-        seed("bty_store_policy", "policy_no", "P", "store_no", "S", "current_policy_version_no", "P2",
+        seed("ind_store_policy", "industry_code", "BEAUTY", "policy_no", "P", "store_no", "S", "current_policy_version_no", "P2",
                 "status", "ACTIVE", "version", 2L);
         policy("P1", 1, T0, 30);
         policy("P2", 2, T0.plusYears(20), 99);
@@ -39,7 +39,7 @@ class PublicCatalogIT extends BeautyExecutionFixture {
     }
 
     private void policy(String no, int revision, Object at, int ahead) {
-        seed("bty_store_policy_version", "policy_version_no", no, "policy_no", "P", "revision_index", revision,
+        seed("ind_config_revision", "config_kind", "STORE_POLICY", "store_no", "S", "policy_version_no", no, "policy_no", "P", "revision_index", revision,
                 "booking_ahead_days", ahead, "cancel_rule", "{\"freeCancelBeforeMinutes\":60,"
                         + "\"allowCustomerCancel\":true}", "allowed_modes", "[\"PREPAID_SINGLE\"]",
                 "effective_at", at, "schema_version", 1, "snapshot_hash", "b".repeat(64));
@@ -120,9 +120,9 @@ class PublicCatalogIT extends BeautyExecutionFixture {
     @Test
     void inactiveFutureAndForeignOwnedLocalFactsAreNotPublic() {
         catalog().run(context -> {
-            sql.update("UPDATE bty_store_policy_version SET effective_at=?", T0.plusYears(20));
+            sql.update("UPDATE ind_config_revision SET effective_at=?", T0.plusYears(20));
             assertThatThrownBy(() -> invoke(context, "getPublicStore", "S")).isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_store_policy_version SET effective_at=? WHERE policy_version_no='P1'", T0);
+            sql.update("UPDATE ind_config_revision SET effective_at=? WHERE policy_version_no='P1'", T0);
             owner = "OTHER";
             assertThatThrownBy(() -> invoke(context, "getPublicService", "SKU", query("S")))
                     .isInstanceOf(BizException.class);

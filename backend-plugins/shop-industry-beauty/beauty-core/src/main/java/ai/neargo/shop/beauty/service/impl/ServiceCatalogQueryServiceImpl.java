@@ -137,11 +137,11 @@ public class ServiceCatalogQueryServiceImpl implements ServiceCatalogQueryServic
     }
 
     private PublicStoreVO publicStore(ServiceCatalogFactsPort.Store store, Instant now) {
-        var head = policies.selectOne(Wrappers.<BtyStorePolicy>lambdaQuery()
+        var head = policies.selectOne(BtyStorePolicy.beautyQuery()
                 .eq(BtyStorePolicy::getTenantNo, "MAIN").eq(BtyStorePolicy::getEntityNo, store.entityNo())
                 .eq(BtyStorePolicy::getStoreNo, store.storeNo()).eq(BtyStorePolicy::getStatus, "ACTIVE"));
         if (head == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
-        var version = policyVersions.selectOne(Wrappers.<BtyStorePolicyVersion>lambdaQuery()
+        var version = policyVersions.selectOne(BtyStorePolicyVersion.beautyQuery()
                 .eq(BtyStorePolicyVersion::getTenantNo, "MAIN")
                 .eq(BtyStorePolicyVersion::getEntityNo, store.entityNo())
                 .eq(BtyStorePolicyVersion::getPolicyNo, head.getPolicyNo())

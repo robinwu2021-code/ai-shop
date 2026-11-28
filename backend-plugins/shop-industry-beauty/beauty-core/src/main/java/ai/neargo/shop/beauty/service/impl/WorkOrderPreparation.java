@@ -69,12 +69,12 @@ public final class WorkOrderPreparation {
         var preview = db.preview(arrangement.getPreviewNo());
         var snapshot = db.json.readValue(arrangement.getSnapshot(), AppointmentMatching.Snapshot.class);
         AppointmentPersistence.require(!snapshot.items().isEmpty() && snapshot.items().size() <= 10);
-        var policy = policyVersions.selectOne(Wrappers.<BtyStorePolicyVersion>lambdaQuery()
+        var policy = policyVersions.selectOne(BtyStorePolicyVersion.beautyQuery()
                 .eq(BtyStorePolicyVersion::getTenantNo, root.getTenantNo())
                 .eq(BtyStorePolicyVersion::getEntityNo, root.getEntityNo())
                 .eq(BtyStorePolicyVersion::getPolicyVersionNo, root.getPolicyVersionNo()));
         AppointmentPersistence.require(policy != null && policy.getSchemaVersion() == 1);
-        var head = policies.selectOne(Wrappers.<BtyStorePolicy>lambdaQuery()
+        var head = policies.selectOne(BtyStorePolicy.beautyQuery()
                 .eq(BtyStorePolicy::getTenantNo, root.getTenantNo()).eq(BtyStorePolicy::getEntityNo, root.getEntityNo())
                 .eq(BtyStorePolicy::getStoreNo, root.getStoreNo()).eq(BtyStorePolicy::getPolicyNo,
                         policy.getPolicyNo()));
@@ -228,14 +228,14 @@ public final class WorkOrderPreparation {
                 }
             }
             AppointmentPersistence.require(!items.isEmpty() && items.size() <= 10);
-            var policy = policies.selectOne(Wrappers.<BtyStorePolicy>lambdaQuery()
+            var policy = policies.selectOne(BtyStorePolicy.beautyQuery()
                     .eq(BtyStorePolicy::getTenantNo, scope.tenantNo()).eq(BtyStorePolicy::getEntityNo, entity)
                     .eq(BtyStorePolicy::getStoreNo, store));
             String policyNo = null;
             PublishStorePolicyVersionReq.CancellationRule cancel = null;
             if (policy != null) {
                 AppointmentPersistence.require("ACTIVE".equals(policy.getStatus()));
-                var version = policyVersions.selectOne(Wrappers.<BtyStorePolicyVersion>lambdaQuery()
+                var version = policyVersions.selectOne(BtyStorePolicyVersion.beautyQuery()
                         .eq(BtyStorePolicyVersion::getTenantNo, scope.tenantNo())
                         .eq(BtyStorePolicyVersion::getEntityNo, entity)
                         .eq(BtyStorePolicyVersion::getPolicyNo, policy.getPolicyNo())
@@ -282,7 +282,7 @@ public final class WorkOrderPreparation {
                     && item.skuNo().equals(head.getSkuNo())
                     && item.definitionVersionNo().equals(head.getCurrentDefinitionVersionNo()));
         }
-        var version = policyVersions.selectOne(Wrappers.<BtyStorePolicyVersion>lambdaQuery()
+        var version = policyVersions.selectOne(BtyStorePolicyVersion.beautyQuery()
                 .eq(BtyStorePolicyVersion::getTenantNo, scope.tenantNo())
                 .eq(BtyStorePolicyVersion::getEntityNo, scope.entityNo())
                 .eq(BtyStorePolicyVersion::getPolicyVersionNo, match.policyVersionNo()));

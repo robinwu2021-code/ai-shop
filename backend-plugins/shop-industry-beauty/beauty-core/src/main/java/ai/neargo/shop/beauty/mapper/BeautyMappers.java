@@ -49,13 +49,16 @@ public final class BeautyMappers {
     private BeautyMappers() {
     }
 
-    /** Locks an authorized existing head; first creation is arbitrated by its scoped business unique key. */
+    /**
+     * 门店政策头在行业共用表 {@code ind_store_policy}，只碰 {@code industry_code='BEAUTY'} 的行；首次创建由
+     * 「门店 + 行业」唯一键仲裁。
+     */
     public interface StorePolicyMapper extends IndustryTableMapper<BtyStorePolicy> {
         @Select(
                 """
-                SELECT * FROM bty_store_policy
+                SELECT * FROM ind_store_policy
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
-                  AND policy_no=#{policyNo} AND deleted=0
+                  AND industry_code='BEAUTY' AND policy_no=#{policyNo} AND deleted=0
                 FOR UPDATE
                 """)
         BtyStorePolicy selectScopedForUpdate(
@@ -69,15 +72,17 @@ public final class BeautyMappers {
          */
         @Update(
                 """
-                UPDATE bty_store_policy
+                UPDATE ind_store_policy
                 SET current_policy_version_no=#{policyVersionNo}, version=version+1,
                     updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND industry_code='BEAUTY'
                   AND policy_no=#{policyNo} AND version=#{expectedVersion} AND deleted=0
                   AND status IN ('ACTIVE', 'INACTIVE')
                   AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
-                  AND EXISTS (SELECT 1 FROM bty_store_policy_version v
-                    WHERE v.tenant_no='MAIN' AND v.entity_no=#{entityNo} AND v.policy_no=#{policyNo}
+                  AND EXISTS (SELECT 1 FROM ind_config_revision v
+                    WHERE v.tenant_no='MAIN' AND v.entity_no=#{entityNo} AND v.config_kind='STORE_POLICY'
+                      AND v.policy_no=#{policyNo}
                       AND v.policy_version_no=#{policyVersionNo} AND v.deleted=0)
                 """)
         int switchCurrentVersion(
@@ -131,7 +136,9 @@ public final class BeautyMappers {
                 @Param("updatedAt") LocalDateTime updatedAt);
     }
 
-    /** Published policy snapshots are immutable; application code uses append and scoped reads only. */
+    /**
+     * 政策版本在行业配置修订表 {@code ind_config_revision}（{@code config_kind='STORE_POLICY'}）；只追加、按范围读。
+     */
     public interface StorePolicyVersionMapper extends IndustryTableMapper<BtyStorePolicyVersion> {
     }
 

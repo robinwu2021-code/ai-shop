@@ -102,9 +102,9 @@ class PolicyDefinitionPersistenceIT {
                 mapper.insert(policy("A", "P", "S"));
                 throw new IllegalStateException("rollback-probe");
             })).hasMessage("rollback-probe");
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_store_policy", Integer.class)).isZero();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM ind_store_policy", Integer.class)).isZero();
             mapper.insert(policy("A", "P", "S"));
-            assertThat(sql.queryForObject("SELECT created_by FROM bty_store_policy", String.class)).isEqualTo("SYSTEM");
+            assertThat(sql.queryForObject("SELECT created_by FROM ind_store_policy", String.class)).isEqualTo("SYSTEM");
         });
     }
 
@@ -117,15 +117,16 @@ class PolicyDefinitionPersistenceIT {
             mapper.insert(policy("A", "P", "S"));
             DataScopeContext.set(DataScopeSpec.of(ScopeDim.MERCHANT, Set.of("A")));
             // Prepare immutable versions before publishing the pointer.
-            sql.update("INSERT INTO bty_store_policy_version "
-                    + "(tenant_no,entity_no,created_at,updated_at,policy_version_no,policy_no,revision_index,"
-                    + "booking_ahead_days,cancel_rule,allowed_modes,effective_at,schema_version,snapshot_hash) "
-                    + "VALUES ('MAIN','A',NOW(3),NOW(3),'V2','P',2,7,'{}','[]',NOW(3),1,REPEAT('a',64))");
+            sql.update("INSERT INTO ind_config_revision "
+                    + "(tenant_no,entity_no,created_at,updated_at,policy_version_no,config_kind,policy_no,store_no,"
+                    + "revision_index,booking_ahead_days,cancel_rule,allowed_modes,effective_at,schema_version,"
+                    + "snapshot_hash) VALUES ('MAIN','A',NOW(3),NOW(3),'V2','STORE_POLICY','P','S',2,7,'{}','[]',"
+                    + "NOW(3),1,REPEAT('a',64))");
             assertThat(switchPolicy(mapper, "OTHER", 0, "V2")).isZero();
             assertThat(switchPolicy(mapper, "S", 0, "V2")).isOne();
             assertThat(switchPolicy(mapper, "S", 0, "V3")).isZero();
-            assertThat(sql.queryForObject("SELECT updated_by FROM bty_store_policy", String.class)).isEqualTo("ACTOR");
-            assertThat(sql.queryForObject("SELECT version FROM bty_store_policy", Long.class)).isEqualTo(1L);
+            assertThat(sql.queryForObject("SELECT updated_by FROM ind_store_policy", String.class)).isEqualTo("ACTOR");
+            assertThat(sql.queryForObject("SELECT version FROM ind_store_policy", Long.class)).isEqualTo(1L);
         });
     }
 
@@ -148,18 +149,23 @@ class PolicyDefinitionPersistenceIT {
         runner().run(context -> {
             assertThat(context).hasNotFailed();
             String root = definition ? "definition_no" : "policy_no";
-            String table = definition ? "bty_service_definition" : "bty_store_policy";
+            // 门店政策头与版本在行业共用表（B-2）：头带行业码、版本带配置类型与门店
+            String table = definition ? "bty_service_definition" : "ind_store_policy";
+            String versionTable = definition ? "bty_service_definition_version" : "ind_config_revision";
             String version = definition ? "definition_version_no" : "policy_version_no";
             sql.update("INSERT INTO " + table + " (tenant_no,entity_no,created_at,updated_at," + root
-                    + ",store_no,current_" + version + ",status" + (definition ? ",sku_no" : "")
-                    + ") VALUES ('MAIN','A',NOW(3),NOW(3),'P','S','V1',?" + (definition ? ",'SKU'" : "") + ")", state);
+                    + ",store_no,current_" + version + ",status" + (definition ? ",sku_no" : ",industry_code")
+                    + ") VALUES ('MAIN','A',NOW(3),NOW(3),'P','S','V1',?" + (definition ? ",'SKU'" : ",'BEAUTY'")
+                    + ")", state);
             String details = definition
                     ? "duration_min_snapshot,buffer_before_min,buffer_after_min,steps_template,notes"
                     : "booking_ahead_days,cancel_rule,allowed_modes,effective_at";
             String values = definition ? "30,0,0,'[]','{}'" : "7,'{}','[]',NOW(3)";
-            sql.update("INSERT INTO " + table + "_version (tenant_no,entity_no,created_at,updated_at,"
-                    + version + "," + root + ",revision_index," + details + ",schema_version,snapshot_hash) "
-                    + "VALUES ('MAIN','A',NOW(3),NOW(3),'V2','P',2," + values + ",1,REPEAT('a',64))");
+            sql.update("INSERT INTO " + versionTable + " (tenant_no,entity_no,created_at,updated_at,"
+                    + version + "," + root + ",revision_index," + details + ",schema_version,snapshot_hash"
+                    + (definition ? "" : ",config_kind,store_no") + ") "
+                    + "VALUES ('MAIN','A',NOW(3),NOW(3),'V2','P',2," + values + ",1,REPEAT('a',64)"
+                    + (definition ? "" : ",'STORE_POLICY','S'") + ")");
             var mapper = mapper(context, definition ? "ServiceDefinitionMapper" : "StorePolicyMapper");
             result[0] = switchPolicy(mapper, "S", 0, "V2");
         });

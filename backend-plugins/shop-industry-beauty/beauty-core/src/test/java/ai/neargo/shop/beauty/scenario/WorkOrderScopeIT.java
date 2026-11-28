@@ -556,7 +556,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
     @Test void unassignedOrderHasNoResourceOrExecutableTask() {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator"));
-            sql.update("DELETE FROM bty_store_policy_version"); sql.update("DELETE FROM bty_store_policy");
+            sql.update("DELETE FROM ind_config_revision"); sql.update("DELETE FROM ind_store_policy");
             var service = c.getBean(WorkOrderService.class);
             var req = new OpenWorkOrderReq("cr1_" + "c".repeat(43), "S", List.of(new AppointmentItemReq("SKU", 2)),
                     null);
@@ -613,7 +613,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThatThrownBy(() -> loader.unassigned("E", "S", identity, items)).isInstanceOf(BizException.class);
             sql.update("UPDATE bty_service_definition_version SET definition_no='D'");
             assertThatThrownBy(() -> loader.unassigned("OTHER", "S", identity, items)).isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_store_policy_version SET snapshot_hash=?", "e".repeat(64));
+            sql.update("UPDATE ind_config_revision SET snapshot_hash=?", "e".repeat(64));
             assertThatThrownBy(() -> loader.unassigned("E", "S", identity, items)).isInstanceOf(BizException.class);
             assertThat(owner.accepts).isEmpty(); assertThat(count("bty_work_order")).isZero();
         });

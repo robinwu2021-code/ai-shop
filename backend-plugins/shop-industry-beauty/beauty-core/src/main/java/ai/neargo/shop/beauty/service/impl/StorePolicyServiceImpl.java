@@ -18,7 +18,6 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
@@ -60,11 +59,11 @@ public class StorePolicyServiceImpl implements StorePolicyService {
         LocalDateTime at = query.at() == null ? LocalDateTime.now(ZoneOffset.UTC)
                 : query.at().withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();
         return DataScopeContext.executeWithoutScope(() -> {
-            var head = policies.selectOne(Wrappers.<BtyStorePolicy>lambdaQuery()
+            var head = policies.selectOne(BtyStorePolicy.beautyQuery()
                     .eq(BtyStorePolicy::getTenantNo, "MAIN").eq(BtyStorePolicy::getEntityNo, entityNo)
                     .eq(BtyStorePolicy::getStoreNo, currentStoreNo).eq(BtyStorePolicy::getStatus, "ACTIVE"));
             if (head == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
-            var version = versions.selectOne(Wrappers.<BtyStorePolicyVersion>lambdaQuery()
+            var version = versions.selectOne(BtyStorePolicyVersion.beautyQuery()
                     .eq(BtyStorePolicyVersion::getTenantNo, "MAIN").eq(BtyStorePolicyVersion::getEntityNo, entityNo)
                     .eq(BtyStorePolicyVersion::getPolicyNo, head.getPolicyNo())
                     .le(BtyStorePolicyVersion::getEffectiveAt, at)
@@ -104,7 +103,7 @@ public class StorePolicyServiceImpl implements StorePolicyService {
 
     private PolicyVersionVO publish(String entity, String store, String actor, PublishStorePolicyVersionReq req,
             String key, String snapshot) {
-        BtyStorePolicy head = policies.selectOne(Wrappers.<BtyStorePolicy>lambdaQuery()
+        BtyStorePolicy head = policies.selectOne(BtyStorePolicy.beautyQuery()
                 .eq(BtyStorePolicy::getTenantNo, "MAIN").eq(BtyStorePolicy::getEntityNo, entity)
                 .eq(BtyStorePolicy::getStoreNo, store));
         String versionNo = BizKey.next("BTPV");
@@ -131,6 +130,7 @@ public class StorePolicyServiceImpl implements StorePolicyService {
         version.setEntityNo(entity);
         version.setPolicyVersionNo(versionNo);
         version.setPolicyNo(head.getPolicyNo());
+        version.setStoreNo(store);
         version.setRevisionIndex(Math.toIntExact(revision));
         version.setBookingAheadDays(req.policy().bookingAheadDays());
         version.setCancelRule(json.writeValueAsString(req.policy().cancelRule()));

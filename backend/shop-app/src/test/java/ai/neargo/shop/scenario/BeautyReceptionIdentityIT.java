@@ -456,9 +456,10 @@ class BeautyReceptionIdentityIT {
     private void workOrderFacts(String appointment) {
         var effective = LocalDateTime.of(2025, 1, 1, 0, 0);
         String cancel = "{\"freeCancelBeforeMinutes\":60,\"allowCustomerCancel\":true}";
-        row("bty_store_policy", "policy_no", "P", "store_no", store, "current_policy_version_no", "PV", "status",
+        BeautyIndustrySharedTables.create(sql);
+        row("ind_store_policy", "industry_code", "BEAUTY", "policy_no", "P", "store_no", store, "current_policy_version_no", "PV", "status",
                 "ACTIVE");
-        row("bty_store_policy_version", "policy_version_no", "PV", "policy_no", "P", "revision_index", 1,
+        row("ind_config_revision", "config_kind", "STORE_POLICY", "store_no", store, "policy_version_no", "PV", "policy_no", "P", "revision_index", 1,
                 "booking_ahead_days", 30, "cancel_rule", cancel, "allowed_modes", "[\"PREPAID_SINGLE\"]",
                 "effective_at", effective, "schema_version", 1, "snapshot_hash", IdempotencyScope.requestHash(
                         effective.atOffset(ZoneOffset.UTC).toString(), "30", "60", "true", "PREPAID_SINGLE"));

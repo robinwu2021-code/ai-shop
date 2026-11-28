@@ -1,6 +1,6 @@
 -- 美业在行业库的补充（TDD-美业域迁移新库 B-1）。V1 是设计 DDL 原样（含 A6 的美业执行表，触发器去掉了）；这里补：
 -- 一、设计稿去掉的来源观察触发器（美业迁移 V9 原样）；二、执行围栏及其触发器（美业迁移 V10 原样）；
--- 三、过渡：合并完成前代码仍读写的旧表（门店策略、策略版本 → B-2；工单上下文 → B-3；服务参与 → B-4），每完成一步就删掉对应的表。
+-- 三、过渡：合并完成前代码仍读写的旧表（工单上下文 → B-3；服务参与 → B-4），每完成一步就删掉对应的表（门店策略、策略版本已在 B-2 并入 ind_store_policy、ind_config_revision）。
 -- 含 DELIMITER 块：用 mysql 客户端或会处理 DELIMITER 的执行器执行。
 
 -- 一、来源观察的领域守卫触发器
@@ -172,56 +172,6 @@ END$$
 DELIMITER ;
 
 -- 三、过渡表
-CREATE TABLE `bty_store_policy` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '物理自增主键，不对外',
-    `tenant_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '沿当前租户上下文；不另启租户体系',
-    `entity_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '商家主体范围；不等于租户',
-    `created_at` DATETIME(3) NOT NULL COMMENT '创建时刻',
-    `created_by` VARCHAR(64) COLLATE utf8mb4_bin NULL COMMENT '实际操作者业务引用',
-    `updated_at` DATETIME(3) NOT NULL COMMENT '更新时间',
-    `updated_by` VARCHAR(64) COLLATE utf8mb4_bin NULL COMMENT '更新操作者',
-    `version` BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
-    `deleted` INT NOT NULL DEFAULT 0 COMMENT '沿BaseEntity；事实表禁止删除或软删覆盖',
-    `policy_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '政策号',
-    `store_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '门店',
-    `current_policy_version_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '当前版本',
-    `status` VARCHAR(24) COLLATE utf8mb4_bin NOT NULL COMMENT 'ACTIVE或INACTIVE',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_bty_store_policy_1` (`tenant_no`, `entity_no`, `policy_no`),
-    UNIQUE KEY `uk_bty_store_policy_2` (`tenant_no`, `entity_no`, `store_no`),
-    CONSTRAINT `ck_bty_store_policy_1` CHECK (`version` >= 0),
-    CONSTRAINT `ck_bty_store_policy_2` CHECK (`deleted` IN (0, 1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='美业门店政策头';
-
-CREATE TABLE `bty_store_policy_version` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '物理自增主键，不对外',
-    `tenant_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '沿当前租户上下文；不另启租户体系',
-    `entity_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '商家主体范围；不等于租户',
-    `created_at` DATETIME(3) NOT NULL COMMENT '创建时刻',
-    `created_by` VARCHAR(64) COLLATE utf8mb4_bin NULL COMMENT '实际操作者业务引用',
-    `updated_at` DATETIME(3) NOT NULL COMMENT '更新时间',
-    `updated_by` VARCHAR(64) COLLATE utf8mb4_bin NULL COMMENT '更新操作者',
-    `version` BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
-    `deleted` INT NOT NULL DEFAULT 0 COMMENT '沿BaseEntity；事实表禁止删除或软删覆盖',
-    `policy_version_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '版本号',
-    `policy_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '政策',
-    `revision_index` INT NOT NULL COMMENT '版本序号',
-    `booking_ahead_days` INT NOT NULL COMMENT '预约窗口',
-    `cancel_rule` JSON NOT NULL COMMENT '取消规则',
-    `allowed_modes` JSON NOT NULL COMMENT '已获准营业模式',
-    `effective_at` DATETIME(3) NOT NULL COMMENT '生效',
-    `schema_version` INT NOT NULL COMMENT '规则结构版本',
-    `snapshot_hash` CHAR(64) COLLATE utf8mb4_bin NOT NULL COMMENT '摘要',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_bty_store_policy_version_1` (`tenant_no`, `entity_no`, `policy_version_no`),
-    UNIQUE KEY `uk_bty_store_policy_version_2` (`tenant_no`, `entity_no`, `policy_no`, `revision_index`),
-    CONSTRAINT `ck_bty_store_policy_version_1` CHECK (`version` >= 0),
-    CONSTRAINT `ck_bty_store_policy_version_2` CHECK (`deleted` IN (0, 1)),
-    CONSTRAINT `ck_bty_store_policy_version_3` CHECK (`revision_index` > 0),
-    CONSTRAINT `ck_bty_store_policy_version_4` CHECK (`schema_version` > 0),
-    CONSTRAINT `ck_bty_store_policy_version_5` CHECK (`booking_ahead_days` >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='不可变政策版本';
-
 CREATE TABLE `bty_work_order_context` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '物理自增主键，不对外',
     `tenant_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '沿当前租户上下文；不另启租户体系',

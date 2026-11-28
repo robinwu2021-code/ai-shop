@@ -134,6 +134,17 @@
 - 与原计划的出入：美业是独立构建，行业库建表脚本直接复制设计稿，没有与餐饮共用一个入口（两份都以设计稿为准，B-6 同步设计稿时一并核对）；`ind_assignment` 的两列随 B-4 一起加；启动校验暂由上面的集成测试承担，B-6 视部署方式再定。
 - 全套（`-Dtest='*Test,*IT'`）：405 个用例 34 个失败，比基线多 `ReceptionBusinessIT#reassignsCheckedInWithFrozenRules`；移开 B-1 的文件后照样失败，是既有的时刻相关缺陷（读回的到店时间差 4 小时，即本机时区），不归本篇。
 
+**B-2 已做（2026-11-28）**：
+- 实体 `BtyStorePolicy` 映射到 `ind_store_policy`、`BtyStorePolicyVersion` 映射到 `ind_config_revision`（类名不改）。头上加行业码（默认 `BEAUTY`），版本上加配置类型（默认 `STORE_POLICY`）与门店号。所有读都经实体的 `beautyQuery()` 带上这两个条件；`StorePolicyMapper` 的加锁查询与切换指针的 SQL 也同样带上。
+- 首次创建由共用表的「主体 + 门店 + 行业」唯一键仲裁（原来是「主体 + 门店」）。按生效时间取历史版本、按头指针取当前版本的写法不变。
+- 共用表的 `tenant_no` 没有库默认值（旧美业表默认 `'MAIN'`），平台审计也不填它；两个实体在构造时带上 `MAIN`。漏掉这一步时，新行的租户为空，按 `tenant_no='MAIN'` 查不到，唯一键也拦不住空值，并发首建会出两个头（测试抓到过）。
+- 数据范围登记改成两张共用表的表名，和餐饮登记的锚点相同。
+- 美业行业表清单换成两张共用表，测试建库的 `V2` 删掉两张过渡表。
+- 测试：美业测试库在私有 Flyway 之后按行业库设计稿补建这两张共用表（测试里三条句柄指向同一个库）；新增「同店有餐饮行」用例；用到旧表名的测试一并改过。宿主两个测试（`BeautyPolicyEndToEndIT`、`BeautyReceptionIdentityIT`）也改了表名，并补建共用表。
+- 结果：beauty-core 全套与 B-1 相同（基线 + 时刻相关的那一个）；其余模块 api 2、web 73、channel 63（跳过 1）、server 48 全过；宿主 `BeautyEmbeddedWiringTest` 通过。
+- 宿主的 `BeautyPolicyEndToEndIT` 启动上下文就失败：缺交易句柄的 `SqlSessionFactory`。这是交易、行业句柄拆分时这个测试没跟上，在碰到任何表之前就失败，与本步无关；`BeautyReceptionIdentityIT` 要打开开关才跑，这次只确认了编译。
+- 上线要注意：本步之后，美业门店策略要读写行业句柄所指库里的 `ind_*` 两张表。行业句柄没绑定时用的是主库，而主库没有这两张表。所以 B-2 不能先于 B-6 单独上线；B-6 的脚本还要把主库旧表 `bty_store_policy`、`bty_store_policy_version` 里的数据搬进 `n_industry`（行业码 `BEAUTY`、配置类型 `STORE_POLICY`、版本补门店号）。旧表留在私有 Flyway 的冻结清单里，代码不再读写。
+
 ### 2.5 部署
 
 沿用 `deploy/ume/food-industry-cutover/` 的做法（只读 `check` → 备份 → 执行 → 核对），美业表另起一份脚本；共用表只原地改。

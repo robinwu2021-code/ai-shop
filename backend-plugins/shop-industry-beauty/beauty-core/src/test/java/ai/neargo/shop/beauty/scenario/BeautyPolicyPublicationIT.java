@@ -92,7 +92,7 @@ class BeautyPolicyPublicationIT {
     }
 
     private void emptyBusiness() {
-        for (String table : List.of("bty_store_policy", "bty_store_policy_version", "bty_action_log",
+        for (String table : List.of("ind_store_policy", "ind_config_revision", "bty_action_log",
                 "sys_idempotent")) {
             assertThat(count(table)).as(table).isZero();
         }
@@ -107,7 +107,7 @@ class BeautyPolicyPublicationIT {
             pool.setConnectionTimeout(500);
             pool.getHikariPoolMXBean().softEvictConnections();
             publish(context, "ONE_CONNECTION", 0, 7);
-            assertThat(count("bty_store_policy_version")).isOne();
+            assertThat(count("ind_config_revision")).isOne();
         });
     }
 
@@ -118,10 +118,10 @@ class BeautyPolicyPublicationIT {
             Object first = publish(context, "K", 0, 7);
             assertThat(json.writeValueAsString(publish(context, "K", 0, 7)))
                     .isEqualTo(json.writeValueAsString(first));
-            for (String table : List.of("bty_store_policy", "bty_store_policy_version", "bty_action_log",
+            for (String table : List.of("ind_store_policy", "ind_config_revision", "bty_action_log",
                     "sys_idempotent")) { assertThat(count(table)).as(table).isOne(); }
             assertThat(sql.queryForObject("SELECT operator_ref FROM bty_action_log", String.class)).isEqualTo("ACTOR");
-            assertThat(sql.queryForObject("SELECT created_by FROM bty_store_policy_version", String.class))
+            assertThat(sql.queryForObject("SELECT created_by FROM ind_config_revision", String.class))
                     .isEqualTo("ACTOR");
             assertThat(sql.queryForObject("SELECT endpoint FROM sys_idempotent", String.class))
                     .startsWith("BEAUTY:v1:");
@@ -135,11 +135,46 @@ class BeautyPolicyPublicationIT {
             assertThatThrownBy(() -> publish(context, "K", 0, 8)).isInstanceOf(BizException.class);
             assertThatThrownBy(() -> publish(context, "OTHER", 0, 8)).isInstanceOf(BizException.class);
             publish(context, "NEW", 1, 8);
-            assertThat(count("bty_store_policy_version")).isEqualTo(2);
-            assertThat(sql.queryForObject("SELECT booking_ahead_days FROM bty_store_policy_version "
+            assertThat(count("ind_config_revision")).isEqualTo(2);
+            assertThat(sql.queryForObject("SELECT booking_ahead_days FROM ind_config_revision "
                     + "WHERE revision_index=1", Integer.class)).isEqualTo(7);
-            assertThat(sql.queryForObject("SELECT version FROM bty_store_policy", Long.class)).isEqualTo(2L);
+            assertThat(sql.queryForObject("SELECT version FROM ind_store_policy", Long.class)).isEqualTo(2L);
         });
+    }
+
+    /** 门店策略在行业共用表：同店的餐饮行不干扰美业的头与修订（TDD-美业域迁移新库 B-2、§4 风险一）。 */
+    @Test
+    void sharesIndustryPolicyTablesWithFoodInTheSameStore() {
+        sql.update("INSERT INTO ind_store_policy(tenant_no,entity_no,policy_no,store_no,industry_code,timezone,"
+                + "cutover_minute,pay_policy,current_policy_version_no,status) "
+                + "VALUES('MAIN','E','FNBP','S','FNB','UTC',240,'PREPAY','FNBR','ACTIVE')");
+        sql.update("INSERT INTO ind_config_revision(tenant_no,entity_no,policy_version_no,config_kind,policy_no,"
+                + "store_no,revision_index,effective_at) VALUES('MAIN','E','FNBR','STATION','FNBP','S',1,"
+                + "'2020-01-01 00:00:00')");
+        runner().run(context -> {
+            publish(context, "K1", 0, 7);
+            publish(context, "K2", 1, 9);
+            assertThat(sql.queryForList("SELECT CONCAT(industry_code,':',status,':',version) FROM ind_store_policy "
+                    + "WHERE store_no='S' ORDER BY industry_code", String.class))
+                    .containsExactly("BEAUTY:ACTIVE:2", "FNB:ACTIVE:0");
+            assertThat(sql.queryForList("SELECT CONCAT(config_kind,':',store_no,':',revision_index,':',"
+                    + "booking_ahead_days) FROM ind_config_revision WHERE config_kind='STORE_POLICY' "
+                    + "ORDER BY revision_index", String.class))
+                    .containsExactly("STORE_POLICY:S:1:7", "STORE_POLICY:S:2:9");
+            Class<?> query = required("dto.StorePolicyQuery");
+            Object view = invoke(context, "getPolicy", query, json.readValue("{}", query));
+            assertThat(json.writeValueAsString(view)).contains("\"bookingAheadDays\":9");
+        });
+    }
+
+    private Object invoke(ApplicationContext context, String method, Class<?> type, Object argument) {
+        try {
+            return required("service.StorePolicyService").getMethod(method, String.class, String.class, String.class,
+                    type).invoke(context.getBean(required("service.StorePolicyService")), "E", "S", "ACTOR", argument);
+        } catch (InvocationTargetException ex) {
+            if (ex.getCause() instanceof RuntimeException cause) { throw cause; }
+            throw new AssertionError(ex.getCause());
+        } catch (ReflectiveOperationException ex) { throw new AssertionError(ex); }
     }
 
     @Test
@@ -199,7 +234,7 @@ class BeautyPolicyPublicationIT {
                 start.countDown();
                 assertThat(first.get(15, TimeUnit.SECONDS) + second.get(15, TimeUnit.SECONDS)).isEqualTo(1);
             }
-            for (String table : List.of("bty_store_policy", "bty_store_policy_version", "bty_action_log",
+            for (String table : List.of("ind_store_policy", "ind_config_revision", "bty_action_log",
                     "sys_idempotent")) { assertThat(count(table)).as(table).isOne(); }
         });
     }

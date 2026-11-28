@@ -33,8 +33,9 @@ public final class BeautyDataScopeRegistration implements DataScopeRegistrar {
         registry.register("bty_service_step", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_service_participation", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_action_log", Map.of(ScopeDim.MERCHANT, "entity_no"));
-        registry.register("bty_store_policy", Map.of(ScopeDim.MERCHANT, "entity_no"));
-        registry.register("bty_store_policy_version", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        // 行业共用表，餐饮也登记同样的锚点（登记是覆盖式的，两边一致即可）
+        registry.register("ind_store_policy", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ind_config_revision", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_service_definition", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_service_definition_version", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_service_requirement", Map.of(ScopeDim.MERCHANT, "entity_no"));
