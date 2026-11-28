@@ -523,6 +523,14 @@
 - **发布与美业事务**：定义写在商品域自己的事务里；美业事务（幂等、操作日志）回滚时定义已提交，同一幂等键重试按 `source_ref` 回到同一版，不会多发一版。
 - **测试**：美业测试库按定稿 DDL 建 `prd_service_definition` / `prd_fulfillment_requirement`；测试版端口 `TestServiceDefinitionPort`（JDBC，单 SKU 简化）挂在共用测试 runner 上；种子改用 `definition(...)`。原「恢复等在定义头行锁上」的用例改为直接在跨过开始时刻后恢复（锁已不存在，结论不变）；只测旧定义头的两条持久层用例删除。宿主的原生模式用例（需 `beauty.*.test.native`）同步改了种子与查询，未运行。
 
+**P6 数据迁移脚本（2026-11-28，脚本已写、本机演练通过，正式库未执行）**：
+- 单独成脚本 `scripts/migrate-service-definitions.py`（不并入商品迁移：那份要求目标表全空、已在 .61 执行过）。`--plan` 只读打印；执行是一个事务，检查表 `svc_migrate_guard` 任何一项不为 0 整批回滚。
+- 规则：同一商品下各 SKU 的旧版本按发布时间排成一条序列，每个旧版本对应新的一版；第一个发布的 SKU 是默认行，其余 SKU 内容不同的写覆盖行。要求编号沿用旧的（预约分派、任务冻结里记的就是它）。`source_ref='MIGRATED:<旧版本号>'`，发布人与时间取旧版本（`--source-tz` 默认 UTC）。默认时长定向镜像到 `prd_goods`。
+- 引用改写：交易库与 `--rewrite` 给出的库里 `ord_appointment*`、`bty_*` 表（旧定义三张与迁移历史除外）：`definition_version_no` 列等值改，其余文本 / JSON 列把带引号的旧版本号换成新版本号；改完仍有旧版本号就回滚。摘要公式未变，冻结在任务里的定义摘要无需改。
+- 本机演练（单 SKU 一版 + 双 SKU 三次发布）：版本对照、覆盖行、要求编号、时长镜像、引用改写都对；重跑被检查挡下。
+- 正式库现状（2026-11-28 只读查）：`ai_shop_ume` 旧定义 1 版（`BTDV26112443BH98F7B2`，门店 `ST2611247EB2YDAA8E`、SKU `SK261124HBK83ACNDX`→商品 `G261124T7GRQWEVF9`）、要求 1 条；引用它的有 `ai_shop_ume.bty_service_task` 6 行、`n_trade_v2.ord_appointment_item` 12 行（均为 11-24/25 的测试数据）。
+- 执行顺序：P2 建表 → 本脚本（`--trade n_trade_v2 --rewrite ai_shop_ume`，美业行业表搬到 `n_industry` 前改在旧库）→ 部署含 P5 的包。旧代码读 `BTDV…`，新代码读版本号：改写与换包要同一个窗口。
+
 **原待定（已定，留作记录）**：
 - 新表的加法：生成器加机制，还是改 ai-shop-slim 生成源；
 - 发布服务定义是否让 `prd_goods.version` 加一（会让商家手上未发布的商品草稿提示「有人中途改过」）；
