@@ -110,17 +110,24 @@ public class RabbitMessageBroker implements MessageBroker, SmartLifecycle {
         for (String queue : RabbitTopology.listenQueues(r.subscription(), props)) {
             SimpleMessageListenerContainer c = new SimpleMessageListenerContainer(connections);
             c.setQueueNames(queue);
+            boolean broadcast = r.subscription().broadcast();
             c.setMessageListener(m -> {
                 try {
                     r.handler().accept(EventMessages.fromMessage(m, json));
-                } catch (BrokerDeadLetterException e) {
+                } catch (RuntimeException e) {
+                    if (broadcast) {
+                        // 广播只承载丢了也无妨的信号：失败不重投，记日志后丢弃
+                        log.warn("[events] 广播订阅 {} 处理失败，丢弃：{}", r.subscription().name(), e.toString());
+                        return;
+                    }
+                    if (!(e instanceof BrokerDeadLetterException)) throw e;
                     // 永久失败：不重投，直接转该订阅的死信
                     throw new AmqpRejectAndDontRequeueException(e.getMessage(), e);
                 }
             });
             c.setAcknowledgeMode(AcknowledgeMode.AUTO);
             c.setDefaultRequeueRejected(true);
-            c.setConcurrentConsumers(r.subscription().ordered() ? 1 : Math.max(1, props.getConcurrency()));
+            c.setConcurrentConsumers(r.subscription().ordered() || broadcast ? 1 : Math.max(1, props.getConcurrency()));
             c.setPrefetchCount(r.subscription().ordered() ? 1 : 10);
             c.setMissingQueuesFatal(false);
             c.setAmqpAdmin(admin);

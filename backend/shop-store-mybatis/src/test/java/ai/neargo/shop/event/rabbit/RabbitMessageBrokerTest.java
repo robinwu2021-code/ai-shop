@@ -15,6 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** RabbitMQ 实现里不需要 broker 的部分（ADR-067）。 */
 @DisplayName("RabbitMQ 实现")
@@ -65,6 +66,28 @@ class RabbitMessageBrokerTest {
                 .containsExactlyInAnyOrder("ORDER_ARRIVED", "REVIEW_CREATED", "@notification");
         assertThat(RabbitTopology.listenQueues(
                 new BrokerSubscription("notification", Set.of("X"), false), props)).containsExactly("shop.events.notification");
+    }
+
+    @Test
+    @DisplayName("广播订阅：每个实例一条非持久、自动删除的队列，没有投递上限与死信")
+    void broadcastTopology() {
+        var s = BrokerSubscription.broadcast("food-device-refresh", Set.of("FOOD_DEVICE_REFRESH"));
+        var d = RabbitTopology.forSubscription(s, props);
+        String name = "shop.events.food-device-refresh." + RabbitTopology.INSTANCE;
+        assertThat(d.getDeclarablesByType(Queue.class)).singleElement().satisfies(q -> {
+            assertThat(q.getName()).isEqualTo(name);
+            assertThat(q.isDurable()).isFalse();
+            assertThat(q.isAutoDelete()).isTrue();
+            assertThat(q.getArguments()).doesNotContainKeys("x-queue-type", "x-dead-letter-exchange", "x-delivery-limit");
+        });
+        assertThat(d.getDeclarablesByType(Binding.class)).singleElement().satisfies(b -> {
+            assertThat(b.getExchange()).isEqualTo("shop.events");
+            assertThat(b.getRoutingKey()).isEqualTo("FOOD_DEVICE_REFRESH");
+            assertThat(b.getDestination()).isEqualTo(name);
+        });
+        assertThat(RabbitTopology.listenQueues(s, props)).containsExactly(name);
+        assertThatThrownBy(() -> new BrokerSubscription("x", Set.of("X"), true, true))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

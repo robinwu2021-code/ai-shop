@@ -24,10 +24,20 @@ import java.util.TreeSet;
  *       {@code rabbitmq_consistent_hash_exchange}）+ N 条分区队列 {@code <前缀>.<订阅名>.p<i>}，每条单活消费者。</li>
  * </ul>
  * 都带投递上限，超限进该订阅自己的死信队列 {@code <前缀>.<订阅名>.dlq}。
+ *
+ * <p>广播订阅：每个进程实例一条非持久、最后一个消费者断开即删的经典队列 {@code <前缀>.<订阅名>.<实例号>}，
+ * 不设投递上限与死信。
  */
 final class RabbitTopology {
 
+    /** 本进程实例号：广播订阅的队列名带上它，各实例各一条。 */
+    static final String INSTANCE = java.util.UUID.randomUUID().toString().substring(0, 8);
+
     private RabbitTopology() { }
+
+    static String broadcastQueue(String subscription, RabbitEventsProperties p) {
+        return queueName(subscription, p) + "." + INSTANCE;
+    }
 
     static String queueName(String subscription, RabbitEventsProperties p) {
         return p.getQueuePrefix() + "." + subscription;
@@ -39,6 +49,7 @@ final class RabbitTopology {
 
     /** 订阅要监听的队列名。 */
     static List<String> listenQueues(BrokerSubscription s, RabbitEventsProperties p) {
+        if (s.broadcast()) return List.of(broadcastQueue(s.name(), p));
         if (!s.ordered()) return List.of(queueName(s.name(), p));
         List<String> names = new ArrayList<>();
         for (int i = 0; i < partitions(p); i++) names.add(partitionQueue(s.name(), i, p));
@@ -47,6 +58,14 @@ final class RabbitTopology {
 
     static Declarables forSubscription(BrokerSubscription s, RabbitEventsProperties p) {
         TopicExchange events = new TopicExchange(p.getExchange(), true, false);
+        if (s.broadcast()) {
+            String name = broadcastQueue(s.name(), p);
+            List<Declarable> all = new ArrayList<>(List.of(events, QueueBuilder.nonDurable(name).autoDelete().build()));
+            for (String t : new TreeSet<>(s.eventTypes())) {
+                all.add(new Binding(name, Binding.DestinationType.QUEUE, events.getName(), t, null));
+            }
+            return new Declarables(all);
+        }
         DirectExchange dlx = new DirectExchange(p.getDeadLetterExchange(), true, false);
         String base = queueName(s.name(), p);
         Queue dlq = QueueBuilder.durable(base + ".dlq").quorum().build();

@@ -12,7 +12,9 @@ import java.util.function.Consumer;
  *   <li>投递至少一次；处理器抛异常即失败，由中间件重投，超过上限进该订阅自己的死信，不影响别的订阅；</li>
  *   <li>每个订阅彼此独立：同一事件给每个订阅各投一份，进度互不影响；</li>
  *   <li>{@link BrokerSubscription#ordered()} 的订阅，同一 {@code aggregateId} 的事件按发布顺序逐条处理；</li>
- *   <li>订阅在应用启动阶段登记，实现于自己启动时建好所需的队列等资源。</li>
+ *   <li>订阅在应用启动阶段登记，实现于自己启动时建好所需的队列等资源；</li>
+ *   <li>{@link BrokerSubscription#broadcast()} 的订阅，每个进程实例各收一份；不持久、不重投、失败即丢，
+ *       实例下线后它的那份随之消失。</li>
  * </ol>
  */
 public interface MessageBroker {
