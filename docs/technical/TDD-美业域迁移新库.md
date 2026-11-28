@@ -510,6 +510,11 @@
 - 测试 `ServiceDefinitionPortTest`（7 条，H2 跑定稿结构）：发布并镜像且商品版本不变、整行更新不写回旧时长、版本冲突、覆盖行、重放、无定义回落、商家保存不写已定义的时长。
 - 商家编辑页把美业服务时长改为只读：要给 `GoodsVO` 加标记（契约变更），按商品会话建议单独做，不在 P3。
 
+**P4 完成（2026-11-28）**：
+- `ServiceDefinitionInternalApi`（`/internal/core/products/service-definitions/{publish,current,by-version,list}`）与宿主 `InternalServiceDefinitionController`；「没有定义」用 `Found.definition` 为空表达（空响应在内部接口约定里是 503）。
+- 美业 `RemoteServiceDefinitionPort`，由 `BeautyProductClientConfiguration` 在独立部署时装配；400/403/404/409 还原业务错误的写法收到 `PlatformCalls` 一处，两个商品类远程端口一并改用。
+- 测试：`BeautyProductClientTest` 加服务定义往返（当前、无此版本为空、列表、发布冲突 409）；美业 server 装配与部署约定测试照过。
+
 **原待定（已定，留作记录）**：
 - 新表的加法：生成器加机制，还是改 ai-shop-slim 生成源；
 - 发布服务定义是否让 `prd_goods.version` 加一（会让商家手上未发布的商品草稿提示「有人中途改过」）；

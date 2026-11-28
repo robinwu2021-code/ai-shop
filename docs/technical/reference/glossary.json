@@ -38021,6 +38021,13 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
+      "table": "prd_fulfillment_requirement",
+      "class": "PrdFulfillmentRequirement",
+      "zh": "交付要求（prd_fulfillment_requirement）：一个商品需要哪类角色、资源或工位，各几个、什么顺序。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
       "table": "prd_goods",
       "class": "PrdGoods",
       "zh": "商品（SPU）。",
@@ -38038,6 +38045,13 @@
       "table": "prd_sellable_rule",
       "class": "PrdSellRule",
       "zh": "门店线上可售规则（V346，TDD-商品纳入进销存开关 §4 / §18）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prd_service_definition",
+      "class": "PrdServiceDefinition",
+      "zh": "服务定义的一行（prd_service_definition，TDD-美业域迁移新库 §2.8）：商品默认行（skuNo=\"\"） 或某个 SKU 的覆盖行。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
@@ -41371,6 +41385,13 @@
       },
       {
         "host": "BizKey",
+        "name": "FULFILLMENT_REQUIREMENT",
+        "value": "PFQ",
+        "zh": "交付要求（prd_fulfillment_requirement）：服务定义发布时按行生成",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "PAYMENT",
         "value": "PY",
         "zh": "收款流水（stl_payment）。",
@@ -44363,6 +44384,20 @@
         "name": "TEMPLATE_VOUCHER",
         "value": "VOUCHER",
         "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdFulfillmentRequirement",
+        "name": "TYPE_ROLE",
+        "value": "ROLE",
+        "zh": "要求类型：执行角色。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdFulfillmentRequirement",
+        "name": "TYPE_RESOURCE",
+        "value": "RESOURCE",
+        "zh": "要求类型：资源（床位、房间、设备）。",
         "module": "shop-core"
       },
       {
