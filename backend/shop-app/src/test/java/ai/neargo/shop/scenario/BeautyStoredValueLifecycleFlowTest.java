@@ -78,8 +78,9 @@ class BeautyStoredValueLifecycleFlowTest {
         jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,store_no,title,type,on_sale,audit_status,fulfillments,"
                 + "tenant_no,created_at,updated_at) VALUES(?,?,?,'Care','SERVICE',1,'APPROVED','[\"STORE_VERIFY\"]',"
                 + "'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",goods,entity,store);
-        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,created_at,"
-                + "updated_at) VALUES(?,?,?,'CN',2200,0,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",sku,goods,entity);
+        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,tenant_no,created_at,"
+                + "updated_at) VALUES(?,?,?,'CN',2200,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",sku,goods,entity);
+        SkuBalanceFixture.seed(jdbc, sku, 0, 0);
         // Test-only operator opt-in; shipped presets remain disabled.
         jdbc.update("UPDATE pmt_preset_template SET enabled=1 WHERE tenant_no='MAIN' AND template_code='AP030'");
         Instant now=Instant.now();

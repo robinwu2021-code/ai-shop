@@ -67,7 +67,8 @@ class OrderCreateStockFallbackFlowTest {
 
     @Test
     void giftShortageFallsBackWithoutPoisoningOrderTransaction() throws Exception {
-        jdbc.update("update prd_sku set stock=1, locked_stock=0, presale_quota=0 where sku_no='SK0003'");
+        jdbc.update("update prd_store_sku set sellable_qty=1, locked_qty=0 where store_no='' and sku_no='SK0003'");
+        jdbc.update("update prd_sku set presale_quota=0 where sku_no='SK0003'");
         jdbc.update("update prd_store_sku set sellable_qty=1, locked_qty=0 where sku_no='SK0003' and sellable_qty is not null");
         MktCampaign gift = new MktCampaign();
         gift.setCampaignNo(UUID.randomUUID().toString());
@@ -91,7 +92,7 @@ class OrderCreateStockFallbackFlowTest {
                     Integer.class, no)).isZero();
         } finally {
             campaigns.deleteById(gift.getId());
-            jdbc.update("update prd_sku set stock=120, locked_stock=0 where sku_no='SK0003'");
+            jdbc.update("update prd_store_sku set sellable_qty=120, locked_qty=0 where store_no='' and sku_no='SK0003'");
             jdbc.update("update prd_store_sku set sellable_qty=120, locked_qty=0 where sku_no='SK0003' and sellable_qty is not null");
         }
     }

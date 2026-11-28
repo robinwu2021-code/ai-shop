@@ -21,10 +21,13 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 库存锁定实现（{@link StockPort}）。
  *
  * <p><b>靠 SQL 的条件更新做原子扣减</b>，不是「先查后改」：
- * <pre>{@code UPDATE prd_sku SET locked_stock = locked_stock + n WHERE stock - locked_stock >= n}</pre>
+ * <pre>{@code UPDATE prd_store_sku SET locked_qty = locked_qty + n WHERE sellable_qty - locked_qty >= n}</pre>
  * 更新影响行数为 0 就是库存不足。先查后改在并发下必然超卖 —— 两个请求都查到「还有 1 件」。
  *
  * <p>S2 用 DB 条件更新。等到秒杀这类真正的高并发场景（S5 活动）再前置 Redis 原子扣减，
@@ -61,6 +64,9 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StockPortImpl.class);
+
+    @Value("${shop.merchant.default-market:CN}")
+    private String homeMarket = "CN";
 
     private final SkuMapper skuMapper;
     private final StockLockMapper lockMapper;
@@ -430,7 +436,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
             // 分店库存：lock 按门店扣、不走预售。加购时不知道哪家店履约，取最能卖的那家
             return DataScopeContext.executeWithoutScope(() ->
                     storeStockMapper.selectList(Wrappers.<PrdStoreSku>lambdaQuery()
-                            .eq(PrdStoreSku::getSkuNo, skuNo).isNotNull(PrdStoreSku::getSellableQty)))
+                            .eq(PrdStoreSku::getSkuNo, skuNo).ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL).isNotNull(PrdStoreSku::getSellableQty)))
                     .stream()
                     .mapToInt(s -> nz(s.getSellableQty()) - nz(s.getLockedQty()))
                     .max().stream().map(n -> Math.max(n, 0)).findFirst().orElse(0);
@@ -442,7 +448,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
         if (sku == null) {
             return 0;
         }
-        int onHand = Math.max(nz(sku.getStock()) - nz(sku.getLockedStock()), 0);
+        int onHand = storeStockReader.available(skuNo, null);
         /*
          * 预售余量：与 lockPresale 的三个 WHERE 条件逐条对应 ——
          * 没开预售 / 已截单 都视为 0。**与现货取大，不相加**：
@@ -464,7 +470,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     private boolean hasStoreStock(String skuNo) {
         return DataScopeContext.executeWithoutScope(() ->
                 storeStockMapper.selectCount(Wrappers.<PrdStoreSku>lambdaQuery()
-                        .eq(PrdStoreSku::getSkuNo, skuNo).isNotNull(PrdStoreSku::getSellableQty))) > 0;
+                        .eq(PrdStoreSku::getSkuNo, skuNo).ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL).isNotNull(PrdStoreSku::getSellableQty))) > 0;
     }
 
     private static void checked(PrdStockLock lock, int affected) {
@@ -521,8 +527,23 @@ public class StockPortImpl implements StockPort, ReservationOwner {
             var current = DataScopeContext.executeWithoutScope(() -> skuMapper.lockSkuCurrent(skuNo))
                     .stream().filter(row -> Integer.valueOf(0).equals(row.getDeleted())).toList();
             if (current.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
-            int changed = DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(skuNo, onHand));
-            if (changed != current.size()) throw BizException.of(ErrorCode.CONFLICT);
+            var identity = current.getFirst();
+            if (current.stream().anyMatch(row -> !Objects.equals(identity.getEntityNo(), row.getEntityNo())
+                    || !Objects.equals(identity.getTenantNo(), row.getTenantNo()))) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            int changed = DataScopeContext.executeWithoutScope(() -> {
+                var balances = storeStockMapper.lockSkuStoresCurrent(skuNo).stream()
+                        .filter(row -> PrdStoreSku.ENTITY_POOL.equals(row.getStoreNo())).toList();
+                if (balances.isEmpty()) {
+                    storeStockMapper.startStoreStock(identity.getEntityNo(), PrdStoreSku.ENTITY_POOL, skuNo,
+                            homeMarket.trim().toUpperCase(Locale.ROOT));
+                } else if (balances.size() != 1 || !identity.getEntityNo().equals(balances.getFirst().getEntityNo())) {
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+                return skuMapper.setStock(skuNo, onHand);
+            });
+            if (changed != 1) throw BizException.of(ErrorCode.CONFLICT);
         }
     }
 }

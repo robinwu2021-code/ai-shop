@@ -535,7 +535,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         List<PrdSku> rows =
                 DataScopeContext.executeWithoutScope(
                         () ->
-                                skuMapper.selectList(
+                                skuMapper.selectWithStock(
                                         Wrappers.<PrdSku>lambdaQuery()
                                                 .eq(PrdSku::getEntityNo, merchantNo)
                                                 .eq(PrdSku::getMarket, homeMarket)));
@@ -714,7 +714,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         Map<String, List<PrdSku>> skusByGoods =
                 skuMapper
-                        .selectList(Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getGoodsNo, goodsNos))
+                        .selectWithStock(Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getGoodsNo, goodsNos))
                         .stream()
                         .collect(java.util.stream.Collectors.groupingBy(PrdSku::getGoodsNo));
 
@@ -805,6 +805,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                         storeSkuMapper.selectList(
                                                 Wrappers.<PrdStoreSku>lambdaQuery()
                                                         .in(PrdStoreSku::getSkuNo, skuNos)
+                                                        .ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL)
                                                         .isNotNull(PrdStoreSku::getSellableQty)));
         Set<String> managedSkus =
                 stockRows.stream()
@@ -990,9 +991,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 所以收敛落在**服务端**，不落在端上：端上算错、老客户端不认这个字段、
          * 或者有人直接构造请求，都写不进一条破坏可比性的数据。
          */
-        cmd = applyStd(cmd);
         boolean isNew = cmd.goodsNo() == null || cmd.goodsNo().isBlank();
-        PrdGoods g = isNew ? newGoods(merchantNo) : mine(merchantNo, cmd.goodsNo());
+        // 先取商品行锁再读标准品、类目或草稿，避免等待锁前建立旧的事务快照。
+        PrdGoods g = isNew ? newGoods(merchantNo) : mine(merchantNo, cmd.goodsNo(), true);
+        cmd = applyStd(cmd);
         /*
          * **经营类目（TDD-门店经营类目 §4.1）：商品的类目必须在当前门店的经营类目里，不在就拒。**
          * 放在草稿分支之前：在售商品的编辑在下面就存草稿返回了，放在后面草稿会绕过去 ——
@@ -1202,7 +1204,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
         }
         publishSkuUpserted(
-                merchantNo, g, saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups()));
+                merchantNo, g, saveSkus(merchantNo, g.getGoodsNo(), g.getStoreNo(), cmd.skus(), cmd.specGroups()));
         /*
          * 记一笔。**放在这里是因为它是单点**：下面三个 return（换版收尾 / 免审直通 /
          * 强制下架）都在它后面经过，挨个 return 前面写一遍迟早漏一条，
@@ -1531,7 +1533,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         List<PrdSku> liveSkus =
                 DataScopeContext.executeWithoutScope(
                         () ->
-                                skuMapper.selectList(
+                                skuMapper.selectWithStock(
                                         Wrappers.<PrdSku>lambdaQuery()
                                                 .eq(PrdSku::getGoodsNo, live.getGoodsNo())
                                                 .orderByAsc(PrdSku::getId)));
@@ -1901,7 +1903,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * @return 本次真正落库的 SKU 行。**新建时 skuNo 是这里生成的**，命令里没有
      */
     private List<PrdSku> saveSkus(
-            String merchantNo, String goodsNo, List<Sku> skus, List<SpecGroup> groups) {
+            String merchantNo, String goodsNo, String ownerStore, List<Sku> skus, List<SpecGroup> groups) {
         List<PrdSku> saved = new java.util.ArrayList<>();
         /*
          * **SKU 数量上限**。端上限制 3 个规格维度，但那是界面的事 ——
@@ -1974,14 +1976,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             if (newSku && sku.stock() < 0) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
-            Integer stockOfExisting =
-                    newSku
-                            ? null
-                            : existing.stream()
-                                    .filter(s -> skuNo.equals(s.getSkuNo()) && s.getStock() != null)
-                                    .map(PrdSku::getStock)
-                                    .findFirst()
-                                    .orElse(null);
             // 按市场逐行写：(entity_no, sku_no, market) 是价格的唯一权威，
             // 一个 SKU 在三个市场就是三行，而不是一行里塞一个 JSON 价格表
             Map<String, Long> prices = new LinkedHashMap<>();
@@ -2032,7 +2026,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     row.setGoodsNo(goodsNo);
                     row.setEntityNo(merchantNo);
                     row.setMarket(e.getKey());
-                    row.setLockedStock(0);
                 }
                 row.setOptionValues(writeJson(sku.optionValues()));
                 row.setOptionValueNos(writeJson(valueNos(sku.optionValues(), valueNoByDim)));
@@ -2041,21 +2034,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                 " · ",
                                 sku.optionValues() == null ? List.of() : sku.optionValues()));
                 row.setPrice(e.getValue());
-                /*
-                 * ★ **库存只在建行时写，已有 SKU 的库存保存一律不动**。
-                 *
-                 * 这里原先每次保存都 setStock(sku.stock()) —— 而发布/过审换版是把草稿
-                 * 原样回放一遍 save()。草稿里的库存是商家打开编辑页那一刻抄下的数：
-                 * 草稿存 100，其间卖掉 40，发布一按库存回到 100，40 件凭空多出来 ——
-                 * 超卖，且绕过了 StockPort（条件 UPDATE、进销存那本账都不知道）。
-                 * 改库存的唯一入口是 saveStock / saveStoreStock（走 StockPort）。
-                 *
-                 * 同一个 SKU 新开一个市场：库存不分市场，跟上已有那一行的数。
-                 */
-                if (fresh) {
-                    row.setStock(
-                            stockOfExisting != null ? stockOfExisting : Math.max(sku.stock(), 0));
-                }
                 /*
                  * 划线价与标称重量：**不传 = 不改**，与商品级那几段同一条规矩。
                  * 两列此前都是「有列、有契约、没有写入路径」——
@@ -2107,7 +2085,12 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
 
         for (var change : stockChanges.entrySet()) {
-            stockPort.setOnHand(change.getKey(), null, change.getValue(), "OTHER");
+            String pool = ownerStore == null || ownerStore.isBlank() ? PrdStoreSku.ENTITY_POOL : ownerStore;
+            DataScopeContext.executeWithoutScope(() -> {
+                storeSkuMapper.startStoreStock(merchantNo, pool, change.getKey(), homeMarket);
+                return null;
+            });
+            stockPort.setOnHand(change.getKey(), ownerStore, change.getValue(), "OTHER");
         }
 
         /*
@@ -2182,8 +2165,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             if (!actualRemoved.equals(Set.copyOf(removals))) throw BizException.of(ErrorCode.CONFLICT);
             for (var row : current) {
                 if (!actualRemoved.contains(row.getSkuNo())) continue;
-                if (!entity.equals(row.getEntityNo()) || (row.getLockedStock() != null && row.getLockedStock(
-                    ) != 0) || (row.getSoldCount() != null && row.getSoldCount() != 0)) {
+                if (!entity.equals(row.getEntityNo()) || (row.getSoldCount() != null && row.getSoldCount() != 0)) {
                     throw BizException.of(ErrorCode.CONFLICT);
                 }
             }
@@ -2238,6 +2220,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                 storeSkuMapper.selectList(
                                         Wrappers.<PrdStoreSku>lambdaQuery()
                                                 .in(PrdStoreSku::getSkuNo, skuNos)
+                                                .ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL)
                                                 .isNotNull(PrdStoreSku::getSellableQty)));
         if (rows.isEmpty()) {
             // 这件商品还没有任何门店库存行 = 没启用分店库存，什么都不用做
@@ -2300,16 +2283,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 对着**当前**规格库重解析+重烘焙一份 spec_groups（不碰任何数据库行）。 语义细节见 bakeForPublish 的注释 —— 这里只是把「算」从「写」里抽出来，
      * 让发布前的差异预览能用同一套规则 dry-run：预览与真发布算出不同结果， 比没有预览更糟。
      */
-    private BakedSpecs bakeSpecs(String entityNo, String categoryNo, String specGroupsJson) {
-        List<ai.neargo.shop.product.dto.SpecTemplateVO> current =
-                specLibrary.templatesForCategory(entityNo, categoryNo);
-        Map<String, ai.neargo.shop.product.dto.SpecTemplateVO> byDim =
-                current.stream()
-                        .collect(
-                                java.util.stream.Collectors.toMap(
-                                        ai.neargo.shop.product.dto.SpecTemplateVO::templateNo,
-                                        v -> v,
-                                        (a, b) -> a));
+    BakedSpecs bakeSpecs(String entityNo, String categoryNo, String specGroupsJson) {
+        Map<String, SpecTemplateVO> byDim = null;
         var om = new com.fasterxml.jackson.databind.ObjectMapper();
         com.fasterxml.jackson.databind.node.ArrayNode groups;
         try {
@@ -2327,6 +2302,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 relabelByGroup.add(Map.of());
                 valueNoByGroup.add(Map.of());
                 continue;
+            }
+            if (byDim == null) {
+                byDim = specLibrary.templatesForCategory(entityNo, categoryNo).stream()
+                        .collect(java.util.stream.Collectors.toMap(SpecTemplateVO::templateNo, v -> v, (a, b) -> a));
             }
             String dimNo = group.path("templateNo").asText();
             var vo = byDim.get(dimNo);
@@ -2485,7 +2464,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO toggle(String merchantNo, String goodsNo, boolean onSale) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
-        PrdGoods g = mine(merchantNo, goodsNo);
+        PrdGoods g = mine(merchantNo, goodsNo, true);
         // 未过审不能上架：上架是商家自己能按的按钮，能把 AUDITING 推到 C 端的话审核就形同虚设
         if (onSale && !APPROVED.equals(g.getAuditStatus())) {
             // 专用码：此前用的是 ORDER_STATE_ILLEGAL，商家看到「订单状态不允许该操作」
@@ -3238,6 +3217,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         if (isStoreManaged(skuNo)) {
             String storeNo = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
+            if (storeNo == null || storeNo.isBlank()) storeNo = g.getStoreNo();
             if (storeNo != null && !storeNo.isBlank()) {
                 return saveStoreStock(merchantNo, storeNo, goodsNo, skuNo, stock);
             }
@@ -3265,11 +3245,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 顺带修掉一个并发缺陷：原来是「先查再 updateById」，
          * 中间那笔销售会被覆盖掉；Port 那边是带条件的 UPDATE。
          */
-        for (PrdSku row : rows) {
-            // 库存不分市场：货就那么多，卖到哪个市场都是同一批。
-            // 价格分市场、库存不分 —— 这两件事的口径不同，正是分开存的理由
-            stockPort.setOnHand(row.getSkuNo(), null, stock, "OTHER");
-        }
+        // All market prices share one physical balance.
+        stockPort.setOnHand(skuNo, null, stock, "OTHER");
         // 补货**不触发重审**：这是每天都在做的事，走完整保存等于每次补货都要重新过审
         return toVO(g);
     }
@@ -3279,7 +3256,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     public GoodsVO saveStoreStock(
             String merchantNo, String storeNo, String goodsNo, String skuNo, int stock) {
         lockOwnership(merchantNo, storeNo);
-        PrdGoods g = mine(merchantNo, goodsNo);
+        PrdGoods g = mine(merchantNo, goodsNo, true);
         if (stock < 0 || storeNo == null || storeNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -3433,7 +3410,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             Long price,
             Long originPrice) {
         lockOwnership(merchantNo, storeNo);
-        PrdGoods g = mine(merchantNo, goodsNo);
+        PrdGoods g = mine(merchantNo, goodsNo, true);
         if (storeNo == null || storeNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -3477,12 +3454,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             if (existing != null && existing.getPrice() != null) {
                 /*
                  * 只清价格那两列，不删行：门店价与店级库存同在 prd_store_sku 一行，
-                 * 删行会把这家店的库存一起删掉。没有店级库存的行清完价就是空壳，顺手删掉。
+                 * 保留行让并发库存写入和以后重新定价都复用同一个唯一键。
                  */
                 DataScopeContext.executeWithoutScope(
-                        () -> existing.getSellableQty() == null
-                                ? storeSkuMapper.deleteById(existing.getId())
-                                : storeSkuMapper.update(null, Wrappers.<PrdStoreSku>lambdaUpdate()
+                        () -> storeSkuMapper.update(null, Wrappers.<PrdStoreSku>lambdaUpdate()
                                         .eq(PrdStoreSku::getId, existing.getId())
                                         .set(PrdStoreSku::getPrice, null)
                                         .set(PrdStoreSku::getOriginPrice, null)));
@@ -3501,6 +3476,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             row.setSkuNo(skuNo);
             row.setEntityNo(merchantNo);
             row.setMarket(homeMarket);
+            row.setLockedQty(0);
             row.setPrice(price);
             row.setOriginPrice(originPrice);
             DataScopeContext.executeWithoutScope(() -> storeSkuMapper.insert(row));
@@ -3558,6 +3534,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                         storeSkuMapper.selectCount(
                                                 Wrappers.<PrdStoreSku>lambdaQuery()
                                                         .eq(PrdStoreSku::getSkuNo, skuNo)
+                                                        .ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL)
                                                         .isNotNull(PrdStoreSku::getSellableQty)))
                         > 0;
     }
@@ -3578,6 +3555,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                 storeSkuMapper.selectList(
                                         Wrappers.<PrdStoreSku>lambdaQuery()
                                                 .eq(PrdStoreSku::getEntityNo, merchantNo)
+                                                .ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL)
                                                 .isNotNull(PrdStoreSku::getSellableQty)
                                                 .in(
                                                         storeNos != null,
@@ -3920,14 +3898,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     private PrdGoods mine(String merchantNo, String goodsNo) {
-        PrdGoods g =
-                DataScopeContext.executeWithoutScope(
-                        () ->
-                                goodsMapper.selectOne(
-                                        Wrappers.<PrdGoods>lambdaQuery()
-                                                .eq(PrdGoods::getGoodsNo, goodsNo)
-                                                .eq(PrdGoods::getEntityNo, merchantNo)
-                                                .last("limit 1")));
+        return mine(merchantNo, goodsNo, false);
+    }
+
+    private PrdGoods mine(String merchantNo, String goodsNo, boolean forUpdate) {
+        var query = Wrappers.<PrdGoods>lambdaQuery()
+                .eq(PrdGoods::getGoodsNo, goodsNo)
+                .eq(PrdGoods::getEntityNo, merchantNo)
+                .last(forUpdate ? "LIMIT 1 FOR UPDATE" : "LIMIT 1");
+        PrdGoods g = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectOne(query));
         if (g == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -4224,6 +4203,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                         storeSkuMapper.selectList(
                                                 Wrappers.<PrdStoreSku>lambdaQuery()
                                                         .in(PrdStoreSku::getSkuNo, skuNos)
+                                                        .ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL)
                                                         .isNotNull(PrdStoreSku::getSellableQty)))
                         .stream()
                         .collect(

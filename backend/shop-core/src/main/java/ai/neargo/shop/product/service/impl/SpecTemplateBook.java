@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -52,6 +53,8 @@ import org.springframework.stereotype.Component;
 public class SpecTemplateBook {
 
     private final SpecUsageMapper usageMapper;
+    @Autowired(required = false)
+    private SplitSpecTemplateReads splitReads;
     private final SpecDimMapper dimMapper;
     private final SpecValueMapper valueMapper;
     private final SpecLibraryService library;
@@ -195,7 +198,8 @@ public class SpecTemplateBook {
         if (notBlank(categoryType)) {
             w.in(PrdSpecUsage::getScopeRef, categoryType, PrdSpecUsage.ALL_TYPES);
         }
-        List<PrdSpecUsage> rows = DataScopeContext.executeWithoutScope(() -> usageMapper.selectList(w));
+        List<PrdSpecUsage> rows = splitReads != null ? splitReads.recommendations(categoryType)
+                : DataScopeContext.executeWithoutScope(() -> usageMapper.selectList(w));
         List<PrdSpecUsage> heads = rows.stream().filter(PrdSpecUsage::dimLevel)
                 .sorted(Comparator.comparing(PrdSpecUsage::getId)).toList();
         Map<String, PrdSpecDim> dims = dimsOf(heads.stream().map(PrdSpecUsage::getDimNo).toList());
@@ -227,7 +231,7 @@ public class SpecTemplateBook {
         if (!notBlank(merchantNo)) {
             return List.of();
         }
-        List<PrdSpecUsage> rows = DataScopeContext.executeWithoutScope(() ->
+        List<PrdSpecUsage> rows = splitReads != null ? splitReads.favorites(merchantNo) : DataScopeContext.executeWithoutScope(() ->
                 usageMapper.selectList(Wrappers.<PrdSpecUsage>lambdaQuery()
                         .eq(PrdSpecUsage::getScopeType, PrdSpecUsage.MERCHANT)
                         .eq(PrdSpecUsage::getScopeRef, merchantNo)

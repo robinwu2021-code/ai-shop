@@ -1,5 +1,6 @@
 package ai.neargo.shop.product.review.mapper;
 
+import ai.neargo.shop.common.config.MemberMarketingTableMapper;
 import ai.neargo.shop.product.review.entity.RvwAppeal;
 import ai.neargo.shop.product.review.entity.RvwReview;
 import ai.neargo.shop.product.review.entity.RvwReviewLike;
@@ -32,6 +33,10 @@ public final class ReviewMappers {
                 WHERE entity_no = #{merchantNo} AND status = 'PASSED' AND deleted = 0
                 """)
         java.util.Map<String, Object> aggregateByMerchant(@Param("merchantNo") String merchantNo);
+    }
+
+    /** 主体评分从会员营销库的已通过评价读取。 */
+    public interface MerchantReviewRatingMapper extends MemberMarketingTableMapper<RvwReview> {
     }
 
     public interface AppealMapper extends BaseMapper<RvwAppeal> {

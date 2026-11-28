@@ -5,15 +5,21 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.entity.MchStoreCategory;
+import ai.neargo.shop.merchant.entity.MchStore;
+import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreCategoryMapper;
 import ai.neargo.shop.merchant.service.StoreCategoryService;
 import ai.neargo.shop.spi.product.CategoryUsagePort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Objects;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,7 +59,10 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
 
     @Override
     public List<StoreCategoryVO> list(String merchantNo, String storeNo) {
-        List<MchStoreCategory> rows = rows(storeNo);
+        return describe(merchantNo, rows(merchantNo, storeNo));
+    }
+
+    private List<StoreCategoryVO> describe(String merchantNo, List<MchStoreCategory> rows) {
         // 一次把这些类目的商品情况查完 —— 逐个 count 是 N 次往返，而一页正常十几个类目
         var stats = categoryPort.statsOf(merchantNo,
                 rows.stream().map(MchStoreCategory::getCategoryNo).toList());
@@ -73,13 +82,16 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
          * 它不是「商家还没做的事」，是「他做不了的事」，让他勾完一屏再告诉他不行
          * 是最差的一种拒绝。
          */
-        boolean selfOperated = isSelfOperated(storeNo);
+        boolean selfOperated = isSelfOperated(merchantNo, storeNo);
         for (Item it : want) {
             requireSelectable(merchantNo, it.categoryNo(), selfOperated);
         }
 
-        List<MchStoreCategory> existing = rows(storeNo);
+        List<MchStoreCategory> existing = rows(merchantNo, storeNo);
         Set<String> keep = new LinkedHashSet<>(want.stream().map(Item::categoryNo).toList());
+        if (keep.size() != want.size()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
 
         /*
          * 删掉一个**底下还有商品**的货架 → 拒绝。
@@ -94,9 +106,14 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
             if (categoryPort.countGoodsInCategory(merchantNo, row.getCategoryNo()) > 0) {
                 throw BizException.of(ErrorCode.STORE_CATEGORY_IN_USE);
             }
-            DataScopeContext.executeWithoutScope(() -> mapper.deleteById(row.getId()));
+            int removed = DataScopeContext.executeWithoutScope(() -> mapper.delete(ownedRow(row)
+                    .eq(MchStoreCategory::getVersion, row.getVersion())));
+            if (removed != 1) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
         }
 
+        List<MchStoreCategory> saved = new ArrayList<>();
         int i = 0;
         for (Item it : want) {
             MchStoreCategory row = existing.stream()
@@ -106,6 +123,8 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
             if (fresh) {
                 row = new MchStoreCategory();
                 row.setStoreNo(storeNo);
+                row.setRowNo(MchStoreCategory.rowNo(storeNo, it.categoryNo()));
+                row.setTenantNo("MAIN");
                 row.setEntityNo(merchantNo);
                 row.setCategoryNo(it.categoryNo());
                 row.setEnabled(true);
@@ -115,21 +134,57 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
                     ? null : it.displayName().trim());
             row.setSort(it.sort() == null ? i : it.sort());
             MchStoreCategory toSave = row;
-            /*
-             * 新加的那一类**先试复活**：这家店以前撤过它的话，那一行还在（逻辑删除），
-             * 而唯一键不含 deleted —— 直接 INSERT 会撞键（见 mapper.revive 的说明）。
-             */
             DataScopeContext.executeWithoutScope(() -> {
-                if (!fresh) {
-                    return mapper.updateById(toSave);
+                if (fresh) {
+                    insertOrRestore(toSave);
+                } else if (mapper.update(toSave, ownedRow(toSave)) != 1) {
+                    throw BizException.of(ErrorCode.CONFLICT);
                 }
-                int revived = mapper.revive(storeNo, toSave.getCategoryNo(), merchantNo,
-                        toSave.getDisplayName(), toSave.getSort());
-                return revived > 0 ? revived : mapper.insert(toSave);
             });
+            saved.add(toSave);
             i++;
         }
-        return list(merchantNo, storeNo);
+        saved.sort(Comparator.comparing(MchStoreCategory::getSort));
+        // 当前事务的普通读可能仍停在并发首次插入前。返回逐项写入或锁定确认过的货架。
+        return describe(merchantNo, saved);
+    }
+
+    private LambdaQueryWrapper<MchStoreCategory> ownedRow(MchStoreCategory row) {
+        return MchStoreCategoryMapper.shelves(row.getStoreNo())
+                .eq(MchStoreCategory::getEntityNo, row.getEntityNo())
+                .eq(MchStoreCategory::getId, row.getId())
+                .eq(MchStoreCategory::getCategoryNo, row.getCategoryNo());
+    }
+
+    private void insertOrRestore(MchStoreCategory row) {
+        Long removed = mapper.removedShelf(row.getStoreNo(), row.getCategoryNo(), row.getEntityNo());
+        if (removed != null) {
+            if (mapper.revive(removed, row.getStoreNo(), row.getCategoryNo(), row.getEntityNo(),
+                    row.getDisplayName(), row.getSort()) != 1) {
+                requireReplay(row, removed);
+            }
+            return;
+        }
+        try {
+            mapper.insert(row);
+        } catch (DuplicateKeyException conflict) {
+            requireReplay(row, null);
+        }
+    }
+
+    private void requireReplay(MchStoreCategory row, Long restoredId) {
+        // InnoDB 的重复键检查可看见已提交的竞争行，RR 的旧快照看不见。锁定读沿用同一事务。
+        MchStoreCategory current = mapper.selectOne(MchStoreCategoryMapper.shelves(row.getStoreNo())
+                .eq(MchStoreCategory::getEntityNo, row.getEntityNo())
+                .eq(MchStoreCategory::getCategoryNo, row.getCategoryNo())
+                .eq(restoredId != null, MchStoreCategory::getId, restoredId)
+                .eq(restoredId == null, MchStoreCategory::getRowNo, row.getRowNo())
+                .last("FOR SHARE"));
+        if (current == null || !Boolean.TRUE.equals(current.getEnabled())
+                || !Objects.equals(current.getDisplayName(), row.getDisplayName())
+                || !Objects.equals(current.getSort(), row.getSort())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
     }
 
     @Override
@@ -142,7 +197,7 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
              * **第二家店默认复制默认店的**：多门店商家开分店卖的多半是同一批货，
              * 从零勾选是纯负担。复制的是货架，不是商品 —— 商品本来就是主体共用的。
              */
-            nos = rows(copyFromStoreNo).stream().map(MchStoreCategory::getCategoryNo).toList();
+            nos = rows(merchantNo, copyFromStoreNo).stream().map(MchStoreCategory::getCategoryNo).toList();
         }
         if (nos.isEmpty()) {
             /*
@@ -218,22 +273,23 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
      * SELF_OPERATED，入驻不改它 —— 按它判，每一家第三方新店都会被当成自营而免资质，
      * 闸一打开就是整片放行，且没有任何报错。V329 的迁移注释点名说过这一条。
      */
-    private boolean isSelfOperated(String storeNo) {
+    private boolean isSelfOperated(String merchantNo, String storeNo) {
         var st = DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
-                Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNo)
+                Wrappers.<MchStore>lambdaQuery().select(MchStore::getEntityNo)
+                        .eq(MchStore::getStoreNo, storeNo)
+                        .eq(MchStore::getEntityNo, merchantNo)
                         .last("limit 1")));
-        if (st == null || st.getEntityNo() == null) {
-            return false;
+        if (st == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
         }
         var e = DataScopeContext.executeWithoutScope(() -> entityMapper.selectOne(
-                Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, st.getEntityNo())
+                Wrappers.<MchEntity>lambdaQuery().select(MchEntity::getSelfOperated)
+                        .eq(MchEntity::getEntityNo, merchantNo)
                         .last("limit 1")));
         return e != null && Integer.valueOf(1).equals(e.getSelfOperated());
     }
 
-    private List<MchStoreCategory> rows(String storeNo) {
+    private List<MchStoreCategory> rows(String merchantNo, String storeNo) {
         if (storeNo == null || storeNo.isBlank()) {
             return List.of();
         }
@@ -242,8 +298,8 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
          * 接上就是 1=0，商家自己的货架当场全空。归属由 requireMerchantNo + storeNos 保证。
          */
         return DataScopeContext.executeWithoutScope(() -> mapper.selectList(
-                Wrappers.<MchStoreCategory>lambdaQuery()
-                        .eq(MchStoreCategory::getStoreNo, storeNo)
+                MchStoreCategoryMapper.shelves(storeNo)
+                        .eq(MchStoreCategory::getEntityNo, merchantNo)
                         .orderByAsc(MchStoreCategory::getSort)));
     }
 

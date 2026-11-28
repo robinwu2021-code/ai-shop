@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>这组用例守的是「三张表各自自洽、合起来不闭」的那类缺口：
  * 平台批的证（{@code mch_entity.category_codes}）、商家摆的货架
- * （{@code mch_store_category}）、商品挂的类目（{@code prd_goods.category_no}），
+ * （{@code prd_store_category}）、商品挂的类目（{@code prd_goods.category_no}），
  * 三者之间的两道闸必须同时成立，否则会出现
  * 「店铺页里看不到、商品列表里还在」这种<b>两个页面对同一批货给出相反答案</b>的状态。
  */
@@ -187,6 +187,14 @@ class StoreCategoryFlowTest {
         String token = merchant("19600141020", "货架测试·加回");
         String storeNo = defaultStore(token);
 
+        jdbc.update("""
+                INSERT INTO prd_store_category
+                    (tenant_no, store_no, category_no, catalog_no, platform_category_no, name, enabled)
+                VALUES ('MAIN', ?, 'MENU_TEST_20', 'MENU', 'CAT210', '菜单专用', 1),
+                       ('MAIN', ?, 'CUSTOM_TEST_20', NULL, NULL, '自定义分组', 1)
+                """, storeNo, storeNo);
+        assertThat(categories(token, storeNo)).isEmpty();
+
         assertThat(codeOf(replace(token, storeNo,
                 "{\"items\":[{\"categoryNo\":\"CAT210\"}]}"))).isZero();
         // 移出（底下没有商品，允许）
@@ -194,7 +202,7 @@ class StoreCategoryFlowTest {
         assertThat(categories(token, storeNo)).isEmpty();
 
         /*
-         * 再加回来。删是**逻辑删除**（deleted=1），而唯一键是 (store_no, category_no) 不含这一列 ——
+         * 再加回来。删是**逻辑删除**（deleted=1），而货架行编号 category_no 全表唯一，逻辑删除仍保留此编号 ——
          * 直接 INSERT 会撞唯一键，端上只看到「系统开小差了」。2026-09-20 线上真实发生。
          */
         assertThat(codeOf(replace(token, storeNo,
@@ -205,8 +213,12 @@ class StoreCategoryFlowTest {
         assertThat(rows.get(0).get("name").asString()).isEqualTo("日杂");
         // 复活的是同一行，不是又插了一条
         assertThat(jdbc.queryForObject(
-                "select count(*) from mch_store_category where store_no=? and category_no='CAT210'",
+                "select count(*) from prd_store_category where store_no=? and platform_category_no='CAT210' and catalog_no is null",
                 Integer.class, storeNo)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM prd_store_category WHERE store_no=? AND deleted=0
+                  AND category_no IN ('MENU_TEST_20','CUSTOM_TEST_20')
+                """, Integer.class, storeNo)).isEqualTo(2);
     }
 
     @Test

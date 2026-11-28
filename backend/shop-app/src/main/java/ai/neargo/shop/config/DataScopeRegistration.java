@@ -250,7 +250,7 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * B 端自己读写走 executeWithoutScope —— B 端会话是 SELF 维度，
          * 接上就是 1=0，商家自己的货架当场全空。归属由 requireMerchantNo + storeNos 保证。
          */
-        registry.register("mch_store_category", Map.of(
+        registry.register("prd_store_category", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*

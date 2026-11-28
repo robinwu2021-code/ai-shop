@@ -65,7 +65,7 @@ class CheckoutPricingFlowTest extends CheckoutFlowFixture {
         assertThat(count("ord_create_intent")).isEqualTo(beforeIntents);
         assertThat(
                         jdbc.queryForObject(
-                                "SELECT locked_stock FROM prd_sku WHERE sku_no=?",
+                                "SELECT locked_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?",
                                 Integer.class,
                                 sku))
                 .isZero();
@@ -422,7 +422,7 @@ class CheckoutPricingFlowTest extends CheckoutFlowFixture {
         assertThat(count("ord_create_intent")).isEqualTo(intents);
         assertThat(
                         jdbc.queryForObject(
-                                "SELECT locked_stock FROM prd_sku WHERE sku_no=?",
+                                "SELECT locked_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?",
                                 Integer.class,
                                 sku))
                 .isZero();
@@ -637,11 +637,12 @@ class CheckoutPricingFlowTest extends CheckoutFlowFixture {
         String second = sku + "-2";
         jdbc.update(
                 "INSERT INTO"
-                        + " prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,created_at,updated_at)"
-                        + " VALUES (?,?,?,'CN',101,100,0,NOW(),NOW())",
+                        + " prd_sku(sku_no,goods_no,entity_no,market,price,created_at,updated_at)"
+                        + " VALUES (?,?,?,'CN',101,NOW(),NOW())",
                 second,
                 goods,
                 entity);
+        SkuBalanceFixture.seed(jdbc, second, 100, 0);
         asMerchant(
                 () ->
                         catalogs.publish(

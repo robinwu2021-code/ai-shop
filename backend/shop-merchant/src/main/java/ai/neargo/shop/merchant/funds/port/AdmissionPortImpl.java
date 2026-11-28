@@ -266,7 +266,8 @@ public class AdmissionPortImpl implements AdmissionPort {
      */
     private MchEntity merchantOf(String merchantNo) {
         return DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
-                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
+                Wrappers.<MchEntity>query().select("legal_form").lambda()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
     }
 
     /** 可用余额 = 实缴 − 冻结；没开户按 0 算，等价于「一分没缴」。 */

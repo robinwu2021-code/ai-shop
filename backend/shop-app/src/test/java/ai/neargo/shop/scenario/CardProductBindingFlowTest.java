@@ -67,9 +67,10 @@ class CardProductBindingFlowTest {
         String merchant = TestLogin.merchantOwner(mvc, json, otp, phone);
         jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,title,type,tenant_no,created_at,updated_at) "
                 + "VALUES (?,?,'30 swims','CARD','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", goods, entity);
-        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,"
-                + "created_at,updated_at) VALUES (?,?,?,'CN',30000,100,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,tenant_no,"
+                + "created_at,updated_at) VALUES (?,?,?,'CN',30000,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 sku, goods, entity);
+        SkuBalanceFixture.seed(jdbc, sku, 100, 0);
         var scope = new CatalogScope("MAIN", entity, actor, false);
         var template = catalog.create(scope, rule("30 swims"), id());
         var v1 = catalog.publish(scope, template.templateNo(), template.revision(), id());
@@ -94,7 +95,7 @@ class CardProductBindingFlowTest {
         assertThatThrownBy(() -> orders.createFor(actor, checkout, id())).isInstanceOfSatisfying(BizException.class,
                 e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_order WHERE user_no=?", Integer.class, actor)).isZero();
-        assertThat(jdbc.queryForObject("SELECT locked_stock FROM prd_sku WHERE sku_no=?", Integer.class, sku)).isZero();
+        assertThat(jdbc.queryForObject("SELECT locked_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class, sku)).isZero();
         assertThat(jdbc.queryForObject("SELECT price FROM prd_sku WHERE sku_no=?", Long.class, sku)).isEqualTo(30000);
         var head = catalog.get(scope, template.templateNo());
         var draft = catalog.saveDraft(scope, template.templateNo(), head.revision(), rule("New card title"), id());
@@ -135,15 +136,16 @@ class CardProductBindingFlowTest {
         jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,title,type,on_sale,audit_status,fulfillments,tenant_no,"
                 + "created_at,updated_at) VALUES (?,?,'legacy card','CARD',1,'APPROVED','[\"STORE_VERIFY\"]',"
                 + "'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", legacyGoods, entity);
-        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,"
-                + "created_at,updated_at) VALUES (?,?,?,'CN',1000,1,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,tenant_no,"
+                + "created_at,updated_at) VALUES (?,?,?,'CN',1000,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 legacySku, legacyGoods, entity);
+        SkuBalanceFixture.seed(jdbc, legacySku, 1, 0);
         var legacy = new OrderService.CreateOrderCommand(
                 List.of(new OrderService.CreateOrderCommand.Item(legacyGoods, legacySku, 1)), "STORE_VERIFY", null,
                 null, null, null, "unbound legacy card", null, null, null, null);
         orders.createFor(actor, legacy, id());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_order WHERE user_no=?", Integer.class, actor)).isOne();
-        assertThat(jdbc.queryForObject("SELECT locked_stock FROM prd_sku WHERE sku_no=?", Integer.class, legacySku))
+        assertThat(jdbc.queryForObject("SELECT locked_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class, legacySku))
                 .isOne();
     }
     private boolean attempt(EntitlementContext ctx, String entity, ProductEntitlementBinding c) {

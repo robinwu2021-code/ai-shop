@@ -6,6 +6,8 @@ import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.spi.product.StockPort;
+import org.springframework.beans.factory.annotation.Qualifier;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,10 +33,14 @@ public class ProductDemoSeeder {
     private final GoodsMapper goodsMapper;
     private final SkuMapper skuMapper;
 
-    public ProductDemoSeeder(CategoryMapper categoryMapper, GoodsMapper goodsMapper, SkuMapper skuMapper) {
+    private final StockPort productStock;
+
+    public ProductDemoSeeder(CategoryMapper categoryMapper, GoodsMapper goodsMapper, SkuMapper skuMapper,
+                             @Qualifier("stockPortImpl") StockPort productStock) {
         this.categoryMapper = categoryMapper;
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
+        this.productStock = productStock;
     }
 
     /**
@@ -101,9 +107,8 @@ public class ProductDemoSeeder {
             sku.setSpec(s.spec());
             sku.setPrice(s.price());
             sku.setOriginPrice(s.originPrice());
-            sku.setStock(s.stock());
-            sku.setLockedStock(0);
             skuMapper.insert(sku);
+            productStock.setOnHand(s.skuNo(), null, s.stock(), "OTHER");
         }
     }
 

@@ -135,11 +135,12 @@ public final class BeautyBm04HostFixture {
                     store);
             jdbc.update(
                     "INSERT INTO"
-                        + " prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,created_at,updated_at)"
-                        + " VALUES (?,?,?,'CN',101,1000,0,NOW(),NOW())",
+                        + " prd_sku(sku_no,goods_no,entity_no,market,price,created_at,updated_at)"
+                        + " VALUES (?,?,?,'CN',101,NOW(),NOW())",
                     sku,
                     goods,
                     entity);
+            SkuBalanceFixture.seed(jdbc, sku, 1000, 0);
             DelegatedIdentityContext.call(
                     new DelegatedIdentity("MAIN", "MERCHANT", "MCH", actor),
                     () -> {

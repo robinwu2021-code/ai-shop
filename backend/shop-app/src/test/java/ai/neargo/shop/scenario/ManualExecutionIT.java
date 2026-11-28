@@ -258,11 +258,11 @@ class ManualExecutionIT extends ManualSourceHostFixture {
                 web.getBeanProvider(OriginalMirrorRestore.class), web.getBeanProvider(
                     OriginalInventoryRestoreAdapter.class),
                 platformPrimary, json);
-        var platformBefore = jdbc.queryForList("SELECT stock,locked_stock FROM prd_sku WHERE sku_no=?", sku);
+        var platformBefore = jdbc.queryForList("SELECT sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=?", sku);
         var result = switched.restore("original-inventory-" + sku, source.orderNo(), List.of(
             new StockPort.SkuQty(sku, 1, store)));
         assertThat(result).isEqualTo(StockPort.RestoreResult.COMPLETED);
-        assertThat(jdbc.queryForList("SELECT stock,locked_stock FROM prd_sku WHERE sku_no=?", sku)).isEqualTo(
+        assertThat(jdbc.queryForList("SELECT sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=?", sku)).isEqualTo(
             platformBefore);
         assertThat(jdbc.queryForObject(
             "SELECT COUNT(*) FROM prd_stock_restore r JOIN prd_stock_lock l ON l.id=r.original_lock_id WHERE " +

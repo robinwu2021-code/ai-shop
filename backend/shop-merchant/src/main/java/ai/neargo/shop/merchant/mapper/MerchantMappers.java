@@ -39,9 +39,12 @@ import ai.neargo.shop.merchant.booking.entity.MchResource;
 import ai.neargo.shop.merchant.booking.entity.MchScheduleChangeLog;
 import ai.neargo.shop.merchant.booking.entity.MchScheduleRule;
 import ai.neargo.shop.merchant.entity.MchStore;
+import ai.neargo.shop.merchant.entity.MchStoreCategory;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -234,13 +237,31 @@ public final class MerchantMappers {
      * {@link ai.neargo.shop.merchant.entity.MchStoreCategory} 的类注释。
      */
     public interface MchStoreCategoryMapper
-            extends TradeTableMapper<ai.neargo.shop.merchant.entity.MchStoreCategory> {
+            extends TradeTableMapper<MchStoreCategory> {
+        /** 经营货架只取门店通用且映射到平台类目的行，目录专用分类由目录服务管理。 */
+        static LambdaQueryWrapper<MchStoreCategory> shelves(String storeNo) {
+            return Wrappers.<MchStoreCategory>lambdaQuery()
+                    .eq(MchStoreCategory::getTenantNo, "MAIN")
+                    .eq(MchStoreCategory::getStoreNo, storeNo)
+                    .and(q -> q.isNull(MchStoreCategory::getCatalogNo).or().eq(MchStoreCategory::getCatalogNo, ""))
+                    .ne(MchStoreCategory::getCategoryNo, "");
+        }
+
+        /** 普通快照读先定位旧行，避免对不存在的货架先做 UPDATE 而锁住索引间隙。 */
+        @Select("""
+                SELECT id FROM prd_store_category
+                 WHERE tenant_no='MAIN' AND store_no=#{storeNo} AND entity_no=#{entityNo}
+                   AND platform_category_no=#{categoryNo} AND (catalog_no IS NULL OR catalog_no='')
+                   AND deleted=1
+                """)
+        Long removedShelf(@Param("storeNo") String storeNo, @Param("categoryNo") String categoryNo,
+                          @Param("entityNo") String entityNo);
 
         /**
          * 把一条**被逻辑删除的**经营类目复活。
          *
          * <p>撤类目走的是逻辑删除（{@code deleted=1}），而唯一键
-         * {@code uk_store_category (store_no, category_no)} <b>不含这一列</b> ——
+         * {@code uk_food_1 (category_no)} <b>不含这一列</b> ——
          * 那一行还占着位置。所以「移出再加回来」不能 INSERT，会撞唯一键，
          * 端上只看到一句「系统开小差了」（2026-09-20 线上真实发生）。
          *
@@ -250,12 +271,14 @@ public final class MerchantMappers {
          * @return 影响行数；0 = 这家店压根没有过这个类目，调用方去 INSERT
          */
         @Update("""
-                UPDATE mch_store_category
-                   SET deleted = 0, enabled = 1, sort = #{sort}, display_name = #{displayName},
-                       entity_no = #{entityNo}, updated_at = NOW(), version = version + 1
-                 WHERE store_no = #{storeNo} AND category_no = #{categoryNo} AND deleted = 1
+                UPDATE prd_store_category
+                   SET deleted = 0, enabled = 1, sort_no = #{sort}, name = #{displayName},
+                       updated_at = NOW(), version = version + 1
+                 WHERE id = #{id} AND tenant_no='MAIN' AND store_no = #{storeNo} AND entity_no = #{entityNo}
+                   AND platform_category_no = #{categoryNo}
+                   AND (catalog_no IS NULL OR catalog_no = '') AND deleted = 1
                 """)
-        int revive(@Param("storeNo") String storeNo, @Param("categoryNo") String categoryNo,
+        int revive(@Param("id") long id, @Param("storeNo") String storeNo, @Param("categoryNo") String categoryNo,
                    @Param("entityNo") String entityNo, @Param("displayName") String displayName,
                    @Param("sort") int sort);
     }

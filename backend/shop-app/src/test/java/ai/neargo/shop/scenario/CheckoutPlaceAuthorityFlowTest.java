@@ -216,7 +216,7 @@ class CheckoutPlaceAuthorityFlowTest extends CheckoutFlowFixture {
                     .allSatisfy((name, count) -> assertThat(count).as(name).isEqualTo(1L));
             assertThat(
                             jdbc.queryForObject(
-                                    "SELECT locked_stock FROM prd_sku WHERE sku_no=?",
+                                    "SELECT locked_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?",
                                     Integer.class,
                                     sku))
                     .isEqualTo(3);
