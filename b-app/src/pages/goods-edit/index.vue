@@ -354,6 +354,8 @@ function toggleRestricted(code: string) {
  */
 const fresh = ref({ cutoffAt: "", arrivalDesc: "", weighed: false, origin: "" });
 const service = ref({ durationMin: "", storeName: "" });
+/** 时长归服务定义管：只读，保存也不带时长（后端同样不写，TDD-美业域迁移新库 §2.8 P8） */
+const durationByDefinition = ref(false);
 
 /**
  * 服务时长的档。**不是随便定的几个数**：家政按半小时计费、美容美发按次约 1 小时、
@@ -533,6 +535,7 @@ async function pickInvMode() {
 
 /** 选服务时长 */
 async function pickDuration() {
+  if (durationByDefinition.value) return;
   const items = [
     ...DURATION_MINUTES.map((n) => String(t("goods.durationValue", { n }))),
     String(t("goods.durationOther")),
@@ -1689,6 +1692,7 @@ onLoad(async (q) => {
     durationMin: g.durationMin ? String(g.durationMin) : "",
     storeName: g.storeName ?? "",
   };
+  durationByDefinition.value = !!g.durationByDefinition;
   groups.value = g.specGroups.map((sg) => ({
     name: sg.name,
     options: [...sg.options],
@@ -1782,7 +1786,9 @@ function applyDraft(d: NonNullable<Awaited<ReturnType<typeof api.mGoodsDraft>>>,
   }
   if (d.service) {
     service.value = {
-      durationMin: d.service.durationMin ? String(d.service.durationMin) : service.value.durationMin,
+      // 时长归服务定义时显示线上的值：草稿里的旧时长保存时也不会写回
+      durationMin: d.service.durationMin && !durationByDefinition.value
+        ? String(d.service.durationMin) : service.value.durationMin,
       storeName: d.service.storeName ?? service.value.storeName,
     };
   }
@@ -1916,7 +1922,7 @@ async function save(thenSubmit = false) {
         : undefined,
       service: isService.value
         ? {
-            durationMin: Number(service.value.durationMin) || undefined,
+            durationMin: durationByDefinition.value ? undefined : Number(service.value.durationMin) || undefined,
             storeName: service.value.storeName.trim(),
           }
         : undefined,
@@ -2622,10 +2628,12 @@ async function save(thenSubmit = false) {
       <view v-if="isService" class="field">
         <text class="txt-strong field__label">{{ $t("goods.serviceSection") }}</text>
         <sh-kv :label="String($t('goods.durationMin'))" divided>
-          <text class="sh-fill svc__v" :class="{ 'sh-muted': !service.durationMin }" @tap="pickDuration">
+          <text class="sh-fill svc__v" :class="{ 'sh-muted': !service.durationMin || durationByDefinition }"
+            @tap="pickDuration">
             {{ service.durationMin ? $t("goods.durationValue", { n: service.durationMin }) : $t("goods.durationPick") }}
           </text>
         </sh-kv>
+        <text v-if="durationByDefinition" class="sh-hint">{{ $t("goods.durationByDefinition") }}</text>
         <sh-kv :label="String($t('goods.verifyStore'))" divided>
           <text class="sh-fill svc__v" :class="{ 'sh-muted': !service.storeName }" @tap="pickVerifyStore">
             {{ service.storeName || $t("storePick.title") }}

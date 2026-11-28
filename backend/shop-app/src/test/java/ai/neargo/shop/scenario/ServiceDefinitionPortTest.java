@@ -219,10 +219,36 @@ class ServiceDefinitionPortTest {
                 goods.setDurationMin(60);
                 apply.invoke(service, goods, command(new MerchantGoodsService.ServiceSpec(30, null)));
                 assertThat(goods.getDurationMin()).as("有服务定义：时长只由定义发布写").isEqualTo(60);
+                // 编辑页据此把时长显示为只读（TDD §2.8 P8）：有定义给 true，没有定义或非服务不下发
+                var flag = MerchantGoodsServiceImpl.class.getDeclaredMethod("durationByDefinition", PrdGoods.class);
+                flag.setAccessible(true);
+                assertThat(flag.invoke(service, goods)).isEqualTo(Boolean.TRUE);
+                var other = new PrdGoods();
+                other.setGoodsNo("NONE");
+                other.setType(PrdGoods.TYPE_SERVICE);
+                assertThat(flag.invoke(service, other)).isNull();
+                goods.setType("NORMAL");
+                assertThat(flag.invoke(service, goods)).isNull();
             } catch (ReflectiveOperationException e) {
                 throw new AssertionError(e);
             }
         });
+    }
+
+    /** 详情出口之后再接任何 with 方法，「时长归服务定义」标记都要留着（与运费模板一样透传，P8）。 */
+    @Test
+    void everyGoodsViewCopyKeepsTheDurationFlag() throws java.io.IOException {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "../shop-core/src/main/java/ai/neargo/shop/product/dto/GoodsVO.java"));
+        var copies = java.util.regex.Pattern.compile("public GoodsVO (with\\w+)\\(").matcher(source);
+        int found = 0;
+        while (copies.find()) {
+            String body = source.substring(copies.start(), source.indexOf("\n    }", copies.start()));
+            assertThat(body).as(copies.group(1) + " 必须透传 durationByDefinition")
+                    .containsAnyOf("durationByDefinition);", "byDefinition);");
+            found++;
+        }
+        assertThat(found).isGreaterThanOrEqualTo(9);
     }
 
     /** 去掉读出时才有的要求编号，便于与发布的输入比较。 */

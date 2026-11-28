@@ -533,6 +533,18 @@
 - 正式库现状（2026-11-28 只读查）：`ai_shop_ume` 旧定义 1 版（`BTDV26112443BH98F7B2`，门店 `ST2611247EB2YDAA8E`、SKU `SK261124HBK83ACNDX`→商品 `G261124T7GRQWEVF9`）、要求 1 条；引用它的有 `ai_shop_ume.bty_service_task` 6 行、`n_trade_v2.ord_appointment_item` 12 行（均为 11-24/25 的测试数据）。
 - 上线顺序（取消 P6 后）：P2 建表 → 部署含 P5 的包 → 重新生成预定义数据与测试数据（服务定义经美业发布入口写）。
 
+**P8 商家编辑页：时长归服务定义时只读（2026-11-28，档位 1：响应字段 + i18n 词条）**：
+- 依据：本节「时长同一事实一处」与 P3 的「商家编辑页上，美业服务的时长改为只读」；商品会话建议从 P3 拆出单独做。
+- 契约：B 端商品详情 `GoodsVO` 末尾加 `durationByDefinition`（Boolean，只在 B 端详情填：服务商品已发布过服务定义为 `true`，否则不下发）；`packages/shared` 的 `Goods` 同步声明。b-app 加词条 `goods.durationByDefinition`（简中、英、阿三语）。
+
+| AC | 落点 | 测试 |
+|---|---|---|
+| 已发布服务定义的服务，B 端详情带 `durationByDefinition=true`；没有定义或非服务不下发 | `MerchantGoodsServiceImpl.durationByDefinition` → `merchantView` / `toVOWithoutStoreContext` 的 `.withDurationByDefinition(...)` | `ServiceDefinitionPortTest#merchantSaveLeavesDefinedDurationAlone`；`GoodsVO` 的 9 个 `with*` 复制方法都透传标记（商品会话指出，与运费模板同样处理）：`#everyGoodsViewCopyKeepsTheDurationFlag`（10/10 通过） |
+| 编辑页据此把时长显示为只读（点了不弹选择），下方提示「时长由服务设置发布」 | `b-app/src/pages/goods-edit/index.vue`：`durationByDefinition`、`pickDuration` 提前返回、`sh-hint` | `vue-tsc`：本改动零错误（工作树缺 `pinyin-pro` 依赖的那 1 条与本改动无关） |
+| 保存不再带时长；恢复草稿时不用草稿里的旧时长 | 同上：保存体 `durationMin` 为空；草稿回填保留线上值 | 同上；后端本就不写（P3 `durationOwnedByDefinition`） |
+
+- 闸门：`check-app-contract.py --check` 通过；共享守卫（借主工作区 `node_modules` 跑）的 9 条失败与推送前的 `v2`（`e2bf8424c`）完全相同，均与本改动无关。
+
 **原待定（已定，留作记录）**：
 - 新表的加法：生成器加机制，还是改 ai-shop-slim 生成源；
 - 发布服务定义是否让 `prd_goods.version` 加一（会让商家手上未发布的商品草稿提示「有人中途改过」）；

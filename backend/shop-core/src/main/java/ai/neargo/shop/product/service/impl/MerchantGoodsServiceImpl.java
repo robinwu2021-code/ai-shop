@@ -254,6 +254,11 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 .eq(PrdGoods::getEntityNo, g.getEntityNo()).eq(PrdGoods::getGoodsNo, g.getGoodsNo())));
     }
 
+    /** B 端详情的「时长归服务定义」标记：是才给 true，否则不下发（编辑页照常可改）。 */
+    private Boolean durationByDefinition(PrdGoods g) {
+        return PrdGoods.TYPE_SERVICE.equals(g.getType()) && durationOwnedByDefinition(g) ? Boolean.TRUE : null;
+    }
+
     /** 这件服务商品的时长归服务定义管（已发布过定义）：商家保存与草稿换版都不写时长。 */
     private boolean durationOwnedByDefinition(PrdGoods g) {
         return serviceDefinitions != null && g.getGoodsNo() != null
@@ -2777,7 +2782,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         null,
                         null,
                         base.restrictedRegions())
-                .withFreightTemplateNo(g.getFreightTemplateNo());
+                .withFreightTemplateNo(g.getFreightTemplateNo())
+                .withDurationByDefinition(durationByDefinition(g));
     }
 
     /**
@@ -4108,7 +4114,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         null,
                         null,
                         base.restrictedRegions())
-                .withFreightTemplateNo(g.getFreightTemplateNo());
+                .withFreightTemplateNo(g.getFreightTemplateNo())
+                .withDurationByDefinition(durationByDefinition(g));
     }
 
     /**

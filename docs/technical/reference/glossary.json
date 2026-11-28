@@ -12296,6 +12296,12 @@
           "ar": "اضغط مطوّلاً على صورة لإعادة الترتيب؛ الأولى هي الغلاف"
         },
         {
+          "key": "goods.durationByDefinition",
+          "zh-CN": "时长由服务设置发布，这里只读",
+          "en": "Set by the published service settings; read-only here",
+          "ar": "تُحدَّد المدة من إعدادات الخدمة المنشورة؛ للقراءة فقط هنا"
+        },
+        {
           "key": "goods.durationMin",
           "zh-CN": "服务时长",
           "en": "Duration",

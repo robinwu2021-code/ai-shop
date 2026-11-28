@@ -855,6 +855,7 @@ export default {
     verifyStore: "核销门店",
     durationValue: "{n} 分钟",
     durationPick: "选择时长",
+    durationByDefinition: "时长由服务设置发布，这里只读",
     durationOther: "其他（手动填）",
     durationPh: "多少分钟",
 

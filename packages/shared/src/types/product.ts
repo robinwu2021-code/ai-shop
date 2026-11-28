@@ -350,6 +350,11 @@ export interface Goods {
   origin?: string;
   /** SERVICE：服务时长（分钟） */
   durationMin?: number;
+  /**
+   * SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、
+   * 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。
+   */
+  durationByDefinition?: boolean | null;
   /** SERVICE：可核销门店 */
   storeName?: string;
   /**

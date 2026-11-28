@@ -773,6 +773,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     verifyStore: "متجر الاستبدال",
     durationValue: "{n} دقيقة",
     durationPick: "اختر المدة",
+    durationByDefinition: "تُحدَّد المدة من إعدادات الخدمة المنشورة؛ للقراءة فقط هنا",
     durationOther: "أخرى (اكتبها)",
     durationPh: "كم دقيقة",
 

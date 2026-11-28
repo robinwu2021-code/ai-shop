@@ -772,6 +772,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     verifyStore: "Redeem at",
     durationValue: "{n} min",
     durationPick: "Pick a duration",
+    durationByDefinition: "Set by the published service settings; read-only here",
     durationOther: "Other (type it)",
     durationPh: "How many minutes",
 

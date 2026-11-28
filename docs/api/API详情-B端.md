@@ -1627,6 +1627,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
@@ -1767,6 +1768,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
@@ -1893,6 +1895,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
@@ -1969,6 +1972,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
@@ -2114,6 +2118,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
@@ -2190,6 +2195,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
@@ -2266,6 +2272,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
@@ -2342,6 +2349,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
@@ -2424,6 +2432,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
@@ -2635,6 +2644,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
@@ -14280,6 +14290,7 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 | `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `durationByDefinition` | `boolean,null` | 否 | SERVICE：时长归服务定义管（只在 B 端详情下发）。已发布过服务定义的服务，时长由定义发布写、 商家保存不写，编辑页显示为只读。空 = 商家可改（TDD-美业域迁移新库 §2.8 P8）。 |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
