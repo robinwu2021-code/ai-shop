@@ -1,0 +1,1456 @@
+{
+  "goodsNo": "G26112800Q4WB24S9",
+  "skuNo": "SK261128JSAW1H2A0E",
+  "database": "n_trade",
+  "concurrency": {
+    "authenticatedSessionsPerPair": 2,
+    "operationsPerSessionPerPair": 1,
+    "finalPairs": 6,
+    "overlapUnit": "milliseconds, as observed by independent HTTP clients"
+  },
+  "baseline": {
+    "firstStoreCategory": "Duplicate entry; pre-fix application returned 10500 to one client and persisted one category row.",
+    "firstStoreSku": "Store price request returned 10500 on a deadlock. Stock request succeeded. A separate normal retry committed the price.",
+    "firstCandidate": "The next candidate handled both concurrent operations but left nullable locked_qty uninitialized if a price-only row became stock-managed."
+  },
+  "attemptsAndState": [
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "55253deb3e424534be109daece606326",
+      "start": 1795839261.7663,
+      "end": 1795839262.4539,
+      "phase": "pre-fix"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "080686ed9ba84828b2b5b4efafe7c05f",
+      "start": 1795839262.4543,
+      "end": 1795839262.7198,
+      "phase": "pre-fix"
+    },
+    {
+      "step": "restricted database session",
+      "connection": "prd_qa_078728f0@127.0.0.1\tn_trade",
+      "legacyProductDenied": 1142,
+      "phase": "pre-fix"
+    },
+    {
+      "step": "starting QA facts",
+      "goods": "M-OLD\tS-OLD\tAPPROVED\t0",
+      "sku": "S-OLD\tCN\t1888\t17\t0",
+      "catalog": "S-OLD\t0\nS-QA-0F9D9A87\t0",
+      "revisions": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tONLINE\tQA-NTRADE-59995db702-R3",
+      "phase": "pre-fix"
+    },
+    {
+      "step": "/biz/store/S-QA-0F9D9A87/categories",
+      "http": 200,
+      "code": 0,
+      "rid": "08c1a5bf7bbd4d8eaa499dcad8ae21d0",
+      "start": 1795839267.89,
+      "end": 1795839268.3925,
+      "phase": "pre-fix"
+    },
+    {
+      "step": "first category selection",
+      "attempts": [
+        {
+          "name": "0",
+          "http": 200,
+          "code": 10500,
+          "rid": "b3eb6f9583f6405eac65001195ba48e0",
+          "start": 1795839268.3967,
+          "end": 1795839271.5842
+        },
+        {
+          "name": "1",
+          "http": 200,
+          "code": 0,
+          "rid": "b8ca9367f3694353a74a7a78ffc74762",
+          "start": 1795839268.3967,
+          "end": 1795839270.8597
+        }
+      ],
+      "phase": "pre-fix",
+      "overlapMs": 2463
+    },
+    {
+      "step": "category rows",
+      "rows": "8835abb9efd53105a019fedc373d1064\tCAT210\t1\t0",
+      "phase": "pre-fix"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "40965b60653c46059c3f30bac5fa2683",
+      "start": 1795839281.4859,
+      "end": 1795839281.8755,
+      "phase": "pre-fix"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "21d52a06f9ec481997b1dd40ab593465",
+      "start": 1795839281.876,
+      "end": 1795839282.1224,
+      "phase": "pre-fix"
+    },
+    {
+      "step": "first store price and stock",
+      "attempts": [
+        {
+          "name": "price",
+          "http": 200,
+          "code": 10500,
+          "rid": "f4a2a58c1d0d40a5baa4358e35f3c0b5",
+          "start": 1795839282.9704,
+          "end": 1795839285.4916
+        },
+        {
+          "name": "stock",
+          "http": 200,
+          "code": 0,
+          "rid": "2f2fb23184784f2fb1a971f16189293a",
+          "start": 1795839282.9703,
+          "end": 1795839287.5147
+        }
+      ],
+      "phase": "pre-fix",
+      "overlapMs": 2521
+    },
+    {
+      "step": "first store SKU database read",
+      "rows": "S-OLD\tCN\t1888\t17\t0\nS-QA-0F9D9A87\tCN\tNULL\t22\t0",
+      "phase": "pre-fix"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "d93e491b080e4d94a434ff2141b0a6d7",
+      "start": 1795839303.4624,
+      "end": 1795839303.8576,
+      "phase": "pre-fix"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/store-price",
+      "http": 200,
+      "code": 0,
+      "rid": "c50d672491964addbc17e41867cfcac2",
+      "start": 1795839303.8583,
+      "end": 1795839306.4319,
+      "phase": "pre-fix"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "c74a6430960f476e94f038fd6584f1b9",
+      "start": 1795839306.4322,
+      "end": 1795839308.0637,
+      "phase": "pre-fix"
+    },
+    {
+      "step": "ordinary retry after recorded first attempts",
+      "price": 2111,
+      "stock": 22,
+      "sql": "S-OLD\tCN\t1888\t17\t0\nS-QA-0F9D9A87\tCN\t2111\t22\t0",
+      "phase": "pre-fix"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/toggle",
+      "http": 200,
+      "code": 0,
+      "rid": "c5eefea7d0334bfaae1c7e18f1d05cd5",
+      "start": 1795839308.926,
+      "end": 1795839312.6188,
+      "phase": "pre-fix"
+    },
+    {
+      "step": "first draft baseline",
+      "revisions": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tONLINE\tQA-NTRADE-59995db702-R3",
+      "catalog": "S-OLD\t1\nS-QA-0F9D9A87\t0",
+      "phase": "pre-fix"
+    },
+    {
+      "step": "isolated store setup",
+      "store": "S-QA-078728F0",
+      "realPlatformStores": 0,
+      "realPlatformMerchant": 0,
+      "existingTestProductRows": 0,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "b7945e3da9ed4860861d45680410afd0",
+      "start": 1795839476.5788,
+      "end": 1795839477.4531,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "6ff8de447eca4fbca1c5b0a327a9c674",
+      "start": 1795839477.4535,
+      "end": 1795839477.8405,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/store/S-QA-078728F0/categories",
+      "http": 200,
+      "code": 0,
+      "rid": "57a0add9a6384778b958ecb1692f1f11",
+      "start": 1795839477.8408,
+      "end": 1795839478.1939,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "patched first category",
+      "attempts": [
+        {
+          "name": "0",
+          "http": 200,
+          "code": 0,
+          "rid": "16391180618e4271b5612283b3085a07",
+          "start": 1795839478.2006,
+          "end": 1795839481.0232
+        },
+        {
+          "name": "1",
+          "http": 200,
+          "code": 0,
+          "rid": "cc18181f8caf4d31920fc3bf9cb9f31b",
+          "start": 1795839478.1992,
+          "end": 1795839480.2655
+        }
+      ],
+      "phase": "locking and idempotent category patch",
+      "overlapMs": 2065
+    },
+    {
+      "step": "patched category committed",
+      "rows": "5f796989eb133d10b92d3417c0bd4705\tCAT210\t1\t0",
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "patched first SKU price/stock",
+      "attempts": [
+        {
+          "name": "price",
+          "http": 200,
+          "code": 0,
+          "rid": "e571c2670c4c4b518fe11f944acd2ac5",
+          "start": 1795839482.7894,
+          "end": 1795839485.6408
+        },
+        {
+          "name": "stock",
+          "http": 200,
+          "code": 0,
+          "rid": "3a78dd4d7ab346639fc297cedfba0ec1",
+          "start": 1795839482.7892,
+          "end": 1795839488.1725
+        }
+      ],
+      "phase": "locking and idempotent category patch",
+      "overlapMs": 2851
+    },
+    {
+      "step": "patched first store SKU",
+      "rows": "S-OLD\tCN\t1888\t17\t0\nS-QA-078728F0\tCN\t2333\t33\tNULL\nS-QA-0F9D9A87\tCN\t2111\t22\t0",
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "35c72d8561484200a5f9c823cd3d066b",
+      "start": 1795839517.2231,
+      "end": 1795839517.8161,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "e6245e6f35844e8a9d504e0a513ffdc9",
+      "start": 1795839517.8169,
+      "end": 1795839518.1491,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "before overlapping saves",
+      "revisions": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tONLINE\tQA-NTRADE-59995db702-R3",
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "first on-sale draft saves",
+      "attempts": [
+        {
+          "name": "A",
+          "http": 200,
+          "code": 0,
+          "rid": "dc73ab6f8da84a3085759fd0b3e612be",
+          "start": 1795839521.7326,
+          "end": 1795839530.056
+        },
+        {
+          "name": "B",
+          "http": 200,
+          "code": 0,
+          "rid": "3f67d6b07bf44c6eb4082dc090b5c838",
+          "start": 1795839521.7324,
+          "end": 1795839526.8664
+        }
+      ],
+      "phase": "locking and idempotent category patch",
+      "overlapMs": 5134
+    },
+    {
+      "step": "first saved revisions",
+      "rows": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tONLINE\tQA-NTRADE-59995db702-R3\n4\tEDITING\tQA-NTRADE-59995db702-CA",
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/draft",
+      "http": 200,
+      "code": 0,
+      "rid": "e62d5d5a3375469bb4103926507837db",
+      "start": 1795839531.2687,
+      "end": 1795839532.2305,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "first independent store listing",
+      "attempts": [
+        {
+          "name": "0",
+          "http": 200,
+          "code": 0,
+          "rid": "5b23cf89874340009c37a7b65bab9c1f",
+          "start": 1795839533.5416,
+          "end": 1795839538.7254
+        },
+        {
+          "name": "1",
+          "http": 200,
+          "code": 0,
+          "rid": "83b72b0c8d904661b1de78935eece2c7",
+          "start": 1795839533.5414,
+          "end": 1795839541.7961
+        }
+      ],
+      "phase": "locking and idempotent category patch",
+      "overlapMs": 5184
+    },
+    {
+      "step": "first catalog rows",
+      "rows": "S-OLD\t1\nS-QA-078728F0\t1\nS-QA-0F9D9A87\t0",
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "overlapping same goods save and store listing",
+      "attempts": [
+        {
+          "name": "save",
+          "http": 200,
+          "code": 0,
+          "rid": "57bcdb1dd67a444fa6d97cdabd384c00",
+          "start": 1795839544.2318,
+          "end": 1795839547.3018
+        },
+        {
+          "name": "toggle",
+          "http": 200,
+          "code": 0,
+          "rid": "aee3fc4314214719840c1e8bd8ba4f1a",
+          "start": 1795839544.2316,
+          "end": 1795839550.2796
+        }
+      ],
+      "phase": "locking and idempotent category patch",
+      "overlapMs": 3070
+    },
+    {
+      "step": "mixed commit",
+      "rows": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tONLINE\tQA-NTRADE-59995db702-R3\n4\tEDITING\tQA-NTRADE-59995db702-CFINAL",
+      "catalog": "S-OLD\t1\nS-QA-078728F0\t1\nS-QA-0F9D9A87\t1",
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/draft",
+      "http": 200,
+      "code": 0,
+      "rid": "3f33106b53a840139886a1496afddf67",
+      "start": 1795839551.9756,
+      "end": 1795839552.598,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/publish-preview",
+      "http": 200,
+      "code": 0,
+      "rid": "ff49d4512d9147d6b37a30f24689cdfa",
+      "start": 1795839553.4449,
+      "end": 1795839554.7585,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/publish",
+      "http": 200,
+      "code": 0,
+      "rid": "f4f8670b16c3489fb54db7c9232bedf6",
+      "start": 1795839554.7589,
+      "end": 1795839557.4742,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/ops/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "7b8e52dc716748c7b473aeae93ea13b8",
+      "start": 1795839557.4746,
+      "end": 1795839557.6674,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/ops/goods/G26112800Q4WB24S9/audit",
+      "http": 200,
+      "code": 0,
+      "rid": "be6a4ace457149a0a28a4db17936b913",
+      "start": 1795839557.6679,
+      "end": 1795839563.1912,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "9153b0a203e74214bd2ec4504c9a37b8",
+      "start": 1795839563.1917,
+      "end": 1795839565.0791,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "owner store price and stock",
+      "attempts": [
+        {
+          "name": "price",
+          "http": 200,
+          "code": 0,
+          "rid": "604c980186cf4ef192ca76b6ccb7091f",
+          "start": 1795839565.0851,
+          "end": 1795839571.8982
+        },
+        {
+          "name": "stock",
+          "http": 200,
+          "code": 0,
+          "rid": "09f9178b9c6146c6bf4ad92268e7eeb8",
+          "start": 1795839565.0835,
+          "end": 1795839569.4368
+        }
+      ],
+      "phase": "locking and idempotent category patch",
+      "overlapMs": 4352
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "ea13e5ad5ff5430d966d775b212d67e2",
+      "start": 1795839571.9039,
+      "end": 1795839573.8304,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-OLD",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2444,
+      "stock": 34,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "2f2036ed1f004b5baeefb94fb13fc189",
+      "start": 1795839573.8312,
+      "end": 1795839575.7049,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-QA-0F9D9A87",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2111,
+      "stock": 22,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "1624c3a827864c6cbe1004fd2a2d5c81",
+      "start": 1795839575.7059,
+      "end": 1795839577.6205,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-QA-078728F0",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2333,
+      "stock": 33,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_store_category",
+      "groups": 0,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_goods_revision",
+      "groups": 0,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_catalog_item",
+      "groups": 0,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_store_sku",
+      "groups": 0,
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "final committed records",
+      "revisions": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tSUPERSEDED\tQA-NTRADE-59995db702-R3\n4\tONLINE\tQA-NTRADE-59995db702-CFINAL",
+      "catalog": "S-OLD\t1\nS-QA-078728F0\t1\nS-QA-0F9D9A87\t1",
+      "storeSKU": "S-OLD\tCN\t2444\t34\t0\nS-QA-078728F0\tCN\t2333\t33\tNULL\nS-QA-0F9D9A87\tCN\t2111\t22\t0",
+      "phase": "locking and idempotent category patch"
+    },
+    {
+      "step": "isolated store setup",
+      "store": "S-QB-078728F0",
+      "realPlatformStores": 0,
+      "realPlatformMerchant": 0,
+      "existingTestProductRows": 0,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "86b9cdf355334e5b882fc4833d623911",
+      "start": 1795839686.8526,
+      "end": 1795839687.4482,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "27d2aacc31b74ab6aaa0f02b4a48ab58",
+      "start": 1795839687.4484,
+      "end": 1795839687.7105,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/store-stock",
+      "http": 200,
+      "code": 0,
+      "rid": "b1dcfcc4a2cd4f04865e2638a490cd28",
+      "start": 1795839688.5519,
+      "end": 1795839691.9086,
+      "phase": "final build"
+    },
+    {
+      "step": "normalized existing store balance",
+      "before": "S-QA-078728F0\tCN\t2333\t33\tNULL",
+      "after": "S-QA-078728F0\tCN\t2333\t33\t0",
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/store/S-QB-078728F0/categories",
+      "http": 200,
+      "code": 0,
+      "rid": "d44494e998fb4d02848ef9b5df260c80",
+      "start": 1795839692.7521,
+      "end": 1795839693.2347,
+      "phase": "final build"
+    },
+    {
+      "step": "patched first category",
+      "attempts": [
+        {
+          "name": "0",
+          "http": 200,
+          "code": 0,
+          "rid": "4e1621308a984f3986b3add79fd5031f",
+          "start": 1795839693.238,
+          "end": 1795839696.242
+        },
+        {
+          "name": "1",
+          "http": 200,
+          "code": 0,
+          "rid": "e8fcee90ef93449eb3eac5fa03d3b868",
+          "start": 1795839693.2379,
+          "end": 1795839695.6152
+        }
+      ],
+      "phase": "final build",
+      "overlapMs": 2377
+    },
+    {
+      "step": "patched category committed",
+      "rows": "182a6d834664381ab84a790948668fc7\tCAT210\t1\t0",
+      "phase": "final build"
+    },
+    {
+      "step": "patched first SKU price/stock",
+      "attempts": [
+        {
+          "name": "price",
+          "http": 200,
+          "code": 0,
+          "rid": "02bdd2aeeb61440a87cb7572fb86449c",
+          "start": 1795839698.0807,
+          "end": 1795839703.8237
+        },
+        {
+          "name": "stock",
+          "http": 200,
+          "code": 0,
+          "rid": "75b140fcf9a944199691536b877147ac",
+          "start": 1795839698.0805,
+          "end": 1795839701.6854
+        }
+      ],
+      "phase": "final build",
+      "overlapMs": 3605
+    },
+    {
+      "step": "patched first store SKU",
+      "rows": "S-OLD\tCN\t2444\t34\t0\nS-QA-078728F0\tCN\t2333\t33\t0\nS-QA-0F9D9A87\tCN\t2111\t22\t0\nS-QB-078728F0\tCN\t2555\t45\t0",
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "092d72b6017e4580b33d636132ea4649",
+      "start": 1795839705.6023,
+      "end": 1795839707.7753,
+      "phase": "final build"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-QB-078728F0",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2555,
+      "stock": 45,
+      "phase": "final build"
+    },
+    {
+      "step": "before overlapping saves",
+      "revisions": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tSUPERSEDED\tQA-NTRADE-59995db702-R3\n4\tONLINE\tQA-NTRADE-59995db702-CFINAL",
+      "phase": "final build"
+    },
+    {
+      "step": "first on-sale draft saves",
+      "attempts": [
+        {
+          "name": "A",
+          "http": 200,
+          "code": 0,
+          "rid": "81dc1d7fdca148eebc148ab93b62c11f",
+          "start": 1795839709.5403,
+          "end": 1795839715.1841
+        },
+        {
+          "name": "B",
+          "http": 200,
+          "code": 0,
+          "rid": "cff44bc40a614d18b53f3f8160691c23",
+          "start": 1795839709.54,
+          "end": 1795839712.9154
+        }
+      ],
+      "phase": "final build",
+      "overlapMs": 3375
+    },
+    {
+      "step": "first saved revisions",
+      "rows": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tSUPERSEDED\tQA-NTRADE-59995db702-R3\n4\tONLINE\tQA-NTRADE-59995db702-CFINAL\n5\tEDITING\tQA-NTRADE-59995db702-DA",
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/draft",
+      "http": 200,
+      "code": 0,
+      "rid": "1d65b0d268884a66bcfec3eac6313738",
+      "start": 1795839716.0356,
+      "end": 1795839716.667,
+      "phase": "final build"
+    },
+    {
+      "step": "first independent store listing",
+      "attempts": [
+        {
+          "name": "0",
+          "http": 200,
+          "code": 0,
+          "rid": "d6c03d475e1d44218488556a58c0dce0",
+          "start": 1795839717.5091,
+          "end": 1795839724.4786
+        },
+        {
+          "name": "1",
+          "http": 200,
+          "code": 0,
+          "rid": "8f8b53e2715a43d687a4baea27f3240f",
+          "start": 1795839717.5089,
+          "end": 1795839721.4001
+        }
+      ],
+      "phase": "final build",
+      "overlapMs": 3891
+    },
+    {
+      "step": "first catalog rows",
+      "rows": "S-OLD\t1\nS-QA-078728F0\t1\nS-QA-0F9D9A87\t1\nS-QB-078728F0\t1",
+      "phase": "final build"
+    },
+    {
+      "step": "overlapping same goods save and store listing",
+      "attempts": [
+        {
+          "name": "save",
+          "http": 200,
+          "code": 0,
+          "rid": "78fcb58746ce45d3b9c93c56957cf55e",
+          "start": 1795839726.9927,
+          "end": 1795839732.85
+        },
+        {
+          "name": "toggle",
+          "http": 200,
+          "code": 0,
+          "rid": "165d337015d040bb881c17ecc6136a8e",
+          "start": 1795839726.9926,
+          "end": 1795839730.6004
+        }
+      ],
+      "phase": "final build",
+      "overlapMs": 3608
+    },
+    {
+      "step": "mixed commit",
+      "rows": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tSUPERSEDED\tQA-NTRADE-59995db702-R3\n4\tONLINE\tQA-NTRADE-59995db702-CFINAL\n5\tEDITING\tQA-NTRADE-59995db702-DFINAL",
+      "catalog": "S-OLD\t1\nS-QA-078728F0\t1\nS-QA-0F9D9A87\t1\nS-QB-078728F0\t1",
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/draft",
+      "http": 200,
+      "code": 0,
+      "rid": "98f8a530e323498ca55d18eb9ccbe35a",
+      "start": 1795839734.8677,
+      "end": 1795839735.5078,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/publish-preview",
+      "http": 200,
+      "code": 0,
+      "rid": "2202367ea4444098bee09980a30afefd",
+      "start": 1795839736.3895,
+      "end": 1795839737.7025,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/publish",
+      "http": 200,
+      "code": 0,
+      "rid": "23be22b4b4b24bfea77f94c8b5ec6614",
+      "start": 1795839737.7034,
+      "end": 1795839740.3639,
+      "phase": "final build"
+    },
+    {
+      "step": "/ops/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "e546b06ec192445cb0c9f41e31730a14",
+      "start": 1795839740.3644,
+      "end": 1795839740.5201,
+      "phase": "final build"
+    },
+    {
+      "step": "/ops/goods/G26112800Q4WB24S9/audit",
+      "http": 200,
+      "code": 0,
+      "rid": "f9f29182c8e94affb186101e4e1263d2",
+      "start": 1795839740.5205,
+      "end": 1795839746.0581,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "c986309b4d144451ba89bfee93ae9c09",
+      "start": 1795839746.0588,
+      "end": 1795839747.8374,
+      "phase": "final build"
+    },
+    {
+      "step": "owner store price and stock",
+      "attempts": [
+        {
+          "name": "price",
+          "http": 200,
+          "code": 0,
+          "rid": "141e034a75f445a29b926e01752601a7",
+          "start": 1795839747.8396,
+          "end": 1795839750.7821
+        },
+        {
+          "name": "stock",
+          "http": 200,
+          "code": 0,
+          "rid": "81842dd5b027427ea3e379bd0019da9a",
+          "start": 1795839747.8394,
+          "end": 1795839753.5002
+        }
+      ],
+      "phase": "final build",
+      "overlapMs": 2942
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "2c5a1daa54ef4d5196fc6d0d68e1f97a",
+      "start": 1795839753.5017,
+      "end": 1795839755.1386,
+      "phase": "final build"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-QA-078728F0",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2333,
+      "stock": 33,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "447c546a089d4c76aa45bfbb0b8e8791",
+      "start": 1795839755.139,
+      "end": 1795839756.9061,
+      "phase": "final build"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-OLD",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2666,
+      "stock": 46,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "8e05c6d3ae9c4629941f146900f944e6",
+      "start": 1795839756.9065,
+      "end": 1795839758.5368,
+      "phase": "final build"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-QA-0F9D9A87",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2111,
+      "stock": 22,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "17c1f164853c46ef8b672600151ade4f",
+      "start": 1795839758.5371,
+      "end": 1795839760.2984,
+      "phase": "final build"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-QB-078728F0",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2555,
+      "stock": 45,
+      "phase": "final build"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_store_category",
+      "groups": 0,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "33245a773929408fa32da7e7bded5b41",
+      "start": 1795839761.4861,
+      "end": 1795839761.9049,
+      "phase": "final build"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_goods_revision",
+      "groups": 0,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "37a9aa772b394348a2bd8096732d3db7",
+      "start": 1795839761.9053,
+      "end": 1795839762.2178,
+      "phase": "final build"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_catalog_item",
+      "groups": 0,
+      "phase": "final build"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_store_sku",
+      "groups": 0,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "43830a4167014d77b19be299f5b55fa1",
+      "start": 1795839762.2181,
+      "end": 1795839764.8846,
+      "phase": "final build"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-QA-078728F0",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2333,
+      "stock": 33,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "204c9a2730354bdab3b3014069d77d0f",
+      "start": 1795839764.885,
+      "end": 1795839767.5445,
+      "phase": "final build"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-OLD",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2666,
+      "stock": 46,
+      "phase": "final build"
+    },
+    {
+      "step": "final committed records",
+      "revisions": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tSUPERSEDED\tQA-NTRADE-59995db702-R3\n4\tSUPERSEDED\tQA-NTRADE-59995db702-CFINAL\n5\tONLINE\tQA-NTRADE-59995db702-DFINAL",
+      "catalog": "S-OLD\t1\nS-QA-078728F0\t1\nS-QA-0F9D9A87\t1\nS-QB-078728F0\t1",
+      "storeSKU": "S-OLD\tCN\t2666\t46\t0\nS-QA-078728F0\tCN\t2333\t33\t0\nS-QA-0F9D9A87\tCN\t2111\t22\t0\nS-QB-078728F0\tCN\t2555\t45\t0",
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "bcdd78d389834a7aa0cb8dd8dab18087",
+      "start": 1795839767.5448,
+      "end": 1795839769.4335,
+      "phase": "final build"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-QA-0F9D9A87",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2111,
+      "stock": 22,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "35953ecd773544c69499a1a692953c2f",
+      "start": 1795839769.4338,
+      "end": 1795839771.4371,
+      "phase": "final build"
+    },
+    {
+      "step": "HTTP price/qty",
+      "store": "S-QB-078728F0",
+      "goods": "G26112800Q4WB24S9",
+      "sku": "SK261128JSAW1H2A0E",
+      "price": 2555,
+      "stock": 45,
+      "phase": "final build"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_store_category",
+      "groups": 0,
+      "phase": "final build"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_goods_revision",
+      "groups": 0,
+      "phase": "final build"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_catalog_item",
+      "groups": 0,
+      "phase": "final build"
+    },
+    {
+      "step": "duplicate groups",
+      "table": "prd_store_sku",
+      "groups": 0,
+      "phase": "final build"
+    },
+    {
+      "step": "final committed records",
+      "revisions": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tSUPERSEDED\tQA-NTRADE-59995db702-R3\n4\tSUPERSEDED\tQA-NTRADE-59995db702-CFINAL\n5\tONLINE\tQA-NTRADE-59995db702-DFINAL",
+      "catalog": "S-OLD\t1\nS-QA-078728F0\t1\nS-QA-0F9D9A87\t1\nS-QB-078728F0\t1",
+      "storeSKU": "S-OLD\tCN\t2666\t46\t0\nS-QA-078728F0\tCN\t2333\t33\t0\nS-QA-0F9D9A87\tCN\t2111\t22\t0\nS-QB-078728F0\tCN\t2555\t45\t0",
+      "phase": "final build"
+    },
+    {
+      "step": "full result before disposition",
+      "tables": {
+        "prd_store_category": [
+          [
+            "S-OLD",
+            "eaa905292a7a391bb0e04422d1dce886",
+            "CAT210",
+            "1"
+          ],
+          [
+            "S-QA-078728F0",
+            "5f796989eb133d10b92d3417c0bd4705",
+            "CAT210",
+            "1"
+          ],
+          [
+            "S-QA-0F9D9A87",
+            "8835abb9efd53105a019fedc373d1064",
+            "CAT210",
+            "1"
+          ],
+          [
+            "S-QB-078728F0",
+            "182a6d834664381ab84a790948668fc7",
+            "CAT210",
+            "1"
+          ]
+        ],
+        "prd_sku": [
+          [
+            "G26112800Q4WB24S9",
+            "SK261128JSAW1H2A0E",
+            "CN",
+            "1580"
+          ]
+        ],
+        "prd_store_sku": [
+          [
+            "S-OLD",
+            "SK261128JSAW1H2A0E",
+            "CN",
+            "2666",
+            "46",
+            "0"
+          ],
+          [
+            "S-QA-078728F0",
+            "SK261128JSAW1H2A0E",
+            "CN",
+            "2333",
+            "33",
+            "0"
+          ],
+          [
+            "S-QA-0F9D9A87",
+            "SK261128JSAW1H2A0E",
+            "CN",
+            "2111",
+            "22",
+            "0"
+          ],
+          [
+            "S-QB-078728F0",
+            "SK261128JSAW1H2A0E",
+            "CN",
+            "2555",
+            "45",
+            "0"
+          ]
+        ],
+        "prd_catalog_item": [
+          [
+            "G26112800Q4WB24S9",
+            "S-OLD",
+            "",
+            "1"
+          ],
+          [
+            "G26112800Q4WB24S9",
+            "S-QA-078728F0",
+            "",
+            "1"
+          ],
+          [
+            "G26112800Q4WB24S9",
+            "S-QA-0F9D9A87",
+            "",
+            "1"
+          ],
+          [
+            "G26112800Q4WB24S9",
+            "S-QB-078728F0",
+            "",
+            "1"
+          ]
+        ],
+        "prd_goods_revision": [
+          [
+            "G26112800Q4WB24S9",
+            "1",
+            "DRAFT",
+            "QA-NTRADE-59995db702"
+          ],
+          [
+            "G26112800Q4WB24S9",
+            "2",
+            "SUPERSEDED",
+            "QA-NTRADE-59995db702-R2"
+          ],
+          [
+            "G26112800Q4WB24S9",
+            "3",
+            "SUPERSEDED",
+            "QA-NTRADE-59995db702-R3"
+          ],
+          [
+            "G26112800Q4WB24S9",
+            "4",
+            "SUPERSEDED",
+            "QA-NTRADE-59995db702-CFINAL"
+          ],
+          [
+            "G26112800Q4WB24S9",
+            "5",
+            "ONLINE",
+            "QA-NTRADE-59995db702-DFINAL"
+          ]
+        ],
+        "prd_goods": [
+          [
+            "G26112800Q4WB24S9",
+            "M-OLD",
+            "S-OLD",
+            "QA-NTRADE-59995db702-DFINAL",
+            "APPROVED",
+            "1"
+          ]
+        ]
+      },
+      "phase": "final build"
+    },
+    {
+      "step": "active unique indexes",
+      "rows": "prd_store_category\tuk_food_1\t0\tcategory_no\nprd_store_sku\tuk_store_sku_market\t0\tstore_no,sku_no,market",
+      "phase": "final build"
+    },
+    {
+      "step": "verified candidate jar",
+      "sha256": "7ba98738f9e976f8f4d0a65f7aeb6613b68f393e06e7b0d917950619089a0219",
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "3fd02a62d0084eb7ad2fe4a25437a360",
+      "start": 1795839784.51,
+      "end": 1795839784.9053,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/toggle",
+      "http": 200,
+      "code": 0,
+      "rid": "85ebd05a518843049152a0bca3ac1a1f",
+      "start": 1795839785.7523,
+      "end": 1795839788.9953,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/toggle",
+      "http": 200,
+      "code": 0,
+      "rid": "91259a9967b6415abb04253cab82f92a",
+      "start": 1795839789.8331,
+      "end": 1795839793.1475,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/toggle",
+      "http": 200,
+      "code": 0,
+      "rid": "7da458e46cc14151bbd9e99a63d2c669",
+      "start": 1795839793.9294,
+      "end": 1795839797.1394,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/toggle",
+      "http": 200,
+      "code": 0,
+      "rid": "65fef9c4ef5844368f2ed5bc5a9db56c",
+      "start": 1795839798.0036,
+      "end": 1795839801.2785,
+      "phase": "final build"
+    },
+    {
+      "step": "/biz/goods?status=ON_SALE&keyword=QA-NTRADE-59995db702",
+      "http": 200,
+      "code": 0,
+      "rid": "4c2ad7abc5b042628df5b03d77689750",
+      "start": 1795839803.0444,
+      "end": 1795839803.7259,
+      "phase": "final build"
+    },
+    {
+      "step": "retained offline and old access denied",
+      "goodsNo": "G26112800Q4WB24S9",
+      "skuNo": "SK261128JSAW1H2A0E",
+      "status": "APPROVED\t0\tQA-NTRADE-59995db702-DFINAL",
+      "catalog": "S-OLD\t0\nS-QA-078728F0\t0\nS-QA-0F9D9A87\t0\nS-QB-078728F0\t0",
+      "balances": "S-OLD\tCN\t2666\t46\t0\nS-QA-078728F0\tCN\t2333\t33\t0\nS-QA-0F9D9A87\tCN\t2111\t22\t0\nS-QB-078728F0\tCN\t2555\t45\t0",
+      "reviews": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tSUPERSEDED\tQA-NTRADE-59995db702-R3\n4\tSUPERSEDED\tQA-NTRADE-59995db702-CFINAL\n5\tONLINE\tQA-NTRADE-59995db702-DFINAL",
+      "legacyDenied": 1142,
+      "phase": "final build"
+    },
+    {
+      "step": "credential and process cleanup",
+      "remoteTestAccounts": 0,
+      "localTestAccounts": 0,
+      "localTemporarySchemas": 0,
+      "remainingCredentialFiles": 0,
+      "remainingListeners": 0,
+      "phase": "final build"
+    }
+  ],
+  "postRunSql": {
+    "indexes": {
+      "sql": "SELECT table_name,index_name,non_unique,GROUP_CONCAT(column_name ORDER BY seq_in_index) FROM information_schema.statistics WHERE table_schema=DATABASE() AND (table_name,index_name) IN (('prd_store_sku','uk_store_sku_market'),('prd_store_category','uk_food_1')) GROUP BY table_name,index_name,non_unique ORDER BY table_name",
+      "rows": [
+        [
+          "prd_store_category",
+          "uk_food_1",
+          "0",
+          "category_no"
+        ],
+        [
+          "prd_store_sku",
+          "uk_store_sku_market",
+          "0",
+          "store_no,sku_no,market"
+        ]
+      ]
+    },
+    "duplicateGroupsAllRows": {
+      "sql": "SELECT 'store_sku',COUNT(*) FROM (SELECT 1 FROM prd_store_sku GROUP BY store_no,sku_no,market HAVING COUNT(*)>1) d UNION ALL SELECT 'category',COUNT(*) FROM (SELECT 1 FROM prd_store_category GROUP BY category_no HAVING COUNT(*)>1) d UNION ALL SELECT 'operating_shelf',COUNT(*) FROM (SELECT 1 FROM prd_store_category WHERE store_no<>'' AND COALESCE(catalog_no,'')='' AND platform_category_no<>'' GROUP BY store_no,platform_category_no HAVING COUNT(*)>1) d",
+      "rows": [
+        [
+          "store_sku",
+          "0"
+        ],
+        [
+          "category",
+          "0"
+        ],
+        [
+          "operating_shelf",
+          "0"
+        ]
+      ]
+    },
+    "nullableKeysAllRows": {
+      "sql": "SELECT COUNT(*) FROM prd_store_sku WHERE store_no IS NULL OR sku_no IS NULL OR market IS NULL UNION ALL SELECT COUNT(*) FROM prd_store_category WHERE category_no IS NULL",
+      "rows": [
+        [
+          "0"
+        ],
+        [
+          "0"
+        ]
+      ]
+    },
+    "productAndSku": {
+      "sql": "SELECT g.goods_no,k.sku_no,k.market,COUNT(*) FROM prd_goods g JOIN prd_sku k ON k.entity_no=g.entity_no AND k.goods_no=g.goods_no WHERE g.entity_no='M-OLD' AND g.goods_no='G26112800Q4WB24S9' AND g.deleted=0 AND k.deleted=0 GROUP BY g.goods_no,k.sku_no,k.market",
+      "rows": [
+        [
+          "G26112800Q4WB24S9",
+          "SK261128JSAW1H2A0E",
+          "CN",
+          "1"
+        ]
+      ]
+    },
+    "storeBalances": {
+      "sql": "SELECT g.goods_no,k.sku_no,b.store_no,b.market,b.price,b.sellable_qty,b.locked_qty FROM prd_goods g JOIN prd_sku k ON k.goods_no=g.goods_no AND k.entity_no=g.entity_no JOIN prd_store_sku b ON b.entity_no=k.entity_no AND b.sku_no=k.sku_no AND b.market=k.market WHERE g.entity_no='M-OLD' AND g.goods_no='G26112800Q4WB24S9' AND g.deleted=0 AND k.deleted=0 AND b.deleted=0 ORDER BY b.store_no",
+      "rows": [
+        [
+          "G26112800Q4WB24S9",
+          "SK261128JSAW1H2A0E",
+          "S-OLD",
+          "CN",
+          "2666",
+          "46",
+          "0"
+        ],
+        [
+          "G26112800Q4WB24S9",
+          "SK261128JSAW1H2A0E",
+          "S-QA-078728F0",
+          "CN",
+          "2333",
+          "33",
+          "0"
+        ],
+        [
+          "G26112800Q4WB24S9",
+          "SK261128JSAW1H2A0E",
+          "S-QA-0F9D9A87",
+          "CN",
+          "2111",
+          "22",
+          "0"
+        ],
+        [
+          "G26112800Q4WB24S9",
+          "SK261128JSAW1H2A0E",
+          "S-QB-078728F0",
+          "CN",
+          "2555",
+          "45",
+          "0"
+        ]
+      ]
+    },
+    "listingDisposition": {
+      "sql": "SELECT g.on_sale,i.store_no,i.enabled FROM prd_goods g JOIN prd_catalog_item i ON i.goods_no=g.goods_no AND i.entity_no=g.entity_no WHERE g.goods_no='G26112800Q4WB24S9' AND g.entity_no='M-OLD' AND g.deleted=0 AND i.deleted=0 ORDER BY i.store_no",
+      "rows": [
+        [
+          "0",
+          "S-OLD",
+          "0"
+        ],
+        [
+          "0",
+          "S-QA-078728F0",
+          "0"
+        ],
+        [
+          "0",
+          "S-QA-0F9D9A87",
+          "0"
+        ],
+        [
+          "0",
+          "S-QB-078728F0",
+          "0"
+        ]
+      ]
+    },
+    "revisions": {
+      "sql": "SELECT revision_no,status,COUNT(*) FROM prd_goods_revision WHERE entity_no='M-OLD' AND goods_no='G26112800Q4WB24S9' GROUP BY revision_no,status ORDER BY revision_no",
+      "rows": [
+        [
+          "1",
+          "DRAFT",
+          "1"
+        ],
+        [
+          "2",
+          "SUPERSEDED",
+          "1"
+        ],
+        [
+          "3",
+          "SUPERSEDED",
+          "1"
+        ],
+        [
+          "4",
+          "SUPERSEDED",
+          "1"
+        ],
+        [
+          "5",
+          "ONLINE",
+          "1"
+        ]
+      ]
+    }
+  }
+}

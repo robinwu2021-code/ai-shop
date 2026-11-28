@@ -748,7 +748,7 @@ class ManualServiceAdmissionIT extends CheckoutFlowFixture {
                                 String.class,
                                 o.orderNo()))
                 .containsExactly("PAID".equals(status) ? "CONFIRMED" : "RELEASED");
-        assertThat(jdbc.queryForMap("SELECT stock,locked_stock FROM prd_sku WHERE sku_no=?", sku))
+        assertThat(jdbc.queryForMap("SELECT sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=?", sku))
                 .containsEntry("stock", "PAID".equals(status) ? 99 : 100)
                 .containsEntry("locked_stock", 0);
     }

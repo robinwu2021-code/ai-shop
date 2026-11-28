@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -38,6 +39,9 @@ class StorePriceFlowTest {
 
     @Autowired
     private ObjectMapper json;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -96,6 +100,44 @@ class StorePriceFlowTest {
 
         long amount = buyOnce("19609151006", goodsNo, skuNo, "sp-3");
         assertThat(amount).isEqualTo(1000);
+    }
+
+    @Test
+    void legacyCancelledPriceRowCanBeRepricedAndThenUsedForStock() throws Exception {
+        String biz = merchant("19609151007", "门店定价·历史取消记录");
+        String goodsNo = saveGoods(biz, 1000);
+        approveGoods(goodsNo);
+        String skuNo = firstSku(goodsNo);
+        Long rowId = jdbc.queryForObject("SELECT id FROM prd_store_sku WHERE sku_no=?", Long.class, skuNo);
+
+        // 旧版撤销门店价时会保留占用唯一键的软删行。
+        markLegacyCancelledPrice(rowId);
+        setStorePrice(biz, goodsNo, skuNo, "700");
+        assertThat(storePriceOf(biz, goodsNo, skuNo)).isEqualTo(700);
+        assertThat(jdbc.queryForObject("SELECT sellable_qty FROM prd_store_sku WHERE id=?", Integer.class, rowId))
+                .isNull();
+
+        markLegacyCancelledPrice(rowId);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/store-stock")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"skuNo\":\"" + skuNo + "\",\"stock\":12}"))
+                .andExpect(jsonPath("$.code").value(0));
+        assertThat(storePriceOf(biz, goodsNo, skuNo)).isNull();
+        assertThat(jdbc.queryForObject("SELECT sellable_qty FROM prd_store_sku WHERE id=? AND deleted=0",
+                Integer.class, rowId)).isEqualTo(12);
+        assertThat(jdbc.queryForObject("SELECT locked_qty FROM prd_store_sku WHERE id=?", Integer.class, rowId))
+                .isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM prd_store_sku WHERE sku_no=?", Integer.class, skuNo))
+                .isOne();
+    }
+
+    private void markLegacyCancelledPrice(long rowId) {
+        assertThat(jdbc.update("""
+                UPDATE prd_store_sku SET deleted=1, price=888, origin_price=999,
+                    sellable_qty=NULL, locked_qty=0
+                WHERE id=?
+                """, rowId)).isOne();
     }
 
     // ---------------------------------------------------------------- helpers

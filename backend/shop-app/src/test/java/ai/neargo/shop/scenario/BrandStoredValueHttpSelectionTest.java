@@ -25,7 +25,8 @@ class BrandStoredValueHttpSelectionTest extends BrandStoredValueRedemptionTest {
   jdbc.update("INSERT INTO mch_brand(tenant_no,brand_no,management_no,name,status,scope_revision,name_key,create_key,create_hash,created_at,updated_at,created_by,updated_by) VALUES('MAIN',?,?,'Test','ACTIVE',0,'Test','K',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,?,?)",f.brand(),m,"a".repeat(64),f.actor(),f.actor());
   jdbc.update("INSERT INTO mch_brand_store_binding(tenant_no,binding_no,brand_no,store_no,status,effective_from,scope_revision,change_no,created_at,updated_at,created_by,updated_by) VALUES('MAIN',?,?,?,'ACTIVE',CURRENT_TIMESTAMP,0,'K',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,?,?)","B"+f.b(),f.brand(),f.b(),f.actor(),f.actor());
   String good=id(),sku=id();jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,store_no,title,type,on_sale,audit_status,fulfillments,tenant_no,created_at,updated_at) VALUES(?,?,?,'Care','SERVICE',1,'APPROVED','[\"STORE_VERIFY\"]','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",good,f.entity(),f.b());
-  jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,created_at,updated_at) VALUES(?,?,?,'CN',5000,0,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",sku,good,f.entity());
+  jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,tenant_no,created_at,updated_at) VALUES(?,?,?,'CN',5000,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",sku,good,f.entity());
+  SkuBalanceFixture.seed(jdbc, sku, 0, 0);
   var mvc=MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
   String b=tokens.of(Realm.MERCHANT).issue(TokenStore.SessionData.of(LoginUser.merchant(f.actor(),"Owner")));
   String c=tokens.of(Realm.CONSUMER).issue(TokenStore.SessionData.of(LoginUser.consumer(f.user(),"Customer")));

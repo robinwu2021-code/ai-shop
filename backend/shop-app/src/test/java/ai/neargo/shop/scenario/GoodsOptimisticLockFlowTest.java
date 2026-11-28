@@ -1,5 +1,11 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.product.dto.SpuStdVO;
+import ai.neargo.shop.product.entity.PrdGoods;
+import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import ai.neargo.shop.product.service.SpuStdService;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestStoreCategory;
 import org.junit.jupiter.api.AfterEach;
@@ -29,9 +35,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * 不看返回值的话：读到商品 → 别人先改了一笔 → 我的 UPDATE 0 行 → 接口照样回 200，
  * 而我以为写进去的那些（上架、改标题）一个字节都没落库。
  *
- * <p>怎么造出「中途被人改了」：在服务读完商品、还没写回之间，借一个必经的端口回调
- * （上架时的准入判定 / 保存时的门店经营类目）从<b>另一个线程、另一条连接</b>把版本号推进一格 ——
- * 与真实的并发写同形。单独成类，是因为替身会让 Spring 起一个独立的上下文。
+ * <p>保存与上下架必须先锁商品行。用独立连接 NOWAIT 测试持锁，再在持锁事务内推进版本号，
+ * 验证下游乐观更新仍能识别过期快照并回滚。
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -42,6 +47,8 @@ class GoodsOptimisticLockFlowTest {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired
+    private GoodsMapper goods;
+    @Autowired
     private WebApplicationContext context;
     @Autowired
     private ObjectMapper json;
@@ -50,6 +57,8 @@ class GoodsOptimisticLockFlowTest {
     private ai.neargo.shop.spi.user.AdmissionPort admissionPort;
     @MockitoSpyBean
     private ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort;
+    @MockitoSpyBean
+    private SpuStdService standards;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -60,13 +69,27 @@ class GoodsOptimisticLockFlowTest {
 
     @AfterEach
     void reset() {
-        Mockito.reset(admissionPort, storeCategoryPort);
+        Mockito.reset(admissionPort, storeCategoryPort, standards);
     }
 
-    /** 另起一条连接把这件商品的版本号推进一格 —— 「别人先改了一笔」 */
-    private void bumpConcurrently(String goodsNo) {
-        CompletableFuture.runAsync(() ->
-                jdbc.update("update prd_goods set version = version + 1 where goods_no=?", goodsNo)).join();
+    private void assertGoodsLocked(String goodsNo) {
+        int vendorCode = CompletableFuture.supplyAsync(() -> {
+            try {
+                jdbc.queryForObject("SELECT id FROM prd_goods WHERE goods_no=? FOR UPDATE NOWAIT",
+                        Long.class, goodsNo);
+                return 0;
+            } catch (org.springframework.dao.DataAccessException ex) {
+                if (ex.getCause() instanceof java.sql.SQLException sql) return sql.getErrorCode();
+                throw ex;
+            }
+        }).join();
+        assertThat(vendorCode).as("H2 另一连接应在商品行上遇到锁冲突").isEqualTo(50200);
+    }
+
+    private void invalidateLoadedVersion(String goodsNo) {
+        int changed = DataScopeContext.executeWithoutScope(() -> goods.update(null, Wrappers.<PrdGoods>lambdaUpdate()
+                .eq(PrdGoods::getGoodsNo, goodsNo).setSql("version=version+1")));
+        assertThat(changed).isOne();
     }
 
     @Test
@@ -76,7 +99,8 @@ class GoodsOptimisticLockFlowTest {
         String goodsNo = createGoods(biz, "乐观锁上架品");
         approve(goodsNo);
         Mockito.doAnswer(inv -> {
-            bumpConcurrently(goodsNo);
+            assertGoodsLocked(goodsNo);
+            invalidateLoadedVersion(goodsNo);
             return inv.callRealMethod();
         }).when(admissionPort).requireListingAllowed(Mockito.anyString(), Mockito.any(), Mockito.anyBoolean());
 
@@ -92,14 +116,21 @@ class GoodsOptimisticLockFlowTest {
     void saveOnStaleVersionConflicts() throws Exception {
         String biz = merchant("13700777802", "乐观锁·保存店");
         String goodsNo = createGoods(biz, "乐观锁保存品");
+        SpuStdVO standard = Mockito.mock(SpuStdVO.class);
+        Mockito.when(standard.categoryNo()).thenReturn("CAT210");
         Mockito.doAnswer(inv -> {
-            bumpConcurrently(goodsNo);
+            assertGoodsLocked(goodsNo);
+            return standard;
+        }).when(standards).find("STD_LOCK_TEST");
+        Mockito.doAnswer(inv -> {
+            invalidateLoadedVersion(goodsNo);
             return inv.callRealMethod();
         }).when(storeCategoryPort).categoryNosOf(Mockito.anyString());
 
-        JsonNode r = postJson(biz, "/biz/goods/save", "{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT210\","
+        JsonNode r = postJson(biz, "/biz/goods/save", "{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT210\",\"stdNo\":\"STD_LOCK_TEST\","
                 + "\"title\":\"乐观锁保存品·改\",\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],\"specGroups\":[],"
                 + "\"skus\":[{\"optionValues\":[],\"price\":1500,\"stock\":10}]}");
+        Mockito.verify(standards).find("STD_LOCK_TEST");
         Mockito.reset(storeCategoryPort);
         assertThat(r.get("code").asInt()).isEqualTo(ai.neargo.shop.common.ErrorCode.CONFLICT.code());
         assertThat(jdbc.queryForObject("select title from prd_goods where goods_no=?", String.class, goodsNo))

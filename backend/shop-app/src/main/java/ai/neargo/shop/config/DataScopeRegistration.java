@@ -44,7 +44,8 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.SELF, "user_no", ScopeDim.MERCHANT, "entity_no"));
 
         // 收藏仅由登录买家自己的收藏服务读写，无跨用户聚合读取。
-        registry.register("prd_goods_favorite", Map.of(ScopeDim.SELF, "user_no"));
+        // 第 3 批起商品收藏并进会员营销库的通用收藏 mbr_favorite（门店收藏同表，同样按 user_no 归属）。
+        registry.register("mbr_favorite", Map.of(ScopeDim.SELF, "user_no"));
 
         // —— 交易：子订单是商家视角的账本，也是 C 端「我的订单」的来源 ——
         // SELF 必须登记，理由见类注释第 2 条。
@@ -250,7 +251,7 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * B 端自己读写走 executeWithoutScope —— B 端会话是 SELF 维度，
          * 接上就是 1=0，商家自己的货架当场全空。归属由 requireMerchantNo + storeNos 保证。
          */
-        registry.register("mch_store_category", Map.of(
+        registry.register("prd_store_category", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*

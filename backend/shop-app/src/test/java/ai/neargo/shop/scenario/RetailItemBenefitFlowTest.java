@@ -92,9 +92,8 @@ class RetailItemBenefitFlowTest {
             row.setMerchantSkuCode(null);
             row.setBarcode(null);
             row.setPrice(1_000L);
-            row.setStock(100);
-            row.setLockedStock(0);
             skuMapper.insert(row);
+            SkuBalanceFixture.seed(jdbc, row.getSkuNo(), 100, 0);
             return null;
         });
     }
@@ -164,7 +163,7 @@ class RetailItemBenefitFlowTest {
     @Test
     void noGiftActuallySentDoesNotConsumeGiftBudget() throws Exception {
         String act = activity(true, 0L, 5_000L);
-        jdbc.update("update prd_sku set stock=2,locked_stock=0 where sku_no=?", sku);
+        jdbc.update("update prd_store_sku set sellable_qty=2,locked_qty=0 where store_no='' and sku_no=?", sku);
         String order = order(List.of(sku), List.of(2));
         assertThat(jdbc.queryForObject("select count(*) from ord_item where order_no=? and is_gift=1",
                 Integer.class, order)).isZero();

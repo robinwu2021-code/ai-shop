@@ -4,7 +4,6 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchStoreCategory;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreCategoryMapper;
 import ai.neargo.shop.spi.user.StoreCategoryPort;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -30,8 +29,7 @@ public class StoreCategoryPortImpl implements StoreCategoryPort {
          * BizContext.requireMerchantNo() + storeNos 完成，不靠这一句。
          */
         return DataScopeContext.executeWithoutScope(() -> mapper.selectList(
-                        Wrappers.<MchStoreCategory>lambdaQuery()
-                                .eq(MchStoreCategory::getStoreNo, storeNo)
+                        MchStoreCategoryMapper.shelves(storeNo)
                                 .eq(MchStoreCategory::getEnabled, true)
                                 .orderByAsc(MchStoreCategory::getSort)))
                 .stream().map(MchStoreCategory::getCategoryNo).toList();
@@ -48,8 +46,7 @@ public class StoreCategoryPortImpl implements StoreCategoryPort {
          * 店铺页的类目行会永远为空，而页面照常渲染，没有任何报错。
          */
         return DataScopeContext.executeWithoutScope(() -> mapper.selectList(
-                        Wrappers.<MchStoreCategory>lambdaQuery()
-                                .eq(MchStoreCategory::getStoreNo, storeNo)
+                        MchStoreCategoryMapper.shelves(storeNo)
                                 .eq(MchStoreCategory::getEnabled, true)
                                 .orderByAsc(MchStoreCategory::getSort)))
                 .stream()

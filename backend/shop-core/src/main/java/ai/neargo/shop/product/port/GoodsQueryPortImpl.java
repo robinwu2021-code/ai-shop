@@ -286,7 +286,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          * 而日志干净。同一个类里 snapshotOfGoods 一直是豁免的，这一条漏了。
          */
         List<PrdSku> skus = DataScopeContext.executeWithoutScope(() ->
-                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                skuMapper.selectWithStock(Wrappers.<PrdSku>lambdaQuery()
                         .in(PrdSku::getSkuNo, skuNos)
                         .eq(PrdSku::getMarket, homeMarket)));
         if (skus.isEmpty()) {

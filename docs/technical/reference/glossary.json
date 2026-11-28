@@ -36517,6 +36517,13 @@
       "package": "ai.neargo.shop.link.entity"
     },
     {
+      "table": "mbr_favorite",
+      "class": "PrdGoodsFavorite",
+      "zh": "商品收藏：买家 × 商品（V343，TDD-C端商品收藏与送达判断）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
       "table": "mbr_guest_registration",
       "class": "MbrGuestRegistration",
       "zh": "Only the member owner persists guest credentials; encrypted fields never form a public customer fact.",
@@ -36891,13 +36898,6 @@
       "table": "mch_store_audit",
       "class": "MchStoreAudit",
       "zh": "店招与公告的人审单。",
-      "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
-    },
-    {
-      "table": "mch_store_category",
-      "class": "MchStoreCategory",
-      "zh": "门店经营类目：这家店打算卖哪几类（TDD-品类约束全链路 §3.1）。",
       "module": "shop-merchant",
       "package": "ai.neargo.shop.merchant.entity"
     },
@@ -38022,13 +38022,6 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
-      "table": "prd_goods_favorite",
-      "class": "PrdGoodsFavorite",
-      "zh": "商品收藏：买家 × 商品（V343，TDD-C端商品收藏与送达判断）。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
       "table": "prd_goods_revision",
       "class": "PrdGoodsRevision",
       "zh": "商品提交历史：一次保存一行快照（TDD-商品编辑页-录入落点与发布历史 §5.1）。",
@@ -38111,6 +38104,13 @@
       "zh": "主体按平台类目设置记不记库存（V345，TDD-商品纳入进销存开关 §3）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prd_store_category",
+      "class": "MchStoreCategory",
+      "zh": "门店经营类目：这家店打算卖哪几类（TDD-品类约束全链路 §3.1）。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
     },
     {
       "table": "prd_store_sku",
@@ -44430,6 +44430,13 @@
         "module": "shop-core"
       },
       {
+        "host": "PrdGoodsFavorite",
+        "name": "TYPE_GOODS",
+        "value": "GOODS",
+        "zh": "收藏对象类型：商品",
+        "module": "shop-core"
+      },
+      {
         "host": "PrdGoodsRevision",
         "name": "DRAFT",
         "value": "DRAFT",
@@ -44756,6 +44763,13 @@
         "name": "ALIGN_COUNT",
         "value": "COUNT",
         "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdTopic",
+        "name": "TYPE_TOPIC",
+        "value": "TOPIC",
+        "zh": "主题专题。",
         "module": "shop-core"
       },
       {
@@ -58353,6 +58367,14 @@
       "module": "shop-base"
     },
     {
+      "host": "WechatMasterSwitch",
+      "name": "KEY",
+      "type": "String",
+      "value": "\"shop.wx.enabled\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
       "host": "WxLogisticsTypes",
       "name": "EXPRESS",
       "type": "int",
@@ -61366,6 +61388,14 @@
       "type": "String",
       "value": "\"\"",
       "zh": "门店级上下架行的目录版本号：空串（门店交易库批次 2-g，原 prd_store_goods 并入 prd_catalog_item）。",
+      "module": "shop-core"
+    },
+    {
+      "host": "PrdStoreSku",
+      "name": "ENTITY_POOL",
+      "type": "String",
+      "value": "\"\"",
+      "zh": "The entity-wide fallback pool has a unique, non-null key even on MySQL.",
       "module": "shop-core"
     },
     {

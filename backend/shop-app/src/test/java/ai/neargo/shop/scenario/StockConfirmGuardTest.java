@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -40,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @ActiveProfiles("test")
 class StockConfirmGuardTest {
+    @Autowired private JdbcTemplate stockJdbc;
 
     private static final AtomicInteger SEQ = new AtomicInteger();
 
@@ -73,17 +75,16 @@ class StockConfirmGuardTest {
         sku.setGoodsNo("G-CG-" + skuNo);
         sku.setEntityNo("E-CG");
         sku.setMarket("CN");
-        sku.setStock(stock);
-        sku.setLockedStock(locked);
         sku.setPrice(100L);
         DataScopeContext.executeWithoutScope(() -> skuMapper.insert(sku));
+        SkuBalanceFixture.seed(stockJdbc, sku.getSkuNo(), stock, locked);
         skus.add(skuNo);
         return skuNo;
     }
 
     private PrdSku load(String skuNo) {
-        return DataScopeContext.executeWithoutScope(() -> skuMapper.selectOne(
-                Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, skuNo)));
+        return DataScopeContext.executeWithoutScope(() -> skuMapper.selectWithStock(
+                Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, skuNo)).getFirst());
     }
 
     private String lock(String skuNo, int qty) {
@@ -167,7 +168,8 @@ class StockConfirmGuardTest {
                 .isInstanceOf(BizException.class)
                 .extracting(e -> ((BizException) e).errorCode()).isEqualTo(ErrorCode.CONFLICT);
         PrdStoreSku after = DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectOne(
-                Wrappers.<PrdStoreSku>lambdaQuery().eq(PrdStoreSku::getSkuNo, skuNo)));
+                Wrappers.<PrdStoreSku>lambdaQuery().eq(PrdStoreSku::getSkuNo, skuNo)
+                        .eq(PrdStoreSku::getStoreNo, "ST-CG")));
         assertThat(after.getSellableQty()).isEqualTo(8);
     }
 }

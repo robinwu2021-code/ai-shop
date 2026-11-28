@@ -12,6 +12,7 @@ import ai.neargo.shop.invbridge.InventoryWritebackService;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStockSyncLog;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StockSyncLogMapper;
 import ai.neargo.shop.product.service.StockSyncService;
 import ai.neargo.shop.support.TestLogin;
@@ -76,6 +77,8 @@ class StockSyncWritebackTest {
     @Autowired
     private SkuMapper skuMapper;
     @Autowired
+    private StoreSkuMapper storeSkus;
+    @Autowired
     private OutboxMapper invOutbox;
     @Autowired
     private SysOutboxMapper sysOutbox;
@@ -135,8 +138,8 @@ class StockSyncWritebackTest {
                 s.token);
         assertThat(sellable(s)).as("手动 6 件：可卖 10 不会被抬，也不会被压（10 ≤ 可用 10）——等于不动").isEqualTo(10);
 
-        // 店主改库存把线上设到 6（主体级那一档直接改 prd_sku）
-        DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(s.skuNo, 6));
+        // 店主把这家店的线上可售量设到 6
+        setMallStock(s, s.skuNo, 6);
         postInbound(s, 5);
         pump();
         assertThat(sellable(s)).as("进货不抬手动额度").isEqualTo(6);
@@ -338,7 +341,7 @@ class StockSyncWritebackTest {
     @DisplayName("★★ 期初对齐「以商城为准」：实存调成商城的数")
     void alignToMallAdjustsOnHand() throws Exception {
         Shop s = shop();
-        DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(s.skuNo, 8));
+        setMallStock(s, s.skuNo, 8);
         JsonNode rows = ok(get("/biz/store/" + s.storeNo + "/stock-alignment"), s.token);
         JsonNode row = rows.get(0);
         assertThat(row.get("mallStock").asInt()).isEqualTo(8);
@@ -356,7 +359,7 @@ class StockSyncWritebackTest {
     @DisplayName("期初对齐先预览，确认结果可查询且重复确认不重复改账")
     void alignmentPreviewConfirmIsDurableAndIdempotent() throws Exception {
         Shop s = shop();
-        DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(s.skuNo, 8));
+        setMallStock(s, s.skuNo, 8);
         JsonNode preview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
                 .content("{\"mode\":\"MALL\"}"), s.token);
         String batchNo = preview.get("batchNo").asString();
@@ -394,7 +397,7 @@ class StockSyncWritebackTest {
         Shop s = shop();
         JsonNode preview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
                 .content("{\"mode\":\"MALL\"}"), s.token);
-        DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(s.skuNo, 6));
+        setMallStock(s, s.skuNo, 6);
         String path = "/biz/store/" + s.storeNo + "/stock-alignment/batch/" + preview.get("batchNo").asString();
         JsonNode result = ok(post(path + "/confirm")
                 .content("{\"operationNo\":\"ALIGN-" + preview.get("batchNo").asString()
@@ -416,10 +419,8 @@ class StockSyncWritebackTest {
         String secondSku = DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(
                 Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getGoodsNo, secondGoods)).get(0).getSkuNo());
         pump();
-        DataScopeContext.executeWithoutScope(() -> {
-            skuMapper.setStock(s.skuNo, 3);
-            skuMapper.setStock(secondSku, 4);
-        });
+        setMallStock(s, s.skuNo, 3);
+        setMallStock(s, secondSku, 4);
         JsonNode preview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
                 .content("{\"mode\":\"MALL\"}"), s.token);
         assertThat(preview.get("rows").size()).isEqualTo(2);
@@ -529,6 +530,13 @@ class StockSyncWritebackTest {
                 """.formatted(acl.itemIdOfSku(s.skuNo), qty)), s.token).get("no").asString();
         ok(post("/biz/inventory/inbounds/" + no + "/post"), s.token);
         return no;
+    }
+
+    // 只改门店商城库存，保留它和进销存的差额供对齐断言。
+    private void setMallStock(Shop shop, String skuNo, int quantity) {
+        int changed = DataScopeContext.executeWithoutScope(
+                () -> storeSkus.setStock(shop.storeNo, skuNo, quantity));
+        assertThat(changed).isOne();
     }
 
     private int sellable(Shop s) {

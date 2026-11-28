@@ -21,6 +21,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.SpecNormalizer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +50,8 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     private final SpecValueMapper valueMapper;
     /** 类目绑定、类目取值子集、商家覆盖（V213）：本店用哪几个、什么顺序、叫什么 */
     private final SpecUsageMapper usageMapper;
+    @Autowired(required = false)
+    private SplitSpecTemplateReads splitReads;
     private final CategoryService categoryService;
     /** 合并值时要改写 SKU 快照 —— 那是「跨店可比」真正的落点 */
     private final SkuMapper skuMapper;
@@ -275,10 +278,13 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         if (merchantNo == null || merchantNo.isBlank()) {
             return Overrides.EMPTY;
         }
+        if (splitReads != null) {
+            return new Overrides(splitReads.overrides(merchantNo, categoryNo), true);
+        }
         try {
             List<PrdSpecUsage> rows = DataScopeContext.executeWithoutScope(() ->
                     usageMapper.selectList(SpecUsageMapper.overrides(merchantNo, categoryNo)));
-            return rows.isEmpty() ? Overrides.EMPTY : new Overrides(rows);
+            return rows.isEmpty() ? Overrides.EMPTY : new Overrides(rows, false);
         } catch (Exception e) {
             log.warn("[规格覆盖] 读失败，本次按无覆盖处理：merchant={} category={}",
                     merchantNo, categoryNo, e);
@@ -289,14 +295,17 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     /** 覆盖的合并规则集中在这里 —— 散在读侧各处的话，四条规则迟早会各走各的 */
     private static final class Overrides {
 
-        static final Overrides EMPTY = new Overrides(List.of());
+        static final Overrides EMPTY = new Overrides(List.of(), false);
 
         /** dimNo → 维度级覆盖 */
         private final Map<String, PrdSpecUsage> dims = new java.util.HashMap<>();
         /** dimNo + "\u0000" + valueNo → 取值级覆盖 */
         private final Map<String, PrdSpecUsage> values = new java.util.HashMap<>();
 
-        Overrides(List<PrdSpecUsage> rows) {
+        private final boolean valueLabels;
+
+        Overrides(List<PrdSpecUsage> rows, boolean valueLabels) {
+            this.valueLabels = valueLabels;
             for (PrdSpecUsage r : rows) {
                 if (r.dimLevel()) {
                     dims.put(r.getDimNo(), r);
@@ -352,7 +361,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 if (r != null && !r.enabled()) {
                     continue;
                 }
-                out.add(o);
+                out.add(overrideLabel(o, r));
                 have.add(code);
             }
             // 他挑进来的：类目子集里没有，但平台值池里有
@@ -369,7 +378,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             if (!wanted.isEmpty()) {
                 for (SpecTemplateVO.Option o : wholePool.get()) {
                     if (wanted.contains(o.code() == null ? "" : o.code())) {
-                        out.add(o);
+                        out.add(overrideLabel(o, values.get(dimNo + "\u0000" + o.code())));
                     }
                 }
             }
@@ -379,6 +388,11 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
              */
             out.sort(Comparator.comparingInt(o -> valueSort(dimNo, o.code() == null ? "" : o.code())));
             return out;
+        }
+
+        private SpecTemplateVO.Option overrideLabel(SpecTemplateVO.Option option, PrdSpecUsage usage) {
+            return !valueLabels || usage == null || usage.getLabelOverride() == null || usage.getLabelOverride().isBlank()
+                    ? option : new SpecTemplateVO.Option(option.code(), usage.getLabelOverride());
         }
 
         private int valueSort(String dimNo, String code) {
@@ -488,10 +502,12 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          * 类目级的换名也要认得回来：500g 在蔬菜下显示成「约1斤」，商家提交的就是「约1斤」。
          * 不认的话这一格永远归不了一 —— 而它恰恰是生鲜类目下最常用的那几档。
          */
-        for (PrdSpecUsage cv : DataScopeContext.executeWithoutScope(() ->
+        List<PrdSpecUsage> labelsInUse = splitReads != null ? splitReads.labels(merchantNo, dimNo)
+                : DataScopeContext.executeWithoutScope(() ->
                 usageMapper.selectList(SpecUsageMapper.categoryValues()
                         .eq(PrdSpecUsage::getDimNo, dimNo)
-                        .isNotNull(PrdSpecUsage::getLabelOverride)))) {
+                        .isNotNull(PrdSpecUsage::getLabelOverride)));
+        for (PrdSpecUsage cv : labelsInUse) {
             putValueKey(byLabel, cv.getLabelOverride(), cv.getValueNo());
         }
         /*
@@ -1722,11 +1738,11 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     private List<PrdSpecUsage> activeBindings(String categoryNo) {
-        return DataScopeContext.executeWithoutScope(() ->
-                        usageMapper.selectList(SpecUsageMapper.categoryDims()
+        List<PrdSpecUsage> rows = splitReads != null ? splitReads.bindings(categoryNo)
+                : DataScopeContext.executeWithoutScope(() -> usageMapper.selectList(SpecUsageMapper.categoryDims()
                                 .eq(PrdSpecUsage::getScopeRef, categoryNo)
-                                .eq(PrdSpecUsage::getStatus, PrdSpecUsage.ACTIVE)))
-                .stream()
+                                .eq(PrdSpecUsage::getStatus, PrdSpecUsage.ACTIVE)));
+        return rows.stream()
                 /*
                  * **主维度排第一**，其余按 sort。此前「自动预填哪一条」取决于数据库返回顺序，
                  * 也就是插入顺序 —— 一个不该被依赖的巧合。现在它是一个显式的值。
@@ -1750,10 +1766,10 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
 
     /** 这一类目对每个维度裁的取值子集。没有行 = 不裁，全量可选 */
     private Map<String, List<PrdSpecUsage>> subsetsOf(String categoryNo) {
-        return DataScopeContext.executeWithoutScope(() ->
-                        usageMapper.selectList(SpecUsageMapper.categoryValues()
-                                .eq(PrdSpecUsage::getScopeRef, categoryNo)))
-                .stream()
+        List<PrdSpecUsage> rows = splitReads != null ? splitReads.subset(categoryNo)
+                : DataScopeContext.executeWithoutScope(() -> usageMapper.selectList(SpecUsageMapper.categoryValues()
+                                .eq(PrdSpecUsage::getScopeRef, categoryNo)));
+        return rows.stream()
                 .sorted(Comparator.comparingInt(v -> v.getSort() == null ? 100 : v.getSort()))
                 .collect(Collectors.groupingBy(PrdSpecUsage::getDimNo,
                         LinkedHashMap::new, Collectors.toList()));
@@ -1788,6 +1804,9 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 .collect(Collectors.toMap(PrdSpecValue::getValueNo, v -> v, (a, b) -> a));
         List<SpecTemplateVO.Option> out = new ArrayList<>();
         for (PrdSpecUsage cv : subset) {
+            if (splitReads != null && !cv.enabled()) {
+                continue;
+            }
             PrdSpecValue v = byNo.get(cv.getValueNo());
             if (v == null) {
                 continue;

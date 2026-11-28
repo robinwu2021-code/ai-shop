@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
@@ -51,7 +52,7 @@ class M6aStoreAttributionFlowTest {
     private MchEntityMapper merchantMapper;
 
     @Autowired
-    private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
+    private JdbcTemplate stockJdbc;
 
     /**
      * 把本类要买的 SKU 库存补满。
@@ -66,13 +67,7 @@ class M6aStoreAttributionFlowTest {
     @org.junit.jupiter.api.BeforeEach
     void refillStock() {
         for (String skuNo : java.util.List.of("SK0001", "SK0003", "SK0004", "SK0005")) {
-            var sku = skuMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                    .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
-                    .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, skuNo).last("limit 1"));
-            if (sku != null && sku.getStock() < 50) {
-                sku.setStock(500);
-                skuMapper.updateById(sku);
-            }
+            stockJdbc.update("UPDATE prd_store_sku SET sellable_qty=500 WHERE store_no='' AND sku_no=? AND sellable_qty<50", skuNo);
         }
     }
 

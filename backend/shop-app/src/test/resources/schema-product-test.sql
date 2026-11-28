@@ -1,6 +1,6 @@
 -- 【自动生成，勿手改】由 backend/scripts/gen-product-test-schema.py 生成。
 -- 商品领域的表按新库设计（05-n_trade.sql、07-n_member.sql）建，在 schema-test.sql 之前执行（同名旧表随之跳过）。
--- 过渡列（新设计已去掉、商品代码还在用，迁完对应批次即删）：prd_sku.stock；prd_sku.locked_stock
+-- 过渡列（新设计已去掉、商品代码还在用，迁完对应批次即删）：无
 
 CREATE TABLE IF NOT EXISTS prd_category (
   id bigint NOT NULL AUTO_INCREMENT,
@@ -170,8 +170,6 @@ CREATE TABLE IF NOT EXISTS prd_sku (
   created_by varchar(64) DEFAULT NULL,
   updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_by varchar(64) DEFAULT NULL,
-  stock INT(11) NOT NULL DEFAULT 0,
-  locked_stock INT(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   CONSTRAINT prd_sku__uk_entity_sku_market UNIQUE (entity_no, sku_no, market),
   CONSTRAINT prd_sku__uk_sku_merchant_code UNIQUE (tenant_no, entity_no, merchant_sku_code)
@@ -603,7 +601,8 @@ CREATE TABLE IF NOT EXISTS mbr_favorite (
   created_by varchar(32) DEFAULT NULL,
   updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_by varchar(32) DEFAULT NULL,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  CONSTRAINT mbr_favorite__uk_mbr_favorite_goods UNIQUE (tenant_no, user_no, favorite_type, goods_no)
 );
 
 CREATE TABLE IF NOT EXISTS rvw_review (
@@ -683,4 +682,48 @@ CREATE TABLE IF NOT EXISTS rvw_appeal (
   PRIMARY KEY (id),
   CONSTRAINT rvw_appeal__uk_appeal_no UNIQUE (appeal_no),
   CONSTRAINT rvw_appeal__uk_review UNIQUE (review_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_topic (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(32) NOT NULL DEFAULT 'MAIN',
+  topic_no varchar(64) NOT NULL,
+  topic_type varchar(16) NOT NULL DEFAULT 'TOPIC',
+  rank_kind varchar(16) DEFAULT NULL,
+  capacity int DEFAULT NULL,
+  title varchar(64) NOT NULL,
+  subtitle varchar(128) DEFAULT NULL,
+  cover varchar(512) DEFAULT NULL,
+  community_nos text NULL,
+  sort int NOT NULL DEFAULT 0,
+  start_at datetime(3) DEFAULT NULL,
+  end_at datetime(3) DEFAULT NULL,
+  enabled tinyint NOT NULL DEFAULT 1,
+  status varchar(16) NOT NULL DEFAULT 'ACTIVE',
+  deleted tinyint NOT NULL DEFAULT 0,
+  version bigint NOT NULL DEFAULT 0,
+  created_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  created_by varchar(64) DEFAULT NULL,
+  updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT prd_topic__uk_prd_topic_no UNIQUE (topic_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_topic_goods (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(32) NOT NULL DEFAULT 'MAIN',
+  topic_no varchar(64) NOT NULL,
+  goods_no varchar(64) NOT NULL,
+  sku_no varchar(64) NOT NULL DEFAULT '',
+  entity_no varchar(64) NOT NULL,
+  sort int NOT NULL DEFAULT 0,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version bigint NOT NULL DEFAULT 0,
+  created_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  created_by varchar(64) DEFAULT NULL,
+  updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT prd_topic_goods__uk_prd_topic_goods UNIQUE (topic_no, goods_no, sku_no)
 );

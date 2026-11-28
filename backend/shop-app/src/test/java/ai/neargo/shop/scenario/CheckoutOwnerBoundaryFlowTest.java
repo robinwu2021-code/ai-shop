@@ -169,7 +169,7 @@ class CheckoutOwnerBoundaryFlowTest extends CheckoutFlowFixture {
         assertThat(count("ord_create_intent")).isEqualTo(intents);
         assertThat(
                         jdbc.queryForObject(
-                                "SELECT locked_stock FROM prd_sku WHERE sku_no=?",
+                                "SELECT locked_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?",
                                 Integer.class,
                                 sku))
                 .isZero();

@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.shop.event.OutboxDispatcher;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
@@ -61,6 +62,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "shop.inventory.datasource.url=jdbc:h2:mem:inv_dual;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
 })
 class InventoryDualWriteTest {
+    @Autowired private JdbcTemplate stockJdbc;
 
     private static final AtomicInteger SEQ = new AtomicInteger();
 
@@ -382,10 +384,9 @@ class InventoryDualWriteTest {
         sku.setGoodsNo("G-UNPROJ-" + seq);
         sku.setEntityNo("E-UNPROJ-" + seq);
         sku.setMarket("CN");
-        sku.setStock(qty);
-        sku.setLockedStock(0);
         sku.setPrice(10L);
         skuMapper.insert(sku);
+        SkuBalanceFixture.seed(stockJdbc, sku.getSkuNo(), qty, 0);
         assertThat(acl.ownerOfSku(sku.getSkuNo())).as("前提：进销存里确实没有它").isNull();
         return sku.getSkuNo();
     }
@@ -426,10 +427,9 @@ class InventoryDualWriteTest {
         sku.setGoodsNo("G-DUAL-" + seq);
         sku.setEntityNo(entityNo);
         sku.setMarket("CN");
-        sku.setStock(qty);
-        sku.setLockedStock(0);
         sku.setPrice(4200L);
         skuMapper.insert(sku);
+        SkuBalanceFixture.seed(stockJdbc, sku.getSkuNo(), qty, 0);
 
         /*
          * ② 进销存侧：**走真实的搬运**，不自己入一笔货。

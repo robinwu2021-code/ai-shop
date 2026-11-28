@@ -29,11 +29,10 @@ TRADE_DDL = ROOT / "docs/technical/design/schema/ddl/05-n_trade.sql"
 MEMBER_DDL = ROOT / "docs/technical/design/schema/ddl/07-n_member.sql"
 OLD = ROOT / "backend/shop-app/src/test/resources/schema-test.sql"
 OUT = ROOT / "backend/shop-app/src/test/resources/schema-product-test.sql"
-MEMBER_TABLES = ["rvw_review", "rvw_review_like", "rvw_appeal", "mbr_favorite"]
+MEMBER_TABLES = ["rvw_review", "rvw_review_like", "rvw_appeal", "mbr_favorite", "prd_topic", "prd_topic_goods"]
 
 # 过渡列：同名表里新设计去掉了、商品代码还在用的列。表 -> 列（迁完对应批次就删掉这一项）
 TRANSITIONAL = {
-    "prd_sku": ["stock", "locked_stock"],              # 库存移到 prd_store_sku（第 2 批）
 }
 
 TABLE = re.compile(r"CREATE TABLE `(\w+)` \((.*?)\n\)[^;]*;", re.S)

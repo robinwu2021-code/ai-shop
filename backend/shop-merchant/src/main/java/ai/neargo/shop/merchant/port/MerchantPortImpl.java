@@ -1,6 +1,10 @@
 package ai.neargo.shop.merchant.port;
 
 import ai.neargo.shop.spi.dict.DictionaryPort;
+import ai.neargo.shop.spi.product.MerchantReviewRatingQuery;
+import java.util.Collection;
+import java.util.Map;
+import java.util.LinkedHashMap;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.shop.common.Fulfillments;
@@ -30,6 +34,7 @@ import ai.neargo.shop.spi.reach.ConsumerProfile;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -75,6 +80,10 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      */
 
     private final MerchantStoreCreation commerce;
+    @Value("${shop.modules.member-marketing.datasource:}")
+    private String memberMarketingDataSource;
+    @Autowired
+    private MerchantReviewRatingQuery reviewRatings;
     private final MchEntityMapper merchantMapper;
     private final PayMerchantMirror payMirror;
     private final org.springframework.beans.factory.ObjectProvider<PayMerchantReadSwitch> readSwitch;
@@ -320,6 +329,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         }
         MchEntity m = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .select(MchEntity::getEntityNo, MchEntity::getStatus, MchEntity::getFulfillmentReach)
                         .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
         return m != null && ACTIVE.equals(m.getStatus()) ? m : null;
     }
@@ -540,6 +550,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          */
         var rows = storeMapper.selectList(
                 Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .select(MchStore::getStoreNo, MchStore::getName)
                         .in(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNos));
         java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
         for (var r : rows) {
@@ -558,6 +569,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         // 一次查完（逐个是 N+1），且**不解域** —— 见接口上那段与 defaultStoreNo 的区别
         var rows = storeMapper.selectList(
                 Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .select(MchStore::getEntityNo, MchStore::getStoreNo)
                         .in(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNos)
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true));
         java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
@@ -574,6 +586,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         }
         return Optional.ofNullable(DataScopeContext.executeWithoutScope(() ->
                         storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                                .select(MchStore::getStoreNo)
                                 .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
                                 .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
                                 .last("limit 1"))))
@@ -734,6 +747,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         MchEntity m = merchantNo == null || merchantNo.isBlank() ? null
                 : DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .select(MchEntity::getEntityNo, MchEntity::getFulfillmentReach)
                         .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
         if (m == null) {
             return new SaleScope(false, java.util.List.of(), 0);
@@ -894,6 +908,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         }
         return DataScopeContext.executeWithoutScope(() ->
                         storeMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                                .select(MchStore::getStoreNo)
                                 .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
                                 .orderByAsc(ai.neargo.shop.merchant.entity.MchStore::getId)))
                 .stream().map(ai.neargo.shop.merchant.entity.MchStore::getStoreNo).toList();
@@ -906,6 +921,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         }
         return DataScopeContext.executeWithoutScope(() ->
                         storeMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                                .select(MchStore::getStoreNo)
                                 .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
                                 .eq(ai.neargo.shop.merchant.entity.MchStore::getStatus,
                                         ai.neargo.shop.merchant.entity.MchStore.ACTIVE)
@@ -920,6 +936,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         }
         return DataScopeContext.executeWithoutScope(() ->
                         storeMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                                .select(MchStore::getStoreNo, MchStore::getEntityNo)
                                 .in(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNos)))
                 .stream()
                 .filter(s -> s.getStoreNo() != null && s.getEntityNo() != null)
@@ -1132,48 +1149,40 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public Optional<MerchantBrief> find(String merchantNo) {
-        MchEntity m = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
-        if (m == null) {
+        if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();
         }
-        /*
-         * canReceive 目前等同于 ACTIVE；S6 接分账后改为「接收方已报备」（ADR-002）。
-         * 调用方（trade / settle）届时一行不用改 —— 这正是 Port 的作用：
-         * 「能不能收钱」这个判断的口径变了，问的人不必知道。
-         */
-        boolean active = ACTIVE.equals(m.getStatus());
-        return Optional.of(new MerchantBrief(m.getEntityNo(), m.getName(), active, active,
-                m.getLogo(), m.getRating() == null ? 0d : m.getRating() / (double) RATING_SCALE,
-                m.getRatingCount() == null ? 0 : m.getRatingCount(),
-                Boolean.TRUE.equals(m.getVerified()),
-                m.getBreachCount() == null ? 0 : m.getBreachCount(),
-                Integer.valueOf(1).equals(m.getSelfOperated())));
+        return findAll(List.of(merchantNo)).values().stream().findFirst();
     }
 
     @Override
-    public java.util.Map<String, MerchantBrief> findAll(java.util.Collection<String> merchantNos) {
+    public Map<String, MerchantBrief> findAll(Collection<String> merchantNos) {
         if (merchantNos == null || merchantNos.isEmpty()) {
-            return java.util.Map.of();
+            return Map.of();
         }
-        /*
-         * executeWithoutScope：调用方是 C 端（收藏列表、自提点归属），本来就该看到
-         * 别家的商家名与 logo。不解除数据域的话，这里会按当前登录商家过滤，
-         * C 端用户拿到的永远是空列表 —— 而且不报错。
-         */
-        java.util.List<MchEntity> rows = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
-                        .in(MchEntity::getEntityNo, merchantNos)));
-        java.util.Map<String, MerchantBrief> out = new java.util.LinkedHashMap<>();
+        var query = Wrappers.<MchEntity>lambdaQuery().in(MchEntity::getEntityNo, merchantNos);
+        boolean formalRatings = memberMarketingDataSource != null && !memberMarketingDataSource.isBlank();
+        if (formalRatings) {
+            query.select(MchEntity::getEntityNo, MchEntity::getName, MchEntity::getLogo, MchEntity::getStatus,
+                    MchEntity::getVerified, MchEntity::getBreachCount, MchEntity::getSelfOperated);
+        } else {
+            query.select(MchEntity::getEntityNo, MchEntity::getName, MchEntity::getLogo, MchEntity::getStatus,
+                    MchEntity::getVerified, MchEntity::getBreachCount, MchEntity::getSelfOperated,
+                    MchEntity::getRating, MchEntity::getRatingCount);
+        }
+        var rows = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectList(query));
+        var ratings = formalRatings ? reviewRatings.byMerchant(rows.stream().map(MchEntity::getEntityNo).toList())
+                : Map.<String, MerchantReviewRatingQuery.Summary>of();
+        Map<String, MerchantBrief> out = new LinkedHashMap<>();
         for (MchEntity m : rows) {
+            var summary = ratings.get(m.getEntityNo());
+            int unrated = formalRatings ? RATING_INIT : 0;
+            int rating = summary == null ? Objects.requireNonNullElse(m.getRating(), unrated) : summary.ratingX10();
+            int count = summary == null ? Objects.requireNonNullElse(m.getRatingCount(), 0) : summary.count();
             boolean active = ACTIVE.equals(m.getStatus());
             out.put(m.getEntityNo(), new MerchantBrief(m.getEntityNo(), m.getName(), active, active,
-                    m.getLogo(), m.getRating() == null ? 0d : m.getRating() / (double) RATING_SCALE,
-                    m.getRatingCount() == null ? 0 : m.getRatingCount(),
-                    Boolean.TRUE.equals(m.getVerified()),
-                    m.getBreachCount() == null ? 0 : m.getBreachCount(),
-                    Integer.valueOf(1).equals(m.getSelfOperated())));
+                    m.getLogo(), rating / (double) RATING_SCALE, count, Boolean.TRUE.equals(m.getVerified()),
+                    Objects.requireNonNullElse(m.getBreachCount(), 0), Integer.valueOf(1).equals(m.getSelfOperated())));
         }
         return out;
     }
@@ -1212,6 +1221,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     public String marketOf(String merchantNo) {
         MchEntity m = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .select(MchEntity::getMarket)
                         .eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
         // 查不到给 null，**不兜成 CN**：兜了之后「这家还没建」与「这家在大陆」
         // 在调用方看来一样，而前者该报错、后者该正常出一份大陆的渠道列表
@@ -1223,6 +1233,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     public String legalFormOf(String merchantNo) {
         MchEntity m = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .select(MchEntity::getLegalForm)
                         .eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
         // 查不到给 null，**不回落成某一档**：回落等于替这家认领了一个形态，
         // 而它只有一个用途 —— 取费率。取错的表现是账目静默差几分钱

@@ -70,8 +70,9 @@ class EntitlementServiceUseHttpFlowTest {
         jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,title,type,on_sale,audit_status,fulfillments,tenant_no,"
                 + "created_at,updated_at) VALUES (?,?,'beauty service','SERVICE',1,'APPROVED','[\"STORE_VERIFY\"]',"
                 + "'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", goods, entity);
-        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,created_at,"
-                + "updated_at) VALUES (?,?,?,'CN',1000,0,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sku, goods, entity);
+        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,tenant_no,created_at,"
+                + "updated_at) VALUES (?,?,?,'CN',1000,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sku, goods, entity);
+        SkuBalanceFixture.seed(jdbc, sku, 0, 0);
         String kind = locator ? "STORE_EXCHANGE" : "PAID_CARD";
         var rule = new EntitlementDefinition("30 times", kind, "MERCHANT", "CNY", "SERVICE_UNITS",
                 null, null, null, null, null, "COUNT", 30, null,

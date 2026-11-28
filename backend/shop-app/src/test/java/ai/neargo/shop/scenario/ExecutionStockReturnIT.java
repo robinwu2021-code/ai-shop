@@ -151,13 +151,13 @@ class ExecutionStockReturnIT extends ManualSourceHostFixture {
         var switched = new OriginalStockReturnPortImpl(web.getBean(ManualAdmissionMapper.class), platformStock,
                 absentOwners.getBeanProvider(OriginalMirrorRestore.class),
                 web.getBeanProvider(OriginalInventoryRestoreAdapter.class), platformPrimary, json);
-        var before = jdbc.queryForList("SELECT stock,locked_stock FROM prd_sku WHERE sku_no=?", sku);
+        var before = jdbc.queryForList("SELECT sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=?", sku);
         var events = jdbc.queryForList(
             "SELECT id,event_type,payload FROM sys_outbox WHERE aggregate_id=? ORDER BY id", order);
         assertThatThrownBy(() -> switched.restore("switched-" + sku, order, List.of(new StockPort.SkuQty(sku, 1,
             store))))
                 .isInstanceOf(BizException.class);
-        assertThat(jdbc.queryForList("SELECT stock,locked_stock FROM prd_sku WHERE sku_no=?", sku)).isEqualTo(before);
+        assertThat(jdbc.queryForList("SELECT sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=?", sku)).isEqualTo(before);
         assertThat(jdbc.queryForObject(
             "SELECT COUNT(*) FROM prd_stock_restore r JOIN prd_stock_lock l ON l.id=r.original_lock_id WHERE " +
                 "l.lock_no=?",

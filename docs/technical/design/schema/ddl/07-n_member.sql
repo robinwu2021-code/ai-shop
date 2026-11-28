@@ -322,6 +322,9 @@ CREATE TABLE `mbr_store_view` (
   KEY `uk_store_view_user_store` (`user_no`, `store_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='到店记录：顾客看过、到过哪家店';
 
+-- uk_mbr_favorite_goods：商品领域迁移加（用户 2026-11-28 确认），同一人对同一件商品只收藏一次。
+-- 取消收藏是真删，所以不含 deleted；门店收藏的 goods_no 为空，不受这条约束。
+-- 本文件由 ai-shop-slim 的字段数据生成，重新生成时要带上这一条。
 CREATE TABLE `mbr_favorite` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
   `user_no` varchar(32) DEFAULT NULL COMMENT '收藏人',
@@ -337,7 +340,8 @@ CREATE TABLE `mbr_favorite` (
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间，每次修改自动更新',
   `updated_by` varchar(32) DEFAULT NULL COMMENT '更新人',
   PRIMARY KEY (`id`),
-  KEY `uk_user_store` (`user_no`, `store_no`)
+  KEY `uk_user_store` (`user_no`, `store_no`),
+  UNIQUE KEY `uk_mbr_favorite_goods` (`tenant_no`, `user_no`, `favorite_type`, `goods_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='收藏：商品与门店';
 
 CREATE TABLE `pmt_activity` (
@@ -1355,3 +1359,51 @@ CREATE TABLE `pmt_brand_cost_source` (
   KEY `ix_brand_cost_source_version` (`tenant_no`, `resource_version`),
   UNIQUE KEY `uk_brand_cost_source` (`tenant_no`, `source_type`, `source_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='分摊依据：每一笔要分摊的来源';
+
+-- 专题两张：商品领域迁移第 3 批新建（用户 2026-11-28 确认，放会员营销库）。列按 db-target-fields.json 的定稿，
+-- 公共列照零售库规则（version bigint、时间毫秒、编号二进制比较）。本文件由 ai-shop-slim 的字段数据生成，重新生成时要带上这两张。
+CREATE TABLE `prd_topic` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
+  `tenant_no` varchar(32) COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '租户号',
+  `topic_no` varchar(64) COLLATE utf8mb4_bin NOT NULL COMMENT '专题 / 运营位编号',
+  `topic_type` varchar(16) NOT NULL DEFAULT 'TOPIC' COMMENT '类型：TOPIC 主题专题 / RANKING 榜单 / HOME_FLOOR 首页楼层 / BANNER 轮播 / CHANNEL 频道',
+  `rank_kind` varchar(16) DEFAULT NULL COMMENT 'RANKING：MANUAL 人工挑选 / 其余为按规则计算的榜单类型',
+  `capacity` int DEFAULT NULL COMMENT 'RANKING：榜单容量，人工条目数不能超过它；空表示不限',
+  `title` varchar(64) NOT NULL COMMENT '名称，C 端直接展示',
+  `subtitle` varchar(128) DEFAULT NULL COMMENT '一句话说明，如「7 点前送到」',
+  `cover` varchar(512) DEFAULT NULL COMMENT '封面图',
+  `community_nos` text NULL COMMENT '投放社区编号 JSON 数组，空 = 全部社区',
+  `sort` int NOT NULL DEFAULT 0 COMMENT '同类型内展示顺序，小的在前',
+  `start_at` datetime(3) DEFAULT NULL COMMENT '上线时间，空 = 立即',
+  `end_at` datetime(3) DEFAULT NULL COMMENT '下线时间，空 = 长期',
+  `enabled` tinyint NOT NULL DEFAULT 1 COMMENT '开关；关掉立即下线，不等 end_at',
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE' COMMENT '状态：ACTIVE 使用中 / ARCHIVED 已归档（C 端历史链接仍指向它）',
+  `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 = 正常，1 = 已删除',
+  `version` bigint NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间，每次修改自动更新',
+  `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_prd_topic_no` (`topic_no`),
+  KEY `idx_prd_topic_type_status_sort` (`topic_type`, `status`, `sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='专题与运营位：主题专题、榜单、首页楼层、轮播、频道';
+
+CREATE TABLE `prd_topic_goods` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
+  `tenant_no` varchar(32) COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '租户号',
+  `topic_no` varchar(64) COLLATE utf8mb4_bin NOT NULL COMMENT '专题 / 运营位编号',
+  `goods_no` varchar(64) COLLATE utf8mb4_bin NOT NULL COMMENT '商品号',
+  `sku_no` varchar(64) COLLATE utf8mb4_bin NOT NULL DEFAULT '' COMMENT '规格号，榜单按规格挑选时有值；按商品挑选时为空串（不用 NULL：唯一键里 NULL 互不相等）',
+  `entity_no` varchar(64) COLLATE utf8mb4_bin NOT NULL COMMENT '商品所属主体',
+  `sort` int NOT NULL DEFAULT 0 COMMENT '专题内排序，小的在前',
+  `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 = 正常，1 = 已删除',
+  `version` bigint NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间，每次修改自动更新',
+  `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_prd_topic_goods` (`topic_no`, `goods_no`, `sku_no`),
+  KEY `idx_prd_topic_goods_goods_no` (`goods_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='专题下的商品：有序，按商品或按规格挑选';

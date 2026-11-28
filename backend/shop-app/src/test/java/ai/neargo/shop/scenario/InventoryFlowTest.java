@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
@@ -54,6 +55,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @ActiveProfiles("test")
 class InventoryFlowTest {
+    @Autowired private JdbcTemplate stockJdbc;
 
     private static final AtomicInteger SEQ = new AtomicInteger();
 
@@ -716,10 +718,9 @@ class InventoryFlowTest {
         sku.setGoodsNo(goodsNo);
         sku.setEntityNo("E-TITLE-" + seq);
         sku.setMarket("CN");
-        sku.setStock(12);
-        sku.setLockedStock(0);
         sku.setPrice(3900L);
         skuMapper.insert(sku);
+        SkuBalanceFixture.seed(stockJdbc, sku.getSkuNo(), 12, 0);
 
         try {
             Long cursor = null;
@@ -761,10 +762,9 @@ class InventoryFlowTest {
         sku.setGoodsNo("G-STOREVIEW-" + seq);
         sku.setEntityNo(entityNo);
         sku.setMarket("CN");
-        sku.setStock(60);          // 主体级库存
-        sku.setLockedStock(0);
         sku.setPrice(2500L);
         skuMapper.insert(sku);
+        SkuBalanceFixture.seed(stockJdbc, sku.getSkuNo(), 60, 0);
 
         try {
             String ownerId = acl.ownerIdOf(entityNo);
@@ -815,10 +815,9 @@ class InventoryFlowTest {
         sku.setGoodsNo("G-DRY-" + seq);
         sku.setEntityNo("E-DRY-" + seq);
         sku.setMarket("CN");
-        sku.setStock(7);
-        sku.setLockedStock(0);
         sku.setPrice(1000L);
         skuMapper.insert(sku);
+        SkuBalanceFixture.seed(stockJdbc, sku.getSkuNo(), 7, 0);
 
         try {
             assertThat(acl.itemIdOfSku(skuNo)).as("前提：它还没搬过").isNull();
@@ -950,8 +949,6 @@ class InventoryFlowTest {
         zero.setGoodsNo("G-ZERO-" + seq);
         zero.setEntityNo("E-ZERO-" + seq);
         zero.setMarket("CN");
-        zero.setStock(0);
-        zero.setLockedStock(0);
         zero.setPrice(1000L);
 
         PrdSku held = new PrdSku();
@@ -959,8 +956,6 @@ class InventoryFlowTest {
         held.setGoodsNo("G-HELD-" + seq);
         held.setEntityNo("E-HELD-" + seq);
         held.setMarket("CN");
-        held.setStock(0);
-        held.setLockedStock(3);     // 占着货，进销存侧却不知道
         held.setPrice(1000L);
 
         /*
@@ -974,6 +969,7 @@ class InventoryFlowTest {
 
         int baseline = backfill.diffOnly(5000).pending();
         skuMapper.insert(zero);
+        SkuBalanceFixture.seed(stockJdbc, zero.getSkuNo(), 0, 0);
 
         try {
             /*
@@ -988,6 +984,7 @@ class InventoryFlowTest {
                     .isEqualTo(baseline);
 
             skuMapper.insert(held);
+            SkuBalanceFixture.seed(stockJdbc, held.getSkuNo(), 0, 3);
             InventoryBackfillService.Report r = backfill.diffOnly(5000);
 
             assertThat(r.pending())

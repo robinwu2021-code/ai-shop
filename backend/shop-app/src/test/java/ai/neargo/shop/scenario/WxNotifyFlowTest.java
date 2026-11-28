@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.shop.notify.port.StubWxSubscribeGateway;
 import ai.neargo.shop.support.CashReceiptFixture;
 import ai.neargo.shop.merchant.entity.MchEntity;
@@ -71,7 +72,7 @@ class WxNotifyFlowTest {
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper;
     @Autowired
-    private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
+    private JdbcTemplate stockJdbc;
 
     @BeforeEach
     void drainOutbox() {
@@ -116,13 +117,7 @@ class WxNotifyFlowTest {
 
     @BeforeEach
     void refillStock() {
-        var sku = skuMapper.selectOne(Wrappers
-                .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
-                .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, "SK0003").last("limit 1"));
-        if (sku != null && sku.getStock() < 50) {
-            sku.setStock(500);
-            skuMapper.updateById(sku);
-        }
+        stockJdbc.update("UPDATE prd_store_sku SET sellable_qty=500 WHERE store_no='' AND sku_no=? AND sellable_qty<50", "SK0003");
     }
 
     private MockMvc mvc() {

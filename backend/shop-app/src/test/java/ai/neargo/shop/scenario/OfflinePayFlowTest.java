@@ -256,8 +256,8 @@ class OfflinePayFlowTest {
         second.setId(null);
         second.setSkuNo("SK-" + suffix);
         second.setGoodsNo(goodsNo);
-        second.setLockedStock(0);
         skuMapper.insert(second);
+        SkuBalanceFixture.seed(jdbc, second.getSkuNo(), 100, 0);
         return second;
     }
 

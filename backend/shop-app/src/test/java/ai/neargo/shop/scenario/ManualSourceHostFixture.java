@@ -216,11 +216,12 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
                 entity,
                 store);
         jdbc.update(
-                "INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,"
-                        + "created_at,updated_at) VALUES (?,?,?,'CN',101,100,0,NOW(),NOW())",
+                "INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,"
+                        + "created_at,updated_at) VALUES (?,?,?,'CN',101,NOW(),NOW())",
                 sku,
                 goods,
                 entity);
+        SkuBalanceFixture.seed(jdbc, sku, 100, 0);
         String inventoryOwner = inventoryAcl.ownerIdOf(entity);
         String inventoryItem = inventoryAcl.itemIdOf(entity, sku);
         inventoryCounts.adjustOne(

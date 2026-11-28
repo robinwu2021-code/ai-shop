@@ -98,9 +98,10 @@ final class ManualCounterDiscountFixture {
 
     PrepareCounterReq twoLineRequest(String suffix, CounterCustomerRef customer) {
         String secondSku = "second-" + suffix + '-' + flow.sku;
-        flow.jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,"
-                + "created_at,updated_at) VALUES (?,?,?,'CN',10000,100,0,NOW(),NOW())",
+        flow.jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,"
+                + "created_at,updated_at) VALUES (?,?,?,'CN',10000,NOW(),NOW())",
                 secondSku, flow.goods, flow.entity);
+        SkuBalanceFixture.seed(flow.jdbc, secondSku, 100, 0);
         var catalog = flow.catalogs.read(flow.entity, flow.store, flow.testClock.instant());
         var entries = new ArrayList<>(catalog.definition().entries());
         entries.add(new StoreSalesCatalogPort.Entry(secondSku, null, 1, true,

@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 
 import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
@@ -51,6 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties = {"shop.ai.internal-token=" + AiDataEndpointTest.TOKEN,
         "shop.ai.low-stock-threshold=10"})
 class AiDataEndpointTest {
+    @Autowired private JdbcTemplate stockJdbc;
 
     static final String TOKEN = "ai-test-token-0123456789";
     private static final String BASE = "/internal/ai/v1";
@@ -417,9 +419,8 @@ class AiDataEndpointTest {
         s.setGoodsNo(goodsNo);
         s.setEntityNo(c.merchantNo);
         s.setPrice(priceMinor);
-        s.setStock(stock);
-        s.setLockedStock(0);
         skuMapper.insert(s);
+        SkuBalanceFixture.seed(stockJdbc, s.getSkuNo(), stock, 0);
         return s.getSkuNo();
     }
 

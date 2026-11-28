@@ -1,0 +1,232 @@
+{
+  "target": "n_trade",
+  "goodsNo": "G26112800Q4WB24S9",
+  "skuNo": "SK261128JSAW1H2A0E",
+  "build": "product-fix-package4",
+  "splitSpecTemplateReads": true,
+  "scope": {
+    "fixtureMerchant": "M-OLD",
+    "fixtureStores": [
+      "S-OLD",
+      "S-QA-0F9D9A87"
+    ],
+    "matchingRealMerchantCount": 0,
+    "matchingRealStoreCount": 0,
+    "runtimeLegacyProductReadDeniedWithMySqlError": 1142
+  },
+  "newGoodsSave": {
+    "step": "/biz/goods/save",
+    "http": 200,
+    "code": 0,
+    "rid": "d7361b8cf328444197f640484413f14c"
+  },
+  "newGoodsSubmit": {
+    "step": "/biz/goods/G26112800Q4WB24S9/submit",
+    "http": 200,
+    "code": 0,
+    "rid": "7e27e14b9cd04d27ad7c3d5c3dc5a9d2"
+  },
+  "finalRun": [
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "4baa0e9e60244c79a9175233e6f2d52c"
+    },
+    {
+      "step": "/biz/spec-templates?categoryNo=CAT210&categoryType=STANDARD",
+      "http": 200,
+      "code": 0,
+      "rid": "6a940446d9f8453f9fedf24f02197331"
+    },
+    {
+      "step": "split spec editor",
+      "category": "CAT210",
+      "eligibleTemplates": 0
+    },
+    {
+      "step": "/biz/goods/save",
+      "http": 200,
+      "code": 0,
+      "rid": "073b1a763ab64afa84cd92d8b8e6b7b3"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/publish-preview",
+      "http": 200,
+      "code": 0,
+      "rid": "d86f4908c8b24bba9b028f71c4986392"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/publish",
+      "http": 200,
+      "code": 0,
+      "rid": "332bbe83543f45f98406f63092f1159c"
+    },
+    {
+      "step": "/ops/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "920ae8b606364f60bce493adfb0fece8"
+    },
+    {
+      "step": "/ops/goods/G26112800Q4WB24S9/audit",
+      "http": 200,
+      "code": 0,
+      "rid": "2117b728beca4aaaab1d5274506d4ff4"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "0106501ff7a94ae7bc1802f70843a861"
+    },
+    {
+      "step": "R3 stale stock preserved",
+      "submittedStock": 4,
+      "persistedStock": 13
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "67bfbb13aff947df81ad8a794c56ebef"
+    },
+    {
+      "step": "synthetic merchant stores",
+      "rows": "S-OLD\tACTIVE\nS-QA-0F9D9A87\tACTIVE"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/toggle",
+      "http": 200,
+      "code": 0,
+      "rid": "72f5caf28681414995a0086628eaf4b9"
+    },
+    {
+      "step": "store toggle",
+      "requested": false,
+      "rows": "S-OLD\t0\nS-QA-0F9D9A87\t1"
+    },
+    {
+      "step": "/biz/goods?keyword=QA-NTRADE-59995db702&status=OFF_SALE",
+      "http": 200,
+      "code": 0,
+      "rid": "66a9383c77fc4a1c900dbd5e6e5cfb38"
+    },
+    {
+      "step": "store context list",
+      "goodsNo": "G26112800Q4WB24S9",
+      "storeNo": "S-OLD",
+      "status": "OFF_SALE",
+      "storeOnSale": false
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/toggle",
+      "http": 200,
+      "code": 0,
+      "rid": "0ab82c2fa00142aeae144306e6ac9971"
+    },
+    {
+      "step": "store toggle",
+      "requested": true,
+      "rows": "S-OLD\t1\nS-QA-0F9D9A87\t1"
+    },
+    {
+      "step": "/biz/goods?keyword=QA-NTRADE-59995db702&status=ON_SALE",
+      "http": 200,
+      "code": 0,
+      "rid": "2161957104aa460ca06ca8ec1d6bb3cd"
+    },
+    {
+      "step": "store context list",
+      "goodsNo": "G26112800Q4WB24S9",
+      "storeNo": "S-OLD",
+      "status": "ON_SALE",
+      "storeOnSale": true
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/store-price",
+      "http": 200,
+      "code": 0,
+      "rid": "89ff2997bfcf4d2a94d177d168e8164c"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/store-stock",
+      "http": 200,
+      "code": 0,
+      "rid": "839c282cbefb45c890bc8e08cfc9063a"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9",
+      "http": 200,
+      "code": 0,
+      "rid": "b520a2c392f24494b15147cd3782d288"
+    },
+    {
+      "step": "final readback",
+      "goodsNo": "G26112800Q4WB24S9",
+      "skuNo": "SK261128JSAW1H2A0E",
+      "status": "ON_SALE",
+      "title": "QA-NTRADE-59995db702-R3",
+      "price": 1888,
+      "stock": 17,
+      "exactSQL": "S-OLD\t1888\t17\t0"
+    },
+    {
+      "step": "final revisions",
+      "rows": "1\tDRAFT\tQA-NTRADE-59995db702\n2\tSUPERSEDED\tQA-NTRADE-59995db702-R2\n3\tONLINE\tQA-NTRADE-59995db702-R3"
+    },
+    {
+      "step": "final catalog",
+      "rows": "S-OLD\t1\nS-QA-0F9D9A87\t1"
+    },
+    {
+      "step": "final category",
+      "row": "S-OLD\teaa905292a7a391bb0e04422d1dce886\tCAT210\t1"
+    },
+    {
+      "step": "final runtime",
+      "principalAndDatabase": "prd_qa_0f9d9a87@127.0.0.1\tn_trade",
+      "legacyPrdGoodsMySQL": 1142
+    },
+    {
+      "step": "/biz/auth/login",
+      "http": 200,
+      "code": 0,
+      "rid": "8848e269e46c4b66bc46882f90722826"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/toggle",
+      "http": 200,
+      "code": 0,
+      "rid": "a6cb424e94904e189c5bc1ac4c94780c"
+    },
+    {
+      "step": "/biz/goods/G26112800Q4WB24S9/toggle",
+      "http": 200,
+      "code": 0,
+      "rid": "46fe174c8a18436e9e878cdf3222a5ab"
+    },
+    {
+      "step": "retained trace",
+      "row": "G26112800Q4WB24S9\tAPPROVED\t0\tSK261128JSAW1H2A0E\tS-OLD\t1888\t17\t0",
+      "catalogRows": "S-OLD\t0\nS-QA-0F9D9A87\t0"
+    },
+    {
+      "step": "/biz/goods?keyword=QA-NTRADE-59995db702&status=ON_SALE",
+      "http": 200,
+      "code": 0,
+      "rid": "e30a7cc60b034178be860d94d367fa36"
+    }
+  ],
+  "cleanup": {
+    "remainingRemoteAccounts": 0,
+    "remainingLocalAccounts": 0,
+    "remainingTemporaryLocalSchemas": 0,
+    "remainingCredentialFiles": 0,
+    "listeningPorts": []
+  },
+  "limitations": [
+    "Real spec dimension and value usage tables were empty; the only active merchant template belongs to a different merchant.",
+    "Isolated synthetic common fixture outbox was initially missing. First successful save before it was provisioned logged two outbox insertion failures. Final run showed no application errors."
+  ]
+}

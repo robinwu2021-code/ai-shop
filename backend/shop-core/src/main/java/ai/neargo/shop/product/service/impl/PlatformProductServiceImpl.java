@@ -315,6 +315,7 @@ public class PlatformProductServiceImpl implements PlatformProductService {
                         ai.neargo.shop.product.dto.OpsCategoryVO::name, (a, b) -> a));
 
         List<OpsSkuDetailVO> out = new ArrayList<>();
+        DataScopeContext.executeWithoutScope(() -> skuMapper.withStock(anchors));
         for (PrdSku s : anchors) {
             PrdGoods g = goodsByNo.get(s.getGoodsNo());
             Map<String, String> titleI18n = readMap(g == null ? null : g.getTitleI18n());
