@@ -427,7 +427,13 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   - **接口**：新增 `POST/GET /biz/x/food/devices`（登记、列表）、`POST /biz/x/food/devices/{deviceNo}:status`（停用、恢复，已是目标状态按重放返回）、`PUT /biz/x/food/devices/{deviceNo}/stations`（厨显工位，须是本店工位，按订阅版本比较交换）；停用 `kitchen-subscriptions` 的开通与吊销。事件流参数改为 `deviceNo`；语音领取、回执改为 `/biz/x/food/devices/{deviceNo}/voice:claim|acknowledge`。内部接口同步（`/internal/food/kds/register|status|stations|list|authorize`，语音的 `subscriptionNo` 改名 `deviceNo`）。网关接口清单重新生成（B 端净增 2 个入口）。
   - **核验**：连上来的屏须本店在册、在用；厨显还要设定了工位，叫号屏不需要；其他类型连不上。厨显只收后厨与工位的刷新，叫号屏只收排号的刷新。不再借打印设备的登记，`FoodKdsServiceImpl`、`FoodStationRuntimeServiceImpl` 去掉对打印域的依赖；语音播报指定的厨显也改查设备表。
   - 测试：设备服务测试（登记重放与冲突、工位须属本店与版本、停用即连不上、叫号屏与其他类型）；流测试补叫号屏只收排号；运行状态测试改用设备夹具 `KdsDeviceFixture`。food-core 762 个（跳过 55）、food-web 259 个无失败；本机 MySQL 上新库、运行状态、厨房生命周期测试通过。food-server 本机离线构建缺依赖（food-channel 的外部包，与本次无关），其内部接口已逐行核对。
-- 待做：设备出口 D-6（§2.8，设计稿对齐）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
+- **D-6 设计稿对齐**（§2.8）。沿用本仓库的做法：DDL 不手改，由 `scripts/gen-retail-ddl.py` 在 ai-shop-slim 的基础 DDL 上套用定稿的改动（slim 那边不动）。
+  - 新增 `docs/technical/design/schema/retail-ddl/food-device-tables.sql`（`ind_store_device`、精简后的 `fnb_kds_subscription`、`fnb_kitchen_event` 取自 `V2` 的定稿结构；`fnb_kds_voice_command` 按 `V2` 补注释）。生成器用它取代设计稿的 `fnb_kds_subscription`、`fnb_kds_event`，改 `fnb_station.runtime_status` 的注释（`RUNNING`/`PAUSED`），去掉 `fnb_kds_subscription.subscription_no` 唯一键；并开始产出 `01-n_platform.sql`：基础 DDL 原样，只去掉搬走的 `mch_store_device`。重新生成后行业库 30 张、`--check` 通过。
+  - 库与字段文档：`库/06-行业库.md`、`字段/06-行业库.md`（出品与厨房改为 5 张：厨房事件取代厨显事件、语音指令独立；新增「行业公用·门店设备」一节）、`库/01-平台基础库.md`、`字段/01-平台基础库.md`（门店设备注明已搬走）、`01-清单.md`（表数随之调整）。
+  - `V1__industry_design.sql` 不跟着重生成：它是 P1 开工时的设计稿原样、与 .61 现场一致，改动都在 `V2` 里，部署脚本（P1-5）也按这个差量写。
+  - 顺带：`check-generated-docs` 发现 `旧库调用清单.md` 已与源码对不上（本周合并与本 TDD 的改名、换句柄），重跑 `gen-legacy-db-usage.py` 一并提交。
+- 设备出口 D-1～D-6 全部完成。
+- 待做：JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
 

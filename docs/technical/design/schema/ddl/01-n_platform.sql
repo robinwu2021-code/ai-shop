@@ -1,5 +1,6 @@
 -- 平台基础库 n_platform：建库建表。由字段数据生成，不要手改。
 -- 字段是草案；保留的表带上了原表里列都还在的索引，新建的表只有主键。
+-- 门店设备 mch_store_device 已搬到行业库 ind_store_device（TDD-餐饮域迁移新库 §2.8），由 scripts/gen-retail-ddl.py 从基础 DDL 去掉。
 
 CREATE DATABASE IF NOT EXISTS `n_platform` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 USE `n_platform`;
@@ -214,44 +215,6 @@ CREATE TABLE `mch_store_setting` (
   `updated_by` varchar(32) DEFAULT NULL COMMENT '更新人',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='门店设置：门店级的开关与参数，按设置域分——PIN 策略、自动锁屏、开票时机与列印偏好、会员设置、库存同步模式等，一个门店一个设置域一行';
-
-CREATE TABLE `mch_store_device` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
-  `tenant_no` varchar(32) DEFAULT NULL COMMENT '租户号',
-  `entity_no` varchar(32) DEFAULT NULL COMMENT '设备所属主体号',
-  `store_no` varchar(32) DEFAULT NULL COMMENT '设备所在门店号',
-  `device_no` varchar(32) DEFAULT NULL COMMENT '设备号，门店内唯一',
-  `device_type` varchar(24) DEFAULT NULL COMMENT '设备类型：ORDER_SCREEN 点餐屏 / KDS 厨显 / OFFLINE_POS 离线收银 / POS_TERMINAL 收银终端 / PRINTER 打印机 / PRINT_AGENT 本地打印代理',
-  `display_name` varchar(64) DEFAULT NULL COMMENT '设备显示名，如「前台收银 1 号」',
-  `serial_no` varchar(32) DEFAULT NULL COMMENT '设备硬件序列号或厂商机身号',
-  `platform` varchar(24) DEFAULT NULL COMMENT '运行平台：WINDOWS / ANDROID / LINUX / MACOS，打印代理等软件设备填写',
-  `software_version` varchar(32) DEFAULT NULL COMMENT '设备上运行的软件版本',
-  `capabilities` json NULL COMMENT '设备能力声明（如支持的打印纸宽、指令集），结构随类型不同',
-  `device_config` json NULL COMMENT '设备业务配置（打印机的出单规则、支付终端的绑定参数等），结构随类型不同',
-  `status` varchar(10) DEFAULT NULL COMMENT '设备状态：PAIRING 配对中 / ACTIVE 在用 / SUSPENDED 停用 / REVOKED 已吊销',
-  `generation` bigint DEFAULT NULL COMMENT '设备代数，重新配对或换机时递增，旧代数的凭据与租约随之失效',
-  `credential_hash` varbinary(64) DEFAULT NULL COMMENT '设备访问凭据的哈希，仅配对成功时下发原值',
-  `credential_version` int DEFAULT NULL COMMENT '设备凭据版本，轮换时递增',
-  `enrollment_expires_at` datetime(3) DEFAULT NULL COMMENT '配对码有效期，状态为配对中时有值',
-  `signer_key_no` varchar(32) DEFAULT NULL COMMENT '离线收银签名密钥号，设备本地生成，平台只登记公钥',
-  `signer_public_key` varchar(128) DEFAULT NULL COMMENT '离线收银签名公钥，用于核验离线单据签名',
-  `signer_public_key_hash` char(64) DEFAULT NULL COMMENT '签名公钥摘要，用于按公钥反查设备',
-  `challenge_no` varchar(32) DEFAULT NULL COMMENT '联网后核验挑战号，密钥登记中状态时有值',
-  `challenge_expires_at` datetime(3) DEFAULT NULL COMMENT '核验挑战的过期时间',
-  `write_lease_no` varchar(32) DEFAULT NULL COMMENT '离线写入授权（租约）号，允许设备离线时写单',
-  `write_lease_expires_at` datetime(3) DEFAULT NULL COMMENT '离线写入授权到期时间',
-  `write_accepted_through` bigint DEFAULT NULL COMMENT '已被平台接收的离线单据序号上限，联网补传时据此去重续接',
-  `last_seen_at` datetime(3) DEFAULT NULL COMMENT '最后在线时间',
-  `revoked_at` datetime(3) DEFAULT NULL COMMENT '吊销时间',
-  `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 = 正常，1 = 已删除',
-  `version` int NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `created_by` varchar(32) DEFAULT NULL COMMENT '创建人',
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间，每次修改自动更新',
-  `updated_by` varchar(32) DEFAULT NULL COMMENT '更新人',
-  PRIMARY KEY (`id`),
-  KEY `uk_dining_device` (`entity_no`, `store_no`, `device_no`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='门店设备：点餐屏、厨显、离线收银设备、本地打印代理（门店电脑或安卓设备上装的代打程序）的登记，及其配对状态、密钥、租约、版本与最后在线时间；离线收银设备的签名密钥、写入授权、联网后的核验挑战也记在设备上';
 
 CREATE TABLE `mch_store_code` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',

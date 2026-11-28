@@ -1,5 +1,6 @@
 -- 行业库 n_industry：建库建表（零售域第二段定稿，ADR-068）。由 scripts/gen-retail-ddl.py 生成，不要手改。
--- 基础：ai-shop-slim 字段草案生成的 06-n_industry.sql；加上从交易库移来的 5 张与美业服务执行的 9 张（B3、A6）。
+-- 基础：ai-shop-slim 字段草案生成的 06-n_industry.sql；加上从交易库移来的 5 张与美业服务执行的 9 张（B3、A6）；
+-- 设备出口（TDD-餐饮域迁移新库 §2.8）：门店设备从平台库搬来，厨显订阅精简，厨房事件取代厨显事件。
 
 CREATE DATABASE IF NOT EXISTS `n_industry` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 USE `n_industry`;
@@ -64,7 +65,7 @@ CREATE TABLE `fnb_station` (
   `name` varchar(64) DEFAULT NULL COMMENT '工位名称',
   `station_type` varchar(24) DEFAULT NULL COMMENT '工位类型：HOT 热菜、COLD 凉菜、BAR 吧台、PACK 打荷打包',
   `enabled` tinyint(1) DEFAULT NULL COMMENT '是否启用：1 启用、0 停用',
-  `runtime_status` varchar(10) DEFAULT NULL COMMENT '当前运行状态：OPEN 出品中、PAUSED 暂停接单、CLOSED 已收档',
+  `runtime_status` varchar(10) DEFAULT NULL COMMENT '当前运行状态：RUNNING 出品中、PAUSED 暂停；空即 RUNNING（开停写在工位上，D-2）',
   `published_revision_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '当前生效的工位配置修订号，指向 ind_config_revision',
   `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 = 正常，1 = 已删除',
   `version` bigint NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
@@ -104,61 +105,110 @@ CREATE TABLE `fnb_kitchen_ticket` (
   UNIQUE KEY `uk_food_1` (`ticket_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='出品单：一次下单拆到厨房的一张单，含定时出品';
 
+CREATE TABLE `ind_store_device` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
+  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '租户号',
+  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '设备所属主体号',
+  `store_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '设备所在门店号',
+  `device_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '设备号',
+  `device_type` varchar(16) NOT NULL COMMENT '设备类型：ORDER_SCREEN 点餐屏、KDS 厨显、CALL_SCREEN 叫号屏、OFFLINE_POS 离线收银',
+  `display_name` varchar(64) NOT NULL COMMENT '设备显示名，如「热菜厨显 1 号」',
+  `serial_no` varchar(32) DEFAULT NULL COMMENT '设备硬件序列号或厂商机身号',
+  `platform` varchar(24) DEFAULT NULL COMMENT '运行平台：WINDOWS、ANDROID、LINUX、MACOS',
+  `software_version` varchar(32) DEFAULT NULL COMMENT '设备上运行的软件版本',
+  `status` varchar(10) NOT NULL COMMENT '设备状态：PAIRING 配对中、ACTIVE 在用、SUSPENDED 停用、REVOKED 已吊销',
+  `generation` bigint NOT NULL DEFAULT 0 COMMENT '设备代数，重新配对或换机时递增',
+  `credential_hash` varbinary(64) DEFAULT NULL COMMENT '设备访问凭据的哈希（设备凭据登录时用）',
+  `credential_version` int DEFAULT NULL COMMENT '设备凭据版本，轮换时递增',
+  `enrollment_expires_at` datetime(3) DEFAULT NULL COMMENT '配对码有效期',
+  `signer_key_no` varchar(32) DEFAULT NULL COMMENT '离线收银签名密钥号',
+  `signer_public_key` varchar(128) DEFAULT NULL COMMENT '离线收银签名公钥',
+  `signer_public_key_hash` char(64) DEFAULT NULL COMMENT '签名公钥摘要',
+  `challenge_no` varchar(32) DEFAULT NULL COMMENT '联网后核验挑战号',
+  `challenge_expires_at` datetime(3) DEFAULT NULL COMMENT '核验挑战的过期时间',
+  `write_lease_no` varchar(32) DEFAULT NULL COMMENT '离线写入授权（租约）号',
+  `write_lease_expires_at` datetime(3) DEFAULT NULL COMMENT '离线写入授权到期时间',
+  `write_accepted_through` bigint DEFAULT NULL COMMENT '已被接收的离线单据序号上限',
+  `last_seen_at` datetime(3) DEFAULT NULL COMMENT '最后在线时间',
+  `revoked_at` datetime(3) DEFAULT NULL COMMENT '吊销时间',
+  `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 正常，1 已删除',
+  `version` bigint NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
+  `created_at` datetime(3) NOT NULL COMMENT '创建时间',
+  `created_by` varchar(32) NOT NULL COMMENT '创建人',
+  `updated_at` datetime(3) NOT NULL COMMENT '更新时间',
+  `updated_by` varchar(32) NOT NULL COMMENT '更新人',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_store_device_no` (`device_no`),
+  KEY `ix_store_device_store` (`entity_no`, `store_no`, `device_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='门店设备：点餐屏、厨显、叫号屏、离线收银的登记与状态；屏用店员账号登录，设备在册且在用才能连';
+
 CREATE TABLE `fnb_kds_subscription` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
-  `subscription_no` varchar(32) COLLATE utf8mb4_bin NOT NULL COMMENT '厨显订阅编号',
-  `entity_no` varchar(32) COLLATE utf8mb4_bin NOT NULL COMMENT '所属主体编号',
-  `store_no` varchar(32) COLLATE utf8mb4_bin NOT NULL COMMENT '门店编号',
-  `device_no` varchar(32) COLLATE utf8mb4_bin NOT NULL COMMENT '厨显设备编号，设备身份以平台基础库 mch_store_device 为准',
-  `actor_no` varchar(64) COLLATE utf8mb4_bin NOT NULL COMMENT '该厨显屏登录的操作员编号',
-  `stations` varchar(4000) NOT NULL COMMENT '订阅的工位编号列表',
-  `device_version` bigint NOT NULL COMMENT '订阅时设备配置的版本号',
-  `expires_at` datetime(3) NOT NULL COMMENT '订阅到期时间',
-  `status` varchar(10) NOT NULL COMMENT '状态：ACTIVE 生效、EXPIRED 已过期、REVOKED 已撤销',
-  `requested_by` varchar(32) NOT NULL COMMENT '开通人编号',
-  `revoke_reason` varchar(255) DEFAULT NULL COMMENT '撤销原因',
-  `revoked_by` varchar(32) DEFAULT NULL COMMENT '撤销人编号',
+  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '租户号',
+  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '所属主体编号',
+  `store_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '门店编号',
+  `device_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '厨显设备号，见 ind_store_device',
+  `stations` json NOT NULL COMMENT '这台厨显看的工位编号列表',
   `version` bigint NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
-  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
-  `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',
-  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间，每次修改自动更新',
-  `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+  `created_at` datetime(3) NOT NULL COMMENT '创建时间',
+  `created_by` varchar(32) NOT NULL COMMENT '创建人',
+  `updated_at` datetime(3) NOT NULL COMMENT '更新时间',
+  `updated_by` varchar(32) NOT NULL COMMENT '更新人',
   PRIMARY KEY (`id`),
-  KEY `ix_kds_device` (`entity_no`, `store_no`, `device_no`, `status`),
-  UNIQUE KEY `uk_fnb_kds_subscription_subscription` (`subscription_no`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='厨显订阅：哪台厨显屏看哪些工位';
+  UNIQUE KEY `uk_kds_subscription_device` (`device_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='厨显订阅：哪台厨显看哪些工位';
 
-CREATE TABLE `fnb_kds_event` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
-  `entity_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '所属主体编号',
-  `store_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '门店编号',
-  `sequence_no` bigint DEFAULT NULL COMMENT '门店内单调递增的事件序号，厨显按此顺序拉取',
-  `event_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '事件编号',
-  `station_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '相关工位编号',
-  `event_type` varchar(40) DEFAULT NULL COMMENT '事件类型：START 开始制作、READY 出品就绪、SERVE 上菜、HOLD 叫停、FIRE 起菜、URGE 催菜、VOID 划菜、LOSS 损耗、VOICE 语音指令',
-  `source_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '事件来源单据编号（出品单、制作任务）',
-  `task_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '对应的制作任务编号',
-  `source_version` bigint DEFAULT NULL COMMENT '来源单据在事件发生时的版本',
-  `qty` decimal(18,6) NOT NULL DEFAULT 0 COMMENT '本次涉及数量',
-  `ready_loss_qty` decimal(24,6) NOT NULL DEFAULT 0 COMMENT '损耗时其中已做好的数量（区分备料损耗与成品损耗）',
-  `device_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '语音指令发出的设备编号',
-  `voice_text` varchar(128) DEFAULT NULL COMMENT '语音识别出的原文',
-  `actor_no` varchar(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '操作人编号',
-  `command_status` varchar(10) DEFAULT NULL COMMENT '语音指令处理结果：ACCEPTED 已执行、REJECTED 已拒绝',
-  `response_code` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '语音指令被拒时的原因码',
-  `reason` varchar(255) DEFAULT NULL COMMENT '原因说明（催菜、划菜、损耗原因）',
-  `inventory_doc_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '损耗对应的库存库出库凭据编号',
-  `custody_snapshot` text NULL COMMENT '打包交接时定格的原始行与接收范围',
-  `payload` mediumtext NULL COMMENT '推给厨显的事件内容',
-  `occurred_at` datetime(3) DEFAULT NULL COMMENT '发生时间',
-  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
-  `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',
-  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间，每次修改自动更新',
-  `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+CREATE TABLE `fnb_kitchen_event` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
+  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '租户号',
+  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '所属主体编号',
+  `event_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '事件编号',
+  `task_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '制作任务编号',
+  `event_type` varchar(24) NOT NULL COMMENT '厨房动作：START 开始制作、READY 出品、SERVE 上菜、HOLD 叫停、FIRE 起菜、URGE 催菜、VOID 划菜、LOSS 损耗、HANDOVER 打包交接、MATERIAL_SUPPLEMENT 补料、MATERIAL_WASTE 废料',
+  `qty` decimal(18,6) NOT NULL COMMENT '本次涉及数量',
+  `ready_loss_qty` decimal(24,6) DEFAULT NULL COMMENT '损耗时其中已做好的数量；空为旧数据，整笔按成品损耗',
+  `operation_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '动作防重键',
+  `source_request_hash` varchar(64) DEFAULT NULL COMMENT '来源请求摘要，重放时比对同键异参',
+  `reason` varchar(255) DEFAULT NULL COMMENT '原因（催菜、划菜、损耗）',
+  `inventory_doc_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '损耗对应的库存出库凭据编号',
+  `custody_snapshot` text COMMENT '打包交接时定格的原始行与接收范围',
+  `version` bigint NOT NULL DEFAULT '0' COMMENT '乐观锁版本号',
+  `deleted` int NOT NULL DEFAULT '0' COMMENT '逻辑删除：0 正常，1 已删除',
+  `created_at` datetime(3) NOT NULL COMMENT '创建时间，即动作发生时间',
+  `created_by` varchar(32) NOT NULL COMMENT '操作人',
+  `updated_at` datetime(3) NOT NULL COMMENT '更新时间',
+  `updated_by` varchar(32) NOT NULL COMMENT '更新人',
   PRIMARY KEY (`id`),
-  KEY `ix_kds_station` (`entity_no`, `store_no`, `station_no`, `sequence_no`),
-  UNIQUE KEY `uk_kds_source` (`entity_no`, `store_no`, `event_no`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='厨显事件：催菜、起菜、划菜、语音指令，按门店顺序推给厨显';
+  UNIQUE KEY `uk_kitchen_event_no` (`event_no`),
+  UNIQUE KEY `uk_kitchen_event_operation` (`operation_key`),
+  KEY `ix_kitchen_event_task` (`entity_no`,`task_no`,`id`),
+  KEY `ix_kitchen_event_audit` (`entity_no`,`created_at`,`id`),
+  CONSTRAINT `fnb_kitchen_event_chk_qty` CHECK ((`qty` > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='厨房事件：厨房动作的事实（开始、出品、上菜、叫停、催菜、划菜、损耗、交接），报表、耗料、日结、退货回库都读它';
+
+CREATE TABLE `fnb_kds_voice_command` (
+  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '所属主体编号',
+  `store_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '门店编号',
+  `station_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '工位编号',
+  `command_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '指令编号',
+  `action` varchar(16) NOT NULL COMMENT '动作：PAUSE 暂停、RESUME 恢复、CALL 语音播报',
+  `status` varchar(16) NOT NULL COMMENT '状态：APPLIED 已生效、QUEUED 待播、SENT 已下发、PLAYED 已播、NOT_PLAYED 未播、UNKNOWN 结果不明',
+  `source_version` bigint NOT NULL COMMENT '指令生效后的工位版本号',
+  `reason` varchar(255) NOT NULL COMMENT '原因',
+  `device_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '播报的厨显设备号，见 ind_store_device',
+  `voice_text` varchar(128) NULL COMMENT '播报内容',
+  `requested_by` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '发起人',
+  `request_key` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '请求键（业务键回查）',
+  `request_hash` varchar(64) NOT NULL COMMENT '请求内容摘要，同键异参冲突',
+  `created_at` datetime(3) NOT NULL COMMENT '创建时间',
+  `claim_actor` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '领取播报的店员',
+  `lease_token` varchar(64) NULL COMMENT '领取租约令牌，回执时核对',
+  `lease_until` datetime(3) NULL COMMENT '租约到期时间，过期未回执记为结果不明',
+  `response_code` varchar(64) NULL COMMENT '设备回执码',
+  PRIMARY KEY (`command_no`),
+  UNIQUE KEY `uk_kds_voice_key` (`entity_no`, `store_no`, `requested_by`, `request_key`),
+  KEY `ix_kds_voice_delivery` (`entity_no`, `store_no`, `device_no`, `status`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='厨显语音与开停指令：工位开停、语音播报的下发与回执（屏 → 服务端的输入，不是出口）';
 
 CREATE TABLE `fnb_service_entitlement` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',

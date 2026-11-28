@@ -10,7 +10,9 @@
     docs/technical/零售域-第二段建议方案与表清单.md   A1（D1–D7 统一修法）、A2、A3、A4、A6、B1–B3、C
     docs/technical/零售域-状态短值换值表.md           状态列注释里的取值
 美业服务执行的表取自 docs/technical/design/schema/retail-ddl/beauty-execution-tables.sql。
-产物：docs/technical/design/schema/ddl/05-n_trade.sql、06-n_industry.sql。
+设备出口（TDD-餐饮域迁移新库 §2.8）：门店设备、厨显订阅、厨房事件取自 retail-ddl/food-device-tables.sql，
+取代基础 DDL 的 fnb_kds_subscription、fnb_kds_event；平台库去掉搬走的 mch_store_device。
+产物：docs/technical/design/schema/ddl/01-n_platform.sql、05-n_trade.sql、06-n_industry.sql。
 """
 import re
 import sys
@@ -19,6 +21,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'docs/technical/design/schema/ddl'
 BEAUTY = ROOT / 'docs/technical/design/schema/retail-ddl/beauty-execution-tables.sql'
+FOOD_DEVICE = ROOT / 'docs/technical/design/schema/retail-ddl/food-device-tables.sql'
+# 设备出口（TDD-餐饮域迁移新库 §2.8）：行业库里被取代的表 -> 取代它的表（放在原位置）
+INDUSTRY_REPLACED = {'fnb_kds_subscription': ['ind_store_device', 'fnb_kds_subscription'],
+                     'fnb_kds_event': ['fnb_kitchen_event', 'fnb_kds_voice_command']}
+PLATFORM_MOVED = 'mch_store_device'  # 平台库搬到行业库的表
+COLUMN_COMMENT = {  # 改注释：表 -> 列 -> 新注释
+    'fnb_station': {'runtime_status': '当前运行状态：RUNNING 出品中、PAUSED 暂停；空即 RUNNING（开停写在工位上，D-2）'},
+}
 STATUS = ROOT / 'docs/technical/零售域-状态短值换值表.md'
 
 # ---------- 表的去留（B1、B3、C1） ----------
@@ -103,7 +113,6 @@ ADD_UNIQUE = {
     'ord_item': [('sub_order_no', 'line_no')],
     'prd_catalog_item_sku': [('catalog_item_no', 'sku_no')],
     'prd_fulfillment_requirement': [('requirement_no', 'revision_no')],
-    'fnb_kds_subscription': [('subscription_no',)],
     'ind_commission_rule': [('rule_no', 'version_no')],
 }
 ADD_INDEX = {
@@ -236,6 +245,20 @@ def build(base_dir):
             raise SystemExit('beauty table already in industry: ' + name)
         ind[name] = beauty[name]
     iorder += border
+    # 设备出口：取代的表放在原位置，结构原样保留
+    _, device, _ = parse(FOOD_DEVICE.read_text(encoding='utf-8'))
+    for old, news in INDUSTRY_REPLACED.items():
+        k = iorder.index(old)
+        ind.pop(old)
+        iorder[k:k + 1] = news
+        for n in news:
+            ind[n] = device[n]
+    fixed = border + [n for news in INDUSTRY_REPLACED.values() for n in news]
+    for table, comments in COLUMN_COMMENT.items():
+        for col, text in comments.items():
+            cols = ind[table]['cols']
+            k = next(i for i, c in enumerate(cols) if col_name(c) == col)
+            cols[k] = re.sub(r"COMMENT '[^']*'", "COMMENT '%s'" % text, cols[k])
     ensure_deleted(ind['ind_assignment'])
     # 加列
     for name, cols in ADD_COLUMNS.items():
@@ -253,8 +276,8 @@ def build(base_dir):
     # 列规则与键
     for tables in (trade, ind):
         for name, t in tables.items():
-            if name in border:
-                continue  # 美业执行表取自迁移的实际结构，列与约束原样保留
+            if name in fixed:
+                continue  # 美业执行表、设备出口表取自实际结构，列与约束原样保留
             t['cols'] = [fix_column(name, c, statuses) for c in t['cols']]
             t['keys'] = fix_keys(name, t['keys'], t['cols'])
     header = ('-- 门店交易库 n_trade：建库建表（零售域第二段定稿，ADR-068）。由 scripts/gen-retail-ddl.py 生成，不要手改。\n'
@@ -263,19 +286,29 @@ def build(base_dir):
               'USE `n_trade`;\n')
     trade_sql = header + '\n' + '\n'.join(render(n, trade[n]) for n in torder)
     header = ('-- 行业库 n_industry：建库建表（零售域第二段定稿，ADR-068）。由 scripts/gen-retail-ddl.py 生成，不要手改。\n'
-              '-- 基础：ai-shop-slim 字段草案生成的 06-n_industry.sql；加上从交易库移来的 5 张与美业服务执行的 9 张（B3、A6）。\n\n'
+              '-- 基础：ai-shop-slim 字段草案生成的 06-n_industry.sql；加上从交易库移来的 5 张与美业服务执行的 9 张（B3、A6）；\n'
+              '-- 设备出口（TDD-餐饮域迁移新库 §2.8）：门店设备从平台库搬来，厨显订阅精简，厨房事件取代厨显事件。\n\n'
               'CREATE DATABASE IF NOT EXISTS `n_industry` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;\n'
               'USE `n_industry`;\n')
     ind_sql = header + '\n' + '\n'.join(render(n, ind[n]) for n in iorder)
-    return trade_sql, ind_sql, len(torder), len(iorder)
+    # 平台库：基础 DDL 原样，只去掉搬到行业库的门店设备
+    platform = (base_dir / '01-n_platform.sql').read_text(encoding='utf-8')
+    m = re.search(r'CREATE TABLE `%s` \(.*?\n\)[^;]*;\n\n?' % PLATFORM_MOVED, platform, re.S)
+    if m is None:
+        raise SystemExit('platform: %s not found' % PLATFORM_MOVED)
+    lines = platform[:m.start()].split('\n')
+    lines.insert(2, '-- 门店设备 %s 已搬到行业库 ind_store_device（TDD-餐饮域迁移新库 §2.8），由 scripts/gen-retail-ddl.py 从基础 DDL 去掉。' % PLATFORM_MOVED)
+    platform_sql = '\n'.join(lines) + platform[m.end():]
+    return platform_sql, trade_sql, ind_sql, len(torder), len(iorder)
 
 
 def main():
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
     base = Path(sys.argv[1])
-    trade_sql, ind_sql, nt, ni = build(base)
-    targets = {OUT / '05-n_trade.sql': trade_sql, OUT / '06-n_industry.sql': ind_sql}
+    platform_sql, trade_sql, ind_sql, nt, ni = build(base)
+    targets = {OUT / '01-n_platform.sql': platform_sql, OUT / '05-n_trade.sql': trade_sql,
+               OUT / '06-n_industry.sql': ind_sql}
     if '--check' in sys.argv:
         stale = [str(p) for p, s in targets.items() if not p.exists() or p.read_text(encoding='utf-8') != s]
         if stale:
