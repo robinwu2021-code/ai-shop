@@ -63,7 +63,7 @@ final class HostStoreCreationAuthority
         if (actor.subjectKind()==SubjectKind.OPERATOR) {
             if (expectedUserNo==null) throw BizException.of(ErrorCode.FORBIDDEN);
             JdbcWriteGuard.require(ds,actor.tenantNo());
-            var staff=jdbc.queryForList("SELECT staff_no FROM sys_ops_staff WHERE tenant_no=? AND staff_no=? AND status='ACTIVE' AND deleted=0 FOR SHARE",
+            var staff=jdbc.queryForList("SELECT staff_no FROM ops_staff WHERE tenant_no=? AND staff_no=? AND status='ACTIVE' AND deleted=0 FOR SHARE",
                     String.class,actor.tenantNo(),actor.principalNo());
             var owner=jdbc.queryForList("SELECT user_no FROM usr_account WHERE tenant_no=? AND user_no=? AND status='NORMAL' AND deleted=0 FOR UPDATE",
                     String.class,actor.tenantNo(),expectedUserNo);

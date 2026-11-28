@@ -563,4 +563,49 @@ CREATE TABLE IF NOT EXISTS mch_store_end_grant (
   PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS ops_staff (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(64) NOT NULL DEFAULT 'MAIN',
+  staff_no varchar(64) NOT NULL,
+  username varchar(64) NOT NULL,
+  password varchar(128) NOT NULL,
+  must_change_password tinyint NOT NULL DEFAULT 0,
+  second_factor_exempt tinyint NOT NULL DEFAULT 0,
+  real_name varchar(64) DEFAULT NULL,
+  roles varchar(255) DEFAULT NULL,
+  status varchar(10) NOT NULL DEFAULT 'ACTIVE',
+  merchant_no varchar(64) DEFAULT NULL,
+  community_no varchar(64) DEFAULT NULL,
+  pickup_no varchar(64) DEFAULT NULL,
+  last_login_at bigint DEFAULT NULL,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version int NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by varchar(32) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by varchar(32) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT ops_staff__uk_ops_staff_no UNIQUE (staff_no),
+  CONSTRAINT ops_staff__uk_ops_staff_username UNIQUE (username)
+);
+
+CREATE TABLE IF NOT EXISTS mch_operating_entity (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(64) NOT NULL DEFAULT 'MAIN',
+  operating_entity_no varchar(64) NOT NULL,
+  owner_user_no varchar(64) NOT NULL,
+  name varchar(100) NOT NULL,
+  market varchar(8) NOT NULL,
+  legal_subject_no varchar(64) DEFAULT NULL,
+  status varchar(16) NOT NULL,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version int NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by varchar(64) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT mch_operating_entity__uk_operating_entity_no UNIQUE (tenant_no, operating_entity_no)
+);
+
 CREATE TRIGGER IF NOT EXISTS mch_role_perms_to_points AFTER INSERT, UPDATE, DELETE ON mch_role FOR EACH ROW CALL "ai.neargo.shop.support.RolePermsToPointsTrigger";

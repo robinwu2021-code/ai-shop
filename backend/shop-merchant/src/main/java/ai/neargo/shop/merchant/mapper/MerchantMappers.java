@@ -257,13 +257,6 @@ public final class MerchantMappers {
     public interface MchRoleMapper extends PlatformTableMapper<ai.neargo.shop.merchant.entity.MchRole> {
     }
 
-    /**
-     * 员工与授权的操作日志（B-11.10.3）。**只写不改** ——
-     * 审计记录被更新过就不再是审计记录。
-     */
-    public interface MchStaffLogMapper
-            extends BaseMapper<ai.neargo.shop.merchant.entity.MchStaffLog> {
-    }
 
 
 

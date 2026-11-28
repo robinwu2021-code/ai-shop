@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 运营端数据域**真的生效了**（TDD-运营端数据域接入，批①：{@code ord_sub_order}）。
  *
- * <p><b>此前的状态</b>：{@code sys_ops_staff} 上的 merchant_no / community_no / pickup_no
+ * <p><b>此前的状态</b>：{@code ops_staff} 上的 merchant_no / community_no / pickup_no
  * 存得下、算得出 {@code DataScopeSpec}、也签进了 {@code LoginUser} ——
  * 而每一条 ops 查询都 {@code executeWithoutScope} 主动绕开了它。
  * 于是「给客服配了只看城西片区，他照样看到全平台的单」，

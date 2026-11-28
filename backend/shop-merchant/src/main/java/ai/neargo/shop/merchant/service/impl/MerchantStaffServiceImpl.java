@@ -10,9 +10,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.StaffVO;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStaffLogMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
-import ai.neargo.shop.merchant.entity.MchStaffLog;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -47,7 +45,6 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     private final ai.neargo.shop.auth.TokenStores tokenStores;
     private final MchStoreMapper storeMapper;
     private final StoreRoleGrants roleGrants;
-    private final MchStaffLogMapper logMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper;
     private final StaffAuditLogger audit;
     private final TokenStore tokenStore;
@@ -89,7 +86,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
 
     public MerchantStaffServiceImpl(MchAccountMapper staffMapper,
                                     ai.neargo.shop.auth.TokenStores tokenStores, MchStoreMapper storeMapper,
-                                    StoreRoleGrants roleGrants, MchStaffLogMapper logMapper,
+                                    StoreRoleGrants roleGrants,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper,
                                     StaffAuditLogger audit, TokenStore tokenStore,
                                     OtpStore otpStore) {
@@ -97,7 +94,6 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         this.tokenStores = tokenStores;
         this.storeMapper = storeMapper;
         this.roleGrants = roleGrants;
-        this.logMapper = logMapper;
         this.roleDefMapper = roleDefMapper;
         this.audit = audit;
         this.tokenStore = tokenStore;
@@ -245,7 +241,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
             DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(existing));
             // 对老板来说这就是「把人加回来」，所以记 STAFF_ADD 而不是 ENABLE ——
             // 审计要还原他做了什么，不是还原代码走了哪个分支
-            log(merchantNo, existing.getMchAccountNo(), MchStaffLog.STAFF_ADD,
+            log(merchantNo, existing.getMchAccountNo(), StaffAuditLogger.STAFF_ADD,
                     null, null, "重新启用已存在的员工 " + mask(loginPhone));
             return single(merchantNo, existing);
         }
@@ -260,7 +256,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         a.setStatus(MchAccount.ACTIVE);
         a.setDisplayName(displayName == null || displayName.isBlank() ? null : displayName.trim());
         DataScopeContext.executeWithoutScope(() -> staffMapper.insert(a));
-        log(merchantNo, a.getMchAccountNo(), MchStaffLog.STAFF_ADD,
+        log(merchantNo, a.getMchAccountNo(), StaffAuditLogger.STAFF_ADD,
                 null, null, "新增员工 " + mask(loginPhone));
         return single(merchantNo, a);
     }
@@ -297,7 +293,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
             if (employeeCode != null && existing.getEmployeeCode() == null) {
                 existing.setEmployeeCode(employeeCode);
                 DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(existing));
-                log(merchantNo, existing.getMchAccountNo(), MchStaffLog.STAFF_ADD,
+                log(merchantNo, existing.getMchAccountNo(), StaffAuditLogger.STAFF_ADD,
                         null, null, "分配員工編號 " + employeeCode);
             }
             if (storeNo != null && !MchAccount.ACTIVE.equals(existing.getStatus()))
@@ -321,7 +317,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         account.setStatus(MchAccount.ACTIVE);
         account.setDisplayName(displayName == null || displayName.isBlank() ? null : displayName.trim());
         DataScopeContext.executeWithoutScope(() -> staffMapper.insert(account));
-        log(merchantNo, account.getMchAccountNo(), MchStaffLog.STAFF_ADD, null, null, "新增員工");
+        log(merchantNo, account.getMchAccountNo(), StaffAuditLogger.STAFF_ADD, null, null, "新增員工");
         return storeNo == null ? single(merchantNo, account)
                 : grantStore(merchantNo, account.getMchAccountNo(), storeNo, role, true);
     }
@@ -355,7 +351,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
             kicked(mchAccountNo);
         }
         log(merchantNo, mchAccountNo,
-                active ? MchStaffLog.STAFF_ENABLE : MchStaffLog.STAFF_DISABLE, null, null,
+                active ? StaffAuditLogger.STAFF_ENABLE : StaffAuditLogger.STAFF_DISABLE, null, null,
                 // 停用不删门店授权，日志里点明 —— 否则事后会以为权限已经收回了
                 active ? "启用员工" : "停用员工（门店授权保留）");
         return single(merchantNo, a);
@@ -442,7 +438,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
             if (held) {
                 roleGrants.revoke(storeNo, mchAccountNo, role, actor);
                 // 只有真撤了才记。撤销一个他本来就没有的角色是空操作
-                log(merchantNo, mchAccountNo, MchStaffLog.ROLE_REVOKE, storeNo, role,
+                log(merchantNo, mchAccountNo, StaffAuditLogger.ROLE_REVOKE, storeNo, role,
                         "撤销 " + storeNames(merchantNo).get(storeNo) + " 的 "
                                 + roleName(merchantNo, role));
             }
@@ -451,7 +447,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         // 已经有了就什么都不做 —— 重复授予是幂等的；撤过的同一行重新生效，不长第二行（唯一键）
         if (!held) {
             roleGrants.grant(storeNo, mchAccountNo, role, actor);
-            log(merchantNo, mchAccountNo, MchStaffLog.ROLE_GRANT, storeNo, role,
+            log(merchantNo, mchAccountNo, StaffAuditLogger.ROLE_GRANT, storeNo, role,
                     "授予 " + storeNames(merchantNo).get(storeNo) + " 的 "
                             + roleName(merchantNo, role));
         }
@@ -467,13 +463,8 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
          * 未注册的表不会被自动收窄，漏掉这个条件就是把别家商家的授权记录发出去，
          * 而且不报错。
          */
-        List<MchStaffLog> rows = DataScopeContext.executeWithoutScope(() ->
-                logMapper.selectList(Wrappers.<MchStaffLog>lambdaQuery()
-                        .eq(MchStaffLog::getEntityNo, merchantNo)
-                        .eq(targetAccountNo != null && !targetAccountNo.isBlank(),
-                                MchStaffLog::getTargetAccountNo, targetAccountNo)
-                        .orderByDesc(MchStaffLog::getId)
-                        .last("limit 200")));
+        // 记录在统一审计里，按主体一条流（StaffAuditLogger.target）：读的时候只取本主体，不会串到别家
+        List<StaffAuditLogger.Entry> rows = audit.read(merchantNo, targetAccountNo);
         if (rows.isEmpty()) {
             return List.of();
         }
@@ -511,15 +502,12 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         Map<String, String> storeNames = storeNames(merchantNo);
 
         return rows.stream().map(r -> new ai.neargo.shop.merchant.dto.StaffLogVO(
-                phones.get(r.getActorAccountNo()),
-                phones.get(r.getTargetAccountNo()),
-                r.getAction(),
-                r.getStoreNo() == null ? null
-                        : storeNames.getOrDefault(r.getStoreNo(), r.getStoreNo()),
-                r.getRole(), r.getDetail(),
-                r.getCreatedAt() == null ? 0L
-                        : r.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
-                                .toInstant().toEpochMilli())).toList();
+                r.actor() == null ? null : phones.get(r.actor()),
+                r.targetAccountNo() == null ? null : phones.get(r.targetAccountNo()),
+                r.action(),
+                r.storeNo() == null ? null
+                        : storeNames.getOrDefault(r.storeNo(), r.storeNo()),
+                r.role(), r.detail(), r.at())).toList();
     }
 
     // ------------------------------------------------------------------ 审计（B-11.10.3）
@@ -589,7 +577,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
             DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(a));
         }
         for (MchAccount a : staff) {
-            log(a.getEntityNo(), a.getMchAccountNo(), MchStaffLog.STAFF_PHONE_CHANGE, null, null,
+            log(a.getEntityNo(), a.getMchAccountNo(), StaffAuditLogger.STAFF_PHONE_CHANGE, null, null,
                     "员工更换了登录手机");
         }
     }
@@ -609,7 +597,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
             DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(a));
             kicked(a.getMchAccountNo());
             if (!Boolean.TRUE.equals(a.getIsOwner())) {
-                log(a.getEntityNo(), a.getMchAccountNo(), MchStaffLog.STAFF_DISABLE, null, null, "员工注销了账号");
+                log(a.getEntityNo(), a.getMchAccountNo(), StaffAuditLogger.STAFF_DISABLE, null, null, "员工注销了账号");
             }
         }
         if (!stores.isEmpty()) {

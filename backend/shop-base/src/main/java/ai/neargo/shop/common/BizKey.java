@@ -100,7 +100,7 @@ public final class BizKey {
     public static final String MESSAGE = "MSG";
     public static final String MERCHANT = "M";
     public static final String MERCHANT_APPLY = "MA";
-    /** 平台运营员工（sys_ops_staff）。原为 "ST"，与 STORE 撞，2026-10-09 改 STF（ADR-033） */
+    /** 平台运营员工（ops_staff）。原为 "ST"，与 STORE 撞，2026-10-09 改 STF（ADR-033） */
     public static final String STAFF = "STF";
     public static final String PICKUP_POINT = "PP";
     /** 社区（小区/网格）。运营开的点，或商家提报审过之后建出来的 */

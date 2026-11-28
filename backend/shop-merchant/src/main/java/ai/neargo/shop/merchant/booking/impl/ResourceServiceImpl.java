@@ -16,7 +16,6 @@ import ai.neargo.shop.merchant.dto.ResourceQuery;
 import ai.neargo.shop.merchant.dto.ResourceVO;
 import ai.neargo.shop.merchant.dto.SaveResourceReq;
 import ai.neargo.shop.merchant.booking.entity.MchResource;
-import ai.neargo.shop.merchant.entity.MchStaffLog;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.ResourceService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -43,7 +42,7 @@ public class ResourceServiceImpl implements ResourceService {
     private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources;
     private final MerchantMappers.PersonnelMapper people;
     private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents;
-    private final MerchantMappers.MchStaffLogMapper audit;
+    private final ai.neargo.shop.merchant.service.impl.StaffAuditLogger audit;
     private final RequestIdempotencyPort idempotency;
     private final ObjectMapper json;
     private final DataSource source;
@@ -51,7 +50,7 @@ public class ResourceServiceImpl implements ResourceService {
     private final TransactionTemplate reads;
 
     public ResourceServiceImpl(ResourceOccupationGuard occupations, ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
-            ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents, MerchantMappers.MchStaffLogMapper audit,
+            ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents, ai.neargo.shop.merchant.service.impl.StaffAuditLogger audit,
             RequestIdempotencyPort idempotency, ObjectMapper json, @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         this.occupations = occupations;
@@ -168,16 +167,8 @@ public class ResourceServiceImpl implements ResourceService {
     }
     private void evidence(MchResource row, String actor, String key) {
         String ref = IdempotencyScope.requestHash(key);
-        var log = new MchStaffLog();
-        log.setTenantNo("MAIN");
-        log.setEntityNo(row.getEntityNo());
-        log.setStoreNo(row.getStoreNo());
-        log.setLogNo(BizKey.next("MSL"));
-        log.setActorAccountNo(actor);
-        log.setAction("RESOURCE_SAVED");
-        log.setDetail(json.writeValueAsString(Map.of("resourceNo", row.getResourceNo(), "revision", row.getVersion(),
+        audit.evidence(row.getEntityNo(), row.getStoreNo(), actor, "RESOURCE_SAVED", json.writeValueAsString(Map.of("resourceNo", row.getResourceNo(), "revision", row.getVersion(),
                 "capacity", row.getCapacity(), "status", row.getStatus(), "requestRef", ref)));
-        one(audit.insert(log));
     }
     private ResourceVO view(MchResource row) {
         return new ResourceVO(row.getResourceNo(), row.getResourceType(), row.getStoreNo(), row.getPersonnelNo(),

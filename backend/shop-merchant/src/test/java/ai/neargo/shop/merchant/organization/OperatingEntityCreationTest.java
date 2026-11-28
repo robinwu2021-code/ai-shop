@@ -9,37 +9,31 @@ import ai.neargo.shop.merchant.organization.OperatingEntityModels.*;
 import java.nio.file.*;
 import java.util.UUID;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.*;
 import tools.jackson.databind.ObjectMapper;
 
-@EnabledIfEnvironmentVariable(named="OPERATING_MYSQL_URL", matches=".+")
-class OperatingEntityCreationMySqlTest {
-    JdbcTemplate admin, jdbc;
-    String schema;
+/** 经营主体建在新库结构上（Q8，平台测试建表脚本里的定义），幂等走统一防重（这里用内存实现）。 */
+class OperatingEntityCreationTest {
+    JdbcTemplate jdbc;
     OperatingEntityService service;
     final Actor owner = new Actor("MAIN","USER:U1");
     @BeforeEach void setup() throws Exception {
-        String url=System.getenv("OPERATING_MYSQL_URL");
-        assertTrue(url.startsWith("jdbc:mysql://127.0.0.1:3308/?"));
-        String user=System.getenv("OPERATING_MYSQL_USER"), password=System.getenv("OPERATING_MYSQL_PASSWORD");
-        admin=new JdbcTemplate(new DriverManagerDataSource(url,user,password));
-        schema="operating_create_"+UUID.randomUUID().toString().replace("-","");
-        admin.execute("CREATE DATABASE "+schema+" CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci");
-        var ds=new DriverManagerDataSource(url.replace("/?","/"+schema+"?"),user,password);
+        var ds=new DriverManagerDataSource("jdbc:h2:mem:operating-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1","sa","");
         jdbc=new JdbcTemplate(ds);
         jdbc.execute("CREATE TABLE usr_account(tenant_no varchar(32),user_no varchar(64),market varchar(8),status varchar(16),deleted int,PRIMARY KEY(tenant_no,user_no))");
         jdbc.execute("CREATE TABLE mch_account(tenant_no varchar(32),mch_account_no varchar(64),user_no varchar(64),entity_no varchar(64),is_owner boolean,status varchar(16),deleted int,PRIMARY KEY(tenant_no,mch_account_no))");
         jdbc.execute("CREATE TABLE mch_entity(id bigint auto_increment primary key,tenant_no varchar(32),entity_no varchar(64),name varchar(100),market varchar(8),legal_form varchar(16),version bigint,status varchar(16),verified boolean,deleted int)");
-        String migration=Files.readString(Path.of("../shop-app/src/main/resources/db/migration/V648__operating_entity_create.sql"));
-        for (String sql:migration.replaceAll("(?m)^--.*$","").split(";")) if (!sql.isBlank()) jdbc.execute(sql);
+        var platform=java.util.regex.Pattern.compile("(?s)CREATE TABLE IF NOT EXISTS mch_operating_entity \\(.*?\n\\);")
+                .matcher(Files.readString(Path.of("../shop-app/src/test/resources/schema-platform-test.sql")));
+        assertTrue(platform.find(),"平台测试建表脚本里没有 mch_operating_entity");
+        jdbc.execute(platform.group());
         jdbc.update("INSERT INTO usr_account VALUES ('MAIN','U1','TW','NORMAL',0),('MAIN','U2','TW','NORMAL',0),('OTHER','U1','TW','NORMAL',0)");
         jdbc.update("INSERT INTO mch_account VALUES ('MAIN','MA1','U1','L1',1,'ACTIVE',0),('MAIN','STAFF','U1','L1',0,'ACTIVE',0),('MAIN','MA2','U2','L2',1,'ACTIVE',0),('MAIN','MA3','U1','CN1',1,'ACTIVE',0)");
         jdbc.update("INSERT INTO mch_entity(tenant_no,entity_no,name,market,legal_form,version,status,verified,deleted) VALUES ('MAIN','L1','本人证照','TW','COMPANY',0,'ACTIVE',1,0),('MAIN','L2','别人证照','TW','COMPANY',0,'ACTIVE',1,0),('MAIN','CN1','大陆证照','CN','COMPANY',0,'ACTIVE',1,0)");
-        service=new OperatingEntityServiceImpl(new ManagementRepository(jdbc,new DataSourceTransactionManager(ds),new ObjectMapper(),org.mockito.Mockito.mock(ai.neargo.shop.spi.idempotency.RequestIdempotencyPort.class),org.mockito.Mockito.mock(ai.neargo.shop.spi.platform.AuditLogPort.class)));
+        var journal=new ai.neargo.shop.merchant.brand.InMemoryJournal();
+        service=new OperatingEntityServiceImpl(new ManagementRepository(jdbc,new DataSourceTransactionManager(ds),new ObjectMapper(),journal,journal));
     }
-    @AfterEach void cleanup() { if (schema!=null) admin.execute("DROP DATABASE "+schema); }
     Create draft(String legal) { return new Create("  经营主体  ",Market.TW,legal); }
     void rejects(ErrorCode code,Runnable action) { assertEquals(code,assertThrows(BizException.class,action::run).errorCode()); }
     @Test void requestValidationRejectsBlankNameAndMissingMarket() {

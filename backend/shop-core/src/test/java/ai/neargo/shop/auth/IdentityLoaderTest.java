@@ -63,7 +63,7 @@ class IdentityLoaderTest {
 
     // ── 运营端 ──────────────────────────────────────────────────────────
 
-    /** 账号与它在 sys_role_member 里的角色（TDD-基础能力库对齐 2a：角色不再读 sys_ops_staff.roles） */
+    /** 账号与它在 sys_role_member 里的角色（TDD-基础能力库对齐 2a：角色不再读 ops_staff.roles） */
     private record Stored(SysOpsStaff staff, List<String> roles) {
     }
 

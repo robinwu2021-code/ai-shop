@@ -5,7 +5,7 @@ import java.util.Optional;
 /**
  * 从 {@code user_no} 还原身份。**SPI —— 实现留在各业务模块。**
  *
- * <p>还原身份要读用户表（{@code usr_account} / {@code mch_account} / {@code sys_ops_staff}），
+ * <p>还原身份要读用户表（{@code usr_account} / {@code mch_account} / {@code ops_staff}），
  * 而<b>鉴权基础代码不能依赖业务模块</b>。所以这里只留接口，
  * 与 {@code LivePermResolver} / {@code BizIdentityResolver} 同一手法 —— 那两个已经这么做了。
  *
@@ -16,7 +16,7 @@ import java.util.Optional;
  * <h2>实现约定两条</h2>
  * <ol>
  *   <li><b>只读本端用户表。</b>C 端读 {@code usr_account}、B 端读 {@code mch_account}、
- *       运营端读 {@code sys_ops_staff}。这同时是「将来能拆库」的第三条约束 ——
+ *       运营端读 {@code ops_staff}。这同时是「将来能拆库」的第三条约束 ——
  *       跨端读一次，那条约束就破了，而破的那天没有任何东西会报错。</li>
  *   <li><b>账号不可用时返回 {@link Optional#empty()}</b>（停用、注销、软删）。
  *       调用方会据此 401 —— 这让「停用后立即失效」多了一道保险，

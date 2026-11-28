@@ -58,13 +58,13 @@ class OpsLoginProtectionFlowTest {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         String id = UUID.randomUUID().toString().substring(0, 8);
         user = "lg-" + id + "@neargo.ai";
-        jdbc.update("INSERT INTO sys_ops_staff (staff_no, username, password, real_name, roles, status, created_at, updated_at)"
-                + " SELECT ?, ?, ?, '登录防护', roles, 'ACTIVE', NOW(), NOW() FROM sys_ops_staff WHERE username='admin'",
+        jdbc.update("INSERT INTO ops_staff (staff_no, username, password, real_name, roles, status, created_at, updated_at)"
+                + " SELECT ?, ?, ?, '登录防护', roles, 'ACTIVE', NOW(), NOW() FROM ops_staff WHERE username='admin'",
                 "ST-LG-" + id, user, hasher.encode(RIGHT));
         // 角色在 sys_role_member（TDD-基础能力库对齐 2a）：照 admin 的角色抄一份
         jdbc.update("INSERT INTO sys_role_member (end_code, subject_no, role_code, created_at, updated_at)"
                 + " SELECT 'OPS', ?, role_code, NOW(), NOW() FROM sys_role_member"
-                + " WHERE end_code='OPS' AND deleted=0 AND subject_no=(SELECT staff_no FROM sys_ops_staff WHERE username='admin')",
+                + " WHERE end_code='OPS' AND deleted=0 AND subject_no=(SELECT staff_no FROM ops_staff WHERE username='admin')",
                 "ST-LG-" + id);
     }
 

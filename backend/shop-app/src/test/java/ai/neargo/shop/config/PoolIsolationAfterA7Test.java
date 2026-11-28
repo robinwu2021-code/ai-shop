@@ -48,7 +48,7 @@ class PoolIsolationAfterA7Test {
     }
 
     @Test
-    @DisplayName("★ 运营端只装 sys_ops_staff 的号")
+    @DisplayName("★ 运营端只装 ops_staff 的号")
     void operatorPoolCarriesOnlyStaff() {
         LoginUser ops = LoginUser.operator("ST-ADMIN", "超级管理员", java.util.List.of(), java.util.List.of());
         assertThat(ops.realm()).isEqualTo(Realm.OPERATOR);

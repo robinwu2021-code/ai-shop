@@ -1213,7 +1213,7 @@ public class OpsServiceImpl implements OpsService {
             throw BizException.of(ErrorCode.STAFF_SELF_OPERATION);
         }
         String before = writeList(staffRoles.of(staffNo));
-        // 角色只在 sys_role_member（TDD-基础能力库对齐 2a、Q3）：判权与菜单读同一处，sys_ops_staff.roles 停写
+        // 角色只在 sys_role_member（TDD-基础能力库对齐 2a、Q3）：判权与菜单读同一处，ops_staff.roles 停写
         staffRoles.set(staffNo, List.of(role));
         /*
          * **不再踢会话**（2026-08-13）：角色与数据域已经改成每请求现算

@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * 「这个运营账号**此刻**是什么角色、能看哪些数据」的解析 SPI。
- * 实现方在 shop-core（读 {@code sys_ops_staff} / {@code sys_role_member}），
+ * 实现方在 shop-core（读 {@code ops_staff} / {@code sys_role_member}），
  * shop-base 只留接口 —— 与 {@link LivePermResolver} 同一手法。
  *
  * <h2>为什么它必须存在</h2>

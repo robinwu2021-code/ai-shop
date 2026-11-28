@@ -43,11 +43,11 @@ class OpsApiKeyFlowTest {
     void setUp() throws Exception {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         admin = TestLogin.admin(mvc, json);
-        staffNo = "ST-KEY-" + UUID.randomUUID();
+        staffNo = "STK" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);   // 新库操作人列 32 位
         jdbc.update("""
-                INSERT INTO sys_ops_staff (staff_no, username, password, real_name, roles, status, created_at, updated_at)
+                INSERT INTO ops_staff (staff_no, username, password, real_name, roles, status, created_at, updated_at)
                 SELECT ?, ?, password, 'Key test', '["BD"]', 'ACTIVE', NOW(), NOW()
-                FROM sys_ops_staff WHERE username='admin'
+                FROM ops_staff WHERE username='admin'
                 """, staffNo, staffNo);
         roles("BD");
         keys = "/ops/staffs/" + staffNo + "/api-keys";
@@ -61,7 +61,7 @@ class OpsApiKeyFlowTest {
                 SELECT v.material_digest FROM sec_key_version v JOIN sec_key k ON k.id=v.sec_key_id
                 WHERE v.external_key_id=? AND v.storage_tier='DIGEST' AND v.sec_secret_blob_id IS NULL
                     AND k.namespace='PLATFORM' AND k.owner_type='OPS_STAFF'
-                    AND k.owner_id=(SELECT id FROM sys_ops_staff WHERE staff_no=?)
+                    AND k.owner_id=(SELECT id FROM ops_staff WHERE staff_no=?)
                 """, String.class, keyNo, staffNo)).isEqualTo(TokenHash.of(key));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_ops_api_key", Integer.class))
                 .as("旧表停写").isZero();
@@ -131,7 +131,7 @@ class OpsApiKeyFlowTest {
         String key = issueKey(UUID.randomUUID().toString(), "MANAGE");
         String lock = "/ops/stores/KEY-TEST-MISSING/channels/EXPRESS/lock";
         postAs(lock, key, null).andExpect(jsonPath("$.code").value(10404));
-        jdbc.update("UPDATE sys_ops_staff SET merchant_no='KEY-TEST-BOUND' WHERE staff_no=?", staffNo);
+        jdbc.update("UPDATE ops_staff SET merchant_no='KEY-TEST-BOUND' WHERE staff_no=?", staffNo);
         getAs("/ops/stores?merchantNo=KEY-TEST-OTHER", key)
                 .andExpect(jsonPath("$.data.total").value(0));
         postAs(lock, key, null).andExpect(jsonPath("$.code").value(10403));
@@ -154,7 +154,7 @@ class OpsApiKeyFlowTest {
         getAs("/ops/coupon-issues?couponNo=KEY-TEST-OTHER", session)
                 .andExpect(jsonPath("$.data.total").value(1));
 
-        jdbc.update("UPDATE sys_ops_staff SET merchant_no='KEY-TEST-BOUND' WHERE staff_no=?", staffNo);
+        jdbc.update("UPDATE ops_staff SET merchant_no='KEY-TEST-BOUND' WHERE staff_no=?", staffNo);
         session = TestLogin.operator(mvc, json, staffNo, "admin123");
         getAs("/ops/coupon-issues?couponNo=KEY-TEST-BOUND", session)
                 .andExpect(jsonPath("$.data.total").value(1));
@@ -167,9 +167,9 @@ class OpsApiKeyFlowTest {
 
     @Test
     void initialPasswordBlocksIssueAndChangingPasswordRevokesKeys() throws Exception {
-        jdbc.update("UPDATE sys_ops_staff SET must_change_password=1 WHERE staff_no=?", staffNo);
+        jdbc.update("UPDATE ops_staff SET must_change_password=1 WHERE staff_no=?", staffNo);
         issue(UUID.randomUUID().toString(), "READ_ONLY").andExpect(jsonPath("$.code").value(10403));
-        jdbc.update("UPDATE sys_ops_staff SET must_change_password=0 WHERE staff_no=?", staffNo);
+        jdbc.update("UPDATE ops_staff SET must_change_password=0 WHERE staff_no=?", staffNo);
         String key = issueKey(UUID.randomUUID().toString(), "READ_ONLY");
         String staffToken = TestLogin.operator(mvc, json, staffNo, "admin123");
         postAs("/ops/staffs/me/password", staffToken,
@@ -227,7 +227,7 @@ class OpsApiKeyFlowTest {
                 .andExpect(jsonPath("$.code").value(10400));
         mvc.perform(post(own).contentType(MediaType.APPLICATION_JSON).content(request))
                 .andExpect(status().isUnauthorized());
-        jdbc.update("UPDATE sys_ops_staff SET must_change_password=1 WHERE staff_no=?", staffNo);
+        jdbc.update("UPDATE ops_staff SET must_change_password=1 WHERE staff_no=?", staffNo);
         postAs(own, staffToken, request).andExpect(jsonPath("$.code").value(10403));
     }
 
@@ -256,7 +256,7 @@ class OpsApiKeyFlowTest {
         return mvc.perform(request);
     }
 
-    /** 账号的角色在 sys_role_member（TDD-基础能力库对齐 2a），不再看 sys_ops_staff.roles */
+    /** 账号的角色在 sys_role_member（TDD-基础能力库对齐 2a），不再看 ops_staff.roles */
     private void roles(String... roleCodes) {
         jdbc.update("DELETE FROM sys_role_member WHERE end_code='OPS' AND subject_no=?", staffNo);
         for (String role : roleCodes) {

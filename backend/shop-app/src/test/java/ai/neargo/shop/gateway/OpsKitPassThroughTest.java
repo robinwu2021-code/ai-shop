@@ -130,7 +130,7 @@ class OpsKitPassThroughTest {
     @Test
     void employeeKeyNeverReachesDownstream() throws Exception {
         String key = "oak_" + ("b" + UUID.randomUUID().toString().replace("-", "")).repeat(2).substring(0, 43);
-        long adminId = jdbc.queryForObject("SELECT id FROM sys_ops_staff WHERE username='admin'", Long.class);
+        long adminId = jdbc.queryForObject("SELECT id FROM ops_staff WHERE username='admin'", Long.class);
         credentials.register(new NewCredential(OpsApiKeyStore.owner(adminId), UUID.randomUUID().toString(),
                 "gateway test", "MANAGE", Duration.ofMinutes(1), "admin"), TokenHash.of(key));
         var response = mvc().perform(MockMvcRequestBuilders.post("/ops/opskit/v1/workspaces/ext:PLATFORM/todos/count")

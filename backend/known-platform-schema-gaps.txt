@@ -1,4 +1,3 @@
 # 平台基础库换表的工作清单（PlatformSchemaGapTest）：平台句柄下的实体与新库 n_platform 对不上的地方。
 # 只准变短：做完一项删一行。清空之后平台基础库的实体才能整体绑到新库。
 # 格式：实体 旧表 -> 新表 : 差异
-  SysOpsStaff sys_ops_staff -> ops_staff : 表要改名或并入

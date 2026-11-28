@@ -37,6 +37,6 @@ public enum SubjectKind {
     /** {@code mch_account.mch_account_no} —— 商家账号（含没有 C 端账号的店员）。 */
     MCH,
 
-    /** {@code sys_ops_staff.staff_no} —— 平台运营。 */
+    /** {@code ops_staff.staff_no} —— 平台运营。 */
     OPS
 }

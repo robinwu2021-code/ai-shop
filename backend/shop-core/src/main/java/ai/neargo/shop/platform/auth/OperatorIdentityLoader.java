@@ -21,7 +21,7 @@ import java.util.Optional;
  *
  * <p><b>三样东西全部现算，一样都不从会话里取</b>：
  * <ul>
- *   <li>{@code roles} 读 {@code sys_ops_staff.roles}</li>
+ *   <li>{@code roles} 读 {@code ops_staff.roles}</li>
  *   <li>{@code perms} 由 {@link LivePermResolver} 解析（它自带整表快照缓存，代价是一次 map 查找）</li>
  *   <li>{@code scope} 由 {@link StaffScopes} 从三个归属键翻出来 —— 与登录时用的是**同一份逻辑**</li>
  * </ul>
@@ -61,7 +61,7 @@ public class OperatorIdentityLoader implements IdentityLoader<LoginUser> {
         if (staff == null || !ACTIVE.equals(staff.getStatus())) {
             return Optional.empty();
         }
-        // 角色取自 sys_role_member（TDD-基础能力库对齐 2a），不再读 sys_ops_staff.roles
+        // 角色取自 sys_role_member（TDD-基础能力库对齐 2a），不再读 ops_staff.roles
         List<String> roles = staffRoles.of(staffNo);
         List<String> resolved = strict ? perms.resolveFresh(roles) : perms.resolve(roles);
         if (resolved == null) {

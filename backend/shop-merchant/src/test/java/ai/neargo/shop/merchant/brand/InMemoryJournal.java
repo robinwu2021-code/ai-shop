@@ -14,10 +14,10 @@ import tools.jackson.databind.ObjectMapper;
  * 品牌域测试用的统一防重与统一审计（生产上分别是 sys_idempotent、sys_audit_log）：管理命令的重放与变更历史
  * 原先在 mch_management_command，新库不建（TDD-平台基础库换表 G5、G6）。按 JSON 往返存取，与真实实现同一口径。
  */
-class InMemoryJournal implements RequestIdempotencyPort, AuditLogPort {
+public class InMemoryJournal implements RequestIdempotencyPort, AuditLogPort {
     private final ObjectMapper json = new ObjectMapper();
-    final Map<String, String> completed = new LinkedHashMap<>();
-    final List<Entry> audits = new ArrayList<>();
+    public final Map<String, String> completed = new LinkedHashMap<>();
+    public final List<Entry> audits = new ArrayList<>();
     private final Map<Entry, String> targets = new LinkedHashMap<>();
 
     @Override

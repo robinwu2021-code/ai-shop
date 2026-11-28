@@ -13,7 +13,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("sys_ops_staff")
+@TableName("ops_staff")
 public class SysOpsStaff extends BaseEntity {
 
     private String staffNo;

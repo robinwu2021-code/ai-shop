@@ -419,10 +419,10 @@ class PersonnelMaintenanceIT {
         @Primary
         MerchantStaffService actualStaff(MerchantMappers.MchAccountMapper accounts,
                 MerchantMappers.MchStoreMapper stores, ai.neargo.shop.merchant.service.impl.StoreRoleGrants roles,
-                MerchantMappers.MchStaffLogMapper logs, MerchantMappers.MchRoleMapper definitions,
+                MerchantMappers.MchRoleMapper definitions, StaffAuditLogger staffLog,
                 MemoryTokenStore tokens) {
-            return new MerchantStaffServiceImpl(accounts, TokenStores.single(tokens), stores, roles, logs,
-                    definitions, new StaffAuditLogger(logs), tokens, mock(OtpStore.class));
+            return new MerchantStaffServiceImpl(accounts, TokenStores.single(tokens), stores, roles,
+                    definitions, staffLog, tokens, mock(OtpStore.class));
         }
     }
     @TestConfiguration(proxyBeanMethods = false)

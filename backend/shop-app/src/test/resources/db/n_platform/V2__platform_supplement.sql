@@ -192,3 +192,31 @@ ALTER TABLE `mch_brand` ALTER COLUMN `stored_value_status` SET DEFAULT 'NONE';
 
 -- 入连锁按权益准入（2026-11-28 用户定：不走审批）：绑定记下准入依据。ENTITLEMENT = 门店持有连锁权益 / LEGACY = 旧模型门店照旧放行。
 ALTER TABLE `mch_brand_store_binding` ADD COLUMN `admission_basis` varchar(16) NOT NULL DEFAULT 'LEGACY' COMMENT '入连锁的准入依据：ENTITLEMENT 持有连锁权益 / LEGACY 旧模型门店' AFTER `change_no`;
+
+-- 运营账号（原 sys_ops_staff，只改表名）：补回旧表的默认值。建号、测试种子都不写这几列，靠默认值。
+ALTER TABLE `ops_staff` ALTER COLUMN `tenant_no` SET DEFAULT 'MAIN';
+ALTER TABLE `ops_staff` ALTER COLUMN `status` SET DEFAULT 'ACTIVE';
+ALTER TABLE `ops_staff` ALTER COLUMN `must_change_password` SET DEFAULT 0;
+ALTER TABLE `ops_staff` ALTER COLUMN `second_factor_exempt` SET DEFAULT 0;
+
+-- 经营主体（Q8，2026-11-28 用户定：保持独立概念，补表）：账号名下、不等于证照主体的经营单位，可选挂一个已认证的证照主体。
+-- 幂等创建改走统一防重（与 Q10 同口径），旧表的 create_key / create_hash 不带过来。
+CREATE TABLE `mch_operating_entity` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
+  `tenant_no` varchar(32) NOT NULL DEFAULT 'MAIN' COMMENT '租户号',
+  `operating_entity_no` varchar(32) NOT NULL COMMENT '经营主体号',
+  `owner_user_no` varchar(32) NOT NULL COMMENT '所属 C 端账号的用户号',
+  `name` varchar(100) NOT NULL COMMENT '经营主体名称',
+  `market` varchar(8) NOT NULL COMMENT '市场：CN / TW / AE，须与账号市场一致',
+  `legal_subject_no` varchar(32) DEFAULT NULL COMMENT '挂的证照主体号（mch_entity.entity_no），空表示还没挂',
+  `status` varchar(16) NOT NULL COMMENT '状态：ENABLED 启用 / DISABLED 停用',
+  `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 = 正常，1 = 已删除',
+  `version` int NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `created_by` varchar(64) DEFAULT NULL COMMENT '创建人（带前缀的操作人编号）',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间，每次修改自动更新',
+  `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人（带前缀的操作人编号）',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_operating_entity_no` (`tenant_no`, `operating_entity_no`),
+  KEY `ix_operating_entity_owner` (`tenant_no`, `owner_user_no`)
+) COMMENT='经营主体：账号名下的经营单位，可选挂证照主体';

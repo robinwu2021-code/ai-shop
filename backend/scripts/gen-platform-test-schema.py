@@ -49,6 +49,8 @@ TABLES = [
     "mch_brand_store_binding",     # G 品牌门店绑定（入连锁按权益准入，记准入依据）
     "mch_brand_financial_change",  # G4 储值期间入退（V2 补表，在途门店列代替旧表的占位行）
     "mch_store_end_grant",         # 连锁准入读门店权益时间片（平台库里的那份，由商城交付写入）
+    "ops_staff",                   # I 运营账号（原 sys_ops_staff，只改表名）
+    "mch_operating_entity",        # I 经营主体（Q8：V2 补表，幂等走统一防重）
 ]
 
 # 过渡列：同名表里新设计去掉了、平台代码还在用的列（列定义取自旧测试库）。换完对应那一项就从这里删

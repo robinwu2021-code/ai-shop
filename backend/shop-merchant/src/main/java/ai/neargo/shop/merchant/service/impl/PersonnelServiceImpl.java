@@ -27,7 +27,6 @@ import ai.neargo.shop.merchant.entity.MchPersonnelPosition;
 import ai.neargo.shop.merchant.booking.entity.MchPersonnelSkill;
 import ai.neargo.shop.merchant.entity.MchPersonnelStore;
 import ai.neargo.shop.merchant.booking.entity.MchResource;
-import ai.neargo.shop.merchant.entity.MchStaffLog;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.merchant.service.PersonnelService;
@@ -63,7 +62,7 @@ public class PersonnelServiceImpl implements PersonnelService {
     private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources;
     private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents;
     private final MerchantMappers.MchAccountMapper accounts;
-    private final MerchantMappers.MchStaffLogMapper audit;
+    private final StaffAuditLogger audit;
     private final MerchantStaffService staff;
     private final GoodsQueryPort products;
     private final RequestIdempotencyPort idempotency;
@@ -76,7 +75,7 @@ public class PersonnelServiceImpl implements PersonnelService {
             MerchantMappers.PersonnelStoreMapper assignments, MerchantMappers.PersonnelPositionMapper positions,
             ai.neargo.shop.merchant.booking.mapper.BookingMappers.PersonnelSkillMapper skills,
             ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents,
-            MerchantMappers.MchAccountMapper accounts, MerchantMappers.MchStaffLogMapper audit,
+            MerchantMappers.MchAccountMapper accounts, StaffAuditLogger audit,
             MerchantStaffService staff, GoodsQueryPort products, RequestIdempotencyPort idempotency,
             @Qualifier(ModuleDataSources.PLATFORM_DATA_SOURCE) DataSource source, ObjectMapper json,
             @Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager manager) {
@@ -401,16 +400,7 @@ public class PersonnelServiceImpl implements PersonnelService {
         person.setStatus(status);
     }
     private String statusReason(MchPersonnel person, String store, String actor, String reason) {
-        var row = new MchStaffLog();
-        row.setTenantNo("MAIN");
-        row.setEntityNo(person.getEntityNo());
-        row.setLogNo(BizKey.next("MSL"));
-        row.setActorAccountNo(actor);
-        row.setAction("PERSONNEL_STATUS_REASON");
-        row.setStoreNo(store);
-        row.setDetail(reason);
-        audit.insert(row);
-        return row.getLogNo();
+        return audit.evidence(person.getEntityNo(), store, actor, "PERSONNEL_STATUS_REASON", reason);
     }
     private void evidence(MchPersonnel person, String store, String actor, String action, String key) {
         evidence(person, store, actor, action, key, Map.of());
@@ -418,21 +408,13 @@ public class PersonnelServiceImpl implements PersonnelService {
     private void evidence(MchPersonnel person, String store, String actor, String action, String key,
             Map<String, Object> extra) {
         String ref = IdempotencyScope.requestHash(key);
-        var row = new MchStaffLog();
-        row.setTenantNo("MAIN");
-        row.setEntityNo(person.getEntityNo());
-        row.setLogNo(BizKey.next("MSL"));
-        row.setActorAccountNo(actor);
-        row.setAction(action);
-        row.setStoreNo(store);
         var detail = new LinkedHashMap<String, Object>();
         detail.put("personnelNo", person.getPersonnelNo());
         detail.put("status", person.getStatus());
         detail.put("revision", person.getVersion());
         detail.put("requestRef", ref);
         detail.putAll(extra);
-        row.setDetail(json.writeValueAsString(detail));
-        audit.insert(row);
+        audit.evidence(person.getEntityNo(), store, actor, action, json.writeValueAsString(detail));
     }
     private PersonnelVO view(MchPersonnel person, String store) {
         var rows = assignments.selectList(Wrappers.<MchPersonnelStore>lambdaQuery()

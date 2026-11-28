@@ -111,7 +111,7 @@ public class StaffIdentityResolver implements LiveIdentityResolver {
         return new Snapshot(byStaffNo, clock.getAsLong());
     }
 
-    /** 角色取自 sys_role_member（{@link OpsStaffRoles}），不再读 sys_ops_staff.roles（TDD-基础能力库对齐 2a） */
+    /** 角色取自 sys_role_member（{@link OpsStaffRoles}），不再读 ops_staff.roles（TDD-基础能力库对齐 2a） */
     private Identity identityOf(SysOpsStaff staff, List<String> roles) {
         return new Identity(roles, scopeOf(staff, rolePermResolver.of(roles)));
     }

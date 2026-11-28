@@ -158,7 +158,7 @@ class EntitlementNotificationFlowTest {
                 + "VALUES(?,?,'beauty','ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",entity,owner);
         jdbc.update("INSERT INTO mch_account(mch_account_no,entity_no,user_no,is_owner,status,tenant_no,created_at,updated_at) "
                 + "VALUES(?,?,?,1,'ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",id(),entity,owner);
-        String admin=jdbc.queryForObject("SELECT staff_no FROM sys_ops_staff WHERE username='admin'",String.class);
+        String admin=jdbc.queryForObject("SELECT staff_no FROM ops_staff WHERE username='admin'",String.class);
         int before=jdbc.queryForObject("SELECT COUNT(*) FROM notify_message WHERE receiver_type='OPS' AND receiver_no=?",
                 Integer.class,admin);
         var event=row(new ExceptionOpened(id(),id(),entity,"GRANT_DELIVERY",id(),System.currentTimeMillis()));

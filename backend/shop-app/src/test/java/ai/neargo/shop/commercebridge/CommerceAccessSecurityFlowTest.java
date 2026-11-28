@@ -532,7 +532,6 @@ class CommerceAccessSecurityFlowTest {
                                     DebtService.class,
                                     StoreFavoriteService.class,
                                     TokenStores.class,
-                                    MchStaffLogMapper.class,
                                     StaffAuditLogger.class,
                                     ai.neargo.shop.common.OtpStore.class,
                                     PickupService.class,

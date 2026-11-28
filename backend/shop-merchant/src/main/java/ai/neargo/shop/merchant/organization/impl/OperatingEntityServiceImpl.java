@@ -40,9 +40,19 @@ public class OperatingEntityServiceImpl implements OperatingEntityService {
         String owner = str(account(actor, false), "user_no");
         return view(db.one("SELECT * FROM mch_operating_entity WHERE tenant_no=? AND owner_user_no=? AND operating_entity_no=? AND deleted=0", actor.tenantNo(), owner, no));
     }
+    /**
+     * 幂等创建走统一防重（Q8 / Q10）：命令按「账号本人 + 幂等键」登记，B 端账号（MCH:）与 C 端用户（USER:）
+     * 是同一个人时共用一条，与旧表 {@code (owner_user_no, create_key)} 唯一键同一口径。
+     */
+    private String commandId(Actor actor, String owner, String key) {
+        return db.commandId(new Actor(actor.tenantNo(), "USER:" + owner), TARGET, ACTION, key);
+    }
+    private static final String TARGET = "OPERATING_ENTITY";
+    private static final String ACTION = "OPERATING_ENTITY_CREATE";
     public View result(Actor actor, String key) {
         String owner = str(account(actor, false), "user_no");
-        return view(db.one("SELECT * FROM mch_operating_entity WHERE tenant_no=? AND owner_user_no=? AND create_key=? AND deleted=0", actor.tenantNo(), owner, key));
+        var original = db.command(new Actor(actor.tenantNo(), "USER:" + owner), TARGET, ACTION, key);
+        return get(actor, str(original, "operatingEntityNo"));
     }
     public List<LegalSubject> legalSubjects(Actor actor) {
         String owner = str(account(actor, false), "user_no");
@@ -56,10 +66,10 @@ public class OperatingEntityServiceImpl implements OperatingEntityService {
         return db.write(() -> {
             var account = account(actor, true);
             String owner = str(account,"user_no");
-            var prior = db.one("SELECT * FROM mch_operating_entity WHERE tenant_no=? AND owner_user_no=? AND create_key=?",actor.tenantNo(),owner,key);
+            String id = commandId(actor, owner, key);
+            var prior = db.replay(id, hash);
             if (prior != null) {
-                if (!hash.equals(str(prior,"create_hash"))) throw BizException.of(ErrorCode.CONFLICT);
-                return view(prior);
+                return view(db.one("SELECT * FROM mch_operating_entity WHERE tenant_no=? AND operating_entity_no=?", actor.tenantNo(), str(prior, "operatingEntityNo")));
             }
             if (!command.market().name().equals(str(account,"market"))) throw BizException.of(ErrorCode.CONFLICT);
             if (command.legalSubjectId() != null) {
@@ -71,8 +81,8 @@ public class OperatingEntityServiceImpl implements OperatingEntityService {
             row.put("operating_entity_no",BizKey.next(BizKey.OPERATING_ENTITY));
             row.put("owner_user_no",owner);row.put("name",name);row.put("market",command.market().name());
             row.put("legal_subject_no",command.legalSubjectId());row.put("status","ENABLED");
-            row.put("create_key",key);row.put("create_hash",hash);
             db.insert("mch_operating_entity",row);
+            db.emit(actor, id, str(row,"operating_entity_no"), ACTION, hash, Map.of("operatingEntityNo", str(row,"operating_entity_no")));
             return view(row);
         });
     }

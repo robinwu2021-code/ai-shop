@@ -52,7 +52,7 @@ class OpsStaffCrossStoreFlowTest {
     /** 没有对应账号的有效角色行（角色表是逻辑删除，撤回后行还在、deleted=1） */
     private int orphanRoles() {
         return jdbc.queryForObject("SELECT COUNT(*) FROM sys_role_member m WHERE m.end_code='OPS' AND m.deleted=0 AND NOT EXISTS "
-                + "(SELECT 1 FROM sys_ops_staff s WHERE s.staff_no=m.subject_no)", Integer.class);
+                + "(SELECT 1 FROM ops_staff s WHERE s.staff_no=m.subject_no)", Integer.class);
     }
 
     private String create(String token, String username) throws Exception {
@@ -76,7 +76,7 @@ class OpsStaffCrossStoreFlowTest {
             reset(mail);
         }
         assertThat(body).as("邮件失败应让建号失败").doesNotContain("\"code\":0");
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_ops_staff WHERE username=?", Integer.class,
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ops_staff WHERE username=?", Integer.class,
                 "cross-store-fail@example.com")).isZero();
         assertThat(orphanRoles()).isEqualTo(before);
     }
@@ -86,7 +86,7 @@ class OpsStaffCrossStoreFlowTest {
     void successfulCreateWritesBoth() throws Exception {
         String token = TestLogin.admin(mvc(), json);
         create(token, "cross-store-ok@example.com");
-        String staffNo = jdbc.queryForObject("SELECT staff_no FROM sys_ops_staff WHERE username=?", String.class,
+        String staffNo = jdbc.queryForObject("SELECT staff_no FROM ops_staff WHERE username=?", String.class,
                 "cross-store-ok@example.com");
         assertThat(jdbc.queryForList("SELECT role_code FROM sys_role_member WHERE end_code='OPS' AND deleted=0 AND subject_no=?",
                 String.class, staffNo)).containsExactly("RISK");

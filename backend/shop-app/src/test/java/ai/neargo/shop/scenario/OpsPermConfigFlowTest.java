@@ -371,7 +371,7 @@ class OpsPermConfigFlowTest {
 
         assertThat(after)
                 .as("改成财务之后应当看得到结算分区 —— 看不到说明 sys_role_member 没同步，"
-                        + "而 sys_ops_staff.roles 变了：权限变了、菜单没变")
+                        + "而 ops_staff.roles 变了：权限变了、菜单没变")
                 .contains("OPS_FINANCE");
         assertThat(after).isNotEqualTo(before);
 

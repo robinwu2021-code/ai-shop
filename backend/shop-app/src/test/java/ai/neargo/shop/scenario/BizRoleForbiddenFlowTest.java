@@ -44,9 +44,17 @@ class BizRoleForbiddenFlowTest {
     private ObjectMapper json;
 
 
-    /** 授权留痕还没有读端点（B-11.10.3 分两步走），先直接查表 */
+    /** 授权留痕在统一审计里（平台基础库换表 I，原 mch_staff_log），按主体读回 */
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStaffLogMapper staffLogMapper;
+    private ai.neargo.shop.merchant.service.impl.StaffAuditLogger staffLog;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    private java.util.List<ai.neargo.shop.merchant.service.impl.StaffAuditLogger.Entry> logsOf(String staffNo) {
+        String entity = jdbc.queryForObject("SELECT entity_no FROM mch_account WHERE mch_account_no=?", String.class, staffNo);
+        return staffLog.read(entity, staffNo);
+    }
 
     @Autowired
     private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
@@ -270,21 +278,18 @@ class BizRoleForbiddenFlowTest {
                 .header("Authorization", "Bearer " + owner)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"));
 
-        var logs = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                staffLogMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.merchant.entity.MchStaffLog>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchStaffLog::getTargetAccountNo, staffNo)));
+        var logs = logsOf(staffNo);
 
-        assertThat(logs.stream().map(ai.neargo.shop.merchant.entity.MchStaffLog::getAction))
+        assertThat(logs.stream().map(ai.neargo.shop.merchant.service.impl.StaffAuditLogger.Entry::action))
                 .as("四个动作都要留痕，缺哪个都会让事后追查断在那一步")
                 .containsExactlyInAnyOrder("STAFF_ADD", "ROLE_GRANT", "ROLE_REVOKE", "STAFF_DISABLE");
 
         var granted = logs.stream()
-                .filter(l -> "ROLE_GRANT".equals(l.getAction())).findFirst().orElseThrow();
-        assertThat(granted.getRole()).isEqualTo("MANAGER");
-        assertThat(granted.getStoreNo()).isEqualTo(store);
+                .filter(l -> "ROLE_GRANT".equals(l.action())).findFirst().orElseThrow();
+        assertThat(granted.role()).isEqualTo("MANAGER");
+        assertThat(granted.storeNo()).isEqualTo(store);
         // 「谁做的」是这张表存在的理由 —— 记不下操作人的审计等于没有审计
-        assertThat(granted.getActorAccountNo()).isNotBlank();
+        assertThat(granted.actor()).isNotBlank();
     }
 
     @Test
@@ -330,11 +335,8 @@ class BizRoleForbiddenFlowTest {
 
         grant(owner, staffNo, store, "PICKER", false);
 
-        var logs = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                staffLogMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.merchant.entity.MchStaffLog>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchStaffLog::getTargetAccountNo, staffNo)));
-        assertThat(logs.stream().map(ai.neargo.shop.merchant.entity.MchStaffLog::getAction))
+        var logs = logsOf(staffNo);
+        assertThat(logs.stream().map(ai.neargo.shop.merchant.service.impl.StaffAuditLogger.Entry::action))
                 .containsExactly("STAFF_ADD");
     }
 

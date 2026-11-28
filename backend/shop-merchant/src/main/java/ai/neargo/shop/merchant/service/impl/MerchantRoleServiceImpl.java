@@ -65,7 +65,7 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
         DataScopeContext.executeWithoutScope(() -> roleMapper.insert(r));
         points.replace(merchantNo, r.getRoleCode(), sorted(codes));
 
-        audit.role(merchantNo, ai.neargo.shop.merchant.entity.MchStaffLog.ROLE_CREATE,
+        audit.role(merchantNo, StaffAuditLogger.ROLE_CREATE,
                 r.getRoleCode(), "新建角色「" + clean + "」：" + labels(codes));
         return toVO(r, codes, 0);
     }
@@ -87,7 +87,7 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
         DataScopeContext.executeWithoutScope(() -> roleMapper.updateById(r));
         points.replace(r.getEntityNo(), roleCode, sorted(codes));
 
-        audit.role(merchantNo, ai.neargo.shop.merchant.entity.MchStaffLog.ROLE_UPDATE, roleCode,
+        audit.role(merchantNo, StaffAuditLogger.ROLE_UPDATE, roleCode,
                 "角色「" + clean + "」权限：" + before + " → " + labels(codes));
         return toVO(r, codes, usageOf(merchantNo).getOrDefault(roleCode, 0L).intValue());
     }
@@ -107,7 +107,7 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
         }
         DataScopeContext.executeWithoutScope(() -> roleMapper.deleteById(r.getId()));
         points.delete(r.getEntityNo(), roleCode);
-        audit.role(merchantNo, ai.neargo.shop.merchant.entity.MchStaffLog.ROLE_DELETE, roleCode,
+        audit.role(merchantNo, StaffAuditLogger.ROLE_DELETE, roleCode,
                 "删除角色「" + r.getName() + "」");
     }
 

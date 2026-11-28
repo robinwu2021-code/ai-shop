@@ -248,7 +248,7 @@ public class DevSeeder {
             mapper.insert(s);
         }
         /*
-         * 角色只写 sys_role_member（TDD-基础能力库对齐 2a）：判权与菜单都读它，sys_ops_staff.roles 停写。
+         * 角色只写 sys_role_member（TDD-基础能力库对齐 2a）：判权与菜单都读它，ops_staff.roles 停写。
          * 已有的角色保留，只补缺的 —— 种子重复跑不该撤掉别人后来加的角色。
          */
         var want = new LinkedHashSet<>(staffRoles.of(staffNo));

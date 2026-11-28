@@ -237,7 +237,6 @@ class StoreEntityClaimCoordinatorMysqlTest {
                     mock(ai.neargo.shop.auth.TokenStores.class),
                     session.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper.class),
                     org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
-                    mock(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStaffLogMapper.class),
                     session.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper.class),
                     mock(ai.neargo.shop.merchant.service.impl.StaffAuditLogger.class),
                     mock(ai.neargo.shop.auth.TokenStore.class),mock(ai.neargo.shop.common.OtpStore.class));

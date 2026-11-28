@@ -51,7 +51,7 @@ class OpsPasswordFlowTest {
 
     private String storedPassword(String username) {
         return jdbc.queryForObject(
-                "SELECT password FROM sys_ops_staff WHERE username = ?", String.class, username);
+                "SELECT password FROM ops_staff WHERE username = ?", String.class, username);
     }
 
     private int loginCode(String username, String password) throws Exception {
@@ -67,7 +67,7 @@ class OpsPasswordFlowTest {
         String before = storedPassword("support");
         try {
             // 打回存量状态：库里是一期占位哈希
-            jdbc.update("UPDATE sys_ops_staff SET password = ? WHERE username = 'support'",
+            jdbc.update("UPDATE ops_staff SET password = ? WHERE username = 'support'",
                     legacy("support123"));
             assertThat(storedPassword("support")).doesNotStartWith("$2");
 
@@ -80,7 +80,7 @@ class OpsPasswordFlowTest {
             // **升级之后还要能再登录**：只升级不能用，等于换了个方式把人锁死
             assertThat(loginCode("support", "support123")).isZero();
         } finally {
-            jdbc.update("UPDATE sys_ops_staff SET password = ? WHERE username = 'support'", before);
+            jdbc.update("UPDATE ops_staff SET password = ? WHERE username = 'support'", before);
         }
     }
 
@@ -90,7 +90,7 @@ class OpsPasswordFlowTest {
         String before = storedPassword("support");
         try {
             String stale = legacy("support123");
-            jdbc.update("UPDATE sys_ops_staff SET password = ? WHERE username = 'support'", stale);
+            jdbc.update("UPDATE ops_staff SET password = ? WHERE username = 'support'", stale);
 
             assertThat(loginCode("support", "wrong-password"))
                     .as("密码错就该拒绝").isNotZero();
@@ -98,7 +98,7 @@ class OpsPasswordFlowTest {
                     .as("验证失败绝不能触发升级 —— 那等于把用户输错的那串写进库")
                     .isEqualTo(stale);
         } finally {
-            jdbc.update("UPDATE sys_ops_staff SET password = ? WHERE username = 'support'", before);
+            jdbc.update("UPDATE ops_staff SET password = ? WHERE username = 'support'", before);
         }
     }
 
@@ -130,7 +130,7 @@ class OpsPasswordFlowTest {
             assertThat(loginCode("support", "support123"))
                     .as("旧密码必须立刻失效").isNotZero();
         } finally {
-            jdbc.update("UPDATE sys_ops_staff SET password = ? WHERE username = 'support'", before);
+            jdbc.update("UPDATE ops_staff SET password = ? WHERE username = 'support'", before);
         }
     }
 }

@@ -83,7 +83,7 @@ public record LoginUser(
      * 不受数据域限制的运营（超管、商品运营等全量角色）。
      *
      * <p>此前**所有**运营都走这一条，`DataScopeSpec.ALL` 写死在这里 ——
-     * 于是 `sys_ops_staff` 上配好的数据域一路带到 token，
+     * 于是 `ops_staff` 上配好的数据域一路带到 token，
      * 而拦截器拿到的永远是「全量」。基础设施是通的，缺的就是这一句。
      */
     public static LoginUser operator(String staffNo, String realName,

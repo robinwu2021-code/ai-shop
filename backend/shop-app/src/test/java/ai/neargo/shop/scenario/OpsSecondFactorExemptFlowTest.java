@@ -60,8 +60,8 @@ class OpsSecondFactorExemptFlowTest {
         String id = UUID.randomUUID().toString().substring(0, 8);
         user = "ex-" + id + "@neargo.ai";
         staffNo = "ST-EX-" + id;
-        jdbc.update("INSERT INTO sys_ops_staff (staff_no, username, password, real_name, roles, status, created_at, updated_at)"
-                + " SELECT ?, ?, ?, '免验证', roles, 'ACTIVE', NOW(), NOW() FROM sys_ops_staff WHERE username='support'",
+        jdbc.update("INSERT INTO ops_staff (staff_no, username, password, real_name, roles, status, created_at, updated_at)"
+                + " SELECT ?, ?, ?, '免验证', roles, 'ACTIVE', NOW(), NOW() FROM ops_staff WHERE username='support'",
                 staffNo, user, hasher.encode(PWD));
         secondFactor("email");
     }
@@ -82,7 +82,7 @@ class OpsSecondFactorExemptFlowTest {
         JsonNode r = login(user, PWD);
         assertThat(token(r)).as("免验证的人密码对了直接给令牌").isNotBlank();
         assertThat(mail.all().size()).as("不发验证码邮件").isEqualTo(mailsBefore);
-        assertThat(jdbc.queryForObject("SELECT second_factor_exempt FROM sys_ops_staff WHERE staff_no=?",
+        assertThat(jdbc.queryForObject("SELECT second_factor_exempt FROM ops_staff WHERE staff_no=?",
                 Integer.class, staffNo)).isEqualTo(1);
     }
 
@@ -144,7 +144,7 @@ class OpsSecondFactorExemptFlowTest {
     }
 
     private String staffNoOf(String username) {
-        return jdbc.queryForObject("SELECT staff_no FROM sys_ops_staff WHERE username=?", String.class, username);
+        return jdbc.queryForObject("SELECT staff_no FROM ops_staff WHERE username=?", String.class, username);
     }
 
     private JsonNode login(String username, String password) throws Exception {

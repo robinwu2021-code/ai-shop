@@ -66,7 +66,7 @@ export const iamHttp: IamApi = {
     /*
      * **角色筛选要先把 ops-web 角色码翻回后端码**。BD / GOODS_OPS / SUPPORT
      * 三个是历史异名同义 —— 筛选框选的是 ops-web 那份（如 PRODUCT_OPS），
-     * 库里的 sys_ops_staff.roles 存的是后端那份（GOODS_OPS）。
+     * 库里的 ops_staff.roles 存的是后端那份（GOODS_OPS）。
      * 不翻译的话请求 200、返回 0 条，界面上跟这个角色没人一样，
      * 而实际上是查询词一开始就没对上。
      */
