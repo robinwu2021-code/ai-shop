@@ -20,6 +20,4 @@ export const managementMock:ManagementApi={
  mStoreOperatingContext: unavailable,
  mCheckBrandChange: unavailable,
  mSubmitBrandChange: unavailable,
- mBrandChange: unavailable,
- mDecideBrandChange: unavailable,
 };

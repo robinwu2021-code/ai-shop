@@ -24,7 +24,6 @@ public final class ManagementModels {
  public record ChangeCheck(String managementNo,String toBrandNo) {}
  public record ChangeSubmit(String managementNo,String toBrandNo,String checkToken,long expectedStoreRevision,
        long expectedScopeRevision,Long expectedFromBrandRevision,Long expectedToBrandRevision,String reason) {}
- public record ChangeDecision(String decision,long expectedRevision,String reason) {}
  public record SpaceCreate(String name,String sourceAccountNo) {}
  public record Page(List<Map<String,Object>> items,String nextCursor) {}
  public static String text(String value,int max) {

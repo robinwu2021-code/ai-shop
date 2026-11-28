@@ -33,18 +33,19 @@ class BrandFixture {
             if(mysql==null&&matcher.find())part=part.replace("KEY uk_", "KEY "+matcher.group(1)+"_uk_").replace("KEY ix_", "KEY "+matcher.group(1)+"_ix_");
             ddl.execute(part);
         }
-        // 平台基础库换表第 2 步 G：管理空间、管理授权、品牌换成新库结构（取平台测试建表脚本里的定义）；
-        // 命令日志新库不建，重放与变更历史走统一防重、统一审计（这里用内存实现）
-        for(String old:List.of("mch_management_grant","mch_management_space","mch_brand"))jdbc.execute("DROP TABLE IF EXISTS "+old);
+        // 平台基础库换表第 2 步 G：管理空间、管理授权、品牌、品牌门店绑定换成新库结构（取平台测试建表脚本里的定义）；
+        // 命令日志新库不建，重放与变更历史走统一防重、统一审计（这里用内存实现）；品牌变更单不进新库（入退连锁当场生效）；
+        // 门店权益时间片供入连锁准入读（TDD「连锁按权益准入」）
+        for(String old:List.of("mch_management_grant","mch_management_space","mch_brand","mch_brand_change","mch_brand_store_binding"))jdbc.execute("DROP TABLE IF EXISTS "+old);
         String platform=Files.readString(Path.of("../shop-app/src/test/resources/schema-platform-test.sql"));
-        for(String table:List.of("mch_group","mch_grant","mch_brand")){
+        for(String table:List.of("mch_group","mch_grant","mch_brand","mch_brand_store_binding","mch_brand_financial_change","mch_store_end_grant")){
             var m=java.util.regex.Pattern.compile("(?s)CREATE TABLE IF NOT EXISTS "+table+" \\(.*?\n\\);").matcher(platform);
             if(!m.find())throw new IllegalStateException("平台测试建表脚本里没有 "+table);
             jdbc.execute(m.group());
         }
         jdbc.execute("CREATE TABLE mch_account(tenant_no varchar(32),mch_account_no varchar(64),user_no varchar(64),entity_no varchar(64),display_name varchar(64),is_owner boolean,status varchar(24),deleted int default 0)");
         jdbc.execute("CREATE TABLE mch_entity(id bigint auto_increment primary key,version bigint default 0,tenant_no varchar(32),entity_no varchar(64),name varchar(100),status varchar(24),management_no varchar(64),deleted int default 0)");
-        jdbc.execute("CREATE TABLE mch_store(id bigint auto_increment primary key,tenant_no varchar(32),store_no varchar(64),entity_no varchar(64),name varchar(100),status varchar(24),version bigint default 0,deleted int default 0)");
+        jdbc.execute("CREATE TABLE mch_store(id bigint auto_increment primary key,tenant_no varchar(32),store_no varchar(64),entity_no varchar(64),name varchar(100),status varchar(24),commerce_model varchar(16),version bigint default 0,deleted int default 0)");
         jdbc.execute("CREATE TABLE mch_payment_merchant(tenant_no varchar(32),pay_merchant_no varchar(64),entity_no varchar(64),store_no varchar(64),pay_channel varchar(24),apply_status varchar(24),pay_methods varchar(255),deleted int default 0)");
         jdbc.execute("CREATE TABLE sys_outbox(id bigint auto_increment primary key,event_no varchar(64),source_system varchar(32),source_event_no varchar(64),aggregate_type varchar(32),aggregate_id varchar(64),event_type varchar(64),payload longtext,status varchar(24),created_at timestamp,UNIQUE(source_system,source_event_no))");
         jdbc.update("INSERT INTO mch_account VALUES('MAIN','MA1','U1','E1','老板',true,'ACTIVE',0),('MAIN','MA2','U2','E2','另一老板',true,'ACTIVE',0),('MAIN','MA3',NULL,'E1','店员',false,'ACTIVE',0)");

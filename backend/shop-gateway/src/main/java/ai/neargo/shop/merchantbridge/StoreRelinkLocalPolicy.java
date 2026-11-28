@@ -84,7 +84,6 @@ public class StoreRelinkLocalPolicy {
             blockers.add("PAID_PLAN");
         // Existing brand/financial membership is outside placeholder-only ownership migration.
         if(jdbc.queryForObject("SELECT COUNT(*) FROM mch_brand_store_binding WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0
-                || jdbc.queryForObject("SELECT COUNT(*) FROM mch_brand_change WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0
                 || jdbc.queryForObject("SELECT COUNT(*) FROM mch_brand_financial_change WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0)
             blockers.add("ORGANIZATION_HISTORY");
         // 只看这家门店自己的范围行与履约设置（11-28 用户定：主体层不再有覆盖，主体那一半拦截去掉）

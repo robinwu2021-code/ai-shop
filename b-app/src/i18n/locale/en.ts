@@ -58,6 +58,7 @@ export default {
   "resource": "Resource",
   "choose": "Choose",
   "state": {
+    "PAY_PREPARED": "Payment side prepared",
     "DRAFT": "Draft",
     "ACTIVE": "Active",
     "INACTIVE": "Inactive",
@@ -73,7 +74,7 @@ export default {
     "PENDING_LICENSE": "Qualification required",
     "BANNED": "Banned"
   },
-  "blocker": {"FINANCIAL_COORDINATION_PENDING":"Chain change awaiting verification; retry the original operation",
+  "blocker": {"CHAIN_ENTITLEMENT_REQUIRED":"This store has no chain entitlement yet; buy the chain plan or chain add-on in the mall first","FINANCIAL_COORDINATION_PENDING":"Chain change awaiting verification; retry the original operation",
     "STORED_VALUE_UNRESOLVED": "Outstanding stored value requires resolution",
     "IMPACT_UNKNOWN": "Impact is not confirmed. Retry later",
     "DEPENDENCY_NOT_READY": "Shared capabilities are not ready"

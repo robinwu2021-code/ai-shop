@@ -22,6 +22,4 @@ export const managementHttpApi:ManagementApi={
  mStoreOperatingContext:(s,managementNo)=>http.get(buildPath(E.mStoreOperatingContext.path,{s}),{managementNo}),
  mCheckBrandChange:(s,body)=>http.post(buildPath(E.mCheckBrandChange.path,{s}),body),
  mSubmitBrandChange:(s,body,key)=>http.post(buildPath(E.mSubmitBrandChange.path,{s}),body,headers(key)),
- mBrandChange:c=>http.get(buildPath(E.mBrandChange.path,{c})),
- mDecideBrandChange:(c,body,key)=>http.post(buildPath(E.mDecideBrandChange.path,{c}),body,headers(key)),
 };

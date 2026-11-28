@@ -171,9 +171,17 @@ class ChainManagementAdmissionFlowTest {
         String storePath = "/biz/stores/" + owner[1];
         JsonNode operating = success(owner, "GET", storePath + "/operating-context?managementNo=" + management, null, null);
         assertTrue(operating.path("brand").isNull(), operating.toString());
+        // 新模型门店入连锁要有连锁权益：没有时预检拦下并指向商城（TDD「连锁按权益准入」）
+        JsonNode blocked = success(owner, "POST", storePath + "/brand-changes/check",
+                Map.of("managementNo", management, "toBrandNo", brand), null);
+        assertFalse(blocked.path("allowed").asBoolean(), blocked.toString());
+        assertEquals("CHAIN_ENTITLEMENT_REQUIRED", blocked.path("blockers").path(0).asText(), blocked.toString());
+        assertEquals("BUY", blocked.path("nextAction").asText(), blocked.toString());
+        entitleChain(owner[1]);
         JsonNode check = success(owner, "POST", storePath + "/brand-changes/check",
                 Map.of("managementNo", management, "toBrandNo", brand), null);
         assertTrue(check.path("allowed").asBoolean(), check.toString());
+        assertEquals("ENTITLEMENT", check.path("admission").path("basis").asText(), check.toString());
         Map<String, Object> command = new LinkedHashMap<>();
         command.put("managementNo", management); command.put("toBrandNo", brand);
         command.put("checkToken", check.path("checkToken").asText());
@@ -182,11 +190,8 @@ class ChainManagementAdmissionFlowTest {
         command.put("expectedToBrandRevision", check.path("toRevision").asLong());
         command.put("reason", "组织关联");
         JsonNode submitted = success(owner, "POST", storePath + "/brand-changes", command, "bind-brand");
-        String changePath = "/biz/management/brand-changes/" + submitted.path("changeNo").asText();
-        JsonNode change = success(owner, "GET", changePath, null, null);
-        JsonNode approved = success(owner, "POST", changePath + "/decisions",
-                Map.of("decision", "APPROVE", "expectedRevision", change.path("revision").asLong(), "reason", "同意关联"), "approve-brand");
-        assertEquals("COMPLETED", approved.path("status").asText(), approved.toString());
+        // 入退连锁当场生效，不走审批（TDD「连锁按权益准入」）
+        assertTrue(submitted.path("applied").asBoolean(), submitted.toString());
         assertEquals(1, success(owner, "GET", brandPath + "/stores", null, null).path("items").size());
         assertFalse(success(owner, "GET", brandPath + "/audit-events", null, null).path("items").isEmpty());
         for (String permission : List.of("entity.read", "payment.merchant.read"))
@@ -271,6 +276,7 @@ class ChainManagementAdmissionFlowTest {
         String storePath = "/biz/stores/" + owner[1];
         assertEquals(owner[1], success(administrator, "GET", storePath + "/operating-context?managementNo=" + management,
                 null, null).path("storeNo").asText());
+        entitleChain(owner[1]);
         JsonNode check = success(administrator, "POST", storePath + "/brand-changes/check",
                 Map.of("managementNo", management, "toBrandNo", brand), null);
         assertTrue(check.path("allowed").asBoolean(), check.toString());
@@ -279,11 +285,7 @@ class ChainManagementAdmissionFlowTest {
                         "expectedStoreRevision", check.path("storeVersion").asLong(),
                         "expectedScopeRevision", check.path("bindingRevision").asLong(),
                         "expectedToBrandRevision", check.path("toRevision").asLong(), "reason", "受托跨店关联"), "delegated-bind");
-        String changePath = "/biz/management/brand-changes/" + submitted.path("changeNo").asText();
-        JsonNode change = success(administrator, "GET", changePath, null, null);
-        assertEquals("COMPLETED", success(administrator, "POST", changePath + "/decisions",
-                Map.of("decision", "APPROVE", "expectedRevision", change.path("revision").asLong(), "reason", "受托确认"),
-                "delegated-approve").path("status").asText());
+        assertTrue(submitted.path("applied").asBoolean(), submitted.toString());
         // Management-space and brand authority do not imply entity finance access.
         JsonNode finance = request(administrator, "GET", "/biz/management/entities/" + entity
                 + "/payment-merchants?managementNo=" + management, null, null);
@@ -291,4 +293,9 @@ class ChainManagementAdmissionFlowTest {
         assertNotEquals(70006, finance.path("code").asInt(), finance.toString());
     }
 
+    /** 商城交付写入的连锁权益时间片（平台库那份）：这里直接写一段长期有效的 */
+    private void entitleChain(String store) {
+        jdbc.update("INSERT INTO mch_store_end_grant(tenant_no,grant_no,store_no,end_code,entitlement_code,start_at,end_at,state)"
+                + " VALUES('MAIN',?,?,'CHAIN','END_CHAIN',?,NULL,'ACTIVE')", "EG" + store, store, System.currentTimeMillis() - 60_000);
+    }
 }

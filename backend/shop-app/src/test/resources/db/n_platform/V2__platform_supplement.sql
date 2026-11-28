@@ -189,3 +189,6 @@ CREATE TABLE `mch_brand_financial_change` (
 
 -- 品牌：储值状态由代码推进（NONE → PREPARING → ACTIVE），建品牌时不写，靠旧表默认值 NONE；新表没有。
 ALTER TABLE `mch_brand` ALTER COLUMN `stored_value_status` SET DEFAULT 'NONE';
+
+-- 入连锁按权益准入（2026-11-28 用户定：不走审批）：绑定记下准入依据。ENTITLEMENT = 门店持有连锁权益 / LEGACY = 旧模型门店照旧放行。
+ALTER TABLE `mch_brand_store_binding` ADD COLUMN `admission_basis` varchar(16) NOT NULL DEFAULT 'LEGACY' COMMENT '入连锁的准入依据：ENTITLEMENT 持有连锁权益 / LEGACY 旧模型门店' AFTER `change_no`;

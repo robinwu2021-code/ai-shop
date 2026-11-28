@@ -60,6 +60,7 @@ export default {
   "resource": "经营资源",
   "choose": "请选择",
   "state": {
+    "PAY_PREPARED": "支付侧已准备",
     "DRAFT": "草稿",
     "ACTIVE": "已启用",
     "INACTIVE": "已停用",
@@ -75,7 +76,7 @@ export default {
     "PENDING_LICENSE": "待补资质",
     "BANNED": "已封禁"
   },
-  "blocker": {"FINANCIAL_COORDINATION_PENDING":"连锁变更待核对，请重试原操作",
+  "blocker": {"CHAIN_ENTITLEMENT_REQUIRED":"这家门店还没有连锁权益，先在商城购买连锁版套餐或连锁端包","FINANCIAL_COORDINATION_PENDING":"连锁变更待核对，请重试原操作",
     "STORED_VALUE_UNRESOLVED": "存在余额或未完成储值，请先处理",
     "IMPACT_UNKNOWN": "业务影响尚未确认，请稍后重试",
     "DEPENDENCY_NOT_READY": "共享能力尚未就绪"

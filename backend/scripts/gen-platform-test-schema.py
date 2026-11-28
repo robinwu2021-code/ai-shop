@@ -10,7 +10,7 @@
 第 2 步是逐项换的：每换完一项，把它的新表加进 TABLES，平台代码同时改成新结构，整套测试就在新表上验证这一项。
 全部换完时 TABLES 就是全部平台表，那时平台句柄才绑到新库（整体一次合入 v2）。
 
-V2 只认这几种语句：DROP INDEX（普通索引在 H2 不建，忽略）、ADD UNIQUE KEY（并进建表）、ALTER COLUMN … SET DEFAULT（改列默认值）、\nMODIFY COLUMN（整列换定义）、CREATE TABLE（设计里没有、要补的表）。
+V2 只认这几种语句：DROP INDEX（普通索引在 H2 不建，忽略）、ADD UNIQUE KEY（并进建表）、ALTER COLUMN … SET DEFAULT（改列默认值）、\nMODIFY COLUMN（整列换定义）、ADD COLUMN … AFTER（加列）、CREATE TABLE（设计里没有、要补的表）。
 别的写法直接报错，免得补充悄悄没生效。
 
 用法：python3 backend/scripts/gen-platform-test-schema.py          # 生成
@@ -46,6 +46,9 @@ TABLES = [
     "mch_service_area_cell",       # E 多边形网格（V2 补表，带 channel）
     "mch_grant", "mch_group",      # G 门店角色与管理授权并成授权表；管理空间改集团
     "mch_brand",                   # G 品牌（建品牌的幂等改走统一防重，去掉 create_key / hash）
+    "mch_brand_store_binding",     # G 品牌门店绑定（入连锁按权益准入，记准入依据）
+    "mch_brand_financial_change",  # G4 储值期间入退（V2 补表，在途门店列代替旧表的占位行）
+    "mch_store_end_grant",         # 连锁准入读门店权益时间片（平台库里的那份，由商城交付写入）
 ]
 
 # 过渡列：同名表里新设计去掉了、平台代码还在用的列（列定义取自旧测试库）。换完对应那一项就从这里删
@@ -70,6 +73,7 @@ DROP_INDEX = re.compile(r"ALTER TABLE `(\w+)` DROP INDEX `\w+`;")
 ADD_UNIQUE = re.compile(r"ALTER TABLE `(\w+)` ADD UNIQUE KEY `(\w+)` (\(.*\));")
 SET_DEFAULT = re.compile(r"ALTER TABLE `(\w+)` ALTER COLUMN `(\w+)` SET DEFAULT (.+);")
 MODIFY = re.compile(r"ALTER TABLE `(\w+)` MODIFY COLUMN `(\w+)` (.+);")
+ADD_COLUMN = re.compile(r"ALTER TABLE `(\w+)` ADD COLUMN `(\w+)` (.+) AFTER `(\w+)`;")
 
 
 def design_tables():
@@ -105,6 +109,19 @@ def apply_supplement(tables):
         if m:
             if m.group(1) in tables:
                 tables[m.group(1)].append(f"  UNIQUE KEY `{m.group(2)}` {m.group(3)}")
+            continue
+        m = ADD_COLUMN.fullmatch(stmt)
+        if m:
+            table, col, definition, after = m.groups()
+            if table not in tables:
+                continue
+            lines = tables[table]
+            if any(re.match(rf"\s*`{col}` ", l) for l in lines):
+                raise SystemExit(f"V2：{table}.{col} 设计里已经有了，不要再加")
+            idx = [i for i, l in enumerate(lines) if re.match(rf"\s*`{after}` ", l)]
+            if len(idx) != 1:
+                raise SystemExit(f"V2：{table}.{after} 在设计里找不到（加列 {col} 要挂在它后面）")
+            lines.insert(idx[0] + 1, f"  `{col}` {definition}")
             continue
         m = MODIFY.fullmatch(stmt)
         if m:

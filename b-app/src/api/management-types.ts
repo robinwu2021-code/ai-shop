@@ -144,8 +144,6 @@ export interface BrandEdit {
 export interface BrandImpact {
   /** Whether the server permits this operation after checking all constraints. */
   allowed:boolean;
-  /** Whether the operator may approve or reject this checked change. */
-  canDecide?:boolean;
   /** Server-provided reasons preventing the requested operation. */
   blockers:string[];
   /** Server-issued token binding submission to the validated change preview. */
@@ -156,8 +154,11 @@ export interface BrandImpact {
   bindingRevision:number;
   /** Revision of the source brand validated by the impact check. */
   fromRevision:number|null;
-  /** Destination-brand revision validated by the impact check. */
-  toRevision:number|null}
+  toRevision:number|null;
+  /** Chain admission: joining a brand needs the store's END_CHAIN entitlement; basis is null when not admitted. */
+  admission?:{required:string;basis:'ENTITLEMENT'|'LEGACY'|null;entitledUntil:number|null};
+  /** BUY when the store must purchase the chain entitlement in the mall first. */
+  nextAction?:'BUY'|null}
 export interface BrandChangeSubmit {
   /** Management-space identifier under which the operation is authorized. */
   managementNo:string;
@@ -175,12 +176,10 @@ export interface BrandChangeSubmit {
   expectedToBrandRevision:number|null;
   /** Business reason recorded for the operation, rejection or manual recovery. */
   reason:string}
+/** Result of a brand change: applied at once when checks pass (no approval step). */
 export interface BrandChange {
-
-  /** Whether this brand-binding change uses the financial stored-value migration workflow. */
-  financial?:boolean;
-  /** Identifier of the requested brand/store binding change. */
-  changeNo:string;
+  /** Identifier of the applied brand/store binding change; null when not applied. */
+  changeNo:string|null;
   /** Management-space identifier under which the operation is authorized. */
   managementNo:string;
   /** Store identifier scoping the requested operation or returned business record. */
@@ -189,18 +188,14 @@ export interface BrandChange {
   fromBrandNo?:string;
   /** Destination brand identifier; null removes the store's brand binding. */
   toBrandNo?:string;
-  /** Current server-owned lifecycle state of this resource. */
-  status:string;
-  /** Current revision used for optimistic concurrency or snapshot traceability. */
-  revision:number;
-  /** Whether the accepted change has been applied to the store's current binding. */
+  /** New binding created by the change; null when leaving or not applied. */
+  bindingNo?:string|null;
+  /** Whether the change has been applied to the store's current binding. */
   applied:boolean;
+  /** Why the store was admitted to the chain (ENTITLEMENT or LEGACY); null when leaving. */
+  admissionBasis?:string|null;
   /** Server-provided reasons preventing the requested operation. */
-  blockers?:string[];
-  /** Actions currently permitted by the server for this resource. */
-  actions?:string[];
-  /** Business reason recorded for the operation, rejection or manual recovery. */
-  reason?:string}
+  blockers:string[]}
 export interface OperatingContext {
   /** Store identifier scoping the requested operation or returned business record. */
   storeNo:string;
@@ -315,12 +310,4 @@ export interface ManagementApi {
   /** Destination brand identifier; null removes the store's brand binding. */
   toBrandNo:string|null}):Promise<BrandImpact>;
  mSubmitBrandChange(s:string,body:BrandChangeSubmit,key:string):Promise<BrandChange>;
- mBrandChange(c:string):Promise<BrandChange>;
- mDecideBrandChange(c:string,body:{
-  /** Approval or return decision submitted for the current revision. */
-  decision:'APPROVE'|'REJECT';
-  /** Previously observed resource revision; stale writes are rejected. */
-  expectedRevision:number;
-  /** Business reason recorded for the operation, rejection or manual recovery. */
-  reason:string},key:string):Promise<BrandChange>;
 }

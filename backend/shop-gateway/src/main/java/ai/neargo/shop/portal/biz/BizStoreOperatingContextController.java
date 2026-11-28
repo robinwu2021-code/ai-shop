@@ -14,6 +14,4 @@ public class BizStoreOperatingContextController {
  @GetMapping("/biz/stores/{storeNo}/operating-context") public Map<String,Object> context(@PathVariable String storeNo,@RequestParam String managementNo){return queries.operating(access.actor(),managementNo,storeNo);}
  @PostMapping("/biz/stores/{storeNo}/brand-changes/check") public Map<String,Object> check(@PathVariable String storeNo,@RequestBody ChangeCheck c){return brands.check(access.actor(),storeNo,c);}
  @PostMapping("/biz/stores/{storeNo}/brand-changes") public Map<String,Object> submit(@PathVariable String storeNo,@RequestBody ChangeSubmit c,@RequestHeader("Idempotency-Key") String key){return brands.submit(access.actor(),storeNo,c,key);}
- @GetMapping("/biz/management/brand-changes/{changeNo}") public Map<String,Object> change(@PathVariable String changeNo){return brands.change(access.actor(),changeNo);}
- @PostMapping("/biz/management/brand-changes/{changeNo}/decisions") public Map<String,Object> decide(@PathVariable String changeNo,@RequestBody ChangeDecision c,@RequestHeader("Idempotency-Key") String key){return brands.decide(access.actor(),changeNo,c,key);}
 }

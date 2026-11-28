@@ -4,14 +4,13 @@ import static ai.neargo.shop.merchant.brand.ManagementModels.*;
 import ai.neargo.shop.spi.storedvalue.BrandChangeImpactPort;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.storedvalue.StoredValueMembership.*;
-import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 class BrandFinancialChangeTest {
  record F(BrandFixture f,String management,String brand,BrandFinancialChangeService journal){}
  F fixture()throws Exception{
-  var f=new BrandFixture();String sql=Files.readString(Path.of("../shop-app/src/main/resources/db/migration/V576__stored_value_financial_membership_saga.sql"));sql=sql.substring(0,sql.indexOf("CREATE TABLE sv_financial_membership_change")).replaceAll("(?m)^--.*$","").replaceAll(" ENGINE=InnoDB[^;]*","").replace(" JSON"," VARCHAR(30000)").replace(" STORED","").replace("status IN ('PREPARING','PAY_PREPARED')","CASE status WHEN 'PREPARING' THEN TRUE WHEN 'PAY_PREPARED' THEN TRUE ELSE FALSE END").replace("status IN ('PREPARING','PAY_PREPARED','COMPLETED','REJECTED')","CASE status WHEN 'PREPARING' THEN TRUE WHEN 'PAY_PREPARED' THEN TRUE WHEN 'COMPLETED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE FALSE END");for(var part:sql.split(";"))if(!part.isBlank())f.jdbc.execute(part);
+  var f=new BrandFixture();   // mch_brand_financial_change 由夹具按新库结构建（G4，带在途门店列）
   String m=f.no(f.space(),"managementNo");var brands=new ai.neargo.shop.merchant.brand.impl.BrandServiceImpl(f.repo,f.scopes,new ManagementTokenCodec("financial-change-secret-long-enough-for-tests",f.repo.json),(a,e,s)->new BrandChangeImpactPort.Impact(true,false,0,0,0,0),f.numbers());String b=f.no(brands.create(f.owner,new BrandCreate(m,"Brand",null,"ACTIVE"),"CREATE"),"brandNo");
   for(String permission:List.of("store.read","store.brand.change"))f.scopes.grant(f.owner,m,new GrantCommand(f.owner.actorKey(),"STORE","S1",permission,null,null,false,null,false));
   return new F(f,m,b,new BrandFinancialChangeServiceImpl(f.repo,f.scopes,f.numbers()));

@@ -58,6 +58,7 @@ export default {
   "resource": "المورد",
   "choose": "اختيار",
   "state": {
+    "PAY_PREPARED": "تم تجهيز جانب الدفع",
     "DRAFT": "مسودة",
     "ACTIVE": "مفعّل",
     "INACTIVE": "غير مفعّل",
@@ -73,7 +74,7 @@ export default {
     "PENDING_LICENSE": "يلزم استكمال التأهيل",
     "BANNED": "محظور نهائياً"
   },
-  "blocker": {"FINANCIAL_COORDINATION_PENDING":"تغيير السلسلة بانتظار التحقق؛ أعد المحاولة الأصلية",
+  "blocker": {"CHAIN_ENTITLEMENT_REQUIRED":"لا يملك هذا المتجر صلاحية السلسلة بعد؛ اشترِ باقة السلسلة أو إضافة السلسلة من المتجر أولاً","FINANCIAL_COORDINATION_PENDING":"تغيير السلسلة بانتظار التحقق؛ أعد المحاولة الأصلية",
     "STORED_VALUE_UNRESOLVED": "يلزم معالجة الرصيد أو العمليات غير المكتملة",
     "IMPACT_UNKNOWN": "لم يتأكد الأثر بعد، أعد المحاولة لاحقاً",
     "DEPENDENCY_NOT_READY": "المزايا المشتركة غير جاهزة"

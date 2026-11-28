@@ -7,6 +7,7 @@ import static ai.neargo.shop.merchant.brand.ManagementModels.*;
 import static org.assertj.core.api.Assertions.*;
 import java.util.*;
 import java.util.concurrent.*;
+/** 入退连锁当场生效、按权益准入（TDD-平台基础库换表「连锁按权益准入」，2026-11-28 用户定：不走审批）。 */
 class BrandBindingConcurrencyTest {
  private record Setup(BrandFixture f,BrandService brands,String management,String brand){}
  private Setup setup() throws Exception {
@@ -19,10 +20,10 @@ class BrandBindingConcurrencyTest {
  }
  private ChangeSubmit command(Setup s){
   var check=s.brands.check(s.f.owner,"S1",new ChangeCheck(s.management,s.brand));
-  assertThat(check).containsEntry("canDecide",true);
+  assertThat(check).containsEntry("allowed",true);
   return new ChangeSubmit(s.management,s.brand,(String)check.get("checkToken"),0,0,null,0L,"加入品牌");
  }
- @Test void simultaneousRequestsAllowOnlyOnePendingAndActiveBinding() throws Exception {
+ @Test void simultaneousRequestsAllowOnlyOneActiveBinding() throws Exception {
   var s=setup();var c=command(s);var gate=new CountDownLatch(1);var pool=Executors.newFixedThreadPool(2);
   try {
    var tasks=new ArrayList<Future<Map<String,Object>>>();
@@ -30,14 +31,15 @@ class BrandBindingConcurrencyTest {
    gate.countDown();var results=new ArrayList<Map<String,Object>>();for(var t:tasks)results.add(t.get(10,TimeUnit.SECONDS));
    assertThat(results.stream().filter(x->!x.isEmpty()).count()).isEqualTo(1);
    var result=results.stream().filter(x->!x.isEmpty()).findFirst().orElseThrow();
-   s.brands.decide(s.f.owner,s.f.no(result,"changeNo"),new ChangeDecision("APPROVE",0,"确认"),"decision-1");
+   assertThat(result).containsEntry("applied",true).containsEntry("admissionBasis","LEGACY");
    assertThat(s.f.jdbc.queryForObject("SELECT count(*) FROM mch_brand_store_binding WHERE store_no='S1' AND status='ACTIVE'",Long.class)).isEqualTo(1);
    assertThat(s.f.jdbc.queryForObject("SELECT entity_no FROM mch_store WHERE store_no='S1'",String.class)).isEqualTo("E1");
   }finally{pool.shutdownNow();}
  }
  @Test void replayReturnsOriginalButChangedCommandConflicts() throws Exception {
   var s=setup();var c=command(s);var original=s.brands.submit(s.f.owner,"S1",c,"same");
-  assertThat(s.brands.change(s.f.owner,s.f.no(original,"changeNo")).get("actions")).asList().contains("brand.change.decide");
+  assertThat(original).containsEntry("applied",true);
+  assertThat(s.f.jdbc.queryForObject("SELECT active_store_no FROM mch_brand_store_binding WHERE store_no='S1' AND status='ACTIVE'",String.class)).isEqualTo("S1");
   assertThat(s.brands.submit(s.f.owner,"S1",c,"same")).containsEntry("changeNo",original.get("changeNo"));
   assertThatThrownBy(()->s.brands.submit(s.f.owner,"S1",new ChangeSubmit(s.management,null,c.checkToken(),0,0,null,null,"其他"),"same")).isInstanceOf(ai.neargo.shop.common.BizException.class);
  }
@@ -47,14 +49,15 @@ class BrandBindingConcurrencyTest {
   var unknown=new BrandServiceImpl(s.f.repo,s.f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",s.f.repo.json),
     (a,e,st)->new BrandChangeImpactPort.Impact(false,false,0,0,0,0),s.f.numbers());
   assertThat(unknown.check(s.f.owner,"S1",new ChangeCheck(s.management,s.brand))).containsEntry("allowed",false);
+  var fresh=new ChangeSubmit(s.management,s.brand,(String)unknown.check(s.f.owner,"S1",new ChangeCheck(s.management,s.brand)).get("checkToken"),1,0,null,0L,"加入品牌");
+  assertThat(unknown.submit(s.f.owner,"S1",fresh,"unknown")).containsEntry("applied",false);
   assertThat(s.f.jdbc.queryForObject("SELECT count(*) FROM mch_brand_store_binding",Long.class)).isZero();
  }
- @Test void originalSubmitAndDecisionCanReplayAfterBindingHasChanged() throws Exception {
+ @Test void originalSubmitReplaysAfterBindingHasChanged() throws Exception {
   var s=setup();var c=command(s);var original=s.brands.submit(s.f.owner,"S1",c,"original");var no=s.f.no(original,"changeNo");
-  var decision=new ChangeDecision("APPROVE",0,"确认");s.brands.decide(s.f.owner,no,decision,"approved");
-  assertThat(s.brands.submit(s.f.owner,"S1",c,"original")).containsEntry("changeNo",no);
+  // 已改绑后影响检查依赖不可用，重放仍返回原结果（不重算）
   var unavailable=new BrandServiceImpl(s.f.repo,s.f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",s.f.repo.json),(a,e,st)->{throw new IllegalStateException("Pay unavailable");},s.f.numbers());
-  assertThat(unavailable.decide(s.f.owner,no,decision,"approved")).containsEntry("status","COMPLETED");
+  assertThat(unavailable.submit(s.f.owner,"S1",c,"original")).containsEntry("changeNo",no).containsEntry("applied",true);
  }
 
  @Test void currentStoreAndBrandVersionsAreFrozenInCheck() throws Exception {
@@ -62,11 +65,46 @@ class BrandBindingConcurrencyTest {
   var forged=new ChangeSubmit(s.management,s.brand,c.checkToken(),0,0,null,999L,"修改版本");
   assertThatThrownBy(()->s.brands.submit(s.f.owner,"S1",forged,"forged")).isInstanceOf(ai.neargo.shop.common.BizException.class);
  }
- @Test void approvalBlockerSurvivesReload() throws Exception {
-  var s=setup();var c=command(s);var original=s.brands.submit(s.f.owner,"S1",c,"before-debt");String no=s.f.no(original,"changeNo");
+ @Test void impactBlockerNeverApplies() throws Exception {
+  var s=setup();var c=command(s);
   var indebted=new BrandServiceImpl(s.f.repo,s.f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",s.f.repo.json),(a,e,st)->new BrandChangeImpactPort.Impact(true,false,1,0,0,0),s.f.numbers());
-  indebted.decide(s.f.owner,no,new ChangeDecision("APPROVE",0,"确认"),"after-debt");
-  assertThat(indebted.change(s.f.owner,no).get("blockers")).asList().containsExactly("STORED_VALUE_UNRESOLVED");
+  var result=indebted.submit(s.f.owner,"S1",c,"after-debt");
+  assertThat(result).containsEntry("applied",false);assertThat(result.get("blockers")).asList().containsExactly("STORED_VALUE_UNRESOLVED");
+  assertThat(s.f.jdbc.queryForObject("SELECT count(*) FROM mch_brand_store_binding",Long.class)).isZero();
+ }
+ @Test void newModelStoreNeedsChainEntitlement() throws Exception {
+  var s=setup();s.f.jdbc.update("UPDATE mch_store SET commerce_model='STORE_V1' WHERE store_no='S1'");
+  var check=s.brands.check(s.f.owner,"S1",new ChangeCheck(s.management,s.brand));
+  assertThat(check).containsEntry("allowed",false).containsEntry("nextAction","BUY");
+  assertThat(check.get("blockers")).asList().containsExactly("CHAIN_ENTITLEMENT_REQUIRED");
+  var c=new ChangeSubmit(s.management,s.brand,(String)check.get("checkToken"),0,0,null,0L,"加入品牌");
+  assertThat(s.brands.submit(s.f.owner,"S1",c,"no-entitlement")).containsEntry("applied",false);
+  assertThat(s.f.jdbc.queryForObject("SELECT count(*) FROM mch_brand_store_binding",Long.class)).isZero();
+  // 过期的、撤销的都不算
+  long now=System.currentTimeMillis();
+  grant(s,"G1",now-200_000,now-100_000,"ENDED");grant(s,"G2",now-100_000,null,"REVOKED");
+  assertThat(s.brands.check(s.f.owner,"S1",new ChangeCheck(s.management,s.brand))).containsEntry("allowed",false);
+  grant(s,"G3",now-100_000,now+86_400_000L,"ACTIVE");
+  check=s.brands.check(s.f.owner,"S1",new ChangeCheck(s.management,s.brand));
+  assertThat(check).containsEntry("allowed",true);
+  @SuppressWarnings("unchecked") var admission=(Map<String,Object>)check.get("admission");assertThat(admission).containsEntry("basis","ENTITLEMENT").containsEntry("entitledUntil",now+86_400_000L);
+  var applied=s.brands.submit(s.f.owner,"S1",new ChangeSubmit(s.management,s.brand,(String)check.get("checkToken"),0,0,null,0L,"加入品牌"),"entitled");
+  assertThat(applied).containsEntry("applied",true).containsEntry("admissionBasis","ENTITLEMENT");
+  assertThat(s.f.jdbc.queryForObject("SELECT admission_basis FROM mch_brand_store_binding WHERE store_no='S1' AND status='ACTIVE'",String.class)).isEqualTo("ENTITLEMENT");
+ }
+ @Test void leavingTheBrandNeedsNoEntitlement() throws Exception {
+  var s=setup();s.brands.submit(s.f.owner,"S1",command(s),"join");
+  s.f.jdbc.update("UPDATE mch_store SET commerce_model='STORE_V1' WHERE store_no='S1'");
+  var check=s.brands.check(s.f.owner,"S1",new ChangeCheck(s.management,null));
+  assertThat(check).containsEntry("allowed",true);
+  long storeVersion=((Number)check.get("storeVersion")).longValue(),binding=((Number)check.get("bindingRevision")).longValue(),from=((Number)check.get("fromRevision")).longValue();
+  var left=s.brands.submit(s.f.owner,"S1",new ChangeSubmit(s.management,null,(String)check.get("checkToken"),storeVersion,binding,from,null,"退出品牌"),"leave");
+  assertThat(left).containsEntry("applied",true);
+  assertThat(s.f.jdbc.queryForObject("SELECT count(*) FROM mch_brand_store_binding WHERE store_no='S1' AND status='ACTIVE'",Long.class)).isZero();
+  assertThat(s.f.jdbc.queryForObject("SELECT count(*) FROM mch_brand_store_binding WHERE store_no='S1' AND active_store_no IS NOT NULL",Long.class)).isZero();
+ }
+ private static void grant(Setup s,String no,long start,Long end,String state){
+  s.f.jdbc.update("INSERT INTO mch_store_end_grant(tenant_no,grant_no,store_no,end_code,entitlement_code,start_at,end_at,state) VALUES('MAIN',?,'S1','CHAIN','END_CHAIN',?,?,?)",no,start,end,state);
  }
  @Test void revocationCommittedWhileMutationWaitsIsObserved() throws Exception {
   org.junit.jupiter.api.Assumptions.assumeTrue(System.getProperty("p1.mysql.url")!=null,"MySQL repeatable-read regression");

@@ -20,10 +20,10 @@ public class BizStoredValueBrandActivationController {
     public Capability capability(){return enabled&&governance?pay.capability():new Capability(1,false,List.of("CORE_BRAND_EXECUTION_DISABLED"));}
     @PostMapping("/biz/management/brands/{brandNo}/stored-value/issuer/activation")
     public Map<String,Object> activate(@PathVariable String brandNo,@RequestBody Activate request,@RequestHeader("Idempotency-Key")String key){
-        var actor=access.actor();var original=journal.original(actor,request.managementNo(),brandNo,key,request.expectedRevision());
-        if(original!=null){if("ACTIVE".equals(original.state()))return Map.of("activationNo",original.activationNo(),"state","ACTIVE");return journal.acknowledge(actor,request.managementNo(),brandNo,pay.activate(original.command()));}
-        if(!enabled||!governance)throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);var lookup=authority.configurationLookup(actor,request.managementNo(),"BRAND",brandNo);var current=issuers.find(lookup).issuer();if(current==null)throw BizException.of(ErrorCode.NOT_FOUND);if(current.revision()!=request.expectedRevision())throw BizException.of(ErrorCode.CONFLICT);
-        if(!pay.capability().ready())throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        // 没有开通记录表（G3）：已开通的重放也走 prepare，由它按当前修订与发行方版本给出开通号；准备中的重试同样现算同一条命令重发
+        var actor=access.actor();boolean active=journal.original(actor,request.managementNo(),brandNo,key,request.expectedRevision())!=null;
+        if(!active&&(!enabled||!governance))throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);var lookup=authority.configurationLookup(actor,request.managementNo(),"BRAND",brandNo);var current=issuers.find(lookup).issuer();if(current==null)throw BizException.of(ErrorCode.NOT_FOUND);if(current.revision()!=request.expectedRevision())throw BizException.of(ErrorCode.CONFLICT);
+        if(!active&&!pay.capability().ready())throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
         var config=new Config(current.name(),current.settlementEntityNo(),current.collectionMode(),current.clearingMode(),current.debitAllocationMode(),current.currency(),current.marketZone(),current.routes(),current.revision());var trusted=authority.configureScope(actor,request.managementNo(),"BRAND",brandNo,config);
         var pending=journal.prepare(actor,trusted,current,key);if("ACTIVE".equals(pending.state()))return Map.of("activationNo",pending.activationNo(),"state","ACTIVE");var ack=pay.activate(pending.command());return journal.acknowledge(actor,request.managementNo(),brandNo,ack);
     }

@@ -1251,6 +1251,12 @@ public enum ErrorCode {
      */
     PLAN_CAPABILITY_REQUIRED(70023, "err.merchant.plan_capability_required"),
 
+    /**
+     * 门店入连锁要持有连锁权益（{@code END_CHAIN}），而这家店没有有效的（TDD-平台基础库换表「连锁按权益准入」）。
+     * 解法是去商城给这家店买连锁版套餐或连锁端包，不是找人授权，也不是等审批。
+     */
+    CHAIN_ENTITLEMENT_REQUIRED(70102, "err.merchant.chain_entitlement_required"),
+
     // ---- 8xxxx 类目维护 ----
     /** 类目最多两级（V168 由三级收敛）—— 端上的选择器只渲染两层，更深的节点查得到、选不到。 */
     CATEGORY_TOO_DEEP(80001, "err.category.too_deep"),

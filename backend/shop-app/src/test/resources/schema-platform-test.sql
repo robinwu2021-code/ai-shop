@@ -483,4 +483,84 @@ CREATE TABLE IF NOT EXISTS mch_brand (
   CONSTRAINT mch_brand__uk_2 UNIQUE (tenant_no, management_no, name_key)
 );
 
+CREATE TABLE IF NOT EXISTS mch_brand_store_binding (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(64) NOT NULL DEFAULT 'MAIN',
+  binding_no varchar(64) NOT NULL,
+  brand_no varchar(64) NOT NULL,
+  store_no varchar(64) NOT NULL,
+  status varchar(10) NOT NULL,
+  effective_from datetime(3) NOT NULL,
+  effective_to datetime(3) DEFAULT NULL,
+  scope_revision bigint NOT NULL,
+  change_no varchar(64) NOT NULL,
+  admission_basis varchar(16) NOT NULL DEFAULT 'LEGACY',
+  active_store_no varchar(64) DEFAULT NULL,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version int NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by varchar(64) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT mch_brand_store_binding__uk_1 UNIQUE (tenant_no, binding_no),
+  CONSTRAINT mch_brand_store_binding__uk_2 UNIQUE (tenant_no, active_store_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand_financial_change (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(64) NOT NULL DEFAULT 'MAIN',
+  change_no varchar(64) NOT NULL,
+  management_no varchar(64) NOT NULL,
+  store_no varchar(64) NOT NULL,
+  from_brand_no varchar(64) DEFAULT NULL,
+  to_brand_no varchar(64) DEFAULT NULL,
+  original_actor_no varchar(64) NOT NULL,
+  command_key varchar(64) NOT NULL,
+  command_hash char(64) NOT NULL,
+  source_snapshot TEXT NOT NULL,
+  pay_prepare_snapshot TEXT DEFAULT NULL,
+  status varchar(16) NOT NULL,
+  in_flight_store_no varchar(64) DEFAULT NULL,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version int NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by varchar(64) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT mch_brand_financial_change__uk_brand_financial_change UNIQUE (tenant_no, change_no),
+  CONSTRAINT mch_brand_financial_change__uk_brand_financial_change_command UNIQUE (tenant_no, original_actor_no, command_key),
+  CONSTRAINT mch_brand_financial_change__uk_brand_financial_change_store UNIQUE (tenant_no, in_flight_store_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_store_end_grant (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(64) DEFAULT 'MAIN',
+  grant_no varchar(64) DEFAULT NULL,
+  store_no varchar(64) DEFAULT NULL,
+  end_code varchar(32) DEFAULT NULL,
+  entitlement_code varchar(32) DEFAULT NULL,
+  entitlement_version bigint DEFAULT NULL,
+  period_no varchar(64) DEFAULT NULL,
+  schedule_revision bigint DEFAULT NULL,
+  segment_seq int DEFAULT NULL,
+  schedule_event_no varchar(64) DEFAULT NULL,
+  operation_ref_no varchar(64) DEFAULT NULL,
+  reason_type varchar(24) DEFAULT NULL,
+  stacking_policy_version varchar(32) DEFAULT NULL,
+  start_at bigint DEFAULT NULL,
+  end_at bigint DEFAULT NULL,
+  state varchar(10) DEFAULT NULL,
+  revoked_at bigint DEFAULT NULL,
+  reason varchar(512) DEFAULT NULL,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version int NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by varchar(32) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by varchar(32) DEFAULT NULL,
+  PRIMARY KEY (id)
+);
+
 CREATE TRIGGER IF NOT EXISTS mch_role_perms_to_points AFTER INSERT, UPDATE, DELETE ON mch_role FOR EACH ROW CALL "ai.neargo.shop.support.RolePermsToPointsTrigger";

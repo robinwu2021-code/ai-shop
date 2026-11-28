@@ -32,7 +32,7 @@ backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/BrandStoredVal
 backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementRepository.java 2
 backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/BrandFinancialActivationServiceImpl.java 4
 backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/BrandFinancialChangeServiceImpl.java 2
-backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/BrandServiceImpl.java 11
+backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/BrandServiceImpl.java 7
 backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/IssuerAuthorityServiceImpl.java 3
 backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/ManagementQueryServiceImpl.java 11
 backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/ManagementScopeServiceImpl.java 5

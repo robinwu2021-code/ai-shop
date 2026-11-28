@@ -165,7 +165,7 @@ commerce 现在把两件事写在一起，要改成两步（这是 commerce 的�
 
 | 事 | 方案 |
 |---|---|
-| 门店入退连锁 | 走**轻量审批** `LightApprovalPort`（商户侧、当场批，存基础能力库），流程码 `BRAND_CHANGE`，审批对象 = 门店（`subjectRef` = 门店号，`revision` = 门店版本），同一门店同时只有一张待批；批人须有集团级 `brand.change.decide`。批准后商户域按当前事实重跑影响检查与版本比对（现有 `verifyFacts`），对不上就 `CONFLICT` 要求重新送审；通过才改绑定。旧表 `mch_brand_change` 的检查快照不再落库，执行时现算 |
+| 门店入退连锁 | ~~走轻量审批~~（**2026-11-28 改定：不走审批，按权益准入**，见下文「连锁按权益准入」） |
 | 储值开通 | **不走审批**：它是与支付侧的两阶段开通，栅栏状态放 `mch_brand.stored_value_status`（定稿已有列：NONE → PREPARING → ACTIVE）与 `scope_revision`；旧表 `mch_brand_financial_activation` 不再需要。开通后门店入退连锁仍走上面的审批，批准后再驱动支付侧的成员变更 |
 
 **E 服务范围：channel 的定义与方案（2026-11-28 整理；用户已定：存储用空串哨兵，主体层不做覆盖，改绑只看门店自己的行）**
@@ -274,11 +274,70 @@ commerce 现在把两件事写在一起，要改成两步（这是 commerce 的�
 | # | 问题 | 选项 |
 |---|---|---|
 | G1 | 操作人编号长度：新库 `actor_no`、`owner_actor_no`、审计列都是 32 位，而 7.2 保留的带前缀写法 `USER:` + 32 位用户号最长 37 位 | A（推荐）放宽到 64；B 去掉前缀，另加一列标类型 |
-| G2 | 入退连锁走轻量审批：轻量审批不许提交人自己批，而老板提交时他本人就是集团级审批人 | A（推荐）老板提交即自动通过（与改价审批「老板发起免审」同一口径）；B 必须另一个有 `brand.change.decide` 的人批 |
+| G2 | **作废**（入退连锁已不走审批）： 入退连锁走轻量审批：轻量审批不许提交人自己批，而老板提交时他本人就是集团级审批人 | A（推荐）老板提交即自动通过（与改价审批「老板发起免审」同一口径）；B 必须另一个有 `brand.change.decide` 的人批 |
 | G3 | 储值开通去掉旧表后，丢了「按命令号幂等重放」与「冻结的开通命令」（回执要对照它） | A（推荐）开通号由品牌号 + `scope_revision` 确定性生成，回执到来时按同一 `scope_revision` 现算成员事实对照；B 用统一防重存命令 |
 | G4 | 储值开通后的门店入退（支付侧两阶段：准备 → 支付已准备 → 提交）要记中间状态与支付回执，新库没有地方放；TDD 原方案没覆盖 | A（推荐）新库保留 `mch_brand_financial_change`（V2 补表），只装这段两阶段流程；B 塞进轻量审批单的载荷 |
 | G5 | 管理域的命令日志 `mch_management_command`（重放上次结果、按幂等键查结果）新库不建（拆库清单 2026-11-25 复核：「防重是功能能力，应用层防重，加业务表上的唯一键兜底」） | 已定：改走统一防重 `RequestIdempotencyPort`（按幂等键执行与查询已完成的结果），业务表唯一键兜底；不另建表 |
 | G6 | 同一张命令日志还是品牌「操作记录」页的数据源（按品牌倒序翻页）。拆库清单：`mch_staff_log` 等变更日志并入基础能力库统一审计（「各处的变更日志都是审计」） | 按清单：品牌管理操作写统一审计 `sys_audit_log`（`resource_type=BRAND`、`resource_no`、`action`、`after_masked`、`operator_ref`），操作记录页改读它；`AuditLogPort` 要补「带对象与快照的写入」与「按对象翻页的读取」 |
+
+**连锁按权益准入（2026-11-28 用户定：入退连锁不走审批，按权益与套餐收费；暂时所有门店都要购买）**
+
+*一、原则*：能力只看门店当前有效的权益码（权益时间片），权益只从商城来——付费是「下单 → 付款 → 交付」，
+免费是零元赠送，走同一条链路；免费多少家、多久、给哪个套餐 / 权益、给哪个行业，都是配置，不写进代码。
+
+*二、各对象的边界*
+
+| 对象 | 规则 |
+|---|---|
+| 集团 | 每个老板账号一个，按 Q7.1 自动建；免费名额按集团计数 |
+| 品牌 | 建品牌、改品牌免费，不卡权益 |
+| 门店入连锁 | 门店须持有有效的 `END_CHAIN`（买连锁版 Plan 或连锁端包；来源不限：付费、赠送、运营授予）。旧模型门店（`commerce_model` 不是 `STORE_V1`）不受新商业模型约束，照旧放行（与功能矩阵「旧模型门店跳过商业状态」同口径） |
+| 门店退连锁 | 免费、当场生效；已付权益不退，用到到期 |
+| 跨集团 | 门店所属主体必须与品牌同集团，否则按改挂靠处理，不在这里 |
+| 权益到期 | 门店留在品牌里，不自动退出；之后再入连锁会被拦（宽限、只读等「连锁写操作停用」放到连锁功能接权益时做，本步只卡入连锁） |
+
+*三、入连锁流程（取代 submit → decide）*
+
+1. `POST /biz/stores/{s}/brand-changes/check`：原有事实与影响检查照旧；新增 `admission`：
+   `{required:"END_CHAIN", basis:"ENTITLEMENT"|"LEGACY"|null, entitledUntil}`。门店没有有效权益时
+   `blockers` 带 `CHAIN_ENTITLEMENT_REQUIRED`，`nextAction=BUY`（前端去商城）。退出（`toBrandNo=null`）不判权益。
+2. `POST /biz/stores/{s}/brand-changes`：校验令牌、四个版本号、权限码（门店 `store.brand.change` + 两侧品牌 `brand.manage`）、
+   影响检查、准入，**通过即改绑定**并返回 `{changeNo, storeNo, fromBrandNo, toBrandNo, bindingNo, applied:true, admissionBasis, blockers:[]}`；
+   影响检查或准入不过时不落任何行，返回 `applied:false` 与 `blockers`。`changeNo` 仍由单据号 `BRAND_CHANGE` 生成，写进绑定行的 `change_no`。
+   幂等照旧（统一防重，G5）；审计照旧（`BRAND_CHANGE_APPLIED`、两侧品牌 `BRAND_STORE_CHANGED`，G6）。
+3. 删除：`GET /biz/management/brand-changes/{changeNo}`、`POST /biz/management/brand-changes/{changeNo}/decisions`；
+   `check` 返回里的 `canDecide` 去掉；权限码 `brand.change.decide` 不再使用（保留登记，不删码值）。
+4. 已开通储值的品牌：仍走储值期间的入退两阶段（`mch_brand_financial_change`），入连锁一侧同样先判准入。
+
+准入只写在一处：`ChainAdmissionPolicy`（商户域），读平台库的 `mch_store_end_grant`
+（`entitlement_code='END_CHAIN'`、状态 SCHEDULED / ACTIVE / ENDED、`start_at<=现在<end_at` 或 `end_at` 空、未删）与 `mch_store.commerce_model`。
+
+*四、绑定与储值的配套改动*
+
+| 事 | 改法 |
+|---|---|
+| 绑定 `active_store_no` | 写入 / 改状态时同步：只有 ACTIVE 填门店号，其余为空（一店同时只属一个品牌由 `uk_2` 保证） |
+| 绑定 `admission_basis` | V2 补列 `varchar(16) NOT NULL DEFAULT 'LEGACY'`：`ENTITLEMENT` / `LEGACY`（以后的赠送、运营授予看权益段自身的 `reason_type`，不另加值） |
+| 储值期间入退 | 不再写 `mch_brand_change` 占位行；在途门店由 `mch_brand_financial_change.in_flight_store_no`（未完成时填门店号、完成后置空，唯一键）占住 |
+| 储值开通（G3=A） | 不再写 `mch_brand_financial_activation`；栅栏 = `mch_brand.stored_value_status`（NONE → PREPARING → ACTIVE）+ `scope_revision`；开通号 = `BFA` + 摘要(租户, 品牌, `scope_revision`) 取 32 位，重试时按同一修订现算成员事实重发；回执须对上同一开通号与修订 |
+| 品牌停用 | 去掉「有待批变更单」的检查（已无变更单）；有生效绑定仍不许停用 |
+| 经营视图、改挂靠预检 | 「待处理的品牌变更」改为看在途的储值期间入退（`in_flight_store_no`） |
+
+*五、免费名额（设计定稿，本步不建）*
+
+暂定所有门店都要购买：各行业 FREE 档发布为空权益清单即可（运营配置，目录校验允许），不改代码。
+将来做免费活动时按下面建（商城库）：
+
+| 表 | 用途 |
+|---|---|
+| `mall_free_offer`（发布即不可改，改即新版本） | 赠送内容（某 SKU 版本：Plan 档或端包）、时长（长期 / N 天）、适用行业、触发（开店 / 入连锁 / 手动领取 / 运营发放）、活动期、优先级、所属名额池 |
+| `mall_free_quota_pool` | 名额池；`releasable` = 门店关停或转出后名额能否回收（限期赠送不可回收，防关店重开） |
+| `mall_free_quota_limit`（只增不改） | `GLOBAL` / `ACCOUNT` 两级上限，带 `effective_from/to`，可预排未来的调整；领取时取当时生效的那行，特批优先 |
+| `mall_free_offer_claim` | 领取记录：池、集团、门店、零元订单、`slot_no`、`active_slot_key`（唯一键兜底并发）、依据的上限行 |
+
+领取：锁集团行 → 取生效上限 N → 数池内有效领取 M → `M<N` 才给，取最小空闲名额号 → 零元订单交付。
+调低上限不收回已领的；调高后「待开通」门店可手动领取。计数身份 = 集团（即老板 `USER:` 身份），将来要按实名或执照合并只换计数键。
+
 
 **建议顺序**：补唯一键 → F、票据、PIN 策略、会话日志、H、两列 → B → D → E → G → I 其余。
 第 2 步仍是一次提交，等 Q1–Q10 定完才能整体合入。在那之前，能单独提交、在旧库上照样能跑的只有两类：

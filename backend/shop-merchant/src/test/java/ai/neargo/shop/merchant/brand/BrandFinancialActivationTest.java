@@ -9,15 +9,13 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.storedvalue.BrandChangeImpactPort;
 import ai.neargo.shop.spi.storedvalue.StoredValueBrandActivation.Ack;
 import ai.neargo.shop.spi.storedvalue.StoredValueIssuers.*;
-import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 class BrandFinancialActivationTest {
  record F(BrandFixture f,BrandService brands,String management,String brand,BrandFinancialActivationService journal,AuthorizedScope authority,View issuer){}
  F setup()throws Exception{
-  var f=new BrandFixture();String sql=Files.readString(Path.of("../shop-app/src/main/resources/db/migration/V573__brand_financial_activation_fence.sql")).replaceAll("(?m)^--.*$","").replaceAll(" ENGINE=InnoDB[^;]*","").replace(" JSON"," VARCHAR(30000)").replace("status IN ('PREPARING','ACTIVE')","CASE status WHEN 'PREPARING' THEN TRUE WHEN 'ACTIVE' THEN TRUE ELSE FALSE END");
-  for(String part:sql.split(";"))if(!part.isBlank()&&!part.contains("ADD COLUMN stored_value_status"))f.jdbc.execute(part);   // 新 mch_brand 已带该列
+  var f=new BrandFixture();   // 储值开通不再有开通记录表（G3）：栅栏只在 mch_brand.stored_value_status
   String m=f.no(f.space(),"managementNo");var brands=new BrandServiceImpl(f.repo,f.scopes,new ManagementTokenCodec("test-brand-finance-key-more-than-thirty-two-characters",f.repo.json),(a,e,s)->new BrandChangeImpactPort.Impact(true,false,0,0,0,0),f.numbers());
   String b=f.no(brands.create(f.owner,new BrandCreate(m,"Brand",null,"ACTIVE"),"CREATE"),"brandNo");
   f.scopes.grant(f.owner,m,new GrantCommand(f.owner.actorKey(),"STORE","S1","store.read",null,null,false,null,false));
@@ -34,20 +32,25 @@ class BrandFinancialActivationTest {
   var f=setup();var p=f.journal.prepare(f.f.owner,f.authority,f.issuer,"ACTIVATE");
   assertThat(p.command().stores()).extracting(s->s.entityNo()).containsExactly("E1","E2");
   assertThat(f.f.jdbc.queryForObject("SELECT stored_value_status FROM mch_brand WHERE brand_no=?",String.class,f.brand)).isEqualTo("PREPARING");
-  assertThat(f.journal.original(f.f.owner,f.management,f.brand,"ACTIVATE",3).command()).isEqualTo(p.command());
-  assertThatThrownBy(()->f.journal.original(f.f.owner,f.management,f.brand,"OTHER",3)).isInstanceOf(BizException.class);
+  // 准备中的重试：没有冻结的命令可取，按同一修订现算，得到同一个开通号与同一条命令
+  assertThat(f.journal.original(f.f.owner,f.management,f.brand,"ACTIVATE",3)).isNull();
+  var retry=f.journal.prepare(f.f.owner,f.authority,f.issuer,"ACTIVATE");
+  assertThat(retry.activationNo()).isEqualTo(p.activationNo()).hasSize(32).startsWith("BFA");
+  assertThat(retry.command()).isEqualTo(p.command());
   assertThatThrownBy(()->f.journal.original(f.f.other,f.management,f.brand,"ACTIVATE",3)).isInstanceOf(BizException.class);
   assertThatThrownBy(()->f.brands.check(f.f.owner,"S1",new ChangeCheck(f.management,null))).isInstanceOf(BizException.class);
   var ack=new Ack(p.activationNo(),"ISSUER","IV1",2,1,"ISSUER_READY");
   assertThat(f.journal.acknowledge(f.f.owner,f.management,f.brand,ack)).containsEntry("state","ACTIVE");
   assertThat(f.journal.original(f.f.owner,f.management,f.brand,"ACTIVATE",3).state()).isEqualTo("ACTIVE");
-  assertThat(f.f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_brand_financial_activation",Long.class)).isEqualTo(1);
+  assertThat(f.journal.prepare(f.f.owner,f.authority,f.issuer,"ACTIVATE").state()).isEqualTo("ACTIVE");
  }
  @Test void staleSourceAcknowledgementCannotRemoveThePersistentFence()throws Exception{
   var f=setup();var p=f.journal.prepare(f.f.owner,f.authority,f.issuer,"ACTIVATE");
   f.f.jdbc.update("UPDATE mch_brand SET scope_revision=3 WHERE brand_no=?",f.brand);
   assertThatThrownBy(()->f.journal.acknowledge(f.f.owner,f.management,f.brand,new Ack(p.activationNo(),"ISSUER","IV1",2,1,"ISSUER_READY"))).isInstanceOf(BizException.class);
   assertThat(f.f.jdbc.queryForObject("SELECT stored_value_status FROM mch_brand WHERE brand_no=?",String.class,f.brand)).isEqualTo("PREPARING");
-  assertThat(f.f.jdbc.queryForObject("SELECT status FROM mch_brand_financial_activation",String.class)).isEqualTo("PREPARING");
+  // 回执拼错发行方版本也对不上开通号
+  f.f.jdbc.update("UPDATE mch_brand SET scope_revision=2 WHERE brand_no=?",f.brand);
+  assertThatThrownBy(()->f.journal.acknowledge(f.f.owner,f.management,f.brand,new Ack(p.activationNo(),"ISSUER","IV2",2,1,"ISSUER_READY"))).isInstanceOf(BizException.class);
  }
 }
