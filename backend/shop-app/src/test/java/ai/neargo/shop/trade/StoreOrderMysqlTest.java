@@ -25,9 +25,12 @@ import ai.neargo.shop.idem.port.RequestIdempotencyPortImpl;
 import ai.neargo.shop.invoicebridge.InvoiceAutoIssueConsumer;
 import ai.neargo.shop.invoicebridge.port.SubOrderInvoiceSourcePortImpl;
 import ai.neargo.shop.numbering.DocumentNumberFormatter;
+import ai.neargo.shop.numbering.DocumentNumberGenerator;
+import ai.neargo.shop.numbering.DocumentOwner;
 import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.numbering.ReservedDocumentNumber;
 import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
+import ai.neargo.shop.numbering.store.JdbcDocumentNumberRepository;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.port.GoodsPricingPolicyPortImpl;
@@ -41,6 +44,7 @@ import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort.SkuSnapshot;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+import ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl;
 import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.shop.spi.marketing.PosActivityPort;
 import ai.neargo.shop.spi.member.PosSaleMemberPort;
@@ -75,6 +79,7 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,6 +90,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -100,6 +106,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -147,6 +154,40 @@ class StoreOrderMysqlTest {
         invoices.items.clear();
         invoices.settings = new InvoicePort.StoreSettings(null, "MANUAL");
         payOrders.byNo.clear();
+    }
+
+    @Test
+    void splitPlatformOwnershipFenceIsHeldDuringTradeRollback() {
+        var platform = new JdbcTemplate(Db.platform);
+        invoices.beforeRememberBuyer = () -> {
+            var claims = new TransactionTemplate(new DataSourceTransactionManager(Db.platform));
+            var blocked = CompletableFuture.supplyAsync(() -> {
+                try {
+                    claims.executeWithoutResult(tx -> platform.queryForList(
+                            "SELECT entity_no FROM mch_entity WHERE entity_no='E1' FOR UPDATE NOWAIT"));
+                    return false;
+                } catch (UncategorizedSQLException locked) {
+                    assertEquals(3572, locked.getSQLException().getErrorCode());
+                    return true;
+                }
+            }).join();
+            assertTrue(blocked, "A claim must wait for the order's trade transaction");
+        };
+        try {
+            assertCode(ErrorCode.INVOICE_BUYER_INVALID, () -> create(CLERK, "POS-OWN-ROLLBACK", "K-OWN-ROLLBACK",
+                    List.of(custom(1, 100, "Tea", "TAXABLE")), List.of(),
+                    new BuyerCmd("CARRIER", null, null, "3J0002", "invalid", null)));
+        } finally {
+            invoices.beforeRememberBuyer = () -> {};
+        }
+        assertEquals(0, count("SELECT COUNT(*) FROM ord_order WHERE client_order_no='POS-OWN-ROLLBACK'"));
+        assertEquals(1, platform.update("UPDATE mch_entity SET ownership_change_no='CLAIM' WHERE entity_no='E1'"));
+        try {
+            assertCode(ErrorCode.CONFLICT, () -> create(CLERK, "POS-OWN-FROZEN", "K-OWN-FROZEN",
+                    List.of(custom(1, 100, "Tea", "TAXABLE")), List.of(), null));
+        } finally {
+            platform.update("UPDATE mch_entity SET ownership_change_no=NULL WHERE entity_no='E1'");
+        }
     }
 
     // ------------------------------------------------------------------ AC1 / AC2 / AC3 / AC4
@@ -731,6 +772,7 @@ class StoreOrderMysqlTest {
                 "ord_offline_record", "ord_offline_record_event", "sys_outbox", "pmt_apply", "ord_after_sale",
                 "ord_after_sale_item", "ord_legacy_coupon_checkout");
         static DataSource ds;
+        static DataSource platform;
         static boolean created;
 
         static synchronized DataSource dataSource() throws Exception {
@@ -747,6 +789,16 @@ class StoreOrderMysqlTest {
             root.execute("CREATE DATABASE " + SCHEMA);
             created = true;
             ds = new DriverManagerDataSource(URL.replace("/?", "/" + SCHEMA + "?"), USER, PASS);
+            String platformSchema = SCHEMA + "_platform";
+            root.execute("CREATE DATABASE " + platformSchema);
+            platform = new DriverManagerDataSource(URL.replace("/?", "/" + platformSchema + "?"), USER, PASS);
+            var platformJdbc = new JdbcTemplate(platform);
+            platformJdbc.execute("CREATE TABLE mch_entity(tenant_no VARCHAR(16), entity_no VARCHAR(16) PRIMARY KEY,"
+                    + " deleted BOOLEAN NOT NULL DEFAULT FALSE, ownership_change_no VARCHAR(32))");
+            platformJdbc.execute("CREATE TABLE mch_store(tenant_no VARCHAR(16), store_no VARCHAR(16) PRIMARY KEY,"
+                    + " entity_no VARCHAR(16), deleted BOOLEAN NOT NULL DEFAULT FALSE, ownership_change_no VARCHAR(32))");
+            platformJdbc.update("INSERT INTO mch_entity(tenant_no, entity_no) VALUES ('MAIN','E1')");
+            platformJdbc.update("INSERT INTO mch_store(tenant_no, store_no, entity_no) VALUES ('MAIN','S1','E1')");
             var jdbc = new JdbcTemplate(ds);
             var tables = new ArrayList<>(TABLES);
             boolean hasInvoiceLines = root.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=? AND table_name='ord_invoice_data_fill'",Long.class,TEMPLATE) == 1;
@@ -770,6 +822,11 @@ class StoreOrderMysqlTest {
                 for (var statement : sql.replaceAll("(?m)^--.*$", "").split(";"))
                     if (!statement.isBlank()) jdbc.execute(statement);
             }
+            String numbering = new ClassPathResource("db/migration/V542__document_numbers.sql")
+                    .getContentAsString(StandardCharsets.UTF_8);
+            for (String statement : numbering.replaceAll("(?m)^--.*$", "").split(";")) {
+                if (!statement.isBlank()) jdbc.execute(statement);
+            }
             // 门店交易库把 SKU 定价策略并进了 prd_sku（tax_class / promotion_eligible），门店由商品归属给出；
             // 模板库还是旧结构，这里只建策略读取用到的列
             jdbc.execute("CREATE TABLE prd_goods(id BIGINT AUTO_INCREMENT PRIMARY KEY,goods_no VARCHAR(32),"
@@ -789,8 +846,11 @@ class StoreOrderMysqlTest {
 
     @AfterAll
     static void dropSchema() {
-        if (Db.created)
-            new JdbcTemplate(new DriverManagerDataSource(Db.URL, Db.USER, Db.PASS)).execute("DROP DATABASE " + Db.SCHEMA);
+        if (Db.created) {
+            var jdbc = new JdbcTemplate(new DriverManagerDataSource(Db.URL, Db.USER, Db.PASS));
+            jdbc.execute("DROP DATABASE " + Db.SCHEMA);
+            jdbc.execute("DROP DATABASE IF EXISTS " + Db.SCHEMA + "_platform");
+        }
     }
 
     /** 发票域替身：预存买受人与有效发票；载具号格式不对按发票域的口径回 26004（真实校验在 TwBuyerRules） */
@@ -802,6 +862,7 @@ class StoreOrderMysqlTest {
         volatile StoreSettings settings = new StoreSettings(null, "MANUAL");
         /** 开票前按真实发票来源读一遍：不 READY 抛 26002，与发票域同口径 */
         volatile SubOrderInvoiceSourcePortImpl source;
+        Runnable beforeRememberBuyer = () -> {};
 
         @Override
         public InvoiceReceipt issue(Scope scope, String sourceType, String sourceNo, Buyer buyer) {
@@ -830,6 +891,7 @@ class StoreOrderMysqlTest {
 
         @Override
         public void rememberBuyer(Scope scope, String sourceType, String sourceNo, Buyer buyer) {
+            beforeRememberBuyer.run();
             if (buyer.carrierId() != null && !buyer.carrierId().matches("/[0-9A-Z.+-]{7}"))
                 throw BizException.of(ErrorCode.INVOICE_BUYER_INVALID);
             buyers.put(sourceNo, buyer);
@@ -863,6 +925,10 @@ class StoreOrderMysqlTest {
     @MapperScan(basePackageClasses = PosActivitySaleMapper.class, annotationClass = org.apache.ibatis.annotations.Mapper.class,
             sqlSessionFactoryRef = "sqlSessionFactory")
     static class Config {
+        @Bean tools.jackson.databind.ObjectMapper objectMapper() {
+            return tools.jackson.databind.json.JsonMapper.builder().build();
+        }
+
         @Bean PosActivityPort posActivityPort() { return mock(PosActivityPort.class); }
         @Bean PosSaleMemberPort posSaleMemberPort() { return mock(PosSaleMemberPort.class); }
         @Bean
@@ -973,21 +1039,19 @@ class StoreOrderMysqlTest {
                 }
                 return out;
             });
-            StoreOwnershipWritePort ownership = new StoreOwnershipWritePort() {
-                @Override public void lockAndCheck(String t, String e, String s) { }
-                @Override public void lockEntityAndCheck(String t, String e) { }
-            };
-            var template = new TransactionTemplate(tx);
-            var numbers = mock(DocumentNumberCoordinator.class);
+            var platformManager = new DataSourceTransactionManager(Db.platform);
+            var ownership = new StoreOwnershipWritePortImpl(new JdbcTemplate(Db.ds), new JdbcTemplate(Db.platform),
+                    platformManager);
+            var generator = mock(DocumentNumberGenerator.class);
             var seq = new AtomicLong();
-            when(numbers.transaction(any(), any())).thenAnswer(inv ->
-                    template.execute(status -> inv.<Supplier<?>>getArgument(1).get()));
-            when(numbers.takeReserved(any())).thenAnswer(inv -> {
+            when(generator.reserve(any(DocumentType.class), any(Instant.class))).thenAnswer(inv -> {
                 DocumentType type = inv.getArgument(0);
                 var today = LocalDate.now();
                 return new ReservedDocumentNumber(type, today,
                         DocumentNumberFormatter.format(type, today, seq.incrementAndGet()));
             });
+            var repository = new JdbcDocumentNumberRepository(DocumentOwner.CORE, (DataSourceTransactionManager) tx);
+            var numbers = new DocumentNumberCoordinator(repository, generator, tx);
             var provider = new StaticListableBeanFactory(Map.of("invoices", invoices)).getBeanProvider(InvoicePort.class);
             return new StoreOrderServiceImpl(orders, subs, items, fills, goods, policyPort, ownership, numbers,
                     provider, tx, settlements);

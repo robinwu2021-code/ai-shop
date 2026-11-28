@@ -262,6 +262,8 @@ def render(mappers, jdbc, legacy_refs, bound, suggest, missing, snap, consumers)
     legacy_refs = [f for f in legacy_refs if not any(f.startswith(p) for p in OUT_OF_SCOPE)]
     add("# 旧库调用清单")
     add("")
+    add("> 状态：按当前代码生成的旧库迁移盘点。")
+    add("")
     add("> 由 `scripts/gen-legacy-db-usage.py` 生成，不要手改。迁完一个模块（绑新库、改表）后重跑。")
     add("")
     add("范围：只统计 ai-shop 自己的业务代码（用户 2026-11-27）。不含 " +

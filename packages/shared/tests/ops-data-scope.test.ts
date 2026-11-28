@@ -52,7 +52,9 @@ if (!MODULES.includes("pay/pay-domain") || !MODULES.includes("job/job-core")
 }
 const REGISTRATION = join(
   BACKEND, "shop-app/src/main/java/ai/neargo/shop/config/DataScopeRegistration.java");
-const SCHEMA = join(BACKEND, "shop-app/src/test/resources/schema-test.sql");
+// 与 application-h2db.yml 的 schema-locations 顺序一致。
+const SCHEMAS = ["schema-product-test.sql", "schema-test.sql", "schema-test-extra.sql"]
+  .map(file => join(BACKEND, "shop-app/src/test/resources", file));
 
 /** 运营会话可能带的三个维度（`StaffIdentityResolver.scopeOf`）。SELF/GROUP 是 C 端的，不在此列。 */
 const OPS_DIMS = ["MERCHANT", "COMMUNITY", "PICKUP"] as const;
@@ -128,39 +130,18 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * 「配了只看某商家」这件事才第一次真的生效。
    */
 
-  // 进销存的三处：**平台完整性任务，按定义就是全量**。
-  // recon 尤其不能接 —— 接上等于「只对差一部分」，而对账的全部意义就是覆盖全量；
-  // 一个只覆盖一半的对账结果比没有更危险，它会让人以为对过了。
-  // 双版本（V279）：审核队列/详情随行的「有无草稿」布尔。
-  // **按已授权主键回捞**：goodsNo 来自上一步已过数据域的主查询（auditQueue 的
-  // 商品列表本身接域），这里只按那个 goodsNo 点查一行布尔 —— 行级可见性
-  // 由主查询决定，这一步不放大任何可见范围。与 toOpsVO 的回捞同一类。
-  // 仅活动可售（V340）：商品列表随行的「此刻有没有活动在跑」布尔。与上面 hasDraft 同一类 ——
+  // 仅活动可售（V340）：商品列表随行的「此刻有没有活动在跑」布尔。
   // **按已授权主键回捞**：入参 goodsNo 全部来自上一步已过数据域的主查询，返回值只是这些
   // goodsNo 的子集，带不出任何别家的行。读活动表不能按商家域限定：平台活动（P3a）的
   // entity_no = 'PLATFORM'，限定了就看不到它，而平台活动点名的货同样算「在活动中」。
   "SaleGatePortImpl#live":
     "按已授权的 goodsNo 回捞「有无活动在跑」的布尔（仅活动可售）；返回值是入参子集，"
     + "不放大可见范围。不按商家域限定，因为平台活动的 owner 是 PLATFORM",
-  "MerchantGoodsServiceImpl#hasDraft":
-    "按已授权 goodsNo 回捞草稿存在性布尔；行级可见性由上游主查询的数据域决定",
-  // 审核员草稿审阅视图（双版本）：主查询 requireByNoInScope 已过数据域，
-  // 下面两处只按核过的 goodsNo 点查草稿行与 SKU 行 —— 与 hasDraft 同一类回捞
-  "MerchantGoodsServiceImpl#draftPreviewForOps":
-    "按已授权 goodsNo 回捞待审草稿行；行级可见性由 requireByNoInScope 决定",
-  "MerchantGoodsServiceImpl#buildPreview":
-    "diff 需要线上 SKU 快照；goodsNo 来自已过数据域的主查询（商家侧是 mine、"
-    + "运营侧是 requireByNoInScope），这里不放大任何可见范围",
   // #draftOf 不在这张表里：它只被 /biz 端点调用（编辑页读草稿），不在任何
   // ops 查询路径上 —— G1 不扫它，登进来就是死条目。归属由 mine(merchantNo) 在代码里核
 
   "InventoryHealthServiceImpl#merchantNameOf":
     "健康度页取商家名填展示列。行级可见性由上一步的库存扫描决定，这里只是把 no 换成名字",
-  "InventoryHealthServiceImpl#onSaleSkus":
-    "平台库存健康度按定义跨商家：它回答的是「全平台有多少 SKU 的账对不上」",
-  "InventoryBackfillServiceImpl#doRun":
-    "库存对差/回填是平台完整性任务，必须全量。接上数据域 = 只对差一部分，"
-    + "而部分对账的结果会被当成「对过了」—— 比不对更危险",
 
   /*
    * 商家查**自己的**社区提报（`/biz/community-applies`）。守卫按方法名把它挂到了
@@ -324,9 +305,6 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   // 与 B/C 端共用同一段代码的两处 —— 与 MerchantOrderServiceImpl#todo 同一形状：
   // **不能只看 ops 一侧就把绕过去掉**，另一端的会话维度在这些表上没有锚点，
   // 接上就是 1=0，症状是「商家看自己的东西是空的」。
-  "MerchantGoodsServiceImpl#storePriceOf":
-    "storeSkus 读的是 BizContext.currentStoreNo() —— 这是 B 端商家看自己门店价的路径。"
-    + "去掉绕过会把商家自己的门店价清空。归属由 currentStoreNo 保证；要接需先拆 ops 专用口径",
   "StoreFulfillmentServiceImpl#rowsOf":
     "DataScopeRegistration 里已写明：mch_fulfillment_channel 登记 MERCHANT 是给运营端看的，"
     + "而可见性/下单闸/B 端配置的调用方是 C 端或 B 端会话，接上就是 1=0。归属由 requireStore 保证",
@@ -357,12 +335,6 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
     "集单期已下单件数。期号来自已过数据域的商品所挂的集单活动（按 entity_no 圈定），"
     + "这里按 period_no 等值回捞、只汇总成一个件数；裁掉的话期内已下单数被低估，名额判断跟着错",
 
-  // 归属判定，不是列表查询
-  "ProductScopeFactsPortImpl#goodsOwned":
-    "判「这些货是不是这个主体的」：按显式的 tenant_no + entity_no + goods_no 计数，只回一个布尔。"
-    + "不回任何行，所以不放大可见范围；按运营的数据域再裁一次的效果是「自家的货被判成别家的」，"
-    + "活动/特价对自己的货静默失效（活动算价与保存时的归属校验都走它）",
-
   // ── 批① ord_sub_order 之后留下的 ──
   "MerchantOrderServiceImpl#toOpsVO":
     "按子单主键回捞主单（ord_order）补社区字段。行级可见性已由上一步的子单查询判定；"
@@ -383,34 +355,6 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   "MerchantOrderServiceImpl#scan":
     "同 #todo：ops 门店统计与 B 端共用的扫描口径。批④ 拆口径",
 
-  // ── 商品域批⑤（2026-08-21）：列表批量化之后新出现的两处 ──
-  //
-  // 两处都**只是拿已经被数据域裁过的 goodsNo 再读一遍那几行**，不扩大可见范围：
-  // 分页查询（auditQueue）本身是接数据域的，detailAll 收到的 id 集合已经是授权结果。
-  // 去掉绕过反而会坏事 —— detailAll 与 list 同时服务 B 端（SELF 维度），
-  // 而 prd_goods 只有 MERCHANT 锚点，接上就是 1=0，商家商品列表当场全空。
-  "GoodsServiceImpl#detailAll":
-    "按已授权的 goodsNo 批量回读商品行，组装 VO 用。id 集合来自上一步已接数据域的分页查询；"
-    + "再裁一次不增加安全性，却会让 B 端（SELF 维度）的同一条路径拼出 1=0",
-  // 读 SKU 的三处：输入都是**已经被数据域裁过的 goodsNo**（或 B 端自己的 merchantNo），
-  // 拿它们去补价、补库存。再裁一次不增加安全性，却会让 B 端（SELF 维度）拼出 1=0。
-  //
-  // ⚠️ 真正的口子不在这三处，而在 `PlatformProductServiceImpl#listSkus` /
-  // `#listOversellSkus` —— 那两条是**直接检索 prd_sku**，2026-08-21 已去掉绕过接上数据域。
-  "GoodsServiceImpl#loadSkus":
-    "按 goodsNo 批量取 SKU 组装展示价。goodsNo 集合来自已接数据域的商品查询；"
-    + "且这是买家侧公共目录的同一条路径（C 端会话是 SELF 维度），接上就是 1=0",
-  "MerchantGoodsServiceImpl#withMarketPrices":
-    "按 goodsNo 补各市场价（商家侧编辑页整份回填要用）。同上：id 已授权，再裁只会把 B 端清空",
-  "MerchantGoodsServiceImpl#outOfStockGoodsNos":
-    "按 merchantNo 算「所有 SKU 都缺货」的商品号，只服务 B 端的缺货页签。"
-    + "B 端会话是 SELF 维度，接上数据域这一筛恒为空 —— 商家的缺货页签会永远显示没有缺货",
-
-  "MerchantGoodsServiceImpl#list":
-    "B 端商家商品列表与运营审核队列共用的读口径。B 端会话是 SELF 维度，"
-    + "而 prd_goods 只有 MERCHANT 锚点 —— 去掉绕过，商家的商品列表当场全空。"
-    + "运营侧真正接数据域的是 auditQueue 与 listForOps 那两条",
-
   // ── 批②（2026-08-14）：主查询已接数据域，剩下的是**装饰性取名** ──
   //
   // 这几处的输入是**已经过数据域裁剪的主查询的结果**（商家号/门店号），
@@ -421,10 +365,6 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   // 按关键字搜商家名），这条豁免就不成立了 —— 那时该拆一个新方法，而不是复用它。
   "MerchantPortImpl#findAll":
     "装饰性取名：入参是已授权主查询给出的商家号集合，用来补 merchantName",
-  "MerchantPortImpl#find":
-    "跨域 Port 的单个商家查询。**调用方各带各的维度**（C 端买家是 SELF、B 端商家是 SELF），"
-    + "而 mch_entity 只有 MERCHANT 锚点 —— 不豁免的话下单时取不到商家名快照，"
-    + "分拣汇总里商家名会是空串（批② 实测）。ops 侧用它同样是装饰性取名，主查询已裁剪",
   "MerchantPortImpl#entityOfStores":
     "同上：门店号 → 主体号的反查，入参来自已授权的查询",
   // 方案 v4（2026-08-22）：ops 商家履约视图 → 准入矩阵 denied 判定 → 自提点归属比对。
@@ -450,16 +390,9 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   //   · MerchantGoodsServiceImpl#auditQueue     —— 新拆出来的 ops 待审队列
   //   · MerchantGoodsServiceImpl#listForOps     —— 运营商品池
   //   · MerchantGoodsServiceImpl#requireByNoInScope —— 运营商品详情
-  // 剩下这三条是**永久豁免**，不是欠着的：
-  "GoodsServiceImpl#detail":
-    "C 端公共目录（MpCatalogController 是唯一调用方）。C 端会话是 SELF 维度，"
-    + "而 prd_goods 只有 MERCHANT 锚点 —— 接上的症状是「游客能逛、一登录就一件商品都看不见」，"
-    + "且不报错、日志干净。正确做法是豁免，不是给商品表编一个假的 SELF 锚点",
   // `MerchantGoodsServiceImpl#list` 与 `#requireByNo` **刻意不在这张表里**：
   // 批③ 之后它们已经不在任何 ops 查询路径上（前者只剩 B 端商家列表，后者只剩写路径），
   // 而 G2 会把留在这里的条目当死条目报出来。它们各自为什么仍然豁免，写在方法上。
-  "PlatformProductServiceImpl#toVOs":
-    "装饰性回填：入参是已授权主查询给出的 skuNo/goodsNo 集合，用来补商品名与多市场价",
 
   // ── 批④（2026-08-14 完成）：结算与履约的 ops 查询已接数据域 ──
   //
@@ -477,9 +410,6 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * 配了数据域的运营在这一屏看到的本来就是全平台供给（旧 CommunityPoolStatsPortImpl 注释里写明的代价）。
    * 要收紧只能在 distribution 那一层按域过滤结果，那是另一单。
    */
-  "GoodsVisibility#onSaleOf":
-    "买家可见性判定（全局，买家会话无数据域）；运营位置分布的供给侧复用它，"
-    + "口径与此前读未登记的社区池时相同 —— 全平台供给",
   /*
    * ── 2026-10-10 可见范围判定改索引点查（ADR-034）──
    *
@@ -531,8 +461,6 @@ const ANCHOR_WAIVED: Record<string, string> = {
   "ord_store_pricing_config:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
   "ord_store_pricing_revision:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
   "ord_store_pricing_revision:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
-  "prd_sku_pricing_policy:COMMUNITY": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
-  "prd_sku_pricing_policy:PICKUP": "价格配置、报价及资金来源按经营主体/门店的受信上下文授权；只持社区或自提点域的运营直接查询应为空，不允许把价格策略与结账资金事实按地点公开。",
   "prn_incident:COMMUNITY": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
   "prn_incident:PICKUP": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
   "prn_operation:COMMUNITY": "打印中心按经营主体/门店授权；只持社区或自提点域的运营不可直接读取设备、凭据、任务和审计，预期为空。PrintActorFactory先核验指定门店授权，DataScopeHandler保持fail-closed。",
@@ -756,12 +684,6 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "仍全部绕过数据域（SCOPE_BYPASS_OK），所以这条暂时不产生实际影响",
   "prd_goods:PICKUP": "同上：商品不属于自提点",
 
-  // 草稿挂在商品上、商品挂在商家上 —— 两个维度的豁免理由与 prd_goods 同源。
-  // 代价同样写明：配了社区/自提点域的运营查草稿表是空白（fail-closed）——
-  // 而草稿本来就不是那两类运营的对象（它是商家的编辑缓冲）。
-  "prd_goods_draft:COMMUNITY": "草稿属于商家（entity_no），不属于社区 —— 与 prd_goods 同源",
-  "prd_goods_draft:PICKUP": "同上：草稿不属于自提点",
-
   // prd_sku 于 2026-08-21 补登记（商品域优化清单 P2-4）：此前它**根本没注册**，
   // 于是不带过滤条件的 `GET /ops/skus` 是全平台可见，配了商家域的运营也一样。
   // 两个维度的豁免理由与 prd_goods 同源 —— SKU 挂在商品上，商品挂在商家上。
@@ -864,11 +786,6 @@ const ANCHOR_WAIVED: Record<string, string> = {
   "pmt_coupon_issue:PICKUP": "同上：没有持自提点域的角色能打开",
   "pmt_user_coupon:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
   "pmt_user_coupon:PICKUP": "同上：没有持自提点域的角色能打开",
-  // 门店维度：类目与门店价挂门店（store_no），门店挂主体
-  "mch_store_category:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
-  "mch_store_category:PICKUP": "同上：没有持自提点域的角色能打开",
-  "prd_store_price:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
-  "prd_store_price:PICKUP": "同上：没有持自提点域的角色能打开",
 };
 
 // ────────────────────────────────────────────────── 静态扫描
@@ -1143,20 +1060,23 @@ function registeredTables(): Map<string, Record<string, string>> {
   return readScopeRegistrations(ROOT);
 }
 
-/** schema-test.sql → 表名 → 列名集合。**逐表切块**，不做全局 grep ——
+/** 测试启动按顺序加载的 DDL → 表名 → 列名集合。**逐表切块**，不做全局 grep ——
  *  `status` 这种列名到处都是，全局 grep 会假阳性通过。 */
 function schemaColumns(): Map<string, Set<string>> {
-  const src = readFileSync(SCHEMA, "utf8");
   const out = new Map<string, Set<string>>();
-  for (const m of src.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)\s*\(([\s\S]*?)\n\);/g)) {
-    const cols = new Set<string>();
-    for (const line of m[2]!.split("\n")) {
-      const t = line.trim();
-      if (!t || /^(PRIMARY|CONSTRAINT|UNIQUE|KEY|INDEX)\b/i.test(t)) continue;
-      const c = t.split(/\s+/)[0];
-      if (c && /^\w+$/.test(c)) cols.add(c);
+  for (const path of SCHEMAS) {
+    const source = readFileSync(path, "utf8");
+    for (const m of source.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)\s*\(([\s\S]*?)\n\);/g)) {
+      if (out.has(m[1]!)) continue;
+      const cols = new Set<string>();
+      for (const line of m[2]!.split("\n")) {
+        const t = line.trim();
+        if (!t || /^(PRIMARY|CONSTRAINT|UNIQUE|KEY|INDEX)\b/i.test(t)) continue;
+        const c = t.split(/\s+/)[0];
+        if (c && /^\w+$/.test(c)) cols.add(c);
+      }
+      out.set(m[1]!, cols);
     }
-    out.set(m[1]!, cols);
   }
   return out;
 }
@@ -1585,8 +1505,8 @@ describe("运营端数据域接入", () => {
   it("仅买家收藏登记不要求虚构运营锚点；新增运营读取时仍须检查", () => {
     const opsReads = new Set(gets.flatMap(e => (classes.get(e.cls)?.methods.get(e.method) ?? [])
       .flatMap(body => [...tablesIn(e.cls, body)])));
-    expect(registered.has("prd_goods_favorite")).toBe(true);
-    expect(opsReads.has("prd_goods_favorite")).toBe(false);
+    expect(registered.has("mbr_favorite")).toBe(true);
+    expect(opsReads.has("mbr_favorite")).toBe(false);
   });
 
   it("★★★ G3 每张被运营读取的已注册表都要为运营会话的三个维度备好锚点 —— 缺一个，那类运营整页空白且不报错", () => {

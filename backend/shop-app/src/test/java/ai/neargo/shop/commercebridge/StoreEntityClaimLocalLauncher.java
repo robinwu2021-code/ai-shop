@@ -210,9 +210,10 @@ public final class StoreEntityClaimLocalLauncher {
             f.web.register(PayClientConfig.class, InternalHttp.class, StoreRelinkHostFactsPortImpl.class,
                     StoreRelinkLocalPolicy.class, StoreRelinkPrecheck.class, StoreEntityClaimServiceImpl.class,
                     BizStoreEntityController.class, BizStoreClaimRecoveryController.class, MerchantPlanServiceImpl.class,
-                    StoreOwnershipWritePortImpl.class, ApiResponseWrapper.class);
+                    ApiResponseWrapper.class);
             f.web.addBeanFactoryPostProcessor(beans -> {
                 beans.registerSingleton("n1Json", new ObjectMapper());
+                beans.registerSingleton("ownershipWrites", new StoreOwnershipWritePortImpl(f.db.jdbc));
                 beans.registerSingleton("n1Jdbc", f.db.jdbc); beans.registerSingleton("n1StoreSync", sync);
                 beans.registerSingleton("n1ServiceLocator", locator); beans.registerSingleton("n1CommerceRelink", commerce);
                 beans.registerSingleton("n1Snapshots", new StoreSnapshotReader(f.db.ds));
