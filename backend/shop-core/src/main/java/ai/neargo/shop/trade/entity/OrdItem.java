@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.math.BigDecimal;
 import lombok.Getter;
@@ -82,7 +83,8 @@ public class OrdItem extends BaseEntity {
 
     /** 分摊后的本行实付（含优惠 / 积分抵扣分摊，不含运费）—— 下单时落快照（V404）。存量为 0，读时现算 */
     private Long paidShareMinor;
-    /** 下单时本行承担的券优惠，历史未取证为 null。 */
+    /** 旧库冻结的券分摊。普通订单投影兼容无此列的库，退款显式读取整行保留旧证据。 */
+    @TableField(select = false)
     private Long couponShareMinor;
     /** 已退件数（V404） */
     private Integer refundedQty;

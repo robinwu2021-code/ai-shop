@@ -39,12 +39,15 @@ public class PointsRefundResourceServiceImpl implements PointsRefundResourceServ
     private final String authority;
     private final ObjectMapper json;
     private final TransactionTemplate tx;
+    private final boolean canonicalStorage;
     public PointsRefundResourceServiceImpl(RefundObligationMapper tasks,RefundExecutionMapper sources,
             CreateIntentMapper intents,StockPort stock,ObjectMapper json,
             @Value("${shop.inventory.stock-authority:PLATFORM}") String authority,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            @Value("${shop.trade.canonical-storage:false}") boolean canonicalStorage) {
         this.tasks=tasks; this.sources=sources; this.intents=intents; this.stock=stock; this.json=json;
         this.authority=authority; this.tx=new TransactionTemplate(manager);
+        this.canonicalStorage = canonicalStorage;
         this.tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
     @Override @Transactional(propagation=Propagation.MANDATORY)
@@ -127,13 +130,17 @@ public class PointsRefundResourceServiceImpl implements PointsRefundResourceServ
                                     full,
                                     lines);
                     String payload = json.writeValueAsString(command);
-                    tasks.createStock(
-                            no,
-                            as.getAfterSaleNo(),
-                            RefundCouponScopeServiceImpl.hash(payload),
-                            payload,
-                            needed && !lines.isEmpty() ? "PENDING" : "NOT_REQUIRED",
-                            needed ? null : "STOCK_POLICY:" + as.getAfterSaleNo());
+                    String hash = RefundCouponScopeServiceImpl.hash(payload);
+                    String proof = needed ? null : "STOCK_POLICY:" + as.getAfterSaleNo();
+                    boolean pending = needed && !lines.isEmpty();
+                    if (canonicalStorage) {
+                        tasks.createCanonical(no, as.getAfterSaleNo(), child.getSubOrderNo(), "STOCK",
+                                as.getAfterSaleNo(), hash, payload,
+                                pending ? "PENDING" : RefundObligationMapper.SKIPPED, proof);
+                    } else {
+                        tasks.createStock(no, as.getAfterSaleNo(), hash, payload,
+                                pending ? "PENDING" : RefundObligationMapper.NOT_REQUIRED, proof);
+                    }
                     return null;
                 });
     }
@@ -334,7 +341,9 @@ public class PointsRefundResourceServiceImpl implements PointsRefundResourceServ
     }
     public record Command(String afterSaleNo,String orderNo,String subOrderNo,String authority,
                           boolean lifecycle2,boolean unshipped,boolean full,List<StockPort.SkuQty> lines) { }
-    private static boolean terminal(Map<String,Object> row) {return "SUCCEEDED".equals(row.get("state"))||"NOT_REQUIRED".equals(row.get("state"));}
+    private static boolean terminal(Map<String,Object> row) {
+        return RefundObligationMapper.isTerminal((String) row.get("state"));
+    }
     private static long number(Map<String,Object> row,String key) {return ((Number)row.get(key)).longValue();}
     private static void require(boolean valid,String error) {if(!valid) throw new IllegalStateException(error);}
 }

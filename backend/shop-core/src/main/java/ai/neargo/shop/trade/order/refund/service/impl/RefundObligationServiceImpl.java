@@ -11,6 +11,7 @@ import ai.neargo.shop.trade.order.refund.service.impl.RefundCouponScopeServiceIm
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
@@ -26,10 +27,15 @@ public class RefundObligationServiceImpl implements RefundObligationService {
     private final CouponPort coupons;
     private final ObjectMapper json;
     private final TransactionTemplate tx;
+    private final boolean canonicalStorage;
+
     public RefundObligationServiceImpl(RefundObligationMapper mapper,RefundExecutionStore executions,
-            CouponPort coupons,ObjectMapper json,@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
+            CouponPort coupons,ObjectMapper json,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
+            @Value("${shop.trade.canonical-storage:false}") boolean canonicalStorage) {
         this.mapper=mapper; this.executions=executions; this.coupons=coupons; this.json=json;
         this.tx=new TransactionTemplate(manager);
+        this.canonicalStorage = canonicalStorage;
     }
     @Override public boolean hasScope(String order) {
         return DataScopeContext.executeWithoutScope(() -> mapper.scope(order)!=null);
@@ -46,14 +52,17 @@ public class RefundObligationServiceImpl implements RefundObligationService {
             if(row==null) return null;
             boolean ready="COMMITTED".equals(row.get("state"))
                     && ("POINTS_CONFIRMED".equals(row.get("phase")) || "COMMITTED".equals(row.get("phase")));
-            return new Source((String)row.get("order_no"),((Number)row.get("closure_version")).intValue(),
+            return new Source((String)row.get("order_no"), (String)row.get("after_sale_no"),
+                    (String)row.get("sub_order_no"), ((Number)row.get("closure_version")).intValue(),
                     Boolean.TRUE.equals(row.get("return_coupon")) || row.get("return_coupon") instanceof Number n && n.intValue()==1,ready);
         }
         var row=executions.read(no);
-        return row==null?null:new Source(row.getOrderNo(),row.getClosureVersion()==null?1:row.getClosureVersion(),
+        return row==null?null:new Source(row.getOrderNo(), row.getAfterSaleNo(), row.getSubOrderNo(),
+                row.getClosureVersion()==null?1:row.getClosureVersion(),
                 Boolean.TRUE.equals(row.getReturnCoupon()),"SUCCEEDED".equals(row.getStatus()));
     }
-    private record Source(String orderNo,int version,boolean returnCoupon,boolean ready) { }
+    private record Source(String orderNo, String afterSaleNo, String subOrderNo, int version,
+                          boolean returnCoupon, boolean ready) { }
     @Override @Transactional(transactionManager = ModuleDataSources.TRADE_TX_MANAGER, propagation=Propagation.MANDATORY)
     public void prepare(String no) {
         DataScopeContext.executeWithoutScope(() -> {
@@ -72,16 +81,26 @@ public class RefundObligationServiceImpl implements RefundObligationService {
                     && !scope.subOrderNos().isEmpty() && scope.subOrderNos().stream().allMatch(sub ->
                         "CANCELLED".equals(mapper.childStatus(sub))
                         || mapper.itemCount(sub)>0 && mapper.unrefundedItems(sub)==0);
-            String state=eligible?"PENDING":RefundObligationMapper.NOT_REQUIRED;
-            mapper.create(no,scope.couponNo()==null?scope.orderNo():scope.couponNo(),(String)row.get("input_hash"),
-                    payload,state,eligible?null:"POLICY:"+no);
+            String sourceNo = scope.couponNo() == null ? scope.orderNo() : scope.couponNo();
+            String hash = (String) row.get("input_hash");
+            String proof = eligible ? null : "POLICY:" + no;
+            if (canonicalStorage) {
+                require(execution.afterSaleNo() != null && execution.subOrderNo() != null,
+                        "REFUND_OBLIGATION_SOURCE_NOT_READY");
+                mapper.createCanonical(no, execution.afterSaleNo(), execution.subOrderNo(), "COUPON",
+                        sourceNo, hash, payload, eligible ? "PENDING" : RefundObligationMapper.SKIPPED, proof);
+            } else {
+                mapper.create(no, sourceNo, hash, payload,
+                        eligible ? "PENDING" : RefundObligationMapper.NOT_REQUIRED, proof);
+            }
             return null;
         });
     }
     @Override public boolean settled(String no) {
         return DataScopeContext.executeWithoutScope(() -> {
             var rows=mapper.rows(no).stream().filter(row -> "COUPON".equals(row.get("kind"))).toList();
-            return !rows.isEmpty() && rows.stream().allMatch(row -> terminal((String)row.get("state")));
+            return !rows.isEmpty() && rows.stream()
+                    .allMatch(row -> RefundObligationMapper.isTerminal((String) row.get("state")));
         });
     }
     @Override public Progress progress(String no) {
@@ -99,7 +118,8 @@ public class RefundObligationServiceImpl implements RefundObligationService {
                 boolean unknown=List.of("CASH_OPENING","CASH_PENDING").contains(row.get("state"));
                 String cashStatus=cash!=null && cash==0?RefundObligationMapper.NOT_REQUIRED:confirmed?"CONFIRMED":unknown?"UNKNOWN":"PENDING";
                 var stock=mapper.rows(no).stream().filter(task -> "STOCK".equals(task.get("kind"))).findFirst().orElse(null);
-                String resource=stock==null?"MANAGED_SEPARATELY":terminal((String)stock.get("state"))?"DONE":"PENDING";
+                String resource=stock==null?"MANAGED_SEPARATELY":
+                        RefundObligationMapper.isTerminal((String)stock.get("state"))?"DONE":"PENDING";
                 return new Progress(2,"REFUNDED".equals(row.get("after_sale_status")) && confirmed?"DONE":"PENDING",
                         cashStatus,settled(no)?"SETTLED":"PENDING",(String)row.get("cash_payment_no"),
                         manual?"MANUAL_REQUIRED":confirmed?"SUCCEEDED":unknown?"UNKNOWN":"PROCESSING",
@@ -120,7 +140,8 @@ public class RefundObligationServiceImpl implements RefundObligationService {
             var rows=mapper.lockRows(no);
             if(rows.isEmpty()) return List.<Map<String,Object>>of();
             long now=System.currentTimeMillis();
-            return rows.stream().filter(row -> "COUPON".equals(row.get("kind"))).filter(row -> !terminal((String)row.get("state")))
+            return rows.stream().filter(row -> "COUPON".equals(row.get("kind")))
+                .filter(row -> !RefundObligationMapper.isTerminal((String)row.get("state")))
                 .filter(row -> !"PROCESSING".equals(row.get("state")) || number(row,"next_attempt_at")<=now)
                 .filter(row -> mapper.update(number(row,"id"),(String)row.get("input_hash"),"PROCESSING",null,null,now+120000)==1)
                 .toList();
@@ -142,7 +163,6 @@ public class RefundObligationServiceImpl implements RefundObligationService {
                     System.currentTimeMillis()+120000)));
         }
     }
-    private static boolean terminal(String state) {return "SUCCEEDED".equals(state)||RefundObligationMapper.NOT_REQUIRED.equals(state);}
     private static long number(Map<String,Object> row,String key) {return ((Number)row.get(key)).longValue();}
     private static void require(boolean valid,String error) {if(!valid) throw new IllegalStateException(error);}
 }

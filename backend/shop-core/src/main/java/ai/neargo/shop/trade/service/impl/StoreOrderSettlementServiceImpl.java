@@ -7,6 +7,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.invoice.InvoicePort;
+import ai.neargo.shop.spi.member.PosSaleMemberPort;
 import ai.neargo.shop.spi.pay.PaidCollectionPort;
 import ai.neargo.shop.spi.pay.PaidCollectionPort.PaidCollection;
 import ai.neargo.shop.spi.trade.OrderEvents;
@@ -15,6 +16,7 @@ import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStoreCollection;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.OfflineRecordMappers.RecordMapper;
+import ai.neargo.shop.trade.mapper.PosActivitySaleMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.StoreCollectionMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
@@ -26,7 +28,9 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -52,8 +56,9 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
     static final String CHANNEL_MIXED = "MIXED";
     static final String CHANNEL_COLLECT = "COLLECT";
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private ai.neargo.shop.spi.member.PosSaleMemberPort posMembers;
+    @Autowired private PosSaleMemberPort posMembers;
+    @Autowired private PosActivitySaleMapper posFacts;
+    @Value("${shop.trade.canonical-storage:false}") private boolean canonicalStorage;
     private final OrderMapper orders;
     private final SubOrderMapper subOrders;
     private final RecordMapper offline;
@@ -198,13 +203,25 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
         if (paid < order.getPayAmount()) return;
         String channel = channel(cash > 0, collected);
         long now = System.currentTimeMillis();
+        String tenant = order.getTenantNo();
+        String orderNo = order.getOrderNo();
+        String subNo = sub.getSubOrderNo();
+        var facts = unscoped(() -> canonicalStorage ? posFacts.canonicalFacts(tenant, subNo, orderNo)
+                : posFacts.legacyFacts(tenant, orderNo));
+        boolean active = facts != null && facts.memberNo() != null
+                && unscoped(() -> posMembers.active(tenant, sub.getEntityNo(), sub.getStoreNo(), facts.memberNo()));
         int changed = unscoped(() -> orders.update(null, new UpdateWrapper<OrdOrder>().eq("tenant_no", "MAIN")
                 .eq("order_no", order.getOrderNo()).eq("status", OrdOrder.WAIT_PAY)
-                .set(order.getPosActivityFactsVersion() != null, "pos_member_at_payment",
-                        order.getPosMemberNo() != null && posMembers.active("MAIN",sub.getEntityNo(),sub.getStoreNo(),order.getPosMemberNo()))
+                .set(!canonicalStorage && facts != null, "pos_member_at_payment", active)
                 .set("status", OrdOrder.PAID).set("paid_at", now).set("pay_channel", channel)
                 .setSql("version=version+1")));
         if (changed != 1) throw BizException.of(ErrorCode.STORE_ORDER_STATE_INVALID);
+        if (canonicalStorage && facts != null) {
+            unscoped(() -> {
+                PosSaleQuote.requireLinked(posFacts.recordCanonicalMembership(tenant, subNo, orderNo, active));
+                return posFacts.decideAllocations(tenant, subNo, orderNo, "COMMITTED");
+            });
+        }
         unscoped(() -> subOrders.update(null, new UpdateWrapper<OrdSubOrder>().eq("id", sub.getId())
                 .eq("status", OrdSubOrder.WAIT_PAY).set("status", OrdSubOrder.COMPLETED).set("completed_at", now)
                 .setSql("version=version+1")));
