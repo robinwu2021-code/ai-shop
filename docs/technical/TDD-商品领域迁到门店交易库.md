@@ -105,14 +105,14 @@
 
 ### 2.5 数据搬迁
 
-- 一次性脚本 `scripts/migrate-product-to-n-trade.py`：从 `ai_shop_ume` 读、按 §2.3 的并入与改名规则转换、写 `n_trade` / `n_member`。可重复执行（按业务号覆盖），先在演练库 `ai_shop_ume_rehearsal` 上跑。
+- 一次性脚本 `scripts/migrate-product-to-n-trade.py`（SQL 在 `backend/scripts/migrate-product-to-n-trade.sql`）：从 `ai_shop_ume` 读、按 §2.3 的并入与改名规则转换、写 `n_trade_v2` / `n_member`，三库须在同一实例。整批一个事务：目标表非空、SKU 跨市场冲突或库存不一致、店级库存落在库存池键上、搬后行数与库存/价格对不上，任一检查不过整批回滚。要重跑须先清空目标表。跑完打印新旧对账表（`--report-only` 只出对账）。库存也在这一步搬进 `prd_store_sku`（主体级库存写 `store_no=''` 的库存池行）。
 - 市场：旧库 SKU、门店价的 `market` 为 `CN` 的改为 `TW`（正式库 5 个 SKU 里 4 个是 `CN`，来源是代码原先写死的「本市场」；新库默认值与代码的本市场都按部署配置为 `TW`，见 [列默认值补回方案](design/门店交易库-列默认值补回方案.md) §3）。
 - 规格范围的搬法：类目绑定写 `CATEGORY` 维度级行（`value_no=''`），类目取值子集写同范围取值级行；商家覆盖写 `MCH_CATEGORY`（`scope_ref` = 商家号/类目号，`value_no` 空串照搬，`enabled=0` → `DISABLED`）；商家常用维度与取值写 `MERCHANT`（`favorite=1`）。
 - 规格模板的搬法：平台模板按名字对到规格库的平台维度、选项按 code 对到取值，写 `CATEGORY_TYPE` 推荐（对不上的维度或取值列进搬迁报告，人工定）；`category_no` 非空的类目级模板不搬；商家自存模板转为他的自建维度 + `MERCHANT` 常用。
 - 草稿的搬法：每行草稿在提交历史里落一行（`EDITING` → `EDITING`、`SUBMITTED` → `SUBMITTED`，`base_version` → `base_goods_version`），编号取该商品最大编号 +1；若同一商品已有未发布（`DRAFT`）且内容相同的那一行，直接改它的状态而不另开。
 - 门店目录的搬法：旧库每个目录版本一行写进 `prd_store_catalog`（`revision_index` → `version_no`、`frozen_payload` → `frozen_content` 原文照搬、`stage = PUBLISHED`，目录号沿用旧编号）；门店商品写 `prd_catalog_item`（`catalog_version_no = ''`、`on_sale` → `enabled`）；类目库存开关写 `prd_store_category` 主体级行（`category_no` 按同一摘要算）。
 - 合表的搬法：`prd_store_price` 与 `prd_store_stock` 按 门店 + SKU 合成一行（库存行没有市场列，取本市场）；类目付款方式只搬 `allowed=0` 的行进 `disallowed_pay_modes`；SKU 定价策略、卡类权益绑定按 SKU 写进本市场那一行（权益绑定的 `status` 非 ACTIVE 或已删的，SKU 置 `DISABLED`）。
-- 历史库存单独用 [migrate-product-stock.sql](../../backend/scripts/migrate-product-stock.sql) 搬迁。停止两端库存写入，从同一个旧库快照导出 `prd_sku`、`prd_store_stock` 到演练机上的 `product_stock_snapshot`，先装好目标商品、SKU、价格、原始订单锁。用独立迁移账号经 mysql 批处理客户端连接目标库并执行脚本（遇错退出），应用账号无需读快照。主体总量写本市场 `store_no=''` 的唯一行，各店总量按实际门店号写入，保留价格与已锁量。跨市场库存不一致、目标库存已变化、SKU 归属不一致或回读对不上都会中止。保存脚本输出并按锁单号逐笔核对迁入的在途订单锁后再放开写入。脚本可在冻结窗口内重跑。本市场默认 TW，其他环境执行前在同一连接设 `@home_market`。
+- 历史库存单独用 [migrate-product-stock.sql](../../backend/scripts/migrate-product-stock.sql) 搬迁。停止两端库存写入，从同一个旧库快照导出 `prd_sku`、`prd_store_stock` 到演练机上的 `product_stock_snapshot`，先装好目标商品、SKU、价格、原始订单锁。用独立迁移账号经 mysql 批处理客户端连接目标库并执行脚本（遇错退出），应用账号无需读快照。主体总量写本市场 `store_no=''` 的唯一行，各店总量按实际门店号写入，保留价格与已锁量。跨市场库存不一致、目标库存已变化、SKU 归属不一致或回读对不上都会中止。保存脚本输出并按锁单号逐笔核对迁入的在途订单锁后再放开写入。脚本可在冻结窗口内重跑。本市场默认 TW，其他环境执行前在同一连接设 `@home_market`。整体搬迁脚本已从同一快照写入库存时，它只做复核：数量一致则不改动，冻结后库存又变了则中止。
 - 对账：逐表比行数，商品、SKU、门店价与库存逐行比关键字段；对账报告存进上线记录。
 - 搬迁在切换窗口里与交易一起做，搬完旧表只读、不删。
 
@@ -151,6 +151,8 @@
 | AC3 | 现有商品相关测试在新表上全部通过：`CategoryTest`、`CategoryTreeFlowTest`、`SpecLibrary*`、`BizGoodsParseTextTest`、`BizGoodsZipPlanTest`、`GoodsCatalogQueryPortTest`、`CatalogPriceSourcePortTest`、`BizDashboardAndReviewFlowTest` 等（实施第 1 步列全清单） |
 | AC4 | 搬迁脚本的对账报告（演练库） |
 | AC5 | `ProductDatabaseIsolationTest#onlyPortsOutsideProduct` |
+
+2026-11-28 整体搬迁演练：本机 MySQL 9.7.4，源 `ai_shop_uni_up`，目标由定稿 05 建的 `prd_rh_trade` 与 `prd_rh_member`。首跑缺 `USE` 报 1046 已修；再跑全部检查通过并提交。对账：类目 71、商品 11、SKU 14、标准商品 311、规格维度 43、取值 266、类目绑定 263、取值子集 364、品类兜底模板 6，新旧一致；草稿 2 行改了已有 `DRAFT` 修订的状态（修订 9 行，其中 `EDITING` 2）；库存池 14 行，件数 9192、锁 0 与源一致；专题 2；SKU 的 `CN` 14 → 0。源里门店价、店级库存、门店目录、收藏都是 0 行，这几段只验证了能执行，没验证数据。
 
 2026-11-28 SKU 库存验证：`DishOfferQueryPortTest` 5 项通过，覆盖店价、主体库存与门店库存的锁定、释放、确认、退回和数量下限。在本机 MySQL 9.7.4 临时库加载正式表结构，冻结快照两次执行迁移后主体余额总数 11、锁 2，门店总数 7、锁 3、价 8100 不变。模拟回滚、旧市场数量不一致、目标余额已改变均验证通过。生产数据搬迁与在途订单锁对账待切换窗口执行。
 
