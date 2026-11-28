@@ -103,13 +103,13 @@ class AfterSaleTimeoutFlowTest {
     @BeforeEach
     void rememberStock() {
         stockBefore = jdbc.queryForObject(
-                "SELECT stock FROM prd_sku WHERE sku_no = ?", Integer.class, SKU);
+                "SELECT sellable_qty FROM prd_store_sku WHERE store_no='' AND sku_no = ?", Integer.class, SKU);
     }
 
     @AfterEach
     void restoreStock() {
         if (stockBefore != null) {
-            jdbc.update("UPDATE prd_sku SET stock = ? WHERE sku_no = ?", stockBefore, SKU);
+            jdbc.update("UPDATE prd_store_sku SET sellable_qty = ? WHERE store_no='' AND sku_no = ?", stockBefore, SKU);
         }
     }
 

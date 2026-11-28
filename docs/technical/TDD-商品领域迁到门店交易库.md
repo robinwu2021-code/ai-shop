@@ -27,6 +27,14 @@
 
 ## §2 方案
 
+### 2.0 候选商品链路验收
+
+按既有平台与交易库 DDL 收窄门店归属查询，对齐门店经营类目及排序字段，将 SKU 的门店库存读写对齐交易库。商品保存、发布、门店上架、改价和库存回读须使用同一商品号。验证账号禁止访问旧库，并以候选接口结果和 n_trade 的行记录对账。
+
+对齐候选库的唯一索引前，将软删行计入两个物理键的查重范围，另查空键和通用经营货架的门店/平台类目重复。无冲突时在每张表的一条在线 ALTER 中替换普通索引，再查索引列序与唯一标志。保存已有商品和门店上架在读取商品状态、分配修订号或新增上架行前，先在商品事务内用 FOR UPDATE 锁住所属主体的商品主行；编辑和上架共享同一锁。待两张表均确认后，以无旧库权限的应用连接并发保存、上架，按商品号、SKU、门店与市场核对行数及价格库存。
+
+兼容旧版清除门店价后软删的 SKU 行。重新定价或初始化门店库存时，在唯一键命中旧记录的情况下仅恢复同主体、同门店、同 SKU、同市场、无库存和无锁量的软删行。沿用原行编号，清除旧价格或应用本次价格，不恢复已取消的售价。
+
 ### 2.1 契约变更
 
 | 项 | 变更 |
@@ -104,6 +112,7 @@
 - 草稿的搬法：每行草稿在提交历史里落一行（`EDITING` → `EDITING`、`SUBMITTED` → `SUBMITTED`，`base_version` → `base_goods_version`），编号取该商品最大编号 +1；若同一商品已有未发布（`DRAFT`）且内容相同的那一行，直接改它的状态而不另开。
 - 门店目录的搬法：旧库每个目录版本一行写进 `prd_store_catalog`（`revision_index` → `version_no`、`frozen_payload` → `frozen_content` 原文照搬、`stage = PUBLISHED`，目录号沿用旧编号）；门店商品写 `prd_catalog_item`（`catalog_version_no = ''`、`on_sale` → `enabled`）；类目库存开关写 `prd_store_category` 主体级行（`category_no` 按同一摘要算）。
 - 合表的搬法：`prd_store_price` 与 `prd_store_stock` 按 门店 + SKU 合成一行（库存行没有市场列，取本市场）；类目付款方式只搬 `allowed=0` 的行进 `disallowed_pay_modes`；SKU 定价策略、卡类权益绑定按 SKU 写进本市场那一行（权益绑定的 `status` 非 ACTIVE 或已删的，SKU 置 `DISABLED`）。
+- 历史库存单独用 [migrate-product-stock.sql](../../backend/scripts/migrate-product-stock.sql) 搬迁。停止两端库存写入，从同一个旧库快照导出 `prd_sku`、`prd_store_stock` 到演练机上的 `product_stock_snapshot`，先装好目标商品、SKU、价格、原始订单锁。用独立迁移账号经 mysql 批处理客户端连接目标库并执行脚本（遇错退出），应用账号无需读快照。主体总量写本市场 `store_no=''` 的唯一行，各店总量按实际门店号写入，保留价格与已锁量。跨市场库存不一致、目标库存已变化、SKU 归属不一致或回读对不上都会中止。保存脚本输出并按锁单号逐笔核对迁入的在途订单锁后再放开写入。脚本可在冻结窗口内重跑。本市场默认 TW，其他环境执行前在同一连接设 `@home_market`。
 - 对账：逐表比行数，商品、SKU、门店价与库存逐行比关键字段；对账报告存进上线记录。
 - 搬迁在切换窗口里与交易一起做，搬完旧表只读、不删。
 
@@ -142,6 +151,76 @@
 | AC3 | 现有商品相关测试在新表上全部通过：`CategoryTest`、`CategoryTreeFlowTest`、`SpecLibrary*`、`BizGoodsParseTextTest`、`BizGoodsZipPlanTest`、`GoodsCatalogQueryPortTest`、`CatalogPriceSourcePortTest`、`BizDashboardAndReviewFlowTest` 等（实施第 1 步列全清单） |
 | AC4 | 搬迁脚本的对账报告（演练库） |
 | AC5 | `ProductDatabaseIsolationTest#onlyPortsOutsideProduct` |
+
+2026-11-28 SKU 库存验证：`DishOfferQueryPortTest` 5 项通过，覆盖店价、主体库存与门店库存的锁定、释放、确认、退回和数量下限。在本机 MySQL 9.7.4 临时库加载正式表结构，冻结快照两次执行迁移后主体余额总数 11、锁 2，门店总数 7、锁 3、价 8100 不变。模拟回滚、旧市场数量不一致、目标余额已改变均验证通过。生产数据搬迁与在途订单锁对账待切换窗口执行。
+
+### 候选环境实测（2026-11-28）
+
+候选库将规格维度适用范围存在 `prd_spec_usage`，将取值的启停、排序及覆盖名称存在 `prd_spec_value_usage`。在该结构上启用 `shop.product.split-spec-template-reads=true`，用于商品编辑器读取模板及发布时重新解析规格。采用合并表 DDL 的部署沿用默认配置。规格配置后台的写入与本次商品验收分开验证。
+
+商品模块绑定实际 MySQL 库 `n_trade`；平台登录、商户与公共服务使用候选实例的隔离测试数据。商户账号登录后选定 `M-OLD / S-OLD`，经营类目为 `CAT210`。商品连接账号访问旧库时，MySQL 返回 1142（拒绝 SELECT）。
+
+| 操作 | 接口及对应记录 |
+|---|---|
+| 保存 | `/biz/goods/save` 返回商品 `G26112800Q4WB24S9`、SKU `SK261128JSAW1H2A0E`。按号查到 `prd_goods` 为 DRAFT，`prd_store_sku` 期初库存为 9。 |
+| 审核与单店上架 | 商户提交、运营审核通过，带 `S-OLD` 门店上下文上架。单店模式下 `prd_goods.on_sale=1`，商户列表显示 ON_SALE。 |
+| 修订发布 | 保留同一商品号和 SKU，保存标题尾缀 R2，预览、发布、审核后 `prd_goods_revision` 第 2 版为 ONLINE，商品主行标题一致。修订请求传入库存 4，发布后门店库存仍为 9。 |
+| 门店改价与库存回读 | 门店接口设置价格 1777、库存 13。按商品号和主体关联 `prd_sku`、`prd_store_sku`，门店仅一条有效余额，价格 1777、数量 13、锁量 0。另发详情请求读回相同的价格和库存。 |
+| 最终构建重跑 | 在启用分表模板读取的候选进程重新登录，`CAT210` 的模板接口返回 0 个可用模板，与该主体的实际配置一致。用同一商品和 SKU 再次保存 R3、预览、发布并运营审核，修订 2 变为 SUPERSEDED，修订 3 为 ONLINE。草稿传入库存 4，原库存 13 得以保留。 |
+| 多门店上架 | 隔离平台夹具增加第二家营业门店 `S-QA-0F9D9A87`。下架 `S-OLD` 后，`prd_catalog_item.enabled` 两店分别为 0、1；重新上架后分别为 1、1。按门店查询下架和在售列表都命中原商品，`storeOnSale` 随请求变化。 |
+| 最终核对 | `S-OLD` 改价 1888、调库存到 17 后，独立详情 GET 返回 ON_SALE、1888、17。用相同商品、SKU、主体和门店联查交易库得到一行，价格 1888、库存 17、锁量 0。 |
+
+本轮 Maven 定向回归共 218 项（shop-core 7，shop-app 211），失败、错误和跳过均为 0。另按候选分表 DDL 在隔离 MySQL 9 验证带模板编号商品的规格重新解析。早期候选公共服务夹具缺少发件箱表，两次事件写入失败；补齐后最终构建重跑，候选日志无 ERROR。[接口请求号、逐步查库结果和环境清理记录](../handoff/v2-retail-closure-2026-11-27/product-n-trade-candidate-20261128.json)
+
+取证后，使用门店接口下架两家测试店的同一商品。`prd_goods` 保留 APPROVED、`on_sale=0`，两条 `prd_catalog_item.enabled=0`，第 3 版内容和 `S-OLD` 的价格、库存记录保留供按号追溯。
+
+首轮验收时，候选实库的 `prd_store_sku.uk_store_sku_market` 和 `prd_store_category.uk_food_1` 均为普通索引，仓库目标 DDL 将两者定义为唯一索引。本次按同一商品和门店串行验收，回读仅一行。后续索引对齐与并发验收见下节。
+
+最终发布、门店改价、库存调整、详情回读的请求号依次为 `332bbe83543f45f98406f63092f1159c`、`89ff2997bfcf4d2a94d177d168e8164c`、`839c282cbefb45c890bc8e08cfc9063a`、`b520a2c392f24494b15147cd3782d288`。
+
+
+### 候选交易库唯一索引与并发验收（2026-11-28）
+
+变更前用 MySQL 9.7.4 在 `n_trade` 按下表的列组合分组，计入全部软删行。另查通用经营货架的 `(store_no, platform_category_no)`，重复组数为 0。无须合并或删除历史数据。
+
+| 表 | 查重键 | 变更前总行数 | 重复键组数 | 含 NULL 的键 | 原索引 → 新索引 |
+|---|---|---:|---:|---:|---|
+| prd_store_sku | store_no, sku_no, market | 2 | 0 | 0 | uk_store_sku_market，NON_UNIQUE 1 → 0 |
+| prd_store_category | category_no | 1 | 0 | 0 | uk_food_1，NON_UNIQUE 1 → 0 |
+
+两条语句分别在线执行，每张表在一条 ALTER 内替换索引。执行后通过 `information_schema.statistics` 核实唯一标志和列序。业务键的可空性沿用目标 DDL，MySQL 唯一索引允许多个包含 NULL 的键。
+
+```sql
+ALTER TABLE n_trade.prd_store_sku
+    DROP INDEX uk_store_sku_market,
+    ADD UNIQUE INDEX uk_store_sku_market (store_no, sku_no, market),
+    ALGORITHM=INPLACE, LOCK=NONE;
+ALTER TABLE n_trade.prd_store_category
+    DROP INDEX uk_food_1,
+    ADD UNIQUE INDEX uk_food_1 (category_no),
+    ALGORITHM=INPLACE, LOCK=NONE;
+```
+
+首轮重放的两个并发首次写入均只留下一个业务键，但接口各有一个请求失败。两次为同一新店设置相同经营类目时，失败请求命中唯一键；同时首次设置同一门店 SKU 的价格和库存时，一个请求遇到死锁。修复后，同一商品的保存、上架、门店定价和调库存以商品主行串行化；重复选择同一经营类目时，服务按主体、门店、平台类目和货架编号读取已提交行，核对请求内容后返回。
+
+候选库的 `locked_qty` 可为 NULL。中间构建在“先创建门店价，再设置门店库存”的顺序下写入了价格和数量，但锁量仍为 NULL，后续库存锁定运算会失效。最终构建在插入价格行时初始化锁量，将价格行转为库存行或设置库存时以 0 补空，保留已有正数锁量。
+
+最终构建使用两个独立商户登录会话，每组并发两个请求。首设经营类目、首次并发写门店价与库存、并发保存同一在售商品、同店首次上架、保存与另一门店上架、原门店改价与调库存，共 6 组 12 个首发请求均返回业务码 0。受限应用连接访问旧库商品表返回 MySQL 1142。
+
+商品 `G26112800Q4WB24S9`、SKU `SK261128JSAW1H2A0E` 的并发保存仅分配一份第 5 版草稿，随后正式发布。验收时商品主行与市场 SKU 各一条，四家测试门店各有一条经营类目、上架关系和 SKU 余额。按修订号、上架业务键、门店库存键、经营类目键查重均为 0。各店独立详情请求和 SQL 值如下，锁定量均为 0。
+
+| 门店 | 价格（最小货币单位） | 库存 |
+|---|---:|---:|
+| S-OLD | 2666 | 46 |
+| S-QA-078728F0 | 2333 | 33 |
+| S-QA-0F9D9A87 | 2111 | 22 |
+| S-QB-078728F0 | 2555 | 45 |
+
+定向 Maven 回归通过 102 项（shop-app 96，shop-core 6），另在本机 MySQL 9 验证经营类目的双事务首次设置、历史行恢复和跨主体冲突。
+
+验收后通过商户接口下架四家测试门店的同一商品，保留第 5 版和价格库存用于追溯。复查全表仍无空键和重复键，测试账号、进程和本地夹具已清理。[并发请求、最终 SQL 和清理证据](../handoff/v2-retail-closure-2026-11-27/product-n-trade-concurrency-20261128.json)
+
+PR #59 补充验证：`StorePriceFlowTest#legacyCancelledPriceRowCanBeRepricedAndThenUsedForStock` 在修复前命中门店 SKU 唯一键并返回 10500。修复后，旧行可以重新定价或初始化库存，保留原行编号，库存初始化清除历史价格与划线价。使用目标 DDL 在本机 MySQL 9.7.4 验证同一事务在重复键报错后可恢复该行，并确认跨主体或已有库存的行不会被恢复。
 
 ## §6 对账二 · 设计 → 实现
 
@@ -247,3 +326,27 @@
 - [x] 切换批次已定
 - [ ] 专题去处、库存同步类功能下线两项待确认
 - [ ] 方案确认
+
+### 门店经营类目的存量对账
+
+先冻结门店经营类目写入，再对同一实例的旧库与候选交易库运行[货架对账工具](../../deploy/ume/product-cutover/reconcile_store_categories.py)。依赖 PyMySQL，连接使用受控的 MySQL 客户端配置文件。
+
+```sh
+python3 deploy/ume/product-cutover/reconcile_store_categories.py check --config "$MYSQL_CNF" --source "$SOURCE_DB" --trade "$TRADE_DB"
+python3 deploy/ume/product-cutover/reconcile_store_categories.py apply --config "$MYSQL_CNF" --source "$SOURCE_DB" --trade "$TRADE_DB"
+python3 deploy/ume/product-cutover/reconcile_store_categories.py verify --config "$MYSQL_CNF" --source "$SOURCE_DB" --trade "$TRADE_DB"
+```
+
+旧 `mch_store_category.category_no` 写入 `prd_store_category.platform_category_no`，`display_name`、`sort` 分别写入 `name`、`sort_no`。交易库的 `category_no` 按应用同一规则生成，由门店号、一个零字节和平台类目号的 UTF-8 编码生成无连字符的 Java 名称 UUID。通用货架不挂目录，保留主体、启用状态、软删、版本和审计字段。
+
+`check` 默认只读，报告源记录数、已匹配数与待补数。相同编号被其他分类占用、同一货架已挂不同编号、目标字段与源不符均中止。冻结窗口内的 `apply` 仅插入缺行，`verify` 要求每条源记录逐字段一致。其他门店分类、目录专用分类与主体库存开关保留原样。
+
+2026-11-28 本机 MySQL 9.7.4 按源表结构与目标 DDL 建立一次性双库。两家门店使用同一平台类目，其中一行为已删除记录；首次导入 2 行，再次导入 0 行，`verify` 匹配 2 行。目标原有的目录分类与主体库存行均保留，修改目标显示名后再导入被拒。应用层 `StoreCategoryFlowTest` 共 9 项通过，覆盖移出加回、目录与自定义行隔离、授权闸及商品归属。
+
+### 分表规格库的建品模板读取
+
+已采用合表 DDL 的部署沿用现有配置。物理结构为维度使用表 `prd_spec_usage` 与取值使用表 `prd_spec_value_usage` 的候选交易库启用 `shop.product.split-spec-template-reads=true`。建品侧按类目取已启用的维度，从取值表还原平台子集、显示名、顺序与商家覆盖；同一取值上的类目内商家设置优先于该商家的全局设置。维度名取 `prd_spec_dim.name`，平台和自有取值按所属主体筛选。商品保存、审核和发布对带 `templateNo` 的选项沿用同一个值编号解析与快照生成过程。
+
+类目未选时，分表中 `CATEGORY_TYPE` 记录能确定推荐维度，其字段不能指定该品类的推荐值子集；读取返回记录中有依据的维度。维度没有商家改名字段时保留主数据名。规格维护的写路径仍按合表设计，分表模式验收范围为模板读取、建品归一和发布。
+
+本地原生测试 `SplitSpecTemplateReadsMysqlTest` 从版本化的[候选四表 DDL](../../backend/shop-app/src/test/resources/db/product-split-spec/verified-spec-schema.sql)建立一次性 MySQL 9 库。设置 `C06_REVIEW_MYSQL_URL=jdbc:mysql://127.0.0.1:3308/information_schema`，访问本机 3308 使用 `C06_REVIEW_MYSQL_USER` 与 `C06_REVIEW_MYSQL_PASSWORD`。

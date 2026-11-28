@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -37,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @ActiveProfiles("test")
 class CartStockGuardFlowTest {
+    @Autowired private JdbcTemplate stockJdbc;
 
     @Autowired
     private CartService cartService;
@@ -91,12 +93,11 @@ class CartStockGuardFlowTest {
         s.setEntityNo("E-CS-" + seq);
         s.setMarket("CN");
         s.setPrice(100L);
-        s.setStock(stock);
-        s.setLockedStock(locked);
         s.setPresaleQuota(presaleQuota);
         s.setSoldCount(soldCount);
         s.setDeleted(0);
         DataScopeContext.executeWithoutScope(() -> skuMapper.insert(s));
+        SkuBalanceFixture.seed(stockJdbc, s.getSkuNo(), stock, locked);
         createdSkus.add(s);
         /*
          * 商品行也要建：列表要查商品快照，快照在商品不存在时跳过这一行，

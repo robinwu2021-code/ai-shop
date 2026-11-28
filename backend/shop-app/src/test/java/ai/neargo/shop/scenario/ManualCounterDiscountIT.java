@@ -538,7 +538,7 @@ class ManualCounterDiscountIT extends CheckoutFlowFixture {
                 firstOrder.subOrderNo())).isEqualTo(2);
         var originalStatus = jdbc.queryForObject("SELECT status FROM ord_order WHERE order_no=?",
                 String.class, firstOrder.orderNo());
-        var stockBefore = jdbc.queryForList("SELECT sku_no,stock,locked_stock FROM prd_sku WHERE sku_no IN (?,?)"
+        var stockBefore = jdbc.queryForList("SELECT sku_no,sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no IN (?,?)"
                 + " ORDER BY sku_no", first.quote().lines().get(0).skuNo(), first.quote().lines().get(1).skuNo());
         balancePaidShares(firstOrder);
         error(() -> asMerchant(() -> manual.confirm(scope, firstReceipt)), ErrorCode.CONFLICT);
@@ -546,7 +546,7 @@ class ManualCounterDiscountIT extends CheckoutFlowFixture {
                 Long.class, firstOrder.orderNo())).isZero();
         assertThat(jdbc.queryForObject("SELECT status FROM ord_order WHERE order_no=?",
                 String.class, firstOrder.orderNo())).isEqualTo(originalStatus);
-        assertThat(jdbc.queryForList("SELECT sku_no,stock,locked_stock FROM prd_sku WHERE sku_no IN (?,?)"
+        assertThat(jdbc.queryForList("SELECT sku_no,sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no IN (?,?)"
                 + " ORDER BY sku_no", first.quote().lines().get(0).skuNo(), first.quote().lines().get(1).skuNo()))
                 .isEqualTo(stockBefore);
 

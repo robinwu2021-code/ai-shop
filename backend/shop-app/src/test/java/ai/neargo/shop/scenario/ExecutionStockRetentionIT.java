@@ -233,9 +233,9 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
     void nativeEntityAndStoreSettersCannotEraseExistingAllocation() {
         var items = List.of(new StockPort.SkuQty(sku, 1));
         platformStock.lock("floor-" + sku, items);
-        var before = jdbc.queryForList("SELECT id,stock,locked_stock FROM prd_sku WHERE sku_no=? ORDER BY id", sku);
+        var before = jdbc.queryForList("SELECT id,sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=? ORDER BY id", sku);
         assertThatThrownBy(() -> platformStock.setOnHand(sku, null, 0, "OTHER")).isInstanceOf(BizException.class);
-        assertThat(jdbc.queryForList("SELECT id,stock,locked_stock FROM prd_sku WHERE sku_no=? ORDER BY id",
+        assertThat(jdbc.queryForList("SELECT id,sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=? ORDER BY id",
             sku)).isEqualTo(before);
         platformStock.release("floor-" + sku);
         jdbc.update("INSERT INTO prd_store_sku(entity_no,store_no,sku_no,sellable_qty,locked_qty,created_at," +
@@ -260,13 +260,13 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
         assertThat(held.outcome()).isEqualTo(ExecutionStockRetentionPort.Outcome.RETAINED);
         var proof = held.owners().getFirst();
         String hash = ExecutionStockRetentionContract.issueObservationHash(request.lookup(), proof.rows());
-        var before = jdbc.queryForList("SELECT id,stock,locked_stock FROM prd_sku WHERE sku_no=? ORDER BY id", sku);
+        var before = jdbc.queryForList("SELECT id,sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=? ORDER BY id", sku);
         var ack = new ExecutionStockRetentionPort.AcknowledgeIssued(request.lookup(), hash);
         var result = retention.acknowledgeIssued(ack);
         assertThat(result.outcome()).isEqualTo(ExecutionStockRetentionPort.Outcome.RETAINED);
         assertThat(result.owners().getFirst().issueObservationHash()).isEqualTo(hash);
         assertThat(retention.acknowledgeIssued(ack).owners().getFirst().issueObservationHash()).isEqualTo(hash);
-        assertThat(jdbc.queryForList("SELECT id,stock,locked_stock FROM prd_sku WHERE sku_no=? ORDER BY id",
+        assertThat(jdbc.queryForList("SELECT id,sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=? ORDER BY id",
             sku)).isEqualTo(before);
         assertThatThrownBy(() -> platformStock.restore("return-" + sku, facts.stockOriginal().orderNo(),
                 List.of(new StockPort.SkuQty(sku, 1, store)))).isInstanceOf(BizException.class);
@@ -319,22 +319,22 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
             request)).outcome())
                 .isEqualTo(ExecutionStockRetentionPort.Outcome.RETAINED);
         var before = jdbc.queryForList(
-            "SELECT id,stock,locked_stock,deleted FROM prd_sku WHERE sku_no=? ORDER BY id", sku);
+            "SELECT id,sellable_qty AS stock,locked_qty AS locked_stock,deleted FROM prd_store_sku WHERE store_no='' AND sku_no=? ORDER BY id", sku);
         assertThatThrownBy(() -> saveSkuBatch(List.of())).isInstanceOf(BizException.class);
         assertThat(jdbc.queryForList(
-            "SELECT id,stock,locked_stock,deleted FROM prd_sku WHERE sku_no=? ORDER BY id", sku)).isEqualTo(before);
+            "SELECT id,sellable_qty AS stock,locked_qty AS locked_stock,deleted FROM prd_store_sku WHERE store_no='' AND sku_no=? ORDER BY id", sku)).isEqualTo(before);
         var command = new MerchantGoodsService.Sku(sku, List.of("updated metadata"), 101L, null,
                 ((Number) before.getFirst().get("stock")).intValue(), null, null, null, null, null, null);
         saveSkuBatch(List.of(command));
         assertThat(jdbc.queryForObject("SELECT spec FROM prd_sku WHERE sku_no=?", String.class, sku)).isEqualTo(
             "updated metadata");
-        assertThat(jdbc.queryForObject("SELECT locked_stock FROM prd_sku WHERE sku_no=?", Integer.class, sku)).isZero();
+        assertThat(jdbc.queryForObject("SELECT locked_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class, sku)).isZero();
         assertThat(retention.queryOriginal(request.lookup()).outcome()).isEqualTo(
             ExecutionStockRetentionPort.Outcome.RETAINED);
     }
 
     @Test
-    void staleMetadataCasDoesNotOverwriteAConcurrentReservationOrPresaleCounter() {
+    void aStockReservationDoesNotBlockMetadataEditsOrLoseTheReservation() {
         PrdSku stale = transaction().execute(status -> DataScopeContext.executeWithoutScope((
             ) -> skus.lockSkuCurrent(sku).getFirst()));
         platformStock.lock("live-" + sku, List.of(new StockPort.SkuQty(sku, 1)));
@@ -344,10 +344,10 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
         stale.setSoldCount(0);
         Integer affected = transaction().execute(status ->
                 DataScopeContext.executeWithoutScope(() -> skus.updateCatalogMetadata(stale)));
-        assertThat(affected).isZero();
-        assertThat(jdbc.queryForObject("SELECT locked_stock FROM prd_sku WHERE sku_no=?", Integer.class,
+        assertThat(affected).isOne();
+        assertThat(jdbc.queryForObject("SELECT locked_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class,
             sku)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT stock FROM prd_sku WHERE sku_no=?", Integer.class, sku)).isEqualTo(100);
+        assertThat(jdbc.queryForObject("SELECT sellable_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class, sku)).isEqualTo(100);
     }
 
     @Test
@@ -380,20 +380,20 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
 
     @Test
     void multiMarketMetadataAndPhysicalStockPhasesRemainCoherent() {
-        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,created_at," +
+        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,created_at," +
             "updated_at)"
-                + " VALUES (?,?,?,'AE',101,100,0,NOW(),NOW())", sku, goods, entity);
+                + " VALUES (?,?,?,'AE',101,NOW(),NOW())", sku, goods, entity);
         var command = new MerchantGoodsService.Sku(sku, List.of("market metadata"), 101,
                 Map.of("AE", 105L), 90, null, null, null, null, null, null);
         saveSkuBatch(List.of(command));
-        assertThat(jdbc.queryForList("SELECT stock FROM prd_sku WHERE sku_no=? ORDER BY market", Integer.class, sku))
-                .containsExactly(90, 90);
+        assertThat(jdbc.queryForList("SELECT sellable_qty FROM prd_store_sku WHERE store_no='' AND sku_no=? ORDER BY market", Integer.class, sku))
+                .containsExactly(100);
         assertThat(jdbc.queryForList("SELECT spec FROM prd_sku WHERE sku_no=? ORDER BY market", String.class, sku))
                 .containsExactly("market metadata", "market metadata");
         platformStock.lock("multi-" + sku, List.of(new StockPort.SkuQty(sku, 2)));
         assertThatThrownBy(() -> platformStock.setOnHand(sku, null, 1, "OTHER")).isInstanceOf(BizException.class);
-        assertThat(jdbc.queryForList("SELECT stock FROM prd_sku WHERE sku_no=? ORDER BY market", Integer.class, sku))
-                .containsExactly(90, 90);
+        assertThat(jdbc.queryForList("SELECT sellable_qty FROM prd_store_sku WHERE store_no='' AND sku_no=? ORDER BY market", Integer.class, sku))
+                .containsExactly(100);
     }
 
     @Test
@@ -430,7 +430,7 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
         platformStock.lock("legacy-" + sku, List.of(new StockPort.SkuQty(sku, 1)));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM prd_stock_lock WHERE lock_no=?", Long.class,
             "legacy-" + sku)).isEqualTo(2);
-        assertThat(jdbc.queryForObject("SELECT locked_stock FROM prd_sku WHERE sku_no=?", Integer.class,
+        assertThat(jdbc.queryForObject("SELECT locked_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class,
             sku)).isEqualTo(2);
     }
 
@@ -446,11 +446,11 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
         var request = ExecutionStockRetentionContract.request(reference, facts.stockOriginal(),
                 facts.stockConfirmationOperationNo());
         current(() -> retention.retain(request));
-        int before = jdbc.queryForObject("SELECT stock FROM prd_sku WHERE sku_no=?", Integer.class, sku);
+        int before = jdbc.queryForObject("SELECT sellable_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class, sku);
         var result = originalReturns.restore("legacy-return-purpose-" + sku, legacyOrder,
                 List.of(new StockPort.SkuQty(sku, 1, store)));
         assertThat(result).isEqualTo(StockPort.RestoreResult.COMPLETED);
-        assertThat(jdbc.queryForObject("SELECT stock FROM prd_sku WHERE sku_no=?", Integer.class, sku))
+        assertThat(jdbc.queryForObject("SELECT sellable_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class, sku))
                 .isEqualTo(before + 1);
         assertThat(retention.queryOriginal(request.lookup()).outcome())
                 .isEqualTo(ExecutionStockRetentionPort.Outcome.RETAINED);
@@ -459,7 +459,8 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
 
     @Test
     void aLivePresalePromiseSurvivesBothStaleAndCurrentCatalogMetadataSaves() {
-        jdbc.update("UPDATE prd_sku SET stock=0,presale_quota=10,sold_count=0,cutoff_at=NULL WHERE sku_no=?", sku);
+        jdbc.update("UPDATE prd_store_sku SET sellable_qty=0 WHERE store_no='' AND sku_no=?", sku);
+        jdbc.update("UPDATE prd_sku SET presale_quota=10,sold_count=0,cutoff_at=NULL WHERE sku_no=?", sku);
         PrdSku stale = transaction().execute(status ->
                 DataScopeContext.executeWithoutScope(() -> skus.lockSkuCurrent(sku).getFirst()));
         platformStock.lock("presale-" + sku, List.of(new StockPort.SkuQty(sku, 1)));
@@ -479,7 +480,7 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
         assertThat(updated).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT sold_count FROM prd_sku WHERE sku_no=?", Integer.class, sku))
                 .isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT stock FROM prd_sku WHERE sku_no=?", Integer.class, sku)).isZero();
+        assertThat(jdbc.queryForObject("SELECT sellable_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class, sku)).isZero();
         assertThat(jdbc.queryForObject("SELECT spec FROM prd_sku WHERE sku_no=?", String.class, sku))
                 .isEqualTo("current presale metadata");
     }
@@ -696,10 +697,10 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
         var router = new OriginalStockReturnPortImpl(web.getBean(ManualAdmissionMapper.class), platformStock,
                 web.getBeanProvider(OriginalMirrorRestore.class), web.getBeanProvider(
                     OriginalInventoryRestoreAdapter.class), switchedPrimary, json);
-        int before = jdbc.queryForObject("SELECT stock FROM prd_sku WHERE sku_no=?", Integer.class, sku);
+        int before = jdbc.queryForObject("SELECT sellable_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class, sku);
         var result = router.restore("switch-" + sku, original.orderNo(), List.of(new StockPort.SkuQty(sku, 1, store)));
         assertThat(result).isEqualTo(StockPort.RestoreResult.COMPLETED);
-        assertThat(jdbc.queryForObject("SELECT stock FROM prd_sku WHERE sku_no=?", Integer.class,
+        assertThat(jdbc.queryForObject("SELECT sellable_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class,
             sku)).isEqualTo(before + 1);
         assertThat(claims(original.orderNo())).hasSize(1);
         assertThat(new JdbcTemplate(inventoryDataSource).queryForObject(
@@ -775,7 +776,7 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
             assertThatThrownBy(() -> retire.get(20, TimeUnit.SECONDS)).hasRootCauseInstanceOf(BizException.class);
             assertThat(jdbc.queryForObject("SELECT deleted FROM prd_sku WHERE sku_no=?", Integer.class, sku)).isZero();
             assertThat(stockRows("race-" + sku)).hasSize(1);
-            assertThat(jdbc.queryForObject("SELECT locked_stock FROM prd_sku WHERE sku_no=?", Integer.class,
+            assertThat(jdbc.queryForObject("SELECT locked_qty FROM prd_store_sku WHERE store_no='' AND sku_no=?", Integer.class,
                 sku)).isEqualTo(1);
             assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=? AND event_type='SKU_RETIRED'", Long.class,
@@ -835,9 +836,12 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
         current(() -> retention.retain(request));
         String unprotected = "A-" + sku;
         String kept = "B-" + sku;
-        for (String code : List.of(unprotected, kept)) jdbc.update(
-            "INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,created_at,updated_at)"
-                + " VALUES (?,?,?,'CN',101,100,0,NOW(),NOW())", code, goods, entity);
+        for (String code : List.of(unprotected, kept)) {
+            jdbc.update(
+            "INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,created_at,updated_at)"
+                + " VALUES (?,?,?,'CN',101,NOW(),NOW())", code, goods, entity);
+            SkuBalanceFixture.seed(jdbc, code, 100, 0);
+        }
         var before = jdbc.queryForList("SELECT * FROM prd_sku WHERE goods_no=? ORDER BY id", goods);
         var events = jdbc.queryForList("SELECT * FROM sys_outbox WHERE aggregate_id IN (?,?,?) ORDER BY id",
             sku, unprotected, kept);
@@ -901,7 +905,8 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
 
     private List<Map<String, Object>> balances() {
         return jdbc.queryForList(
-            "SELECT id,stock,locked_stock,sold_count,deleted FROM prd_sku WHERE goods_no=? ORDER BY id", goods);
+            "SELECT s.id,b.sellable_qty,b.locked_qty,s.sold_count,s.deleted FROM prd_sku s "
+                + "LEFT JOIN prd_store_sku b ON s.sku_no=b.sku_no AND b.store_no='' WHERE s.goods_no=? ORDER BY s.id", goods);
     }
 
     private List<Map<String, Object>> claims(String order) {
@@ -991,9 +996,9 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
             try {
                 var target = AopTestUtils.getUltimateTargetObject(catalog);
                 var method = MerchantGoodsServiceImpl.class.getDeclaredMethod("saveSkus", String.class,
-                    String.class, List.class, List.class);
+                    String.class, String.class, List.class, List.class);
                 method.setAccessible(true);
-                method.invoke(target, entity, goods, submitted, List.of());
+                method.invoke(target, entity, goods, store, submitted, List.of());
                 return null;
             } catch (InvocationTargetException failure) {
                 if (failure.getCause() instanceof RuntimeException runtime) throw runtime;

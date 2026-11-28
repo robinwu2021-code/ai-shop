@@ -127,9 +127,12 @@ public class PrdSku extends BaseEntity {
             updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private Long costPrice;
 
+    /** Read projection of the owning store or entity balance in prd_store_sku. */
+    @TableField(exist = false)
     private Integer stock;
 
     /** 已锁定未支付的数量。可售 = stock - locked。 */
+    @TableField(exist = false)
     private Integer lockedStock;
 
     /** FRESH 且按重计价：标称重量（克）。 */

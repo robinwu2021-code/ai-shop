@@ -24,6 +24,9 @@ import lombok.Setter;
 @Setter
 @TableName("prd_store_sku")
 public class PrdStoreSku extends BaseEntity {
+    /** The entity-wide fallback pool has a unique, non-null key even on MySQL. */
+    public static final String ENTITY_POOL = "";
+
     private String storeNo;
     private String skuNo;
     /** 冗余主体号：按商家查全部门店时免 join，也是数据域锚点 */

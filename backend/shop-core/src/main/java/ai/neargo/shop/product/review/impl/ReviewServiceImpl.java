@@ -691,7 +691,10 @@ public class ReviewServiceImpl implements ReviewService {
     /** 包级可见：{@code ReviewRatingWeightTest} 直接喂几条评价验证衰减，不必造整套 mapper */
     int avgX10(List<RvwReview> rows,
                java.util.function.Function<RvwReview, Integer> f) {
-        LocalDateTime now = clock.get();
+        return avgX10(rows, f, clock.get());
+    }
+
+    static int avgX10(List<RvwReview> rows, java.util.function.Function<RvwReview, Integer> f, LocalDateTime now) {
         double weighted = 0;
         double weights = 0;
         for (RvwReview r : rows) {

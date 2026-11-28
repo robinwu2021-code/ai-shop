@@ -95,9 +95,10 @@ class PaidCardCheckoutFlowTest {
                 + "VALUES (?,?,'swimming store','ACTIVE',1,1,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",store,entity);
         jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,title,type,tenant_no,created_at,updated_at) "
                 + "VALUES (?,?,'30 swims','CARD','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", goods, entity);
-        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,"
-                + "created_at,updated_at) VALUES (?,?,?,'CN',30000,100,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,tenant_no,"
+                + "created_at,updated_at) VALUES (?,?,?,'CN',30000,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 sku, goods, entity);
+        SkuBalanceFixture.seed(jdbc, sku, 100, 0);
         jdbc.update("INSERT INTO mch_qualification(qual_no,entity_no,qual_type,qual_name,expire_at,status,"
                 + "tenant_no,created_at,updated_at) VALUES (?,?,'BUSINESS_LICENSE','Card checkout license',?,"
                 + "'VALID','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", id(), entity,
@@ -164,9 +165,10 @@ class PaidCardCheckoutFlowTest {
         jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,store_no,title,type,on_sale,audit_status,fulfillments,"
                 + "tenant_no,created_at,updated_at) VALUES(?,?,?,'swim admission','SERVICE',1,'APPROVED',"
                 + "'[\"STORE_VERIFY\"]','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", serviceGoods, entity, store);
-        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,"
-                + "created_at,updated_at) VALUES(?,?,?,'CN',1000,0,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,tenant_no,"
+                + "created_at,updated_at) VALUES(?,?,?,'CN',1000,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 serviceSku, serviceGoods, entity);
+        SkuBalanceFixture.seed(jdbc, serviceSku, 0, 0);
         var memberCode = members.issue("MAIN", actor);
         var customer = members.resolve(new MemberCodeScope("MAIN", entity, store, actor), memberCode.memberCode());
         var service = services.create(ctx, entity, new ServiceOrderCreate(customer.customerRef(), store,

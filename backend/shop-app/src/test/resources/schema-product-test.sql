@@ -1,6 +1,6 @@
 -- 【自动生成，勿手改】由 backend/scripts/gen-product-test-schema.py 生成。
 -- 商品领域的表按新库设计（05-n_trade.sql、07-n_member.sql）建，在 schema-test.sql 之前执行（同名旧表随之跳过）。
--- 过渡列（新设计已去掉、商品代码还在用，迁完对应批次即删）：prd_sku.stock；prd_sku.locked_stock
+-- 过渡列（新设计已去掉、商品代码还在用，迁完对应批次即删）：无
 
 CREATE TABLE IF NOT EXISTS prd_category (
   id bigint NOT NULL AUTO_INCREMENT,
@@ -170,8 +170,6 @@ CREATE TABLE IF NOT EXISTS prd_sku (
   created_by varchar(64) DEFAULT NULL,
   updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_by varchar(64) DEFAULT NULL,
-  stock INT(11) NOT NULL DEFAULT 0,
-  locked_stock INT(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   CONSTRAINT prd_sku__uk_entity_sku_market UNIQUE (entity_no, sku_no, market),
   CONSTRAINT prd_sku__uk_sku_merchant_code UNIQUE (tenant_no, entity_no, merchant_sku_code)

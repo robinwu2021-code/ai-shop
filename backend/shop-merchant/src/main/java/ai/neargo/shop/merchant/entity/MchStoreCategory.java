@@ -1,7 +1,11 @@
 package ai.neargo.shop.merchant.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,13 +26,24 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("mch_store_category")
+@TableName("prd_store_category")
 public class MchStoreCategory extends BaseEntity {
 
     private String storeNo;
     /** 冗余主体号，数据域锚点用。 */
     private String entityNo;
+    private String catalogNo;
+    @TableField("category_no")
+    private String rowNo;
+
+    /** 门店号与平台类目共同确定这一行，避免并发首次设置产生重复货架。 */
+    public static String rowNo(String storeNo, String platformCategoryNo) {
+        return UUID.nameUUIDFromBytes((storeNo + "\0" + platformCategoryNo)
+                .getBytes(StandardCharsets.UTF_8)).toString().replace("-", "");
+    }
+
     /** 引用平台类目。 */
+    @TableField("platform_category_no")
     private String categoryNo;
 
     /**
@@ -38,9 +53,11 @@ public class MchStoreCategory extends BaseEntity {
      * 跨店聚合照常成立。自由命名的分组做不到这一点 —— 一家「蔬菜区」、一家「新鲜蔬菜」、
      * 一家「绿叶子」，聚合当场失效。
      */
+    @TableField(value = "name", updateStrategy = FieldStrategy.ALWAYS)
     private String displayName;
 
     /** 店铺页里的展示顺序，商家拖动改的就是它。 */
+    @TableField("sort_no")
     private Integer sort;
 
     private Boolean enabled;

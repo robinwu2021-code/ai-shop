@@ -52,7 +52,9 @@ class DishOfferQueryPortTest {
             sql.update("INSERT INTO prd_goods(id,goods_no,entity_no,store_no,title,"
                     + "on_sale,audit_status,deleted) VALUES(1,'G','E','S','Dish',TRUE,'APPROVED',0)");
             sql.update("INSERT INTO prd_sku(id,sku_no,goods_no,entity_no,market,price,"
-                    + "stock,locked_stock,deleted) VALUES(1,'SKU','G','E','CN',500,10,2,0)");
+                    + "deleted) VALUES(1,'SKU','G','E','CN',500,0)");
+            sql.update("INSERT INTO prd_store_sku(id,sku_no,entity_no,store_no,market,sellable_qty,locked_qty,deleted)"
+                    + " VALUES(2,'SKU','E','','CN',10,2,0)");
             test.accept(c, sql);
         });
     }
@@ -86,9 +88,49 @@ class DishOfferQueryPortTest {
             when(c.getBean(CampaignPort.class).flashOffers(List.of("G")))
                     .thenReturn(Map.of("G", new CampaignPort.PriceOffer("FLASH1", 600L)));
             assertThat(port.getOffers("E", "S", List.of("SKU")).getFirst().priceMinor()).isEqualTo(600);
-            assertThat(sql.queryForObject("SELECT sellable_qty FROM prd_store_sku", Integer.class)).isEqualTo(4);
-            sql.update("UPDATE prd_store_sku SET store_no='OTHER'");
+            assertThat(sql.queryForObject("SELECT sellable_qty FROM prd_store_sku WHERE id=1", Integer.class)).isEqualTo(4);
+            sql.update("UPDATE prd_store_sku SET store_no='OTHER' WHERE id=1");
             assertThat(port.getOffers("E", "S", List.of("SKU")).getFirst().available()).isZero();
+        });
+    }
+
+    @Test void startingStoreStockInitializesMissingLockWithoutResettingReservations() {
+        run((c, sql) -> {
+            var stores = c.getBean(StoreSkuMapper.class);
+            sql.update("""
+                    INSERT INTO prd_store_sku(id, sku_no, entity_no, store_no, market, price, deleted, version)
+                    VALUES (3, 'SKU', 'E', 'S', 'CN', 700, 0, 0)
+                    """);
+            stores.startStoreStock("E", "S", "SKU", "CN");
+            assertThat(sql.queryForObject("SELECT locked_qty FROM prd_store_sku WHERE id=3", Integer.class))
+                    .isZero();
+            sql.update("UPDATE prd_store_sku SET locked_qty=NULL WHERE id=3");
+            assertThat(stores.setStock("S", "SKU", 8)).isOne();
+            assertThat(stores.lockStock("S", "SKU", 2)).isOne();
+            assertThat(stores.setStock("S", "SKU", 9)).isOne();
+            assertThat(sql.queryForObject("SELECT locked_qty FROM prd_store_sku WHERE id=3", Integer.class))
+                    .isEqualTo(2);
+        });
+    }
+
+    @Test void entityBalanceLockConfirmReleaseAndRestoreLeaveStoreOverrideUntouched() {
+        run((c, sql) -> {
+            var skus = c.getBean(SkuMapper.class);
+            var stores = c.getBean(StoreSkuMapper.class);
+            sql.update("INSERT INTO prd_store_sku(id,sku_no,entity_no,store_no,market,price,sellable_qty,locked_qty,deleted)"
+                    + " VALUES(1,'SKU','E','S','CN',700,3,1,0)");
+            assertThat(skus.lockStock("SKU", 9)).isZero();
+            assertThat(skus.lockStock("SKU", 8)).isOne();
+            assertThat(skus.setStock("SKU", 9)).isZero();
+            assertThat(skus.confirmStock("SKU", 3)).isOne();
+            assertThat(skus.releaseStock("SKU", 5)).isOne();
+            assertThat(skus.restoreStock("SKU", 4)).isOne();
+            assertThat(sql.queryForMap("SELECT sellable_qty,locked_qty FROM prd_store_sku WHERE store_no=''"))
+                    .containsEntry("sellable_qty", 11L).containsEntry("locked_qty", 2L);
+            assertThat(stores.setStock("S", "SKU", 0)).isZero();
+            assertThat(stores.setStock("S", "SKU", 6)).isOne();
+            assertThat(sql.queryForMap("SELECT price,sellable_qty,locked_qty FROM prd_store_sku WHERE store_no='S'"))
+                    .containsEntry("price", 700L).containsEntry("sellable_qty", 6L).containsEntry("locked_qty", 1L);
         });
     }
 
@@ -112,7 +154,7 @@ class DishOfferQueryPortTest {
     @Test void ambiguousLegacyMultiMarketStockDoesNotMasqueradeAsCurrentCnAvailability() {
         run((c, sql) -> {
             sql.update("INSERT INTO prd_sku(id,sku_no,goods_no,entity_no,market,price,"
-                    + "stock,locked_stock,deleted) VALUES(2,'SKU','G','E','AE',900,100,0,0)");
+                    + "deleted) VALUES(2,'SKU','G','E','AE',900,0)");
             var offer = c.getBean(DishOfferQueryPortImpl.class).getOffers("E", "S", List.of("SKU")).getFirst();
             assertThat(offer.priceMinor()).isEqualTo(500);
             assertThat(offer.currency()).isEqualTo("CNY");

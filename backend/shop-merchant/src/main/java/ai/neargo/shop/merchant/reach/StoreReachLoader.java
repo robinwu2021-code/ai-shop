@@ -83,7 +83,7 @@ public class StoreReachLoader {
      */
     public List<StoreReach> loadEach(MchEntity m) {
         List<MchStore> stores = DataScopeContext.executeWithoutScope(() ->
-                storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                storeMapper.selectList(Wrappers.<MchStore>lambdaQuery().select(MchStore::getStoreNo)
                         .eq(MchStore::getEntityNo, m.getEntityNo())
                         .eq(MchStore::getStatus, MchStore.ACTIVE)
                         .orderByAsc(MchStore::getId)));
@@ -121,7 +121,7 @@ public class StoreReachLoader {
     /** 默认店；没有默认标记时取建店最早的那家。主体没有门店时为 null */
     private String defaultStoreNo(String entityNo) {
         MchStore st = DataScopeContext.executeWithoutScope(() ->
-                storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery().select(MchStore::getStoreNo)
                         .eq(MchStore::getEntityNo, entityNo)
                         .orderByDesc(MchStore::getIsDefault)
                         .orderByAsc(MchStore::getId)
@@ -132,14 +132,14 @@ public class StoreReachLoader {
     /** 全平台 ACTIVE 主体下的 ACTIVE 门店，每家店一份。反查「谁服务这个小区」用 */
     public List<StoreReach> allServing() {
         List<MchEntity> entities = DataScopeContext.executeWithoutScope(() ->
-                entityMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
+                entityMapper.selectList(Wrappers.<MchEntity>lambdaQuery().select(MchEntity::getEntityNo, MchEntity::getFulfillmentReach)
                         .eq(MchEntity::getStatus, MchEntity.ACTIVE)));
         if (entities.isEmpty()) {
             return List.of();
         }
         List<String> entityNos = entities.stream().map(MchEntity::getEntityNo).toList();
         List<MchStore> stores = DataScopeContext.executeWithoutScope(() ->
-                storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                storeMapper.selectList(Wrappers.<MchStore>lambdaQuery().select(MchStore::getStoreNo, MchStore::getEntityNo)
                         .in(MchStore::getEntityNo, entityNos)
                         .eq(MchStore::getStatus, MchStore.ACTIVE)
                         .orderByAsc(MchStore::getId)));

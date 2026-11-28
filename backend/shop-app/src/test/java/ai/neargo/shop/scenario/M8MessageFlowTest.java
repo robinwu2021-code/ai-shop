@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.message.NotificationConsumer;
@@ -64,7 +65,7 @@ class M8MessageFlowTest {
     private NotificationConsumer notifications;
 
     @Autowired
-    private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
+    private JdbcTemplate stockJdbc;
 
     /**
      * 把本类要买的 SKU 库存补满。
@@ -93,13 +94,7 @@ class M8MessageFlowTest {
 
     @org.junit.jupiter.api.BeforeEach
     void refillStock() {
-        var sku = skuMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
-                .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, "SK0003").last("limit 1"));
-        if (sku != null && sku.getStock() < 50) {
-            sku.setStock(500);
-            skuMapper.updateById(sku);
-        }
+        stockJdbc.update("UPDATE prd_store_sku SET sellable_qty=500 WHERE store_no='' AND sku_no=? AND sellable_qty<50", "SK0003");
     }
 
     private MockMvc mvc() {

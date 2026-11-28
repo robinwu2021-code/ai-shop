@@ -710,7 +710,7 @@ public class GoodsServiceImpl implements GoodsService {
                 : storePriceAt(owner, List.of(skuNo)).get(skuNo);
         var vo = toSkuVO(sku, campaignPort.flashPrices(List.of(goodsNo)).get(goodsNo), storePrice);
         return new ai.neargo.shop.product.dto.SkuPriceVO(
-                vo.skuNo(), vo.spec(), vo.price(), vo.originPrice(), vo.stock());
+                vo.skuNo(), vo.spec(), vo.price(), vo.originPrice(), storeStockReader.available(skuNo, owner));
     }
 
     @Override
@@ -750,7 +750,7 @@ public class GoodsServiceImpl implements GoodsService {
 
     private Map<String, List<PrdSku>> loadSkus(List<String> goodsNos) {
         // ★ 同上：列表页的 SKU 批量读也是公共目录查询
-        return DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(
+        return DataScopeContext.executeWithoutScope(() -> skuMapper.selectWithStock(
                         Wrappers.<PrdSku>lambdaQuery()
                                 .in(PrdSku::getGoodsNo, goodsNos)
                                 .eq(PrdSku::getMarket, homeMarket))).stream()

@@ -6,6 +6,7 @@ import ai.neargo.shop.geo.ReachGeoProps;
 import ai.neargo.shop.geo.S2Cover;
 import ai.neargo.shop.merchant.entity.MchChannelArea;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchFulfillmentChannel;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.entity.MchServiceAreaCell;
@@ -347,7 +348,7 @@ public class ReachMatcher {
 
     private List<String> activeStoreNos(String entityNo) {
         return DataScopeContext.executeWithoutScope(() -> storeMapper.selectList(
-                        Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        Wrappers.<MchStore>lambdaQuery().select(MchStore::getStoreNo)
                                 .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, entityNo)
                                 .eq(ai.neargo.shop.merchant.entity.MchStore::getStatus,
                                         ai.neargo.shop.merchant.entity.MchStore.ACTIVE)
@@ -357,7 +358,7 @@ public class ReachMatcher {
 
     private String defaultStoreNo(String entityNo) {
         var st = DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
-                Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                Wrappers.<MchStore>lambdaQuery().select(MchStore::getStoreNo)
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, entityNo)
                         .orderByDesc(ai.neargo.shop.merchant.entity.MchStore::getIsDefault)
                         .orderByAsc(ai.neargo.shop.merchant.entity.MchStore::getId)
@@ -367,6 +368,8 @@ public class ReachMatcher {
 
     private List<MchEntity> activeEntities() {
         return DataScopeContext.executeWithoutScope(() -> entityMapper.selectList(
-                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getStatus, MchEntity.ACTIVE)));
+                Wrappers.<MchEntity>lambdaQuery()
+                        .select(MchEntity::getEntityNo, MchEntity::getFulfillmentReach)
+                        .eq(MchEntity::getStatus, MchEntity.ACTIVE)));
     }
 }

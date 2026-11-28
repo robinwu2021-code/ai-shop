@@ -409,11 +409,12 @@ class ManualStockDispositionIT extends CheckoutFlowFixture {
         String second = sku + "-2";
         jdbc.update(
                 "INSERT INTO"
-                        + " prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,created_at,updated_at)"
-                        + " VALUES (?,?,?,'CN',101,100,0,NOW(),NOW())",
+                        + " prd_sku(sku_no,goods_no,entity_no,market,price,created_at,updated_at)"
+                        + " VALUES (?,?,?,'CN',101,NOW(),NOW())",
                 second,
                 goods,
                 entity);
+        SkuBalanceFixture.seed(jdbc, second, 100, 0);
         String partial = "PART-" + UUID.randomUUID();
         var complete =
                 List.of(
@@ -491,7 +492,8 @@ class ManualStockDispositionIT extends CheckoutFlowFixture {
         return Map.of(
                 "platform",
                 jdbc.queryForMap(
-                        "SELECT stock,locked_stock,sold_count FROM prd_sku WHERE sku_no=?", sku),
+                        "SELECT b.sellable_qty AS stock,b.locked_qty AS locked_stock,s.sold_count "
+                                + "FROM prd_sku s JOIN prd_store_sku b ON s.sku_no=b.sku_no AND b.store_no='' WHERE s.sku_no=?", sku),
                 "inventory",
                 inv.queryForMap(
                         "SELECT on_hand,reserved FROM inv_stock_balance WHERE owner_id=? AND"

@@ -124,10 +124,9 @@ class DualOriginalRestoreFlowTest {
         sku.setGoodsNo("G0002");
         sku.setEntityNo("M0001");
         sku.setMarket("CN");
-        sku.setStock(10);
-        sku.setLockedStock(0);
         sku.setPrice(4200L);
         skus.insert(sku);
+        SkuBalanceFixture.seed(jdbc, sku.getSkuNo(), 10, 0);
         String owner = acl.ownerIdOf("M0001");
         String item = acl.upsertItem("M0001", skuNo, "refund stock", "unit", null, null, "BAG");
         String location = acl.locationIdOf("M0001", null);
@@ -138,7 +137,7 @@ class DualOriginalRestoreFlowTest {
 
     private int onHand(Fixture f) { return inventory.itemDetail(f.owner(), f.item()).onHand(); }
     private int platform(Fixture f) {
-        return skus.selectOne(Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, f.sku())).getStock();
+        return skus.selectWithStock(Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, f.sku())).getFirst().getStock();
     }
     private SysOutbox event(String ref, String type) {
         return events.selectOne(Wrappers.<SysOutbox>lambdaQuery().eq(SysOutbox::getAggregateId, ref)

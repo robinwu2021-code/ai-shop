@@ -183,19 +183,7 @@ public class StockSyncServiceImpl implements StockSyncService {
 
     @Override
     public Sellable sellableOf(String storeNo, String skuNo) {
-        PrdStoreSku row = storeRow(storeNo, skuNo);
-        if (row != null) {
-            return new Sellable("STORE", nz(row.getSellableQty()) - nz(row.getLockedQty()), nz(row.getLockedQty()), ver(row.getVersion()));
-        }
-        if (hasStoreStock(skuNo)) {
-            // 这个 SKU 已按店管、本店没设过 —— 本店线上卖 0（StockPortImpl 的口径）
-            return new Sellable("STORE", 0, 0);
-        }
-        PrdSku sku = DataScopeContext.executeWithoutScope(() -> skuMapper.selectOne(
-                Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, skuNo).last("limit 1")));
-        return sku == null
-                ? new Sellable("NONE", 0, 0)
-                : new Sellable("ENTITY", nz(sku.getStock()) - nz(sku.getLockedStock()), nz(sku.getLockedStock()), ver(sku.getVersion()));
+        return sellablesOf(storeNo, java.util.List.of(skuNo)).getOrDefault(skuNo, new Sellable("NONE", 0, 0));
     }
 
     @Override
@@ -206,17 +194,21 @@ public class StockSyncServiceImpl implements StockSyncService {
                         .isNotNull(PrdStoreSku::getSellableQty)));
         var skuRows = DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(
                 Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, skuNos)));
-        java.util.Set<String> storeManaged = new java.util.HashSet<>();
+        java.util.Set<String> managed = new java.util.HashSet<>();
+        java.util.Map<String, Sellable> entity = new java.util.HashMap<>();
         java.util.Map<String, Sellable> result = new java.util.LinkedHashMap<>();
         for (PrdStoreSku row : stockRows) {
-            storeManaged.add(row.getSkuNo());
-            if (java.util.Objects.equals(storeNo, row.getStoreNo())) {
-                result.put(row.getSkuNo(), new Sellable("STORE", nz(row.getSellableQty()) - nz(row.getLockedQty()), nz(row.getLockedQty()), ver(row.getVersion())));
+            boolean fallback = PrdStoreSku.ENTITY_POOL.equals(row.getStoreNo());
+            if (!fallback) managed.add(row.getSkuNo());
+            if (fallback || java.util.Objects.equals(storeNo, row.getStoreNo())) {
+                var balance = new Sellable(fallback ? "ENTITY" : "STORE",
+                        nz(row.getSellableQty()) - nz(row.getLockedQty()), nz(row.getLockedQty()), ver(row.getVersion()));
+                (fallback ? entity : result).put(row.getSkuNo(), balance);
             }
         }
         for (PrdSku row : skuRows) {
-            result.putIfAbsent(row.getSkuNo(), storeManaged.contains(row.getSkuNo()) ? new Sellable("STORE", 0, 0)
-                    : new Sellable("ENTITY", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock()), ver(row.getVersion())));
+            result.putIfAbsent(row.getSkuNo(), managed.contains(row.getSkuNo()) ? new Sellable("STORE", 0, 0)
+                    : entity.getOrDefault(row.getSkuNo(), new Sellable("ENTITY", 0, 0)));
         }
         return result;
     }
@@ -323,14 +315,8 @@ public class StockSyncServiceImpl implements StockSyncService {
                 Wrappers.<PrdStoreSku>lambdaQuery()
                         .eq(PrdStoreSku::getStoreNo, storeNo)
                         .eq(PrdStoreSku::getSkuNo, skuNo)
+                        .ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL)
                         .isNotNull(PrdStoreSku::getSellableQty).last("limit 1")));
-    }
-
-    private boolean hasStoreStock(String skuNo) {
-        Long n = DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectCount(
-                Wrappers.<PrdStoreSku>lambdaQuery().eq(PrdStoreSku::getSkuNo, skuNo)
-                        .isNotNull(PrdStoreSku::getSellableQty)));
-        return n != null && n > 0;
     }
 
     private void insertStoreRow(String entityNo, String storeNo, String skuNo, int stock, String operator) {

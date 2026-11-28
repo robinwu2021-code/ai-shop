@@ -19,6 +19,9 @@ import ai.neargo.shop.product.review.mapper.ReviewMappers.AppealMapper;
 import ai.neargo.shop.product.review.mapper.ReviewMappers.ReviewLikeMapper;
 import org.mybatis.spring.SqlSessionTemplate;
 import ai.neargo.shop.product.review.impl.ReviewServiceImpl;
+import ai.neargo.shop.product.review.impl.MerchantReviewRatingQueryImpl;
+import ai.neargo.shop.product.review.mapper.ReviewMappers.MerchantReviewRatingMapper;
+import ai.neargo.shop.spi.product.MerchantReviewRatingQuery;
 import tools.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
@@ -44,6 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MerchantReviewReadNativeMysqlTest {
     private ReviewService service;
+    private MerchantReviewRatingQuery ratingQuery;
     private JdbcTemplate jdbc, admin;
     private final String schema = "retail_c06_review_" + UUID.randomUUID().toString().replace("-", "");
 
@@ -75,9 +79,11 @@ class MerchantReviewReadNativeMysqlTest {
                 .setMetaObjectHandler(new AuditMetaObjectHandler()));
         var sessions = factory.getObject();
         sessions.getConfiguration().addMapper(ReviewMapper.class);
+        sessions.getConfiguration().addMapper(MerchantReviewRatingMapper.class);
         sessions.getConfiguration().addMapper(AppealMapper.class);
         sessions.getConfiguration().addMapper(ReviewLikeMapper.class);
         var template = new SqlSessionTemplate(sessions);
+        ratingQuery = new MerchantReviewRatingQueryImpl(template.getMapper(MerchantReviewRatingMapper.class));
         service = new ReviewServiceImpl(
                 template.getMapper(ReviewMapper.class),
                 template.getMapper(ReviewLikeMapper.class),
@@ -89,6 +95,20 @@ class MerchantReviewReadNativeMysqlTest {
     }
 
     @AfterEach void clear() { BizContext.clear(); }
+
+    @Test
+    void merchantRatingIncludesOnlyPassedReviewsAndKeepsStorelessHistory() {
+        String owner = "RATING-SUMMARY";
+        review("RATING-OLD", owner, "PASSED");
+        review("RATING-NEW", owner, "PASSED");
+        review("RATING-PENDING", owner, "PENDING");
+        review("RATING-DELETED", owner, "PASSED");
+        jdbc.update("UPDATE rvw_review SET rating=1, created_at=NOW()-INTERVAL 180 DAY WHERE review_no='RATING-OLD'");
+        jdbc.update("UPDATE rvw_review SET rating=5, store_no='ST-RATING' WHERE review_no='RATING-NEW'");
+        jdbc.update("UPDATE rvw_review SET deleted=1 WHERE review_no='RATING-DELETED'");
+        assertThat(ratingQuery.byMerchant(List.of(owner, "NO-REVIEWS")))
+                .containsExactlyEntriesOf(Map.of(owner, new MerchantReviewRatingQuery.Summary(37, 2)));
+    }
 
     private void review(String no, String owner, String status) {
         jdbc.update("""

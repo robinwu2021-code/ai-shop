@@ -8,13 +8,17 @@ import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdStoreCatalog;
 import ai.neargo.shop.product.entity.PrdStoreSku;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+import org.springframework.dao.DuplicateKeyException;
 
 /** product 域的 Mapper 集合。 */
 public final class ProductMappers {
@@ -190,6 +194,42 @@ public final class ProductMappers {
 
     public interface SkuMapper extends ProductTableMapper<PrdSku> {
 
+        /** Load the default stock shown alongside SKU metadata, once per batch across markets. */
+        default List<PrdSku> selectWithStock(Wrapper<PrdSku> query) {
+            return withStock(selectList(query));
+        }
+
+        default List<PrdSku> withStock(List<PrdSku> rows) {
+            if (rows.isEmpty()) return rows;
+            var numbers = rows.stream().map(PrdSku::getSkuNo).distinct().toList();
+            var byEntity = new HashMap<String, Map<String, PrdStoreSku>>();
+            for (var row : defaultBalances(numbers)) {
+                byEntity.computeIfAbsent(row.getEntityNo(), unused -> new HashMap<>())
+                        .putIfAbsent(row.getSkuNo(), row);
+            }
+            for (var sku : rows) {
+                var byNumber = byEntity.get(sku.getEntityNo());
+                var balance = byNumber == null ? null : byNumber.get(sku.getSkuNo());
+                sku.setStock(balance == null ? 0 : balance.getSellableQty());
+                sku.setLockedStock(balance == null ? 0 : balance.getLockedQty());
+            }
+            return rows;
+        }
+
+        @Select("""
+                <script>
+                SELECT b.* FROM prd_store_sku b
+                WHERE b.deleted=0 AND b.sellable_qty IS NOT NULL AND b.sku_no IN
+                <foreach collection="numbers" item="no" open="(" separator="," close=")">#{no}</foreach>
+                AND (b.store_no='' OR EXISTS (
+                    SELECT 1 FROM prd_sku s JOIN prd_goods g ON g.goods_no=s.goods_no AND g.entity_no=s.entity_no
+                    WHERE s.sku_no=b.sku_no AND s.entity_no=b.entity_no AND g.store_no=b.store_no
+                      AND s.deleted=0 AND g.deleted=0))
+                ORDER BY b.store_no,b.id
+                </script>
+                """)
+        List<PrdStoreSku> defaultBalances(@Param("numbers") List<String> numbers);
+
         /** Current complete accounting identities, including every market and retired identity. */
         @Select("SELECT * FROM prd_sku WHERE tenant_no='MAIN' AND sku_no=#{skuNo} ORDER BY id FOR UPDATE")
         List<PrdSku> lockSkuCurrent(@Param("skuNo") String skuNo);
@@ -213,7 +253,9 @@ public final class ProductMappers {
         @Update("""
                 UPDATE prd_sku SET deleted=1, version=version+1 WHERE tenant_no='MAIN' AND id=#{id}
                     AND entity_no=#{entity} AND goods_no=#{goods} AND deleted=0 AND version=#{version}
-                    AND COALESCE(locked_stock,0)=0 AND COALESCE(sold_count,0)=0
+                    AND COALESCE(sold_count,0)=0
+                    AND NOT EXISTS (SELECT 1 FROM prd_store_sku b WHERE b.entity_no=#{entity}
+                        AND b.sku_no=prd_sku.sku_no AND b.deleted=0 AND b.locked_qty != 0)
                     AND version < 9223372036854775807
                 """)
         int retireUnencumbered(@Param("id") long id, @Param("entity") String entity,
@@ -226,23 +268,23 @@ public final class ProductMappers {
          * @return 1=锁定成功，0=可售不足
          */
         @Update("""
-                UPDATE prd_sku SET locked_stock = locked_stock + #{qty}, version = version + 1
-                WHERE sku_no = #{skuNo} AND deleted = 0 AND stock - locked_stock >= #{qty}
+                UPDATE prd_store_sku SET locked_qty = locked_qty + #{qty}, version = version + 1
+                WHERE store_no='' AND sellable_qty IS NOT NULL AND sku_no = #{skuNo} AND deleted = 0 AND sellable_qty - locked_qty >= #{qty}
                 """)
         int lockStock(@Param("skuNo") String skuNo, @Param("qty") int qty);
 
         /** 释放：锁定量减回去，总量不动。{@code >= qty} 防止并发重复释放把 locked 减成负数。 */
         @Update("""
-                UPDATE prd_sku SET locked_stock = locked_stock - #{qty}, version = version + 1
-                WHERE sku_no = #{skuNo} AND deleted = 0 AND locked_stock >= #{qty}
+                UPDATE prd_store_sku SET locked_qty = locked_qty - #{qty}, version = version + 1
+                WHERE store_no='' AND sellable_qty IS NOT NULL AND sku_no = #{skuNo} AND deleted = 0 AND locked_qty >= #{qty}
                 """)
         int releaseStock(@Param("skuNo") String skuNo, @Param("qty") int qty);
 
         /** 确认扣减：总量与锁定量同时减 —— 支付成功后这批货真正卖掉了。 */
         @Update("""
-                UPDATE prd_sku SET stock = stock - #{qty}, locked_stock = locked_stock - #{qty},
+                UPDATE prd_store_sku SET sellable_qty = sellable_qty - #{qty}, locked_qty = locked_qty - #{qty},
                                    version = version + 1
-                WHERE sku_no = #{skuNo} AND deleted = 0 AND locked_stock >= #{qty} AND stock >= #{qty}
+                WHERE store_no='' AND sellable_qty IS NOT NULL AND sku_no = #{skuNo} AND deleted = 0 AND locked_qty >= #{qty} AND sellable_qty >= #{qty}
                 """)
         int confirmStock(@Param("skuNo") String skuNo, @Param("qty") int qty);
 
@@ -254,8 +296,8 @@ public final class ProductMappers {
          * 而那个数一旦为负，之后每一次下单的「够不够」都算错。
          */
         @Update("""
-                UPDATE prd_sku SET stock = stock + #{qty}, version = version + 1
-                 WHERE sku_no = #{skuNo} AND deleted = 0
+                UPDATE prd_store_sku SET sellable_qty = sellable_qty + #{qty}, version = version + 1
+                 WHERE store_no='' AND sellable_qty IS NOT NULL AND sku_no = #{skuNo} AND deleted = 0
                 """)
         int restoreStock(@Param("skuNo") String skuNo, @Param("qty") int qty);
 
@@ -270,23 +312,23 @@ public final class ProductMappers {
          * 那几单付款确认时 confirmStock 扣不动。0 行由调用方区分「不存在」与「低于锁定量」。
          */
         @Update("""
-                UPDATE prd_sku SET stock = #{stock}, version = version + 1
-                WHERE sku_no = #{skuNo} AND deleted = 0 AND #{stock} >= 0
-                  AND #{stock} >= COALESCE(locked_stock, 0)
+                UPDATE prd_store_sku SET sellable_qty = #{stock}, version = version + 1
+                WHERE store_no='' AND sellable_qty IS NOT NULL AND sku_no = #{skuNo} AND deleted = 0 AND #{stock} >= 0
+                  AND #{stock} >= COALESCE(locked_qty, 0)
                 """)
         int setStock(@Param("skuNo") String skuNo, @Param("stock") int stock);
 
         /** 写回，主体级库存那一档（没有按店库存行、主体只有一家店时）。口径同 StoreSkuMapper#syncSellable */
         @Update("""
-                UPDATE prd_sku SET stock = #{target} + locked_stock, version = version + 1
-                WHERE sku_no = #{skuNo} AND deleted = 0 AND #{target} >= 0
+                UPDATE prd_store_sku SET sellable_qty = #{target} + locked_qty, version = version + 1
+                WHERE store_no='' AND sellable_qty IS NOT NULL AND sku_no = #{skuNo} AND deleted = 0 AND #{target} >= 0
                 """)
         int syncSellable(@Param("skuNo") String skuNo, @Param("target") int target);
 
         /** 手动规则的写回，主体级那一档：只降不升 */
         @Update("""
-                UPDATE prd_sku SET stock = #{cap} + locked_stock, version = version + 1
-                WHERE sku_no = #{skuNo} AND deleted = 0 AND #{cap} >= 0 AND stock - locked_stock > #{cap}
+                UPDATE prd_store_sku SET sellable_qty = #{cap} + locked_qty, version = version + 1
+                WHERE store_no='' AND sellable_qty IS NOT NULL AND sku_no = #{skuNo} AND deleted = 0 AND #{cap} >= 0 AND sellable_qty - locked_qty > #{cap}
                 """)
         int capSellable(@Param("skuNo") String skuNo, @Param("cap") int cap);
 
@@ -378,7 +420,8 @@ public final class ProductMappers {
 
         /** 手改门店库存：设成这个数，{@code locked_qty} 不动；与主体级 {@link SkuMapper#setStock} 同一条：不许改到锁定量以下。 */
         @Update("""
-                UPDATE prd_store_sku SET sellable_qty = #{stock}, version = version + 1
+                UPDATE prd_store_sku SET sellable_qty = #{stock}, locked_qty = COALESCE(locked_qty, 0),
+                                         version = version + 1
                 WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND sellable_qty IS NOT NULL
                   AND #{stock} >= 0 AND #{stock} >= COALESCE(locked_qty, 0)
                 """)
@@ -408,12 +451,34 @@ public final class ProductMappers {
                         @Param("cap") int cap);
 
         @Update("""
-                UPDATE prd_store_sku SET sellable_qty = 0, version = version + 1
+                UPDATE prd_store_sku SET sellable_qty = 0, locked_qty = COALESCE(locked_qty, 0),
+                                         version = version + 1
                 WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND market = #{market} AND deleted = 0
                   AND sellable_qty IS NULL
                 """)
         int fillStoreStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                            @Param("market") String market);
+
+        @Update("""
+                UPDATE prd_store_sku
+                   SET deleted=0, price=#{row.price}, origin_price=#{row.originPrice}, on_sale=NULL,
+                       sellable_qty=#{row.sellableQty}, locked_qty=0, version=version+1, updated_at=CURRENT_TIMESTAMP
+                 WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
+                   AND sku_no=#{row.skuNo} AND market=#{row.market} AND deleted=1
+                   AND sellable_qty IS NULL AND COALESCE(locked_qty, 0)=0
+                """)
+        int restoreCancelledPrice(@Param("row") PrdStoreSku row);
+
+        /** 旧版撤销价格曾软删空库存行，重新设价或设置库存时复用它占用的唯一键。 */
+        default void insertRestoringCancelledPrice(PrdStoreSku row) {
+            try {
+                insert(row);
+            } catch (DuplicateKeyException conflict) {
+                if (restoreCancelledPrice(row) != 1) {
+                    throw conflict;
+                }
+            }
+        }
 
         /**
          * 让这家店的这个 SKU 进入店级库存（库存 0、锁量 0）。<b>一店一 SKU 一行</b>：
@@ -435,7 +500,7 @@ public final class ProductMappers {
                 row.setMarket(market);
                 row.setSellableQty(0);
                 row.setLockedQty(0);
-                insert(row);
+                insertRestoringCancelledPrice(row);
             }
         }
     }

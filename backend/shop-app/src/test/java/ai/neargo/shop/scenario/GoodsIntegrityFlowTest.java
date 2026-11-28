@@ -97,12 +97,12 @@ class GoodsIntegrityFlowTest {
         assertThat(postJson(biz, "/biz/goods/save", goodsBody(goodsNo, skuNo, "库存商品·改", 1000, 100))
                 .get("code").asInt()).isZero();
         // 这期间卖掉 40 件
-        jdbc.update("update prd_sku set stock = stock - 40 where sku_no=?", skuNo);
+        jdbc.update("update prd_store_sku set sellable_qty = sellable_qty - 40 where sku_no=?", skuNo);
 
         withAuditOff(() -> assertThat(postJson(biz, "/biz/goods/" + goodsNo + "/publish", "{}")
                 .get("code").asInt()).isZero());
 
-        assertThat(jdbc.queryForObject("select stock from prd_sku where sku_no=? and market='CN'",
+        assertThat(jdbc.queryForObject("select sellable_qty from prd_store_sku where sku_no=? and sellable_qty is not null",
                 Integer.class, skuNo)).as("发布把卖掉的 40 件加回去了 —— 超卖").isEqualTo(60);
         assertThat(jdbc.queryForObject("select title from prd_goods where goods_no=?", String.class, goodsNo))
                 .as("内容照常换版").isEqualTo("库存商品·改");
@@ -116,7 +116,7 @@ class GoodsIntegrityFlowTest {
         String skuNo = detail(biz, goodsNo).get("skus").get(0).get("skuNo").asString();
         assertThat(postJson(biz, "/biz/goods/save", goodsBody(goodsNo, skuNo, "保存商品", 1000, -5))
                 .get("code").asInt()).isZero();
-        assertThat(jdbc.queryForObject("select stock from prd_sku where sku_no=? and market='CN'",
+        assertThat(jdbc.queryForObject("select sellable_qty from prd_store_sku where sku_no=? and sellable_qty is not null",
                 Integer.class, skuNo)).isEqualTo(30);
 
         JsonNode neg = postJson(biz, "/biz/goods/save", goodsBody(null, null, "负库存新品", 1000, -1));

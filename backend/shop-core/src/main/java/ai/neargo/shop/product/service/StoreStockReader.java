@@ -51,7 +51,7 @@ public class StoreStockReader {
     public boolean managedByStore(String skuNo) {
         return DataScopeContext.executeWithoutScope(() ->
                 storeStockMapper.selectCount(Wrappers.<PrdStoreSku>lambdaQuery()
-                        .eq(PrdStoreSku::getSkuNo, skuNo).isNotNull(PrdStoreSku::getSellableQty))) > 0;
+                        .eq(PrdStoreSku::getSkuNo, skuNo).ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL).isNotNull(PrdStoreSku::getSellableQty))) > 0;
     }
 
     /**
@@ -78,7 +78,7 @@ public class StoreStockReader {
         List<PrdSku> skus = new java.util.ArrayList<>();
         for (List<String> chunk : chunks(skuNos)) {
             skus.addAll(DataScopeContext.executeWithoutScope(() ->
-                    skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, chunk))));
+                    skuMapper.selectWithStock(Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, chunk))));
         }
         for (PrdSku s : skus) {
             out.put(s.getSkuNo(), Math.max(nz(s.getStock()) - (minusLocked ? nz(s.getLockedStock()) : 0), 0));
@@ -95,7 +95,7 @@ public class StoreStockReader {
         for (List<String> chunk : chunks(skuNos)) {
             rows.addAll(DataScopeContext.executeWithoutScope(() ->
                     storeStockMapper.selectList(Wrappers.<PrdStoreSku>lambdaQuery()
-                            .in(PrdStoreSku::getSkuNo, chunk).isNotNull(PrdStoreSku::getSellableQty))));
+                            .in(PrdStoreSku::getSkuNo, chunk).ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL).isNotNull(PrdStoreSku::getSellableQty))));
         }
         Map<String, Integer> here = new HashMap<>();
         java.util.Set<String> managed = new java.util.HashSet<>();

@@ -1326,7 +1326,7 @@ class ManualServiceFinancialIsolationIT extends CheckoutFlowFixture {
                                 String.class,
                                 order.orderNo()))
                 .isEqualTo("RELEASED");
-        assertThat(jdbc.queryForMap("SELECT stock,locked_stock FROM prd_sku WHERE sku_no=?", sku))
+        assertThat(jdbc.queryForMap("SELECT sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=?", sku))
                 .containsEntry("stock", 100)
                 .containsEntry("locked_stock", 0);
         var released = originalStock(order);
@@ -1523,7 +1523,7 @@ class ManualServiceFinancialIsolationIT extends CheckoutFlowFixture {
                         "SELECT * FROM prd_stock_lock WHERE lock_no=? ORDER BY id",
                         order.orderNo()),
                 "balances",
-                jdbc.queryForList("SELECT stock,locked_stock FROM prd_sku WHERE sku_no=?", sku));
+                jdbc.queryForList("SELECT sellable_qty AS stock,locked_qty AS locked_stock FROM prd_store_sku WHERE store_no='' AND sku_no=?", sku));
     }
 
     private void forbidRefundEffects() {

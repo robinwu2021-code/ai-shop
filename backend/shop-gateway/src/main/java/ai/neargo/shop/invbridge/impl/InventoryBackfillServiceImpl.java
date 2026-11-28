@@ -226,7 +226,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
         Long lastId = null;
         boolean exhausted = true;
         List<PrdSku> rows = DataScopeContext.executeWithoutScope(() ->
-                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                skuMapper.selectWithStock(Wrappers.<PrdSku>lambdaQuery()
                         .gt(afterId != null, PrdSku::getId, afterId)
                         .orderByAsc(PrdSku::getId).last("LIMIT " + (limit * 4L))));
         for (PrdSku row : rows) {
@@ -281,6 +281,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
             List<PrdStoreSku> storeRows = DataScopeContext.executeWithoutScope(() ->
                     storeStockMapper.selectList(Wrappers.<PrdStoreSku>lambdaQuery()
                             .eq(PrdStoreSku::getSkuNo, sku.getSkuNo())
+                            .ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL)
                             .isNotNull(PrdStoreSku::getSellableQty)));
 
             /*
