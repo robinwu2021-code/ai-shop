@@ -48,7 +48,7 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
             Object changed = row("BtyServiceSubmission", "entityNo", "E", "submissionNo", "DUP", "storeNo", "S",
                     "action", "OPEN", "requestKeyHash", "a".repeat(64), "payloadHash", "c".repeat(64),
                     "status", "RECEIVED", "frozenCommand", "{\"changed\":true}");
-            assertThatThrownBy(() -> tx(context, () -> mapper(context, "ServiceSubmissionMapper").insert(changed)))
+            assertThatThrownBy(() -> industryTx(context, () -> mapper(context, "ServiceSubmissionMapper").insert(changed)))
                     .isInstanceOf(DuplicateKeyException.class);
             Object original = call(context, "ServiceSubmissionMapper", "selectByRequestKey", "E", "S", "a".repeat(64));
             assertThat(new BeanWrapperImpl(original).getPropertyValue("payloadHash")).isEqualTo("b".repeat(64));
@@ -65,12 +65,12 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
     @Test
     void progressCasRetainsOriginalIntentAndRejectsTerminalRestart() {
         runner().run(context -> {
-            assertThat(tx(context, () -> advance(context, 0, "RECEIVED", "BOUND"))).isEqualTo(0);
-            assertThat(tx(context, () -> advance(context, 0, "RECEIVED", "SOURCE_PENDING"))).isEqualTo(1);
-            assertThat(tx(context, () -> advance(context, 0, "SOURCE_PENDING", "RECOVERING"))).isEqualTo(0);
-            assertThat(tx(context, () -> advance(context, 1, "SOURCE_PENDING", "RECOVERING"))).isEqualTo(1);
-            assertThat(tx(context, () -> advance(context, 2, "RECOVERING", "BOUND"))).isEqualTo(1);
-            assertThat(tx(context, () -> advance(context, 3, "BOUND", "SOURCE_PENDING"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> advance(context, 0, "RECEIVED", "BOUND"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> advance(context, 0, "RECEIVED", "SOURCE_PENDING"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> advance(context, 0, "SOURCE_PENDING", "RECOVERING"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> advance(context, 1, "SOURCE_PENDING", "RECOVERING"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> advance(context, 2, "RECOVERING", "BOUND"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> advance(context, 3, "BOUND", "SOURCE_PENDING"))).isEqualTo(0);
             assertThat(sql.queryForObject("SELECT next_retry_at FROM bty_service_submission", Object.class)).isNull();
             assertThat(sql.queryForObject("SELECT updated_by FROM bty_service_submission", String.class))
                     .isEqualTo("ACTOR");
@@ -82,12 +82,12 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
     @Test
     void activeLeaseNeedsFutureRetryAndRejectedNeedsFailureCode() {
         runner().run(context -> {
-            assertThat(tx(context, () -> call(context, "ServiceSubmissionMapper", "advanceProgress", "E", "S", "SUB",
+            assertThat(industryTx(context, () -> call(context, "ServiceSubmissionMapper", "advanceProgress", "E", "S", "SUB",
                     0L, "RECEIVED", "RECEIVED", T0, null, "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(context, () -> call(context, "ServiceSubmissionMapper", "advanceProgress", "E", "S", "SUB",
+            assertThat(industryTx(context, () -> call(context, "ServiceSubmissionMapper", "advanceProgress", "E", "S", "SUB",
                     0L, "RECEIVED", "REJECTED", null, null, "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(context, () -> advance(context, 0, "RECEIVED", "REJECTED"))).isEqualTo(1);
-            assertThat(tx(context, () -> advance(context, 1, "REJECTED", "SOURCE_PENDING"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> advance(context, 0, "RECEIVED", "REJECTED"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> advance(context, 1, "REJECTED", "SOURCE_PENDING"))).isEqualTo(0);
         });
     }
 
@@ -99,16 +99,16 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
         submission("TERMINAL", "BIND", "S", "BOUND");
         submission("STORE", "OPEN", "OTHER", "RECEIVED");
         runner().run(context -> {
-            assertThat(tx(context, () -> due(context, "S", 0))).isEmpty();
-            assertThat(tx(context, () -> due(context, "S", -1))).isEmpty();
-            assertThat(tx(context, () -> due(context, "S", 101))).isEmpty();
-            tx(context, () -> {
+            assertThat(industryTx(context, () -> due(context, "S", 0))).isEmpty();
+            assertThat(industryTx(context, () -> due(context, "S", -1))).isEmpty();
+            assertThat(industryTx(context, () -> due(context, "S", 101))).isEmpty();
+            industryTx(context, () -> {
                 assertThat(due(context, "S", 1)).hasSize(1);
                 assertThat(advance(context, 0, "RECEIVED", "RECEIVED")).isEqualTo(1);
                 return null;
             });
-            assertThat(tx(context, () -> due(context, "S", 100))).isEmpty();
-            assertThat(tx(context, () -> due(context, "OTHER", 100))).hasSize(1);
+            assertThat(industryTx(context, () -> due(context, "S", 100))).isEmpty();
+            assertThat(industryTx(context, () -> due(context, "OTHER", 100))).hasSize(1);
         });
     }
 
@@ -119,7 +119,7 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
             var locked = new CountDownLatch(1);
             var scanned = new CountDownLatch(1);
             try (var workers = Executors.newFixedThreadPool(2)) {
-                var owner = workers.submit(() -> tx(context, () -> {
+                var owner = workers.submit(() -> industryTx(context, () -> {
                     assertThat(call(context, "ServiceSubmissionMapper", "selectScopedForUpdate", "E", "S", "SUB"))
                             .isNotNull();
                     locked.countDown();
@@ -129,7 +129,7 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
                 var recovery = workers.submit(() -> {
                     await(locked);
                     try {
-                        return tx(context, () -> {
+                        return industryTx(context, () -> {
                             var rows = due(context, "S", 10);
                             assertThat(rows).hasSize(1);
                             return new BeanWrapperImpl(rows.getFirst()).getPropertyValue("submissionNo");
@@ -158,10 +158,10 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
         workOrder("W", "OTHER");
         sql.execute("UPDATE bty_service_submission SET work_order_no='W'");
         runner().run(context -> {
-            assertThat(tx(context, () -> call(context, "ServiceSubmissionMapper", "selectScopedForUpdate",
+            assertThat(industryTx(context, () -> call(context, "ServiceSubmissionMapper", "selectScopedForUpdate",
                     "E", "S", "SUB"))).isNull();
-            assertThat(tx(context, () -> advance(context, 0, "RECEIVED", "SOURCE_PENDING"))).isEqualTo(0);
-            assertThat(tx(context, () -> due(context, "S", 100))).isEmpty();
+            assertThat(industryTx(context, () -> advance(context, 0, "RECEIVED", "SOURCE_PENDING"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> due(context, "S", 100))).isEmpty();
         });
     }
 
@@ -171,7 +171,7 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
             Object intent = row("BtyServiceSubmission", "entityNo", "E", "submissionNo", "NEW", "storeNo", "S",
                     "action", "ADD", "requestKeyHash", "c".repeat(64), "payloadHash", "d".repeat(64),
                     "status", "RECEIVED", "frozenCommand", "{}");
-            assertThat(tx(context, () -> mapper(context, "ServiceSubmissionMapper").insert(intent))).isOne();
+            assertThat(industryTx(context, () -> mapper(context, "ServiceSubmissionMapper").insert(intent))).isOne();
             assertThat(sql.queryForObject("SELECT created_by FROM bty_service_submission WHERE submission_no='NEW'",
                     String.class)).isEqualTo("ACTOR");
         });
@@ -179,11 +179,11 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
     @Test
     void leaseMustRemainFutureAtPersistedMillisecondPrecision() {
         runner().run(context -> {
-            assertThat(tx(context, () -> call(context, "ServiceSubmissionMapper", "advanceProgress", "E", "S", "SUB",
+            assertThat(industryTx(context, () -> call(context, "ServiceSubmissionMapper", "advanceProgress", "E", "S", "SUB",
                     0L, "RECEIVED", "RECEIVED", T0.plusNanos(100_000), null, "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(context, () -> call(context, "ServiceSubmissionMapper", "advanceProgress", "E", "S", "SUB",
+            assertThat(industryTx(context, () -> call(context, "ServiceSubmissionMapper", "advanceProgress", "E", "S", "SUB",
                     0L, "RECEIVED", "RECEIVED", T0.plusNanos(1_000_000), null, "ACTOR", T0))).isEqualTo(1);
-            Object intent = tx(context, () -> call(context, "ServiceSubmissionMapper", "selectScopedForUpdate",
+            Object intent = industryTx(context, () -> call(context, "ServiceSubmissionMapper", "selectScopedForUpdate",
                     "E", "S", "SUB"));
             assertThat(new BeanWrapperImpl(intent).getPropertyValue("nextRetryAt"))
                     .isEqualTo(T0.plusNanos(1_000_000));

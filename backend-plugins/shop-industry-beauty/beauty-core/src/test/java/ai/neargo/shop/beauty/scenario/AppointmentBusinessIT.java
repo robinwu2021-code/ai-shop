@@ -696,7 +696,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
     void preservedLegacyRootReadsWithoutInventingArrangementEvidence() throws Exception {
         database = new BeautySchemaMigrationIT();
         database.isolatedDatabase();
-        sql = new JdbcTemplate(database.source);
+        sql = database.sql();
         Flyway.configure().dataSource(database.source).locations("classpath:db/industry/beauty")
                 .table("bty_flyway_history").target("2").baselineVersion("0").baselineOnMigrate(true)
                 .createSchemas(false).placeholderReplacement(false).load().migrate();

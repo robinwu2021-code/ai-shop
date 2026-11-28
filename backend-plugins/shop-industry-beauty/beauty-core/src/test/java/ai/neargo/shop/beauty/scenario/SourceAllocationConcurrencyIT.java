@@ -57,13 +57,13 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
     @Test
     void allocatesOnlyWithinOriginalQuantityAndExactRevision() {
         runner().run(context -> {
-            assertThat(tx(context, () -> allocate(context, 0, 1, "0"))).isEqualTo(0);
-            assertThat(tx(context, () -> allocate(context, 0, 1, "0.0000001"))).isEqualTo(0);
-            assertThat(tx(context, () -> allocate(context, 0, 2, "1"))).isEqualTo(0);
-            assertThat(tx(context, () -> allocate(context, 0, 1, "3"))).isEqualTo(0);
-            assertThat(tx(context, () -> allocate(context, 0, 1, "1.5"))).isEqualTo(1);
-            assertThat(tx(context, () -> allocate(context, 0, 1, "0.5"))).isEqualTo(0);
-            assertThat(tx(context, () -> allocate(context, 1, 1, "0.5"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> allocate(context, 0, 1, "0"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> allocate(context, 0, 1, "0.0000001"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> allocate(context, 0, 2, "1"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> allocate(context, 0, 1, "3"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> allocate(context, 0, 1, "1.5"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> allocate(context, 0, 1, "0.5"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> allocate(context, 1, 1, "0.5"))).isEqualTo(1);
             assertThat(sql.queryForObject("SELECT allocated_qty FROM bty_source_allocation_guard", BigDecimal.class))
                     .isEqualByComparingTo("2");
             assertThat(sql.queryForObject("SELECT updated_by FROM bty_source_allocation_guard", String.class))
@@ -82,7 +82,7 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
             try (var workers = Executors.newFixedThreadPool(2)) {
                 var futures = List.of("T1", "T2").stream().map(task -> workers.submit(() -> {
                     assertThat(start.await(10, TimeUnit.SECONDS)).isTrue();
-                    return tx(context, () -> {
+                    return industryTx(context, () -> {
                         Object guard = call(context, "SourceAllocationGuardMapper", "selectSourceForUpdate",
                                 "E", "STORE_ORDER", "ORDER", "LINE");
                         assertThat(guard).isNotNull();
@@ -108,7 +108,7 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
                 "source_no", "ORDER", "source_line_ref", "LINE", "source_revision", 2L, "source_qty", 2,
                 "allocated_qty", 0, "uom", "COUNT", "source_hash", "b".repeat(64)))
                 .isInstanceOf(DuplicateKeyException.class);
-        runner().run(context -> assertThat(tx(context, () -> call(context, "SourceAllocationGuardMapper",
+        runner().run(context -> assertThat(industryTx(context, () -> call(context, "SourceAllocationGuardMapper",
                 "selectSourceForUpdate", "FOREIGN", "STORE_ORDER", "ORDER", "LINE"))).isNull());
     }
 
@@ -116,12 +116,12 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
     void refreshPreservesAllocatedQuantityAndRequiresNewerCompatibleSnapshot() {
         sql.execute("UPDATE bty_source_allocation_guard SET allocated_qty=1");
         runner().run(context -> {
-            assertThat(tx(context, () -> refresh(context, 1, "2", "b".repeat(64)))).isEqualTo(0);
-            assertThat(tx(context, () -> refresh(context, 2, "0.5", "b".repeat(64)))).isEqualTo(0);
-            assertThat(tx(context, () -> refresh(context, 2, "3", "short"))).isEqualTo(0);
-            assertThat(tx(context, () -> refresh(context, 2, "3", "b".repeat(64)))).isEqualTo(1);
-            assertThat(tx(context, () -> allocate(context, 1, 1, "1"))).isEqualTo(0);
-            assertThat(tx(context, () -> allocate(context, 1, 2, "2"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> refresh(context, 1, "2", "b".repeat(64)))).isEqualTo(0);
+            assertThat(industryTx(context, () -> refresh(context, 2, "0.5", "b".repeat(64)))).isEqualTo(0);
+            assertThat(industryTx(context, () -> refresh(context, 2, "3", "short"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> refresh(context, 2, "3", "b".repeat(64)))).isEqualTo(1);
+            assertThat(industryTx(context, () -> allocate(context, 1, 1, "1"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> allocate(context, 1, 2, "2"))).isEqualTo(1);
         });
     }
 
@@ -134,11 +134,11 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
     void releasesOnlyPositiveRepresentableUnreferencedReservation() {
         sql.execute("UPDATE bty_source_allocation_guard SET allocated_qty=2");
         runner().run(context -> {
-            assertThat(tx(context, () -> release(context, 0, "0.0000001"))).isEqualTo(0);
-            assertThat(tx(context, () -> release(context, 0, "3"))).isEqualTo(0);
-            assertThat(tx(context, () -> release(context, 0, "1"))).isEqualTo(1);
-            assertThat(tx(context, () -> release(context, 0, "1"))).isEqualTo(0);
-            assertThat(tx(context, () -> release(context, 1, "1"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> release(context, 0, "0.0000001"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> release(context, 0, "3"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> release(context, 0, "1"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> release(context, 0, "1"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> release(context, 1, "1"))).isEqualTo(1);
         });
     }
 
@@ -147,7 +147,7 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
         referencedAllocation();
         sql.execute("UPDATE bty_service_task SET status='DONE',done_qty=2,finished_at=started_at");
         sql.execute("UPDATE bty_trade_binding SET deleted=1");
-        runner().run(context -> assertThat(tx(context, () -> release(context, 0, "1"))).isEqualTo(0));
+        runner().run(context -> assertThat(industryTx(context, () -> release(context, 0, "1"))).isEqualTo(0));
     }
 
     @Test
@@ -155,7 +155,7 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
         referencedAllocation();
         sql.execute("UPDATE bty_service_task SET status='VOIDED',started_at=NULL,voided_qty=qty");
         sql.execute("UPDATE bty_service_submission SET status='RECOVERING'");
-        runner().run(context -> assertThat(tx(context, () -> release(context, 0, "1"))).isEqualTo(0));
+        runner().run(context -> assertThat(industryTx(context, () -> release(context, 0, "1"))).isEqualTo(0));
     }
 
     @Test
@@ -163,7 +163,7 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
         referencedAllocation();
         sql.execute("UPDATE bty_service_task SET status='VOIDED',started_at=NULL,voided_qty=qty");
         runner().run(context -> {
-            assertThat(tx(context, () -> release(context, 0, "2"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> release(context, 0, "2"))).isEqualTo(1);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_trade_binding", Integer.class)).isOne();
         });
     }
@@ -173,7 +173,7 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
         referencedAllocation();
         sql.execute("UPDATE bty_service_task SET status='VOIDED',started_at=NULL,voided_qty=qty");
         sql.execute("UPDATE bty_service_submission SET store_no='OTHER'");
-        runner().run(context -> assertThat(tx(context, () -> release(context, 0, "1"))).isEqualTo(0));
+        runner().run(context -> assertThat(industryTx(context, () -> release(context, 0, "1"))).isEqualTo(0));
     }
 
     @Test
@@ -198,7 +198,7 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
     @Test
     void allocationAndAuditRollbackTogether() {
         runner().run(context -> {
-            assertThatThrownBy(() -> tx(context, () -> {
+            assertThatThrownBy(() -> industryTx(context, () -> {
                 assertThat(allocate(context, 0, 1, "1")).isEqualTo(1);
                 throw new IllegalStateException("rollback");
             })).hasMessage("rollback");
@@ -217,7 +217,7 @@ class SourceAllocationConcurrencyIT extends BeautyExecutionFixture {
                     "STORE_ORDER", "sourceNo", "OTHER", "sourceLineRef", "L", "sourceRevision", 1L,
                     "sourceQty", BigDecimal.ONE, "allocatedQty", BigDecimal.ZERO, "uom", "COUNT",
                     "sourceHash", "a".repeat(64));
-            assertThat(tx(context, () -> mapper(context, "SourceAllocationGuardMapper").insert(guard))).isOne();
+            assertThat(industryTx(context, () -> mapper(context, "SourceAllocationGuardMapper").insert(guard))).isOne();
             assertThat(sql.queryForObject("SELECT created_by FROM bty_source_allocation_guard WHERE guard_no='NEW'",
                     String.class)).isEqualTo("ACTOR");
             DataScopeContext.set(DataScopeSpec.of(ScopeDim.MERCHANT, Set.of("FOREIGN")));

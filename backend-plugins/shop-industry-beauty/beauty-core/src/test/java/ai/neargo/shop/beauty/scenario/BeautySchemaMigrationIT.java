@@ -25,7 +25,15 @@ import javax.sql.DataSource;
 
 /** Explicitly selected by the disposable MySQL runner; never consumes application DB settings. */
 class BeautySchemaMigrationIT {
+    /**
+     * 行业句柄连哪：{@code shared}（默认）与主库同一个库；{@code separate} 连按 {@code db/n_industry} 新建的独立库，
+     * 分库后会断的写法在测试里直接暴露（TDD-美业域迁移新库 B-5a）。{@code -Dbeauty.test.industry-db=separate}。
+     */
+    static final boolean SEPARATE_INDUSTRY =
+            "separate".equals(System.getProperty("beauty.test.industry-db", "shared"));
     MysqlDataSource source;
+    /** 独立行业库；共用模式下为 null。 */
+    MysqlDataSource industrySource;
 
     @BeforeEach
     void isolatedDatabase() throws SQLException {
@@ -47,6 +55,40 @@ class BeautySchemaMigrationIT {
         source.setUrl(url.replace("/mysql?", "/" + database + "?"));
         source.setUser("root");
         source.setPassword(System.getenv().getOrDefault("BEAUTY_NATIVE_MYSQL_PASSWORD", ""));
+        industrySource = null;
+        if (SEPARATE_INDUSTRY) {
+            try (Connection connection = admin.getConnection(); var statement = connection.createStatement()) {
+                statement.execute("CREATE DATABASE `" + database + "_ind` CHARACTER SET utf8mb4 "
+                        + "COLLATE utf8mb4_0900_ai_ci"); // 与 .61 的 n_industry 一致
+            }
+            industrySource = new MysqlDataSource();
+            industrySource.setUrl(url.replace("/mysql?", "/" + database + "_ind?"));
+            industrySource.setUser("root");
+            industrySource.setPassword(source.getPassword());
+        }
+    }
+
+    /** 行业句柄所指的库。 */
+    DataSource industryHandle() {
+        return industrySource == null ? source : industrySource;
+    }
+
+    /** 测试直接读写表用：独立行业库时按表名分到两个库。 */
+    org.springframework.jdbc.core.JdbcTemplate sql() {
+        return new org.springframework.jdbc.core.JdbcTemplate(
+                industrySource == null ? source : new IndustryRoutingDataSource(source, industrySource));
+    }
+
+    /** 应用上下文的数据源配置：主库，加上（独立模式下）行业句柄的绑定。 */
+    String[] dataSourceProperties() {
+        var properties = new java.util.ArrayList<>(java.util.List.of("spring.datasource.url=" + source.getUrl(),
+                "spring.datasource.username=root", "spring.datasource.password=" + source.getPassword()));
+        if (industrySource != null)
+            properties.addAll(java.util.List.of("shop.datasources.n_industry.url=" + industrySource.getUrl(),
+                    "shop.datasources.n_industry.username=root",
+                    "shop.datasources.n_industry.password=" + industrySource.getPassword(),
+                    "shop.modules.industry.datasource=n_industry"));
+        return properties.toArray(String[]::new);
     }
 
     void initialize(String mode) {
@@ -63,7 +105,32 @@ class BeautySchemaMigrationIT {
         } catch (ReflectiveOperationException ex) {
             throw new AssertionError(ex);
         }
-        if ("migrate".equals(mode)) industrySharedTables();
+        if ("migrate".equals(mode)) {
+            if (industrySource == null) industrySharedTables();
+            else industryDatabase();
+        }
+    }
+
+    /** 独立行业库：按 {@code db/n_industry} 的 V1、V2 建（已建过就跳过）。 */
+    /** 行业表：独立模式建独立库，共用模式补到主库上。 */
+    void industryTables() {
+        if (industrySource == null) industrySharedTables();
+        else industryDatabase();
+    }
+
+    void industryDatabase() {
+        try (var connection = industrySource.getConnection(); var statement = connection.createStatement()) {
+            try (var rows = statement.executeQuery("SELECT COUNT(*) FROM information_schema.tables "
+                    + "WHERE table_schema=DATABASE() AND table_name='ind_store_policy'")) {
+                rows.next();
+                if (rows.getInt(1) > 0) return;
+            }
+            for (String script : java.util.List.of("db/n_industry/V1__industry_design.sql",
+                    "db/n_industry/V2__beauty_supplement.sql"))
+                for (String sql : BeautyIndustryDatabaseIT.statements(script)) statement.execute(sql);
+        } catch (java.io.IOException | SQLException ex) {
+            throw new AssertionError(ex);
+        }
     }
 
     /**
@@ -117,7 +184,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         initialize("migrate");
         assertEquals(
-                34, // 美业 30 张 + bty_flyway_history + 行业共用 ind_store_policy、ind_config_revision、ind_assignment
+                SEPARATE_INDUSTRY ? 31 : 34, // 美业 30 张 + bty_flyway_history；共用行业库时再加 ind_store_policy、ind_config_revision、ind_assignment
                 count(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE"
                             + " table_schema=DATABASE()"));
@@ -392,10 +459,10 @@ class BeautySchemaMigrationIT {
         execute("ALTER TABLE bty_guest_claim_receipt DROP INDEX uk_bty_guest_claim_receipt_1");
         execute("ALTER TABLE bty_reception_operation DROP CHECK ck_bty_reception_operation_5");
         initialize("validate");
-        ai.neargo.shop.beauty.config.BeautyIndustrySchemaCheck.verify(source);
-        execute("ALTER TABLE bty_work_order DROP COLUMN frozen_scope");
+        ai.neargo.shop.beauty.config.BeautyIndustrySchemaCheck.verify(industryHandle());
+        new JdbcTemplate(industryHandle()).execute("ALTER TABLE bty_work_order DROP COLUMN frozen_scope");
         var failure = assertThrows(IllegalStateException.class,
-                () -> ai.neargo.shop.beauty.config.BeautyIndustrySchemaCheck.verify(source));
+                () -> ai.neargo.shop.beauty.config.BeautyIndustrySchemaCheck.verify(industryHandle()));
         assertTrue(failure.getMessage().contains("bty_work_order"), failure.getMessage());
     }
 

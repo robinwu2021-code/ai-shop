@@ -50,7 +50,7 @@ class BeautyCatalogIT {
         fixture.isolatedDatabase();
         fixture.initialize("migrate");
         new ResourceDatabasePopulator(new ClassPathResource("platform-write-fixture.sql")).execute(fixture.source);
-        sql = new JdbcTemplate(fixture.source);
+        sql = fixture.sql();
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 LoginUser.merchant("ACTOR", "operator"), null, List.of()));
     }
@@ -75,8 +75,7 @@ class BeautyCatalogIT {
                 type("ai.neargo.shop.beauty.config.BeautyDefinitionConfiguration"))
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withBean("serviceProductFacts", port, () -> facts)
-                .withPropertyValues("shop.beauty.enabled=true", "spring.datasource.url=" + fixture.source.getUrl(),
-                        "spring.datasource.username=root", "spring.datasource.password=");
+                .withPropertyValues(fixture.dataSourceProperties()).withPropertyValues("shop.beauty.enabled=true");
     }
 
     private Object call(ApplicationContext context, String service, String method, String dto, String body,

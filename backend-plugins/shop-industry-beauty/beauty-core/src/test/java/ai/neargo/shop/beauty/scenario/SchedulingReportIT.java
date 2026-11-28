@@ -49,7 +49,7 @@ class SchedulingReportIT {
     void database() throws Exception {
         database.isolatedDatabase();
         database.baseNine();
-        sql = new JdbcTemplate(database.source);
+        sql = database.sql();
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 LoginUser.merchant("ACTOR", "operator"), null, List.of()));
     }

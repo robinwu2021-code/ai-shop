@@ -34,7 +34,7 @@ class PolicyDefinitionPersistenceIT {
         fixture = new BeautySchemaMigrationIT();
         fixture.isolatedDatabase();
         fixture.initialize("migrate");
-        sql = new JdbcTemplate(fixture.source);
+        sql = fixture.sql();
     }
 
     @AfterEach
@@ -51,8 +51,7 @@ class PolicyDefinitionPersistenceIT {
         return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
                 required("config.BeautyPersistenceConfiguration"))
                 .withBean(AuditMetaObjectHandler.class)
-                .withPropertyValues("shop.beauty.enabled=true", "spring.datasource.url=" + fixture.source.getUrl(),
-                        "spring.datasource.username=root", "spring.datasource.password=");
+                .withPropertyValues(fixture.dataSourceProperties()).withPropertyValues("shop.beauty.enabled=true");
     }
 
     @SuppressWarnings("unchecked")
@@ -97,7 +96,7 @@ class PolicyDefinitionPersistenceIT {
             assertThat(context.getBean("beautySqlSessionTemplate", SqlSessionTemplate.class).getSqlSessionFactory())
                     .isSameAs(context.getBean(SqlSessionFactory.class));
             var mapper = mapper(context, "StorePolicyMapper");
-            var transaction = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
+            var transaction = new TransactionTemplate(context.getBean(ai.neargo.shop.common.config.ModuleDataSources.INDUSTRY_TX_MANAGER, PlatformTransactionManager.class));
             assertThatThrownBy(() -> transaction.execute(status -> {
                 mapper.insert(policy("A", "P", "S"));
                 throw new IllegalStateException("rollback-probe");

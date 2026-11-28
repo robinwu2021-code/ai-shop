@@ -25,7 +25,7 @@ class BeautyPlatformFlywayIT {
     void database() throws Exception {
         fixture = new BeautySchemaMigrationIT();
         fixture.isolatedDatabase();
-        sql = new JdbcTemplate(fixture.source);
+        sql = fixture.sql();
     }
 
     private ApplicationContextRunner runner() {
@@ -33,8 +33,8 @@ class BeautyPlatformFlywayIT {
                 .withBean(AuditMetaObjectHandler.class)
                 .withConfiguration(AutoConfigurations.of(FlywayAutoConfiguration.class,
                         BeautyPersistenceAutoConfiguration.class))
-                .withPropertyValues("spring.datasource.url=" + fixture.source.getUrl(),
-                        "spring.datasource.username=root", "spring.datasource.password=",
+                .withPropertyValues(fixture.dataSourceProperties())
+                .withPropertyValues(
                         "spring.flyway.enabled=true", "spring.flyway.locations=classpath:beauty-test-platform",
                         "spring.flyway.baseline-on-migrate=true", "spring.flyway.baseline-version=0");
     }
@@ -65,7 +65,7 @@ class BeautyPlatformFlywayIT {
     void knownV10StatesPreservePrimaryPlatformFlyway() throws Exception {
         for (int state = 0; state < 3; state++) {
             database();
-            if (state == 0) { fixture.baseNine(); fixture.industrySharedTables(); }
+            if (state == 0) { fixture.baseNine(); fixture.industryTables(); }
             else fixture.initialize("migrate");
             if (state == 2) sql.execute("DROP TRIGGER trg_bsef_no_delete");
             final int expected = state;

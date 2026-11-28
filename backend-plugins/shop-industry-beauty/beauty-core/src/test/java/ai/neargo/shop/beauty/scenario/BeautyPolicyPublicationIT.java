@@ -49,7 +49,7 @@ class BeautyPolicyPublicationIT {
         fixture.isolatedDatabase();
         fixture.initialize("migrate");
         new ResourceDatabasePopulator(new ClassPathResource("platform-write-fixture.sql")).execute(fixture.source);
-        sql = new JdbcTemplate(fixture.source);
+        sql = fixture.sql();
         login("ACTOR");
     }
 
@@ -66,8 +66,7 @@ class BeautyPolicyPublicationIT {
                 required("config.BeautyPersistenceConfiguration"), required("config.BeautyWriteGuardConfiguration"),
                 required("config.BeautyPolicyConfiguration"))
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
-                .withPropertyValues("shop.beauty.enabled=true", "spring.datasource.url=" + fixture.source.getUrl(),
-                        "spring.datasource.username=root", "spring.datasource.password=");
+                .withPropertyValues(fixture.dataSourceProperties()).withPropertyValues("shop.beauty.enabled=true");
     }
 
     private Object publish(ApplicationContext context, String key, long revision, int days) {
@@ -180,7 +179,8 @@ class BeautyPolicyPublicationIT {
     @Test
     void failureBeforeOuterCommitRollsBackAllRows() {
         runner().run(context -> {
-            var tx = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
+            // 门店策略在行业库（B-2）：外层是行业句柄的事务
+            var tx = new TransactionTemplate(context.getBean(ai.neargo.shop.common.config.ModuleDataSources.INDUSTRY_TX_MANAGER, PlatformTransactionManager.class));
             assertThatThrownBy(() -> tx.execute(status -> {
                 publish(context, "K", 0, 7);
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

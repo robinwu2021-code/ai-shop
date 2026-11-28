@@ -43,7 +43,7 @@ abstract class BeautyExecutionFixture {
         database = new BeautySchemaMigrationIT();
         database.isolatedDatabase();
         database.initialize("migrate");
-        sql = new JdbcTemplate(database.source);
+        sql = database.sql();
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 LoginUser.merchant("ACTOR", "operator"), null, List.of()));
     }
@@ -53,12 +53,8 @@ abstract class BeautyExecutionFixture {
                         PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
                         required("config.BeautyPersistenceConfiguration"))
                 .withBean(AuditMetaObjectHandler.class)
-                .withPropertyValues(
-                        "shop.beauty.enabled=true",
-                        "spring.datasource.url=" + database.source.getUrl(),
-                        "spring.datasource.username=root",
-                        "spring.datasource.password="
-                                + System.getenv().getOrDefault("BEAUTY_NATIVE_MYSQL_PASSWORD", ""));
+                .withPropertyValues(database.dataSourceProperties())
+                .withPropertyValues("shop.beauty.enabled=true");
     }
     @SuppressWarnings("unchecked")
     BaseMapper<Object> mapper(ApplicationContext context, String name) {
@@ -91,6 +87,13 @@ abstract class BeautyExecutionFixture {
         return DataScopeContext.executeWithoutScope(() ->
                 new TransactionTemplate(context.getBean(PlatformTransactionManager.class))
                         .execute(status -> body.get()));
+    }
+    /** 行业表上的 Mapper 用行业句柄的事务（独立行业库时它和主库事务是两回事）。 */
+    <V> V industryTx(ApplicationContext context, Supplier<V> body) {
+        return DataScopeContext.executeWithoutScope(() ->
+                new TransactionTemplate(context.getBean(
+                        ai.neargo.shop.common.config.ModuleDataSources.INDUSTRY_TX_MANAGER,
+                        PlatformTransactionManager.class)).execute(status -> body.get()));
     }
     void seed(String table, Object... fields) {
         var values = new LinkedHashMap<String, Object>();
