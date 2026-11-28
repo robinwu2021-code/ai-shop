@@ -1,9 +1,9 @@
 package ai.neargo.shop.invbridge;
 
 import ai.neargo.inventory.domain.service.InventoryAclService;
-import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.spi.product.InventoryProductPort;
+import ai.neargo.shop.spi.product.InventoryProductPort.GoodsFact;
+import ai.neargo.shop.spi.product.InventoryProductPort.SkuFact;
 import ai.neargo.shop.product.service.InvManagedService;
 import ai.neargo.shop.product.service.StockSyncService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -14,7 +14,7 @@ import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.any;
 
 class InventoryOverviewQueryTest {
-    final SkuMapper skus = mock(SkuMapper.class);
+    final InventoryProductPort skus = mock(InventoryProductPort.class);
     final InvManagedService managed = mock(InvManagedService.class);
     final InventoryAclService acl = mock(InventoryAclService.class);
     final StockSyncService sales = mock(StockSyncService.class);
@@ -22,14 +22,13 @@ class InventoryOverviewQueryTest {
 
     InventoryOverviewQuery query() {
         when(merchants.storeNos("E")).thenReturn(List.of("S"));
-        PrdSku sku = new PrdSku();
-        sku.setSkuNo("K"); sku.setGoodsNo("G"); sku.setSaleUnit("件");
-        when(skus.selectOne(any())).thenReturn(sku);
-        when(skus.selectList(any())).thenReturn(List.of(sku));
-        PrdGoods goods = new PrdGoods(); goods.setGoodsNo("G");
-        when(managed.goodsOf("E", "G")).thenReturn(goods);
-        when(managed.isManaged(goods)).thenReturn(true);
-        when(managed.goodsOfBatch(org.mockito.ArgumentMatchers.eq("E"), org.mockito.ArgumentMatchers.anyCollection())).thenReturn(java.util.Map.of("G", goods));
+        SkuFact sku = sku("K", "G");
+        when(skus.skus(org.mockito.ArgumentMatchers.eq("E"), org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(sku));
+        GoodsFact goods = new GoodsFact(1L, "G", "E", "S", null, null, null, true, null);
+        when(skus.goodsOf("E", "G")).thenReturn(goods);
+        when(skus.isManaged("E", "G")).thenReturn(true);
+        when(skus.goodsOfBatch(org.mockito.ArgumentMatchers.eq("E"), org.mockito.ArgumentMatchers.anyCollection())).thenReturn(java.util.Map.of("G", goods));
         when(managed.managedSkus(any())).thenReturn(java.util.Set.of("K"));
         when(sales.sellablesOf("S", java.util.Set.of("K"))).thenReturn(java.util.Map.of("K",
                 new StockSyncService.Sellable("STORE", 10, 2)));
@@ -38,6 +37,9 @@ class InventoryOverviewQueryTest {
         return new InventoryOverviewQuery(skus, managed, acl, sales, merchants);
     }
 
+    static SkuFact sku(String skuNo, String goodsNo) {
+        return new SkuFact(1L, skuNo, goodsNo, "E", null, "件", 0);
+    }
     @Test void separatesBookAvailableFromSupplyAfterSafety() {
         var query = query();
         when(acl.stockAt("E", "S", "K")).thenReturn(new InventoryAclService.StockAt(20, 5, 3));
@@ -55,7 +57,7 @@ class InventoryOverviewQueryTest {
     }
     @Test void unmanagedDoesNotReadPhysicalInventory() {
         var query = query();
-        when(managed.isManaged(any())).thenReturn(false);
+        when(skus.isManaged(any(), any())).thenReturn(false);
         assertThat(query.get("E", "S", "K").inventoryState()).isEqualTo("UNMANAGED");
         verifyNoInteractions(acl);
     }
@@ -70,13 +72,11 @@ class InventoryOverviewQueryTest {
 
     @Test void batchIgnoresStaleMappingWithoutPerSkuQueries() {
         var query = query();
-        PrdSku old = new PrdSku(); old.setSkuNo("DELETED"); old.setGoodsNo("OLD");
-        PrdSku live = new PrdSku(); live.setSkuNo("K"); live.setGoodsNo("G");
-        when(skus.selectList(any())).thenReturn(List.of(live, old));
+        when(skus.skus(org.mockito.ArgumentMatchers.eq("E"), org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(sku("K", "G"), sku("DELETED", "OLD")));
         clearInvocations(skus);
         assertThat(query.batch("E", "S", List.of("K", "DELETED"))).hasSize(1);
-        verify(skus, never()).selectOne(any());
-        verify(managed, never()).goodsOf(any(), any());
+        verify(skus, never()).goodsOf(any(), any());
         verify(acl, never()).stockAt(any(), any(), any());
         verify(sales, never()).sellableOf(any(), any());
         verify(merchants).storeNos("E");
@@ -85,7 +85,7 @@ class InventoryOverviewQueryTest {
     @Test void rejectsForeignStoreAndForeignSku() {
         var query = query();
         assertThatThrownBy(() -> query.get("E", "OTHER", "K")).isInstanceOf(RuntimeException.class);
-        when(managed.goodsOf("E", "G")).thenReturn(null);
+        when(skus.goodsOf("E", "G")).thenReturn(null);
         assertThatThrownBy(() -> query.get("E", "S", "K")).isInstanceOf(RuntimeException.class);
         verifyNoInteractions(acl);
     }

@@ -1,13 +1,8 @@
 package ai.neargo.shop.invbridge;
 
-import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.inventory.domain.service.InventoryAclService;
-import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
-import ai.neargo.shop.product.service.InvManagedService;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import ai.neargo.shop.spi.product.InventoryProductPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,15 +31,13 @@ public class InvManagedBackfillRunner {
 
     private static final Logger log = LoggerFactory.getLogger(InvManagedBackfillRunner.class);
 
-    private final InvManagedService invManaged;
-    private final GoodsMapper goodsMapper;
+    private final InventoryProductPort products;
     private final InventoryAclService acl;
     private final boolean apply;
 
-    public InvManagedBackfillRunner(InvManagedService invManaged, GoodsMapper goodsMapper, InventoryAclService acl,
+    public InvManagedBackfillRunner(InventoryProductPort products, InventoryAclService acl,
                                     @Value("${shop.inventory.managed-backfill.apply:false}") boolean apply) {
-        this.invManaged = invManaged;
-        this.goodsMapper = goodsMapper;
+        this.products = products;
         this.acl = acl;
         this.apply = apply;
     }
@@ -66,30 +59,24 @@ public class InvManagedBackfillRunner {
     }
 
     Result sweep(boolean write) {
-        List<PrdGoods> all = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(
-                Wrappers.<PrdGoods>lambdaQuery()
-                        .select(PrdGoods::getId, PrdGoods::getGoodsNo, PrdGoods::getEntityNo,
-                                PrdGoods::getCategoryNo, PrdGoods::getInvMode)));
         int goods = 0;
         int skus = 0;
         int retired = 0;
         int kept = 0;
-        for (PrdGoods g : all) {
-            if (g.getEntityNo() == null || invManaged.isManaged(g)) {
-                continue;
-            }
+        // 有主体、但不记库存的商品（判据在商品侧，与建品、切换同一处）
+        for (InventoryProductPort.GoodsFact g : products.unmanagedGoods()) {
             goods++;
-            for (PrdSku s : invManaged.skusOf(List.of(g.getGoodsNo()))) {
+            for (InventoryProductPort.SkuFact s : products.skusOfGoods(List.of(g.goodsNo()))) {
                 skus++;
-                if (acl.itemIdOfSku(s.getSkuNo()) == null) {
+                if (acl.itemIdOfSku(s.skuNo()) == null) {
                     continue;
                 }
-                if (acl.retireItemIfEmpty(g.getEntityNo(), s.getSkuNo(), write)) {
+                if (acl.retireItemIfEmpty(g.entityNo(), s.skuNo(), write)) {
                     retired++;
                 } else {
                     kept++;
                     log.info("[inv-managed-backfill] 留着（有数或已停用）：entity={} goods={} sku={}",
-                            g.getEntityNo(), g.getGoodsNo(), s.getSkuNo());
+                            g.entityNo(), g.goodsNo(), s.skuNo());
                 }
             }
         }

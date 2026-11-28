@@ -12,10 +12,7 @@ import ai.neargo.inventory.domain.service.StockQueryService;
 import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
-import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.spi.product.InventoryProductPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -66,18 +63,16 @@ public class InventoryHealthServiceImpl implements InventoryHealthService {
     private final OwnerMapper ownerMapper;
     private final ItemRefMapper itemRefMapper;
     private final StockQueryService query;
-    private final SkuMapper skuMapper;
-    private final GoodsMapper goodsMapper;
+    private final InventoryProductPort products;
     private final MchEntityMapper merchantMapper;
 
     public InventoryHealthServiceImpl(OwnerMapper ownerMapper, ItemRefMapper itemRefMapper,
-                                      StockQueryService query, SkuMapper skuMapper,
-                                      GoodsMapper goodsMapper, MchEntityMapper merchantMapper) {
+                                      StockQueryService query, InventoryProductPort products,
+                                      MchEntityMapper merchantMapper) {
         this.ownerMapper = ownerMapper;
         this.itemRefMapper = itemRefMapper;
         this.query = query;
-        this.skuMapper = skuMapper;
-        this.goodsMapper = goodsMapper;
+        this.products = products;
         this.merchantMapper = merchantMapper;
     }
 
@@ -172,26 +167,18 @@ public class InventoryHealthServiceImpl implements InventoryHealthService {
     /**
      * 这个商家此刻还挂在架上的 skuNo。
      *
-     * <p>{@code executeWithoutScope}：运营看的是<b>全平台</b>，而 prd_* 带数据域 ——
+     * <p>商品侧的查询绕过数据域：运营看的是<b>全平台</b>，而 prd_* 带数据域 ——
      * 不绕过的话运营自己的域是空集，这一页会永远是空的，且不报错。
      */
     private Set<String> onSaleSkus(String entityNo) {
-        List<PrdGoods> goods = DataScopeContext.executeWithoutScope(() ->
-                goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
-                        .eq(PrdGoods::getEntityNo, entityNo)
-                        .eq(PrdGoods::getOnSale, true)));
-        if (goods.isEmpty()) {
+        List<String> goodsNos = products.onSaleGoods(entityNo).stream()
+                .map(InventoryProductPort.GoodsFact::goodsNo).toList();
+        if (goodsNos.isEmpty()) {
             return Set.of();
         }
-        Set<String> goodsNos = new HashSet<>();
-        for (PrdGoods g : goods) {
-            goodsNos.add(g.getGoodsNo());
-        }
         Set<String> skus = new HashSet<>();
-        for (PrdSku s : DataScopeContext.executeWithoutScope(() ->
-                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
-                        .in(PrdSku::getGoodsNo, goodsNos)))) {
-            skus.add(s.getSkuNo());
+        for (InventoryProductPort.SkuFact s : products.skusOfGoods(goodsNos)) {
+            skus.add(s.skuNo());
         }
         return skus;
     }

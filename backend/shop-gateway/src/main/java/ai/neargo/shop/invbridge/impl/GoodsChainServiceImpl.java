@@ -11,10 +11,9 @@ import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemRefMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
 import ai.neargo.inventory.domain.service.StockQueryService;
-import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.spi.product.InventoryProductPort;
+import ai.neargo.shop.spi.product.InventoryProductPort.GoodsFact;
+import ai.neargo.shop.spi.product.InventoryProductPort.SkuFact;
 import ai.neargo.shop.inventory.embed.ShopInventorySystem;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -38,17 +37,15 @@ public class GoodsChainServiceImpl implements GoodsChainService {
     /** 一个 SPU 下最多看多少条余额。SKU 矩阵再大也不该把整页拖垮 */
     private static final int BALANCE_MAX = 500;
 
-    private final GoodsMapper goodsMapper;
-    private final SkuMapper skuMapper;
+    private final InventoryProductPort products;
     private final OwnerMapper ownerMapper;
     private final ItemRefMapper itemRefMapper;
     private final StockQueryService stock;
 
-    public GoodsChainServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
+    public GoodsChainServiceImpl(InventoryProductPort products,
                                  OwnerMapper ownerMapper, ItemRefMapper itemRefMapper,
                                  StockQueryService stock) {
-        this.goodsMapper = goodsMapper;
-        this.skuMapper = skuMapper;
+        this.products = products;
         this.ownerMapper = ownerMapper;
         this.itemRefMapper = itemRefMapper;
         this.stock = stock;
@@ -56,19 +53,15 @@ public class GoodsChainServiceImpl implements GoodsChainService {
 
     @Override
     public GoodsChain of(String goodsNo) {
-        PrdGoods g = goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()
-                .eq(PrdGoods::getGoodsNo, goodsNo)
-                .eq(PrdGoods::getDeleted, 0));
+        GoodsFact g = products.goods(goodsNo);
         if (g == null) {
             return null;
         }
-        List<PrdSku> skus = skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
-                .eq(PrdSku::getGoodsNo, goodsNo)
-                .eq(PrdSku::getDeleted, 0));
-        int sold = skus.stream().mapToInt(s -> nz(s.getSoldCount())).sum();
+        List<SkuFact> skus = products.skusOfGoods(List.of(goodsNo));
+        int sold = skus.stream().mapToInt(SkuFact::soldCount).sum();
         Set<String> skuNos = new HashSet<>();
-        for (PrdSku s : skus) {
-            skuNos.add(s.getSkuNo());
+        for (SkuFact s : skus) {
+            skuNos.add(s.skuNo());
         }
 
         /*
@@ -84,7 +77,7 @@ public class GoodsChainServiceImpl implements GoodsChainService {
                 ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
                 .eq(InvOwner::getSystemCode, ShopInventorySystem.CODE)
                 .eq(InvOwner::getExternalType, InvEnums.OwnerType.ENTITY)
-                .eq(InvOwner::getExternalRef, g.getEntityNo())
+                .eq(InvOwner::getExternalRef, g.entityNo())
                         .last("limit 1")));
         if (owner != null && !skuNos.isEmpty()) {
             Set<String> itemIds = new HashSet<>();
@@ -102,8 +95,8 @@ public class GoodsChainServiceImpl implements GoodsChainService {
             }
         }
 
-        return new GoodsChain(g.getGoodsNo(), g.getTitle(), g.getEntityNo(),
-                g.getAuditStatus(), Boolean.TRUE.equals(g.getOnSale()),
+        return new GoodsChain(g.goodsNo(), g.title(), g.entityNo(),
+                g.auditStatus(), g.onSale(),
                 skus.size(), booked, onHand, available, sold,
                 stuckAt(g, skus.size(), booked, onHand));
     }
@@ -115,11 +108,11 @@ public class GoodsChainServiceImpl implements GoodsChainService {
      * {@code bookedSkus < skuCount} 说明投影只搬过去一半，
      * 而那在商家端的表现是「有些规格盘得着、有些盘不着」，极难自查。
      */
-    private static String stuckAt(PrdGoods g, int skuCount, int booked, int onHand) {
-        if (!"APPROVED".equals(g.getAuditStatus())) {
-            return "AUDITING".equals(g.getAuditStatus()) ? Stuck.IN_AUDIT : Stuck.NOT_ON_SALE;
+    private static String stuckAt(GoodsFact g, int skuCount, int booked, int onHand) {
+        if (!InventoryProductPort.AUDIT_APPROVED.equals(g.auditStatus())) {
+            return InventoryProductPort.AUDIT_AUDITING.equals(g.auditStatus()) ? Stuck.IN_AUDIT : Stuck.NOT_ON_SALE;
         }
-        if (!Boolean.TRUE.equals(g.getOnSale())) {
+        if (!g.onSale()) {
             return Stuck.NOT_ON_SALE;
         }
         if (skuCount == 0 || booked < skuCount) {
@@ -131,7 +124,4 @@ public class GoodsChainServiceImpl implements GoodsChainService {
         return null;
     }
 
-    private static int nz(Integer v) {
-        return v == null ? 0 : v;
-    }
 }

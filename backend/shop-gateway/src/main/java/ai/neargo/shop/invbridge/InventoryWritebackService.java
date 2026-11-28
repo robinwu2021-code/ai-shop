@@ -4,8 +4,7 @@ import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.inventory.domain.service.InventoryAclService;
-import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.entity.PrdSku;
+import ai.neargo.shop.spi.product.InventoryProductPort;
 import ai.neargo.shop.product.service.InvManagedService;
 import ai.neargo.shop.product.service.StockSyncService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -38,16 +37,19 @@ public class InventoryWritebackService {
 
     private final StockSyncService stockSync;
     private final InvManagedService invManaged;
+    private final InventoryProductPort products;
     private final InventoryAclService acl;
     private final MerchantQueryPort merchants;
     private final InventoryDeliveryGuard deliveryGuard;
     private final StockReconcileService reconcile;
 
     public InventoryWritebackService(StockSyncService stockSync, InvManagedService invManaged,
+                                     InventoryProductPort products,
                                      InventoryAclService acl, MerchantQueryPort merchants, InventoryDeliveryGuard deliveryGuard,
                                      StockReconcileService reconcile) {
         this.stockSync = stockSync;
         this.invManaged = invManaged;
+        this.products = products;
         this.acl = acl;
         this.merchants = merchants;
         this.deliveryGuard = deliveryGuard;
@@ -85,9 +87,9 @@ public class InventoryWritebackService {
         if (requireEnabled && !stockSync.enabled(storeNo)) {
             return out;
         }
-        List<String> goodsNos = invManaged.managedGoods(entityNo).stream().map(PrdGoods::getGoodsNo).toList();
-        for (PrdSku s : invManaged.skusOf(goodsNos)) {
-            StockSyncService.Result r = syncOne(entityNo, storeNo, s.getSkuNo(), sourceRef, false);
+        List<String> goodsNos = products.managedGoods(entityNo).stream().map(InventoryProductPort.GoodsFact::goodsNo).toList();
+        for (InventoryProductPort.SkuFact s : products.skusOfGoods(goodsNos)) {
+            StockSyncService.Result r = syncOne(entityNo, storeNo, s.skuNo(), sourceRef, false);
             if (r != null) {
                 out.add(r);
             }
@@ -100,8 +102,8 @@ public class InventoryWritebackService {
         if (!stockSync.enabled(storeNo)) {
             return;
         }
-        for (PrdSku s : invManaged.skusOf(goodsNos)) {
-            syncOne(entityNo, storeNo, s.getSkuNo(), sourceRef);
+        for (InventoryProductPort.SkuFact s : products.skusOfGoods(goodsNos)) {
+            syncOne(entityNo, storeNo, s.skuNo(), sourceRef);
         }
     }
 

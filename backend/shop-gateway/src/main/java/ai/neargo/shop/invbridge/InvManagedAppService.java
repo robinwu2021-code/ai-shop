@@ -3,8 +3,9 @@ package ai.neargo.shop.invbridge;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.inventory.domain.service.InventoryAclService;
-import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.entity.PrdSku;
+import ai.neargo.shop.spi.product.InventoryProductPort;
+import ai.neargo.shop.spi.product.InventoryProductPort.GoodsFact;
+import ai.neargo.shop.spi.product.InventoryProductPort.SkuFact;
 import ai.neargo.shop.product.service.InvManagedService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.StoreCategoryPort;
@@ -43,13 +44,15 @@ public class InvManagedAppService {
     public static final String NEEDS_CONFIRM = "NEEDS_CONFIRM";
 
     private final InvManagedService invManaged;
+    private final InventoryProductPort products;
     private final MerchantQueryPort merchants;
     private final StoreCategoryPort storeCategories;
     private final ObjectProvider<InventoryAclService> acl;
 
-    public InvManagedAppService(InvManagedService invManaged, MerchantQueryPort merchants,
+    public InvManagedAppService(InvManagedService invManaged, InventoryProductPort products, MerchantQueryPort merchants,
                                 StoreCategoryPort storeCategories, ObjectProvider<InventoryAclService> acl) {
         this.invManaged = invManaged;
+        this.products = products;
         this.merchants = merchants;
         this.storeCategories = storeCategories;
         this.acl = acl;
@@ -84,7 +87,7 @@ public class InvManagedAppService {
         if (categoryNo == null || categoryNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        List<PrdGoods> affected = invManaged.goodsAffectedByCategory(entityNo, categoryNo, managed);
+        List<GoodsFact> affected = products.goodsAffectedByCategory(entityNo, categoryNo, managed);
         if (!managed) {
             ModeChange stop = gate(entityNo, affected, confirm);
             if (stop != null) {
@@ -92,7 +95,7 @@ public class InvManagedAppService {
             }
         }
         invManaged.saveCategory(entityNo, categoryNo, managed, operator);
-        affected.forEach(g -> invManaged.publishModeChanged(g, managed));
+        affected.forEach(g -> products.publishModeChanged(entityNo, g.goodsNo(), managed));
         return new ModeChange(DONE, brief(affected));
     }
 
@@ -102,15 +105,15 @@ public class InvManagedAppService {
 
     @Transactional
     public ModeChange setGoods(String entityNo, String goodsNo, String mode, boolean confirm, String operator) {
-        PrdGoods g = invManaged.goodsOf(entityNo, goodsNo);
+        GoodsFact g = products.goodsOf(entityNo, goodsNo);
         if (g == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        boolean before = invManaged.isManaged(g);
+        boolean before = products.isManaged(entityNo, goodsNo);
         boolean after = switch (mode == null ? "" : mode) {
-            case PrdGoods.INV_ON -> true;
-            case PrdGoods.INV_OFF -> false;
-            case PrdGoods.INV_INHERIT -> invManaged.categoryManaged(entityNo, g.getCategoryNo());
+            case InventoryProductPort.INV_ON -> true;
+            case InventoryProductPort.INV_OFF -> false;
+            case InventoryProductPort.INV_INHERIT -> invManaged.categoryManaged(entityNo, g.categoryNo());
             default -> throw BizException.of(ErrorCode.BAD_REQUEST);
         };
         if (before && !after) {
@@ -119,34 +122,34 @@ public class InvManagedAppService {
                 return stop;
             }
         }
-        invManaged.saveGoodsMode(g, mode, operator);
+        products.saveGoodsMode(entityNo, goodsNo, mode, operator);
         if (before == after) {
             return new ModeChange(DONE, List.of());
         }
-        invManaged.publishModeChanged(g, after);
+        products.publishModeChanged(entityNo, goodsNo, after);
         return new ModeChange(DONE, brief(List.of(g)));
     }
 
     /** 改为不记之前的两道判。{@code null} = 放行 */
-    private ModeChange gate(String entityNo, List<PrdGoods> goods, boolean confirm) {
+    private ModeChange gate(String entityNo, List<GoodsFact> goods, boolean confirm) {
         InventoryAclService inv = acl.getIfAvailable();
         if (inv == null || goods.isEmpty()) {
             return null;
         }
-        List<PrdSku> skus = invManaged.skusOf(goods.stream().map(PrdGoods::getGoodsNo).toList());
+        List<SkuFact> skus = products.skusOfGoods(goods.stream().map(GoodsFact::goodsNo).toList());
         Map<String, InventoryAclService.ItemState> states =
-                inv.stateOf(entityNo, skus.stream().map(PrdSku::getSkuNo).toList());
+                inv.stateOf(entityNo, skus.stream().map(SkuFact::skuNo).toList());
         List<AffectedGoods> blocked = new ArrayList<>();
         List<AffectedGoods> stocked = new ArrayList<>();
-        for (PrdGoods g : goods) {
+        for (GoodsFact g : goods) {
             int onHand = 0;
             boolean busy = false;
             List<InventoryAclService.Blocker> blockers = new ArrayList<>();
-            for (PrdSku s : skus) {
-                if (!g.getGoodsNo().equals(s.getGoodsNo())) {
+            for (SkuFact s : skus) {
+                if (!g.goodsNo().equals(s.goodsNo())) {
                     continue;
                 }
-                InventoryAclService.ItemState st = states.get(s.getSkuNo());
+                InventoryAclService.ItemState st = states.get(s.skuNo());
                 if (st == null) {
                     continue;
                 }
@@ -154,7 +157,7 @@ public class InvManagedAppService {
                 busy |= st.onHand() != 0 || st.reserved() != 0;
                 st.blockers().stream().filter(b -> !blockers.contains(b)).forEach(blockers::add);
             }
-            AffectedGoods a = new AffectedGoods(g.getGoodsNo(), g.getTitle(), onHand, blockers);
+            AffectedGoods a = new AffectedGoods(g.goodsNo(), g.title(), onHand, blockers);
             if (!blockers.isEmpty()) {
                 blocked.add(a);
             } else if (busy) {
@@ -170,7 +173,7 @@ public class InvManagedAppService {
         return null;
     }
 
-    private static List<AffectedGoods> brief(List<PrdGoods> goods) {
-        return goods.stream().map(g -> new AffectedGoods(g.getGoodsNo(), g.getTitle(), 0, List.of())).toList();
+    private static List<AffectedGoods> brief(List<GoodsFact> goods) {
+        return goods.stream().map(g -> new AffectedGoods(g.goodsNo(), g.title(), 0, List.of())).toList();
     }
 }

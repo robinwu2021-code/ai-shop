@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
+import ai.neargo.shop.common.config.ModuleDataSources;
+
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.Realm;
@@ -61,8 +63,10 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
 
     public StoreSalesCatalogServiceImpl(ProductMappers.StoreCatalogMapper catalogs,
             StoreDirectoryPort stores, GoodsQueryPort quotes,
-            RequestIdempotencyPort idempotency, @Qualifier("dataSource") DataSource source, ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            RequestIdempotencyPort idempotency,
+            // 商品库句柄（第 4 批）：与交易绑同一个数据源名时就是同一个连接池，结账事务里的 hasResource 判据照旧成立
+            @Qualifier(ModuleDataSources.PRODUCT_DATA_SOURCE) DataSource source, ObjectMapper json,
+            @Qualifier(ModuleDataSources.PRODUCT_TX_MANAGER) PlatformTransactionManager manager) {
         this.catalogs = catalogs;
         this.stores = stores;
         this.quotes = quotes;

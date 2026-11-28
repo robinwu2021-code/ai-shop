@@ -11,8 +11,7 @@ import ai.neargo.inventory.domain.mapper.InventoryMappers.LedgerMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
-import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
+import ai.neargo.shop.spi.product.InventoryProductPort;
 import ai.neargo.shop.inventory.embed.ShopInventorySystem;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -44,16 +43,16 @@ public class MerchantChainServiceImpl implements MerchantChainService {
     private static final int STALE_DAYS = 30;
 
     private final MchEntityMapper merchantMapper;
-    private final GoodsMapper goodsMapper;
+    private final InventoryProductPort products;
     private final OwnerMapper ownerMapper;
     private final ItemRefMapper itemRefMapper;
     private final LedgerMapper ledgerMapper;
 
-    public MerchantChainServiceImpl(MchEntityMapper merchantMapper, GoodsMapper goodsMapper,
+    public MerchantChainServiceImpl(MchEntityMapper merchantMapper, InventoryProductPort products,
                                     OwnerMapper ownerMapper, ItemRefMapper itemRefMapper,
                                     LedgerMapper ledgerMapper) {
         this.merchantMapper = merchantMapper;
-        this.goodsMapper = goodsMapper;
+        this.products = products;
         this.ownerMapper = ownerMapper;
         this.itemRefMapper = itemRefMapper;
         this.ledgerMapper = ledgerMapper;
@@ -130,18 +129,8 @@ public class MerchantChainServiceImpl implements MerchantChainService {
     /** entityNo → [建品, 待审, 上架]。一条查询三个数 */
     private Map<String, long[]> goodsStats(Set<String> entityNos) {
         Map<String, long[]> out = new HashMap<>();
-        List<Map<String, Object>> rows = goodsMapper.selectMaps(Wrappers.<PrdGoods>query()
-                .select("entity_no",
-                        "COUNT(*) AS total",
-                        "SUM(CASE WHEN audit_status = 'AUDITING' THEN 1 ELSE 0 END) AS auditing",
-                        "SUM(CASE WHEN on_sale = 1 THEN 1 ELSE 0 END) AS on_sale_cnt")
-                .eq("deleted", 0)
-                .in("entity_no", entityNos)
-                .groupBy("entity_no"));
-        for (Map<String, Object> r : rows) {
-            out.put(str(r.get("entity_no")), new long[]{
-                    num(r.get("total")), num(r.get("auditing")), num(r.get("on_sale_cnt"))});
-        }
+        products.goodsStats(entityNos).forEach((entityNo, st) ->
+                out.put(entityNo, new long[]{st.total(), st.auditing(), st.onSale()}));
         return out;
     }
 
