@@ -473,6 +473,10 @@ shop:
       # 空 = 拒绝校验。**不放行**：放行等于任何人都能冒充微信给我们推事件，
       # 而那些事件将来会驱动结算与发货状态。
       token: ${WX_PUSH_TOKEN:}
+    # **微信总开关，默认关**（2026-11-27 用户要求先屏蔽全部微信代码，见 shop-base 的 WechatMasterSwitch）：
+    # 不为 true 时，下面各通道的 stub/enabled 与 shop.pay.wechat.enabled、push.token 一律被压成「走桩 / 关闭 / 空」，
+    # 环境变量里单独打开的也不算数。恢复设 SHOP_WX_ENABLED=true，各通道回到自己的开关。
+    enabled: ${SHOP_WX_ENABLED:false}
     stub: ${SHOP_WX_STUB:true}
     # 微信物流查询组件 / 关注运单（logistics-channel 的 WxLogisticsClient）。**默认关**（2026-11-27 先屏蔽微信相关外呼）：
     # 它不看 stub，只要配了 appid+secret 就会真调微信；关着时各网关按「未配置」记原因、不外呼。恢复设 true。
