@@ -26,7 +26,6 @@ import ai.neargo.shop.merchant.booking.entity.MchResourceBucket;
 import ai.neargo.shop.merchant.booking.entity.MchBookingHold;
 import ai.neargo.shop.merchant.booking.entity.MchBookingHoldUnit;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.paymerchant.entity.MchPayoutAccount;
 import ai.neargo.shop.merchant.entity.MchPersonnel;
@@ -113,34 +112,6 @@ public final class MerchantMappers {
         String financialVisibleEntity(@org.apache.ibatis.annotations.Param("entityNo") String entityNo);
     }
 
-
-    /** 商家覆盖的社区：C 端「本社区可见商家」的反查索引所在。 */
-    public interface MchEntityCommunityMapper extends PlatformTableMapper<MchEntityCommunity> {
-
-        /**
-         * 复活一条被逻辑删掉的覆盖关系。
-         *
-         * <p>与 {@code MchStoreRoleMapper.revive} 是同一个坑的同一种解法 ——
-         * 那边的注释里就写着「这个坑在<b>商家社区表</b>、商品社区池上各踩过一次」，
-         * 而商家社区表这一处一直没修。2026-08-11 的 E2E 把它撞出来了：
-         * 商家把经营范围从「仅本社区（阳光花园）」改成「全市」再改回来，
-         * 保存直接 500 —— {@code uk_entity_community(entity_no, community_no)}
-         * <b>不含 deleted</b>，逻辑删掉的那行还占着索引位，insert 撞唯一键。
-         *
-         * <p>商家看到的是「系统开小差了，请稍后再试」，而他做的只是把范围改回去。
-         *
-         * <p>必须手写 SQL：MyBatis-Plus 的 {@code @TableLogic} 会给所有查询与更新
-         * 自动追加 {@code deleted = 0}，用 Wrapper 根本够不到这一行。
-         *
-         * @return 影响行数；0 表示压根没有这一行（该走 insert）
-         */
-        @Update("""
-                UPDATE mch_entity_community SET deleted = 0, version = version + 1
-                WHERE entity_no = #{entityNo} AND community_no = #{communityNo} AND deleted = 1
-                """)
-        int revive(@Param("entityNo") String entityNo, @Param("communityNo") String communityNo);
-    }
-
     /**
      * 商家地理覆盖项（ADR-013）。**物理删除**，不走 MyBatis-Plus 的逻辑删除 ——
      * 见 {@link ai.neargo.shop.merchant.entity.MchServiceArea} 的说明。
@@ -155,9 +126,19 @@ public final class MerchantMappers {
          * 墓碑行占着 {@code uk_service_area}，「移除之后又加回同一条」直接撞键。
          */
         @org.apache.ibatis.annotations.Delete("""
-                DELETE FROM mch_service_area WHERE id = #{id}
+                DELETE FROM mch_store_service_area WHERE id = #{id}
                 """)
         int hardDeleteById(@Param("id") Long id);
+
+        /** 删掉某门店某方式的收窄拷贝（改收窄选择、改回「全部」口径时整体替换） */
+        @org.apache.ibatis.annotations.Delete("DELETE FROM mch_store_service_area WHERE store_no = #{storeNo}"
+                + " AND channel = #{channel} AND level <> 'PICKUP_POINT'")
+        int purgeNarrowed(@Param("storeNo") String storeNo, @Param("channel") String channel);
+
+        /** 删掉某门店某方式的自提点行 */
+        @org.apache.ibatis.annotations.Delete("DELETE FROM mch_store_service_area WHERE store_no = #{storeNo}"
+                + " AND channel = #{channel} AND level = 'PICKUP_POINT'")
+        int purgePickups(@Param("storeNo") String storeNo, @Param("channel") String channel);
 
         /*
          * 原来是 hardDelete(entityNo, level, refCode)。经营范围改门店级（V381）之后
@@ -173,21 +154,6 @@ public final class MerchantMappers {
     public interface FulfillmentChannelMapper
             extends PlatformTableMapper<ai.neargo.shop.merchant.entity.MchFulfillmentChannel> {
     }
-
-    /** 自提路 × 取货点（P1 启用）。 */
-    public interface ChannelPickupMapper
-            extends PlatformTableMapper<ai.neargo.shop.merchant.entity.MchChannelPickup> {
-
-        /**
-         * **物理删**这一店这一路的取货点引用。不用 {@code delete(wrapper)}：实体继承了带 deleted 的基类，
-         * 全局逻辑删会把它改写成 UPDATE deleted=1 —— 留下墓碑行，而唯一键里没有 deleted，
-         * 同一个点再存一次就撞键（2026-09-28 生产上商家原样再存一次送货方式即 500）。
-         */
-        @org.apache.ibatis.annotations.Delete(
-                "DELETE FROM mch_channel_pickup WHERE store_no = #{storeNo} AND channel = #{channel}")
-        int purge(@Param("storeNo") String storeNo, @Param("channel") String channel);
-    }
-
     /** SUBSET 收窄（P2 启用）。 */
     /**
      * 多边形范围的 S2 网格派生行（V396，ADR-034）。查询走 {@code cell_id IN (...)}（见 ReachMatchMapper），
@@ -207,25 +173,6 @@ public final class MerchantMappers {
         int purgeByAreaNos(@Param("areaNos") java.util.Collection<String> areaNos);
     }
 
-    public interface ChannelAreaMapper
-            extends PlatformTableMapper<ai.neargo.shop.merchant.entity.MchChannelArea> {
-
-        /** **物理删**这一店这一路的范围子集引用。理由同 {@link ChannelPickupMapper#purge} */
-        @org.apache.ibatis.annotations.Delete(
-                "DELETE FROM mch_channel_area WHERE store_no = #{storeNo} AND channel = #{channel}")
-        int purge(@Param("storeNo") String storeNo, @Param("channel") String channel);
-
-        /**
-         * **物理删**引用了这些范围项的全部子集行（任何门店、任何一路）。
-         * 主体删掉一条范围时同事务调用 —— 不删的话子集指向一个不存在的 area_no，
-         * 商家界面上还显示「仅 1 项」，而那一项早就不在了。
-         */
-        @org.apache.ibatis.annotations.Delete({"<script>",
-                "DELETE FROM mch_channel_area WHERE area_no IN",
-                "<foreach collection='areaNos' item='a' open='(' separator=',' close=')'>#{a}</foreach>",
-                "</script>"})
-        int purgeAreas(@Param("areaNos") java.util.Collection<String> areaNos);
-    }
 
     public interface QualificationMapper extends PlatformTableMapper<MchQualification> {
     }

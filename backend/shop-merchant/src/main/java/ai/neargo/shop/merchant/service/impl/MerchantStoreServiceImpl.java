@@ -8,11 +8,9 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.StoreProfileVO;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.entity.MchStoreAudit;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
@@ -50,7 +48,6 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private final MchStoreMapper storeMapper;
     private final PayMerchantMirror payMirror;
     private final MchEntityMapper merchantMapper;
-    private final MchEntityCommunityMapper merchantCommunityMapper;
     private final ObjectMapper json;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper;
     /** 敏感词表从平台参数取 —— 运营加词不该等发版 */
@@ -63,14 +60,12 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
-    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper;
 
     /** 多边形范围的 S2 网格派生行：唯一写入方（ADR-034） */
     private final ai.neargo.shop.merchant.reach.ServiceAreaCells serviceAreaCells;
     private final ai.neargo.shop.geo.ReachGeoProps geoProps;
 
     public MerchantStoreServiceImpl(MerchantStoreCreation commerce, MchStoreMapper storeMapper, MchEntityMapper merchantMapper,
-                                    MchEntityCommunityMapper merchantCommunityMapper,
                                     ObjectMapper json,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper,
                                     ai.neargo.shop.spi.platform.SettingPort settingPort,
@@ -80,16 +75,13 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                                     ai.neargo.shop.geo.ReachGeoProps geoProps,
                                     ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
-                                    ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper,
                                     PayMerchantMirror payMirror) {
         this.payMirror = payMirror;
         this.commerce = commerce;
-        this.channelAreaMapper = channelAreaMapper;
         this.communityNamePort = communityNamePort;
         this.serviceAreaMapper = serviceAreaMapper;
         this.storeMapper = storeMapper;
         this.merchantMapper = merchantMapper;
-        this.merchantCommunityMapper = merchantCommunityMapper;
         this.json = json;
         this.storeAuditMapper = storeAuditMapper;
         this.settingPort = settingPort;
@@ -121,7 +113,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 List.of(),
                 merchant == null || merchant.getServiceScope() == null
                         ? COMMUNITY : merchant.getServiceScope(),
-                communitiesOf(merchantNo),
+                // 覆盖只在门店上（主体层不再有覆盖）：回显这家店自己的小区行
+                store == null ? List.of() : communitiesOf(merchantNo, store.getStoreNo()),
                 merchant == null ? null : merchant.getServiceCityCode(),
                 merchant == null || merchant.getFulfillmentReach() == null
                         ? PICKUP : merchant.getFulfillmentReach(),
@@ -415,6 +408,9 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                         .eq(MchServiceArea::getEntityNo, merchantNo)
                         .eq(MchServiceArea::getStoreNo, storeNo)
+                        // 只动基础覆盖面：各方式的收窄拷贝、自提点行不在这里整体替换
+                        .eq(MchServiceArea::getChannel, MchServiceArea.BASE_CHANNEL)
+                        .ne(MchServiceArea::getLevel, MchServiceArea.LEVEL_PICKUP_POINT)
                         .eq(onlyLevel != null, MchServiceArea::getLevel, onlyLevel)));
         /*
          * 这里是全量删重插（唯一键在 entity+level+ref 上，改动最少的写法）。
@@ -424,14 +420,16 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         /*
          * **同一条范围沿用原来的 area_no**（2026-09-28 修）。
          *
-         * 门店级的「这一路只服务其中几块」（mch_channel_area）按 area_no 引用这里的行。
+         * 审核单（mch_store_audit.target_no）按 area_no 指回这里的行；旧库里收窄子集也按它引用。
          * 此前每次保存都换一批新号 —— 店主改一句地址、App 把范围原样带回来，
          * 子集引用就全部落空，那家店与主体足迹取交后变成空集：**从买家端整家消失，保存提示成功**。
          * 删重插的写法不变，只是把号接回去。
          */
         java.util.Map<String, String> keptNo = new java.util.HashMap<>();
+        java.util.Map<String, MchServiceArea> oldByNo = new java.util.HashMap<>();
         for (MchServiceArea old : current) {
             keptNo.put(old.getLevel() + "|" + old.getRefCode(), old.getAreaNo());
+            oldByNo.put(old.getAreaNo(), old);
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.hardDeleteById(old.getId()));
         }
         java.util.Set<String> gone = new java.util.HashSet<>(keptNo.values());
@@ -508,13 +506,33 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         // 多边形的 S2 网格：删重插之后按当前几何重建（派生数据，唯一写入方是 ServiceAreaCells）
         toIndex.forEach(serviceAreaCells::rebuild);
         /*
-         * **删掉的范围项，各门店引用它的子集行一起删**（MchChannelArea 类注释里早就这么写着，一直没实现）。
+         * **删掉的范围项，各方式里对应的收窄拷贝一起删**。
          * 不删的话子集指向一个不存在的 area_no：线上两家店界面显示「仅 1 项」，
          * 那一项早已不在 —— 此前展示的旧规则还把这种「空子集」算成了全国可见。
          * 删掉之后那一路的子集可能变空，按统一规则就是「这一路哪儿都不送」，与界面一致。
          */
         if (!gone.isEmpty()) {
-            DataScopeContext.executeWithoutScope(() -> channelAreaMapper.purgeAreas(gone));
+            // 收窄子集是基础行的拷贝（同层级、同对象）：基础行没了，各方式里对应的拷贝和它们的网格一起删
+            java.util.Set<String> copies = new java.util.HashSet<>();
+            for (String no : gone) {
+                MchServiceArea base = oldByNo.get(no);
+                if (base == null) {
+                    continue;
+                }
+                for (MchServiceArea copy : DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.selectList(
+                        Wrappers.<MchServiceArea>lambdaQuery()
+                                .eq(MchServiceArea::getStoreNo, storeNo)
+                                .ne(MchServiceArea::getChannel, MchServiceArea.BASE_CHANNEL)
+                                .ne(MchServiceArea::getLevel, MchServiceArea.LEVEL_PICKUP_POINT)
+                                .eq(MchServiceArea::getLevel, base.getLevel())
+                                .eq(MchServiceArea::getRefCode, base.getRefCode())))) {
+                    copies.add(copy.getAreaNo());
+                    DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.hardDeleteById(copy.getId()));
+                }
+            }
+            if (!copies.isEmpty()) {
+                serviceAreaCells.purge(copies);
+            }
             // 多边形项被删（或几何改了 = 指纹变 = 旧项消失）时网格一起清：
             // 不清的话旧网格还会让消费者命中一片已经不存在的范围，而界面上那条早就没了
             serviceAreaCells.purge(gone);
@@ -649,7 +667,9 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         return DataScopeContext.executeWithoutScope(() ->
                         serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                                 .eq(MchServiceArea::getEntityNo, merchantNo)
-                                .eq(MchServiceArea::getStoreNo, storeNo)))
+                                .eq(MchServiceArea::getStoreNo, storeNo)
+                                .eq(MchServiceArea::getChannel, MchServiceArea.BASE_CHANNEL)
+                                .ne(MchServiceArea::getLevel, MchServiceArea.LEVEL_PICKUP_POINT)))
                 .stream()
                 .map(a -> new StoreProfileVO.ServiceAreaVO(
                         a.getLevel(), a.getRefCode(), areaNameOf(a), a.getStatus(), a.getAreaNo(),
@@ -688,61 +708,35 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         syncCommunities(merchantNo, areaStoreNo(merchantNo, null), communityNos);
     }
 
+    /**
+     * 服务小区 = 这家门店基础覆盖面上的小区行（主体层不再有覆盖，原 mch_entity_community 退役）。
+     * 只替换小区这一层，别的层级不动。
+     */
     private void syncCommunities(String merchantNo, String storeNo, List<String> communityNos) {
         lockOwnership(merchantNo, storeNo);
         if (communityNos == null) {
             return;
         }
-        List<String> current = communitiesOf(merchantNo);
-        for (String gone : current.stream().filter(c -> !communityNos.contains(c)).toList()) {
-            DataScopeContext.executeWithoutScope(() ->
-                    merchantCommunityMapper.delete(Wrappers.<MchEntityCommunity>lambdaQuery()
-                            .eq(MchEntityCommunity::getEntityNo, merchantNo)
-                            .eq(MchEntityCommunity::getCommunityNo, gone)));
-        }
-        for (String added : communityNos.stream().filter(c -> !current.contains(c)).toList()) {
-            /*
-             * **先复活、再插入。** 差集只挡得住「同一次保存里重复加」，挡不住
-             * 「先移除、之后又加回同一个社区」—— 那一行被逻辑删掉了（deleted=1）
-             * 但仍占着 uk_entity_community 的索引位，直接 insert 必撞唯一键，
-             * 而商家看到的是「系统开小差了」，他做的只是把经营范围改回去。
-             */
-            int revived = DataScopeContext.executeWithoutScope(() ->
-                    merchantCommunityMapper.revive(merchantNo, added));
-            if (revived > 0) {
-                continue;
-            }
-            MchEntityCommunity row = new MchEntityCommunity();
-            row.setEntityNo(merchantNo);
-            row.setCommunityNo(added);
-            DataScopeContext.executeWithoutScope(() -> merchantCommunityMapper.insert(row));
-        }
-        /*
-         * **老写入口必须喂新读出口。**
-         *
-         * ADR-013 阶段二把可见性的读侧换到了 mch_service_area，而入驻审核这条老路径
-         * 只写 mch_entity_community。V33 回填了存量，但此后新建的商家在新表里没有行 ——
-         * 于是 PICKUP + 无覆盖项 = 谁也看不到，商家上完架一个订单都不来，且不报错。
-         *
-         * 这不是「为回滚而双写」（那个已经明确不做），是**过渡期里老写入口的必要延伸**：
-         * 镜像只在这一个方法里做，没有「少一个入口、少一条分支」的余地。
-         * mch_entity_community 退役时这一段跟着删。
-         */
         mirrorCommunitiesToAreas(merchantNo, storeNo, communityNos);
     }
 
-    /** 把社区列表镜像成**这家店** COMMUNITY 层的覆盖项。**只动这一层**，不碰商家勾的区/市 */
     private void mirrorCommunitiesToAreas(String merchantNo, String storeNo, List<String> communityNos) {
         replaceAreas(merchantNo, storeNo,
                 communityNos.stream().map(c -> new AreaCommand(AREA_COMMUNITY, c)).toList(),
                 AREA_COMMUNITY);
     }
 
-    private List<String> communitiesOf(String merchantNo) {
+    /** 门店基础覆盖面上纳入的小区 */
+    private List<String> communitiesOf(String merchantNo, String storeNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                merchantCommunityMapper.selectList(Wrappers.<MchEntityCommunity>lambdaQuery()
-                        .eq(MchEntityCommunity::getEntityNo, merchantNo))).stream()
-                .map(MchEntityCommunity::getCommunityNo).toList();
+                serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
+                        .eq(MchServiceArea::getEntityNo, merchantNo)
+                        .eq(MchServiceArea::getStoreNo, storeNo)
+                        .eq(MchServiceArea::getChannel, MchServiceArea.BASE_CHANNEL)
+                        .eq(MchServiceArea::getLevel, AREA_COMMUNITY)
+                        .eq(MchServiceArea::getMode, MchServiceArea.MODE_INCLUDE)
+                        .orderByAsc(MchServiceArea::getId))).stream()
+                .map(MchServiceArea::getRefCode).toList();
     }
 
     @Override

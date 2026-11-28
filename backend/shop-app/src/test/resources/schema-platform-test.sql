@@ -365,4 +365,51 @@ CREATE TABLE IF NOT EXISTS mch_personnel (
   CONSTRAINT mch_personnel__uk_mch_personnel_account UNIQUE (tenant_no, entity_no, mch_account_no)
 );
 
+CREATE TABLE IF NOT EXISTS mch_store_service_area (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(64) DEFAULT 'MAIN',
+  area_no varchar(64) DEFAULT NULL,
+  entity_no varchar(64) DEFAULT NULL,
+  store_no varchar(64) DEFAULT NULL,
+  channel varchar(24) NOT NULL DEFAULT '',
+  level varchar(16) DEFAULT NULL,
+  ref_code varchar(32) DEFAULT NULL,
+  mode varchar(16) DEFAULT 'INCLUDE',
+  geometry text NULL,
+  geom GEOMETRY NULL,
+  source varchar(16) DEFAULT 'SELF',
+  status varchar(10) DEFAULT 'ACTIVE',
+  review_no varchar(64) DEFAULT NULL,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version int NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by varchar(32) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by varchar(32) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT mch_store_service_area__uk_store_service_area_no UNIQUE (area_no),
+  CONSTRAINT mch_store_service_area__uk_store_service_area_item UNIQUE (tenant_no, store_no, channel, level, ref_code)
+);
+
+CREATE TABLE IF NOT EXISTS mch_service_area_cell (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(64) NOT NULL DEFAULT 'MAIN',
+  area_no varchar(64) NOT NULL,
+  entity_no varchar(64) NOT NULL,
+  store_no varchar(64) NOT NULL,
+  channel varchar(24) NOT NULL DEFAULT '',
+  mode varchar(16) NOT NULL,
+  cell_id varchar(32) NOT NULL,
+  s2_level tinyint NOT NULL,
+  boundary tinyint NOT NULL DEFAULT 0,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version int NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by varchar(32) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by varchar(32) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT mch_service_area_cell__uk_sac_area_cell UNIQUE (area_no, cell_id)
+);
+
 CREATE TRIGGER IF NOT EXISTS mch_role_perms_to_points AFTER INSERT, UPDATE, DELETE ON mch_role FOR EACH ROW CALL "ai.neargo.shop.support.RolePermsToPointsTrigger";

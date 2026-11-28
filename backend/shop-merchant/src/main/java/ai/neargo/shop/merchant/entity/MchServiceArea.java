@@ -18,7 +18,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("mch_service_area")
+@TableName("mch_store_service_area")
 public class MchServiceArea extends BaseEntity {
 
     /** 业务键。审核单靠它指回本行 —— 自增 id 不对外，重建库就变 */
@@ -75,6 +75,17 @@ public class MchServiceArea extends BaseEntity {
      */
     private String geometry;
 
+    /**
+     * 只对哪种履约方式生效（TDD-平台基础库换表「E 服务范围：channel 的定义与方案」）：
+     * {@link #BASE_CHANNEL}（空串）= 门店的基础覆盖面，排除与不限只写在这一层；
+     * 填了方式 = 该方式在「部分」口径下的收窄子集（基础面某行的拷贝，只能纳入）；
+     * {@code NEIGHBOR_PICKUP} 配 {@link #LEVEL_PICKUP_POINT} = 邻里自提点，不参与覆盖判定。
+     */
+    private String channel;
+
+    /** 待审范围项在审核与工单服务中的审核单号 */
+    private String reviewNo;
+
     public static final String MODE_INCLUDE = "INCLUDE";
     public static final String MODE_EXCLUDE = "EXCLUDE";
 
@@ -91,6 +102,20 @@ public class MchServiceArea extends BaseEntity {
     public static final String LEVEL_UNLIMITED = "UNLIMITED";
     /** UNLIMITED 项的 ref_code 恒为它：一店一条，由唯一键 (entity_no, store_no, level, ref_code) 保证 */
     public static final String UNLIMITED_REF = "*";
+    /** 邻里自提点：{@code ref_code} 是自提点号，{@code channel} 是 NEIGHBOR_PICKUP；不参与覆盖判定 */
+    public static final String LEVEL_PICKUP_POINT = "PICKUP_POINT";
+    /** 基础覆盖面的 channel：空串（不是 NULL，唯一键才拦得住重复） */
+    public static final String BASE_CHANNEL = "";
+
+    /** 是不是基础覆盖面上的范围项（不是收窄拷贝、不是自提点） */
+    public boolean base() {
+        return (channel == null || channel.isEmpty()) && !LEVEL_PICKUP_POINT.equals(level);
+    }
+
+    /** 是不是某种方式的收窄拷贝 */
+    public boolean narrowed() {
+        return channel != null && !channel.isEmpty() && !LEVEL_PICKUP_POINT.equals(level);
+    }
 
     /** 行政五级：按 region_code 前缀匹配的那几档 */
     public static final java.util.Set<String> ADMIN_LEVELS = java.util.Set.of(

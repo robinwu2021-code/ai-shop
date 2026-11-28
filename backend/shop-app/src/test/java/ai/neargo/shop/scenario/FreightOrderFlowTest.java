@@ -147,7 +147,7 @@ class FreightOrderFlowTest {
                 "select s.entity_no, s.store_no from mch_store s join prd_goods g on g.entity_no = s.entity_no"
                         + " where g.goods_no = ? and s.is_default = 1 and s.deleted = 0", goodsNo);
         // 商品本身不设限购 —— 拦住它的只能是门店那条排除
-        jdbc.update("insert into mch_service_area (area_no, entity_no, store_no, level, ref_code, source, status, mode,"
+        jdbc.update("insert into mch_store_service_area (area_no, entity_no, store_no, level, ref_code, source, status, mode,"
                         + " created_at, updated_at) values (?, ?, ?, 'PROVINCE', '65', 'SELF', 'ACTIVE', 'EXCLUDE', now(), now())",
                 "SA-EXCL-" + goodsNo, st.get("entity_no"), st.get("store_no"));
 

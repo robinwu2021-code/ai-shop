@@ -4,7 +4,6 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.geo.GeoPolygon;
 import ai.neargo.shop.geo.ReachGeoProps;
 import ai.neargo.shop.geo.S2Cover;
-import ai.neargo.shop.merchant.entity.MchChannelArea;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchFulfillmentChannel;
@@ -54,7 +53,6 @@ public class ReachMatcher {
     private final MerchantMappers.ServiceAreaMapper areaMapper;
     private final MerchantMappers.ServiceAreaCellMapper cellMapper;
     private final MerchantMappers.FulfillmentChannelMapper channelMapper;
-    private final MerchantMappers.ChannelAreaMapper channelAreaMapper;
 
     public ReachMatcher(DbHitFinder dbHitFinder, ReachSnapshotCache snapshotCache, PolygonCache polygonCache,
                         ReachGeoProps props, CommunityQueryPort communityQueryPort,
@@ -62,8 +60,7 @@ public class ReachMatcher {
                         MerchantMappers.MchStoreMapper storeMapper,
                         MerchantMappers.ServiceAreaMapper areaMapper,
                         MerchantMappers.ServiceAreaCellMapper cellMapper,
-                        MerchantMappers.FulfillmentChannelMapper channelMapper,
-                        MerchantMappers.ChannelAreaMapper channelAreaMapper) {
+                        MerchantMappers.FulfillmentChannelMapper channelMapper) {
         this.dbHitFinder = dbHitFinder;
         this.snapshotCache = snapshotCache;
         this.polygonCache = polygonCache;
@@ -74,7 +71,6 @@ public class ReachMatcher {
         this.areaMapper = areaMapper;
         this.cellMapper = cellMapper;
         this.channelMapper = channelMapper;
-        this.channelAreaMapper = channelAreaMapper;
     }
 
     // ── 正向：消费者 → 哪些店 ────────────────────────────────────────────
@@ -200,14 +196,16 @@ public class ReachMatcher {
             return new Context(new StoreMeta(m.getEntityNo(), null, List.of(), false, false, false, false),
                     new StoreItems(null, List.of(), List.of()), Map.of());
         }
-        List<MchServiceArea> areas = overrideAreas != null ? withPlaceholderAreaNos(overrideAreas) : areasOf(storeNo);
+        // 预览只换基础覆盖面；各方式的收窄拷贝照旧取库里的（收窄子集要靠它们命中）
+        List<MchServiceArea> areas = new ArrayList<>(overrideAreas != null
+                ? withPlaceholderAreaNos(overrideAreas) : areasOf(storeNo));
+        if (overrideAreas != null) {
+            areasOf(storeNo).stream().filter(MchServiceArea::narrowed).forEach(areas::add);
+        }
         List<MchFulfillmentChannel> channels = DataScopeContext.executeWithoutScope(() ->
                 channelMapper.selectList(Wrappers.<MchFulfillmentChannel>lambdaQuery()
                         .eq(MchFulfillmentChannel::getEntityNo, m.getEntityNo())
                         .eq(MchFulfillmentChannel::getStoreNo, storeNo)));
-        List<MchChannelArea> subsets = DataScopeContext.executeWithoutScope(() ->
-                channelAreaMapper.selectList(Wrappers.<MchChannelArea>lambdaQuery()
-                        .eq(MchChannelArea::getStoreNo, storeNo)));
 
         Map<String, GeoPolygon> polygons = new HashMap<>();
         List<MchServiceAreaCell> cells = new ArrayList<>();
@@ -217,11 +215,12 @@ public class ReachMatcher {
         boolean polyEx = false;
         for (MchServiceArea a : areas) {
             boolean exclude = MchServiceArea.MODE_EXCLUDE.equals(a.getMode());
-            if (!exclude && MchServiceArea.ACTIVE.equals(a.getStatus())
+            // 排除、不限只看基础覆盖面（收窄拷贝只能是纳入）
+            if (a.base() && !exclude && MchServiceArea.ACTIVE.equals(a.getStatus())
                     && MchServiceArea.LEVEL_UNLIMITED.equals(a.getLevel())) {
                 unlimited = true;
             }
-            if (exclude) {
+            if (exclude && a.base()) {
                 if (MchServiceArea.ADMIN_LEVELS.contains(a.getLevel())) {
                     adminEx = true;
                 } else if (MchServiceArea.LEVEL_COMMUNITY.equals(a.getLevel())) {
@@ -241,6 +240,7 @@ public class ReachMatcher {
                         cell.setAreaNo(areaNo);
                         cell.setStoreNo(storeNo);
                         cell.setMode(a.getMode());
+                        cell.setChannel(a.getChannel());
                         cell.setCellId(c.token());
                         cell.setS2Level(c.level());
                         cell.setBoundary(c.boundary());
@@ -256,8 +256,8 @@ public class ReachMatcher {
             cells = cellsOf(storeNo);
         }
         StoreMeta meta = new StoreMeta(m.getEntityNo(), storeNo,
-                StoreRoutes.of(m, entityScope ? null : storeNo, channels, subsets),
-                unlimited, adminEx, cmtEx, polyEx);
+                StoreRoutes.of(m, entityScope ? null : storeNo, channels, areas),
+                unlimited, adminEx, cmtEx, polyEx, entityScope ? java.util.Set.of() : StoreRoutes.narrowedAreaNos(areas));
         return new Context(meta, new StoreItems(storeNo, areas, cells), polygons);
     }
 
@@ -337,8 +337,10 @@ public class ReachMatcher {
     // ── 取数 ──────────────────────────────────────────────────────────────
 
     private List<MchServiceArea> areasOf(String storeNo) {
+        // 自提点行不是覆盖范围，不进可达判定
         return DataScopeContext.executeWithoutScope(() -> areaMapper.selectList(
-                Wrappers.<MchServiceArea>lambdaQuery().eq(MchServiceArea::getStoreNo, storeNo)));
+                Wrappers.<MchServiceArea>lambdaQuery().eq(MchServiceArea::getStoreNo, storeNo)
+                        .ne(MchServiceArea::getLevel, MchServiceArea.LEVEL_PICKUP_POINT)));
     }
 
     private List<MchServiceAreaCell> cellsOf(String storeNo) {

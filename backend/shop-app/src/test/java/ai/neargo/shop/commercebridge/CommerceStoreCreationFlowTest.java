@@ -109,8 +109,10 @@ class CommerceStoreCreationFlowTest {
             context.registerBean("dataSource", DataSource.class, () -> ds);
             context.registerAlias("dataSource", "platformDataSource");
             var jdbc = new JdbcTemplate(ds);
+            // 已换到新结构的平台表在前（schema-platform-test.sql），其余仍取 schema-test.sql
             var schema =
-                    new ClassPathResource("schema-test.sql")
+                    new ClassPathResource("schema-platform-test.sql").getContentAsString(StandardCharsets.UTF_8)
+                            + "\n" + new ClassPathResource("schema-test.sql")
                             .getContentAsString(StandardCharsets.UTF_8);
             for (String table :
                     List.of(
@@ -120,7 +122,7 @@ class CommerceStoreCreationFlowTest {
                             "mch_store",
                             "mch_entity_plan",
                             "sys_merchant_plan_def",
-                            "mch_service_area",
+                            "mch_store_service_area",
                             "mch_payment_merchant",
                             "mch_store_role")) {
                 var matcher =
@@ -207,7 +209,6 @@ class CommerceStoreCreationFlowTest {
                             new MerchantPortImpl(
                                     creation,
                                     sessions.getMapper(MchEntityMapper.class),
-                                    null,
                                     new ai.neargo.shop.merchant.paymerchant.impl.CollectingMerchantsImpl(sessions.getMapper(MchPaymentMapper.class)),
                                     org.mockito.Mockito.mock(MerchantStoreService.class),
                                     null,
@@ -222,7 +223,6 @@ class CommerceStoreCreationFlowTest {
                                     new ai.neargo.shop.merchant.plan.impl.EntityPlanProvisionerImpl(
                                             sessions.getMapper(EntityPlanMapper.class),
                                             sessions.getMapper(PlanDefMapper.class)),
-                                    null,
                                     null,
                                     null,
                                     null,

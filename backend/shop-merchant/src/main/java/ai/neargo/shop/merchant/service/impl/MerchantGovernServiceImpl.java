@@ -10,9 +10,7 @@ import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchQualification;
-import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.violation.MchViolation;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.paymerchant.CollectingMerchants;
 import ai.neargo.shop.merchant.dictionary.DictionaryCatalog;
@@ -60,8 +58,6 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     private CategoryLicenseStore categoryLicenses;
     private final PayMerchantMirror payMirror;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
-    private final MchEntityCommunityMapper communityMapper;
-    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper;
     /*
      * 扫码数在埋点域，惰性取：门店详情不该因为那个域没装配而整页 500 ——
      * 少一列是「少一列」，起不来是「这页没了」。（社区名用已注入的 communityNamePort。）
@@ -107,7 +103,6 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     private final org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.product.StoreShelfPort> shelfPort;
 
     public MerchantGovernServiceImpl(MchEntityMapper merchantMapper,
-                                     MchEntityCommunityMapper communityMapper,
                                      CollectingMerchants collectingMerchants,
                                      ViolationLedger violations,
                                      MerchantApplyQueryPort applyPort,
@@ -123,12 +118,10 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort,
             org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.product.StoreShelfPort> shelfPort,
             DictionaryCatalog dictionary,
-            ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
             org.springframework.beans.factory.ObjectProvider<
                     ai.neargo.shop.spi.marketing.StoreVisitQueryPort> visitQueryPort,
                     PayMerchantMirror payMirror) {
         this.payMirror = payMirror;
-        this.channelPickupMapper = channelPickupMapper;
         this.visitQueryPort = visitQueryPort;
         this.dictionary = dictionary;
         this.serviceAreaMapper = serviceAreaMapper;
@@ -139,7 +132,6 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         this.shelfPort = shelfPort;
         this.qualificationMapper = qualificationMapper;
         this.merchantMapper = merchantMapper;
-        this.communityMapper = communityMapper;
         this.collectingMerchants = collectingMerchants;
         this.violations = violations;
         this.applyPort = applyPort;
@@ -187,10 +179,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
          * 列表一次 6 秒多（v2 页面验证，2026-11-20）。
          */
         if (communityNo != null && !communityNo.isBlank()) {
-            List<String> inCommunity = DataScopeContext.executeWithoutScope(() ->
-                            communityMapper.selectList(Wrappers.<MchEntityCommunity>lambdaQuery()
-                                    .eq(MchEntityCommunity::getCommunityNo, communityNo)))
-                    .stream().map(MchEntityCommunity::getEntityNo).distinct().toList();
+            // 覆盖只在门店上：名下任一门店的基础覆盖面纳入了这个小区，就算这家商家覆盖它
+            List<String> inCommunity = communityRows(communityNo).stream()
+                    .map(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo).distinct().toList();
             if (inCommunity.isEmpty()) {
                 return ai.neargo.shop.common.PageData.of(List.of(), 0, page, size);
             }
@@ -378,19 +369,17 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
          * 而这正是筛选最不该有的坏法：看起来筛了，其实全放行。
          */
         if (communityNo != null && !communityNo.isBlank()) {
-            List<String> entityNos = communityMapper.selectList(
-                            Wrappers.<MchEntityCommunity>lambdaQuery()
-                                    .eq(MchEntityCommunity::getCommunityNo, communityNo))
-                    .stream().map(MchEntityCommunity::getEntityNo).distinct().toList();
-            if (entityNos.isEmpty()) {
-                return ai.neargo.shop.common.PageData.of(List.of(), 0, page, size);
+            // 按门店自己的基础覆盖面筛（主体层不再有覆盖）
+            var rows = communityRows(communityNo);
+            if (merchantNo != null && !merchantNo.isBlank()) {
+                rows = rows.stream().filter(r -> merchantNo.equals(r.getEntityNo())).toList();
             }
-            if (merchantNo != null && !merchantNo.isBlank() && !entityNos.contains(merchantNo)) {
-                // 同时按主体与社区筛，而这家主体不覆盖该社区 —— 交集为空
+            List<String> storeNos = rows.stream().map(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo).distinct().toList();
+            if (storeNos.isEmpty()) {
                 return ai.neargo.shop.common.PageData.of(List.of(), 0, page, size);
             }
             var w0 = Wrappers.<MchStore>lambdaQuery()
-                    .in(MchStore::getEntityNo, entityNos);
+                    .in(MchStore::getStoreNo, storeNos);
             return searchStoresWith(w0, merchantNo, status, businessMode, keyword, page, size);
         }
         return searchStoresWith(Wrappers.<MchStore>lambdaQuery(), merchantNo, status,
@@ -457,13 +446,14 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
      */
     private CoverageVO coverageOf(String entityNo) {
         /*
-         * **不加 executeWithoutScope。** `mch_service_area` 没有登记数据域
-         * （登记会让合并社区那条路只改到域内商家的行，见 ops-data-scope 的
-         * OPS_READS_UNREGISTERED_OK），所以绕过在这里是空操作 ——
-         * 写上去只会让读的人以为这张表已经登记、而这里在有意越权。
+         * **不加 executeWithoutScope**：这是运营端按数据域看的覆盖，`mch_store_service_area`
+         * 按主体登记了数据域，域外的商家本来就不该在这里看到。
          */
         List<MchServiceArea> areas = serviceAreaMapper.selectList(
-                Wrappers.<MchServiceArea>lambdaQuery().eq(MchServiceArea::getEntityNo, entityNo));
+                Wrappers.<MchServiceArea>lambdaQuery().eq(MchServiceArea::getEntityNo, entityNo)
+                        // 覆盖看基础覆盖面：各方式的收窄拷贝与自提点不是覆盖范围
+                        .eq(MchServiceArea::getChannel, MchServiceArea.BASE_CHANNEL)
+                        .ne(MchServiceArea::getLevel, MchServiceArea.LEVEL_PICKUP_POINT));
         List<CoverageVO.AreaItem> includes = new java.util.ArrayList<>();
         List<CoverageVO.AreaItem> excludes = new java.util.ArrayList<>();
         /*
@@ -509,10 +499,11 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     /** 这家店挂靠的取货点名。空 = 没挂，不是没查到。 */
     private List<String> pickupNamesOf(String storeNo) {
-        List<String> nos = channelPickupMapper.selectList(
-                        Wrappers.<ai.neargo.shop.merchant.entity.MchChannelPickup>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.MchChannelPickup::getStoreNo, storeNo))
-                .stream().map(ai.neargo.shop.merchant.entity.MchChannelPickup::getPickupNo).distinct().toList();
+        List<String> nos = DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo, storeNo)
+                                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getLevel, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_PICKUP_POINT)))
+                .stream().map(ai.neargo.shop.merchant.entity.MchServiceArea::getRefCode).distinct().toList();
         if (nos.isEmpty()) {
             return List.of();
         }
@@ -674,11 +665,28 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         return m == null ? entityNo : m.getName();
     }
 
+    /** 基础覆盖面上纳入了这个小区的范围行（各门店） */
+    private List<ai.neargo.shop.merchant.entity.MchServiceArea> communityRows(String communityNo) {
+        return DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.selectList(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                        .select(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getChannel, ai.neargo.shop.merchant.entity.MchServiceArea.BASE_CHANNEL)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getLevel, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_COMMUNITY)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getRefCode, communityNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getMode, ai.neargo.shop.merchant.entity.MchServiceArea.MODE_INCLUDE)
+                        .isNotNull(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo)));
+    }
+
     private MerchantProfileVO toVO(MchEntity m) {
-        List<String> communities = DataScopeContext.executeWithoutScope(() ->
-                        communityMapper.selectList(Wrappers.<MchEntityCommunity>lambdaQuery()
-                                .eq(MchEntityCommunity::getEntityNo, m.getEntityNo())))
-                .stream().map(MchEntityCommunity::getCommunityNo).toList();
+        // 名下各门店基础覆盖面纳入的小区（主体层不再有覆盖）
+        List<String> communities = DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m.getEntityNo())
+                                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getChannel, ai.neargo.shop.merchant.entity.MchServiceArea.BASE_CHANNEL)
+                                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getLevel, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_COMMUNITY)
+                                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getMode, ai.neargo.shop.merchant.entity.MchServiceArea.MODE_INCLUDE)
+                                .orderByAsc(ai.neargo.shop.merchant.entity.MchServiceArea::getId)))
+                .stream().map(ai.neargo.shop.merchant.entity.MchServiceArea::getRefCode).distinct().toList();
 
         // 「能不能收钱」看进件是否开通 —— 与 B 端工作台那张卡同一个判断
         boolean settleReady = DataScopeContext.executeWithoutScope(() ->
@@ -1003,12 +1011,27 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             // 商家自己已经把这条删了 —— 单据照常裁完，没有可落的行
             return;
         }
+        // 这一行在各方式里的收窄拷贝（同店、同层级、同对象）跟着它一起裁
+        List<ai.neargo.shop.merchant.entity.MchServiceArea> copies = DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.selectList(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo, row.getStoreNo())
+                        .ne(ai.neargo.shop.merchant.entity.MchServiceArea::getChannel, ai.neargo.shop.merchant.entity.MchServiceArea.BASE_CHANNEL)
+                        .ne(ai.neargo.shop.merchant.entity.MchServiceArea::getLevel, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_PICKUP_POINT)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getLevel, row.getLevel())
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getRefCode, row.getRefCode())));
         if (pass) {
             row.setStatus(ai.neargo.shop.merchant.entity.MchServiceArea.ACTIVE);
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.updateById(row));
+            for (var copy : copies) {
+                copy.setStatus(ai.neargo.shop.merchant.entity.MchServiceArea.ACTIVE);
+                DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.updateById(copy));
+            }
         } else {
             // 按 id 删这一行：范围门店级之后（V381）同一条 (level, ref) 在别的门店也有，不能连带删
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.hardDeleteById(row.getId()));
+            for (var copy : copies) {
+                DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.hardDeleteById(copy.getId()));
+            }
         }
     }
 

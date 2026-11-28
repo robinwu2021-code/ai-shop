@@ -1,7 +1,7 @@
 package ai.neargo.shop.merchant.reach;
 
 import ai.neargo.shop.common.Fulfillments;
-import ai.neargo.shop.merchant.entity.MchChannelArea;
+import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchFulfillmentChannel;
 import ai.neargo.shop.merchant.reach.ReachRule.Route;
@@ -36,8 +36,19 @@ public final class StoreRoutes {
      * @param storeNo 为空 = 主体口径：一律按「全部」，不套门店的 SUBSET
      *                （「这家商家覆盖哪儿」问的是足迹，不该被某一路的收窄裁小）
      */
+    /** 收窄拷贝的范围项号（{@link StoreMeta#narrowedAreaNos()}）：不管这一路现在是不是「部分」口径，都不算基础面 */
+    public static java.util.Set<String> narrowedAreaNos(List<MchServiceArea> rows) {
+        Set<String> out = new LinkedHashSet<>();
+        for (MchServiceArea a : rows) {
+            if (a.narrowed()) {
+                out.add(a.getAreaNo());
+            }
+        }
+        return out;
+    }
+
     public static List<Route> of(MchEntity m, String storeNo,
-                                 List<MchFulfillmentChannel> channels, List<MchChannelArea> subsets) {
+                                 List<MchFulfillmentChannel> channels, List<MchServiceArea> subsets) {
         Map<String, Route> out = new LinkedHashMap<>();
         for (MchFulfillmentChannel ch : channels) {
             // 运营锁路：锁着的路买家侧不可选 —— 与 enabledFulfillments 同一个口径
@@ -46,8 +57,9 @@ public final class StoreRoutes {
             }
             if (storeNo != null && MchFulfillmentChannel.SCOPE_SUBSET.equals(ch.getScopeMode())) {
                 Set<String> picked = new LinkedHashSet<>();
-                for (MchChannelArea ca : subsets) {
-                    if (ch.getChannel().equals(ca.getChannel())) {
+                for (MchServiceArea ca : subsets) {
+                    // 收窄子集是这一路自己的拷贝行（channel = 这一路，不含自提点）
+                    if (ca.narrowed() && ch.getChannel().equals(ca.getChannel())) {
                         picked.add(ca.getAreaNo());
                     }
                 }

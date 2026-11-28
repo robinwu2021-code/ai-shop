@@ -113,7 +113,13 @@ public class StoreDirectoryPortImpl implements StoreDirectoryPort {
         if (keyword != null && !keyword.isBlank()) {
             q.like(MchStore::getName, keyword.strip());
         }
+        // 门店级判：服务范围为小区的商家，只列基础覆盖面纳入了这个小区的那几家店（覆盖只在门店上）
+        java.util.Set<String> covering = communityNo == null || communityNo.isBlank() ? null
+                : reachability.storesCovering(communityNo);
         return DataScopeContext.executeWithoutScope(() -> storeMapper.selectList(q)).stream()
+                .filter(s -> covering == null
+                        || EntityReachability.WIDE_SCOPES.contains(entities.get(s.getEntityNo()).getServiceScope())
+                        || covering.contains(s.getStoreNo()))
                 .map(s -> card(s, entities.get(s.getEntityNo())))
                 .toList();
     }

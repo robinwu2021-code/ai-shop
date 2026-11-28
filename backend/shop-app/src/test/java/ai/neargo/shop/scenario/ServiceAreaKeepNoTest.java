@@ -34,7 +34,7 @@ class ServiceAreaKeepNoTest {
 
     @AfterEach
     void drop() {
-        jdbc.update("delete from mch_service_area where entity_no=?", ENTITY);
+        jdbc.update("delete from mch_store_service_area where entity_no=?", ENTITY);
         jdbc.update("delete from mch_store where entity_no=?", ENTITY);
         jdbc.update("delete from mch_entity where entity_no=?", ENTITY);
     }
@@ -46,7 +46,7 @@ class ServiceAreaKeepNoTest {
     }
 
     private String areaNoOf(String refCode) {
-        return jdbc.queryForObject("select area_no from mch_service_area where entity_no=? and ref_code=?",
+        return jdbc.queryForObject("select area_no from mch_store_service_area where entity_no=? and ref_code=?",
                 String.class, ENTITY, refCode);
     }
 

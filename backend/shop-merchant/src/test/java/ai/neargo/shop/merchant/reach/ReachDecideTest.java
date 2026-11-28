@@ -162,4 +162,22 @@ class ReachDecideTest {
                 .as("hits 为 null 按空命中处理，仍能靠「不限」可见").isTrue();
         assertThat(ReachRule.decide(meta(List.of(Route.all(EXPRESS)), true), StoreHits.empty(), null, NO)).isFalse();
     }
+
+    @Test
+    @DisplayName("★★★ 「全部」口径只认基础面：别的方式的收窄拷贝命中了，这一路也不可达（TDD-平台基础库换表 E）")
+    void allRouteIgnoresOtherChannelsNarrowedCopies() {
+        // 配送选了「部分」，挑了基础面里的一块，拷成 COPY1；快递是「全部」口径
+        Route express = Route.all(EXPRESS);
+        Route delivery = new Route(DELIVERY, Set.of("COPY1"));
+        StoreMeta s = new StoreMeta("E1", "S1", List.of(express, delivery), false, false, false, false, Set.of("COPY1"));
+        StoreHits onlyCopy = hits(Set.of("COPY1"), Set.of());
+
+        assertThat(ReachRule.selectable(s, onlyCopy, FUTIAN, delivery, NO)).as("收窄的那一路照常可达").isTrue();
+        assertThat(ReachRule.selectable(s, onlyCopy, FUTIAN, express, NO))
+                .as("全部口径的快递不能借配送的收窄拷贝变成可达").isFalse();
+
+        StoreMeta allOnly = new StoreMeta("E1", "S1", List.of(express), false, false, false, false, Set.of("COPY1"));
+        assertThat(ReachRule.decide(allOnly, onlyCopy, FUTIAN, NO)).as("只有收窄拷贝命中 = 全部口径不可达").isFalse();
+        assertThat(ReachRule.decide(allOnly, hits(Set.of("BASE1"), Set.of()), FUTIAN, NO)).as("基础面命中照常可达").isTrue();
+    }
 }

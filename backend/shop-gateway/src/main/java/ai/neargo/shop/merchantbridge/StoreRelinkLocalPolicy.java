@@ -87,9 +87,9 @@ public class StoreRelinkLocalPolicy {
                 || jdbc.queryForObject("SELECT COUNT(*) FROM mch_brand_change WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0
                 || jdbc.queryForObject("SELECT COUNT(*) FROM mch_brand_financial_change WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0)
             blockers.add("ORGANIZATION_HISTORY");
-        if(jdbc.queryForObject("SELECT COUNT(*) FROM mch_service_area WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0
-                || jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_fulfillment WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0
-                || jdbc.queryForObject("SELECT COUNT(*) FROM mch_entity_community WHERE tenant_no=? AND entity_no=?",Integer.class,tenant,source)>0)
+        // 只看这家门店自己的范围行与履约设置（11-28 用户定：主体层不再有覆盖，主体那一半拦截去掉）
+        if(jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_service_area WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0
+                || jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_fulfillment WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0)
             blockers.add("STORE_CONFIGURATION_HISTORY");
         int staff=jdbc.queryForObject("SELECT COUNT(DISTINCT r.mch_account_no) FROM mch_store_role r WHERE r.tenant_no=? AND r.store_no=? AND r.deleted=0 AND NOT EXISTS(SELECT 1 FROM mch_account a WHERE a.tenant_no=r.tenant_no AND a.mch_account_no=r.mch_account_no AND a.entity_no=? AND a.is_owner=1 AND a.deleted=0)",Integer.class,tenant,store,source);
         return new Check(st,List.copyOf(blockers),staff);

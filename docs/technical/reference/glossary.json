@@ -36662,20 +36662,6 @@
       "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
-      "table": "mch_channel_area",
-      "class": "MchChannelArea",
-      "zh": "SUBSET 收窄：某店某路只适用哪些范围项（P2 启用，P0 只建表）。",
-      "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
-    },
-    {
-      "table": "mch_channel_pickup",
-      "class": "MchChannelPickup",
-      "zh": "自提路 × 取货点（P1 启用，P0 只建表）。",
-      "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
-    },
-    {
       "table": "mch_debt",
       "class": "MchDebt",
       "zh": "商家欠款账户：退款追不回来时先记在账上，从后续货款里扣。",
@@ -36716,13 +36702,6 @@
       "zh": "入驻申请。",
       "module": "shop-core",
       "package": "ai.neargo.shop.platform.entity"
-    },
-    {
-      "table": "mch_entity_community",
-      "class": "MchEntityCommunity",
-      "zh": "商家覆盖的社区（serviceScope=COMMUNITY 时生效）。",
-      "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
     },
     {
       "table": "mch_entity_plan",
@@ -36865,13 +36844,6 @@
       "package": "ai.neargo.shop.merchant.booking.entity"
     },
     {
-      "table": "mch_service_area",
-      "class": "MchServiceArea",
-      "zh": "商家的一条地理覆盖项（ADR-013 阶段二）。",
-      "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
-    },
-    {
       "table": "mch_service_area_cell",
       "class": "MchServiceAreaCell",
       "zh": "多边形范围项的 S2 网格派生行（V396，ADR-034）。",
@@ -36917,6 +36889,13 @@
       "table": "mch_store_role",
       "class": "MchStoreRole",
       "zh": "子账号在某家门店的角色。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_store_service_area",
+      "class": "MchServiceArea",
+      "zh": "商家的一条地理覆盖项（ADR-013 阶段二）。",
       "module": "shop-merchant",
       "package": "ai.neargo.shop.merchant.entity"
     },
@@ -47057,6 +47036,13 @@
         "name": "LEVEL_UNLIMITED",
         "value": "UNLIMITED",
         "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchServiceArea",
+        "name": "LEVEL_PICKUP_POINT",
+        "value": "PICKUP_POINT",
+        "zh": "邻里自提点：ref_code 是自提点号，channel 是 NEIGHBOR_PICKUP。",
         "module": "shop-merchant"
       },
       {
@@ -62282,6 +62268,14 @@
     },
     {
       "host": "MchServiceArea",
+      "name": "BASE_CHANNEL",
+      "type": "String",
+      "value": "\"\"",
+      "zh": "基础覆盖面的 channel：空串（不是 NULL，唯一键才拦得住重复）",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "MchServiceArea",
       "name": "ADMIN_LEVELS",
       "type": "java.util.Set<String>",
       "value": "java.util.Set.of( LEVEL_PROVINCE, LEVEL_CITY, LEVEL_DISTRICT, LEVEL_STREET, LEVEL_VILLAGE)",
@@ -62350,6 +62344,14 @@
       "type": "Rating",
       "value": "new Rating(UNRATED, 0, UNRATED, UNRATED, UNRATED)",
       "zh": "",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "EntityReachability",
+      "name": "WIDE_SCOPES",
+      "type": "List<String>",
+      "value": "List.of(\"PLATFORM\", \"CITY\")",
+      "zh": "服务范围：平台、全市 —— 不看小区",
       "module": "shop-merchant"
     },
     {

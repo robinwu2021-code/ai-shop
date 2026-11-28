@@ -65,7 +65,7 @@ class BizOrderFulfillFlowTest {
                 + "(store_no,entity_no,channel,enabled,scope_mode,ops_locked,tenant_no,created_at,updated_at) "
                 + "values (?,?,'MERCHANT_DELIVERY',1,'ALL',0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 store, merchant);
-        jdbc.update("insert into mch_service_area "
+        jdbc.update("insert into mch_store_service_area "
                 + "(area_no,entity_no,store_no,level,ref_code,source,status,mode,tenant_no,created_at,updated_at) "
                 + "values (?,?,?,'UNLIMITED','*','SELF','ACTIVE','INCLUDE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 "AREA-" + c.subOrderNo, merchant, store);

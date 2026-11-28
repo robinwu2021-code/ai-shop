@@ -28,7 +28,7 @@ public interface ReachMatchMapper extends PlatformSqlMapper {
     @Select("""
             <script>
             SELECT store_no AS storeNo, area_no AS areaNo, mode AS mode
-            FROM mch_service_area
+            FROM mch_store_service_area
             WHERE deleted = 0
               AND store_no IS NOT NULL
               AND ((mode = 'INCLUDE' AND status = 'ACTIVE') OR mode = 'EXCLUDE')
@@ -82,7 +82,7 @@ public interface ReachMatchMapper extends PlatformSqlMapper {
      * <p>★ <b>为什么是拼接而不是相加</b>（2026-10-10 改）。第一版把这 10 个聚合<b>加成一个数</b>，
      * 那是有损的，而且碰撞一点都不难凑：
      * <ul>
-     *   <li>跨表抵消：{@code mch_store} 删掉一行（−1）、{@code mch_service_area} 插进一行（+1）→ 和不变；</li>
+     *   <li>跨表抵消：{@code mch_store} 删掉一行（−1）、{@code mch_store_service_area} 插进一行（+1）→ 和不变；</li>
      *   <li>表内抵消：删掉 {@code version=V} 的一行（COUNT −1、SUM −V），
      *       另有若干行的 version 合计 +V+1 → 和不变。</li>
      * </ul>
@@ -91,7 +91,7 @@ public interface ReachMatchMapper extends PlatformSqlMapper {
      *
      * <p><b>说清边界</b>：抵消要求某处 {@code COUNT(*)} 真的减少，而本库大部分删除是全局逻辑删
      * （{@code delete(wrapper)} 被改写成 {@code UPDATE deleted=1}，COUNT 不减）。真能物理删的是
-     * 「范围子集物理删后重插」那条路（{@code mch_channel_area}）与多边形项的清理。
+     * 「收窄子集物理删后重插」那条路（{@code mch_store_service_area} 里带 channel 的行）与多边形项的清理。
      * 所以这是**可证的信息损失 + 存在真实触发路径**，但我<b>没有</b>证明它就是 2026-10-10 全量跑里
      * {@code M9bBizGoodsFlowTest#onSaleGoodsIsVisibleToBuyers} 那一红的原因 ——
      * 那一条仍在查。改成拼接是因为「加成一个数」本身不该留着，不是因为已经抓到现行。
@@ -108,12 +108,10 @@ public interface ReachMatchMapper extends PlatformSqlMapper {
                    (SELECT COALESCE(SUM(version), 0) FROM mch_entity),
                    (SELECT COUNT(*) FROM mch_store),
                    (SELECT COALESCE(SUM(version), 0) FROM mch_store),
-                   (SELECT COUNT(*) FROM mch_service_area),
-                   (SELECT COALESCE(SUM(version), 0) FROM mch_service_area),
+                   (SELECT COUNT(*) FROM mch_store_service_area),
+                   (SELECT COALESCE(SUM(version), 0) FROM mch_store_service_area),
                    (SELECT COUNT(*) FROM mch_store_fulfillment),
-                   (SELECT COALESCE(SUM(version), 0) FROM mch_store_fulfillment),
-                   (SELECT COUNT(*) FROM mch_channel_area),
-                   (SELECT COALESCE(SUM(version), 0) FROM mch_channel_area))
+                   (SELECT COALESCE(SUM(version), 0) FROM mch_store_fulfillment))
             """)
     String snapshotVersion();
 

@@ -7,10 +7,8 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreQrcodePrint;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.mapper.QrcodeMappers.StoreQrcodePrintMapper;
@@ -40,7 +38,7 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
 
     private final MchEntityMapper merchantMapper;
     private final MchStoreMapper storeMapper;
-    private final MchEntityCommunityMapper communityMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
     private final StoreQrcodePrintMapper printMapper;
     private final StoreCodeService storeCodeService;
     /*
@@ -54,7 +52,7 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
 
     public StoreQrcodeServiceImpl(MchEntityMapper merchantMapper,
                                   MchStoreMapper storeMapper,
-                                  MchEntityCommunityMapper communityMapper,
+                                  ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
                                   StoreQrcodePrintMapper printMapper,
                                   StoreCodeService storeCodeService,
                                   ObjectProvider<StoreVisitQueryPort> visitPort,
@@ -62,7 +60,7 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
                                   ObjectProvider<WxAcodePort> acodePort) {
         this.merchantMapper = merchantMapper;
         this.storeMapper = storeMapper;
-        this.communityMapper = communityMapper;
+        this.serviceAreaMapper = serviceAreaMapper;
         this.printMapper = printMapper;
         this.storeCodeService = storeCodeService;
         this.visitPort = visitPort;
@@ -125,14 +123,14 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
         Map<String, Long> scans = scansOf(stores, entityNos, storeNos, from, to);
         Map<String, int[]> printed = printedOf(storeNos);
         Map<String, String> sizes = lastSizeOf(storeNos);
-        Map<String, String> communities = communityNameOf(entityNos);
+        Map<String, String> communities = communityNameOf(storeNos);
         Map<String, String> merchantNames = merchantNameOf(entityNos);
 
         List<QrcodeRow> all = new ArrayList<>();
         for (MchStore s : stores) {
             int[] p = printed.get(s.getStoreNo());
             all.add(new QrcodeRow(s.getEntityNo(), merchantNames.get(s.getEntityNo()),
-                    s.getStoreNo(), s.getName(), communities.get(s.getEntityNo()),
+                    s.getStoreNo(), s.getName(), communities.get(s.getStoreNo()),
                     // 空串按「没有码」给出去：端上判 null 就够，不必两处都判
                     blankToNull(s.getStoreCode()),
                     sizes.get(s.getStoreNo()),
@@ -331,25 +329,30 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
      * 主体的社区名（取其覆盖的第一个）。BD 按社区领码地推，这一列是给他分堆用的。
      * 批量取名，逐行查是 N+1。
      */
-    private Map<String, String> communityNameOf(Set<String> entityNos) {
+    /** 每张码所属门店基础覆盖面上的第一个小区（覆盖只在门店上，主体层不再有覆盖） */
+    private Map<String, String> communityNameOf(Set<String> storeNos) {
         CommunityQueryPort port = communityPort.getIfAvailable();
         if (port == null) {
             return Map.of();
         }
-        List<MchEntityCommunity> links = communityMapper.selectList(
-                Wrappers.<MchEntityCommunity>lambdaQuery()
-                        .in(MchEntityCommunity::getEntityNo, entityNos));
+        List<ai.neargo.shop.merchant.entity.MchServiceArea> links = serviceAreaMapper.selectList(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                        .in(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo, storeNos)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getChannel, ai.neargo.shop.merchant.entity.MchServiceArea.BASE_CHANNEL)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getLevel, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_COMMUNITY)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getMode, ai.neargo.shop.merchant.entity.MchServiceArea.MODE_INCLUDE)
+                        .orderByAsc(ai.neargo.shop.merchant.entity.MchServiceArea::getId));
         Map<String, String> firstCommunity = new LinkedHashMap<>();
-        for (MchEntityCommunity l : links) {
-            firstCommunity.putIfAbsent(l.getEntityNo(), l.getCommunityNo());
+        for (var l : links) {
+            firstCommunity.putIfAbsent(l.getStoreNo(), l.getRefCode());
         }
         Map<String, String> out = new LinkedHashMap<>();
         // 社区数远少于商家数，按社区号缓存一次名字，别对每家店都问一遍
         Map<String, String> nameCache = new LinkedHashMap<>();
-        firstCommunity.forEach((entityNo, communityNo) -> {
+        firstCommunity.forEach((storeNo, communityNo) -> {
             String name = nameCache.computeIfAbsent(communityNo, port::communityName);
             if (name != null) {
-                out.put(entityNo, name);
+                out.put(storeNo, name);
             }
         });
         return out;

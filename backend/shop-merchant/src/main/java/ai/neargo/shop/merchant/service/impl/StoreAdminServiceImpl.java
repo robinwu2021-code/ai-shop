@@ -164,6 +164,9 @@ public class StoreAdminServiceImpl implements StoreAdminService {
      * 照抄与「新店继承主体经营类目」同一个取舍 —— 先给一份能用的，店主再在这家店上改；
      * 改的只是这家店，不会影响默认店（那正是这次要修的「改一家、全变」）。
      */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ai.neargo.shop.merchant.reach.ServiceAreaCells serviceAreaCells;
+
     private void inheritServiceAreas(String merchantNo, List<MchStore> existing, String newStoreNo) {
         String from = existing.stream()
                 .filter(x -> Boolean.TRUE.equals(x.getIsDefault())).map(MchStore::getStoreNo)
@@ -176,7 +179,10 @@ public class StoreAdminServiceImpl implements StoreAdminService {
                 com.baomidou.mybatisplus.core.toolkit.Wrappers
                         .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, merchantNo)
-                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo, from)));
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo, from)
+                        // 只抄基础覆盖面：各方式的收窄、自提点是那家店自己的履约设置，不跟着抄
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getChannel, ai.neargo.shop.merchant.entity.MchServiceArea.BASE_CHANNEL)
+                        .ne(ai.neargo.shop.merchant.entity.MchServiceArea::getLevel, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_PICKUP_POINT)));
         for (var a : rows) {
             var copy = new ai.neargo.shop.merchant.entity.MchServiceArea();
             copy.setAreaNo(BizKey.next(BizKey.SERVICE_AREA));
@@ -187,7 +193,12 @@ public class StoreAdminServiceImpl implements StoreAdminService {
             copy.setSource(a.getSource());
             copy.setStatus(a.getStatus());
             copy.setMode(a.getMode());
+            // 多边形连几何一起抄，并按新行重建网格（此前漏抄几何，新店的多边形范围是坏的）
+            copy.setGeometry(a.getGeometry());
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.insert(copy));
+            if (ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_POLYGON.equals(copy.getLevel()) && copy.getGeometry() != null && serviceAreaCells != null) {
+                serviceAreaCells.rebuild(copy);
+            }
         }
     }
 

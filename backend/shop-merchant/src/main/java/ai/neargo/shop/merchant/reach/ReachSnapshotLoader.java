@@ -1,7 +1,6 @@
 package ai.neargo.shop.merchant.reach;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.merchant.entity.MchChannelArea;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchFulfillmentChannel;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
@@ -33,18 +32,15 @@ public class ReachSnapshotLoader {
     private final MerchantMappers.MchEntityMapper entityMapper;
     private final MerchantMappers.MchStoreMapper storeMapper;
     private final MerchantMappers.FulfillmentChannelMapper channelMapper;
-    private final MerchantMappers.ChannelAreaMapper channelAreaMapper;
     private final MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
     public ReachSnapshotLoader(MerchantMappers.MchEntityMapper entityMapper,
                                MerchantMappers.MchStoreMapper storeMapper,
                                MerchantMappers.FulfillmentChannelMapper channelMapper,
-                               MerchantMappers.ChannelAreaMapper channelAreaMapper,
                                MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
         this.channelMapper = channelMapper;
-        this.channelAreaMapper = channelAreaMapper;
         this.serviceAreaMapper = serviceAreaMapper;
     }
 
@@ -70,8 +66,8 @@ public class ReachSnapshotLoader {
                         channelMapper.selectList(Wrappers.<MchFulfillmentChannel>lambdaQuery()
                                 .in(MchFulfillmentChannel::getEntityNo, entityNos))),
                 MchFulfillmentChannel::getStoreNo);
-        Map<String, List<MchChannelArea>> subsets = group(subsetsOf(storeNos), MchChannelArea::getStoreNo);
-        Map<String, List<MchServiceArea>> areas = group(flagsOfStores(storeNos), MchServiceArea::getStoreNo);
+        // 一次读回门店的范围行：基础面出排除、不限这些标记，收窄拷贝出各方式的子集（自提点行不参与）
+        Map<String, List<MchServiceArea>> areas = group(rowsOfStores(storeNos), MchServiceArea::getStoreNo);
 
         Map<String, MchEntity> byNo = new HashMap<>();
         entities.forEach(e -> byNo.put(e.getEntityNo(), e));
@@ -86,6 +82,9 @@ public class ReachSnapshotLoader {
             boolean communityExclude = false;
             boolean polygonExclude = false;
             for (MchServiceArea a : own) {
+                if (!a.base()) {
+                    continue;
+                }
                 boolean exclude = MchServiceArea.MODE_EXCLUDE.equals(a.getMode());
                 if (!exclude) {
                     // 纳入要生效才算；「不限」是唯一一种不靠点查、必须由快照补候选的纳入项
@@ -107,8 +106,8 @@ public class ReachSnapshotLoader {
             metas.put(st.getStoreNo(), new StoreMeta(st.getEntityNo(), st.getStoreNo(),
                     StoreRoutes.of(m, st.getStoreNo(),
                             channels.getOrDefault(st.getStoreNo(), List.of()),
-                            subsets.getOrDefault(st.getStoreNo(), List.of())),
-                    isUnlimited, adminExclude, communityExclude, polygonExclude));
+                            own),
+                    isUnlimited, adminExclude, communityExclude, polygonExclude, StoreRoutes.narrowedAreaNos(own)));
             if (isUnlimited) {
                 unlimited.add(st.getStoreNo());
             }
@@ -117,23 +116,15 @@ public class ReachSnapshotLoader {
     }
 
     /** 只取判属性要的几列：level / mode / status。**不读 geometry** —— 精判时按 area_no 单取 */
-    private List<MchServiceArea> flagsOfStores(Collection<String> storeNos) {
+    private List<MchServiceArea> rowsOfStores(Collection<String> storeNos) {
         if (storeNos.isEmpty()) {
             return List.of();
         }
         return DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.selectList(
                 Wrappers.<MchServiceArea>lambdaQuery()
-                        .select(MchServiceArea::getStoreNo, MchServiceArea::getLevel,
-                                MchServiceArea::getMode, MchServiceArea::getStatus)
+                        .select(MchServiceArea::getStoreNo, MchServiceArea::getLevel, MchServiceArea::getMode,
+                                MchServiceArea::getStatus, MchServiceArea::getChannel, MchServiceArea::getAreaNo)
                         .in(MchServiceArea::getStoreNo, storeNos)));
-    }
-
-    private List<MchChannelArea> subsetsOf(Collection<String> storeNos) {
-        if (storeNos.isEmpty()) {
-            return List.of();
-        }
-        return DataScopeContext.executeWithoutScope(() -> channelAreaMapper.selectList(
-                Wrappers.<MchChannelArea>lambdaQuery().in(MchChannelArea::getStoreNo, storeNos)));
     }
 
     private static <T> Map<String, List<T>> group(List<T> rows, java.util.function.Function<T, String> key) {

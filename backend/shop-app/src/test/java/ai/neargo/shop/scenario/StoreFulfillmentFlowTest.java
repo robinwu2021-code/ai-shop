@@ -482,7 +482,7 @@ class StoreFulfillmentFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper;
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper narrowedAreaMapper;
 
     @Test
     @DisplayName("★★ 主体删掉一块范围 → 门店子集里引用它的行一起删，那一路随之哪儿都不送")
@@ -509,10 +509,13 @@ class StoreFulfillmentFlowTest {
          * 此前这行留着：子集指向一个已经不存在的 area_no（线上两家店就是这样，界面显示「仅 1 项」）。
          * 而旧的展示规则把「子集与主体范围取交后为空」算成「自送没框 = 不限」—— 这家店当场全国可见。
          */
-        assertThat(channelAreaMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.merchant.entity.MchChannelArea>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getAreaNo, area1)))
-                .as("引用被删范围的子集行要一起删").isZero();
+        // 收窄子集是基础行的拷贝（channel = 这一路）：基础行删了，拷贝跟着删
+        assertThat(narrowedAreaMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo, store)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getChannel, Fulfillments.MERCHANT_DELIVERY)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getRefCode, c1)))
+                .as("被删范围在各方式里的收窄拷贝要一起删").isZero();
         assertThat(merchantQuery.reachableCommunities(m, store))
                 .as("自送选了子集、子集已空 = 这一路哪儿都不送；不能变成全部开放小区").isEmpty();
     }

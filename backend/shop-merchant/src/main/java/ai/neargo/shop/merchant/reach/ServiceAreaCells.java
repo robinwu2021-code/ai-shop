@@ -56,6 +56,7 @@ public class ServiceAreaCells {
             row.setEntityNo(polygonRow.getEntityNo());
             row.setStoreNo(polygonRow.getStoreNo());
             row.setMode(polygonRow.getMode());
+            row.setChannel(polygonRow.getChannel() == null ? MchServiceArea.BASE_CHANNEL : polygonRow.getChannel());
             row.setCellId(c.token());
             row.setS2Level(c.level());
             row.setBoundary(c.boundary());
@@ -65,6 +66,17 @@ public class ServiceAreaCells {
     }
 
     /** **物理删**这些范围项的全部网格行。范围项被删或几何改了（指纹变 = 新项）时同事务调用 */
+    /** 按行上的几何重建网格；坏几何不建（与 rebuildAll 同一口径），返回格数 */
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
+    public int rebuild(MchServiceArea polygonRow) {
+        try {
+            return rebuild(polygonRow, GeoPolygon.parse(polygonRow.getGeometry(), props.getPolygonMaxVertices()));
+        } catch (IllegalArgumentException e) {
+            log.warn("[reach] 范围项 {} 的多边形几何解析失败，网格未重算：{}", polygonRow.getAreaNo(), e.getMessage());
+            return 0;
+        }
+    }
+
     public void purge(Collection<String> areaNos) {
         if (areaNos == null || areaNos.isEmpty()) {
             return;

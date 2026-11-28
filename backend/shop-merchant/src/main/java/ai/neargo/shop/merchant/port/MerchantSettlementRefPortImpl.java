@@ -1,17 +1,13 @@
 package ai.neargo.shop.merchant.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.merchant.entity.MchChannelArea;
-import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.spi.user.SettlementRefPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * 商家域这边指向聚落的三处引用，在合并时一起改写。
@@ -27,15 +23,9 @@ public class MerchantSettlementRefPortImpl implements SettlementRefPort {
     private static final String AREA_COMMUNITY = "COMMUNITY";
 
     private final MerchantMappers.ServiceAreaMapper serviceAreaMapper;
-    private final MerchantMappers.MchEntityCommunityMapper entityCommunityMapper;
-    private final MerchantMappers.ChannelAreaMapper channelAreaMapper;
 
-    public MerchantSettlementRefPortImpl(MerchantMappers.ServiceAreaMapper serviceAreaMapper,
-                                         MerchantMappers.MchEntityCommunityMapper entityCommunityMapper,
-                                         MerchantMappers.ChannelAreaMapper channelAreaMapper) {
+    public MerchantSettlementRefPortImpl(MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
         this.serviceAreaMapper = serviceAreaMapper;
-        this.entityCommunityMapper = entityCommunityMapper;
-        this.channelAreaMapper = channelAreaMapper;
     }
 
     @Override
@@ -45,8 +35,8 @@ public class MerchantSettlementRefPortImpl implements SettlementRefPort {
         }
         return DataScopeContext.executeWithoutScope(() -> {
             int n = 0;
+            // 覆盖只在门店上（主体层的小区覆盖已退役）；各方式的收窄拷贝也是范围行，同一条路一起改
             n += repointServiceAreas(fromNo, intoNo);
-            n += repointEntityCommunities(fromNo, intoNo);
             return n;
         });
     }
@@ -64,7 +54,8 @@ public class MerchantSettlementRefPortImpl implements SettlementRefPort {
     /** 唯一键的「主体 + 门店」那一截（V381）。门店为空的孤行单独成一组 */
     private static final class MchServiceAreaKey {
         static String of(MchServiceArea a) {
-            return a.getEntityNo() + "|" + (a.getStoreNo() == null ? "" : a.getStoreNo());
+            return a.getEntityNo() + "|" + (a.getStoreNo() == null ? "" : a.getStoreNo())
+                    + "|" + (a.getChannel() == null ? "" : a.getChannel());
         }
     }
 
@@ -83,11 +74,10 @@ public class MerchantSettlementRefPortImpl implements SettlementRefPort {
                         MchServiceAreaKey::of, MchServiceArea::getAreaNo, (a, b) -> a));
         int n = 0;
         for (MchServiceArea r : rows) {
-            // 去重维度跟着唯一键走：经营范围门店级之后（V381）是「主体 + 门店」，不是只看主体
+            // 去重维度跟着唯一键走：门店 + 方式（channel）+ 层级 + 对象
             String key = MchServiceAreaKey.of(r);
             String survivor = targetAreaNo.get(key);
             if (survivor != null) {
-                repointChannelAreas(r.getAreaNo(), survivor);
                 serviceAreaMapper.hardDeleteById(r.getId());
             } else {
                 r.setRefCode(intoNo);
@@ -97,42 +87,5 @@ public class MerchantSettlementRefPortImpl implements SettlementRefPort {
             n++;
         }
         return n;
-    }
-
-    private int repointEntityCommunities(String fromNo, String intoNo) {
-        List<MchEntityCommunity> rows = entityCommunityMapper
-                .selectList(Wrappers.<MchEntityCommunity>lambdaQuery()
-                        .eq(MchEntityCommunity::getCommunityNo, fromNo));
-        if (rows.isEmpty()) {
-            return 0;
-        }
-        Set<String> alreadyHasTarget = new HashSet<>(entityCommunityMapper
-                .selectList(Wrappers.<MchEntityCommunity>lambdaQuery()
-                        .eq(MchEntityCommunity::getCommunityNo, intoNo))
-                .stream().map(MchEntityCommunity::getEntityNo).toList());
-        int n = 0;
-        for (MchEntityCommunity r : rows) {
-            if (alreadyHasTarget.contains(r.getEntityNo())) {
-                entityCommunityMapper.deleteById(r.getId());
-            } else {
-                r.setCommunityNo(intoNo);
-                entityCommunityMapper.updateById(r);
-                alreadyHasTarget.add(r.getEntityNo());
-            }
-            n++;
-        }
-        return n;
-    }
-
-    /** 渠道覆盖子集跟着覆盖项走：合并掉的那条 area_no 换成留下来的那条 */
-    private void repointChannelAreas(String fromAreaNo, String intoAreaNo) {
-        if (fromAreaNo == null || intoAreaNo == null || fromAreaNo.equals(intoAreaNo)) {
-            return;
-        }
-        for (MchChannelArea r : channelAreaMapper.selectList(Wrappers.<MchChannelArea>lambdaQuery()
-                .eq(MchChannelArea::getAreaNo, fromAreaNo))) {
-            r.setAreaNo(intoAreaNo);
-            channelAreaMapper.updateById(r);
-        }
     }
 }

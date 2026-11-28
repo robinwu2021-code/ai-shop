@@ -2,7 +2,6 @@ package ai.neargo.shop.merchant.reach;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.Fulfillments;
-import ai.neargo.shop.merchant.entity.MchChannelArea;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchFulfillmentChannel;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
@@ -24,8 +23,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 把 {@link ReachRule} 要的配置从库里读出来：门店的经营范围（{@code mch_service_area}，V381 起门店级）、
- * 门店每一路开没开与范围（{@code mch_store_fulfillment} / {@code mch_channel_area}）。
+ * 把 {@link ReachRule} 要的配置从库里读出来：门店的经营范围（{@code mch_store_service_area}，V381 起门店级）、
+ * 门店每一路开没开与范围（{@code mch_store_fulfillment}；收窄子集是范围表里带 channel 的拷贝行）。
  *
  * <p>只读、不缓存：这几张表加起来几十行，缓存省下的那点查询换来的是
  * 「设置改了、读到旧值」—— 那正是这次改造要消灭的东西。
@@ -38,18 +37,15 @@ public class StoreReachLoader {
     private final MerchantMappers.MchEntityMapper entityMapper;
     private final MerchantMappers.MchStoreMapper storeMapper;
     private final MerchantMappers.FulfillmentChannelMapper channelMapper;
-    private final MerchantMappers.ChannelAreaMapper channelAreaMapper;
     private final MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
     public StoreReachLoader(MerchantMappers.MchEntityMapper entityMapper,
                             MerchantMappers.MchStoreMapper storeMapper,
                             MerchantMappers.FulfillmentChannelMapper channelMapper,
-                            MerchantMappers.ChannelAreaMapper channelAreaMapper,
                             MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
         this.channelMapper = channelMapper;
-        this.channelAreaMapper = channelAreaMapper;
         this.serviceAreaMapper = serviceAreaMapper;
     }
 
@@ -65,13 +61,13 @@ public class StoreReachLoader {
         String sNo = storeNo == null || storeNo.isBlank() ? defaultStoreNo(m.getEntityNo()) : storeNo;
         if (sNo == null) {
             // 主体还没有任何门店：没有范围可言（不是「全国」）
-            return build(m, null, List.of(), List.of(), List.of());
+            return build(m, null, List.of(), List.of());
         }
         List<MchFulfillmentChannel> channels = DataScopeContext.executeWithoutScope(() ->
                 channelMapper.selectList(Wrappers.<MchFulfillmentChannel>lambdaQuery()
                         .eq(MchFulfillmentChannel::getEntityNo, m.getEntityNo())
                         .eq(MchFulfillmentChannel::getStoreNo, sNo)));
-        return build(m, sNo, areasOfStores(List.of(sNo)), channels, subsetsOf(List.of(sNo)));
+        return build(m, sNo, areasOfStores(List.of(sNo)), channels);
     }
 
     /**
@@ -98,7 +94,7 @@ public class StoreReachLoader {
         List<StoreReach> out = new ArrayList<>();
         for (String sNo : storeNos) {
             StoreReach r = build(m, null, areas.getOrDefault(sNo, List.of()),
-                    channels.getOrDefault(sNo, List.of()), List.of());
+                    channels.getOrDefault(sNo, List.of()));
             // build 用 null 门店号是为了让路走「全部」；门店号补回去，调用方要知道是哪家店
             out.add(new StoreReach(r.entityNo(), sNo, r.routes(), r.includes(), r.excludes()));
         }
@@ -115,7 +111,12 @@ public class StoreReachLoader {
                 channelMapper.selectList(Wrappers.<MchFulfillmentChannel>lambdaQuery()
                         .eq(MchFulfillmentChannel::getEntityNo, m.getEntityNo())
                         .eq(MchFulfillmentChannel::getStoreNo, sNo)));
-        return build(m, sNo, rows, channels, sNo == null ? List.of() : subsetsOf(List.of(sNo)));
+        // 预览只换基础覆盖面，各方式的收窄拷贝照旧取库里的
+        List<MchServiceArea> all = new ArrayList<>(rows);
+        if (sNo != null) {
+            areasOfStores(List.of(sNo)).stream().filter(MchServiceArea::narrowed).forEach(all::add);
+        }
+        return build(m, sNo, all, channels);
     }
 
     /** 默认店；没有默认标记时取建店最早的那家。主体没有门店时为 null */
@@ -151,8 +152,6 @@ public class StoreReachLoader {
         Map<String, List<MchFulfillmentChannel>> channels = group(DataScopeContext.executeWithoutScope(() ->
                 channelMapper.selectList(Wrappers.<MchFulfillmentChannel>lambdaQuery()
                         .in(MchFulfillmentChannel::getEntityNo, entityNos))), MchFulfillmentChannel::getStoreNo);
-        Map<String, List<MchChannelArea>> subsets = group(
-                subsetsOf(stores.stream().map(MchStore::getStoreNo).toList()), MchChannelArea::getStoreNo);
         Map<String, MchEntity> byNo = new HashMap<>();
         entities.forEach(e -> byNo.put(e.getEntityNo(), e));
         List<StoreReach> out = new ArrayList<>();
@@ -160,17 +159,40 @@ public class StoreReachLoader {
             MchEntity m = byNo.get(st.getEntityNo());
             out.add(build(m, st.getStoreNo(),
                     areas.getOrDefault(st.getStoreNo(), List.of()),
-                    channels.getOrDefault(st.getStoreNo(), List.of()),
-                    subsets.getOrDefault(st.getStoreNo(), List.of())));
+                    channels.getOrDefault(st.getStoreNo(), List.of())));
         }
         return out;
     }
 
     private StoreReach build(MchEntity m, String storeNo, List<MchServiceArea> areas,
-                             List<MchFulfillmentChannel> channels, List<MchChannelArea> subsets) {
+                             List<MchFulfillmentChannel> channels) {
         List<Area> includes = new ArrayList<>();
         List<Area> excludes = new ArrayList<>();
+        Map<String, String> baseNoByKey = new HashMap<>();
         for (MchServiceArea a : areas) {
+            if (a.base()) {
+                baseNoByKey.putIfAbsent(a.getLevel() + "|" + a.getRefCode(), a.getAreaNo());
+            }
+        }
+        /*
+         * 这条路按基础面的范围项判命中：收窄拷贝换成它对应的基础行范围项号（同层级、同对象），
+         * 子集的含义不变 ——「这一路只服务基础面里挑出来的那几块」。
+         */
+        List<MchServiceArea> subsets = new ArrayList<>();
+        for (MchServiceArea a : areas) {
+            String baseNo = a.narrowed() ? baseNoByKey.get(a.getLevel() + "|" + a.getRefCode()) : null;
+            if (baseNo != null) {
+                MchServiceArea ref = new MchServiceArea();
+                ref.setAreaNo(baseNo);
+                ref.setChannel(a.getChannel());
+                ref.setLevel(a.getLevel());
+                subsets.add(ref);
+            }
+        }
+        for (MchServiceArea a : areas) {
+            if (!a.base()) {
+                continue;
+            }
             Area area = new Area(a.getAreaNo(), a.getLevel(), a.getRefCode());
             if (MchServiceArea.MODE_EXCLUDE.equals(a.getMode())) {
                 // 缩小自己的范围不需要审核：待审的排除也立即生效
@@ -190,13 +212,8 @@ public class StoreReachLoader {
         }
         return DataScopeContext.executeWithoutScope(() ->
                 serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
-                        .in(MchServiceArea::getStoreNo, storeNos)));
-    }
-
-    private List<MchChannelArea> subsetsOf(Collection<String> storeNos) {
-        return DataScopeContext.executeWithoutScope(() ->
-                channelAreaMapper.selectList(Wrappers.<MchChannelArea>lambdaQuery()
-                        .in(MchChannelArea::getStoreNo, storeNos)));
+                        .in(MchServiceArea::getStoreNo, storeNos)
+                        .ne(MchServiceArea::getLevel, MchServiceArea.LEVEL_PICKUP_POINT)));
     }
 
     private static <T> Map<String, List<T>> group(List<T> rows, java.util.function.Function<T, String> key) {

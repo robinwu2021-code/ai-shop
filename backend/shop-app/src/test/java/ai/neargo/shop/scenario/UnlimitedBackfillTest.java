@@ -189,7 +189,12 @@ class UnlimitedBackfillTest {
             a.setStatus(MchServiceArea.ACTIVE);
             a.setSource("SELF");
             areaTweak.accept(a);
-            DataScopeContext.executeWithoutScope(() -> areaMapper.insert(a));
+            // V397 读写旧表 mch_service_area（冻结的历史迁移），种子也写旧表
+            new org.springframework.jdbc.core.JdbcTemplate(dataSource).update(
+                    "INSERT INTO mch_service_area(tenant_no,area_no,entity_no,store_no,level,ref_code,mode,status,source,"
+                            + "created_at,updated_at) VALUES('MAIN',?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                    a.getAreaNo(), a.getEntityNo(), a.getStoreNo(), a.getLevel(), a.getRefCode(), a.getMode(),
+                    a.getStatus(), a.getSource());
         }
         return storeNo;
     }
@@ -198,10 +203,20 @@ class UnlimitedBackfillTest {
         return !unlimitedRows(storeNo).isEmpty();
     }
 
+    /** V397 回填写在旧表 mch_service_area 上 */
     private List<MchServiceArea> unlimitedRows(String storeNo) {
-        return DataScopeContext.executeWithoutScope(() -> areaMapper.selectList(
-                Wrappers.<MchServiceArea>lambdaQuery()
-                        .eq(MchServiceArea::getStoreNo, storeNo)
-                        .eq(MchServiceArea::getLevel, MchServiceArea.LEVEL_UNLIMITED)));
+        return new org.springframework.jdbc.core.JdbcTemplate(dataSource).query(
+                "SELECT area_no,level,ref_code,mode,status,source,created_by FROM mch_service_area WHERE store_no=? AND level=?",
+                (rs, i) -> {
+                    MchServiceArea a = new MchServiceArea();
+                    a.setAreaNo(rs.getString("area_no"));
+                    a.setLevel(rs.getString("level"));
+                    a.setRefCode(rs.getString("ref_code"));
+                    a.setMode(rs.getString("mode"));
+                    a.setStatus(rs.getString("status"));
+                    a.setSource(rs.getString("source"));
+                    a.setCreatedBy(rs.getString("created_by"));
+                    return a;
+                }, storeNo, MchServiceArea.LEVEL_UNLIMITED);
     }
 }

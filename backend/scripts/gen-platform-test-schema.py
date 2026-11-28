@@ -36,6 +36,8 @@ TABLES = [
     "mch_category_license",        # A 类目授权码拆成一码一行（原 mch_entity.category_codes）
     "mch_store",                   # C 门店推荐位删掉（Q3）
     "mch_personnel",               # D 账号关联并进人员（原 mch_personnel_account，Q4）
+    "mch_store_service_area",      # E 四张服务范围表并一张（channel 空串 = 基础覆盖面）
+    "mch_service_area_cell",       # E 多边形网格（V2 补表，带 channel）
 ]
 
 # 过渡列：同名表里新设计去掉了、平台代码还在用的列（列定义取自旧测试库）。换完对应那一项就从这里删

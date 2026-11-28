@@ -40,7 +40,6 @@ class PlatformSchemaGapTest {
             "mch_channel_area", "mch_store_service_area",
             "mch_channel_pickup", "mch_store_service_area",
             "mch_entity_community", "mch_store_service_area",
-            "mch_service_area", "mch_store_service_area",
             "mch_fulfillment_channel", "mch_store_fulfillment",
             "mch_personnel_account", "mch_personnel",
             "mch_store_role", "mch_grant",
@@ -137,8 +136,10 @@ class PlatformSchemaGapTest {
 
     private static Map<String, Set<String>> schema() throws IOException {
         Map<String, Set<String>> tables = new LinkedHashMap<>();
+        // 设计（V1）加上补充里新建的表（V2，如服务范围网格）
         String sql = Files.readString(BACKEND.resolve("shop-app/src/test/resources/db/n_platform/V1__platform_design.sql"),
-                StandardCharsets.UTF_8);
+                StandardCharsets.UTF_8) + "\n" + Files.readString(
+                BACKEND.resolve("shop-app/src/test/resources/db/n_platform/V2__platform_supplement.sql"), StandardCharsets.UTF_8);
         var table = TABLE.matcher(sql);
         while (table.find()) {
             Set<String> columns = new LinkedHashSet<>();

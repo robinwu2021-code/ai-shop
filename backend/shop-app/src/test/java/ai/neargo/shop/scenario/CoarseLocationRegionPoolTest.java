@@ -119,7 +119,7 @@ class CoarseLocationRegionPoolTest {
 
     @AfterAll
     void cleanup() {
-        jdbc.update("DELETE FROM mch_service_area WHERE entity_no IN (?,?)", M_IN, M_OUT);
+        jdbc.update("DELETE FROM mch_store_service_area WHERE entity_no IN (?,?)", M_IN, M_OUT);
         jdbc.update("DELETE FROM mch_store WHERE entity_no IN (?,?)", M_IN, M_OUT);
         jdbc.update("DELETE FROM mch_entity WHERE entity_no IN (?,?)", M_IN, M_OUT);
         jdbc.update("DELETE FROM prd_goods WHERE goods_no IN (?,?)", G_IN, G_OUT);

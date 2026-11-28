@@ -110,9 +110,10 @@ class SelfOperatedMerchantFlowTest {
                 "select count(*) from mch_payment_merchant where entity_no = ?", Integer.class, r.merchantNo());
         assertThat(pay).isEqualTo(1);
 
-        // 少了覆盖范围，商家上着架却对谁都不可见（ADR-009），且不报错
+        // 少了覆盖范围，商家上着架却对谁都不可见（ADR-009），且不报错。覆盖只在门店上：看门店基础覆盖面的小区行
         Integer cov = jdbc.queryForObject(
-                "select count(*) from mch_entity_community where entity_no = ? and deleted = 0",
+                "select count(*) from mch_store_service_area where entity_no = ? and level = 'COMMUNITY'"
+                        + " and channel = '' and mode = 'INCLUDE' and deleted = 0",
                 Integer.class, r.merchantNo());
         assertThat(cov).isEqualTo(2);
     }

@@ -244,6 +244,40 @@ commerce 现在把两件事写在一起，要改成两步（这是 commerce 的�
 | 版本探针漏掉新表 → 可达结果陈旧且不报错 | 探针改看新表，`ReachSnapshotCacheTest` 覆盖 |
 | 多边形收窄拷贝没进网格 → 「部分」口径的多边形永远命中不了 | 网格按新表全部多边形行重建，含拷贝 |
 
+**G 授权合并：落地方案与待定项（2026-11-28 勘查整理）**
+
+*现状*：门店角色 `mch_store_role`（实体 + Mapper，9 个文件读写）；管理授权 `mch_management_grant` 与管理空间 `mch_management_space` 全走手写 SQL
+（`ManagementRepository`、`ManagementScopeServiceImpl` 等约 12 个文件）；品牌变更、储值开通、储值期间的门店入退三张旧表由 `BrandServiceImpl`、
+`BrandFinancialActivationServiceImpl`、`BrandFinancialChangeServiceImpl` 读写。
+
+*行怎么对应*
+
+| 旧 | 新 |
+|---|---|
+| 管理空间 | `mch_group`：照搬；`bootstrap_key / hash` 去掉，建集团的幂等改走统一防重（Q10） |
+| 管理授权 | `mch_grant`，`grant_kind=PERMISSION`，`role_code=''`，其余照搬 |
+| 门店角色（未删的） | `mch_grant`，`grant_kind=ROLE`、`permission_code=''`、`actor_no=MCH:<账号号>`、范围 `STORE/门店号`、集团号 = 门店所属主体的集团、`valid_from` = 原建时间、`valid_to` 空、来源 `OWNER_ACCOUNT`、`delegatable=0` |
+| 主体没有集团的 | 按 7.1 自动建默认集团（同一老板的主体共用），回填 `mch_entity.management_no` |
+
+*代码要改的*
+- 所有权限码授权的查询加 `grant_kind='PERMISSION'`（列表、EXISTS 类查询不加会把角色行带进来）；按整组键找已有行的地方带上 `grant_kind` 与 `role_code=''`。
+- 门店角色的 9 处读写改读 `mch_grant` 的 ROLE 行：有效期、实时复核一并生效（现在都不判）；授角色 = 按唯一键找到就重新生效、找不到就插；撤 = 状态改 REVOKED。
+- 7.3 的复核：ROLE 行复核「门店仍属该主体、主体仍在该集团」；权限码授权的 `OWNER_ACCOUNT` 也补上「主体仍在该集团」（现在漏了）；集团暂停时全部失效（现在已是）。
+- 7.5：选中门店时的能力 = 该店角色的功能点 ∪ 该店权限码授权（当前人 `MCH:` 账号号与 `USER:` 用户号两个身份都查）；只有权限码授权的门店也进员工的门店列表。
+- 建主体时（没有集团的）建默认集团、写 `management_no`，否则新主体的门店角色复核不过。
+- 改表（V2）：`mch_grant` 唯一键按 7.6；`grant_no` 唯一；`role_code`、`permission_code` 改 `NOT NULL DEFAULT ''`。
+- 数据域：`mch_grant` 不登记（身份解析读角色不绕数据域，登记了整个 B 端会 403）。
+- 守卫跟着改：`BizResourceAuthorization` 钉着的几段 SQL 原文、旧表名清单、差异清单。
+
+*待定项（11-28 用户定：G1–G4 都按 A）*
+
+| # | 问题 | 选项 |
+|---|---|---|
+| G1 | 操作人编号长度：新库 `actor_no`、`owner_actor_no`、审计列都是 32 位，而 7.2 保留的带前缀写法 `USER:` + 32 位用户号最长 37 位 | A（推荐）放宽到 64；B 去掉前缀，另加一列标类型 |
+| G2 | 入退连锁走轻量审批：轻量审批不许提交人自己批，而老板提交时他本人就是集团级审批人 | A（推荐）老板提交即自动通过（与改价审批「老板发起免审」同一口径）；B 必须另一个有 `brand.change.decide` 的人批 |
+| G3 | 储值开通去掉旧表后，丢了「按命令号幂等重放」与「冻结的开通命令」（回执要对照它） | A（推荐）开通号由品牌号 + `scope_revision` 确定性生成，回执到来时按同一 `scope_revision` 现算成员事实对照；B 用统一防重存命令 |
+| G4 | 储值开通后的门店入退（支付侧两阶段：准备 → 支付已准备 → 提交）要记中间状态与支付回执，新库没有地方放；TDD 原方案没覆盖 | A（推荐）新库保留 `mch_brand_financial_change`（V2 补表），只装这段两阶段流程；B 塞进轻量审批单的载荷 |
+
 **建议顺序**：补唯一键 → F、票据、PIN 策略、会话日志、H、两列 → B → D → E → G → I 其余。
 第 2 步仍是一次提交，等 Q1–Q10 定完才能整体合入。在那之前，能单独提交、在旧库上照样能跑的只有两类：
 不改表的代码收敛（例如把 JSON 判权收到一个类里），以及顺带发现的缺陷——

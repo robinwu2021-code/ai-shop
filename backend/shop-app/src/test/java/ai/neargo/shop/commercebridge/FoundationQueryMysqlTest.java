@@ -91,7 +91,6 @@ class FoundationQueryMysqlTest {
                             null,
                             null,
                             null,
-                            null,
                             f.mybatis.getMapper(MchAccountMapper.class),
                             stores,
                             null,
@@ -102,7 +101,6 @@ class FoundationQueryMysqlTest {
                             new ai.neargo.shop.merchant.plan.impl.EntityPlanProvisionerImpl(
                                     f.mybatis.getMapper(EntityPlanMapper.class),
                                     f.mybatis.getMapper(PlanDefMapper.class)),
-                            null,
                             null,
                             null,
                             null,

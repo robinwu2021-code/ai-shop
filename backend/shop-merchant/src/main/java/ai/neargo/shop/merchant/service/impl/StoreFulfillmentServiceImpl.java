@@ -46,9 +46,9 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
     private final FulfillmentChannelMapper channelMapper;
     private final MchStoreMapper storeMapper;
     private final AdmissionPort admissionPort;
-    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper pickupRefMapper;
     private final ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort;
-    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper areaRefMapper;
+    /** 收窄拷贝里的多边形要有自己的网格，否则「部分」口径下的多边形命中不了 */
+    private final ai.neargo.shop.merchant.reach.ServiceAreaCells serviceAreaCells;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
     private final MchEntityMapper entityMapper;
 
@@ -56,17 +56,15 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
     public StoreFulfillmentServiceImpl(FulfillmentChannelMapper channelMapper,
                                        MchStoreMapper storeMapper,
                                        AdmissionPort admissionPort,
-                                       ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper pickupRefMapper,
                                        ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort,
-                                       ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper areaRefMapper,
+                                       ai.neargo.shop.merchant.reach.ServiceAreaCells serviceAreaCells,
                                        ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
                                        MchEntityMapper entityMapper) {
         this.channelMapper = channelMapper;
         this.storeMapper = storeMapper;
         this.admissionPort = admissionPort;
-        this.pickupRefMapper = pickupRefMapper;
         this.pickupQueryPort = pickupQueryPort;
-        this.areaRefMapper = areaRefMapper;
+        this.serviceAreaCells = serviceAreaCells;
         this.serviceAreaMapper = serviceAreaMapper;
         this.entityMapper = entityMapper;
     }
@@ -231,9 +229,11 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                     for (var a : ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
                             () -> serviceAreaMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
                                     .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, merchantNo)
-                                    // 子集只能从这家店自己的范围里挑（V381 范围门店级）
+                                    // 子集只能从这家店自己的基础覆盖面里挑（V381 范围门店级）
                                     .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo,
-                                            store.getStoreNo())))) {
+                                            store.getStoreNo())
+                                    .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getChannel, ai.neargo.shop.merchant.entity.MchServiceArea.BASE_CHANNEL)
+                                    .ne(ai.neargo.shop.merchant.entity.MchServiceArea::getLevel, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_PICKUP_POINT)))) {
                         myAreaNos.add(a.getAreaNo());
                     }
                 }
@@ -278,28 +278,26 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                 if (cmd.scopeMode() == null) {
                     continue;
                 }
-                // 范围子集引用：纯关联集合，物理删后重插；ALL 时清空。
-                // 必须走 purge：delete(wrapper) 被全局逻辑删改写成墓碑，原样再存一次就撞唯一键
-                areaRefMapper.purge(target.getStoreNo(), cmd.channel());
-                if (MchFulfillmentChannel.SCOPE_SUBSET.equals(cmd.scopeMode())) {
-                    for (String areaNo : new java.util.LinkedHashSet<>(cmd.areaNos())) {
-                        var ref = new ai.neargo.shop.merchant.entity.MchChannelArea();
-                        ref.setStoreNo(target.getStoreNo());
-                        ref.setChannel(cmd.channel());
-                        ref.setAreaNo(areaNo);
-                        areaRefMapper.insert(ref);
-                    }
-                }
+                // 收窄子集 = 基础覆盖面里挑出的几行的拷贝（channel = 这一路）：整体物理删后重插；改回「全部」时清空。
+                // 必须物理删：逻辑删会留墓碑，原样再存一次就撞唯一键
+                replaceNarrowed(merchantNo, target.getStoreNo(), cmd.channel(),
+                        MchFulfillmentChannel.SCOPE_SUBSET.equals(cmd.scopeMode()) ? cmd.areaNos() : List.of());
             }
             if (pickupNos != null) {
-                // 纯关联集合，物理删后重插（照 mch_service_area 先例，不留墓碑）
-                pickupRefMapper.purge(target.getStoreNo(), Fulfillments.NEIGHBOR_PICKUP);
+                // 邻里自提点 = 范围表里 PICKUP_POINT 层级、channel = NEIGHBOR_PICKUP 的行：物理删后重插
+                serviceAreaMapper.purgePickups(target.getStoreNo(), Fulfillments.NEIGHBOR_PICKUP);
                 for (String no : new java.util.LinkedHashSet<>(pickupNos)) {
-                    var ref = new ai.neargo.shop.merchant.entity.MchChannelPickup();
-                    ref.setStoreNo(target.getStoreNo());
-                    ref.setChannel(Fulfillments.NEIGHBOR_PICKUP);
-                    ref.setPickupNo(no);
-                    pickupRefMapper.insert(ref);
+                    var row = new ai.neargo.shop.merchant.entity.MchServiceArea();
+                    row.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
+                    row.setEntityNo(merchantNo);
+                    row.setStoreNo(target.getStoreNo());
+                    row.setChannel(Fulfillments.NEIGHBOR_PICKUP);
+                    row.setLevel(ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_PICKUP_POINT);
+                    row.setRefCode(no);
+                    row.setMode(ai.neargo.shop.merchant.entity.MchServiceArea.MODE_INCLUDE);
+                    row.setStatus(ai.neargo.shop.merchant.entity.MchServiceArea.ACTIVE);
+                    row.setSource("SELF");
+                    serviceAreaMapper.insert(row);
                 }
             }
             return null;
@@ -395,26 +393,69 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
         });
     }
 
-    private List<String> areaRefsOf(String storeNo, String channel) {
+    /** 这一路的收窄行（拷贝），连同店里的基础行一起读回 */
+    private List<ai.neargo.shop.merchant.entity.MchServiceArea> areaRowsOf(String storeNo) {
         return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                        areaRefMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchChannelArea>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getStoreNo, storeNo)
-                                .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getChannel, channel)
-                                .orderByAsc(ai.neargo.shop.merchant.entity.MchChannelArea::getId)))
-                .stream().map(ai.neargo.shop.merchant.entity.MchChannelArea::getAreaNo).toList();
+                serviceAreaMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo, storeNo)
+                        .orderByAsc(ai.neargo.shop.merchant.entity.MchServiceArea::getId)));
+    }
+
+    /**
+     * 把某一路的收窄子集换成 {@code baseAreaNos} 指的那几行基础范围的拷贝。排除、不限不参与子集（拷了也不生效），跳过。
+     */
+    private void replaceNarrowed(String merchantNo, String storeNo, String channel, List<String> baseAreaNos) {
+        List<ai.neargo.shop.merchant.entity.MchServiceArea> rows = areaRowsOf(storeNo);
+        List<String> oldCopies = rows.stream().filter(r -> r.narrowed() && channel.equals(r.getChannel()))
+                .map(ai.neargo.shop.merchant.entity.MchServiceArea::getAreaNo).toList();
+        serviceAreaCells.purge(oldCopies);
+        serviceAreaMapper.purgeNarrowed(storeNo, channel);
+        java.util.Map<String, ai.neargo.shop.merchant.entity.MchServiceArea> baseByNo = new java.util.HashMap<>();
+        rows.stream().filter(ai.neargo.shop.merchant.entity.MchServiceArea::base).forEach(r -> baseByNo.put(r.getAreaNo(), r));
+        for (String baseNo : new java.util.LinkedHashSet<>(baseAreaNos)) {
+            var base = baseByNo.get(baseNo);
+            if (base == null || ai.neargo.shop.merchant.entity.MchServiceArea.MODE_EXCLUDE.equals(base.getMode())
+                    || ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_UNLIMITED.equals(base.getLevel())) {
+                continue;
+            }
+            var copy = new ai.neargo.shop.merchant.entity.MchServiceArea();
+            copy.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
+            copy.setEntityNo(merchantNo);
+            copy.setStoreNo(storeNo);
+            copy.setChannel(channel);
+            copy.setLevel(base.getLevel());
+            copy.setRefCode(base.getRefCode());
+            copy.setMode(ai.neargo.shop.merchant.entity.MchServiceArea.MODE_INCLUDE);
+            copy.setStatus(base.getStatus());
+            copy.setSource(base.getSource());
+            copy.setGeometry(base.getGeometry());
+            serviceAreaMapper.insert(copy);
+            if (ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_POLYGON.equals(copy.getLevel()) && copy.getGeometry() != null) {
+                serviceAreaCells.rebuild(copy);
+            }
+        }
+    }
+
+    /** 这一路收窄子集选中的基础范围项号（接口里的 areaNos 指基础行，按同层级、同对象从拷贝映射回去） */
+    private List<String> areaRefsOf(String storeNo, String channel) {
+        List<ai.neargo.shop.merchant.entity.MchServiceArea> rows = areaRowsOf(storeNo);
+        java.util.Map<String, String> baseNoByKey = new java.util.HashMap<>();
+        rows.stream().filter(ai.neargo.shop.merchant.entity.MchServiceArea::base)
+                .forEach(r -> baseNoByKey.putIfAbsent(r.getLevel() + "|" + r.getRefCode(), r.getAreaNo()));
+        return rows.stream().filter(r -> r.narrowed() && channel.equals(r.getChannel()))
+                .map(r -> baseNoByKey.get(r.getLevel() + "|" + r.getRefCode()))
+                .filter(java.util.Objects::nonNull).toList();
     }
 
     /** 这一店引用的取货点。读侧不过滤状态：停用/待审的也展示，商家才知道它现在不算数 */
     private List<PickupRef> pickupRefsOf(String storeNo) {
-        List<ai.neargo.shop.merchant.entity.MchChannelPickup> rows =
-                ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                        pickupRefMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchChannelPickup>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.MchChannelPickup::getStoreNo, storeNo)
-                                .eq(ai.neargo.shop.merchant.entity.MchChannelPickup::getChannel, Fulfillments.NEIGHBOR_PICKUP)
-                                .orderByAsc(ai.neargo.shop.merchant.entity.MchChannelPickup::getId)));
-        List<PickupRef> out = new ArrayList<>(rows.size());
-        for (var r : rows) {
-            pickupQueryPort.find(r.getPickupNo()).ifPresent(b ->
+        List<PickupRef> out = new ArrayList<>();
+        for (var r : areaRowsOf(storeNo)) {
+            if (!ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_PICKUP_POINT.equals(r.getLevel())
+                    || !Fulfillments.NEIGHBOR_PICKUP.equals(r.getChannel())) {
+                continue;
+            }
+            pickupQueryPort.find(r.getRefCode()).ifPresent(b ->
                     out.add(new PickupRef(b.pickupNo(), b.name(), b.address(), b.type(), b.status())));
         }
         return out;

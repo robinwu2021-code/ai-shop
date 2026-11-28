@@ -17,9 +17,21 @@ import java.util.List;
  * @param hasPolygonExclude   有没有排除型多边形。有而消费者没有坐标时 fail-closed
  */
 public record StoreMeta(String entityNo, String storeNo, List<Route> routes, boolean unlimited,
-                        boolean hasAdminExclude, boolean hasCommunityExclude, boolean hasPolygonExclude) {
+                        boolean hasAdminExclude, boolean hasCommunityExclude, boolean hasPolygonExclude,
+                        java.util.Set<String> narrowedAreaNos) {
 
+    /**
+     * @param narrowedAreaNos 这家店各方式收窄拷贝的范围项号。命中它们只对「部分」口径的那种方式算数，
+     *                        「全部」口径只认基础覆盖面的命中（TDD-平台基础库换表 E）
+     */
     public StoreMeta {
         routes = routes == null ? List.of() : List.copyOf(routes);
+        narrowedAreaNos = narrowedAreaNos == null ? java.util.Set.of() : java.util.Set.copyOf(narrowedAreaNos);
+    }
+
+    public StoreMeta(String entityNo, String storeNo, List<Route> routes, boolean unlimited,
+                     boolean hasAdminExclude, boolean hasCommunityExclude, boolean hasPolygonExclude) {
+        this(entityNo, storeNo, routes, unlimited, hasAdminExclude, hasCommunityExclude, hasPolygonExclude,
+                java.util.Set.of());
     }
 }

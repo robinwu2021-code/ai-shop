@@ -243,7 +243,7 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * B 端范围页、买家目录全走 executeWithoutScope —— 那些调用方是 C 端或 B 端会话（SELF 维度），
          * 接上就是 1=0。归属由 Service 的 requireStore / requireMerchantNo 保证。
          */
-        registry.register("mch_service_area", Map.of(
+        registry.register("mch_store_service_area", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*

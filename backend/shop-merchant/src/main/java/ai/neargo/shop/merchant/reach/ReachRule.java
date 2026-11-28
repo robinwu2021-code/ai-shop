@@ -217,8 +217,11 @@ public final class ReachRule {
             }
             return false;
         }
-        if (!included.isEmpty()) {
-            return true;
+        // 「全部」口径只认基础覆盖面的命中：别的方式的收窄拷贝命中了，不能让这一路也算可达
+        for (String areaNo : included) {
+            if (!s.narrowedAreaNos().contains(areaNo)) {
+                return true;
+            }
         }
         return s.unlimited() && unlimitedChannel(r.channel());
     }

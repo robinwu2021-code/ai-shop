@@ -94,7 +94,7 @@ class TableHasProducerTest {
         // cnt_question 从这张表里去掉了：买家提问那条入口做出来了（MpQuestionController，
         // TDD-C 端商品详情页·内容丰富度 §3.3），它现在有生产者
         for (String t : List.of("cmt_community_apply", "cnt_post", "inv_uom",
-                "mch_channel_area", "mch_channel_pickup", "notify_scene_channel",
+                "notify_scene_channel",
                 "notify_template", "prd_catalog_item")) {
             NO_PRODUCER.put(t, "未核实 —— 闸门立起来时就在库里。"
                     + "动到这个域时顺手确认：是主数据（挪进 SEEDED）、"

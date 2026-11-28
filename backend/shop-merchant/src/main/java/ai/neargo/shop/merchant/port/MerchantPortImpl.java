@@ -21,10 +21,8 @@ import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PayChannels;
-import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.paymerchant.CollectingMerchants;
 import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import java.util.List;
@@ -94,7 +92,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
     /** 转存入驻资质时用来查重 —— 写侧仍走 governService，这里只读 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
-    private final MchEntityCommunityMapper merchantCommunityMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
     private final CollectingMerchants collectingMerchants;
     private final ai.neargo.shop.merchant.service.MerchantStoreService merchantStoreService;
@@ -119,7 +116,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.merchant.plan.EntityPlanProvisioner planProvisioner;
     /** 门店送货方式（方案 v4）—— 可见性与下单闸的取数口 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper;
-    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper;
     private final ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort;
     /** 「送不送得到」的配置读取；判定本身在 {@link ai.neargo.shop.merchant.reach.ReachRule} */
     private final ai.neargo.shop.merchant.reach.StoreReachLoader reachLoader;
@@ -129,7 +125,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     /** Native fixtures default to MySQL; Spring selects the actual primary database's current-read lock. */
     private String defaultStoreCurrentLock = " FOR SHARE";
 
-    public MerchantPortImpl(MerchantStoreCreation commerce, MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
+    public MerchantPortImpl(MerchantStoreCreation commerce, MchEntityMapper merchantMapper,
                             CollectingMerchants collectingMerchants,
                             ai.neargo.shop.merchant.service.MerchantStoreService merchantStoreService,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
@@ -144,7 +140,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             ai.neargo.shop.merchant.plan.EntityPlanProvisioner planProvisioner,
                             ai.neargo.shop.merchant.service.MerchantAuthCodeService authCodeService,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper,
-                            ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
                             ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort,
                             ai.neargo.shop.merchant.reach.StoreReachLoader reachLoader,
                             ai.neargo.shop.merchant.reach.ReachMatcher reachMatcher,
@@ -163,7 +158,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.admissionServiceProvider = admissionServiceProvider;
         this.debtServiceProvider = debtServiceProvider;
         this.fulfillmentChannelMapper = fulfillmentChannelMapper;
-        this.channelPickupMapper = channelPickupMapper;
         this.pickupQueryPort = pickupQueryPort;
         this.reachLoader = reachLoader;
         this.reachMatcher = reachMatcher;
@@ -178,7 +172,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.senderResolver = senderResolver;
         this.masterDataPort = masterDataPort;
         this.communityQueryPort = communityQueryPort;
-        this.merchantCommunityMapper = merchantCommunityMapper;
         this.serviceAreaMapper = serviceAreaMapper;
         this.collectingMerchants = collectingMerchants;
         this.merchantMapper = merchantMapper;
@@ -442,12 +435,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return java.util.Set.of();
         }
         java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
-        // 门店引用的社区自提点（方案 v4 mch_channel_pickup）——绕域理由同 enabledFulfillments
-        DataScopeContext.executeWithoutScope(() -> channelPickupMapper.selectList(
-                        com.baomidou.mybatisplus.core.toolkit.Wrappers
-                                .<ai.neargo.shop.merchant.entity.MchChannelPickup>lambdaQuery()
-                                .in(ai.neargo.shop.merchant.entity.MchChannelPickup::getStoreNo, stores)))
-                .forEach(r -> out.add(r.getPickupNo()));
+        // 门店引用的社区自提点（范围表里 PICKUP_POINT 层级的行）——绕域理由同 enabledFulfillments
+        DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.selectList(
+                        Wrappers.<MchServiceArea>lambdaQuery()
+                                .in(MchServiceArea::getStoreNo, stores)
+                                .eq(MchServiceArea::getLevel, MchServiceArea.LEVEL_PICKUP_POINT)))
+                .forEach(r -> out.add(r.getRefCode()));
         // 门店自己的 STORE 点：门店自取的落点
         out.addAll(pickupQueryPort.activeStorePickupNos(stores));
         return out;
@@ -796,6 +789,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         DataScopeContext.executeWithoutScope(() ->
                         serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                                 .eq(MchServiceArea::getEntityNo, merchantNo)
+                                // 卖到哪儿只看基础覆盖面（收窄拷贝、自提点不是范围）
+                                .eq(MchServiceArea::getChannel, MchServiceArea.BASE_CHANNEL)
+                                .ne(MchServiceArea::getLevel, MchServiceArea.LEVEL_PICKUP_POINT)
                                 .eq(MchServiceArea::getStatus, AREA_ACTIVE)))
                 .stream()
                 .filter(a -> !MchServiceArea.MODE_EXCLUDE.equals(a.getMode()))
@@ -884,6 +880,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                         serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                                 .eq(MchServiceArea::getEntityNo, merchantNo)
                                 .eq(MchServiceArea::getStoreNo, sNo)
+                                .eq(MchServiceArea::getChannel, MchServiceArea.BASE_CHANNEL)
                                 .eq(MchServiceArea::getLevel, "PROVINCE")
                                 .eq(MchServiceArea::getMode, MchServiceArea.MODE_EXCLUDE)))
                 .stream().map(MchServiceArea::getRefCode)

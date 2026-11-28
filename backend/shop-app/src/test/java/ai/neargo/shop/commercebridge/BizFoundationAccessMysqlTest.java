@@ -167,8 +167,8 @@ class BizFoundationAccessMysqlTest {
                                     .class);
             var govern =
                     new ai.neargo.shop.merchant.service.impl.MerchantGovernServiceImpl(
-                            null, null, null, null, null, null, null, null, quals, null, null, null,
-                            null, null, null, null, null, null, entityNo -> {});
+                            null, null, null, null, null, null, null, quals, null, null, null,
+                            null, null, null, null, null, entityNo -> {});
             var mvc =
                     CommerceAccessSecurityFlowTest.merchantMvc(
                             f, web, true, java.util.Map.of(MerchantGovernService.class, govern));
@@ -504,10 +504,8 @@ class BizFoundationAccessMysqlTest {
                             null,
                             null,
                             null,
-                            null,
                             f.mybatis.getMapper(MchAccountMapper.class),
                             f.mybatis.getMapper(MchStoreMapper.class),
-                            null,
                             null,
                             null,
                             null,

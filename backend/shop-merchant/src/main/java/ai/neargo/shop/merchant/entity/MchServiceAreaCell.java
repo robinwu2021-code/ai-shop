@@ -33,6 +33,9 @@ public class MchServiceAreaCell extends BaseEntity {
     /** 随多边形：INCLUDE / EXCLUDE */
     private String mode;
 
+    /** 所属范围行的 channel，冗余（空串 = 基础覆盖面） */
+    private String channel;
+
     /** S2 cell token */
     private String cellId;
 
