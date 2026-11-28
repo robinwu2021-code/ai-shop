@@ -86,7 +86,7 @@ class GoodsFavoriteFlowTest {
         assertThat(detailFavorited(GOODS_A)).isTrue();
         assertThat(toggleGoods(GOODS_A)).isFalse();
         assertThat(detailFavorited(GOODS_A)).isFalse();
-        // 取消走的若是全局逻辑删除，deleted=1 的行还占着 uk_prd_goods_favorite，这一步就是 500
+        // 取消走的若是全局逻辑删除，deleted=1 的行还占着 uk_mbr_favorite_goods，这一步就是 500
         assertThat(toggleGoods(GOODS_A)).as("取消后再收藏").isTrue();
         assertThat(detailFavorited(GOODS_A)).isTrue();
     }

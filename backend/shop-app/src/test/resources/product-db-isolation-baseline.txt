@@ -1,7 +1,6 @@
 # 商品领域不访问旧库：现状违规（只许减少）。由 ProductDatabaseIsolationTest 用 -Dproduct.isolation.record=true 生成
 R1 AppealMapper 继承 BaseMapper
 R1 ExecutionRetentionMapper 继承 BaseMapper
-R1 GoodsFavoriteMapper 继承 BaseMapper
 R1 ReviewLikeMapper 继承 BaseMapper
 R1 ReviewMapper 继承 BaseMapper
 R1 StockRestoreMapper 继承 BaseMapper
@@ -11,7 +10,6 @@ R1 TopicGoodsMapper 继承 BaseMapper
 R1 TopicMapper 继承 BaseMapper
 R2 AppealMapper 用到 rvw_appeal，不在 目标库 DDL
 R2 ExecutionRetentionMapper 用到 prd_execution_retention，不在 目标库 DDL
-R2 GoodsFavoriteMapper 用到 prd_goods_favorite，不在 目标库 DDL
 R2 ReviewLikeMapper 用到 rvw_review_like，不在 目标库 DDL
 R2 ReviewMapper 用到 rvw_review，不在 目标库 DDL
 R2 StockRestoreMapper 用到 prd_stock_restore，不在 目标库 DDL

@@ -322,6 +322,9 @@ CREATE TABLE `mbr_store_view` (
   KEY `uk_store_view_user_store` (`user_no`, `store_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='到店记录：顾客看过、到过哪家店';
 
+-- uk_mbr_favorite_goods：商品领域迁移加（用户 2026-11-28 确认），同一人对同一件商品只收藏一次。
+-- 取消收藏是真删，所以不含 deleted；门店收藏的 goods_no 为空，不受这条约束。
+-- 本文件由 ai-shop-slim 的字段数据生成，重新生成时要带上这一条。
 CREATE TABLE `mbr_favorite` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
   `user_no` varchar(32) DEFAULT NULL COMMENT '收藏人',
@@ -337,7 +340,8 @@ CREATE TABLE `mbr_favorite` (
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间，每次修改自动更新',
   `updated_by` varchar(32) DEFAULT NULL COMMENT '更新人',
   PRIMARY KEY (`id`),
-  KEY `uk_user_store` (`user_no`, `store_no`)
+  KEY `uk_user_store` (`user_no`, `store_no`),
+  UNIQUE KEY `uk_mbr_favorite_goods` (`tenant_no`, `user_no`, `favorite_type`, `goods_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='收藏：商品与门店';
 
 CREATE TABLE `pmt_activity` (

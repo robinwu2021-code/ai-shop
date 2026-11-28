@@ -212,6 +212,13 @@
 - `StoreSalesCatalogServiceImpl` 的数据源与事务改点名商品句柄（R4）；商品与交易绑同一个数据源名时是同一个连接池，结账事务里的判据照旧。`StoreSalesCatalogIT` 补上未绑定时的句柄别名，本机 MySQL 上 7 条全过。
 - **保留未动**（库存同步一组，待定是否下线交库存服务）：`StockSyncAppService`、`StockAlignmentService`、`StockReconcileService`、`StockSyncSweepJob`、`OnlineQuotaPortImpl`、`InventoryBackfillServiceImpl`（商品库存搬进进销存的回填）、`ExecutionStockMirrorEvidenceServiceImpl` 与库存模块的 `ExecutionStockRetentionSchemaVerifier`（执行占用，表待退役）。基线 R5 剩 20 条、R4 剩 1 条，都在这一组。
 
+### 第 3 批 · 收藏（2026-11-28；评价暂停，专题待定）
+
+- `prd_goods_favorite` → 会员营销库 `mbr_favorite`（通用收藏，商品收藏是 `favorite_type = GOODS` 那一类）。实体 `PrdGoodsFavorite` 改映射新表，`GoodsFavoriteMapper` 改收会员营销句柄（未绑定时随支付句柄落到支付连接池，测试里与主库同一个 H2），读写从 `GoodsFavoriteMapper.goodsOf` 起手；取消仍真删。`toggle` 的事务改用 `MEMBER_MARKETING_TX_MANAGER`；连点撞唯一键视为已收藏。新增冗余 `entity_no`（商品所属主体）。
+- DDL：`07-n_member.sql` 的 `mbr_favorite` 加唯一约束 `uk_mbr_favorite_goods (tenant_no, user_no, favorite_type, goods_no)`（用户 2026-11-28 确认）；门店收藏的 `goods_no` 为空，不受它约束。该文件由 ai-shop-slim 的字段数据生成，**重新生成时要带上这一条**；已建好的 n_member 实库要另外由 root 执行加约束。
+- 数据域登记从 `prd_goods_favorite` 换到 `mbr_favorite`（SELF / `user_no`）。基线 −2。
+- 搬迁：`prd_goods_favorite` 每行写一行 `mbr_favorite`（`favorite_type = GOODS`、`tenant_no = MAIN`、`entity_no` 取商品的主体）。
+
 ### 偏差说明
 
 - 测试库没有按原方案「去掉旧 `prd_*`、两个句柄绑同一个 H2」，而是同一个 H2 库里追加一份按新设计生成的建表脚本：改动更小，漂移测试不受影响，且能逐批迁移。

@@ -61,12 +61,26 @@ public final class ProductMappers {
         }
     }
 
-    /** 商品收藏（V343）。取消要真删，理由同 SpecUsageMapper#purgeScope：软删行占着唯一键，再收藏就撞 */
+    /**
+     * 商品收藏（V343；第 3 批起在会员营销库的通用收藏 {@code mbr_favorite}，收会员营销句柄）。
+     * 取消要真删，理由同 SpecUsageMapper#purgeScope：软删行占着唯一键，再收藏就撞。
+     */
     public interface GoodsFavoriteMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdGoodsFavorite> {
+            extends ai.neargo.shop.common.config.MemberMarketingTableMapper<ai.neargo.shop.product.entity.PrdGoodsFavorite> {
+
+        /** 这个人收藏的商品（只碰 GOODS 那一类，门店收藏不在这里） */
+        static com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                ai.neargo.shop.product.entity.PrdGoodsFavorite> goodsOf(String userNo) {
+            return com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdGoodsFavorite>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdGoodsFavorite::getFavoriteType,
+                            ai.neargo.shop.product.entity.PrdGoodsFavorite.TYPE_GOODS)
+                    .eq(ai.neargo.shop.product.entity.PrdGoodsFavorite::getUserNo, userNo);
+        }
 
         @org.apache.ibatis.annotations.Delete(
-                "DELETE FROM prd_goods_favorite WHERE user_no = #{userNo} AND goods_no = #{goodsNo}")
+                "DELETE FROM mbr_favorite WHERE user_no = #{userNo} AND favorite_type = '"
+                        + ai.neargo.shop.product.entity.PrdGoodsFavorite.TYPE_GOODS + "' AND goods_no = #{goodsNo}")
         int purge(@org.apache.ibatis.annotations.Param("userNo") String userNo,
                   @org.apache.ibatis.annotations.Param("goodsNo") String goodsNo);
     }

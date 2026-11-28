@@ -603,7 +603,8 @@ CREATE TABLE IF NOT EXISTS mbr_favorite (
   created_by varchar(32) DEFAULT NULL,
   updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_by varchar(32) DEFAULT NULL,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  CONSTRAINT mbr_favorite__uk_mbr_favorite_goods UNIQUE (tenant_no, user_no, favorite_type, goods_no)
 );
 
 CREATE TABLE IF NOT EXISTS rvw_review (
