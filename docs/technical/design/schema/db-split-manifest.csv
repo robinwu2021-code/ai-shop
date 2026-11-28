@@ -852,7 +852,7 @@ prd_execution_retention_route,shop 库,0,零售,退役,去冗余,,,,,两套库�
 prd_fulfillment_requirement,新建,0,,新建,抽象,零售,门店交易库,商品,prd_fulfillment_requirement,交付要求：一个商品需要哪类资源、工位或角色，各几个、什么顺序,按电商、餐饮、美业的业务抽象复核后采纳
 prd_goods,shop 库,4,零售,保留,,零售,门店交易库,商品,prd_goods,,
 prd_goods_draft,shop 库,1,零售,并入,抽象,,,,,prd_goods_revision,商品草稿是修订的一个状态
-prd_goods_favorite,shop 库,0,零售,并入,抽象,,,,,平台基础库 mbr_favorite（改为通用收藏）,收藏商品与收藏门店
+prd_goods_favorite,shop 库,0,零售,并入,抽象,,,,,会员营销库 mbr_favorite（改为通用收藏；用户 2026-11-28 按实库定）,收藏商品与收藏门店
 prd_goods_profile,新建,0,,并入,抽象,,,,,prd_goods（行业扩展载荷，随修订走版本）,行业档案是商品的扩展内容
 prd_goods_revision,shop 库,3,零售,保留,,零售,门店交易库,商品,prd_goods_revision,,
 prd_merchant_spec,shop 库,0,零售,并入,抽象,,,,,prd_spec_usage,规格的使用范围：类目与商家各一套
