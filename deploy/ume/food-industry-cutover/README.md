@@ -4,23 +4,24 @@
 
 ## 做法
 
-.61 的 `n_industry` 还没有任何应用写入（行业句柄未切换，见 [厨显迁移记录](../food-kds-cutover/README.md)），餐饮相关表都是空表。所以不逐列 `ALTER`，而是**确认全部为空 → 备份 → 按定稿结构删表重建**：
+.61 的 `n_industry` 里餐饮独有的表都是空表（餐饮的行业句柄未切换，见 [厨显迁移记录](../food-kds-cutover/README.md)）。所以这些表不逐列 `ALTER`，而是**确认全部为空 → 备份 → 按定稿结构删表重建**。与美业共用的 `ind_store_policy`、`ind_config_revision` 在 .61 上**已有美业数据**（见下面的现场核对），这两张只逐列改定义、补唯一键，不重建、不动数据：
 
 - 定稿结构 = 测试建表脚本 `db/n_industry/V1`、`V2` 执行后的结构，也就是 `FoodIndustryDatabaseTest` 在本机 MySQL 上验证过的那一份。`gen.py` 在一次性库里执行 V1、V2 后逐表 `SHOW CREATE TABLE`，产出重建脚本与期望结构，两者与代码测过的结构逐字一致。
-- 任何一张相关表有数据，`run.sh apply` 拒绝执行，不会覆盖数据。
+- 餐饮独有的表任何一张有数据，`run.sh apply` 拒绝执行，不会覆盖数据；共用表连数据一起备份，备份里必须有它们的数据行。
 - 执行后按期望结构逐表核对列（名、类型、可空、默认值）与唯一键，不一致即报错并给出备份位置。
 
 | 文件 | 用途 |
 |---|---|
 | `run.sh` | `check`：只看，列出现有表、行数与和定稿的差异；`apply`：核对为空 → 备份 → 执行 → 核对 |
-| `02-rebuild-food-tables.sql` | 删 3 张退役表；餐饮 27 张表按定稿结构重建（`gen.py` 生成，不要手改） |
+| `02-rebuild-food-tables.sql` | 删 3 张退役表；餐饮独有的 25 张表按定稿结构重建（`gen.py` 生成，不要手改） |
+| `03-alter-shared-tables.sql` | 共用的 2 张表逐列改成定稿定义（`MODIFY`，不加列不删列；`gen.py` 生成）；缺的唯一键由 `run.sh` 补 |
 | `expected-structure.tsv` | 27 张表的期望列与唯一键（`gen.py` 生成） |
-| `tables.txt`、`retired.txt` | 本批涉及的表；来自 `FoodIndustryTables.NAMES` 与退役名单 |
+| `tables.txt`、`retired.txt`、`shared.txt` | 本批涉及的表、退役表、与美业共用只改不重建的表 |
 | `gen.py` | 重新生成以上产物；`--check` 核对是否最新 |
 
 ## 变更清单
 
-对照基准：.61 现场按设计稿 `06-n_industry.sql`（ai-shop-slim 字段草案）建库，再执行过 [`01-industry-kds.sql`](../food-kds-cutover/01-industry-kds.sql)，共 17 张（2026-11-27 目录核对）。本机按这个基准模拟后逐表比对，结果如下；**以现场 `run.sh check` 的输出为准**。
+对照基准：.61 现场按设计稿 `06-n_industry.sql`（ai-shop-slim 字段草案）建库，再执行过 [`01-industry-kds.sql`](../food-kds-cutover/01-industry-kds.sql)，共 17 张。2026-11-28 现场只读核对确认如此（见文末），下表即现场的变更。
 
 **公共差异**：设计稿上的表都要改的几列——`created_at`、`updated_at` 改为 `datetime(3)`（`updated_at` 原为 `timestamp`），`created_by`、`updated_by` 放宽到 `varchar(64)`，`version` 改为 `bigint`；数量、人数列改为非空、默认 0。下表「公共差异」即指这些。
 
@@ -38,14 +39,14 @@
 | `fnb_reservation`、`fnb_reservation_table` | 订位、订位占桌 | ADR-068 修订二 |
 | `fnb_service_slot`、`fnb_capacity_claim`、`fnb_service_calendar` | 时段、容量占用、营业日历 | ADR-068 修订二 |
 
-### 重建：结构有变（11 张）
+### 结构有变（11 张：9 张重建、2 张共用表原地改）
 
 | 表 | 变化 | 依据 |
 |---|---|---|
 | `fnb_kds_subscription` | 精简为「哪台厨显看哪些工位」：留 `device_no`（唯一）、`stations`、`version`，加 `tenant_no`；去掉订阅号、登录人、设备版本、到期、状态、开通与撤销的 8 列及两条唯一键 | D-5 |
 | `fnb_kitchen_ticket` | 加 `dispatch_key`（派单防重，唯一）、`next_attempt_at`（定时下达的认领与重试）；加出品单号唯一键；公共差异 | 合并 ⑤ |
-| `ind_store_policy` | 唯一键改为「租户 + 主体 + 门店 + 行业」，加策略号唯一键；公共差异 | 合并 ④ |
-| `ind_config_revision` | 加两条唯一键（策略号 + 修订序号、版本号）；公共差异 | 合并 ②③ |
+| `ind_store_policy` | **原地改，不重建（有美业数据）**：补「租户 + 主体 + 门店 + 行业」与策略号两条唯一键（现场同名的是普通索引，先删再建成唯一）；公共差异 | 合并 ④ |
+| `ind_config_revision` | **原地改，不重建（有美业数据）**：补策略号 + 修订序号、版本号两条唯一键（同上）；`actor_no` 放宽到 64；公共差异 | 合并 ②③ |
 | `fnb_service_entitlement` | 加权益号、到店单人头两条唯一键；数量非空；公共差异 | 合并 ① |
 | `fnb_table_area`、`fnb_table`、`fnb_course`、`fnb_banquet_plan`、`fnb_banquet_attendance_confirmation`、`fnb_service_entitlement_event` | 公共差异 | 定稿 DDL 规则 D5、D6 |
 
@@ -85,7 +86,9 @@ deploy/ume/food-industry-cutover/run.sh check "$MYSQL_CNF" n_industry
 
 可重复执行：表仍为空时再跑一次 `apply` 结果相同。
 
-**回滚**：执行前的表结构在备份目录的 `n_industry.sql`，`mysql n_industry < 备份文件` 即恢复原有的表；本批新建的 14 张表需另行删除。
+**回滚**：执行前的表结构（以及共用表的数据）在备份目录的 `n_industry.sql`，`mysql n_industry < 备份文件` 即恢复原有的表；本批新建的 14 张表需另行删除。
+
+中途失败可直接重跑 `apply`：每一步都按现场状态判断（重建只针对空表，改列是幂等的，唯一键已对的跳过）。
 
 **之后**：库结构就绪不等于切换。生产把 `industry` 句柄绑到 `n_industry` 前，还要等美业对齐（TDD §1.4）与订单域门店锁换成交易库内的锁（TDD §8-Q3）。配了消息中间件时，平台发件箱须为统一模式，且若用 `SHOP_EVENTS_OUTBOX_TYPES` 覆盖了名单，要补上餐饮后厨的五个事件（D-4）。
 
@@ -108,3 +111,14 @@ python3 deploy/ume/food-industry-cutover/gen.py --check  # 只核对产物是否
 - 第一次 `apply`：备份、重建，核对通过（27 张表的列与唯一键与定稿一致，3 张退役表已删）；之后 `check` 无差异。
 - 第二次 `apply`：同样通过。
 - 往 `ind_store_device` 插一行后 `apply`：列出该表 1 行并拒绝执行，数据保留。
+- 共用表放入与现场相同的美业数据后 `apply`：只改列、补唯一键，数据保留，核对通过。
+
+## 现场只读核对（2026-11-28，.61 `n_industry`）
+
+经跳板机在 .61 的 MySQL 容器里执行 `check` 用的同一组目录查询（只读，未改任何东西），结果拿回本机比对：
+
+- 现有 17 张，与基准一致；本批相关的 16 张中，餐饮独有的 14 张全部 0 行。
+- **`ind_store_policy`、`ind_config_revision` 各 1 行，是美业数据**：美业门店策略 `BTP261124…` 及其修订（可约 30 天、取消规则），2026-11-24 13:54 由美业写入，`industry_code` 为空。说明 .61 上美业已在写行业库这两张共用表。按「有数据就拒绝」的原规则 `apply` 会停下，于是改成这两张原地改列、补唯一键（新的唯一键与这两行不冲突）。
+- 相关表的列与唯一键与本机模拟**逐行一致**（318 行），与定稿的差异 519 行，即上面的清单。
+
+本机按现场复刻（含这两行美业数据）演练：单次 `apply` 核对通过，美业数据保留；重跑、从中途失败处重跑也都通过。**现场 `apply` 尚未执行。**

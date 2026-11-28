@@ -3,8 +3,9 @@
 
 做法：在本机 MySQL 新建一次性库，依次执行 V1、V2（与 FoodIndustryDatabaseTest 相同），再逐表 SHOW CREATE TABLE。
 产物与代码测过的结构逐字一致：
-    02-rebuild-food-tables.sql   退役表删除 + 餐饮 27 张表按定稿结构重建
-    expected-structure.tsv       每张表的列（名、类型、可空、默认）与唯一键，run.sh 执行后据此核对
+    02-rebuild-food-tables.sql   退役表删除 + 餐饮独有的 25 张表按定稿结构重建（只在为空时执行）
+    03-alter-shared-tables.sql   与美业共用、.61 上已有美业数据的 2 张表：逐列改成定稿定义，不动数据
+    expected-structure.tsv       每张表的列（名、类型、可空、默认）与唯一键，run.sh 执行后据此核对；缺的唯一键由 run.sh 补
 
 用法：python3 deploy/ume/food-industry-cutover/gen.py [--check]
 连接：MYSQL（默认 ~/.local/opt/mysql/bin/mysql）、MYSQL_ARGS（默认 -uroot -h127.0.0.1）。
@@ -25,6 +26,8 @@ MYSQL = os.environ.get('MYSQL', str(Path.home() / '.local/opt/mysql/bin/mysql'))
 ARGS = shlex.split(os.environ.get('MYSQL_ARGS', '-uroot -h127.0.0.1'))
 # 行业库里退役的表（.61 上由 01-industry-kds.sql 或设计稿建过）：合并 ⑥ 与设备出口 D-2、D-3
 RETIRED = ['fnb_kds_event', 'fnb_kds_cursor', 'fnb_station_runtime']
+# 与美业共用、.61 上美业已在写的表（2026-11-28 现场各有 1 行美业门店策略）：只改列定义、补唯一键，不重建
+SHARED = ['ind_store_policy', 'ind_config_revision']
 
 
 def food_tables():
@@ -68,8 +71,10 @@ def build():
 
 
 def render(tables, creates):
+    creates = [(t, c) for t, c in creates if t not in SHARED]
     out = ['-- .61 行业库 n_industry 的餐饮表变更（TDD-餐饮域迁移新库 P1-5）。由 gen.py 从 db/n_industry V1、V2 生成，不要手改。',
-           '-- 只在这些表都为空时执行（run.sh 先核对行数并备份）：退役表删除，餐饮 %d 张表按定稿结构重建。' % len(tables),
+           '-- 只在这些表都为空时执行（run.sh 先核对行数并备份）：退役表删除，餐饮独有的 %d 张表按定稿结构重建。' % len(creates),
+           '-- 与美业共用的 %s 不在这里，见 03-alter-shared-tables.sql。' % '、'.join(SHARED),
            '-- 美业表（bty_*）与提成规则 ind_commission_rule 不在本批，不动。', '']
     out.append('-- 一、退役')
     for t in RETIRED:
@@ -80,9 +85,22 @@ def render(tables, creates):
     return '\n'.join(out)
 
 
+def render_shared(creates):
+    out = ['-- 与美业共用的表：逐列改成定稿定义（TDD-餐饮域迁移新库 P1-5）。由 gen.py 生成，不要手改。',
+           '-- 列集合须与定稿相同（MODIFY 不加列也不删列，少列即报错停止）；数据保留。缺的唯一键由 run.sh 按 expected-structure.tsv 补。', '']
+    for t, c in creates:
+        if t not in SHARED:
+            continue
+        cols = [l.strip().rstrip(',') for l in c.split('\n') if l.strip().startswith('`')]
+        out.append('ALTER TABLE `%s`\n  ' % t + ',\n  '.join('MODIFY COLUMN ' + x for x in cols) + ';\n')
+    return '\n'.join(out)
+
+
 def main():
     tables, creates, expected = build()
     targets = {HERE / '02-rebuild-food-tables.sql': render(tables, creates),
+               HERE / '03-alter-shared-tables.sql': render_shared(creates),
+               HERE / 'shared.txt': '\n'.join(SHARED) + '\n',
                HERE / 'expected-structure.tsv': '\n'.join(expected) + '\n',
                HERE / 'tables.txt': '\n'.join(tables) + '\n',
                HERE / 'retired.txt': '\n'.join(RETIRED) + '\n'}

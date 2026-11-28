@@ -1,5 +1,6 @@
 -- .61 行业库 n_industry 的餐饮表变更（TDD-餐饮域迁移新库 P1-5）。由 gen.py 从 db/n_industry V1、V2 生成，不要手改。
--- 只在这些表都为空时执行（run.sh 先核对行数并备份）：退役表删除，餐饮 27 张表按定稿结构重建。
+-- 只在这些表都为空时执行（run.sh 先核对行数并备份）：退役表删除，餐饮独有的 25 张表按定稿结构重建。
+-- 与美业共用的 ind_store_policy、ind_config_revision 不在这里，见 03-alter-shared-tables.sql。
 -- 美业表（bty_*）与提成规则 ind_commission_rule 不在本批，不动。
 
 -- 一、退役
@@ -306,64 +307,6 @@ CREATE TABLE `fnb_queue_ticket` (
   KEY `ix_food_ref_1` (`entity_no`,`check_no`,`id`),
   KEY `ix_food_store` (`entity_no`,`store_no`,`updated_at`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='排队号：取号、叫号、过号，入座后关联到店单';
-
-DROP TABLE IF EXISTS `ind_config_revision`;
-CREATE TABLE `ind_config_revision` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
-  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '租户号',
-  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '所属主体编号',
-  `policy_version_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '修订编号',
-  `config_kind` varchar(24) DEFAULT NULL COMMENT '配置类型：STORE_POLICY 门店经营策略、STATION 工位路由、BANQUET_PLAN 宴会方案、MENU 菜单、BUNDLE 套餐、OPTION_GROUP 选项组、MODIFIER 加料',
-  `policy_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '被修订的配置编号（策略号、工位号、宴会方案号等，按配置类型解释）',
-  `store_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '门店编号',
-  `revision_index` int DEFAULT NULL COMMENT '同一配置内单调递增的修订序号',
-  `previous_revision_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '上一修订编号',
-  `booking_ahead_days` int DEFAULT NULL COMMENT '美业门店可提前预约天数',
-  `cancel_rule` json DEFAULT NULL COMMENT '美业预约取消规则',
-  `allowed_modes` json DEFAULT NULL COMMENT '已获准的营业模式集合',
-  `definition_snapshot` json DEFAULT NULL COMMENT '本修订的完整配置内容（工位路由、宴会方案、餐饮策略设置等）',
-  `scope_store_nos` json DEFAULT NULL COMMENT '本修订适用的门店集合（主体级配置）',
-  `schema_version` int DEFAULT NULL COMMENT '配置内容结构版本',
-  `snapshot_hash` char(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '配置内容摘要',
-  `effective_at` datetime(3) DEFAULT NULL COMMENT '计划生效时间',
-  `status` varchar(10) DEFAULT NULL COMMENT '状态：SCHEDULED 待生效、EFFECTIVE 已生效、CANCELLED 已取消',
-  `actor_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '修订人编号',
-  `reason` varchar(255) DEFAULT NULL COMMENT '修订原因',
-  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除：0 = 正常，1 = 已删除',
-  `version` bigint NOT NULL DEFAULT '0' COMMENT '乐观锁版本号，每次修改加 1',
-  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
-  `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',
-  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间，每次修改自动更新',
-  `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_bty_store_policy_version_1` (`tenant_no`,`entity_no`,`policy_version_no`),
-  UNIQUE KEY `uk_bty_store_policy_version_2` (`tenant_no`,`entity_no`,`policy_no`,`revision_index`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='行业配置的修订：门店经营策略、工位路由、宴会方案的版本';
-
-DROP TABLE IF EXISTS `ind_store_policy`;
-CREATE TABLE `ind_store_policy` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
-  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '租户号',
-  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '所属主体编号',
-  `policy_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '策略编号',
-  `store_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '门店编号',
-  `industry_code` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '行业：FNB 餐饮、BEAUTY 美业',
-  `timezone` varchar(32) DEFAULT NULL COMMENT '门店 IANA 时区',
-  `cutover_minute` int DEFAULT NULL COMMENT '营业日切点（距零点的分钟数）',
-  `pay_policy` varchar(16) DEFAULT NULL COMMENT '付款方式：PREPAY 先付后吃、POSTPAY 先吃后付（餐饮）',
-  `capabilities` json DEFAULT NULL COMMENT '门店开启的行业能力码集合',
-  `current_policy_version_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '当前生效的策略修订号，指向 ind_config_revision',
-  `status` varchar(10) DEFAULT NULL COMMENT '状态：ACTIVE 启用、INACTIVE 停用',
-  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除：0 = 正常，1 = 已删除',
-  `version` bigint NOT NULL DEFAULT '0' COMMENT '乐观锁版本号，每次修改加 1',
-  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
-  `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',
-  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间，每次修改自动更新',
-  `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_bty_store_policy_1` (`tenant_no`,`entity_no`,`policy_no`),
-  UNIQUE KEY `uk_ind_store_policy_store_industry` (`tenant_no`,`entity_no`,`store_no`,`industry_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='门店的行业经营策略：餐饮的切日与先付后付，美业的可约天数与取消规则。两个行业共用';
 
 DROP TABLE IF EXISTS `ind_assignment`;
 CREATE TABLE `ind_assignment` (

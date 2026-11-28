@@ -434,7 +434,8 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   - 顺带：`check-generated-docs` 发现 `旧库调用清单.md` 已与源码对不上（本周合并与本 TDD 的改名、换句柄），重跑 `gen-legacy-db-usage.py` 一并提交。
 - 设备出口 D-1～D-6 全部完成。
 - **P1-5 部署脚本**：[`deploy/ume/food-industry-cutover/`](../../deploy/ume/food-industry-cutover/README.md)。.61 的 `n_industry` 尚无应用写入，做法是「确认餐饮相关表全为空 → 备份 → 按定稿结构删表重建 → 逐表核对列与唯一键」，有数据即拒绝执行。定稿结构由 `gen.py` 在一次性库里执行 V1、V2 后 `SHOW CREATE TABLE` 生成，与 `FoodIndustryDatabaseTest` 测过的一致。
-  清单（以 .61 = 设计稿 + `01-industry-kds.sql` 共 17 张为基准）：新建 14 张、结构有变重建 11 张、结构不变重建 2 张、删除退役 3 张（`fnb_kds_event`、`fnb_kds_cursor`、`fnb_station_runtime`）；美业表、`ind_commission_rule`、`n_trade`、旧主库不动。本机按该基准模拟：`check` 差异与清单一致，`apply` 两次均核对通过，有数据时拒绝执行。**现场尚未执行**，须 root 账号先 `check` 核对现场与清单一致再 `apply`。
+  清单（以 .61 = 设计稿 + `01-industry-kds.sql` 共 17 张为基准）：新建 14 张、结构有变重建 11 张、结构不变重建 2 张、删除退役 3 张（`fnb_kds_event`、`fnb_kds_cursor`、`fnb_station_runtime`）；美业表、`ind_commission_rule`、`n_trade`、旧主库不动。2026-11-28 现场只读核对：结构与基准逐行一致；餐饮独有的表全部为空，但**共用表 `ind_store_policy`、`ind_config_revision` 各有 1 行美业数据**（11-24 美业写入，`industry_code` 为空）——.61 上美业已在写行业库这两张表。脚本随之改为：这两张只原地改列、补唯一键（`03-alter-shared-tables.sql`），其余仍「空才重建」。按现场复刻（含美业数据）演练通过。**现场 `apply` 尚未执行**，须 root 账号执行。
+  另：§1.4「美业共用 `industry` 句柄、生产绑定排在美业对齐之后」的前提要按此复核——美业在 .61 已写 `n_industry` 的两张共用表。
 - 待做：JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
