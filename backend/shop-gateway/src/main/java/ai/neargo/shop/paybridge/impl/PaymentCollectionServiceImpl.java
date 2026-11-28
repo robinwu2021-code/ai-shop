@@ -87,6 +87,8 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                         throw new ResponseStatusException(
                                 HttpStatus.UNPROCESSABLE_ENTITY,
                                 "not a normal merchant collection");
+                    boolean sandboxH5 = "SANDBOX_H5".equals(fact.bizType());
+                    if (sandboxH5 && !sandboxH5Allowed(environment, fact)) throw untrustedStore();
                     var binding = fact.schemaVersion() == 2
                             ? canonicalStore(environment, fact) : legacyStore(environment, fact);
                     jdbc.update(
@@ -95,10 +97,13 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                             binding.get("store_no"),
                             binding.get("entity_no"),
                             receipt);
-                    if ("BIZ_COLLECT".equals(fact.bizType())) {
-                        settlements.attachCollection(new PaidCollection(fact.payOrderNo(),
+                    if (sandboxH5 || "BIZ_COLLECT".equals(fact.bizType())) {
+                        boolean attached = settlements.attachCollection(new PaidCollection(fact.payOrderNo(),
                                 (String) binding.get("store_no"), fact.bizNo(), fact.currency(),
                                 fact.paidMinor(), fact.payChannel()));
+                        if (sandboxH5 && !attached) {
+                            throw new ResponseStatusException(HttpStatus.CONFLICT, "test collection has no matching order");
+                        }
                     }
                     events.publish(new PaymentCollectionWork(receipt));
                     return new Accepted(fact.eventId(), hash, "APPLIED", receipt);
@@ -163,7 +168,22 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
         return ("CHECKOUT".equals(fact.sourceType()) && "CHECKOUT_QR".equals(fact.bizType())
                 && properties.getCanonicalCheckoutSources().contains(source))
                 || ("BIZ".equals(fact.sourceType()) && "BIZ_COLLECT".equals(fact.bizType())
-                && properties.getCanonicalBizCollectSources().contains(source));
+                && properties.getCanonicalBizCollectSources().contains(source))
+                || sandboxH5Allowed(environment, fact);
+    }
+
+    private boolean sandboxH5Allowed(String environment, PaymentCollectionFact fact) {
+        return fact.schemaVersion() == 2
+                && "SANDBOX".equals(environment)
+                && "SANDBOX_H5".equals(fact.bizType())
+                && "INTERNAL".equals(fact.sourceType())
+                && "TW".equals(fact.market())
+                && "TWD".equals(fact.currency())
+                && "NEWEBPAY_TEST".equals(fact.payChannel())
+                && fact.amountMinor() == 100
+                && fact.bizNo().matches("OS[A-Z0-9]{6,62}")
+                && fact.storeNo() != null
+                && properties.getSandboxH5Sources().contains(fact.tenantNo() + ":" + fact.payAppId() + ":" + fact.storeNo());
     }
 
     private static Map<String, Object> storeRow(ai.neargo.shop.spi.user.PaymentCollectionFactsPort.StoreFact s) {

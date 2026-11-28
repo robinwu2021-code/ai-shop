@@ -5,6 +5,10 @@ import org.springframework.boot.test.context.TestConfiguration;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.spi.pay.PaidCollectionPort.PaidCollection;
+import tools.jackson.databind.node.ObjectNode;
+
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -195,6 +199,32 @@ class PaymentCollectionHttpMysqlTest {
                         "SELECT COUNT(*) FROM notify_message WHERE receiver_no='USR_SSE_SANDBOX' AND store_no='ST_SSE_SANDBOX'",
                         Integer.class));
             }
+        }
+    }
+
+    @Test
+    void sandboxH5RequiresScopedSubOrderAttachment() throws Exception {
+        try (var f = new PaymentCollectionMysqlFixture();
+                var host = new PaymentCollectionSandboxHost(f, 0)) {
+            var fact = (ObjectNode) f.json.valueToTree(f.fact(803));
+            fact.put("schemaVersion", 2).put("storeId", 101).put("tenantNo", "MAIN")
+                    .put("entityNo", "ENT_SSE_SANDBOX").put("sourceType", "INTERNAL")
+                    .put("bizType", "SANDBOX_H5").put("bizNo", "OS20261128000401").put("storeNo", "ST_SSE_SANDBOX")
+                    .put("payChannel", "NEWEBPAY_TEST").put("amountMinor", 100).put("paidMinor", 100);
+            String raw = f.json.writeValueAsString(fact);
+            assertEquals(403, post(host, raw, "SANDBOX").statusCode());
+            f.properties.setSandboxH5Sources(Set.of("MAIN:42:ST_SSE_SANDBOX"));
+            assertEquals(403, post(host, f.json.writeValueAsString(fact.deepCopy().put("payChannel", "NEWEBPAY")),
+                    "SANDBOX").statusCode());
+            assertEquals(409, post(host, raw, "SANDBOX").statusCode());
+            assertEquals(0, f.jdbc.queryForObject("SELECT COUNT(*) FROM payment_collection_receipt", Integer.class));
+            when(f.settlements.attachCollection(new PaidCollection("P803", "ST_SSE_SANDBOX",
+                    "OS20261128000401", "TWD", 100L, "NEWEBPAY_TEST"))).thenReturn(true);
+            var applied = post(host, raw, "SANDBOX");
+            assertEquals(200, applied.statusCode(), applied.body());
+            assertEquals("APPLIED", f.json.readTree(applied.body()).path("status").asString());
+            assertEquals("DUPLICATE", f.json.readTree(post(host, raw, "SANDBOX").body()).path("status").asString());
+            assertEquals(1, f.jdbc.queryForObject("SELECT COUNT(*) FROM payment_collection_receipt", Integer.class));
         }
     }
 

@@ -131,9 +131,10 @@ public class StoreOrderServiceImpl implements StoreOrderService {
         var plan = plan(scope, cmd);
         String orderNo;
         try {
-            orderNo = unscoped(() -> numbers.transaction(
+            orderNo = unscoped(() -> numbers.withReservation(
                     Map.of(DocumentType.TRADE_ORDER, 1, DocumentType.TRADE_SUBORDER, 1),
-                    () -> insert(scope, cmd, keyHash, plan)));
+                    () -> ownership.withStoreLock(TENANT, scope.entityNo(), scope.storeNo(),
+                            () -> writes.execute(tx -> insert(scope, cmd, keyHash, plan)))));
         } catch (DuplicateKeyException race) {
             // 同一 clientOrderNo 并发双写：唯一键兜住，输的一路读回赢家那单
             var winner = unscoped(() -> byClientNo(scope, cmd.clientOrderNo()));
@@ -231,7 +232,6 @@ public class StoreOrderServiceImpl implements StoreOrderService {
     }
 
     private String insert(Scope scope, CreateCmd cmd, String keyHash, Plan plan) {
-        ownership.lockAndCheck(TENANT, scope.entityNo(), scope.storeNo());
         var orderNo = numbers.takeReserved(DocumentType.TRADE_ORDER);
         var subNo = numbers.takeReserved(DocumentType.TRADE_SUBORDER);
         var order = new OrdOrder();

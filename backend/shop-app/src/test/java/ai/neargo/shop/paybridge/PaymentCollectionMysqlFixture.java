@@ -12,6 +12,7 @@ import ai.neargo.shop.merchant.service.impl.BizIdentityResolverImpl;
 import ai.neargo.shop.message.impl.MessageServiceImpl;
 import ai.neargo.shop.message.mapper.MessageMappers.MessageMapper;
 import ai.neargo.shop.paybridge.impl.PaymentCollectionServiceImpl;
+import ai.neargo.shop.trade.service.StoreOrderSettlementService;
 import ai.neargo.shop.spi.user.PickupQueryPort;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
@@ -78,6 +79,7 @@ final class PaymentCollectionMysqlFixture implements AutoCloseable {
     final UnifiedOutboxFacade facade;
     final OutboxRunner runner;
     final PaymentCollectionService service;
+    final StoreOrderSettlementService settlements = mock(StoreOrderSettlementService.class);
     final PaymentCollectionStream stream;
 
     PaymentCollectionMysqlFixture() throws Exception {
@@ -221,7 +223,7 @@ final class PaymentCollectionMysqlFixture implements AutoCloseable {
                         new StaticListableBeanFactory().getBeanProvider(OutboxPump.class));
         bus.setUnified(facade);
         service = new PaymentCollectionServiceImpl(ds, manager, bus, properties,
-                mock(ai.neargo.shop.trade.service.StoreOrderSettlementService.class),
+                settlements,
                 new ai.neargo.shop.merchant.port.PaymentCollectionFactsPortImpl(new org.springframework.jdbc.core.JdbcTemplate(ds)));
         var props = new OutboxProperties();
         props.setRecoveryInterval(Duration.ofMillis(100));
