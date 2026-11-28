@@ -111,6 +111,23 @@ ADD_COLUMNS = {
         "`employment_assignment_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '人员当时有效的门店任职号（美业服务参与）'",
         "`planned_assignment_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '对应的预约计划安排号（美业服务参与）'",
     ],
+    # 预约修订承担一次变更的整个生命周期（TDD-美业域迁移新库 §2.6 第 4–6 项，用户 2026-11-28 定）：收掉美业的预约准备、当前行、
+    # 预约操作、资源围栏、资源意向、资源决策 6 张表；请求防重与宿主回执走基础能力库的统一防重，不进这里
+    'ord_appointment_revision': [
+        "`based_on_revision` bigint DEFAULT NULL COMMENT '草稿基于的预约修订版本（新约为空）；生效时核对仍是当前版本'",
+        "`actor_kind` varchar(32) DEFAULT NULL COMMENT '发起人类型（同一发起方下的细分，如店主、员工、顾客本人）'",
+        "`action` varchar(24) DEFAULT NULL COMMENT '这次变更做什么：CREATE 新约、RESCHEDULE 改约、RECEPTION_CHANGE 到店后改、CANCEL 取消、NO_SHOW 爽约'",
+        "`frozen_plan` longtext NULL COMMENT '冻结的资源计划（原样作资源命令载荷）；取消、爽约是释放命令'",
+        "`plan_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源计划摘要，核对回执用'",
+        "`command_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源命令号；宿主冻结回调按它找到这一版'",
+        "`command_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源命令摘要'",
+        "`decision_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源许可的决策号；一经许可不再改'",
+        "`permitted_at` datetime(3) DEFAULT NULL COMMENT '许可时刻'",
+        "`valid_until` datetime(3) DEFAULT NULL COMMENT '许可有效截止'",
+        "`reject_code` varchar(64) DEFAULT NULL COMMENT '资源拒绝或释放的原因码'",
+        "`next_retry_at` datetime(3) DEFAULT NULL COMMENT '在途或待释放时下次重试时刻；后台按它扫描，用行锁抢占'",
+        "`applying_key` varchar(32) COLLATE utf8mb4_bin GENERATED ALWAYS AS ((case when (`status` in ('APPLYING','RELEASING')) then `appointment_no` end)) STORED COMMENT '同一预约只有一个变更在途的闸门：在途或待释放时等于预约单号，否则为空'",
+    ],
     'ord_appointment': [
         "`work_order_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '已开的服务工单（行业库）；预约侧的护栏看这一列'",
         # 取消与爽约的凭证（原来只记在美业操作日志里，日志退役后归回预约；TDD-美业域迁移新库 §2.6 第 12 项，用户 2026-11-28 定）
@@ -122,6 +139,8 @@ ADD_COLUMNS = {
 REPLACE_COLUMNS = {
     # 取消原因放宽到 500：取消与爽约请求的原因最长 500 字，原来只记在美业操作日志里（TDD-美业域迁移新库 §2.6 第 12 项）
     ('ord_appointment', 'cancel_reason'): "`cancel_reason` varchar(500) DEFAULT NULL COMMENT '取消或爽约原因'",
+    ('ord_appointment_revision', 'status'): "`status` varchar(10) DEFAULT NULL COMMENT '版本状态：DRAFT 草稿、APPLYING 在途（资源命令已发）、"
+                                            "CONFIRMED 已生效、REJECTED 资源拒绝、RELEASING 待释放、SUPERSEDED 已被新版取代、EXPIRED 草稿过期、DISCARDED 已放弃'",
     # 美业服务参与并入指派表（B-4）：对象类型加 TASK
     ('ind_assignment', 'target_type'): "`target_type` varchar(24) DEFAULT NULL COMMENT '指派对象类型：VISIT 到店单、"
                                        "ITEM 订单行、UNIT 履约单元、APPOINTMENT_ITEM 预约项目行、TASK 美业服务任务'",
@@ -154,6 +173,8 @@ ADD_UNIQUE = {
     'prd_catalog_item': [('tenant_no', 'store_no', 'goods_no', 'catalog_version_no')],
     'prd_fulfillment_requirement': [('requirement_no', 'revision_no')],
     'ind_commission_rule': [('rule_no', 'version_no')],
+    'ord_appointment_revision': [('tenant_no', 'entity_no', 'preview_no'), ('tenant_no', 'entity_no', 'command_no'),
+                                 ('tenant_no', 'entity_no', 'applying_key')],
 }
 # 去掉的唯一约束：prd_store_catalog 一店一行装不下按版本存的目录（定时生效要并存多版）
 DROP_KEYS = {
@@ -163,6 +184,7 @@ ADD_INDEX = {
     'prd_fulfillment_requirement': [('goods_no', 'definition_version')],
     'ind_assignment': [('target_type', 'target_no'), ('entity_no', 'store_no', 'planned_start_at')],
     'ord_visit_attendee': [('check_no',)],
+    'ord_appointment_revision': [('tenant_no', 'status', 'next_retry_at')],
 }
 
 # ---------- D5、D6、D7 的列规则 ----------

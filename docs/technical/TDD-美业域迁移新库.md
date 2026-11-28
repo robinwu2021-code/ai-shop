@@ -398,6 +398,22 @@
 
 **估计**：改动集中在预约协调、预约准备、来源授权、预约恢复、接待几条路径，测试面大（预约、接待、开单、恢复各套）。按「先定稿 DDL 与生成器 → 实体与 Mapper → 一条路径一条路径切 → 两种模式对照」推进。
 
+**执行计划（2026-11-28）**：一步一提交，每步跑相关测试并与上一步对照（独立库模式，`-Dtest=*`）。
+
+| 步 | 内容 | 主要文件 | 验证 |
+|---|---|---|---|
+| **4-1 设计 DDL** ✅ | `ord_appointment_revision` 加 12 列（基于版本、发起人类型、动作、冻结计划与摘要、命令号与摘要、决策号、许可时刻与截止、拒绝码、下次重试）与生成列 `applying_key`（在途或待释放时等于预约单号）；唯一键：预览号、命令号、`applying_key`；重试扫描索引；状态注释扩成 8 个短值。生成器 `ADD_COLUMNS` / `REPLACE_COLUMNS` / `ADD_UNIQUE` / `ADD_INDEX` | `scripts/gen-retail-ddl.py`、`05-n_trade.sql`、美业测试 `db/n_trade/V1` | 本机 MySQL 实建；同一预约第二个在途变更被唯一键拒绝；预约、接待、到店恢复测试无新增失败 |
+| 4-2 实体与 Mapper | `BtyAppointmentArrangement` 加列与状态常量；Mapper：建草稿、草稿 → 在途（核对基于版本仍是当前版本）、按命令号取、生效 / 拒绝 / 待释放、按到期扫描（`FOR UPDATE SKIP LOCKED`） | `entity/BtyAppointmentArrangement`、`BeautyMappers` | 持久层用例 |
+| 4-3 预约准备 | 预览写成 `DRAFT` 修订（冻结计划、计划摘要、过期时刻、发起人），不再写 `bty_appointment_preparation` | `AppointmentPreparation` | 预约业务用例（预览 5 分钟有效、只能本人用、只能用一次） |
+| 4-4 预约协调 | 新建、改约、到店后改：草稿 → `APPLYING` → 调宿主 → `CONFIRMED`（预约根 `current_revision` 前移、旧版 `SUPERSEDED`）/ `REJECTED` / `RELEASING`；去掉当前行、预约操作、资源围栏；预约根上的「在途」`EXISTS` 改看修订 | `AppointmentCoordinator`、`AppointmentPersistence` | 预约、接待用例 |
+| 4-5 来源授权（宿主冻结回调） | 按命令号找修订行作答；许可写决策号、许可时刻与截止，之后不再改（替代决策表的重放） | `AppointmentSourceAuthority` | 来源授权与开单用例 |
+| 4-6 取消与爽约 | 各写一行修订（快照不变、计划是释放命令）；原因与凭证仍写预约根 | `AppointmentCoordinator` | 取消、爽约用例 |
+| 4-7 恢复 | 后台扫描到期的 `APPLYING` / `RELEASING`，行锁抢占，不留租约 | `AppointmentRecovery` | 恢复用例 |
+| 4-8 请求防重 | 操作人 + 键摘要的防重与回执改走基础能力库统一防重 `RequestIdempotencyPort`（已有：同键同人只执行一次、内容不同即冲突、并发重复拒绝）。**待定**：它的回执跟调用方事务走，而回执表在 `n_common`、预约变更在交易库事务里且中间要调宿主——要么只包「受理」那一步（受理即落草稿转在途、返回修订号，之后的进度按修订号查），要么另定。做到这步时先给出方案 | 美业受理入口 | 重放返回同一结果、改了内容的重放被拒 |
+| 4-9 宿主 | 命令防重与回执改用统一防重；占用归属改用 `rsv_booking.current_key`；清掉越界清单里预约的 4 个文件（跨库加锁改读一次 + 版本比对） | 宿主预约与资源命令 | 宿主预约测试；`BeautySourceCheckoutIT` |
+| 4-10 退役 | 删 6 张表的实体、Mapper、数据范围登记与结构校验；`TransactionHandleBoundaryTest` 保持为空 | 美业 | 全仓库 `grep` 无引用 |
+| 4-11 文档与 .61 | 本节改为已实现；`n_trade_v2` 上加列（带 DDL，须用户批准、先备份） | 本 TDD、商品交接 §5 | 两次 `check` |
+
 #### 第 7 项：人员安排改读修订快照（2026-11-28，用户定「用修订快照」）
 - 依据：安排行写在确认预约的交易事务里，搬到行业库就成了跨库写；而每行都是确认那一版修订快照 `assignments` 的照抄（占用编号即该版修订的 `hold_no`），唯一的程序用途是和快照逐条比对。同一事实只留快照一处。
 - 改动：确认预约不再写安排行；开工核对去掉「安排行 = 快照」那段（快照与冻结范围、任务快照、修订占用编号的核对照旧）；按人员筛预约、人员工作量报表改用 `JSON_TABLE` 读当前那一版修订的快照；退役 `BtyAppointmentAssignment`、`AppointmentAssignmentMapper` 与数据范围登记。旧表留在私有迁移里，随第 15 项退役。
