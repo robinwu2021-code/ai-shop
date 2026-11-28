@@ -7,8 +7,8 @@ import java.util.List;
  * route.
  */
 public interface EntityRegistrationProjection {
-  record Target(
-      String tenantNo, String entityNo, String actorRef, String requestNo, long generation) {}
+  /** 一次观察到的提交：请求号 + 操作人认出它是不是主体上最近观察到的那一次 */
+  record Target(String tenantNo, String entityNo, String actorRef, String requestNo) {}
 
   record Approved(
       String entityNo,

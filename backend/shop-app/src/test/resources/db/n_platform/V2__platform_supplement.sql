@@ -220,3 +220,10 @@ CREATE TABLE `mch_operating_entity` (
   UNIQUE KEY `uk_operating_entity_no` (`tenant_no`, `operating_entity_no`),
   KEY `ix_operating_entity_owner` (`tenant_no`, `owner_user_no`)
 ) COMMENT='经营主体：账号名下的经营单位，可选挂证照主体';
+
+-- 主体资料投影的待查（2026-11-28 用户定：放主体上，不另建队列表）。回执已在 pay_onboarding_state / pay_approved_* /
+-- pay_registration_no 四列；pay_onboarding_state=PENDING 的主体即待查队列，定时器按 pay_next_check_at 轮询。
+-- 观察到的提交（请求号 + 操作人）用来认出过时的批准：旧的批准不能消费新一次提交。
+ALTER TABLE `mch_entity` ADD COLUMN `pay_observed_request_no` varchar(64) DEFAULT NULL COMMENT '资料投影：最近观察到的提交请求号（只读副本的待查依据）' AFTER `pay_registration_no`;
+ALTER TABLE `mch_entity` ADD COLUMN `pay_observed_actor` varchar(64) DEFAULT NULL COMMENT '资料投影：最近观察到的提交操作人' AFTER `pay_observed_request_no`;
+ALTER TABLE `mch_entity` ADD COLUMN `pay_next_check_at` bigint NOT NULL DEFAULT 0 COMMENT '资料投影：上次向支付侧核对的时刻（epoch 毫秒），轮询按它排先后' AFTER `pay_observed_actor`;

@@ -11,16 +11,29 @@ import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+/**
+ * 支付侧已核准的主体资料投影到主体上（平台基础库换表 I，2026-11-28 用户定）。
+ *
+ * <p>原 {@code mch_entity_profile_projection} 不进新库：回执并进主体的支付审核副本列
+ * （{@code pay_onboarding_state} PENDING 待查 / APPROVED 已投影 / BLOCKED 与本地事实冲突、
+ * {@code pay_approved_revision}、{@code pay_approved_ref}、{@code pay_registration_no}），
+ * 待查队列就是 {@code pay_onboarding_state=PENDING} 的主体，按 {@code pay_next_check_at} 轮询。
+ * 观察到的提交（请求号 + 操作人）同样放在主体上，用来认出过时的批准。
+ * 同一修订号重复到达按幂等直接返回；旧表的事实摘要与证据引用不再保留（证据以资质记录为准）。
+ * 这些都是支付库数据的副本，写它们不推进主体的版本号；真正改主体资料的那一步照旧推进。
+ */
 @Service
 @ConditionalOnProperty(name = "shop.pay.entity-profiles.enabled", havingValue = "true")
 public class EntityRegistrationProjectionImpl implements EntityRegistrationProjection {
+  static final String PENDING = "PENDING";
+  static final String APPROVED = "APPROVED";
+  static final String BLOCKED = "BLOCKED";
   private final JdbcTemplate jdbc;
   private final MasterDataPort master;
   private final ObjectMapper json;
@@ -46,8 +59,8 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
   @Override
   public boolean managed(String tenant, String entity) {
     return !jdbc.queryForList(
-            "SELECT entity_no FROM mch_entity_profile_projection WHERE tenant_no=? AND entity_no=?"
-                + " FOR UPDATE",
+            "SELECT entity_no FROM mch_entity WHERE tenant_no=? AND entity_no=?"
+                + " AND pay_onboarding_state IS NOT NULL FOR UPDATE",
             tenant,
             entity)
         .isEmpty();
@@ -57,19 +70,12 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
   @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
   public void observe(String tenant, String entity, String actor, String request) {
     ownership.lockEntityExclusiveAndCheck(tenant, entity);
+    // 第一次观察、或观察到新的一次提交：回到待查；同一次提交重复观察不动（已投影的保持已投影）
     jdbc.update(
-        "INSERT IGNORE INTO"
-            + " mch_entity_profile_projection(tenant_no,entity_no,state,observed_actor,observed_request_no)"
-            + " VALUES(?,?,'WAITING',?,?)",
-        tenant,
-        entity,
-        actor,
-        request);
-    jdbc.update(
-        "UPDATE mch_entity_profile_projection SET"
-            + " state='WAITING',observation_generation=observation_generation+1,observed_actor=?,observed_request_no=?"
-            + " WHERE tenant_no=? AND entity_no=? AND (observed_actor<>? OR"
-            + " observed_request_no<>?)",
+        "UPDATE mch_entity SET pay_onboarding_state='" + PENDING + "',pay_observed_actor=?,pay_observed_request_no=?,"
+            + "pay_next_check_at=0 WHERE tenant_no=? AND entity_no=? AND (pay_onboarding_state IS NULL"
+            + " OR pay_observed_actor IS NULL OR pay_observed_request_no IS NULL"
+            + " OR pay_observed_actor<>? OR pay_observed_request_no<>?)",
         actor,
         request,
         tenant,
@@ -81,23 +87,21 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
   @Override
   public List<Target> pending() {
     return jdbc.query(
-        "SELECT tenant_no,entity_no,observed_actor,observed_request_no,observation_generation FROM"
-            + " mch_entity_profile_projection WHERE state='WAITING' ORDER BY"
-            + " next_check_at,entity_no LIMIT 100",
-        (r, n) ->
-            new Target(
-                r.getString(1), r.getString(2), r.getString(3), r.getString(4), r.getLong(5)));
+        "SELECT tenant_no,entity_no,pay_observed_actor,pay_observed_request_no FROM mch_entity"
+            + " WHERE pay_onboarding_state='" + PENDING + "' AND deleted=0 ORDER BY pay_next_check_at,entity_no LIMIT 100",
+        (r, n) -> new Target(r.getString(1), r.getString(2), r.getString(3), r.getString(4)));
   }
 
   @Override
   public void checked(Target target) {
     jdbc.update(
-        "UPDATE mch_entity_profile_projection SET next_check_at=? WHERE tenant_no=? AND entity_no=?"
-            + " AND observation_generation=?",
+        "UPDATE mch_entity SET pay_next_check_at=? WHERE tenant_no=? AND entity_no=?"
+            + " AND pay_observed_request_no=? AND pay_observed_actor=?",
         System.currentTimeMillis(),
         target.tenantNo(),
         target.entityNo(),
-        target.generation());
+        target.requestNo(),
+        target.actorRef());
   }
 
   @Override
@@ -108,30 +112,22 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
     if (!target.entityNo().equals(facts.entityNo())) throw BizException.of(ErrorCode.FORBIDDEN);
     var source =
         jdbc.queryForList(
-            "SELECT market,status,legal_form FROM mch_entity WHERE tenant_no=? AND entity_no=? AND"
+            "SELECT market,status,legal_form,pay_onboarding_state,pay_observed_request_no,pay_observed_actor,"
+                + "pay_approved_revision,pay_registration_no FROM mch_entity WHERE tenant_no=? AND entity_no=? AND"
                 + " deleted=0 FOR UPDATE",
             tenant,
             facts.entityNo());
-    var receipts =
-        jdbc.queryForList(
-            "SELECT * FROM mch_entity_profile_projection WHERE tenant_no=? AND entity_no=? FOR"
-                + " UPDATE",
-            tenant,
-            facts.entityNo());
-    if (source.size() != 1 || receipts.size() != 1) throw BizException.of(ErrorCode.NOT_FOUND);
+    if (source.size() != 1 || source.getFirst().get("pay_onboarding_state") == null)
+      throw BizException.of(ErrorCode.NOT_FOUND);
     var entity = source.getFirst();
-    var receipt = receipts.getFirst();
-    if (((Number) receipt.get("observation_generation")).longValue() != target.generation()
-        || !target.requestNo().equals(receipt.get("observed_request_no"))
-        || !target.actorRef().equals(receipt.get("observed_actor"))) return;
-    long old = ((Number) receipt.get("approved_revision")).longValue();
-    String hash = StoreContentVersion.hash(json.writeValueAsString(facts));
-    if (facts.revision() < old) return;
-    if (facts.revision() == old) {
-      if (!Objects.equals(hash, receipt.get("facts_hash")))
-        throw BizException.of(ErrorCode.CONFLICT);
-      return;
-    }
+    // 过时的批准（观察到的已经是另一次提交）不消费新一次提交
+    if (!target.requestNo().equals(entity.get("pay_observed_request_no"))
+        || !target.actorRef().equals(entity.get("pay_observed_actor"))) return;
+    long old =
+        entity.get("pay_approved_revision") == null
+            ? 0
+            : ((Number) entity.get("pay_approved_revision")).longValue();
+    if (facts.revision() <= old) return;
     String canonical = master.canonicalSubject(facts.legalForm());
     boolean person = "NATURAL_PERSON".equals(canonical);
     if (!"TW".equals(facts.market())
@@ -174,11 +170,10 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
             && !canonical.equals(master.canonicalSubject((String) entity.get("legal_form")))
         || !List.of("PENDING_LICENSE", "ACTIVE").contains(entity.get("status"))
         || identity != null
-            && receipt.get("registration_no") != null
-            && !identity.equals(receipt.get("registration_no"))) {
+            && entity.get("pay_registration_no") != null
+            && !identity.equals(entity.get("pay_registration_no"))) {
       jdbc.update(
-          "UPDATE mch_entity_profile_projection SET state='BLOCKED' WHERE tenant_no=? AND"
-              + " entity_no=?",
+          "UPDATE mch_entity SET pay_onboarding_state='" + BLOCKED + "' WHERE tenant_no=? AND entity_no=?",
           tenant,
           facts.entityNo());
       return;
@@ -225,15 +220,13 @@ public class EntityRegistrationProjectionImpl implements EntityRegistrationProje
           "SYSTEM:PAY_PROFILE",
           "SYSTEM:PAY_PROFILE");
     jdbc.update(
-        "UPDATE mch_entity_profile_projection SET"
-            + " state=?,approved_revision=?,approved_ref=?,facts_hash=?,registration_no=?,evidence_ref=?"
-            + " WHERE tenant_no=? AND entity_no=?",
-        facts.revision() >= targetRevision ? "APPLIED" : "WAITING",
+        "UPDATE mch_entity SET pay_onboarding_state=?,pay_approved_revision=?,pay_approved_ref=?,"
+            + "pay_registration_no=?,pay_synced_at=? WHERE tenant_no=? AND entity_no=?",
+        facts.revision() >= targetRevision ? APPROVED : PENDING,
         facts.revision(),
         facts.revisionRef(),
-        hash,
         identity,
-        facts.evidenceRef(),
+        now,
         tenant,
         facts.entityNo());
   }

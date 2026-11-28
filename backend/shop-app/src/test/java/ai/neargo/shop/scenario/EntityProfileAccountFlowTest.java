@@ -232,7 +232,7 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
                 "file:entity-profile/" + "a".repeat(32)));
     when(pay.result(eq(no), eq("submit-r1"), anyString(), anyString()))
         .thenReturn(Map.of("submittedProfileVersion", 1, "submittedRevisionNo", "PM1-R1"));
-    var target = new Target(tenant, no, "TEST-U", "submit-r1", 1);
+    var target = new Target(tenant, no, "TEST-U", "submit-r1");
     projector.project(target);
     projector.project(target);
     assertThat(
@@ -306,14 +306,14 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
     registration.observe(tenant, no, "TEST-U", "submit-r2");
     when(pay.result(eq(no), eq("submit-r2"), anyString(), anyString()))
         .thenReturn(Map.of("submittedProfileVersion", 2, "submittedRevisionNo", "PM1-R2"));
-    projector.project(new Target(tenant, no, "TEST-U", "submit-r2", 2));
+    projector.project(new Target(tenant, no, "TEST-U", "submit-r2"));
     assertThat(
             jdbc.queryForObject(
                 "SELECT status FROM mch_entity WHERE entity_no=?", String.class, no))
         .isEqualTo("SUSPENDED");
     assertThat(
             jdbc.queryForObject(
-                "SELECT state FROM mch_entity_profile_projection WHERE entity_no=?",
+                "SELECT pay_onboarding_state FROM mch_entity WHERE entity_no=?",
                 String.class,
                 no))
         .isEqualTo("BLOCKED");
@@ -343,7 +343,7 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
     when(pay.result(eq(no), eq("submit-ip1"), anyString(), anyString()))
         .thenReturn(Map.of("submittedProfileVersion", 1, "submittedRevisionNo", "PM-R1"));
     jdbc.update(
-        "UPDATE mch_entity_profile_projection SET next_check_at=0 WHERE entity_no=?", no);
+        "UPDATE mch_entity SET pay_next_check_at=0 WHERE entity_no=?", no);
 
     inProcess.tick();
 
@@ -353,10 +353,10 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
         .isEqualTo("ACTIVE");
     assertThat(
             jdbc.queryForObject(
-                "SELECT state FROM mch_entity_profile_projection WHERE entity_no=?",
+                "SELECT pay_onboarding_state FROM mch_entity WHERE entity_no=?",
                 String.class,
                 no))
-        .isEqualTo("APPLIED");
+        .isEqualTo("APPROVED");
     assertThat(
             jdbc.queryForObject(
                 "SELECT COUNT(*) FROM shedlock WHERE name='entity-registration-projection'",
@@ -399,9 +399,9 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
         jdbc.queryForObject("SELECT tenant_no FROM mch_entity WHERE entity_no=?", String.class, no);
     jdbc.update("UPDATE mch_entity SET market='TW' WHERE entity_no=?", no);
     registration.observe(tenant, no, "U", "r1");
-    var old = new Target(tenant, no, "U", "r1", 1);
+    var old = new Target(tenant, no, "U", "r1");
     registration.observe(tenant, no, "U", "r2");
-    var latest = new Target(tenant, no, "U", "r2", 2);
+    var latest = new Target(tenant, no, "U", "r2");
     when(pay.result(eq(no), eq("r1"), anyString(), anyString()))
         .thenReturn(Map.of("submittedProfileVersion", 1, "submittedRevisionNo", "PM-R1"));
     when(pay.result(eq(no), eq("r2"), anyString(), anyString()))
@@ -416,10 +416,10 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
     projector.project(latest);
     assertThat(
             jdbc.queryForObject(
-                "SELECT state FROM mch_entity_profile_projection WHERE entity_no=?",
+                "SELECT pay_onboarding_state FROM mch_entity WHERE entity_no=?",
                 String.class,
                 no))
-        .isEqualTo("WAITING");
+        .isEqualTo("PENDING");
     when(pay.approvedRegistration(eq(no), anyString()))
         .thenReturn(registrationFacts(no, 2, "Approved R2"));
     projector.project(latest);
@@ -428,10 +428,10 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
         .isEqualTo("Approved R2");
     assertThat(
             jdbc.queryForObject(
-                "SELECT state FROM mch_entity_profile_projection WHERE entity_no=?",
+                "SELECT pay_onboarding_state FROM mch_entity WHERE entity_no=?",
                 String.class,
                 no))
-        .isEqualTo("APPLIED");
+        .isEqualTo("APPROVED");
   }
 
   @Test
@@ -465,10 +465,10 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
           .thenReturn(Map.of("submittedProfileVersion", 1, "submittedRevisionNo", "PM-R1"));
       when(pay.approvedRegistration(eq(no), anyString()))
           .thenReturn(registrationFacts(no, 1, "Different registration"));
-      projector.project(new Target(tenant, no, "U", "r1", 1));
+      projector.project(new Target(tenant, no, "U", "r1"));
       assertThat(
               jdbc.queryForObject(
-                  "SELECT state FROM mch_entity_profile_projection WHERE entity_no=?",
+                  "SELECT pay_onboarding_state FROM mch_entity WHERE entity_no=?",
                   String.class,
                   no))
           .isEqualTo("BLOCKED");
@@ -501,23 +501,23 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
                 CallOutcome.REMOTE_ERROR, "PAY", 404, "fixture missing rejected command"));
     when(pay.approvedRegistration(eq(no), anyString()))
         .thenReturn(registrationFacts(no, 1, "Effective approved R1"));
-    projector.project(new Target(tenant, no, "U", "stale-attempt", 2));
+    projector.project(new Target(tenant, no, "U", "stale-attempt"));
     assertThat(
             jdbc.queryForObject(
                 "SELECT status FROM mch_entity WHERE entity_no=?", String.class, no))
         .isEqualTo("ACTIVE");
     assertThat(
             jdbc.queryForObject(
-                "SELECT approved_revision FROM mch_entity_profile_projection WHERE entity_no=?",
+                "SELECT pay_approved_revision FROM mch_entity WHERE entity_no=?",
                 Long.class,
                 no))
         .isEqualTo(1);
     assertThat(
             jdbc.queryForObject(
-                "SELECT state FROM mch_entity_profile_projection WHERE entity_no=?",
+                "SELECT pay_onboarding_state FROM mch_entity WHERE entity_no=?",
                 String.class,
                 no))
-        .isEqualTo("WAITING");
+        .isEqualTo("PENDING");
   }
 
   private String newEntity(String token) throws Exception {
@@ -743,7 +743,7 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
     when(pay.approvedRegistration(eq(no), anyString())).thenReturn(facts);
     when(pay.result(eq(no), eq("submit-p1"), anyString(), anyString()))
         .thenReturn(Map.of("submittedProfileVersion", 1, "submittedRevisionNo", "PM9-R1"));
-    var target = new Target(tenant, no, "TEST-U", "submit-p1", 1);
+    var target = new Target(tenant, no, "TEST-U", "submit-p1");
     projector.project(target);
     projector.project(target);
     assertThat(jdbc.queryForMap("SELECT status,legal_form,biz_qualification FROM mch_entity WHERE entity_no=?", no))
@@ -755,7 +755,7 @@ class EntityProfileAccountFlowTest extends PlatformEntityCreationFlowTest {
         .singleElement()
         .satisfies(r -> assertThat(r).containsEntry("qual_type", "ID_CARD").containsEntry("qual_number", "A12****789"));
     assertThat(jdbc.queryForObject(
-            "SELECT registration_no FROM mch_entity_profile_projection WHERE entity_no=?", String.class, no))
+            "SELECT pay_registration_no FROM mch_entity WHERE entity_no=?", String.class, no))
         .isNull();
     assertThat(jdbc.queryForList("SELECT * FROM mch_qualification WHERE entity_no=?", no).toString())
         .as("the full ID number is never stored by the host")
