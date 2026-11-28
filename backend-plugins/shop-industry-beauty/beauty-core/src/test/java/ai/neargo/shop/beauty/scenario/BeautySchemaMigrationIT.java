@@ -32,6 +32,26 @@ class BeautySchemaMigrationIT {
     static final boolean SEPARATE_INDUSTRY =
             "separate".equals(System.getProperty("beauty.test.industry-db", "shared"));
     MysqlDataSource source;
+    /**
+     * 本进程建过的一次性库，测试进程退出时统一删掉（原来不删，本机曾积到 7600 多个、五十多 G，把磁盘占满）。
+     * 放在建库的唯一入口这里，所有美业集成测试都覆盖到。
+     */
+    private static final java.util.Set<String> CREATED = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            String url = System.getProperty("beauty.test.admin-url");
+            if (url == null || CREATED.isEmpty()) return;
+            var admin = new MysqlDataSource();
+            admin.setUrl(url);
+            admin.setUser("root");
+            admin.setPassword(System.getenv().getOrDefault("BEAUTY_NATIVE_MYSQL_PASSWORD", ""));
+            try (Connection connection = admin.getConnection(); var statement = connection.createStatement()) {
+                for (String database : CREATED) statement.execute("DROP DATABASE IF EXISTS `" + database + "`");
+            } catch (SQLException ignored) {
+                // 清理失败不影响测试结果；下次手工清
+            }
+        }, "beauty-test-database-cleanup"));
+    }
     /** 独立行业库；共用模式下为 null。 */
     MysqlDataSource industrySource;
 
@@ -51,6 +71,7 @@ class BeautySchemaMigrationIT {
             statement.execute(
                     "CREATE DATABASE `" + database + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin");
         }
+        CREATED.add(database);
         source = new MysqlDataSource();
         source.setUrl(url.replace("/mysql?", "/" + database + "?"));
         source.setUser("root");
@@ -61,6 +82,7 @@ class BeautySchemaMigrationIT {
                 statement.execute("CREATE DATABASE `" + database + "_ind` CHARACTER SET utf8mb4 "
                         + "COLLATE utf8mb4_0900_ai_ci"); // 与 .61 的 n_industry 一致
             }
+            CREATED.add(database + "_ind");
             industrySource = new MysqlDataSource();
             industrySource.setUrl(url.replace("/mysql?", "/" + database + "_ind?"));
             industrySource.setUser("root");
@@ -108,14 +130,31 @@ class BeautySchemaMigrationIT {
         if ("migrate".equals(mode)) {
             if (industrySource == null) industrySharedTables();
             else industryDatabase();
+            tradeTables();
         }
     }
 
     /** 独立行业库：按 {@code db/n_industry} 的 V1、V2 建（已建过就跳过）。 */
-    /** 行业表：独立模式建独立库，共用模式补到主库上。 */
+    /** 行业表：独立模式建独立库，共用模式补到主库上；交易表（交易句柄测试里仍是主库）一并建。 */
     void industryTables() {
         if (industrySource == null) industrySharedTables();
         else industryDatabase();
+        tradeTables();
+    }
+
+    /** 美业搬到门店交易库定稿表的那几张（TDD §2.6 第 1～3 项），按交易库设计 DDL 建在主库上（交易句柄测试里未单独绑定）。 */
+    static final java.util.List<String> TRADE_TABLES =
+            java.util.List.of("ord_appointment", "ord_appointment_item", "ord_appointment_revision");
+
+    void tradeTables() {
+        try {
+            for (String statement : BeautyIndustryDatabaseIT.statements("db/n_trade/V1__trade_design.sql"))
+                for (String table : TRADE_TABLES)
+                    if (statement.startsWith("CREATE TABLE `" + table + "`"))
+                        execute(statement.replaceFirst("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
+        } catch (java.io.IOException | SQLException ex) {
+            throw new AssertionError(ex);
+        }
     }
 
     void industryDatabase() {
@@ -184,7 +223,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         initialize("migrate");
         assertEquals(
-                SEPARATE_INDUSTRY ? 31 : 34, // 美业 30 张 + bty_flyway_history；共用行业库时再加 ind_store_policy、ind_config_revision、ind_assignment
+                SEPARATE_INDUSTRY ? 34 : 37, // 美业 30 张 + bty_flyway_history + 交易表 ord_appointment 三张；共用行业库时再加 ind_store_policy、ind_config_revision、ind_assignment
                 count(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE"
                             + " table_schema=DATABASE()"));

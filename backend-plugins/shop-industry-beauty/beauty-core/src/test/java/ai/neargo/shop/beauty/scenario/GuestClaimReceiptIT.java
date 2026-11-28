@@ -142,14 +142,14 @@ class GuestClaimReceiptIT extends BeautyExecutionFixture {
             appointment("DIRECT", "S"); appointment("GUEST", "S"); appointment("ANON", "S");
             appointment("FOREIGN_STORE", "OTHER"); appointment("DELETED", "S"); appointment("OTHER_USER", "S");
             appointment("FOREIGN_ENTITY", "S");
-            sql.update("UPDATE bty_appointment SET entity_no='OTHER',guest_ref='GUE1' "
+            sql.update("UPDATE ord_appointment SET entity_no='OTHER',guest_ref='GUE1' "
                     + "WHERE appointment_no='FOREIGN_ENTITY'");
-            sql.update("UPDATE bty_appointment SET customer_ref='U1' WHERE appointment_no='DIRECT'");
-            sql.update("UPDATE bty_appointment SET guest_ref='GUE1' "
+            sql.update("UPDATE ord_appointment SET customer_ref='U1' WHERE appointment_no='DIRECT'");
+            sql.update("UPDATE ord_appointment SET guest_ref='GUE1' "
                     + "WHERE appointment_no IN ('GUEST','FOREIGN_STORE','DELETED')");
-            sql.update("UPDATE bty_appointment SET deleted=1 WHERE appointment_no='DELETED'");
-            sql.update("UPDATE bty_appointment SET guest_ref='BTG-OLD' WHERE appointment_no='ANON'");
-            sql.update("UPDATE bty_appointment SET customer_ref='U2' WHERE appointment_no='OTHER_USER'");
+            sql.update("UPDATE ord_appointment SET deleted=1 WHERE appointment_no='DELETED'");
+            sql.update("UPDATE ord_appointment SET guest_ref='BTG-OLD' WHERE appointment_no='ANON'");
+            sql.update("UPDATE ord_appointment SET customer_ref='U2' WHERE appointment_no='OTHER_USER'");
             consumer("U1"); var service = c.getBean(AppointmentService.class);
             var page = service.listMyAppointments("U1", new MyAppointmentQuery(null, null, null, 1, 1));
             assertThat(page.total()).isEqualTo(2); assertThat(page.records()).hasSize(1);

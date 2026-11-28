@@ -226,7 +226,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             assertThat(next.appointmentNo()).isEqualTo(first.appointmentNo());
             assertThat(next.status()).isEqualTo("CONFIRMED");
             assertThat(owner.replayed).contains(accepted);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment", Integer.class)).isEqualTo(1);
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM ord_appointment", Integer.class)).isEqualTo(1);
         });
     }
     @Test
@@ -249,7 +249,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             assertThat(output).contains("beauty.appointment.recovery_handoff operationNo="
                     + pending.operationNo() + " nextAction=AUTHENTICATED_SAME_KEY_REPLAY");
             assertThat(owner.accepts).hasSize(1);
-            assertThat(sql.queryForObject("SELECT status FROM bty_appointment", String.class)).isEqualTo("HELD");
+            assertThat(sql.queryForObject("SELECT status FROM ord_appointment", String.class)).isEqualTo("HELD");
             login(LoginUser.consumer("USR1", "customer"));
             assertThat(service.createMyAppointment("USR1", req, "UNKNOWN").status()).isEqualTo("CONFIRMED");
         });
@@ -274,9 +274,9 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             var accepted = service.changeMyAppointment("USR1", root.appointmentNo(),
                     new ChangeAppointmentReq(change.previewNo(), root.revision(), "change", null), "CHANGE");
             assertThat(accepted.status()).isEqualTo("CONFIRMED");
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_arrangement",
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM ord_appointment_revision",
                     Integer.class)).isEqualTo(2);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_item", Integer.class)).isEqualTo(2);
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM ord_appointment_item", Integer.class)).isEqualTo(2);
             assertThatThrownBy(() -> service.cancelMyAppointment("USR1", root.appointmentNo(),
                     new CancelAppointmentReq(root.revision(), "old"), "STALE")).isInstanceOf(BizException.class);
         });
@@ -421,7 +421,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             assertThatThrownBy(() -> service.cancelAppointment("E", "S", "OWNER_USER", root.appointmentNo(),
                     new CancelAppointmentReq(root.revision(), "revoked"), "REVOKED")).isInstanceOf(BizException.class);
             allowed = true;
-            sql.update("UPDATE bty_appointment SET start_at=?", T0.minusDays(1));
+            sql.update("UPDATE ord_appointment SET start_at=?", T0.minusDays(1));
             var noShow = service.recordNoShow("E", "S", "OWNER_USER", root.appointmentNo(),
                     new RecordNoShowReq(root.revision(), "not arrived", "EVIDENCE"), "NO_SHOW");
             assertThat(noShow.status()).isEqualTo("NO_SHOW");
@@ -454,7 +454,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
                     .isInstanceOf(BizException.class);
             var created = service.createAppointment("E", "S", "M1",
                     new CreateAppointmentReq(preview.previewNo(), null, List.of(), null, "GUE1"), "guest");
-            assertThat(sql.queryForObject("SELECT guest_ref FROM bty_appointment WHERE appointment_no=?",
+            assertThat(sql.queryForObject("SELECT guest_ref FROM ord_appointment WHERE appointment_no=?",
                     String.class, created.appointmentNo())).isEqualTo("GUE1");
             var beforeClaim = service.previewAppointment("E", "S", "M1", request);
             guestClaimed = true;
@@ -492,7 +492,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             assertThat(replay.appointmentNo()).isEqualTo(original.appointmentNo());
             assertThat(replay.operationNo()).isEqualTo(original.operationNo());
             assertThat(replay.operationState()).isEqualTo("SUCCEEDED");
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment", Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM ord_appointment", Integer.class)).isOne();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation", Integer.class)).isOne();
             assertThatThrownBy(() -> service.createAppointment("E", "S", "M1",
                     new CreateAppointmentReq(preview.previewNo(), null, List.of(), null, "OTHER"), "ORIGINAL"))
@@ -572,7 +572,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             failTerminal = true;
             assertThatThrownBy(() -> service.createMyAppointment("USR1", req, "TERMINAL"))
                     .hasMessage("source-terminal-rollback");
-            assertThat(sql.queryForObject("SELECT status FROM bty_appointment", String.class)).isEqualTo("HELD");
+            assertThat(sql.queryForObject("SELECT status FROM ord_appointment", String.class)).isEqualTo("HELD");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_resource_fence "
                     + "WHERE active_intent_no IS NOT NULL", Integer.class)).isOne();
             failTerminal = false;
@@ -681,7 +681,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             }
             assertThat(sql.queryForObject("SELECT state FROM bty_appointment_operation WHERE operation_no=?",
                     String.class, terminal.operationNo())).isEqualTo("SUCCEEDED");
-            assertThat(sql.queryForObject("SELECT status FROM bty_appointment WHERE appointment_no=?",
+            assertThat(sql.queryForObject("SELECT status FROM ord_appointment WHERE appointment_no=?",
                     String.class, terminal.appointmentNo())).isEqualTo("CONFIRMED");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_operation "
                     + "WHERE receipt IS NULL AND state='PENDING'", Integer.class)).isEqualTo(51);
@@ -700,8 +700,9 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
         Flyway.configure().dataSource(database.source).locations("classpath:db/industry/beauty")
                 .table("bty_flyway_history").target("2").baselineVersion("0").baselineOnMigrate(true)
                 .createSchemas(false).placeholderReplacement(false).load().migrate();
+        database.tradeTables(); // 预约在门店交易库的定稿表（§2.6）：没有安排记录的旧预约照样能读
         appointment("LEGACY", "S");
-        sql.update("UPDATE bty_appointment SET customer_ref='USR1'");
+        sql.update("UPDATE ord_appointment SET customer_ref='USR1'");
         database.initialize("migrate");
         new ResourceDatabasePopulator(new ClassPathResource("platform-write-fixture.sql")).execute(database.source);
         business().run(context -> {
@@ -715,7 +716,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             assertThat((Object) detail.appointment().arrangementRevision()).isNull();
             assertThat(detail.items()).isEmpty();
             assertThat(detail.availableActions()).isEmpty();
-            assertThat(sql.queryForObject("SELECT hold_no FROM bty_appointment", String.class)).isEqualTo("HOLD");
+            assertThat(sql.queryForObject("SELECT hold_no FROM ord_appointment", String.class)).isEqualTo("HOLD");
             login(LoginUser.consumer("USR1", "customer"));
             assertThat(service.getMyAppointment("USR1", "LEGACY").availableActions()).isEmpty();
             assertThatThrownBy(() -> service.cancelMyAppointment("USR1", "LEGACY",

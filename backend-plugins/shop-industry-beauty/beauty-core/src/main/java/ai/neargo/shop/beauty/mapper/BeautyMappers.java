@@ -158,7 +158,7 @@ public final class BeautyMappers {
         /** 报表（BAPI-119）：窗口内按状态计数；start_at 以 UTC 存 */
         @Select(
                 """
-                SELECT status AS status, COUNT(*) AS n FROM bty_appointment
+                SELECT status AS status, COUNT(*) AS n FROM ord_appointment
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0
                 AND start_at>=#{from} AND start_at<#{to}
                 GROUP BY status
@@ -173,10 +173,10 @@ public final class BeautyMappers {
         @Select(
                 """
                 SELECT a.personnel_no AS personnel_no, COUNT(DISTINCT i.appointment_item_no) AS n
-                FROM bty_appointment ap
+                FROM ord_appointment ap
                 JOIN bty_appointment_current c ON c.tenant_no=ap.tenant_no AND c.entity_no=ap.entity_no
                   AND c.appointment_no=ap.appointment_no AND c.deleted=0
-                JOIN bty_appointment_item i ON i.tenant_no=ap.tenant_no AND i.entity_no=ap.entity_no
+                JOIN ord_appointment_item i ON i.tenant_no=ap.tenant_no AND i.entity_no=ap.entity_no
                   AND i.appointment_no=ap.appointment_no AND i.deleted=0
                 JOIN bty_appointment_assignment a ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no
                   AND a.appointment_item_no=i.appointment_item_no AND a.appointment_revision=c.arrangement_revision
@@ -196,8 +196,8 @@ public final class BeautyMappers {
         @Select(
                 """
                 SELECT i.sku_no AS sku_no, COUNT(*) AS n
-                FROM bty_appointment ap
-                JOIN bty_appointment_item i ON i.tenant_no=ap.tenant_no AND i.entity_no=ap.entity_no
+                FROM ord_appointment ap
+                JOIN ord_appointment_item i ON i.tenant_no=ap.tenant_no AND i.entity_no=ap.entity_no
                   AND i.appointment_no=ap.appointment_no AND i.deleted=0
                 WHERE ap.tenant_no='MAIN' AND ap.entity_no=#{entityNo} AND ap.store_no=#{storeNo} AND ap.deleted=0
                 AND ap.status='CHECKED_IN' AND ap.start_at>=#{from} AND ap.start_at<#{to}
@@ -212,16 +212,16 @@ public final class BeautyMappers {
         /** Conversion advances the revision and records the work order number; execution still has not started. */
         @Update(
                 """
-                UPDATE bty_appointment SET version=version+1,work_order_no=#{workOrderNo},
+                UPDATE ord_appointment SET version=version+1,work_order_no=#{workOrderNo},
                   updated_by=#{actorNo},updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                 AND appointment_no=#{appointmentNo} AND deleted=0 AND version=#{expectedVersion}
                 AND status='CHECKED_IN' AND checked_in_at IS NOT NULL
-                AND EXISTS (SELECT 1 FROM bty_appointment_current c WHERE c.tenant_no=bty_appointment.tenant_no
-                  AND c.entity_no=bty_appointment.entity_no AND c.appointment_no=bty_appointment.appointment_no
+                AND EXISTS (SELECT 1 FROM bty_appointment_current c WHERE c.tenant_no=ord_appointment.tenant_no
+                  AND c.entity_no=ord_appointment.entity_no AND c.appointment_no=ord_appointment.appointment_no
                   AND c.deleted=0 AND c.operation_no IS NULL)
-                AND EXISTS (SELECT 1 FROM bty_appointment_resource_fence f WHERE f.tenant_no=bty_appointment.tenant_no
-                  AND f.entity_no=bty_appointment.entity_no AND f.appointment_no=bty_appointment.appointment_no
+                AND EXISTS (SELECT 1 FROM bty_appointment_resource_fence f WHERE f.tenant_no=ord_appointment.tenant_no
+                  AND f.entity_no=ord_appointment.entity_no AND f.appointment_no=ord_appointment.appointment_no
                   AND f.deleted=0 AND f.active_intent_no IS NULL)
                 AND work_order_no IS NULL AND #{workOrderNo} IS NOT NULL
                 """)
@@ -237,7 +237,7 @@ public final class BeautyMappers {
         /** 撤销开单标记：走入单在两步之间越过服务开始时间时，预约回到「未开单」，交给重新排期。 */
         @Update(
                 """
-                UPDATE bty_appointment SET version=version+1,work_order_no=NULL,updated_by=#{actorNo},updated_at=#{updatedAt}
+                UPDATE ord_appointment SET version=version+1,work_order_no=NULL,updated_by=#{actorNo},updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                 AND appointment_no=#{appointmentNo} AND deleted=0 AND work_order_no=#{workOrderNo}
                 """)
@@ -252,7 +252,7 @@ public final class BeautyMappers {
         /** Existing order roots forbid reception replacement even before actual task execution; read from the appointment (V9.1). */
         @Select(
                 """
-                SELECT COUNT(*) FROM bty_appointment WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                SELECT COUNT(*) FROM ord_appointment WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                 AND store_no=#{storeNo} AND appointment_no=#{appointmentNo} AND deleted=0
                 AND work_order_no IS NOT NULL
                 """)
@@ -264,7 +264,7 @@ public final class BeautyMappers {
         /** 显式父链范围读取；不会按当前人员反推历史安排。 */
         @Select(
                 """
-                SELECT * FROM bty_appointment WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND
+                SELECT * FROM ord_appointment WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND
                 store_no=#{storeNo} AND deleted=0 AND appointment_no=#{appointmentNo} FOR UPDATE
                 """)
         BtyAppointment selectScopedForUpdate(
@@ -275,13 +275,13 @@ public final class BeautyMappers {
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
         @Update(
                 """
-                UPDATE bty_appointment SET start_at=#{startAt}, end_at=#{endAt},hold_no=#{holdNo},
+                UPDATE ord_appointment SET start_at=#{startAt}, end_at=#{endAt},hold_no=#{holdNo},
                 version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
                 AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
-                  WHERE f.tenant_no=bty_appointment.tenant_no AND f.entity_no=bty_appointment.entity_no
-                  AND f.appointment_no=bty_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
+                  WHERE f.tenant_no=ord_appointment.tenant_no AND f.entity_no=ord_appointment.entity_no
+                  AND f.appointment_no=ord_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
                 AND status=#{expectedStatus} AND status IN ('HELD','CONFIRMED')
                 AND #{startAt} IS NOT NULL AND #{endAt}> #{startAt}
                 AND #{holdNo} IS NOT NULL AND LENGTH(TRIM(#{holdNo}))>0 AND #{actorNo} IS NOT NULL AND
@@ -302,13 +302,13 @@ public final class BeautyMappers {
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
         @Update(
                 """
-                UPDATE bty_appointment SET status=#{targetStatus}, version=version+1, updated_by=#{actorNo},
+                UPDATE ord_appointment SET status=#{targetStatus}, version=version+1, updated_by=#{actorNo},
                 updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
                 AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
-                  WHERE f.tenant_no=bty_appointment.tenant_no AND f.entity_no=bty_appointment.entity_no
-                  AND f.appointment_no=bty_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
+                  WHERE f.tenant_no=ord_appointment.tenant_no AND f.entity_no=ord_appointment.entity_no
+                  AND f.appointment_no=ord_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
                 AND status=#{expectedStatus}
                 AND ((status='HELD' AND #{targetStatus} IN ('CANCELLED','EXPIRED'))
                 OR (status='HELD' AND #{targetStatus}='CONFIRMED' AND hold_no IS NOT NULL AND
@@ -329,13 +329,13 @@ public final class BeautyMappers {
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
         @Update(
                 """
-                UPDATE bty_appointment SET status='CHECKED_IN', checked_in_at=#{checkedInAt}, version=version+1,
+                UPDATE ord_appointment SET status='CHECKED_IN', checked_in_at=#{checkedInAt}, version=version+1,
                 updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
                 AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
-                  WHERE f.tenant_no=bty_appointment.tenant_no AND f.entity_no=bty_appointment.entity_no
-                  AND f.appointment_no=bty_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
+                  WHERE f.tenant_no=ord_appointment.tenant_no AND f.entity_no=ord_appointment.entity_no
+                  AND f.appointment_no=ord_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
                 AND status=#{expectedStatus} AND status='CONFIRMED' AND checked_in_at IS NULL
                 AND #{checkedInAt} IS NOT NULL AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND
                 #{updatedAt} IS NOT NULL
@@ -368,7 +368,7 @@ public final class BeautyMappers {
         @Update(
                 """
                 UPDATE bty_appointment_resource_fence f
-                JOIN bty_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
+                JOIN ord_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
                   AND p.store_no=f.store_no AND p.appointment_no=f.appointment_no AND p.deleted=0
                 JOIN bty_appointment_resource_intent i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
                   AND i.store_no=f.store_no AND i.appointment_no=f.appointment_no AND i.deleted=0
@@ -404,7 +404,7 @@ public final class BeautyMappers {
                 JOIN bty_appointment_resource_intent i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
                   AND i.store_no=f.store_no AND i.appointment_no=f.appointment_no
                   AND i.intent_no=f.active_intent_no AND i.deleted=0
-                JOIN bty_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
+                JOIN ord_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
                   AND p.store_no=f.store_no AND p.appointment_no=f.appointment_no AND p.deleted=0
                 SET f.active_intent_no=NULL, f.version=f.version+1,
                     f.updated_by=#{actorNo}, f.updated_at=#{updatedAt}
@@ -444,7 +444,7 @@ public final class BeautyMappers {
                 JOIN bty_appointment_resource_fence f ON f.tenant_no=i.tenant_no AND f.entity_no=i.entity_no
                   AND f.store_no=i.store_no AND f.appointment_no=i.appointment_no
                   AND f.active_intent_no=i.intent_no AND f.deleted=0
-                JOIN bty_appointment p ON p.tenant_no=i.tenant_no AND p.entity_no=i.entity_no
+                JOIN ord_appointment p ON p.tenant_no=i.tenant_no AND p.entity_no=i.entity_no
                   AND p.store_no=i.store_no AND p.appointment_no=i.appointment_no AND p.deleted=0
                 SET i.phase_code=1, i.decision_no=#{decisionNo}, i.issued_at=#{issuedAt},
                     i.valid_until=#{validUntil}, i.version=i.version+1,
@@ -483,7 +483,7 @@ public final class BeautyMappers {
                 JOIN bty_appointment_resource_fence f ON f.tenant_no=i.tenant_no AND f.entity_no=i.entity_no
                   AND f.store_no=i.store_no AND f.appointment_no=i.appointment_no
                   AND f.active_intent_no=i.intent_no AND f.deleted=0
-                JOIN bty_appointment p ON p.tenant_no=i.tenant_no AND p.entity_no=i.entity_no
+                JOIN ord_appointment p ON p.tenant_no=i.tenant_no AND p.entity_no=i.entity_no
                   AND p.store_no=i.store_no AND p.appointment_no=i.appointment_no AND p.deleted=0
                 SET i.phase_code=3, i.terminal_code=#{terminalCode}, i.terminal_hash=#{terminalHash},
                     i.version=i.version+1, i.updated_by=#{actorNo}, i.updated_at=#{updatedAt}
@@ -515,9 +515,9 @@ public final class BeautyMappers {
         @Select(
                 """
                 SELECT a.* FROM bty_appointment_assignment a
-                JOIN bty_appointment_item i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
+                JOIN ord_appointment_item i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
                 AND i.appointment_item_no=a.appointment_item_no AND i.deleted=0
-                JOIN bty_appointment p ON p.tenant_no=i.tenant_no AND p.entity_no=i.entity_no
+                JOIN ord_appointment p ON p.tenant_no=i.tenant_no AND p.entity_no=i.entity_no
                 AND p.appointment_no=i.appointment_no AND p.deleted=0
                 WHERE a.tenant_no='MAIN' AND a.entity_no=#{entityNo} AND a.deleted=0
                 AND p.store_no=#{storeNo} AND p.appointment_no=#{appointmentNo}
@@ -1540,7 +1540,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
     public interface AppointmentCurrentMapper extends TradeTableMapper<BtyAppointmentCurrent> {
         @Select(
                 """
-                SELECT c.* FROM bty_appointment_current c JOIN bty_appointment a
+                SELECT c.* FROM bty_appointment_current c JOIN ord_appointment a
                 ON a.tenant_no=c.tenant_no AND a.entity_no=c.entity_no AND a.appointment_no=c.appointment_no
                 WHERE c.tenant_no='MAIN' AND c.entity_no=#{entityNo} AND c.appointment_no=#{appointmentNo}
                 AND c.deleted=0 AND a.deleted=0 AND a.store_no=#{storeNo} FOR UPDATE
@@ -1562,7 +1562,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 
                 JOIN bty_appointment_preparation p ON p.tenant_no=a.tenant_no AND p.entity_no=a.entity_no
                   AND p.store_no=a.store_no AND p.preview_no=a.preview_no AND p.deleted=0
-                JOIN bty_appointment root ON root.tenant_no=#{tenantNo} AND root.entity_no=#{entityNo}
+                JOIN ord_appointment root ON root.tenant_no=#{tenantNo} AND root.entity_no=#{entityNo}
                   AND root.store_no=#{storeNo} AND root.appointment_no=#{appointmentNo} AND root.deleted=0
                 JOIN bty_appointment_resource_intent i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
                   AND i.store_no=a.store_no AND i.appointment_no=a.appointment_no AND i.deleted=0

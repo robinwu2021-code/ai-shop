@@ -21,7 +21,7 @@ class AppointmentPersistenceIT extends BeautyExecutionFixture {
     void database() throws Exception {
         initialize("BtyAppointment", "BtyAppointmentItem", "BtyAppointmentAssignment");
         appointment("A", "S");
-        seed("bty_appointment_item", "appointment_item_no", "I", "appointment_no", "A", "sku_no", "SKU",
+        seed("ord_appointment_item", "appointment_item_no", "I", "appointment_no", "A", "sku_no", "SKU",
                 "definition_version_no", "DV", "qty", 1, "uom", "COUNT", "sequence_no", 0,
                 "requested_personnel_no", "REQUESTED", "execution_snapshot", "{}");
     }
@@ -47,7 +47,7 @@ class AppointmentPersistenceIT extends BeautyExecutionFixture {
                     "E", "S", "A", 1L);
             assertThat(before).hasSize(1);
             assertThat(after).hasSize(1);
-            assertThat(sql.queryForObject("SELECT requested_personnel_no FROM bty_appointment_item", String.class))
+            assertThat(sql.queryForObject("SELECT requested_personnel_no FROM ord_appointment_item", String.class))
                     .isEqualTo("REQUESTED");
             assertThat(sql.queryForList("SELECT personnel_no FROM bty_appointment_assignment "
                     + "ORDER BY appointment_revision", String.class)).containsExactly("FIRST", "NEXT");
@@ -58,7 +58,7 @@ class AppointmentPersistenceIT extends BeautyExecutionFixture {
         runner().run(context -> {
             assertThat(tx(context, () -> change(context, "OTHER", 0, "CONFIRMED"))).isEqualTo(0);
             assertThat(tx(context, () -> change(context, "S", 7, "CONFIRMED"))).isEqualTo(0);
-            sql.execute("UPDATE bty_appointment SET status='CHECKED_IN'");
+            sql.execute("UPDATE ord_appointment SET status='CHECKED_IN'");
             assertThat(tx(context, () -> change(context, "S", 0, "CHECKED_IN"))).isEqualTo(0);
         });
     }
@@ -68,10 +68,10 @@ class AppointmentPersistenceIT extends BeautyExecutionFixture {
         runner().run(context -> {
             assertThat((List<?>) call(context, "AppointmentAssignmentMapper", "selectByAppointmentRevision",
                     "E", "OTHER", "A", 0L)).isEmpty();
-            sql.execute("UPDATE bty_appointment_item SET entity_no='FOREIGN'");
+            sql.execute("UPDATE ord_appointment_item SET entity_no='FOREIGN'");
             assertThat((List<?>) call(context, "AppointmentAssignmentMapper", "selectByAppointmentRevision",
                     "E", "S", "A", 0L)).isEmpty();
-            sql.execute("UPDATE bty_appointment_item SET entity_no='E',deleted=1");
+            sql.execute("UPDATE ord_appointment_item SET entity_no='E',deleted=1");
             assertThat((List<?>) call(context, "AppointmentAssignmentMapper", "selectByAppointmentRevision",
                     "E", "S", "A", 0L)).isEmpty();
         });
@@ -85,17 +85,17 @@ class AppointmentPersistenceIT extends BeautyExecutionFixture {
                     "CONFIRMED", T0, "ACTOR", T0))).isEqualTo(1);
             assertThat(tx(context, () -> call(context, "AppointmentMapper", "markArrived", "E", "S", "A", 1L,
                     "CHECKED_IN", T0, "ACTOR", T0))).isEqualTo(0);
-            assertThat(sql.queryForObject("SELECT status FROM bty_appointment", String.class)).isEqualTo("CHECKED_IN");
-            assertThat(sql.queryForObject("SELECT updated_by FROM bty_appointment", String.class)).isEqualTo("ACTOR");
+            assertThat(sql.queryForObject("SELECT status FROM ord_appointment", String.class)).isEqualTo("CHECKED_IN");
+            assertThat(sql.queryForObject("SELECT updated_by FROM ord_appointment", String.class)).isEqualTo("ACTOR");
         });
     }
     @Test
     void confirmationRequiresExistingHoldAndKnownStateTransition() {
         runner().run(context -> {
-            sql.execute("UPDATE bty_appointment SET status='HELD',hold_no=NULL");
+            sql.execute("UPDATE ord_appointment SET status='HELD',hold_no=NULL");
             assertThat(tx(context, () -> call(context, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
                     "HELD", "CONFIRMED", "ACTOR", T0))).isEqualTo(0);
-            sql.execute("UPDATE bty_appointment SET hold_no='H'");
+            sql.execute("UPDATE ord_appointment SET hold_no='H'");
             assertThat(tx(context, () -> call(context, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
                     "HELD", "CONFIRMED", "ACTOR", T0))).isEqualTo(1);
         });
@@ -108,8 +108,8 @@ class AppointmentPersistenceIT extends BeautyExecutionFixture {
                 assertThat(change(context, "S", 0, "CONFIRMED")).isEqualTo(1);
                 throw new IllegalStateException("rollback");
             })).hasMessage("rollback");
-            assertThat(sql.queryForObject("SELECT hold_no FROM bty_appointment", String.class)).isEqualTo("HOLD");
-            assertThat(sql.queryForObject("SELECT version FROM bty_appointment", Long.class)).isZero();
+            assertThat(sql.queryForObject("SELECT hold_no FROM ord_appointment", String.class)).isEqualTo("HOLD");
+            assertThat(sql.queryForObject("SELECT version FROM ord_appointment", Long.class)).isZero();
         });
     }
     @Test
@@ -137,7 +137,7 @@ class AppointmentPersistenceIT extends BeautyExecutionFixture {
                     "appointmentNo", "A", "skuNo", "SKU", "definitionVersionNo", "DV", "qty", BigDecimal.ONE,
                     "uom", "COUNT", "sequenceNo", 1, "executionSnapshot", "{}");
             assertThat(tx(context, () -> mapper(context, "AppointmentItemMapper").insert(item))).isOne();
-            assertThat(sql.queryForObject("SELECT created_by FROM bty_appointment_item "
+            assertThat(sql.queryForObject("SELECT created_by FROM ord_appointment_item "
                     + "WHERE appointment_item_no='AUDIT'", String.class)).isEqualTo("ACTOR");
             DataScopeContext.set(DataScopeSpec.of(ScopeDim.MERCHANT, Set.of("FOREIGN")));
             assertThat(mapper(context, "AppointmentItemMapper").selectList(null)).isEmpty();

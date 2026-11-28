@@ -9,8 +9,14 @@ import lombok.Setter;
 /** 预约单；保存本域事实，公共人员/资源/资金仅保存引用。 */
 @Getter
 @Setter
-@TableName("bty_appointment")
+@TableName("ord_appointment")
 public class BtyAppointment extends BaseEntity {
+    /** 存在门店交易库 {@code ord_appointment}（TDD-美业域迁移新库 §2.6 第 1 项）；预约类型固定 SERVICE（餐饮订位是 TABLE）。共用表的 {@code tenant_no} 没有库默认值，平台审计也不填它：在这里带上。 */
+    public BtyAppointment() {
+        setTenantNo("MAIN");
+    }
+    /** 预约类型：美业服务预约（同表的餐饮订位是 TABLE）。 */
+    private String appointmentKind = "SERVICE";
     /** 可信经营主体数据域。 */
     private String entityNo;
     /** 预约号。 */

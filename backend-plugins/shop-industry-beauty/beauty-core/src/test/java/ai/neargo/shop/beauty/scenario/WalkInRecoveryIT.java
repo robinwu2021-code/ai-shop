@@ -63,7 +63,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
     @Test void createHeadLockWaitCrossingResourceStartCannotAcceptCommand() {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
-            sql.execute("CREATE TRIGGER fail_root BEFORE INSERT ON bty_appointment FOR EACH ROW "
+            sql.execute("CREATE TRIGGER fail_root BEFORE INSERT ON ord_appointment FOR EACH ROW "
                     + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='controlled root rollback'");
             try {
                 assertThatThrownBy(() -> c.getBean(ReceptionService.class)
@@ -119,7 +119,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
                     assertThat(result.failureCode()).isEqualTo("ARRIVAL_REQUIRES_RESCHEDULE");
                 }
             } catch (Exception failure) { throw new AssertionError(failure); }
-            for (String table : List.of("bty_appointment", "bty_appointment_resource_fence",
+            for (String table : List.of("ord_appointment", "bty_appointment_resource_fence",
                     "bty_appointment_current", "bty_appointment_preparation", "bty_appointment_operation")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
             }
@@ -159,7 +159,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
             }
             assertThat(latest.get("phase")).isEqualTo("OPEN_PENDING");
             // Ordinary 052 retains its existing before-end rule, independent of the 048 frozen-start contract.
-            long revision = sql.queryForObject("SELECT version FROM bty_appointment", Long.class);
+            long revision = sql.queryForObject("SELECT version FROM ord_appointment", Long.class);
             var ordinary = c.getBean(AppointmentService.class).openWorkOrderFromAppointment("E", "S", "A",
                     recovered.appointmentNo(), new OpenAppointmentWorkOrderReq(revision, List.of()), "ORDINARY-052");
             assertThat(ordinary.operationState()).isEqualTo("SUCCEEDED");
@@ -170,7 +170,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
     void changedLocalDefinitionBeforeCreateDoesNotReserveResources(String changedHead) {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
-            sql.execute("CREATE TRIGGER fail_root BEFORE INSERT ON bty_appointment FOR EACH ROW "
+            sql.execute("CREATE TRIGGER fail_root BEFORE INSERT ON ord_appointment FOR EACH ROW "
                     + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='controlled root rollback'");
             try {
                 assertThatThrownBy(() -> c.getBean(ReceptionService.class)
@@ -183,7 +183,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
                     .recoverOperation("E", "S", "A", (String) original.get("operation_no")))
                     .isInstanceOf(BizException.class);
             assertThat(owner.accepts).isEmpty();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment", Integer.class)).isZero();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM ord_appointment", Integer.class)).isZero();
             var latest = sql.queryForMap("SELECT * FROM bty_reception_operation");
             assertThat(latest.get("phase")).isEqualTo("RECEIVED");
             assertThat(latest.get("frozen_payload")).isEqualTo(original.get("frozen_payload"));
@@ -231,7 +231,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
             owner.reject = "CONFIRM";
             var pending = c.getBean(ReceptionService.class).receiveWalkIn("E", "S", "A", walkIn(), "RELEASE-DENIED");
-            long revision = sql.queryForObject("SELECT version FROM bty_appointment", Long.class);
+            long revision = sql.queryForObject("SELECT version FROM ord_appointment", Long.class);
             var cancelled = c.getBean(AppointmentService.class).cancelAppointment("E", "S", "A",
                     pending.appointmentNo(), new CancelAppointmentReq(revision, "CUSTOMER_REQUEST"), "REAL-RELEASE");
             assertThat(cancelled.operationState()).isEqualTo("SUCCEEDED");
@@ -280,7 +280,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
             assertThat(result.workOrder().status()).isEqualTo("OPEN");
             assertThat(result.workOrder().sourceState()).isEqualTo("UNBOUND");
             assertThat(result.workOrder().taskNos()).hasSize(1);
-            for (String table : List.of("bty_appointment", "bty_work_order",
+            for (String table : List.of("ord_appointment", "bty_work_order",
                     "bty_service_task", "bty_service_submission")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isOne();
             }
@@ -359,7 +359,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
             var pending = c.getBean(ReceptionService.class).receiveWalkIn("E", "S", "A", walkIn(), "RELEASE");
             assertThat(pending.operationState()).isEqualTo("PENDING");
             assertThat(pending.recoveryAction()).isEqualTo("AUTHENTICATED_CANCEL");
-            assertThat(sql.queryForObject("SELECT hold_no FROM bty_appointment WHERE appointment_no=?", String.class,
+            assertThat(sql.queryForObject("SELECT hold_no FROM ord_appointment WHERE appointment_no=?", String.class,
                     pending.appointmentNo())).isNotBlank();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_work_order", Integer.class)).isZero();
         });
@@ -389,7 +389,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
             assertThat(c.getBean(ReceptionRecovery.class).scan()).isOne();
             assertThat(sql.queryForObject("SELECT phase FROM bty_reception_operation WHERE operation_no=?",
                     String.class, pending.operationNo())).isEqualTo("ARRIVAL_PENDING");
-            assertThat(sql.queryForObject("SELECT checked_in_at FROM bty_appointment WHERE appointment_no=?",
+            assertThat(sql.queryForObject("SELECT checked_in_at FROM ord_appointment WHERE appointment_no=?",
                     String.class, pending.appointmentNo())).isNull();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_work_order", Integer.class)).isZero();
             assertThat(owner.accepts).hasSize(accepted); assertThat(owner.actors).hasSize(actors);
@@ -646,11 +646,11 @@ class WalkInRecoveryIT extends ReceptionFixture {
             var pending = c.getBean(ReceptionService.class).receiveWalkIn("E", "S", "A", walkIn(), "RELEASE-CLOSE");
             var recovery = c.getBean(ServiceOperationRecoveryService.class);
             assertThat(recovery.recoverOperation("E", "S", "A", pending.operationNo()).state()).isEqualTo("PENDING");
-            long revision = sql.queryForObject("SELECT version FROM bty_appointment WHERE appointment_no=?",
+            long revision = sql.queryForObject("SELECT version FROM ord_appointment WHERE appointment_no=?",
                     Long.class, pending.appointmentNo());
-            sql.update("UPDATE bty_appointment SET status='CANCELLED' WHERE appointment_no=?", pending.appointmentNo());
+            sql.update("UPDATE ord_appointment SET status='CANCELLED' WHERE appointment_no=?", pending.appointmentNo());
             assertThat(recovery.recoverOperation("E", "S", "A", pending.operationNo()).state()).isEqualTo("PENDING");
-            sql.update("UPDATE bty_appointment SET status='HELD' WHERE appointment_no=?", pending.appointmentNo());
+            sql.update("UPDATE ord_appointment SET status='HELD' WHERE appointment_no=?", pending.appointmentNo());
             owner.reject = null; owner.loseExecuteAction = "RELEASE";
             var cancel = c.getBean(AppointmentService.class).cancelAppointment("E", "S", "A", pending.appointmentNo(),
                     new CancelAppointmentReq(revision, "resource rejected"), "CANCEL-ORIGINAL");
@@ -711,7 +711,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
                 .doesNotContain("beauty-reception-recovery"));
     }
     @ParameterizedTest
-    @ValueSource(strings = {"bty_appointment", "bty_appointment_resource_fence", "bty_appointment_current",
+    @ValueSource(strings = {"ord_appointment", "bty_appointment_resource_fence", "bty_appointment_current",
             "bty_appointment_preparation", "bty_appointment_operation", "bty_reception_operation"})
     void atomicCreatePreparationRollsBackWithoutHalfLinks(String failedTable) {
         business().run(c -> {
@@ -728,7 +728,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
             } finally { sql.execute("DROP TRIGGER fail_preparation"); }
             // 预约侧任一表失败：预约侧整体回滚、不留半截。接待操作在行业库（B-5，ReceptionSteps）：预约侧先提交，
             // 挂接接待操作失败时预约侧已在、接待操作仍是「已受理」，由下面的恢复按冻结的号认出预约、补上挂接
-            for (String table : List.of("bty_appointment", "bty_appointment_preparation", "bty_appointment_current",
+            for (String table : List.of("ord_appointment", "bty_appointment_preparation", "bty_appointment_current",
                     "bty_appointment_resource_fence", "bty_appointment_operation")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class))
                         .as(table).isEqualTo(outerLink ? 1 : 0);
@@ -931,7 +931,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
                 assertThat(first.operationNo()).isEqualTo(second.operationNo());
                 assertThat(first.appointmentNo()).isEqualTo(second.appointmentNo());
             }
-            for (String table : List.of("bty_reception_operation", "bty_appointment", "bty_appointment_preparation",
+            for (String table : List.of("bty_reception_operation", "ord_appointment", "bty_appointment_preparation",
                     "bty_appointment_operation", "bty_appointment_current", "bty_appointment_resource_fence")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isOne();
             }

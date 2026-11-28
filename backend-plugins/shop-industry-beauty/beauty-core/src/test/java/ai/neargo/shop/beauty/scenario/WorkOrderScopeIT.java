@@ -530,10 +530,10 @@ class WorkOrderScopeIT extends ReceptionFixture {
             var arrived = c.getBean(ReceptionService.class).checkIn("E", "S", "A",
                     request(appointment.appointmentNo(), appointment.revision()), "ARRIVE");
             var req = new OpenAppointmentWorkOrderReq(arrived.revision(), List.of());
-            sql.update("UPDATE bty_appointment SET checked_in_at=NULL");
+            sql.update("UPDATE ord_appointment SET checked_in_at=NULL");
             assertThatThrownBy(() -> service.openWorkOrderFromAppointment("E", "S", "A", appointment.appointmentNo(),
                     req, "NO-CHECKIN" )).isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_appointment SET checked_in_at=?",
+            sql.update("UPDATE ord_appointment SET checked_in_at=?",
                     Timestamp.from(arrived.checkedInAt().toInstant()));
             clockAt = start.plusHours(2).toInstant();
             assertThatThrownBy(() -> service.openWorkOrderFromAppointment("E", "S", "A", appointment.appointmentNo(),
@@ -578,7 +578,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                 assertThat(task.participations()).isEmpty(); assertThat(task.taskSnapshot().definitionVersionNo())
                         .isEqualTo("DV");
             });
-            assertThat(count("bty_appointment")).isZero(); assertThat(count("bty_appointment_assignment")).isZero();
+            assertThat(count("ord_appointment")).isZero(); assertThat(count("bty_appointment_assignment")).isZero();
             assertThat(count("bty_service_step")).isZero(); assertThat(count("ind_assignment")).isZero();
             assertThat(owner.accepts).isEmpty();
             String context = sql.queryForObject("SELECT frozen_scope FROM bty_work_order", String.class);
@@ -654,7 +654,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
     @Test void openedAppointmentRejectsReceptionReassignment() {
         business().run(c -> {
             var opened = open(c); int calls = owner.accepts.size();
-            long revision = sql.queryForObject("SELECT version FROM bty_appointment", Long.class);
+            long revision = sql.queryForObject("SELECT version FROM ord_appointment", Long.class);
             assertThatThrownBy(() -> c.getBean(ReceptionCoordinator.class).reassign("E", "S", "A",
                     opened.appointmentNo(),
                     revision, List.of(), start.plusHours(1), "REASSIGN")).isInstanceOf(BizException.class);
@@ -705,16 +705,16 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThat(c.getBean(BeautyMappers.ServiceStepMapper.class).selectForTask("E", "S", "OTHER-ORDER", task))
                     .isEmpty();
             appointment("OTHER-APT", "S");
-            seed("bty_appointment_item", "appointment_item_no", "OTHER-LINE", "appointment_no", "OTHER-APT",
+            seed("ord_appointment_item", "appointment_item_no", "OTHER-LINE", "appointment_no", "OTHER-APT",
                     "sku_no", "SKU", "definition_version_no", "DV", "qty", 1, "uom", "COUNT", "sequence_no", 0,
                     "execution_snapshot", "{}");
             String originalItem = detail.tasks().getFirst().appointmentItemNo();
             sql.update("UPDATE bty_service_task SET appointment_item_no='OTHER-LINE'");
             assertThat(service.getWorkOrder("E", "S", "A", opened.workOrderNo()).tasks()).isEmpty();
             sql.update("UPDATE bty_service_task SET appointment_item_no=?", originalItem);
-            sql.update("UPDATE bty_appointment_item SET deleted=1");
+            sql.update("UPDATE ord_appointment_item SET deleted=1");
             assertThat(service.getWorkOrder("E", "S", "A", opened.workOrderNo()).tasks()).isEmpty();
-            sql.update("UPDATE bty_appointment_item SET deleted=0");
+            sql.update("UPDATE ord_appointment_item SET deleted=0");
             sql.update("UPDATE bty_work_order SET deleted=1");
             assertThatThrownBy(() -> service.getWorkOrder("E", "S", "A", opened.workOrderNo()))
                     .isInstanceOf(BizException.class);
@@ -769,9 +769,9 @@ class WorkOrderScopeIT extends ReceptionFixture {
             String reserved = sql.queryForObject("SELECT work_order_no FROM bty_reception_operation "
                     + "WHERE action='OPEN_WORK_ORDER'", String.class);
             assertThat(reserved).isNotNull();
-            assertThat(sql.queryForObject("SELECT version FROM bty_appointment", Long.class))
+            assertThat(sql.queryForObject("SELECT version FROM ord_appointment", Long.class))
                     .isEqualTo(arrived.revision() + 1);
-            assertThat(sql.queryForObject("SELECT work_order_no FROM bty_appointment", String.class))
+            assertThat(sql.queryForObject("SELECT work_order_no FROM ord_appointment", String.class))
                     .isEqualTo(reserved);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action='WORK_ORDER_OPENED'",
                     Integer.class)).isZero();
@@ -885,7 +885,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThatThrownBy(() -> new OpenWorkOrderReq("cr1_" + "c".repeat(43), "S",
                     List.of(new AppointmentItemReq("SKU", 10), new AppointmentItemReq("SKU2", 1)), null))
                     .isInstanceOf(BizException.class);
-            assertThat(owner.accepts).isEmpty(); assertThat(count("bty_appointment")).isZero();
+            assertThat(owner.accepts).isEmpty(); assertThat(count("ord_appointment")).isZero();
         });
     }
     @Test void replacementRejectedKeepsOriginalHoldAndCannotOpenOnReplay() {
@@ -893,7 +893,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
             var root = create(c); login(LoginUser.merchant("A", "operator"));
             var arrived = c.getBean(ReceptionService.class).checkIn("E", "S", "A", request(root.appointmentNo(),
                     root.revision()), "ARRIVE");
-            String hold = sql.queryForObject("SELECT hold_no FROM bty_appointment", String.class);
+            String hold = sql.queryForObject("SELECT hold_no FROM ord_appointment", String.class);
             owner.reject = "REPLACE";
             var req = new OpenAppointmentWorkOrderReq(arrived.revision(), List.of(), start.plusHours(1));
             var service = c.getBean(AppointmentService.class);
@@ -903,8 +903,8 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThatThrownBy(() -> service.openWorkOrderFromAppointment("E", "S", "A", root.appointmentNo(), req,
                     "OPEN")).isInstanceOf(BizException.class);
             assertThat(owner.accepts).hasSize(accepted);
-            assertThat(sql.queryForObject("SELECT hold_no FROM bty_appointment", String.class)).isEqualTo(hold);
-            assertThat(sql.queryForObject("SELECT version FROM bty_appointment", Long.class))
+            assertThat(sql.queryForObject("SELECT hold_no FROM ord_appointment", String.class)).isEqualTo(hold);
+            assertThat(sql.queryForObject("SELECT version FROM ord_appointment", Long.class))
                     .isEqualTo(arrived.revision());
             assertThat(count("bty_work_order")).isZero(); assertThat(count("bty_service_submission")).isZero();
         });
@@ -1104,7 +1104,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                     var root = create(c); login(LoginUser.merchant("A", "operator"));
                     var arrived = c.getBean(ReceptionService.class).checkIn("E", "S", "A",
                             request(root.appointmentNo(), root.revision()), "ARRIVE");
-                    sql.update("UPDATE bty_appointment SET customer_ref=NULL,guest_ref='GUE_REAL' "
+                    sql.update("UPDATE ord_appointment SET customer_ref=NULL,guest_ref='GUE_REAL' "
                             + "WHERE appointment_no=?",
                             root.appointmentNo());
                     var req = new OpenAppointmentWorkOrderReq(arrived.revision(), List.of());
@@ -1123,7 +1123,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                     assertThat(sql.queryForObject(
                                 "SELECT frozen_payload FROM bty_reception_operation WHERE operation_no=?",
                             String.class, opened.operationNo())).isEqualTo(payload);
-                    assertThat(sql.queryForObject("SELECT guest_ref FROM bty_appointment", String.class))
+                    assertThat(sql.queryForObject("SELECT guest_ref FROM ord_appointment", String.class))
                             .isEqualTo("GUE_REAL");
                     assertThat(count("bty_service_submission")).isEqualTo(1);
                 });
@@ -1135,7 +1135,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
             var root = create(c); login(LoginUser.merchant("A", "operator"));
             var arrived = c.getBean(ReceptionService.class).checkIn("E", "S", "A",
                     request(root.appointmentNo(), root.revision()), "ARRIVE");
-            String item = sql.queryForObject("SELECT appointment_item_no FROM bty_appointment_item", String.class);
+            String item = sql.queryForObject("SELECT appointment_item_no FROM ord_appointment_item", String.class);
             sql.update("INSERT INTO bty_service_task(tenant_no,entity_no,created_at,updated_at,task_no,work_order_no,"
                     + "scope_revision,sku_no,definition_version_no,appointment_item_no,qty,done_qty,voided_qty,uom,"
                     + "status,binding_revision,execution_snapshot) VALUES ('MAIN','E',NOW(),NOW(),'ORPHAN','MISSING',"

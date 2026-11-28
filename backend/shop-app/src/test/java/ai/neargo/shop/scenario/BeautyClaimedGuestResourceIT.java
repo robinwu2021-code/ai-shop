@@ -502,7 +502,7 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                                         "arrival-" + sku));
         assertThat(value(arrived, "status")).isEqualTo("CHECKED_IN");
         long revision =
-                number("SELECT version FROM bty_appointment WHERE appointment_no=?", appointment);
+                number("SELECT version FROM ord_appointment WHERE appointment_no=?", appointment);
         return new Scenario(
                 guest,
                 appointment,
@@ -655,7 +655,7 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
     private String appointmentHistory(String appointment, String hold) {
         var identity =
                 row(
-                        "SELECT customer_ref,guest_ref,source FROM bty_appointment WHERE"
+                        "SELECT customer_ref,guest_ref,source FROM ord_appointment WHERE"
                                 + " appointment_no=?",
                         appointment);
         assertThat(identity.get("guest_ref")).isNotNull();
@@ -664,7 +664,7 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                 List.of(
                         identity,
                         jdbc.queryForList(
-                                "SELECT * FROM bty_appointment_arrangement WHERE appointment_no=?"
+                                "SELECT * FROM ord_appointment_revision WHERE appointment_no=?"
                                         + " AND hold_no=?",
                                 appointment,
                                 hold),
@@ -755,7 +755,7 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
     private List<String> currentResources(String appointment) {
         return jdbc.queryForList(
                 "SELECT DISTINCT a.resource_no FROM bty_appointment_assignment a JOIN"
-                    + " bty_appointment_item i ON i.appointment_item_no=a.appointment_item_no AND"
+                    + " ord_appointment_item i ON i.appointment_item_no=a.appointment_item_no AND"
                     + " i.entity_no=a.entity_no JOIN bty_appointment_current c ON"
                     + " c.appointment_no=i.appointment_no AND c.entity_no=i.entity_no AND"
                     + " c.arrangement_revision=a.appointment_revision WHERE c.appointment_no=?",

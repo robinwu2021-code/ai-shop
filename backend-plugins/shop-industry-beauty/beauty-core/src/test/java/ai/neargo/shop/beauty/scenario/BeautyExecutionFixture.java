@@ -119,7 +119,7 @@ abstract class BeautyExecutionFixture {
                 values.values().toArray());
     }
     void appointment(String number, String store) {
-        seed("bty_appointment", "appointment_no", number, "store_no", store, "source", "PHONE",
+        seed("ord_appointment", "appointment_no", number, "store_no", store, "source", "PHONE",
                 "status", "CONFIRMED", "start_at", T0, "end_at", T0.plusHours(1), "timezone", "UTC",
                 "hold_no", "HOLD", "policy_version_no", "PV");
     }

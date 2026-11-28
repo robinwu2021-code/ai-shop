@@ -100,6 +100,9 @@ public class ManualExecutionSourceIT {
     private static final ExecutionScope SCOPE = new ExecutionScope("MAIN", "E", "S");
     private final ObjectMapper json = new ObjectMapper();
     private MysqlDataSource source;
+    /** 本用例建的一次性库与建库用的管理连接，用完即删（原来不删，本机曾积满磁盘）。 */
+    private String database;
+    private MysqlDataSource admin;
     private JdbcTemplate sql;
     private String bookingPlan;
     private String executionSnapshot;
@@ -113,9 +116,9 @@ public class ManualExecutionSourceIT {
         String adminUrl = System.getProperty("beauty.test.admin-url");
         assertNotNull(adminUrl, "Unified B owns the disposable native database and combined owner classpath");
         assertThat(adminUrl).startsWith("jdbc:mysql://127.0.0.1:");
-        var admin = new MysqlDataSource();
+        admin = new MysqlDataSource();
         admin.setUrl(adminUrl); admin.setUser("root"); admin.setPassword(password());
-        String database = "execution_" + UUID.randomUUID().toString().replace("-", "");
+        database = "execution_" + UUID.randomUUID().toString().replace("-", "");
         try (var connection = admin.getConnection(); var statement = connection.createStatement()) {
             statement.execute("CREATE DATABASE `" + database + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin");
         }
@@ -695,10 +698,10 @@ public class ManualExecutionSourceIT {
         seed("bty_service_definition_version", "definition_no", "DEF", "definition_version_no", "DV",
                 "revision_index", 1, "duration_min_snapshot", 20, "buffer_before_min", 0, "buffer_after_min", 0,
                 "steps_template", "[]", "notes", "[]", "schema_version", 1, "snapshot_hash", HASH);
-        seed("bty_appointment", "appointment_no", "APPOINTMENT", "store_no", "S", "source", "PHONE",
+        seed("ord_appointment", "appointment_no", "APPOINTMENT", "store_no", "S", "source", "PHONE",
                 "status", "CHECKED_IN", "start_at", start.toLocalDateTime(), "end_at", end.toLocalDateTime(),
                 "timezone", "UTC", "hold_no", "HOLD", "policy_version_no", "PV", "customer_ref", "BUYER");
-        seed("bty_appointment_item", "appointment_item_no", "ITEM", "appointment_no", "APPOINTMENT", "sku_no",
+        seed("ord_appointment_item", "appointment_item_no", "ITEM", "appointment_no", "APPOINTMENT", "sku_no",
                 "SKU", "definition_version_no", "DV", "qty", 1, "uom", "COUNT", "sequence_no", 0,
                 "execution_snapshot", "{}");
         seed("bty_appointment_assignment", "planned_assignment_no", "PA", "appointment_item_no", "ITEM",
@@ -710,7 +713,7 @@ public class ManualExecutionSourceIT {
                 "start_at", start.toLocalDateTime(), "end_at", end.toLocalDateTime(), "timezone", "UTC",
                 "frozen_plan", bookingPlan, "plan_hash", ownerBinding.planHash(), "snapshot", snapshot,
                 "expires_at", end.toLocalDateTime());
-        seed("bty_appointment_arrangement", "appointment_no", "APPOINTMENT", "arrangement_revision", 1,
+        seed("ord_appointment_revision", "appointment_no", "APPOINTMENT", "arrangement_revision", 1,
                 "preview_no", "PREVIEW", "hold_no", "HOLD", "snapshot", snapshot);
         seed("bty_appointment_current", "appointment_no", "APPOINTMENT", "arrangement_revision", 1);
         var accept = new ResourceBookingPort.Accept(new ResourceBookingPort.Scope("MAIN", "E", "S"), "CONFIRM",
@@ -798,14 +801,14 @@ public class ManualExecutionSourceIT {
                 json.writeValueAsString(draft), IdempotencyScope.requestHash(json.writeValueAsString(draft)));
         sql.update("UPDATE bty_appointment_preparation SET frozen_plan=?,plan_hash=?,snapshot=?,end_at=?",
                 bookingPlan, planHash, snapshot, second.serviceEndAt().toLocalDateTime());
-        sql.update("UPDATE bty_appointment_arrangement SET snapshot=?", snapshot);
+        sql.update("UPDATE ord_appointment_revision SET snapshot=?", snapshot);
         var accept = new ResourceBookingPort.Accept(new ResourceBookingPort.Scope("MAIN", "E", "S"), "CONFIRM",
                 "BOOK_KEY", "BEAUTY_APPOINTMENT", "APPOINTMENT", 1, 1, null, bookingPlan);
         var receipt = new ResourceBookingPort.Receipt(binding, "RESOURCE_OWNER", "SUCCEEDED", 1, 1, null, bookingPlan,
                 json.writeValueAsString(Map.of("holdNo", "HOLD", "status", "CONFIRMED", "ownerRevision", 1)), null);
         sql.update("UPDATE bty_appointment_operation SET accept_payload=?,receipt=?", json.writeValueAsString(accept),
                 json.writeValueAsString(receipt));
-        seed("bty_appointment_item", "appointment_item_no", "ITEM2", "appointment_no", "APPOINTMENT", "sku_no",
+        seed("ord_appointment_item", "appointment_item_no", "ITEM2", "appointment_no", "APPOINTMENT", "sku_no",
                 "SKU", "definition_version_no", "DV", "qty", 1, "uom", "COUNT", "sequence_no", 1,
                 "execution_snapshot", "{}");
         seed("bty_appointment_assignment", "planned_assignment_no", "PA2", "appointment_item_no", "ITEM2",
@@ -836,5 +839,12 @@ public class ManualExecutionSourceIT {
     }
 
     @AfterEach
-    public void clear() { DataScopeContext.clear(); }
+    public void clear() throws Exception {
+        DataScopeContext.clear();
+        if (admin != null && database != null) {
+            try (var connection = admin.getConnection(); var statement = connection.createStatement()) {
+                statement.execute("DROP DATABASE IF EXISTS `" + database + "`");
+            }
+        }
+    }
 }

@@ -35,16 +35,16 @@ public final class CustomerOwnership {
         var claimed = DataScopeContext.executeWithoutScope(() -> receipts.selectList(
                 Wrappers.<BtyGuestClaimReceipt>lambdaQuery().eq(BtyGuestClaimReceipt::getTenantNo, "MAIN")
                         .eq(BtyGuestClaimReceipt::getUserNo, user).eq(BtyGuestClaimReceipt::getDeleted, 0)));
-        var sql = new StringBuilder("(bty_appointment.customer_ref={0}");
+        var sql = new StringBuilder("(ord_appointment.customer_ref={0}");
         var params = new java.util.ArrayList<Object>(java.util.List.of(user));
         if (!claimed.isEmpty()) {
-            sql.append(" OR (bty_appointment.customer_ref IS NULL AND (");
+            sql.append(" OR (ord_appointment.customer_ref IS NULL AND (");
             for (int i = 0; i < claimed.size(); i++) {
                 var receipt = claimed.get(i);
                 int at = params.size();
                 if (i > 0) sql.append(" OR ");
-                sql.append("(bty_appointment.entity_no={").append(at).append("} AND bty_appointment.store_no={")
-                        .append(at + 1).append("} AND bty_appointment.guest_ref={").append(at + 2).append("})");
+                sql.append("(ord_appointment.entity_no={").append(at).append("} AND ord_appointment.store_no={")
+                        .append(at + 1).append("} AND ord_appointment.guest_ref={").append(at + 2).append("})");
                 params.add(receipt.getEntityNo()); params.add(receipt.getStoreNo()); params.add(receipt.getGuestNo());
             }
             sql.append("))");

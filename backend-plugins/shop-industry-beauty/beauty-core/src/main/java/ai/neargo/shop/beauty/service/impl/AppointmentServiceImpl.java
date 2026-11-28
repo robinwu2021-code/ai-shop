@@ -242,20 +242,20 @@ public final class AppointmentServiceImpl implements AppointmentService {
         var query = query(q.from(), q.to(), q.status()).eq(BtyAppointment::getEntityNo, entity)
                 .eq(BtyAppointment::getStoreNo, store);
         if (q.personnelNo() != null) {
-            query.apply("EXISTS (SELECT 1 FROM bty_appointment_item i JOIN bty_appointment_assignment a "
+            query.apply("EXISTS (SELECT 1 FROM ord_appointment_item i JOIN bty_appointment_assignment a "
                     + "ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no "
                     + "AND a.appointment_item_no=i.appointment_item_no "
                     + "JOIN bty_appointment_current c ON c.tenant_no=i.tenant_no AND c.entity_no=i.entity_no "
                     + "AND c.appointment_no=i.appointment_no AND c.arrangement_revision=a.appointment_revision "
-                    + "WHERE i.appointment_no=bty_appointment.appointment_no AND i.entity_no=bty_appointment.entity_no "
+                    + "WHERE i.appointment_no=ord_appointment.appointment_no AND i.entity_no=ord_appointment.entity_no "
                     + "AND a.personnel_no={0} AND i.deleted=0 AND a.deleted=0)", q.personnelNo());
         }
         if (q.assignmentState() != null) {
             AppointmentPersistence.require(List.of("ASSIGNED", "UNASSIGNED").contains(q.assignmentState()));
             query.apply(("UNASSIGNED".equals(q.assignmentState()) ? "NOT " : "")
                     + "EXISTS (SELECT 1 FROM bty_appointment_current c "
-                    + "WHERE c.appointment_no=bty_appointment.appointment_no "
-                    + "AND c.entity_no=bty_appointment.entity_no AND c.arrangement_revision>0)");
+                    + "WHERE c.appointment_no=ord_appointment.appointment_no "
+                    + "AND c.entity_no=ord_appointment.entity_no AND c.arrangement_revision>0)");
         }
         var page = page(query, q.page(), q.size());
         return new PageData<>(page.getRecords().stream().map(this::summary).toList(), page.getTotal(),

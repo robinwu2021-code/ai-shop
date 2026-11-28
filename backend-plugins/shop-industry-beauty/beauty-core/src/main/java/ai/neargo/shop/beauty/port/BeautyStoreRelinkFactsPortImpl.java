@@ -20,7 +20,7 @@ public final class BeautyStoreRelinkFactsPortImpl implements StoreRelinkIndustry
     /** 全部表在同一个库（测试）。 */
     public BeautyStoreRelinkFactsPortImpl(JdbcTemplate jdbc) { this(jdbc, jdbc, jdbc); }
     BeautyStoreRelinkFactsPortImpl(JdbcTemplate main, JdbcTemplate trade, JdbcTemplate industry) {
-        this.byTable = java.util.Map.of("bty_appointment", trade, "bty_appointment_operation", main,
+        this.byTable = java.util.Map.of("ord_appointment", trade, "bty_appointment_operation", main,
                 "bty_appointment_preparation", trade, "bty_work_order", industry, "bty_reception_operation", industry);
     }
     @org.springframework.beans.factory.annotation.Autowired
@@ -32,7 +32,7 @@ public final class BeautyStoreRelinkFactsPortImpl implements StoreRelinkIndustry
                     ai.neargo.shop.common.config.ModuleDataSources.INDUSTRY_DATA_SOURCE) javax.sql.DataSource industry) {
         this(new JdbcTemplate(main), new JdbcTemplate(trade), new JdbcTemplate(industry));
     }
-    private static final List<String> TABLES=List.of("bty_appointment","bty_appointment_operation","bty_appointment_preparation","bty_work_order","bty_reception_operation");
+    private static final List<String> TABLES=List.of("ord_appointment","bty_appointment_operation","bty_appointment_preparation","bty_work_order","bty_reception_operation");
     @Override public Facts inspect(String tenant, String entity, String store) {
         boolean history=false;
         for (String table:TABLES) {

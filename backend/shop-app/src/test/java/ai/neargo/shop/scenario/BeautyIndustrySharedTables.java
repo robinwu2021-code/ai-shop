@@ -13,20 +13,28 @@ import org.springframework.jdbc.core.JdbcTemplate;
 final class BeautyIndustrySharedTables {
     private static final Path DESIGN = Path.of("../../backend-plugins/shop-industry-beauty/beauty-core/src/test/"
             + "resources/db/n_industry/V1__industry_design.sql");
+    /** 美业预约在门店交易库的定稿表（TDD-美业域迁移新库 §2.6 第 1～3 项）。 */
+    private static final Path TRADE = Path.of("../../backend-plugins/shop-industry-beauty/beauty-core/src/test/"
+            + "resources/db/n_trade/V1__trade_design.sql");
 
     private BeautyIndustrySharedTables() {}
 
     static void create(JdbcTemplate sql) {
+        create(sql, DESIGN, "ind_store_policy", "ind_config_revision");
+        create(sql, TRADE, "ord_appointment", "ord_appointment_item", "ord_appointment_revision");
+    }
+
+    private static void create(JdbcTemplate sql, Path design, String... tables) {
         String text;
         try {
-            text = Files.readString(DESIGN, StandardCharsets.UTF_8);
+            text = Files.readString(design, StandardCharsets.UTF_8);
         } catch (IOException ex) {
-            throw new IllegalStateException("Cannot read " + DESIGN.toAbsolutePath(), ex);
+            throw new IllegalStateException("Cannot read " + design.toAbsolutePath(), ex);
         }
-        for (String table : new String[] {"ind_store_policy", "ind_config_revision"}) {
+        for (String table : tables) {
             int start = text.indexOf("CREATE TABLE `" + table + "`");
             int end = text.indexOf(";\n", start);
-            if (start < 0 || end < 0) throw new IllegalStateException("No DDL for " + table + " in " + DESIGN);
+            if (start < 0 || end < 0) throw new IllegalStateException("No DDL for " + table + " in " + design);
             sql.execute(text.substring(start, end).replaceFirst("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
         }
     }

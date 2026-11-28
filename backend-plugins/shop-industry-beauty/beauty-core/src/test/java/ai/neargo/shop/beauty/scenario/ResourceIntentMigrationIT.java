@@ -30,7 +30,7 @@ class ResourceIntentMigrationIT extends BeautyExecutionFixture {
         Flyway.configure().dataSource(database.source).locations("classpath:db/industry/beauty")
                 .table("bty_flyway_history").target("1").baselineVersion("0").baselineOnMigrate(true)
                 .createSchemas(false).placeholderReplacement(false).load().migrate();
-        appointment("A", "S");
+        legacyAppointment("A", "S");
         assertThatThrownBy(() -> database.initialize("validate")).isInstanceOf(RuntimeException.class);
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_flyway_history WHERE version='2'", Integer.class))
                 .isZero();
@@ -46,7 +46,7 @@ class ResourceIntentMigrationIT extends BeautyExecutionFixture {
         Flyway.configure().dataSource(database.source).locations("classpath:db/industry/beauty")
                 .table("bty_flyway_history").target("2").baselineVersion("0").baselineOnMigrate(true)
                 .createSchemas(false).placeholderReplacement(false).load().migrate();
-        appointment("A", "S");
+        legacyAppointment("A", "S");
         seed("bty_appointment_resource_fence", "fence_no", "F", "appointment_no", "A", "store_no", "S");
         assertThatThrownBy(() -> database.initialize("validate")).isInstanceOf(RuntimeException.class);
         database.initialize("migrate");
@@ -54,5 +54,14 @@ class ResourceIntentMigrationIT extends BeautyExecutionFixture {
         assertThat(sql.queryForObject("SELECT fence_no FROM bty_appointment_resource_fence", String.class)).isEqualTo("F");
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_flyway_history WHERE version IN ('1','2','3','4') "
                 + "AND success=1", Integer.class)).isEqualTo(4);
+    }
+    /**
+     * 本用例测的是美业私有迁移对旧表 {@code bty_appointment} 里已有预约的保留；新代码的预约在门店交易库的
+     * {@code ord_appointment}（TDD §2.6），所以这里直接往旧表写。
+     */
+    private void legacyAppointment(String number, String store) {
+        seed("bty_appointment", "appointment_no", number, "store_no", store, "source", "PHONE",
+                "status", "CONFIRMED", "start_at", T0, "end_at", T0.plusHours(1), "timezone", "UTC",
+                "hold_no", "HOLD", "policy_version_no", "PV");
     }
 }

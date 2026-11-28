@@ -49,6 +49,7 @@ class SchedulingReportIT {
     void database() throws Exception {
         database.isolatedDatabase();
         database.baseNine();
+        database.tradeTables(); // 预约在门店交易库的定稿表（§2.6）
         sql = database.sql();
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 LoginUser.merchant("ACTOR", "operator"), null, List.of()));
@@ -81,7 +82,7 @@ class SchedulingReportIT {
 
     private String appointment(String store, String status, LocalDateTime start, int revision) {
         String no = "BAP" + (++seq);
-        sql.update("INSERT INTO bty_appointment (tenant_no, entity_no, created_at, updated_at, appointment_no, store_no,"
+        sql.update("INSERT INTO ord_appointment (tenant_no, entity_no, created_at, updated_at, appointment_no, store_no,"
                 + " source, status, start_at, end_at, timezone, policy_version_no) VALUES ('MAIN','E',?,?,?,?,"
                 + "'STAFF',?,?,?,'Asia/Taipei','PV')", IN, IN, no, store, status, start, start.plusHours(1));
         sql.update("INSERT INTO bty_appointment_current (tenant_no, entity_no, created_at, updated_at, appointment_no,"
@@ -91,7 +92,7 @@ class SchedulingReportIT {
 
     private String item(String appointment, String sku) {
         String no = "BAI" + (++seq);
-        sql.update("INSERT INTO bty_appointment_item (tenant_no, entity_no, created_at, updated_at, appointment_item_no,"
+        sql.update("INSERT INTO ord_appointment_item (tenant_no, entity_no, created_at, updated_at, appointment_item_no,"
                 + " appointment_no, sku_no, definition_version_no, qty, uom, sequence_no, execution_snapshot)"
                 + " VALUES ('MAIN','E',?,?,?,?,?,'DV',1,'COUNT',0,'{}')", IN, IN, no, appointment, sku);
         return no;

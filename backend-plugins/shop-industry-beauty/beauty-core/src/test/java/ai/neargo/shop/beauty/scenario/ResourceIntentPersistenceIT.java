@@ -116,7 +116,7 @@ class ResourceIntentPersistenceIT extends BeautyExecutionFixture {
                     "CONFIRMED", "CANCELLED", "ACTOR", T0))).isEqualTo(0);
             assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "markArrived", "E", "S", "A", 0L,
                     "CONFIRMED", T0, "ACTOR", T0))).isEqualTo(0);
-            sql.update("UPDATE bty_appointment SET status='HELD'");
+            sql.update("UPDATE ord_appointment SET status='HELD'");
             assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
                     "HELD", "CONFIRMED", "ACTOR", T0))).isEqualTo(0);
             sql.update("UPDATE bty_appointment_resource_fence SET deleted=1");
@@ -183,7 +183,7 @@ class ResourceIntentPersistenceIT extends BeautyExecutionFixture {
             })).hasMessage("rollback");
             assertThat(sql.queryForObject("SELECT active_intent_no FROM bty_appointment_resource_fence",
                     String.class)).isNull();
-            sql.update("UPDATE bty_appointment SET version=1");
+            sql.update("UPDATE ord_appointment SET version=1");
             assertThat(tx(ctx, () -> acquire(ctx, "S", "I1", 0))).isZero();
         });
     }

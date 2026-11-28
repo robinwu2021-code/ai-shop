@@ -300,7 +300,7 @@ class BeautyReceptionIdentityIT {
         assertThat(value(result, "state")).isEqualTo("SUCCEEDED");
         assertThat(holds.lastActor).isEqualTo(manager); assertThat(faults.getCalls).isEqualTo(guestReads);
         String appointment = (String) value(pending, "appointmentNo");
-        assertThat(sql.queryForObject("SELECT guest_ref FROM bty_appointment WHERE appointment_no=?", String.class,
+        assertThat(sql.queryForObject("SELECT guest_ref FROM ord_appointment WHERE appointment_no=?", String.class,
                 appointment)).isEqualTo(guest);
         String guestOrder = (String) value(result, "workOrderNo");
         assertThat(sql.queryForObject("SELECT customer_ref FROM bty_work_order WHERE work_order_no=?", String.class,
@@ -333,7 +333,7 @@ class BeautyReceptionIdentityIT {
                 + "issued_at=DATE_SUB(NOW(),INTERVAL 3 MINUTE) WHERE user_no=?", user);
         assertThat(as(actor, () -> call(orders, "openWorkOrder", entity, store, actor, req, "OPEN"))).isEqualTo(opened);
         String expiredAppointment = arrivalRoot(user, null); workOrderItem(expiredAppointment);
-        sql.update("UPDATE bty_appointment SET status='CHECKED_IN',checked_in_at=NOW(),version=8 WHERE appointment_no=?",
+        sql.update("UPDATE ord_appointment SET status='CHECKED_IN',checked_in_at=NOW(),version=8 WHERE appointment_no=?",
                 expiredAppointment);
         Object expiredNew = dto("OpenWorkOrderReq", ref, store, List.of(), expiredAppointment, null,
                 8L, List.of(), null);
@@ -404,9 +404,9 @@ class BeautyReceptionIdentityIT {
         Object normalized = omittedGuestOpen(full, bridged, value(bridgedArrival, "revision"), "BRIDGED-OPEN");
         assertThat(sql.queryForObject("SELECT customer_ref FROM bty_work_order WHERE work_order_no=?", String.class,
                 value(normalized, "workOrderNo"))).isEqualTo("USER:" + user);
-        assertThat(sql.queryForObject("SELECT guest_ref FROM bty_appointment WHERE appointment_no=?", String.class,
+        assertThat(sql.queryForObject("SELECT guest_ref FROM ord_appointment WHERE appointment_no=?", String.class,
                 bridged)).isEqualTo(guest);
-        assertThat(sql.queryForObject("SELECT customer_ref FROM bty_appointment WHERE appointment_no=?", String.class,
+        assertThat(sql.queryForObject("SELECT customer_ref FROM ord_appointment WHERE appointment_no=?", String.class,
                 bridged)).isNull();
         sql.update("UPDATE bty_guest_claim_receipt SET store_no='FOREIGN' WHERE guest_no=? AND entity_no=?",
                 guest, entity);
@@ -479,7 +479,7 @@ class BeautyReceptionIdentityIT {
         if (appointment != null) { workOrderItem(appointment); }
     }
     private void workOrderItem(String appointment) {
-        row("bty_appointment_item", "appointment_item_no", "BL-" + appointment, "appointment_no", appointment,
+        row("ord_appointment_item", "appointment_item_no", "BL-" + appointment, "appointment_no", appointment,
                 "sku_no", "SKU", "definition_version_no", "DV", "qty", 1, "uom", "COUNT", "sequence_no", 0,
                 "execution_snapshot", "{}");
     }
@@ -504,7 +504,7 @@ class BeautyReceptionIdentityIT {
         var receipt = new ResourceBookingPort.Receipt(binding, "OWNER", "SUCCEEDED", 1, 1,
                 new ResourceBookingPort.Target(holdNo, 1, 1), plan,
                 json.writeValueAsString(Map.of("holdNo", holdNo, "status", "CONFIRMED", "ownerRevision", 2)), null);
-        row("bty_appointment", "appointment_no", number, "store_no", store, "customer_ref", customer,
+        row("ord_appointment", "appointment_no", number, "store_no", store, "customer_ref", customer,
                 "guest_ref", guest, "source", "STAFF", "status", "CONFIRMED", "start_at", start.toLocalDateTime(),
                 "end_at", end.toLocalDateTime(), "timezone", "UTC", "policy_version_no", "PV", "hold_no", holdNo,
                 "version", 7);
@@ -515,7 +515,7 @@ class BeautyReceptionIdentityIT {
                 "expires_at", end.toLocalDateTime());
         row("bty_appointment_current", "appointment_no", number, "arrangement_revision", 1);
         row("bty_appointment_resource_fence", "appointment_no", number, "store_no", store, "fence_no", "BF-" + number);
-        row("bty_appointment_arrangement", "appointment_no", number, "arrangement_revision", 1,
+        row("ord_appointment_revision", "appointment_no", number, "arrangement_revision", 1,
                 "preview_no", preview, "hold_no", holdNo, "snapshot", snapshot);
         row("bty_appointment_operation", "operation_no", "BO-" + number, "store_no", store, "actor_no", actor,
                 "actor_realm", "MERCHANT", "actor_kind", "MCH", "key_hash", IdempotencyScope.requestHash(number),

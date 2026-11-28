@@ -1204,7 +1204,7 @@ class NativeInventoryExecutionStockRetentionIT extends ManualSourceHostFixture {
         Object arrived = asMerchant(() -> call(bean("ReceptionService"), "checkIn", entity, store, actor,
                 dto("CheckInReq", appointmentNo, identity, value(appointment, "revision")), "arrival-" + sku));
         assertThat(value(arrived, "status")).isEqualTo("CHECKED_IN");
-        long appointmentRevision = jdbc.queryForObject("SELECT version FROM bty_appointment WHERE appointment_no=?",
+        long appointmentRevision = jdbc.queryForObject("SELECT version FROM ord_appointment WHERE appointment_no=?",
                 Long.class, appointmentNo);
         Object opened = asMerchant(() -> call(bean("WorkOrderService"), "openWorkOrder", entity, store, actor,
                 dto("OpenWorkOrderReq", customerRef, store, items, appointmentNo, guestNo, appointmentRevision,
