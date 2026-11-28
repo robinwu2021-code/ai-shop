@@ -29,7 +29,6 @@ import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
-import ai.neargo.shop.beauty.policy.CustomerOwnership;
 import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.common.BizException;
@@ -265,7 +264,8 @@ public final class AppointmentServiceImpl implements AppointmentService {
     @Override
     public PageData<MyAppointmentVO> listMyAppointments(String user, MyAppointmentQuery q) {
         access.consumer(user);
-        var page = page(query(q.from(), q.to(), q.status()).apply(CustomerOwnership.appointmentPredicate(), user),
+        var mine = access.ownership().appointmentPredicate(user);
+        var page = page(query(q.from(), q.to(), q.status()).apply(mine.sql(), mine.params()),
                 q.page(),
                 q.size());
         return new PageData<>(page.getRecords().stream().map(root -> new MyAppointmentVO(root.getAppointmentNo(),

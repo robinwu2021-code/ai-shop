@@ -391,13 +391,15 @@ public final class ServiceTaskStockPreparationCoordinator {
                             row.setSourceFenceRevision(original.fence().getSourceFenceRevision());
                             row.setUpdatedAt(local(clock.instant()));
                             row.setUpdatedBy(actor);
+                            // 围栏已在行业事务里锁住（withStockOriginal）：按它核对，库存意向在主库，不能再联查围栏
+                            var fence = original.fence();
+                            require(java.util.Objects.equals(fence.getFenceNo(), row.getFenceNo())
+                                    && java.util.Objects.equals(fence.getExecutionNo(), row.getExecutionNo()));
                             require(
                                     rows.observe(
                                                     row,
                                                     expected.getVersion(),
-                                                    expected.getObservationEpoch(),
-                                                    original.fence().getObservationEpoch(),
-                                                    original.fence().getVersion())
+                                                    expected.getObservationEpoch())
                                             == 1);
                             return view(binding, row, null);
                         });

@@ -6,7 +6,6 @@ import ai.neargo.shop.beauty.service.impl.ServiceDefinitionServiceImpl;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.ServiceProductFactsPort;
-import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -23,8 +22,8 @@ public class BeautyDefinitionConfiguration {
             BeautyMappers.ServiceDefinitionVersionMapper versions, BeautyMappers.ServiceRequirementMapper requirements,
             BeautyMappers.ActionLogMapper actions, RequestIdempotencyPort idempotency,
             ObjectProvider<ServiceProductFactsPort> products, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
-            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source, ObjectMapper json) {
+            ObjectMapper json) {
         return new ServiceDefinitionServiceImpl(heads, versions, requirements, actions, idempotency,
-                products, manager, source, json);
+                products, manager, json);
     }
 }

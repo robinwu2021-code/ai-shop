@@ -259,6 +259,68 @@
   - 共用库模式下全套与基线一致（只多时刻相关那一个）。
   - 独立库模式失败从 60 降到 47。接待事务类的问题都消失了；剩下的是恢复扫描的跨库查询、「我的预约」认领过滤（B-5d），以及操作日志、幂等记录（B-5c）。
 
+### 2.6 清理旧库连接（用户 2026-11-28：清理旧库的链接，访问迁到新库；按 `n_trade_v2` 与「商品领域迁移-交接」重新整理）
+
+**前提**：
+- 「主库」就是旧库（`spring.datasource`，.61 上是 `ai_shop_ume`）。用户 11-27 定业务不再访问，配置已删。
+- 门店交易库用新建的 **`n_trade_v2`**（.61，按定稿 `05-n_trade.sql` 建，67 张空表，逐列核对一致；设计文件里库名仍写 `n_trade`，部署时数据源指向 `n_trade_v2`）。
+- 按交接文档：商品句柄、交易句柄绑同一个数据源名，都指向 `n_trade_v2`。美业的交易句柄跟着绑过去。
+- 绑定与给应用账号授权由用户确认；.61 上目前没有应用账号能访问 `n_trade_v2`。
+- 改了定稿（加列、加约束）要同步生成器 `scripts/gen-retail-ddl.py` 与 `n_trade_v2`。
+
+**逐项去处**（2026-11-28 按列逐表比对）：
+
+| # | 美业现在用的（旧库） | 新去处 | 列对得上吗 | 状态 |
+|---|---|---|---|---|
+| 1 | 预约 `bty_appointment` | `n_trade_v2.ord_appointment` | 全有；新增 `work_order_no`，代码已在用 | 设计已定 |
+| 2 | 预约内容 `bty_appointment_item` | `ord_appointment_item` | 全有 | 设计已定 |
+| 3 | 预约安排 `bty_appointment_arrangement` | `ord_appointment_revision` | 全有 | 设计已定 |
+| 4 | 预约准备 `bty_appointment_preparation` | 并入 `ord_appointment_revision`（「未确认的草稿也是一版」：预览号、操作人、过期时刻都在） | 缺 `actor_kind`、`expected_revision`、`frozen_plan`、`plan_hash` | **待定**：加列，或并进 `snapshot` |
+| 5 | 预约当前行 `bty_appointment_current` | `ord_appointment.current_revision` | 缺「进行中的预约操作号」`operation_no`（它是预约操作的并发闸门） | **待定**：随第 6 项 |
+| 6 | 预约操作 `bty_appointment_operation`、资源围栏 `_resource_fence`、资源意向 `_resource_intent`、资源决策 `_resource_decision` | 定稿里没有。资源占用改由平台预约 `rsv_booking` 承担：有预留、确认、释放三态，`current_key` 仲裁当前占用，取代 `mch_booking_owner` | 无对应表 | **待定**，见下 |
+| 7 | 指定技师 `bty_appointment_assignment` | 行业库 `ind_assignment`（性质 `PLANNED`，对象 `APPOINTMENT_ITEM`，带预约修订号） | 缺 `requirement_no` | **待定**：加列，或放进 `skill_snapshot` |
+| 8 | 服务定义 `bty_service_definition` | `prd_goods`（`type=SERVICE`、`industry_code=BEAUTY`；`industry_ext` 放时长、前后缓冲、步骤模板、注意事项） | 定义号、SKU、当前版本、状态都改用商品自己的列 | 设计已定，代码改动大 |
+| 9 | 定义版本 `bty_service_definition_version` | `prd_goods_revision`（「服务项目的规则版本即此号」；`payload` 存时长快照、缓冲、步骤、注意事项） | 版本号从字符串（如 `DV…`）变成商品内自增的整数 | 设计已定；`ord_appointment_item.definition_version_no` 的取值要对齐 |
+| 10 | 服务要求 `bty_service_requirement` | `prd_fulfillment_requirement`（按商品修订号） | 只缺定义版本号，换成 `goods_no + revision_no` | 设计已定 |
+| 11 | 库存意向 `bty_service_execution_stock_intent` | 库存库 `inv_reservation`，经宿主库存接口 | — | **待定**：交接文档里库存同步一组暂停中 |
+| 12 | 操作日志 `bty_action_log` | 基础能力库 `n_common.sys_audit_log`。对应关系：`action_no`→`audit_no`，`aggregate_type/no`→`resource_type/no`，前后版本→`before/after_version`，快照→`after_masked`，接待操作号→`request_id`，门店与人员放进快照 | 门店号、人员号没有独立列 | **待定**：写法，推荐业务提交后写 |
+| 13 | 请求幂等（宿主 `sys_idempotent`）；发布前 `PlatformWritePrerequisites` 检查主库技术表 | 不建表：防重是功能能力，由应用层 + 业务唯一键做（用户 11-25 原则） | — | 去掉对主库技术表的检查；各写接口改按业务键 |
+| 14 | 独立部署时的事件 outbox | `n_common` 公共事件 | — | 事件是公共能力 |
+| 15 | 私有 Flyway（`bty_flyway_history`）、`BeautySchemaValidator`、要求主库工厂的 Mapper 配置 | 退役；结构由各库部署脚本负责 | — | 启动核对：行业库已有，交易库补一个 |
+| 16 | `BeautyStoreRelinkFactsPortImpl`、两个结构校验器 | 各查各的库 | — | 随上面各项 |
+
+**第 6 项要先定的问题**：
+- 美业现在自己维护一套「预约对资源占用的编排」：预约操作记命令的防重、受理载荷、回执、重试与租约；围栏、意向、决策串起「同一张预约同时只有一个资源命令在途」。
+- 定稿把资源占用交给平台的 `rsv_booking`（三态 + `current_key` 唯一约束仲裁）。从逻辑推：围栏、决策的仲裁作用由 `rsv_booking.current_key` 承担；命令防重按「应用层 + 业务唯一键」做。
+- 但预约操作还承载异步恢复：资源系统超时后，靠它的重试、租约、回执把命令补完。这部分要么并进预约修订（每次改约一行，本来就对应一次占用），要么证明 `rsv_booking` 自身的状态足以恢复。需逐表读代码出方案，像 A6 那样。
+
+**建议顺序**：
+1. 不依赖交易侧设计、可以直接做的：第 13、14、15、16 项，以及 B-5d（拆跨库 SQL）。
+2. 第 1～3、8～10 项设计已定，直接迁。服务定义并入商品（第 8～10 项）要和商品领域的写法对齐，见交接文档 §3-9。
+3. 第 4、5、6、7、11、12 项先出方案、用户定稿再改；第 6 项最大。
+4. 句柄绑到 `n_trade_v2` 与授权，由用户确认后再做。
+
+**第一步已做（2026-11-28，B-5d + 第 13、16 项）**：
+- 跨库 SQL 拆开：
+  - **接待恢复扫描**：行业库按接待操作自己的条件，按「下次重试、id」翻页取候选；能否恢复由预约侧一条 SQL 判断（`AppointmentOperationMapper.receptionRecoverable`，条件与原来逐条相同）；凑满 50 个为止。
+  - **「我的预约」**：先在行业库查出本人认领的「主体 + 门店 + 访客」，再按值拼进交易库的查询（`CustomerOwnership.appointmentPredicate(user)`），条件仍在分页之前生效。
+  - **库存意向的观察更新**：去掉对执行围栏的 `EXISTS`。围栏已在行业事务里锁住（`withStockOriginal`），改由协调器按锁住的围栏核对围栏号、执行号。
+- 交易事务里锁行业表的两处，改成普通读：
+  - 恢复请求先按普通读核对提交的版本，再记录（新增与加锁查询同条件的 `ServiceSubmissionMapper.selectScoped`）；
+  - 开单核对门店政策头，按版本做乐观核对。核对之后才发布的政策，下一次预约才用到。
+- 第 16 项：
+  - 门店改挂核对按表所在的库分别查：预约在交易库、预约操作仍在主库、工单与接待操作在行业库。
+  - 执行围栏的结构校验器改到行业句柄（原来误用交易句柄）。没有美业私有迁移历史的库（行业库由部署脚本建）只核对结构与触发器；主库上原有的迁移记录核对不变。
+- 第 13 项：去掉门店策略、服务定义发布前对主库技术表的检查（`PlatformWritePrerequisites`）。防重由宿主的幂等端口和业务唯一键负责。
+- 约束测试②：`TransactionHandleBoundaryTest`，跨库只能读，一个事务不能写或锁另一个库的表。已知例外必须恰好等于清单：现在只有服务提交在行业事务里写操作日志一处，等第 12 项。修好后从清单删掉，测试会逼着删。
+- 修正：
+  - 第 15 项（私有 Flyway 与主库 Mapper 配置退役）**不能现在做**：主库句柄上的 6 张表还在用，要等第 6、11、12 项定了、表迁走以后。
+  - 第 14 项（独立部署的事件改到 `n_common`）**先不动**：宿主自己的 outbox 还在主库，并且明确拒绝统一模式下单独绑定基础能力库。要等宿主的事件迁移，美业跟随。
+- 结果：
+  - 共用库模式全套与基线一致（只多时刻相关那一个，以及偶发失败的并发用例）。
+  - **独立库模式从 47 降到 37**，比基线只多 3 个，都等第 12 项（操作日志）与幂等记录：门店策略首次发布并发、外层事务回滚操作日志、开单审计回滚。
+  - 其余模块全过。宿主 `BeautyEmbeddedWiringTest` 8 个里 1 个失败（`disabledBeautyKeepsRetailBootable`，缺会员营销的 `memberMarketingSqlSessionFactory`），origin/v2 上一样，不是本次带来的。
+
 ### 2.5 部署
 
 沿用 `deploy/ume/food-industry-cutover/` 的做法（只读 `check` → 备份 → 执行 → 核对），美业表另起一份脚本；共用表只原地改。

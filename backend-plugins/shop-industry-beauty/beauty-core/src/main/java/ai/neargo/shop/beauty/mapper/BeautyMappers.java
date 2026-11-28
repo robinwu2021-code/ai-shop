@@ -1204,6 +1204,20 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                 @Param("requestKeyHash") String requestKeyHash);
 
         /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
+        /** 与 {@link #selectScopedForUpdate} 同条件、不加锁（交易事务里不能锁行业表，B-5d）。 */
+        @Select(
+                """
+                SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                AND store_no=#{storeNo} AND submission_no=#{submissionNo} AND deleted=0
+                AND (work_order_no IS NULL OR EXISTS (SELECT 1 FROM bty_work_order w
+                WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo} AND w.deleted=0
+                AND w.work_order_no=bty_service_submission.work_order_no))
+                """)
+        BtyServiceSubmission selectScoped(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("submissionNo") String submissionNo);
+
         @Select(
                 """
                 SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
@@ -1538,6 +1552,66 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
  }
     /** Durable operation claim; CAS leases are independent of actor authority and never authorize commands. */
     public interface AppointmentOperationMapper extends BaseMapper<BtyAppointmentOperation> {
+        /**
+         * 散客接待的建预约命令能否由恢复扫描补完：条件与原来联在接待操作上的那条查询逐条相同，接待操作的字段改成参数
+         * （TDD-美业域迁移新库 B-5d：接待操作在行业库，这里只查预约侧）。
+         */
+        @Select(
+                """
+                SELECT COUNT(*) FROM bty_appointment_operation a
+                
+                JOIN bty_appointment_preparation p ON p.tenant_no=a.tenant_no AND p.entity_no=a.entity_no
+                  AND p.store_no=a.store_no AND p.preview_no=a.preview_no AND p.deleted=0
+                JOIN bty_appointment root ON root.tenant_no=#{tenantNo} AND root.entity_no=#{entityNo}
+                  AND root.store_no=#{storeNo} AND root.appointment_no=#{appointmentNo} AND root.deleted=0
+                JOIN bty_appointment_resource_intent i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
+                  AND i.store_no=a.store_no AND i.appointment_no=a.appointment_no AND i.deleted=0
+                  AND i.command_no=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandNo'))
+                  AND i.command_hash=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandHash'))
+                  AND i.plan_hash=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))
+                  AND i.action=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))
+                  AND i.source_revision=JSON_EXTRACT(a.receipt,'$.binding.sourceRevision')
+                  AND i.frozen_plan=p.frozen_plan
+                WHERE a.tenant_no=#{tenantNo} AND a.entity_no=#{entityNo} AND a.store_no=#{storeNo}
+                  AND a.appointment_no=#{appointmentNo} AND a.operation_no=#{appointmentOperationNo}
+                  AND a.deleted=0 AND a.action='CREATE'
+                  AND a.state IN ('PENDING','SUCCEEDED','REJECTED') AND a.receipt IS NOT NULL
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.status')) IN ('ACCEPTED','SUCCEEDED','REJECTED')
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action')) IN ('RESERVE','CONFIRM')
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))=
+                    JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.action'))
+                  AND JSON_EXTRACT(a.receipt,'$.binding.sourceRevision')=
+                    JSON_EXTRACT(a.accept_payload,'$.sourceRevision')
+                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.sourceRevision'))='INTEGER'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))=p.plan_hash
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.frozenPayload'))=p.frozen_plan
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.frozenPayload'))=p.frozen_plan
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.tenantNo'))=#{tenantNo}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.scope.tenantNo'))=#{tenantNo}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.entityNo'))=#{entityNo}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.scope.entityNo'))=#{entityNo}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.storeNo'))=#{storeNo}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.scope.storeNo'))=#{storeNo}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.sourceNo'))=#{appointmentNo}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.sourceNo'))=#{appointmentNo}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.sourceType'))='BEAUTY_APPOINTMENT'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.sourceType'))='BEAUTY_APPOINTMENT'
+                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.commandNo'))='STRING'
+                  AND LENGTH(JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandNo')))>0
+                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.commandHash'))='STRING'
+                  AND LENGTH(JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandHash')))>0
+                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))='STRING'
+                  AND LENGTH(JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash')))>0
+                  AND (a.state<>'REJECTED' OR (root.hold_no IS NULL
+                    AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))='RESERVE'))
+                """)
+        int receptionRecoverable(
+                @Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo,
+                @Param("appointmentOperationNo") String appointmentOperationNo);
+
         @Update(
                 """
                 UPDATE bty_appointment_operation SET lease_until=#{until},version=version+1
@@ -1585,61 +1659,28 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
          * Eligibility is filtered before LIMIT; Java still verifies the authoritative binding and
          * intent.
          */
+        /**
+         * 恢复扫描的候选：只按接待操作自己的条件，按「下次重试、id」翻页（TDD-美业域迁移新库 B-5d）。预约侧能不能恢复
+         * 由 {@code AppointmentOperationMapper.receptionRecoverable} 判（预约侧的表不在行业库）。
+         */
         @Select(
                 """
                 SELECT r.* FROM bty_reception_operation r
-                JOIN bty_appointment_operation a ON a.tenant_no=r.tenant_no AND a.entity_no=r.entity_no
-                  AND a.store_no=r.store_no AND a.appointment_no=r.appointment_no
-                  AND a.operation_no=r.appointment_operation_no AND a.deleted=0 AND a.action='CREATE'
-                JOIN bty_appointment_preparation p ON p.tenant_no=a.tenant_no AND p.entity_no=a.entity_no
-                  AND p.store_no=a.store_no AND p.preview_no=a.preview_no AND p.deleted=0
-                JOIN bty_appointment root ON root.tenant_no=r.tenant_no AND root.entity_no=r.entity_no
-                  AND root.store_no=r.store_no AND root.appointment_no=r.appointment_no AND root.deleted=0
-                JOIN bty_appointment_resource_intent i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
-                  AND i.store_no=a.store_no AND i.appointment_no=a.appointment_no AND i.deleted=0
-                  AND i.command_no=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandNo'))
-                  AND i.command_hash=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandHash'))
-                  AND i.plan_hash=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))
-                  AND i.action=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))
-                  AND i.source_revision=JSON_EXTRACT(a.receipt,'$.binding.sourceRevision')
-                  AND i.frozen_plan=p.frozen_plan
                 WHERE r.tenant_no='MAIN' AND r.deleted=0 AND r.action='RECEIVE_WALK_IN' AND r.endpoint='BAPI-048'
                   AND r.phase='${@ai.neargo.shop.beauty.entity.BtyReceptionOperation@RESOURCE_PENDING}' AND r.next_retry_at<=#{now}
                   AND (r.lease_until IS NULL OR r.lease_until<#{now})
                   AND (r.failure_code IS NULL OR r.failure_code NOT IN
                     ('RESOURCE_RELEASE_REQUIRED','ARRIVAL_REQUIRES_RESCHEDULE'))
-                  AND a.state IN ('PENDING','SUCCEEDED','REJECTED') AND a.receipt IS NOT NULL
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.status')) IN ('ACCEPTED','SUCCEEDED','REJECTED')
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action')) IN ('RESERVE','CONFIRM')
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))=
-                    JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.action'))
-                  AND JSON_EXTRACT(a.receipt,'$.binding.sourceRevision')=
-                    JSON_EXTRACT(a.accept_payload,'$.sourceRevision')
-                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.sourceRevision'))='INTEGER'
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))=p.plan_hash
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.frozenPayload'))=p.frozen_plan
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.frozenPayload'))=p.frozen_plan
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.tenantNo'))=r.tenant_no
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.scope.tenantNo'))=r.tenant_no
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.entityNo'))=r.entity_no
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.scope.entityNo'))=r.entity_no
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.storeNo'))=r.store_no
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.scope.storeNo'))=r.store_no
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.sourceNo'))=r.appointment_no
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.sourceNo'))=r.appointment_no
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.sourceType'))='BEAUTY_APPOINTMENT'
-                  AND JSON_UNQUOTE(JSON_EXTRACT(a.accept_payload,'$.sourceType'))='BEAUTY_APPOINTMENT'
-                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.commandNo'))='STRING'
-                  AND LENGTH(JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandNo')))>0
-                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.commandHash'))='STRING'
-                  AND LENGTH(JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandHash')))>0
-                  AND JSON_TYPE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))='STRING'
-                  AND LENGTH(JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash')))>0
-                  AND (a.state<>'REJECTED' OR (root.hold_no IS NULL
-                    AND JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))='RESERVE'))
-                ORDER BY r.next_retry_at ASC,r.id ASC LIMIT 50
+                  AND r.appointment_no IS NOT NULL AND r.appointment_operation_no IS NOT NULL
+                  AND (#{afterRetryAt} IS NULL OR r.next_retry_at>#{afterRetryAt}
+                    OR (r.next_retry_at=#{afterRetryAt} AND r.id>#{afterId}))
+                ORDER BY r.next_retry_at ASC,r.id ASC LIMIT #{limit}
                 """)
-        List<BtyReceptionOperation> selectResourceRecoverable(@Param("now") LocalDateTime now);
+        List<BtyReceptionOperation> selectResourceCandidates(
+                @Param("now") LocalDateTime now,
+                @Param("afterRetryAt") LocalDateTime afterRetryAt,
+                @Param("afterId") Long afterId,
+                @Param("limit") int limit);
 
         @Update(
                 """
@@ -1995,15 +2036,12 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                   AND version=#{version} AND observation_epoch=#{epoch}
                   AND version<9223372036854775806 AND observation_epoch<9223372036854775806
                   AND (route_no IS NULL OR (route_no=#{row.routeNo} AND route_hash=#{row.routeHash}))
-                  AND EXISTS (SELECT 1 FROM bty_service_execution_fence f WHERE f.fence_no=s.fence_no
-                    AND f.execution_no=s.execution_no AND f.source_fence_revision=#{row.sourceFenceRevision}
-                    AND f.observation_epoch=#{fenceEpoch} AND f.version=#{fenceVersion})
                 """)
+        // 执行围栏在行业库（B-5d）：原来这里 EXISTS 核对围栏的版本与轮次；调用方在行业事务里锁住围栏后再调本方法，
+        // 由调用方按锁住的围栏核对（ServiceTaskStockPreparationCoordinator）
         int observe(
                 @Param("row") BtyServiceExecutionStockIntent row,
                 @Param("version") long version,
-                @Param("epoch") long epoch,
-                @Param("fenceEpoch") long fenceEpoch,
-                @Param("fenceVersion") long fenceVersion);
+                @Param("epoch") long epoch);
     }
 }

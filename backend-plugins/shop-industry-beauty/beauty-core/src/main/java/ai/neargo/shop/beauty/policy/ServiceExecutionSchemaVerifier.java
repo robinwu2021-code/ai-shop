@@ -73,15 +73,22 @@ public final class ServiceExecutionSchemaVerifier {
                     present++;
                 }
             }
-            List<Map<String, Object>> markers = tableExists(connection, schema, historyTable)
+            boolean privateHistory = tableExists(connection, schema, historyTable);
+            List<Map<String, Object>> markers = privateHistory
                     ? query(connection, "SELECT version, script, type, checksum, success FROM "
                             + quoted(schema) + "." + quoted(historyTable) + " WHERE version=?", "10")
                     : List.of();
             if (present == 0 && markers.isEmpty()) {
                 return Installation.ABSENT;
             }
-            require(present == 1 && markers.size() == 1);
             JsonNode contract = descriptor();
+            if (!privateHistory) {
+                // 行业库（TDD-美业域迁移新库 B-5d）：执行围栏由行业库的部署脚本建，没有美业私有迁移的历史；只核对结构与触发器
+                require(present == 1);
+                inspect(connection, schema, contract);
+                return Installation.INSTALLED;
+            }
+            require(present == 1 && markers.size() == 1);
             Map<String, Object> marker = markers.getFirst();
             require("V10__beauty_service_execution_fence.sql".equals(text(marker, "script"))
                     && "SQL".equals(text(marker, "type")) && success(marker.get("success"))

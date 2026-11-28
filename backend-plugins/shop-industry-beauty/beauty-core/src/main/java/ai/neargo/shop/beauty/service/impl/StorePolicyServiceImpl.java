@@ -15,14 +15,12 @@ import ai.neargo.shop.beauty.service.StorePolicyService;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Set;
-import javax.sql.DataSource;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,17 +32,15 @@ public class StorePolicyServiceImpl implements StorePolicyService {
     private final BeautyMappers.StorePolicyVersionMapper versions;
     private final BeautyMappers.ActionLogMapper actions;
     private final RequestIdempotencyPort idempotency;
-    private final DataSource source;
     private final ObjectMapper json;
 
     public StorePolicyServiceImpl(BeautyMappers.StorePolicyMapper policies,
             BeautyMappers.StorePolicyVersionMapper versions, BeautyMappers.ActionLogMapper actions,
-            RequestIdempotencyPort idempotency, DataSource source, ObjectMapper json) {
+            RequestIdempotencyPort idempotency, ObjectMapper json) {
         this.policies = policies;
         this.versions = versions;
         this.actions = actions;
         this.idempotency = idempotency;
-        this.source = source;
         this.json = json;
     }
 
@@ -86,7 +82,7 @@ public class StorePolicyServiceImpl implements StorePolicyService {
         String key = IdempotencyScope.requireKey(idempotencyKey);
         if (req == null || actorNo == null || actorNo.isBlank()) { throw BizException.of(ErrorCode.BAD_REQUEST); }
         String endpoint = IdempotencyScope.endpoint("BEAUTY", "PUBLISH_STORE_POLICY", entityNo, currentStoreNo);
-        new PlatformWritePrerequisites().require(source);
+        // 不再检查主库的技术表（幂等、事件）：防重由宿主的幂等端口与业务唯一键负责（TDD §2.6-13）
         var policy = req.policy();
         String snapshot = IdempotencyScope.requestHash(req.validFrom().toString(),
                 policy.bookingAheadDays().toString(), policy.cancelRule().freeCancelBeforeMinutes().toString(),

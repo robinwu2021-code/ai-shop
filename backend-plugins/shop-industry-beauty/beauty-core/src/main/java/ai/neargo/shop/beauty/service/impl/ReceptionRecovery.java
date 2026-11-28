@@ -7,6 +7,8 @@ import ai.neargo.shop.event.AfterCommit;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +33,7 @@ public final class ReceptionRecovery {
     public RecoveryScanResult scanReport() {
         var cutoff = now();
         int attempted = 0, completed = 0, pending = 0, failedCount = 0;
-        for (var row : db.read(() -> rows.selectResourceRecoverable(cutoff))) {
+        for (var row : recoverable(cutoff)) {
             var claimAt = now();
             var lease = claimAt.plusSeconds(30);
             if (!steps.claimResource(row, claimAt, lease)) { continue; }
@@ -69,6 +71,31 @@ public final class ReceptionRecovery {
             }
         }
         return new RecoveryScanResult(attempted, completed, pending, failedCount);
+    }
+    /**
+     * 本轮能补的接待（至多 50 个）：行业库按接待操作自己的条件翻页取候选，再逐个到预约侧核对能否恢复
+     * （TDD-美业域迁移新库 B-5d：原来是一条跨接待操作与预约侧四张表的查询）。被预约侧挡住的候选跳过，接着往后翻。
+     */
+    List<BtyReceptionOperation> recoverable(LocalDateTime cutoff) {
+        List<BtyReceptionOperation> result = new ArrayList<>();
+        LocalDateTime afterRetryAt = null;
+        Long afterId = null;
+        while (result.size() < 50) {
+            final LocalDateTime retryCursor = afterRetryAt;
+            final Long idCursor = afterId;
+            var page = db.read(() -> rows.selectResourceCandidates(cutoff, retryCursor, idCursor, 100));
+            for (var row : page) {
+                if (result.size() < 50 && db.read(() -> db.operations.receptionRecoverable(row.getTenantNo(),
+                        row.getEntityNo(), row.getStoreNo(), row.getAppointmentNo(),
+                        row.getAppointmentOperationNo())) == 1) {
+                    result.add(row);
+                }
+            }
+            if (page.size() < 100) break;
+            afterRetryAt = page.get(page.size() - 1).getNextRetryAt();
+            afterId = page.get(page.size() - 1).getId();
+        }
+        return result;
     }
     private LocalDateTime now() { return LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC).withNano(0); }
     /** 预约侧的资源结果：已确认（带预约版本）、要释放、或被拒。 */

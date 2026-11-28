@@ -19,6 +19,8 @@ public final class AppointmentAccess {
     public AppointmentAccess(ObjectProvider<MerchantOperatorAccessPort> access, CustomerOwnership ownership) {
         this.access = access; this.ownership = ownership;
     }
+    /** 「我的预约」等按顾客归属筛选时用。 */
+    public CustomerOwnership ownership() { return ownership; }
     public LoginUser current(String actor) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("appointment actor checks require no caller transaction");

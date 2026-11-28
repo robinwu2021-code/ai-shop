@@ -23,11 +23,32 @@ public final class CustomerOwnership {
                         .eq(BtyGuestClaimReceipt::getGuestNo, root.getGuestRef())
                         .eq(BtyGuestClaimReceipt::getUserNo, user).eq(BtyGuestClaimReceipt::getDeleted, 0))) > 0;
     }
-    /** Use this predicate inside both page SELECT and count, before LIMIT. */
-    public static String appointmentPredicate() {
-        return "(bty_appointment.customer_ref={0} OR (bty_appointment.customer_ref IS NULL AND EXISTS "
-                + "(SELECT 1 FROM bty_guest_claim_receipt r WHERE r.tenant_no=bty_appointment.tenant_no "
-                + "AND r.entity_no=bty_appointment.entity_no AND r.store_no=bty_appointment.store_no "
-                + "AND r.guest_no=bty_appointment.guest_ref AND r.user_no={0} AND r.deleted=0)))";
+    /** 拼进查询的条件与参数（{@code {0}}、{@code {1}}… 占位，MyBatis-Plus 按参数绑定）。 */
+    public record Predicate(String sql, Object[] params) { }
+
+    /**
+     * 「我的预约」的归属条件，用在分页查询与计数里、LIMIT 之前：本人的预约，或本人认领过的访客的预约。
+     * 认领回执在行业库、预约在交易库（TDD-美业域迁移新库 B-5d），先在行业库查出本人认领的「主体 + 门店 + 访客」，
+     * 再按值拼进交易库的查询；原来是交易库查询里 EXISTS 行业表，分库后会静默查不到。
+     */
+    public Predicate appointmentPredicate(String user) {
+        var claimed = DataScopeContext.executeWithoutScope(() -> receipts.selectList(
+                Wrappers.<BtyGuestClaimReceipt>lambdaQuery().eq(BtyGuestClaimReceipt::getTenantNo, "MAIN")
+                        .eq(BtyGuestClaimReceipt::getUserNo, user).eq(BtyGuestClaimReceipt::getDeleted, 0)));
+        var sql = new StringBuilder("(bty_appointment.customer_ref={0}");
+        var params = new java.util.ArrayList<Object>(java.util.List.of(user));
+        if (!claimed.isEmpty()) {
+            sql.append(" OR (bty_appointment.customer_ref IS NULL AND (");
+            for (int i = 0; i < claimed.size(); i++) {
+                var receipt = claimed.get(i);
+                int at = params.size();
+                if (i > 0) sql.append(" OR ");
+                sql.append("(bty_appointment.entity_no={").append(at).append("} AND bty_appointment.store_no={")
+                        .append(at + 1).append("} AND bty_appointment.guest_ref={").append(at + 2).append("})");
+                params.add(receipt.getEntityNo()); params.add(receipt.getStoreNo()); params.add(receipt.getGuestNo());
+            }
+            sql.append("))");
+        }
+        return new Predicate(sql.append(")").toString(), params.toArray());
     }
 }

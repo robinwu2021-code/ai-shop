@@ -273,6 +273,9 @@ class ServiceTaskStockPreparationCoordinatorTest {
         when(access.requireSelf(any())).thenReturn(current);
         when(access.requireSame(any(), any())).thenReturn(current);
         fence = new BtyServiceExecutionFence();
+        // 与 binding 的来源围栏号、执行号一致（原来由库存意向更新里的 EXISTS 核对，B-5d 起由协调器按锁住的围栏核对）
+        fence.setFenceNo("fence");
+        fence.setExecutionNo("execution");
         fence.setVersion(0L);
         fence.setObservationEpoch(1L);
         fence.setSourceFenceRevision(1L);
@@ -315,7 +318,7 @@ class ServiceTaskStockPreparationCoordinatorTest {
                             stored.set(copy(row));
                             return 1;
                         });
-        when(rows.observe(any(), anyLong(), anyLong(), anyLong(), anyLong()))
+        when(rows.observe(any(), anyLong(), anyLong()))
                 .thenAnswer(
                         call -> {
                             var row = (BtyServiceExecutionStockIntent) call.getArgument(0);
@@ -436,7 +439,7 @@ class ServiceTaskStockPreparationCoordinatorTest {
         assertEquals(ErrorCode.FORBIDDEN, denied.errorCode());
         assertEquals(3, calls.get());
         verify(bridge).retainStock(request);
-        verify(rows, never()).observe(any(), anyLong(), anyLong(), anyLong(), anyLong());
+        verify(rows, never()).observe(any(), anyLong(), anyLong());
         verify(quantity, never()).prepareTask(any());
         assertEquals(
                 request.lookup(),
@@ -476,7 +479,7 @@ class ServiceTaskStockPreparationCoordinatorTest {
                         });
         var result = service.queryAcceptedOriginal(binding);
         assertEquals("OBSERVATION_SUPERSEDED", result.pendingReason());
-        verify(rows, never()).observe(any(), anyLong(), anyLong(), anyLong(), anyLong());
+        verify(rows, never()).observe(any(), anyLong(), anyLong());
     }
 
     @Test
@@ -504,7 +507,7 @@ class ServiceTaskStockPreparationCoordinatorTest {
         service.prepareAcceptedOriginal(binding, grant);
         String before = stored.get().getReceiptJson();
         org.mockito.Mockito.clearInvocations(bridge);
-        doReturn(0).when(rows).observe(any(), anyLong(), anyLong(), anyLong(), anyLong());
+        doReturn(0).when(rows).observe(any(), anyLong(), anyLong());
         service.queryAcceptedOriginal(binding);
         assertEquals(before, stored.get().getReceiptJson());
         verify(bridge, never()).retainStock(any());

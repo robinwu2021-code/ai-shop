@@ -16,7 +16,6 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.MybatisPages;
-import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.spi.product.ServiceProductFactsPort;
@@ -27,7 +26,6 @@ import java.time.ZoneOffset;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.List;
-import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DuplicateKeyException;
@@ -46,14 +44,13 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
     private final RequestIdempotencyPort idempotency;
     private final ObjectProvider<ServiceProductFactsPort> products;
     private final TransactionTemplate transactions;
-    private final DataSource source;
     private final ObjectMapper json;
 
     public ServiceDefinitionServiceImpl(BeautyMappers.ServiceDefinitionMapper definitions,
             BeautyMappers.ServiceDefinitionVersionMapper versions, BeautyMappers.ServiceRequirementMapper requirements,
             BeautyMappers.ActionLogMapper actions, RequestIdempotencyPort idempotency,
             ObjectProvider<ServiceProductFactsPort> products, PlatformTransactionManager manager,
-            DataSource source, ObjectMapper json) {
+            ObjectMapper json) {
         this.definitions = definitions;
         this.versions = versions;
         this.requirements = requirements;
@@ -61,7 +58,6 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
         this.idempotency = idempotency;
         this.products = products;
         this.transactions = new TransactionTemplate(manager);
-        this.source = source;
         this.json = json;
     }
 
@@ -89,7 +85,7 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
         RuntimeException productFailure = failure;
         try {
             return DataScopeContext.executeWithoutScope(() -> transactions.execute(status -> {
-                new PlatformWritePrerequisites().require(source);
+                // 不再检查主库的技术表（幂等、事件）：防重由宿主的幂等端口与业务唯一键负责（TDD §2.6-13）
                 return idempotency.execute(key, endpoint, actorNo, hash, ServiceDefinitionVersionVO.class, () -> {
                     if (productFailure != null) { throw productFailure; }
                     validateProduct(entityNo, currentStoreNo, req, product);

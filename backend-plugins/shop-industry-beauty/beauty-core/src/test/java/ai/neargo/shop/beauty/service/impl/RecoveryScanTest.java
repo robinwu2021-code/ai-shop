@@ -86,7 +86,11 @@ class RecoveryScanTest {
         var pendingOwner = appointment("A1", "PENDING");
         var failedOwner = appointment("A2", "PENDING");
         var rejectedOwner = appointment("A3", "REJECTED");
-        when(rows.selectResourceRecoverable(any())).thenReturn(List.of(pending, broken, later));
+        // 候选在行业库取，能否恢复到预约侧核对（B-5d）
+        when(rows.selectResourceCandidates(any(), any(), any(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(List.of(pending, broken, later));
+        when(operations.receptionRecoverable(any(), anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(1);
         when(rows.claimResource(anyString(), anyString(), anyString(), anyLong(), any(), any())).thenReturn(1);
         for (var row : List.of(pending, broken, later)) {
             when(rows.selectScoped("E", "S", row.getOperationNo())).thenReturn(row);

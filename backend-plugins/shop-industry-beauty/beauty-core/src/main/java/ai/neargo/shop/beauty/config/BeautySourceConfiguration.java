@@ -53,7 +53,8 @@ import java.time.Clock;
 public class BeautySourceConfiguration {
     @Bean
     ServiceExecutionSchemaVerifier beautyServiceExecutionSchemaVerifier(
-            @Qualifier(ModuleDataSources.TRADE_DATA_SOURCE) DataSource source) {
+            // 执行围栏在行业库：在行业句柄上核对（原来误用交易句柄，B-5d）
+            @Qualifier(ModuleDataSources.INDUSTRY_DATA_SOURCE) DataSource source) {
         return new ServiceExecutionSchemaVerifier(source);
     }
 

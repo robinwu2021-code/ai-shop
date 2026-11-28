@@ -287,7 +287,7 @@ public final class WorkOrderPreparation {
                 .eq(BtyStorePolicyVersion::getEntityNo, scope.entityNo())
                 .eq(BtyStorePolicyVersion::getPolicyVersionNo, match.policyVersionNo()));
         AppointmentPersistence.require(version != null);
-        var head = policies.selectScopedForUpdate(scope.entityNo(), scope.storeNo(), version.getPolicyNo());
+        var head = policyHead(scope.entityNo(), scope.storeNo(), version.getPolicyNo());
         AppointmentPersistence.require(head != null && "ACTIVE".equals(head.getStatus())
                 && match.policyVersionNo().equals(head.getCurrentPolicyVersionNo()));
     }
@@ -302,12 +302,21 @@ public final class WorkOrderPreparation {
                         && "ACTIVE".equals(row.getStatus())
                         && Objects.equals(row.getCurrentDefinitionVersionNo(), observed.selectedVersionNo()));
             } else {
-                var row = policies.selectScopedForUpdate(binding.entityNo(), binding.storeNo(), observed.businessNo());
+                var row = policyHead(binding.entityNo(), binding.storeNo(), observed.businessNo());
                 AppointmentPersistence.require(row != null && row.getVersion() == observed.version()
                         && "ACTIVE".equals(row.getStatus())
                         && Objects.equals(row.getCurrentPolicyVersionNo(), observed.selectedVersionNo()));
             }
         }
+    }
+    /**
+     * 门店政策头在行业库（B-2）、这里在交易事务里（B-5d）：不能加锁，按普通读核对版本与当前版本号（乐观核对）。
+     * 核对之后政策才发布的，预约仍按核对时冻结的版本走；下一次预约用新版本。
+     */
+    private BtyStorePolicy policyHead(String entity, String store, String policyNo) {
+        return policies.selectOne(BtyStorePolicy.beautyQuery().eq(BtyStorePolicy::getTenantNo, "MAIN")
+                .eq(BtyStorePolicy::getEntityNo, entity).eq(BtyStorePolicy::getStoreNo, store)
+                .eq(BtyStorePolicy::getPolicyNo, policyNo));
     }
     static WorkOrderRequirementVO requirement(BtyServiceRequirement r) {
         return new WorkOrderRequirementVO(r.getRequirementNo(), r.getRoleCode(), r.getResourceType(),

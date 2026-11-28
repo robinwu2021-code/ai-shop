@@ -770,10 +770,12 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
         if (existing != null) {
             return recoveryReplay(existing, namespace, payload, number);
         }
+        // 提交在行业库、这条恢复请求记在操作日志里（B-5d）：先按普通读核对提交的版本，再在事务里记；
+        // 记录本身带着核对时的版本，期间提交被推进也不影响这条请求的含义
+        var row = db.read(() -> submissions.selectScoped(entity, store, number));
         try {
             return db.tx(
                     () -> {
-                        var row = submissions.selectScopedForUpdate(entity, store, number);
                         var concurrent = recoveryReceipt(entity, store, recoveryNo);
                         if (concurrent != null) {
                             return recoveryReplay(concurrent, namespace, payload, number);
