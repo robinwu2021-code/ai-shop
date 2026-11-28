@@ -2,7 +2,6 @@ package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
-import ai.neargo.shop.beauty.entity.BtyAppointmentAssignment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentItem;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.entity.BtyAppointmentResourceIntent;
@@ -367,15 +366,7 @@ public final class AppointmentCoordinator {
             row.setQty(BigDecimal.valueOf(item.qty())); row.setUom("COUNT"); row.setSequenceNo(index++);
             row.setExecutionSnapshot(db.json.writeValueAsString(item)); db.items.insert(row);
         }
-        for (var assignment : snapshot.assignments()) {
-            var row = new BtyAppointmentAssignment(); row.setEntityNo(root.getEntityNo());
-            row.setPlannedAssignmentNo(BizKey.next("BTAS")); row.setAppointmentItemNo(assignment.appointmentItemNo());
-            row.setAppointmentRevision(revision); row.setRequirementNo(assignment.requirementNo());
-            row.setPersonnelNo(assignment.personnelNo()); row.setResourceNo(assignment.resourceNo());
-                    row.setHoldNo(hold);
-            row.setStartAt(assignment.startAt().toLocalDateTime()); row.setEndAt(assignment.endAt().toLocalDateTime());
-            row.setSkillSnapshot(db.json.writeValueAsString(assignment)); db.assignments.insert(row);
-        }
+        // 人员安排就在这一版的快照里（snapshot.assignments），不再另存安排行（TDD §2.6 第 7 项）
         current.setArrangementRevision(revision); AppointmentPersistence.require(db.currents.updateById(current) == 1);
         root.setStartAt(p.getStartAt()); root.setEndAt(p.getEndAt()); root.setPolicyVersionNo(p.getPolicyVersionNo());
     }

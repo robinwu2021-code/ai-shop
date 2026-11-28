@@ -242,13 +242,15 @@ public final class AppointmentServiceImpl implements AppointmentService {
         var query = query(q.from(), q.to(), q.status()).eq(BtyAppointment::getEntityNo, entity)
                 .eq(BtyAppointment::getStoreNo, store);
         if (q.personnelNo() != null) {
-            query.apply("EXISTS (SELECT 1 FROM ord_appointment_item i JOIN bty_appointment_assignment a "
-                    + "ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no "
-                    + "AND a.appointment_item_no=i.appointment_item_no "
-                    + "JOIN bty_appointment_current c ON c.tenant_no=i.tenant_no AND c.entity_no=i.entity_no "
-                    + "AND c.appointment_no=i.appointment_no AND c.arrangement_revision=a.appointment_revision "
-                    + "WHERE i.appointment_no=ord_appointment.appointment_no AND i.entity_no=ord_appointment.entity_no "
-                    + "AND a.personnel_no={0} AND i.deleted=0 AND a.deleted=0)", q.personnelNo());
+            // 人员安排在当前那一版修订的快照里（TDD §2.6 第 7 项）
+            query.apply("EXISTS (SELECT 1 FROM bty_appointment_current c JOIN ord_appointment_revision r "
+                    + "ON r.tenant_no=c.tenant_no AND r.entity_no=c.entity_no AND r.appointment_no=c.appointment_no "
+                    + "AND r.arrangement_revision=c.arrangement_revision AND r.deleted=0, "
+                    + "JSON_TABLE(r.snapshot, '$.assignments[*]' COLUMNS (personnel_no VARCHAR(32) "
+                    + "PATH '$.personnelNo')) j "
+                    + "WHERE c.appointment_no=ord_appointment.appointment_no AND c.entity_no=ord_appointment.entity_no "
+                    + "AND c.tenant_no=ord_appointment.tenant_no AND c.deleted=0 AND j.personnel_no={0})",
+                    q.personnelNo());
         }
         if (q.assignmentState() != null) {
             AppointmentPersistence.require(List.of("ASSIGNED", "UNASSIGNED").contains(q.assignmentState()));

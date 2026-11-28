@@ -133,7 +133,7 @@ class RecoveryScanTest {
     private AppointmentPersistence persistence() {
         var manager = mock(PlatformTransactionManager.class);
         when(manager.getTransaction(any())).thenAnswer(call -> new SimpleTransactionStatus());
-        return new AppointmentPersistence(roots, null, operations, currents, null, null, fences, null, null,
+        return new AppointmentPersistence(roots, null, operations, currents, null, null, fences, null,
                 null, manager);
     }
 

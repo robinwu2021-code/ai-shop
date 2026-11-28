@@ -241,7 +241,6 @@ class ServiceTaskStockPreparationCoordinatorTest {
                         null,
                         null,
                         null,
-                        null,
                         json,
                         mock(PlatformTransactionManager.class));
         quantity = mock(ServiceTaskExecutionServiceImpl.class);

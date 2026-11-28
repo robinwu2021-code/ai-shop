@@ -176,7 +176,7 @@ public class ManualExecutionSourceIT {
                 c.getBean(BeautyMappers.AppointmentArrangementMapper.class),
                 c.getBean(BeautyMappers.AppointmentResourceIntentMapper.class),
                 c.getBean(BeautyMappers.AppointmentResourceFenceMapper.class),
-                c.getBean(BeautyMappers.AppointmentItemMapper.class), c.getBean(BeautyMappers.AppointmentAssignmentMapper.class),
+                c.getBean(BeautyMappers.AppointmentItemMapper.class),
                 json, c.getBean(PlatformTransactionManager.class));
         var observations = c.getBean(BeautyMappers.SourceObservationMapper.class);
         var guards = c.getBean(BeautyMappers.SourceAllocationGuardMapper.class);
@@ -311,7 +311,8 @@ public class ManualExecutionSourceIT {
 
     @Test
     void foreignHoldAndAmbiguousGroupRejectBeforeFence() {
-        sql.update("UPDATE bty_appointment_assignment SET hold_no='FOREIGN'");
+        // 人员安排在修订快照里（TDD §2.6 第 7 项）：改的是这一版修订的占用编号，核对照样在冻结前拒绝
+        sql.update("UPDATE ord_appointment_revision SET hold_no='FOREIGN'");
         runner().run(c -> {
             assertThatThrownBy(() -> freeze(harness(c))).isInstanceOf(BizException.class);
             assertThat(count("bty_service_execution_fence")).isZero();
@@ -715,10 +716,6 @@ public class ManualExecutionSourceIT {
         seed("ord_appointment_item", "appointment_item_no", "ITEM", "appointment_no", "APPOINTMENT", "sku_no",
                 "SKU", "definition_version_no", "1", "qty", 1, "uom", "COUNT", "sequence_no", 0,
                 "execution_snapshot", "{}");
-        seed("bty_appointment_assignment", "planned_assignment_no", "PA", "appointment_item_no", "ITEM",
-                "appointment_revision", 1, "requirement_no", "REQ", "personnel_no", "P", "resource_no", "RESOURCE",
-                "hold_no", "HOLD", "start_at", start.toLocalDateTime(), "end_at", end.toLocalDateTime(),
-                "skill_snapshot", "{}");
         seed("bty_appointment_preparation", "preview_no", "PREVIEW", "store_no", "S", "actor_no", "100",
                 "actor_realm", "MERCHANT", "actor_kind", "MCH", "expected_revision", 1, "policy_version_no", "PV",
                 "start_at", start.toLocalDateTime(), "end_at", end.toLocalDateTime(), "timezone", "UTC",
@@ -822,10 +819,6 @@ public class ManualExecutionSourceIT {
         seed("ord_appointment_item", "appointment_item_no", "ITEM2", "appointment_no", "APPOINTMENT", "sku_no",
                 "SKU", "definition_version_no", "1", "qty", 1, "uom", "COUNT", "sequence_no", 1,
                 "execution_snapshot", "{}");
-        seed("bty_appointment_assignment", "planned_assignment_no", "PA2", "appointment_item_no", "ITEM2",
-                "appointment_revision", 1, "requirement_no", "REQ", "personnel_no", "P", "resource_no", "RESOURCE",
-                "hold_no", "HOLD", "start_at", assignment.startAt().toLocalDateTime(), "end_at",
-                assignment.endAt().toLocalDateTime(), "skill_snapshot", "{}");
         seed("bty_service_task", "task_no", "TASK2", "work_order_no", "WO", "scope_revision", 1, "sku_no", "SKU",
                 "definition_version_no", "1", "appointment_item_no", "ITEM2", "qty", 1, "done_qty", 0,
                 "voided_qty", 0, "uom", "COUNT", "status", "PENDING", "binding_revision", 1,

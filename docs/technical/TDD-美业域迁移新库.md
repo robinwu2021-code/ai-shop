@@ -278,7 +278,7 @@
 | 4 | 预约准备 `bty_appointment_preparation` | 并入 `ord_appointment_revision`（「未确认的草稿也是一版」：预览号、操作人、过期时刻都在） | 缺 `actor_kind`、`expected_revision`、`frozen_plan`、`plan_hash` | **待定**：加列，或并进 `snapshot` |
 | 5 | 预约当前行 `bty_appointment_current` | `ord_appointment.current_revision` | 缺「进行中的预约操作号」`operation_no`（它是预约操作的并发闸门） | **待定**：随第 6 项 |
 | 6 | 预约操作 `bty_appointment_operation`、资源围栏 `_resource_fence`、资源意向 `_resource_intent`、资源决策 `_resource_decision` | 定稿里没有。资源占用改由平台预约 `rsv_booking` 承担：有预留、确认、释放三态，`current_key` 仲裁当前占用，取代 `mch_booking_owner` | 无对应表 | **待定**，见下 |
-| 7 | 指定技师 `bty_appointment_assignment` | 行业库 `ind_assignment`（性质 `PLANNED`，对象 `APPOINTMENT_ITEM`，带预约修订号） | 缺 `requirement_no` | **待定**：加列，或放进 `skill_snapshot` |
+| 7 | 指定技师 `bty_appointment_assignment` | **退役，不迁**（用户 2026-11-28 定「用修订快照」）：每行都是确认那一版修订快照里安排的照抄；按人员筛预约、人员工作量报表改读当前那一版修订的快照 | 偏离原定「映射到 `ind_assignment` 计划安排」：跨行业的「谁在什么时段被安排」以后需要时再从修订快照派生 | 已改 |
 | 8 | 服务定义 `bty_service_definition` | `prd_goods`（`type=SERVICE`、`industry_code=BEAUTY`；`industry_ext` 放时长、前后缓冲、步骤模板、注意事项） | 定义号、SKU、当前版本、状态都改用商品自己的列 | 设计已定，代码改动大 |
 | 9 | 定义版本 `bty_service_definition_version` | `prd_goods_revision`（「服务项目的规则版本即此号」；`payload` 存时长快照、缓冲、步骤、注意事项） | 版本号从字符串（如 `DV…`）变成商品内自增的整数 | 设计已定；`ord_appointment_item.definition_version_no` 的取值要对齐 |
 | 10 | 服务要求 `bty_service_requirement` | `prd_fulfillment_requirement`（按商品修订号） | 只缺定义版本号，换成 `goods_no + revision_no` | 设计已定 |
@@ -337,6 +337,11 @@
   - 共用库模式全套与基线一致（只多时刻相关那一个，以及偶发失败的并发用例）；
   - 独立库模式与第一步相同。
 - 第 8～10 项（服务定义并入商品）**还没做**：`prd_goods`、`prd_goods_revision` 归商品领域（shop-core 的 `ProductMappers`），美业不能直接写；独立部署的美业里也没有商品代码。要先定由谁发布服务的时长、缓冲、步骤和服务要求，见 §8-Q2。
+
+#### 第 7 项：人员安排改读修订快照（2026-11-28，用户定「用修订快照」）
+- 依据：安排行写在确认预约的交易事务里，搬到行业库就成了跨库写；而每行都是确认那一版修订快照 `assignments` 的照抄（占用编号即该版修订的 `hold_no`），唯一的程序用途是和快照逐条比对。同一事实只留快照一处。
+- 改动：确认预约不再写安排行；开工核对去掉「安排行 = 快照」那段（快照与冻结范围、任务快照、修订占用编号的核对照旧）；按人员筛预约、人员工作量报表改用 `JSON_TABLE` 读当前那一版修订的快照；退役 `BtyAppointmentAssignment`、`AppointmentAssignmentMapper` 与数据范围登记。旧表留在私有迁移里，随第 15 项退役。
+- 测试：报表种子改写进修订快照；只测安排行查询的两条持久层用例删去；「安排行占用编号被改」改为「修订占用编号被改」，同样在冻结前被拒。
 
 #### 第 11 项：库存意向搬到行业库（2026-11-28，用户「先做 7 和 11」）
 - 改动：`ServiceExecutionStockIntentMapper` 改为行业句柄；`BeautyIndustryTables` 加这张表、启动核对把它列为可选（同执行围栏）；结构校验器改在行业句柄上，没有私有迁移历史时只核对结构与触发器（同执行围栏）。

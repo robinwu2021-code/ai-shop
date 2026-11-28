@@ -577,7 +577,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                 assertThat(task.participations()).isEmpty(); assertThat(task.taskSnapshot().definitionVersionNo())
                         .isEqualTo("1");
             });
-            assertThat(count("ord_appointment")).isZero(); assertThat(count("bty_appointment_assignment")).isZero();
+            assertThat(count("ord_appointment")).isZero();
             assertThat(count("bty_service_step")).isZero(); assertThat(count("ind_assignment")).isZero();
             assertThat(owner.accepts).isEmpty();
             String context = sql.queryForObject("SELECT frozen_scope FROM bty_work_order", String.class);

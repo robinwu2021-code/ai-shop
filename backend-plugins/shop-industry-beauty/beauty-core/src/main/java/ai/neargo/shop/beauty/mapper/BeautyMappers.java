@@ -2,7 +2,6 @@ package ai.neargo.shop.beauty.mapper;
 
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
-import ai.neargo.shop.beauty.entity.BtyAppointmentAssignment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.entity.BtyAppointmentItem;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
@@ -114,22 +113,26 @@ public final class BeautyMappers {
                 @Param("from") LocalDateTime from,
                 @Param("to") LocalDateTime to);
 
-        /** 报表：到店预约中各人员在当前安排里被指派的项目数（同一项目多条安排只算一次） */
+        /**
+         * 报表：到店预约中各人员在当前安排里被指派的项目数（同一项目多条安排只算一次）。
+         * 安排取当前那一版预约修订的快照（TDD §2.6 第 7 项：不再另存安排行，同一事实只在快照一处）。
+         */
         @Select(
                 """
-                SELECT a.personnel_no AS personnel_no, COUNT(DISTINCT i.appointment_item_no) AS n
+                SELECT j.personnel_no AS personnel_no, COUNT(DISTINCT j.appointment_item_no) AS n
                 FROM ord_appointment ap
                 JOIN bty_appointment_current c ON c.tenant_no=ap.tenant_no AND c.entity_no=ap.entity_no
                   AND c.appointment_no=ap.appointment_no AND c.deleted=0
-                JOIN ord_appointment_item i ON i.tenant_no=ap.tenant_no AND i.entity_no=ap.entity_no
-                  AND i.appointment_no=ap.appointment_no AND i.deleted=0
-                JOIN bty_appointment_assignment a ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no
-                  AND a.appointment_item_no=i.appointment_item_no AND a.appointment_revision=c.arrangement_revision
-                  AND a.deleted=0
+                JOIN ord_appointment_revision r ON r.tenant_no=ap.tenant_no AND r.entity_no=ap.entity_no
+                  AND r.appointment_no=ap.appointment_no AND r.arrangement_revision=c.arrangement_revision
+                  AND r.deleted=0,
+                JSON_TABLE(r.snapshot, '$.assignments[*]' COLUMNS (
+                  appointment_item_no VARCHAR(32) PATH '$.appointmentItemNo',
+                  personnel_no VARCHAR(32) PATH '$.personnelNo')) j
                 WHERE ap.tenant_no='MAIN' AND ap.entity_no=#{entityNo} AND ap.store_no=#{storeNo} AND ap.deleted=0
                 AND ap.status='CHECKED_IN' AND ap.start_at>=#{from} AND ap.start_at<#{to}
-                AND a.personnel_no IS NOT NULL
-                GROUP BY a.personnel_no ORDER BY n DESC, a.personnel_no LIMIT 200
+                AND j.personnel_no IS NOT NULL
+                GROUP BY j.personnel_no ORDER BY n DESC, j.personnel_no LIMIT 200
                 """)
         java.util.List<java.util.Map<String, Object>> reportPersonnelCounts(
                 @Param("entityNo") String entityNo,
@@ -452,28 +455,6 @@ public final class BeautyMappers {
 
     /** 预约项目行；写入前由业务事务锁定已授权预约根。 */
     public interface AppointmentItemMapper extends TradeTableMapper<BtyAppointmentItem> {
-    }
-
-    /** 预约确认人员安排历史；按显式安排版本追加，不覆盖旧行。 */
-    public interface AppointmentAssignmentMapper extends TradeTableMapper<BtyAppointmentAssignment> {
-        /** 显式父链范围读取；不会按当前人员反推历史安排。 */
-        @Select(
-                """
-                SELECT a.* FROM bty_appointment_assignment a
-                JOIN ord_appointment_item i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
-                AND i.appointment_item_no=a.appointment_item_no AND i.deleted=0
-                JOIN ord_appointment p ON p.tenant_no=i.tenant_no AND p.entity_no=i.entity_no
-                AND p.appointment_no=i.appointment_no AND p.deleted=0
-                WHERE a.tenant_no='MAIN' AND a.entity_no=#{entityNo} AND a.deleted=0
-                AND p.store_no=#{storeNo} AND p.appointment_no=#{appointmentNo}
-                AND a.appointment_revision=#{appointmentRevision} AND #{appointmentRevision}>=0
-                ORDER BY i.sequence_no, a.requirement_no, a.resource_no, a.planned_assignment_no
-                """)
-        List<BtyAppointmentAssignment> selectByAppointmentRevision(
-                @Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo,
-                @Param("appointmentNo") String appointmentNo,
-                @Param("appointmentRevision") long appointmentRevision);
     }
 
     /** 服务工单；调用者在本域短事务按根→任务→子行锁序操作。 */

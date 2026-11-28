@@ -27,7 +27,6 @@ public final class AppointmentPersistence {
     final BeautyMappers.AppointmentResourceIntentMapper intents;
     final BeautyMappers.AppointmentResourceFenceMapper fences;
     final BeautyMappers.AppointmentItemMapper items;
-    final BeautyMappers.AppointmentAssignmentMapper assignments;
     final ObjectMapper json;
     private final TransactionTemplate writes;
     /** 行业库（工单、服务任务等服务执行的表）的写事务；行业句柄未绑定时与 {@link #writes} 是同一个库。 */
@@ -38,9 +37,9 @@ public final class AppointmentPersistence {
                     operations,
             BeautyMappers.AppointmentCurrentMapper currents, BeautyMappers.AppointmentArrangementMapper arrangements,
             BeautyMappers.AppointmentResourceIntentMapper intents, BeautyMappers.AppointmentResourceFenceMapper fences,
-            BeautyMappers.AppointmentItemMapper items, BeautyMappers.AppointmentAssignmentMapper assignments,
+            BeautyMappers.AppointmentItemMapper items,
             ObjectMapper json, PlatformTransactionManager manager) {
-        this(roots, preparations, operations, currents, arrangements, intents, fences, items, assignments,
+        this(roots, preparations, operations, currents, arrangements, intents, fences, items,
                 json, manager, manager);
     }
 
@@ -52,7 +51,7 @@ public final class AppointmentPersistence {
                     operations,
             BeautyMappers.AppointmentCurrentMapper currents, BeautyMappers.AppointmentArrangementMapper arrangements,
             BeautyMappers.AppointmentResourceIntentMapper intents, BeautyMappers.AppointmentResourceFenceMapper fences,
-            BeautyMappers.AppointmentItemMapper items, BeautyMappers.AppointmentAssignmentMapper assignments,
+            BeautyMappers.AppointmentItemMapper items,
             ObjectMapper json, PlatformTransactionManager manager,
             PlatformTransactionManager industryManager) {
         this.roots = roots;
@@ -63,7 +62,6 @@ public final class AppointmentPersistence {
         this.intents = intents;
         this.fences = fences;
         this.items = items;
-        this.assignments = assignments;
         this.json = json;
         writes = new TransactionTemplate(manager);
         writes.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);

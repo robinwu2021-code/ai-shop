@@ -713,18 +713,7 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
                 .toList().equals(execution.assignments()));
         require(snapshot.items().equals(frozen.items()) && snapshot.assignments().equals(original.assignments())
                 && snapshot.items().size() == frozen.definitions().size());
-        var persisted = db.assignments.selectByAppointmentRevision(appointment.getEntityNo(), appointment.getStoreNo(),
-                appointment.getAppointmentNo(), evidence.arrangementRevision());
-        require(persisted.size() == snapshot.assignments().size());
-        for (var assignment : snapshot.assignments()) {
-            require(persisted.stream().anyMatch(a -> assignment.appointmentItemNo().equals(a.getAppointmentItemNo())
-                    && assignment.requirementNo().equals(a.getRequirementNo())
-                    && Objects.equals(assignment.personnelNo(), a.getPersonnelNo())
-                    && assignment.resourceNo().equals(a.getResourceNo())
-                    && evidence.hold().holdNo().equals(a.getHoldNo())
-                    && assignment.startAt().toInstant().equals(a.getStartAt().toInstant(ZoneOffset.UTC))
-                    && assignment.endAt().toInstant().equals(a.getEndAt().toInstant(ZoneOffset.UTC))));
-        }
+        // 人员安排只在修订快照里（TDD §2.6 第 7 项）：上面已核对快照与冻结范围、任务快照一致，不再另比安排行
         // Reconstruct the full original grouping exactly as WorkOrderPreparation, including resource ordinals.
         var reconstructed = new ArrayList<ResourcePlanContract.Demand>();
         var reconstructedQualifications = new ArrayList<ResourcePlanContract.Qualification>();

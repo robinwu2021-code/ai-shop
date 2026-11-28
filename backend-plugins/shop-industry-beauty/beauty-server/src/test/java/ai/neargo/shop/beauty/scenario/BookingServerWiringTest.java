@@ -41,7 +41,7 @@ class BookingServerWiringTest {
                 BeautyMappers.AppointmentPreparationMapper.class, BeautyMappers.AppointmentOperationMapper.class,
                 BeautyMappers.AppointmentCurrentMapper.class, BeautyMappers.AppointmentArrangementMapper.class,
                 BeautyMappers.AppointmentResourceIntentMapper.class, BeautyMappers.AppointmentResourceFenceMapper.class,
-                BeautyMappers.AppointmentItemMapper.class, BeautyMappers.AppointmentAssignmentMapper.class,
+                BeautyMappers.AppointmentItemMapper.class,
                 BeautyMappers.AppointmentResourceDecisionMapper.class,
                 BeautyMappers.StorePolicyMapper.class,
                 BeautyMappers.StorePolicyVersionMapper.class, BeautyMappers.ReceptionOperationMapper.class,

@@ -667,11 +667,6 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                                 "SELECT * FROM ord_appointment_revision WHERE appointment_no=?"
                                         + " AND hold_no=?",
                                 appointment,
-                                hold),
-                        jdbc.queryForList(
-                                "SELECT * FROM bty_appointment_assignment WHERE entity_no=? AND"
-                                        + " hold_no=? ORDER BY id",
-                                entity,
                                 hold)));
     }
 
@@ -754,11 +749,12 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
 
     private List<String> currentResources(String appointment) {
         return jdbc.queryForList(
-                "SELECT DISTINCT a.resource_no FROM bty_appointment_assignment a JOIN"
-                    + " ord_appointment_item i ON i.appointment_item_no=a.appointment_item_no AND"
-                    + " i.entity_no=a.entity_no JOIN bty_appointment_current c ON"
-                    + " c.appointment_no=i.appointment_no AND c.entity_no=i.entity_no AND"
-                    + " c.arrangement_revision=a.appointment_revision WHERE c.appointment_no=?",
+                // 人员安排在当前那一版修订的快照里（TDD-美业域迁移新库 §2.6 第 7 项）
+                "SELECT DISTINCT j.resource_no FROM bty_appointment_current c JOIN ord_appointment_revision r"
+                    + " ON r.appointment_no=c.appointment_no AND r.entity_no=c.entity_no"
+                    + " AND r.arrangement_revision=c.arrangement_revision,"
+                    + " JSON_TABLE(r.snapshot, '$.assignments[*]' COLUMNS (resource_no VARCHAR(32)"
+                    + " PATH '$.resourceNo')) j WHERE c.appointment_no=?",
                 String.class,
                 appointment);
     }

@@ -91,7 +91,7 @@ class WorkOrderBillServiceImplTest {
         var json = JsonMapper.builder().build();
         var db =
                 new AppointmentPersistence(
-                        null, null, null, null, null, null, null, null, null, json, null);
+                        null, null, null, null, null, null, null, null, json, null);
         var observations = mock(ServiceSourceObservation.class);
         ObjectProvider<CheckoutPort> financial = mock(ObjectProvider.class);
         var bill =
@@ -230,7 +230,7 @@ class WorkOrderBillServiceImplTest {
     @SuppressWarnings("unchecked")
     void billReadRequestsRefreshBeforeOwnerRead() throws Exception {
         var mapper = JsonMapper.builder().build();
-        var db = new AppointmentPersistence(null, null, null, null, null, null, null, null, null, mapper, null);
+        var db = new AppointmentPersistence(null, null, null, null, null, null, null, null, mapper, null);
         var observations = mock(ServiceSourceObservation.class);
         ObjectProvider<CheckoutPort> checkout = mock(ObjectProvider.class);
         ObjectProvider<ManualServiceAdmissionPort> manual = mock(ObjectProvider.class);
