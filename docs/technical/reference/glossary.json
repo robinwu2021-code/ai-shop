@@ -36902,13 +36902,6 @@
       "package": "ai.neargo.shop.merchant.entity"
     },
     {
-      "table": "mch_store_category",
-      "class": "MchStoreCategory",
-      "zh": "门店经营类目：这家店打算卖哪几类（TDD-品类约束全链路 §3.1）。",
-      "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
-    },
-    {
       "table": "mch_store_qrcode_print",
       "class": "MchStoreQrcodePrint",
       "zh": "店铺码印刷量登记（append-only 台账）。",
@@ -38111,6 +38104,13 @@
       "zh": "主体按平台类目设置记不记库存（V345，TDD-商品纳入进销存开关 §3）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prd_store_category",
+      "class": "MchStoreCategory",
+      "zh": "门店经营类目：这家店打算卖哪几类（TDD-品类约束全链路 §3.1）。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
     },
     {
       "table": "prd_store_sku",
@@ -61388,6 +61388,14 @@
       "type": "String",
       "value": "\"\"",
       "zh": "门店级上下架行的目录版本号：空串（门店交易库批次 2-g，原 prd_store_goods 并入 prd_catalog_item）。",
+      "module": "shop-core"
+    },
+    {
+      "host": "PrdStoreSku",
+      "name": "ENTITY_POOL",
+      "type": "String",
+      "value": "\"\"",
+      "zh": "The entity-wide fallback pool has a unique, non-null key even on MySQL.",
       "module": "shop-core"
     },
     {
