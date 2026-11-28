@@ -137,7 +137,7 @@ public class OpsCustomerDirectoryPortImpl implements OpsCustomerDirectoryPort {
                         : " AND EXISTS (SELECT 1 FROM mch_brand_store_binding bb JOIN mch_store st ON st.tenant_no=bb.tenant_no AND st.store_no=bb.store_no WHERE "
                                 + binding + ")");
         long total = count("SELECT COUNT(*) FROM mch_brand b WHERE " + where, p);
-        var rows = jdbc.query("SELECT b.brand_no,b.name,b.status,b.management_no,ms.name management_name FROM mch_brand b LEFT JOIN mch_management_space ms ON ms.tenant_no=b.tenant_no AND ms.management_no=b.management_no AND ms.deleted=0 WHERE "
+        var rows = jdbc.query("SELECT b.brand_no,b.name,b.status,b.management_no,ms.name management_name FROM mch_brand b LEFT JOIN mch_group ms ON ms.tenant_no=b.tenant_no AND ms.management_no=b.management_no AND ms.deleted=0 WHERE "
                 + where + " ORDER BY b.brand_no LIMIT :limit OFFSET :offset", p,
                 (r, n) -> new Brand(r.getString("brand_no"), r.getString("name"), r.getString("status"),
                         r.getString("management_no"), r.getString("management_name"), List.of()));

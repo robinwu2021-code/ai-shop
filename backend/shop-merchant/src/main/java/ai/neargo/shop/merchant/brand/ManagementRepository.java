@@ -67,7 +67,7 @@ public class ManagementRepository {
   }
   if(row.containsKey("grant_no")){
    String type=str(row,"resource_type"),no=str(row,"resource_no"),tenant=str(row,"tenant_no");
-   String table=switch(type){case "SPACE"->"mch_management_space";case "BRAND"->"mch_brand";case "STORE"->"mch_store";case "ENTITY"->"mch_entity";default->null;};
+   String table=switch(type){case "SPACE"->"mch_group";case "BRAND"->"mch_brand";case "STORE"->"mch_store";case "ENTITY"->"mch_entity";default->null;};
    String column=switch(type){case "SPACE"->"management_no";case "BRAND"->"brand_no";case "STORE"->"store_no";case "ENTITY"->"entity_no";default->null;};
    var resource=table==null?null:one("SELECT name FROM "+table+" WHERE tenant_no=? AND "+column+"=? AND deleted=0",tenant,no);
    result.put("resourceName",resource==null?type:str(resource,"name"));

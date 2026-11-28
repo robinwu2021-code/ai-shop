@@ -134,3 +134,55 @@ CREATE TABLE `mch_service_area_cell` (
   UNIQUE KEY `uk_sac_area_cell` (`area_no`, `cell_id`),
   KEY `idx_sac_cell` (`cell_id`)
 ) COMMENT='门店服务范围的多边形网格：由多边形范围行派生，可达判定按网格命中';
+
+-- 授权（第 2 步 G，TDD-平台基础库换表 Q7 与「G 授权合并：落地方案与待定项」，11-28 用户定）：
+-- 门店角色与管理授权并成一张。Q7.6 去重：同一集团、被授权人、范围、类型、角色码或权限码只一条，
+-- ROLE 行权限码、PERMISSION 行角色码写空串哨兵；授权号唯一。名为 uk_ 的两个原是普通索引。
+-- G1：操作人编号带前缀（MCH: / USER: + 32 位号），actor_no、owner_actor_no 与这些表的审计列放宽到 64。
+ALTER TABLE `mch_grant` MODIFY COLUMN `actor_no` varchar(64) NOT NULL COMMENT '被授权人：B 端账号号或 C 端用户号，带前缀（MCH: / USER:）';
+ALTER TABLE `mch_grant` MODIFY COLUMN `role_code` varchar(32) NOT NULL DEFAULT '' COMMENT '授予的角色码（grant_kind=ROLE 时有值，PERMISSION 行为空串）';
+ALTER TABLE `mch_grant` MODIFY COLUMN `permission_code` varchar(32) NOT NULL DEFAULT '' COMMENT '授予的权限码（grant_kind=PERMISSION 时有值，ROLE 行为空串）';
+ALTER TABLE `mch_grant` MODIFY COLUMN `created_by` varchar(64) DEFAULT NULL COMMENT '创建人（带前缀的操作人编号）';
+ALTER TABLE `mch_grant` MODIFY COLUMN `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人（带前缀的操作人编号）';
+ALTER TABLE `mch_grant` ALTER COLUMN `delegatable` SET DEFAULT 0;
+ALTER TABLE `mch_grant` DROP INDEX `uk_1`;
+ALTER TABLE `mch_grant` ADD UNIQUE KEY `uk_mch_grant_no` (`tenant_no`, `grant_no`);
+ALTER TABLE `mch_grant` DROP INDEX `uk_2`;
+ALTER TABLE `mch_grant` ADD UNIQUE KEY `uk_mch_grant_item` (`tenant_no`, `management_no`, `actor_no`, `resource_type`, `resource_no`, `grant_kind`, `role_code`, `permission_code`);
+ALTER TABLE `mch_group` MODIFY COLUMN `owner_actor_no` varchar(64) NOT NULL COMMENT '集团的有效所有人（老板）：带前缀的操作人编号（MCH: / USER:）';
+ALTER TABLE `mch_group` MODIFY COLUMN `created_by` varchar(64) DEFAULT NULL COMMENT '创建人（带前缀的操作人编号）';
+ALTER TABLE `mch_group` MODIFY COLUMN `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人（带前缀的操作人编号）';
+ALTER TABLE `mch_group` ALTER COLUMN `auth_revision` SET DEFAULT 0;
+ALTER TABLE `mch_brand` MODIFY COLUMN `created_by` varchar(64) DEFAULT NULL COMMENT '创建人（带前缀的操作人编号）';
+ALTER TABLE `mch_brand` MODIFY COLUMN `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人（带前缀的操作人编号）';
+ALTER TABLE `mch_brand_store_binding` MODIFY COLUMN `created_by` varchar(64) DEFAULT NULL COMMENT '创建人（带前缀的操作人编号）';
+ALTER TABLE `mch_brand_store_binding` MODIFY COLUMN `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人（带前缀的操作人编号）';
+
+-- 储值开通后的门店入退连锁（G4：保留这张表，只装与支付侧的两阶段流程：准备 → 支付已准备 → 完成 / 驳回）。
+-- 「一店同时只一单在途」原靠生成列加唯一键；新库各表不用生成列，in_flight_store_no 由代码在在途时写门店号、结束时清空。
+CREATE TABLE `mch_brand_financial_change` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
+  `tenant_no` varchar(32) NOT NULL DEFAULT 'MAIN' COMMENT '租户号',
+  `change_no` varchar(32) NOT NULL COMMENT '变更单号',
+  `management_no` varchar(32) NOT NULL COMMENT '商户集团号',
+  `store_no` varchar(32) NOT NULL COMMENT '门店号',
+  `from_brand_no` varchar(32) DEFAULT NULL COMMENT '原品牌号（入连锁时为空）',
+  `to_brand_no` varchar(32) DEFAULT NULL COMMENT '新品牌号（退连锁时为空）',
+  `original_actor_no` varchar(64) NOT NULL COMMENT '发起人（带前缀的操作人编号）',
+  `command_key` varchar(64) NOT NULL COMMENT '发起命令的幂等键',
+  `command_hash` char(64) NOT NULL COMMENT '发起命令内容摘要',
+  `source_snapshot` json NOT NULL COMMENT '发起时冻结的成员事实',
+  `pay_prepare_snapshot` json DEFAULT NULL COMMENT '支付侧准备回执',
+  `status` varchar(16) NOT NULL COMMENT '状态：PREPARING 准备中 / PAY_PREPARED 支付已准备 / COMPLETED 完成 / REJECTED 驳回',
+  `in_flight_store_no` varchar(32) DEFAULT NULL COMMENT '在途（准备中、支付已准备）时为门店号，结束时清空；唯一键保证一店同时只一单在途',
+  `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 = 正常，1 = 已删除',
+  `version` int NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `created_by` varchar(64) DEFAULT NULL COMMENT '创建人（带前缀的操作人编号）',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间，每次修改自动更新',
+  `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人（带前缀的操作人编号）',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_brand_financial_change` (`tenant_no`, `change_no`),
+  UNIQUE KEY `uk_brand_financial_change_command` (`tenant_no`, `original_actor_no`, `command_key`),
+  UNIQUE KEY `uk_brand_financial_change_store` (`tenant_no`, `in_flight_store_no`)
+) COMMENT='储值开通后的门店入退连锁：与支付侧两阶段变更成员的中间状态与回执';

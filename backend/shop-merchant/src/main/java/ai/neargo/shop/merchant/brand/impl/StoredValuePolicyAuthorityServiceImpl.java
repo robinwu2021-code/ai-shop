@@ -34,7 +34,7 @@ public class StoredValuePolicyAuthorityServiceImpl implements StoredValuePolicyA
         for(var brand:brands)for(String permission:List.of("sv.policy.read","sv.policy.manage"))targets.add(new String[]{"BRAND",str(brand,"brand_no"),permission});
         for(var target:targets){
             if(!scopes.can(actor,management,target[0],target[1],target[2])||!scopes.canDelegate(actor,management,target[0],target[1],target[2]))continue;
-            var prior=db.one("SELECT version,status FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type=? AND resource_no=? AND permission_code=? AND deleted=0",actor.tenantNo(),management,actor.actorKey(),target[0],target[1],target[2]);
+            var prior=db.one("SELECT version,status FROM mch_grant WHERE grant_kind='PERMISSION' AND tenant_no=? AND management_no=? AND actor_no=? AND resource_type=? AND resource_no=? AND permission_code=? AND deleted=0",actor.tenantNo(),management,actor.actorKey(),target[0],target[1],target[2]);
             if(prior!=null&&"ACTIVE".equals(str(prior,"status")))continue;
             scopes.grant(actor,management,new ManagementModels.GrantCommand(actor.actorKey(),target[0],target[1],target[2],null,null,true,prior==null?null:num(prior,"version"),prior!=null));
         }
@@ -68,7 +68,7 @@ public class StoredValuePolicyAuthorityServiceImpl implements StoredValuePolicyA
         var brands=db.rows("SELECT brand_no FROM mch_brand WHERE tenant_no=? AND management_no=? AND status='ACTIVE' AND deleted=0 LIMIT 1001",actor.tenantNo(),management);
         if(brands.size()>1000)throw BizException.of(ErrorCode.CONFLICT);
         for(var b:brands)if(scopes.can(actor,management,"BRAND",str(b,"brand_no"),"sv.policy.read"))targets.add(new Target("BRAND_STORES",str(b,"brand_no")));
-        var stores=db.rows("SELECT DISTINCT resource_no FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type='STORE' AND permission_code='sv.policy.read' AND status='ACTIVE' AND deleted=0 LIMIT 1001",actor.tenantNo(),management,actor.actorKey());
+        var stores=db.rows("SELECT DISTINCT resource_no FROM mch_grant WHERE grant_kind='PERMISSION' AND tenant_no=? AND management_no=? AND actor_no=? AND resource_type='STORE' AND permission_code='sv.policy.read' AND status='ACTIVE' AND deleted=0 LIMIT 1001",actor.tenantNo(),management,actor.actorKey());
         if(stores.size()>1000)throw BizException.of(ErrorCode.CONFLICT);
         for(var store:stores)if(scopes.can(actor,management,"STORE",str(store,"resource_no"),"sv.policy.read")){
             storeBrand(actor,management,str(store,"resource_no"));targets.add(new Target("STORE",str(store,"resource_no")));
@@ -83,7 +83,7 @@ public class StoredValuePolicyAuthorityServiceImpl implements StoredValuePolicyA
         var brands=db.rows("SELECT brand_no,name FROM mch_brand WHERE tenant_no=? AND management_no=? AND status='ACTIVE' AND deleted=0 LIMIT 1001",actor.tenantNo(),management);
         if(brands.size()>1000)throw BizException.of(ErrorCode.CONFLICT);
         for(var brand:brands){String no=str(brand,"brand_no");boolean manage=scopes.can(actor,management,"BRAND",no,"sv.policy.manage");if(manage||scopes.can(actor,management,"BRAND",no,"sv.policy.read"))result.add(new PolicyTarget("BRAND_STORES",no,str(brand,"name"),manage));}
-        var stores=db.rows("SELECT DISTINCT resource_no FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type='STORE' AND permission_code IN ('sv.policy.read','sv.policy.manage') AND status='ACTIVE' AND deleted=0 LIMIT 1001",actor.tenantNo(),management,actor.actorKey());
+        var stores=db.rows("SELECT DISTINCT resource_no FROM mch_grant WHERE grant_kind='PERMISSION' AND tenant_no=? AND management_no=? AND actor_no=? AND resource_type='STORE' AND permission_code IN ('sv.policy.read','sv.policy.manage') AND status='ACTIVE' AND deleted=0 LIMIT 1001",actor.tenantNo(),management,actor.actorKey());
         if(stores.size()>1000)throw BizException.of(ErrorCode.CONFLICT);
         for(var store:stores){String no=str(store,"resource_no");boolean manage=scopes.can(actor,management,"STORE",no,"sv.policy.manage");if(manage||scopes.can(actor,management,"STORE",no,"sv.policy.read")){storeBrand(actor,management,no);result.add(new PolicyTarget("STORE",no,str(db.one("SELECT name FROM mch_store WHERE tenant_no=? AND store_no=? AND deleted=0",actor.tenantNo(),no),"name"),manage));}}
         if(result.size()>1000)throw BizException.of(ErrorCode.CONFLICT);return List.copyOf(result);
@@ -107,7 +107,7 @@ public class StoredValuePolicyAuthorityServiceImpl implements StoredValuePolicyA
         return new ActivityAuthority(new StoreScope(actor.tenantNo(),management,store,brand,currency,num(row,"version")),str(row,"entity_no"),actor.actorKey(),principal,num(scopes.space(actor,management),"auth_revision"));
     }
     public StoreScope currentStoreScope(StoreScope scope,String entity){
-        if(db.one("SELECT management_no FROM mch_management_space WHERE tenant_no=? AND management_no=? AND status='ACTIVE' AND deleted=0",scope.tenantNo(),scope.managementNo())==null)return null;
+        if(db.one("SELECT management_no FROM mch_group WHERE tenant_no=? AND management_no=? AND status='ACTIVE' AND deleted=0",scope.tenantNo(),scope.managementNo())==null)return null;
         try {
             String brand=storeBrand(scope.tenantNo(),scope.managementNo(),scope.storeNo());
             var store=db.one("SELECT version FROM mch_store WHERE tenant_no=? AND store_no=? AND entity_no=? AND status='ACTIVE' AND deleted=0",scope.tenantNo(),scope.storeNo(),entity);

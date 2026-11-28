@@ -73,7 +73,7 @@ public class BrandServiceImpl implements BrandService {
  public List<Map<String,Object>> legalEntityCandidates(Actor a,String no){
   var m=str(raw(a,no),"management_no");scopes.require(a,m,"SPACE",m,"management.enter");scopes.require(a,m,"BRAND",no,"brand.manage");
   var candidates=new TreeSet<String>();scopes.ownerAccounts(a).forEach(r->candidates.add(str(r,"entity_no")));
-  for(var g:db.rows("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type='ENTITY' AND permission_code='promotion.sponsor.authorize' AND deleted=0",a.tenantNo(),m,a.actorKey()))if(scopes.valid(a,g,new HashSet<>()))candidates.add(str(g,"resource_no"));
+  for(var g:db.rows("SELECT * FROM mch_grant WHERE grant_kind='PERMISSION' AND tenant_no=? AND management_no=? AND actor_no=? AND resource_type='ENTITY' AND permission_code='promotion.sponsor.authorize' AND deleted=0",a.tenantNo(),m,a.actorKey()))if(scopes.valid(a,g,new HashSet<>()))candidates.add(str(g,"resource_no"));
   var result=new ArrayList<Map<String,Object>>();
   for(var entity:candidates){var row=db.one("SELECT entity_no,name FROM mch_entity WHERE tenant_no=? AND entity_no=? AND status='ACTIVE' AND ownership_change_no IS NULL AND deleted=0",a.tenantNo(),entity);if(row!=null)result.add(Map.of("entityNo",entity,"name",str(row,"name")));}
   return List.copyOf(result);

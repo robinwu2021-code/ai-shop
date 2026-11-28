@@ -50,7 +50,7 @@ public class ManagementAuthorityBridge implements ManagementAuthority {
                 return true;
             }
         }
-        for (Map<String, Object> grant : db.rows("SELECT * FROM mch_management_grant WHERE tenant_no=?"
+        for (Map<String, Object> grant : db.rows("SELECT * FROM mch_grant WHERE grant_kind='PERMISSION' AND tenant_no=?"
                 + " AND management_no=? AND actor_no=? AND resource_type=? AND permission_code=? AND deleted=0",
                 tenantNo, managementNo, actorKey, resourceType, permission)) {
             if (scopes.valid(actor, grant, new HashSet<>())) {

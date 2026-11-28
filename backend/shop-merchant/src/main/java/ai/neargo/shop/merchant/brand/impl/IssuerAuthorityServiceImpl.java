@@ -87,7 +87,7 @@ public class IssuerAuthorityServiceImpl implements IssuerAuthorityService {
         var source=storePreparationScope(actor,store);
         for(String permission:List.of("sv.issuer.read","sv.issuer.configure")){
             if(scopes.can(actor,management,"STORE",store,permission))continue;
-            var prior=db.one("SELECT version,status FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type='STORE' AND resource_no=? AND permission_code=?",actor.tenantNo(),management,actor.actorKey(),store,permission);
+            var prior=db.one("SELECT version,status FROM mch_grant WHERE grant_kind='PERMISSION' AND tenant_no=? AND management_no=? AND actor_no=? AND resource_type='STORE' AND resource_no=? AND permission_code=?",actor.tenantNo(),management,actor.actorKey(),store,permission);
             scopes.grant(actor,management,new ai.neargo.shop.merchant.brand.ManagementModels.GrantCommand(actor.actorKey(),"STORE",store,permission,null,null,false,prior==null?null:num(prior,"version"),prior!=null));
         }
         return source;

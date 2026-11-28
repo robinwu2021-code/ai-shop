@@ -41,9 +41,9 @@ public class ManagementQueryServiceImpl implements ManagementQueryService {
   var args=new ArrayList<Object>(Arrays.asList(a.tenantNo(),before));
   if("BRAND".equals(type)){sql+="r.management_no=? AND ";args.add(m);}
   if(brandSummary){sql+="1=1";}else{
-  sql+="(EXISTS(SELECT 1 FROM mch_management_grant g WHERE g.tenant_no=r.tenant_no AND g.management_no=? AND g.actor_no=? AND g.resource_type=? AND g.resource_no=r."+column+" AND g.permission_code=? AND g.status='ACTIVE' AND g.deleted=0)";
+  sql+="(EXISTS(SELECT 1 FROM mch_grant g WHERE g.grant_kind='PERMISSION' AND g.tenant_no=r.tenant_no AND g.management_no=? AND g.actor_no=? AND g.resource_type=? AND g.resource_no=r."+column+" AND g.permission_code=? AND g.status='ACTIVE' AND g.deleted=0)";
   args.addAll(Arrays.asList(m,a.actorKey(),type,permission));
-  if("BRAND".equals(type)){sql+=" OR EXISTS(SELECT 1 FROM mch_management_space s WHERE s.tenant_no=r.tenant_no AND s.management_no=r.management_no AND s.owner_actor_no=? AND s.status='ACTIVE')";args.add(a.actorKey());}
+  if("BRAND".equals(type)){sql+=" OR EXISTS(SELECT 1 FROM mch_group s WHERE s.tenant_no=r.tenant_no AND s.management_no=r.management_no AND s.owner_actor_no=? AND s.status='ACTIVE')";args.add(a.actorKey());}
   sql+=")";}
   if(keyword!=null&&!keyword.isBlank()){text(keyword,100);sql+=" AND r.name LIKE ?";args.add("%"+keyword.trim()+"%");}
   if(status!=null){sql+=" AND r.status=?";args.add(text(status,24));}
@@ -67,7 +67,7 @@ public class ManagementQueryServiceImpl implements ManagementQueryService {
   String target=manage?actorNo:a.actorKey();String fingerprint=hash(db.encode(Arrays.asList(a.tenantNo(),a.actorKey(),m,type,view,target)));long before=Long.MAX_VALUE;
   if(size<1||size>100)throw BizException.of(ErrorCode.BAD_REQUEST);
   if(cursor!=null){var c=tokens.decode("RESOURCE_CURSOR",cursor);if(!fingerprint.equals(c.get("scope")))throw BizException.of(ErrorCode.CONFLICT);before=((Number)c.get("before")).longValue();}
-  var raw=db.rows("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND deleted=0 AND id<? AND (? IS NULL OR resource_type=?) AND (? IS NULL OR actor_no=?) ORDER BY id DESC LIMIT ?",a.tenantNo(),m,before,type,type,target,target,size+1);var chosen=raw.stream().limit(size).toList();
+  var raw=db.rows("SELECT * FROM mch_grant WHERE grant_kind='PERMISSION' AND tenant_no=? AND management_no=? AND deleted=0 AND id<? AND (? IS NULL OR resource_type=?) AND (? IS NULL OR actor_no=?) ORDER BY id DESC LIMIT ?",a.tenantNo(),m,before,type,type,target,target,size+1);var chosen=raw.stream().limit(size).toList();
   var items=chosen.stream().filter(g->manage?scopes.canDelegate(a,m,str(g,"resource_type"),str(g,"resource_no"),str(g,"permission_code")):scopes.valid(a,g,new HashSet<>())).map(g->{var result=db.view(g);result.put("effective",scopes.valid(a,g,new HashSet<>()));boolean ownerSpace="SPACE".equals(str(g,"resource_type"))&&str(g,"actor_no").equals(str(scopes.space(a,m),"owner_actor_no"));result.put("canRevoke",manage&&!ownerSpace&&"ACTIVE".equals(str(g,"status")));return result;}).toList();
   return new Page(items,raw.size()>size?tokens.encode("RESOURCE_CURSOR",Map.of("scope",fingerprint,"before",num(chosen.getLast(),"id")),900):null);
  }
@@ -88,7 +88,7 @@ public class ManagementQueryServiceImpl implements ManagementQueryService {
    }
   }
   args.add(after);args.add(size+1);
-  var candidates=db.rows("SELECT resource_type,resource_no FROM (SELECT DISTINCT resource_type,resource_no FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND deleted=0 UNION SELECT 'SPACE',? UNION SELECT 'BRAND',?"+owned+") r WHERE CONCAT(resource_type,':',resource_no)>? ORDER BY resource_type,resource_no LIMIT ?",args.toArray());
+  var candidates=db.rows("SELECT resource_type,resource_no FROM (SELECT DISTINCT resource_type,resource_no FROM mch_grant WHERE grant_kind='PERMISSION' AND tenant_no=? AND management_no=? AND actor_no=? AND deleted=0 UNION SELECT 'SPACE',? UNION SELECT 'BRAND',?"+owned+") r WHERE CONCAT(resource_type,':',resource_no)>? ORDER BY resource_type,resource_no LIMIT ?",args.toArray());
   var chosen=candidates.stream().limit(size).toList();var items=new ArrayList<Map<String,Object>>();
   for(var row:chosen){String type=str(row,"resource_type"),no=str(row,"resource_no");var permissions=scopes.permissions(type).stream().filter(p->scopes.canDelegate(a,m,type,no,p)).sorted().toList();if(permissions.isEmpty())continue;
    String table=switch(type){case "BRAND"->"mch_brand";case "STORE"->"mch_store";case "ENTITY"->"mch_entity";case "PAYMENT_MERCHANT"->"mch_payment_merchant";default->null;};
@@ -103,7 +103,7 @@ public class ManagementQueryServiceImpl implements ManagementQueryService {
   scopes.resolve(a,m);scopes.require(a,m,"SPACE",m,"management.resource.read");
   scopes.require(a,m,"SPACE",m,"management.grant.manage");if(size<1||size>100)throw BizException.of(ErrorCode.BAD_REQUEST);
   var entities=new TreeSet<String>();for(var owner:scopes.ownerAccounts(a))entities.add(str(owner,"entity_no"));
-  for(var g:db.rows("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND deleted=0",a.tenantNo(),m,a.actorKey()))if(bool(g,"delegatable")&&scopes.valid(a,g,new HashSet<>())){String e=scopes.resourceEntity(a,str(g,"resource_type"),str(g,"resource_no"));if(!e.isEmpty())entities.add(e);}
+  for(var g:db.rows("SELECT * FROM mch_grant WHERE grant_kind='PERMISSION' AND tenant_no=? AND management_no=? AND actor_no=? AND deleted=0",a.tenantNo(),m,a.actorKey()))if(bool(g,"delegatable")&&scopes.valid(a,g,new HashSet<>())){String e=scopes.resourceEntity(a,str(g,"resource_type"),str(g,"resource_no"));if(!e.isEmpty())entities.add(e);}
   if(entities.isEmpty())return new Page(List.of(),null);
   String fingerprint=hash(db.encode(List.of(a.tenantNo(),a.actorKey(),m,entities)));String after="";
   if(cursor!=null){var c=tokens.decode("RECIPIENT_CURSOR",cursor);if(!fingerprint.equals(c.get("scope")))throw BizException.of(ErrorCode.CONFLICT);after=(String)c.get("after");}
