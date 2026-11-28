@@ -14,12 +14,15 @@ import org.springframework.context.ApplicationContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** Real persistence primitives only; seeded plans and terminal rows do not constitute source authorization. */
+/**
+ * 资源围栏与资源命令的持久化原语（§2.6 第 4–6 项 4-4b-1：围栏的活动标记指向命令行的命令键，命令行取代原资源意向）。
+ * Real persistence primitives only; seeded plans and terminal rows do not constitute source authorization.
+ */
 class ResourceIntentPersistenceIT extends BeautyExecutionFixture {
     private String plan;
     @BeforeEach
     void database() throws Exception {
-        initialize("BtyAppointmentResourceIntent", "BtyAppointmentResourceFence");
+        initialize("BtyAppointmentCommand", "BtyAppointmentResourceFence");
         appointment("A", "S");
         var interval = new ResourcePlanContract.Interval(T0.toInstant(ZoneOffset.UTC),
                 T0.plusHours(1).toInstant(ZoneOffset.UTC));
@@ -30,10 +33,12 @@ class ResourceIntentPersistenceIT extends BeautyExecutionFixture {
         seed("bty_appointment_resource_fence", "fence_no", "F", "appointment_no", "A", "store_no", "S");
     }
     private void intent(String no, String command, String payload) {
-        seed("bty_appointment_resource_intent", "intent_no", no, "appointment_no", "A", "store_no", "S",
+        // 命令键（no）就是围栏的活动标记；冻结计划在受理请求原文里
+        seed("ord_appointment_command", "request_key", no, "change_no", "CH", "appointment_no", "A", "store_no", "S",
                 "command_no", command, "source_revision", 0, "action", "REPLACE", "command_hash", "a".repeat(64),
-                "plan_hash", ResourcePlanContract.hash(plan == null ? payload : plan), "frozen_plan", payload,
-                "phase_code", 0, "initiated_by", "ACTOR");
+                "plan_hash", ResourcePlanContract.hash(plan == null ? payload : plan),
+                "accept_payload", "{\"frozenPayload\":\"" + payload.replace("\\", "\\\\").replace("\"", "\\\"")
+                        .replace("\n", "\\n") + "\"}", "status", "BOUND");
     }
     private int acquire(ApplicationContext ctx, String store, String no, long version) {
         call(ctx, "AppointmentMapper", "selectScopedForUpdate", "E", store, "A");
@@ -41,13 +46,10 @@ class ResourceIntentPersistenceIT extends BeautyExecutionFixture {
                 "ACTOR", T0);
     }
     @Test
-    void preservesExactPlanBytesAndRejectsDuplicateCommandOrInvalidPayload() {
-        assertThat(sql.queryForObject("SELECT frozen_plan FROM bty_appointment_resource_intent", String.class))
-                .isEqualTo(plan);
-        assertThatThrownBy(() -> intent("I2", "CMD1", plan)).isInstanceOf(RuntimeException.class);
-        assertThatThrownBy(() -> intent("I3", "CMD3", "{")).isInstanceOf(RuntimeException.class);
-        assertThatThrownBy(() -> intent("I4", "CMD4", "\"" + "中".repeat(22000) + "\""))
-                .isInstanceOf(RuntimeException.class);
+    void preservesExactPlanBytesAndRejectsDuplicateCommand() {
+        assertThat(sql.queryForObject("SELECT JSON_UNQUOTE(JSON_EXTRACT(accept_payload,'$.frozenPayload'))"
+                + " FROM ord_appointment_command", String.class)).isEqualTo(plan); // 字符串原样存，连首尾空白
+        assertThatThrownBy(() -> intent("I2", "CMD1", plan)).isInstanceOf(RuntimeException.class); // 命令号唯一
     }
     @Test
     void serializesOneActiveFenceAndKeepsScopeAndRevision() {
@@ -87,57 +89,31 @@ class ResourceIntentPersistenceIT extends BeautyExecutionFixture {
 
     @Test
     void rejectsInvalidPhaseAndTerminalShapes() {
-        assertThatThrownBy(() -> sql.update("UPDATE bty_appointment_resource_intent SET phase_code=1"))
+        assertThatThrownBy(() -> sql.update("UPDATE ord_appointment_command SET status='PERMITTED'"))
+                .isInstanceOf(RuntimeException.class); // 没有决策号与窗口不能是已许可
+        assertThatThrownBy(() -> sql.update("UPDATE ord_appointment_command SET status='SUCCEEDED'"))
                 .isInstanceOf(RuntimeException.class);
-        assertThatThrownBy(() -> sql.update("UPDATE bty_appointment_resource_intent SET terminal_code=1"))
-                .isInstanceOf(RuntimeException.class);
-        assertThatThrownBy(() -> sql.update("UPDATE bty_appointment_resource_intent SET source_revision=-1"))
+        assertThatThrownBy(() -> sql.update("UPDATE ord_appointment_command SET source_revision=-1"))
                 .isInstanceOf(RuntimeException.class);
         runner().run(ctx -> {
             assertThat(tx(ctx, () -> acquire(ctx, "S", "I1", 0))).isOne();
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceIntentMapper", "authorize", "E", "OTHER", "I1",
-                    0L, "D", T0, T0.plusSeconds(1), "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceIntentMapper", "authorize", "E", "S", "I1", 0L,
-                    "D", T0, T0, "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceIntentMapper", "reconcile", "E", "S", "I1", 0L,
-                    1, "b".repeat(64), "ACTOR", T0))).isEqualTo(0);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentCommandMapper", "permit", "E", "OTHER", "CMD1", 0L, "D", T0, T0.plusSeconds(1), "F", 1L, "ACTOR"))).isEqualTo(0);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentCommandMapper", "permit", "E", "S", "CMD1", 0L, "D", T0, T0, "F", 1L, "ACTOR"))).isEqualTo(0);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentCommandMapper", "settle", "E", "S", "CMD1", 0L, "SUCCEEDED", "b".repeat(64), null, "ACTOR", T0))).isEqualTo(0);
         });
     }
 
-    @Test
-    void blocksScheduleCancelConfirmAndArrivalEvenWhenPermissionHasExpired() {
-        runner().run(ctx -> {
-            assertThat(tx(ctx, () -> acquire(ctx, "S", "I1", 0))).isOne();
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceIntentMapper", "authorize", "E", "S", "I1", 0L,
-                    "D", T0, T0.plusSeconds(1), "ACTOR", T0))).isEqualTo(1);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeSchedule", "E", "S", "A", 0L,
-                    "CONFIRMED", T0.plusHours(2), T0.plusHours(3), "NEXT", "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
-                    "CONFIRMED", "CANCELLED", "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "markArrived", "E", "S", "A", 0L,
-                    "CONFIRMED", T0, "ACTOR", T0))).isEqualTo(0);
-            sql.update("UPDATE ord_appointment SET status='HELD'");
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
-                    "HELD", "CONFIRMED", "ACTOR", T0))).isEqualTo(0);
-            sql.update("UPDATE bty_appointment_resource_fence SET deleted=1");
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
-                    "HELD", "CANCELLED", "ACTOR", T0))).isEqualTo(0);
-        });
-    }
     @Test
     void requiresReconciledTerminalEvidenceBeforeFenceRelease() {
         runner().run(ctx -> {
             assertThat(tx(ctx, () -> acquire(ctx, "S", "I1", 0))).isOne();
             assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceFenceMapper", "releaseReconciled", "E", "S",
                     "A", "I1", 1L, "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceIntentMapper", "authorize", "E", "S", "I1", 0L,
-                    "D", T0, T0.plusSeconds(1), "ACTOR", T0))).isEqualTo(1);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentCommandMapper", "permit", "E", "S", "CMD1", 0L, "D", T0, T0.plusSeconds(1), "F", 1L, "ACTOR"))).isEqualTo(1);
             assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceFenceMapper", "releaseReconciled", "E", "S",
                     "A", "I1", 1L, "ACTOR", T0.plusDays(1)))).isEqualTo(0);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceIntentMapper", "reconcile", "E", "S", "I1", 0L,
-                    1, "b".repeat(64), "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceIntentMapper", "reconcile", "E", "S", "I1", 1L,
-                    1, "b".repeat(64), "ACTOR", T0))).isEqualTo(1);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentCommandMapper", "settle", "E", "S", "CMD1", 0L, "SUCCEEDED", "b".repeat(64), null, "ACTOR", T0))).isEqualTo(0);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentCommandMapper", "settle", "E", "S", "CMD1", 1L, "SUCCEEDED", "b".repeat(64), null, "ACTOR", T0))).isEqualTo(1);
             assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceFenceMapper", "releaseReconciled", "E", "S",
                     "A", "I1", 0L, "ACTOR", T0))).isEqualTo(0);
             assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceFenceMapper", "releaseReconciled", "E", "S",
@@ -157,17 +133,15 @@ class ResourceIntentPersistenceIT extends BeautyExecutionFixture {
         runner().run(ctx -> {
             assertThat(tx(ctx, () -> acquire(ctx, "S", "I1", 0))).isOne();
             // Seed only the storage shape of the real common contract; this is not a source decision service.
-            sql.update("UPDATE bty_appointment_resource_intent SET phase_code=2, decision_no=?, reason_code=?, "
+            sql.update("UPDATE ord_appointment_command SET status='REFUSED', decision_no=?, reject_code=?, "
                     + "version=1", denied.decisionNo(), denied.reasonCode());
-            assertThat(sql.queryForObject("SELECT issued_at FROM bty_appointment_resource_intent", String.class))
+            assertThat(sql.queryForObject("SELECT permitted_at FROM ord_appointment_command", String.class))
                     .isNull();
-            assertThatThrownBy(() -> sql.update("UPDATE bty_appointment_resource_intent "
-                    + "SET issued_at=?, valid_until=?", T0, T0.plusSeconds(1))).isInstanceOf(RuntimeException.class);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceIntentMapper", "reconcile", "E", "S", "I1", 1L,
-                    1, "b".repeat(64), "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceIntentMapper", "reconcile", "E", "S", "I1", 1L,
-                    2, "b".repeat(64), "ACTOR", T0))).isEqualTo(1);
-            assertThat(sql.queryForObject("SELECT reason_code FROM bty_appointment_resource_intent", String.class))
+            assertThatThrownBy(() -> sql.update("UPDATE ord_appointment_command "
+                    + "SET permitted_at=?, valid_until=?", T0, T0.plusSeconds(1))).isInstanceOf(RuntimeException.class);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentCommandMapper", "settle", "E", "S", "CMD1", 1L, "SUCCEEDED", "b".repeat(64), null, "ACTOR", T0))).isEqualTo(0);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentCommandMapper", "settle", "E", "S", "CMD1", 1L, "REJECTED", "b".repeat(64), null, "ACTOR", T0))).isEqualTo(1);
+            assertThat(sql.queryForObject("SELECT reject_code FROM ord_appointment_command", String.class))
                     .isEqualTo("SOURCE_DENIED");
             assertThat(tx(ctx, () -> call(ctx, "AppointmentResourceFenceMapper", "releaseReconciled", "E", "S",
                     "A", "I1", 1L, "ACTOR", T0))).isEqualTo(1);

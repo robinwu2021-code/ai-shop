@@ -265,8 +265,10 @@ class ManualSourceBindingIT extends ManualSourceHostFixture {
 
     private int recoveryActions(String number) {
         return jdbc.queryForObject(
-                "SELECT COUNT(*) FROM bty_action_log WHERE tenant_no='MAIN' AND entity_no=?"
-                        + " AND store_no=? AND aggregate_no=? AND action='RECOVERY_REQUESTED'",
+                // 恢复请求记成服务提交表里 RECOVERY 动作的一行（TDD §2.6 第 12 项）
+                "SELECT COUNT(*) FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=?"
+                        + " AND store_no=? AND action='RECOVERY' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,"
+                        + " '$.receipt.submissionNo'))=?",
                 Integer.class,
                 entity,
                 store,

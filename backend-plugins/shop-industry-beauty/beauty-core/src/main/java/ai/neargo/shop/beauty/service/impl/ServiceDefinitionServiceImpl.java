@@ -5,7 +5,6 @@ import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.ServiceDefinitionQuery;
 import ai.neargo.shop.beauty.dto.ServiceDefinitionVO;
 import ai.neargo.shop.beauty.dto.ServiceDefinitionVersionVO;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.ServiceDefinitionService;
 import ai.neargo.shop.common.BizException;
@@ -33,17 +32,14 @@ import tools.jackson.databind.ObjectMapper;
  */
 public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
     private final ServiceDefinitions definitions;
-    private final BeautyMappers.ActionLogMapper actions;
     private final RequestIdempotencyPort idempotency;
     private final ObjectProvider<ServiceProductFactsPort> products;
     private final TransactionTemplate transactions;
     private final ObjectMapper json;
 
-    public ServiceDefinitionServiceImpl(ServiceDefinitions definitions, BeautyMappers.ActionLogMapper actions,
-            RequestIdempotencyPort idempotency, ObjectProvider<ServiceProductFactsPort> products,
+    public ServiceDefinitionServiceImpl(ServiceDefinitions definitions, RequestIdempotencyPort idempotency, ObjectProvider<ServiceProductFactsPort> products,
             PlatformTransactionManager manager, ObjectMapper json) {
         this.definitions = definitions;
-        this.actions = actions;
         this.idempotency = idempotency;
         this.products = products;
         this.transactions = new TransactionTemplate(manager);
@@ -99,20 +95,6 @@ public class ServiceDefinitionServiceImpl implements ServiceDefinitionService {
     private ServiceDefinitionVersionVO publish(String entity, String store, String actor,
             PublishServiceDefinitionVersionReq req, String key) {
         var published = definitions.publish(entity, store, actor, req, IdempotencyScope.requestHash(key));
-        var action = new BtyActionLog();
-        action.setEntityNo(entity);
-        action.setActionNo(BizKey.next("BTAL"));
-        action.setStoreNo(store);
-        action.setAggregateType("BEAUTY_SERVICE_DEFINITION");
-        action.setAggregateNo(published.definitionNo());
-        action.setAction("DEFINITION_VERSION_PUBLISHED");
-        action.setOperatorRef(actor);
-        action.setExpectedRevision(req.expectedRevision());
-        action.setResultRevision(published.revision());
-        action.setSafeSnapshot(json.writeValueAsString(Map.of("definitionVersionNo", published.definitionVersionNo(),
-                "hash", published.hash())));
-        action.setRequestRef(IdempotencyScope.requestHash(key));
-        actions.insert(action);
         return new ServiceDefinitionVersionVO(published.definitionNo(), published.definitionVersionNo(),
                 published.revision(), published.hash());
     }

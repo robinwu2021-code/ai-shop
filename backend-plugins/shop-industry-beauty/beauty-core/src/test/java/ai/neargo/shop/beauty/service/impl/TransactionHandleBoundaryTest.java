@@ -19,14 +19,14 @@ import org.junit.jupiter.api.Test;
  * 一个事务只写、只锁一个库（TDD-美业域迁移新库 B-5d，AC2 的事务版）：交易事务 {@code db.tx(...)} 里不能写或锁行业库的表，
  * 行业事务 {@code db.industryTx(...)} 里不能写或锁行业库以外的表；跨库只能读。分库后跨库的写不在这个事务里、锁也锁不住。
  *
- * <p>{@link #PENDING} 是还在等方案的已知例外（只许减少）：操作日志的去处与写法见 TDD §2.6 第 12 项。
+ * <p>{@link #PENDING} 是还在等方案的已知例外（只许减少）；操作日志退役后已清空（TDD §2.6 第 12 项）。
  */
 class TransactionHandleBoundaryTest {
     private static final Path SOURCES = Path.of("src/main/java/ai/neargo/shop/beauty");
     private static final Pattern MAPPER = Pattern.compile("public interface (\\w+)\\s+extends (\\w+)<");
     private static final Pattern READ = Pattern.compile("select(?!.*ForUpdate)\\w*|count\\w*|exists\\w*|find\\w*");
-    private static final Set<String> PENDING = Set.of(
-            "ServiceSubmissionServiceImpl industryTx db.actions.insert");
+    /** 已知例外：现在没有（操作日志退役，TDD §2.6 第 12 项）；以后只许为有方案在等的例外临时加。 */
+    private static final Set<String> PENDING = Set.of();
 
     @Test
     void aTransactionWritesAndLocksOnlyItsOwnDatabase() throws IOException {

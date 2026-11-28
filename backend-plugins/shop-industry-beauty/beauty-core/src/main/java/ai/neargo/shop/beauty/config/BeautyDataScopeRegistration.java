@@ -22,17 +22,16 @@ public final class BeautyDataScopeRegistration implements DataScopeRegistrar {
         registry.register("bty_appointment_preparation", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_appointment_operation", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("ord_appointment_revision", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_appointment_command", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_appointment_current", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_appointment_resource_decision", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("ord_appointment", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("ord_appointment_item", Map.of(ScopeDim.MERCHANT, "entity_no"));
-        registry.register("bty_appointment_assignment", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_work_order", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_service_task", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_service_step", Map.of(ScopeDim.MERCHANT, "entity_no"));
         // 行业共用表，餐饮也登记同样的锚点
         registry.register("ind_assignment", Map.of(ScopeDim.MERCHANT, "entity_no"));
-        registry.register("bty_action_log", Map.of(ScopeDim.MERCHANT, "entity_no"));
         // 行业共用表，餐饮也登记同样的锚点（登记是覆盖式的，两边一致即可）
         registry.register("ind_store_policy", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("ind_config_revision", Map.of(ScopeDim.MERCHANT, "entity_no"));

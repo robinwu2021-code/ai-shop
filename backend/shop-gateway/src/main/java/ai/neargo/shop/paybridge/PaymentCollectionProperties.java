@@ -51,6 +51,10 @@ public class PaymentCollectionProperties {
     /** Separately allowlisted environment:tenantNo:payAppId combinations for dynamic payment links. */
     private Set<@Pattern(regexp = CANONICAL_SOURCE) String> canonicalBizCollectSources = new LinkedHashSet<>();
 
+    /** Explicit tenant:appId:store grants for the approved test-only H5 publisher. */
+    private Set<@Pattern(regexp = "[A-Za-z0-9_-]{1,64}:[1-9][0-9]{0,18}:[A-Za-z0-9_-]{1,64}") String>
+            sandboxH5Sources = new LinkedHashSet<>();
+
     @Min(100)
     private long pollMs = 1000;
 

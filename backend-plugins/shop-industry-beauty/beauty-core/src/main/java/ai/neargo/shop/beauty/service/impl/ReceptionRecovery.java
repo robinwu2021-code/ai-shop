@@ -104,13 +104,11 @@ public final class ReceptionRecovery {
     private BtyReceptionOperation project(BtyReceptionOperation observed, LocalDateTime lease) {
         return steps.advance(observed, java.util.Set.of(BtyReceptionOperation.RESOURCE_PENDING), () -> {
             var root = db.lock(db.root(observed.getAppointmentNo()));
-            var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
-            var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                    root.getAppointmentNo());
+            var current = db.gateForUpdate(root);
             var linked = preparation.linkedReception(observed);
             if ("PENDING".equals(linked.getState())) { return new Outcome("PENDING", null); }
             var receipt = appointments.verifiedReceipt(linked, true);
-            AppointmentPersistence.require(fence.getActiveIntentNo() == null && current.getOperationNo() == null);
+            AppointmentPersistence.require(current.getOperationNo() == null);
             if ("SUCCEEDED".equals(linked.getState())) {
                 AppointmentPersistence.require("CONFIRM".equals(receipt.binding().action())
                         && "SUCCEEDED".equals(receipt.status()) && "CONFIRMED".equals(root.getStatus())
@@ -130,7 +128,7 @@ public final class ReceptionRecovery {
             if ("SUCCEEDED".equals(outcome.state())) {
                 AppointmentPersistence.require(row.getWorkOrderNo() == null);
                 var p = db.json.readValue(row.getFrozenPayload(), WalkInPayload.class);
-                row.setFrozenPayload(db.json.writeValueAsString(p.withRevisions(outcome.rootVersion(), null)));
+                row.setFrozenPayload(db.json.writeValueAsString(p.arrivalPending(outcome.rootVersion(), now())));
                 row.setPhase(BtyReceptionOperation.ARRIVAL_PENDING);
             } else if ("RELEASE_REQUIRED".equals(outcome.state())) {
                 row.setFailureCode("RESOURCE_RELEASE_REQUIRED");

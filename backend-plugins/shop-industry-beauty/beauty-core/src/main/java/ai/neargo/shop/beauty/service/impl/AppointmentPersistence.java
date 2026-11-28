@@ -2,6 +2,7 @@ package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
+import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
 import ai.neargo.shop.beauty.entity.BtyAppointmentPreparation;
@@ -24,11 +25,9 @@ public final class AppointmentPersistence {
     final BeautyMappers.AppointmentOperationMapper operations;
     final BeautyMappers.AppointmentCurrentMapper currents;
     final BeautyMappers.AppointmentArrangementMapper arrangements;
-    final BeautyMappers.AppointmentResourceIntentMapper intents;
+    final BeautyMappers.AppointmentCommandMapper commands;
     final BeautyMappers.AppointmentResourceFenceMapper fences;
     final BeautyMappers.AppointmentItemMapper items;
-    final BeautyMappers.AppointmentAssignmentMapper assignments;
-    final BeautyMappers.ActionLogMapper actions;
     final ObjectMapper json;
     private final TransactionTemplate writes;
     /** 行业库（工单、服务任务等服务执行的表）的写事务；行业句柄未绑定时与 {@link #writes} 是同一个库。 */
@@ -38,10 +37,10 @@ public final class AppointmentPersistence {
             BeautyMappers.AppointmentPreparationMapper preparations, BeautyMappers.AppointmentOperationMapper
                     operations,
             BeautyMappers.AppointmentCurrentMapper currents, BeautyMappers.AppointmentArrangementMapper arrangements,
-            BeautyMappers.AppointmentResourceIntentMapper intents, BeautyMappers.AppointmentResourceFenceMapper fences,
-            BeautyMappers.AppointmentItemMapper items, BeautyMappers.AppointmentAssignmentMapper assignments,
-            BeautyMappers.ActionLogMapper actions, ObjectMapper json, PlatformTransactionManager manager) {
-        this(roots, preparations, operations, currents, arrangements, intents, fences, items, assignments, actions,
+            BeautyMappers.AppointmentCommandMapper commands, BeautyMappers.AppointmentResourceFenceMapper fences,
+            BeautyMappers.AppointmentItemMapper items,
+            ObjectMapper json, PlatformTransactionManager manager) {
+        this(roots, preparations, operations, currents, arrangements, commands, fences, items,
                 json, manager, manager);
     }
 
@@ -52,20 +51,18 @@ public final class AppointmentPersistence {
             BeautyMappers.AppointmentPreparationMapper preparations, BeautyMappers.AppointmentOperationMapper
                     operations,
             BeautyMappers.AppointmentCurrentMapper currents, BeautyMappers.AppointmentArrangementMapper arrangements,
-            BeautyMappers.AppointmentResourceIntentMapper intents, BeautyMappers.AppointmentResourceFenceMapper fences,
-            BeautyMappers.AppointmentItemMapper items, BeautyMappers.AppointmentAssignmentMapper assignments,
-            BeautyMappers.ActionLogMapper actions, ObjectMapper json, PlatformTransactionManager manager,
+            BeautyMappers.AppointmentCommandMapper commands, BeautyMappers.AppointmentResourceFenceMapper fences,
+            BeautyMappers.AppointmentItemMapper items,
+            ObjectMapper json, PlatformTransactionManager manager,
             PlatformTransactionManager industryManager) {
         this.roots = roots;
         this.preparations = preparations;
         this.operations = operations;
         this.currents = currents;
         this.arrangements = arrangements;
-        this.intents = intents;
+        this.commands = commands;
         this.fences = fences;
         this.items = items;
-        this.assignments = assignments;
-        this.actions = actions;
         this.json = json;
         writes = new TransactionTemplate(manager);
         writes.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -109,15 +106,41 @@ public final class AppointmentPersistence {
     public BtyAppointment lock(BtyAppointment root) {
         return roots.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
     }
-    public BtyAppointmentCurrent current(BtyAppointment root) {
-        return read(() -> currents.selectOne(Wrappers.<BtyAppointmentCurrent>lambdaQuery()
-                .eq(BtyAppointmentCurrent::getTenantNo, "MAIN").eq(BtyAppointmentCurrent::getEntityNo,
-                        root.getEntityNo())
-                .eq(BtyAppointmentCurrent::getAppointmentNo, root.getAppointmentNo())));
+    /**
+     * 在途闸门与当前生效版本（§2.6 第 4–6 项 4-4b-2：取代资源围栏与当前行）。生效版本 = 预约单的 {@code current_revision}；
+     * 在途操作 = 在途或待释放那一版修订的变更号（变更号沿用预约操作号），没有为空。
+     */
+    public record Gate(long arrangementRevision, String operationNo, BtyAppointmentArrangement applying) {
+        public long getArrangementRevision() { return arrangementRevision; }
+        public String getOperationNo() { return operationNo; }
     }
-    public BtyAppointmentPreparation preview(String number) {
-        var value = read(() -> preparations.selectOne(Wrappers.<BtyAppointmentPreparation>lambdaQuery()
-                .eq(BtyAppointmentPreparation::getTenantNo, "MAIN").eq(BtyAppointmentPreparation::getPreviewNo,
+    /** 只读：不加锁。 */
+    public Gate current(BtyAppointment root) {
+        return read(() -> gate(roots.selectById(root.getId()), arrangements.selectOne(
+                Wrappers.<BtyAppointmentArrangement>lambdaQuery()
+                        .eq(BtyAppointmentArrangement::getTenantNo, "MAIN")
+                        .eq(BtyAppointmentArrangement::getEntityNo, root.getEntityNo())
+                        .eq(BtyAppointmentArrangement::getStoreNo, root.getStoreNo())
+                        .in(BtyAppointmentArrangement::getStatus, BtyAppointmentArrangement.APPLYING,
+                                BtyAppointmentArrangement.RELEASING)
+                        .eq(BtyAppointmentArrangement::getAppointmentNo, root.getAppointmentNo()))));
+    }
+    /** 在交易事务里：调用者已锁预约单，这里锁在途那一版。 */
+    public Gate gateForUpdate(BtyAppointment root) {
+        return gate(roots.selectById(root.getId()), arrangements.selectInFlightForUpdate(root.getEntityNo(),
+                root.getStoreNo(), root.getAppointmentNo()));
+    }
+    /** 预约单上没有当前版本（老数据，原来没有当前行）时返回空，调用者照旧按「没有当前行」处理。 */
+    private static Gate gate(BtyAppointment fresh, BtyAppointmentArrangement applying) {
+        require(fresh != null);
+        if (fresh.getCurrentRevision() == null) { return null; }
+        return new Gate(fresh.getCurrentRevision(),
+                applying == null ? null : applying.getChangeNo(), applying);
+    }
+    /** 预览即草稿修订（TDD §2.6 第 4–6 项，步 4-3）；确认后同一行升为生效版，按预览号仍能找到。 */
+    public BtyAppointmentArrangement preview(String number) {
+        var value = read(() -> arrangements.selectOne(Wrappers.<BtyAppointmentArrangement>lambdaQuery()
+                .eq(BtyAppointmentArrangement::getTenantNo, "MAIN").eq(BtyAppointmentArrangement::getPreviewNo,
                         number)));
         if (value == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
         return value;
@@ -127,13 +150,6 @@ public final class AppointmentPersistence {
                 .eq(BtyAppointmentOperation::getTenantNo, "MAIN").eq(BtyAppointmentOperation::getOperationNo, number)));
         if (value == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
         return value;
-    }
-    public void clearCurrent(BtyAppointment root) {
-        currents.update(null, Wrappers.<BtyAppointmentCurrent>lambdaUpdate()
-                .eq(BtyAppointmentCurrent::getTenantNo, "MAIN").eq(BtyAppointmentCurrent::getEntityNo,
-                        root.getEntityNo())
-                .eq(BtyAppointmentCurrent::getAppointmentNo, root.getAppointmentNo())
-                .set(BtyAppointmentCurrent::getOperationNo, null));
     }
     public static LocalDateTime now() { return LocalDateTime.now(ZoneOffset.UTC).withNano(0); }
     public static void require(boolean condition) {

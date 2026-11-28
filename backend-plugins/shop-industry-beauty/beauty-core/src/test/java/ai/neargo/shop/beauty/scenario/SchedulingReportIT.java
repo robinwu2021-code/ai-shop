@@ -85,8 +85,8 @@ class SchedulingReportIT {
         sql.update("INSERT INTO ord_appointment (tenant_no, entity_no, created_at, updated_at, appointment_no, store_no,"
                 + " source, status, start_at, end_at, timezone, policy_version_no) VALUES ('MAIN','E',?,?,?,?,"
                 + "'STAFF',?,?,?,'Asia/Taipei','PV')", IN, IN, no, store, status, start, start.plusHours(1));
-        sql.update("INSERT INTO bty_appointment_current (tenant_no, entity_no, created_at, updated_at, appointment_no,"
-                + " arrangement_revision) VALUES ('MAIN','E',?,?,?,?)", IN, IN, no, revision);
+        // 当前生效版本在预约单上（§2.6 第 4–6 项 4-4b-2，取代当前行）
+        sql.update("UPDATE ord_appointment SET current_revision=? WHERE appointment_no=?", revision, no);
         return no;
     }
 
@@ -98,12 +98,17 @@ class SchedulingReportIT {
         return no;
     }
 
+    /** 人员安排记在那一版预约修订的快照里（TDD §2.6 第 7 项）：往快照的 assignments 追加一条。 */
     private void assign(String item, int revision, String personnel) {
-        String no = "BAS" + (++seq);
-        sql.update("INSERT INTO bty_appointment_assignment (tenant_no, entity_no, created_at, updated_at,"
-                + " planned_assignment_no, appointment_item_no, appointment_revision, requirement_no, resource_no,"
-                + " hold_no, start_at, end_at, skill_snapshot, personnel_no) VALUES ('MAIN','E',?,?,?,?,?,'REQ',?,?,"
-                + "?,?,'{}',?)", IN, IN, no, item, revision, "R" + seq, "H" + seq, IN, IN.plusHours(1), personnel);
+        String appointment = sql.queryForObject("SELECT appointment_no FROM ord_appointment_item "
+                + "WHERE appointment_item_no=?", String.class, item);
+        sql.update("INSERT INTO ord_appointment_revision (tenant_no, entity_no, appointment_no, arrangement_revision,"
+                + " snapshot) VALUES ('MAIN','E',?,?,'{\"assignments\":[]}') ON DUPLICATE KEY UPDATE id=id",
+                appointment, revision);
+        sql.update("UPDATE ord_appointment_revision SET snapshot=JSON_ARRAY_APPEND(snapshot, '$.assignments',"
+                + " JSON_OBJECT('appointmentItemNo', ?, 'requirementNo', 'REQ', 'personnelNo', ?, 'resourceNo', ?))"
+                + " WHERE appointment_no=? AND arrangement_revision=?", item, personnel, "R" + (++seq), appointment,
+                revision);
     }
 
     @Test

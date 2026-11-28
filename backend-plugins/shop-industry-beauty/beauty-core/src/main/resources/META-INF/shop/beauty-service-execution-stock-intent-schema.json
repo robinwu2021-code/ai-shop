@@ -348,7 +348,7 @@
         },
         {
           "name": "observation_state",
-          "type": "varchar(40)",
+          "type": "varchar(10)",
           "nullable": false,
           "default": null,
           "charset": "utf8mb4",

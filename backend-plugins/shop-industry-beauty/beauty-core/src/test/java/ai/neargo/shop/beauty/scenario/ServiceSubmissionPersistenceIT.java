@@ -66,11 +66,11 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
     void progressCasRetainsOriginalIntentAndRejectsTerminalRestart() {
         runner().run(context -> {
             assertThat(industryTx(context, () -> advance(context, 0, "RECEIVED", "BOUND"))).isEqualTo(0);
-            assertThat(industryTx(context, () -> advance(context, 0, "RECEIVED", "SOURCE_PENDING"))).isEqualTo(1);
-            assertThat(industryTx(context, () -> advance(context, 0, "SOURCE_PENDING", "RECOVERING"))).isEqualTo(0);
-            assertThat(industryTx(context, () -> advance(context, 1, "SOURCE_PENDING", "RECOVERING"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> advance(context, 0, "RECEIVED", "TO_SOURCE"))).isEqualTo(1);
+            assertThat(industryTx(context, () -> advance(context, 0, "TO_SOURCE", "RECOVERING"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> advance(context, 1, "TO_SOURCE", "RECOVERING"))).isEqualTo(1);
             assertThat(industryTx(context, () -> advance(context, 2, "RECOVERING", "BOUND"))).isEqualTo(1);
-            assertThat(industryTx(context, () -> advance(context, 3, "BOUND", "SOURCE_PENDING"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> advance(context, 3, "BOUND", "TO_SOURCE"))).isEqualTo(0);
             assertThat(sql.queryForObject("SELECT next_retry_at FROM bty_service_submission", Object.class)).isNull();
             assertThat(sql.queryForObject("SELECT updated_by FROM bty_service_submission", String.class))
                     .isEqualTo("ACTOR");
@@ -87,13 +87,13 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
             assertThat(industryTx(context, () -> call(context, "ServiceSubmissionMapper", "advanceProgress", "E", "S", "SUB",
                     0L, "RECEIVED", "REJECTED", null, null, "ACTOR", T0))).isEqualTo(0);
             assertThat(industryTx(context, () -> advance(context, 0, "RECEIVED", "REJECTED"))).isEqualTo(1);
-            assertThat(industryTx(context, () -> advance(context, 1, "REJECTED", "SOURCE_PENDING"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> advance(context, 1, "REJECTED", "TO_SOURCE"))).isEqualTo(0);
         });
     }
 
     @Test
     void dueRowsAreBoundedScopedAndLeasedInSameTransaction() {
-        submission("FUTURE", "ADD", "S", "SOURCE_PENDING");
+        submission("FUTURE", "ADD", "S", "TO_SOURCE");
         sql.execute("UPDATE bty_service_submission SET next_retry_at=DATE_ADD(next_retry_at,INTERVAL 1 HOUR) "
                 + "WHERE submission_no='FUTURE'");
         submission("TERMINAL", "BIND", "S", "BOUND");
@@ -160,7 +160,7 @@ class ServiceSubmissionPersistenceIT extends BeautyExecutionFixture {
         runner().run(context -> {
             assertThat(industryTx(context, () -> call(context, "ServiceSubmissionMapper", "selectScopedForUpdate",
                     "E", "S", "SUB"))).isNull();
-            assertThat(industryTx(context, () -> advance(context, 0, "RECEIVED", "SOURCE_PENDING"))).isEqualTo(0);
+            assertThat(industryTx(context, () -> advance(context, 0, "RECEIVED", "TO_SOURCE"))).isEqualTo(0);
             assertThat(industryTx(context, () -> due(context, "S", 100))).isEmpty();
         });
     }

@@ -218,7 +218,7 @@
 - 其余模块全过；宿主 `BeautyEmbeddedWiringTest` 两种构建形态都通过。
 
 **B-5a 已做（2026-11-28）：测试能把行业句柄连到独立的库**
-- 开关 `-Dbeauty.test.industry-db=separate`（默认 `shared`，与主库同一个库）：
+- 开关 `-Dbeauty.test.industry-db`：`separate` 为独立库（2026-11-28 起为默认，见「状态改短值」）；`shared` 与主库同一个库，只留作对照：
   - 测试另建一个按 `db/n_industry` V1、V2 建的库；
   - 应用上下文按 `shop.datasources.n_industry.*` + `shop.modules.industry.datasource=n_industry` 绑定。数据源名不能和模块同名，否则启动直接拒绝。
 - 测试直接读写表的 SQL 走 `IndustryRoutingDataSource`，按表名分到两个库，测试代码基本不用改：
@@ -232,7 +232,7 @@
   - **TDD 漏掉的跨库点**：幂等记录（`sys_idempotent`，主库）在行业事务里写，比如门店策略发布，并发首建就不再只有一个赢家。
   - 「审计写失败，业务也回滚」的用例在独立库下不成立：操作日志在主库。B-5c 要定是否接受「提交后写日志」带来的语义变化。
   - 接待相关的事务问题（`WalkInRecoveryIT`）。
-- **设计稿缺陷**：`bty_service_step.status` 设计稿是 `varchar(10)`、注释写 `DOING`，代码用 `IN_PROGRESS`（11 字符，旧表 `varchar(24)`）。测试建库的 `V2` 先改正，设计稿随 B-6 同步。B-1 的核对只看列在不在、不看宽度，所以没发现。
+- **设计稿缺陷**：`bty_service_step.status` 设计稿是 `varchar(10)`、注释写 `DOING`，代码用 `IN_PROGRESS`（11 字符，旧表 `varchar(24)`）。测试建库的 `V2` 先改正，设计稿随 B-6 同步。**（2026-11-28 更正：设计稿是对的，改的是代码——取值改短值 `DOING`，见 B-6 后「状态改短值」。）**B-1 的核对只看列在不在、不看宽度，所以没发现。
 
 **B-5b 已做（2026-11-28）：接待操作只经 `ReceptionSteps` 写**
 - 按 §2.2.1 建 `ReceptionSteps`，提供以下方法：
@@ -278,12 +278,12 @@
 | 4 | 预约准备 `bty_appointment_preparation` | 并入 `ord_appointment_revision`（「未确认的草稿也是一版」：预览号、操作人、过期时刻都在） | 缺 `actor_kind`、`expected_revision`、`frozen_plan`、`plan_hash` | **待定**：加列，或并进 `snapshot` |
 | 5 | 预约当前行 `bty_appointment_current` | `ord_appointment.current_revision` | 缺「进行中的预约操作号」`operation_no`（它是预约操作的并发闸门） | **待定**：随第 6 项 |
 | 6 | 预约操作 `bty_appointment_operation`、资源围栏 `_resource_fence`、资源意向 `_resource_intent`、资源决策 `_resource_decision` | 定稿里没有。资源占用改由平台预约 `rsv_booking` 承担：有预留、确认、释放三态，`current_key` 仲裁当前占用，取代 `mch_booking_owner` | 无对应表 | **待定**，见下 |
-| 7 | 指定技师 `bty_appointment_assignment` | 行业库 `ind_assignment`（性质 `PLANNED`，对象 `APPOINTMENT_ITEM`，带预约修订号） | 缺 `requirement_no` | **待定**：加列，或放进 `skill_snapshot` |
+| 7 | 指定技师 `bty_appointment_assignment` | **退役，不迁**（用户 2026-11-28 定「用修订快照」）：每行都是确认那一版修订快照里安排的照抄；按人员筛预约、人员工作量报表改读当前那一版修订的快照 | 偏离原定「映射到 `ind_assignment` 计划安排」：跨行业的「谁在什么时段被安排」以后需要时再从修订快照派生 | 已改 |
 | 8 | 服务定义 `bty_service_definition` | `prd_goods`（`type=SERVICE`、`industry_code=BEAUTY`；`industry_ext` 放时长、前后缓冲、步骤模板、注意事项） | 定义号、SKU、当前版本、状态都改用商品自己的列 | 设计已定，代码改动大 |
 | 9 | 定义版本 `bty_service_definition_version` | `prd_goods_revision`（「服务项目的规则版本即此号」；`payload` 存时长快照、缓冲、步骤、注意事项） | 版本号从字符串（如 `DV…`）变成商品内自增的整数 | 设计已定；`ord_appointment_item.definition_version_no` 的取值要对齐 |
 | 10 | 服务要求 `bty_service_requirement` | `prd_fulfillment_requirement`（按商品修订号） | 只缺定义版本号，换成 `goods_no + revision_no` | 设计已定 |
-| 11 | 库存意向 `bty_service_execution_stock_intent` | 库存库 `inv_reservation`，经宿主库存接口 | — | **待定**：交接文档里库存同步一组暂停中 |
-| 12 | 操作日志 `bty_action_log` | 基础能力库 `n_common.sys_audit_log`。对应关系：`action_no`→`audit_no`，`aggregate_type/no`→`resource_type/no`，前后版本→`before/after_version`，快照→`after_masked`，接待操作号→`request_id`，门店与人员放进快照 | 门店号、人员号没有独立列 | **待定**：写法，推荐业务提交后写 |
+| 11 | 库存意向 `bty_service_execution_stock_intent` | **行业库**（2026-11-28 已搬）：表与触发器原样，写入本来就在行业事务里；库存库 `inv_reservation` 与宿主的执行保留表都还没有对应结构 | — | 已搬；库存迁移恢复后再与库存域定是否收进 `inv_reservation` |
+| 12 | 操作日志 `bty_action_log` | **退役，不迁**（用户 2026-11-28 定）：8 类纯留痕的业务表里已有；到店证明、接待异常申请、恢复请求这三类改记在所属业务行上 | 运营审计暂不收美业操作（以后要看再接宿主 `AuditLogPort`） | 见下方「第 12 项执行计划」 |
 | 13 | 请求幂等（宿主 `sys_idempotent`）；发布前 `PlatformWritePrerequisites` 检查主库技术表 | 不建表：防重是功能能力，由应用层 + 业务唯一键做（用户 11-25 原则） | — | 去掉对主库技术表的检查；各写接口改按业务键 |
 | 14 | 独立部署时的事件 outbox | `n_common` 公共事件 | — | 事件是公共能力 |
 | 15 | 私有 Flyway（`bty_flyway_history`）、`BeautySchemaValidator`、要求主库工厂的 Mapper 配置 | 退役；结构由各库部署脚本负责 | — | 启动核对：行业库已有，交易库补一个 |
@@ -337,6 +337,176 @@
   - 共用库模式全套与基线一致（只多时刻相关那一个，以及偶发失败的并发用例）；
   - 独立库模式与第一步相同。
 - 第 8～10 项（服务定义并入商品）**还没做**：`prd_goods`、`prd_goods_revision` 归商品领域（shop-core 的 `ProductMappers`），美业不能直接写；独立部署的美业里也没有商品代码。要先定由谁发布服务的时长、缓冲、步骤和服务要求，见 §8-Q2。
+
+#### B-6：行业库部署脚本与设计稿同步（2026-11-28）
+- 设计稿：执行围栏、库存意向两张表进 `retail-ddl/beauty-execution-tables.sql`（服务端规范化写法）；生成器 `REPLACE_COLUMNS` 放宽 `bty_service_step.status` 到 `varchar(24)`、`ind_assignment.target_type` 注释加 `TASK`，`ADD_COLUMNS` 给 `ind_assignment` 加美业两列。`06-n_industry.sql` 由 38 张变 40 张。
+- 测试：美业行业库 V1 按新 06 重新拷贝；V2 只剩 5 个触发器（设计 DDL 不收触发器）；共用库模式的辅助不再补两列（随 V1 来）。两种模式下 `BeautyIndustryDatabaseIT`、`ServiceTaskPersistenceIT`、`BeautySchemaMigrationIT` 全过，`WorkOrderScopeIT` 只剩 HEAD 上同样失败的 1 条。
+- 部署：`deploy/ume/beauty-industry-cutover/`（`gen.py` 从 V1、V2 生成；`run.sh check|apply`：美业表为空才执行、备份、建 12 张表、补共用指派表两列、建 5 个触发器、按期望结构核对）。本机按旧设计稿演练两遍通过，数据保留。
+- .61 已执行（2026-11-28 14:12Z，用户批准）：`check` 差异与预期一致 → `apply` 备份到 `~/backup/beauty-industry-20261128T141226Z/`、建 12 张表、补两列、建 5 个触发器，核对通过 → 再 `check` 无差异。`n_industry` 由 28 张变 39 张，美业表与 `ind_assignment` 都是 0 行。详见部署目录 README「执行记录」。
+
+#### 状态改短值（2026-11-28，用户定「Shorten values」）
+- 起因：用户 11-26 定「状态取值不超过 10 个字符、列宽不放宽」（`零售域-状态短值换值表.md`）。B-6 初版把 `bty_service_step.status` 放宽到 24，设计稿里美业执行表另有 10 列宽于 10，与之不符；这条规则当时漏查。
+- 范围：美业在行业库的 `status`、`state`、`*_state` 与接待操作 `phase`，共 11 列，一律 `varchar(10)`；约束里的取值同步。换值按换值表 §3.9（服务任务、服务步骤已有，接待阶段与 §3.7 同写法，围栏与库存意向本次补登）。
+- 做法：
+  - 实体常量直接改值（`BtyServiceTask`、`BtyServiceStep`、`BtyReceptionOperation`），SQL 引用常量，不用改。
+  - 围栏的意向、许可状态是宿主接口枚举名，库存意向的观察状态也是对外准备进度名：接口与对外取值不变，只在 `BtyServiceExecutionFence`、`BtyServiceExecutionStockIntent` 两个实体里落库换短值、读出还原，一处换。
+  - 设计稿源 `retail-ddl/beauty-execution-tables.sql` 改列宽与约束；生成器去掉放宽 `bty_service_step.status` 那条。`06-n_industry.sql`、美业测试 V1、.61 部署脚本重新生成。
+  - 结构描述文件（执行围栏、库存意向）按新结构改；主库上旧私有迁移 V10、V11 建的两张表只核对迁移记录、不再按描述文件核对结构（表已归行业库，代码不读写，随第 15 项退役）。
+  - 测试默认改为独立行业库模式：共用库模式里的行业表来自旧私有迁移，带旧取值的约束，改短值后不再兼容，只留作对照。
+- 顺带修：第 7 项的人员筛选用 `JSON_TABLE`，分页与数据范围拦截器解析不了（`AppointmentBusinessIT` 按人员筛选那条失败；第 7 项当时没跑完对照，漏了），改为 `JSON_CONTAINS(JSON_EXTRACT(...))`。报表那条是注解 SQL、不经拦截器，保留。
+- 主库旧 V10 的结构破坏用例改到行业库上测（`industryFenceStructureDamageIsCorrupt`，含把 `intent_state` 放宽回 32）；主库只留迁移记录类的破坏。
+- 验证（与 HEAD `e9a2e1bab` 同机同库，独立库模式，`-Dtest=*` 全部 403 条）：HEAD 39 条失败，本改动 40 条；按人员筛选那条修好；新增的 2 条是上面改写前的主库结构破坏用例，改写后 `BeautySchemaMigrationIT` 33/33、`BeautyPlatformFlywayIT` 3/3（不带开关，即新默认）。其余失败与 HEAD 相同（`ServiceSourceObservationIT` ×5 缺迁移、`ManualExecutionSourceIT` 等既有）。生成器 `--check` 两个都通过。
+- .61 已重跑（2026-11-28 15:04Z，用户批准）：`check` 差异恰为 11 个状态列宽度 → `apply` 备份到 `~/backup/beauty-industry-20261128T150448Z/`、重建 12 张表、跳过补列、核对通过 → 再 `check` 无差异。详见部署目录 README「执行记录」。
+
+#### 第 4–6 项方案（2026-11-28 用户定「按建议采纳」）：以预约修订为中心
+
+**现状**（2026-11-28 逐表读代码）：美业为「一张预约对资源的一次变更」用了 6 张表，其中 3 张在交易句柄、3 张还在旧主库：
+
+| 表 | 句柄 | 承担的事 |
+|---|---|---|
+| 预约准备 `bty_appointment_preparation` | 交易 | 服务端冻结的预览：5 分钟有效、只能本人用、一个预览只能建一次；冻结的资源计划原样作资源命令载荷，`plan_hash` 核对回执 |
+| 当前行 `bty_appointment_current` | 交易 | 当前生效的安排版本号；`operation_no` 是「同一预约同时只有一个变更在途」的闸门 |
+| 预约操作 `bty_appointment_operation` | 旧库 | 请求防重（操作人 + 键摘要）；受理载荷先落库再调宿主；记宿主回执；状态 PENDING → SUCCEEDED / REJECTED / RELEASE_REQUIRED；重试与租约 |
+| 资源围栏 `_resource_fence` | 旧库 | 永久的预约根闸门：同一预约只有一个资源意向在途；在途时预约的改时间、改状态、到店都被挡 |
+| 资源意向 `_resource_intent` | 旧库 | 每条资源命令一行：准备 → 许可 / 拒绝 → 已对账；锁定计划字节与来源版本；宿主回调 `freeze` 时据此答复是否仍被授权 |
+| 资源决策 `_resource_decision` | 旧库 | 许可的原始答复（决策号、围栏号与版本、有效窗口），围栏释放后重放仍返回原答复 |
+
+跨库 SQL 现在只在「交易库 = 主库」时能跑（围栏、当前行与预约根互相 `EXISTS`）。宿主一侧也有两张旧库表：命令防重与回执 `mch_resource_command`、占用归属 `mch_booking_owner`；定稿只给了 `rsv_booking`（三态 + `current_key` 仲裁当前占用）。
+
+**方向**：一次变更就是一行预约修订。新建、改约、到店后改、取消、爽约都写一行修订；修订行自己的状态走完整个生命周期，6 张表收成 `ord_appointment` + `ord_appointment_revision`。
+
+| 原来的 | 收进 |
+|---|---|
+| 预约准备 | 草稿修订（`DRAFT`）：预览号（加唯一约束）、操作人、过期时刻已有；补「冻结计划、计划摘要、基于的预约版本、操作人类型」 |
+| 当前行的安排版本号 | `ord_appointment.current_revision`（已有） |
+| 当前行与围栏的「只有一个在途」 | 修订状态 `APPLYING` + 生成列 `applying_key`（在途时等于预约单号）+ 唯一约束，写法照 `rsv_booking.current_key`。预约根上的 `EXISTS` 改成看这一行 |
+| 预约操作 | 修订行的「动作、下次重试时刻」；**请求防重与宿主回执不进业务表**：按用户定的「业务库只存业务数据、防重是功能能力」，走基础能力库的统一防重（`n_common`，宿主幂等端口），宿主同一命令号重放返回同一回执也靠它存回执；重试扫描 `APPLYING` 且到期的修订，用行锁抢占，不留租约列 |
+| 资源意向 + 决策 | 修订行的「命令号、命令摘要、决策号、许可时刻、有效截止、拒绝码」：宿主 `freeze` 回调按命令号找修订行作答；一经许可，这几列不再改（替代「围栏释放后重放仍返回原答复」的决策表） |
+
+修订状态：`DRAFT` 草稿 → `APPLYING` 在途 → `CONFIRMED` 生效 / `REJECTED` 资源拒绝 / `RELEASE_REQUIRED` 待释放；另有 `EXPIRED` 草稿过期、`DISCARDED` 放弃、`SUPERSEDED` 被新版取代（后三个与定稿注释一致）。
+
+**依赖与要宿主答复的**：
+- 宿主的命令防重与回执（`mch_resource_command`）不迁进交易库，改用统一防重（`n_common`）存回执；占用归属（`mch_booking_owner`）不迁，由 `rsv_booking.current_key` 加唯一约束取代（「零售」会话转述的用户规则，2026-11-28）。美业这边只要求宿主：同一命令号重放返回同一回执；`freeze` 回调的契约不变（围栏号与版本改由预约单号与修订号充当）。
+- 由谁负责宿主迁移：**本会话**（用户 2026-11-28 采纳），与第 4–6 项一起切换，避免美业与宿主中间对不上。另外，平台基础库换表第 1 步的越界清单里有预约的 4 个文件，用户 11-26 定「跨库加锁改成读一次 + 版本比对，随预约模块对齐时做」，由负责方一并清掉（`交接清单-平台换表与连锁.md` §1.1）。
+
+**用户 2026-11-28 定**：不做数据迁移。美业这 6 张表与宿主的 `mch_resource_command`、`mch_booking_owner` 都只改代码与结构，旧数据不搬（`ai_shop_ume` 已作废，预定义数据与测试数据重新生成）。
+
+**用户定（2026-11-28，按建议采纳）**：
+1. 方向：6 张表收进预约修订（`ord_appointment` + `ord_appointment_revision`），不保留独立的「预约命令」。
+2. 修订表加约 12 列（冻结计划与摘要、基于的版本、操作人类型、动作、命令号与摘要、决策号与许可窗口、拒绝码、下次重试）；请求防重与宿主回执不进修订表，走 `n_common` 统一防重。修订状态全部不超过 10 个字符：`DRAFT / APPLYING / CONFIRMED / REJECTED / RELEASING / EXPIRED / DISCARDED / SUPERSEDED`（上文的 `RELEASE_REQUIRED` 改为 `RELEASING`）。
+3. 取消、爽约也写一行修订（快照不变，计划是释放命令）；`ord_appointment` 上的 `cancel_reason` / `cancel_evidence_ref` 留作当前状态，修订行记那一次变更。
+
+**估计**：改动集中在预约协调、预约准备、来源授权、预约恢复、接待几条路径，测试面大（预约、接待、开单、恢复各套）。按「先定稿 DDL 与生成器 → 实体与 Mapper → 一条路径一条路径切 → 两种模式对照」推进。
+
+**执行计划（2026-11-28）**：一步一提交，每步跑相关测试并与上一步对照（独立库模式，`-Dtest=*`）。
+
+| 步 | 内容 | 主要文件 | 验证 |
+|---|---|---|---|
+| **4-1 设计 DDL** ✅ | `ord_appointment_revision` 加 12 列（基于版本、发起人类型、动作、冻结计划与摘要、命令号与摘要、决策号、许可时刻与截止、拒绝码、下次重试）与生成列 `applying_key`（在途或待释放时等于预约单号）；唯一键：预览号、命令号、`applying_key`；重试扫描索引；状态注释扩成 8 个短值。生成器 `ADD_COLUMNS` / `REPLACE_COLUMNS` / `ADD_UNIQUE` / `ADD_INDEX` | `scripts/gen-retail-ddl.py`、`05-n_trade.sql`、美业测试 `db/n_trade/V1` | 本机 MySQL 实建；同一预约第二个在途变更被唯一键拒绝；预约、接待、到店恢复测试无新增失败 |
+| **4-2 实体与 Mapper** ✅ | `BtyAppointmentArrangement` 映射修订表全部业务列与 8 个状态常量；`BtyAppointment` 加 `HELD`、`CONFIRMED`、`CHECKED_IN` 常量。Mapper：按预览号 / 命令号 / 在途取（加锁）、草稿 → 在途（`toApplying`：未过期、预约单仍是基于的版本且仍可变更）、许可一次（`permit`）、许可前拒绝（`refuse`）、对账终态（`settle`：许可前已拒绝的不能生效；待释放 → 资源拒绝）、取下一个修订号（`nextRevision`）、生效后旧版标被取代（`supersedeBefore`）、到期扫描（`claimDue`，`FOR UPDATE SKIP LOCKED`）。「预约单仍可变更」的条件只写一处（`ROOT_OPEN`）。设计稿补：`result_hash`（宿主终态回执摘要，原资源意向的 `terminal_hash`）；`based_on_revision` 说明更正为预约单版本（旧代码比对的是 `ord_appointment.version`） | `entity/BtyAppointmentArrangement`、`BtyAppointment`、`BeautyMappers`、生成器 | `AppointmentRevisionPersistenceIT` 6/6：同一预约第二个在途被唯一键拒绝；预约单已变、已到店非「到店后改」、草稿过期都不能转在途；许可只一次、许可后不能再拒；许可前已拒绝的不能生效、待释放仍占闸门、释放完成后下一次取新号；只扫到期的 |
+| **4-3 预约准备** ✅ | 预览写成 `DRAFT` 修订（冻结计划、计划摘要、过期时刻、发起人、基于的预约单版本），不再写 `bty_appointment_preparation`；按预览号读、锁草稿都走修订表。**一并改**：确认时原来按同一预览号另插一行修订，与「预览号唯一」冲突——改为草稿行自己升为生效版（写预约单号、修订号、占用、动作），旧生效版标被取代；恢复用的联查、门店改挂的事实核对改看修订表。动作取值与代码一致用 `CHANGE`（设计稿注释同步）。准备表的 Mapper 仍在构造参数里，随 4-10 删 | `AppointmentPreparation`、`AppointmentPersistence`、`AppointmentCoordinator.arrange`、`BeautyMappers`、`BeautyStoreRelinkFactsPortImpl`；测试种子把「准备行 + 修订行」合成一行 | 美业插件与宿主测试模块编译通过；全量对照（独立库模式 `-Dtest=*`，410 条）较 4-2 多 1 条：`AppointmentBusinessIT#terminalSourceRollsBackWithFenceAndReplaysExactlyOnce`——新约入口要求「预览没有预约单号」，草稿升为生效版后带上了预约单号，同键重放在防重之前就被挡。改为看「基于的预约单版本为 0」（新约预览才是 0，改约至少 1）后该类 21/21；另一条 `ServiceSubmissionIT` 的并发用例在 HEAD 上同样时好时坏 |
+| 4-4 预约协调 | 新建、改约、到店后改：草稿 → `APPLYING` → 调宿主 → `CONFIRMED`（预约根 `current_revision` 前移、旧版 `SUPERSEDED`）/ `REJECTED` / `RELEASING`；去掉当前行、预约操作、资源围栏；预约根上的「在途」`EXISTS` 改看修订 | `AppointmentCoordinator`、`AppointmentPersistence` | 预约、接待用例 |
+
+**4-4 动手前发现（2026-11-28，待用户定）**：通读预约协调、预约准备、来源授权后，「一次变更一行修订」在**资源命令**这一层装不下：
+
+1. **一次变更不止一条资源命令**：新约是两条（先 `RESERVE` 占位，成功后再 `CONFIRM`）；确认失败要补一条 `RELEASE`（待释放）。宿主对**每条命令**单独来问许可（`decide`），而且同一条命令重放时必须答回**原来那次**的许可（决策号、窗口，过期也一样）。修订行只有一组命令号与决策列，换到下一条命令就得覆盖上一条的许可，重放答不回原样。
+2. **受理载荷里有修订行没有的东西**：发给宿主的受理请求带目标占位的版本、租约版本、宿主侧期望版本；回执里有宿主算的绑定与结果。恢复、对账、来源授权都靠它们核对。
+3. **预约操作号是对外接口字段**：`AppointmentVO`、`OperationVO`、`WalkInVO` 等 10 个出参带 `operationNo`，端上按它查进度；接待操作（行业库）也用它挂接预约侧。去掉预约操作表就要定这个号由谁来出。
+4. **请求防重（4-8）与预约操作是同一张表**：去掉预约操作，4-8 必须同一步做。
+
+**可选方向**：
+- **A（推荐）六张收成两张**：修订承担预览、在途闸门（取代当前行与资源围栏）与变更状态；另留一张精简的**资源命令**表（交易库），一条命令一行，合并原资源意向 + 资源决策 + 预约操作里的受理载荷与回执绑定，许可一经写入不改，重放原样答。预约操作号改由修订提供（修订加一个对外的变更号，取消、爽约的修订也有）。请求防重走统一防重（4-8 同步做）。宿主协议不变。
+- **B 坚持一行**：先改宿主协议，让一次变更只发一条命令（新约直接「占位即确认」、待释放的补偿不再单独要许可），再收成一张。要先做宿主（4-9）并改资源端口契约，范围更大。
+
+**用户定（2026-11-28）：方向 A**。落地（4-4a，设计与持久层）：
+- 新表 `ord_appointment_command`（交易库，设计源 `retail-ddl/appointment-command-tables.sql`，生成器 `TRADE_ADDED` 并入，交易库 68 → 69 张）：一条资源命令一行——命令键（变更号 + 动作，唯一）、动作、发命令时预约单版本、受理请求原文、宿主命令号（唯一）与摘要、受理回执、状态（`SENT / BOUND / PERMITTED / REFUSED / SUCCEEDED / REJECTED`）、决策号与许可窗口、答给宿主的闸门号与版本、原因码、终态回执摘要。约束：没有决策号不能是已许可、许可前拒绝、宿主成功。
+- 修订表去掉 4-1 / 4-2 放上去的命令层列（命令号与摘要、决策号、许可时刻与截止、终态回执摘要），加 `change_no`（变更号，唯一）：这次变更对外的编号，接替出参里的 `operationNo`；取消、爽约的修订也有。
+- 修订 Mapper：按预览号 / 变更号 / 在途取、草稿 → 在途（写动作与变更号；取消、爽约不看草稿过期；「预约单仍可变更」按这次的动作判）、变更终态（`settle`：非生效要有原因码）、下一个修订号、旧版标被取代、到期扫描。命令 Mapper：按命令号 / 命令键取、按变更列出、已发 → 已绑定、许可一次、许可前拒绝、对账终态（许可前拒绝的只能以宿主拒绝结束，已对账不再改）。
+- 验证：本机 MySQL 实建（没有决策号的「已许可」被约束拒绝）；`AppointmentRevisionPersistenceIT` 9/9（修订 6 条、命令 3 条：同一变更的各条命令各占一行，前一条的许可在下一条绑定后原样留着）。全量对照（413 条）：较 4-3 只多 1 条——`BeautySchemaMigrationIT` 点主库表数的断言，多了命令表，属预期，改为 37 / 40 后该类 33/33；4-3 那条重放用例已过；其余与之前相同。
+
+**修订后的步骤**（4-4 起按方向 A）：
+- 4-4b 预约协调：受理时草稿转在途、取变更号、建第一条命令；绑定、对账写命令行；新约的「占位 → 确认」是同一变更下的两条命令；确认失败的补偿释放是第三条；变更终态写修订。去掉当前行、资源围栏；预约操作的受理载荷与回执迁到命令行。出参 `operationNo` 改填变更号（取值格式由 `BTOP…` 变为变更号，端上只回显、按它查进度）。
+- 4-5 来源授权：按命令号找命令行作答，许可只写一次，重放原样答（取代资源意向、资源决策）；闸门号答预约单号、版本答修订号。
+- 4-6 取消、爽约；4-7 恢复（按修订到期扫描）；4-8 请求防重（与 4-4b 同步：预约操作表的「操作人 + 键摘要」防重改走统一防重，方案做到时先给）；4-9 宿主；4-10 退役 6 张表；4-11 文档与 .61（`n_trade_v2` 加列、建命令表）。
+
+**4-4b 拆成三次提交**（每次全量对照）：4-4b-1 命令行取代资源意向与资源决策；4-4b-2 修订的在途闸门取代资源围栏与当前行，取消、爽约写自己的修订；4-4b-3（即 4-8）请求防重离开预约操作表。**变更号沿用现有的预约操作号**（`BTOP…`），出参 `operationNo` 的取值格式因此不变。
+
+**4-4b-1 实现记录（2026-11-28）**：
+- 绑定宿主回执时写一行命令（直接是「已绑定」，受理请求原文取自预约操作，命令键 = 受理请求的键 = 预约操作号 + 动作，最长 28 字符，放得进围栏的活动标记列）；围栏的取得、释放改为联命令行（命令键、`BOUND`、终态与回执摘要）。
+- 对账：没许可的先写「许可前拒绝」，再以宿主成功 / 拒绝结账；宿主拒绝不记原因码（原因码只表示许可前拒绝，来源授权据此答 `DENIED`），与原意向表的 `reason_code` 语义一致。
+- 来源授权：按命令号取命令行；许可写命令行（决策号、窗口、闸门号 = 围栏号、闸门版本 = 围栏版本），之后原样答，取代资源决策表；回执里的冻结计划对受理请求原文核对。
+- 恢复用的联查、回执核对（`verifiedReceipt`）改看命令行。`AppointmentPersistence` 原意向 Mapper 的构造参数位置换成命令 Mapper（参数个数不变）。
+- 设计稿补两条约束（原意向表有、命令表漏了，移植测试时发现）：许可窗口只在已许可 / 宿主成功时有、已发 / 已绑定 / 许可前拒绝时没有；发命令时的预约单版本不为负。
+- 测试：`ResourceIntentPersistenceIT`（围栏语义）改到命令行上 8/8；`AppointmentBusinessIT` 两处读意向表改读命令表；宿主 `BeautyClaimedGuestResourceIT`（开关才跑的原生测试）同步改读命令表、只编译确认。移植时发现种子把冻结计划写成 JSON 对象会被 MySQL 规范化——生产代码里它是受理请求原文中的字符串，字节原样保留，测试按字符串存并断言原样取回。
+- 全量对照（413 条）：38 条失败，与上一步相同（只多出那条时好时坏的并发提交用例、少了上一步已修的点表数断言），没有新增失败。
+
+**4-4b-2 实现记录（2026-11-28）**：修订的在途闸门取代资源围栏与当前行。
+- 生效版本记在预约单 `current_revision`（实体补列；新建预约单为 0；为空表示老数据、按「没有当前行」处理）；在途操作 = 在途或待释放那一版修订的变更号。`AppointmentPersistence` 提供 `current`（只读）与 `gateForUpdate`（锁在途行），原锁围栏 + 锁当前行再要求「围栏空、当前操作空」的十处一律改为「没有在途变更」——围栏生效期间当前操作必不为空，两条合一不改变放行范围。
+- 受理：修订转在途（变更号 = 预约操作号，修订号 = 已有最大号 + 1）；`toApplying` 比对调用者核对过的预约单版本（新约建单后为 1，不再直接比草稿的基于版本）。同一预览上次被资源方拒绝后重试：照被拒那一版另起一行草稿（每次变更一行，被拒的留作历史）；取消、爽约照当前生效版另起一行草稿。新建预约单不再建围栏行与当前行。
+- 结账：成功 → 这一版生效、写占用、预约单当前版本指向它、此前生效版标被取代（取消、爽约同样，预约单状态另改）；失败 → 这一版以资源拒绝结束、放开闸门，原因码记操作结果（`REJECTED` / `RELEASE_REQUIRED`）。**与设计的出入**：确认失败本该进「待释放」并一直占着闸门，但现有流程在待释放时要由用户发起取消来释放，闸门占着会把取消挡住；先保持原行为（放开闸门），待释放的闸门语义随 4-7 恢复一起定。
+- 来源授权：按在途修订核对命令（命令的变更号 = 在途变更号）；许可答闸门号 = 预约单号、闸门版本 = 这次变更的修订号（宿主只要求非负，不比较大小，已核对）。按当前生效版找对应操作改为按变更号找。
+- 预约单的改期、改状态、到店、标记开单四条 SQL 的护栏改为「没有在途修订」；报表与按人员筛选改用预约单的当前版本。
+- 测试：模拟「有变更在途」改为把生效版改成在途；查生效版本改读预约单；「围栏缺失」情形不复存在，改为「当前版本对不上」；围栏挡改期、取消、到店的用例移到修订持久层测试（10/10）；改约被拒后重试的用例改为断言三行修订（被取代、被拒、生效）；接待异常的故障注入改挂在锁预约单上；宿主两条原生测试同步、只编译确认。
+- 全量对照（411 条，参数化少了两张旧表的两组）：40 条失败，较 4-4b-1 多 2 条——围栏挡改期等的用例（已移到修订持久层测试）与接待恢复单测的 mock（补修订 Mapper 与当前版本）；两处改后单独重跑这三个类全过。其余与 4-4b-1 相同；改后未再跑一次全量。
+
+
+| 4-5 来源授权（宿主冻结回调） | 按命令号找修订行作答；许可写决策号、许可时刻与截止，之后不再改（替代决策表的重放） | `AppointmentSourceAuthority` | 来源授权与开单用例 |
+| 4-6 取消与爽约 | 各写一行修订（快照不变、计划是释放命令）；原因与凭证仍写预约根 | `AppointmentCoordinator` | 取消、爽约用例 |
+| 4-7 恢复 | 后台扫描到期的 `APPLYING` / `RELEASING`，行锁抢占，不留租约 | `AppointmentRecovery` | 恢复用例 |
+| 4-8 请求防重 | 操作人 + 键摘要的防重与回执改走基础能力库统一防重 `RequestIdempotencyPort`（已有：同键同人只执行一次、内容不同即冲突、并发重复拒绝）。**待定**：它的回执跟调用方事务走，而回执表在 `n_common`、预约变更在交易库事务里且中间要调宿主——要么只包「受理」那一步（受理即落草稿转在途、返回修订号，之后的进度按修订号查），要么另定。做到这步时先给出方案 | 美业受理入口 | 重放返回同一结果、改了内容的重放被拒 |
+| 4-9 宿主 | 命令防重与回执改用统一防重；占用归属改用 `rsv_booking.current_key`；清掉越界清单里预约的 4 个文件（跨库加锁改读一次 + 版本比对） | 宿主预约与资源命令 | 宿主预约测试；`BeautySourceCheckoutIT` |
+| 4-10 退役 | 删 6 张表的实体、Mapper、数据范围登记与结构校验；`TransactionHandleBoundaryTest` 保持为空 | 美业 | 全仓库 `grep` 无引用 |
+| 4-11 文档与 .61 | 本节改为已实现；`n_trade_v2` 上加列（带 DDL，须用户批准、先备份）。**注意**：4-2 起实体已映射新列，部署含 4-2 的包之前 `n_trade_v2` 必须先加列，否则读修订会因缺列报错 | 本 TDD、商品交接 §5 | 两次 `check` |
+
+**设计要点（4-2 定）**：修订号按「该预约已有最大号 + 1」分配，被拒、待释放的版本保留自己的号，号可以不连续；生效的是预约单 `current_revision` 指的那一版（持久层用例里先撞到：被拒版占着 1，下一次再用 1 违反唯一键）。
+- 4-2 全量对照（独立库模式 `-Dtest=*`，410 条）：37 条失败，较 `23449fd7e` 时少 3 条（两条是当时改写的主库旧表结构用例，一条是时好时坏的并发提交用例），没有新增失败。
+
+#### 第 7 项：人员安排改读修订快照（2026-11-28，用户定「用修订快照」）
+- 依据：安排行写在确认预约的交易事务里，搬到行业库就成了跨库写；而每行都是确认那一版修订快照 `assignments` 的照抄（占用编号即该版修订的 `hold_no`），唯一的程序用途是和快照逐条比对。同一事实只留快照一处。
+- 改动：确认预约不再写安排行；开工核对去掉「安排行 = 快照」那段（快照与冻结范围、任务快照、修订占用编号的核对照旧）；按人员筛预约、人员工作量报表改用 `JSON_TABLE` 读当前那一版修订的快照；退役 `BtyAppointmentAssignment`、`AppointmentAssignmentMapper` 与数据范围登记。旧表留在私有迁移里，随第 15 项退役。
+- 测试：报表种子改写进修订快照；只测安排行查询的两条持久层用例删去；「安排行占用编号被改」改为「修订占用编号被改」，同样在冻结前被拒。
+
+#### 第 11 项：库存意向搬到行业库（2026-11-28，用户「先做 7 和 11」）
+- 改动：`ServiceExecutionStockIntentMapper` 改为行业句柄；`BeautyIndustryTables` 加这张表、启动核对把它列为可选（同执行围栏）；结构校验器改在行业句柄上，没有私有迁移历史时只核对结构与触发器（同执行围栏）。
+- 建表：测试行业库的美业补充脚本 `V2__beauty_supplement.sql` 第五节，表与两个触发器原样取自私有迁移 V11；设计稿与 .61 部署随 B-6（.61 的 `n_industry` 尚未建美业表）。主库上私有迁移建的旧表随第 15 项退役。
+- 验证：独立库模式 `BeautyIndustryDatabaseIT`（触发器清单多两个）、`ServiceTaskStockPreparationCoordinatorTest` 15/15、`ServiceTaskPersistenceIT` 17/17、`TransactionHandleBoundaryTest` 通过；共用库模式 `BeautySchemaMigrationIT` 32/32，`ServiceSourceObservationIT` 的 5 条失败在 HEAD 上同样存在（缺迁移脚本）。
+
+#### 第 12 项执行计划：操作日志退役（用户 2026-11-28 定「按建议执行」）
+
+**为什么不迁到 `n_common.sys_audit_log`**：9 处写入里 8 类记的是业务表里已有的事实（发布人和时间、接待操作行、提交单、绑定、回执表），全仓库也没有页面或报表读这张表；搬过去只是在审计库多一份副本，还要为它扩宿主审计端口、协商形状。剩下三类不是副本：它们是业务记录误放在日志里，归回各自的业务行。
+
+**口径**：
+- 到店证明：受理时定好到店时刻并存进接待操作行；交易事务按这个时刻标到店；重做时「预约到店时刻 = 这次操作定的时刻」即证明是这次标的。不改交易库表结构。
+- 接待异常申请：整笔记在接待操作行（冻结参数存原因，结果存申请内容）；申请号 = 接待操作号；交易事务只锁预约、核版本，不写。接口字段 `requestNo` 不变，取值格式由 `BTAL…` 变为接待操作号。审核流程以后交独立的审核与工单服务。
+- 恢复请求：记进 `bty_service_submission`，动作取常量 `RECOVERY`、状态 `ACCEPTED`，`request_key_hash` = 请求命名空间摘要（借现有唯一键 `门店 + 动作 + 请求键摘要` 防重），冻结命令存回执；重放读这一行。表结构不改。
+- 旧表 `bty_action_log` 留在私有 Flyway 里，随第 15 项退役；`ai_shop_ume` 已作废，不迁数据。
+
+| 步 | 内容 | 主要文件 | 验证 |
+|---|---|---|---|
+| **12-1 到店证明** | `ArrivalPayload` 加到店时刻（受理时定，UTC 毫秒）；无预约到店在进入 `ARRIVAL_PENDING` 时由 `WalkInPayload.withRevisions` 一并写入；`ReceptionCoordinator` 两条到店路径按这个时刻标到店、`arrived()` 改为「已到店 + 版本正好加一 + 到店时刻相同」，不再查日志 | `ReceptionPreparation`、`ReceptionCoordinator` | `ReceptionBusinessIT`、`WalkInRecoveryIT` 里「提交后断了重做」的用例；补一条「别的接待先标了到店，这次不能冒领」 |
+| **12-2 接待异常申请** | `ExceptionPayload` 加原因；申请号用接待操作号；交易事务只锁预约核版本；申请内容随结果落在接待操作行；去掉 `loggedActionNo` | `ReceptionPreparation`、`ReceptionCoordinator` | `ReceptionBusinessIT` 的异常申请用例改为看接待操作行；重放返回同一申请号 |
+| **12-3 恢复请求** | `RECOVERY` 动作写进服务提交表（在行业事务里，与提交单同库）；重放与撞键回查都读这一行；已核对：提交表的扫描、重试、恢复租约查询都按动作过滤（`SUBMIT_SOURCE`/`ADD_SOURCE`、`START`、`OPEN`），不会收进这一行；按单号、按请求键摘要的回查不看动作，所以恢复行用自己的单号（沿用现在的 `recoveryNo`）和带命名空间的请求键摘要，不与提交单撞 | `ServiceSubmissionServiceImpl`、`BeautyMappers.ServiceSubmissionMapper`（如需按号回查） | `ServiceSubmissionIT` 的恢复用例（受理、重放、改了内容的重放被拒、并发同键只一条） |
+| **12-4 删除留痕写入** | 去掉其余 8 类写入：门店政策发布、服务定义发布、接待变更准备、顾客认领回执、开工单、提交来源、绑定来源、拒绝无预约到店（连同它的防重查询） | `StorePolicyServiceImpl`、`ServiceDefinitionServiceImpl`、`AppointmentPreparation`、`GuestRegistrationServiceImpl`、`WorkOrderCoordinator`、`ServiceSubmissionServiceImpl`、`ServiceSourceBinding`、`ReceptionCoordinator` | 编译；各自的业务测试照过 |
+| **12-5 清理引用** | 删 `BtyActionLog` 实体、`ActionLogMapper`、数据范围登记；`AppointmentPersistence` 与发布、预约、政策、定义四个配置类去掉注入 | `entity/BtyActionLog`、`BeautyMappers`、`BeautyDataScopeRegistration`、`AppointmentPersistence`、`Beauty{Appointment,Definition,Policy}Configuration` 等 | 全仓库 `grep` 不再有 `BtyActionLog` / `ActionLogMapper`（美业范围）；美业结构校验不因代码不用这张表报错 |
+| **12-6 测试改造** | 14 个测试文件：数日志条数的断言改看业务行（政策版本、定义行、接待操作行、提交单），清表名单去掉 `bty_action_log`，注入日志 Mapper 的失败注入改挂到业务写入上；美业 server 装配测试去掉该 Mapper | 美业 `AppointmentBusinessIT`、`BeautyCatalogIT`、`BeautyPolicyPublicationIT`、`GuestClaimReceiptIT`、`ManualExecutionSourceIT`、`ManualSourceBindingIT`、`ReceptionBusinessIT`、`ReceptionFixture`、`ServiceSubmissionIT`、`WorkOrderScopeIT`；server `BeautyBm04AssemblyTest`、`BookingServerWiringTest`、`BeautyStandaloneEndToEndIT`；宿主 `BeautyPolicyEndToEndIT` | 见 12-8 |
+| **12-7 约束测试** | `TransactionHandleBoundaryTest` 的 `PENDING` 清空（只剩「行业事务写操作日志」这一条已知例外，修好即删） | `TransactionHandleBoundaryTest` | 违规集合恰为空 |
+| **12-8 验证** | 美业集成测试两种模式都与 HEAD 对照：不新增失败；独立库模式下与操作日志相关的 3 条（门店政策首次发布并发、外层事务回滚操作日志、开单审计回滚）应消失或改写后通过；美业 server/channel 单测、宿主编译 | — | 失败清单对照（同 P5 的做法） |
+| **12-9 文档与提交** | 本节改为已实现、记偏差与测试输出；重新生成派生文档（旧库调用清单、分层、词条）；提交；推送前问用户 | 本 TDD | 生成文档检查全绿 |
+
+**顺序与依赖**：12-1、12-2、12-3 互不依赖，先做（它们是删日志的前提）；12-4、12-5 在三者之后；12-6、12-7 随改随修；12-8、12-9 最后。
+
+**实现记录（2026-11-28）**：
+- 12-1～12-7 按上表完成。美业主代码与测试不再读写 `bty_action_log`；`TransactionHandleBoundaryTest` 的已知例外清空。
+- **偏差一：第四类只在日志里的记录**。取消预约与登记爽约时，请求里的原因（≤500）与凭证号（≤128）只写进了日志。用户 2026-11-28 定方案 A：定稿 DDL `ord_appointment.cancel_reason` 放宽到 `varchar(500)`、加 `cancel_evidence_ref varchar(128)`（生成器加 `REPLACE_COLUMNS` 改列机制）；受理取消、爽约时在同一个锁住预约的交易事务里写这两列（定向更新、不动版本），释放资源被拒时清掉。.61 `n_trade_v2` 已执行（记在商品交接 §5）。
+- **偏差二：提交防重也在读日志**。`acceptedSubmission` 原来靠「已受理」日志回执从命名空间找回提交单号；改为按提交单自己记的请求键摘要找回（`selectByRequestKey`），内容不同即拒。
+- 测试：原来挂在日志写入上的故障注入改挂到同一步的业务写入上（到店 `markArrived`、异常核对锁围栏、开单写 `OPEN` 提交、顾客认领回执、定义发布后的美业事务）；数日志条数的断言改看业务行（政策版本的 `created_by`、提交单、接待操作行、预约的取消原因与凭证）。只为审计存在的两条「审计失败回滚」断言改为「同一步业务写入失败回滚」。
+- **12-8 对照（与 HEAD 同机同库）**：首轮两种模式各新增 2 条失败，都在 `WalkInRecoveryIT`（后台恢复把无预约到店推进到「待标到店」时没定到店时刻）。修法：进入「待标到店」只经 `WalkInPayload.arrivalPending(版本, 时刻)` 一处，接待协调与后台恢复共用。修后 `WalkInRecoveryIT` 37/37、`ReceptionBusinessIT` 22/22 两种模式全过；`WorkOrderScopeIT` 剩 1 条 `legacyContextIsReadOnly…` 在 HEAD 上同样失败。独立库模式少了 2 条失败（`openScopeRollsBackWhenAuditFails` 与一条并发提交），操作日志相关的失败已不再出现。
+
+
+**风险**：
+- 同一毫秒两次接待标同一张预约到店：第二次在交易事务里因版本不符被拒，不会误判为「这次标的」。
+- 接待异常申请号格式变化：端上只回显、不解析，影响限于展示。
+- 运营审计看不到美业操作：现状本来就看不到（日志表没有读方），不是退步。
 
 ### 2.7 服务定义经商品接口写（用户 2026-11-28 定，§8-Q2 ②）
 

@@ -316,11 +316,11 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                                                     + " mch_booking_owner o ON"
                                                     + " o.owner_no=c.owner_no AND"
                                                     + " o.entity_no=c.entity_no JOIN"
-                                                    + " bty_appointment_resource_intent i ON"
+                                                    + " ord_appointment_command i ON"
                                                     + " i.command_no=c.command_no AND"
                                                     + " i.entity_no=c.entity_no WHERE c.entity_no=?"
                                                     + " AND o.source_no=? AND c.action='REPLACE'"
-                                                    + " AND c.status='ACCEPTED' AND i.phase_code=1",
+                                                    + " AND c.status='ACCEPTED' AND i.status='PERMITTED'",
                                                 entity,
                                                 scenario.appointment())
                                         == 1,
@@ -589,8 +589,8 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                                         + " mch_resource_command WHERE entity_no=? ORDER BY id",
                                 entity),
                         jdbc.queryForList(
-                                "SELECT action,phase_code,reason_code,terminal_code FROM"
-                                    + " bty_appointment_resource_intent WHERE entity_no=? ORDER BY"
+                                "SELECT action,status,reject_code FROM"
+                                    + " ord_appointment_command WHERE entity_no=? ORDER BY"
                                     + " id",
                                 entity),
                         value(created, "operationState"))
@@ -667,11 +667,6 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                                 "SELECT * FROM ord_appointment_revision WHERE appointment_no=?"
                                         + " AND hold_no=?",
                                 appointment,
-                                hold),
-                        jdbc.queryForList(
-                                "SELECT * FROM bty_appointment_assignment WHERE entity_no=? AND"
-                                        + " hold_no=? ORDER BY id",
-                                entity,
                                 hold)));
     }
 
@@ -686,7 +681,7 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                                 "SELECT * FROM mch_booking_hold_unit WHERE hold_no=? ORDER BY id",
                                 scenario.hold()),
                         jdbc.queryForList(
-                                "SELECT arrangement_revision FROM bty_appointment_current WHERE"
+                                "SELECT current_revision FROM ord_appointment WHERE"
                                         + " appointment_no=?",
                                 scenario.appointment()),
                         jdbc.queryForList(
@@ -718,28 +713,24 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
     private void reconcileCommand(Map<String, Object> command, String resource, int terminal) {
         String commandNo = (String) command.get("command_no");
         var intent =
-                row("SELECT * FROM bty_appointment_resource_intent WHERE command_no=?", commandNo);
+                row("SELECT c.*, JSON_UNQUOTE(JSON_EXTRACT(c.accept_payload,'$.frozenPayload')) AS frozen_plan"
+                        + " FROM ord_appointment_command c WHERE command_no=?", commandNo);
         String frozen = (String) intent.get("frozen_plan");
         assertThat(ResourcePlanContract.hash(frozen)).isEqualTo(intent.get("plan_hash"));
         assertThat(command.get("frozen_payload")).isEqualTo(frozen);
         assertThat(ResourcePlanContract.decode(frozen).demands())
                 .hasSize(1)
                 .allSatisfy(demand -> assertThat(demand.resourceNo()).isEqualTo(resource));
-        assertThat(intent).containsEntry("phase_code", 3).containsEntry("terminal_code", terminal);
+        // 资源命令（§2.6 第 4–6 项方向 A）：terminal 1 = 宿主成功、2 = 宿主拒绝
+        assertThat(intent).containsEntry("status", terminal == 1 ? "SUCCEEDED" : "REJECTED");
         assertThat(intent.get("source_revision")).isEqualTo(command.get("source_revision"));
+        assertThat(intent.get("decision_no")).isNotNull(); // 许可记在命令行上，原资源决策表不再用
         assertThat(
                         number(
-                                "SELECT COUNT(*) FROM bty_appointment_resource_decision WHERE"
-                                        + " command_no=? AND decision_no=?",
-                                commandNo,
-                                intent.get("decision_no")))
-                .isEqualTo(1);
-        assertThat(
-                        number(
-                                "SELECT COUNT(*) FROM bty_appointment_resource_fence WHERE"
-                                        + " appointment_no=? AND active_intent_no IS NULL",
+                                "SELECT COUNT(*) FROM ord_appointment_revision WHERE"
+                                        + " appointment_no=? AND applying_key IS NOT NULL",
                                 intent.get("appointment_no")))
-                .isEqualTo(1);
+                .isZero(); // 在途闸门已放开（修订上，4-4b-2）
     }
 
     private String currentHold(String appointment) {
@@ -754,11 +745,12 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
 
     private List<String> currentResources(String appointment) {
         return jdbc.queryForList(
-                "SELECT DISTINCT a.resource_no FROM bty_appointment_assignment a JOIN"
-                    + " ord_appointment_item i ON i.appointment_item_no=a.appointment_item_no AND"
-                    + " i.entity_no=a.entity_no JOIN bty_appointment_current c ON"
-                    + " c.appointment_no=i.appointment_no AND c.entity_no=i.entity_no AND"
-                    + " c.arrangement_revision=a.appointment_revision WHERE c.appointment_no=?",
+                // 人员安排在当前那一版修订的快照里（TDD-美业域迁移新库 §2.6 第 7 项）
+                "SELECT DISTINCT j.resource_no FROM ord_appointment c JOIN ord_appointment_revision r"
+                    + " ON r.appointment_no=c.appointment_no AND r.entity_no=c.entity_no"
+                    + " AND r.arrangement_revision=c.current_revision,"
+                    + " JSON_TABLE(r.snapshot, '$.assignments[*]' COLUMNS (resource_no VARCHAR(32)"
+                    + " PATH '$.resourceNo')) j WHERE c.appointment_no=?",
                 String.class,
                 appointment);
     }

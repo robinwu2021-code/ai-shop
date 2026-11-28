@@ -1,0 +1,12 @@
+bty_work_order
+bty_service_task
+bty_service_step
+bty_trade_binding
+bty_service_submission
+bty_reception_operation
+bty_guest_claim_receipt
+bty_arrival_challenge
+bty_source_observation
+bty_source_allocation_guard
+bty_service_execution_fence
+bty_service_execution_stock_intent

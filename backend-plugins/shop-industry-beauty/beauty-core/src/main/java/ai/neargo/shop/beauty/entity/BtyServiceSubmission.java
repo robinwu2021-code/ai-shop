@@ -11,6 +11,11 @@ import lombok.Setter;
 @Setter
 @TableName("bty_service_submission")
 public class BtyServiceSubmission extends BaseEntity {
+    /** 动作：恢复请求（原来记在操作日志里，TDD-美业域迁移新库 §2.6 第 12 项）；扫描与重试只认提交类动作，不会收进它。 */
+    public static final String ACTION_RECOVERY = "RECOVERY";
+    /** 恢复请求的状态：已受理。 */
+    public static final String STATUS_ACCEPTED = "ACCEPTED";
+
     /** 可信经营主体数据域。 */
     private String entityNo;
     /** 提交号。 */

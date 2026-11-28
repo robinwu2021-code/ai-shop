@@ -1,6 +1,5 @@
 package ai.neargo.shop.beauty.service.impl;
 
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.entity.BtyServiceTask;
 import ai.neargo.shop.beauty.entity.BtySourceAllocationGuard;
@@ -476,31 +475,6 @@ public final class ServiceSourceBinding {
                                 actor)
                         == 1,
                 "SUBMISSION_LEASE_CHANGED");
-        var action = new BtyActionLog();
-        action.setEntityNo(entity);
-        action.setStoreNo(store);
-        action.setActionNo(BizKey.next("BTAL"));
-        action.setAggregateType("BEAUTY_SOURCE_SUBMISSION");
-        action.setAggregateNo(submission.getSubmissionNo());
-        action.setAction("SOURCE_BOUND");
-        action.setOperatorRef(actor);
-        action.setRequestRef(submission.getSubmissionNo());
-        action.setExpectedRevision(submission.getVersion());
-        action.setResultRevision(submission.getVersion() + 1);
-        action.setSafeSnapshot(
-                db.json.writeValueAsString(
-                        Map.of(
-                                "sourceNo",
-                                facts.subOrderNo(),
-                                "operationNo",
-                                command.operationNo(),
-                                input.manual() ? "manualSourceRevision" : "sourceRevision",
-                                facts.sourceRevision(),
-                                input.manual() ? "manualSourceHash" : "sourceHash",
-                                facts.sourceHash(),
-                                "taskNos",
-                                lockedTasks.stream().map(BtyServiceTask::getTaskNo).toList())));
-        db.actions.insert(action);
         return submissions.selectScopedForUpdate(entity, store, submission.getSubmissionNo());
     }
 

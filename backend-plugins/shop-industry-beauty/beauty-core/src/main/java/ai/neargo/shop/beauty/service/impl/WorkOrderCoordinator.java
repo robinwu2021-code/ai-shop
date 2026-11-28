@@ -12,7 +12,6 @@ import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
 import ai.neargo.shop.beauty.dto.WalkInVO;
 import ai.neargo.shop.beauty.dto.WorkOrderTaskSnapshotVO;
 import ai.neargo.shop.beauty.dto.WorkOrderVO;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
@@ -567,10 +566,7 @@ public final class WorkOrderCoordinator {
             if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", prepared.scope().entityNo(), prepared.scope().storeNo());
             if (observed != null) {
                 var root = db.lock(observed);
-                db.fences.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                        observed.getAppointmentNo());
-                db.currents.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                        observed.getAppointmentNo());
+                if (root != null) db.gateForUpdate(root);
                 if (root != null && workOrderNo.equals(root.getWorkOrderNo())) {
                     // 第二步已经提交过：走入单此时已越过开始时间就撤销标记，否则直接去补第三步
                     if (walkIn && !stillFuture(op)) {
@@ -622,13 +618,9 @@ public final class WorkOrderCoordinator {
     private void verifyAppointmentLocked(BtyAppointment observed, PreparedWorkOrderScope prepared, long revision,
             boolean walkIn) {
         var root = db.lock(observed);
-        var fence = db.fences.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                observed.getAppointmentNo());
-        var current = db.currents.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                observed.getAppointmentNo());
+        var current = db.gateForUpdate(root);
         var evidence = prepared.frozen().holdEvidence();
-        AppointmentPersistence.require(root != null && fence != null && current != null
-                && fence.getActiveIntentNo() == null && current.getOperationNo() == null
+        AppointmentPersistence.require(root != null && current != null && current.getOperationNo() == null
                 && root.getVersion() == revision && "CHECKED_IN".equals(root.getStatus())
                 && root.getCheckedInAt() != null && (walkIn || now().isBefore(root.getEndAt()))
                 && Objects.equals(root.getHoldNo(), observed.getHoldNo())
@@ -707,13 +699,6 @@ public final class WorkOrderCoordinator {
                 submission.getSubmissionNo(), "UNBOUND", op.getOperationNo(), "SUCCEEDED",
                 refs.stream().map(TaskReference::taskNo).toList(), prepared.frozen().items()
                         .getFirst().serviceStartAt());
-        var log = new BtyActionLog(); log.setEntityNo(scope.entityNo()); log.setStoreNo(scope.storeNo());
-        log.setActionNo(BizKey.next("BTAL")); log.setAggregateType("BEAUTY_WORK_ORDER");
-        log.setAggregateNo(root.getWorkOrderNo()); log.setAction("WORK_ORDER_OPENED");
-        log.setRequestRef(op.getOperationNo()); log.setOperatorRef(SecurityUtils.requireUser().userNo());
-        log.setExpectedRevision(0L); log.setResultRevision(1L);
-        log.setSafeSnapshot(db.json.writeValueAsString(new SafeScope("OPEN", 1, result.taskNos())));
-        db.actions.insert(log);
         op.setPhase("SUCCEEDED"); op.setWorkOrderNo(root.getWorkOrderNo());
         op.setResult(db.json.writeValueAsString("RECEIVE_WALK_IN".equals(op.getAction())
                 ? new WalkInVO(op.getOperationNo(), "SUCCEEDED", op.getAppointmentNo(), result,
@@ -949,5 +934,4 @@ public final class WorkOrderCoordinator {
     public record OpenSubmissionDraft(int schemaVersion, long scopeRevision, String scopeHash,
             VerifiedIdentity identity,
             List<TaskReference> taskRefs) { }
-    private record SafeScope(String state, long scopeRevision, List<String> taskNos) { }
 }

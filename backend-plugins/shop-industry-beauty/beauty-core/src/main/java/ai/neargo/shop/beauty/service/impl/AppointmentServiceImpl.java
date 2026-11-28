@@ -105,7 +105,9 @@ public final class AppointmentServiceImpl implements AppointmentService {
     private AppointmentVO create(String preview, List<String> refs, String consent, String key, String request) {
         financial(refs, consent);
         var p = db.preview(preview); preparations.own(p);
-        AppointmentPersistence.require(p.getAppointmentNo() == null);
+        // 只收新约的预览（基于预约单版本 0；改约预览基于的版本至少是 1）。不看预约单号：确认后草稿升为生效版、
+        // 已写上预约单号，同键重放仍要走到下面的防重（TDD §2.6 第 4–6 项，步 4-3）
+        AppointmentPersistence.require(p.getBasedOnRevision() != null && p.getBasedOnRevision() == 0);
         var op = preparations.prepare(p, null, 0, "CREATE", key, IdempotencyScope.requestHash("CREATE", request), null,
                 db.json.writeValueAsString(Map.of("previewNo", preview)));
         return outcome(coordinator.advance(op.getOperationNo()));
@@ -149,7 +151,7 @@ public final class AppointmentServiceImpl implements AppointmentService {
         revision(root, req.expectedRevision()); AppointmentPersistence.require("CONFIRMED".equals(root.getStatus()));
         var preview = db.preview(req.previewNo()); preparations.own(preview);
         AppointmentPersistence.require(root.getAppointmentNo().equals(preview.getAppointmentNo())
-                && req.expectedRevision().equals(preview.getExpectedRevision()));
+                && req.expectedRevision().equals(preview.getBasedOnRevision()));
         var op = preparations.prepare(preview, root, req.expectedRevision(), "CHANGE", key, hash,
                 coordinator.hold(root), db.json.writeValueAsString(req));
         return outcome(coordinator.advance(op.getOperationNo()));
@@ -242,20 +244,19 @@ public final class AppointmentServiceImpl implements AppointmentService {
         var query = query(q.from(), q.to(), q.status()).eq(BtyAppointment::getEntityNo, entity)
                 .eq(BtyAppointment::getStoreNo, store);
         if (q.personnelNo() != null) {
-            query.apply("EXISTS (SELECT 1 FROM ord_appointment_item i JOIN bty_appointment_assignment a "
-                    + "ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no "
-                    + "AND a.appointment_item_no=i.appointment_item_no "
-                    + "JOIN bty_appointment_current c ON c.tenant_no=i.tenant_no AND c.entity_no=i.entity_no "
-                    + "AND c.appointment_no=i.appointment_no AND c.arrangement_revision=a.appointment_revision "
-                    + "WHERE i.appointment_no=ord_appointment.appointment_no AND i.entity_no=ord_appointment.entity_no "
-                    + "AND a.personnel_no={0} AND i.deleted=0 AND a.deleted=0)", q.personnelNo());
+            // 人员安排在当前那一版修订的快照里（TDD §2.6 第 7 项）。不用 JSON_TABLE：分页与数据范围拦截器的 SQL 解析不认它
+            query.apply("EXISTS (SELECT 1 FROM ord_appointment_revision r "
+                    + "WHERE r.tenant_no=ord_appointment.tenant_no AND r.entity_no=ord_appointment.entity_no "
+                    + "AND r.appointment_no=ord_appointment.appointment_no "
+                    + "AND r.arrangement_revision=ord_appointment.current_revision AND r.deleted=0 "
+                    + "AND JSON_CONTAINS(JSON_EXTRACT(r.snapshot, '$.assignments[*].personnelNo'), JSON_QUOTE({0})))",
+                    q.personnelNo());
         }
         if (q.assignmentState() != null) {
             AppointmentPersistence.require(List.of("ASSIGNED", "UNASSIGNED").contains(q.assignmentState()));
-            query.apply(("UNASSIGNED".equals(q.assignmentState()) ? "NOT " : "")
-                    + "EXISTS (SELECT 1 FROM bty_appointment_current c "
-                    + "WHERE c.appointment_no=ord_appointment.appointment_no "
-                    + "AND c.entity_no=ord_appointment.entity_no AND c.arrangement_revision>0)");
+            // 已有生效版即「已安排」（当前生效版本在预约单上，§2.6 第 4–6 项 4-4b-2）
+            query.apply("UNASSIGNED".equals(q.assignmentState()) ? "COALESCE(current_revision, 0) = 0"
+                    : "current_revision > 0");
         }
         var page = page(query, q.page(), q.size());
         return new PageData<>(page.getRecords().stream().map(this::summary).toList(), page.getTotal(),

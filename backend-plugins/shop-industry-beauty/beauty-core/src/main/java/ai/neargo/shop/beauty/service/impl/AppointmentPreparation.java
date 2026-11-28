@@ -4,12 +4,9 @@ import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.dto.AppointmentPreviewVO;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
-import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
+import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
-import ai.neargo.shop.beauty.entity.BtyAppointmentPreparation;
-import ai.neargo.shop.beauty.entity.BtyAppointmentResourceFence;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
@@ -89,23 +86,23 @@ public final class AppointmentPreparation {
                             customerRef)).userNo();
             if (customer == null || customer.isBlank()) { throw BizException.of(ErrorCode.NOT_FOUND); }
         }
-        var p = new BtyAppointmentPreparation();
+        var p = new BtyAppointmentArrangement();
         p.setEntityNo(match.scope().entityNo()); p.setStoreNo(match.scope().storeNo());
         p.setPreviewNo(BizKey.next("BTPR")); p.setActorNo(user.userNo());
         p.setActorRealm(user.realm().name()); p.setActorKind(user.subjectKind().name());
         p.setCustomerRef(customer);
         p.setGuestRef(customer == null ? verifiedGuest != null ? verifiedGuest
                 : target == null ? BizKey.next("BTG") : target.getGuestRef() : null);
-        p.setAppointmentNo(target == null ? null : target.getAppointmentNo()); p.setExpectedRevision(expected);
+        p.setAppointmentNo(target == null ? null : target.getAppointmentNo()); p.setBasedOnRevision(expected);
         p.setPolicyVersionNo(match.policyVersionNo()); p.setStartAt(match.startAt().toLocalDateTime());
         p.setEndAt(match.endAt().toLocalDateTime()); p.setTimezone("UTC");
         p.setFrozenPlan(match.plan()); p.setPlanHash(ResourcePlanContract.hash(match.plan()));
         p.setSnapshot(db.json.writeValueAsString(match.snapshot()));
         p.setExpiresAt(AppointmentPersistence.now().plusMinutes(5));
-        db.tx(() -> { if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", p.getEntityNo(), p.getStoreNo()); db.preparations.insert(p); return null; });
+        db.tx(() -> { if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", p.getEntityNo(), p.getStoreNo()); p.setStatus(BtyAppointmentArrangement.DRAFT); db.arrangements.insert(p); return null; });
         return view(p);
     }
-    public void customer(BtyAppointmentPreparation preview, String reference, String guestNo) {
+    public void customer(BtyAppointmentArrangement preview, String reference, String guestNo) {
         if (guestNo != null) {
             if (reference != null) { throw BizException.of(ErrorCode.BAD_REQUEST); }
             var identity = identities.guest(preview.getEntityNo(), preview.getStoreNo(), guestNo);
@@ -124,13 +121,13 @@ public final class AppointmentPreparation {
                 new CustomerIdentityPort.ReferenceQuery(preview.getEntityNo(), preview.getStoreNo(), reference));
         AppointmentPersistence.require(resolved.userNo().equals(preview.getCustomerRef()));
     }
-    public AppointmentPreviewVO view(BtyAppointmentPreparation p) {
+    public AppointmentPreviewVO view(BtyAppointmentArrangement p) {
         var snapshot = db.json.readValue(p.getSnapshot(), AppointmentMatching.Snapshot.class);
         return new AppointmentPreviewVO(p.getPreviewNo(), p.getExpiresAt().atOffset(ZoneOffset.UTC),
                 p.getPolicyVersionNo(), p.getStartAt().atOffset(ZoneOffset.UTC), p.getEndAt().atOffset(ZoneOffset.UTC),
                 snapshot.items(), snapshot.assignments(), snapshot.priceMinor());
     }
-    public void own(BtyAppointmentPreparation p) {
+    public void own(BtyAppointmentArrangement p) {
         var actor = access.actor();
         if (!actor.operatorNo().equals(p.getActorNo()) || !actor.realm().equals(p.getActorRealm())
                 || !actor.subjectKind().equals(p.getActorKind())) { throw BizException.of(ErrorCode.FORBIDDEN); }
@@ -150,24 +147,24 @@ public final class AppointmentPreparation {
         if (op != null) { AppointmentPersistence.require(hash.equals(op.getRequestHash())); }
         return op;
     }
-    public BtyAppointmentOperation prepare(BtyAppointmentPreparation preview, BtyAppointment target,
+    public BtyAppointmentOperation prepare(BtyAppointmentArrangement preview, BtyAppointment target,
             long expected, String action, String key, String hash, ResourceBookingPort.Hold hold,
             String requestEvidence) {
         return prepare(preview, target, expected, action, key, hash, hold, requestEvidence, () -> { }, null);
     }
-    public BtyAppointmentOperation prepareReception(BtyAppointmentPreparation preview, BtyAppointment target,
+    public BtyAppointmentOperation prepareReception(BtyAppointmentArrangement preview, BtyAppointment target,
             long expected, String key, String hash, PreparedWorkOrderScope scope, WorkOrderPreparation frozen,
             String requestEvidence) {
         return prepareReception(preview, target, expected, key, hash, scope, frozen, requestEvidence, null);
     }
     /** Link before accepting the resource command, within the existing root transaction. */
-    public BtyAppointmentOperation prepareReception(BtyAppointmentPreparation preview, BtyAppointment target,
+    public BtyAppointmentOperation prepareReception(BtyAppointmentArrangement preview, BtyAppointment target,
             long expected, String key, String hash, PreparedWorkOrderScope scope, WorkOrderPreparation frozen,
             String requestEvidence, String receptionOperationNo) {
         return prepare(preview, target, expected, "RECEPTION_CHANGE", key, hash, scope.frozen().holdEvidence().hold(),
                 requestEvidence, () -> frozen.verifyLocked(scope), receptionOperationNo);
     }
-    private BtyAppointmentOperation prepare(BtyAppointmentPreparation preview, BtyAppointment target,
+    private BtyAppointmentOperation prepare(BtyAppointmentArrangement preview, BtyAppointment target,
             long expected, String action, String key, String hash, ResourceBookingPort.Hold hold,
             String requestEvidence, Runnable lockedCheck, String receptionOperationNo) {
         // 预约侧（交易事务）建预约操作；再把它的号挂到开单的接待操作上（行业库，ReceptionSteps）。
@@ -192,7 +189,7 @@ public final class AppointmentPreparation {
             return op;
         });
     }
-    private BtyAppointmentOperation prepareAppointment(BtyAppointmentPreparation preview, BtyAppointment target,
+    private BtyAppointmentOperation prepareAppointment(BtyAppointmentArrangement preview, BtyAppointment target,
             long expected, String action, String key, String hash, ResourceBookingPort.Hold hold,
             String requestEvidence, Runnable lockedCheck, String receptionOperationNo) {
         if ("CANCEL".equals(action) || "NO_SHOW".equals(action)) { access.root(target, true); }
@@ -218,10 +215,8 @@ public final class AppointmentPreparation {
             return db.tx(() -> {
                 if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", preview.getEntityNo(), preview.getStoreNo());
                 if (target == null) {
-                    db.preparations.selectOne(Wrappers.<BtyAppointmentPreparation>lambdaQuery()
-                            .eq(BtyAppointmentPreparation::getTenantNo, "MAIN")
-                            .eq(BtyAppointmentPreparation::getEntityNo, preview.getEntityNo())
-                            .eq(BtyAppointmentPreparation::getPreviewNo, preview.getPreviewNo()).last("FOR UPDATE"));
+                    db.arrangements.selectByPreviewForUpdate(preview.getEntityNo(), preview.getStoreNo(),
+                            preview.getPreviewNo());
                     var replay = find(preview.getEntityNo(), preview.getStoreNo(), key, hash);
                     if (replay != null) { return replay; }
                     AppointmentPersistence.require(db.operations.selectCount(
@@ -237,14 +232,11 @@ public final class AppointmentPreparation {
                 AppointmentPersistence.require(reception ? "CHECKED_IN".equals(root.getStatus())
                         && db.roots.countWorkOrders(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()) == 0
                         : "HELD".equals(root.getStatus()) || "CONFIRMED".equals(root.getStatus()));
-                var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                        root.getAppointmentNo());
-                AppointmentPersistence.require(fence != null && fence.getActiveIntentNo() == null);
                 if (target != null) {
                     AppointmentPersistence.require(Objects.equals(root.getHoldNo(), target.getHoldNo()));
                 }
-                var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                        root.getAppointmentNo());
+                // 在途闸门在修订上（§2.6 第 4–6 项 4-4b-2，取代资源围栏与当前行）
+                var current = db.gateForUpdate(root);
                 if (receptionOperationNo != null) {
                     // 接待操作在行业库：这里只读核对，挂接在提交后由 linkOuter 在行业事务里做
                     var outer = db.read(() -> receptions.selectScoped(root.getEntityNo(), root.getStoreNo(),
@@ -272,7 +264,22 @@ public final class AppointmentPreparation {
             return winner;
         }
     }
-    private BtyAppointmentOperation prepareLocked(BtyAppointmentPreparation preview, BtyAppointment root,
+    /**
+     * 取消、爽约的原因与凭证记在预约上（与受理同一个锁住预约的交易事务；只改这两列、不动版本）。
+     * 请求原文是 {@code CancelAppointmentReq} 或 {@code RecordNoShowReq} 的 JSON（TDD §2.6 第 12 项）。
+     */
+    private void recordCancelReason(BtyAppointment root, String request) {
+        var fields = db.json.readTree(request);
+        String reason = fields.path("reason").isTextual() ? fields.path("reason").asText() : null;
+        String evidence = fields.path("evidenceRef").isTextual() ? fields.path("evidenceRef").asText() : null;
+        AppointmentPersistence.require(db.roots.update(null, Wrappers.<BtyAppointment>lambdaUpdate()
+                .set(BtyAppointment::getCancelReason, reason).set(BtyAppointment::getCancelEvidenceRef, evidence)
+                .eq(BtyAppointment::getTenantNo, root.getTenantNo()).eq(BtyAppointment::getEntityNo, root.getEntityNo())
+                .eq(BtyAppointment::getAppointmentNo, root.getAppointmentNo())) == 1);
+        root.setCancelReason(reason);
+        root.setCancelEvidenceRef(evidence);
+    }
+    private BtyAppointmentOperation prepareLocked(BtyAppointmentArrangement preview, BtyAppointment root,
             String action, String key, String hash, ResourceBookingPort.Hold hold, String requestEvidence,
             String operationNo) {
         var actor = access.actor();
@@ -293,20 +300,58 @@ public final class AppointmentPreparation {
                         hold.leaseRevision()), preview.getFrozenPlan());
         op.setAcceptPayload(db.json.writeValueAsString(request));
         db.operations.insert(op);
-        var log = new BtyActionLog();
-        log.setEntityNo(root.getEntityNo()); log.setStoreNo(root.getStoreNo());
-        log.setActionNo(BizKey.next("BTAL")); log.setAggregateType("BEAUTY_APPOINTMENT");
-        log.setAggregateNo(root.getAppointmentNo());
-                log.setAction("RECEPTION_CHANGE".equals(action) ? "RECEPTION_CHANGE_PREPARED"
-                : "APPOINTMENT_" + action + "_PREPARED");
-        log.setOperatorRef(actor.operatorNo()); log.setExpectedRevision(root.getVersion());
-        log.setResultRevision(root.getVersion()); log.setSafeSnapshot(requestEvidence);
-        log.setRequestRef(op.getOperationNo()); db.actions.insert(log);
-        var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                root.getAppointmentNo());
-        current.setOperationNo(operationNo); AppointmentPersistence.require(db.currents.updateById(current)
-                == 1);
+        if ("CANCEL".equals(action) || "NO_SHOW".equals(action)) { recordCancelReason(root, requestEvidence); }
+        // 这次变更的修订转在途：变更号 = 预约操作号；同一预约已有在途变更时唯一键拒绝（抛重复键，调用者按键找赢家）
+        var revision = changeRevision(preview, root, action);
+        var now = AppointmentPersistence.now();
+        AppointmentPersistence.require(db.arrangements.toApplying(root.getEntityNo(), root.getStoreNo(),
+                revision.getPreviewNo(), revision.getVersion(), root.getAppointmentNo(),
+                db.arrangements.nextRevision(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()), action,
+                operationNo, now, root.getVersion(), actor.operatorNo(), now) == 1);
         return op;
+    }
+    /**
+     * 这次变更的那一行修订：新约、改约、到店后改就是预览的草稿；同一预览上次被资源方拒绝后重试，照被拒那一版另起一行草稿
+     * （每次变更一行，被拒的那次留作历史）；取消、爽约照当前生效版（快照、计划、占用不变）另起一行草稿。
+     */
+    private BtyAppointmentArrangement changeRevision(BtyAppointmentArrangement preview, BtyAppointment root,
+            String action) {
+        String number = preview.getPreviewNo();
+        boolean release = "CANCEL".equals(action) || "NO_SHOW".equals(action);
+        if (release) {
+            var actor = access.actor();
+            number = draftFrom(preview, root, actor.operatorNo(), actor.realm(), actor.subjectKind(), root.getVersion(),
+                    AppointmentPersistence.now(), root.getHoldNo(), true);
+        } else {
+            var row = db.arrangements.selectByPreviewForUpdate(root.getEntityNo(), root.getStoreNo(), number);
+            if (row != null && BtyAppointmentArrangement.REJECTED.equals(row.getStatus())) {
+                number = draftFrom(row, root, row.getActorNo(), row.getActorRealm(), row.getActorKind(),
+                        row.getBasedOnRevision(), row.getExpiresAt(), null, false);
+            }
+        }
+        var row = db.arrangements.selectByPreviewForUpdate(root.getEntityNo(), root.getStoreNo(), number);
+        AppointmentPersistence.require(row != null && BtyAppointmentArrangement.DRAFT.equals(row.getStatus()));
+        return row;
+    }
+    /** 照一版修订另起一行草稿，返回新预览号。取消、爽约的时间与适用规则取预约单当前的，改约重试照原预览。 */
+    private String draftFrom(BtyAppointmentArrangement source, BtyAppointment root, String actorNo, String realm,
+            String kind, Long basedOn, java.time.LocalDateTime expires, String hold, boolean fromRoot) {
+        var copy = new BtyAppointmentArrangement();
+        copy.setEntityNo(root.getEntityNo()); copy.setStoreNo(root.getStoreNo());
+        String number = BizKey.next("BTPR"); copy.setPreviewNo(number);
+        copy.setSnapshot(source.getSnapshot()); copy.setFrozenPlan(source.getFrozenPlan());
+        copy.setPlanHash(source.getPlanHash()); copy.setHoldNo(hold);
+        copy.setStartAt(fromRoot ? root.getStartAt() : source.getStartAt());
+        copy.setEndAt(fromRoot ? root.getEndAt() : source.getEndAt());
+        copy.setTimezone(fromRoot ? root.getTimezone() : source.getTimezone());
+        copy.setPolicyVersionNo(fromRoot ? root.getPolicyVersionNo() : source.getPolicyVersionNo());
+        copy.setCustomerRef(fromRoot ? root.getCustomerRef() : source.getCustomerRef());
+        copy.setGuestRef(fromRoot ? root.getGuestRef() : source.getGuestRef());
+        copy.setActorNo(actorNo); copy.setActorRealm(realm); copy.setActorKind(kind);
+        copy.setBasedOnRevision(basedOn); copy.setExpiresAt(expires);
+        copy.setStatus(BtyAppointmentArrangement.DRAFT);
+        db.arrangements.insert(copy);
+        return number;
     }
     /** Commits a new reception root and its only resource command in the same transaction as the outer link. */
     public BtyAppointmentOperation prepareReception(String entity, String store, String actor, String number) {
@@ -320,14 +365,14 @@ public final class AppointmentPreparation {
         var match = payload.matched();
         AppointmentPersistence.require(match != null && "MAIN".equals(match.scope().tenantNo())
                 && entity.equals(match.scope().entityNo()) && store.equals(match.scope().storeNo()));
-        var preview = new BtyAppointmentPreparation();
+        var preview = new BtyAppointmentArrangement();
         preview.setEntityNo(entity); preview.setStoreNo(store); preview.setPreviewNo(payload.previewNo());
         var currentActor = access.actor();
         preview.setActorNo(actor); preview.setActorRealm(currentActor.realm());
         preview.setActorKind(currentActor.subjectKind());
         preview.setCustomerRef("USER".equals(observed.getIdentityKind()) ? observed.getIdentityRef() : null);
         preview.setGuestRef("GUEST".equals(observed.getIdentityKind()) ? observed.getIdentityRef() : null);
-        preview.setExpectedRevision(0L); preview.setPolicyVersionNo(match.policyVersionNo());
+        preview.setBasedOnRevision(0L); preview.setPolicyVersionNo(match.policyVersionNo());
         preview.setStartAt(match.startAt().toLocalDateTime()); preview.setEndAt(match.endAt().toLocalDateTime());
         preview.setTimezone("UTC"); preview.setFrozenPlan(match.plan());
         preview.setPlanHash(ResourcePlanContract.hash(match.plan()));
@@ -351,7 +396,7 @@ public final class AppointmentPreparation {
     }
     private BtyAppointmentOperation createReception(String entity, String store, String number,
             BtyReceptionOperation observed, WalkInPayload payload, AppointmentMatching.Matched match,
-            BtyAppointmentPreparation preview) {
+            BtyAppointmentArrangement preview) {
         {
             return steps.advance(observed, java.util.Set.of("RECEIVED"), () -> {
                 // 上次已建好预约与预约操作、提交后断了：按冻结的号认出来，只补接待操作
@@ -363,12 +408,10 @@ public final class AppointmentPreparation {
                     return op;
                 }
                 var root = createRoot(preview, payload.appointmentNo());
-                var fence = db.fences.selectScopedForUpdate(entity, store, root.getAppointmentNo());
-                var current = db.currents.selectScopedForUpdate(entity, store, root.getAppointmentNo());
-                AppointmentPersistence.require(fence.getActiveIntentNo() == null && current.getOperationNo() == null);
+                AppointmentPersistence.require(db.gateForUpdate(root).getOperationNo() == null);
                 workOrders.verifyCreateLocked(match);
                 if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", preview.getEntityNo(), preview.getStoreNo());
-                db.preparations.insert(preview);
+                preview.setStatus(BtyAppointmentArrangement.DRAFT); db.arrangements.insert(preview);
                 var op = prepareLocked(preview, root, "CREATE", payload.appointmentKey(),
                         payload.appointmentRequestHash(), null, "{\"receptionOperationNo\":\"" + number + "\"}",
                         payload.appointmentOperationNo());
@@ -408,7 +451,7 @@ public final class AppointmentPreparation {
                 && outer.getTenantNo().equals(preview.getTenantNo())
                 && outer.getEntityNo().equals(preview.getEntityNo()) && outer.getStoreNo().equals(preview.getStoreNo())
                 && op.getActorNo().equals(preview.getActorNo()) && op.getActorRealm().equals(preview.getActorRealm())
-                && op.getActorKind().equals(preview.getActorKind()) && preview.getExpectedRevision() == 0
+                && op.getActorKind().equals(preview.getActorKind()) && preview.getBasedOnRevision() == 0
                 && preview.getFrozenPlan().equals(p.matched().plan())
                 && preview.getPlanHash().equals(ResourcePlanContract.hash(p.matched().plan()))
                 && Objects.equals(root.getCustomerRef(), preview.getCustomerRef())
@@ -437,10 +480,10 @@ public final class AppointmentPreparation {
                 && request.sourceNo().equals(p.appointmentNo()));
         return op;
     }
-    private BtyAppointment createRoot(BtyAppointmentPreparation p) {
+    private BtyAppointment createRoot(BtyAppointmentArrangement p) {
         return createRoot(p, BizKey.next("BTA"));
     }
-    private BtyAppointment createRoot(BtyAppointmentPreparation p, String number) {
+    private BtyAppointment createRoot(BtyAppointmentArrangement p, String number) {
         if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", p.getEntityNo(), p.getStoreNo());
         var root = new BtyAppointment();
         root.setEntityNo(p.getEntityNo()); root.setStoreNo(p.getStoreNo());
@@ -448,13 +491,8 @@ public final class AppointmentPreparation {
                 root.setGuestRef(p.getGuestRef());
         root.setSource("CONSUMER".equals(p.getActorRealm()) ? "ONLINE" : "STAFF"); root.setStatus("HELD");
         root.setStartAt(p.getStartAt()); root.setEndAt(p.getEndAt()); root.setTimezone(p.getTimezone());
-        root.setPolicyVersionNo(p.getPolicyVersionNo()); root.setVersion(1L); db.roots.insert(root);
-        var fence = new BtyAppointmentResourceFence(); fence.setEntityNo(root.getEntityNo());
-        fence.setAppointmentNo(root.getAppointmentNo()); fence.setStoreNo(root.getStoreNo());
-        fence.setFenceNo(BizKey.next("BTF")); db.fences.insert(fence);
-        var current = new BtyAppointmentCurrent(); current.setEntityNo(root.getEntityNo());
-        current.setAppointmentNo(root.getAppointmentNo()); current.setArrangementRevision(0L);
-                db.currents.insert(current);
+        root.setPolicyVersionNo(p.getPolicyVersionNo()); root.setVersion(1L); root.setCurrentRevision(0L);
+        db.roots.insert(root);
         return root;
     }
 }

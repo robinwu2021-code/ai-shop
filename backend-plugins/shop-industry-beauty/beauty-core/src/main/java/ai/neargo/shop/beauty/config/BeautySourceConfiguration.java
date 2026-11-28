@@ -115,7 +115,8 @@ public class BeautySourceConfiguration {
 
     @Bean
     ServiceExecutionStockIntentSchemaVerifier beautyStockIntentSchema(
-            @Qualifier("dataSource") DataSource source) {
+            // 库存意向在行业库（TDD §2.6 第 11 项）：在行业句柄上核对
+            @Qualifier(ModuleDataSources.INDUSTRY_DATA_SOURCE) DataSource source) {
         return new ServiceExecutionStockIntentSchemaVerifier(source);
     }
 

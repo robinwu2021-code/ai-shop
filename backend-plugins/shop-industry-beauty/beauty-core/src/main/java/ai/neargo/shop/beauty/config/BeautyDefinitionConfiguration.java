@@ -22,9 +22,9 @@ import tools.jackson.databind.ObjectMapper;
 public class BeautyDefinitionConfiguration {
     @Bean
     ServiceDefinitionService serviceDefinitionService(ServiceDefinitions definitions,
-            BeautyMappers.ActionLogMapper actions, RequestIdempotencyPort idempotency,
+            RequestIdempotencyPort idempotency,
             ObjectProvider<ServiceProductFactsPort> products,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager, ObjectMapper json) {
-        return new ServiceDefinitionServiceImpl(definitions, actions, idempotency, products, manager, json);
+        return new ServiceDefinitionServiceImpl(definitions, idempotency, products, manager, json);
     }
 }

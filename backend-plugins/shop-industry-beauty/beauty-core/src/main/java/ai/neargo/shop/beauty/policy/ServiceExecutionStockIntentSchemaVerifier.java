@@ -89,8 +89,9 @@ public final class ServiceExecutionStockIntentSchemaVerifier {
                     present++;
                 }
             }
+            boolean privateHistory = tableExists(connection, schema, historyTable);
             List<Map<String, Object>> markers =
-                    tableExists(connection, schema, historyTable)
+                    privateHistory
                             ? query(
                                     connection,
                                     "SELECT version, script, type, checksum, success FROM "
@@ -103,8 +104,15 @@ public final class ServiceExecutionStockIntentSchemaVerifier {
             if (present == 0 && markers.isEmpty()) {
                 return Installation.ABSENT;
             }
-            require(present == 1 && markers.size() == 1);
             JsonNode contract = descriptor();
+            if (!privateHistory) {
+                // 行业库（TDD-美业域迁移新库 §2.6 第 11 项）：库存意向由行业库的部署脚本建，没有美业私有迁移的历史；
+                // 只核对结构与触发器（与执行围栏同一做法）
+                require(present == 1);
+                inspect(connection, schema, contract);
+                return Installation.INSTALLED;
+            }
+            require(present == 1 && markers.size() == 1);
             Map<String, Object> marker = markers.getFirst();
             require(
                     "V11__beauty_service_execution_stock_intent.sql".equals(text(marker, "script"))
@@ -112,7 +120,8 @@ public final class ServiceExecutionStockIntentSchemaVerifier {
                             && success(marker.get("success"))
                             && marker.get("checksum") instanceof Number checksum
                             && checksum.intValue() == contract.path("flywayChecksum").asInt());
-            inspect(connection, schema, contract);
+            // 主库上旧私有迁移建的表只核对迁移记录：表已归行业库、代码不再读写，状态取值也已改短值（TDD-美业域迁移新库
+            // 「状态改短值」），结构按描述文件只在行业库核对；旧表随第 15 项退役
             return Installation.INSTALLED;
         } catch (Exception failure) {
             return Installation.CORRUPT;

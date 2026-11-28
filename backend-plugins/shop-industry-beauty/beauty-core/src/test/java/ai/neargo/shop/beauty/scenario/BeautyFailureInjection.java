@@ -35,6 +35,27 @@ final class BeautyFailureInjection {
         };
     }
 
+    /** Same as {@link #afterCall} for calls with any number of arguments; {@code when} decides per call. */
+    static <T> BeanPostProcessor afterAnyCall(Class<T> type, String method, Predicate<Object[]> when,
+            Runnable failure) {
+        return new BeanPostProcessor() {
+            @Override
+            public Object postProcessAfterInitialization(Object bean, String name) {
+                if (!type.isInstance(bean)) { return bean; }
+                return Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, (proxy, called, args) -> {
+                    Object result;
+                    try {
+                        result = called.invoke(bean, args);
+                    } catch (InvocationTargetException ex) {
+                        throw ex.getCause();
+                    }
+                    if (called.getName().equals(method) && when.test(args)) { failure.run(); }
+                    return result;
+                });
+            }
+        };
+    }
+
     /** Lets the current transaction flush everything, then fails it at commit time. */
     static void failBeforeCommit(String message) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

@@ -67,8 +67,10 @@ class ReceptionBusinessIT extends ReceptionFixture {
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_service_task", Integer.class)).isZero();
             assertThat(reception.checkIn("E", "S", "A", req, "ARRIVE")).isEqualTo(arrived);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation", Integer.class)).isOne();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action='CHECKED_IN'",
-                    Integer.class)).isOne();
+            // 到店时刻就是这次受理时定的那个（TDD §2.6 第 12 项：重做靠它认出是这次标的）
+            assertThat(arrived.checkedInAt()).isEqualTo(java.time.LocalDateTime.parse(json.readTree(
+                    sql.queryForObject("SELECT frozen_payload FROM bty_reception_operation", String.class))
+                    .get("arriveAt").asText()).atOffset(java.time.ZoneOffset.UTC));
         });
     }
 
@@ -108,8 +110,10 @@ class ReceptionBusinessIT extends ReceptionFixture {
             assertThat(result.state()).isEqualTo("PENDING_REVIEW");
             assertThat(result.affectedTaskNos()).isEmpty();
             assertThat(reception.coordinateReceptionException("E", "S", "A", req, "EX")).isEqualTo(result);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log "
-                    + "WHERE action='RECEPTION_EXCEPTION_REQUESTED'", Integer.class)).isOne();
+            // 申请整笔记在接待操作行上：申请号就是接待操作号，原因在冻结参数里
+            assertThat(result.requestNo()).isEqualTo(result.operationNo());
+            assertThat(sql.queryForObject("SELECT frozen_payload FROM bty_reception_operation WHERE action="
+                    + "'RECEPTION_EXCEPTION'", String.class)).contains("private-reason", "REQUEST_RESCHEDULE");
             assertThat(owner.accepts).hasSize(2);
         });
     }
@@ -213,24 +217,25 @@ class ReceptionBusinessIT extends ReceptionFixture {
                 });
     }
 
-    @Test void activeFenceAloneRejectsCheckIn() {
+    @Test void inFlightChangeAloneRejectsCheckIn() {
         business().run(c -> {
             var root = create(c); login(LoginUser.merchant("A", "operator"));
-            sql.update("UPDATE bty_appointment_resource_fence SET active_intent_no='ISOLATED_ACTIVE'");
+            sql.update("UPDATE ord_appointment_revision SET status='APPLYING' WHERE status='CONFIRMED'"); // 有变更在途（在途闸门在修订上，4-4b-2）
             assertThatThrownBy(() -> c.getBean(ReceptionService.class).checkIn("E", "S", "A",
                     request(root.appointmentNo(), root.revision()), "ARRIVE")).isInstanceOf(BizException.class);
             assertThat(sql.queryForObject("SELECT status FROM ord_appointment", String.class)).isEqualTo("CONFIRMED");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation", Integer.class)).isZero();
         });
     }
-    @Test void missingFenceOrUnknownCurrentRejectsCheckIn() {
+    @Test void inFlightChangeOrUnknownCurrentRevisionRejectsCheckIn() {
         business().run(c -> {
             var root = create(c); login(LoginUser.merchant("A", "operator"));
             var req = request(root.appointmentNo(), root.revision()); var service = c.getBean(ReceptionService.class);
-            sql.update("UPDATE bty_appointment_current SET operation_no='UNKNOWN'");
+            sql.update("UPDATE ord_appointment_revision SET status='APPLYING' WHERE status='CONFIRMED'");
             assertThatThrownBy(() -> service.checkIn("E", "S", "A", req, "ARRIVE")).isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_appointment_current SET operation_no=NULL");
-            sql.update("DELETE FROM bty_appointment_resource_fence");
+            sql.update("UPDATE ord_appointment_revision SET status='CONFIRMED' WHERE status='APPLYING'");
+            // 当前生效版本对不上（预约单指向不存在的修订）也拒绝；原「围栏缺失」的情形已不存在
+            sql.update("UPDATE ord_appointment SET current_revision=99");
             assertThatThrownBy(() -> service.checkIn("E", "S", "A", req, "ARRIVE")).isInstanceOf(BizException.class);
         });
     }
@@ -256,18 +261,17 @@ class ReceptionBusinessIT extends ReceptionFixture {
     @Test void arrivalAndExceptionAuditFailuresRollBackAllLocalEffects() {
         business().run(c -> {
             var root = create(c); login(LoginUser.merchant("A", "operator"));
-            var reception = c.getBean(ReceptionService.class); failAudit = true;
+            var reception = c.getBean(ReceptionService.class); failAt = "ARRIVE";
             assertThatThrownBy(() -> reception.checkIn("E", "S", "A",
-                    request(root.appointmentNo(), root.revision()), "ARRIVE")).hasMessage("reception-audit-rollback");
+                    request(root.appointmentNo(), root.revision()), "ARRIVE")).hasMessage("reception-step-rollback");
             assertThat(sql.queryForObject("SELECT status FROM ord_appointment", String.class)).isEqualTo("CONFIRMED");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation", Integer.class)).isZero();
+            failAt = "EXCEPTION";
             assertThatThrownBy(() -> reception.coordinateReceptionException("E", "S", "A",
                     new ReceptionExceptionReq(root.appointmentNo(), "LATE", "KEEP_WAITING", "reason", root.revision()),
-                    "EX")).hasMessage("reception-audit-rollback");
+                    "EX")).hasMessage("reception-step-rollback");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation", Integer.class)).isZero();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action IN "
-                    + "('CHECKED_IN','RECEPTION_EXCEPTION_REQUESTED')", Integer.class)).isZero();
-            failAudit = false;
+            failAt = null;
             assertThat(reception.checkIn("E", "S", "A", request(root.appointmentNo(), root.revision()), "ARRIVE")
                     .status()).isEqualTo("CHECKED_IN");
         });
@@ -296,7 +300,7 @@ class ReceptionBusinessIT extends ReceptionFixture {
                     start.plusMinutes(60), "REASSIGN");
             assertThat(rejected.getState()).isEqualTo("REJECTED");
             assertThat(sql.queryForObject("SELECT hold_no FROM ord_appointment", String.class)).isEqualTo(hold);
-            assertThat(sql.queryForObject("SELECT arrangement_revision FROM bty_appointment_current",
+            assertThat(sql.queryForObject("SELECT current_revision FROM ord_appointment",
                     Long.class)).isOne();
             assertThat(c.getBean(AppointmentCoordinator.class)
                     .currentArrangementEvidence(c.getBean(AppointmentPersistence.class).root(root.appointmentNo()))
@@ -318,10 +322,8 @@ class ReceptionBusinessIT extends ReceptionFixture {
                     start.plusMinutes(60), "REASSIGN");
             assertThat(pending.getState()).isEqualTo("PENDING");
             assertThat(sql.queryForObject("SELECT hold_no FROM ord_appointment", String.class)).isEqualTo(hold);
-            assertThat(sql.queryForObject("SELECT active_intent_no FROM bty_appointment_resource_fence", String.class))
-                    .isNotNull();
-            assertThat(sql.queryForObject("SELECT operation_no FROM bty_appointment_current", String.class))
-                    .isEqualTo(pending.getOperationNo());
+            assertThat(sql.queryForObject("SELECT change_no FROM ord_appointment_revision WHERE applying_key IS NOT NULL",
+                    String.class)).isEqualTo(pending.getOperationNo());
             owner.freezeOnly = false;
             var result = coordinator.reassign("E", "S", "A", root.appointmentNo(), arrived.revision(), assignments,
                     start.plusMinutes(60), "REASSIGN");
@@ -432,7 +434,7 @@ class ReceptionBusinessIT extends ReceptionFixture {
                     List.of(new AppointmentAssignmentReq(0, "REQ", "R2", "P2")), nextGrid, "BUFFER"))
                     .isInstanceOf(BizException.class);
             assertThat(owner.accepts).hasSize(2);
-            assertThat(sql.queryForObject("SELECT arrangement_revision FROM bty_appointment_current", Long.class))
+            assertThat(sql.queryForObject("SELECT current_revision FROM ord_appointment", Long.class))
                     .isOne();
         });
     }
@@ -448,15 +450,15 @@ class ReceptionBusinessIT extends ReceptionFixture {
             task("TASK", "W"); task("FOREIGN-TASK", "OTHER-W"); task("DELETED-TASK", "W");
             sql.update("UPDATE bty_service_task SET entity_no='OTHER-E' WHERE task_no='FOREIGN-TASK'");
             sql.update("UPDATE bty_service_task SET deleted=1 WHERE task_no='DELETED-TASK'");
-            sql.update("UPDATE bty_appointment_resource_fence SET active_intent_no='UNRESOLVED'");
+            sql.update("UPDATE ord_appointment_revision SET status='APPLYING' WHERE status='CONFIRMED'");
             var req = new ReceptionExceptionReq(root.appointmentNo(), "CONFLICT", "KEEP_WAITING", "private reason",
                     root.revision());
             var service = c.getBean(ReceptionService.class);
             var result = service.coordinateReceptionException("E", "S", "A", req, "EX");
             assertThat(result.affectedTaskNos()).containsExactly("TASK");
             assertThat(service.coordinateReceptionException("E", "S", "A", req, "EX")).isEqualTo(result);
-            assertThat(sql.queryForObject("SELECT active_intent_no FROM bty_appointment_resource_fence", String.class))
-                    .isEqualTo("UNRESOLVED");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM ord_appointment_revision WHERE status='APPLYING'",
+                    Integer.class)).isOne();
             assertThat(sql.queryForObject("SELECT status FROM ord_appointment", String.class)).isEqualTo("CONFIRMED");
             assertThat(owner.accepts).hasSize(2);
         });

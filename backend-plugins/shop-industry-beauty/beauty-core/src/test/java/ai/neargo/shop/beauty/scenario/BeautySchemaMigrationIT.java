@@ -26,11 +26,12 @@ import javax.sql.DataSource;
 /** Explicitly selected by the disposable MySQL runner; never consumes application DB settings. */
 class BeautySchemaMigrationIT {
     /**
-     * 行业句柄连哪：{@code shared}（默认）与主库同一个库；{@code separate} 连按 {@code db/n_industry} 新建的独立库，
-     * 分库后会断的写法在测试里直接暴露（TDD-美业域迁移新库 B-5a）。{@code -Dbeauty.test.industry-db=separate}。
+     * 行业句柄连哪：{@code separate}（默认）连按 {@code db/n_industry} 新建的独立库，分库后会断的写法在测试里直接暴露
+     * （TDD-美业域迁移新库 B-5a）；{@code shared} 与主库同一个库，行业表来自旧私有迁移的结构，状态改短值后不再兼容，
+     * 只留作对照。{@code -Dbeauty.test.industry-db=shared}。
      */
     static final boolean SEPARATE_INDUSTRY =
-            "separate".equals(System.getProperty("beauty.test.industry-db", "shared"));
+            !"shared".equals(System.getProperty("beauty.test.industry-db", "separate"));
     MysqlDataSource source;
     /**
      * 本进程建过的一次性库，测试进程退出时统一删掉（原来不删，本机曾积到 7600 多个、五十多 G，把磁盘占满）。
@@ -144,7 +145,7 @@ class BeautySchemaMigrationIT {
 
     /** 美业搬到门店交易库定稿表的那几张（TDD §2.6 第 1～3 项），按交易库设计 DDL 建在主库上（交易句柄测试里未单独绑定）。 */
     static final java.util.List<String> TRADE_TABLES =
-            java.util.List.of("ord_appointment", "ord_appointment_item", "ord_appointment_revision",
+            java.util.List.of("ord_appointment", "ord_appointment_item", "ord_appointment_revision", "ord_appointment_command",
                     // 服务定义归商品域（TDD §2.8 P5）：测试版端口 TestServiceDefinitionPort 读写这两张
                     "prd_service_definition", "prd_fulfillment_requirement");
 
@@ -186,11 +187,7 @@ class BeautySchemaMigrationIT {
                         || statement.startsWith("CREATE TABLE `ind_config_revision`")
                         || statement.startsWith("CREATE TABLE `ind_assignment`"))
                     execute(statement.replaceFirst("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
-            // 服务参与并入共用指派表（B-4）：美业补的两列取自行业库补充脚本
-            if (count("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() "
-                    + "AND table_name='ind_assignment' AND column_name='employment_assignment_no'") == 0)
-                for (String statement : BeautyIndustryDatabaseIT.statements("db/n_industry/V2__beauty_supplement.sql"))
-                    if (statement.startsWith("ALTER TABLE `ind_assignment`")) execute(statement);
+            // 服务参与并入共用指派表（B-4）：美业补的两列已进设计 DDL（B-6），随 V1 的建表语句一起来
             // 工单上下文并入工单（B-3）：按行业库设计稿给主库上的工单补可空的上下文列
             if (count("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() "
                     + "AND table_name='bty_work_order' AND column_name='identity_kind'") == 0)
@@ -225,7 +222,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         initialize("migrate");
         assertEquals(
-                SEPARATE_INDUSTRY ? 36 : 39, // 美业 30 张 + bty_flyway_history + 交易表 ord_appointment 三张 + 服务定义两张（§2.8 P5）；共用行业库时再加 ind_store_policy、ind_config_revision、ind_assignment
+                SEPARATE_INDUSTRY ? 37 : 40, // 美业 30 张 + bty_flyway_history + 交易表 ord_appointment 三张与资源命令（§2.6 第 4–6 项方向 A）+ 服务定义两张（§2.8 P5）；共用行业库时再加 ind_store_policy、ind_config_revision、ind_assignment
                 count(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE"
                             + " table_schema=DATABASE()"));
@@ -280,17 +277,11 @@ class BeautySchemaMigrationIT {
 
     @Test
     void knownV10DamageIsolatedFromIntactBase() throws Exception {
+        // 主库上旧私有迁移 V10 建的表只核对迁移记录（表已归行业库，代码不读写；状态改短值后结构按描述文件只在行业库核对）
         for (String damage : new String[] {
                 "UPDATE bty_flyway_history SET checksum=123 WHERE version='10'",
                 "UPDATE bty_flyway_history SET success=0 WHERE version='10'",
-                "DROP TABLE bty_service_execution_fence",
-                "ALTER TABLE bty_service_execution_fence DROP INDEX uk_bsef_task",
-                "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_unit",
-                "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_json_execution_no,"
-                        + " ADD CONSTRAINT ck_bsef_json_execution_no CHECK (execution_no IS NOT NULL)",
-                "DROP TRIGGER trg_bsef_immutable",
-                "ALTER TABLE bty_service_execution_fence MODIFY binding_json LONGTEXT CHARACTER SET utf8mb4"
-                        + " COLLATE utf8mb4_unicode_ci NOT NULL"}) {
+                "DROP TABLE bty_service_execution_fence"}) {
             isolatedDatabase();
             initialize("migrate");
             execute(damage);
@@ -298,6 +289,31 @@ class BeautySchemaMigrationIT {
             assertEquals(ServiceExecutionSchemaVerifier.Installation.CORRUPT,
                     new ServiceExecutionSchemaVerifier(source).installation(), damage);
             assertThrows(RuntimeException.class, () -> initialize("migrate"), damage);
+        }
+    }
+
+    @Test
+    void industryFenceStructureDamageIsCorrupt() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeTrue(SEPARATE_INDUSTRY, "结构只在独立的行业库核对");
+        for (String damage : new String[] {
+                "ALTER TABLE bty_service_execution_fence DROP INDEX uk_bsef_task",
+                "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_unit",
+                "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_json_execution_no,"
+                        + " ADD CONSTRAINT ck_bsef_json_execution_no CHECK (execution_no IS NOT NULL)",
+                "DROP TRIGGER trg_bsef_immutable",
+                "ALTER TABLE bty_service_execution_fence MODIFY intent_state varchar(32) CHARACTER SET utf8mb4"
+                        + " COLLATE utf8mb4_bin NOT NULL",
+                "ALTER TABLE bty_service_execution_fence MODIFY binding_json LONGTEXT CHARACTER SET utf8mb4"
+                        + " COLLATE utf8mb4_unicode_ci NOT NULL"}) {
+            isolatedDatabase();
+            initialize("migrate");
+            assertEquals(ServiceExecutionSchemaVerifier.Installation.INSTALLED,
+                    new ServiceExecutionSchemaVerifier(industrySource).installation(), damage);
+            try (var connection = industrySource.getConnection(); var statement = connection.createStatement()) {
+                statement.execute(damage);
+            }
+            assertEquals(ServiceExecutionSchemaVerifier.Installation.CORRUPT,
+                    new ServiceExecutionSchemaVerifier(industrySource).installation(), damage);
         }
     }
 

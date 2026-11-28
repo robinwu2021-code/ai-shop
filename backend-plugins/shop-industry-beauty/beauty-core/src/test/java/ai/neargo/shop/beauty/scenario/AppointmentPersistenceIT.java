@@ -19,7 +19,7 @@ import org.springframework.context.ApplicationContext;
 class AppointmentPersistenceIT extends BeautyExecutionFixture {
     @BeforeEach
     void database() throws Exception {
-        initialize("BtyAppointment", "BtyAppointmentItem", "BtyAppointmentAssignment");
+        initialize("BtyAppointment", "BtyAppointmentItem");
         appointment("A", "S");
         seed("ord_appointment_item", "appointment_item_no", "I", "appointment_no", "A", "sku_no", "SKU",
                 "definition_version_no", "DV", "qty", 1, "uom", "COUNT", "sequence_no", 0,
@@ -29,28 +29,13 @@ class AppointmentPersistenceIT extends BeautyExecutionFixture {
         return (Integer) call(context, "AppointmentMapper", "changeSchedule", "E", store, "A", version, expected,
                 T0.plusHours(2), T0.plusHours(3), "NEW-HOLD", "ACTOR", T0.plusMinutes(1));
     }
-    private void assignment(long revision, String personnel) {
-        seed("bty_appointment_assignment", "planned_assignment_no", "AS" + revision, "appointment_item_no", "I",
-                "appointment_revision", revision, "requirement_no", "REQ", "personnel_no", personnel,
-                "resource_no", "RESOURCE", "hold_no", "H" + revision, "start_at", T0, "end_at", T0.plusHours(1),
-                "skill_snapshot", "{}");
-    }
+    /** 改约后项目行上「顾客指定的人员」不变（人员安排在修订快照里，TDD §2.6 第 7 项）。 */
     @Test
-    void keepsPreviousAssignmentRevisionAndRequestedPersonSeparate() {
-        assignment(0, "FIRST");
+    void scheduleChangeKeepsRequestedPerson() {
         runner().run(context -> {
             assertThat(tx(context, () -> change(context, "S", 0, "CONFIRMED"))).isEqualTo(1);
-            assignment(1, "NEXT");
-            var before = (List<?>) call(context, "AppointmentAssignmentMapper", "selectByAppointmentRevision",
-                    "E", "S", "A", 0L);
-            var after = (List<?>) call(context, "AppointmentAssignmentMapper", "selectByAppointmentRevision",
-                    "E", "S", "A", 1L);
-            assertThat(before).hasSize(1);
-            assertThat(after).hasSize(1);
             assertThat(sql.queryForObject("SELECT requested_personnel_no FROM ord_appointment_item", String.class))
                     .isEqualTo("REQUESTED");
-            assertThat(sql.queryForList("SELECT personnel_no FROM bty_appointment_assignment "
-                    + "ORDER BY appointment_revision", String.class)).containsExactly("FIRST", "NEXT");
         });
     }
     @Test
@@ -60,20 +45,6 @@ class AppointmentPersistenceIT extends BeautyExecutionFixture {
             assertThat(tx(context, () -> change(context, "S", 7, "CONFIRMED"))).isEqualTo(0);
             sql.execute("UPDATE ord_appointment SET status='CHECKED_IN'");
             assertThat(tx(context, () -> change(context, "S", 0, "CHECKED_IN"))).isEqualTo(0);
-        });
-    }
-    @Test
-    void limitsAssignmentsToAuthorizedUndeletedParentChain() {
-        assignment(0, "FIRST");
-        runner().run(context -> {
-            assertThat((List<?>) call(context, "AppointmentAssignmentMapper", "selectByAppointmentRevision",
-                    "E", "OTHER", "A", 0L)).isEmpty();
-            sql.execute("UPDATE ord_appointment_item SET entity_no='FOREIGN'");
-            assertThat((List<?>) call(context, "AppointmentAssignmentMapper", "selectByAppointmentRevision",
-                    "E", "S", "A", 0L)).isEmpty();
-            sql.execute("UPDATE ord_appointment_item SET entity_no='E',deleted=1");
-            assertThat((List<?>) call(context, "AppointmentAssignmentMapper", "selectByAppointmentRevision",
-                    "E", "S", "A", 0L)).isEmpty();
         });
     }
     @Test
@@ -101,8 +72,7 @@ class AppointmentPersistenceIT extends BeautyExecutionFixture {
         });
     }
     @Test
-    void rollbackPreservesOriginalScheduleAndAssignment() {
-        assignment(0, "FIRST");
+    void rollbackPreservesOriginalSchedule() {
         runner().run(context -> {
             assertThatThrownBy(() -> tx(context, () -> {
                 assertThat(change(context, "S", 0, "CONFIRMED")).isEqualTo(1);

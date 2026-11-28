@@ -174,10 +174,10 @@ public class ManualExecutionSourceIT {
                 c.getBean(BeautyMappers.AppointmentOperationMapper.class),
                 c.getBean(BeautyMappers.AppointmentCurrentMapper.class),
                 c.getBean(BeautyMappers.AppointmentArrangementMapper.class),
-                c.getBean(BeautyMappers.AppointmentResourceIntentMapper.class),
+                c.getBean(BeautyMappers.AppointmentCommandMapper.class),
                 c.getBean(BeautyMappers.AppointmentResourceFenceMapper.class),
-                c.getBean(BeautyMappers.AppointmentItemMapper.class), c.getBean(BeautyMappers.AppointmentAssignmentMapper.class),
-                c.getBean(BeautyMappers.ActionLogMapper.class), json, c.getBean(PlatformTransactionManager.class));
+                c.getBean(BeautyMappers.AppointmentItemMapper.class),
+                json, c.getBean(PlatformTransactionManager.class));
         var observations = c.getBean(BeautyMappers.SourceObservationMapper.class);
         var guards = c.getBean(BeautyMappers.SourceAllocationGuardMapper.class);
         var orders = c.getBean(BeautyMappers.WorkOrderMapper.class);
@@ -311,7 +311,8 @@ public class ManualExecutionSourceIT {
 
     @Test
     void foreignHoldAndAmbiguousGroupRejectBeforeFence() {
-        sql.update("UPDATE bty_appointment_assignment SET hold_no='FOREIGN'");
+        // 人员安排在修订快照里（TDD §2.6 第 7 项）：改的是这一版修订的占用编号，核对照样在冻结前拒绝
+        sql.update("UPDATE ord_appointment_revision SET hold_no='FOREIGN'");
         runner().run(c -> {
             assertThatThrownBy(() -> freeze(harness(c))).isInstanceOf(BizException.class);
             assertThat(count("bty_service_execution_fence")).isZero();
@@ -566,7 +567,7 @@ public class ManualExecutionSourceIT {
                 assertThat(observed.continuity().state()).isEqualTo("SUSPENDED");
                 assertThat(observed.suspension()).isNotNull();
                 assertThat(sql.queryForObject("SELECT status FROM bty_service_submission WHERE action='START'",
-                        String.class)).isEqualTo("EXECUTION_SUSPENDED");
+                        String.class)).isEqualTo("SUSPENDED");
                 var cause = observed.suspension();
                 // A subsequent unchanged completion cannot erase the first genuine contradiction.
                 h.observations().observeManual(canonical, "READ");
@@ -715,18 +716,14 @@ public class ManualExecutionSourceIT {
         seed("ord_appointment_item", "appointment_item_no", "ITEM", "appointment_no", "APPOINTMENT", "sku_no",
                 "SKU", "definition_version_no", "1", "qty", 1, "uom", "COUNT", "sequence_no", 0,
                 "execution_snapshot", "{}");
-        seed("bty_appointment_assignment", "planned_assignment_no", "PA", "appointment_item_no", "ITEM",
-                "appointment_revision", 1, "requirement_no", "REQ", "personnel_no", "P", "resource_no", "RESOURCE",
-                "hold_no", "HOLD", "start_at", start.toLocalDateTime(), "end_at", end.toLocalDateTime(),
-                "skill_snapshot", "{}");
-        seed("bty_appointment_preparation", "preview_no", "PREVIEW", "store_no", "S", "actor_no", "100",
-                "actor_realm", "MERCHANT", "actor_kind", "MCH", "expected_revision", 1, "policy_version_no", "PV",
+        // 预览即修订（TDD §2.6 第 4–6 项，步 4-3）：确认后的那一版就是当时的预览行
+        seed("ord_appointment_revision", "preview_no", "PREVIEW", "store_no", "S", "actor_no", "100",
+                "actor_realm", "MERCHANT", "actor_kind", "MCH", "based_on_revision", 1, "policy_version_no", "PV",
                 "start_at", start.toLocalDateTime(), "end_at", end.toLocalDateTime(), "timezone", "UTC",
                 "frozen_plan", bookingPlan, "plan_hash", ownerBinding.planHash(), "snapshot", snapshot,
-                "expires_at", end.toLocalDateTime());
-        seed("ord_appointment_revision", "appointment_no", "APPOINTMENT", "arrangement_revision", 1,
-                "preview_no", "PREVIEW", "hold_no", "HOLD", "snapshot", snapshot);
-        seed("bty_appointment_current", "appointment_no", "APPOINTMENT", "arrangement_revision", 1);
+                "expires_at", end.toLocalDateTime(), "appointment_no", "APPOINTMENT", "arrangement_revision", 1,
+                "hold_no", "HOLD", "status", "CONFIRMED", "action", "CREATE");
+        sql.update("UPDATE ord_appointment SET current_revision=1 WHERE appointment_no='APPOINTMENT'");
         var accept = new ResourceBookingPort.Accept(new ResourceBookingPort.Scope("MAIN", "E", "S"), "CONFIRM",
                 "BOOK_KEY", "BEAUTY_APPOINTMENT", "APPOINTMENT", 1, 1, null, bookingPlan);
         var receipt = new ResourceBookingPort.Receipt(ownerBinding, "RESOURCE_OWNER", "SUCCEEDED", 1, 1, null,
@@ -810,9 +807,8 @@ public class ManualExecutionSourceIT {
         sql.update("UPDATE bty_work_order SET frozen_scope=?", json.writeValueAsString(scope));
         sql.update("UPDATE bty_service_submission SET frozen_command=?,payload_hash=? WHERE action='OPEN'",
                 json.writeValueAsString(draft), IdempotencyScope.requestHash(json.writeValueAsString(draft)));
-        sql.update("UPDATE bty_appointment_preparation SET frozen_plan=?,plan_hash=?,snapshot=?,end_at=?",
+        sql.update("UPDATE ord_appointment_revision SET frozen_plan=?,plan_hash=?,snapshot=?,end_at=?",
                 bookingPlan, planHash, snapshot, second.serviceEndAt().toLocalDateTime());
-        sql.update("UPDATE ord_appointment_revision SET snapshot=?", snapshot);
         var accept = new ResourceBookingPort.Accept(new ResourceBookingPort.Scope("MAIN", "E", "S"), "CONFIRM",
                 "BOOK_KEY", "BEAUTY_APPOINTMENT", "APPOINTMENT", 1, 1, null, bookingPlan);
         var receipt = new ResourceBookingPort.Receipt(binding, "RESOURCE_OWNER", "SUCCEEDED", 1, 1, null, bookingPlan,
@@ -822,10 +818,6 @@ public class ManualExecutionSourceIT {
         seed("ord_appointment_item", "appointment_item_no", "ITEM2", "appointment_no", "APPOINTMENT", "sku_no",
                 "SKU", "definition_version_no", "1", "qty", 1, "uom", "COUNT", "sequence_no", 1,
                 "execution_snapshot", "{}");
-        seed("bty_appointment_assignment", "planned_assignment_no", "PA2", "appointment_item_no", "ITEM2",
-                "appointment_revision", 1, "requirement_no", "REQ", "personnel_no", "P", "resource_no", "RESOURCE",
-                "hold_no", "HOLD", "start_at", assignment.startAt().toLocalDateTime(), "end_at",
-                assignment.endAt().toLocalDateTime(), "skill_snapshot", "{}");
         seed("bty_service_task", "task_no", "TASK2", "work_order_no", "WO", "scope_revision", 1, "sku_no", "SKU",
                 "definition_version_no", "1", "appointment_item_no", "ITEM2", "qty", 1, "done_qty", 0,
                 "voided_qty", 0, "uom", "COUNT", "status", "PENDING", "binding_revision", 1,

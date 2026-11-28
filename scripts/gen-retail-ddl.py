@@ -35,8 +35,12 @@ INDUSTRY_ADDED = {  # ADR-068 修订一、二收回行业库的表：接在哪�
 }
 PLATFORM_MOVED = 'mch_store_device'  # 平台库搬到行业库的表
 SERVICE_DEFINITION = ROOT / 'docs/technical/design/schema/retail-ddl/service-definition-tables.sql'
+APPOINTMENT_COMMAND = ROOT / 'docs/technical/design/schema/retail-ddl/appointment-command-tables.sql'
+TRADE_ADDED_SOURCES = [SERVICE_DEFINITION, APPOINTMENT_COMMAND]
 TRADE_ADDED = {  # 交易库新增的表（取自定稿结构文件，原样保留）：接在哪张表之后
     'prd_fulfillment_requirement': ['prd_service_definition'],
+    # 预约的资源命令（TDD-美业域迁移新库 §2.6 第 4–6 项，用户 2026-11-28 定方向 A）
+    'ord_appointment_revision': ['ord_appointment_command'],
 }
 STATUS = ROOT / 'docs/technical/零售域-状态短值换值表.md'
 
@@ -106,9 +110,40 @@ ADD_COLUMNS = {
         "`frozen_content` mediumtext NULL COMMENT '冻结内容（结账对账用）：发布时的原文，快照摘要按它算'",
         "`snapshot_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '快照摘要'",
     ],
+    # 美业服务参与并入指派表（B-4，B-6 同步）：参与原有的「有效门店任职」与「原计划安排」两个号
+    'ind_assignment': [
+        "`employment_assignment_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '人员当时有效的门店任职号（美业服务参与）'",
+        "`planned_assignment_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '对应的预约计划安排号（美业服务参与）'",
+    ],
+    # 预约修订承担一次变更的整个生命周期（TDD-美业域迁移新库 §2.6 第 4–6 项，用户 2026-11-28 定方向 A）：收掉美业的预约准备、
+    # 当前行、预约操作、资源围栏 4 张；每条资源命令一行另在 ord_appointment_command（收掉资源意向、资源决策）。请求防重走统一防重
+    'ord_appointment_revision': [
+        "`change_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '变更号：这次变更对外的编号（出参的 operationNo）；草稿在受理时取号，取消、爽约的修订也有'",
+        "`based_on_revision` bigint DEFAULT NULL COMMENT '草稿基于的预约单版本（ord_appointment.version，新约为 0）；转在途与许可时核对预约单仍是这一版'",
+        "`actor_kind` varchar(32) DEFAULT NULL COMMENT '发起人类型（同一发起方下的细分，如店主、员工、顾客本人）'",
+        "`action` varchar(24) DEFAULT NULL COMMENT '这次变更做什么：CREATE 新约、CHANGE 改约、RECEPTION_CHANGE 到店后改、CANCEL 取消、NO_SHOW 爽约'",
+        "`frozen_plan` longtext NULL COMMENT '冻结的资源计划（原样作资源命令载荷）；取消、爽约的修订沿用当前那一版的计划'",
+        "`plan_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源计划摘要，核对回执用'",
+        "`reject_code` varchar(64) DEFAULT NULL COMMENT '资源拒绝或释放的原因码'",
+        "`next_retry_at` datetime(3) DEFAULT NULL COMMENT '在途或待释放时下次重试时刻；后台按它扫描，用行锁抢占'",
+        "`applying_key` varchar(32) COLLATE utf8mb4_bin GENERATED ALWAYS AS ((case when (`status` in ('APPLYING','RELEASING')) then `appointment_no` end)) STORED COMMENT '同一预约只有一个变更在途的闸门：在途或待释放时等于预约单号，否则为空'",
+    ],
     'ord_appointment': [
         "`work_order_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '已开的服务工单（行业库）；预约侧的护栏看这一列'",
+        # 取消与爽约的凭证（原来只记在美业操作日志里，日志退役后归回预约；TDD-美业域迁移新库 §2.6 第 12 项，用户 2026-11-28 定）
+        "`cancel_evidence_ref` varchar(128) DEFAULT NULL COMMENT '取消或爽约的凭证引用（如登记爽约时的证明材料）；没有为空'",
     ],
+}
+
+# ---------- 改列（整行替换基础 DDL 里的列定义） ----------
+REPLACE_COLUMNS = {
+    # 取消原因放宽到 500：取消与爽约请求的原因最长 500 字，原来只记在美业操作日志里（TDD-美业域迁移新库 §2.6 第 12 项）
+    ('ord_appointment', 'cancel_reason'): "`cancel_reason` varchar(500) DEFAULT NULL COMMENT '取消或爽约原因'",
+    ('ord_appointment_revision', 'status'): "`status` varchar(10) DEFAULT NULL COMMENT '版本状态：DRAFT 草稿、APPLYING 在途（资源命令已发）、"
+                                            "CONFIRMED 已生效、REJECTED 资源拒绝、RELEASING 待释放、SUPERSEDED 已被新版取代、EXPIRED 草稿过期、DISCARDED 已放弃'",
+    # 美业服务参与并入指派表（B-4）：对象类型加 TASK
+    ('ind_assignment', 'target_type'): "`target_type` varchar(24) DEFAULT NULL COMMENT '指派对象类型：VISIT 到店单、"
+                                       "ITEM 订单行、UNIT 履约单元、APPOINTMENT_ITEM 预约项目行、TASK 美业服务任务'",
 }
 
 # ---------- 唯一约束（B2、附录一的降级与无处安放） ----------
@@ -138,6 +173,8 @@ ADD_UNIQUE = {
     'prd_catalog_item': [('tenant_no', 'store_no', 'goods_no', 'catalog_version_no')],
     'prd_fulfillment_requirement': [('requirement_no', 'revision_no')],
     'ind_commission_rule': [('rule_no', 'version_no')],
+    'ord_appointment_revision': [('tenant_no', 'entity_no', 'preview_no'), ('tenant_no', 'entity_no', 'change_no'),
+                                 ('tenant_no', 'entity_no', 'applying_key')],
 }
 # 去掉的唯一约束：prd_store_catalog 一店一行装不下按版本存的目录（定时生效要并存多版）
 DROP_KEYS = {
@@ -147,6 +184,7 @@ ADD_INDEX = {
     'prd_fulfillment_requirement': [('goods_no', 'definition_version')],
     'ind_assignment': [('target_type', 'target_no'), ('entity_no', 'store_no', 'planned_start_at')],
     'ord_visit_attendee': [('check_no',)],
+    'ord_appointment_revision': [('tenant_no', 'status', 'next_retry_at')],
 }
 
 # ---------- D5、D6、D7 的列规则 ----------
@@ -370,7 +408,11 @@ def build(base_dir):
         ind[n] = device[n]
     fixed = border + list(device)
     # 交易库新增的表：定稿结构原样并入
-    _, added, aorder = parse(SERVICE_DEFINITION.read_text(encoding='utf-8'))
+    added, aorder = {}, []
+    for source in TRADE_ADDED_SOURCES:
+        _, more, morder = parse(source.read_text(encoding='utf-8'))
+        added.update(more)
+        aorder += morder
     for after, news in TRADE_ADDED.items():
         k = torder.index(after) + 1
         torder[k:k] = news
@@ -380,6 +422,13 @@ def build(base_dir):
             trade[n] = added[n]
     fixed += aorder
     ensure_deleted(ind['ind_assignment'])
+    # 改列
+    for (name, column), line in REPLACE_COLUMNS.items():
+        t = trade.get(name) or ind.get(name)
+        k = next((k for k, c in enumerate(t['cols']) if col_name(c) == column), None) if t else None
+        if k is None:
+            raise SystemExit('replace column: unknown %s.%s' % (name, column))
+        t['cols'][k] = '  ' + line + (',' if t['cols'][k].rstrip().endswith(',') else '')
     # 加列
     for name, cols in ADD_COLUMNS.items():
         t = trade.get(name) or ind.get(name)

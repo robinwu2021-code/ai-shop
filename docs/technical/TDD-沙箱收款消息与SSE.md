@@ -254,3 +254,32 @@ MySQL 9.7.4 定向验证，隔离数据库。Maven 输出 `Tests run: 18, Failur
 - `PaymentCollectionProperties` 绑定动态链接接入方白名单。
 - `PaymentCollectionServiceImpl` 按来源类型和业务类型查白名单，并复用门店归属校验、回执、消息和实时事件流程。
 - `PaymentCollectionHttpMysqlTest` 使用真实 HTTP 和 SSE 验证白名单隔离、门店映射和接收结果。
+
+
+## 2026-11-28 增量 · Oscar 测试 H5 回执
+
+### §0 需求与验收
+
+正式 NearPay 的 Oscar 蓝新测试 H5 支付成功后，候选平台按关联子单挂账，再向门店发送一条通知和实时事件。正式业务保留现有收款协议。
+
+### §1 接口契约
+
+现有签名回执入口新增 v2 的 `INTERNAL/SANDBOX_H5` 来源。候选部署使用 `shop.payment-collections.sandbox-h5-sources` 指定 `租户:接入方ID:门店号`。仅接受 SANDBOX、TW、TWD 100 最小货币单位及渠道 NEWEBPAY_TEST，且必须携带与门店关联的交易子单号。
+
+### §2 实施
+
+保留 NearPay 原单类型。回执签发端核对运营审计、实际成功付款、测试渠道和候选子单关联，再用独立 SANDBOX 密钥签发。接收端复用平台库门店核验，挂账失败时回滚收据与待发通知。重投同一事实返回原回执。先验证接收端，再用单笔测试会话验证签发端和 App。
+
+### §5 验证入口
+
+`PaymentCollectionHttpMysqlTest#sandboxH5RequiresScopedSubOrderAttachment` 验证范围、挂账拒绝、回执与重投。候选 App 的实付、通知与语音分别取证。
+
+MySQL 9 已运行 HTTP、原生存储和正式环境隔离的 17 项回归，全部通过。
+
+候选现场验收使用正式 NearPay 的蓝新测试渠道。支付单 `PYO261128234035889` 与门店子单 `OS20261128000501` 关联，金额 TWD 100。签名接收返回 `PCR261128VH03ADBMX9`，初次为 `APPLIED`，重投为 `DUPLICATE`。两位授权收件人各一条消息和流记录。候选 App 显示付款成功，订单详情回读相同支付单，Android 对该单记录一次播报开始和完成。
+
+### §6 实现对账
+
+- `PaymentCollectionFact` 和 `PaymentCollectionProperties` 绑定测试来源及门店坐标。
+- `PaymentCollectionServiceImpl` 核验固定金额和渠道，并让挂账、回执和通知投递记录加入同一事务。
+- `PaymentCollectionHttpMysqlTest` 验证未开通、非测试渠道和挂账失败均不能生成收据。

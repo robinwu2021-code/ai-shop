@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import ai.neargo.shop.auth.LoginUser;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.BizException;
@@ -153,7 +152,6 @@ class BeautyCatalogIT {
                     .isEqualTo(2);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_fulfillment_requirement", Integer.class))
                     .isEqualTo(2);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log", Integer.class)).isEqualTo(2);
             assertThatThrownBy(() -> definition(context, "STALE", 1)).isInstanceOf(BizException.class);
         });
     }
@@ -199,8 +197,7 @@ class BeautyCatalogIT {
                 for (var future : futures) { if (future.get(20, TimeUnit.SECONDS)) { winners++; } }
                 assertThat(winners).isOne();
             }
-            for (String table : List.of("prd_service_definition", "prd_fulfillment_requirement", "bty_action_log",
-                    "sys_idempotent")) {
+            for (String table : List.of("prd_service_definition", "prd_fulfillment_requirement", "sys_idempotent")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isOne();
             }
         });
@@ -209,14 +206,13 @@ class BeautyCatalogIT {
     @Test
     void definitionFailureBeforeCommitRollsBackHeadChildrenAuditAndIdempotency() {
         runner().withInitializer(application -> application.getBeanFactory().addBeanPostProcessor(
-                BeautyFailureInjection.afterCall(BeautyMappers.ActionLogMapper.class, "insert",
-                        row -> row instanceof BtyActionLog log
-                                && "DEFINITION_VERSION_PUBLISHED".equals(log.getAction()),
-                        () -> BeautyFailureInjection.failBeforeCommit("after-definition-audit"))))
+                // 定义写完后让美业事务（幂等记录）在提交时失败（原来挂在操作日志上，TDD §2.6 第 12 项）
+                BeautyFailureInjection.afterAnyCall(ai.neargo.shop.spi.product.ServiceDefinitionPort.class, "publish",
+                        args -> true, () -> BeautyFailureInjection.failBeforeCommit("after-definition-audit"))))
                 .run(context -> {
                     assertThatThrownBy(() -> definition(context, "ROLLBACK", 0))
                             .hasMessage("after-definition-audit");
-                    for (String table : List.of("bty_action_log", "sys_idempotent")) {
+                    for (String table : List.of("sys_idempotent")) {
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table,
                                 Integer.class)).as(table).isZero();
                     }

@@ -1,9 +1,8 @@
 package ai.neargo.shop.beauty.mapper;
 
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
-import ai.neargo.shop.beauty.entity.BtyAppointmentAssignment;
+import ai.neargo.shop.beauty.entity.BtyAppointmentCommand;
 import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.entity.BtyAppointmentItem;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
@@ -98,9 +97,6 @@ public final class BeautyMappers {
     public interface StorePolicyVersionMapper extends IndustryTableMapper<BtyStorePolicyVersion> {
     }
 
-    /** Critical actions are appended with the aggregate transaction; they are not mutable operational state. */
-    public interface ActionLogMapper extends BaseMapper<BtyActionLog> {
-    }
 
     /** 预约单；业务事务先锁预约根，再处理项目及安排历史。 */
     public interface AppointmentMapper extends TradeTableMapper<BtyAppointment> {
@@ -118,22 +114,24 @@ public final class BeautyMappers {
                 @Param("from") LocalDateTime from,
                 @Param("to") LocalDateTime to);
 
-        /** 报表：到店预约中各人员在当前安排里被指派的项目数（同一项目多条安排只算一次） */
+        /**
+         * 报表：到店预约中各人员在当前安排里被指派的项目数（同一项目多条安排只算一次）。
+         * 安排取当前那一版预约修订的快照（TDD §2.6 第 7 项：不再另存安排行，同一事实只在快照一处）。
+         */
         @Select(
                 """
-                SELECT a.personnel_no AS personnel_no, COUNT(DISTINCT i.appointment_item_no) AS n
+                SELECT j.personnel_no AS personnel_no, COUNT(DISTINCT j.appointment_item_no) AS n
                 FROM ord_appointment ap
-                JOIN bty_appointment_current c ON c.tenant_no=ap.tenant_no AND c.entity_no=ap.entity_no
-                  AND c.appointment_no=ap.appointment_no AND c.deleted=0
-                JOIN ord_appointment_item i ON i.tenant_no=ap.tenant_no AND i.entity_no=ap.entity_no
-                  AND i.appointment_no=ap.appointment_no AND i.deleted=0
-                JOIN bty_appointment_assignment a ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no
-                  AND a.appointment_item_no=i.appointment_item_no AND a.appointment_revision=c.arrangement_revision
-                  AND a.deleted=0
+                JOIN ord_appointment_revision r ON r.tenant_no=ap.tenant_no AND r.entity_no=ap.entity_no
+                  AND r.appointment_no=ap.appointment_no AND r.arrangement_revision=ap.current_revision
+                  AND r.deleted=0,
+                JSON_TABLE(r.snapshot, '$.assignments[*]' COLUMNS (
+                  appointment_item_no VARCHAR(32) PATH '$.appointmentItemNo',
+                  personnel_no VARCHAR(32) PATH '$.personnelNo')) j
                 WHERE ap.tenant_no='MAIN' AND ap.entity_no=#{entityNo} AND ap.store_no=#{storeNo} AND ap.deleted=0
                 AND ap.status='CHECKED_IN' AND ap.start_at>=#{from} AND ap.start_at<#{to}
-                AND a.personnel_no IS NOT NULL
-                GROUP BY a.personnel_no ORDER BY n DESC, a.personnel_no LIMIT 200
+                AND j.personnel_no IS NOT NULL
+                GROUP BY j.personnel_no ORDER BY n DESC, j.personnel_no LIMIT 200
                 """)
         java.util.List<java.util.Map<String, Object>> reportPersonnelCounts(
                 @Param("entityNo") String entityNo,
@@ -166,12 +164,9 @@ public final class BeautyMappers {
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                 AND appointment_no=#{appointmentNo} AND deleted=0 AND version=#{expectedVersion}
                 AND status='CHECKED_IN' AND checked_in_at IS NOT NULL
-                AND EXISTS (SELECT 1 FROM bty_appointment_current c WHERE c.tenant_no=ord_appointment.tenant_no
-                  AND c.entity_no=ord_appointment.entity_no AND c.appointment_no=ord_appointment.appointment_no
-                  AND c.deleted=0 AND c.operation_no IS NULL)
-                AND EXISTS (SELECT 1 FROM bty_appointment_resource_fence f WHERE f.tenant_no=ord_appointment.tenant_no
-                  AND f.entity_no=ord_appointment.entity_no AND f.appointment_no=ord_appointment.appointment_no
-                  AND f.deleted=0 AND f.active_intent_no IS NULL)
+                AND NOT EXISTS (SELECT 1 FROM ord_appointment_revision g
+                  WHERE g.tenant_no=ord_appointment.tenant_no AND g.entity_no=ord_appointment.entity_no
+                  AND g.applying_key=ord_appointment.appointment_no AND g.deleted=0)
                 AND work_order_no IS NULL AND #{workOrderNo} IS NOT NULL
                 """)
         int markWorkOrderOpened(
@@ -228,9 +223,9 @@ public final class BeautyMappers {
                 version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
-                AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
-                  WHERE f.tenant_no=ord_appointment.tenant_no AND f.entity_no=ord_appointment.entity_no
-                  AND f.appointment_no=ord_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
+                AND NOT EXISTS (SELECT 1 FROM ord_appointment_revision g
+                  WHERE g.tenant_no=ord_appointment.tenant_no AND g.entity_no=ord_appointment.entity_no
+                  AND g.applying_key=ord_appointment.appointment_no AND g.deleted=0)
                 AND status=#{expectedStatus} AND status IN ('HELD','CONFIRMED')
                 AND #{startAt} IS NOT NULL AND #{endAt}> #{startAt}
                 AND #{holdNo} IS NOT NULL AND LENGTH(TRIM(#{holdNo}))>0 AND #{actorNo} IS NOT NULL AND
@@ -255,9 +250,9 @@ public final class BeautyMappers {
                 updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
-                AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
-                  WHERE f.tenant_no=ord_appointment.tenant_no AND f.entity_no=ord_appointment.entity_no
-                  AND f.appointment_no=ord_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
+                AND NOT EXISTS (SELECT 1 FROM ord_appointment_revision g
+                  WHERE g.tenant_no=ord_appointment.tenant_no AND g.entity_no=ord_appointment.entity_no
+                  AND g.applying_key=ord_appointment.appointment_no AND g.deleted=0)
                 AND status=#{expectedStatus}
                 AND ((status='HELD' AND #{targetStatus} IN ('CANCELLED','EXPIRED'))
                 OR (status='HELD' AND #{targetStatus}='CONFIRMED' AND hold_no IS NOT NULL AND
@@ -282,9 +277,9 @@ public final class BeautyMappers {
                 updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
-                AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
-                  WHERE f.tenant_no=ord_appointment.tenant_no AND f.entity_no=ord_appointment.entity_no
-                  AND f.appointment_no=ord_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
+                AND NOT EXISTS (SELECT 1 FROM ord_appointment_revision g
+                  WHERE g.tenant_no=ord_appointment.tenant_no AND g.entity_no=ord_appointment.entity_no
+                  AND g.applying_key=ord_appointment.appointment_no AND g.deleted=0)
                 AND status=#{expectedStatus} AND status='CONFIRMED' AND checked_in_at IS NULL
                 AND #{checkedInAt} IS NOT NULL AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND
                 #{updatedAt} IS NOT NULL
@@ -300,7 +295,7 @@ public final class BeautyMappers {
                 @Param("updatedAt") LocalDateTime updatedAt);
     }
 
-    /** 永久预约根栅栏；调用者事务先锁预约，再锁栅栏及意图。禁止按TTL释放。 */
+    /** 永久预约根栅栏；调用者事务先锁预约，再锁栅栏及命令。禁止按TTL释放。活动标记存命令键（§2.6 第 4–6 项 4-4b-1）。 */
     public interface AppointmentResourceFenceMapper extends BaseMapper<BtyAppointmentResourceFence> {
         @Select(
                 """
@@ -319,14 +314,14 @@ public final class BeautyMappers {
                 UPDATE bty_appointment_resource_fence f
                 JOIN ord_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
                   AND p.store_no=f.store_no AND p.appointment_no=f.appointment_no AND p.deleted=0
-                JOIN bty_appointment_resource_intent i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
+                JOIN ord_appointment_command i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
                   AND i.store_no=f.store_no AND i.appointment_no=f.appointment_no AND i.deleted=0
-                SET f.active_intent_no=i.intent_no, f.version=f.version+1,
+                SET f.active_intent_no=i.request_key, f.version=f.version+1,
                     f.updated_by=#{actorNo}, f.updated_at=#{updatedAt}
                 WHERE f.tenant_no='MAIN' AND f.entity_no=#{entityNo} AND f.store_no=#{storeNo}
                   AND f.appointment_no=#{appointmentNo} AND f.deleted=0 AND f.active_intent_no IS NULL
                   AND f.version=#{expectedFenceVersion} AND f.version<9223372036854775807
-                  AND i.intent_no=#{intentNo} AND i.phase_code=0 AND i.source_revision=p.version
+                  AND i.request_key=#{intentNo} AND i.status='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@BOUND}' AND i.source_revision=p.version
                   AND (p.status IN ('HELD','CONFIRMED') OR (p.status='CHECKED_IN' AND i.action='REPLACE'
                     AND p.work_order_no IS NULL
                     AND EXISTS (SELECT 1 FROM bty_appointment_current c JOIN bty_appointment_operation o
@@ -350,9 +345,9 @@ public final class BeautyMappers {
         @Update(
                 """
                 UPDATE bty_appointment_resource_fence f
-                JOIN bty_appointment_resource_intent i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
+                JOIN ord_appointment_command i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
                   AND i.store_no=f.store_no AND i.appointment_no=f.appointment_no
-                  AND i.intent_no=f.active_intent_no AND i.deleted=0
+                  AND i.request_key=f.active_intent_no AND i.deleted=0
                 JOIN ord_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
                   AND p.store_no=f.store_no AND p.appointment_no=f.appointment_no AND p.deleted=0
                 SET f.active_intent_no=NULL, f.version=f.version+1,
@@ -360,7 +355,7 @@ public final class BeautyMappers {
                 WHERE f.tenant_no='MAIN' AND f.entity_no=#{entityNo} AND f.store_no=#{storeNo}
                   AND f.appointment_no=#{appointmentNo} AND f.deleted=0 AND f.active_intent_no=#{intentNo}
                   AND f.version=#{expectedFenceVersion} AND f.version<9223372036854775807
-                  AND i.phase_code=3 AND i.terminal_code IN (1,2) AND i.terminal_hash IS NOT NULL
+                  AND i.status IN ('${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@SUCCEEDED}','${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@REJECTED}') AND i.result_hash IS NOT NULL
                   AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
         int releaseReconciled(
@@ -456,28 +451,6 @@ public final class BeautyMappers {
 
     /** 预约项目行；写入前由业务事务锁定已授权预约根。 */
     public interface AppointmentItemMapper extends TradeTableMapper<BtyAppointmentItem> {
-    }
-
-    /** 预约确认人员安排历史；按显式安排版本追加，不覆盖旧行。 */
-    public interface AppointmentAssignmentMapper extends TradeTableMapper<BtyAppointmentAssignment> {
-        /** 显式父链范围读取；不会按当前人员反推历史安排。 */
-        @Select(
-                """
-                SELECT a.* FROM bty_appointment_assignment a
-                JOIN ord_appointment_item i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
-                AND i.appointment_item_no=a.appointment_item_no AND i.deleted=0
-                JOIN ord_appointment p ON p.tenant_no=i.tenant_no AND p.entity_no=i.entity_no
-                AND p.appointment_no=i.appointment_no AND p.deleted=0
-                WHERE a.tenant_no='MAIN' AND a.entity_no=#{entityNo} AND a.deleted=0
-                AND p.store_no=#{storeNo} AND p.appointment_no=#{appointmentNo}
-                AND a.appointment_revision=#{appointmentRevision} AND #{appointmentRevision}>=0
-                ORDER BY i.sequence_no, a.requirement_no, a.resource_no, a.planned_assignment_no
-                """)
-        List<BtyAppointmentAssignment> selectByAppointmentRevision(
-                @Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo,
-                @Param("appointmentNo") String appointmentNo,
-                @Param("appointmentRevision") long appointmentRevision);
     }
 
     /** 服务工单；调用者在本域短事务按根→任务→子行锁序操作。 */
@@ -1485,7 +1458,281 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
 
     /** Persistent server previews; bytes must not be accepted from a public binding. */
     public interface AppointmentPreparationMapper extends TradeTableMapper<BtyAppointmentPreparation> { }
-    public interface AppointmentArrangementMapper extends TradeTableMapper<BtyAppointmentArrangement> { }
+    /**
+     * 预约修订：一次变更一行，修订状态走完整个变更（TDD §2.6 第 4–6 项方向 A）；每条资源命令另在
+     * {@link AppointmentCommandMapper}。只做持久化原语，不校验操作者权限；调用者在交易事务里先锁预约单，再动修订与命令。
+     */
+    public interface AppointmentArrangementMapper extends TradeTableMapper<BtyAppointmentArrangement> {
+        /** 预约单仍可变更：占位或已确认；已到店的只能「到店后改」且还没开单。p = 预约单，#{action} = 这次变更的动作。 */
+        String ROOT_OPEN = "(p.status IN ('${@ai.neargo.shop.beauty.entity.BtyAppointment@HELD}','${@ai.neargo.shop.beauty.entity.BtyAppointment@CONFIRMED}') OR (p.status='${@ai.neargo.shop.beauty.entity.BtyAppointment@CHECKED_IN}'"
+                + " AND #{action}='RECEPTION_CHANGE' AND p.work_order_no IS NULL))";
+
+        @Select(
+                """
+                SELECT * FROM ord_appointment_revision
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND preview_no=#{previewNo} AND deleted=0 FOR UPDATE
+                """)
+        BtyAppointmentArrangement selectByPreviewForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("previewNo") String previewNo);
+
+        /** 按变更号（出参的 operationNo）取这一版。 */
+        @Select(
+                """
+                SELECT * FROM ord_appointment_revision
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND change_no=#{changeNo} AND deleted=0 FOR UPDATE
+                """)
+        BtyAppointmentArrangement selectByChangeForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("changeNo") String changeNo);
+
+        /** 预约当前在途或待释放的那一版；没有为空（唯一键 applying_key 保证至多一行）。 */
+        @Select(
+                """
+                SELECT * FROM ord_appointment_revision
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND applying_key=#{appointmentNo} AND deleted=0 FOR UPDATE
+                """)
+        BtyAppointmentArrangement selectInFlightForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo);
+
+        /**
+         * 草稿 → 在途：草稿未过期（取消、爽约不看过期）、预约单仍是调用者核对过的版本（新约建单后为 1，所以不直接比草稿的
+         * 基于版本）且仍可变更；写上预约单号、修订号、
+         * 动作与变更号。同一预约已有在途变更时唯一键 applying_key 拒绝（抛重复键）。
+         */
+        @Update(
+                """
+                UPDATE ord_appointment_revision r
+                JOIN ord_appointment p ON p.tenant_no=r.tenant_no AND p.entity_no=r.entity_no
+                  AND p.store_no=r.store_no AND p.appointment_no=#{appointmentNo} AND p.deleted=0
+                SET r.status='${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@APPLYING}', r.appointment_no=#{appointmentNo},
+                    r.arrangement_revision=#{arrangementRevision}, r.action=#{action}, r.change_no=#{changeNo},
+                    r.next_retry_at=#{nextRetryAt}, r.version=r.version+1, r.updated_by=#{actorNo}, r.updated_at=#{now}
+                WHERE r.tenant_no='MAIN' AND r.entity_no=#{entityNo} AND r.store_no=#{storeNo}
+                  AND r.preview_no=#{previewNo} AND r.deleted=0 AND r.status='${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@DRAFT}'
+                  AND r.version=#{expectedVersion}
+                  AND (r.expires_at>#{now} OR #{action} IN ('CANCEL','NO_SHOW'))
+                  AND p.version=#{rootVersion} AND
+                """ + ROOT_OPEN + """
+
+                  AND #{changeNo} IS NOT NULL AND #{action} IS NOT NULL
+                """)
+        int toApplying(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("previewNo") String previewNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("appointmentNo") String appointmentNo,
+                @Param("arrangementRevision") long arrangementRevision,
+                @Param("action") String action,
+                @Param("changeNo") String changeNo,
+                @Param("nextRetryAt") LocalDateTime nextRetryAt,
+                @Param("rootVersion") long rootVersion,
+                @Param("actorNo") String actorNo,
+                @Param("now") LocalDateTime now);
+
+        /** 在途 → 生效 / 资源拒绝 / 待释放；待释放 → 资源拒绝（释放完成）。命令层面的核对由调用者先做。 */
+        @Update(
+                """
+                UPDATE ord_appointment_revision SET status=#{target},
+                    reject_code=COALESCE(reject_code, #{rejectCode}), next_retry_at=#{nextRetryAt},
+                    version=version+1, updated_by=#{actorNo}, updated_at=#{now}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND change_no=#{changeNo} AND deleted=0 AND version=#{expectedVersion}
+                  AND ((status='${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@APPLYING}' AND #{target} IN ('${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@CONFIRMED}','${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@REJECTED}','${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@RELEASING}'))
+                    OR (status='${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@RELEASING}' AND #{target}='${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@REJECTED}'))
+                  AND (#{target}='${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@CONFIRMED}' OR #{rejectCode} IS NOT NULL OR reject_code IS NOT NULL)
+                """)
+        int settle(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("changeNo") String changeNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("target") String target,
+                @Param("rejectCode") String rejectCode,
+                @Param("nextRetryAt") LocalDateTime nextRetryAt,
+                @Param("actorNo") String actorNo,
+                @Param("now") LocalDateTime now);
+
+        /**
+         * 下一个修订号：该预约已有的最大号 + 1。被拒、待释放的版本保留自己的号，所以号可以不连续；
+         * 哪一版生效看预约单的 {@code current_revision}。调用者已锁预约单。
+         */
+        @Select(
+                """
+                SELECT COALESCE(MAX(arrangement_revision), 0) + 1 FROM ord_appointment_revision
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND appointment_no=#{appointmentNo} AND deleted=0
+                """)
+        long nextRevision(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo);
+
+        /** 新版生效后，同一预约此前生效的各版标为被取代。 */
+        @Update(
+                """
+                UPDATE ord_appointment_revision SET status='${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@SUPERSEDED}', version=version+1,
+                    updated_by=#{actorNo}, updated_at=#{now}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND appointment_no=#{appointmentNo} AND deleted=0 AND status='${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@CONFIRMED}'
+                  AND arrangement_revision<#{currentRevision}
+                """)
+        int supersedeBefore(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo,
+                @Param("currentRevision") long currentRevision,
+                @Param("actorNo") String actorNo,
+                @Param("now") LocalDateTime now);
+
+        /** 后台恢复：到期的在途或待释放修订，行锁抢占，被别人锁住的跳过（不留租约）。 */
+        @Select(
+                """
+                SELECT * FROM ord_appointment_revision
+                WHERE tenant_no='MAIN' AND status IN ('${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@APPLYING}','${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@RELEASING}') AND deleted=0
+                  AND next_retry_at<=#{now}
+                ORDER BY next_retry_at, id LIMIT #{limit} FOR UPDATE SKIP LOCKED
+                """)
+        java.util.List<BtyAppointmentArrangement> claimDue(
+                @Param("now") LocalDateTime now, @Param("limit") int limit);
+    }
+
+    /**
+     * 预约的资源命令（方向 A）：一条命令一行。只做持久化原语；调用者先锁预约单与所属修订。
+     * 许可只写一次，之后决策号、许可窗口、闸门号与版本不再改——宿主重放问许可时原样答回。
+     */
+    public interface AppointmentCommandMapper extends TradeTableMapper<BtyAppointmentCommand> {
+        @Select(
+                """
+                SELECT * FROM ord_appointment_command
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND command_no=#{commandNo} AND deleted=0 FOR UPDATE
+                """)
+        BtyAppointmentCommand selectByCommandForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("commandNo") String commandNo);
+
+        @Select(
+                """
+                SELECT * FROM ord_appointment_command
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND request_key=#{requestKey} AND deleted=0 FOR UPDATE
+                """)
+        BtyAppointmentCommand selectByRequestKeyForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("requestKey") String requestKey);
+
+        /** 一次变更已发的各条命令，按发出先后。 */
+        @Select(
+                """
+                SELECT * FROM ord_appointment_command
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND change_no=#{changeNo} AND deleted=0 ORDER BY id
+                """)
+        java.util.List<BtyAppointmentCommand> selectByChange(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("changeNo") String changeNo);
+
+        /** 已发 → 已绑定：写宿主给的命令号、摘要与受理回执。 */
+        @Update(
+                """
+                UPDATE ord_appointment_command SET status='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@BOUND}', command_no=#{commandNo},
+                    command_hash=#{commandHash}, plan_hash=#{planHash}, receipt=#{receipt},
+                    version=version+1, updated_by=#{actorNo}, updated_at=#{now}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND request_key=#{requestKey} AND deleted=0 AND status='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@SENT}' AND version=#{expectedVersion}
+                  AND #{commandNo} IS NOT NULL AND LENGTH(#{commandHash})=64 AND LENGTH(#{planHash})=64
+                """)
+        int bind(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("requestKey") String requestKey,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("commandNo") String commandNo,
+                @Param("commandHash") String commandHash,
+                @Param("planHash") String planHash,
+                @Param("receipt") String receipt,
+                @Param("actorNo") String actorNo,
+                @Param("now") LocalDateTime now);
+
+        /** 许可只一次：已绑定 → 已许可，记决策号、窗口与答给宿主的闸门号、版本。 */
+        @Update(
+                """
+                UPDATE ord_appointment_command SET status='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@PERMITTED}', decision_no=#{decisionNo},
+                    permitted_at=#{permittedAt}, valid_until=#{validUntil}, fence_no=#{fenceNo},
+                    fence_revision=#{fenceRevision}, version=version+1, updated_by=#{actorNo}, updated_at=#{permittedAt}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND command_no=#{commandNo} AND deleted=0 AND status='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@BOUND}' AND version=#{expectedVersion}
+                  AND #{decisionNo} IS NOT NULL AND #{validUntil}>#{permittedAt}
+                """)
+        int permit(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("commandNo") String commandNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("decisionNo") String decisionNo,
+                @Param("permittedAt") LocalDateTime permittedAt,
+                @Param("validUntil") LocalDateTime validUntil,
+                @Param("fenceNo") String fenceNo,
+                @Param("fenceRevision") long fenceRevision,
+                @Param("actorNo") String actorNo);
+
+        /** 许可前拒绝：已绑定 → 许可前拒绝，记决策号与原因码；之后只能以宿主拒绝对账。 */
+        @Update(
+                """
+                UPDATE ord_appointment_command SET status='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@REFUSED}', decision_no=#{decisionNo},
+                    reject_code=#{rejectCode}, version=version+1, updated_by=#{actorNo}, updated_at=#{now}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND command_no=#{commandNo} AND deleted=0 AND status='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@BOUND}' AND version=#{expectedVersion}
+                  AND #{decisionNo} IS NOT NULL AND #{rejectCode} IS NOT NULL
+                """)
+        int refuse(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("commandNo") String commandNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("decisionNo") String decisionNo,
+                @Param("rejectCode") String rejectCode,
+                @Param("actorNo") String actorNo,
+                @Param("now") LocalDateTime now);
+
+        /**
+         * 对账终态：已许可 → 宿主成功 / 宿主拒绝；许可前拒绝 → 宿主拒绝。记终态回执摘要，之后不再改。
+         * 没有许可的命令不会有宿主成功。
+         */
+        @Update(
+                """
+                UPDATE ord_appointment_command SET status=#{target}, result_hash=#{resultHash},
+                    reject_code=COALESCE(reject_code, #{rejectCode}), version=version+1,
+                    updated_by=#{actorNo}, updated_at=#{now}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND command_no=#{commandNo} AND deleted=0 AND version=#{expectedVersion} AND result_hash IS NULL
+                  AND ((status='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@PERMITTED}' AND #{target} IN ('${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@SUCCEEDED}','${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@REJECTED}'))
+                    OR (status='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@REFUSED}' AND #{target}='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@REJECTED}'))
+                  AND LENGTH(#{resultHash})=64
+                """)
+        int settle(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("commandNo") String commandNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("target") String target,
+                @Param("resultHash") String resultHash,
+                @Param("rejectCode") String rejectCode,
+                @Param("actorNo") String actorNo,
+                @Param("now") LocalDateTime now);
+    }
     public interface AppointmentCurrentMapper extends TradeTableMapper<BtyAppointmentCurrent> {
         @Select(
                 """
@@ -1509,18 +1756,18 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 """
                 SELECT COUNT(*) FROM bty_appointment_operation a
                 
-                JOIN bty_appointment_preparation p ON p.tenant_no=a.tenant_no AND p.entity_no=a.entity_no
+                JOIN ord_appointment_revision p ON p.tenant_no=a.tenant_no AND p.entity_no=a.entity_no
                   AND p.store_no=a.store_no AND p.preview_no=a.preview_no AND p.deleted=0
                 JOIN ord_appointment root ON root.tenant_no=#{tenantNo} AND root.entity_no=#{entityNo}
                   AND root.store_no=#{storeNo} AND root.appointment_no=#{appointmentNo} AND root.deleted=0
-                JOIN bty_appointment_resource_intent i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
+                JOIN ord_appointment_command i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
                   AND i.store_no=a.store_no AND i.appointment_no=a.appointment_no AND i.deleted=0
                   AND i.command_no=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandNo'))
                   AND i.command_hash=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandHash'))
                   AND i.plan_hash=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))
                   AND i.action=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))
                   AND i.source_revision=JSON_EXTRACT(a.receipt,'$.binding.sourceRevision')
-                  AND i.frozen_plan=p.frozen_plan
+                  AND JSON_UNQUOTE(JSON_EXTRACT(i.accept_payload,'$.frozenPayload'))=p.frozen_plan
                 WHERE a.tenant_no=#{tenantNo} AND a.entity_no=#{entityNo} AND a.store_no=#{storeNo}
                   AND a.appointment_no=#{appointmentNo} AND a.operation_no=#{appointmentOperationNo}
                   AND a.deleted=0 AND a.action='CREATE'
@@ -1950,7 +2197,7 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
     /** Companion originals never replace the permanent task/fence/unit ownership relation. */
     @Mapper
     public interface ServiceExecutionStockIntentMapper
-            extends BaseMapper<BtyServiceExecutionStockIntent> {
+            extends IndustryTableMapper<BtyServiceExecutionStockIntent> {
         @Select(
                 """
                 SELECT * FROM bty_service_execution_stock_intent WHERE tenant_no='MAIN'

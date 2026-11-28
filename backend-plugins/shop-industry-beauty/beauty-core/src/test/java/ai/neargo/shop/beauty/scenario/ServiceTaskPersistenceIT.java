@@ -69,8 +69,8 @@ class ServiceTaskPersistenceIT extends BeautyExecutionFixture {
     }
     @Test
     void requiresCompletedEarlierStepsBeforeCompletingTask() {
-        step("FIRST", 0, "IN_PROGRESS");
-        step("SECOND", 1, "IN_PROGRESS");
+        step("FIRST", 0, "DOING");
+        step("SECOND", 1, "DOING");
         runner().run(context -> {
             assertThat(industryTx(context, () -> completion(context, 0, 1, "2"))).isEqualTo(0);
             assertThat(industryTx(context, () -> call(context, "ServiceStepMapper", "completeStep", "E", "S", "SECOND", "T",
@@ -115,7 +115,7 @@ class ServiceTaskPersistenceIT extends BeautyExecutionFixture {
     void closeRechecksRealChildrenAndCurrentBindingInsteadOfOnlyParentCounters() {
         participation();
         step("STEP", 0, "DONE");
-        sql.execute("UPDATE bty_work_order SET status='SERVICE_FINISHED',"
+        sql.execute("UPDATE bty_work_order SET status='FINISHED',"
                 + "finished_at=DATE_ADD(started_at,INTERVAL 1 HOUR),scope_frozen=1");
         runner().run(context -> {
             assertThat(industryTx(context, () -> close(context))).isEqualTo(0);
@@ -170,7 +170,7 @@ class ServiceTaskPersistenceIT extends BeautyExecutionFixture {
     @Test
     void closeCannotPredateActualChildCompletion() {
         step("STEP", 0, "DONE");
-        sql.execute("UPDATE bty_work_order SET status='SERVICE_FINISHED',scope_frozen=1,finished_at=started_at");
+        sql.execute("UPDATE bty_work_order SET status='FINISHED',scope_frozen=1,finished_at=started_at");
         sql.execute("UPDATE bty_service_task SET status='DONE',done_qty=qty,"
                 + "finished_at=DATE_ADD(started_at,INTERVAL 3 HOUR)");
         runner().run(context -> assertThat(industryTx(context, () -> close(context))).isEqualTo(0));

@@ -4,7 +4,7 @@
 
 范围：本次注册／登录、创建门店、行业订阅方案、平台 B 端商城及门店整端访问权益。包括与现有工作台、我的、切店、主体资质的连接；不重画全部存量经营业务，不新增餐饮点单、后厨作业或美业服务单页面。
 
-相关真源：[业务需求](./注册开店与行业Plan商城-需求.md)、[总体设计](../superpowers/specs/2026-11-03-industry-plan-mall-design.md)、[API 清单](../api/门店行业Plan商城-API清单.md)、[数据库设计](../technical/design/门店行业Plan商城-数据库设计.md)。
+相关真源：[业务需求](./B端App-注册开店Plan商城-原型需求总结.md)、[总体设计](../superpowers/specs/2026-11-03-industry-plan-mall-design.md)、[API 清单](../api/门店行业Plan商城-API清单.md)、[数据库设计](../technical/design/门店行业Plan商城-数据库设计.md)。
 
 数据库的完整表清单、逐字段解释和ER图见 [数据库字典](../technical/design/门店行业Plan商城-数据库字典.md)。本需求包已交接现有会话“整理 B 端文案与组件规范”继续制作交互原型；这里的页面与状态仍为目标要求，不表示原型已经验收完成。
 

@@ -19,7 +19,7 @@ public record PaymentCollectionFact(
         @NotNull @Positive Long sourceId,
         @NotBlank @Size(max = 64) String payOrderNo,
         @NotBlank @Size(max = 64) String outOrderNo,
-        @NotBlank @Pattern(regexp = "CHECKOUT_QR|BIZ_COLLECT") String bizType,
+        @NotBlank @Pattern(regexp = "CHECKOUT_QR|BIZ_COLLECT|SANDBOX_H5") String bizType,
         @NotBlank @Size(max = 128) String bizNo,
         @NotNull @Positive Long storeId,
         @NotBlank @Size(max = 8) String market,

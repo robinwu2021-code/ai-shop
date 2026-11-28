@@ -8,7 +8,6 @@ import ai.neargo.shop.beauty.config.BeautyWriteGuardConfiguration;
 import ai.neargo.shop.beauty.dto.ClaimGuestReq;
 import ai.neargo.shop.beauty.dto.MyAppointmentQuery;
 import ai.neargo.shop.beauty.dto.RegisterGuestReq;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.beauty.service.GuestRegistrationService;
@@ -74,9 +73,9 @@ class GuestClaimReceiptIT extends BeautyExecutionFixture {
                         return new ResolvedCustomer(target);
                     }
                 }).withInitializer(application -> application.getBeanFactory().addBeanPostProcessor(
-                        BeautyFailureInjection.afterCall(BeautyMappers.ActionLogMapper.class, "insert",
-                                row -> failAudit && row instanceof BtyActionLog log
-                                        && "GUEST_CLAIM_RECEIPT_RECORDED".equals(log.getAction()),
+                        // 本地回执写入之后注入失败（原来挂在操作日志上，TDD §2.6 第 12 项）
+                        BeautyFailureInjection.afterCall(BeautyMappers.GuestClaimReceiptMapper.class, "insert",
+                                row -> failAudit,
                                 () -> { throw new IllegalStateException("receipt-audit-rollback"); })));
     }
     private void outside() { assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse(); }
@@ -171,7 +170,7 @@ class GuestClaimReceiptIT extends BeautyExecutionFixture {
             assertThat(first.expiresAt()).isEqualTo(first.issuedAt().plusSeconds(90));
             assertThat(service.issueArrivalChallenge("E", "S", "A", "K")).isEqualTo(first);
             assertThat(service.issueArrivalChallenge("E", "S", "A", "OTHER").code()).isNotEqualTo(first.code());
-            assertThat(count("bty_reception_operation")).isZero(); assertThat(count("bty_action_log")).isZero();
+            assertThat(count("bty_reception_operation")).isZero();
             login("B"); assertThat(service.issueArrivalChallenge("E", "S", "B", "K").code()).isNotEqualTo(first.code());
             assertThatThrownBy(() -> service.issueArrivalChallenge("E", "OTHER", "B", "K"))
                     .isInstanceOf(BizException.class);
