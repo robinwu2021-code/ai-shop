@@ -4,6 +4,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+import static ai.neargo.shop.common.config.ModuleDataSources.MEMBER_MARKETING;
+import static ai.neargo.shop.common.config.ModuleDataSources.PRODUCT;
+import static ai.neargo.shop.media.MediaRefColumn.inModule;
 import static ai.neargo.shop.media.MediaRefColumn.of;
 
 /**
@@ -20,14 +23,15 @@ public class CoreMediaRefs implements MediaRefSource {
     public List<MediaRefColumn> columns() {
         return List.of(
                 // —— 商品 ——
-                of("prd_goods", "cover", "商品 · 主图", "goods_no"),
-                of("prd_goods", "images", "商品 · 图集", "goods_no"),
+                // 商品领域的表在商品句柄下（门店交易库，TDD-商品领域迁到门店交易库）：扫描走该句柄的连接
+                inModule(PRODUCT, "prd_goods", "cover", "商品 · 主图", "goods_no"),
+                inModule(PRODUCT, "prd_goods", "images", "商品 · 图集", "goods_no"),
                 /*
                  * 详情图（V194 加的列）。加列时漏了这一行 —— 那一列从加进来的那天起
                  * 就不被回收扫描算作引用，于是商家上传的详情图会被判成孤儿。
                  * 症状要等到回收真跑一次才出现，而那时图已经没了、也查不出谁删的。
                  */
-                of("prd_goods", "detail_images", "商品 · 详情图", "goods_no"),
+                inModule(PRODUCT, "prd_goods", "detail_images", "商品 · 详情图", "goods_no"),
                 /*
                  * 标准品的图（TDD-标准品库）。**必须算引用**：商家引用建品时会把这几张
                  * 复制进自己的商品，但标准品这一行自己也一直指着它们 —— 不登记的话，
@@ -39,9 +43,11 @@ public class CoreMediaRefs implements MediaRefSource {
                  * 回收扫描不把它算作引用，运营给主题换了封面之后，旧图会被判成孤儿收走 ——
                  * 而主题页上那张图就此变成裂图，没有任何报错。
                  */
-                of("prd_topic", "cover", "主题 · 封面图", "topic_no"),
-                of("prd_spu_std", "cover", "标准品 · 主图", "std_no"),
-                of("prd_spu_std", "images", "标准品 · 图集", "std_no"),
+                // 专题在会员营销库（第 3 批）
+                inModule(MEMBER_MARKETING, "prd_topic", "cover", "主题 · 封面图", "topic_no"),
+                // 标准品：门店交易库的 prd_standard_goods（原 prd_spu_std，第 3 步批次 1）
+                inModule(PRODUCT, "prd_standard_goods", "cover", "标准品 · 主图", "std_no"),
+                inModule(PRODUCT, "prd_standard_goods", "images", "标准品 · 图集", "std_no"),
 
                 /*
                  * 订单项的封面是**下单那一刻的快照**，指向的仍是商品图那张文件。

@@ -225,7 +225,14 @@
 - 代码：`TopicMapper`、`TopicGoodsMapper` 改收会员营销句柄，写事务改 `MEMBER_MARKETING_TX_MANAGER`；查询从 `TopicMapper.topics()` 起手，只碰 `topic_type = TOPIC`。内容位、榜单并进来不在这一批。
 - 顺带修正：移出专题的商品原走逻辑删，唯一键不含 `deleted`，同一件商品再加回来会撞键；改为真删（`purge`）。
 - 搬迁：旧 `prd_topic` 每行写 `topic_type = TOPIC`、`enabled = 1`；`prd_topic_goods` 每行 `sku_no = ''`，已逻辑删的行不搬。
-- 后续：媒体模块 `CoreMediaRefs` 按表名清理无主图片，`prd_topic.cover` 现在在会员营销库，随媒体改为按句柄查库一起改（与标准品、评价同一件事）。基线 −4。
+- 媒体回收已改按句柄扫（见下节）。基线 −4。
+
+### 媒体回收按句柄扫商品表（2026-11-28）
+
+- `MediaRefColumn` 的「是否在平台库」开关换成「所属模块句柄」（空 = 主库）：`MediaScanner` 对带句柄的列按 `ModuleDataSources.dataSource(module)` 取数据源扫（句柄没绑定时别名指向主库，与 Mapper 同一规则），平台库仍走原来的平台连接。
+- `CoreMediaRefs`：商品三列与标准品两列登记在商品句柄下，标准品改扫 `prd_standard_goods`；专题封面登记在会员营销句柄下。评价几列随评价暂停，仍在主库。
+- `MediaRefCoverageTest` 读的是旧库迁移脚本，加「旧表名 → 新表名」对照（`prd_spu_std` → `prd_standard_goods`），新表上已声明的同名列视为已认领。
+- 不在本项：订单快照 `ord_item.cover`、售后凭证等交易表的列仍按主库登记，随交易域切库时同样改成交易句柄。
 
 ### 偏差说明
 

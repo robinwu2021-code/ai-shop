@@ -39,6 +39,9 @@ public class MediaScanner {
     private final List<MediaRefSource> sources;
     private final MediaRefMapper refMapper;
     private final JdbcTemplate platform;
+    /** 按模块句柄找数据源（句柄没绑定时别名指向主库，与 Mapper 同一个规则） */
+    private final org.springframework.beans.factory.BeanFactory beans;
+    private final Map<String, JdbcTemplate> moduleJdbc = new java.util.concurrent.ConcurrentHashMap<>();
     private final SysMediaAssetMapper assetMapper;
     private final int graceHours;
     private final double abnormalRatio;
@@ -47,12 +50,14 @@ public class MediaScanner {
             List<MediaRefSource> sources,
             MediaRefMapper refMapper,
             @Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate platform,
+            org.springframework.beans.factory.BeanFactory beans,
             SysMediaAssetMapper assetMapper,
             @Value("${shop.media.scan.grace-hours:72}") int graceHours,
             @Value("${shop.media.scan.abnormal-ratio-alert:0.5}") double abnormalRatio) {
         this.sources = sources;
         this.refMapper = refMapper;
         this.platform = platform;
+        this.beans = beans;
         this.assetMapper = assetMapper;
         this.graceHours = graceHours;
         this.abnormalRatio = abnormalRatio;
@@ -154,8 +159,9 @@ public class MediaScanner {
             for (MediaRefColumn col : source.columns()) {
                 List<Map<String, Object>> rows;
                 try {
-                    rows = col.onPlatform() ? scanPlatform(col)
-                            : refMapper.scanColumn(col.table(), col.column(), col.keyColumn());
+                    rows = col.module() == null
+                            ? refMapper.scanColumn(col.table(), col.column(), col.keyColumn())
+                            : scanOn(col.onPlatform() ? platform : jdbcOf(col.module()), col);
                 } catch (Exception e) {
                     /*
                      * **不能吞掉**：一列扫不出来就意味着它引用的图全会被判成孤儿。
@@ -185,17 +191,23 @@ public class MediaScanner {
     public record Result(int total, int referenced, int marked, int rescued, boolean abnormal) {
     }
 
+    /** 模块句柄的连接：数据源按 {@code ModuleDataSources.dataSource(module)} 取，同一个句柄只建一次模板 */
+    private JdbcTemplate jdbcOf(String module) {
+        return moduleJdbc.computeIfAbsent(module, m -> new JdbcTemplate(beans.getBean(
+                ai.neargo.shop.common.config.ModuleDataSources.dataSource(m), javax.sql.DataSource.class)));
+    }
+
     /**
-     * 平台基础库上的一列，走平台句柄的连接。SQL 与 {@link MediaRefMapper#scanColumn} 逐字相同；
+     * 模块句柄上的一列（平台基础库、商品、会员营销……），走该句柄的连接。SQL 与 {@link MediaRefMapper#scanColumn} 逐字相同；
      * 表名列名只来自代码常量（{@link MediaRefColumn} 的约定），这里再按标识符格式校验一遍，因为要拼进 SQL。
      */
-    private List<Map<String, Object>> scanPlatform(MediaRefColumn col) {
+    private List<Map<String, Object>> scanOn(JdbcTemplate jdbc, MediaRefColumn col) {
         for (String identifier : List.of(col.table(), col.column(), col.keyColumn())) {
             if (!identifier.matches("[a-z][a-z0-9_]*")) {
                 throw new IllegalStateException("不是合法的列或表名：" + identifier);
             }
         }
-        return platform.queryForList("SELECT " + col.keyColumn() + " AS biz_key, " + col.column() + " AS val FROM "
+        return jdbc.queryForList("SELECT " + col.keyColumn() + " AS biz_key, " + col.column() + " AS val FROM "
                 + col.table() + " WHERE " + col.column() + " IS NOT NULL");
     }
 }
