@@ -10,8 +10,6 @@ import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
 import ai.neargo.shop.beauty.dto.ServiceDetailQuery;
 import ai.neargo.shop.beauty.dto.ServiceDetailVO;
-import ai.neargo.shop.beauty.entity.BtyServiceDefinition;
-import ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion;
 import ai.neargo.shop.beauty.entity.BtyStorePolicy;
 import ai.neargo.shop.beauty.entity.BtyStorePolicyVersion;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
@@ -39,20 +37,17 @@ import tools.jackson.databind.ObjectMapper;
 public class ServiceCatalogQueryServiceImpl implements ServiceCatalogQueryService {
     private final BeautyMappers.StorePolicyMapper policies;
     private final BeautyMappers.StorePolicyVersionMapper policyVersions;
-    private final BeautyMappers.ServiceDefinitionMapper definitions;
-    private final BeautyMappers.ServiceDefinitionVersionMapper definitionVersions;
+    private final ServiceDefinitions definitions;
     private final ObjectProvider<ServiceCatalogFactsPort> facts;
     private final ObjectMapper json;
     private final TransactionTemplate reads;
 
     public ServiceCatalogQueryServiceImpl(BeautyMappers.StorePolicyMapper policies,
-            BeautyMappers.StorePolicyVersionMapper policyVersions, BeautyMappers.ServiceDefinitionMapper definitions,
-            BeautyMappers.ServiceDefinitionVersionMapper definitionVersions,
+            BeautyMappers.StorePolicyVersionMapper policyVersions, ServiceDefinitions definitions,
             ObjectProvider<ServiceCatalogFactsPort> facts, ObjectMapper json, PlatformTransactionManager manager) {
         this.policies = policies;
         this.policyVersions = policyVersions;
         this.definitions = definitions;
-        this.definitionVersions = definitionVersions;
         this.facts = facts;
         this.json = json;
         this.reads = new TransactionTemplate(manager);
@@ -107,32 +102,18 @@ public class ServiceCatalogQueryServiceImpl implements ServiceCatalogQueryServic
                         entry.saleableAt(now, catalog.definition().timezone()))
                 : new ServiceSalesVO(null, null, 0, null, StoreSalesCatalogPort.SalesMode.UNRESTRICTED,
                         List.of(), true);
+        // 服务定义归商品域：在美业的读事务之外取（TDD-美业域迁移新库 §2.8 P5）
+        var definition = definitions.current(product.store().entityNo(), product.store().storeNo(), product.skuNo());
+        if (definition == null || !definition.active() || definition.publishedAt().isAfter(now)
+                || definition.duration().minutes() != product.durationMin()) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
         return read(() -> {
             var store = publicStore(product.store(), now);
-            var head = definitions.selectOne(Wrappers.<BtyServiceDefinition>lambdaQuery()
-                    .eq(BtyServiceDefinition::getTenantNo, "MAIN")
-                    .eq(BtyServiceDefinition::getEntityNo, product.store().entityNo())
-                    .eq(BtyServiceDefinition::getStoreNo, product.store().storeNo())
-                    .eq(BtyServiceDefinition::getSkuNo, product.skuNo())
-                    .eq(BtyServiceDefinition::getStatus, "ACTIVE"));
-            if (head == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
-            var version = definitionVersions.selectOne(Wrappers.<BtyServiceDefinitionVersion>lambdaQuery()
-                    .eq(BtyServiceDefinitionVersion::getTenantNo, "MAIN")
-                    .eq(BtyServiceDefinitionVersion::getEntityNo, product.store().entityNo())
-                    .eq(BtyServiceDefinitionVersion::getDefinitionNo, head.getDefinitionNo())
-                    .le(BtyServiceDefinitionVersion::getCreatedAt, LocalDateTime.ofInstant(now, ZoneId.systemDefault()))
-                    .orderByDesc(BtyServiceDefinitionVersion::getRevisionIndex).last("LIMIT 1"));
-            if (version == null || version.getDurationMinSnapshot() != product.durationMin()) {
-                throw BizException.of(ErrorCode.NOT_FOUND);
-            }
-            var duration = new PublishServiceDefinitionVersionReq.Duration(version.getDurationMinSnapshot(),
-                    version.getBufferBeforeMin(), version.getBufferAfterMin());
             var service = new PublicServiceVO(product.store().storeNo(), product.skuNo(), product.goodsNo(),
-                    product.title(), product.cover(), product.priceMinor(), version.getDefinitionVersionNo(), duration,
-                    version.getNotes() == null ? List.of()
-                            : List.of(json.readValue(version.getNotes(), String[].class)),
-                    store, sales);
-            return new ServiceDetailVO(service, head.getDefinitionNo(), head.getVersion());
+                    product.title(), product.cover(), product.priceMinor(), definition.definitionVersionNo(),
+                    definition.duration(), definition.notes(), store, sales);
+            return new ServiceDetailVO(service, definition.definitionNo(), definition.revision());
         });
     }
 

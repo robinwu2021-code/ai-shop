@@ -15,7 +15,8 @@ import ai.neargo.shop.beauty.dto.PublicStoreVO;
 import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
 import ai.neargo.shop.beauty.dto.ServiceSalesVO;
-import ai.neargo.shop.beauty.entity.BtyServiceRequirement;
+import ai.neargo.shop.beauty.dto.WorkOrderRequirementVO;
+import ai.neargo.shop.beauty.service.impl.ServiceDefinitions;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
 import ai.neargo.shop.beauty.service.impl.AppointmentAvailabilityServiceImpl;
@@ -204,11 +205,9 @@ class AppointmentMatchingSearchTest {
                 null, person, person, 1, false);
     }
 
-    private BtyServiceRequirement rule(String id, String type, int qty, int minutes) {
-        var rule = new BtyServiceRequirement();
-        rule.setRequirementNo(id); rule.setResourceType(type); rule.setQty(qty); rule.setOffsetMin(0);
-        rule.setDurationMin(minutes); rule.setSequenceNo(0); rule.setSkillGoodsNo("STAFF".equals(type) ? "G" : null);
-        return rule;
+    private WorkOrderRequirementVO rule(String id, String type, int qty, int minutes) {
+        return new WorkOrderRequirementVO(id, null, type, "STAFF".equals(type) ? "G" : null, qty, 0, 0, minutes,
+                null);
     }
 
     private void read() {
@@ -217,12 +216,12 @@ class AppointmentMatchingSearchTest {
     }
 
     private AppointmentMatching fixture(List<ResourceFactsPort.ResourceFact> resources,
-            List<BtyServiceRequirement> requirements, List<Integer> minutes) {
+            List<WorkOrderRequirementVO> requirements, List<Integer> minutes) {
         return fixture(resources, requirements, minutes, List.of());
     }
 
     private AppointmentMatching fixture(List<ResourceFactsPort.ResourceFact> resources,
-            List<BtyServiceRequirement> requirements, List<Integer> minutes,
+            List<WorkOrderRequirementVO> requirements, List<Integer> minutes,
             List<ResourceCandidatesPort.Capacity> capacities) {
         var policy = new PublishStorePolicyVersionReq.Policy(7,
                 new PublishStorePolicyVersionReq.CancellationRule(0, true), Set.of("PREPAID_SINGLE"));
@@ -256,8 +255,11 @@ class AppointmentMatchingSearchTest {
                     resources.get(i).resourceNo(), "S", "A", at.toInstant(), at.plusMinutes(minutes.get(i)).toInstant(),
                     List.of("W" + i))).toList();
         };
-        var rules = mock(BeautyMappers.ServiceRequirementMapper.class);
-        when(rules.selectList(any())).thenReturn(requirements);
+        // 服务定义归商品域（TDD §2.8 P5）：匹配按版本经 ServiceDefinitions 取要求
+        var rules = mock(ServiceDefinitions.class);
+        when(rules.byVersion(any(), any(), any(), any())).thenReturn(new ServiceDefinitions.Snapshot("G", "S", "SKU", "1", 1, "ACTIVE",
+                new PublishServiceDefinitionVersionReq.Duration(60, 0, 0), List.of(), requirements, ServiceDefinitions.STEPS,
+                List.of(), "h", Instant.EPOCH));
         var beans = new DefaultListableBeanFactory();
         beans.registerSingleton("facts", facts); beans.registerSingleton("candidates", candidates);
         beans.registerSingleton("personnel", personnel); beans.registerSingleton("schedules", schedules);

@@ -3,8 +3,10 @@ package ai.neargo.shop.beauty.config;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.ServiceDefinitionService;
 import ai.neargo.shop.beauty.service.impl.ServiceDefinitionServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceDefinitions;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
+import ai.neargo.shop.spi.product.ServiceDefinitionPort;
 import ai.neargo.shop.spi.product.ServiceProductFactsPort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -15,15 +17,14 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Missing product authority rejects new publication; policy-only deployments remain bootable. */
 @Configuration(proxyBeanMethods = false)
+@org.springframework.context.annotation.Import(BeautyServiceDefinitionsConfiguration.class)
 @ConditionalOnBeautyEnabled
 public class BeautyDefinitionConfiguration {
     @Bean
-    ServiceDefinitionService serviceDefinitionService(BeautyMappers.ServiceDefinitionMapper heads,
-            BeautyMappers.ServiceDefinitionVersionMapper versions, BeautyMappers.ServiceRequirementMapper requirements,
+    ServiceDefinitionService serviceDefinitionService(ServiceDefinitions definitions,
             BeautyMappers.ActionLogMapper actions, RequestIdempotencyPort idempotency,
-            ObjectProvider<ServiceProductFactsPort> products, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
-            ObjectMapper json) {
-        return new ServiceDefinitionServiceImpl(heads, versions, requirements, actions, idempotency,
-                products, manager, json);
+            ObjectProvider<ServiceProductFactsPort> products,
+            @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager, ObjectMapper json) {
+        return new ServiceDefinitionServiceImpl(definitions, actions, idempotency, products, manager, json);
     }
 }

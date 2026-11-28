@@ -52,7 +52,7 @@ import java.time.Clock;
 /** Source authority has no eager executor dependency; external provider capabilities resolve per call. */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBeautyEnabled
-@Import(BeautyReceptionConfiguration.class)
+@Import({BeautyReceptionConfiguration.class, BeautyServiceDefinitionsConfiguration.class})
 public class BeautyAppointmentConfiguration {
     @Bean
     AppointmentPersistence appointmentPersistence(BeautyMappers.AppointmentMapper roots,
@@ -75,8 +75,8 @@ public class BeautyAppointmentConfiguration {
     AppointmentMatching appointmentMatching(ServiceCatalogQueryService catalog,
             ObjectProvider<ServiceCatalogFactsPort> stores, ObjectProvider<ResourceCandidatesPort> candidates,
             ObjectProvider<PersonnelFactsPort> personnel, ObjectProvider<ScheduleWindowsPort> schedules,
-            BeautyMappers.ServiceRequirementMapper requirements) {
-        return new AppointmentMatching(catalog, stores, candidates, personnel, schedules, requirements);
+            ai.neargo.shop.beauty.service.impl.ServiceDefinitions definitions) {
+        return new AppointmentMatching(catalog, stores, candidates, personnel, schedules, definitions);
     }
     @Bean
     AppointmentPreparation appointmentPreparationService(AppointmentPersistence db, AppointmentAccess access,

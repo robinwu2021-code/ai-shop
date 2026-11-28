@@ -62,5 +62,11 @@ public class ServiceGoods {
         return new Resolved(product, sku);
     }
 
+    /** 这件商品在本市场有几个 SKU（按 SKU 发布服务定义时决定写默认行还是覆盖行）。 */
+    public long skuCount(String entityNo, String goodsNo) {
+        return skus.selectCount(Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getTenantNo, "MAIN")
+                .eq(PrdSku::getEntityNo, entityNo).eq(PrdSku::getMarket, homeMarket).eq(PrdSku::getGoodsNo, goodsNo));
+    }
+
     private static boolean valid(String value) { return value != null && !value.isBlank() && value.length() <= 32; }
 }

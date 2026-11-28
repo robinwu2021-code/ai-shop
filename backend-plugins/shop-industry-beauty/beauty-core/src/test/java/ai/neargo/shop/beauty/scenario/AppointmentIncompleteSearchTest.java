@@ -1,5 +1,6 @@
 package ai.neargo.shop.beauty.scenario;
 
+import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -13,7 +14,8 @@ import ai.neargo.shop.beauty.dto.PublicStoreVO;
 import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
 import ai.neargo.shop.beauty.dto.ServiceSalesVO;
-import ai.neargo.shop.beauty.entity.BtyServiceRequirement;
+import ai.neargo.shop.beauty.dto.WorkOrderRequirementVO;
+import ai.neargo.shop.beauty.service.impl.ServiceDefinitions;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
@@ -60,11 +62,11 @@ class AppointmentIncompleteSearchTest {
                 .toList());
         when(candidates.capacity(any())).thenReturn(List.of());
         var schedules = mock(ScheduleWindowsPort.class); when(schedules.getBatch(any())).thenReturn(List.of());
-        var rules = mock(BeautyMappers.ServiceRequirementMapper.class);
-        var rule = new BtyServiceRequirement();
-        rule.setRequirementNo("REQ"); rule.setResourceType("STAFF"); rule.setQty(1); rule.setOffsetMin(0);
-        rule.setDurationMin(30); rule.setSequenceNo(0);
-        when(rules.selectList(any())).thenReturn(List.of(rule));
+        var rules = mock(ServiceDefinitions.class);
+        var rule = new WorkOrderRequirementVO("REQ", null, "STAFF", null, 1, 0, 0, 30, null);
+        when(rules.byVersion(any(), any(), any(), any())).thenReturn(new ServiceDefinitions.Snapshot("G", "S", "SKU", "1", 1, "ACTIVE",
+                new PublishServiceDefinitionVersionReq.Duration(30, 0, 0), List.of(), List.of(rule), ServiceDefinitions.STEPS,
+                List.of(), "h", Instant.EPOCH));
         var beans = new DefaultListableBeanFactory();
         beans.registerSingleton("facts", facts); beans.registerSingleton("candidates", candidates);
         beans.registerSingleton("schedules", schedules);

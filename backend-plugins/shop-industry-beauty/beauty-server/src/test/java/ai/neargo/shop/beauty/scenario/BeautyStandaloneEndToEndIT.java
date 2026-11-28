@@ -15,6 +15,7 @@ import ai.neargo.shop.beauty.server.BeautyApplication;
 import ai.neargo.shop.beauty.spi.BeautyPolicyInternalApi;
 import ai.neargo.shop.beauty.spi.BeautyDefinitionInternalApi;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.spi.product.ServiceDefinitionPort;
 import ai.neargo.shop.spi.product.ServiceProductFactsPort;
 import ai.neargo.shop.svc.InternalHttp;
 import java.net.URI;
@@ -38,6 +39,38 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 /** Real TCP client -> standalone security/controller/service -> disposable MySQL. */
 class BeautyStandaloneEndToEndIT {
+    private final InMemoryDefinitions productDefinitions = new InMemoryDefinitions();
+
+    /** 商品域服务定义的内存桩：按操作号重放，期望版本不符冲突。 */
+    static final class InMemoryDefinitions implements ServiceDefinitionPort {
+        final java.util.List<Definition> versions = new java.util.concurrent.CopyOnWriteArrayList<>();
+        final java.util.Map<String, Definition> replays = new java.util.concurrent.ConcurrentHashMap<>();
+        final java.util.Set<String> actors = new java.util.concurrent.CopyOnWriteArraySet<>();
+        @Override public synchronized Definition publish(Publish c) {
+            var replay = c.sourceRef() == null ? null : replays.get(c.sourceRef());
+            if (replay != null) { return replay; }
+            if (c.expectedVersion() != versions.size()) {
+                throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.CONFLICT);
+            }
+            var d = new Definition(c.entityNo(), c.storeNo(), "G", c.skuNo(), versions.size() + 1, false, c.timing(),
+                    c.steps(), c.notes(), c.requirements().stream().map(r -> new Requirement("REQ" + versions.size(),
+                    r.roleCode(), r.resourceType(), r.skillGoodsNo(), r.qty(), r.sequenceNo(), r.offsetMin(),
+                    r.durationMin(), r.selectionRule())).toList(), ACTIVE, "h", java.time.Instant.now());
+            versions.add(d); actors.add(c.actor());
+            if (c.sourceRef() != null) { replays.put(c.sourceRef(), d); }
+            return d;
+        }
+        @Override public Definition current(String e, String s, String sku) {
+            return versions.isEmpty() ? null : versions.getLast();
+        }
+        @Override public Definition byVersion(String e, String s, String sku, int v) {
+            return v < 1 || v > versions.size() ? null : versions.get(v - 1);
+        }
+        @Override public java.util.List<Definition> list(String e, String s, java.time.Instant at) {
+            return versions.isEmpty() ? java.util.List.of() : java.util.List.of(versions.getLast());
+        }
+    }
+
     @Test
     void policyAndDefinitionUseSameDurableContractsAcrossStandaloneHttp() throws Exception {
         String adminUrl = System.getProperty("beauty.test.admin-url");
@@ -51,9 +84,14 @@ class BeautyStandaloneEndToEndIT {
         String token = "disposable-standalone-token";
         try (var context = assertDoesNotThrow(()
                 -> new SpringApplicationBuilder(BeautyApplication.class).initializers(application ->
-                ((GenericApplicationContext) application).registerBean(ServiceProductFactsPort.class,
-                        () -> (entity, store, sku) -> new ServiceProductFactsPort.Fact(entity, store, sku,
-                                "G", 9900, 60)))
+                {
+                    ((GenericApplicationContext) application).registerBean(ServiceProductFactsPort.class,
+                            () -> (entity, store, sku) -> new ServiceProductFactsPort.Fact(entity, store, sku,
+                                    "G", 9900, 60));
+                    // 服务定义归商品域（TDD §2.8 P5）：独立部署时它在宿主，这里换成内存桩
+                    ((GenericApplicationContext) application).registerBean(ServiceDefinitionPort.class,
+                            () -> productDefinitions);
+                })
                 .run("--server.port=0", "--server.address=127.0.0.1", "--shop.beauty.enabled=true",
                         "--spring.datasource.url=" + source.getUrl(), "--spring.datasource.username=root",
                         "--spring.datasource.password=", "--shop.services.internal-token=" + token))) {
@@ -85,8 +123,7 @@ class BeautyStandaloneEndToEndIT {
             assertThat(definitions.listDefinitions("E", "S", "REMOTE-ACTOR",
                     new ServiceDefinitionQuery("S", null, null, 1, 20)).records()).hasSize(1);
             var sql = new JdbcTemplate(source);
-            assertThat(sql.queryForList("SELECT DISTINCT created_by FROM bty_service_definition_version", String.class))
-                    .containsExactly("REMOTE-ACTOR");
+            assertThat(productDefinitions.actors).containsExactly("REMOTE-ACTOR");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE operator_ref='REMOTE-ACTOR'",
                     Integer.class)).isEqualTo(2);
             var unauthorized = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(url

@@ -68,7 +68,10 @@ class BeautyCatalogIT {
             return port.getClasses()[0].getConstructor(String.class, String.class, String.class, String.class,
                     long.class, int.class).newInstance(productEntity, "S", "SKU", "G", 9900L, productDuration);
         });
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
+        return new ApplicationContextRunner()
+                .withBean(ai.neargo.shop.spi.product.ServiceDefinitionPort.class,
+                        () -> new TestServiceDefinitionPort(sql))
+                .withUserConfiguration(PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
                 type("ai.neargo.shop.beauty.config.BeautyPersistenceConfiguration"),
                 type("ai.neargo.shop.beauty.config.BeautyWriteGuardConfiguration"),
                 type("ai.neargo.shop.beauty.config.BeautyPolicyConfiguration"),
@@ -145,23 +148,23 @@ class BeautyCatalogIT {
             assertThat(json.writeValueAsString(definition(context, "D1", 0))).isEqualTo(json.writeValueAsString(first));
             productAvailable = true;
             definition(context, "D2", 1);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_service_definition_version", Integer.class))
+            // 定义归商品域（TDD §2.8 P5）：两版各一行默认行、各一条要求
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_service_definition", Integer.class))
                     .isEqualTo(2);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_service_requirement", Integer.class)).isEqualTo(2);
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_fulfillment_requirement", Integer.class))
+                    .isEqualTo(2);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log", Integer.class)).isEqualTo(2);
             assertThatThrownBy(() -> definition(context, "STALE", 1)).isInstanceOf(BizException.class);
         });
     }
 
     @Test
-    void refusesForeignProductAndCallerInventedDurationBeforeAnyWrite() {
+    void refusesForeignProductBeforeAnyWrite() {
+        // 时长归服务定义（发布后镜像到商品），不再要求与商品现有时长一致；只核归属（TDD §2.8 P5）
         runner().run(context -> {
             productEntity = "FOREIGN";
             assertThatThrownBy(() -> definition(context, "FOREIGN", 0)).isInstanceOf(BizException.class);
-            productEntity = "E";
-            productDuration = 90;
-            assertThatThrownBy(() -> definition(context, "WRONG_DURATION", 0)).isInstanceOf(BizException.class);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_service_definition", Integer.class)).isZero();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_service_definition", Integer.class)).isZero();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isZero();
         });
     }
@@ -196,8 +199,8 @@ class BeautyCatalogIT {
                 for (var future : futures) { if (future.get(20, TimeUnit.SECONDS)) { winners++; } }
                 assertThat(winners).isOne();
             }
-            for (String table : List.of("bty_service_definition", "bty_service_definition_version",
-                    "bty_service_requirement", "bty_action_log", "sys_idempotent")) {
+            for (String table : List.of("prd_service_definition", "prd_fulfillment_requirement", "bty_action_log",
+                    "sys_idempotent")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isOne();
             }
         });
@@ -213,11 +216,13 @@ class BeautyCatalogIT {
                 .run(context -> {
                     assertThatThrownBy(() -> definition(context, "ROLLBACK", 0))
                             .hasMessage("after-definition-audit");
-                    for (String table : List.of("bty_service_definition", "bty_service_definition_version",
-                            "bty_service_requirement", "bty_action_log", "sys_idempotent")) {
+                    for (String table : List.of("bty_action_log", "sys_idempotent")) {
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table,
                                 Integer.class)).as(table).isZero();
                     }
+                    // 定义在商品域、已由它自己的事务提交；同一个幂等键重试按操作号回到这一版，不会再发一版
+                    assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_service_definition", Integer.class))
+                            .isOne();
                 });
     }
 
@@ -226,11 +231,10 @@ class BeautyCatalogIT {
         runner().run(context -> {
             Object first = definition(context, "D1", 0);
             definition(context, "D2", 1);
-            sql.execute("UPDATE bty_service_definition SET created_at='2020-01-01 00:00:00'");
-            sql.execute("UPDATE bty_service_definition_version SET created_at='2025-01-01 00:00:00' "
-                    + "WHERE revision_index=1");
-            sql.execute("UPDATE bty_service_definition_version SET created_at='2027-01-01 00:00:00' "
-                    + "WHERE revision_index=2");
+            sql.execute("UPDATE prd_service_definition SET published_at='2025-01-01 00:00:00' "
+                    + "WHERE definition_version=1");
+            sql.execute("UPDATE prd_service_definition SET published_at='2027-01-01 00:00:00' "
+                    + "WHERE definition_version=2");
             Object result = call(context, "ServiceDefinitionService", "listDefinitions", "ServiceDefinitionQuery",
                     "{\"storeNo\":\"S\",\"at\":\"2026-01-01T00:00:00Z\"}", "S", null);
             var row = json.readTree(json.writeValueAsString(result)).get("records").get(0);
@@ -254,8 +258,7 @@ class BeautyCatalogIT {
     void historicalListBeforeFirstVersionReturnsAnEmptyPage() {
         runner().run(context -> {
             definition(context, "D1", 0);
-            sql.execute("UPDATE bty_service_definition SET created_at='2020-01-01 00:00:00'");
-            sql.execute("UPDATE bty_service_definition_version SET created_at='2025-01-01 00:00:00'");
+            sql.execute("UPDATE prd_service_definition SET published_at='2025-01-01 00:00:00'");
             Object page = assertDoesNotThrow(() -> call(context, "ServiceDefinitionService", "listDefinitions",
                     "ServiceDefinitionQuery", "{\"storeNo\":\"S\",\"at\":\"2024-01-01T00:00:00Z\"}", "S", null));
             var result = json.readTree(json.writeValueAsString(page));
@@ -274,7 +277,7 @@ class BeautyCatalogIT {
                     + "\"notes\":[\"请提前到店\"]}";
             Object result = call(context, "ServiceDefinitionService", "publishDefinitionVersion",
                     "PublishServiceDefinitionVersionReq", command, "S", "NOTES");
-            assertThat(sql.queryForObject("SELECT notes FROM bty_service_definition_version", String.class))
+            assertThat(sql.queryForObject("SELECT notes FROM prd_service_definition", String.class))
                     .contains("请提前到店");
             assertThat(json.writeValueAsString(call(context, "ServiceDefinitionService", "publishDefinitionVersion",
                     "PublishServiceDefinitionVersionReq", command, "S", "NOTES")))

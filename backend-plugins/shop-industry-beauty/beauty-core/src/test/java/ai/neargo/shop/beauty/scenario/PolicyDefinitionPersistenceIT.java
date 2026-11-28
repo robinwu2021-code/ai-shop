@@ -129,44 +129,21 @@ class PolicyDefinitionPersistenceIT {
         });
     }
 
-    @Test
-    void rejectsCrossEntityRequirementReads() {
-        required("entity.BtyServiceRequirement");
-        runner().run(context -> {
-            assertThat(context).hasNotFailed();
-            sql.update("INSERT INTO bty_service_requirement "
-                    + "(tenant_no,entity_no,created_at,updated_at,requirement_no,definition_version_no,role_code,"
-                    + "resource_type,qty,sequence_no,offset_min,duration_min,selection_rule) "
-                    + "VALUES ('MAIN','OTHER',NOW(3),NOW(3),'R','D','THERAPIST','PERSONNEL',1,1,0,30,'QUALIFIED')");
-            DataScopeContext.set(DataScopeSpec.of(ScopeDim.MERCHANT, Set.of("A")));
-            assertThat(mapper(context, "ServiceRequirementMapper").selectList(null)).isEmpty();
-        });
-    }
+    /** 门店政策头的发布切换（服务定义归商品域后，这里只剩政策，TDD §2.8 P5）。 */
     private int publishWithStatus(boolean definition, String state) {
         required("entity.BtyStorePolicy");
         int[] result = {-1};
         runner().run(context -> {
             assertThat(context).hasNotFailed();
-            String root = definition ? "definition_no" : "policy_no";
             // 门店政策头与版本在行业共用表（B-2）：头带行业码、版本带配置类型与门店
-            String table = definition ? "bty_service_definition" : "ind_store_policy";
-            String versionTable = definition ? "bty_service_definition_version" : "ind_config_revision";
-            String version = definition ? "definition_version_no" : "policy_version_no";
-            sql.update("INSERT INTO " + table + " (tenant_no,entity_no,created_at,updated_at," + root
-                    + ",store_no,current_" + version + ",status" + (definition ? ",sku_no" : ",industry_code")
-                    + ") VALUES ('MAIN','A',NOW(3),NOW(3),'P','S','V1',?" + (definition ? ",'SKU'" : ",'BEAUTY'")
-                    + ")", state);
-            String details = definition
-                    ? "duration_min_snapshot,buffer_before_min,buffer_after_min,steps_template,notes"
-                    : "booking_ahead_days,cancel_rule,allowed_modes,effective_at";
-            String values = definition ? "30,0,0,'[]','{}'" : "7,'{}','[]',NOW(3)";
-            sql.update("INSERT INTO " + versionTable + " (tenant_no,entity_no,created_at,updated_at,"
-                    + version + "," + root + ",revision_index," + details + ",schema_version,snapshot_hash"
-                    + (definition ? "" : ",config_kind,store_no") + ") "
-                    + "VALUES ('MAIN','A',NOW(3),NOW(3),'V2','P',2," + values + ",1,REPEAT('a',64)"
-                    + (definition ? "" : ",'STORE_POLICY','S'") + ")");
-            var mapper = mapper(context, definition ? "ServiceDefinitionMapper" : "StorePolicyMapper");
-            result[0] = switchPolicy(mapper, "S", 0, "V2");
+            sql.update("INSERT INTO ind_store_policy (tenant_no,entity_no,created_at,updated_at,policy_no,store_no,"
+                    + "current_policy_version_no,status,industry_code) VALUES ('MAIN','A',NOW(3),NOW(3),'P','S','V1',?,"
+                    + "'BEAUTY')", state);
+            sql.update("INSERT INTO ind_config_revision (tenant_no,entity_no,created_at,updated_at,policy_version_no,"
+                    + "policy_no,revision_index,booking_ahead_days,cancel_rule,allowed_modes,effective_at,"
+                    + "schema_version,snapshot_hash,config_kind,store_no) VALUES ('MAIN','A',NOW(3),NOW(3),'V2','P',2,"
+                    + "7,'{}','[]',NOW(3),1,REPEAT('a',64),'STORE_POLICY','S')");
+            result[0] = switchPolicy(mapper(context, "StorePolicyMapper"), "S", 0, "V2");
         });
         return result[0];
     }
@@ -181,14 +158,5 @@ class PolicyDefinitionPersistenceIT {
         assertThat(publishWithStatus(false, "DISABLED")).isZero();
     }
 
-    @Test
-    void inactiveDefinitionCanPublishANewVersion() {
-        assertThat(publishWithStatus(true, "INACTIVE")).isOne();
-    }
-
-    @Test
-    void undefinedDefinitionStateCannotPublish() {
-        assertThat(publishWithStatus(true, "DISABLED")).isZero();
-    }
 
 }

@@ -53,6 +53,8 @@ abstract class BeautyExecutionFixture {
                         PrimaryPersistenceConfiguration.class, BeautyModuleHandles.class,
                         required("config.BeautyPersistenceConfiguration"))
                 .withBean(AuditMetaObjectHandler.class)
+                .withBean(ai.neargo.shop.spi.product.ServiceDefinitionPort.class,
+                        () -> new TestServiceDefinitionPort(sql))
                 .withPropertyValues(database.dataSourceProperties())
                 .withPropertyValues("shop.beauty.enabled=true");
     }
@@ -94,6 +96,16 @@ abstract class BeautyExecutionFixture {
                 new TransactionTemplate(context.getBean(
                         ai.neargo.shop.common.config.ModuleDataSources.INDUSTRY_TX_MANAGER,
                         PlatformTransactionManager.class)).execute(status -> body.get()));
+    }
+    /**
+     * 服务定义种子（TDD §2.8 P5）：商品 G 在门店 S 的下一版（第一次是 1），发布于 {@code T0} 前一年；
+     * 每个要求编号一条「MAIN 角色、STAFF 资源、技能 G、时长同服务」的要求。返回版本号（美业字段里的版本号就是它的字符串）。
+     */
+    int definition(int duration, int before, int after, List<String> notes, String... requirementNos) {
+        return TestServiceDefinitionPort.seed(sql, "E", "S", "G", duration, before, after, notes,
+                java.util.Arrays.stream(requirementNos).map(no -> new ai.neargo.shop.spi.product.ServiceDefinitionPort
+                        .Requirement(no, "MAIN", "STAFF", "G", 1, 0, 0, duration, "ANY_QUALIFIED")).toList(),
+                T0.minusYears(1).toInstant(java.time.ZoneOffset.UTC));
     }
     void seed(String table, Object... fields) {
         var values = new LinkedHashMap<String, Object>();

@@ -3,6 +3,7 @@ package ai.neargo.shop.beauty.config;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
 import ai.neargo.shop.beauty.service.impl.ServiceCatalogQueryServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceDefinitions;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
 import org.springframework.beans.factory.ObjectProvider;
@@ -14,15 +15,15 @@ import tools.jackson.databind.ObjectMapper;
 
 /** No fallback catalog facts: absent product/directory authority rejects catalog reads. */
 @Configuration(proxyBeanMethods = false)
+@org.springframework.context.annotation.Import(BeautyServiceDefinitionsConfiguration.class)
 @ConditionalOnBeautyEnabled
 public class BeautyCatalogConfiguration {
     @Bean
     ServiceCatalogQueryService serviceCatalogQueryService(BeautyMappers.StorePolicyMapper policies,
-            BeautyMappers.StorePolicyVersionMapper versions, BeautyMappers.ServiceDefinitionMapper definitions,
-            BeautyMappers.ServiceDefinitionVersionMapper definitionVersions,
+            BeautyMappers.StorePolicyVersionMapper versions, ServiceDefinitions definitions,
             ObjectProvider<ServiceCatalogFactsPort> facts, ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
-        return new ServiceCatalogQueryServiceImpl(policies, versions, definitions, definitionVersions, facts,
+        return new ServiceCatalogQueryServiceImpl(policies, versions, definitions, facts,
                 json, manager);
     }
 }

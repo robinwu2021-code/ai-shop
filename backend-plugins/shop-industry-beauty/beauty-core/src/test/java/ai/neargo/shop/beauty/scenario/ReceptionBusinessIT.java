@@ -126,13 +126,7 @@ class ReceptionBusinessIT extends ReceptionFixture {
                     new CheckInReq(root.appointmentNo(),
                             new ReceptionIdentityProof("cr1_" + "c".repeat(43), null, null), root.revision()),
                                     "ARRIVE");
-            seed("bty_service_definition_version", "definition_no", "D", "definition_version_no", "DV2",
-                    "revision_index", 2, "duration_min_snapshot", 17, "buffer_before_min", 9, "buffer_after_min", 12,
-                    "steps_template", "[]", "notes", "[]", "schema_version", 1, "snapshot_hash", "d".repeat(64));
-            seed("bty_service_requirement", "requirement_no", "REQ2", "definition_version_no", "DV2",
-                    "role_code", "MAIN", "resource_type", "STAFF", "skill_goods_no", "G", "qty", 1,
-                    "sequence_no", 0, "offset_min", 0, "duration_min", 17, "selection_rule", "ANY_QUALIFIED");
-            sql.update("UPDATE bty_service_definition SET current_definition_version_no='DV2',version=2");
+            definition(17, 9, 12, List.of(), "REQ2");
             quotePrice = 5000;
             var changed = assertDoesNotThrow(() -> c.getBean(ReceptionCoordinator.class).reassign("E", "S", "A",
                     root.appointmentNo(), arrived.revision(), List.of(new AppointmentAssignmentReq(0, "REQ",
@@ -141,7 +135,7 @@ class ReceptionBusinessIT extends ReceptionFixture {
             assertThat(changed.getState()).isEqualTo("SUCCEEDED");
             var fresh = appointments.getAppointment("E", "S", "A", root.appointmentNo());
             assertThat(fresh.items()).allSatisfy(item -> {
-                assertThat(item.definitionVersionNo()).isEqualTo("DV");
+                assertThat(item.definitionVersionNo()).isEqualTo("1");
                 assertThat(item.durationMin()).isEqualTo(17); assertThat(item.priceMinor()).isEqualTo(1000);
             });
             assertThat(fresh.assignments().getFirst().startAt()).isEqualTo(start.plusMinutes(57));
@@ -378,10 +372,10 @@ class ReceptionBusinessIT extends ReceptionFixture {
                 assertThatThrownBy(() -> coordinator.reassign("E", "S", "A", root.appointmentNo(),
                         arrived.revision(), desired, null, "IMPLICIT")).isInstanceOf(BizException.class);
             }
-            sql.update("UPDATE bty_service_definition SET status='INACTIVE'");
+            sql.update("UPDATE prd_service_definition SET status='INACTIVE'");
             assertThatThrownBy(() -> coordinator.reassign("E", "S", "A", root.appointmentNo(), arrived.revision(),
                     desired, start, "DISABLED")).isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_service_definition SET status='ACTIVE'");
+            sql.update("UPDATE prd_service_definition SET status='ACTIVE'");
             seed("bty_work_order", "work_order_no", "WO", "store_no", "S", "appointment_no", root.appointmentNo(),
                     "customer_ref", "USR1", "status", "OPEN", "scope_revision", 1, "scope_frozen", false);
             // V9.1：开过工单的预约自己记着工单号，预约侧的护栏看的是这一列
@@ -426,11 +420,7 @@ class ReceptionBusinessIT extends ReceptionFixture {
     }
 
     @Test void replacementBeforeBufferMustAlsoRemainInFuture() {
-        sql.update("UPDATE bty_service_definition_version SET buffer_before_min=10,snapshot_hash=?",
-                IdempotencyScope.requestHash("SKU",
-                        json.writeValueAsString(new PublishServiceDefinitionVersionReq.Duration(17, 10, 4)),
-                        json.writeValueAsString(List.of(new PublishServiceDefinitionVersionReq.Requirement(
-                                "MAIN", "STAFF", "G", 1, 0, 0, 17, "ANY_QUALIFIED")))));
+        sql.update("UPDATE prd_service_definition SET buffer_before_min=10");
         business().run(c -> {
             var root = create(c); login(LoginUser.merchant("A", "operator"));
             var arrived = c.getBean(ReceptionService.class).checkIn("E", "S", "A",

@@ -171,7 +171,7 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                                 "definition-" + sku));
         requirement =
                 jdbc.queryForObject(
-                        "SELECT requirement_no FROM bty_service_requirement WHERE entity_no=?",
+                        "SELECT requirement_no FROM prd_fulfillment_requirement WHERE entity_no=?",
                         String.class,
                         entity);
         var people =

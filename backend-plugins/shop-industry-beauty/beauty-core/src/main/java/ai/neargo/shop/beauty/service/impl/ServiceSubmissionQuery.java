@@ -1,7 +1,5 @@
 package ai.neargo.shop.beauty.service.impl;
 
-import ai.neargo.shop.beauty.entity.BtyServiceDefinition;
-import ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion;
 import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.entity.BtyServiceTask;
 import ai.neargo.shop.beauty.entity.BtyWorkOrder;
@@ -26,8 +24,7 @@ public final class ServiceSubmissionQuery {
     private final BeautyMappers.ServiceTaskMapper tasks;
     private final BeautyMappers.ReceptionOperationMapper receptions;
     private final BeautyMappers.ServiceSubmissionMapper submissions;
-    private final BeautyMappers.ServiceDefinitionMapper definitions;
-    private final BeautyMappers.ServiceDefinitionVersionMapper versions;
+    private final ServiceDefinitions definitions;
 
     public ServiceSubmissionQuery(
             AppointmentPersistence db,
@@ -36,8 +33,7 @@ public final class ServiceSubmissionQuery {
             BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ReceptionOperationMapper receptions,
             BeautyMappers.ServiceSubmissionMapper submissions,
-            BeautyMappers.ServiceDefinitionMapper definitions,
-            BeautyMappers.ServiceDefinitionVersionMapper versions) {
+            ServiceDefinitions definitions) {
         this.db = db;
         this.orders = orders;
         this.contexts = contexts;
@@ -45,7 +41,6 @@ public final class ServiceSubmissionQuery {
         this.receptions = receptions;
         this.submissions = submissions;
         this.definitions = definitions;
-        this.versions = versions;
     }
 
     public record Root(
@@ -149,43 +144,20 @@ public final class ServiceSubmissionQuery {
                                                                 .definitionVersionNo())
                                         && "COUNT".equals(row.getUom())
                                         && row.getQty().compareTo(BigDecimal.ONE) == 0);
+                        // 服务定义归商品域：按任务记下的版本号取那一版，与冻结时的摘要和时长核对
                         var version =
-                                versions.selectOne(
-                                        Wrappers.<BtyServiceDefinitionVersion>lambdaQuery()
-                                                .eq(
-                                                        BtyServiceDefinitionVersion::getTenantNo,
-                                                        "MAIN")
-                                                .eq(
-                                                        BtyServiceDefinitionVersion::getEntityNo,
-                                                        entity)
-                                                .eq(
-                                                        BtyServiceDefinitionVersion
-                                                                ::getDefinitionVersionNo,
-                                                        row.getDefinitionVersionNo()));
+                                definitions.byVersion(
+                                        entity, store, row.getSkuNo(), row.getDefinitionVersionNo());
                         AppointmentPersistence.require(
                                 version != null
-                                        && version.getSchemaVersion() == 1
-                                        && version.getSnapshotHash()
+                                        && version.hash()
                                                 .equals(snapshot.taskSnapshot().definitionHash())
-                                        && version.getDurationMinSnapshot()
+                                        && version.duration().minutes()
                                                 == snapshot.taskSnapshot().durationMin()
-                                        && version.getBufferBeforeMin()
+                                        && version.duration().bufferBeforeMin()
                                                 == snapshot.taskSnapshot().bufferBeforeMin()
-                                        && version.getBufferAfterMin()
+                                        && version.duration().bufferAfterMin()
                                                 == snapshot.taskSnapshot().bufferAfterMin());
-                        var definition =
-                                definitions.selectOne(
-                                        Wrappers.<BtyServiceDefinition>lambdaQuery()
-                                                .eq(BtyServiceDefinition::getTenantNo, "MAIN")
-                                                .eq(BtyServiceDefinition::getEntityNo, entity)
-                                                .eq(BtyServiceDefinition::getStoreNo, store)
-                                                .eq(
-                                                        BtyServiceDefinition::getDefinitionNo,
-                                                        version.getDefinitionNo())
-                                                .eq(
-                                                        BtyServiceDefinition::getSkuNo,
-                                                        row.getSkuNo()));
-                        AppointmentPersistence.require(definition != null);
                     }
                     return new Root(order, context, original, draft, List.copyOf(rows));
                 });

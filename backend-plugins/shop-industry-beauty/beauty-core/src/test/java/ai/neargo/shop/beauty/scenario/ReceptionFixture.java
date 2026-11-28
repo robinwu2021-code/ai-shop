@@ -99,19 +99,8 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
                 "booking_ahead_days", 30, "cancel_rule", "{\"freeCancelBeforeMinutes\":60,"
                         + "\"allowCustomerCancel\":true}", "allowed_modes", "[\"PREPAID_SINGLE\"]",
                 "effective_at", T0.minusYears(1), "schema_version", 1, "snapshot_hash", "a".repeat(64));
-        seed("bty_service_definition", "definition_no", "D", "store_no", "S", "sku_no", "SKU",
-                "current_definition_version_no", "DV", "status", "ACTIVE", "version", 1L);
-        seed("bty_service_definition_version", "definition_no", "D", "definition_version_no", "DV",
-                "revision_index", 1, "duration_min_snapshot", 17, "buffer_before_min", 3, "buffer_after_min", 4,
-                "steps_template", "[{\"stepCode\":\"SERVICE\",\"sequenceNo\":0}]", "notes", "[]",
-                        "schema_version", 1, "snapshot_hash", "b".repeat(64));
-        seed("bty_service_requirement", "requirement_no", "REQ", "definition_version_no", "DV", "role_code", "MAIN",
-                "resource_type", "STAFF", "skill_goods_no", "G", "qty", 1, "sequence_no", 0,
-                "offset_min", 0, "duration_min", 17, "selection_rule", "ANY_QUALIFIED");
-        sql.update("UPDATE bty_service_definition_version SET snapshot_hash=?", IdempotencyScope.requestHash("SKU",
-                json.writeValueAsString(new PublishServiceDefinitionVersionReq.Duration(17, 3, 4)),
-                json.writeValueAsString(List.of(new PublishServiceDefinitionVersionReq.Requirement("MAIN", "STAFF",
-                        "G", 1, 0, 0, 17, "ANY_QUALIFIED")))));
+        // 服务定义归商品域（TDD §2.8 P5）：第 1 版，美业字段里的版本号就是 "1"
+        definition(17, 3, 4, List.of(), "REQ");
         sql.update("UPDATE ind_config_revision SET snapshot_hash=?", IdempotencyScope.requestHash(
                 T0.minusYears(1).atOffset(ZoneOffset.UTC).toString(), "30", "60", "true", "PREPAID_SINGLE"));
     }

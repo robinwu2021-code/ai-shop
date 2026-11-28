@@ -144,7 +144,9 @@ class BeautySchemaMigrationIT {
 
     /** 美业搬到门店交易库定稿表的那几张（TDD §2.6 第 1～3 项），按交易库设计 DDL 建在主库上（交易句柄测试里未单独绑定）。 */
     static final java.util.List<String> TRADE_TABLES =
-            java.util.List.of("ord_appointment", "ord_appointment_item", "ord_appointment_revision");
+            java.util.List.of("ord_appointment", "ord_appointment_item", "ord_appointment_revision",
+                    // 服务定义归商品域（TDD §2.8 P5）：测试版端口 TestServiceDefinitionPort 读写这两张
+                    "prd_service_definition", "prd_fulfillment_requirement");
 
     void tradeTables() {
         try {
@@ -223,7 +225,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         initialize("migrate");
         assertEquals(
-                SEPARATE_INDUSTRY ? 34 : 37, // 美业 30 张 + bty_flyway_history + 交易表 ord_appointment 三张；共用行业库时再加 ind_store_policy、ind_config_revision、ind_assignment
+                SEPARATE_INDUSTRY ? 36 : 39, // 美业 30 张 + bty_flyway_history + 交易表 ord_appointment 三张 + 服务定义两张（§2.8 P5）；共用行业库时再加 ind_store_policy、ind_config_revision、ind_assignment
                 count(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE"
                             + " table_schema=DATABASE()"));

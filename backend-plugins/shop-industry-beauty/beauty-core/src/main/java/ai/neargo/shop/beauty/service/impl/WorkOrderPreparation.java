@@ -10,9 +10,6 @@ import ai.neargo.shop.beauty.dto.WorkOrderTaskSnapshotVO;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentItem;
-import ai.neargo.shop.beauty.entity.BtyServiceDefinition;
-import ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion;
-import ai.neargo.shop.beauty.entity.BtyServiceRequirement;
 import ai.neargo.shop.beauty.entity.BtyStorePolicy;
 import ai.neargo.shop.beauty.entity.BtyStorePolicyVersion;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
@@ -40,17 +37,14 @@ public final class WorkOrderPreparation {
     private final ObjectProvider<ServiceCatalogFactsPort> products;
     private final AppointmentPersistence db;
     private final AppointmentCoordinator appointments;
-    private final BeautyMappers.ServiceDefinitionMapper definitions;
-    private final BeautyMappers.ServiceDefinitionVersionMapper versions;
-    private final BeautyMappers.ServiceRequirementMapper requirements;
+    private final ServiceDefinitions definitions;
     private final BeautyMappers.StorePolicyMapper policies;
     private final BeautyMappers.StorePolicyVersionMapper policyVersions;
     public WorkOrderPreparation(AppointmentPersistence db, AppointmentCoordinator appointments,
-            BeautyMappers.ServiceDefinitionMapper definitions, BeautyMappers.ServiceDefinitionVersionMapper versions,
-            BeautyMappers.ServiceRequirementMapper requirements, BeautyMappers.StorePolicyMapper policies,
+            ServiceDefinitions definitions, BeautyMappers.StorePolicyMapper policies,
             BeautyMappers.StorePolicyVersionMapper policyVersions, ObjectProvider<ServiceCatalogFactsPort> products) {
-        this.db = db; this.appointments = appointments; this.definitions = definitions; this.versions = versions;
-        this.requirements = requirements; this.policies = policies; this.policyVersions = policyVersions;
+        this.db = db; this.appointments = appointments; this.definitions = definitions;
+        this.policies = policies; this.policyVersions = policyVersions;
         this.products = products;
     }
     public PreparedWorkOrderScope fromAppointment(BtyAppointment root) {
@@ -132,50 +126,28 @@ public final class WorkOrderPreparation {
         return new PreparedWorkOrderScope(identity, new FrozenAppointmentScope(snapshot.items(), frozen,
                 root.getPolicyVersionNo(), cancel, heads, evidence), snapshot.assignments());
     }
+    /**
+     * 冻结一个预约项目的服务定义（TDD-美业域迁移新库 §2.8 P5）：按项目记下的版本号向商品域取那一版，
+     * 并记下这个 SKU 现在的版本，开单时按版本号做乐观核对（{@link #verifyLocked}）。
+     */
     private WorkOrderTaskSnapshotVO loadDefinition(ResourceBookingPort.Scope scope, AppointmentPlanItemVO item,
             List<ObservedHead> heads) {
-            var version = versions.selectOne(Wrappers.<BtyServiceDefinitionVersion>lambdaQuery()
-                    .eq(BtyServiceDefinitionVersion::getTenantNo, scope.tenantNo())
-                    .eq(BtyServiceDefinitionVersion::getEntityNo, scope.entityNo())
-                    .eq(BtyServiceDefinitionVersion::getDefinitionVersionNo, item.definitionVersionNo()));
-            AppointmentPersistence.require(version != null && version.getSchemaVersion() == 1 && item.qty() == 1
-                    && version.getDurationMinSnapshot() == item.durationMin()
+            var version = definitions.byVersion(scope.entityNo(), scope.storeNo(), item.skuNo(),
+                    item.definitionVersionNo());
+            AppointmentPersistence.require(version != null && item.qty() == 1
+                    && item.goodsNo().equals(version.definitionNo())
+                    && version.duration().minutes() == item.durationMin()
                     && (item.serviceStartAt() == null || item.serviceEndAt().equals(
                             item.serviceStartAt().plusMinutes(item.durationMin()))));
-            var definition = definitions.selectOne(Wrappers.<BtyServiceDefinition>lambdaQuery()
-                    .eq(BtyServiceDefinition::getTenantNo, scope.tenantNo())
-                    .eq(BtyServiceDefinition::getEntityNo, scope.entityNo())
-                    .eq(BtyServiceDefinition::getStoreNo, scope.storeNo())
-                    .eq(BtyServiceDefinition::getDefinitionNo, version.getDefinitionNo())
-                    .eq(BtyServiceDefinition::getSkuNo, item.skuNo()));
-            AppointmentPersistence.require(definition != null && "ACTIVE".equals(definition.getStatus()));
-            heads.add(new ObservedHead("DEFINITION", definition.getDefinitionNo(), definition.getVersion(),
-                    definition.getCurrentDefinitionVersionNo()));
-            var rules = requirements.selectList(Wrappers.<BtyServiceRequirement>lambdaQuery()
-                    .eq(BtyServiceRequirement::getTenantNo, scope.tenantNo())
-                    .eq(BtyServiceRequirement::getEntityNo, scope.entityNo())
-                    .eq(BtyServiceRequirement::getDefinitionVersionNo, item.definitionVersionNo())
-                    .orderByAsc(BtyServiceRequirement::getSequenceNo, BtyServiceRequirement::getRequirementNo));
-            AppointmentPersistence.require(!rules.isEmpty() && rules.size() <= 30);
-            var duration = new PublishServiceDefinitionVersionReq.Duration(version.getDurationMinSnapshot(),
-                    version.getBufferBeforeMin(), version.getBufferAfterMin());
-            var inputs = rules.stream().map(r -> new PublishServiceDefinitionVersionReq.Requirement(r.getRoleCode(),
-                    r.getResourceType(), r.getSkillGoodsNo(), r.getQty(), r.getSequenceNo(), r.getOffsetMin(),
-                    r.getDurationMin(), r.getSelectionRule())).sorted(Comparator
-                    .comparing(PublishServiceDefinitionVersionReq.Requirement::sequenceNo)
-                    .thenComparing(PublishServiceDefinitionVersionReq.Requirement::roleCode)
-                    .thenComparing(PublishServiceDefinitionVersionReq.Requirement::resourceType)).toList();
-            var notes = List.of(db.json.readValue(version.getNotes(), String[].class));
-            var steps = List.of(db.json.readValue(version.getStepsTemplate(), WorkOrderStepTemplateVO[].class));
-            String hash = IdempotencyScope.requestHash(item.skuNo(), db.json.writeValueAsString(duration),
-                    db.json.writeValueAsString(inputs));
-            if (!notes.isEmpty()) { hash = IdempotencyScope.requestHash("BEAUTY_DEFINITION_NOTES_V1", hash,
-                    db.json.writeValueAsString(notes)); }
-            AppointmentPersistence.require(hash.equals(version.getSnapshotHash())
-                    && steps.equals(List.of(new WorkOrderStepTemplateVO("SERVICE", 0))));
-            return new WorkOrderTaskSnapshotVO(1, item.goodsNo(), item.skuNo(), item.definitionVersionNo(), hash,
-                    item.durationMin(), version.getBufferBeforeMin(), version.getBufferAfterMin(), rules.stream()
-                            .map(WorkOrderPreparation::requirement).toList(), steps, notes);
+            var current = definitions.current(scope.entityNo(), scope.storeNo(), item.skuNo());
+            AppointmentPersistence.require(current != null && current.active());
+            heads.add(new ObservedHead("DEFINITION", item.skuNo(), current.revision(), current.definitionVersionNo()));
+            var rules = version.requirements();
+            AppointmentPersistence.require(!rules.isEmpty() && rules.size() <= 30
+                    && version.steps().equals(ServiceDefinitions.STEPS));
+            return new WorkOrderTaskSnapshotVO(1, item.goodsNo(), item.skuNo(), item.definitionVersionNo(),
+                    version.hash(), item.durationMin(), version.duration().bufferBeforeMin(),
+                    version.duration().bufferAfterMin(), rules, version.steps(), version.notes());
     }
     /** No resource is selected: real directory facts and published local definitions freeze an unassigned scope. */
     public PreparedWorkOrderScope unassigned(String entity, String store, VerifiedIdentity identity,
@@ -214,15 +186,11 @@ public final class WorkOrderPreparation {
             List<ObservedHead> heads = new ArrayList<>();
             for (int i = 0; i < requested.size(); i++) {
                 var product = facts.get(i);
-                var head = definitions.selectOne(Wrappers.<BtyServiceDefinition>lambdaQuery()
-                        .eq(BtyServiceDefinition::getTenantNo, scope.tenantNo())
-                        .eq(BtyServiceDefinition::getEntityNo, entity).eq(BtyServiceDefinition::getStoreNo, store)
-                        .eq(BtyServiceDefinition::getSkuNo, product.skuNo())
-                        .eq(BtyServiceDefinition::getStatus, "ACTIVE"));
-                AppointmentPersistence.require(head != null && head.getCurrentDefinitionVersionNo() != null);
+                var head = definitions.current(entity, store, product.skuNo());
+                AppointmentPersistence.require(head != null && head.active());
                 for (int n = 0; n < requested.get(i).qty(); n++) {
                     var item = new AppointmentPlanItemVO(null, product.skuNo(), product.goodsNo(),
-                            head.getCurrentDefinitionVersionNo(), 1, product.priceMinor(), product.durationMin(),
+                            head.definitionVersionNo(), 1, product.priceMinor(), product.durationMin(),
                             null, null, product.goodsRevision(), product.skuRevision());
                     items.add(item); frozen.add(loadDefinition(scope, item, heads));
                 }
@@ -261,26 +229,21 @@ public final class WorkOrderPreparation {
         AppointmentPersistence.require(hash.equals(policy.getSnapshotHash()));
         return cancel;
     }
-    /** A new CREATE cannot acquire resources under a definition or policy that is no longer selected locally. */
+    /**
+     * A new CREATE cannot acquire resources under a definition or policy that is no longer selected.
+     * 服务定义归商品域、不能在这个事务里加锁：按版本号做乐观核对（各 SKU 现在的版本仍是预约选中的那一版）。
+     */
     public void verifyCreateLocked(AppointmentMatching.Matched match) {
         var scope = match.scope();
-        var selected = new TreeMap<String, AppointmentPlanItemVO>();
+        var selected = new TreeMap<String, String>();
         for (var item : match.snapshot().items()) {
-            var version = versions.selectOne(Wrappers.<BtyServiceDefinitionVersion>lambdaQuery()
-                    .eq(BtyServiceDefinitionVersion::getTenantNo, scope.tenantNo())
-                    .eq(BtyServiceDefinitionVersion::getEntityNo, scope.entityNo())
-                    .eq(BtyServiceDefinitionVersion::getDefinitionVersionNo, item.definitionVersionNo()));
-            AppointmentPersistence.require(version != null);
-            var previous = selected.putIfAbsent(version.getDefinitionNo(), item);
-            AppointmentPersistence.require(previous == null
-                    || previous.definitionVersionNo().equals(item.definitionVersionNo()));
+            var previous = selected.putIfAbsent(item.skuNo(), item.definitionVersionNo());
+            AppointmentPersistence.require(previous == null || previous.equals(item.definitionVersionNo()));
         }
         for (var entry : selected.entrySet()) {
-            var head = definitions.selectScopedForUpdate(scope.entityNo(), scope.storeNo(), entry.getKey());
-            var item = entry.getValue();
-            AppointmentPersistence.require(head != null && "ACTIVE".equals(head.getStatus())
-                    && item.skuNo().equals(head.getSkuNo())
-                    && item.definitionVersionNo().equals(head.getCurrentDefinitionVersionNo()));
+            var current = definitions.current(scope.entityNo(), scope.storeNo(), entry.getKey());
+            AppointmentPersistence.require(current != null && current.active()
+                    && entry.getValue().equals(current.definitionVersionNo()));
         }
         var version = policyVersions.selectOne(BtyStorePolicyVersion.beautyQuery()
                 .eq(BtyStorePolicyVersion::getTenantNo, scope.tenantNo())
@@ -296,11 +259,11 @@ public final class WorkOrderPreparation {
         for (var observed : scope.frozen().observedHeads().stream().distinct()
                 .sorted(Comparator.comparing(ObservedHead::kind).thenComparing(ObservedHead::businessNo)).toList()) {
             if ("DEFINITION".equals(observed.kind())) {
-                var row = definitions.selectScopedForUpdate(binding.entityNo(), binding.storeNo(),
-                        observed.businessNo());
-                AppointmentPersistence.require(row != null && row.getVersion() == observed.version()
-                        && "ACTIVE".equals(row.getStatus())
-                        && Objects.equals(row.getCurrentDefinitionVersionNo(), observed.selectedVersionNo()));
+                // 服务定义归商品域：按 SKU 现在的版本号乐观核对（businessNo 是 SKU 号）
+                var current = definitions.current(binding.entityNo(), binding.storeNo(), observed.businessNo());
+                AppointmentPersistence.require(current != null && current.revision() == observed.version()
+                        && current.active()
+                        && Objects.equals(current.definitionVersionNo(), observed.selectedVersionNo()));
             } else {
                 var row = policyHead(binding.entityNo(), binding.storeNo(), observed.businessNo());
                 AppointmentPersistence.require(row != null && row.getVersion() == observed.version()
@@ -317,10 +280,5 @@ public final class WorkOrderPreparation {
         return policies.selectOne(BtyStorePolicy.beautyQuery().eq(BtyStorePolicy::getTenantNo, "MAIN")
                 .eq(BtyStorePolicy::getEntityNo, entity).eq(BtyStorePolicy::getStoreNo, store)
                 .eq(BtyStorePolicy::getPolicyNo, policyNo));
-    }
-    static WorkOrderRequirementVO requirement(BtyServiceRequirement r) {
-        return new WorkOrderRequirementVO(r.getRequirementNo(), r.getRoleCode(), r.getResourceType(),
-                r.getSkillGoodsNo(), r.getQty(), r.getSequenceNo(), r.getOffsetMin(), r.getDurationMin(),
-                        r.getSelectionRule());
     }
 }

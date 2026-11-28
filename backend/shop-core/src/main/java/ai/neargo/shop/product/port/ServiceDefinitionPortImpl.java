@@ -60,29 +60,39 @@ public class ServiceDefinitionPortImpl implements ServiceDefinitionPort {
         return DataScopeContext.executeWithoutScope(() -> {
             var product = services.resolve(command.entityNo(), command.storeNo(), command.skuNo(), true).goods();
             String goodsNo = product.getGoodsNo();
-            String rowSku = command.skuOverride() ? command.skuNo() : DEFAULT_SKU;
-            if (command.sourceRef() != null) {
-                var replay = definitions.selectOne(Wrappers.<PrdServiceDefinition>lambdaQuery()
-                        .eq(PrdServiceDefinition::getTenantNo, "MAIN").eq(PrdServiceDefinition::getGoodsNo, goodsNo)
-                        .eq(PrdServiceDefinition::getSourceRef, command.sourceRef())
-                        .eq(PrdServiceDefinition::getSkuNo, rowSku));
-                if (replay != null) { return view(product, replay.getDefinitionVersion(), rowSku); }
-            }
             int current = definitions.currentVersion(goodsNo);
+            boolean override = command.skuOverride() != null ? command.skuOverride()
+                    : current > 0 && services.skuCount(command.entityNo(), goodsNo) > 1;
+            String rowSku = override ? command.skuNo() : DEFAULT_SKU;
+            // 按 SKU 发布（skuOverride 为空）的回答是这个 SKU 合并后的定义；点名默认行或覆盖行的回答是那一行
+            String answerSku = command.skuOverride() == null ? command.skuNo() : rowSku;
+            if (command.sourceRef() != null) {
+                // 一个版本的各行共用操作号：按操作号找到版本即可（重放时「写默认行还是覆盖行」可能已因版本变化而不同）
+                var replay = definitions.selectList(Wrappers.<PrdServiceDefinition>lambdaQuery()
+                        .eq(PrdServiceDefinition::getTenantNo, "MAIN").eq(PrdServiceDefinition::getGoodsNo, goodsNo)
+                        .eq(PrdServiceDefinition::getSourceRef, command.sourceRef()).last("LIMIT 1"));
+                if (!replay.isEmpty()) {
+                    return view(product, replay.get(0).getDefinitionVersion(), answerSku);
+                }
+            }
             if (command.expectedVersion() != current) { throw BizException.of(ErrorCode.CONFLICT); }
             List<PrdServiceDefinition> previous = current == 0 ? List.of() : definitions.rows(goodsNo, current);
-            if (command.skuOverride() && previous.stream().noneMatch(row -> row.getSkuNo().isEmpty())) {
+            if (override && previous.stream().noneMatch(row -> row.getSkuNo().isEmpty())) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
             int next = current + 1;
             var now = LocalDateTime.now(ZoneOffset.UTC);
+            // 不带到新版本的行：这次写的那一行；按 SKU 发布而写了默认行时，还有这个 SKU 自己的旧覆盖行
+            // （只剩它一个 SKU 时），否则它仍取旧覆盖行，这次发布对它不生效、商品时长却镜像成新的默认值
+            java.util.Set<String> replaced = command.skuOverride() == null && !override
+                    ? java.util.Set.of(rowSku, command.skuNo()) : java.util.Set.of(rowSku);
             for (var row : previous) {
-                if (!row.getSkuNo().equals(rowSku)) { definitions.insert(carry(row, next, command, now)); }
+                if (!replaced.contains(row.getSkuNo())) { definitions.insert(carry(row, next, command, now)); }
             }
             definitions.insert(row(command, product, rowSku, next, now));
             if (current > 0) {
                 for (var old : requirements.ofDefinition(goodsNo, current)) {
-                    if (!skuOf(old).equals(rowSku)) { requirements.insert(carry(old, next)); }
+                    if (!replaced.contains(skuOf(old))) { requirements.insert(carry(old, next)); }
                 }
             }
             if (command.requirements() != null) {
@@ -90,14 +100,14 @@ public class ServiceDefinitionPortImpl implements ServiceDefinitionPort {
                     requirements.insert(requirement(input, product, rowSku, next));
                 }
             }
-            if (!command.skuOverride()) {
+            if (!override) {
                 // 时长的镜像：只改这一列，不动 version（发布不让商家手上的草稿提示「有人中途改过」）
                 goods.update(null, Wrappers.<PrdGoods>lambdaUpdate()
                         .set(PrdGoods::getDurationMin, command.timing().durationMin())
                         .eq(PrdGoods::getTenantNo, "MAIN").eq(PrdGoods::getEntityNo, command.entityNo())
                         .eq(PrdGoods::getGoodsNo, goodsNo));
             }
-            return view(product, next, rowSku);
+            return view(product, next, answerSku);
         });
     }
 
@@ -161,7 +171,7 @@ public class ServiceDefinitionPortImpl implements ServiceDefinitionPort {
                         Step[].class)),
                 List.of(json.readValue(row.getNotes() != null ? row.getNotes() : orEmpty(base.getNotes()),
                         String[].class)),
-                applied.stream().map(r -> new Requirement(r.getRoleCode(), r.getResourceType(), r.getSkillGoodsNo(),
+                applied.stream().map(r -> new Requirement(r.getRequirementNo(), r.getRoleCode(), r.getResourceType(), r.getSkillGoodsNo(),
                         r.getQty(), r.getSequenceNo(), r.getOffsetMin(), r.getDurationMin(), r.getSelectionRule()))
                         .toList(),
                 row.getStatus(), row.getSnapshotHash(), row.getPublishedAt().toInstant(ZoneOffset.UTC));
@@ -181,7 +191,7 @@ public class ServiceDefinitionPortImpl implements ServiceDefinitionPort {
                 || timing.bufferAfterMin() < 0 || command.expectedVersion() < 0
                 || command.sourceRef() != null && (command.sourceRef().isBlank() || command.sourceRef().length() > 64)
                 || command.actor() != null && command.actor().length() > 64
-                || !command.skuOverride() && (command.steps() == null || command.notes() == null)
+                || !Boolean.TRUE.equals(command.skuOverride()) && (command.steps() == null || command.notes() == null)
                 || command.requirements() != null && command.requirements().stream().anyMatch(r -> r == null
                         || r.qty() < 1 || r.roleCode() == null && r.resourceType() == null)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -206,7 +216,9 @@ public class ServiceDefinitionPortImpl implements ServiceDefinitionPort {
         content.put("timing", command.timing());
         content.put("steps", command.steps());
         content.put("notes", command.notes());
-        content.put("requirements", command.requirements());
+        content.put("requirements", command.requirements() == null ? null : command.requirements().stream()
+                .map(r -> new Requirement(null, r.roleCode(), r.resourceType(), r.skillGoodsNo(), r.qty(),
+                        r.sequenceNo(), r.offsetMin(), r.durationMin(), r.selectionRule())).toList());
         row.setSnapshotHash(sha256(json.writeValueAsString(content)));
         row.setStatus(ACTIVE);
         stamp(row, command, now);

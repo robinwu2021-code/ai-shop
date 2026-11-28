@@ -703,7 +703,7 @@ class ServiceSubmissionIT extends SourceFixture {
                             var root = open(context, 1, "OPEN");
                             var service = context.getBean(ServiceSubmissionService.class);
                             var request = selection(root, root.taskNos().getFirst());
-                            sql.update("UPDATE bty_service_definition SET store_no='OTHER'");
+                            sql.update("UPDATE prd_service_definition SET store_no='OTHER'");
                             Assertions.assertThrows(
                                     BizException.class,
                                     () ->
@@ -714,7 +714,7 @@ class ServiceSubmissionIT extends SourceFixture {
                                                     root.workOrderNo(),
                                                     request,
                                                     "KEY"));
-                            sql.update("UPDATE bty_service_definition SET store_no='S'");
+                            sql.update("UPDATE prd_service_definition SET store_no='S'");
                             String identity = sql.queryForObject("SELECT identity_kind FROM bty_work_order", String.class);
                             sql.update("UPDATE bty_work_order SET identity_kind=NULL"); // 没有上下文
                             Assertions.assertThrows(

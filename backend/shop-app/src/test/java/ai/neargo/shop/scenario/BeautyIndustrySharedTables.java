@@ -21,7 +21,9 @@ final class BeautyIndustrySharedTables {
 
     static void create(JdbcTemplate sql) {
         create(sql, DESIGN, "ind_store_policy", "ind_config_revision");
-        create(sql, TRADE, "ord_appointment", "ord_appointment_item", "ord_appointment_revision");
+        create(sql, TRADE, "ord_appointment", "ord_appointment_item", "ord_appointment_revision",
+                // 服务定义归商品域（TDD §2.8 P5）：宿主测试里商品句柄仍是主库，按交易库设计 DDL 补这两张
+                "prd_service_definition", "prd_fulfillment_requirement");
     }
 
     private static void create(JdbcTemplate sql, Path design, String... tables) {

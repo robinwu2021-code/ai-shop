@@ -129,8 +129,19 @@ public class ManualExecutionSourceIT {
         assertThat(new ServiceExecutionSchemaVerifier(source).installation())
                 .isEqualTo(ServiceExecutionSchemaVerifier.Installation.INSTALLED);
         sql = new JdbcTemplate(source);
+        // 交易库定稿表（预约三张、服务定义两张，TDD §2.6 / §2.8 P5）
+        ai.neargo.shop.beauty.scenario.TestServiceDefinitionPort.tradeTables(sql);
         authFixture();
         localSourceFixture();
+    }
+
+    /** 服务定义摘要：与 ServiceDefinitions 同一个公式（SKU、时长、要求）。 */
+    private String definitionHash() {
+        return IdempotencyScope.requestHash("SKU",
+                json.writeValueAsString(new ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq.Duration(20, 0,
+                        0)),
+                json.writeValueAsString(List.of(new ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq
+                        .Requirement("MAIN", "STAFF", "G", 1, 0, 0, 20, "ANY_QUALIFIED"))));
     }
 
     private static String password() { return System.getenv().getOrDefault("BEAUTY_NATIVE_MYSQL_PASSWORD", ""); }
@@ -147,6 +158,8 @@ public class ManualExecutionSourceIT {
                 actual("ai.neargo.shop.merchant.port.MerchantOperatorAccessPortImpl"),
                 actual("ai.neargo.shop.merchant.port.PersonnelOperatorFactsPortImpl"))
                 .withBean(AuditMetaObjectHandler.class).withBean(ObjectMapper.class, () -> json)
+                .withBean(ai.neargo.shop.spi.product.ServiceDefinitionPort.class,
+                        () -> new ai.neargo.shop.beauty.scenario.TestServiceDefinitionPort(sql))
                 .withBean(Clock.class, () -> CLOCK)
                 .withPropertyValues("shop.beauty.enabled=true", "spring.datasource.url=" + source.getUrl(),
                         "spring.datasource.username=root", "spring.datasource.password=" + password());
@@ -177,8 +190,8 @@ public class ManualExecutionSourceIT {
                 tasks, starts, bindings, json, CLOCK);
         var query = new ServiceSubmissionQuery(db, orders, c.getBean(BeautyMappers.WorkOrderMapper.class), tasks,
                 c.getBean(BeautyMappers.ReceptionOperationMapper.class), starts,
-                c.getBean(BeautyMappers.ServiceDefinitionMapper.class),
-                c.getBean(BeautyMappers.ServiceDefinitionVersionMapper.class));
+                new ai.neargo.shop.beauty.service.impl.ServiceDefinitions(
+                        c.getBeanProvider(ai.neargo.shop.spi.product.ServiceDefinitionPort.class), json));
         var service = new ServiceTaskExecutionServiceImpl(db, query,
                 new ServiceExecutionAccess(c.getBeanProvider(PersonnelOperatorFactsPort.class), CLOCK), actualSchema,
                 observations, guards, orders, tasks, bindings, fences, starts,
@@ -671,10 +684,10 @@ public class ManualExecutionSourceIT {
         var start = AT.atOffset(ZoneOffset.UTC).plusDays(1);
         var end = start.plusMinutes(20);
         var assignment = new AppointmentAssignmentVO("ITEM", "REQ", "P", "RESOURCE", start, end);
-        var definition = new WorkOrderTaskSnapshotVO(1, "G", "SKU", "DV", HASH, 20, 0, 0,
+        var definition = new WorkOrderTaskSnapshotVO(1, "G", "SKU", "1", definitionHash(), 20, 0, 0,
                 List.of(new WorkOrderRequirementVO("REQ", "MAIN", "STAFF", "G", 1, 0, 0, 20, "ANY_QUALIFIED")),
                 List.of(), List.of());
-        var item = new AppointmentPlanItemVO("ITEM", "SKU", "G", "DV", 1, 0, 20, start, end, 1L, 1L);
+        var item = new AppointmentPlanItemVO("ITEM", "SKU", "G", "1", 1, 0, 20, start, end, 1L, 1L);
         bookingPlan = ResourcePlanContract.encode(List.of(new ResourcePlanContract.Demand("RESOURCE", "ITEM:REQ:0", 1,
                 List.of(new ResourcePlanContract.Interval(start.toInstant(), end.toInstant())))),
                 List.of(new ResourcePlanContract.Qualification("RESOURCE", "ITEM:REQ:0", "G", "SKU", true)));
@@ -686,23 +699,21 @@ public class ManualExecutionSourceIT {
         var evidence = new HoldEvidence(ownerBinding, hold, 1,
                 IdempotencyScope.requestHash("PREVIEW", "HOLD", snapshot));
         var frozen = new FrozenAppointmentScope(List.of(item), List.of(definition), "PV", null, List.of(), evidence);
-        var reference = new WorkOrderCoordinator.TaskReference("TASK", "SKU", "DV", BigDecimal.ONE, "COUNT");
+        var reference = new WorkOrderCoordinator.TaskReference("TASK", "SKU", "1", BigDecimal.ONE, "COUNT");
         var scope = new WorkOrderCoordinator.WorkOrderScopeSnapshot(1, 1, HASH, "PV", null, frozen,
                 List.of(assignment), List.of(reference));
         var open = new WorkOrderCoordinator.OpenSubmissionDraft(1, 1, HASH, new VerifiedIdentity("USER", "BUYER"),
                 List.of(reference));
         executionSnapshot = json.writeValueAsString(new WorkOrderCoordinator.TaskExecutionSnapshot(1, "ASSIGNED",
                 definition, List.of(assignment), start, end));
-        seed("bty_service_definition", "definition_no", "DEF", "store_no", "S", "sku_no", "SKU",
-                "current_definition_version_no", "DV", "status", "ACTIVE");
-        seed("bty_service_definition_version", "definition_no", "DEF", "definition_version_no", "DV",
-                "revision_index", 1, "duration_min_snapshot", 20, "buffer_before_min", 0, "buffer_after_min", 0,
-                "steps_template", "[]", "notes", "[]", "schema_version", 1, "snapshot_hash", HASH);
+        ai.neargo.shop.beauty.scenario.TestServiceDefinitionPort.seed(sql, "E", "S", "G", 20, 0, 0, List.of(),
+                List.of(new ai.neargo.shop.spi.product.ServiceDefinitionPort.Requirement("REQ", "MAIN", "STAFF", "G", 1,
+                        0, 0, 20, "ANY_QUALIFIED")), AT.minusSeconds(3600));
         seed("ord_appointment", "appointment_no", "APPOINTMENT", "store_no", "S", "source", "PHONE",
                 "status", "CHECKED_IN", "start_at", start.toLocalDateTime(), "end_at", end.toLocalDateTime(),
                 "timezone", "UTC", "hold_no", "HOLD", "policy_version_no", "PV", "customer_ref", "BUYER");
         seed("ord_appointment_item", "appointment_item_no", "ITEM", "appointment_no", "APPOINTMENT", "sku_no",
-                "SKU", "definition_version_no", "DV", "qty", 1, "uom", "COUNT", "sequence_no", 0,
+                "SKU", "definition_version_no", "1", "qty", 1, "uom", "COUNT", "sequence_no", 0,
                 "execution_snapshot", "{}");
         seed("bty_appointment_assignment", "planned_assignment_no", "PA", "appointment_item_no", "ITEM",
                 "appointment_revision", 1, "requirement_no", "REQ", "personnel_no", "P", "resource_no", "RESOURCE",
@@ -729,7 +740,7 @@ public class ManualExecutionSourceIT {
         seed("bty_work_order", "work_order_no", "WO", "store_no", "S", "appointment_no", "APPOINTMENT",
                 "customer_ref", "USER:BUYER", "status", "OPEN", "scope_revision", 1, "scope_frozen", 0);
         seed("bty_service_task", "task_no", "TASK", "work_order_no", "WO", "scope_revision", 1, "sku_no", "SKU",
-                "definition_version_no", "DV", "appointment_item_no", "ITEM", "qty", 1, "done_qty", 0,
+                "definition_version_no", "1", "appointment_item_no", "ITEM", "qty", 1, "done_qty", 0,
                 "voided_qty", 0, "uom", "COUNT", "status", "PENDING", "binding_revision", 1,
                 "execution_snapshot", executionSnapshot);
         // 工单上下文在工单行上（B-3）
@@ -793,7 +804,7 @@ public class ManualExecutionSourceIT {
         var definitions = new ArrayList<>(original.frozen().definitions()); definitions.add(definitions.getFirst());
         var frozen = new FrozenAppointmentScope(items, definitions, "PV", null, List.of(), evidence);
         var refs = new ArrayList<>(original.taskRefs());
-        refs.add(new WorkOrderCoordinator.TaskReference("TASK2", "SKU", "DV", BigDecimal.ONE, "COUNT"));
+        refs.add(new WorkOrderCoordinator.TaskReference("TASK2", "SKU", "1", BigDecimal.ONE, "COUNT"));
         var scope = new WorkOrderCoordinator.WorkOrderScopeSnapshot(1, 1, HASH, "PV", null, frozen, assignments, refs);
         var draft = new WorkOrderCoordinator.OpenSubmissionDraft(1, 1, HASH, new VerifiedIdentity("USER", "BUYER"), refs);
         sql.update("UPDATE bty_work_order SET frozen_scope=?", json.writeValueAsString(scope));
@@ -809,14 +820,14 @@ public class ManualExecutionSourceIT {
         sql.update("UPDATE bty_appointment_operation SET accept_payload=?,receipt=?", json.writeValueAsString(accept),
                 json.writeValueAsString(receipt));
         seed("ord_appointment_item", "appointment_item_no", "ITEM2", "appointment_no", "APPOINTMENT", "sku_no",
-                "SKU", "definition_version_no", "DV", "qty", 1, "uom", "COUNT", "sequence_no", 1,
+                "SKU", "definition_version_no", "1", "qty", 1, "uom", "COUNT", "sequence_no", 1,
                 "execution_snapshot", "{}");
         seed("bty_appointment_assignment", "planned_assignment_no", "PA2", "appointment_item_no", "ITEM2",
                 "appointment_revision", 1, "requirement_no", "REQ", "personnel_no", "P", "resource_no", "RESOURCE",
                 "hold_no", "HOLD", "start_at", assignment.startAt().toLocalDateTime(), "end_at",
                 assignment.endAt().toLocalDateTime(), "skill_snapshot", "{}");
         seed("bty_service_task", "task_no", "TASK2", "work_order_no", "WO", "scope_revision", 1, "sku_no", "SKU",
-                "definition_version_no", "DV", "appointment_item_no", "ITEM2", "qty", 1, "done_qty", 0,
+                "definition_version_no", "1", "appointment_item_no", "ITEM2", "qty", 1, "done_qty", 0,
                 "voided_qty", 0, "uom", "COUNT", "status", "PENDING", "binding_revision", 1,
                 "execution_snapshot", json.writeValueAsString(new WorkOrderCoordinator.TaskExecutionSnapshot(1, "ASSIGNED",
                         definitions.getFirst(), List.of(assignment), assignment.startAt(), assignment.endAt())));

@@ -49,6 +49,7 @@ import java.time.Clock;
  * separate.
  */
 @Configuration(proxyBeanMethods = false)
+@org.springframework.context.annotation.Import(BeautyServiceDefinitionsConfiguration.class)
 @ConditionalOnBeautyEnabled
 public class BeautySourceConfiguration {
     @Bean
@@ -172,10 +173,9 @@ public class BeautySourceConfiguration {
             BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ReceptionOperationMapper receptions,
             BeautyMappers.ServiceSubmissionMapper submissions,
-            BeautyMappers.ServiceDefinitionMapper definitions,
-            BeautyMappers.ServiceDefinitionVersionMapper versions) {
+            ai.neargo.shop.beauty.service.impl.ServiceDefinitions definitions) {
         return new ServiceSubmissionQuery(
-                db, orders, contexts, tasks, receptions, submissions, definitions, versions);
+                db, orders, contexts, tasks, receptions, submissions, definitions);
     }
 
     @Bean

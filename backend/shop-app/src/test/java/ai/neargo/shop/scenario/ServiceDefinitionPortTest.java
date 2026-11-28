@@ -46,8 +46,8 @@ import tools.jackson.databind.json.JsonMapper;
  */
 class ServiceDefinitionPortTest {
     private static final List<Step> STEPS = List.of(new Step("SERVICE", 0));
-    private static final Requirement THERAPIST = new Requirement("THERAPIST", null, "G", 1, 0, 0, null, "ANY_QUALIFIED");
-    private static final Requirement BED = new Requirement(null, "BED", null, 1, 1, 0, null, "ANY_QUALIFIED");
+    private static final Requirement THERAPIST = new Requirement(null, "THERAPIST", null, "G", 1, 0, 0, null, "ANY_QUALIFIED");
+    private static final Requirement BED = new Requirement(null, null, "BED", null, 1, 1, 0, null, "ANY_QUALIFIED");
 
     record Ports(ServiceDefinitionPort definitions, ServiceProductFactsPortImpl facts, JdbcTemplate sql,
             ServiceDefinitionMapper mapper, GoodsMapper goods) { }
@@ -109,7 +109,7 @@ class ServiceDefinitionPortTest {
             assertThat(published.definitionVersion()).isEqualTo(1);
             assertThat(published.skuNo()).isEqualTo(ServiceDefinitionPort.DEFAULT_SKU);
             assertThat(published.timing()).isEqualTo(new Timing(60, 5, 10));
-            assertThat(published.requirements()).containsExactly(THERAPIST, BED);
+            assertThat(plain(published.requirements())).containsExactly(THERAPIST, BED);
             assertThat(published.status()).isEqualTo(ServiceDefinitionPort.ACTIVE);
             assertThat(published.snapshotHash()).hasSize(64);
             assertThat(sql.queryForMap("SELECT duration_min, version FROM prd_goods WHERE goods_no='G'"))
@@ -163,11 +163,11 @@ class ServiceDefinitionPortTest {
             assertThat(s2.timing()).isEqualTo(new Timing(90, 0, 15));
             assertThat(s2.steps()).isEqualTo(STEPS);
             assertThat(s2.notes()).containsExactly("空腹勿做");
-            assertThat(s2.requirements()).containsExactly(BED);
+            assertThat(plain(s2.requirements())).containsExactly(BED);
             var s1 = p.definitions().current("E", "S", "S1");
             assertThat(s1.definitionVersion()).isEqualTo(2);
             assertThat(s1.override()).isFalse();
-            assertThat(s1.requirements()).containsExactly(THERAPIST, BED);
+            assertThat(plain(s1.requirements())).containsExactly(THERAPIST, BED);
             assertThat(sql.queryForObject("SELECT duration_min FROM prd_goods WHERE goods_no='G'", Integer.class))
                     .as("覆盖行不改商品时长").isEqualTo(60);
             assertThat(p.facts().get("E", "S", "S2").durationMin()).isEqualTo(90);
@@ -179,7 +179,7 @@ class ServiceDefinitionPortTest {
             var carried = p.definitions().current("E", "S", "S2");
             assertThat(carried.definitionVersion()).isEqualTo(3);
             assertThat(carried.timing().durationMin()).isEqualTo(90);
-            assertThat(carried.requirements()).containsExactly(BED);
+            assertThat(plain(carried.requirements())).containsExactly(BED);
             assertThat(p.definitions().list("E", "S", Instant.now().plusSeconds(1)))
                     .extracting(ServiceDefinitionPort.Definition::skuNo).containsExactly("", "S2");
         });
@@ -223,6 +223,54 @@ class ServiceDefinitionPortTest {
                 throw new AssertionError(e);
             }
         });
+    }
+
+    /** 去掉读出时才有的要求编号，便于与发布的输入比较。 */
+    private static List<Requirement> plain(List<Requirement> requirements) {
+        assertThat(requirements).allSatisfy(r -> assertThat(r.requirementNo()).startsWith("PFQ"));
+        return requirements.stream().map(r -> new Requirement(null, r.roleCode(), r.resourceType(), r.skillGoodsNo(),
+                r.qty(), r.sequenceNo(), r.offsetMin(), r.durationMin(), r.selectionRule())).toList();
+    }
+
+    @Test
+    void perSkuPublishLetsProductChooseDefaultOrOverride() {
+        run((p, sql) -> {
+            var first = p.definitions().publish(perSku("S1", 0, 60, "A"));
+            assertThat(first.override()).as("还没有定义：写默认行").isFalse();
+            var second = p.definitions().publish(perSku("S2", 1, 90, "B"));
+            assertThat(second.override()).as("两个 SKU：写这个 SKU 的覆盖行").isTrue();
+            assertThat(p.definitions().publish(perSku("S2", 1, 90, "B")).definitionVersion())
+                    .as("重放：版本已变也按操作号回到原版本").isEqualTo(2);
+            sql.update("DELETE FROM prd_sku WHERE sku_no='S2'");
+            var single = p.definitions().publish(perSku("S1", 2, 50, "C"));
+            assertThat(single.override()).as("只剩一个 SKU：改默认行").isFalse();
+            assertThat(sql.queryForObject("SELECT duration_min FROM prd_goods WHERE goods_no='G'", Integer.class))
+                    .isEqualTo(50);
+        });
+    }
+
+    @Test
+    void perSkuDefaultDropsTheRemainingSkuOwnOverride() {
+        run((p, sql) -> {
+            p.definitions().publish(perSku("S1", 0, 60, null));
+            assertThat(p.definitions().publish(perSku("S2", 1, 90, null)).override()).isTrue();
+            sql.update("UPDATE prd_sku SET deleted=1 WHERE sku_no='S1'");
+            var s2 = p.definitions().publish(perSku("S2", 2, 75, null));
+            assertThat(s2.override()).as("只剩 S2：写默认行，它的旧覆盖行不带进新版本").isFalse();
+            assertThat(s2.timing().durationMin()).isEqualTo(75);
+            assertThat(p.definitions().current("E", "S", "S2").timing().durationMin()).isEqualTo(75);
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_service_definition WHERE definition_version=3",
+                    Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_fulfillment_requirement "
+                    + "WHERE definition_version=3 AND sku_no IS NOT NULL", Integer.class)).isZero();
+            assertThat(sql.queryForObject("SELECT duration_min FROM prd_goods WHERE goods_no='G'", Integer.class))
+                    .isEqualTo(75);
+        });
+    }
+
+    private static Publish perSku(String sku, int expected, int minutes, String ref) {
+        return new Publish("E", "S", sku, null, expected, new Timing(minutes, 0, 0), STEPS, List.of(),
+                List.of(BED), ref, "staff-1");
     }
 
     /** 只带服务规格的保存命令（其余字段为空）。 */

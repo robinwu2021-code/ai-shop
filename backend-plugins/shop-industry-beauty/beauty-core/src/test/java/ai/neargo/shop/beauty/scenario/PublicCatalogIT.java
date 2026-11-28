@@ -1,5 +1,6 @@
 package ai.neargo.shop.beauty.scenario;
 
+import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -26,16 +27,12 @@ class PublicCatalogIT extends BeautyExecutionFixture {
     @BeforeEach
     void database() throws Exception {
         required("service.impl.ServiceCatalogQueryServiceImpl");
-        initialize("BtyStorePolicy", "BtyStorePolicyVersion", "BtyServiceDefinition", "BtyServiceDefinitionVersion");
+        initialize("BtyStorePolicy", "BtyStorePolicyVersion");
         seed("ind_store_policy", "industry_code", "BEAUTY", "policy_no", "P", "store_no", "S", "current_policy_version_no", "P2",
                 "status", "ACTIVE", "version", 2L);
         policy("P1", 1, T0, 30);
         policy("P2", 2, T0.plusYears(20), 99);
-        seed("bty_service_definition", "definition_no", "D", "store_no", "S", "sku_no", "SKU",
-                "current_definition_version_no", "DV", "status", "ACTIVE", "version", 1L);
-        seed("bty_service_definition_version", "definition_no", "D", "definition_version_no", "DV",
-                "revision_index", 1, "duration_min_snapshot", 60, "buffer_before_min", 5, "buffer_after_min", 10,
-                "steps_template", "[]", "notes", "[\"请提前到店\"]", "schema_version", 1, "snapshot_hash", "a".repeat(64));
+        definition(60, 5, 10, List.of("请提前到店"));
     }
 
     private void policy(String no, int revision, Object at, int ahead) {
@@ -99,7 +96,7 @@ class PublicCatalogIT extends BeautyExecutionFixture {
         catalog().run(context -> {
             String response = new ObjectMapper().writeValueAsString(
                     invoke(context, "getPublicService", "SKU", query("S")));
-            assertThat(response).contains("9900", "护理", "DV", "请提前到店", "bufferBeforeMin")
+            assertThat(response).contains("9900", "护理", "\"definitionVersionNo\":\"1\"", "请提前到店", "bufferBeforeMin")
                     .doesNotContain("requirements", "skillGoodsNo", "snapshotHash", "entityNo");
         });
     }
@@ -127,7 +124,7 @@ class PublicCatalogIT extends BeautyExecutionFixture {
             assertThatThrownBy(() -> invoke(context, "getPublicService", "SKU", query("S")))
                     .isInstanceOf(BizException.class);
             owner = "E";
-            sql.update("UPDATE bty_service_definition SET status='INACTIVE'");
+            sql.update("UPDATE prd_service_definition SET status='INACTIVE'");
             assertThatThrownBy(() -> invoke(context, "getPublicService", "SKU", query("S")))
                     .isInstanceOf(BizException.class);
         });

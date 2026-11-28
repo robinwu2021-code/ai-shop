@@ -14,10 +14,7 @@ import ai.neargo.shop.beauty.entity.BtyAppointmentResourceIntent;
 import ai.neargo.shop.beauty.entity.BtyArrivalChallenge;
 import ai.neargo.shop.beauty.entity.BtyGuestClaimReceipt;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
-import ai.neargo.shop.beauty.entity.BtyServiceDefinition;
-import ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion;
 import ai.neargo.shop.beauty.entity.BtyServiceParticipation;
-import ai.neargo.shop.beauty.entity.BtyServiceRequirement;
 import ai.neargo.shop.beauty.entity.BtyServiceStep;
 import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.entity.BtyServiceTask;
@@ -95,60 +92,12 @@ public final class BeautyMappers {
                 @Param("updatedAt") LocalDateTime updatedAt);
     }
 
-    /** Locks an authorized existing head; first creation is arbitrated by its scoped business unique key. */
-    public interface ServiceDefinitionMapper extends TradeTableMapper<BtyServiceDefinition> {
-        @Select(
-                """
-                SELECT * FROM bty_service_definition
-                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
-                  AND definition_no=#{definitionNo} AND deleted=0
-                FOR UPDATE
-                """)
-        BtyServiceDefinition selectScopedForUpdate(
-                @Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo,
-                @Param("definitionNo") String definitionNo);
-
-        /**
-         * Publishes only an existing version of this head; zero affected rows is a caller-visible
-         * conflict.
-         */
-        @Update(
-                """
-                UPDATE bty_service_definition
-                SET current_definition_version_no=#{definitionVersionNo}, version=version+1,
-                    updated_by=#{actorNo}, updated_at=#{updatedAt}
-                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
-                  AND definition_no=#{definitionNo} AND version=#{expectedVersion} AND deleted=0
-                  AND status IN ('ACTIVE', 'INACTIVE')
-                  AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
-                  AND EXISTS (SELECT 1 FROM bty_service_definition_version v
-                    WHERE v.tenant_no='MAIN' AND v.entity_no=#{entityNo} AND v.definition_no=#{definitionNo}
-                      AND v.definition_version_no=#{definitionVersionNo} AND v.deleted=0)
-                """)
-        int switchCurrentVersion(
-                @Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo,
-                @Param("definitionNo") String definitionNo,
-                @Param("expectedVersion") long expectedVersion,
-                @Param("definitionVersionNo") String definitionVersionNo,
-                @Param("actorNo") String actorNo,
-                @Param("updatedAt") LocalDateTime updatedAt);
-    }
-
     /**
      * 政策版本在行业配置修订表 {@code ind_config_revision}（{@code config_kind='STORE_POLICY'}）；只追加、按范围读。
      */
     public interface StorePolicyVersionMapper extends IndustryTableMapper<BtyStorePolicyVersion> {
     }
 
-    /** Published execution snapshots are immutable; application code uses append and scoped reads only. */
-    public interface ServiceDefinitionVersionMapper extends TradeTableMapper<BtyServiceDefinitionVersion> {
-    }
-
-    /** Requirements belong to an authorized definition version, checked by the publishing transaction. */
-    public interface ServiceRequirementMapper extends TradeTableMapper<BtyServiceRequirement> {
-    }
     /** Critical actions are appended with the aggregate transaction; they are not mutable operational state. */
     public interface ActionLogMapper extends BaseMapper<BtyActionLog> {
     }

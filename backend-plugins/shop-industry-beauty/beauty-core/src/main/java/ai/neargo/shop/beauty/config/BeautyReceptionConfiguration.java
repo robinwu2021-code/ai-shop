@@ -43,7 +43,7 @@ import java.time.Clock;
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBeautyEnabled
-@Import(BeautySourceConfiguration.class)
+@Import({BeautySourceConfiguration.class, BeautyServiceDefinitionsConfiguration.class})
 public class BeautyReceptionConfiguration {
     @Bean ReceptionRecovery receptionRecovery(AppointmentPersistence db, AppointmentCoordinator appointments,
             AppointmentPreparation preparation, BeautyMappers.ReceptionOperationMapper rows,
@@ -87,11 +87,9 @@ public class BeautyReceptionConfiguration {
     }
     @Bean Clock beautyReceptionClock() { return Clock.systemUTC(); }
     @Bean WorkOrderPreparation workOrderPreparation(AppointmentPersistence db, AppointmentCoordinator appointments,
-            BeautyMappers.ServiceDefinitionMapper definitions, BeautyMappers.ServiceDefinitionVersionMapper versions,
-            BeautyMappers.ServiceRequirementMapper requirements, BeautyMappers.StorePolicyMapper policies,
+            ai.neargo.shop.beauty.service.impl.ServiceDefinitions definitions, BeautyMappers.StorePolicyMapper policies,
             BeautyMappers.StorePolicyVersionMapper policyVersions, ObjectProvider<ServiceCatalogFactsPort> products) {
-        return new WorkOrderPreparation(db, appointments, definitions, versions, requirements, policies,
-                policyVersions, products);
+        return new WorkOrderPreparation(db, appointments, definitions, policies, policyVersions, products);
     }
     @Bean ReceptionReassignment receptionReassignment(AppointmentPersistence db, AppointmentAccess access,
             ReceptionAccess receptionAccess, AppointmentCoordinator appointments, AppointmentMatching matching,

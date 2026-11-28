@@ -60,7 +60,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
         return new ReceiveWalkInReq("S", "cr1_" + "c".repeat(43), null,
                 List.of(new AppointmentItemReq("SKU", 1)), List.of(), start);
     }
-    @Test void createHeadLockWaitCrossingResourceStartCannotAcceptCommand() {
+    @Test void createCrossingResourceStartCannotAcceptCommand() {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
             sql.execute("CREATE TRIGGER fail_root BEFORE INSERT ON ord_appointment FOR EACH ROW "
@@ -71,54 +71,16 @@ class WalkInRecoveryIT extends ReceptionFixture {
             } finally { sql.execute("DROP TRIGGER fail_root"); }
             var original = sql.queryForMap("SELECT * FROM bty_reception_operation");
             assertThat(original.get("phase")).isEqualTo("RECEIVED");
-            clockAt = start.minusMinutes(3).minusSeconds(1).toInstant();
+            // 服务定义归商品域后不再锁定义头（TDD §2.8 P5，按版本号乐观核对），原来「等头锁时跨过资源开始」
+            // 的停顿没有了；这里直接让恢复发生在跨过开始之后，结论不变：不受理，要求改约
             revokedActor = "A";
-            try (var blocker = database.source.getConnection()) {
-                blocker.setAutoCommit(false);
-                try (var statement = blocker.createStatement()) {
-                    try (var row = statement.executeQuery("SELECT definition_no FROM bty_service_definition "
-                            + "WHERE definition_no='D' FOR UPDATE")) {
-                        assertThat(row.next()).isTrue();
-                    }
-                }
-                try (var pool = Executors.newSingleThreadExecutor()) {
-                    var worker = new AtomicReference<Thread>();
-                    var recovery = pool.submit(() -> {
-                        worker.set(Thread.currentThread());
-                        login(LoginUser.merchant("B", "second"));
-                        return c.getBean(ServiceOperationRecoveryService.class)
-                                .recoverOperation("E", "S", "B", (String) original.get("operation_no"));
-                    });
-                    try {
-                        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-                        boolean waiting;
-                        do {
-                            if (recovery.isDone()) {
-                                throw new AssertionError("Recovery completed before head release: " + recovery.get());
-                            }
-                            var trace = worker.get() == null ? List.<StackTraceElement>of()
-                                    : List.of(worker.get().getStackTrace());
-                            waiting = trace.stream().anyMatch(f -> f.getMethodName().equals("selectScopedForUpdate"))
-                                    && trace.stream().anyMatch(f -> f.getClassName().equals(
-                                            "ai.neargo.shop.beauty.service.impl.WorkOrderPreparation")
-                                            && f.getMethodName().equals("verifyCreateLocked"))
-                                    && trace.stream().anyMatch(f -> f.getClassName().equals("sun.nio.ch.Net")
-                                            && f.getMethodName().equals("poll"));
-                            if (!waiting) { Thread.sleep(10); }
-                        } while (!waiting && System.nanoTime() < deadline);
-                        assertThat(waiting).as("actual JDBC head SELECT waits behind this transaction").isTrue();
-                        clockAt = start.minusMinutes(3).toInstant();
-                    } finally { blocker.rollback(); }
-                    OperationVO result = null;
-                    Throwable recoveryFailure = null;
-                    try { result = recovery.get(20, TimeUnit.SECONDS); }
-                    catch (ExecutionException failure) { recoveryFailure = failure.getCause(); }
-                    assertThat(owner.accepts).isEmpty();
-                    assertThat(recoveryFailure).isNull();
-                    assertThat(result.state()).isEqualTo("PENDING");
-                    assertThat(result.failureCode()).isEqualTo("ARRIVAL_REQUIRES_RESCHEDULE");
-                }
-            } catch (Exception failure) { throw new AssertionError(failure); }
+            clockAt = start.minusMinutes(3).toInstant();
+            login(LoginUser.merchant("B", "second"));
+            var result = c.getBean(ServiceOperationRecoveryService.class)
+                    .recoverOperation("E", "S", "B", (String) original.get("operation_no"));
+            assertThat(owner.accepts).isEmpty();
+            assertThat(result.state()).isEqualTo("PENDING");
+            assertThat(result.failureCode()).isEqualTo("ARRIVAL_REQUIRES_RESCHEDULE");
             for (String table : List.of("ord_appointment", "bty_appointment_resource_fence",
                     "bty_appointment_current", "bty_appointment_preparation", "bty_appointment_operation")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
@@ -166,7 +128,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
         });
     }
     @ParameterizedTest
-    @ValueSource(strings = {"bty_service_definition", "ind_store_policy"})
+    @ValueSource(strings = {"prd_service_definition", "ind_store_policy"})
     void changedLocalDefinitionBeforeCreateDoesNotReserveResources(String changedHead) {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
@@ -179,6 +141,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
             var original = sql.queryForMap("SELECT * FROM bty_reception_operation");
             assertThat(original.get("phase")).isEqualTo("RECEIVED");
             sql.update("UPDATE " + changedHead + " SET status='DISABLED',version=version+1");
+            // 服务定义：停用即不再是「现在的定义」，按版本号的乐观核对不通过
             assertThatThrownBy(() -> c.getBean(ServiceOperationRecoveryService.class)
                     .recoverOperation("E", "S", "A", (String) original.get("operation_no")))
                     .isInstanceOf(BizException.class);
@@ -783,16 +746,12 @@ class WalkInRecoveryIT extends ReceptionFixture {
         var duration = new PublishServiceDefinitionVersionReq.Duration(17, 80, 4);
         var rule = new PublishServiceDefinitionVersionReq.Requirement("ROOM", "ROOM", null, 1, 0, 0, 17,
                 "ANY_QUALIFIED");
-        seed("bty_service_definition", "definition_no", "D2", "store_no", "S", "sku_no", "SKU2",
-                "current_definition_version_no", "DV2", "status", "ACTIVE", "version", 1L);
-        seed("bty_service_definition_version", "definition_no", "D2", "definition_version_no", "DV2",
-                "revision_index", 1, "duration_min_snapshot", 17, "buffer_before_min", 80, "buffer_after_min", 4,
-                "steps_template", "[{\"stepCode\":\"SERVICE\",\"sequenceNo\":0}]", "notes", "[]",
-                "schema_version", 1, "snapshot_hash", IdempotencyScope.requestHash("SKU2",
-                        json.writeValueAsString(duration), json.writeValueAsString(List.of(rule))));
-        seed("bty_service_requirement", "requirement_no", "REQ2", "definition_version_no", "DV2", "role_code", "ROOM",
-                "resource_type", "ROOM", "qty", 1, "sequence_no", 0, "offset_min", 0, "duration_min", 17,
-                "selection_rule", "ANY_QUALIFIED");
+        // 同一商品 G 的 SKU2 按 SKU 覆盖（TDD §2.8 P5）
+        new TestServiceDefinitionPort(sql).publish(new ai.neargo.shop.spi.product.ServiceDefinitionPort.Publish("E", "S", "SKU2", true, 1,
+                new ai.neargo.shop.spi.product.ServiceDefinitionPort.Timing(duration.minutes(), duration.bufferBeforeMin(),
+                        duration.bufferAfterMin()), null, null, List.of(new ai.neargo.shop.spi.product.ServiceDefinitionPort.Requirement(null,
+                        rule.roleCode(), rule.resourceType(), rule.skillGoodsNo(), rule.qty(), rule.sequenceNo(),
+                        rule.offsetMin(), rule.durationMin(), rule.selectionRule())), null, "SEED"));
         business().run(c -> {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
             var req = new ReceiveWalkInReq("S", walkIn().customerRef(), null,
@@ -957,10 +916,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
         roomQuantities = true;
         var rule = new PublishServiceDefinitionVersionReq.Requirement("MAIN", "ROOM", null, 2, 0, 0, 17,
                 "ANY_QUALIFIED");
-        sql.update("UPDATE bty_service_requirement SET resource_type='ROOM',skill_goods_no=NULL,qty=2");
-        sql.update("UPDATE bty_service_definition_version SET snapshot_hash=?", IdempotencyScope.requestHash("SKU",
-                json.writeValueAsString(new PublishServiceDefinitionVersionReq.Duration(17, 3, 4)),
-                json.writeValueAsString(List.of(rule))));
+        sql.update("UPDATE prd_fulfillment_requirement SET resource_type='ROOM',skill_goods_no=NULL,qty=2");
         business().run(c -> {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
             var result = c.getBean(ReceptionService.class).receiveWalkIn("E", "S", "A", walkIn(), "ROOM-UNITS");

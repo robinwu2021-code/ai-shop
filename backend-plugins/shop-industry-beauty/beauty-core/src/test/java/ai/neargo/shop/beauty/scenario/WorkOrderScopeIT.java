@@ -34,6 +34,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
+import ai.neargo.shop.spi.product.ServiceDefinitionPort;
 import ai.neargo.shop.spi.product.ServiceProductFactsPort;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
 
@@ -576,7 +577,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                 assertThat(task.plannedStartAt()).isNull(); assertThat(task.appointmentItemNo()).isNull();
                 assertThat(task.assignments()).isEmpty(); assertThat(task.steps()).isEmpty();
                 assertThat(task.participations()).isEmpty(); assertThat(task.taskSnapshot().definitionVersionNo())
-                        .isEqualTo("DV");
+                        .isEqualTo("1");
             });
             assertThat(count("ord_appointment")).isZero(); assertThat(count("bty_appointment_assignment")).isZero();
             assertThat(count("bty_service_step")).isZero(); assertThat(count("ind_assignment")).isZero();
@@ -603,15 +604,16 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThatThrownBy(() -> loader.unassigned("E", "S", identity, items)).isInstanceOf(BizException.class);
             catalogStatus = "ACTIVE";
             var prepared = loader.unassigned("E", "S", identity, items);
-            sql.update("UPDATE bty_service_definition SET version=version+1");
+            // 服务定义发了新版（TDD §2.8 P5）：按版本号的乐观核对不通过
+            definition(17, 3, 4, List.of(), "REQ-NEW");
             assertThatThrownBy(() -> tx(c, () -> { loader.verifyLocked(prepared); return null; }))
                     .isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_service_definition SET status='INACTIVE'");
+            sql.update("UPDATE prd_service_definition SET status='INACTIVE'");
             assertThatThrownBy(() -> loader.unassigned("E", "S", identity, items)).isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_service_definition SET status='ACTIVE'");
-            sql.update("UPDATE bty_service_definition_version SET definition_no='FOREIGN'");
+            sql.update("UPDATE prd_service_definition SET status='ACTIVE'");
+            sql.update("UPDATE prd_service_definition SET goods_no='FOREIGN'");
             assertThatThrownBy(() -> loader.unassigned("E", "S", identity, items)).isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_service_definition_version SET definition_no='D'");
+            sql.update("UPDATE prd_service_definition SET goods_no='G'");
             assertThatThrownBy(() -> loader.unassigned("OTHER", "S", identity, items)).isInstanceOf(BizException.class);
             sql.update("UPDATE ind_config_revision SET snapshot_hash=?", "e".repeat(64));
             assertThatThrownBy(() -> loader.unassigned("E", "S", identity, items)).isInstanceOf(BizException.class);
@@ -811,7 +813,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                             .openWorkOrderFromAppointment("E", "S", "A", root.appointmentNo(), req, "OPEN"));
                     var detail = c.getBean(WorkOrderService.class).getWorkOrder("E", "S", "A", opened.workOrderNo());
                     var frozen = detail.tasks().getFirst().taskSnapshot();
-                    assertThat(frozen.definitionVersionNo()).isEqualTo("DV"); assertThat(frozen.durationMin())
+                    assertThat(frozen.definitionVersionNo()).isEqualTo("1"); assertThat(frozen.durationMin())
                             .isEqualTo(17);
                     assertThat(frozen.bufferBeforeMin()).isEqualTo(3); assertThat(frozen.bufferAfterMin()).isEqualTo(4);
                     assertThat(frozen.notes()).isEmpty(); assertThat(frozen.requirements().getFirst().roleCode())
@@ -861,26 +863,16 @@ class WorkOrderScopeIT extends ReceptionFixture {
     @Test void unassignedExpandsMultipleDefinitionsAndEnforcesBounds() {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator"));
-            seed("bty_service_definition", "definition_no", "D2", "store_no", "S", "sku_no", "SKU2",
-                    "current_definition_version_no", "DV2", "status", "ACTIVE", "version", 1);
-            String hash = IdempotencyScope.requestHash("SKU2",
-                    json.writeValueAsString(new PublishServiceDefinitionVersionReq.Duration(17, 0, 0)),
-                    json.writeValueAsString(List.of(new PublishServiceDefinitionVersionReq.Requirement("MAIN", "STAFF",
-                            "G", 1, 0, 0, 17, "ANY_QUALIFIED"))));
-            seed("bty_service_definition_version", "definition_no", "D2", "definition_version_no", "DV2",
-                    "revision_index", 1, "duration_min_snapshot", 17, "buffer_before_min", 0, "buffer_after_min", 0,
-                    "steps_template", "[{\"stepCode\":\"SERVICE\",\"sequenceNo\":0}]", "notes", "[]",
-                    "schema_version", 1, "snapshot_hash", hash);
-            seed("bty_service_requirement", "requirement_no", "REQ2", "definition_version_no", "DV2", "role_code",
-                    "MAIN",
-                    "resource_type", "STAFF", "skill_goods_no", "G", "qty", 1, "sequence_no", 0,
-                    "offset_min", 0, "duration_min", 17, "selection_rule", "ANY_QUALIFIED");
+            // 同一商品 G 的第二个 SKU：按 SKU 覆盖（TDD §2.8 P5），连同默认行一起成为第 2 版
+            new TestServiceDefinitionPort(sql).publish(new ServiceDefinitionPort.Publish("E", "S", "SKU2", true, 1,
+                    new ServiceDefinitionPort.Timing(17, 0, 0), null, null, List.of(new ServiceDefinitionPort
+                            .Requirement(null, "MAIN", "STAFF", "G", 1, 0, 0, 17, "ANY_QUALIFIED")), null, "SEED"));
             var items = List.of(new AppointmentItemReq("SKU", 2), new AppointmentItemReq("SKU2", 1));
             var service = c.getBean(WorkOrderService.class);
             var opened = service.openWorkOrder("E", "S", "A", new OpenWorkOrderReq("cr1_" + "c".repeat(43), "S", items,
                     null), "OPEN");
             var tasks = service.getWorkOrder("E", "S", "A", opened.workOrderNo()).tasks();
-            assertThat(tasks).extracting(task -> task.definitionVersionNo()).containsExactly("DV", "DV", "DV2");
+            assertThat(tasks).extracting(task -> task.definitionVersionNo()).containsExactly("2", "2", "2");
             assertThat(tasks).extracting(task -> task.taskSnapshot().bufferBeforeMin()).containsExactly(3, 3, 0);
             assertThatThrownBy(() -> new OpenWorkOrderReq("cr1_" + "c".repeat(43), "S",
                     List.of(new AppointmentItemReq("SKU", 10), new AppointmentItemReq("SKU2", 1)), null))

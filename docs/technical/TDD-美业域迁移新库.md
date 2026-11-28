@@ -515,6 +515,14 @@
 - 美业 `RemoteServiceDefinitionPort`，由 `BeautyProductClientConfiguration` 在独立部署时装配；400/403/404/409 还原业务错误的写法收到 `PlatformCalls` 一处，两个商品类远程端口一并改用。
 - 测试：`BeautyProductClientTest` 加服务定义往返（当前、无此版本为空、列表、发布冲突 409）；美业 server 装配与部署约定测试照过。
 
+**P5 美业改用端口（2026-11-28）**：
+- **字段不动、换值（用户定）**：美业接口里 `definitionNo` = 商品号，`definitionVersionNo` = 商品内的定义版本号（十进制字符串，如 `"3"`），`revision` = 同一个版本号（列表里 `revision` 是现在的版本、`effectiveRevision` 是查询时刻那一版）。换算只在 `ServiceDefinitions`（美业读写服务定义的唯一入口）一处；定义摘要（SKU + 时长 + 要求 + 注意事项）也只在这里算，冻结与核对用同一公式。
+- **按 SKU 发布**：美业按 SKU 发布，端口的 `skuOverride` 传空，由商品域按 SKU 数定 —— 商品只有一个 SKU 或还没有定义时写默认行，否则写这个 SKU 的覆盖行。端口的要求读出时带 `requirementNo`（同一版本内稳定，预约分派按它对应）。
+- **六处改用端口**：发布（幂等、操作日志留在美业，幂等键摘要作 `source_ref`；不再要求请求时长等于商品时长，时长归定义）、目录查询（在美业读事务之外取定义）、预约匹配（按版本取要求）、开单准备（按版本冻结；`DEFINITION` 头改记 SKU 现在的版本）、开单核对与新建核对（不再锁定义头，按版本号乐观核对）、提交查询（按版本取那一版核对摘要与时长）。
+- **退役**：`BtyServiceDefinition` / `BtyServiceDefinitionVersion` / `BtyServiceRequirement` 三个实体与 Mapper、数据范围登记。旧表仍在美业私有 Flyway 里（随第 15 项退役），数据由 P6 搬。
+- **发布与美业事务**：定义写在商品域自己的事务里；美业事务（幂等、操作日志）回滚时定义已提交，同一幂等键重试按 `source_ref` 回到同一版，不会多发一版。
+- **测试**：美业测试库按定稿 DDL 建 `prd_service_definition` / `prd_fulfillment_requirement`；测试版端口 `TestServiceDefinitionPort`（JDBC，单 SKU 简化）挂在共用测试 runner 上；种子改用 `definition(...)`。原「恢复等在定义头行锁上」的用例改为直接在跨过开始时刻后恢复（锁已不存在，结论不变）；只测旧定义头的两条持久层用例删除。宿主的原生模式用例（需 `beauty.*.test.native`）同步改了种子与查询，未运行。
+
 **原待定（已定，留作记录）**：
 - 新表的加法：生成器加机制，还是改 ai-shop-slim 生成源；
 - 发布服务定义是否让 `prd_goods.version` 加一（会让商家手上未发布的商品草稿提示「有人中途改过」）；

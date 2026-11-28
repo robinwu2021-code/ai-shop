@@ -463,24 +463,25 @@ class BeautyReceptionIdentityIT {
                 "booking_ahead_days", 30, "cancel_rule", cancel, "allowed_modes", "[\"PREPAID_SINGLE\"]",
                 "effective_at", effective, "schema_version", 1, "snapshot_hash", IdempotencyScope.requestHash(
                         effective.atOffset(ZoneOffset.UTC).toString(), "30", "60", "true", "PREPAID_SINGLE"));
-        row("bty_service_definition", "definition_no", "D", "store_no", store, "sku_no", "SKU",
-                "current_definition_version_no", "DV", "status", "ACTIVE");
-        Object duration = dto("PublishServiceDefinitionVersionReq$Duration", 20, 0, 0);
-        Object requirement = dto("PublishServiceDefinitionVersionReq$Requirement", "MAIN", "STAFF", "G", 1, 0, 0, 20,
-                "ANY_QUALIFIED");
-        row("bty_service_definition_version", "definition_no", "D", "definition_version_no", "DV", "revision_index", 1,
-                "duration_min_snapshot", 20, "buffer_before_min", 0, "buffer_after_min", 0, "steps_template",
-                "[{\"stepCode\":\"SERVICE\",\"sequenceNo\":0}]", "notes", "[]", "schema_version", 1,
-                "snapshot_hash", IdempotencyScope.requestHash("SKU", json.writeValueAsString(duration),
-                        json.writeValueAsString(List.of(requirement))));
-        row("bty_service_requirement", "requirement_no", "REQ", "definition_version_no", "DV", "role_code", "MAIN",
-                "resource_type", "STAFF", "skill_goods_no", "G", "qty", 1, "sequence_no", 0, "offset_min", 0,
-                "duration_min", 20, "selection_rule", "ANY_QUALIFIED");
+        // 服务定义归商品域（TDD §2.8 P5）：真实端口按「主体 + 门店 + SKU」找服务商品，再读第 1 版定义
+        for (String market : List.of("CN", "TW")) {
+            sql.update("INSERT IGNORE INTO prd_sku (tenant_no, sku_no, goods_no, entity_no, market) "
+                    + "VALUES ('MAIN', 'SKU', 'G', ?, ?)", entity, market);
+        }
+        sql.update("INSERT IGNORE INTO prd_goods (tenant_no, goods_no, entity_no, store_no, type, duration_min) "
+                + "VALUES ('MAIN', 'G', ?, ?, 'SERVICE', 20)", entity, store);
+        sql.update("INSERT INTO prd_service_definition (tenant_no, entity_no, store_no, goods_no, sku_no, "
+                + "definition_version, duration_min, steps, notes, status, published_at) VALUES ('MAIN', ?, ?, 'G', '', 1, "
+                + "20, '[{\"stepCode\":\"SERVICE\",\"sequenceNo\":0}]', '[]', 'ACTIVE', ?)", entity, store, effective);
+        sql.update("INSERT INTO prd_fulfillment_requirement (tenant_no, entity_no, requirement_no, goods_no, store_no, "
+                + "definition_version, requirement_type, role_code, resource_type, skill_goods_no, qty, sequence_no, "
+                + "offset_min, duration_min, selection_rule) VALUES ('MAIN', ?, 'REQ', 'G', ?, 1, 'ROLE', 'MAIN', "
+                + "'STAFF', 'G', 1, 0, 0, 20, 'ANY_QUALIFIED')", entity, store);
         if (appointment != null) { workOrderItem(appointment); }
     }
     private void workOrderItem(String appointment) {
         row("ord_appointment_item", "appointment_item_no", "BL-" + appointment, "appointment_no", appointment,
-                "sku_no", "SKU", "definition_version_no", "DV", "qty", 1, "uom", "COUNT", "sequence_no", 0,
+                "sku_no", "SKU", "definition_version_no", "1", "qty", 1, "uom", "COUNT", "sequence_no", 0,
                 "execution_snapshot", "{}");
     }
     /** Only resource admission is fixture evidence here; member tickets, grants and beauty writes are real. */
@@ -494,7 +495,7 @@ class BeautyReceptionIdentityIT {
                 List.of(new ResourcePlanContract.Interval(start.toInstant(), end.toInstant())))),
                 List.of(new ResourcePlanContract.Qualification("R", group, "G", "SKU", true)));
         String snapshot = json.writeValueAsString(Map.of("items", List.of(dto("AppointmentPlanItemVO", line, "SKU",
-                "G", "DV", 1, 1000L, 20, start, end, 1L, 1L)), "assignments", List.of(dto("AppointmentAssignmentVO",
+                "G", "1", 1, 1000L, 20, start, end, 1L, 1L)), "assignments", List.of(dto("AppointmentAssignmentVO",
                 line, "REQ", "P", "R", start, end)), "priceMinor", 1000L,
                 "cancelRule", Map.of("freeCancelBeforeMinutes", 60, "allowCustomerCancel", true)));
         var binding = new ResourceSourceAuthorityPort.Binding("MAIN", entity, store, "BC-" + number,

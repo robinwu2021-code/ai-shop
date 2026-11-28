@@ -45,13 +45,16 @@ public interface ServiceDefinitionPort {
      * 发布命令。
      *
      * @param skuNo 定位服务商品的 SKU（必须是这个主体、这家门店的服务商品）
-     * @param skuOverride {@code false} 发布商品默认行；{@code true} 发布这个 SKU 的覆盖行
+     * @param skuOverride {@code false} 发布商品默认行；{@code true} 发布这个 SKU 的覆盖行；
+     *                    {@code null} 由商品域按 SKU 定：商品只有这一个 SKU 或还没有定义时写默认行，否则写这个 SKU 的覆盖行
+     *                    （按 SKU 发布的行业用这个，比如美业）。写默认行时这个 SKU 自己的旧覆盖行不再带入新版本，
+     *                    它回落到新的默认行。商品有多个 SKU 但还没有定义时，第一次发布写的默认行其余 SKU 也跟着用
      * @param steps 步骤；覆盖行为 {@code null} 表示沿用默认行
      * @param notes 注意事项；覆盖行为 {@code null} 表示沿用默认行
      * @param requirements 这一行的服务要求（完整列表）；覆盖行为 {@code null} 表示沿用默认行
      * @param sourceRef 发布方的操作号，用于重放；可空（不防重）
      */
-    record Publish(String entityNo, String storeNo, String skuNo, boolean skuOverride, int expectedVersion,
+    record Publish(String entityNo, String storeNo, String skuNo, Boolean skuOverride, int expectedVersion,
             Timing timing, List<Step> steps, List<String> notes, List<Requirement> requirements,
             String sourceRef, String actor) { }
 
@@ -63,8 +66,9 @@ public interface ServiceDefinitionPort {
 
     /**
      * 服务要求：需要的执行角色或资源。{@code roleCode} 有值是角色要求，否则是资源要求。
+     * {@code requirementNo} 在读出时给出（同一版本内稳定，预约分派按它对应）；发布时忽略。
      */
-    record Requirement(String roleCode, String resourceType, String skillGoodsNo, int qty, Integer sequenceNo,
+    record Requirement(String requirementNo, String roleCode, String resourceType, String skillGoodsNo, int qty, Integer sequenceNo,
             Integer offsetMin, Integer durationMin, String selectionRule) { }
 
     /**

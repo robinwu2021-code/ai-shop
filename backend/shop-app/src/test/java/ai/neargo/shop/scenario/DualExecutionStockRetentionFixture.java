@@ -143,7 +143,7 @@ abstract class DualExecutionStockRetentionFixture extends ManualSourceHostFixtur
         var registration = guestParty ? guest("execution") : null;
         String guestNo = registration == null ? null : registration.guestNo();
         String customerRef = guestParty ? null : realConsumerReference();
-        String requirement = jdbc.queryForObject("SELECT requirement_no FROM bty_service_requirement WHERE entity_no=?",
+        String requirement = jdbc.queryForObject("SELECT requirement_no FROM prd_fulfillment_requirement WHERE entity_no=?",
                 String.class, entity);
         var assignments = List.of(dto("AppointmentAssignmentReq", 0, requirement, person.resourceNo(),
             person.personnelNo()));

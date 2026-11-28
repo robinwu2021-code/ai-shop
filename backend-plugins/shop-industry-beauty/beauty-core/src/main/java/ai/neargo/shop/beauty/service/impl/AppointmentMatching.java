@@ -9,7 +9,6 @@ import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
 import ai.neargo.shop.beauty.dto.ServiceDetailQuery;
 import ai.neargo.shop.beauty.dto.WorkOrderRequirementVO;
-import ai.neargo.shop.beauty.entity.BtyServiceRequirement;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.ServiceCatalogQueryService;
 import ai.neargo.shop.common.BizException;
@@ -48,17 +47,17 @@ public final class AppointmentMatching {
     private final ObjectProvider<ResourceCandidatesPort> candidates;
     private final ObjectProvider<PersonnelFactsPort> personnel;
     private final ObjectProvider<ScheduleWindowsPort> schedules;
-    private final BeautyMappers.ServiceRequirementMapper requirements;
+    private final ServiceDefinitions definitions;
 
     public AppointmentMatching(ServiceCatalogQueryService catalog, ObjectProvider<ServiceCatalogFactsPort> stores,
             ObjectProvider<ResourceCandidatesPort> candidates, ObjectProvider<PersonnelFactsPort> personnel,
-            ObjectProvider<ScheduleWindowsPort> schedules, BeautyMappers.ServiceRequirementMapper requirements) {
+            ObjectProvider<ScheduleWindowsPort> schedules, ServiceDefinitions definitions) {
         this.catalog = catalog;
         this.stores = stores;
         this.candidates = candidates;
         this.personnel = personnel;
         this.schedules = schedules;
-        this.requirements = requirements;
+        this.definitions = definitions;
     }
     public Scope scope(String storeNo) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
@@ -110,18 +109,15 @@ public final class AppointmentMatching {
                     && product.goodsNo().equals(observed.goodsNo()) && product.priceMinor() == observed.priceMinor()
                     && product.duration().minutes() == observed.durationMin());
             if (!product.sales().saleableNow()) { throw BizException.of(ErrorCode.CONFLICT); }
-            var rules = DataScopeContext.executeWithoutScope(() -> requirements.selectList(
-                    Wrappers.<BtyServiceRequirement>lambdaQuery().eq(BtyServiceRequirement::getTenantNo, "MAIN")
-                            .eq(BtyServiceRequirement::getEntityNo, scope.entityNo())
-                            .eq(BtyServiceRequirement::getDefinitionVersionNo, product.definitionVersionNo())
-                            .orderByAsc(BtyServiceRequirement::getSequenceNo,
-                                    BtyServiceRequirement::getRequirementNo)));
+            var definition = definitions.byVersion(scope.entityNo(), scope.storeNo(), item.skuNo(),
+                    product.definitionVersionNo());
+            AppointmentPersistence.require(definition != null);
+            var rules = definition.requirements();
             if (rules.isEmpty() || rules.size() > 30) { bad(); }
             inputs.add(new MatchItem(item, product.goodsNo(), product.definitionVersionNo(), product.priceMinor(),
                     new PublishServiceDefinitionVersionReq.Duration(product.duration().minutes(),
                             product.duration().bufferBeforeMin(), product.duration().bufferAfterMin()),
-                    observed.goodsRevision(), observed.skuRevision(), rules.stream()
-                            .map(WorkOrderPreparation::requirement).toList()));
+                    observed.goodsRevision(), observed.skuRevision(), rules));
         }
         return inputs;
     }
