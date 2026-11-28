@@ -99,6 +99,7 @@
 
 - 一次性脚本 `scripts/migrate-product-to-n-trade.py`：从 `ai_shop_ume` 读、按 §2.3 的并入与改名规则转换、写 `n_trade` / `n_member`。可重复执行（按业务号覆盖），先在演练库 `ai_shop_ume_rehearsal` 上跑。
 - 市场：旧库 SKU、门店价的 `market` 为 `CN` 的改为 `TW`（正式库 5 个 SKU 里 4 个是 `CN`，来源是代码原先写死的「本市场」；新库默认值与代码的本市场都按部署配置为 `TW`，见 [列默认值补回方案](design/门店交易库-列默认值补回方案.md) §3）。
+- 规格范围的搬法：类目绑定写 `CATEGORY` 维度级行（`value_no=''`），类目取值子集写同范围取值级行；商家覆盖写 `MCH_CATEGORY`（`scope_ref` = 商家号/类目号，`value_no` 空串照搬，`enabled=0` → `DISABLED`）；商家常用维度与取值写 `MERCHANT`（`favorite=1`）。
 - 合表的搬法：`prd_store_price` 与 `prd_store_stock` 按 门店 + SKU 合成一行（库存行没有市场列，取本市场）；类目付款方式只搬 `allowed=0` 的行进 `disallowed_pay_modes`；SKU 定价策略、卡类权益绑定按 SKU 写进本市场那一行（权益绑定的 `status` 非 ACTIVE 或已删的，SKU 置 `DISABLED`）。
 - 对账：逐表比行数，商品、SKU、门店价与库存逐行比关键字段；对账报告存进上线记录。
 - 搬迁在切换窗口里与交易一起做，搬完旧表只读、不删。
@@ -172,6 +173,14 @@
   - 数据域：旧库门店价登记了 MERCHANT、店级库存没登记；合表后按库存那半不登记（扣减路径多处直接调 Mapper，登记后漏一处豁免就是「有货却下单失败」）。
   - 本批不动 `prd_sku.stock`（主体级库存，过渡列）：去掉它意味着单店商家也要按店记库存，属于业务口径变化，另列一步。
   - 基线 −2，另有 2 条 R5（invbridge 回填）随类名改写，仍属第 4 步。
+- **2-d 规格的使用范围**：`prd_category_spec`、`prd_category_spec_value`、`prd_merchant_spec_override`、`prd_merchant_spec`、`prd_merchant_spec_value` → `prd_spec_usage`，实体 `PrdSpecUsage`、`SpecUsageMapper` 取代五套。按 `scope_type` 分：
+  - `CATEGORY`：`scope_ref` = 类目号；维度级行即原类目绑定，取值级行即原类目取值子集（含类目内叫法）。
+  - `MCH_CATEGORY`（列宽 16，不用全称）：`scope_ref` = 商家号 + `/` + 类目号，`entity_no` = 商家号；原商家覆盖。原 `enabled=false` → `status = DISABLED`，其余为 `ACTIVE`；取值级行的 `value_no` 照旧存取值的 code。
+  - `MERCHANT`：`scope_ref` = 商家号；原商家常用维度与取值。代码里没有读写方，只随数据搬迁。
+  - 维度级行的 `value_no` 存空串而不是 NULL：唯一键 `(scope_type, scope_ref, dim_no, value_no)` 里 NULL 互不相等，存 NULL 就挡不住重复。
+  - 整份替换仍真删（`purgeScope`，唯一键不含 `deleted`）；查询一律从 `SpecUsageMapper.categoryDims / categoryValues / overrides` 起手，避免漏掉范围条件读到别的范围的行。
+  - 测试种子仍在旧表，`schema-test-extra.sql` 末尾复制进新表。基线 −5。
+- **规格模板 `prd_spec_template` 暂未并**：并入 `prd_spec_dim` 意味着模板变成规格库里的维度（平台模板出现在运营规格库、商家模板出现在「我的规格」），且 `category_type` 兜底在新表没有落处，属于业务口径变化，待确认后再做。
 - 公共防重表 `sys_idempotent` 目前在主库、不与商品事务同库（定价策略原本就是如此）；它属于公共能力，随防重服务化处理，不进门店交易库。
 
 ### 偏差说明

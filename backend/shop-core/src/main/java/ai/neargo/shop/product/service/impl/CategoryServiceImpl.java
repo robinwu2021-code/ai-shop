@@ -7,10 +7,10 @@ import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.dto.OpsCategoryVO;
 import ai.neargo.shop.product.entity.PrdCategory;
-import ai.neargo.shop.product.entity.PrdCategorySpec;
+import ai.neargo.shop.product.entity.PrdSpecUsage;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.CategorySpecMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.SpecUsageMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.service.CategoryService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -48,12 +48,12 @@ public class CategoryServiceImpl implements CategoryService {
     private final CategoryMapper categoryMapper;
     private final GoodsMapper goodsMapper;
     /** 只用于启用类目时那道「有没有配规格」的闸门 */
-    private final CategorySpecMapper categorySpecMapper;
+    private final SpecUsageMapper specUsageMapper;
     private final ObjectMapper json;
 
     public CategoryServiceImpl(CategoryMapper categoryMapper, GoodsMapper goodsMapper,
-                               CategorySpecMapper categorySpecMapper, ObjectMapper json) {
-        this.categorySpecMapper = categorySpecMapper;
+                               SpecUsageMapper specUsageMapper, ObjectMapper json) {
+        this.specUsageMapper = specUsageMapper;
         this.categoryMapper = categoryMapper;
         this.goodsMapper = goodsMapper;
         this.json = json;
@@ -299,9 +299,9 @@ public class CategoryServiceImpl implements CategoryService {
 
     /** 这个类目有没有至少一条启用中的规格绑定。 */
     private boolean hasActiveSpec(String categoryNo) {
-        Long n = categorySpecMapper.selectCount(Wrappers.<PrdCategorySpec>lambdaQuery()
-                .eq(PrdCategorySpec::getCategoryNo, categoryNo)
-                .eq(PrdCategorySpec::getStatus, ACTIVE));
+        Long n = specUsageMapper.selectCount(SpecUsageMapper.categoryDims()
+                .eq(PrdSpecUsage::getScopeRef, categoryNo)
+                .eq(PrdSpecUsage::getStatus, PrdSpecUsage.ACTIVE));
         return n != null && n > 0;
     }
 

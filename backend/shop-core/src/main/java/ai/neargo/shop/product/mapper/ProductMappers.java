@@ -64,7 +64,7 @@ public final class ProductMappers {
     public interface SpecTemplateMapper extends ProductTableMapper<PrdSpecTemplate> {
     }
 
-    /** 商品收藏（V343）。取消要真删，理由同 CategorySpecMapper：软删行占着唯一键，再收藏就撞 */
+    /** 商品收藏（V343）。取消要真删，理由同 SpecUsageMapper#purgeScope：软删行占着唯一键，再收藏就撞 */
     public interface GoodsFavoriteMapper
             extends BaseMapper<ai.neargo.shop.product.entity.PrdGoodsFavorite> {
 
@@ -76,7 +76,7 @@ public final class ProductMappers {
 
     // ---------------------------------------------------------------- 规格库（V195）
     //
-    // 四层：规格项 / 规格值 / 类目绑定 / 类目取值子集，另加两张商家覆盖表。
+    // 规格项 / 规格值 / 使用范围（类目绑定、类目取值子集、商家覆盖并在 prd_spec_usage）。
     // 商家侧的「套用模板」读的是这几张表组装出来的结果，契约形状不变。
 
     public interface SpecDimMapper
@@ -87,55 +87,65 @@ public final class ProductMappers {
             extends ProductTableMapper<ai.neargo.shop.product.entity.PrdSpecValue> {
     }
 
-    /** 商家对平台规格的覆盖（V213）。整份替换时要真删，理由同 CategorySpecMapper */
-    public interface MerchantSpecOverrideMapper
-            extends ProductTableMapper<ai.neargo.shop.product.entity.PrdMerchantSpecOverride> {
+    /**
+     * 规格的使用范围（{@code prd_spec_usage}）：类目绑定、类目取值子集、商家覆盖并在一张表，
+     * 按 {@code scope_type} 区分（见 {@link ai.neargo.shop.product.entity.PrdSpecUsage}）。
+     *
+     * <p>读写一律从下面几个工厂方法起手：漏了 {@code scope_type} 或维度级/取值级的条件，
+     * 读到的就是别的范围的行 —— 而那不报错。
+     */
+    public interface SpecUsageMapper
+            extends ProductTableMapper<ai.neargo.shop.product.entity.PrdSpecUsage> {
 
-        @org.apache.ibatis.annotations.Delete(
-                "DELETE FROM prd_merchant_spec_override "
-                        + "WHERE merchant_no = #{merchantNo} AND category_no = #{categoryNo}")
-        int purge(@org.apache.ibatis.annotations.Param("merchantNo") String merchantNo,
-                  @org.apache.ibatis.annotations.Param("categoryNo") String categoryNo);
-    }
+        /** 类目绑定的维度（原 prd_category_spec） */
+        static com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                ai.neargo.shop.product.entity.PrdSpecUsage> categoryDims() {
+            return com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdSpecUsage>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdSpecUsage::getScopeType,
+                            ai.neargo.shop.product.entity.PrdSpecUsage.CATEGORY)
+                    .eq(ai.neargo.shop.product.entity.PrdSpecUsage::getValueNo,
+                            ai.neargo.shop.product.entity.PrdSpecUsage.DIM_LEVEL);
+        }
 
-    public interface CategorySpecMapper
-            extends ProductTableMapper<ai.neargo.shop.product.entity.PrdCategorySpec> {
+        /** 类目裁出的取值子集（原 prd_category_spec_value） */
+        static com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                ai.neargo.shop.product.entity.PrdSpecUsage> categoryValues() {
+            return com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdSpecUsage>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdSpecUsage::getScopeType,
+                            ai.neargo.shop.product.entity.PrdSpecUsage.CATEGORY)
+                    .ne(ai.neargo.shop.product.entity.PrdSpecUsage::getValueNo,
+                            ai.neargo.shop.product.entity.PrdSpecUsage.DIM_LEVEL);
+        }
+
+        /** 一个商家在一个类目下的全部覆盖（原 prd_merchant_spec_override），维度级与取值级都在 */
+        static com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                ai.neargo.shop.product.entity.PrdSpecUsage> overrides(String merchantNo, String categoryNo) {
+            return com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdSpecUsage>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdSpecUsage::getScopeType,
+                            ai.neargo.shop.product.entity.PrdSpecUsage.MERCHANT_CATEGORY)
+                    .eq(ai.neargo.shop.product.entity.PrdSpecUsage::getScopeRef,
+                            ai.neargo.shop.product.entity.PrdSpecUsage.merchantCategoryRef(merchantNo, categoryNo));
+        }
 
         /**
-         * <b>真删</b>这个类目的全部绑定。
+         * <b>真删</b>一个范围的全部行（整份替换的第一步）。
          *
          * <p>不能用 {@code delete(...)}：{@link ai.neargo.shop.common.BaseEntity} 上挂着
          * {@code @TableLogic}，那条路是 {@code UPDATE deleted=1}，而唯一键
-         * {@code uk_cat_spec(tenant_no, category_no, dim_no)} <b>不含 deleted</b> ——
-         * 于是「整份替换」的第二步 INSERT 撞上第一步留下的软删行，
-         * 报 {@code Duplicate entry 'MAIN-CAT110-SD_WEIGHT'}。
+         * {@code (scope_type, scope_ref, dim_no, value_no)} <b>不含 deleted</b> ——
+         * 于是第二步 INSERT 撞上第一步留下的软删行，报 Duplicate entry。
+         * 症状是运营改任何一次类目绑定都 500，而第一次配置不会（种子从没走过这条路）。
          *
-         * <p>症状是运营在「类目 × 规格」里改任何一次绑定都 500，而**第一次配置不会**：
-         * 种子是迁移直接 INSERT 的，从没走过这条路。
-         *
-         * <p>绑定是配置、不是凭证：没有「历史要靠它解释」的需求（那是
+         * <p>绑定与覆盖是配置、不是凭证：没有「历史要靠它解释」的需求（那是
          * {@code prd_spec_value} 的事 —— SKU 快照记着它的编号）。所以真删是对的语义。
          */
         @org.apache.ibatis.annotations.Delete(
-                "DELETE FROM prd_category_spec WHERE category_no = #{categoryNo}")
-        int purgeByCategory(@org.apache.ibatis.annotations.Param("categoryNo") String categoryNo);
-    }
-
-    public interface CategorySpecValueMapper
-            extends ProductTableMapper<ai.neargo.shop.product.entity.PrdCategorySpecValue> {
-
-        /** 同上：{@code uk_cat_spec_value} 同样不含 deleted，软删会挡住重新插入 */
-        @org.apache.ibatis.annotations.Delete(
-                "DELETE FROM prd_category_spec_value WHERE category_no = #{categoryNo}")
-        int purgeByCategory(@org.apache.ibatis.annotations.Param("categoryNo") String categoryNo);
-    }
-
-    public interface MerchantSpecMapper
-            extends ProductTableMapper<ai.neargo.shop.product.entity.PrdMerchantSpec> {
-    }
-
-    public interface MerchantSpecValueMapper
-            extends ProductTableMapper<ai.neargo.shop.product.entity.PrdMerchantSpecValue> {
+                "DELETE FROM prd_spec_usage WHERE scope_type = #{scopeType} AND scope_ref = #{scopeRef}")
+        int purgeScope(@org.apache.ibatis.annotations.Param("scopeType") String scopeType,
+                       @org.apache.ibatis.annotations.Param("scopeRef") String scopeRef);
     }
 
     public interface GoodsDraftMapper extends ProductTableMapper<ai.neargo.shop.product.entity.PrdGoodsDraft> {

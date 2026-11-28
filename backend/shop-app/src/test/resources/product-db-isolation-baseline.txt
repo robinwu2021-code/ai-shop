@@ -10,15 +10,10 @@ R1 StoreStockSyncMapper 继承 BaseMapper
 R1 TopicGoodsMapper 继承 BaseMapper
 R1 TopicMapper 继承 BaseMapper
 R2 AppealMapper 用到 rvw_appeal，不在 目标库 DDL
-R2 CategorySpecMapper 用到 prd_category_spec，不在 05-n_trade.sql
-R2 CategorySpecValueMapper 用到 prd_category_spec_value，不在 05-n_trade.sql
 R2 EntityCategoryInvMapper 用到 prd_entity_category_inv，不在 05-n_trade.sql
 R2 ExecutionRetentionMapper 用到 prd_execution_retention，不在 目标库 DDL
 R2 GoodsDraftMapper 用到 prd_goods_draft，不在 05-n_trade.sql
 R2 GoodsFavoriteMapper 用到 prd_goods_favorite，不在 目标库 DDL
-R2 MerchantSpecMapper 用到 prd_merchant_spec，不在 05-n_trade.sql
-R2 MerchantSpecOverrideMapper 用到 prd_merchant_spec_override，不在 05-n_trade.sql
-R2 MerchantSpecValueMapper 用到 prd_merchant_spec_value，不在 05-n_trade.sql
 R2 ReviewLikeMapper 用到 rvw_review_like，不在 目标库 DDL
 R2 ReviewMapper 用到 rvw_review，不在 目标库 DDL
 R2 SpecTemplateMapper 用到 prd_spec_template，不在 05-n_trade.sql

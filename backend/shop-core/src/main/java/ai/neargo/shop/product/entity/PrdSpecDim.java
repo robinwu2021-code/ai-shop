@@ -10,7 +10,7 @@ import lombok.Setter;
  *
  * <p>与它取代的 {@code prd_spec_template} 的关键差别：那张表里「颜色」在每个类目下
  * 各存一份选项 JSON，加一个新颜色要改 N 处、漏一处那个类目就永远选不到它，而且不报错。
- * 拆出来之后类目只是<b>引用</b>这个维度（{@code prd_category_spec}），并可裁剪取值子集。
+ * 拆出来之后类目只是<b>引用</b>这个维度（{@code prd_spec_usage} 的类目行），并可裁剪取值子集。
  */
 @Getter
 @Setter

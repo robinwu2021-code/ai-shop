@@ -40,3 +40,24 @@ SELECT std_no, category_no, title, title_i18n, subtitle, cover, images, spec_gro
        status, ref_count, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted
 FROM prd_spu_std s
 WHERE NOT EXISTS (SELECT 1 FROM prd_standard_goods g WHERE g.std_no = s.std_no);
+
+-- 类目规格种子：schema-test.sql 写在旧表 prd_category_spec / prd_category_spec_value，
+-- 商品代码读门店交易库的 prd_spec_usage（TDD-商品领域迁到门店交易库 批次 2-d）：
+-- 类目绑定 = scope_type CATEGORY 的维度级行（value_no 空串），取值子集 = 同范围的取值级行。
+-- 旧表随 schema-test.sql 退场时，种子直接改写进新表、删掉这段。
+INSERT INTO prd_spec_usage
+    (tenant_no, scope_type, scope_ref, dim_no, usage_type, is_primary, required, sort, status,
+     value_no, created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT tenant_no, 'CATEGORY', category_no, dim_no, usage_type, is_primary, required, sort, status,
+       '', created_at, created_by, updated_at, updated_by, version, deleted
+FROM prd_category_spec c
+WHERE NOT EXISTS (SELECT 1 FROM prd_spec_usage u WHERE u.scope_type = 'CATEGORY'
+                  AND u.scope_ref = c.category_no AND u.dim_no = c.dim_no AND u.value_no = '');
+INSERT INTO prd_spec_usage
+    (tenant_no, scope_type, scope_ref, dim_no, sort, status, value_no, label_override,
+     created_at, created_by, updated_at, updated_by, version, deleted)
+SELECT tenant_no, 'CATEGORY', category_no, dim_no, sort, 'ACTIVE', value_no, label_override,
+       created_at, created_by, updated_at, updated_by, version, deleted
+FROM prd_category_spec_value v
+WHERE NOT EXISTS (SELECT 1 FROM prd_spec_usage u WHERE u.scope_type = 'CATEGORY'
+                  AND u.scope_ref = v.category_no AND u.dim_no = v.dim_no AND u.value_no = v.value_no);

@@ -4,12 +4,12 @@ import ai.neargo.shop.product.stats.ProductStatsService;
 
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.product.entity.PrdCategory;
-import ai.neargo.shop.product.entity.PrdCategorySpec;
+import ai.neargo.shop.product.entity.PrdSpecUsage;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdSpecDim;
 import ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.CategorySpecMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.SpecUsageMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SpecDimMapper;
@@ -36,11 +36,11 @@ public class ProductStatsServiceImpl implements ProductStatsService {
     private final GoodsMapper goods;
     private final SkuMapper skus;
     private final SpecDimMapper specDims;
-    private final CategorySpecMapper categorySpecs;
+    private final SpecUsageMapper categorySpecs;
     private final AuditLogPort auditLogs;
 
     public ProductStatsServiceImpl(CategoryMapper categories, GoodsMapper goods, SkuMapper skus,
-                                   SpecDimMapper specDims, CategorySpecMapper categorySpecs,
+                                   SpecDimMapper specDims, SpecUsageMapper categorySpecs,
                                    AuditLogPort auditLogs) {
         this.categories = categories;
         this.goods = goods;
@@ -70,8 +70,11 @@ public class ProductStatsServiceImpl implements ProductStatsService {
 
             long dimTotal = specDims.selectCount(Wrappers.<PrdSpecDim>lambdaQuery()
                     .eq(PrdSpecDim::getDeleted, 0));
-            long dimBound = distinct(categorySpecs.selectMaps(Wrappers.<PrdCategorySpec>query()
-                    .select("COUNT(DISTINCT dim_no) AS c")));
+            // 被类目绑定过的维度数：只数类目维度级行，商家覆盖与取值子集不算
+            long dimBound = distinct(categorySpecs.selectMaps(Wrappers.<PrdSpecUsage>query()
+                    .select("COUNT(DISTINCT dim_no) AS c")
+                    .eq("scope_type", PrdSpecUsage.CATEGORY)
+                    .eq("value_no", PrdSpecUsage.DIM_LEVEL)));
 
             Map<String, Object> auditRow = one(goods.selectMaps(Wrappers.<PrdGoods>query()
                     .select("SUM(CASE WHEN audit_status = 'APPROVED' THEN 1 ELSE 0 END) AS approved",

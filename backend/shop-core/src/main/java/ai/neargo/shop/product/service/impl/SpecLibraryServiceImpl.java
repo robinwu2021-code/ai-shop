@@ -6,14 +6,11 @@ import ai.neargo.shop.product.dto.CategorySpecVO;
 import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.dto.SpecTemplateVO;
 import ai.neargo.shop.product.entity.PrdCategory;
-import ai.neargo.shop.product.entity.PrdCategorySpec;
-import ai.neargo.shop.product.entity.PrdCategorySpecValue;
-import ai.neargo.shop.product.entity.PrdMerchantSpecOverride;
+import ai.neargo.shop.product.entity.PrdSpecUsage;
 import ai.neargo.shop.product.entity.PrdSpecDim;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdSpecValue;
-import ai.neargo.shop.product.mapper.ProductMappers.CategorySpecMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.CategorySpecValueMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.SpecUsageMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SpecDimMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SpecValueMapper;
@@ -38,9 +35,9 @@ import java.util.stream.Collectors;
 /**
  * 规格库读侧的组装。
  *
- * <p>三张表拼出商家看到的那几组规格：{@code prd_category_spec}（这一类目用哪些维度）
+ * <p>三张表拼出商家看到的那几组规格：{@code prd_spec_usage} 的类目维度行（这一类目用哪些维度）
  * ⋈ {@code prd_spec_dim}（维度是什么）⋈ {@code prd_spec_value}（有哪些值），
- * 中间再让 {@code prd_category_spec_value} 裁一刀（这一类目只给其中几个值，并且可以换个说法）。
+ * 中间再让类目取值行裁一刀（这一类目只给其中几个值，并且可以换个说法）。
  */
 @Service
 public class SpecLibraryServiceImpl implements SpecLibraryService {
@@ -50,8 +47,8 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
 
     private final SpecDimMapper dimMapper;
     private final SpecValueMapper valueMapper;
-    private final CategorySpecMapper catSpecMapper;
-    private final CategorySpecValueMapper catValueMapper;
+    /** 类目绑定、类目取值子集、商家覆盖（V213）：本店用哪几个、什么顺序、叫什么 */
+    private final SpecUsageMapper usageMapper;
     private final CategoryService categoryService;
     /** 合并值时要改写 SKU 快照 —— 那是「跨店可比」真正的落点 */
     private final SkuMapper skuMapper;
@@ -59,30 +56,24 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     private final ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
     /** 「我的规格」按货架类目分组 —— 这家店摆了哪几类，只有商家域知道 */
     private final ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort;
-    /** 商家对平台规格的覆盖（V213）：本店用哪几个、什么顺序、叫什么 */
-    private final ai.neargo.shop.product.mapper.ProductMappers.MerchantSpecOverrideMapper overrideMapper;
 
     /** 只用来找父类目（规格挂在二级，货可能落在三级）。取名不取树：一次一行比拉整棵树便宜 */
     private final ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper categoryMapper;
 
     public SpecLibraryServiceImpl(SpecDimMapper dimMapper, SpecValueMapper valueMapper,
-                                  CategorySpecMapper catSpecMapper,
-                                  CategorySpecValueMapper catValueMapper,
+                                  SpecUsageMapper usageMapper,
                                   CategoryService categoryService,
                                   SkuMapper skuMapper,
                                   ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper,
                                   ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort,
-                                  ai.neargo.shop.product.mapper.ProductMappers.MerchantSpecOverrideMapper overrideMapper,
                                   ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper categoryMapper) {
         this.categoryMapper = categoryMapper;
         this.storeCategoryPort = storeCategoryPort;
-        this.overrideMapper = overrideMapper;
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;
         this.dimMapper = dimMapper;
         this.valueMapper = valueMapper;
-        this.catSpecMapper = catSpecMapper;
-        this.catValueMapper = catValueMapper;
+        this.usageMapper = usageMapper;
         this.categoryService = categoryService;
     }
 
@@ -128,7 +119,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          * 回溯到那里仍然是空 —— 行为与此前逐字相同。
          */
         String specCat = specCategoryOf(categoryNo);
-        List<PrdCategorySpec> binds = activeBindings(specCat);
+        List<PrdSpecUsage> binds = activeBindings(specCat);
         /*
          * ⚠️ **平台一条绑定都没有 ≠ 这一类没有规格。**
          *
@@ -139,15 +130,15 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          * （pickable 另有来源，不走这条路），于是他会一加再加。
          *
          * 空绑定不需要短路：`dimsOf(空)` 与 `subsetsOf(无行)` 都返回空集合，
-         * 下面那圈 `for (PrdCategorySpec b : binds)` 自然零次 —— 走下去只多两次
+         * 下面那圈 `for (PrdSpecUsage b : binds)` 自然零次 —— 走下去只多两次
          * 必然为空的查询，换来「他加的规格能显示」。
          */
-        Map<String, PrdSpecDim> dims = dimsOf(binds.stream().map(PrdCategorySpec::getDimNo).toList());
+        Map<String, PrdSpecDim> dims = dimsOf(binds.stream().map(PrdSpecUsage::getDimNo).toList());
         /*
          * 值子集也跟着走同一级：绑定从父类目继承来的话，子集还按子类目查会查到空，
          * 于是继承到的维度会把**整个平台值池**摊开给商家 —— 比没有更糟。
          */
-        Map<String, List<PrdCategorySpecValue>> subsets = subsetsOf(specCat);
+        Map<String, List<PrdSpecUsage>> subsets = subsetsOf(specCat);
         /*
          * 商家的覆盖（V213）：本店用哪几个、什么顺序、叫什么。
          * **稀疏** —— 没有行就完全跟平台走，所以运营新加的维度会自动到达没动过手的商家。
@@ -164,7 +155,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          * 他做的是删除，看到的是多出四十几档，报上来的话只会说「保存不成功」。
          */
         Set<String> handled = new java.util.LinkedHashSet<>();
-        for (PrdCategorySpec b : binds) {
+        for (PrdSpecUsage b : binds) {
             handled.add(b.getDimNo());
             PrdSpecDim dim = dims.get(b.getDimNo());
             if (dim == null) {
@@ -285,10 +276,8 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             return Overrides.EMPTY;
         }
         try {
-            List<PrdMerchantSpecOverride> rows = DataScopeContext.executeWithoutScope(() ->
-                    overrideMapper.selectList(Wrappers.<PrdMerchantSpecOverride>lambdaQuery()
-                            .eq(PrdMerchantSpecOverride::getMerchantNo, merchantNo)
-                            .eq(PrdMerchantSpecOverride::getCategoryNo, categoryNo)));
+            List<PrdSpecUsage> rows = DataScopeContext.executeWithoutScope(() ->
+                    usageMapper.selectList(SpecUsageMapper.overrides(merchantNo, categoryNo)));
             return rows.isEmpty() ? Overrides.EMPTY : new Overrides(rows);
         } catch (Exception e) {
             log.warn("[规格覆盖] 读失败，本次按无覆盖处理：merchant={} category={}",
@@ -303,13 +292,13 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         static final Overrides EMPTY = new Overrides(List.of());
 
         /** dimNo → 维度级覆盖 */
-        private final Map<String, PrdMerchantSpecOverride> dims = new java.util.HashMap<>();
+        private final Map<String, PrdSpecUsage> dims = new java.util.HashMap<>();
         /** dimNo + "\u0000" + valueNo → 取值级覆盖 */
-        private final Map<String, PrdMerchantSpecOverride> values = new java.util.HashMap<>();
+        private final Map<String, PrdSpecUsage> values = new java.util.HashMap<>();
 
-        Overrides(List<PrdMerchantSpecOverride> rows) {
-            for (PrdMerchantSpecOverride r : rows) {
-                if (PrdMerchantSpecOverride.DIM_LEVEL.equals(r.getValueNo())) {
+        Overrides(List<PrdSpecUsage> rows) {
+            for (PrdSpecUsage r : rows) {
+                if (r.dimLevel()) {
                     dims.put(r.getDimNo(), r);
                 } else {
                     values.put(r.getDimNo() + "\u0000" + r.getValueNo(), r);
@@ -318,7 +307,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         }
 
         String dimLabel(String dimNo, String fallback) {
-            PrdMerchantSpecOverride r = dims.get(dimNo);
+            PrdSpecUsage r = dims.get(dimNo);
             return r != null && r.getLabelOverride() != null && !r.getLabelOverride().isBlank()
                     ? r.getLabelOverride() : fallback;
         }
@@ -327,7 +316,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         java.util.Set<String> addedDims() {
             java.util.Set<String> out = new java.util.LinkedHashSet<>();
             dims.forEach((dimNo, r) -> {
-                if (!Boolean.FALSE.equals(r.getEnabled())) {
+                if (r.enabled()) {
                     out.add(dimNo);
                 }
             });
@@ -335,13 +324,13 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         }
 
         boolean dimEnabled(String dimNo) {
-            PrdMerchantSpecOverride r = dims.get(dimNo);
-            return r == null || !Boolean.FALSE.equals(r.getEnabled());
+            PrdSpecUsage r = dims.get(dimNo);
+            return r == null || r.enabled();
         }
 
         /** 没排过的给一个大数 —— 排前面的是他动过手的那几个，其余保持平台顺序跟在后面 */
         int dimSort(String dimNo) {
-            PrdMerchantSpecOverride r = dims.get(dimNo);
+            PrdSpecUsage r = dims.get(dimNo);
             return r != null && r.getSort() != null ? r.getSort() : 10_000;
         }
 
@@ -359,8 +348,8 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             java.util.Set<String> have = new java.util.LinkedHashSet<>();
             for (SpecTemplateVO.Option o : src) {
                 String code = o.code() == null ? "" : o.code();
-                PrdMerchantSpecOverride r = values.get(dimNo + "\u0000" + code);
-                if (r != null && Boolean.FALSE.equals(r.getEnabled())) {
+                PrdSpecUsage r = values.get(dimNo + "\u0000" + code);
+                if (r != null && !r.enabled()) {
                     continue;
                 }
                 out.add(o);
@@ -369,7 +358,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             // 他挑进来的：类目子集里没有，但平台值池里有
             java.util.Set<String> wanted = new java.util.LinkedHashSet<>();
             for (var e : values.entrySet()) {
-                if (!e.getKey().startsWith(dimNo + "\u0000") || Boolean.FALSE.equals(e.getValue().getEnabled())) {
+                if (!e.getKey().startsWith(dimNo + "\u0000") || !e.getValue().enabled()) {
                     continue;
                 }
                 String code = e.getKey().substring(dimNo.length() + 1);
@@ -393,7 +382,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         }
 
         private int valueSort(String dimNo, String code) {
-            PrdMerchantSpecOverride r = values.get(dimNo + "\u0000" + code);
+            PrdSpecUsage r = values.get(dimNo + "\u0000" + code);
             return r != null && r.getSort() != null ? r.getSort() : 10_000;
         }
 
@@ -499,10 +488,10 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          * 类目级的换名也要认得回来：500g 在蔬菜下显示成「约1斤」，商家提交的就是「约1斤」。
          * 不认的话这一格永远归不了一 —— 而它恰恰是生鲜类目下最常用的那几档。
          */
-        for (PrdCategorySpecValue cv : DataScopeContext.executeWithoutScope(() ->
-                catValueMapper.selectList(Wrappers.<PrdCategorySpecValue>lambdaQuery()
-                        .eq(PrdCategorySpecValue::getDimNo, dimNo)
-                        .isNotNull(PrdCategorySpecValue::getLabelOverride)))) {
+        for (PrdSpecUsage cv : DataScopeContext.executeWithoutScope(() ->
+                usageMapper.selectList(SpecUsageMapper.categoryValues()
+                        .eq(PrdSpecUsage::getDimNo, dimNo)
+                        .isNotNull(PrdSpecUsage::getLabelOverride)))) {
             putValueKey(byLabel, cv.getLabelOverride(), cv.getValueNo());
         }
         /*
@@ -543,28 +532,28 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
 
     @Override
     public List<CategorySpecVO> catalog() {
-        List<PrdCategorySpec> all = DataScopeContext.executeWithoutScope(() ->
-                catSpecMapper.selectList(Wrappers.<PrdCategorySpec>lambdaQuery()
-                        .eq(PrdCategorySpec::getStatus, PrdSpecDim.ACTIVE)));
-        Map<String, List<PrdCategorySpec>> byCat = all.stream()
-                .collect(Collectors.groupingBy(PrdCategorySpec::getCategoryNo));
-        Map<String, PrdSpecDim> dims = dimsOf(all.stream().map(PrdCategorySpec::getDimNo).toList());
-        Map<String, Map<String, List<PrdCategorySpecValue>>> subsetsByCat = new LinkedHashMap<>();
+        List<PrdSpecUsage> all = DataScopeContext.executeWithoutScope(() ->
+                usageMapper.selectList(SpecUsageMapper.categoryDims()
+                        .eq(PrdSpecUsage::getStatus, PrdSpecUsage.ACTIVE)));
+        Map<String, List<PrdSpecUsage>> byCat = all.stream()
+                .collect(Collectors.groupingBy(PrdSpecUsage::getScopeRef));
+        Map<String, PrdSpecDim> dims = dimsOf(all.stream().map(PrdSpecUsage::getDimNo).toList());
+        Map<String, Map<String, List<PrdSpecUsage>>> subsetsByCat = new LinkedHashMap<>();
 
         List<CategorySpecVO> out = new ArrayList<>();
         for (CategoryVO lv1 : categoryService.tree()) {
             for (CategoryVO lv2 : lv1.children()) {
                 String catNo = lv2.categoryNo();
-                List<PrdCategorySpec> binds = byCat.getOrDefault(catNo, List.of()).stream()
-                        .sorted(Comparator.comparing((PrdCategorySpec b) ->
+                List<PrdSpecUsage> binds = byCat.getOrDefault(catNo, List.of()).stream()
+                        .sorted(Comparator.comparing((PrdSpecUsage b) ->
                                         Boolean.TRUE.equals(b.getIsPrimary()) ? 0 : 1)
                                 .thenComparingInt(b -> b.getSort() == null ? 100 : b.getSort()))
                         .toList();
-                Map<String, List<PrdCategorySpecValue>> subsets =
+                Map<String, List<PrdSpecUsage>> subsets =
                         subsetsByCat.computeIfAbsent(catNo, this::subsetsOf);
 
                 List<CategorySpecVO.DimVO> dimVOs = new ArrayList<>();
-                for (PrdCategorySpec b : binds) {
+                for (PrdSpecUsage b : binds) {
                     PrdSpecDim dim = dims.get(b.getDimNo());
                     if (dim == null) {
                         continue;
@@ -626,10 +615,10 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
 
         // 被几个类目绑着 —— 归档一个维度前，运营要知道自己在动多大范围
         Map<String, Long> inUse = DataScopeContext.executeWithoutScope(() ->
-                        catSpecMapper.selectList(Wrappers.<PrdCategorySpec>lambdaQuery()
-                                .in(PrdCategorySpec::getDimNo, dimNos)
-                                .eq(PrdCategorySpec::getStatus, PrdSpecDim.ACTIVE))).stream()
-                .collect(Collectors.groupingBy(PrdCategorySpec::getDimNo, Collectors.counting()));
+                        usageMapper.selectList(SpecUsageMapper.categoryDims()
+                                .in(PrdSpecUsage::getDimNo, dimNos)
+                                .eq(PrdSpecUsage::getStatus, PrdSpecUsage.ACTIVE))).stream()
+                .collect(Collectors.groupingBy(PrdSpecUsage::getDimNo, Collectors.counting()));
 
         return dims.stream().map(d -> {
             List<PrdSpecValue> vs = valuesByDim.getOrDefault(d.getDimNo(), List.of());
@@ -963,37 +952,41 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         /*
          * 整份替换：绑定是一组有序的东西，逐条 diff 出增删改没有收益。
          *
-         * **真删，不是软删**（purgeByCategory）。软删走 UPDATE deleted=1，而唯一键
-         * uk_cat_spec(tenant_no, category_no, dim_no) 不含 deleted —— 下面那圈 INSERT
+         * **真删，不是软删**（purgeScope）。软删走 UPDATE deleted=1，而唯一键
+         * (scope_type, scope_ref, dim_no, value_no) 不含 deleted —— 下面那圈 INSERT
          * 会撞上刚软删的那几行，报 Duplicate entry。症状是运营改任何一次绑定都 500，
          * 而第一次配置好好的：种子是迁移直接 INSERT 的，从没走过这条路。
          */
-        DataScopeContext.executeWithoutScope(() -> catSpecMapper.purgeByCategory(categoryNo));
-        DataScopeContext.executeWithoutScope(() -> catValueMapper.purgeByCategory(categoryNo));
+        DataScopeContext.executeWithoutScope(() ->
+                usageMapper.purgeScope(PrdSpecUsage.CATEGORY, categoryNo));
 
         int i = 0;
         for (BindingCommand b : list) {
             i += 10;
-            PrdCategorySpec row = new PrdCategorySpec();
-            row.setCategoryNo(categoryNo);
+            PrdSpecUsage row = new PrdSpecUsage();
+            row.setScopeType(PrdSpecUsage.CATEGORY);
+            row.setScopeRef(categoryNo);
             row.setDimNo(b.dimNo());
+            row.setValueNo(PrdSpecUsage.DIM_LEVEL);
             row.setUsageType(b.usageType());
             row.setIsPrimary(b.primary());
             row.setRequired(b.required());
             row.setSort(i);
-            row.setStatus(PrdSpecDim.ACTIVE);
-            DataScopeContext.executeWithoutScope(() -> catSpecMapper.insert(row));
+            row.setStatus(PrdSpecUsage.ACTIVE);
+            DataScopeContext.executeWithoutScope(() -> usageMapper.insert(row));
 
             int j = 0;
             for (String valueNo : b.valueNos() == null ? List.<String>of() : b.valueNos()) {
                 j += 10;
-                PrdCategorySpecValue cv = new PrdCategorySpecValue();
-                cv.setCategoryNo(categoryNo);
+                PrdSpecUsage cv = new PrdSpecUsage();
+                cv.setScopeType(PrdSpecUsage.CATEGORY);
+                cv.setScopeRef(categoryNo);
                 cv.setDimNo(b.dimNo());
                 cv.setValueNo(valueNo);
                 cv.setLabelOverride(b.labels() == null ? null : b.labels().get(valueNo));
                 cv.setSort(j);
-                DataScopeContext.executeWithoutScope(() -> catValueMapper.insert(cv));
+                cv.setStatus(PrdSpecUsage.ACTIVE);
+                DataScopeContext.executeWithoutScope(() -> usageMapper.insert(cv));
             }
         }
     }
@@ -1098,7 +1091,8 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         // 整份替换。真删而不是软删 —— 唯一键不含 deleted，软删会挡住重新插入（V195 那个坑）
-        DataScopeContext.executeWithoutScope(() -> overrideMapper.purge(merchantNo, categoryNo));
+        DataScopeContext.executeWithoutScope(() -> usageMapper.purgeScope(
+                PrdSpecUsage.MERCHANT_CATEGORY, PrdSpecUsage.merchantCategoryRef(merchantNo, categoryNo)));
         if (dims == null || dims.isEmpty()) {
             return;   // 清空 = 完全跟平台走，这是个合法状态
         }
@@ -1108,7 +1102,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          * 两种都要落行，而**与子集一致的不落** —— 那样运营给类目加了新档位，
          * 没动过手的商家自动获得它。
          */
-        Map<String, List<PrdCategorySpecValue>> subsets = subsetsOf(categoryNo);
+        Map<String, List<PrdSpecUsage>> subsets = subsetsOf(categoryNo);
 
         /*
          * **提交上来的 dims 是一份完整声明**：「这一类用哪几个规格」。
@@ -1123,18 +1117,16 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 .filter(OverrideCommand::enabled)
                 .map(OverrideCommand::dimNo)
                 .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
-        for (PrdCategorySpec b : activeBindings(categoryNo)) {
+        for (PrdSpecUsage b : activeBindings(categoryNo)) {
             if (declaredDims.contains(b.getDimNo())
                     || dims.stream().anyMatch(d -> d.dimNo().equals(b.getDimNo()))) {
                 continue;   // 声明用它、或显式说了不用 —— 两种都在下面那圈里处理
             }
-            PrdMerchantSpecOverride off = new PrdMerchantSpecOverride();
-            off.setMerchantNo(merchantNo);
-            off.setCategoryNo(categoryNo);
+            PrdSpecUsage off = overrideRow(merchantNo, categoryNo);
             off.setDimNo(b.getDimNo());
-            off.setValueNo(PrdMerchantSpecOverride.DIM_LEVEL);
-            off.setEnabled(false);
-            DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(off));
+            off.setValueNo(PrdSpecUsage.DIM_LEVEL);
+            off.setStatus(PrdSpecUsage.DISABLED);
+            DataScopeContext.executeWithoutScope(() -> usageMapper.insert(off));
         }
 
         int i = 0;
@@ -1151,12 +1143,10 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
              * 那样运营新加的维度才能自动到达没动过手的商家。
              */
             {
-                PrdMerchantSpecOverride row = new PrdMerchantSpecOverride();
-                row.setMerchantNo(merchantNo);
-                row.setCategoryNo(categoryNo);
+                PrdSpecUsage row = overrideRow(merchantNo, categoryNo);
                 row.setDimNo(d.dimNo());
-                row.setValueNo(PrdMerchantSpecOverride.DIM_LEVEL);
-                row.setEnabled(d.enabled());
+                row.setValueNo(PrdSpecUsage.DIM_LEVEL);
+                row.setStatus(d.enabled() ? PrdSpecUsage.ACTIVE : PrdSpecUsage.DISABLED);
                 row.setSort(i);
                 /*
                  * **与平台原名相同就不算改名。**判据放在这里而不是端上：
@@ -1170,7 +1160,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                  */
                 String label = notBlank(d.label()) ? d.label().trim() : null;
                 row.setLabelOverride(dimOf != null && dimOf.getName().equals(label) ? null : label);
-                DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(row));
+                DataScopeContext.executeWithoutScope(() -> usageMapper.insert(row));
             }
             /*
              * **提交上来的 values 是一份完整声明**：「这个规格在本店用哪几档」。
@@ -1232,13 +1222,11 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             if (d.enabled()) {
                 for (String code : defaultVisible) {
                     if (!declared.contains(code)) {
-                        PrdMerchantSpecOverride off = new PrdMerchantSpecOverride();
-                        off.setMerchantNo(merchantNo);
-                        off.setCategoryNo(categoryNo);
+                        PrdSpecUsage off = overrideRow(merchantNo, categoryNo);
                         off.setDimNo(d.dimNo());
                         off.setValueNo(code);
-                        off.setEnabled(false);
-                        DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(off));
+                        off.setStatus(PrdSpecUsage.DISABLED);
+                        DataScopeContext.executeWithoutScope(() -> usageMapper.insert(off));
                     }
                 }
             }
@@ -1256,14 +1244,12 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                     continue;   // 去掉的上面已经按「没声明」补过了，别落两行
                 }
                 vi += 10;
-                PrdMerchantSpecOverride row = new PrdMerchantSpecOverride();
-                row.setMerchantNo(merchantNo);
-                row.setCategoryNo(categoryNo);
+                PrdSpecUsage row = overrideRow(merchantNo, categoryNo);
                 row.setDimNo(d.dimNo());
                 row.setValueNo(v.code());
-                row.setEnabled(v.enabled());
+                row.setStatus(PrdSpecUsage.ACTIVE);
                 row.setSort(vi);
-                DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(row));
+                DataScopeContext.executeWithoutScope(() -> usageMapper.insert(row));
             }
         }
     }
@@ -1726,17 +1712,26 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 ? null : row.getParentNo();
     }
 
-    private List<PrdCategorySpec> activeBindings(String categoryNo) {
+    /** 覆盖行：范围、归属商家填好，其余由调用方填 */
+    private static PrdSpecUsage overrideRow(String merchantNo, String categoryNo) {
+        PrdSpecUsage row = new PrdSpecUsage();
+        row.setScopeType(PrdSpecUsage.MERCHANT_CATEGORY);
+        row.setScopeRef(PrdSpecUsage.merchantCategoryRef(merchantNo, categoryNo));
+        row.setEntityNo(merchantNo);
+        return row;
+    }
+
+    private List<PrdSpecUsage> activeBindings(String categoryNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                        catSpecMapper.selectList(Wrappers.<PrdCategorySpec>lambdaQuery()
-                                .eq(PrdCategorySpec::getCategoryNo, categoryNo)
-                                .eq(PrdCategorySpec::getStatus, PrdSpecDim.ACTIVE)))
+                        usageMapper.selectList(SpecUsageMapper.categoryDims()
+                                .eq(PrdSpecUsage::getScopeRef, categoryNo)
+                                .eq(PrdSpecUsage::getStatus, PrdSpecUsage.ACTIVE)))
                 .stream()
                 /*
                  * **主维度排第一**，其余按 sort。此前「自动预填哪一条」取决于数据库返回顺序，
                  * 也就是插入顺序 —— 一个不该被依赖的巧合。现在它是一个显式的值。
                  */
-                .sorted(Comparator.comparing((PrdCategorySpec b) ->
+                .sorted(Comparator.comparing((PrdSpecUsage b) ->
                                 Boolean.TRUE.equals(b.getIsPrimary()) ? 0 : 1)
                         .thenComparingInt(b -> b.getSort() == null ? 100 : b.getSort()))
                 .toList();
@@ -1754,13 +1749,13 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     /** 这一类目对每个维度裁的取值子集。没有行 = 不裁，全量可选 */
-    private Map<String, List<PrdCategorySpecValue>> subsetsOf(String categoryNo) {
+    private Map<String, List<PrdSpecUsage>> subsetsOf(String categoryNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                        catValueMapper.selectList(Wrappers.<PrdCategorySpecValue>lambdaQuery()
-                                .eq(PrdCategorySpecValue::getCategoryNo, categoryNo)))
+                        usageMapper.selectList(SpecUsageMapper.categoryValues()
+                                .eq(PrdSpecUsage::getScopeRef, categoryNo)))
                 .stream()
                 .sorted(Comparator.comparingInt(v -> v.getSort() == null ? 100 : v.getSort()))
-                .collect(Collectors.groupingBy(PrdCategorySpecValue::getDimNo,
+                .collect(Collectors.groupingBy(PrdSpecUsage::getDimNo,
                         LinkedHashMap::new, Collectors.toList()));
     }
 
@@ -1782,7 +1777,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     }
 
     private List<SpecTemplateVO.Option> optionsOf(String merchantNo, PrdSpecDim dim,
-                                                  List<PrdCategorySpecValue> subset) {
+                                                  List<PrdSpecUsage> subset) {
         List<PrdSpecValue> values = valuesOf(merchantNo, dim.getDimNo());
         if (subset.isEmpty()) {
             return values.stream()
@@ -1792,7 +1787,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         Map<String, PrdSpecValue> byNo = values.stream()
                 .collect(Collectors.toMap(PrdSpecValue::getValueNo, v -> v, (a, b) -> a));
         List<SpecTemplateVO.Option> out = new ArrayList<>();
-        for (PrdCategorySpecValue cv : subset) {
+        for (PrdSpecUsage cv : subset) {
             PrdSpecValue v = byNo.get(cv.getValueNo());
             if (v == null) {
                 continue;
@@ -1806,7 +1801,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          * 商家在这个维度下自建的值**跟在子集后面**：类目裁剪的是平台值池，
          * 裁不到他自己加的那几档（那是他的货真实存在的规格，不该被平台的子集挡住）。
          */
-        Set<String> picked = subset.stream().map(PrdCategorySpecValue::getValueNo)
+        Set<String> picked = subset.stream().map(PrdSpecUsage::getValueNo)
                 .collect(Collectors.toSet());
         for (PrdSpecValue v : values) {
             if (PrdSpecDim.MERCHANT.equals(v.getScope()) && !picked.contains(v.getValueNo())) {
@@ -1816,7 +1811,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         return out;
     }
 
-    private List<CategorySpecVO.ValueVO> valueVOs(PrdSpecDim dim, List<PrdCategorySpecValue> subset) {
+    private List<CategorySpecVO.ValueVO> valueVOs(PrdSpecDim dim, List<PrdSpecUsage> subset) {
         // 运营总览看的是平台值池，不掺任何一家商家的自建值
         List<PrdSpecValue> values = DataScopeContext.executeWithoutScope(() ->
                 valueMapper.selectList(Wrappers.<PrdSpecValue>lambdaQuery()
@@ -1833,7 +1828,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         Map<String, PrdSpecValue> byNo = values.stream()
                 .collect(Collectors.toMap(PrdSpecValue::getValueNo, v -> v, (a, b) -> a));
         List<CategorySpecVO.ValueVO> out = new ArrayList<>();
-        for (PrdCategorySpecValue cv : subset) {
+        for (PrdSpecUsage cv : subset) {
             PrdSpecValue v = byNo.get(cv.getValueNo());
             if (v == null) {
                 continue;

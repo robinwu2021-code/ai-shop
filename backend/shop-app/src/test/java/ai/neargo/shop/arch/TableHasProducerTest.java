@@ -95,8 +95,7 @@ class TableHasProducerTest {
         // TDD-C 端商品详情页·内容丰富度 §3.3），它现在有生产者
         for (String t : List.of("cmt_community_apply", "cnt_post", "inv_uom",
                 "mch_channel_area", "mch_channel_pickup", "notify_scene_channel",
-                "notify_template", "prd_merchant_spec", "prd_merchant_spec_value",
-                "prd_store_goods")) {
+                "notify_template", "prd_store_goods")) {
             NO_PRODUCER.put(t, "未核实 —— 闸门立起来时就在库里。"
                     + "动到这个域时顺手确认：是主数据（挪进 SEEDED）、"
                     + "有意让范围（写明），还是真的漏了写入路径");
