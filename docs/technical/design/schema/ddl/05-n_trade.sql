@@ -1587,6 +1587,7 @@ CREATE TABLE `ord_after_sale_item` (
   `refund_ceiling_minor` bigint NOT NULL DEFAULT 0 COMMENT '本行可退上限（分）',
   `external_line_ref` varchar(128) DEFAULT NULL COMMENT '外部渠道售后行号',
   `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 = 正常，1 = 已删除',
+  `coupon_return_minor` bigint NOT NULL DEFAULT 0 COMMENT '本行本次退回的券额（分）：分到本行的券额按已退件数累计取整，补贴结算与对账用',
   `version` bigint NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
   `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',

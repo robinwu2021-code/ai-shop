@@ -196,6 +196,33 @@ class StoreStockFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 所属门店现货卖完后回落预售额度 —— 建品库存写在所属门店那一行，它就是原来的主体级库存")
+    void presaleFallsBackAtTheOwningStore() throws Exception {
+        String biz = merchant("19600190087", "预售·所属店回落");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "预售·别家分店");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 0);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 5);
+        assertThat(buy("13000190087", goodsNo, skuNo, 1, "ps-1"))
+                .as("没开预售时所属店没货就是没货").isNotEqualTo(0);
+
+        mvc().perform(post("/ops/skus/" + skuNo + "/presale")
+                        .header("Authorization", "Bearer " + opsLogin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"presaleQuota\":1,\"cutoffAt\":\""
+                                + java.time.Instant.now().plus(2, java.time.temporal.ChronoUnit.DAYS) + "\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        assertThat(buy("13000190088", goodsNo, skuNo, 1, "ps-2"))
+                .as("所属店现货为 0、预售额度 1：按预售成交").isZero();
+        assertThat(buy("13000190089", goodsNo, skuNo, 1, "ps-3"))
+                .as("额度用完就拒，B 店的 5 件与它无关").isNotEqualTo(0);
+    }
+
+    @Test
     @DisplayName("★★★ 加购按**商品所属门店**判库存 —— 端上带别家店号也不拿那家的库存放行")
     void cartAddJudgesTheStoreYouAreBrowsing() throws Exception {
         String biz = merchant("19600190086", "加购·按店判");

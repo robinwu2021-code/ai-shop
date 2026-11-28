@@ -821,6 +821,14 @@ public enum ErrorCode {
      */
     WX_PHONE_UNAVAILABLE(70027, "err.user.wx_phone_unavailable"),
     /*
+     * 微信登录未开放：微信总开关 shop.wx.enabled 关着（2026-11-28 用户定「关闭即拒绝登录」）。
+     *
+     * **单独一个码，不并进 BAD_REQUEST**：端上要据此告诉他「请用手机号验证码登录」，
+     * 而 10400 说的是「请求参数有误」—— 一句与真实原因无关的话。
+     * 关着时也不能退回旧桩（把 code 当 openid）：那样谁报出别人的 openid 就能登进那个账号。
+     */
+    WX_LOGIN_DISABLED(70101, "err.user.wx_login_disabled"),
+    /*
      * 还有没走完的订单/售后，不能注销。
      *
      * **单独一个码**：端上要把他送到订单列表去，而不是笼统说一句「操作失败」——
