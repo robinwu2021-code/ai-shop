@@ -9,7 +9,7 @@
 [其余 25 张旧表的承接提案](../../deploy/ume/food-kds-cutover/legacy-table-dispositions.md) ·
 行业库设计：[库](design/数据库设计/库/06-行业库.md) · [字段](design/数据库设计/字段/06-行业库.md) · [DDL](design/schema/ddl/06-n_industry.sql)
 需求：[餐饮系统-完整需求文档](../requirements/餐饮系统-完整需求文档.md)（本篇不改功能，验收以现有行为不变为准）
-创建：2026-11-27 · 最后更新：2026-11-27
+创建：2026-11-27 · 最后更新：2026-11-28
 
 档位：2 · 依据：ADR-068（已采纳，本篇不另开 ADR）· 产出：本文件
 
@@ -94,7 +94,7 @@ P1 本身照做：餐饮的行业 Mapper 对齐新结构，并在「`industry` �
 
 | 项 | 变更 |
 |---|---|
-| 端点 / JSON | 无 |
+| 端点 / JSON | 设备出口（§2.8）：厨显按序号拉事件停用，改工位状态接口 + 刷新通知；新增叫号屏状态接口与配对。其余无 |
 | 库表 | 行业库：按 [06-n_industry.sql](design/schema/ddl/06-n_industry.sql) 建；补充脚本 `V2` 只补代码真实需要、设计稿漏掉的列与唯一键（ADR-068 第 4 条：防重列与唯一约束保留），每处写依据。旧库：不改（「只要在新库上能跑」，同平台基础库换表） |
 | 配置项 | 无新增。`shop.modules.industry.datasource` 已有；P1 后餐饮要求它指向按 `n_industry` 建的库 |
 | 权限码 / i18n | 无 |
@@ -147,7 +147,7 @@ P1 本身照做：餐饮的行业 Mapper 对齐新结构，并在「`industry` �
 | `fnb_kitchen_task` | 同名（ADR-068 修订一，设计稿原拟并入 `n_trade.ord_execution`） | 设计 DDL 里没有，`V2` 按现结构建；状态值已 ≤10 字符 |
 | `fnb_queue_ticket` | 同名 | 设计稿去掉了 `request_key`、`request_hash`、`seat_request_hash`。代码用它们做取号与入座的防重：按 ADR-068 第 4 条在 `V2` 补回，并加唯一键 |
 | `fnb_bottle_custody` → `fnb_custody`、`fnb_bottle_movement` → `fnb_custody_movement` | 改名 | 新表列是旧表超集 |
-| 厨显 6 张（`fnb_kds_cursor`、`fnb_kds_event`、`fnb_kds_subscription`、`fnb_kds_voice_command`、`fnb_station`、`fnb_station_runtime`） | 已按 .61 现场结构建好 | 沿用 `01-industry-kds.sql` 的现场落点（游标、语音命令、工位运行保留独立表），写进 `V2` |
+| 厨显 6 张（`fnb_kds_cursor`、`fnb_kds_event`、`fnb_kds_subscription`、`fnb_kds_voice_command`、`fnb_station`、`fnb_station_runtime`） | 已按 .61 现场结构建好 | 先沿用 `01-industry-kds.sql` 的现场落点写进 `V2`；按 §2.8 收为 4 张（删游标、工位运行表，厨显事件改为厨房事件，订阅精简） |
 
 ### 2.5 P1 行业库：9 组合并（用户 2026-11-27 定一次到位）
 
@@ -158,7 +158,7 @@ P1 本身照做：餐饮的行业 Mapper 对齐新结构，并在「`industry` �
 | `fnb_store_policy` | `ind_store_policy`（`industry_code = FNB`） | 时区、切日、付款方式、能力码直接成列。**用户 2026-11-27 定：不保留历史**——每店每行业一行，改策略即原地更新、立即生效，乐观锁版本号；`effective_from` 不落库，未来时间拒绝（`BAD_REQUEST`）；`settings` 旧代码只写 `{}`，丢弃；`current_policy_version_no` 暂不用 |
 | `fnb_dining_entitlement` | `fnb_service_entitlement` | `check_no` → `form_no`；`starts_at`/`expires_at` → `valid_from`/`valid_until`；类型、人群、人数、规则快照、状态成列；`core_order_ref` 经到店单查 |
 | `fnb_scheduled_dispatch` | `fnb_kitchen_ticket` | 定时出品作为出品单的 `SCHEDULED` 状态加 `dispatch_at`；`attempts` → `dispatch_attempts`；`next_attempt_at` 与 `dispatch_key` 的用途实现时逐条核对，代码在用就在 `V2` 补回 |
-| `fnb_service_event` | `fnb_kds_event` | `action` → `event_type`；`task_no`、`qty`、`ready_loss_qty`、`reason`、`inventory_doc_no`、`custody_snapshot` 成列；`operation_key`、`source_request_hash` 是动作防重，按 ADR-068 第 4 条在 `V2` 补回并建唯一键 |
+| `fnb_service_event` | `fnb_kds_event`（按 §2.8 改名 `fnb_kitchen_event`，作厨房动作事实表，不再做推送流） | `action` → `event_type`；`task_no`、`qty`、`ready_loss_qty`、`reason`、`inventory_doc_no`、`custody_snapshot` 成列；`operation_key`、`source_request_hash` 是动作防重，按 ADR-068 第 4 条在 `V2` 补回并建唯一键 |
 | `fnb_service_handover`、`fnb_service_handover_item`、`fnb_service_responsibility` | `ind_assignment` | 责任：`assignment_kind = RESPONSIBLE`，一人一条，`ended_at` 空表示在负责；交接：新条目 `PENDING`，接收后旧条目 `ENDED`、新条目 `ACTIVE`（`previous_assignment_no` 指向旧条），拒绝为 `REJECTED`；交接明细一行一条指派（`target_type`、`target_no`）。交接单号、来源摘要等防重与查回所需字段实现时核对，在用就在 `V2` 补回 |
 | `fnb_custody_entry` | 退役（设计已裁定，无代码引用） | — |
 
@@ -188,6 +188,70 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - 补做任务：开台补偿（超时仍无账单的占台结束）、清台补做（账单已结束而占台仍在的结束）、并单补做（占台仍挂旧账单的改挂）。
 
 **实施顺序**：① Mapper 改挂行业句柄、拆跨库 SQL → ② 开台改为业务先、订单后、失败补偿 → ③ 结账清台、释放、并单改为订单先、业务补做 → ④ 补做任务与测试。
+
+### 2.8 设备出口：厨显、厨房打印、叫号（用户 2026-11-28 定）
+
+**原则**
+- **业务不依赖设备。** 出品单、制作任务、排号是唯一真相；一家店的厨显、打印机、叫号屏可以有一台、多台或一台没有，业务流程都照跑，设备只是出口。
+- **屏拉当前状态，不拉事件流。** 厨显屏、叫号屏、B 端 App 的后厨页与排队页调同一个状态接口（门店 + 工位 → 在制的出品单与制作任务；门店 → 当前排号），直接查业务表。MQ 只发「有变化、来刷新」；漏一条无妨，下一次通知、断线重连或定时刷新都会拉到最新。**不再要门店序号，也不要推送流表。**
+- **打印必须打出来。** 厨房单丢了菜就没人做：走 ADR-067 的「发件箱 → MQ」必达路线，打印任务按「出品单号 + 工位 + 版本」防重，交给打印域现有的领取、回执、补打。
+
+**有几台设备都一样**
+
+| 情况 | 后厨 | 叫号 |
+|---|---|---|
+| 没有设备 | 店员用 B 端 App 后厨页看单、点出品（同一个状态接口） | 店员在 App 上叫号；线上取号的顾客收到通知（`notify_message`） |
+| 一台 | 这台看全部工位、打全部单 | 一台叫号屏显示当前叫号 |
+| 多台 | 每台屏配自己看的工位（`fnb_kds_subscription`）；打印机按打印路由分工位 | 多台屏同时收到刷新 |
+
+**链路**（一条通道，三类设备共用）
+
+```
+业务事务提交（出品单或制作任务变化 / 叫号）
+   └─ MQ：KITCHEN_CHANGED{门店, 工位[]} / QUEUE_CHANGED{门店}
+        ├─ 打印消费者（必达）：按打印路由找打印机 → 打印任务
+        └─ 设备通知消费者（直发、广播）：每个服务实例一条临时队列
+              → 本实例上连着的、看这些工位的屏收到「刷新」 → 屏调状态接口
+```
+
+屏与 App 不直连 RabbitMQ，仍连服务端的事件流（现 `/biz/x/food/kitchen-stream`）。通知只带门店、工位、变化类型，不带业务数据，不要求保序与去重。
+
+**设备归属：谁用就放谁那里**（不做「一张表装所有设备」的抽象）
+
+| 设备 | 放哪 | 理由 |
+|---|---|---|
+| 厨显屏、叫号屏、点餐屏、离线收银机 | **行业库 `ind_store_device`**（由平台库设计稿的 `mch_store_device` 搬来；现无代码引用） | 门店现场设备，各行业共用 |
+| 打印机、本地打印代理 | 打印域（基础服务库 `prn_printer`，代理用打印域自己的登记） | 打印是基础能力，零售也打小票；基础库不反向引用行业库 |
+| 支付终端 | 支付库（`pay_terminal`） | 收银班次、终端配置都在那边 |
+
+`ind_store_device` 相对 `mch_store_device`：设备类型只留 `ORDER_SCREEN`、`KDS`、`OFFLINE_POS`，新增 `CALL_SCREEN`（叫号屏）；去掉 `PRINTER`、`PRINT_AGENT`、`POS_TERMINAL`。删 `capabilities`、`device_config` 两个通用 JSON 列。配对、凭据、代数、最后在线保留；离线收银的签名密钥、写入授权、核验挑战几列保留（可空，联网补传时交易库按设备号只读）。厨显屏的身份改认这张表，不再借打印设备登记（`FoodKdsServiceImpl#liveDevice`）。
+
+**行业库相关表整理**（厨显与工位 7 张 → 4 张）
+
+| 表 | 问题 | 处理 |
+|---|---|---|
+| `fnb_station` + `fnb_station_runtime` | 工位已有 `runtime_status`，又另建运行状态表 | **删 `fnb_station_runtime`**，开停只改 `fnb_station.runtime_status`，用工位版本号 |
+| `fnb_kds_subscription` | 写成授权单：登录人、到期、防重键与摘要、撤销键、原因、撤销人 | 设备身份与停用由设备表管后，只留「哪台屏看哪些工位」：`device_no`、`stations`、`version`，每台屏一行 |
+| `fnb_kds_cursor` | 只发门店序号 | **删** |
+| `fnb_kds_event` | .61 上序号、推送内容非空且序号唯一；另有一组与语音命令表重复的语音列 | **改名 `fnb_kitchen_event`，作厨房动作事实表**：并入服务事件（合并 ⑥），去掉 `sequence_no`、`payload` 与语音列（`device_no`、`voice_text`、`command_status`、`response_code`），补 `operation_key`、`source_request_hash` 与唯一键 |
+| `fnb_service_event` | 与上一张记同一件事 | 并入后**删** |
+| `fnb_kds_voice_command` | 屏 → 服务端的命令，带领取租约 | 不变 |
+| `fnb_queue_ticket` | 叫号屏要显示的都在这里 | 不变，叫号屏直接读 |
+
+**接口变化**：厨显事件按序号拉（`GET /biz/x/food/kitchen-events`）停用，改为工位状态接口；事件流只推「刷新」。工位语音指令与开停不再写厨显事件（`FoodStationRuntimeServiceImpl#publish` 改为发刷新通知）。`DiningKdsEventConsumer` 退役：接单、改单、账单变化也只发刷新。新增叫号屏的状态接口与配对。
+
+**代价**：.61 已建的 `fnb_kds_event` 改结构，`fnb_kds_cursor`、`fnb_station_runtime`、`fnb_service_event` 删除，带 DDL，须 root 手工执行；厨显屏认证从打印设备登记换到设备表，配对流程补齐；屏端与 App 后厨页改为「收通知 → 拉状态」。
+
+**实施步骤**（接在 P1-3 之后）
+
+| # | 动作 | 说明 |
+|---|---|---|
+| D-1 | 合并 ⑥ | `fnb_service_event` → `fnb_kitchen_event`；厨房动作在行业事务里只写这一张；报表、耗料、日结、退货回库、外卖出餐信号改读它 |
+| D-2 | 工位 | 删 `fnb_station_runtime`，运行状态改写 `fnb_station` |
+| D-3 | 状态接口 + 刷新通知 | 后厨、叫号状态接口；MQ `KITCHEN_CHANGED`、`QUEUE_CHANGED` 广播到各实例推刷新；停用按序号拉；删 `fnb_kds_cursor`、`DiningKdsEventConsumer` |
+| D-4 | 打印必达 | 厨房打印走发件箱 → MQ，按出品单号 + 工位 + 版本防重 |
+| D-5 | 设备表 | 行业库建 `ind_store_device`，厨显订阅精简；厨显认证改认设备表；补叫号屏类型与配对 |
+| D-6 | 设计稿对齐 | 06-n_industry、01-n_platform 的 DDL 与库/字段文档同步：设备表搬家、上述删表与改名 |
 
 ## §3 选型
 
@@ -336,7 +400,7 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   接收：在行业事务里锁住该对象的全部责任指派（含别的交接的待接收条），锁内复核当前负责人仍是发起人，然后旧责任 `ENDED`、这条 `ACTIVE` 且 `previous_assignment_no` 指向旧条——同一对象上的接收因此串行，旧表靠唯一键保证的「一个对象一个负责人」由行锁保证。取消：待接收的条全部 `CANCELLED`。
   交接单不单独成行：由明细汇总（有待接收为 `PROPOSED`、已取消为 `CANCELLED`、否则 `ACCEPTED`；决定人按状态推出）。交接单的来源摘要改为各明细来源摘要的摘要（旧的是全部证据 JSON 的摘要，含义不变、取值变）。
   `V2` 补回 `handover_no`（归组）与 `source_hash`（接收时比对来源）两列及索引。测试：交接夹具改用 `IndustrySchema`，补链式交接与取消用例。
-- 待做：P1-3 合并 ⑥ 服务事件 → 厨显事件（待定，见 §8-Q4）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
+- 待做：设备出口 D-1～D-6（§2.8，含合并 ⑥）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
 
@@ -370,7 +434,7 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - **Q3 订单域的门店锁。** 下单（`DiningOrderServiceImpl`）、限量认领（`SalesQuotaClaimServiceImpl`）、限售规则（`SalesRestrictionServiceImpl`）在交易事务里锁门店策略行做同店串行；策略行已在行业库，行业句柄单独绑库后这把锁不在交易事务里，串行失效。
   现按原样改为 `lockCurrent`（未绑定时同库照常生效）。**行业句柄生产绑定前**须换成交易库内的锁（例如营业日行或限售规则行本身），待定。
 
-- **Q4 服务事件并入厨显事件的方式。** 现状一个厨房动作产出两行：`fnb_service_event`（事实：任务、数量、损耗、库存凭据、寄存快照，按 `operation_key` 防重）＋ 发件箱 `DiningServiceEvent` → `DiningKdsEventConsumer` → `fnb_kds_event` 的 `KITCHEN_ACTION`（推送：门店内序号、推送内容，厨显按序号拉）。`fnb_kds_event` 在 .61 已按推送流建（序号、来源、内容非空且序号唯一）。
+- **Q4 服务事件并入厨显事件的方式。** ✅ 2026-11-28 用户定：先统一设备出口（§2.8）。屏改为拉当前状态，厨显事件不再做推送流，改名 `fnb_kitchen_event` 作厨房动作事实表，服务事件并入（下面三种都不采用）。原问题：现状一个厨房动作产出两行：`fnb_service_event`（事实：任务、数量、损耗、库存凭据、寄存快照，按 `operation_key` 防重）＋ 发件箱 `DiningServiceEvent` → `DiningKdsEventConsumer` → `fnb_kds_event` 的 `KITCHEN_ACTION`（推送：门店内序号、推送内容，厨显按序号拉）。`fnb_kds_event` 在 .61 已按推送流建（序号、来源、内容非空且序号唯一）。
   ① 一行两用：厨房动作在行业事务里直接写 `fnb_kds_event`（事实列＋取门店序号＋推送内容），消费者不再为 `KITCHEN_ACTION` 追加；少一张表、少一次经发件箱的转手，顺带了结「出品事件发件箱待改」。代价：厨房动作要锁门店游标取序号（同店厨房动作串行），推送内容在写事实时定格。
   ② 只并表不并行：事实行写入 `fnb_kds_event` 但不进推送流（序号可空、不同事件类型），推送仍由消费者追加；要放宽 .61 已建的非空与唯一约束，一张表两种语义。
   ③ 不并：`fnb_service_event` 作为行业库独立表保留（偏离设计稿）。
@@ -385,3 +449,4 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 | 2026-11-27 | 用户定：订单域与业务域分开，跨域用补偿不用事务；占台、换台记录、订位、时段随桌台归行业库（ADR-068 修订二，§2.7） |
 | 2026-11-27 | 用户定：不做同库不同池测试，改完直接在新库测试（P0-6 取消，AC1 由 P1 新库测试覆盖） |
 | 2026-11-27 | 用户定：门店策略不保留历史，每店每行业一行原地更新、立即生效，未来生效时间拒绝（§2.5、合并 ④） |
+| 2026-11-28 | 用户定：设备出口统一——业务不依赖设备，屏拉当前状态、MQ 只发刷新，打印必达；门店设备表 `mch_store_device` 搬到行业库 `ind_store_device`，打印机留打印域、支付终端留支付库；厨显与工位 7 张收为 4 张，不做过度抽象（§2.8，了结 §8-Q4） |
