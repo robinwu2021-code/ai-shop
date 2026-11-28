@@ -127,6 +127,13 @@
 
 测试基线（2026-11-28，本机 MySQL 9.7.4，未改代码）：beauty-core 407 个用例中 33 个失败或报错，其中 28 个因美业单独构建时拿不到 shop-app 的旧迁移 `V592__shared_personnel_foundation.sql`；每步与这份清单对比，不新增失败即可。
 
+**B-1 已做（2026-11-28）**：
+- `beauty-core` 测试资源 `db/n_industry/V1__industry_design.sql` 是设计稿 `06-n_industry.sql` 的副本（去掉建库语句，38 张）；`V2__beauty_supplement.sql` 补设计稿没有的三样：来源观察的域守卫触发器、执行围栏及其两个不可改触发器（结构取自 .61 `SHOW CREATE TABLE`，旧迁移 V10 的 CHECK 写法在 9.7.4 的 mysql 客户端下建不出来）、合并完成前代码仍读写的 4 张过渡表（门店策略头与版本、工单上下文、服务参与）。新库共 43 张表、3 个触发器。
+- `BeautyIndustryTables` 登记美业在行业库的表（11 张定稿 + 4 张过渡）；B-2～B-4 每并一组就删一张过渡表。
+- `BeautyIndustryDatabaseIT`：在本机 MySQL 用 V1、V2 新建行业库，断言行业句柄下的每个 Mapper 都已登记、且按实体全字段能在新库上查询，触发器齐全。
+- 与原计划的出入：美业是独立构建，行业库建表脚本直接复制设计稿，没有与餐饮共用一个入口（两份都以设计稿为准，B-6 同步设计稿时一并核对）；`ind_assignment` 的两列随 B-4 一起加；启动校验暂由上面的集成测试承担，B-6 视部署方式再定。
+- 全套（`-Dtest='*Test,*IT'`）：405 个用例 34 个失败，比基线多 `ReceptionBusinessIT#reassignsCheckedInWithFrozenRules`；移开 B-1 的文件后照样失败，是既有的时刻相关缺陷（读回的到店时间差 4 小时，即本机时区），不归本篇。
+
 ### 2.5 部署
 
 沿用 `deploy/ume/food-industry-cutover/` 的做法（只读 `check` → 备份 → 执行 → 核对），美业表另起一份脚本；共用表只原地改。
