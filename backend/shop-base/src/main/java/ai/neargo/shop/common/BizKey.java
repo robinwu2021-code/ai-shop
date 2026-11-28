@@ -198,6 +198,8 @@ public final class BizKey {
     public static final String STAFF_LOG = "SFL";
     /** 商家自定义角色（V71）。预置角色的码是 OWNER/MANAGER… 这类词，不走这里 */
     public static final String MERCHANT_ROLE = "R";
+    /** 商家的类目授权（mch_category_license，一个授权码一行；原为 mch_entity.category_codes 的 JSON） */
+    public static final String CATEGORY_LICENSE = "CLS";
 
     /** 到货批次（P-5.1.1）。一个自提点一天一批，配车信息挂在它上面 */
     public static final String ARRIVAL_BATCH = "BAT";

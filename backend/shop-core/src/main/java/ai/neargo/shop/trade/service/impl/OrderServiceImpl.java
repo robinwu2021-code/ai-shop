@@ -5591,7 +5591,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         /*
          * ⚠️ **服务类履约不受门店渠道表约束**（到店核销 / 上门预约）。
          *
-         * `mch_fulfillment_channel` 只覆盖四条**实体配送**线（自提、邻里自提、
+         * `mch_store_fulfillment` 只覆盖四条**实体配送**线（自提、邻里自提、
          * 自送、快递）—— `StoreFulfillmentServiceImpl.CONFIGURABLE` 就是那四个，
          * 服务类**永远不会有行**。而这里的规则是「集合非空就要求命中」，
          * 于是一旦商家保存过任何一次送货方式配置，集合不再为空，

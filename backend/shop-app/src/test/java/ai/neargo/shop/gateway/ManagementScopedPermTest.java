@@ -114,7 +114,8 @@ class ManagementScopedPermTest {
     void adjustingARuleInTheTableChangesWhatTheGatewayEnforces() throws Exception {
         MockMvc mvc = MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
         sync.syncOnReady();
-        String suffix = UUID.randomUUID().toString().replace("-", "");
+        // 30 位：加两位前缀后正好是新库编号列的 32 位
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 30);
         String entity = "ME" + suffix, account = "MA" + suffix, stranger = "MX" + suffix;
         jdbc.update("INSERT INTO mch_entity(entity_no,name,status,market,tenant_no,created_at,updated_at)"
                 + " VALUES (?,'规则在库主体','ACTIVE','CN','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", entity);

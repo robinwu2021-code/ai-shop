@@ -91,7 +91,8 @@ class ActivityBenefitCoordinatorFlowTest {
     @Autowired PmtActivityBudgetMapper budgets;
     @Autowired ObjectMapper json;
     @MockitoSpyBean EntitlementGrantPort pay;
-    private String id() { return UUID.randomUUID().toString(); }
+    /** 32 位：新库的主体号等编号列是 varchar(32) */
+    private String id() { return UUID.randomUUID().toString().replace("-", ""); }
     private String[] owner() {
         String user = id(), entity = id(), store = id();
         jdbc.update("INSERT INTO usr_account(user_no,status,tenant_no,created_at,updated_at) "

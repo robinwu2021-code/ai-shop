@@ -25,10 +25,13 @@ public class MerchantAuthCodeServiceImpl implements MerchantAuthCodeService {
     private final ObjectMapper json;
     /** 撤码影响面：product → 这边只要一个数（见 CategoryUsagePort 的类注释） */
     private final ai.neargo.shop.spi.product.CategoryUsagePort categoryUsagePort;
+    /** 授权码一码一行（mch_category_license）；原先存在主体行的 category_codes 里 */
+    private final CategoryLicenseStore licenses;
 
     public MerchantAuthCodeServiceImpl(DictionaryCatalog dictionary, MchEntityMapper merchantMapper,
                                        ai.neargo.shop.spi.product.CategoryUsagePort categoryUsagePort,
-                                       ObjectMapper json) {
+                                       ObjectMapper json, CategoryLicenseStore licenses) {
+        this.licenses = licenses;
         this.categoryUsagePort = categoryUsagePort;
         this.dictionary = dictionary;
         this.merchantMapper = merchantMapper;
@@ -94,31 +97,12 @@ public class MerchantAuthCodeServiceImpl implements MerchantAuthCodeService {
          * 写完再算的话，撤掉的码已经不在库里了，「哪些商品受影响」就只能靠调用方
          * 自己记一份 —— 而那份记录迟早与真正写进去的不一致。
          */
-        List<String> before = readCodes(m.getCategoryCodes());
+        List<String> before = licenses.codes(merchantNo);
         List<String> revoked = before.stream().filter(c -> !codes.contains(c)).toList();
         long affected = revoked.isEmpty() ? 0
                 : categoryUsagePort.countOnShelfGoodsRequiring(merchantNo, revoked);
 
-        m.setCategoryCodes(json.writeValueAsString(codes));
-        int updated = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.updateById(m));
-        if (updated == 0) {
-            // 静默失败在这里是最危险的：接口成功、日志有记录、授权没生效
-            throw BizException.of(ErrorCode.CONFLICT);
-        }
+        licenses.replace(merchantNo, codes, reason);
         return new SetResult(codes, revoked, affected);
-    }
-
-    /** 主体上那份码存 JSON。解析失败按空处理 —— 脏数据不该让「改授权」这条路走不通 */
-    private List<String> readCodes(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return List.of();
-        }
-        try {
-            return json.readValue(raw, new tools.jackson.core.type.TypeReference<List<String>>() {
-            });
-        } catch (Exception e) {
-            return List.of();
-        }
     }
 }

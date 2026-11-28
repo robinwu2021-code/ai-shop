@@ -44,7 +44,8 @@ class PlatformSchemaGapTest {
             "mch_fulfillment_channel", "mch_store_fulfillment",
             "mch_personnel_account", "mch_personnel",
             "mch_store_role", "mch_grant",
-            "usr_mp_session", "usr_session");
+            "usr_mp_session", "usr_session",
+            "sys_ops_staff", "ops_staff");
 
     private static final Pattern TABLE = Pattern.compile("CREATE TABLE `(\\w+)` \\((.*?)\\n\\) COMMENT", Pattern.DOTALL);
     private static final Pattern COLUMN = Pattern.compile("(?m)^\\s*`(\\w+)` ");

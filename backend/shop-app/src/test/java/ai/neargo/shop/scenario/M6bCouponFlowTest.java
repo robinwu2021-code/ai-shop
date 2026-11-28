@@ -63,19 +63,19 @@ class M6bCouponFlowTest {
                 "[\"STORE_PICKUP\"]");
         assertThat(goodsUpdated).isEqualTo(1);
         String store = "ST-M0001";
-        int updated = jdbc.update("UPDATE mch_fulfillment_channel SET enabled=1,scope_mode='ALL',ops_locked=0,deleted=0 "
+        int updated = jdbc.update("UPDATE mch_store_fulfillment SET enabled=1,scope_mode='ALL',ops_locked=0,deleted=0 "
                         + "WHERE entity_no='M0001' AND store_no=? AND channel='STORE_PICKUP'", store);
         if (updated == 0) {
-            jdbc.update("INSERT INTO mch_fulfillment_channel "
-                            + "(store_no,entity_no,channel,enabled,scope_mode,tenant_no,created_at,updated_at) "
-                            + "VALUES (?,'M0001','STORE_PICKUP',1,'ALL','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+            jdbc.update("INSERT INTO mch_store_fulfillment "
+                            + "(store_no,entity_no,channel,enabled,scope_mode,ops_locked,tenant_no,created_at,updated_at) "
+                            + "VALUES (?,'M0001','STORE_PICKUP',1,'ALL',0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                     store);
         }
     }
 
     @org.junit.jupiter.api.AfterEach
     void removePickupFixture() {
-        jdbc.update("DELETE FROM mch_fulfillment_channel WHERE entity_no='M0001' "
+        jdbc.update("DELETE FROM mch_store_fulfillment WHERE entity_no='M0001' "
                 + "AND store_no='ST-M0001' AND channel='STORE_PICKUP'");
     }
 

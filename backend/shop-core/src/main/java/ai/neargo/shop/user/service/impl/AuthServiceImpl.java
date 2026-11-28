@@ -12,7 +12,6 @@ import ai.neargo.shop.auth.RequestMetaContext;
 import java.util.Map;
 import ai.neargo.shop.user.service.AuthService;
 import ai.neargo.shop.user.service.EmailOtpService;
-import ai.neargo.shop.user.service.MpSessionService;
 import ai.neargo.shop.spi.user.WxPhonePort;
 import ai.neargo.shop.auth.Realm;
 
@@ -75,7 +74,6 @@ public class AuthServiceImpl implements AuthService {
                     "pwd-login", java.time.Duration.ofMinutes(15), 10);
 
     private final WxPhonePort wxPhonePort;
-    private final MpSessionService mpSessions;
     private final UserMapper userMapper;
     private final IdentityMapper identityMapper;
     private final TokenStore tokenStore;
@@ -105,7 +103,7 @@ public class AuthServiceImpl implements AuthService {
 
 
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
-                           WxPhonePort wxPhonePort, MpSessionService mpSessions,
+                           WxPhonePort wxPhonePort,
                            TokenStore tokenStore,
                            ai.neargo.shop.spi.user.WxAuthPort wxAuthPort,
                            ai.neargo.shop.auth.PasswordHasher passwordHasher,
@@ -114,7 +112,6 @@ public class AuthServiceImpl implements AuthService {
                            ai.neargo.shop.spi.marketing.FissionPort fissionPort,
                            OtpSendService otp) {
         this.wxPhonePort = wxPhonePort;
-        this.mpSessions = mpSessions;
         this.userMapper = userMapper;
         this.identityMapper = identityMapper;
         this.tokenStore = tokenStore;
@@ -222,19 +219,16 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new ai.neargo.shop.common.GlobalExceptionHandler.UnauthorizedException();
         }
+        // 小程序 openid 跟着会话轮换过去（会话就是同一个人的，见 TokenStore.SessionData）
         String fresh = tokenStore.issue(TokenStore.SessionData.of(
-                LoginUser.consumer(user.getUserNo(), user.getNickname())));
-        mpSessions.openid(currentToken, user.getUserNo())
-                .ifPresent(openid -> mpSessions.record(fresh, user.getUserNo(), openid));
+                LoginUser.consumer(user.getUserNo(), user.getNickname()), session.openid()));
         tokenStore.revoke(currentToken);   // 轮换：旧的立即作废
-        mpSessions.remove(currentToken);
         return new LoginResult(fresh, UserVO.of(user));
     }
 
     @Override
     public void logout(String currentToken) {
         tokenStore.revoke(currentToken);
-        mpSessions.remove(currentToken);
     }
 
     @Override
@@ -421,10 +415,10 @@ public class AuthServiceImpl implements AuthService {
             log.warn("[person] 登录时绑定人档失败 user={}", user.getUserNo(), e);
         }
 
+        String openid = credentials.stream().filter(c -> IdentityType.WX_OPENID_MP.equals(c.type())).findFirst()
+                .map(Credential::value).orElse(null);
         String token = tokenStore.issue(TokenStore.SessionData.of(
-                LoginUser.consumer(user.getUserNo(), user.getNickname())));
-        credentials.stream().filter(c -> IdentityType.WX_OPENID_MP.equals(c.type())).findFirst()
-                .ifPresent(c -> mpSessions.record(token, user.getUserNo(), c.value()));
+                LoginUser.consumer(user.getUserNo(), user.getNickname()), openid));
         return new LoginResult(token, UserVO.of(user));
     }
 
@@ -434,7 +428,7 @@ public class AuthServiceImpl implements AuthService {
         var session = tokenStore.get(currentToken).filter(s -> s.user().realm() == Realm.CONSUMER)
                 .orElseThrow(UnauthorizedException::new);
         String currentNo = session.user().userNo();
-        String openid = mpSessions.openid(currentToken, currentNo).orElse(null);
+        String openid = session.openid();
         if (openid == null) {
             throw new UnauthorizedException();
         }
@@ -488,11 +482,9 @@ public class AuthServiceImpl implements AuthService {
             log.warn("[person] 手机号登录时绑定人档失败 user={}", user.getUserNo(), e);
         }
         String token = tokenStore.issue(TokenStore.SessionData.of(
-                LoginUser.consumer(user.getUserNo(), user.getNickname())));
-        mpSessions.record(token, user.getUserNo(), openid);
+                LoginUser.consumer(user.getUserNo(), user.getNickname()), openid));
         // Rotation is last: authorization/registration failure leaves the original browsing session usable.
         tokenStore.revoke(currentToken);
-        mpSessions.remove(currentToken);
         return new WxPhoneLoginResult(token, UserVO.of(user), isNew, linked ? "linked" : "pending");
     }
 

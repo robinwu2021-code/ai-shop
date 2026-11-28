@@ -30,7 +30,6 @@ import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.paymerchant.entity.MchPayoutAccount;
 import ai.neargo.shop.merchant.entity.MchPersonnel;
-import ai.neargo.shop.merchant.entity.MchPersonnelAccount;
 import ai.neargo.shop.merchant.entity.MchPersonnelPosition;
 import ai.neargo.shop.merchant.booking.entity.MchPersonnelSkill;
 import ai.neargo.shop.merchant.entity.MchPersonnelStore;
@@ -360,6 +359,55 @@ public final class MerchantMappers {
                 @Param("expected") long expected, @Param("status") String status, @Param("actor") String actor,
                 @Param("at") LocalDateTime at);
 
+        /** 关联或解除账号（{@code account} 为空即解除）：与状态维护同一把父行 CAS，版本加一 */
+        @Update("UPDATE mch_personnel SET mch_account_no=#{account},account_linked_at=#{linkedAt},version=version+1,"
+                + "updated_at=#{at},updated_by=#{actor} "
+                + "WHERE tenant_no='MAIN' AND entity_no=#{entity} AND personnel_no=#{personnel} "
+                + "AND version=#{expected} AND version<9223372036854775807 AND deleted=0")
+        int linkAccount(@Param("entity") String entity, @Param("personnel") String personnel,
+                @Param("expected") long expected, @Param("account") String account,
+                @Param("linkedAt") LocalDateTime linkedAt, @Param("actor") String actor, @Param("at") LocalDateTime at);
+
+        /** 账号已关联到别的人员（新库没有账号唯一键，一个账号只关联一个人员靠这里守） */
+        @Select("SELECT COUNT(*) FROM mch_personnel WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND mch_account_no=#{account} AND personnel_no<>#{personnel} AND deleted=0 FOR UPDATE")
+        int countAccountLinkedElsewhere(@Param("entity") String entity, @Param("account") String account,
+                @Param("personnel") String personnel);
+
+        /**
+         * Effective joins preserve every candidate so overlapping assignments fail closed at the owner.
+         * 关联在人员行上：关联版本取人员的 version，关联号取人员号（Q4）。
+         */
+        @Select(
+                """
+SELECT p.personnel_no,a.assignment_no,p.version AS personnel_revision,
+  a.version AS assignment_revision,p.version AS link_revision,a.valid_from,a.valid_to,p.personnel_no AS link_no
+FROM mch_personnel p
+JOIN mch_personnel_store a ON CAST(a.tenant_no AS BINARY)=CAST(p.tenant_no AS BINARY)
+  AND CAST(a.entity_no AS BINARY)=CAST(p.entity_no AS BINARY)
+  AND CAST(a.personnel_no AS BINARY)=CAST(p.personnel_no AS BINARY)
+JOIN mch_store s ON CAST(s.tenant_no AS BINARY)=CAST(a.tenant_no AS BINARY)
+  AND CAST(s.entity_no AS BINARY)=CAST(a.entity_no AS BINARY)
+  AND CAST(s.store_no AS BINARY)=CAST(a.store_no AS BINARY)
+JOIN mch_entity e ON CAST(e.tenant_no AS BINARY)=CAST(s.tenant_no AS BINARY)
+  AND CAST(e.entity_no AS BINARY)=CAST(s.entity_no AS BINARY)
+WHERE CAST(p.tenant_no AS BINARY)=CAST(#{tenantNo} AS BINARY)
+  AND CAST(p.entity_no AS BINARY)=CAST(#{entityNo} AS BINARY)
+  AND CAST(s.store_no AS BINARY)=CAST(#{storeNo} AS BINARY)
+  AND CAST(p.mch_account_no AS BINARY)=CAST(#{accountNo} AS BINARY)
+  AND p.deleted=0 AND a.deleted=0 AND s.deleted=0 AND e.deleted=0
+  AND p.status='ACTIVE' AND a.status='ACTIVE' AND s.status='ACTIVE' AND e.status='ACTIVE'
+  AND e.archived_at IS NULL AND a.valid_from<=#{at}
+  AND (a.valid_to IS NULL OR #{at}<a.valid_to)
+LIMIT 2
+""")
+        List<OperatorPersonnelFactRow> selectCurrentOperatorPersonnel(
+                @Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("accountNo") String accountNo,
+                @Param("at") LocalDateTime at);
+
         /** Conservatively block maintenance until every unresolved command in the subject has recovered. */
         @Select("SELECT COUNT(*) FROM mch_resource_command WHERE tenant_no='MAIN' AND entity_no=#{entity} "
                 + "AND status='ACCEPTED' AND deleted=0")
@@ -396,43 +444,6 @@ public final class MerchantMappers {
         MchPersonnel lockScopedPersonnel(@Param("scope") ResourceCommandScopeRow scope,
                 @Param("personnelNo") String personnelNo);
 
-    }
-
-    /** Current optional account link; mutations require a future owner workflow and audit. */
-    public interface PersonnelAccountMapper extends PlatformTableMapper<MchPersonnelAccount> {
-        /** Effective joins preserve every candidate so overlapping assignments fail closed at the owner. */
-        @Select(
-                """
-SELECT p.personnel_no,a.assignment_no,p.version AS personnel_revision,
-  a.version AS assignment_revision,l.version AS link_revision,a.valid_from,a.valid_to,l.link_no
-FROM mch_personnel_account l
-JOIN mch_personnel p ON CAST(p.tenant_no AS BINARY)=CAST(l.tenant_no AS BINARY)
-  AND CAST(p.entity_no AS BINARY)=CAST(l.entity_no AS BINARY)
-  AND CAST(p.personnel_no AS BINARY)=CAST(l.personnel_no AS BINARY)
-JOIN mch_personnel_store a ON CAST(a.tenant_no AS BINARY)=CAST(p.tenant_no AS BINARY)
-  AND CAST(a.entity_no AS BINARY)=CAST(p.entity_no AS BINARY)
-  AND CAST(a.personnel_no AS BINARY)=CAST(p.personnel_no AS BINARY)
-JOIN mch_store s ON CAST(s.tenant_no AS BINARY)=CAST(a.tenant_no AS BINARY)
-  AND CAST(s.entity_no AS BINARY)=CAST(a.entity_no AS BINARY)
-  AND CAST(s.store_no AS BINARY)=CAST(a.store_no AS BINARY)
-JOIN mch_entity e ON CAST(e.tenant_no AS BINARY)=CAST(s.tenant_no AS BINARY)
-  AND CAST(e.entity_no AS BINARY)=CAST(s.entity_no AS BINARY)
-WHERE CAST(l.tenant_no AS BINARY)=CAST(#{tenantNo} AS BINARY)
-  AND CAST(l.entity_no AS BINARY)=CAST(#{entityNo} AS BINARY)
-  AND CAST(s.store_no AS BINARY)=CAST(#{storeNo} AS BINARY)
-  AND CAST(l.mch_account_no AS BINARY)=CAST(#{accountNo} AS BINARY)
-  AND l.deleted=0 AND p.deleted=0 AND a.deleted=0 AND s.deleted=0 AND e.deleted=0
-  AND p.status='ACTIVE' AND a.status='ACTIVE' AND s.status='ACTIVE' AND e.status='ACTIVE'
-  AND e.archived_at IS NULL AND a.valid_from<=#{at}
-  AND (a.valid_to IS NULL OR #{at}<a.valid_to)
-LIMIT 2
-""")
-        List<OperatorPersonnelFactRow> selectCurrentOperatorPersonnel(
-                @Param("tenantNo") String tenantNo,
-                @Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo,
-                @Param("accountNo") String accountNo,
-                @Param("at") LocalDateTime at);
     }
 
     /** Bounded effective employment projection; overlapping rows remain visible for explicit ambiguity rejection. */

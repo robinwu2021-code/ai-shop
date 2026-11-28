@@ -168,6 +168,82 @@ commerce 现在把两件事写在一起，要改成两步（这是 commerce 的�
 | 门店入退连锁 | 走**轻量审批** `LightApprovalPort`（商户侧、当场批，存基础能力库），流程码 `BRAND_CHANGE`，审批对象 = 门店（`subjectRef` = 门店号，`revision` = 门店版本），同一门店同时只有一张待批；批人须有集团级 `brand.change.decide`。批准后商户域按当前事实重跑影响检查与版本比对（现有 `verifyFacts`），对不上就 `CONFLICT` 要求重新送审；通过才改绑定。旧表 `mch_brand_change` 的检查快照不再落库，执行时现算 |
 | 储值开通 | **不走审批**：它是与支付侧的两阶段开通，栅栏状态放 `mch_brand.stored_value_status`（定稿已有列：NONE → PREPARING → ACTIVE）与 `scope_revision`；旧表 `mch_brand_financial_activation` 不再需要。开通后门店入退连锁仍走上面的审批，批准后再驱动支付侧的成员变更 |
 
+**E 服务范围：channel 的定义与方案（2026-11-28 整理；用户已定：存储用空串哨兵，主体层不做覆盖，改绑只看门店自己的行）**
+
+旧库四张表加一张网格：门店范围项 `mch_service_area`、渠道收窄 `mch_channel_area`、渠道自提点 `mch_channel_pickup`、
+主体覆盖小区 `mch_entity_community`、多边形网格 `mch_service_area_cell`。新库并成一张 `mch_store_service_area`，靠 `channel` 列区分。
+
+*一、`channel` 的定义*
+
+`channel` 回答「这一行范围项给哪种履约方式用」。值域取门店履约方式（`mch_store_fulfillment.channel`，`Fulfillments` 里的码）。
+
+| `channel` | 含义 | 谁读它 | 能写什么 |
+|---|---|---|---|
+| 空（对全部方式） | 门店的**基础覆盖面** | 所有范围口径为「全部」（`scope_mode=ALL`）的履约方式；买家端可达、运营端覆盖、B 端范围页 | 纳入、排除、不限（`UNLIMITED`）、多边形，各层级都可以 |
+| 某种方式 | 这种方式的**收窄子集**：只在它的范围口径为「部分」（`scope_mode=SUBSET`）时生效，别的方式看不见 | 只有这种方式的可达判定 | 只能是「纳入」，且必须在基础覆盖面里有同层级、同对象的行（是从基础面里挑出来的一份拷贝）；不能写排除、不限 |
+| `NEIGHBOR_PICKUP` 且层级 `PICKUP_POINT` | 这家店的**邻里自提点**（`ref_code` = 自提点号） | 只有下单时「能选哪些自提点」的校验与 B 端自提设置；**不参与覆盖判定** | 只能是「纳入」 |
+
+规则：
+- **排除只写在基础面，对所有方式生效**（与现在一致：排除先判、优先于任何纳入）。
+- **快递永远按基础面**，不出现在 `channel` 里（新库注释已写明）。
+- 范围口径为「全部」的方式**只看基础面**：门店有某方式的收窄行，不会让别的方式变得可达。
+- 收窄子集选空 = 这种方式哪里都到不了（与现在一致）。改回「全部」时删掉它的收窄行。
+- 基础面的某一行删了，各方式里对应的收窄拷贝一起删（现在是 `mch_channel_area` 的引用一起删）。
+- 多边形的收窄拷贝也要进网格，否则「部分」口径下的多边形永远命中不了。
+
+存储上「空」怎么写（**11-28 用户定：A，空串哨兵**）：
+
+| 做法 | 说明 |
+|---|---|
+| A（推荐） | 写空串 `''`，列改 `NOT NULL DEFAULT ''`。唯一键 `(tenant_no, store_no, channel, level, ref_code)` 直接拦得住重复；与 Q7.6 授权表「空串哨兵」同一做法。新库注释「空表示对本店所有方式生效」照旧成立 |
+| B | 保留 `NULL`，另加生成列 `channel_key = IFNULL(channel,'')` 放进唯一键。多一列，读写都还按 `NULL` |
+
+唯一键另外两条：`area_no` 全库唯一（审核单靠它指回本行）；`(tenant_no, store_no, channel, level, ref_code)` 唯一（一店一方式同一对象只一行，「不限」每店一行）。
+新库里这两个名为 `uk_` 的现在都是普通索引，进 V2 补。
+
+*二、主体层不再有覆盖*
+
+主体不是经营单位，覆盖只在门店上（11-28 用户：「主体不是运营主体，应该不需要处理主体级的覆盖」）。`mch_entity_community` 不迁、代码不再读写。
+现在按主体读覆盖的几处逐个改成按门店：
+
+| 现在 | 改成 |
+|---|---|
+| 买家端「附近的店」`StoreDirectoryPortImpl`（经 `EntityReachability`） | 按**这家门店**的基础面判 |
+| 买家端商家列表 `MerchantServiceImpl`（经 `EntityReachability`） | 列表本身是主体级的：主体名下**有在营门店**的基础面纳入该小区就列出（服务范围为平台、全市的照旧不看小区） |
+| 运营端按小区筛门店 `MerchantGovernServiceImpl.searchStores` | 按门店自己的行 |
+| 运营端按小区筛商家 `MerchantGovernServiceImpl.list`、商家详情的小区 `toVO` | 名下门店的并集 |
+| 二维码列表的小区名 `StoreQrcodeServiceImpl.communityNameOf` | 这张码所属门店的第一条小区行 |
+| B 端门店资料的 `serviceCommunityNos`、保存时的 `syncCommunities` | 只读写这家门店的小区行（现在已镜像到门店，去掉主体那一份） |
+| 门店改绑的拦截 `StoreRelinkLocalPolicy` | 只看这家门店自己的范围行（11-28 用户定） |
+
+*三、行怎么对应（迁移与代码同一口径）*
+
+| 旧 | 新 |
+|---|---|
+| `mch_service_area` 一行 | 一行，`channel` 空，其余照搬；多边形补 `geom` |
+| `mch_channel_area(门店, 方式, area_no)` | 只在该门店该方式是「部分」口径时：按 `area_no` 找到基础行，拷一份，`channel` = 方式，新 `area_no`。基础行不存在、是排除、是不限、方式是快递的，跳过（这些现在本来就不生效） |
+| `mch_channel_pickup(门店, 方式, 自提点号)` | `level=PICKUP_POINT`、`ref_code` = 自提点号、`channel=NEIGHBOR_PICKUP`、纳入、生效 |
+| `mch_entity_community` | 不迁（二） |
+| `mch_service_area_cell` | 新库补派生表（Q5），加一列 `channel`；按新表的多边形行（含收窄拷贝）重建 |
+
+*四、要改的代码*（勘查：约 30 个主代码文件、24 个测试）
+
+- 可达判定（`ReachMatchMapper`、命中查找、`ReachRule`、`StoreRoutes`、快照加载与缓存版本探针）：命中带上 `channel`；「全部」口径只认基础面的命中；「部分」口径只认该方式的收窄行；排除、不限只从基础面取；自提点行不进任何覆盖判定；版本探针改看新表。
+- 写入：B 端范围保存 `replaceAreas` 只动基础面，删行时连带删收窄拷贝与网格；履约设置保存的收窄选择写成拷贝、自提点写成自提点行；接口里的 `areaNos` 仍指基础行（读收窄时按层级、对象映射回去），契约不变。
+- 运营侧：覆盖展示、范围审核（审核通过时收窄拷贝跟着生效）、自提点名单。
+- 社区合并改指向（`MerchantSettlementRefPortImpl`）、新店继承默认店范围（只拷基础面；顺带把现在漏拷的多边形几何与网格补上）。
+- 数据域登记 `mch_store_service_area` 与网格表（主体维度）；原先没登记的自提点、小区读法变成受数据域约束，逐个核对运营端调用。
+- 所有删除保持物理删除（新表有逻辑删除，逻辑删了会撞唯一键）。
+
+*五、风险*
+
+| 风险 | 守法 |
+|---|---|
+| 「全部」口径误认收窄行 → 门店在不该到的地方可见 | 判定只认基础面；单测加「只有收窄行时全部口径不可达」 |
+| 自提点行混进覆盖读法 → B 端范围页、运营覆盖、继承多出自提点 | 所有覆盖读法显式排除 `PICKUP_POINT` |
+| 版本探针漏掉新表 → 可达结果陈旧且不报错 | 探针改看新表，`ReachSnapshotCacheTest` 覆盖 |
+| 多边形收窄拷贝没进网格 → 「部分」口径的多边形永远命中不了 | 网格按新表全部多边形行重建，含拷贝 |
+
 **建议顺序**：补唯一键 → F、票据、PIN 策略、会话日志、H、两列 → B → D → E → G → I 其余。
 第 2 步仍是一次提交，等 Q1–Q10 定完才能整体合入。在那之前，能单独提交、在旧库上照样能跑的只有两类：
 不改表的代码收敛（例如把 JSON 判权收到一个类里），以及顺带发现的缺陷——

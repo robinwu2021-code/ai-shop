@@ -232,7 +232,7 @@ class PersonnelOperatorFactsIT {
                             var config = c.getBean(SqlSessionFactory.class).getConfiguration();
                             assertThat(
                                             config.hasStatement(
-                                                    MerchantMappers.PersonnelAccountMapper.class
+                                                    MerchantMappers.PersonnelMapper.class
                                                                     .getName()
                                                             + ".selectCurrentOperatorPersonnel"))
                                     .isTrue();
@@ -328,7 +328,7 @@ class PersonnelOperatorFactsIT {
         runner(AT)
                 .run(
                         c -> {
-                            var mapper = c.getBean(MerchantMappers.PersonnelAccountMapper.class);
+                            var mapper = c.getBean(MerchantMappers.PersonnelMapper.class);
                             var port = c.getBean(PersonnelOperatorFactsPort.class);
                             assertThat(current(port, own("100", "MCH")).state())
                                     .isEqualTo(LinkState.LINKED);
@@ -423,7 +423,7 @@ class PersonnelOperatorFactsIT {
                                     new PersonnelOperatorFactsPortImpl(
                                             observed,
                                             c.getBean(MerchantMappers.OperatorAccessMapper.class),
-                                            c.getBean(MerchantMappers.PersonnelAccountMapper.class),
+                                            c.getBean(MerchantMappers.PersonnelMapper.class),
                                             c.getBean(PlatformTransactionManager.class),
                                             c.getBeanProvider(Clock.class));
                             assertThatThrownBy(() -> current(p, own("100", "MCH")))
@@ -449,7 +449,7 @@ class PersonnelOperatorFactsIT {
                                     new PersonnelOperatorFactsPortImpl(
                                             postSnapshot,
                                             c.getBean(MerchantMappers.OperatorAccessMapper.class),
-                                            c.getBean(MerchantMappers.PersonnelAccountMapper.class),
+                                            c.getBean(MerchantMappers.PersonnelMapper.class),
                                             c.getBean(PlatformTransactionManager.class),
                                             c.getBeanProvider(Clock.class));
                             assertThatThrownBy(() -> current(after, own("100", "MCH")))
@@ -633,7 +633,7 @@ class PersonnelOperatorFactsIT {
                                                     AT.minusSeconds(3600),
                                                     null));
                             var row =
-                                    c.getBean(MerchantMappers.PersonnelAccountMapper.class)
+                                    c.getBean(MerchantMappers.PersonnelMapper.class)
                                             .selectCurrentOperatorPersonnel(
                                                     "MAIN", "E", "S", "100", T0)
                                             .getFirst();

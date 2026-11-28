@@ -366,7 +366,6 @@ public class DevSeeder {
         s.setName(name);
         s.setIsDefault(true);
         s.setStatus(ai.neargo.shop.merchant.entity.MchStore.ACTIVE);
-        s.setFeatured("[]");
         return s;
     }
 
@@ -393,13 +392,6 @@ public class DevSeeder {
          *
          * 销量与商品数不同：它们不派生自任何明细，是纯粹的演示道具，留着。
          */
-        m.setRating(50);
-        m.setRatingCount(0);
-        m.setSalesCount(1893);
-        m.setGoodsCount(2);
-        m.setScoreGoods(50);
-        m.setScoreService(50);
-        m.setScoreSpeed(50);
         m.setVerified(verified);
         m.setBreachCount(0);
         m.setTags(tags);

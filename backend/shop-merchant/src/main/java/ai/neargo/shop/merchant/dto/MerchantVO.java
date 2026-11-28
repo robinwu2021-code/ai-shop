@@ -44,14 +44,15 @@ public record MerchantVO(String merchantNo,
      * @param address   来自门面表 {@code mch_store}，不是主体表（V42 起主体上没有这两列）
      * @param openHours 同上
      */
-    public static MerchantVO of(MchEntity m, List<String> tags, String address, String openHours) {
+    public static MerchantVO of(MchEntity m, ai.neargo.shop.merchant.service.impl.EntityRatings.Rating r, List<String> tags, String address, String openHours) {
         return new MerchantVO(
                 m.getEntityNo(), m.getName(), m.getLogo(),
-                score(m.getRating()), Boolean.TRUE.equals(m.getVerified()), nz(m.getBreachCount()),
-                m.getLegalForm(), m.getDescription(), nz(m.getSalesCount()), nz(m.getRatingCount()),
-                nz(m.getGoodsCount()), address, openHours,
+                score(r.ratingX10()), Boolean.TRUE.equals(m.getVerified()), nz(m.getBreachCount()),
+                // 销量没有维护方，新库删了这一列，恒 0；在售件数由买家侧出口现算后 withGoodsCount 挂上来
+                m.getLegalForm(), m.getDescription(), 0, r.count(),
+                0, address, openHours,
                 m.getJoinedAt() == null ? 0L : m.getJoinedAt(), tags,
-                new Scores(score(m.getScoreGoods()), score(m.getScoreService()), score(m.getScoreSpeed())),
+                new Scores(score(r.goodsX10()), score(r.serviceX10()), score(r.speedX10())),
                 Integer.valueOf(1).equals(m.getSelfOperated()),
                 // 收藏人数由买家侧出口现算后 withFavoriteCount 挂上来 —— 主体表上没有这一列
                 0);
@@ -73,9 +74,9 @@ public record MerchantVO(String merchantNo,
                         double rating, boolean verified, int breachCount,
                         boolean selfOperated) {
 
-        public static Brief of(MchEntity m) {
+        public static Brief of(MchEntity m, ai.neargo.shop.merchant.service.impl.EntityRatings.Rating r) {
             return new Brief(m.getEntityNo(), m.getName(), m.getLogo(),
-                    score(m.getRating()), Boolean.TRUE.equals(m.getVerified()), nz(m.getBreachCount()),
+                    score(r.ratingX10()), Boolean.TRUE.equals(m.getVerified()), nz(m.getBreachCount()),
                     // 空按自营：今天唯一在跑的就是归集，而**漏标自营是法定义务的缺失**，
                     // 多标一个只是显示问题
                     m.getFundsMode() == null

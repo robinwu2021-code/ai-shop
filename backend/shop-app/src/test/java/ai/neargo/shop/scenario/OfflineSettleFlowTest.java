@@ -179,7 +179,7 @@ class OfflineSettleFlowTest {
     @org.junit.jupiter.api.AfterEach
     void restoreChannels() {
         DataScopeContext.executeWithoutScope(() -> jdbc.update(
-                "DELETE FROM mch_fulfillment_channel WHERE entity_no = ?", SEED_ENTITY));
+                "DELETE FROM mch_store_fulfillment WHERE entity_no = ?", SEED_ENTITY));
     }
 
     @Test

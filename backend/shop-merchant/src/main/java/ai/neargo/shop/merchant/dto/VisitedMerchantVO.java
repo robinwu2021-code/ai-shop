@@ -15,9 +15,9 @@ public record VisitedMerchantVO(String merchantNo,
                                    其余两档走 MerchantVO 早就有，只有这一份漏了，真机上虹选鲜果在这一档显示成一个「虹」字 */
                                 boolean selfOperated) {
 
-    public static VisitedMerchantVO of(MchEntity m, int orderCount, long lastOrderAt) {
+    public static VisitedMerchantVO of(MchEntity m, ai.neargo.shop.merchant.service.impl.EntityRatings.Rating r, int orderCount, long lastOrderAt) {
         return new VisitedMerchantVO(m.getEntityNo(), m.getName(), m.getLogo(),
-                m.getRating() == null ? 0d : m.getRating() / 10d,
+                r.ratingX10() / 10d,
                 Boolean.TRUE.equals(m.getVerified()),
                 m.getBreachCount() == null ? 0 : m.getBreachCount(),
                 orderCount, lastOrderAt,

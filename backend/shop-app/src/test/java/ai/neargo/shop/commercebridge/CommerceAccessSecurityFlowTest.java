@@ -470,7 +470,8 @@ class CommerceAccessSecurityFlowTest {
                         f.mybatis.getMapper(MchAccountMapper.class),
                         f.mybatis.getMapper(MchStoreMapper.class),
                         f.mybatis.getMapper(MchStoreRoleMapper.class),
-                        f.mybatis.getMapper(MchRoleMapper.class));
+                        f.mybatis.getMapper(MchRoleMapper.class),
+                        new ai.neargo.shop.merchant.service.impl.RolePointStore(f.jdbc));
         var sessions = new DbAccountSessionVerifier(f.dao, f.loader, f.clock, f.manager);
         var qualification = mock(QualificationPort.class);
         web.setServletContext(new MockServletContext());

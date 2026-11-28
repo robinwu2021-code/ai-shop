@@ -40,7 +40,6 @@ class SmsMockPrefixTest {
         var auth = new AuthServiceImpl(mock(UserMapper.class),
                 mock(IdentityMapper.class),
                 mock(WxPhonePort.class),
-                mock(MpSessionService.class),
                 new MemoryTokenStore(Duration.ofHours(1)),
                 mock(WxAuthPort.class),
                 mock(PasswordHasher.class),

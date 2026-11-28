@@ -70,7 +70,6 @@ class BizIdentityNativeMysqlTest {
             auth = new AuthServiceImpl(db.mybatis.getMapper(UserMapper.class),
                 db.mybatis.getMapper(IdentityMapper.class),
                 mock(WxPhonePort.class),
-                mock(MpSessionService.class),
                 tokens,
                 mock(WxAuthPort.class),
                 new PasswordHasher(),

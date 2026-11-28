@@ -31,9 +31,11 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
     private final MchStoreRoleMapper grantMapper;
     private final MchStoreMapper storeMapper;
     private final StaffAuditLogger audit;
+    private final RolePointStore points;
 
     public MerchantRoleServiceImpl(MchRoleMapper roleMapper, MchStoreRoleMapper grantMapper,
-                                   MchStoreMapper storeMapper, StaffAuditLogger audit) {
+                                   MchStoreMapper storeMapper, StaffAuditLogger audit, RolePointStore points) {
+        this.points = points;
         this.roleMapper = roleMapper;
         this.grantMapper = grantMapper;
         this.storeMapper = storeMapper;
@@ -43,8 +45,11 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
     @Override
     public List<RoleVO> list(String merchantNo) {
         Map<String, Long> usage = usageOf(merchantNo);
-        return rolesOf(merchantNo).stream()
-                .map(r -> toVO(r, usage.getOrDefault(r.getRoleCode(), 0L).intValue()))
+        List<MchRole> roles = rolesOf(merchantNo);
+        Map<RolePointStore.Key, Set<String>> codes = points.ofRoles(roles);
+        return roles.stream()
+                .map(r -> toVO(r, codes.getOrDefault(new RolePointStore.Key(r.getEntityNo(), r.getRoleCode()), Set.of()),
+                        usage.getOrDefault(r.getRoleCode(), 0L).intValue()))
                 .toList();
     }
 
@@ -58,13 +63,13 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
         r.setEntityNo(merchantNo);
         r.setRoleCode(BizKey.next(BizKey.MERCHANT_ROLE));
         r.setName(clean);
-        r.setPerms(toJson(codes));
         r.setBuiltin(false);
         DataScopeContext.executeWithoutScope(() -> roleMapper.insert(r));
+        points.replace(merchantNo, r.getRoleCode(), sorted(codes));
 
         audit.role(merchantNo, ai.neargo.shop.merchant.entity.MchStaffLog.ROLE_CREATE,
                 r.getRoleCode(), "新建角色「" + clean + "」：" + labels(codes));
-        return toVO(r, 0);
+        return toVO(r, codes, 0);
     }
 
     @Override
@@ -79,14 +84,14 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
          * 所以这条日志要写清楚改成了什么 —— 事后问「他怎么突然能改价了」，
          * 答案就在这一行里。
          */
-        String before = labels(parse(r.getPerms()));
+        String before = labels(points.of(r.getEntityNo(), roleCode));
         r.setName(clean);
-        r.setPerms(toJson(codes));
         DataScopeContext.executeWithoutScope(() -> roleMapper.updateById(r));
+        points.replace(r.getEntityNo(), roleCode, sorted(codes));
 
         audit.role(merchantNo, ai.neargo.shop.merchant.entity.MchStaffLog.ROLE_UPDATE, roleCode,
                 "角色「" + clean + "」权限：" + before + " → " + labels(codes));
-        return toVO(r, usageOf(merchantNo).getOrDefault(roleCode, 0L).intValue());
+        return toVO(r, codes, usageOf(merchantNo).getOrDefault(roleCode, 0L).intValue());
     }
 
     @Override
@@ -103,6 +108,7 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         DataScopeContext.executeWithoutScope(() -> roleMapper.deleteById(r.getId()));
+        points.delete(r.getEntityNo(), roleCode);
         audit.role(merchantNo, ai.neargo.shop.merchant.entity.MchStaffLog.ROLE_DELETE, roleCode,
                 "删除角色「" + r.getName() + "」");
     }
@@ -207,8 +213,8 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
                         Collectors.collectingAndThen(Collectors.toSet(), s -> (long) s.size()))));
     }
 
-    private static RoleVO toVO(MchRole r, int usedBy) {
-        List<String> codes = List.copyOf(parse(r.getPerms()));
+    private static RoleVO toVO(MchRole r, Set<String> perms, int usedBy) {
+        List<String> codes = perms.stream().sorted().toList();
         return new RoleVO(r.getRoleCode(), r.getName(), Boolean.TRUE.equals(r.getBuiltin()),
                 codes, codes.stream().map(c -> BizPerms.LABELS.getOrDefault(c, c)).toList(),
                 usedBy);
@@ -219,18 +225,8 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
                 .sorted().collect(Collectors.joining("、"));
     }
 
-    /** `["biz:a","biz:b"]` ↔ Set。与 BizIdentityResolverImpl 同一套写法 */
-    private static Set<String> parse(String json) {
-        if (json == null || json.isBlank()) {
-            return Set.of();
-        }
-        return java.util.Arrays.stream(json.replaceAll("[\\[\\]\"]", "").split(","))
-                .map(String::trim).filter(x -> !x.isEmpty())
-                .collect(Collectors.toUnmodifiableSet());
-    }
-
-    private static String toJson(Set<String> codes) {
-        return codes.stream().sorted().map(c -> "\"" + c + "\"")
-                .collect(Collectors.joining(",", "[", "]"));
+    /** 按码排序后写入：读回来的顺序稳定 */
+    private static Set<String> sorted(Set<String> codes) {
+        return new java.util.TreeSet<>(codes);
     }
 }

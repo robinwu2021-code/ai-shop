@@ -117,7 +117,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 store == null ? "" : nz(store.getOpenHours()),
                 store == null ? "" : nz(store.getAddress()),
                 store == null ? "" : nz(store.getAddressDetail()),
-                store == null ? List.of() : readList(store.getFeatured()),
+                // 主推商品已删（Q3）：C 端没有读方，B 端字段保留、恒为空
+                List.of(),
                 merchant == null || merchant.getServiceScope() == null
                         ? COMMUNITY : merchant.getServiceScope(),
                 communitiesOf(merchantNo),
@@ -320,7 +321,6 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         if (cmd.addressDetail() != null) {
             store.setAddressDetail(cmd.addressDetail().isBlank() ? null : cmd.addressDetail().trim());
         }
-        store.setFeatured(writeJson(cmd.featured()));
         // 坐标两个都给才写：只来一半是端上的 bug，写进去会得到一个在赤道或本初子午线上的门店
         if (cmd.latE6() != null && cmd.lngE6() != null) {
             store.setLatE6(cmd.latE6());

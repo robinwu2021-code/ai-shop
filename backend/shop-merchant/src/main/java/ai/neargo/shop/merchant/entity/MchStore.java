@@ -208,8 +208,7 @@ public class MchStore extends BaseEntity {
     /** 建店选的子行业码（V643）；子行业「其他」时为空 */
     private String subIndustryCode;
 
-    /** JSON 数组：主推商品 goods_no，<b>有序</b>。顺序是门面的编排，不是商品自身属性。 */
-    private String featured;
+    /* 主推商品（featured）不在门店上：只有 B 端读、C 端从没读过，新库删了这一列（TDD-平台基础库换表 第 2 步 C，Q3） */
 
     /**
      * 门店背景图（V368，店主在 B 端设置）。C 端门户顶部：<b>有就是这张照片，空就是主色浅底</b>。

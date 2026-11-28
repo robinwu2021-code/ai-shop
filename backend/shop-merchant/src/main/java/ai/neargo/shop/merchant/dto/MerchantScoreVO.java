@@ -46,10 +46,10 @@ public record MerchantScoreVO(String merchantNo,
      * @param platformIsSeller 平台是否为销售主体（{@code funds_mode == AGGREGATED}）。
      *                         判据跟着钱走，与积分能力、售后分流同一根轴
      */
-    public static MerchantScoreVO of(MchEntity m, boolean platformIsSeller) {
-        return new MerchantScoreVO(m.getEntityNo(), score(m.getRating()), nz(m.getRatingCount()),
-                new MerchantVO.Scores(score(m.getScoreGoods()), score(m.getScoreService()),
-                        score(m.getScoreSpeed())),
+    public static MerchantScoreVO of(MchEntity m, ai.neargo.shop.merchant.service.impl.EntityRatings.Rating r, boolean platformIsSeller) {
+        return new MerchantScoreVO(m.getEntityNo(), score(r.ratingX10()), r.count(),
+                new MerchantVO.Scores(score(r.goodsX10()), score(r.serviceX10()),
+                        score(r.speedX10())),
                 BASIS,
                 platformIsSeller ? PLATFORM_BORNE : java.util.List.of());
     }

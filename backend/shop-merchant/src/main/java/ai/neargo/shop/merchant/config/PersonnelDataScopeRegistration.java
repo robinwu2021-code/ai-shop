@@ -24,7 +24,6 @@ public final class PersonnelDataScopeRegistration implements DataScopeRegistrar 
         registry.register("mch_schedule_change_log", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mch_resource", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mch_personnel", Map.of(ScopeDim.MERCHANT, "entity_no"));
-        registry.register("mch_personnel_account", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mch_personnel_store", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mch_personnel_position", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("mch_personnel_skill", Map.of(ScopeDim.MERCHANT, "entity_no"));

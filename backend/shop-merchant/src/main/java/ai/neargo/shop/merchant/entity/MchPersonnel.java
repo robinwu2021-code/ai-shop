@@ -22,4 +22,11 @@ public class MchPersonnel extends BaseEntity {
     private String status;
     /** 受控联系资料引用。 */
     private String contactRef;
+    /**
+     * 关联的 B 端账号（可空）。原先另存在 mch_personnel_account，一对一并进人员（TDD-平台基础库换表 第 2 步 D，Q4）：
+     * 关联号改用人员号，关联版本改用人员的 version。
+     */
+    private String mchAccountNo;
+    /** 关联账号的时间；解除关联时清空 */
+    private java.time.LocalDateTime accountLinkedAt;
 }

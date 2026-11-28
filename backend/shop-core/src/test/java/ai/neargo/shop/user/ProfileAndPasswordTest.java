@@ -74,7 +74,6 @@ class ProfileAndPasswordTest {
         AuthServiceImpl auth = new AuthServiceImpl(userMapper,
                 identityMapper,
                 mock(ai.neargo.shop.spi.user.WxPhonePort.class),
-                mock(ai.neargo.shop.user.service.MpSessionService.class),
                 tokenStore,
                 wxAuthPort,
                 mock(ai.neargo.shop.auth.PasswordHasher.class),
@@ -219,7 +218,7 @@ class ProfileAndPasswordTest {
         org.springframework.security.core.context.SecurityContextHolder.getContext()
                 .setAuthentication(auth);
         return new UserServiceImpl(
-                userMapper, identityMapper, mock(ai.neargo.shop.user.service.MpSessionService.class),
+                userMapper, identityMapper,
                 mock(ai.neargo.shop.spi.user.PickupQueryPort.class),
                 mock(ai.neargo.shop.common.OtpStore.class),
                 mock(ai.neargo.shop.spi.trade.OpenOrderPort.class),

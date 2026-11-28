@@ -54,14 +54,14 @@ class EntitlementTemplateHttpFlowTest {
                 Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
         consumer = TestLogin.consumer(mvc, json, otp, phone);
         user = tokens.of(Realm.CONSUMER).get(consumer).orElseThrow().user().userNo();
-        entity = "MC-HTTP-M-" + UUID.randomUUID();
-        store = "MC-HTTP-S-" + UUID.randomUUID();
+        entity = "MC-HTTP-M-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        store = "MC-HTTP-S-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         jdbc.update("INSERT INTO mch_entity(entity_no,owner_user_no,name,status,tenant_no,created_at,updated_at) "
                 + "VALUES (?,?,'code http merchant','ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 entity, user);
         jdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,tenant_no,created_at,updated_at) "
                 + "VALUES (?,?,'code http store','ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", store, entity);
-        account = "MC-HTTP-A-" + UUID.randomUUID();
+        account = "MC-HTTP-A-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         jdbc.update("INSERT INTO mch_account(mch_account_no,entity_no,user_no,is_owner,is_primary,status,"
                 + "tenant_no,created_at,updated_at) VALUES (?,?,?,1,1,'ACTIVE','MAIN',"
                 + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", account, entity, user);

@@ -171,7 +171,6 @@ class StoreOrderRoutingTest {
         s.setName("落店测试分店");
         s.setIsDefault(false);
         s.setStatus(status);
-        s.setFeatured("[]");
         s.setTenantNo("MAIN");
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(s));
         undo.add(() -> DataScopeContext.executeWithoutScope(() -> storeMapper.deleteById(s.getId())));

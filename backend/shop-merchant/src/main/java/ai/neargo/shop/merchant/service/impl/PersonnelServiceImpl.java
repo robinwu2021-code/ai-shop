@@ -23,7 +23,6 @@ import ai.neargo.shop.merchant.dto.PersonnelVO;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 import ai.neargo.shop.merchant.entity.MchPersonnel;
 import ai.neargo.shop.merchant.entity.MchAccount;
-import ai.neargo.shop.merchant.entity.MchPersonnelAccount;
 import ai.neargo.shop.merchant.entity.MchPersonnelPosition;
 import ai.neargo.shop.merchant.booking.entity.MchPersonnelSkill;
 import ai.neargo.shop.merchant.entity.MchPersonnelStore;
@@ -61,7 +60,6 @@ public class PersonnelServiceImpl implements PersonnelService {
     private final MerchantMappers.PersonnelStoreMapper assignments;
     private final MerchantMappers.PersonnelPositionMapper positions;
     private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.PersonnelSkillMapper skills;
-    private final MerchantMappers.PersonnelAccountMapper links;
     private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources;
     private final ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents;
     private final MerchantMappers.MchAccountMapper accounts;
@@ -76,7 +74,7 @@ public class PersonnelServiceImpl implements PersonnelService {
 
     public PersonnelServiceImpl(ResourceOccupationGuard occupations, MerchantMappers.PersonnelMapper people,
             MerchantMappers.PersonnelStoreMapper assignments, MerchantMappers.PersonnelPositionMapper positions,
-            ai.neargo.shop.merchant.booking.mapper.BookingMappers.PersonnelSkillMapper skills, MerchantMappers.PersonnelAccountMapper links,
+            ai.neargo.shop.merchant.booking.mapper.BookingMappers.PersonnelSkillMapper skills,
             ai.neargo.shop.merchant.booking.mapper.BookingMappers.ResourceMapper resources, ai.neargo.shop.merchant.booking.mapper.BookingMappers.BookingOwnerMapper parents,
             MerchantMappers.MchAccountMapper accounts, MerchantMappers.MchStaffLogMapper audit,
             MerchantStaffService staff, GoodsQueryPort products, RequestIdempotencyPort idempotency,
@@ -87,7 +85,6 @@ public class PersonnelServiceImpl implements PersonnelService {
         this.assignments = assignments;
         this.positions = positions;
         this.skills = skills;
-        this.links = links;
         this.resources = resources;
         this.parents = parents;
         this.accounts = accounts;
@@ -205,31 +202,18 @@ public class PersonnelServiceImpl implements PersonnelService {
                             throw BizException.of(ErrorCode.BAD_REQUEST);
                         }
                     }
-                    var link = link(person);
-                    String previousAccount = link == null ? null : link.getMchAccountNo();
-                    if (link == null) {
-                        link = new MchPersonnelAccount();
-                        link.setTenantNo("MAIN");
-                        link.setEntityNo(entity);
-                        link.setPersonnelNo(personnelNo);
-                        link.setLinkNo(BizKey.next("MPL"));
-                        link.setMchAccountNo(request.accountNo());
-                        link.setLinkedAt(request.accountNo() == null ? null : now());
-                        links.insert(link);
-                    } else {
-                        int changed = links.update(Wrappers.<MchPersonnelAccount>lambdaUpdate()
-                                .eq(MchPersonnelAccount::getTenantNo, "MAIN")
-                                .eq(MchPersonnelAccount::getEntityNo, entity)
-                                .eq(MchPersonnelAccount::getPersonnelNo, personnelNo)
-                                .eq(MchPersonnelAccount::getVersion, link.getVersion())
-                                .set(MchPersonnelAccount::getMchAccountNo, request.accountNo())
-                                .set(MchPersonnelAccount::getLinkedAt, request.accountNo() == null ? null : now())
-                                .set(MchPersonnelAccount::getVersion, link.getVersion() + 1)
-                                .set(MchPersonnelAccount::getUpdatedAt, now())
-                                .set(MchPersonnelAccount::getUpdatedBy, actor));
-                        one(changed);
+                    String previousAccount = person.getMchAccountNo();
+                    if (request.accountNo() != null && people.countAccountLinkedElsewhere(entity, request.accountNo(),
+                            personnelNo) > 0) {
+                        // 一个账号只关联一个人员（原先靠 mch_personnel_account 的唯一键挡）
+                        throw BizException.of(ErrorCode.CONFLICT);
                     }
-                    advance(person, actor, person.getStatus());
+                    java.time.LocalDateTime linkedAt = request.accountNo() == null ? null : now();
+                    one(people.linkAccount(entity, personnelNo, person.getVersion(), request.accountNo(), linkedAt,
+                            actor, now()));
+                    person.setVersion(person.getVersion() + 1);
+                    person.setMchAccountNo(request.accountNo());
+                    person.setAccountLinkedAt(linkedAt);
                     var change = new LinkedHashMap<String, Object>();
                     change.put("previousAccountNo", previousAccount);
                     change.put("accountNo", request.accountNo());
@@ -251,10 +235,10 @@ public class PersonnelServiceImpl implements PersonnelService {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
             var resource = fence(trusted, person);
-            var link = link(person);
-            boolean disable = !"ACTIVE".equals(request.status()) && link != null && link.getMchAccountNo() != null;
+            // 账号关联在人员行上（Q4）
+            boolean disable = !"ACTIVE".equals(request.status()) && person.getMchAccountNo() != null;
             if (disable) {
-                var account = lockAccount(entity, link.getMchAccountNo());
+                var account = lockAccount(entity, person.getMchAccountNo());
                 if (Boolean.TRUE.equals(account.getIsOwner())) { throw BizException.of(ErrorCode.BAD_REQUEST); }
                 staff.setStatus(entity, account.getMchAccountNo(), false);
                 if (!"DISABLED".equals(lockAccount(entity, account.getMchAccountNo()).getStatus())) {
@@ -415,11 +399,6 @@ public class PersonnelServiceImpl implements PersonnelService {
                 actor, now()));
         person.setVersion(person.getVersion() + 1);
         person.setStatus(status);
-    }
-    private MchPersonnelAccount link(MchPersonnel person) {
-        return links.selectOne(Wrappers.<MchPersonnelAccount>lambdaQuery()
-                .eq(MchPersonnelAccount::getTenantNo, "MAIN").eq(MchPersonnelAccount::getEntityNo, person.getEntityNo())
-                .eq(MchPersonnelAccount::getPersonnelNo, person.getPersonnelNo()));
     }
     private String statusReason(MchPersonnel person, String store, String actor, String reason) {
         var row = new MchStaffLog();

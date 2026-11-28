@@ -101,7 +101,7 @@ class DeliveryRadiusFlowTest {
         SecurityContextHolder.clearContext();
         DataScopeContext.executeWithoutScope(() -> {
             // 通道行删干净 = 回到「这家店还没迁移到 channel 模型」，闸二按空集放行
-            jdbc.update("DELETE FROM mch_fulfillment_channel WHERE entity_no = ?", MERCHANT);
+            jdbc.update("DELETE FROM mch_store_fulfillment WHERE entity_no = ?", MERCHANT);
             if (goodsFulfillmentsBackup != null) {
                 PrdGoods g = goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()
                         .eq(PrdGoods::getGoodsNo, "G0001").last("limit 1"));

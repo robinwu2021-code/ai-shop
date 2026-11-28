@@ -3,7 +3,6 @@ package ai.neargo.shop.scenario;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchFulfillmentChannel;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
@@ -44,8 +43,6 @@ class UnlimitedBackfillTest {
     private MerchantMappers.MchStoreMapper storeMapper;
     @Autowired
     private MerchantMappers.ServiceAreaMapper areaMapper;
-    @Autowired
-    private MerchantMappers.FulfillmentChannelMapper channelMapper;
 
     @Test
     @DisplayName("★★★ 只补「没框范围 + 有不限落点的路」那几家；自提、子集路、已框范围的都不补")
@@ -174,14 +171,13 @@ class UnlimitedBackfillTest {
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(st));
 
         if (channel != null) {
-            MchFulfillmentChannel c = new MchFulfillmentChannel();
-            c.setEntityNo(entityNo);
-            c.setStoreNo(storeNo);
-            c.setChannel(channel.channel());
-            c.setScopeMode(channel.scopeMode());
-            c.setEnabled(channel.enabled());
-            c.setOpsLocked(channel.opsLocked());
-            DataScopeContext.executeWithoutScope(() -> channelMapper.insert(c));
+            // V397 是冻结的历史迁移，读的是旧表 mch_fulfillment_channel；运行时代码已换到 mch_store_fulfillment，
+            // 所以这里直接写旧表，验的仍是这条迁移本身的判据
+            new org.springframework.jdbc.core.JdbcTemplate(dataSource).update(
+                    "INSERT INTO mch_fulfillment_channel(tenant_no,entity_no,store_no,channel,scope_mode,enabled,ops_locked,"
+                            + "created_at,updated_at) VALUES('MAIN',?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                    entityNo, storeNo, channel.channel(), channel.scopeMode(), channel.enabled() ? 1 : 0,
+                    channel.opsLocked() ? 1 : 0);
         }
         if (areaTweak != null) {
             MchServiceArea a = new MchServiceArea();

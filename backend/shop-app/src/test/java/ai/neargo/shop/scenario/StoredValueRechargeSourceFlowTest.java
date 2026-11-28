@@ -97,7 +97,8 @@ class StoredValueRechargeSourceFlowTest {
     private String user, actor, entity, store, activity;
     private EntitlementContext ctx;
     private RechargeIntentCreate request;
-    private String id() { return UUID.randomUUID().toString(); }
+    /** 32 位：新库的主体号等编号列是 varchar(32) */
+    private String id() { return UUID.randomUUID().toString().replace("-", ""); }
     @BeforeEach void seedOwnedPublishedRulesAndRealMemberReference() {
         user = id(); actor = id(); entity = id(); store = id(); activity = "A" + id();
         ctx = new EntitlementContext("MAIN", actor, id(), "a".repeat(64));

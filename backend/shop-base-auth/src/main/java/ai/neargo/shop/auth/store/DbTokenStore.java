@@ -73,8 +73,9 @@ public class DbTokenStore implements TokenStore {
      * @param subjectKind <b>必须一起缓存</b> —— 只缓存 userNo 的话，缓存命中那条路径
      *                    就丢了「这个号去哪张表查」，分发器只能猜
      */
+    /** {@code openid}：C 端小程序会话的付款人身份，别的端恒为空 */
     public record CachedSession(String userNo, String subjectKind,
-                                LocalDateTime expiresAt, LocalDateTime lastSeenAt) {
+                                LocalDateTime expiresAt, LocalDateTime lastSeenAt, String openid) {
     }
 
     public DbTokenStore(Realm realm, SessionProfile profile, SessionDao sessions,
@@ -108,10 +109,11 @@ public class DbTokenStore implements TokenStore {
         LocalDateTime expiresAt = now.plus(profile.sessionTtl());
 
         // subject_kind 跟着会话一起落库：**这个号该去哪张表查，不能靠号段形状猜**
+        String openid = realm == Realm.CONSUMER ? data.openid() : null;
         sessions.insert(TokenHash.of(token), user.userNo(),
-                user.subjectKind().name(), now, expiresAt);
+                user.subjectKind().name(), now, expiresAt, openid);
         sessionCache.put(TokenHash.of(token),
-                new CachedSession(user.userNo(), user.subjectKind().name(), expiresAt, now));
+                new CachedSession(user.userNo(), user.subjectKind().name(), expiresAt, now, openid));
         identityCache.put(user.userNo(), user);
         /*
          * **这里刻意不写 LOGIN。**
@@ -143,7 +145,8 @@ public class DbTokenStore implements TokenStore {
                 return Optional.empty();   // **不做负缓存**，见类注释
             }
             cached = new CachedSession(row.get().userNo(), row.get().subjectKind(),
-                    row.get().expiresAt(), row.get().lastSeenAt());
+                    row.get().expiresAt(), row.get().lastSeenAt(),
+                    realm == Realm.CONSUMER ? sessions.openidOf(hash).orElse(null) : null);
             sessionCache.put(hash, cached);
         }
         if (!cached.expiresAt().isAfter(now)) {
@@ -151,7 +154,8 @@ public class DbTokenStore implements TokenStore {
             return Optional.empty();
         }
         touchIfStale(hash, cached, now);
-        return identityOf(cached.userNo(), cached.subjectKind()).map(SessionData::of);
+        String openid = cached.openid();
+        return identityOf(cached.userNo(), cached.subjectKind()).map(u -> SessionData.of(u, openid));
     }
 
     /** 会话行上的 kind 字符串 → 枚举。**认不出就返回 null**，由分发器拒绝，不猜。 */
@@ -239,7 +243,7 @@ public class DbTokenStore implements TokenStore {
         LocalDateTime renewed = now.plus(profile.sessionTtl());
         sessions.touch(hash, now, renewed);
         sessionCache.put(hash, new CachedSession(cached.userNo(), cached.subjectKind(),
-                renewed, now));
+                renewed, now, cached.openid()));
     }
 
     /**

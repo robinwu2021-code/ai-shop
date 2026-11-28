@@ -37,6 +37,7 @@ public class MerchantServiceImpl implements MerchantService {
     private final MchStoreMapper merchantStoreMapper;
     private final PurchaseHistoryPort purchaseHistoryPort;
     private final ObjectMapper json;
+    private final EntityRatings ratings;
 
     public MerchantServiceImpl(MchEntityMapper merchantMapper,
                                PurchaseHistoryPort purchaseHistoryPort,
@@ -44,6 +45,7 @@ public class MerchantServiceImpl implements MerchantService {
                                MchStoreMapper merchantStoreMapper,
                                EntityReachability reachability) {
         this.merchantStoreMapper = merchantStoreMapper;
+        this.ratings = new EntityRatings(merchantStoreMapper);
         this.reachability = reachability;
         this.merchantMapper = merchantMapper;
         this.purchaseHistoryPort = purchaseHistoryPort;
@@ -62,8 +64,8 @@ public class MerchantServiceImpl implements MerchantService {
          * 与 promoted() 共用同一个判定，避免两处口径走偏。
          */
         applyReachable(q, communityNo);
-        // 认证商家优先、再按销量：新入驻的小店不会因为没销量就永远排在最后一页
-        q.orderByDesc(MchEntity::getVerified).orderByDesc(MchEntity::getSalesCount);
+        // 认证商家优先。原先第二序按销量，而销量列从来没人维护（恒 0），新库删了它
+        q.orderByDesc(MchEntity::getVerified);
 
         // 绕过数据域，理由同下面 detail/score/visited 那一段：C 端会话是 SELF 维度，
         // 而 mch_entity 只有 MERCHANT 锚点 —— 不绕的话**登录用户的商家列表是空的**，
@@ -73,7 +75,8 @@ public class MerchantServiceImpl implements MerchantService {
         Page<MchEntity> result = DataScopeContext.executeWithoutScope(
                 () -> merchantMapper.selectPage(Page.of(page, size), q));
         Map<String, MchStore> fronts = frontsOf(result.getRecords());
-        return MybatisPages.of(result.convert(m -> toVO(m, fronts)));
+        var scores = ratingsOf(result.getRecords());
+        return MybatisPages.of(result.convert(m -> toVO(m, fronts, scores)));
     }
 
     @Override
@@ -98,7 +101,8 @@ public class MerchantServiceImpl implements MerchantService {
         w.orderByDesc(MchEntity::getId).last("limit " + limit);
         List<MchEntity> rows = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectList(w));
         Map<String, MchStore> fronts = frontsOf(rows);
-        return rows.stream().map(m -> toVO(m, fronts)).toList();
+        var scores = ratingsOf(rows);
+        return rows.stream().map(m -> toVO(m, fronts, scores)).toList();
     }
 
     /*
@@ -120,7 +124,7 @@ public class MerchantServiceImpl implements MerchantService {
         if (m == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        return toVO(m, frontsOf(List.of(m)));
+        return toVO(m, frontsOf(List.of(m)), ratingsOf(List.of(m)));
     }
 
     @Override
@@ -132,7 +136,7 @@ public class MerchantServiceImpl implements MerchantService {
         // 归集 = 平台是销售主体：服务与时效是平台在做，标注出来而不是把分藏掉
         boolean platformIsSeller = ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_AGGREGATED
                 .equals(m.getFundsMode());
-        return ai.neargo.shop.merchant.dto.MerchantScoreVO.of(m, platformIsSeller);
+        return ai.neargo.shop.merchant.dto.MerchantScoreVO.of(m, ratings.of(m.getEntityNo()), platformIsSeller);
     }
 
     @Override
@@ -150,10 +154,11 @@ public class MerchantServiceImpl implements MerchantService {
 
         // 商家可能已被封禁/删除，但用户确实买过 —— 跳过而不是返回空壳，
         // 空壳会在「我买过的」列表里渲染成一张没有名字的卡
+        var scores = ratings.of(merchants.keySet());
         return purchases.stream()
                 .filter(p -> merchants.containsKey(p.merchantNo()))
                 .map(p -> ai.neargo.shop.merchant.dto.VisitedMerchantVO.of(
-                        merchants.get(p.merchantNo()), p.orderCount(), p.lastOrderAt()))
+                        merchants.get(p.merchantNo()), scores.get(p.merchantNo()), p.orderCount(), p.lastOrderAt()))
                 .toList();
     }
 
@@ -190,9 +195,13 @@ public class MerchantServiceImpl implements MerchantService {
     }
 
     /** 没有门面行时地址与营业时间为空 —— 不是错误，是这家店还没进过店铺设置页。 */
-    private MerchantVO toVO(MchEntity m, Map<String, MchStore> fronts) {
+    private Map<String, EntityRatings.Rating> ratingsOf(List<MchEntity> merchants) {
+        return ratings.of(merchants.stream().map(MchEntity::getEntityNo).toList());
+    }
+
+    private MerchantVO toVO(MchEntity m, Map<String, MchStore> fronts, Map<String, EntityRatings.Rating> scores) {
         MchStore front = fronts.get(m.getEntityNo());
-        return MerchantVO.of(m, tags(m),
+        return MerchantVO.of(m, scores.getOrDefault(m.getEntityNo(), EntityRatings.Rating.NONE), tags(m),
                 front == null ? "" : nzs(front.getAddress()),
                 front == null ? "" : nzs(front.getOpenHours()));
     }

@@ -59,11 +59,11 @@ class BizOrderFulfillFlowTest {
                 + "delivery_free_threshold_minor=0 where store_no=?", freight, store);
         jdbc.update("update prd_goods set fulfillments='[\"EXPRESS\",\"MERCHANT_DELIVERY\"]' "
                 + "where goods_no=(select goods_no from ord_item where sub_order_no=? limit 1)", c.subOrderNo);
-        int changed = jdbc.update("update mch_fulfillment_channel set enabled=1,ops_locked=0 "
+        int changed = jdbc.update("update mch_store_fulfillment set enabled=1,ops_locked=0 "
                 + "where store_no=? and channel='MERCHANT_DELIVERY'", store);
-        if (changed == 0) jdbc.update("insert into mch_fulfillment_channel "
-                + "(store_no,entity_no,channel,enabled,scope_mode,tenant_no,created_at,updated_at) "
-                + "values (?,?,'MERCHANT_DELIVERY',1,'ALL','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+        if (changed == 0) jdbc.update("insert into mch_store_fulfillment "
+                + "(store_no,entity_no,channel,enabled,scope_mode,ops_locked,tenant_no,created_at,updated_at) "
+                + "values (?,?,'MERCHANT_DELIVERY',1,'ALL',0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 store, merchant);
         jdbc.update("insert into mch_service_area "
                 + "(area_no,entity_no,store_no,level,ref_code,source,status,mode,tenant_no,created_at,updated_at) "

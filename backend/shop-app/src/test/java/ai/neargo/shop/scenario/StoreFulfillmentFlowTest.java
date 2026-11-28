@@ -280,6 +280,7 @@ class StoreFulfillmentFlowTest {
         row.setStoreNo(merchantQuery.defaultStoreNo(seeded).orElseThrow());
         row.setEntityNo(seeded);
         row.setChannel(Fulfillments.NEIGHBOR_PICKUP);
+        row.setOpsLocked(false);
         row.setEnabled(true);
         row.setScopeMode(ai.neargo.shop.merchant.entity.MchFulfillmentChannel.SCOPE_ALL);
         channelMapper.insert(row);

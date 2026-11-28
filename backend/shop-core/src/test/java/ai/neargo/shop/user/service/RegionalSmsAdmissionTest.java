@@ -27,7 +27,6 @@ class RegionalSmsAdmissionTest {
         var auth=new AuthServiceImpl(mock(UserMapper.class),
                 mock(IdentityMapper.class),
                 mock(WxPhonePort.class),
-                mock(MpSessionService.class),
                 mock(TokenStore.class),
                 mock(WxAuthPort.class),
                 mock(PasswordHasher.class),

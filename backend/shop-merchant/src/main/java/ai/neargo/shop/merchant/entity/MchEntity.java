@@ -91,16 +91,7 @@ public class MchEntity extends BaseEntity {
     /** 店主的 C 端用户号 —— B 端权限的源头（BizIdentityResolver 靠它解析 entityNo）。 */
     private String ownerUserNo;
 
-    /** 综合评分 ×10 存整数：浮点在对账与排序上会咬人，展示时除以 10。 */
-    private Integer rating;
-    private Integer ratingCount;
-    private Integer salesCount;
-    private Integer goodsCount;
-
-    /** 三维度评分（商品/服务/时效），同样 ×10。 */
-    private Integer scoreGoods;
-    private Integer scoreService;
-    private Integer scoreSpeed;
+    /* 评分不在主体上：由名下门店的评分按评价数加权现算，见 EntityRatings（新库主体表去掉了这五列） */
 
     /** 资质认证标（P-11.1.2 授予/撤销）。 */
     private Boolean verified;
@@ -183,14 +174,6 @@ public class MchEntity extends BaseEntity {
      */
     private String industry;
 
-    /**
-     * 已获授权的经营类目编码，JSON 数组如 {@code ["FRESH_VEG","FOOD"]}。入驻时申请、平台审核时授权。
-     *
-     * <p>与 {@code prd_category.required_code} 比对，决定这家店能不能把商品**上架**到某个类目下。
-     * <b>空 = 没有任何特许类目</b>，只能上架无门槛的类目 —— 而不是「不限制」。
-     * 默认放开的话，卖烧烤的第二天就能上架生鲜，出事才发现平台从没校验过。
-     */
-    private String categoryCodes;
 
     /**
      * 归档时间。<b>软删除标记</b> —— 有值即从运营端默认列表消失，业务数据全保留。

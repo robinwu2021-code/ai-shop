@@ -25,7 +25,7 @@ import java.util.Set;
 
 /**
  * 把 {@link ReachRule} 要的配置从库里读出来：门店的经营范围（{@code mch_service_area}，V381 起门店级）、
- * 门店每一路开没开与范围（{@code mch_fulfillment_channel} / {@code mch_channel_area}）。
+ * 门店每一路开没开与范围（{@code mch_store_fulfillment} / {@code mch_channel_area}）。
  *
  * <p>只读、不缓存：这几张表加起来几十行，缓存省下的那点查询换来的是
  * 「设置改了、读到旧值」—— 那正是这次改造要消灭的东西。

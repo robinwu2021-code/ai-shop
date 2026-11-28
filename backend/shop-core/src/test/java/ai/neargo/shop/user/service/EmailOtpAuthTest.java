@@ -91,7 +91,6 @@ class EmailOtpAuthTest {
         auth = new AuthServiceImpl(users,
                 identities,
                 mock(WxPhonePort.class),
-                mock(MpSessionService.class),
                 tokens,
                 mock(WxAuthPort.class),
                 hasher,

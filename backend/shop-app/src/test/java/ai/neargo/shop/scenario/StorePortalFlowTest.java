@@ -155,7 +155,6 @@ class StorePortalFlowTest {
         s.setIsDefault(false);
         s.setStatus(status);
         s.setOpenHours(openHours);
-        s.setFeatured("[]");
         s.setTenantNo("MAIN");
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(s));
         undo.add(() -> DataScopeContext.executeWithoutScope(() -> storeMapper.deleteById(s.getId())));

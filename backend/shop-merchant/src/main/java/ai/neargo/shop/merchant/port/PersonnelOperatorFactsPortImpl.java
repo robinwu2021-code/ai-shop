@@ -6,7 +6,7 @@ import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.OperatorAccessMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelAccountMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.PersonnelMapper;
 import ai.neargo.shop.spi.personnel.PersonnelOperatorFactsPort;
 import ai.neargo.shop.spi.security.DelegatedIdentity;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
@@ -32,14 +32,14 @@ import java.time.temporal.ChronoUnit;
 public class PersonnelOperatorFactsPortImpl implements PersonnelOperatorFactsPort {
     private final MerchantOperatorAccessPort access;
     private final OperatorAccessMapper accessMapper;
-    private final PersonnelAccountMapper links;
+    private final PersonnelMapper links;
     private final Clock clock;
     private final TransactionTemplate snapshot;
 
     public PersonnelOperatorFactsPortImpl(
             MerchantOperatorAccessPort access,
             OperatorAccessMapper accessMapper,
-            PersonnelAccountMapper links,
+            PersonnelMapper links,
             @Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager manager,
             ObjectProvider<Clock> clocks) {
         this.access = access;

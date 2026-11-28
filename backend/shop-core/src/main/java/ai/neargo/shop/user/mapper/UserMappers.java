@@ -1,7 +1,6 @@
 package ai.neargo.shop.user.mapper;
 
 import ai.neargo.shop.user.entity.UsrAccount;
-import ai.neargo.shop.user.entity.UsrMpSession;
 import ai.neargo.shop.user.entity.UsrAddress;
 import ai.neargo.shop.user.entity.UsrIdentity;
 import ai.neargo.shop.user.entity.UsrStoreFavorite;
@@ -30,8 +29,7 @@ public final class UserMappers {
         UsrAccount lockByUserNo(String userNo);
     }
 
-    public interface MpSessionMapper extends PlatformTableMapper<UsrMpSession> {
-    }
+
 
     /**
      * 平台人档。唯一键：手机号哈希、账号号各一把。

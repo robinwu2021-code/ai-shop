@@ -19,7 +19,7 @@ import java.util.Set;
  * {@link ReachSnapshotLoader}（消费者侧判定用的门店元数据快照）。
  * 留在私有方法里的话快照那边就得抄一遍 —— 而「路怎么算」抄两份，迟早有一份忘了跟上。
  *
- * <p><b>逐字保留原有语义</b>，包括那段旧单值列的兜底：{@code mch_fulfillment_channel} 一行都没有
+ * <p><b>逐字保留原有语义</b>，包括那段旧单值列的兜底：{@code mch_store_fulfillment} 一行都没有
  * （或全关、全被运营锁）的门店回落到主体的 {@code fulfillment_reach}。V397 的存量回填判据也复刻这一段 ——
  * 两处必须一致，否则「迁移前实际可见」与「迁移后仍可见」对不上。
  */

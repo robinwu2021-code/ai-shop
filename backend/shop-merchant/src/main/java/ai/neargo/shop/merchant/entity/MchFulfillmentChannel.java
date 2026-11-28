@@ -18,7 +18,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("mch_fulfillment_channel")
+@TableName("mch_store_fulfillment")
 public class MchFulfillmentChannel extends BaseEntity {
 
     private String storeNo;

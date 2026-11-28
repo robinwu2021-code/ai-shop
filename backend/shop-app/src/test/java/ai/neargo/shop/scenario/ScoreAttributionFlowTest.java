@@ -38,6 +38,9 @@ class ScoreAttributionFlowTest {
     @Autowired
     private MchEntityMapper entityMapper;
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+
     @Test
     @DisplayName("★★★ 归集：服务与时效标为平台承担，商品不标")
     void aggregatedMarksServiceAndSpeed() {
@@ -80,12 +83,19 @@ class ScoreAttributionFlowTest {
         m.setLegalForm("ENTERPRISE");
         m.setStatus("ACTIVE");
         m.setFundsMode(fundsMode);
-        m.setRating(46);
-        m.setRatingCount(12);
-        m.setScoreGoods(48);
-        m.setScoreService(45);
-        m.setScoreSpeed(40);
         entityMapper.insert(m);
+        // 主体分由名下门店的评分汇总（主体上已没有评分列）：只有一家店，汇总出来就是它的分
+        var s = new ai.neargo.shop.merchant.entity.MchStore();
+        s.setStoreNo("ST" + no);
+        s.setEntityNo(no);
+        s.setName("评分归属测试门店");
+        s.setStatus("ACTIVE");
+        s.setRating(46);
+        s.setRatingCount(12);
+        s.setScoreGoods(48);
+        s.setScoreService(45);
+        s.setScoreSpeed(40);
+        storeMapper.insert(s);
         return no;
     }
 }

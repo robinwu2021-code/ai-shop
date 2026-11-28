@@ -114,8 +114,8 @@ class MerchantSelfOperatedFlowTest {
                 .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, merchant(true)));
         var other = merchantMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
                 .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, merchant(false)));
-        assertThat(ai.neargo.shop.merchant.dto.VisitedMerchantVO.of(self, 2, 0L).selfOperated()).isTrue();
-        assertThat(ai.neargo.shop.merchant.dto.VisitedMerchantVO.of(other, 2, 0L).selfOperated()).isFalse();
+        assertThat(ai.neargo.shop.merchant.dto.VisitedMerchantVO.of(self, ai.neargo.shop.merchant.service.impl.EntityRatings.Rating.NONE, 2, 0L).selfOperated()).isTrue();
+        assertThat(ai.neargo.shop.merchant.dto.VisitedMerchantVO.of(other, ai.neargo.shop.merchant.service.impl.EntityRatings.Rating.NONE, 2, 0L).selfOperated()).isFalse();
     }
 
     @Test

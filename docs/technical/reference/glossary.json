@@ -36732,13 +36732,6 @@
       "package": "ai.neargo.shop.merchant.plan.entity"
     },
     {
-      "table": "mch_fulfillment_channel",
-      "class": "MchFulfillmentChannel",
-      "zh": "门店送货方式：每店每路一行（方案 v4，取代 mch_entity.fulfillment_reach 单选）。",
-      "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
-    },
-    {
       "table": "mch_notify_pref",
       "class": "MchNotifyPref",
       "zh": "门店自己的通知开关（TDD-来单四渠道与商家通知设置 §2.1）。",
@@ -36770,13 +36763,6 @@
       "table": "mch_personnel",
       "class": "MchPersonnel",
       "zh": "共用业务人员主档。",
-      "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
-    },
-    {
-      "table": "mch_personnel_account",
-      "class": "MchPersonnelAccount",
-      "zh": "当前人员账号关联。",
       "module": "shop-merchant",
       "package": "ai.neargo.shop.merchant.entity"
     },
@@ -36910,6 +36896,13 @@
       "table": "mch_store_audit",
       "class": "MchStoreAudit",
       "zh": "店招与公告的人审单。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_store_fulfillment",
+      "class": "MchFulfillmentChannel",
+      "zh": "门店送货方式：每店每路一行（方案 v4，取代 mch_entity.fulfillment_reach 单选）。",
       "module": "shop-merchant",
       "package": "ai.neargo.shop.merchant.entity"
     },
@@ -38877,13 +38870,6 @@
       "table": "usr_identity",
       "class": "UsrIdentity",
       "zh": "登录凭证。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.user.entity"
-    },
-    {
-      "table": "usr_mp_session",
-      "class": "UsrMpSession",
-      "zh": "Verified operator identity belongs to a session, independently of permanent account credentials.",
       "module": "shop-core",
       "package": "ai.neargo.shop.user.entity"
     },
@@ -41583,6 +41569,13 @@
         "name": "MERCHANT_ROLE",
         "value": "R",
         "zh": "商家自定义角色（V71）。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "CATEGORY_LICENSE",
+        "value": "CLS",
+        "zh": "商家的类目授权（mch_category_license，一个授权码一行。",
         "module": "shop-base"
       },
       {
@@ -62341,6 +62334,22 @@
       "type": "long",
       "value": "1",
       "zh": "门店资料的结构版本，加在推给 near-pay 的修订号上。",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "EntityRatings",
+      "name": "UNRATED",
+      "type": "int",
+      "value": "50",
+      "zh": "未评价时的中位分（×10，即 5.0）",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "Rating",
+      "name": "NONE",
+      "type": "Rating",
+      "value": "new Rating(UNRATED, 0, UNRATED, UNRATED, UNRATED)",
+      "zh": "",
       "module": "shop-merchant"
     },
     {

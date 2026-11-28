@@ -176,7 +176,8 @@ final class PaymentCollectionMysqlFixture implements AutoCloseable {
                         session.getMapper(MchAccountMapper.class),
                         session.getMapper(MchStoreMapper.class),
                         session.getMapper(MchStoreRoleMapper.class),
-                        session.getMapper(MchRoleMapper.class));
+                        session.getMapper(MchRoleMapper.class),
+                        new ai.neargo.shop.merchant.service.impl.RolePointStore(jdbc));
         messages =
                 new MessageServiceImpl(
                         session.getMapper(MessageMapper.class),

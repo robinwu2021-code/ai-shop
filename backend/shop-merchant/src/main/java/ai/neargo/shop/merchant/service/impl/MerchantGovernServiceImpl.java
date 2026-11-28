@@ -55,6 +55,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             FROZEN, Set.of(ACTIVE));
 
     private final MchEntityMapper merchantMapper;
+    /** 类目授权码一码一行（mch_category_license） */
+    @org.springframework.beans.factory.annotation.Autowired
+    private CategoryLicenseStore categoryLicenses;
     private final PayMerchantMirror payMirror;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
     private final MchEntityCommunityMapper communityMapper;
@@ -693,7 +696,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 communities,
                 contact.map(MerchantApplyQueryPort.ApplyContact::contactName).orElse(null),
                 contact.map(MerchantApplyQueryPort.ApplyContact::contactPhone).orElse(null),
-                readList(m.getCategoryCodes()),
+                categoryLicenses.codes(m.getEntityNo()),
                 Boolean.TRUE.equals(m.getVerified()), nz(m.getBreachCount()), settleReady,
                 m.getJoinedAt() == null ? 0L : m.getJoinedAt(),
                 contact.map(MerchantApplyQueryPort.ApplyContact::rejectReason).orElse(null),

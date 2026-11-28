@@ -225,7 +225,7 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * 可见性/下单闸/B 端配置全走 executeWithoutScope —— 那些调用方是 C 端或
          * B 端会话（SELF 维度），接上就是 1=0。归属由 Service 的 requireStore 保证。
          */
-        registry.register("mch_fulfillment_channel", Map.of(
+        registry.register("mch_store_fulfillment", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
@@ -238,7 +238,7 @@ public class DataScopeRegistration implements DataScopeRegistrar {
 
         /*
          * 商家的地理覆盖项（经营范围）。**父表此前一直没登记，而它的派生表（上面那张）
-         * 与同形状的 `mch_fulfillment_channel` 都登记了** —— 表册覆盖那道棘轮就一直差这一条。
+         * 与同形状的 `mch_store_fulfillment` 都登记了** —— 表册覆盖那道棘轮就一直差这一条。
          * 登记 MERCHANT 是给运营端看的（覆盖分布、范围审核）；可见性命中查询（ReachMatchMapper）、
          * B 端范围页、买家目录全走 executeWithoutScope —— 那些调用方是 C 端或 B 端会话（SELF 维度），
          * 接上就是 1=0。归属由 Service 的 requireStore / requireMerchantNo 保证。
@@ -331,7 +331,6 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * 因此**不登记**：它从不作为检索入口，总是随券模板一起查。
          */
         // 小程序会话上下文只能被其消费者本人读取；token 哈希不能成为跨账号的查询捷径。
-        registry.register("usr_mp_session", Map.of(ScopeDim.SELF, "user_no"));
         registry.register("pmt_coupon_version", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("pmt_coupon", Map.of(ScopeDim.MERCHANT, "entity_no"));
 

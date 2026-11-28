@@ -252,7 +252,6 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
         }
         st.setIsDefault(first);
         st.setStatus(MchStore.ACTIVE);
-        st.setFeatured("[]");
         st.setCreatedBy(operatorNo);
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(st));
         payMirror.changed(cmd.merchantNo()); // 收款商户双写（I4 S4）：提交后同步新表

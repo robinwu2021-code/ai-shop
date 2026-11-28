@@ -45,8 +45,5 @@ public class MchRole extends BaseEntity {
     private String roleCode;
     private String name;
 
-    /** JSON 数组文本。读写走 {@code MerchantRoleServiceImpl} 的两个转换方法，不在各处手写解析 */
-    private String perms;
-
     private Boolean builtin;
 }

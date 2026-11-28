@@ -84,6 +84,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private String memberMarketingDataSource;
     @Autowired
     private MerchantReviewRatingQuery reviewRatings;
+    /** 类目授权码一码一行（mch_category_license） */
+    @Autowired
+    private ai.neargo.shop.merchant.service.impl.CategoryLicenseStore categoryLicenses;
     private final MchEntityMapper merchantMapper;
     private final PayMerchantMirror payMirror;
     private final org.springframework.beans.factory.ObjectProvider<PayMerchantReadSwitch> readSwitch;
@@ -1167,18 +1170,21 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                     MchEntity::getVerified, MchEntity::getBreachCount, MchEntity::getSelfOperated);
         } else {
             query.select(MchEntity::getEntityNo, MchEntity::getName, MchEntity::getLogo, MchEntity::getStatus,
-                    MchEntity::getVerified, MchEntity::getBreachCount, MchEntity::getSelfOperated,
-                    MchEntity::getRating, MchEntity::getRatingCount);
+                    MchEntity::getVerified, MchEntity::getBreachCount, MchEntity::getSelfOperated);
         }
         var rows = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectList(query));
         var ratings = formalRatings ? reviewRatings.byMerchant(rows.stream().map(MchEntity::getEntityNo).toList())
                 : Map.<String, MerchantReviewRatingQuery.Summary>of();
+        // 没接正式评价库时用门店评分汇总（主体上已没有评分列）
+        var rolled = formalRatings ? Map.<String, ai.neargo.shop.merchant.service.impl.EntityRatings.Rating>of()
+                : new ai.neargo.shop.merchant.service.impl.EntityRatings(storeMapper)
+                        .of(rows.stream().map(MchEntity::getEntityNo).toList());
         Map<String, MerchantBrief> out = new LinkedHashMap<>();
         for (MchEntity m : rows) {
             var summary = ratings.get(m.getEntityNo());
-            int unrated = formalRatings ? RATING_INIT : 0;
-            int rating = summary == null ? Objects.requireNonNullElse(m.getRating(), unrated) : summary.ratingX10();
-            int count = summary == null ? Objects.requireNonNullElse(m.getRatingCount(), 0) : summary.count();
+            var store = rolled.get(m.getEntityNo());
+            int rating = summary != null ? summary.ratingX10() : store != null ? store.ratingX10() : RATING_INIT;
+            int count = summary != null ? summary.count() : store != null ? store.count() : 0;
             boolean active = ACTIVE.equals(m.getStatus());
             out.put(m.getEntityNo(), new MerchantBrief(m.getEntityNo(), m.getName(), active, active,
                     m.getLogo(), rating / (double) RATING_SCALE, count, Boolean.TRUE.equals(m.getVerified()),
@@ -1475,13 +1481,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         if (cmd.marketCode()!=null) m.setMarket(cmd.marketCode());
         // 新店从中位分起步，不是 0 分 —— 0 分会让新店在任何按评分排的列表里垫底，
         // 而它还没有任何订单可以证明自己（ADR-009 里「平台推荐位」要解决的也是这个问题）
-        m.setRating(RATING_INIT);
-        m.setRatingCount(0);
-        m.setSalesCount(0);
-        m.setGoodsCount(0);
-        m.setScoreGoods(RATING_INIT);
-        m.setScoreService(RATING_INIT);
-        m.setScoreSpeed(RATING_INIT);
         m.setVerified(true);   // 审核通过即带认证标
         m.setBreachCount(0);
         m.setTags("[]");
@@ -1601,13 +1600,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 其余（评分初值、计数器）与 activate() 保持一致，避免两条路建出来的主体
          * 在别处表现不同。
          */
-        m.setRating(RATING_INIT);
-        m.setRatingCount(0);
-        m.setSalesCount(0);
-        m.setGoodsCount(0);
-        m.setScoreGoods(RATING_INIT);
-        m.setScoreService(RATING_INIT);
-        m.setScoreSpeed(RATING_INIT);
         m.setVerified(false);
         m.setBreachCount(0);
         m.setTags("[]");
@@ -1809,7 +1801,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         }
         store.setIsDefault(true);
         store.setStatus(ai.neargo.shop.merchant.entity.MchStore.ACTIVE);
-        store.setFeatured("[]");
         extras.accept(store);
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(store));
         payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
@@ -2033,31 +2024,10 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     @Override
     @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
     public void updateRating(String merchantNo, ai.neargo.shop.spi.user.MerchantRatingPort.Rating r) {
-        MchEntity m = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
-        if (m == null) {
-            // 商家不存在不该让「发表评价」整笔失败：评价本身是有效的
-            return;
-        }
         /*
-         * **一条评价都没有时回到中位分，而不是 0 分** —— 与 {@code activate()} 同一条规矩：
-         * 0 分会让这家店在任何按评分排的列表里垫底，而它还没有任何订单可以证明自己。
-         * 这条路径不只发生在新店：唯一那条评价被平台驳回、或申诉成立撤下之后，
-         * 商家会退回「还没人评过」的状态，那时也该退回中位分，不能因为一条被裁掉的
-         * 差评把他打到底。
-         *
-         * 展示层不看这个数：端上按 `ratingCount == 0` 显示「暂无评价」，
-         * 所以中位分只影响排序，不会在页面上冒充一个 5.0。
+         * 主体上不再存评分（新库去掉了这五列）：主体分由名下门店的评分按评价数加权现算，见 EntityRatings。
+         * 评价照常重算门店分（updateStoreRating），主体这一步无事可做。保留方法是因为端口契约还在。
          */
-        boolean rated = r.count() > 0;
-        m.setRating(rated ? r.ratingX10() : RATING_INIT);
-        m.setRatingCount(r.count());
-        // 三维度与综合分同源同一批评价：分开写会让看板与总分对不上，而没人看得出是哪边错
-        m.setScoreGoods(rated ? r.goodsX10() : RATING_INIT);
-        m.setScoreService(rated ? r.serviceX10() : RATING_INIT);
-        m.setScoreSpeed(rated ? r.speedX10() : RATING_INIT);
-        DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(m));
     }
 
     @Override
@@ -2200,25 +2170,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public java.util.Set<String> authorizedCategoryCodes(String merchantNo) {
-        MchEntity m = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectOne(
-                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
-        if (m == null || m.getCategoryCodes() == null || m.getCategoryCodes().isBlank()) {
-            // 空 = 没有任何特许类目，只能上架无门槛的类目。**不是「不限制」**
-            return java.util.Set.of();
-        }
-        try {
-            return new java.util.HashSet<>(json.readValue(m.getCategoryCodes(),
-                    new tools.jackson.core.type.TypeReference<java.util.List<String>>() {
-                    }));
-        } catch (RuntimeException e) {
-            /*
-             * 脏数据一律按「没有授权」处理，而不是按「不限制」放行 ——
-             * 解析失败时放行，等于一行坏 JSON 就能绕过整套准入校验，
-             * 且没有任何症状。宁可让商家看到「没有资质」去申诉。
-             */
-            return java.util.Set.of();
-        }
+        // 空 = 没有任何特许类目，只能上架无门槛的类目。**不是「不限制」**
+        return new java.util.HashSet<>(categoryLicenses.codes(merchantNo));
     }
 
     @Override
@@ -2248,13 +2201,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public long countByAuthCode(String code) {
-        /*
-         * category_codes 是 JSON 数组存在 VARCHAR 里（V4 的取舍：H2 的 JSON 类型会
-         * 多包一层引号，反序列化直接失败）。这里用 LIKE 匹配带引号的码，
-         * 而不是裸的 code —— 裸匹配会让 FRESH_VEG 命中 FRESH_VEGETABLE 那种前缀重合的码，
-         * 统计出来的影响面偏大，而偏大的影响面会让运营不敢动本该停用的码。
-         */
-        return merchantMapper.selectCount(Wrappers.<MchEntity>lambdaQuery()
-                .like(MchEntity::getCategoryCodes, "\"" + code + "\""));
+        return categoryLicenses.countEntitiesWith(code);
     }
 }

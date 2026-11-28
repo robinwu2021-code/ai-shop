@@ -20,9 +20,23 @@ public interface TokenStore {
      * <p>删掉它而不是留着：留着的话，下一个人很可能把它「实现完」，
      * 于是权限新鲜度有了第二个真源，与现算那条并存 —— 而两个真源迟早对不上。
      */
-    record SessionData(LoginUser user) {
+    record SessionData(LoginUser user, String openid) {
+        /** 不带 openid 的会话（运营端、商家端，以及没有小程序身份的 C 端会话） */
+        public SessionData(LoginUser user) {
+            this(user, null);
+        }
+
         public static SessionData of(LoginUser user) {
-            return new SessionData(user);
+            return new SessionData(user, null);
+        }
+
+        /**
+         * 带上小程序 openid 的 C 端会话。openid 是登录那一刻服务端从微信换来的付款人身份，
+         * 跟着会话走、随会话撤销而失效（新库并进 {@code usr_session.openid}，TDD-平台基础库换表 第 2 步 H）。
+         * 放在会话数据里而不是另存一张表：内存、Redis、Ehcache 各种存储都原样带着它，库存储写进会话行。
+         */
+        public static SessionData of(LoginUser user, String openid) {
+            return new SessionData(user, openid == null || openid.isBlank() ? null : openid);
         }
     }
 

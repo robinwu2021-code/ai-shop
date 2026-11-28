@@ -110,8 +110,8 @@ public interface ReachMatchMapper extends PlatformSqlMapper {
                    (SELECT COALESCE(SUM(version), 0) FROM mch_store),
                    (SELECT COUNT(*) FROM mch_service_area),
                    (SELECT COALESCE(SUM(version), 0) FROM mch_service_area),
-                   (SELECT COUNT(*) FROM mch_fulfillment_channel),
-                   (SELECT COALESCE(SUM(version), 0) FROM mch_fulfillment_channel),
+                   (SELECT COUNT(*) FROM mch_store_fulfillment),
+                   (SELECT COALESCE(SUM(version), 0) FROM mch_store_fulfillment),
                    (SELECT COUNT(*) FROM mch_channel_area),
                    (SELECT COALESCE(SUM(version), 0) FROM mch_channel_area))
             """)

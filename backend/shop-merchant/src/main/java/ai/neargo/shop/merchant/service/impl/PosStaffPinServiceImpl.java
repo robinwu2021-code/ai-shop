@@ -55,8 +55,9 @@ public class PosStaffPinServiceImpl implements PosStaffPinService {
 
     @Override
     public boolean enabled(Scope scope) {
+        // 主体级开关在主体行上（新库并掉了 mch_pos_staff_pin_policy）；NULL 视为未启用
         return db.queryForList("""
-                SELECT enabled FROM mch_pos_staff_pin_policy WHERE tenant_no=? AND entity_no=?
+                SELECT pos_pin_enabled FROM mch_entity WHERE tenant_no=? AND entity_no=? AND deleted=0
                 """, Boolean.class, scope.tenant(), scope.entity()).stream().anyMatch(Boolean.TRUE::equals);
     }
 
@@ -64,10 +65,13 @@ public class PosStaffPinServiceImpl implements PosStaffPinService {
     @Override
     public void setEnabled(Scope scope, boolean enabled) {
         if (enabled && pepper == null) throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
-        db.update("""
-                INSERT INTO mch_pos_staff_pin_policy (tenant_no, entity_no, enabled) VALUES (?, ?, ?)
-                ON DUPLICATE KEY UPDATE enabled=?
-                """, scope.tenant(), scope.entity(), enabled, enabled);
+        int changed = db.update("""
+                UPDATE mch_entity SET pos_pin_enabled=?, version=version+1
+                WHERE tenant_no=? AND entity_no=? AND deleted=0
+                """, enabled, scope.tenant(), scope.entity());
+        if (changed != 1) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
     }
 
     @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)

@@ -46,7 +46,8 @@ class MallAuthorityMysqlTest {
                 f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper.class),
                 f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper.class),
                 f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper.class),
-                f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper.class));
+                f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper.class),
+                new ai.neargo.shop.merchant.service.impl.RolePointStore(f.jdbc));
             var sessions=new DbAccountSessionVerifier(f.dao,f.loader,f.clock,f.manager);
             var stores=new ShopCommerceStoreAdapter(f.ds,f.manager);
             var authority=new ShopMallAuthority(sessions,sessions,resolver,stores,f.clock);

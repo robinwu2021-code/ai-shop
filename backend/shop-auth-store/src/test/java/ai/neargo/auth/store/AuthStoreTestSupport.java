@@ -89,8 +89,9 @@ public final class AuthStoreTestSupport {
         String sql = readGeneratedSchema();
         List<String> out = new ArrayList<>();
         for (String table : TABLES) {
-            String marker = "CREATE TABLE IF NOT EXISTS " + table + "\n";
-            int start = sql.indexOf(marker);
+            // 已换到新结构的平台表在 schema-platform-test.sql（排在前面，写作「表名 (」），其余仍在 schema-test.sql（「表名\n(」）
+            var m = java.util.regex.Pattern.compile("CREATE TABLE IF NOT EXISTS " + table + "[ \n]").matcher(sql);
+            int start = m.find() ? m.start() : -1;
             if (start < 0) {
                 throw new IllegalStateException("""
                         生成的 schema-test.sql 里没有 %s。
@@ -108,15 +109,19 @@ public final class AuthStoreTestSupport {
     private static String readGeneratedSchema() {
         Path here = Path.of("").toAbsolutePath();
         Path backend = here.getFileName().toString().equals("backend") ? here : here.getParent();
-        Path script = backend.resolve("shop-app/src/test/resources/schema-test.sql");
-        if (!Files.exists(script)) {
-            throw new IllegalStateException("找不到生成的测试 schema：" + script);
+        StringBuilder all = new StringBuilder();
+        for (String name : List.of("schema-platform-test.sql", "schema-test.sql")) {
+            Path script = backend.resolve("shop-app/src/test/resources/" + name);
+            if (!Files.exists(script)) {
+                throw new IllegalStateException("找不到生成的测试 schema：" + script);
+            }
+            try {
+                all.append(Files.readString(script, StandardCharsets.UTF_8)).append('\n');
+            } catch (Exception e) {
+                throw new IllegalStateException("读不了 " + script, e);
+            }
         }
-        try {
-            return Files.readString(script, StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new IllegalStateException("读不了 " + script, e);
-        }
+        return all.toString();
     }
 
     private static void exec(DataSource ds, String sql) {

@@ -475,4 +475,21 @@ class DbTokenStoreTest {
                 () -> consumerStore.issue(TokenStore.SessionData.of(operator)));
         assertTrue(e.getMessage().contains("OPERATOR"), e.getMessage());
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("★ 小程序 openid 跟着 C 端会话进库：换一个实例（缓存全空）照样取回；不带的就是空")
+    void consumerOpenidIsPersistedWithTheSession() {
+        // openid 原先另存在 usr_mp_session，新库并进 usr_session.openid（TDD-平台基础库换表 第 2 步 H）
+        DbTokenStore a = instanceWithLiveIdentity();
+        String withOpenid = a.issue(TokenStore.SessionData.of(LoginUser.consumer("U1", "小王"), "OPENID-1"));
+        String without = a.issue(TokenStore.SessionData.of(LoginUser.consumer("U1", "小王")));
+
+        DbTokenStore b = instanceWithLiveIdentity();   // 另一个实例：会话缓存是空的，只能回源读库
+        assertEquals("OPENID-1", b.get(withOpenid).orElseThrow().openid());
+        assertNull(b.get(without).orElseThrow().openid());
+        assertEquals("OPENID-1", a.get(withOpenid).orElseThrow().openid());
+
+        b.revoke(withOpenid);
+        assertTrue(b.get(withOpenid).isEmpty(), "会话撤销，openid 随之取不到");
+    }
 }

@@ -149,7 +149,7 @@ class AppointmentSlotFlowTest {
              * 逻辑删只置 deleted=1，而 uk_store_channel 里没有 deleted ——
              * 下一个用例再开同一路会撞唯一键。
              */
-            jdbc.update("DELETE FROM mch_fulfillment_channel WHERE entity_no = ?", MERCHANT);
+            jdbc.update("DELETE FROM mch_store_fulfillment WHERE entity_no = ?", MERCHANT);
             if (goodsFulfillmentsBackup != null) {
                 PrdGoods g = goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()
                         .eq(PrdGoods::getGoodsNo, "G0001").last("LIMIT 1"));
@@ -359,7 +359,7 @@ class AppointmentSlotFlowTest {
     @DisplayName("★★★ 门店配过送货方式之后，上门预约仍要卖得出去 —— 这是条线上真缺陷")
     void serviceFulfillmentSurvivesChannelConfig() {
         /*
-         * mch_fulfillment_channel 只覆盖四条**实体配送**线，服务类（到店核销 / 上门预约）
+         * mch_store_fulfillment 只覆盖四条**实体配送**线，服务类（到店核销 / 上门预约）
          * 永远不会有行。而下单那道闸的规则是「集合非空就要求命中」——
          * 于是商家只要保存过一次送货方式配置，集合不再为空，
          * **他的服务类商品从此一单也卖不出去**，而买家看到的是

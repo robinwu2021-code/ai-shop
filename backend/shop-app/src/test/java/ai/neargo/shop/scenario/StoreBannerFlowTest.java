@@ -94,7 +94,6 @@ class StoreBannerFlowTest {
         st.setIsDefault(false);
         st.setStatus("ACTIVE");
         st.setOpenHours("08:00-20:00");
-        st.setFeatured("[]");
         st.setTenantNo("MAIN");
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> storeMapper.insert(st));
         try {

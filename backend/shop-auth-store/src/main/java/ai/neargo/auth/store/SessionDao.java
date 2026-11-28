@@ -64,6 +64,29 @@ public class SessionDao {
     }
 
     /**
+     * 带小程序 openid 签发（只有 C 端会话表有这一列，调用方只在 C 端传）。openid 为空时与不带的那个一样。
+     */
+    public void insert(String tokenHash, String userNo, String subjectKind,
+                       LocalDateTime issuedAt, LocalDateTime expiresAt, String openid) {
+        if (openid == null) {
+            insert(tokenHash, userNo, subjectKind, issuedAt, expiresAt);
+            return;
+        }
+        jdbc.sql(("INSERT INTO " + table
+                  + " (token_hash, user_no, subject_kind, openid, issued_at, expires_at, last_seen_at)"
+                  + " VALUES (:h, :u, :k, :o, :i, :e, :i)"))
+                .param("h", tokenHash).param("u", userNo).param("k", subjectKind).param("o", openid)
+                .param("i", issuedAt).param("e", expiresAt)
+                .update();
+    }
+
+    /** 会话行上的小程序 openid（只对 C 端会话表调）。 */
+    public Optional<String> openidOf(String tokenHash) {
+        return jdbc.sql("SELECT openid FROM " + table + " WHERE token_hash = :h")
+                .param("h", tokenHash).query(String.class).optional();
+    }
+
+    /**
      * 按哈希取一行。**已撤销的也取回来**，由调用方判定 ——
      * 这样「被踢了」与「没这行」在上层是两件可区分的事，
      * 而后者要记 {@code ORPHAN_SESSION} 日志（那意味着数据不一致，值得被看见）。

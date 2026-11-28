@@ -259,6 +259,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                     row.setEntityNo(merchantNo);
                     row.setChannel(cmd.channel());
                     row.setScopeMode(MchFulfillmentChannel.SCOPE_ALL);
+                    row.setOpsLocked(false);
                 }
                 row.setEnabled(cmd.enabled());
                 if (Fulfillments.EXPRESS.equals(cmd.channel())) {
@@ -329,7 +330,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
 
     /*
      * 读一律绕开数据域（照 mch_store_category 的先例）：B 端会话是 SELF 维度，
-     * 而 mch_store / mch_fulfillment_channel 登记的是 MERCHANT 锚点 ——
+     * 而 mch_store / mch_store_fulfillment 登记的是 MERCHANT 锚点 ——
      * 不绕的话 DataScopeHandler fail-closed 拼出 1=0，商家查自己的门店直接 NOT_FOUND。
      * 生产实测踩到（H2 场景测试没有会话维度，暴露不了）。
      * 归属不靠数据域靠代码：requireStore 按 merchantNo 逐行比对。

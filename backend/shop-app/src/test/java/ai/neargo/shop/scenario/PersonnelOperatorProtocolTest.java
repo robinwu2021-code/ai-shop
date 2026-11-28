@@ -176,7 +176,7 @@ class PersonnelOperatorProtocolTest {
         // These are bean-assembly dependencies only; no permission/provider behavior is
         // substituted.
         var accessMapper = mock(MerchantMappers.OperatorAccessMapper.class);
-        var links = mock(MerchantMappers.PersonnelAccountMapper.class);
+        var links = mock(MerchantMappers.PersonnelMapper.class);
         for (String mode :
                 new String[] {"default-retail", "beauty-embedded", "beauty-disabled", "ops"}) {
             new ApplicationContextRunner()
@@ -185,7 +185,7 @@ class PersonnelOperatorProtocolTest {
                             MerchantOperatorAccessPort.class,
                             () -> new MerchantOperatorAccessPortImpl(accessMapper))
                     .withBean(MerchantMappers.OperatorAccessMapper.class, () -> accessMapper)
-                    .withBean(MerchantMappers.PersonnelAccountMapper.class, () -> links)
+                    .withBean(MerchantMappers.PersonnelMapper.class, () -> links)
                     .withBean(
                             ai.neargo.shop.common.config.ModuleDataSources.PLATFORM_TX_MANAGER,
                             PlatformTransactionManager.class,

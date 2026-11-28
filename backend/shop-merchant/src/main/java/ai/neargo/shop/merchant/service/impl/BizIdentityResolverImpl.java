@@ -45,11 +45,14 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
     private final MchStoreMapper storeMapper;
     private final MchStoreRoleMapper roleMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper;
+    private final RolePointStore rolePoints;
 
     public BizIdentityResolverImpl(MchEntityMapper merchantMapper, PickupQueryPort pickupQueryPort,
                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper,
                                    MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
-                                   ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper) {
+                                   ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper,
+                                   RolePointStore rolePoints) {
+        this.rolePoints = rolePoints;
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
         this.roleDefMapper = roleDefMapper;
@@ -78,7 +81,9 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
         }
         Set<String> used = rolesByStore.values().stream()
                 .flatMap(Set::stream).collect(Collectors.toSet());
-        java.util.Map<String, Set<String>> permsOfRole = roleDefMapper.selectList(
+        // 每个码认哪一个角色：同一个码既有预置又有自定义时以**自定义**为准
+        //（唯一键拦住了同名，这里只是兜底，不该静默丢一份）。权限码按角色取自 mch_role_point
+        java.util.Map<String, ai.neargo.shop.merchant.entity.MchRole> roleOf = roleDefMapper.selectList(
                         Wrappers.<ai.neargo.shop.merchant.entity.MchRole>lambdaQuery()
                                 .in(ai.neargo.shop.merchant.entity.MchRole::getEntityNo,
                                         java.util.List.of(entityNo,
@@ -86,11 +91,12 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
                                 .in(ai.neargo.shop.merchant.entity.MchRole::getRoleCode, used))
                 .stream()
                 .collect(Collectors.toMap(
-                        ai.neargo.shop.merchant.entity.MchRole::getRoleCode,
-                        r -> parsePerms(r.getPerms()),
-                        // 同一个码既有预置又有自定义时以**自定义**为准：
-                        // 唯一键拦住了同名，这里只是兜底，不该静默丢一份
-                        (builtin, custom) -> custom));
+                        ai.neargo.shop.merchant.entity.MchRole::getRoleCode, r -> r,
+                        (a, b) -> ai.neargo.shop.merchant.entity.MchRole.BUILTIN_ENTITY.equals(a.getEntityNo()) ? b : a));
+        var points = rolePoints.ofRoles(roleOf.values());
+        java.util.Map<String, Set<String>> permsOfRole = new java.util.HashMap<>();
+        roleOf.forEach((code, r) -> permsOfRole.put(code, points.getOrDefault(
+                new RolePointStore.Key(r.getEntityNo(), r.getRoleCode()), Set.of())));
 
         java.util.Map<String, Set<String>> out = new java.util.HashMap<>();
         rolesByStore.forEach((storeNo, roles) -> out.put(storeNo, roles.stream()
@@ -99,15 +105,6 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
         return out;
     }
 
-    /** `["biz:a","biz:b"]` → Set。手写解析：只有这一处用，引一个 JSON 库不划算 */
-    private static Set<String> parsePerms(String json) {
-        if (json == null || json.isBlank()) {
-            return Set.of();
-        }
-        return java.util.Arrays.stream(json.replaceAll("[\\[\\]\"]", "").split(","))
-                .map(String::trim).filter(x -> !x.isEmpty())
-                .collect(Collectors.toUnmodifiableSet());
-    }
 
     /**
      * 「他现在站在哪家店里」→「那家店是哪个主体的」→ 用哪条成员关系解析。
