@@ -477,6 +477,20 @@
 - P4 在 P3 之后；
 - P6 在 P3、P5 之后，生产切换之前。
 
+**商品会话的核对（2026-11-28，同意简化后的方向）**：
+- **(a) 加表方式**：在 `gen-retail-ddl.py` 加 `TRADE_ADDED`，写法照 `INDUSTRY_ADDED`；基础 DDL 固定在 slim e4a007c00，不改。
+  - 生成后在 .61 `n_trade_v2` 上由 root 建表：先问用户，执行后在《商品领域迁移-交接》§5 追加记录。
+  - 把表加进 `gen-product-test-schema.py`，重跑生成。
+  - 发消息给 V2 会话，补 slim 的生成源 `db-target-fields.json`，否则下次用 slim 重新生成会把这张表抹掉。
+- **(b) 不让 `prd_goods.version` 加一**，但要满足两条：
+  - 商家保存有规格的商品时，`duration_min` **显式不写**：实体字段置空，或用更新条件排除。商家那条路是读出整行再 `updateById`，只「忽略请求值」会把旧时长写回去。
+  - 镜像用单独的定向更新（只设 `duration_min`），在同一把行锁 `mine(…, true)` 之后执行，不碰 `version`。
+- **(c) 默认行**：`sku_no NOT NULL DEFAULT ''`，唯一键 `(goods_no, sku_no, 版本)`。与商品侧现有约定一致（`prd_spec_usage.value_no=''` 等），不用生成列。
+- **(d) 表名建议换掉**：`prd_spec_*` 在商品域专指 SKU 的规格维度和取值，建议改叫 `prd_service_definition`（服务定义），端口叫 `ServiceDefinitionPort`。（待用户定）
+- **服务要求的版本列**：`prd_fulfillment_requirement.revision_no` 按商品类型表示两种意思，读方容易解读错。建议加一列 `definition_version`，服务的要求挂这一列，非服务留空。（改表，待用户定）
+- **状态取值**：走枚举或常量。
+- **diff**：商品侧代码提交前发它看。
+
 **待定（P0 里定）**：
 - 新表的加法：生成器加机制，还是改 ai-shop-slim 生成源；
 - 发布服务规格是否让 `prd_goods.version` 加一（会让商家手上未发布的商品草稿提示「有人中途改过」）；
