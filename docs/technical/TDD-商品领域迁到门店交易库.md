@@ -313,6 +313,13 @@ PR #59 补充验证：`StorePriceFlowTest#legacyCancelledPriceRowCanBeRepricedAn
 - `MediaRefCoverageTest` 读的是旧库迁移脚本，加「旧表名 → 新表名」对照（`prd_spu_std` → `prd_standard_goods`），新表上已声明的同名列视为已认领。
 - 不在本项：订单快照 `ord_item.cover`、售后凭证等交易表的列仍按主库登记，随交易域切库时同样改成交易句柄。
 
+### PR #59 之后的预售回落（2026-11-28）
+
+- 现象：PR #59 把建品库存写进商品所属门店那一行（`prd_store_sku`，取代 `prd_sku.stock`），下单落在所属门店、走按店锁库存；而按店那条路原本不回落预售额度，于是单店商家的预售整体失效（`OpsProductGovernFlowTest` 4 条预售用例失败）。
+- 修：`StockPortImpl.presaleAt` —— 没有门店上下文，或这家店就是商品所属门店时，现货不足回落预售额度（所属门店那一行就是原来的主体级库存）；其他分店仍不回落（没设过库存视为 0）。锁库存、按店可售量、无门店可售量三处同一判据。
+- 新用例 `StoreStockFlowTest#presaleFallsBackAtTheOwningStore`：所属店现货 0、额度 1 → 成交一件，再买被拒；别家分店的库存不参与。
+- 同批发现、未修：`BizCrossStoreFlowTest#outOfStockCountsOnlyStoreManagedSkus`（PR #59 后每个 SKU 都有门店行，缺货计数口径变了）；`InventoryFlowTest#backfillLeavesNoDiff` 单独跑失败、整批跑通过，属库存同步一组（暂停中）。两条在修复前同样失败。
+
 ### 偏差说明
 
 - 测试库没有按原方案「去掉旧 `prd_*`、两个句柄绑同一个 H2」，而是同一个 H2 库里追加一份按新设计生成的建表脚本：改动更小，漂移测试不受影响，且能逐批迁移。

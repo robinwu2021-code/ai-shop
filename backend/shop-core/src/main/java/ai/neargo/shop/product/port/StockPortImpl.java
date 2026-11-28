@@ -83,6 +83,14 @@ public class StockPortImpl implements StockPort, ReservationOwner {
         this.storeStockReader = storeStockReader;
     }
 
+    /** 只用来认商品所属门店（预售回落的判据，见 {@link #presaleAt}） */
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
+
+    @Autowired
+    public void setGoodsMapper(ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper) {
+        this.goodsMapper = goodsMapper;
+    }
+
     private OriginalStockRestoreService originalRestore;
 
     @Autowired
@@ -201,9 +209,12 @@ public class StockPortImpl implements StockPort, ReservationOwner {
              * **只在主体级回落**：分店库存的语义是「没设过库存的店视为 0」，
              * 叠一个主体级额度上去，等于给没设库存的店开了一个后门 ——
              * 那家店会卖出它一件都没有的货。
+             *
+             * 商品所属门店那一行算主体级：建品时库存就写在它上面（接替了原 prd_sku.stock），
+             * 不放开的话单店商家的预售整体失效（判据见 presaleAt）。
              */
             boolean presale = false;
-            if (affected == 0 && !perStore) {
+            if (affected == 0 && (!perStore || presaleAt(item.skuNo(), storeNo))) {
                 presale = DataScopeContext.executeWithoutScope(
                         () -> skuMapper.lockPresale(item.skuNo(), item.qty())) > 0;
                 affected = presale ? 1 : 0;
@@ -425,7 +436,9 @@ public class StockPortImpl implements StockPort, ReservationOwner {
              * 回退等于「没设过库存的店无限供应」，与 lock 的判据必须逐字一致
              * （两处不一致会让加购放行、下单再拒，而那时人已经在结算页了）。
              */
-            return storeStockReader.available(skuNo, storeNo);
+            int here = storeStockReader.available(skuNo, storeNo);
+            // 与 lock 同一判据：商品所属门店现货不足时回落预售额度
+            return presaleAt(skuNo, storeNo) ? Math.max(here, presaleRemaining(skuNo)) : here;
         }
         return sellable(skuNo);
     }
@@ -434,12 +447,14 @@ public class StockPortImpl implements StockPort, ReservationOwner {
     public int sellable(String skuNo) {
         if (hasStoreStock(skuNo)) {
             // 分店库存：lock 按门店扣、不走预售。加购时不知道哪家店履约，取最能卖的那家
-            return DataScopeContext.executeWithoutScope(() ->
+            int best = DataScopeContext.executeWithoutScope(() ->
                     storeStockMapper.selectList(Wrappers.<PrdStoreSku>lambdaQuery()
                             .eq(PrdStoreSku::getSkuNo, skuNo).ne(PrdStoreSku::getStoreNo, PrdStoreSku.ENTITY_POOL).isNotNull(PrdStoreSku::getSellableQty)))
                     .stream()
                     .mapToInt(s -> nz(s.getSellableQty()) - nz(s.getLockedQty()))
                     .max().stream().map(n -> Math.max(n, 0)).findFirst().orElse(0);
+            // 没有门店上下文时 lock 走主体级、不足回落预售 —— 这里同口径把预售余量算进来
+            return Math.max(best, presaleRemaining(skuNo));
         }
         ai.neargo.shop.product.entity.PrdSku sku = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
@@ -460,6 +475,46 @@ public class StockPortImpl implements StockPort, ReservationOwner {
             presale = Math.max(nz(sku.getPresaleQuota()) - nz(sku.getSoldCount()), 0);
         }
         return Math.max(onHand, presale);
+    }
+
+    /**
+     * 现货不足时能不能回落预售额度（额度是主体级的，记在 prd_sku 上）。
+     *
+     * <p>能：没有门店上下文，或这家店就是商品所属门店 —— 建品的库存写在所属门店那一行
+     * （PR #59 起接替了 prd_sku.stock），它就是原来的主体级库存。
+     * 不能：其他分店。没设过库存的店视为 0，叠主体额度上去等于开后门。
+     */
+    private boolean presaleAt(String skuNo, String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return true;
+        }
+        if (goodsMapper == null) {
+            return false;
+        }
+        ai.neargo.shop.product.entity.PrdSku sku = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                        .select(ai.neargo.shop.product.entity.PrdSku::getGoodsNo)
+                        .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, skuNo).last("limit 1")));
+        if (sku == null || sku.getGoodsNo() == null) {
+            return false;
+        }
+        ai.neargo.shop.product.entity.PrdGoods goods = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .select(ai.neargo.shop.product.entity.PrdGoods::getStoreNo)
+                        .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, sku.getGoodsNo()).last("limit 1")));
+        return goods != null && storeNo.equals(goods.getStoreNo());
+    }
+
+    /** 预售余量：与 lockPresale 的 WHERE 条件逐条对应；没开预售或已截单为 0 */
+    private int presaleRemaining(String skuNo) {
+        ai.neargo.shop.product.entity.PrdSku sku = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, skuNo).last("limit 1")));
+        if (sku == null || nz(sku.getPresaleQuota()) <= 0
+                || (sku.getCutoffAt() != null && !sku.getCutoffAt().isAfter(LocalDateTime.now()))) {
+            return 0;
+        }
+        return Math.max(nz(sku.getPresaleQuota()) - nz(sku.getSoldCount()), 0);
     }
 
     private static int nz(Integer v) {
