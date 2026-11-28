@@ -130,7 +130,7 @@ public final class ReceptionRecovery {
             if ("SUCCEEDED".equals(outcome.state())) {
                 AppointmentPersistence.require(row.getWorkOrderNo() == null);
                 var p = db.json.readValue(row.getFrozenPayload(), WalkInPayload.class);
-                row.setFrozenPayload(db.json.writeValueAsString(p.withRevisions(outcome.rootVersion(), null)));
+                row.setFrozenPayload(db.json.writeValueAsString(p.arrivalPending(outcome.rootVersion(), now())));
                 row.setPhase(BtyReceptionOperation.ARRIVAL_PENDING);
             } else if ("RELEASE_REQUIRED".equals(outcome.state())) {
                 row.setFailureCode("RESOURCE_RELEASE_REQUIRED");

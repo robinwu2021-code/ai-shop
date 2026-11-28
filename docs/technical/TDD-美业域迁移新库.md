@@ -367,6 +367,7 @@
 - **偏差一：第四类只在日志里的记录**。取消预约与登记爽约时，请求里的原因（≤500）与凭证号（≤128）只写进了日志。用户 2026-11-28 定方案 A：定稿 DDL `ord_appointment.cancel_reason` 放宽到 `varchar(500)`、加 `cancel_evidence_ref varchar(128)`（生成器加 `REPLACE_COLUMNS` 改列机制）；受理取消、爽约时在同一个锁住预约的交易事务里写这两列（定向更新、不动版本），释放资源被拒时清掉。.61 `n_trade_v2` 已执行（记在商品交接 §5）。
 - **偏差二：提交防重也在读日志**。`acceptedSubmission` 原来靠「已受理」日志回执从命名空间找回提交单号；改为按提交单自己记的请求键摘要找回（`selectByRequestKey`），内容不同即拒。
 - 测试：原来挂在日志写入上的故障注入改挂到同一步的业务写入上（到店 `markArrived`、异常核对锁围栏、开单写 `OPEN` 提交、顾客认领回执、定义发布后的美业事务）；数日志条数的断言改看业务行（政策版本的 `created_by`、提交单、接待操作行、预约的取消原因与凭证）。只为审计存在的两条「审计失败回滚」断言改为「同一步业务写入失败回滚」。
+- **12-8 对照（与 HEAD 同机同库）**：首轮两种模式各新增 2 条失败，都在 `WalkInRecoveryIT`（后台恢复把无预约到店推进到「待标到店」时没定到店时刻）。修法：进入「待标到店」只经 `WalkInPayload.arrivalPending(版本, 时刻)` 一处，接待协调与后台恢复共用。修后 `WalkInRecoveryIT` 37/37、`ReceptionBusinessIT` 22/22 两种模式全过；`WorkOrderScopeIT` 剩 1 条 `legacyContextIsReadOnly…` 在 HEAD 上同样失败。独立库模式少了 2 条失败（`openScopeRollsBackWhenAuditFails` 与一条并发提交），操作日志相关的失败已不再出现。
 
 
 **风险**：

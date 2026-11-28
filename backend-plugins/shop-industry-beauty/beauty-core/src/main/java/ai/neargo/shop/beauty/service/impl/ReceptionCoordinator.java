@@ -155,7 +155,7 @@ public final class ReceptionCoordinator {
                 }, (locked, rootVersion) -> {
                     AppointmentPersistence.require(sameWalkIn(active, locked));
                     locked.setFrozenPayload(db.json.writeValueAsString(walkInPayload(locked)
-                            .withRevisions(rootVersion, null).withArriveAt(now())));
+                            .arrivalPending(rootVersion, now())));
                     locked.setPhase(BtyReceptionOperation.ARRIVAL_PENDING);
                     steps.save(locked); steps.clearRetry(locked);
                     return locked;

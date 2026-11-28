@@ -206,11 +206,14 @@ public final class ReceptionPreparation {
                     assignments, requestedStartAt, selectedStartAt, matched, appointmentKey,
                     appointmentRequestHash, arrival, opening, arriveAt);
         }
-        /** 进入「待标到店」时定好到店时刻（UTC）：重做时按它认出是不是这次标的到店（TDD §2.6 第 12 项）。 */
-        WalkInPayload withArriveAt(java.time.LocalDateTime at) {
+        /**
+         * 进入「待标到店」：记下标到店前的预约版本，同时定好到店时刻（UTC 毫秒）—— 重做时按它认出是不是这次标的到店
+         * （TDD §2.6 第 12 项）。进入这一阶段的各处（接待协调、后台恢复）都只经这里。
+         */
+        WalkInPayload arrivalPending(long rootVersion, java.time.LocalDateTime at) {
             return new WalkInPayload(schemaVersion, appointmentNo, previewNo, appointmentOperationNo, items,
                     assignments, requestedStartAt, selectedStartAt, matched, appointmentKey,
-                    appointmentRequestHash, arrivalRevision, openingRevision, at);
+                    appointmentRequestHash, rootVersion, null, at);
         }
     }
     /** 到店受理：{@code arriveAt} 受理时定好（UTC 毫秒），交易事务按它标到店，重做时按它认出是不是这次标的。 */
