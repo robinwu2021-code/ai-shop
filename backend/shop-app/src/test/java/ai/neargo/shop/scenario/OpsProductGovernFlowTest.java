@@ -322,19 +322,21 @@ class OpsProductGovernFlowTest {
         assertThat(mine.get("scope").asString()).isEqualTo("PLATFORM");
         assertThat(mine.get("options").get(0).get("code").asString()).isEqualTo("W500");
 
-        // ★ 拿它建品，商品身上真的带着 optionCode（没有 code 的模板与手输没有区别）
+        // ★ 拿它建品，商品身上真的带着 optionCode（没有 code 的模板与手输没有区别）。
+        // 下发给商家的 templateNo 是规格库的维度号（批次 2-e），商品据它反查取值编号
+        String dimNo = mine.get("templateNo").asString();
         TestStoreCategory.open(mvc(), json, biz, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"按模板建的生鲜\",\"type\":\"NORMAL\","
                                 + "\"specGroups\":[{\"name\":\"净含量\",\"options\":[\"500g\",\"1kg\"],"
-                                + "\"optionCodes\":[\"W500\",\"W1000\"],\"templateNo\":\"" + templateNo + "\"}],"
+                                + "\"optionCodes\":[\"W500\",\"W1000\"],\"templateNo\":\"" + dimNo + "\"}],"
                                 + "\"skus\":[{\"optionValues\":[\"500g\"],\"price\":1000,\"stock\":5},"
                                 + "{\"optionValues\":[\"1kg\"],\"price\":1800,\"stock\":5}]}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         JsonNode group = json.readTree(body).get("data").get("specGroups").get(0);
-        assertThat(group.get("templateNo").asString()).isEqualTo(templateNo);
+        assertThat(group.get("templateNo").asString()).isEqualTo(dimNo);
         assertThat(group.get("optionCodes").toString())
                 .as("建出来的商品没带 code —— 三家店的「500g」就再也聚合不到一起")
                 .contains("W500").contains("W1000");
@@ -405,6 +407,34 @@ class OpsProductGovernFlowTest {
         // 换个类目同名是允许的（模板按品类预置）
         assertThat(saveTemplateCode(ops, "{\"categoryType\":\"STANDARD\",\"name\":\"" + name + "\","
                 + "\"options\":[{\"code\":\"Y\",\"label\":\"乙\"}]}")).isZero();
+    }
+
+    @Test
+    @DisplayName("★★ 品类推荐指向规格库的维度：templateNo 是维度号，叫法按推荐、码按规格库")
+    void categoryTypeRecommendationPointsAtLibraryDims() throws Exception {
+        String biz = merchant("18600400110", "品类推荐店");
+        String body = mvc().perform(get("/biz/spec-templates").param("categoryType", "FRESH")
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode weight = null;
+        for (JsonNode t : json.readTree(body).get("data")) {
+            if ("SD_WEIGHT".equals(t.get("templateNo").asString())) {
+                weight = t;
+            }
+        }
+        assertThat(weight).as("生鲜的重量推荐应当就是规格库的 SD_WEIGHT，不是另一根轴").isNotNull();
+        assertThat(weight.get("scope").asString()).isEqualTo("PLATFORM");
+        assertThat(weight.get("options").get(0).get("code").asString()).isEqualTo("W500G");
+        assertThat(weight.get("options").get(0).get("label").asString())
+                .as("生鲜下叫「约1斤」，码与归一量仍是规格库的 500g").isEqualTo("约1斤");
+
+        // 服务品类的推荐不该出现在生鲜里
+        assertThat(body).doesNotContain("SD_DURATION");
+
+        // 运营端同一条：模板号是「品类-维度号」
+        String ops = opsLogin();
+        assertThat(templateNos(ops, "重量", false)).contains("FRESH-SD_WEIGHT");
     }
 
     @Test
@@ -514,8 +544,12 @@ class OpsProductGovernFlowTest {
         return out;
     }
 
-    /** 商家侧下发的模板里找这一条；查不到返回 null。 */
-    private JsonNode templateByNo(String bizToken, String templateNo) throws Exception {
+    /**
+     * 商家侧下发的模板里找运营端这一条；查不到返回 null。
+     * 运营端的模板号是「品类-维度号」，下发给商家的是维度号（批次 2-e）。
+     */
+    private JsonNode templateByNo(String bizToken, String opsTemplateNo) throws Exception {
+        String templateNo = opsTemplateNo.substring(opsTemplateNo.indexOf('-') + 1);
         String body = mvc().perform(get("/biz/spec-templates").param("categoryType", "FRESH")
                         .header("Authorization", "Bearer " + bizToken))
                 .andExpect(status().isOk())

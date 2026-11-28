@@ -100,6 +100,7 @@
 - 一次性脚本 `scripts/migrate-product-to-n-trade.py`：从 `ai_shop_ume` 读、按 §2.3 的并入与改名规则转换、写 `n_trade` / `n_member`。可重复执行（按业务号覆盖），先在演练库 `ai_shop_ume_rehearsal` 上跑。
 - 市场：旧库 SKU、门店价的 `market` 为 `CN` 的改为 `TW`（正式库 5 个 SKU 里 4 个是 `CN`，来源是代码原先写死的「本市场」；新库默认值与代码的本市场都按部署配置为 `TW`，见 [列默认值补回方案](design/门店交易库-列默认值补回方案.md) §3）。
 - 规格范围的搬法：类目绑定写 `CATEGORY` 维度级行（`value_no=''`），类目取值子集写同范围取值级行；商家覆盖写 `MCH_CATEGORY`（`scope_ref` = 商家号/类目号，`value_no` 空串照搬，`enabled=0` → `DISABLED`）；商家常用维度与取值写 `MERCHANT`（`favorite=1`）。
+- 规格模板的搬法：平台模板按名字对到规格库的平台维度、选项按 code 对到取值，写 `CATEGORY_TYPE` 推荐（对不上的维度或取值列进搬迁报告，人工定）；`category_no` 非空的类目级模板不搬；商家自存模板转为他的自建维度 + `MERCHANT` 常用。
 - 合表的搬法：`prd_store_price` 与 `prd_store_stock` 按 门店 + SKU 合成一行（库存行没有市场列，取本市场）；类目付款方式只搬 `allowed=0` 的行进 `disallowed_pay_modes`；SKU 定价策略、卡类权益绑定按 SKU 写进本市场那一行（权益绑定的 `status` 非 ACTIVE 或已删的，SKU 置 `DISABLED`）。
 - 对账：逐表比行数，商品、SKU、门店价与库存逐行比关键字段；对账报告存进上线记录。
 - 搬迁在切换窗口里与交易一起做，搬完旧表只读、不删。
@@ -180,7 +181,13 @@
   - 维度级行的 `value_no` 存空串而不是 NULL：唯一键 `(scope_type, scope_ref, dim_no, value_no)` 里 NULL 互不相等，存 NULL 就挡不住重复。
   - 整份替换仍真删（`purgeScope`，唯一键不含 `deleted`）；查询一律从 `SpecUsageMapper.categoryDims / categoryValues / overrides` 起手，避免漏掉范围条件读到别的范围的行。
   - 测试种子仍在旧表，`schema-test-extra.sql` 末尾复制进新表。基线 −5。
-- **规格模板 `prd_spec_template` 暂未并**：并入 `prd_spec_dim` 意味着模板变成规格库里的维度（平台模板出现在运营规格库、商家模板出现在「我的规格」），且 `category_type` 兜底在新表没有落处，属于业务口径变化，待确认后再做。
+- **2-e 规格模板**：`prd_spec_template` 退场，不新建平行的维度（旧模板与规格库内容重复：22 条测试种子的选项码只有 `VCASE` 一个在规格库里找不到）。读写集中在 `SpecTemplateBook`：
+  - 平台模板 → 品类推荐 `prd_spec_usage.scope_type = CATEGORY_TYPE`，`scope_ref` = 品类（`*` = 不限品类）。维度级行指向规格库的维度，取值级行是推荐的几档，叫法不同记 `label_override`。运营按名字建：规格库有同名平台维度就用它，没有就按规格库规则建一个（禁用词、重名同样拦）；选项按 code 找取值，没有就建成平台取值（量纲维度要归一量，此路建不出新档位）。
+  - 运营端模板号改为「品类-维度号」（同一维度可推荐给多个品类、各自归档）；下发给商家的 `templateNo` 改为维度号，与规格库下发一致，商品保存时据它反查取值编号。接口形状不变，ops-web、b-app 不用改。
+  - 商家「存为常用规格」→ 走「我的规格」建自建维度（同名平台维度则直接用平台的），再记 `scope_type = MERCHANT`、`favorite = 1`；下发时两种情况都带上，同一维度只给一次。
+  - 类目级的 16 条旧模板不搬：类目选定后只用规格库的类目绑定，它们本来就读不到。
+  - 测试种子：品类推荐 6 组直接按新表写进 `schema-test-extra.sql`（不从旧表复制），普通品类原叫「规格」的那组即件数维度 `SD_COUNT`。
+  - 基线 −1；新增用例 `OpsProductGovernFlowTest#categoryTypeRecommendationPointsAtLibraryDims`。
 - 公共防重表 `sys_idempotent` 目前在主库、不与商品事务同库（定价策略原本就是如此）；它属于公共能力，随防重服务化处理，不进门店交易库。
 
 ### 偏差说明

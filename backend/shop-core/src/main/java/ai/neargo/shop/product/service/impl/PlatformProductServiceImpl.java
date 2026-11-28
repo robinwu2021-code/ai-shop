@@ -12,10 +12,8 @@ import ai.neargo.shop.product.dto.OpsSkuDetailVO;
 import ai.neargo.shop.product.dto.OpsSpecTemplateVO;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.entity.PrdSpecTemplate;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.SpecTemplateMapper;
 import ai.neargo.shop.product.service.CategoryService;
 import ai.neargo.shop.product.service.MerchantGoodsService;
 import ai.neargo.shop.product.service.PlatformProductService;
@@ -64,21 +62,21 @@ public class PlatformProductServiceImpl implements PlatformProductService {
 
     private final SkuMapper skuMapper;
     private final GoodsMapper goodsMapper;
-    private final SpecTemplateMapper templateMapper;
+    private final SpecTemplateBook templateBook;
     private final MerchantGoodsService merchantGoodsService;
     private final MerchantQueryPort merchantPort;
     private final CategoryService categoryService;
     private final ObjectMapper json;
 
     public PlatformProductServiceImpl(SkuMapper skuMapper, GoodsMapper goodsMapper,
-                                      SpecTemplateMapper templateMapper,
+                                      SpecTemplateBook templateBook,
                                       MerchantGoodsService merchantGoodsService,
                                       MerchantQueryPort merchantPort,
                                       CategoryService categoryService,
                                       ObjectMapper json) {
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;
-        this.templateMapper = templateMapper;
+        this.templateBook = templateBook;
         this.merchantGoodsService = merchantGoodsService;
         this.merchantPort = merchantPort;
         this.categoryService = categoryService;
@@ -202,104 +200,31 @@ public class PlatformProductServiceImpl implements PlatformProductService {
     }
 
     // ---------------------------------------------------------------- P-3.4 规格模板
+    //
+    // 模板并进了规格库（批次 2-e）：平台模板 = 规格库的维度 + 品类推荐，读写都在 SpecTemplateBook。
 
     @Override
     public PageData<OpsSpecTemplateVO> listSpecTemplates(String categoryType, String keyword,
                                                          boolean showArchived, long page, long size) {
-        LambdaQueryWrapper<PrdSpecTemplate> w = Wrappers.<PrdSpecTemplate>lambdaQuery()
-                // 平台端只看平台模板。商家自存的模板归商家 ——
-                // 运营在这里改一条，那家店的历史规格就对不上了
-                .eq(PrdSpecTemplate::getScope, PrdSpecTemplate.PLATFORM)
-                .eq(notBlank(categoryType), PrdSpecTemplate::getCategoryType, categoryType)
-                .like(notBlank(keyword), PrdSpecTemplate::getName, keyword)
-                .eq(!showArchived, PrdSpecTemplate::getStatus, PrdSpecTemplate.ACTIVE)
-                .orderByDesc(PrdSpecTemplate::getId);
-        Page<PrdSpecTemplate> p = DataScopeContext.executeWithoutScope(() ->
-                templateMapper.selectPage(Page.of(page, size), w));
-        return PageData.of(p.getRecords().stream().map(this::toVO).toList(), p.getTotal(), page, size);
+        return templateBook.list(categoryType, keyword, showArchived, page, size);
     }
 
     @Override
     @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public OpsSpecTemplateVO saveSpecTemplate(SaveTemplateCommand cmd) {
-        if (cmd.name() == null || cmd.name().isBlank()
-                || cmd.options() == null || cmd.options().isEmpty()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        /*
-         * **每个选项都必须带 code** —— 这是平台模板存在的唯一理由（B-4.5）：
-         * 自由文本下三家店会把同一件事写成「5 斤」「五斤」「2.5kg」，
-         * 聚合、比价、搜索全部对不上。没有 code 的平台模板与商家手输的没有区别，
-         * 它唯一的作用是让人**以为**规格统一了。
-         */
-        Set<String> codes = new LinkedHashSet<>();
-        for (MerchantGoodsService.SpecOption o : cmd.options()) {
-            if (o == null || o.code() == null || o.code().isBlank()
-                    || o.label() == null || o.label().isBlank()) {
-                throw BizException.of(ErrorCode.SPEC_TEMPLATE_CODE_REQUIRED);
-            }
-            // 组内 code 重复会让「500g」和「1kg」在聚合时并成同一个规格 —— 正是 code 要防的事
-            if (!codes.add(o.code().trim())) {
-                throw BizException.of(ErrorCode.SPEC_TEMPLATE_DUPLICATE);
-            }
-        }
-
-        PrdSpecTemplate existing = notBlank(cmd.templateNo()) ? platformTemplate(cmd.templateNo()) : null;
-        final String selfNo = existing == null ? null : existing.getTemplateNo();
-        // 同一品类下重名：商家的下拉里会出现两个「重量」，选哪个都对不上
-        Long dup = DataScopeContext.executeWithoutScope(() -> templateMapper.selectCount(
-                Wrappers.<PrdSpecTemplate>lambdaQuery()
-                        .eq(PrdSpecTemplate::getScope, PrdSpecTemplate.PLATFORM)
-                        .eq(PrdSpecTemplate::getName, cmd.name().trim())
-                        .eq(notBlank(cmd.categoryType()), PrdSpecTemplate::getCategoryType, cmd.categoryType())
-                        .isNull(!notBlank(cmd.categoryType()), PrdSpecTemplate::getCategoryType)
-                        // 更新自己不算重名 —— 少了这一句，改一下选项就报「已有同名模板」
-                        .ne(selfNo != null, PrdSpecTemplate::getTemplateNo, selfNo == null ? "" : selfNo)));
-        if (dup != null && dup > 0) {
-            throw BizException.of(ErrorCode.SPEC_TEMPLATE_DUPLICATE);
-        }
-
-        boolean create = existing == null;
-        PrdSpecTemplate t = existing;
-        if (create) {
-            t = new PrdSpecTemplate();
-            t.setTemplateNo(BizKey.next(BizKey.SPEC_TEMPLATE));
-            t.setStatus(PrdSpecTemplate.ACTIVE);
-        }
-        /*
-         * scope 由后端写死，请求体里传什么都忽略 —— 否则运营端一个笔误就能造出
-         * 一条 entityNo 为空的「商家模板」，而它会出现在**所有**商家的下拉里，
-         * 且没有任何人能改它（商家侧只让改自己的）。
-         */
-        t.setScope(PrdSpecTemplate.PLATFORM);
-        t.setEntityNo(null);
-        t.setCategoryType(notBlank(cmd.categoryType()) ? cmd.categoryType() : null);
-        t.setName(cmd.name().trim());
-        t.setOptions(writeJson(cmd.options().stream()
-                .map(o -> new MerchantGoodsService.SpecOption(o.code().trim(), o.label().trim()))
-                .toList()));
-        PrdSpecTemplate row = t;
-        DataScopeContext.executeWithoutScope(() ->
-                create ? templateMapper.insert(row) : templateMapper.updateById(row));
-        return toVO(platformTemplate(t.getTemplateNo()));
+        return templateBook.save(cmd.templateNo(), cmd.categoryType(), cmd.name(), cmd.options());
     }
 
     @Override
     @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public OpsSpecTemplateVO archiveSpecTemplate(String templateNo) {
-        PrdSpecTemplate t = platformTemplate(templateNo);
-        t.setStatus(PrdSpecTemplate.DISABLED);
-        DataScopeContext.executeWithoutScope(() -> templateMapper.updateById(t));
-        return toVO(t);
+        return templateBook.setArchived(templateNo, true);
     }
 
     @Override
     @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public OpsSpecTemplateVO unarchiveSpecTemplate(String templateNo) {
-        PrdSpecTemplate t = platformTemplate(templateNo);
-        t.setStatus(PrdSpecTemplate.ACTIVE);
-        DataScopeContext.executeWithoutScope(() -> templateMapper.updateById(t));
-        return toVO(t);
+        return templateBook.setArchived(templateNo, false);
     }
 
     // ---------------------------------------------------------------- helpers
@@ -424,38 +349,6 @@ public class PlatformProductServiceImpl implements PlatformProductService {
             return REJECTED;
         }
         return Boolean.TRUE.equals(g.getOnSale()) ? "ON_SALE" : "OFF_SALE";
-    }
-
-    private PrdSpecTemplate platformTemplate(String templateNo) {
-        PrdSpecTemplate t = DataScopeContext.executeWithoutScope(() ->
-                templateMapper.selectOne(Wrappers.<PrdSpecTemplate>lambdaQuery()
-                        .eq(PrdSpecTemplate::getTemplateNo, templateNo)
-                        .eq(PrdSpecTemplate::getScope, PrdSpecTemplate.PLATFORM)
-                        .last("limit 1")));
-        if (t == null) {
-            // 商家模板在这里一律 404 而不是 403：别家存了什么模板也不该被平台端顺手改掉，
-            // 更不该被探知存在与否
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        return t;
-    }
-
-    private OpsSpecTemplateVO toVO(PrdSpecTemplate t) {
-        List<OpsSpecTemplateVO.Option> options;
-        try {
-            options = t.getOptions() == null ? List.of()
-                    : json.readValue(t.getOptions(), new TypeReference<List<OpsSpecTemplateVO.Option>>() {
-                    });
-        } catch (RuntimeException e) {
-            options = List.of();
-        }
-        boolean archived = PrdSpecTemplate.DISABLED.equals(t.getStatus());
-        return new OpsSpecTemplateVO(t.getTemplateNo(), t.getScope(), t.getCategoryType(),
-                t.getName(), options,
-                // 归档时间没有单独一列：DISABLED 的最后一次更新就是它被归档的时刻。
-                // 单开一列要保证与 status 永远同步，而两个字段总有一天会不同步
-                archived ? iso(t.getUpdatedAt()) : null,
-                iso(t.getCreatedAt()));
     }
 
     private String writeJson(Object v) {

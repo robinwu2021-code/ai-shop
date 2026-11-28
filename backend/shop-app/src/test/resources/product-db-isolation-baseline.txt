@@ -16,7 +16,6 @@ R2 GoodsDraftMapper 用到 prd_goods_draft，不在 05-n_trade.sql
 R2 GoodsFavoriteMapper 用到 prd_goods_favorite，不在 目标库 DDL
 R2 ReviewLikeMapper 用到 rvw_review_like，不在 目标库 DDL
 R2 ReviewMapper 用到 rvw_review，不在 目标库 DDL
-R2 SpecTemplateMapper 用到 prd_spec_template，不在 05-n_trade.sql
 R2 StockRestoreMapper 用到 prd_stock_restore，不在 目标库 DDL
 R2 StockSyncLogMapper 用到 prd_stock_sync_log，不在 目标库 DDL
 R2 StoreCatalogVersionMapper 用到 prd_store_catalog_version，不在 05-n_trade.sql

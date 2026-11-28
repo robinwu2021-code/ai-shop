@@ -23,11 +23,9 @@ import ai.neargo.shop.product.dto.SpecTemplateVO;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdGoodsDraft;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.entity.PrdSpecTemplate;
 import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.SpecTemplateMapper;
 import ai.neargo.shop.product.service.GoodsService;
 import ai.neargo.shop.product.service.MerchantGoodsService;
 import ai.neargo.shop.spi.product.ProductEvents.CatalogSourceChanged;
@@ -109,7 +107,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     private final GoodsMapper goodsMapper;
     private final SkuMapper skuMapper;
-    private final SpecTemplateMapper templateMapper;
+    private final SpecTemplateBook specTemplateBook;
     private final GoodsService goodsService;
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
 
@@ -177,7 +175,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             ai.neargo.shop.spi.product.StockPort stockPort,
             GoodsMapper goodsMapper,
             SkuMapper skuMapper,
-            SpecTemplateMapper templateMapper,
+            SpecTemplateBook specTemplateBook,
             GoodsService goodsService,
             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
             ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
@@ -218,7 +216,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.stockPort = stockPort;
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
-        this.templateMapper = templateMapper;
+        this.specTemplateBook = specTemplateBook;
         this.goodsService = goodsService;
         this.revisions = revisions;
         this.json = json;
@@ -3870,139 +3868,29 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     public List<SpecTemplateVO> specTemplates(
             String merchantNo, String categoryType, String categoryNo) {
-        var w =
-                Wrappers.<PrdSpecTemplate>lambdaQuery()
-                        /*
-                         * 归档的不下发（V102）。**归档了商家还能选，等于没归档** ——
-                         * 而运营会以为自己把那套错的规格下线了，直到发现新品还在用它。
-                         * 存量行的 status 由迁移的 DEFAULT 'ACTIVE' 兜住。
-                         */
-                        .eq(PrdSpecTemplate::getStatus, PrdSpecTemplate.ACTIVE)
-                        // 平台模板 + 我自己的。别家商家自存的模板与我无关
-                        .and(
-                                q ->
-                                        q.eq(PrdSpecTemplate::getScope, PrdSpecTemplate.PLATFORM)
-                                                .or(
-                                                        o ->
-                                                                o.eq(
-                                                                                PrdSpecTemplate
-                                                                                        ::getScope,
-                                                                                PrdSpecTemplate
-                                                                                        .MERCHANT)
-                                                                        .eq(
-                                                                                PrdSpecTemplate
-                                                                                        ::getEntityNo,
-                                                                                merchantNo)));
-        if (categoryType != null && !categoryType.isBlank()) {
-            // 品类过滤只作用于平台模板：商家自存的模板不限品类（他自己知道用在哪）
-            w.and(
-                    q ->
-                            q.eq(PrdSpecTemplate::getCategoryType, categoryType)
-                                    .or(o -> o.isNull(PrdSpecTemplate::getCategoryType)));
-        }
         /*
-         * **别家类目的专属模板要挡掉。**
+         * 三路来源，都已在规格库里（批次 2-e 起旧模板表退场）：
+         *   · 类目选定：规格库按类目装配的那几组（templatesForCategory）
+         *   · 还没选类目：按品类推荐的那几组（原平台模板的品类兜底，运营端 /ops/spec-templates 维护）
+         *   · 两种情况都带上：他自己存过的常用规格（原商家自存模板）
          *
-         * 类目级模板的 category_type 也填着（不填会变成谁都查不到的孤儿行），
-         * 所以只按品类过滤的话，选「休闲零食」会连「手机数码 → 颜色/存储」
-         * 一起推过来 —— 它们同属 NORMAL。
+         * **类目选定之后，没配规格就是没有规格 —— 不再回落品类推荐。**
+         * 那条回落让运营端看到的「缺口」在商家这边被兜底盖住，于是没人急着补；
+         * 而兜底给出的是「包装：袋装/瓶装/罐装」这种推给谁都不对题的东西。
+         * 商家仍有出路：手输，或者自建规格（POST /biz/spec-dims、/biz/spec-values）。
+         *
+         * 契约形状一个字没变（SpecTemplate[]），templateNo 一律是维度号 ——
+         * 商品保存时据它反查取值编号，所以按推荐建的商品也能跨店聚合。
          */
         String picked = categoryNo == null || categoryNo.isBlank() ? null : categoryNo;
-        w.and(
-                q -> {
-                    q.isNull(PrdSpecTemplate::getCategoryNo);
-                    if (picked != null) {
-                        q.or(o -> o.eq(PrdSpecTemplate::getCategoryNo, picked));
-                    }
-                });
-
-        List<SpecTemplateVO> legacy =
-                DataScopeContext.executeWithoutScope(() -> templateMapper.selectList(w)).stream()
-                        .map(this::toVO)
-                        .toList();
-        /*
-         * **类目级规格来自规格库（V195），品类兜底与商家自存仍来自老表。**
-         *
-         * 规格库那边一个类目能给出 3–5 个维度、值有编号也有归一量；老表那 22 条里
-         * 类目级只覆盖 13 个类目，且值只是 JSON 里的字符串。所以类目一确定就以新库为准，
-         * 老库只剩两件事：没配规格的类目还能拿到品类兜底，商家自存的常用还在。
-         *
-         * 契约形状一个字没变（SpecTemplate[]），b-app 因此不用改。
-         */
-        List<SpecTemplateVO> fromLibrary =
-                picked == null ? List.of() : specLibrary.templatesForCategory(merchantNo, picked);
-        /*
-         * **类目选定之后，没配规格就是没有规格 —— 不再回落品类兜底。**
-         *
-         * 那条回落有两个后果：运营端看到的「缺口」在商家这边被兜底盖住了，于是没人急着补；
-         * 而兜底给出的是「包装：袋装/瓶装/罐装」这种推给谁都不对题的东西，商家照样全删了手打。
-         * 删掉之后三件事同时成立：缺口计数是真的、商家看到的推荐一定对题、老模板表能退役。
-         *
-         * 商家仍有出路：手输，或者自建规格（POST /biz/spec-dims、/biz/spec-values）。
-         */
-        if (picked != null) {
-            List<SpecTemplateVO> merged0 = new java.util.ArrayList<>(fromLibrary);
-            // 商家自存的常用仍旧给他 —— 那是他自己的东西，与运营配没配无关
-            legacy.stream()
-                    .filter(t -> PrdSpecTemplate.MERCHANT.equals(t.scope()))
-                    .forEach(merged0::add);
-            return merged0;
-        }
-        if (fromLibrary.isEmpty()) {
-            /*
-             * **还没选类目：平台模板照给。**
-             *
-             * 我上一版在这里只留了商家自存的，理由是「选完类目才知道该推什么」——
-             * 那句话对的是上面 picked != null 那条（选了类目就不该再回落品类兜底），
-             * 搬到这里就错了：运营端 /ops/spec-templates 仍旧往老表写，
-             * 而商家侧只认新库的话，**运营建的模板商家永远查不到** ——
-             * 「模板是死的」那条断裂原样回来了，且运营那边看不出任何异常。
-             */
-            return legacy;
-        }
-        // 新库给了这一类目的维度，老表里同名的那几条（兜底或旧类目级）就别再推一遍
-        Set<String> libNames =
-                fromLibrary.stream()
-                        .map(SpecTemplateVO::name)
-                        .collect(java.util.stream.Collectors.toSet());
-        List<SpecTemplateVO> merged = new java.util.ArrayList<>(fromLibrary);
-        for (SpecTemplateVO t : legacy) {
-            boolean sameName = libNames.contains(t.name());
-            boolean mine = PrdSpecTemplate.MERCHANT.equals(t.scope());
-            // 商家自存的即便同名也留着 —— 那是他自己的东西，平台没有资格顶掉
-            if (mine || !sameName) {
-                merged.add(t);
-            }
-        }
-        return merged;
-    }
-
-    /**
-     * 类目级顶掉同名的品类兜底，并把类目级排在前面。
-     *
-     * <p>不去重的话，选「休闲零食」会同时看到类目级的「重量」与兜底的「规格」， 而商家其实只该看到前者 —— 两个都推给他，他得先判断该用哪个， 而这正是模板本该替他省掉的那一步。
-     *
-     * <p>只按 <b>name</b> 去重而不按 templateNo：顶掉的判据是「说的是同一个维度」， 编号本来就不同。商家自存的模板（scope=MERCHANT）不参与顶替，
-     * 那是他自己的东西，平台没有资格覆盖。
-     */
-    private static List<SpecTemplateVO> preferCategoryLevel(
-            List<SpecTemplateVO> all, String picked) {
-        if (picked == null) {
-            return all;
-        }
-        Set<String> catLevelNames =
-                all.stream()
-                        .filter(t -> picked.equals(t.categoryNo()))
-                        .map(SpecTemplateVO::name)
-                        .collect(java.util.stream.Collectors.toSet());
-        List<SpecTemplateVO> out =
-                new java.util.ArrayList<>(
-                        all.stream().filter(t -> picked.equals(t.categoryNo())).toList());
-        for (SpecTemplateVO t : all) {
-            boolean isCatLevel = picked.equals(t.categoryNo());
-            boolean shadowed =
-                    PrdSpecTemplate.PLATFORM.equals(t.scope()) && catLevelNames.contains(t.name());
-            if (!isCatLevel && !shadowed) {
+        List<SpecTemplateVO> out = new java.util.ArrayList<>(picked == null
+                ? specTemplateBook.recommended(categoryType)
+                : specLibrary.templatesForCategory(merchantNo, picked));
+        Set<String> shown = out.stream().map(SpecTemplateVO::templateNo)
+                .collect(java.util.stream.Collectors.toSet());
+        // 他自己的常用即便与平台同名也留着 —— 那是他自己的东西，平台没有资格顶掉；同一维度只给一次
+        for (SpecTemplateVO t : specTemplateBook.favorites(merchantNo)) {
+            if (shown.add(t.templateNo())) {
                 out.add(t);
             }
         }
@@ -4013,19 +3901,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public SpecTemplateVO saveSpecTemplate(
             String merchantNo, String name, List<SpecOption> options) {
-        if (name == null || name.isBlank() || options == null || options.isEmpty()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        PrdSpecTemplate t = new PrdSpecTemplate();
-        t.setTemplateNo(BizKey.next(BizKey.SPEC_TEMPLATE));
-        // 一律存成 MERCHANT：商家改不了平台模板 —— 平台模板是跨店可比的基础
-        t.setScope(PrdSpecTemplate.MERCHANT);
-        t.setStatus(PrdSpecTemplate.ACTIVE);
-        t.setEntityNo(merchantNo);
-        t.setName(name);
-        t.setOptions(writeJson(options));
-        DataScopeContext.executeWithoutScope(() -> templateMapper.insert(t));
-        return toVO(t);
+        // 存成他的自建维度再记一条常用（批次 2-e）：一律归他自己 —— 平台的规格是跨店可比的基础，商家改不得
+        return specTemplateBook.saveFavorite(merchantNo, name, options);
     }
 
     // ---------------------------------------------------------------- helpers
@@ -4503,30 +4380,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     sku.saleUnit());
                         })
                 .toList();
-    }
-
-    private SpecTemplateVO toVO(PrdSpecTemplate t) {
-        List<SpecTemplateVO.Option> options;
-        try {
-            options =
-                    json.readValue(
-                            t.getOptions() == null ? "[]" : t.getOptions(),
-                            new TypeReference<List<SpecTemplateVO.Option>>() {});
-        } catch (Exception e) {
-            options = List.of();
-        }
-        // 老 prd_spec_template 里的模板（商家自存 + 品类兜底）没有主维度这个概念 ——
-        // 主维度是类目绑定上的判据，这条路根本不经过绑定表
-        return new SpecTemplateVO(
-                t.getTemplateNo(),
-                t.getScope(),
-                t.getCategoryType(),
-                t.getCategoryNo(),
-                t.getName(),
-                options,
-                t.getEntityNo(),
-                false,
-                null);
     }
 
     private String writeSpecGroups(List<SpecGroup> groups) {

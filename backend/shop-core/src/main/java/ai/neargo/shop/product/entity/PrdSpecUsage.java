@@ -18,7 +18,9 @@ import lombok.Setter;
  *       什么顺序、叫什么。<b>稀疏</b>：没有行 = 完全跟平台走。取值级行的 {@code value_no}
  *       存的是取值的 <b>code</b>（与旧表同义：端上 Option 只带 code）。</li>
  *   <li>{@link #MERCHANT}：{@code scope_ref} = 商家号。原 {@code prd_merchant_spec} /
- *       {@code prd_merchant_spec_value}（商家常用维度与取值），代码里没有读写方，只随数据迁入。</li>
+ *       {@code prd_merchant_spec_value}（商家常用维度与取值）与商家自存的规格模板。</li>
+ *   <li>{@link #CATEGORY_TYPE}：{@code scope_ref} = 品类。原平台规格模板的品类兜底，
+ *       维度级行指向规格库已有的维度，取值级行是推荐的那几档与叫法。</li>
  * </ul>
  *
  * <p><b>维度级行的 {@code value_no} 存空串 {@link #DIM_LEVEL}，不存 NULL</b>：
@@ -35,7 +37,17 @@ public class PrdSpecUsage extends BaseEntity {
     public static final String CATEGORY = "CATEGORY";
     /** 商家在某一类目下对平台规格的覆盖（scope_type 列 16 字符，故不用 MERCHANT_CATEGORY 全称） */
     public static final String MERCHANT_CATEGORY = "MCH_CATEGORY";
-    /** 商家常用维度与取值 */
+    /**
+     * 品类推荐（原平台规格模板 {@code prd_spec_template} 的品类兜底）：{@code scope_ref} = 品类，
+     * {@link #ALL_TYPES} 表示不限品类。还没选类目时，按品类给商家推荐的那几组规格。
+     */
+    public static final String CATEGORY_TYPE = "CATEGORY_TYPE";
+    /** CATEGORY_TYPE 范围里「不限品类」的 scope_ref */
+    public static final String ALL_TYPES = "*";
+    /**
+     * 商家常用维度与取值。原 {@code prd_merchant_spec}，以及商家「存为常用规格」
+     * （原商家自存模板）：存成他的自建维度，再在这里记一条 {@code favorite=1}。
+     */
     public static final String MERCHANT = "MERCHANT";
     /** 维度级行的 value_no */
     public static final String DIM_LEVEL = "";

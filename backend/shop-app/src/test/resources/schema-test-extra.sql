@@ -61,3 +61,39 @@ SELECT tenant_no, 'CATEGORY', category_no, dim_no, sort, 'ACTIVE', value_no, lab
 FROM prd_category_spec_value v
 WHERE NOT EXISTS (SELECT 1 FROM prd_spec_usage u WHERE u.scope_type = 'CATEGORY'
                   AND u.scope_ref = v.category_no AND u.dim_no = v.dim_no AND u.value_no = v.value_no);
+
+-- 品类推荐种子（批次 2-e，原平台规格模板的品类兜底）：直接按门店交易库的形状写，不再从旧表 prd_spec_template 复制。
+-- 每条推荐指向规格库已有的维度，叫法不同的记在 label_override（生鲜的「约1斤」就是规格库的 500g）。
+-- 旧表里普通品类那条叫「规格」，规格库禁止这类万能词作维度名，这里就是件数维度 SD_COUNT（规格库里叫「数量」）。
+-- 旧表的 16 条类目级模板不再搬：类目选定后只用规格库的类目绑定，那 16 条早已读不到。
+INSERT IGNORE INTO prd_spec_usage (scope_type, scope_ref, dim_no, value_no, label_override, sort, status)
+VALUES
+    ('CATEGORY_TYPE', 'FRESH', 'SD_WEIGHT', '', NULL, 0, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'FRESH', 'SD_WEIGHT', 'SV_WEIGHT_W500G', '约1斤', 10, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'FRESH', 'SD_WEIGHT', 'SV_WEIGHT_W1KG', '约2斤', 20, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'FRESH', 'SD_WEIGHT', 'SV_WEIGHT_W2500G', '约5斤', 30, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'FRESH', 'SD_WEIGHT', 'SV_WEIGHT_W5KG', '约10斤', 40, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'FRESH', 'SD_PACK', '', NULL, 0, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'FRESH', 'SD_PACK', 'SV_PACK_PBULK', NULL, 10, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'FRESH', 'SD_PACK', 'SV_PACK_PBAG', NULL, 20, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'FRESH', 'SD_PACK', 'SV_PACK_PBOX', NULL, 30, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'FRESH', 'SD_PACK', 'SV_PACK_PGIFT', '礼盒', 40, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'NORMAL', 'SD_COUNT', '', NULL, 0, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'NORMAL', 'SD_COUNT', 'SV_COUNT_C1', NULL, 10, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'NORMAL', 'SD_COUNT', 'SV_COUNT_C2', NULL, 20, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'NORMAL', 'SD_COUNT', 'SV_COUNT_C5', NULL, 30, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'NORMAL', 'SD_COUNT', 'SV_COUNT_CCASE', NULL, 40, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'NORMAL', 'SD_PACK', '', NULL, 0, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'NORMAL', 'SD_PACK', 'SV_PACK_PBAG', NULL, 10, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'NORMAL', 'SD_PACK', 'SV_PACK_PBOTTLE', NULL, 20, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'NORMAL', 'SD_PACK', 'SV_PACK_PBOX', NULL, 30, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'NORMAL', 'SD_PACK', 'SV_PACK_PCAN', NULL, 40, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'SERVICE', 'SD_DURATION', '', NULL, 0, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'SERVICE', 'SD_DURATION', 'SV_DURATION_D30', NULL, 10, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'SERVICE', 'SD_DURATION', 'SV_DURATION_D60', NULL, 20, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'SERVICE', 'SD_DURATION', 'SV_DURATION_D90', NULL, 30, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'SERVICE', 'SD_DURATION', 'SV_DURATION_D120', NULL, 40, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'SERVICE', 'SD_HEADCOUNT', '', NULL, 0, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'SERVICE', 'SD_HEADCOUNT', 'SV_HEADCOUNT_H1', NULL, 10, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'SERVICE', 'SD_HEADCOUNT', 'SV_HEADCOUNT_H2', NULL, 20, 'ACTIVE'),
+    ('CATEGORY_TYPE', 'SERVICE', 'SD_HEADCOUNT', 'SV_HEADCOUNT_H3', NULL, 30, 'ACTIVE');

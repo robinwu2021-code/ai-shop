@@ -5,7 +5,6 @@ import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.entity.PrdExecutionRetention;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.entity.PrdSpecTemplate;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdStoreCatalog;
 import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
@@ -59,9 +58,6 @@ public final class ProductMappers {
     /** 主体按类目的「记不记库存」（V345）。稀疏，只改不删 */
     public interface EntityCategoryInvMapper
             extends ProductTableMapper<ai.neargo.shop.product.entity.PrdEntityCategoryInv> {
-    }
-
-    public interface SpecTemplateMapper extends ProductTableMapper<PrdSpecTemplate> {
     }
 
     /** 商品收藏（V343）。取消要真删，理由同 SpecUsageMapper#purgeScope：软删行占着唯一键，再收藏就撞 */
@@ -146,6 +142,22 @@ public final class ProductMappers {
                 "DELETE FROM prd_spec_usage WHERE scope_type = #{scopeType} AND scope_ref = #{scopeRef}")
         int purgeScope(@org.apache.ibatis.annotations.Param("scopeType") String scopeType,
                        @org.apache.ibatis.annotations.Param("scopeRef") String scopeRef);
+
+        /** 真删一个范围里某个维度的全部行（维度级与取值级），理由同 {@link #purgeScope} */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM prd_spec_usage WHERE scope_type = #{scopeType} AND scope_ref = #{scopeRef}"
+                        + " AND dim_no = #{dimNo}")
+        int purgeDim(@org.apache.ibatis.annotations.Param("scopeType") String scopeType,
+                     @org.apache.ibatis.annotations.Param("scopeRef") String scopeRef,
+                     @org.apache.ibatis.annotations.Param("dimNo") String dimNo);
+
+        /** 真删一个范围里某个维度的取值级行，维度级行留着（保住它的创建时间与状态） */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM prd_spec_usage WHERE scope_type = #{scopeType} AND scope_ref = #{scopeRef}"
+                        + " AND dim_no = #{dimNo} AND value_no <> ''")
+        int purgeDimValues(@org.apache.ibatis.annotations.Param("scopeType") String scopeType,
+                           @org.apache.ibatis.annotations.Param("scopeRef") String scopeRef,
+                           @org.apache.ibatis.annotations.Param("dimNo") String dimNo);
     }
 
     public interface GoodsDraftMapper extends ProductTableMapper<ai.neargo.shop.product.entity.PrdGoodsDraft> {
