@@ -414,7 +414,7 @@
 - **引用**：预约项目行、服务任务记「SKU 号 + 服务定义版本号」（`definition_version_no` 只存版本号）。
 - **时长同一事实一处**：有服务定义的商品，时长只由规格发布写，并镜像到 `prd_goods.duration_min` 供展示和现有读方；商家保存商品时忽略时长。没有服务定义的服务（零售到店核销）沿用商品自己的时长。
 
-**新表 `prd_service_definition`（草案，P1 定）**：
+**新表 `prd_service_definition`（P1 已定稿，结构真源 `docs/technical/design/schema/retail-ddl/service-definition-tables.sql`）**：
 - 列：
   - `id`、`tenant_no`、`entity_no`、`store_no`、`goods_no`；
   - `sku_no`（空 = 商品默认）；
@@ -428,7 +428,7 @@
   - 公共列。
 - 唯一约束：
   - `(tenant_no, goods_no, definition_version, sku_no)`：同一版内每个 SKU 至多一行，默认行用空串代替 NULL，或用生成列；
-  - `(tenant_no, goods_no, source_ref)`：同一操作重放返回同一版本。
+  - `(tenant_no, goods_no, source_ref, sku_no)`：同一操作重放返回同一版本（一个版本是一组行，共用一个操作号，所以带上 `sku_no`）。
 - 检查约束：时长大于 0，缓冲不小于 0。
 
 **修改计划**：
@@ -495,6 +495,13 @@
 - 表名用 `prd_service_definition`（服务定义），端口 `ServiceDefinitionPort`。
 - `prd_fulfillment_requirement` **加一列 `definition_version`**：服务的要求挂这一列，非服务留空；`revision_no` 仍只表示商品修订号。
 - 商品会话的 (a)(b)(c) 照它的意见做：生成器加 `TRADE_ADDED`；不让 `prd_goods.version` 加一，商家保存显式不写时长，镜像用定向更新；默认行 `sku_no=''`。
+
+**P1 完成（2026-11-28）**：
+- `gen-retail-ddl.py` 加 `TRADE_ADDED`，新表原样接在 `prd_fulfillment_requirement` 之后；后者加 `definition_version int NULL` 与索引 `(goods_no, definition_version)`。
+- 基础 DDL 仍取 slim e4a007c00：`gen-retail-ddl.py <e4a007c00 的 01/05/06> --check` → n_trade 68 张、n_industry 38 张。
+- `gen-product-test-schema.py` 重跑（28 张表），H2 MySQL 模式执行通过；美业测试副本 `db/n_trade/V1__trade_design.sql` 已同步。
+- 本机 MySQL 9.7 建 68 张表通过；默认行加覆盖行可写，同版本重复、时长 0、负缓冲分别被唯一键与检查约束挡住。
+- slim 的 `db-target-fields.json` 等派生件由 V2 会话补（已发 DDL）。
 
 **原待定（已定，留作记录）**：
 - 新表的加法：生成器加机制，还是改 ai-shop-slim 生成源；

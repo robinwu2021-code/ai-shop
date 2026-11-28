@@ -196,6 +196,7 @@ CREATE TABLE IF NOT EXISTS prd_fulfillment_requirement (
   duration_min int DEFAULT NULL,
   selection_rule varchar(24) DEFAULT NULL,
   deleted tinyint NOT NULL DEFAULT 0,
+  definition_version int DEFAULT NULL,
   version bigint NOT NULL DEFAULT 0,
   created_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   created_by varchar(64) DEFAULT NULL,
@@ -203,6 +204,36 @@ CREATE TABLE IF NOT EXISTS prd_fulfillment_requirement (
   updated_by varchar(64) DEFAULT NULL,
   PRIMARY KEY (id),
   CONSTRAINT prd_fulfillment_requirement__uk_prd_fulfillment_requirement_requirement__revision_no UNIQUE (requirement_no, revision_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_service_definition (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(32) NOT NULL DEFAULT 'MAIN',
+  entity_no varchar(32) NOT NULL,
+  store_no varchar(32) DEFAULT NULL,
+  goods_no varchar(32) NOT NULL,
+  sku_no varchar(32) NOT NULL DEFAULT '',
+  definition_version int NOT NULL,
+  duration_min int NOT NULL,
+  buffer_before_min int NOT NULL DEFAULT 0,
+  buffer_after_min int NOT NULL DEFAULT 0,
+  steps TEXT NULL,
+  notes TEXT NULL,
+  schema_version int NOT NULL DEFAULT 1,
+  snapshot_hash char(64) DEFAULT NULL,
+  status varchar(10) NOT NULL DEFAULT 'ACTIVE',
+  source_ref varchar(64) DEFAULT NULL,
+  published_by varchar(64) DEFAULT NULL,
+  published_at datetime(3) DEFAULT NULL,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version bigint NOT NULL DEFAULT 0,
+  created_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  created_by varchar(64) DEFAULT NULL,
+  updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT prd_service_definition__uk_prd_service_definition_version UNIQUE (tenant_no, goods_no, definition_version, sku_no),
+  CONSTRAINT prd_service_definition__uk_prd_service_definition_source UNIQUE (tenant_no, goods_no, source_ref, sku_no)
 );
 
 CREATE TABLE IF NOT EXISTS prd_bundle_group (

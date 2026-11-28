@@ -13,6 +13,8 @@
 餐饮（TDD-餐饮域迁移新库）：餐饮在行业库的 27 张一律取 retail-ddl/food-industry-tables.sql 的定稿结构（与代码测过的一致）；
 其中门店设备、厨房事件、语音指令取代基础 DDL 的 fnb_kds_event，ADR-068 修订一、二收回的 8 张按位置补上；
 平台库去掉搬走的 mch_store_device。
+服务定义（TDD-美业域迁移新库 §2.8，用户 2026-11-28 定）：交易库新增 prd_service_definition，取自
+retail-ddl/service-definition-tables.sql，接在 prd_fulfillment_requirement 之后；后者加 definition_version。
 产物：docs/technical/design/schema/ddl/01-n_platform.sql、05-n_trade.sql、06-n_industry.sql。
 """
 import re
@@ -32,6 +34,10 @@ INDUSTRY_ADDED = {  # ADR-068 修订一、二收回行业库的表：接在哪�
                   'fnb_service_slot', 'fnb_capacity_claim', 'fnb_service_calendar'],
 }
 PLATFORM_MOVED = 'mch_store_device'  # 平台库搬到行业库的表
+SERVICE_DEFINITION = ROOT / 'docs/technical/design/schema/retail-ddl/service-definition-tables.sql'
+TRADE_ADDED = {  # 交易库新增的表（取自定稿结构文件，原样保留）：接在哪张表之后
+    'prd_fulfillment_requirement': ['prd_service_definition'],
+}
 STATUS = ROOT / 'docs/technical/零售域-状态短值换值表.md'
 
 # ---------- 表的去留（B1、B3、C1） ----------
@@ -53,6 +59,10 @@ TABLE_COMMENT = {
 
 # ---------- 加列（B2 等） ----------
 ADD_COLUMNS = {
+    # 服务的要求挂服务定义版本，非服务留空；revision_no 仍只表示商品修订号（用户 2026-11-28 定，TDD-美业域迁移新库 §2.8）
+    'prd_fulfillment_requirement': [
+        "`definition_version` int DEFAULT NULL COMMENT '所属服务定义版本（prd_service_definition）；服务的要求挂这一列，非服务为空'",
+    ],
     'ord_price_quote': [
         "`confirmation_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '顾客确认编号（原柜台结账确认）'",
         "`confirmed_at` datetime(3) DEFAULT NULL COMMENT '顾客确认时间'",
@@ -132,6 +142,7 @@ DROP_KEYS = {
     'prd_store_catalog': ['uk_prd_catalog_no', 'uk_prd_catalog_scope'],
 }
 ADD_INDEX = {
+    'prd_fulfillment_requirement': [('goods_no', 'definition_version')],
     'ind_assignment': [('target_type', 'target_no'), ('entity_no', 'store_no', 'planned_start_at')],
     'ord_visit_attendee': [('check_no',)],
 }
@@ -356,6 +367,16 @@ def build(base_dir):
             raise SystemExit('food table not placed in n_industry: ' + n)
         ind[n] = device[n]
     fixed = border + list(device)
+    # 交易库新增的表：定稿结构原样并入
+    _, added, aorder = parse(SERVICE_DEFINITION.read_text(encoding='utf-8'))
+    for after, news in TRADE_ADDED.items():
+        k = torder.index(after) + 1
+        torder[k:k] = news
+        for n in news:
+            if n in trade:
+                raise SystemExit('trade table already exists: ' + n)
+            trade[n] = added[n]
+    fixed += aorder
     ensure_deleted(ind['ind_assignment'])
     # 加列
     for name, cols in ADD_COLUMNS.items():
