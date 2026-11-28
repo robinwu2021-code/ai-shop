@@ -22,6 +22,7 @@ public final class BeautyDataScopeRegistration implements DataScopeRegistrar {
         registry.register("bty_appointment_preparation", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_appointment_operation", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("ord_appointment_revision", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("ord_appointment_command", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_appointment_current", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("bty_appointment_resource_decision", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("ord_appointment", Map.of(ScopeDim.MERCHANT, "entity_no"));

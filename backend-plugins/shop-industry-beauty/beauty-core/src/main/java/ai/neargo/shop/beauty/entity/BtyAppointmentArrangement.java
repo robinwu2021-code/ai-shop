@@ -52,12 +52,8 @@ public class BtyAppointmentArrangement extends BaseEntity {
     private String action;
     private String frozenPlan;
     private String planHash;
-    private String commandNo;
-    private String commandHash;
-    private String decisionNo;
-    private LocalDateTime permittedAt;
-    private LocalDateTime validUntil;
+    /** 变更号：这次变更对外的编号（出参的 operationNo）；资源命令按它归到这一版。 */
+    private String changeNo;
     private String rejectCode;
-    private String resultHash;
     private LocalDateTime nextRetryAt;
 }

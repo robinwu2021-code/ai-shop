@@ -35,8 +35,12 @@ INDUSTRY_ADDED = {  # ADR-068 修订一、二收回行业库的表：接在哪�
 }
 PLATFORM_MOVED = 'mch_store_device'  # 平台库搬到行业库的表
 SERVICE_DEFINITION = ROOT / 'docs/technical/design/schema/retail-ddl/service-definition-tables.sql'
+APPOINTMENT_COMMAND = ROOT / 'docs/technical/design/schema/retail-ddl/appointment-command-tables.sql'
+TRADE_ADDED_SOURCES = [SERVICE_DEFINITION, APPOINTMENT_COMMAND]
 TRADE_ADDED = {  # 交易库新增的表（取自定稿结构文件，原样保留）：接在哪张表之后
     'prd_fulfillment_requirement': ['prd_service_definition'],
+    # 预约的资源命令（TDD-美业域迁移新库 §2.6 第 4–6 项，用户 2026-11-28 定方向 A）
+    'ord_appointment_revision': ['ord_appointment_command'],
 }
 STATUS = ROOT / 'docs/technical/零售域-状态短值换值表.md'
 
@@ -111,21 +115,16 @@ ADD_COLUMNS = {
         "`employment_assignment_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '人员当时有效的门店任职号（美业服务参与）'",
         "`planned_assignment_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '对应的预约计划安排号（美业服务参与）'",
     ],
-    # 预约修订承担一次变更的整个生命周期（TDD-美业域迁移新库 §2.6 第 4–6 项，用户 2026-11-28 定）：收掉美业的预约准备、当前行、
-    # 预约操作、资源围栏、资源意向、资源决策 6 张表；请求防重与宿主回执走基础能力库的统一防重，不进这里
+    # 预约修订承担一次变更的整个生命周期（TDD-美业域迁移新库 §2.6 第 4–6 项，用户 2026-11-28 定方向 A）：收掉美业的预约准备、
+    # 当前行、预约操作、资源围栏 4 张；每条资源命令一行另在 ord_appointment_command（收掉资源意向、资源决策）。请求防重走统一防重
     'ord_appointment_revision': [
+        "`change_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '变更号：这次变更对外的编号（出参的 operationNo）；草稿在受理时取号，取消、爽约的修订也有'",
         "`based_on_revision` bigint DEFAULT NULL COMMENT '草稿基于的预约单版本（ord_appointment.version，新约为 0）；转在途与许可时核对预约单仍是这一版'",
         "`actor_kind` varchar(32) DEFAULT NULL COMMENT '发起人类型（同一发起方下的细分，如店主、员工、顾客本人）'",
         "`action` varchar(24) DEFAULT NULL COMMENT '这次变更做什么：CREATE 新约、CHANGE 改约、RECEPTION_CHANGE 到店后改、CANCEL 取消、NO_SHOW 爽约'",
-        "`frozen_plan` longtext NULL COMMENT '冻结的资源计划（原样作资源命令载荷）；取消、爽约是释放命令'",
+        "`frozen_plan` longtext NULL COMMENT '冻结的资源计划（原样作资源命令载荷）；取消、爽约的修订沿用当前那一版的计划'",
         "`plan_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源计划摘要，核对回执用'",
-        "`command_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源命令号；宿主冻结回调按它找到这一版'",
-        "`command_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源命令摘要'",
-        "`decision_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '资源许可的决策号；一经许可不再改'",
-        "`permitted_at` datetime(3) DEFAULT NULL COMMENT '许可时刻'",
-        "`valid_until` datetime(3) DEFAULT NULL COMMENT '许可有效截止'",
         "`reject_code` varchar(64) DEFAULT NULL COMMENT '资源拒绝或释放的原因码'",
-        "`result_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '宿主终态回执摘要；有值即已对账，不再改'",
         "`next_retry_at` datetime(3) DEFAULT NULL COMMENT '在途或待释放时下次重试时刻；后台按它扫描，用行锁抢占'",
         "`applying_key` varchar(32) COLLATE utf8mb4_bin GENERATED ALWAYS AS ((case when (`status` in ('APPLYING','RELEASING')) then `appointment_no` end)) STORED COMMENT '同一预约只有一个变更在途的闸门：在途或待释放时等于预约单号，否则为空'",
     ],
@@ -174,7 +173,7 @@ ADD_UNIQUE = {
     'prd_catalog_item': [('tenant_no', 'store_no', 'goods_no', 'catalog_version_no')],
     'prd_fulfillment_requirement': [('requirement_no', 'revision_no')],
     'ind_commission_rule': [('rule_no', 'version_no')],
-    'ord_appointment_revision': [('tenant_no', 'entity_no', 'preview_no'), ('tenant_no', 'entity_no', 'command_no'),
+    'ord_appointment_revision': [('tenant_no', 'entity_no', 'preview_no'), ('tenant_no', 'entity_no', 'change_no'),
                                  ('tenant_no', 'entity_no', 'applying_key')],
 }
 # 去掉的唯一约束：prd_store_catalog 一店一行装不下按版本存的目录（定时生效要并存多版）
@@ -409,7 +408,11 @@ def build(base_dir):
         ind[n] = device[n]
     fixed = border + list(device)
     # 交易库新增的表：定稿结构原样并入
-    _, added, aorder = parse(SERVICE_DEFINITION.read_text(encoding='utf-8'))
+    added, aorder = {}, []
+    for source in TRADE_ADDED_SOURCES:
+        _, more, morder = parse(source.read_text(encoding='utf-8'))
+        added.update(more)
+        aorder += morder
     for after, news in TRADE_ADDED.items():
         k = torder.index(after) + 1
         torder[k:k] = news
