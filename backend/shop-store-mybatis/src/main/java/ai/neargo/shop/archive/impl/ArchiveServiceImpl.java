@@ -25,7 +25,6 @@ public class ArchiveServiceImpl implements ArchiveService {
      */
     private static final Map<Kind, String[]> TABLES = Map.of(
             Kind.COUPON, new String[]{"mkt_coupon", "coupon_no"},
-            Kind.MERCHANT, new String[]{"mch_entity", "entity_no"},
             Kind.PICKUP, new String[]{"cmt_pickup_point", "pickup_no"},
             Kind.CAMPAIGN, new String[]{"mkt_campaign", "campaign_no"},
             Kind.COMMUNITY, new String[]{"cmt_community", "community_no"},

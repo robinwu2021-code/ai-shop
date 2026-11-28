@@ -256,6 +256,28 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
+    public long archive(String merchantNo) {
+        java.time.LocalDateTime at = java.time.LocalDateTime.now();
+        markArchived(require(merchantNo), at);
+        return at.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
+
+    @Override
+    @Transactional(transactionManager = ModuleDataSources.PLATFORM_TX_MANAGER)
+    public void unarchive(String merchantNo) {
+        markArchived(require(merchantNo), null);
+    }
+
+    /** 只动归档时间（null = 恢复）；版本照常加一 */
+    private void markArchived(MchEntity m, java.time.LocalDateTime at) {
+        DataScopeContext.executeWithoutScope(() -> merchantMapper.update(null, Wrappers.<MchEntity>lambdaUpdate()
+                .set(MchEntity::getArchivedAt, at)
+                .setSql("version = version + 1")
+                .eq(MchEntity::getId, m.getId())));
+    }
+
+    @Override
     public List<ViolationVO> violations(String merchantNo) {
         /*
          * **不绕过**：这是运营端的全量处置队列（merchantNo 可空 = 全平台），
@@ -678,8 +700,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 contact.map(MerchantApplyQueryPort.ApplyContact::asPickupPoint).orElse(false),
                 /*
                  * ★ 真给归档时间。此前这里写死 null，注释说「归档用状态表达，没有独立的归档位」——
-                 * 而 mch_entity **有** archived_at，`ArchiveService` 也一直在写它
-                 * （Kind.MERCHANT → mch_entity）。恒 null 的后果是：归档写进去了，
+                 * 而 mch_entity **有** archived_at，归档一直在写它
+                 * （{@link #archive}，平台句柄下）。恒 null 的后果是：归档写进去了，
                  * 而运营端「恢复」按钮永不出现、归档商家继续留在默认列表 ——
                  * 点了归档什么都没发生，且不报错。
                  */

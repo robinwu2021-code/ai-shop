@@ -49729,7 +49729,6 @@
         "name": "Kind",
         "values": [
           "COUPON",
-          "MERCHANT",
           "PICKUP",
           "CAMPAIGN",
           "COMMUNITY",

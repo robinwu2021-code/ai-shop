@@ -1,7 +1,9 @@
 package ai.neargo.shop.archive;
 
 /**
- * 运营端归档（软删除）。<b>一份实现服务四个实体</b>：券、商家、自提点、活动。
+ * 运营端归档（软删除）。<b>一份实现服务多个实体</b>：券、自提点、活动、小区、内容位。
+ *
+ * <p>商家归档不在这里：{@code mch_entity} 在平台基础库，由商户域经平台句柄自己写（{@code MerchantGovernService#archive}）。
  *
  * <p>为什么收成一个服务而不是每个域各写一遍：这四处的逻辑逐字相同 ——
  * 盖个时间戳、列表默认过滤掉、恢复时清空。各写一遍的结果是漂移，
@@ -24,7 +26,7 @@ public interface ArchiveService {
      * 这样端点与实现之间不需要再维护一张映射表。
      */
     enum Kind {
-        COUPON, MERCHANT, PICKUP, CAMPAIGN, COMMUNITY, CONTENT_SLOT
+        COUPON, PICKUP, CAMPAIGN, COMMUNITY, CONTENT_SLOT
     }
 
     /**
