@@ -33,6 +33,8 @@ public final class PaymentCollectionProjection implements OutboxConsumer {
     private final BizIdentityResolver identities;
     private final Clock clock;
     private final MarketPort markets;
+    /** 收款提醒的收件人（主体下在用的账号）在平台基础库：经商户域端口 */
+    private final ai.neargo.shop.spi.user.PaymentCollectionFactsPort facts;
 
     public PaymentCollectionProjection(
             DataSource ds,
@@ -41,7 +43,8 @@ public final class PaymentCollectionProjection implements OutboxConsumer {
             MessageService messages,
             BizIdentityResolver identities,
             MarketPort markets,
-            Clock clock) {
+            Clock clock,
+            ai.neargo.shop.spi.user.PaymentCollectionFactsPort facts) {
         jdbc = new JdbcTemplate(ds);
         transaction = new TransactionTemplate(manager);
         this.json = json;
@@ -49,6 +52,7 @@ public final class PaymentCollectionProjection implements OutboxConsumer {
         this.identities = identities;
         this.markets = markets;
         this.clock = clock;
+        this.facts = facts;
     }
 
     @Override
@@ -84,14 +88,11 @@ public final class PaymentCollectionProjection implements OutboxConsumer {
                             BigDecimal.valueOf(fact.paidMinor(), market.currencyScale())
                                     .toPlainString();
                     var recipients = new TreeMap<String, LoginUser>();
-                    jdbc.queryForList(
-                                    "SELECT mch_account_no,user_no FROM mch_account WHERE"
-                                            + " entity_no=? AND status='ACTIVE' AND deleted=0",
-                                    entity)
+                    facts.activeAccounts(entity)
                             .forEach(
                                     account -> {
-                                        String mch = (String) account.get("mch_account_no"),
-                                                usr = (String) account.get("user_no");
+                                        String mch = account.mchAccountNo(),
+                                                usr = account.userNo();
                                         if (mch != null)
                                             add(
                                                     recipients,

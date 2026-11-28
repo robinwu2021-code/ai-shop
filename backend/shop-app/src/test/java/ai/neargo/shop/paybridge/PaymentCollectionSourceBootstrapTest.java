@@ -65,6 +65,10 @@ class PaymentCollectionSourceBootstrapTest {
                 .withBean("dataSource", DataSource.class, () -> dataSource)
                 .withBean("transactionManager", PlatformTransactionManager.class,
                         () -> new DataSourceTransactionManager(dataSource))
+                // 门店与主体在平台基础库，经商户域端口读；测试里平台库与本库是同一个
+                .withBean(ai.neargo.shop.spi.user.PaymentCollectionFactsPort.class,
+                        () -> new ai.neargo.shop.merchant.port.PaymentCollectionFactsPortImpl(
+                                new org.springframework.jdbc.core.JdbcTemplate(dataSource)))
                 .withPropertyValues("shop.payment-collections.enabled=true");
     }
 
@@ -86,15 +90,15 @@ class PaymentCollectionSourceBootstrapTest {
                 ? " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin" : "";
         jdbc.execute("CREATE TABLE mch_entity (entity_no VARCHAR(64) PRIMARY KEY,"
                 + " market VARCHAR(8),deleted INT NOT NULL DEFAULT 0)" + options);
-        jdbc.execute("CREATE TABLE mch_store (id BIGINT PRIMARY KEY,store_no VARCHAR(64),"
-                + " entity_no VARCHAR(64),deleted INT NOT NULL DEFAULT 0)" + options);
+        jdbc.execute("CREATE TABLE mch_store (id BIGINT PRIMARY KEY,tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',"
+                + " store_no VARCHAR(64),entity_no VARCHAR(64),deleted INT NOT NULL DEFAULT 0)" + options);
         jdbc.execute("CREATE TABLE payment_collection_source (environment VARCHAR(16),"
                 + " pay_app_id BIGINT,source_type VARCHAR(16),source_id BIGINT,"
                 + " payment_store_id BIGINT,store_no VARCHAR(64),entity_no VARCHAR(64),"
                 + " enabled BOOLEAN NOT NULL DEFAULT TRUE,"
                 + " PRIMARY KEY(environment,pay_app_id,source_type,source_id,payment_store_id))" + options);
         jdbc.update("INSERT INTO mch_entity VALUES ('E1','TW',0),('E2','TW',0)");
-        jdbc.update("INSERT INTO mch_store VALUES (101,'S1','E1',0),(102,'S2','E2',0)");
+        jdbc.update("INSERT INTO mch_store(id,store_no,entity_no,deleted) VALUES (101,'S1','E1',0),(102,'S2','E2',0)");
     }
 
     String[] binding(int index, long paymentStoreId, long shopStoreId, String storeNo,
@@ -248,7 +252,7 @@ class PaymentCollectionSourceBootstrapTest {
                 var ds = new SingleConnectionDataSource(connections.get(index), true);
                 var bootstrap = new PaymentCollectionSourceBootstrap(
                         new PaymentCollectionSourceProperties(List.of(values.get(index))), ds,
-                        new DataSourceTransactionManager(ds));
+                        new DataSourceTransactionManager(ds), new ai.neargo.shop.merchant.port.PaymentCollectionFactsPortImpl(new org.springframework.jdbc.core.JdbcTemplate(ds)));
                 ready.countDown();
                 if (!start.await(15, TimeUnit.SECONDS)) {
                     throw new AssertionError("Concurrent bootstrap start timed out");

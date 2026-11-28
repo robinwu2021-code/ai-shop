@@ -50,7 +50,8 @@ class PaymentCollectionAttachTest {
         jdbc.update("INSERT INTO mch_store VALUES (9001,'MAIN','S1','E1',0)");
         jdbc.update("INSERT INTO mch_entity VALUES ('MAIN','E1','TW',0)");
         service = new PaymentCollectionServiceImpl(db, new DataSourceTransactionManager(db),
-                mock(OutboxEventBus.class), new PaymentCollectionProperties(), settlements);
+                mock(OutboxEventBus.class), new PaymentCollectionProperties(), settlements,
+                new ai.neargo.shop.merchant.port.PaymentCollectionFactsPortImpl(new org.springframework.jdbc.core.JdbcTemplate(db)));
     }
 
     @AfterEach

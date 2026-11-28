@@ -21,7 +21,8 @@ public class PaymentCollectionSourceConfiguration {
     PaymentCollectionSourceBootstrap paymentCollectionSourceBootstrap(
             PaymentCollectionSourceProperties properties,
             @Qualifier("dataSource") DataSource dataSource,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new PaymentCollectionSourceBootstrap(properties, dataSource, manager);
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ai.neargo.shop.spi.user.PaymentCollectionFactsPort facts) {
+        return new PaymentCollectionSourceBootstrap(properties, dataSource, manager, facts);
     }
 }

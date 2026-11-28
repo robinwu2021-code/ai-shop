@@ -7,9 +7,6 @@ commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/JdbcS
 commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/subscription/MchStoreEndGrantRepository.java
 shop-gateway/src/main/java/ai/neargo/shop/commercebridge/HostStoreCreationAuthority.java
 shop-gateway/src/main/java/ai/neargo/shop/commercebridge/ShopCommerceStoreAdapter.java
-shop-gateway/src/main/java/ai/neargo/shop/paybridge/PaymentCollectionProjection.java
-shop-gateway/src/main/java/ai/neargo/shop/paybridge/PaymentCollectionSourceBootstrap.java
-shop-gateway/src/main/java/ai/neargo/shop/paybridge/impl/PaymentCollectionServiceImpl.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ResourceBookingServiceImpl.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ResourceServiceImpl.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ScheduleServiceImpl.java
