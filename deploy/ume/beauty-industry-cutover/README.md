@@ -55,3 +55,9 @@
 - `apply`：美业表全空（只有 `bty_service_step` 0 行）→ 备份 `~/backup/beauty-industry-20261128T141226Z/n_industry.sql`（`bty_service_step` + `ind_assignment` 结构，`ind_assignment` 0 行故无 INSERT）→ 02、03、04 → 核对通过（12 张美业表与 `ind_assignment` 的列、唯一键、触发器与定稿一致）。
 - 执行后再 `check`：12 张美业表都 0 行，`ind_assignment` 美业两列 2 列，与定稿无差异。`n_industry` 由 28 张变 39 张。
 
+### .61 · 2026-11-28 15:04:46–15:04:49Z（UTC）· 状态改短值后重跑
+
+- 执行：Claude 会话（用户批准），提交 `23449fd7e` 的脚本复制到 .61 `~/deploy/beauty-industry-cutover-23449fd7e/`，六个产物 sha256 与仓库一致；同样经 `mysqlw` / `mysqldumpw` 包装执行。
+- 执行前：`read_only=0`，没有连接在用 `n_industry`；12 张美业表都 0 行；`check` 差异恰为 11 个状态列的宽度（`> varchar(16|24|32|40)` → `< varchar(10)`）。
+- `apply`：备份 `~/backup/beauty-industry-20261128T150448Z/n_industry.sql` → 02 按新结构重建 12 张表 → `ind_assignment` 两列已有、跳过 03 → 04 → 核对通过。
+- 执行后再 `check`：无差异；`n_industry` 仍是 39 张；`ck_bsef_state` 已是短值（`FROZEN / TO_EXEC / PREP_SEEN / REJECTED / TO_SUSPEND`）。

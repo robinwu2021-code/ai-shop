@@ -356,7 +356,7 @@
 - 顺带修：第 7 项的人员筛选用 `JSON_TABLE`，分页与数据范围拦截器解析不了（`AppointmentBusinessIT` 按人员筛选那条失败；第 7 项当时没跑完对照，漏了），改为 `JSON_CONTAINS(JSON_EXTRACT(...))`。报表那条是注解 SQL、不经拦截器，保留。
 - 主库旧 V10 的结构破坏用例改到行业库上测（`industryFenceStructureDamageIsCorrupt`，含把 `intent_state` 放宽回 32）；主库只留迁移记录类的破坏。
 - 验证（与 HEAD `e9a2e1bab` 同机同库，独立库模式，`-Dtest=*` 全部 403 条）：HEAD 39 条失败，本改动 40 条；按人员筛选那条修好；新增的 2 条是上面改写前的主库结构破坏用例，改写后 `BeautySchemaMigrationIT` 33/33、`BeautyPlatformFlywayIT` 3/3（不带开关，即新默认）。其余失败与 HEAD 相同（`ServiceSourceObservationIT` ×5 缺迁移、`ManualExecutionSourceIT` 等既有）。生成器 `--check` 两个都通过。
-- .61：初版表都是空表，按新脚本重跑 `apply` 即可，须用户批准。
+- .61 已重跑（2026-11-28 15:04Z，用户批准）：`check` 差异恰为 11 个状态列宽度 → `apply` 备份到 `~/backup/beauty-industry-20261128T150448Z/`、重建 12 张表、跳过补列、核对通过 → 再 `check` 无差异。详见部署目录 README「执行记录」。
 
 #### 第 4–6 项方案（2026-11-28 用户定「按建议采纳」）：以预约修订为中心
 
