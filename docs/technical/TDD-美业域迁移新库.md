@@ -370,6 +370,26 @@
   商家若正有一份未发布的草稿，它的「编辑时的商品版本」会对不上，发布时按商品领域原有规则提示「有人中途改过」。
 - **服务要求**：`requirement_type` 由资源类型推出（人员 → `ROLE`，其余 → `RESOURCE`）。
 
+**商品会话（「零售」）的核对意见（2026-11-28）**：方向可行，由本会话实现商品侧，提交前把 diff 发给它看。它目前没在改 `MerchantGoodsService`、`GoodsRevisionServiceImpl`、`PrdGoods`。要改的几处：
+
+- **粒度（待用户定，Q6）**：`industry_ext` 是商品级的一列，而端口按「门店 + SKU」取。
+  - 现状：服务商品本就按门店建（`prd_goods.store_no`），时长是商品级（`prd_goods.duration_min`，美业发布时也要求定义的时长等于商品时长）。同一商品下各 SKU 能不一样的只剩缓冲、步骤和服务要求。
+  - 可选：① 执行定义定为商品级，门店、SKU 只落在服务要求行上；② 按 SKU 区分，就不能用 `industry_ext` 存。
+- **(a) 放在 `ServiceSpec` 里**，不另起位置。但**商家保存这条路**（`BizGoodsController → saveGoods`）要忽略这几个新字段，只有执行定义的发布能改。否则商家用旧编辑页存的草稿一发布，会把缓冲、步骤回滚成旧值（编辑页带回的是整份，「不传 = 不改」挡不住）。
+- **(b) 不绕过 `GoodsRevisionService`**，在它里面加一个方法（如 `publishIndustryRevision`），让规则集中在一处。要守的：
+  1. 两类未发布行都不动：`status=DRAFT` 的保存历史（至多一行），以及 `EDITING` / `SUBMITTED` 的商家草稿。
+  2. **结转**（最要紧）：之后 `recordPublished` / `publishDraft` 把商家那份未发布的转成线上时，要把当前 `industry_ext` 的执行定义并进新线上行的 payload，并按新修订号复制一份服务要求。否则按新修订号取，拿到的是旧定义，或者取不到。
+  3. 修订号照用 `nextRevisionNo`，`(goods_no, revision_no)` 唯一键挡并发；线上行不一定是号最大的，现有代码已经接受这一点。
+  4. 发布让 `prd_goods.version` 加一，商家草稿才会按现有规则报 `GOODS_DRAFT_STALE`。锁行用 PR #59 加的 `mine(merchant, goods, true)`，加锁顺序与商家保存一致。
+  5. `review_no` 留空（免审）；`entry_source` 用新常量（如 `INDUSTRY`），不写字面量。
+- **(c)** 实体字段与 `prd_fulfillment_requirement` 的 Mapper 由本会话加：
+  - 列在定稿 05 与 .61 的 `n_trade_v2` 上都已存在；
+  - Mapper 继承 `ProductTableMapper`，走商品句柄；
+  - 用 `backend/scripts/gen-product-test-schema.py` 把表加进测试库，重跑生成；
+  - 行业取值用枚举或常量。05 里写的是 `RETAIL / FNB / BEAUTY`，计价表用 `FOOD`，FNB 还是 FOOD 要和 V2 确认；美业只用 `BEAUTY`。
+- **(d)** 部署时商品句柄与交易句柄绑同一个数据源名、同库。两个事务管理器共用同一个 DataSource 实例时，Spring 会复用已绑定的连接。美业自己的表在行业库，和商品写入不可能同事务，所以 publish 要幂等：期望修订不对就拒，重放同一请求返回同一修订号。美业在商品返回成功后再记录，失败时能对账补齐。
+- **另**：补一条测试，旧 payload（没有新字段）和新 payload 都能解析。
+
 **待定**（要和商品领域对齐）：
 - **Q3 发布执行定义要不要走商品审核。** ✅ 用户 2026-11-28 定 ①：只改执行定义的修订免审直接上线。商品修订默认要送审，美业现在发布即生效。可选：
   - ① 只改执行定义（时长、缓冲、步骤、服务要求）的修订免审直接上线；改标题、价格等仍走商品审核。（推荐）
