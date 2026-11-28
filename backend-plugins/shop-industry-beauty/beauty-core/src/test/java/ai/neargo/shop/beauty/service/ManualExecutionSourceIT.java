@@ -174,7 +174,7 @@ public class ManualExecutionSourceIT {
                 c.getBean(BeautyMappers.AppointmentOperationMapper.class),
                 c.getBean(BeautyMappers.AppointmentCurrentMapper.class),
                 c.getBean(BeautyMappers.AppointmentArrangementMapper.class),
-                c.getBean(BeautyMappers.AppointmentResourceIntentMapper.class),
+                c.getBean(BeautyMappers.AppointmentCommandMapper.class),
                 c.getBean(BeautyMappers.AppointmentResourceFenceMapper.class),
                 c.getBean(BeautyMappers.AppointmentItemMapper.class),
                 json, c.getBean(PlatformTransactionManager.class));

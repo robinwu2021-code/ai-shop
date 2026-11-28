@@ -316,11 +316,11 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                                                     + " mch_booking_owner o ON"
                                                     + " o.owner_no=c.owner_no AND"
                                                     + " o.entity_no=c.entity_no JOIN"
-                                                    + " bty_appointment_resource_intent i ON"
+                                                    + " ord_appointment_command i ON"
                                                     + " i.command_no=c.command_no AND"
                                                     + " i.entity_no=c.entity_no WHERE c.entity_no=?"
                                                     + " AND o.source_no=? AND c.action='REPLACE'"
-                                                    + " AND c.status='ACCEPTED' AND i.phase_code=1",
+                                                    + " AND c.status='ACCEPTED' AND i.status='PERMITTED'",
                                                 entity,
                                                 scenario.appointment())
                                         == 1,
@@ -589,8 +589,8 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                                         + " mch_resource_command WHERE entity_no=? ORDER BY id",
                                 entity),
                         jdbc.queryForList(
-                                "SELECT action,phase_code,reason_code,terminal_code FROM"
-                                    + " bty_appointment_resource_intent WHERE entity_no=? ORDER BY"
+                                "SELECT action,status,reject_code FROM"
+                                    + " ord_appointment_command WHERE entity_no=? ORDER BY"
                                     + " id",
                                 entity),
                         value(created, "operationState"))
@@ -713,22 +713,18 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
     private void reconcileCommand(Map<String, Object> command, String resource, int terminal) {
         String commandNo = (String) command.get("command_no");
         var intent =
-                row("SELECT * FROM bty_appointment_resource_intent WHERE command_no=?", commandNo);
+                row("SELECT c.*, JSON_UNQUOTE(JSON_EXTRACT(c.accept_payload,'$.frozenPayload')) AS frozen_plan"
+                        + " FROM ord_appointment_command c WHERE command_no=?", commandNo);
         String frozen = (String) intent.get("frozen_plan");
         assertThat(ResourcePlanContract.hash(frozen)).isEqualTo(intent.get("plan_hash"));
         assertThat(command.get("frozen_payload")).isEqualTo(frozen);
         assertThat(ResourcePlanContract.decode(frozen).demands())
                 .hasSize(1)
                 .allSatisfy(demand -> assertThat(demand.resourceNo()).isEqualTo(resource));
-        assertThat(intent).containsEntry("phase_code", 3).containsEntry("terminal_code", terminal);
+        // 资源命令（§2.6 第 4–6 项方向 A）：terminal 1 = 宿主成功、2 = 宿主拒绝
+        assertThat(intent).containsEntry("status", terminal == 1 ? "SUCCEEDED" : "REJECTED");
         assertThat(intent.get("source_revision")).isEqualTo(command.get("source_revision"));
-        assertThat(
-                        number(
-                                "SELECT COUNT(*) FROM bty_appointment_resource_decision WHERE"
-                                        + " command_no=? AND decision_no=?",
-                                commandNo,
-                                intent.get("decision_no")))
-                .isEqualTo(1);
+        assertThat(intent.get("decision_no")).isNotNull(); // 许可记在命令行上，原资源决策表不再用
         assertThat(
                         number(
                                 "SELECT COUNT(*) FROM bty_appointment_resource_fence WHERE"

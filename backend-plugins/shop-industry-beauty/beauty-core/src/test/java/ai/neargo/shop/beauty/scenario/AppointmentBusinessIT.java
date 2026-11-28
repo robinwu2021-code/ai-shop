@@ -191,7 +191,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             var detail = service.getMyAppointment("USR1", result.appointmentNo());
             assertThat(detail.appointment().arrangementRevision()).isEqualTo(1);
             assertThat(detail.appointment().revision()).isGreaterThan(1);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_resource_intent WHERE phase_code=3",
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM ord_appointment_command WHERE status IN ('SUCCEEDED','REJECTED')",
                     Integer.class)).isEqualTo(2);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_appointment_resource_fence "
                     + "WHERE active_intent_no IS NOT NULL", Integer.class)).isZero();
@@ -331,7 +331,7 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             var pending = service.createMyAppointment("USR1", req, "EXPIRED");
             assertThat(pending.operationState()).isEqualTo("PENDING");
             var binding = owner.receipts.values().iterator().next().binding();
-            sql.update("UPDATE bty_appointment_resource_intent SET issued_at=?,valid_until=?", T0.minusDays(2),
+            sql.update("UPDATE ord_appointment_command SET permitted_at=?,valid_until=?", T0.minusDays(2),
                     T0.minusDays(1));
             var request = new ResourceSourceAuthorityPort.Request(binding, "USR1", "CONSUMER", "USR");
             var first = owner.authority.query(request);

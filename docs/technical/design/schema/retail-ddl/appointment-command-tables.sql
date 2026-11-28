@@ -40,5 +40,8 @@ CREATE TABLE `ord_appointment_command` (
   CONSTRAINT `ck_ord_appointment_command_decision` CHECK (((`status` in ('SENT','BOUND')) and (`decision_no` is null))
     or ((`status` in ('PERMITTED','REFUSED','SUCCEEDED','REJECTED')) and (`decision_no` is not null))
     or ((`status` = 'REJECTED') and (`decision_no` is null))),
-  CONSTRAINT `ck_ord_appointment_command_permit` CHECK ((`permitted_at` is null) or (`valid_until` > `permitted_at`))
+  CONSTRAINT `ck_ord_appointment_command_permit` CHECK ((`permitted_at` is null) or (`valid_until` > `permitted_at`)),
+  CONSTRAINT `ck_ord_appointment_command_window` CHECK (((`status` in ('SENT','BOUND','REFUSED')) and (`permitted_at` is null))
+    or ((`status` in ('PERMITTED','SUCCEEDED')) and (`permitted_at` is not null)) or (`status` = 'REJECTED')),
+  CONSTRAINT `ck_ord_appointment_command_revision` CHECK (`source_revision` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='预约的资源命令：一次预约变更发给资源方的每条命令一行，记受理请求、回执、许可与终态；许可一经写入不再改';

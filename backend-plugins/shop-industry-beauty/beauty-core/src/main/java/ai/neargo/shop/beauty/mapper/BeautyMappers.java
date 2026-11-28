@@ -300,7 +300,7 @@ public final class BeautyMappers {
                 @Param("updatedAt") LocalDateTime updatedAt);
     }
 
-    /** 永久预约根栅栏；调用者事务先锁预约，再锁栅栏及意图。禁止按TTL释放。 */
+    /** 永久预约根栅栏；调用者事务先锁预约，再锁栅栏及命令。禁止按TTL释放。活动标记存命令键（§2.6 第 4–6 项 4-4b-1）。 */
     public interface AppointmentResourceFenceMapper extends BaseMapper<BtyAppointmentResourceFence> {
         @Select(
                 """
@@ -319,14 +319,14 @@ public final class BeautyMappers {
                 UPDATE bty_appointment_resource_fence f
                 JOIN ord_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
                   AND p.store_no=f.store_no AND p.appointment_no=f.appointment_no AND p.deleted=0
-                JOIN bty_appointment_resource_intent i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
+                JOIN ord_appointment_command i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
                   AND i.store_no=f.store_no AND i.appointment_no=f.appointment_no AND i.deleted=0
-                SET f.active_intent_no=i.intent_no, f.version=f.version+1,
+                SET f.active_intent_no=i.request_key, f.version=f.version+1,
                     f.updated_by=#{actorNo}, f.updated_at=#{updatedAt}
                 WHERE f.tenant_no='MAIN' AND f.entity_no=#{entityNo} AND f.store_no=#{storeNo}
                   AND f.appointment_no=#{appointmentNo} AND f.deleted=0 AND f.active_intent_no IS NULL
                   AND f.version=#{expectedFenceVersion} AND f.version<9223372036854775807
-                  AND i.intent_no=#{intentNo} AND i.phase_code=0 AND i.source_revision=p.version
+                  AND i.request_key=#{intentNo} AND i.status='${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@BOUND}' AND i.source_revision=p.version
                   AND (p.status IN ('HELD','CONFIRMED') OR (p.status='CHECKED_IN' AND i.action='REPLACE'
                     AND p.work_order_no IS NULL
                     AND EXISTS (SELECT 1 FROM bty_appointment_current c JOIN bty_appointment_operation o
@@ -350,9 +350,9 @@ public final class BeautyMappers {
         @Update(
                 """
                 UPDATE bty_appointment_resource_fence f
-                JOIN bty_appointment_resource_intent i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
+                JOIN ord_appointment_command i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
                   AND i.store_no=f.store_no AND i.appointment_no=f.appointment_no
-                  AND i.intent_no=f.active_intent_no AND i.deleted=0
+                  AND i.request_key=f.active_intent_no AND i.deleted=0
                 JOIN ord_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
                   AND p.store_no=f.store_no AND p.appointment_no=f.appointment_no AND p.deleted=0
                 SET f.active_intent_no=NULL, f.version=f.version+1,
@@ -360,7 +360,7 @@ public final class BeautyMappers {
                 WHERE f.tenant_no='MAIN' AND f.entity_no=#{entityNo} AND f.store_no=#{storeNo}
                   AND f.appointment_no=#{appointmentNo} AND f.deleted=0 AND f.active_intent_no=#{intentNo}
                   AND f.version=#{expectedFenceVersion} AND f.version<9223372036854775807
-                  AND i.phase_code=3 AND i.terminal_code IN (1,2) AND i.terminal_hash IS NOT NULL
+                  AND i.status IN ('${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@SUCCEEDED}','${@ai.neargo.shop.beauty.entity.BtyAppointmentCommand@REJECTED}') AND i.result_hash IS NOT NULL
                   AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
         int releaseReconciled(
@@ -1763,14 +1763,14 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                   AND p.store_no=a.store_no AND p.preview_no=a.preview_no AND p.deleted=0
                 JOIN ord_appointment root ON root.tenant_no=#{tenantNo} AND root.entity_no=#{entityNo}
                   AND root.store_no=#{storeNo} AND root.appointment_no=#{appointmentNo} AND root.deleted=0
-                JOIN bty_appointment_resource_intent i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
+                JOIN ord_appointment_command i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
                   AND i.store_no=a.store_no AND i.appointment_no=a.appointment_no AND i.deleted=0
                   AND i.command_no=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandNo'))
                   AND i.command_hash=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.commandHash'))
                   AND i.plan_hash=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.planHash'))
                   AND i.action=JSON_UNQUOTE(JSON_EXTRACT(a.receipt,'$.binding.action'))
                   AND i.source_revision=JSON_EXTRACT(a.receipt,'$.binding.sourceRevision')
-                  AND i.frozen_plan=p.frozen_plan
+                  AND JSON_UNQUOTE(JSON_EXTRACT(i.accept_payload,'$.frozenPayload'))=p.frozen_plan
                 WHERE a.tenant_no=#{tenantNo} AND a.entity_no=#{entityNo} AND a.store_no=#{storeNo}
                   AND a.appointment_no=#{appointmentNo} AND a.operation_no=#{appointmentOperationNo}
                   AND a.deleted=0 AND a.action='CREATE'

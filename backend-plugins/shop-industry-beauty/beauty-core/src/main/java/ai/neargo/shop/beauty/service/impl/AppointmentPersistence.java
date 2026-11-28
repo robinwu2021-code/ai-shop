@@ -25,7 +25,7 @@ public final class AppointmentPersistence {
     final BeautyMappers.AppointmentOperationMapper operations;
     final BeautyMappers.AppointmentCurrentMapper currents;
     final BeautyMappers.AppointmentArrangementMapper arrangements;
-    final BeautyMappers.AppointmentResourceIntentMapper intents;
+    final BeautyMappers.AppointmentCommandMapper commands;
     final BeautyMappers.AppointmentResourceFenceMapper fences;
     final BeautyMappers.AppointmentItemMapper items;
     final ObjectMapper json;
@@ -37,10 +37,10 @@ public final class AppointmentPersistence {
             BeautyMappers.AppointmentPreparationMapper preparations, BeautyMappers.AppointmentOperationMapper
                     operations,
             BeautyMappers.AppointmentCurrentMapper currents, BeautyMappers.AppointmentArrangementMapper arrangements,
-            BeautyMappers.AppointmentResourceIntentMapper intents, BeautyMappers.AppointmentResourceFenceMapper fences,
+            BeautyMappers.AppointmentCommandMapper commands, BeautyMappers.AppointmentResourceFenceMapper fences,
             BeautyMappers.AppointmentItemMapper items,
             ObjectMapper json, PlatformTransactionManager manager) {
-        this(roots, preparations, operations, currents, arrangements, intents, fences, items,
+        this(roots, preparations, operations, currents, arrangements, commands, fences, items,
                 json, manager, manager);
     }
 
@@ -51,7 +51,7 @@ public final class AppointmentPersistence {
             BeautyMappers.AppointmentPreparationMapper preparations, BeautyMappers.AppointmentOperationMapper
                     operations,
             BeautyMappers.AppointmentCurrentMapper currents, BeautyMappers.AppointmentArrangementMapper arrangements,
-            BeautyMappers.AppointmentResourceIntentMapper intents, BeautyMappers.AppointmentResourceFenceMapper fences,
+            BeautyMappers.AppointmentCommandMapper commands, BeautyMappers.AppointmentResourceFenceMapper fences,
             BeautyMappers.AppointmentItemMapper items,
             ObjectMapper json, PlatformTransactionManager manager,
             PlatformTransactionManager industryManager) {
@@ -60,7 +60,7 @@ public final class AppointmentPersistence {
         this.operations = operations;
         this.currents = currents;
         this.arrangements = arrangements;
-        this.intents = intents;
+        this.commands = commands;
         this.fences = fences;
         this.items = items;
         this.json = json;
