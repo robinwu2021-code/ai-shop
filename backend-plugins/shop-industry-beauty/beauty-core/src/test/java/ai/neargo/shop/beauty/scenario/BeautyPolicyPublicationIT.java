@@ -91,8 +91,7 @@ class BeautyPolicyPublicationIT {
     }
 
     private void emptyBusiness() {
-        for (String table : List.of("ind_store_policy", "ind_config_revision", "bty_action_log",
-                "sys_idempotent")) {
+        for (String table : List.of("ind_store_policy", "ind_config_revision", "sys_idempotent")) {
             assertThat(count(table)).as(table).isZero();
         }
     }
@@ -117,9 +116,9 @@ class BeautyPolicyPublicationIT {
             Object first = publish(context, "K", 0, 7);
             assertThat(json.writeValueAsString(publish(context, "K", 0, 7)))
                     .isEqualTo(json.writeValueAsString(first));
-            for (String table : List.of("ind_store_policy", "ind_config_revision", "bty_action_log",
-                    "sys_idempotent")) { assertThat(count(table)).as(table).isOne(); }
-            assertThat(sql.queryForObject("SELECT operator_ref FROM bty_action_log", String.class)).isEqualTo("ACTOR");
+            for (String table : List.of("ind_store_policy", "ind_config_revision", "sys_idempotent")) {
+                assertThat(count(table)).as(table).isOne();
+            }
             assertThat(sql.queryForObject("SELECT created_by FROM ind_config_revision", String.class))
                     .isEqualTo("ACTOR");
             assertThat(sql.queryForObject("SELECT endpoint FROM sys_idempotent", String.class))
@@ -187,8 +186,8 @@ class BeautyPolicyPublicationIT {
                     @Override
                     public void beforeCommit(boolean readOnly) {
                         JdbcTemplate transactionSql = new JdbcTemplate(context.getBean(DataSource.class));
-                        assertThat(transactionSql.queryForObject("SELECT COUNT(*) FROM bty_action_log", Integer.class))
-                                .isOne();
+                        assertThat(transactionSql.queryForObject("SELECT COUNT(*) FROM ind_config_revision",
+                                Integer.class)).isOne();
                         throw new IllegalStateException("before-outer-commit");
                     }
                 });
@@ -234,8 +233,9 @@ class BeautyPolicyPublicationIT {
                 start.countDown();
                 assertThat(first.get(15, TimeUnit.SECONDS) + second.get(15, TimeUnit.SECONDS)).isEqualTo(1);
             }
-            for (String table : List.of("ind_store_policy", "ind_config_revision", "bty_action_log",
-                    "sys_idempotent")) { assertThat(count(table)).as(table).isOne(); }
+            for (String table : List.of("ind_store_policy", "ind_config_revision", "sys_idempotent")) {
+                assertThat(count(table)).as(table).isOne();
+            }
         });
     }
 

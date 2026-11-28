@@ -7,7 +7,6 @@ import ai.neargo.shop.beauty.dto.PolicyVersionVO;
 import ai.neargo.shop.beauty.dto.StorePolicyQuery;
 import ai.neargo.shop.beauty.dto.StorePolicyVO;
 import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyStorePolicy;
 import ai.neargo.shop.beauty.entity.BtyStorePolicyVersion;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
@@ -30,16 +29,14 @@ import tools.jackson.databind.ObjectMapper;
 public class StorePolicyServiceImpl implements StorePolicyService {
     private final BeautyMappers.StorePolicyMapper policies;
     private final BeautyMappers.StorePolicyVersionMapper versions;
-    private final BeautyMappers.ActionLogMapper actions;
     private final RequestIdempotencyPort idempotency;
     private final ObjectMapper json;
 
     public StorePolicyServiceImpl(BeautyMappers.StorePolicyMapper policies,
-            BeautyMappers.StorePolicyVersionMapper versions, BeautyMappers.ActionLogMapper actions,
+            BeautyMappers.StorePolicyVersionMapper versions,
             RequestIdempotencyPort idempotency, ObjectMapper json) {
         this.policies = policies;
         this.versions = versions;
-        this.actions = actions;
         this.idempotency = idempotency;
         this.json = json;
     }
@@ -139,19 +136,6 @@ public class StorePolicyServiceImpl implements StorePolicyService {
                 req.expectedRevision(), versionNo, actor, LocalDateTime.now(ZoneOffset.UTC)) != 1) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
-        BtyActionLog action = new BtyActionLog();
-        action.setEntityNo(entity);
-        action.setActionNo(BizKey.next("BTAL"));
-        action.setStoreNo(store);
-        action.setAggregateType("BEAUTY_STORE_POLICY");
-        action.setAggregateNo(head.getPolicyNo());
-        action.setAction("POLICY_VERSION_PUBLISHED");
-        action.setOperatorRef(actor);
-        action.setExpectedRevision(req.expectedRevision());
-        action.setResultRevision(revision);
-        action.setSafeSnapshot(json.writeValueAsString(Map.of("policyVersionNo", versionNo, "hash", snapshot)));
-        action.setRequestRef(IdempotencyScope.requestHash(key));
-        actions.insert(action);
         return new PolicyVersionVO(head.getPolicyNo(), versionNo, revision, req.validFrom(), snapshot);
     }
 }

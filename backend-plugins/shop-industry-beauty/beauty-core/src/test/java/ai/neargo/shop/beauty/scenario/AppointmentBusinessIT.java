@@ -418,9 +418,9 @@ class AppointmentBusinessIT extends BeautyExecutionFixture {
             var noShow = service.recordNoShow("E", "S", "OWNER_USER", root.appointmentNo(),
                     new RecordNoShowReq(root.revision(), "not arrived", "EVIDENCE"), "NO_SHOW");
             assertThat(noShow.status()).isEqualTo("NO_SHOW");
-            assertThat(sql.queryForObject("SELECT safe_snapshot FROM bty_action_log "
-                    + "WHERE action='APPOINTMENT_NO_SHOW_PREPARED'", String.class))
-                    .contains("not arrived", "EVIDENCE");
+            // 爽约的原因与凭证记在预约上（TDD §2.6 第 12 项，原来只在操作日志里）
+            assertThat(sql.queryForMap("SELECT cancel_reason, cancel_evidence_ref FROM ord_appointment"))
+                    .containsEntry("cancel_reason", "not arrived").containsEntry("cancel_evidence_ref", "EVIDENCE");
             assertThat(owner.hold.status()).isEqualTo("RELEASED");
         });
     }

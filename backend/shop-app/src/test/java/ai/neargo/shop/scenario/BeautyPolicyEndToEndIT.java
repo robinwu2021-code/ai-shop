@@ -112,13 +112,10 @@ class BeautyPolicyEndToEndIT {
                     mvc.perform(post(path).header("Authorization", "Bearer " + token)
                             .header("Idempotency-Key", "BAD-STORE").header("X-Store-No", "FOREIGN")
                             .contentType("application/json").content(body)).andExpect(status().isForbidden());
-                    for (String table : List.of("ind_store_policy", "ind_config_revision", "bty_action_log",
-                            "sys_idempotent")) {
+                    for (String table : List.of("ind_store_policy", "ind_config_revision", "sys_idempotent")) {
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class))
                                 .as(table).isOne();
                     }
-                    assertThat(sql.queryForObject("SELECT operator_ref FROM bty_action_log", String.class))
-                            .isEqualTo("staff");
                     assertThat(sql.queryForObject("SELECT created_by FROM ind_config_revision", String.class))
                             .isEqualTo("staff");
                 });

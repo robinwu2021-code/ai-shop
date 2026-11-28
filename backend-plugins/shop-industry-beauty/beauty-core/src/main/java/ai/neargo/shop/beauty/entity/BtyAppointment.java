@@ -45,4 +45,8 @@ public class BtyAppointment extends BaseEntity {
     private LocalDateTime checkedInAt;
     /** 已开的工单（V9.1）：预约侧的护栏看这一列，不联查行业库的工单表。 */
     private String workOrderNo;
+    /** 取消或爽约的原因（最长 500）：受理取消、爽约时写，释放资源被拒时清掉（TDD §2.6 第 12 项，原来只在操作日志里）。 */
+    private String cancelReason;
+    /** 取消或爽约的凭证引用（登记爽约时的证明材料）；没有为空。 */
+    private String cancelEvidenceRef;
 }

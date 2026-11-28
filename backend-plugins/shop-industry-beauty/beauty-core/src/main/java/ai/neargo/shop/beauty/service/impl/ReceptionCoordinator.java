@@ -10,7 +10,6 @@ import ai.neargo.shop.beauty.dto.ReceiveWalkInReq;
 import ai.neargo.shop.beauty.dto.ReceptionExceptionReq;
 import ai.neargo.shop.beauty.dto.ReceptionExceptionVO;
 import ai.neargo.shop.beauty.dto.WalkInVO;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
@@ -93,7 +92,7 @@ public final class ReceptionCoordinator {
                     new WalkInPayload(1, BizKey.next("BTA"), BizKey.next("BTPR"), BizKey.next("BTOP"),
                             req.items(), req.assignments(), req.startAt(), null, null,
                             IdempotencyScope.requestHash("BEAUTY_WALK_IN_CREATE_V1",
-                                    ReceptionPreparation.derived(entity, store, "BAPI-048", key)), null, null, null));
+                                    ReceptionPreparation.derived(entity, store, "BAPI-048", key)), null, null, null, null));
         }
         return resumeWalkIn(entity, store, actor, op);
     }
@@ -156,7 +155,7 @@ public final class ReceptionCoordinator {
                 }, (locked, rootVersion) -> {
                     AppointmentPersistence.require(sameWalkIn(active, locked));
                     locked.setFrozenPayload(db.json.writeValueAsString(walkInPayload(locked)
-                            .withRevisions(rootVersion, null)));
+                            .withRevisions(rootVersion, null).withArriveAt(now())));
                     locked.setPhase(BtyReceptionOperation.ARRIVAL_PENDING);
                     steps.save(locked); steps.clearRetry(locked);
                     return locked;
@@ -181,12 +180,14 @@ public final class ReceptionCoordinator {
         var payload = walkInPayload(observed);
         AppointmentPersistence.require(payload.arrivalRevision() != null);
         long arrival = payload.arrivalRevision();
+        AppointmentPersistence.require(payload.arriveAt() != null);
+        var arriveAt = payload.arriveAt();
         boolean pending = "CONFIRMED".equals(original.getStatus());
         var evidence = pending ? appointments.currentArrangementEvidence(original) : null;
         return steps.advance(observed, java.util.Set.of(BtyReceptionOperation.ARRIVAL_PENDING), () -> {
             var root = db.lock(original);
             // 上次已标到店、提交后断了：只补接待操作
-            if (arrived(root, arrival, observed)) { return null; }
+            if (arrived(root, arrival, arriveAt)) { return null; }
             var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
             var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
                     root.getAppointmentNo());
@@ -200,8 +201,7 @@ public final class ReceptionCoordinator {
             appointmentPreparation.linkedReception(observed);
             verifyArrangement(root, evidence);
             AppointmentPersistence.require(db.roots.markArrived(root.getEntityNo(), root.getStoreNo(),
-                    root.getAppointmentNo(), root.getVersion(), "CONFIRMED", now(), actor, now()) == 1);
-            action(root, observed, "CHECKED_IN", null, "{\"state\":\"CHECKED_IN\"}", root.getVersion() + 1);
+                    root.getAppointmentNo(), root.getVersion(), "CONFIRMED", arriveAt, actor, now()) == 1);
             publish(root, observed, root.getVersion() + 1, "CHECKED_IN");
             return null;
         }, (op, ignored) -> {
@@ -211,23 +211,13 @@ public final class ReceptionCoordinator {
             return op;
         }, op -> op);
     }
-    /** 预约已由这次接待标到店（版本正好加一、有这次接待的到店日志）。 */
-    private boolean arrived(BtyAppointment root, long revision, BtyReceptionOperation op) {
+    /**
+     * 预约已由这次接待标到店：已到店、版本正好加一、到店时刻就是这次受理时定的那个（TDD §2.6 第 12 项，
+     * 不再靠操作日志认）。别的接待先标了到店的话，到店时刻对不上，这次不会冒领。
+     */
+    private boolean arrived(BtyAppointment root, long revision, LocalDateTime arriveAt) {
         return "CHECKED_IN".equals(root.getStatus()) && root.getVersion() == revision + 1
-                && logged(root, op, "CHECKED_IN");
-    }
-    /** 这次接待在这张预约上已经记过这条操作日志（预约侧重做时不重复记）。 */
-    private boolean logged(BtyAppointment root, BtyReceptionOperation op, String action) {
-        return loggedActionNo(root, op, action) != null;
-    }
-    private String loggedActionNo(BtyAppointment root, BtyReceptionOperation op, String action) {
-        var row = db.actions.selectOne(Wrappers.<BtyActionLog>lambdaQuery()
-                .eq(BtyActionLog::getTenantNo, root.getTenantNo()).eq(BtyActionLog::getEntityNo, root.getEntityNo())
-                .eq(BtyActionLog::getAggregateType, "BEAUTY_APPOINTMENT")
-                .eq(BtyActionLog::getAggregateNo, root.getAppointmentNo())
-                .eq(BtyActionLog::getRequestRef, op.getOperationNo()).eq(BtyActionLog::getAction, action)
-                .last("LIMIT 1"));
-        return row == null ? null : row.getActionNo();
+                && arriveAt != null && arriveAt.equals(root.getCheckedInAt());
     }
     private WalkInVO closeReleasedWalkIn(BtyReceptionOperation observed) {
         var linked = appointmentPreparation.linkedReception(observed);
@@ -273,10 +263,6 @@ public final class ReceptionCoordinator {
                     && release.getReceipt().equals(latest.getReceipt())
                     && current.getOperationNo() == null && fence.getActiveIntentNo() == null
                     && db.roots.countWorkOrders(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()) == 0);
-            if (!logged(root, observed, "WALK_IN_RESOURCE_REJECTED")) {
-                action(root, observed, "WALK_IN_RESOURCE_REJECTED", null, "{\"state\":\"REJECTED\"}",
-                        root.getVersion());
-            }
             return null;
         }, (op, ignored) -> {
             AppointmentPersistence.require(sameWalkIn(observed, op));
@@ -395,11 +381,14 @@ public final class ReceptionCoordinator {
         var evidence = "CONFIRMED".equals(observed.getStatus())
                 ? appointments.currentArrangementEvidence(observed) : null;
         var op = preparations.begin(observed.getEntityNo(), observed.getStoreNo(), actor, endpoint, key, hash, identity,
-                new ReceptionPreparation.ArrivalPayload(1, observed.getAppointmentNo(), revision));
+                new ReceptionPreparation.ArrivalPayload(1, observed.getAppointmentNo(), revision, now()));
+        // 到店时刻以受理时定的为准（重做沿用同一个）
+        var at = db.json.readValue(op.getFrozenPayload(), ReceptionPreparation.ArrivalPayload.class).arriveAt();
+        AppointmentPersistence.require(at != null);
         return steps.once(op, () -> {
             var root = db.lock(observed);
             // 上次已标到店、提交后断了：按预约上的到店时刻补结果
-            if (arrived(root, revision, op)) { return arrivalResult(root, revision, root.getCheckedInAt(), op); }
+            if (arrived(root, revision, at)) { return arrivalResult(root, revision, root.getCheckedInAt(), op); }
             var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
             AppointmentPersistence.require(fence != null && fence.getActiveIntentNo() == null);
             var current = db.current(root);
@@ -413,12 +402,10 @@ public final class ReceptionCoordinator {
                     && Objects.equals(observed.getGuestRef(), root.getGuestRef())
                     && db.roots.countWorkOrders(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()) == 0);
             verifyArrangement(root, evidence);
-            var at = now();
             if (!at.isBefore(root.getEndAt())) { throw BizException.of(ErrorCode.BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE); }
             if (challenge != null) { challenge(root, challenge, at); }
             AppointmentPersistence.require(db.roots.markArrived(root.getEntityNo(), root.getStoreNo(),
                     root.getAppointmentNo(), revision, "CONFIRMED", at, actor, at) == 1);
-            action(root, op, "CHECKED_IN", null, "{\"state\":\"CHECKED_IN\"}", revision + 1);
             publish(root, op, revision + 1, "CHECKED_IN");
             return arrivalResult(root, revision, at, op);
         }, (row, result) -> { complete(row, result); return result; }, this::arrivalOrConflict);
@@ -444,7 +431,7 @@ public final class ReceptionCoordinator {
         // 先受理（行业库），再在交易事务里记异常日志，最后落结果（ReceptionSteps.once）
         var op = preparations.begin(entity, store, actor, "BAPI-053", key, hash, null,
                 new ReceptionPreparation.ExceptionPayload(1, observed.getAppointmentNo(), req.kind(), req.proposal(),
-                        req.expectedRevision()));
+                        req.expectedRevision(), req.reason()));
         // 受影响的任务在行业库：在交易事务外读
         var affected = workOrders.affectedTaskNos(entity, store, observed.getAppointmentNo());
         return steps.once(op, () -> {
@@ -452,14 +439,9 @@ public final class ReceptionCoordinator {
             var fence = db.fences.selectScopedForUpdate(entity, store, root.getAppointmentNo());
             AppointmentPersistence.require(fence != null);
             AppointmentPersistence.require(root.getVersion().equals(req.expectedRevision()));
-            String actionNo = loggedActionNo(root, op, "RECEPTION_EXCEPTION_REQUESTED");
-            if (actionNo == null) {
-                actionNo = action(root, op, "RECEPTION_EXCEPTION_REQUESTED", req.reason(),
-                        db.json.writeValueAsString(new ExceptionSnapshot(req.kind(), req.proposal(), affected)),
-                        root.getVersion());
-                publish(root, op, root.getVersion(), "PENDING_REVIEW");
-            }
-            return new ReceptionExceptionVO(actionNo, root.getAppointmentNo(), "PENDING_REVIEW", affected,
+            // 申请只核对、不改预约：申请号就是接待操作号，内容随结果记在接待操作行上（TDD §2.6 第 12 项）
+            publish(root, op, root.getVersion(), "PENDING_REVIEW");
+            return new ReceptionExceptionVO(op.getOperationNo(), root.getAppointmentNo(), "PENDING_REVIEW", affected,
                     op.getOperationNo());
         }, (row, result) -> { complete(row, result); return result; }, row -> {
             if (succeeded(row)) { return db.json.readValue(row.getResult(), ReceptionExceptionVO.class); }
@@ -510,15 +492,6 @@ public final class ReceptionCoordinator {
         op.setPhase("SUCCEEDED"); op.setResult(db.json.writeValueAsString(result));
         steps.save(op);
     }
-    private String action(BtyAppointment root, BtyReceptionOperation op, String action, String reason, String snapshot,
-            long revision) {
-        var row = new BtyActionLog(); row.setEntityNo(root.getEntityNo()); row.setStoreNo(root.getStoreNo());
-        row.setActionNo(BizKey.next("BTAL")); row.setAggregateType("BEAUTY_APPOINTMENT");
-        row.setAggregateNo(root.getAppointmentNo()); row.setAction(action); row.setRequestRef(op.getOperationNo());
-        row.setOperatorRef(SecurityUtils.requireUser().userNo()); row.setExpectedRevision(root.getVersion());
-        row.setResultRevision(revision); row.setReason(reason); row.setSafeSnapshot(snapshot); db.actions.insert(row);
-        return row.getActionNo();
-    }
     private void publish(BtyAppointment root, BtyReceptionOperation op, long revision, String state) {
         String requestId = MDC.get("requestId");
         String operationNo = op.getOperationNo();
@@ -527,5 +500,4 @@ public final class ReceptionCoordinator {
                 "beauty.reception.state_committed requestId={} operationNo={} appointmentNo={} state={}",
                 requestId, operationNo, appointmentNo, state));
     }
-    private record ExceptionSnapshot(String kind, String proposal, List<String> affectedTaskNos) { }
 }

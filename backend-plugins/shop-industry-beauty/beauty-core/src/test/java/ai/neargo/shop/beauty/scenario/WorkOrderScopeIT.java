@@ -481,8 +481,6 @@ class WorkOrderScopeIT extends ReceptionFixture {
                 assertThat(count("bty_work_order")).isEqualTo(1);
                 assertThat(count("bty_work_order WHERE identity_kind IS NOT NULL")).isEqualTo(1);
                 assertThat(count("bty_service_submission")).isEqualTo(1);
-                assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action='WORK_ORDER_OPENED'",
-                        Integer.class)).isEqualTo(1);
             }
         });
     }
@@ -761,9 +759,9 @@ class WorkOrderScopeIT extends ReceptionFixture {
             var arrived = c.getBean(ReceptionService.class).checkIn("E", "S", "A",
                     request(root.appointmentNo(), root.revision()), "ARRIVE");
             var req = new OpenAppointmentWorkOrderReq(arrived.revision(), List.of());
-            failAudit = true;
+            failAt = "OPEN";
             assertThatThrownBy(() -> c.getBean(AppointmentService.class).openWorkOrderFromAppointment("E", "S", "A",
-                    root.appointmentNo(), req, "OPEN")).hasMessage("reception-audit-rollback");
+                    root.appointmentNo(), req, "OPEN")).hasMessage("reception-step-rollback");
             for (String table : List.of("bty_work_order", "bty_service_task",
                     "bty_service_submission")) { assertThat(count(table)).isZero(); }
             // 开单分步提交（ADR-068）：预约上的开单标记在交易事务里已经提交，工单那一步回滚；
@@ -775,11 +773,9 @@ class WorkOrderScopeIT extends ReceptionFixture {
                     .isEqualTo(arrived.revision() + 1);
             assertThat(sql.queryForObject("SELECT work_order_no FROM ord_appointment", String.class))
                     .isEqualTo(reserved);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action='WORK_ORDER_OPENED'",
-                    Integer.class)).isZero();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation WHERE action='OPEN_WORK_ORDER' "
                     + "AND phase='SUCCEEDED'", Integer.class)).isZero();
-            failAudit = false;
+            failAt = null;
             assertThat(c.getBean(AppointmentService.class).openWorkOrderFromAppointment("E", "S", "A",
                     root.appointmentNo(), req, "OPEN").status()).isEqualTo("OPEN");
             assertThat(count("bty_work_order")).isEqualTo(1);
@@ -796,13 +792,13 @@ class WorkOrderScopeIT extends ReceptionFixture {
                     var arrived = c.getBean(ReceptionService.class).checkIn("E", "S", "A", request(root.appointmentNo(),
                             root.revision()), "ARRIVE");
                     var req = new OpenAppointmentWorkOrderReq(arrived.revision(), List.of());
-                    failAudit = true;
+                    failAt = "OPEN";
                     assertThatThrownBy(() -> c.getBean(AppointmentService.class).openWorkOrderFromAppointment("E", "S",
-                            "A", root.appointmentNo(), req, "OPEN")).hasMessage("reception-audit-rollback");
+                            "A", root.appointmentNo(), req, "OPEN")).hasMessage("reception-step-rollback");
                     String originalHash = json.readTree(sql.queryForObject("SELECT frozen_payload FROM "
                             + "bty_reception_operation WHERE action='OPEN_WORK_ORDER'", String.class))
                             .get("scopeHash").asText();
-                    failAudit = false;
+                    failAt = null;
                     c.getBean(ServiceDefinitionService.class).publishDefinitionVersion("E", "S", "A",
                             new PublishServiceDefinitionVersionReq("SKU", 1L,
                                     new PublishServiceDefinitionVersionReq.Duration(27, 9, 12), List.of(
@@ -1100,13 +1096,13 @@ class WorkOrderScopeIT extends ReceptionFixture {
                             + "WHERE appointment_no=?",
                             root.appointmentNo());
                     var req = new OpenAppointmentWorkOrderReq(arrived.revision(), List.of());
-                    failAudit = true;
+                    failAt = "OPEN";
                     assertThatThrownBy(() -> c.getBean(AppointmentService.class).openWorkOrderFromAppointment("E", "S",
-                            "A", root.appointmentNo(), req, "OPEN")).hasMessage("reception-audit-rollback");
+                            "A", root.appointmentNo(), req, "OPEN")).hasMessage("reception-step-rollback");
                     assertThat(reads.get()).isEqualTo(1);
                     String payload = sql.queryForObject("SELECT frozen_payload FROM bty_reception_operation "
                             + "WHERE action='OPEN_WORK_ORDER'", String.class);
-                    state.set("CLAIMED"); failAudit = false;
+                    state.set("CLAIMED"); failAt = null;
                     var opened = c.getBean(AppointmentService.class).openWorkOrderFromAppointment("E", "S", "A",
                             root.appointmentNo(), req, "OPEN");
                     assertThat(reads.get()).isEqualTo(1);

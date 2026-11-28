@@ -5,7 +5,6 @@ import ai.neargo.shop.beauty.dto.ClaimGuestReq;
 import ai.neargo.shop.beauty.dto.GuestClaimVO;
 import ai.neargo.shop.beauty.dto.GuestRegistrationVO;
 import ai.neargo.shop.beauty.dto.RegisterGuestReq;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyGuestClaimReceipt;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
@@ -138,13 +137,6 @@ public final class GuestRegistrationServiceImpl implements GuestRegistrationServ
                     "SUCCEEDED", null);
             op.setPhase("SUCCEEDED"); op.setResult(db.json.writeValueAsString(result));
             steps.save(op);
-            var log = new BtyActionLog(); log.setEntityNo(op.getEntityNo()); log.setStoreNo(op.getStoreNo());
-            log.setActionNo(BizKey.next("BTAL")); log.setAggregateType("BEAUTY_GUEST_CLAIM");
-            log.setAggregateNo(fact.guestNo()); log.setAction("GUEST_CLAIM_RECEIPT_RECORDED");
-            log.setOperatorRef(SecurityUtils.requireUser().userNo());
-            log.setExpectedRevision(0L); log.setResultRevision(fact.revision());
-            log.setSafeSnapshot("{\"state\":\"CLAIMED\"}"); log.setRequestRef(op.getOperationNo());
-            db.actions.insert(log);
             return result;
         });
     }

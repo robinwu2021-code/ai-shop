@@ -950,32 +950,7 @@ class ServiceSubmissionIT extends SourceFixture {
                     .containsEntry("action", action)
                     .containsEntry("request_key_hash", namespace)
                     .containsEntry("payload_hash", payload);
-            var receipts =
-                    sql.queryForList(
-                            "SELECT * FROM bty_action_log WHERE entity_no='E' AND store_no='S' AND"
-                                    + " action='SOURCE_SUBMITTED' AND request_ref=?",
-                            namespace);
-            assertThat(receipts).hasSize(1);
-            var receipt = receipts.getFirst();
-            assertThat(receipt)
-                    .containsEntry("aggregate_type", "BEAUTY_SOURCE_SUBMISSION")
-                    .containsEntry("aggregate_no", original.submissionNo())
-                    .containsEntry("operator_ref", "A")
-                    .containsEntry("action_no", "BTSK" + namespace.substring(0, 28));
-            assertThat(json.readTree((String) receipt.get("safe_snapshot")))
-                    .isEqualTo(
-                            json.valueToTree(
-                                    Map.of(
-                                            "schemaVersion",
-                                            1,
-                                            "namespace",
-                                            namespace,
-                                            "payload",
-                                            payload,
-                                            "workOrderNo",
-                                            root.workOrderNo(),
-                                            "submissionNo",
-                                            original.submissionNo())));
+            // 受理回执就是提交单本身（请求键摘要 = 命名空间，TDD §2.6 第 12 项），不再另记操作日志
             var command =
                     json.readValue(
                             (String) row.get("frozen_command"),
@@ -1036,7 +1011,6 @@ class ServiceSubmissionIT extends SourceFixture {
             assertThat(observationsBefore).isEmpty();
             assertThat(bindingsBefore).isEmpty();
             assertThat(allocationsBefore).isEmpty();
-            var logsBefore = sql.queryForList("SELECT * FROM bty_action_log ORDER BY action_no");
             var replay =
                     service.submitForWorkOrder(
                             "E", "S", "A", root.workOrderNo(), request, "RACING");
@@ -1080,16 +1054,6 @@ class ServiceSubmissionIT extends SourceFixture {
                     .isEqualTo(bindingsBefore);
             assertThat(sql.queryForList("SELECT * FROM bty_source_allocation_guard ORDER BY id"))
                     .isEqualTo(allocationsBefore);
-            assertThat(
-                            sql.queryForList(
-                                    "SELECT * FROM bty_action_log WHERE entity_no='E' AND"
-                                            + " store_no='S' AND action='SOURCE_SUBMITTED' AND"
-                                            + " request_ref=?",
-                                    namespace))
-                    .as("winner original immutable acceptance receipt survives replay unchanged")
-                    .isEqualTo(receipts);
-            assertThat(sql.queryForList("SELECT * FROM bty_action_log ORDER BY action_no"))
-                    .isEqualTo(logsBefore);
         } finally {
             accepted.countDown();
             executor.shutdownNow();

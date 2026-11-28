@@ -28,7 +28,6 @@ public final class AppointmentPersistence {
     final BeautyMappers.AppointmentResourceFenceMapper fences;
     final BeautyMappers.AppointmentItemMapper items;
     final BeautyMappers.AppointmentAssignmentMapper assignments;
-    final BeautyMappers.ActionLogMapper actions;
     final ObjectMapper json;
     private final TransactionTemplate writes;
     /** 行业库（工单、服务任务等服务执行的表）的写事务；行业句柄未绑定时与 {@link #writes} 是同一个库。 */
@@ -40,8 +39,8 @@ public final class AppointmentPersistence {
             BeautyMappers.AppointmentCurrentMapper currents, BeautyMappers.AppointmentArrangementMapper arrangements,
             BeautyMappers.AppointmentResourceIntentMapper intents, BeautyMappers.AppointmentResourceFenceMapper fences,
             BeautyMappers.AppointmentItemMapper items, BeautyMappers.AppointmentAssignmentMapper assignments,
-            BeautyMappers.ActionLogMapper actions, ObjectMapper json, PlatformTransactionManager manager) {
-        this(roots, preparations, operations, currents, arrangements, intents, fences, items, assignments, actions,
+            ObjectMapper json, PlatformTransactionManager manager) {
+        this(roots, preparations, operations, currents, arrangements, intents, fences, items, assignments,
                 json, manager, manager);
     }
 
@@ -54,7 +53,7 @@ public final class AppointmentPersistence {
             BeautyMappers.AppointmentCurrentMapper currents, BeautyMappers.AppointmentArrangementMapper arrangements,
             BeautyMappers.AppointmentResourceIntentMapper intents, BeautyMappers.AppointmentResourceFenceMapper fences,
             BeautyMappers.AppointmentItemMapper items, BeautyMappers.AppointmentAssignmentMapper assignments,
-            BeautyMappers.ActionLogMapper actions, ObjectMapper json, PlatformTransactionManager manager,
+            ObjectMapper json, PlatformTransactionManager manager,
             PlatformTransactionManager industryManager) {
         this.roots = roots;
         this.preparations = preparations;
@@ -65,7 +64,6 @@ public final class AppointmentPersistence {
         this.fences = fences;
         this.items = items;
         this.assignments = assignments;
-        this.actions = actions;
         this.json = json;
         writes = new TransactionTemplate(manager);
         writes.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);

@@ -124,8 +124,9 @@ class BeautyStandaloneEndToEndIT {
                     new ServiceDefinitionQuery("S", null, null, 1, 20)).records()).hasSize(1);
             var sql = new JdbcTemplate(source);
             assertThat(productDefinitions.actors).containsExactly("REMOTE-ACTOR");
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE operator_ref='REMOTE-ACTOR'",
-                    Integer.class)).isEqualTo(2);
+            // 门店政策版本记着发布人（操作日志已退役，TDD §2.6 第 12 项）
+            assertThat(sql.queryForObject("SELECT created_by FROM ind_config_revision", String.class))
+                    .isEqualTo("REMOTE-ACTOR");
             var unauthorized = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(url
                     + BeautyPolicyInternalApi.READ_PATH)).header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("{}") ).build(), HttpResponse.BodyHandlers.discarding());

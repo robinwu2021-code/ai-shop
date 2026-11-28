@@ -8,7 +8,6 @@ import ai.neargo.shop.beauty.dto.ServiceSubmissionVO;
 import ai.neargo.shop.beauty.dto.SourceObservationVO;
 import ai.neargo.shop.beauty.dto.SubmissionTaskVO;
 import ai.neargo.shop.beauty.dto.SubmitServicesReq;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.entity.BtyServiceTask;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
@@ -557,26 +556,6 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                                 row.setStatus("RECEIVED");
                                 row.setNextRetryAt(now().plusSeconds(30));
                                 submissions.insert(row);
-                                var receipt = new BtyActionLog();
-                                receipt.setEntityNo(entity);
-                                receipt.setStoreNo(store);
-                                receipt.setActionNo("BTSK" + namespace.substring(0, 28));
-                                receipt.setAggregateType("BEAUTY_SOURCE_SUBMISSION");
-                                receipt.setAggregateNo(number);
-                                receipt.setAction("SOURCE_SUBMITTED");
-                                receipt.setOperatorRef(actor);
-                                receipt.setRequestRef(namespace);
-                                receipt.setExpectedRevision(req.expectedRevision());
-                                receipt.setResultRevision(locked.getVersion());
-                                receipt.setSafeSnapshot(
-                                        db.json.writeValueAsString(
-                                                new SubmissionAcceptance(
-                                                        1,
-                                                        namespace,
-                                                        payloadHash,
-                                                        workOrder,
-                                                        number)));
-                                db.actions.insert(receipt);
                                 return row;
                             });
         } catch (DuplicateKeyException collision) {
@@ -589,30 +568,17 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
         return resume(accepted, command(accepted), actor, req);
     }
 
-    private record SubmissionAcceptance(
-            int schemaVersion,
-            String namespace,
-            String payload,
-            String workOrderNo,
-            String submissionNo) {}
-
+    /**
+     * 已受理的那一单：提交单自己记着请求键摘要（命名空间），按它找回（TDD §2.6 第 12 项，不再靠操作日志里的回执）。
+     * 找到的单内容对不上（参数或工单不同）就是同键改了内容，拒绝。
+     */
     private BtyServiceSubmission acceptedSubmission(
             String entity, String store, String namespace, String payload, String workOrder) {
-        var receipt = recoveryReceipt(entity, store, "BTSK" + namespace.substring(0, 28));
-        if (receipt == null) {
+        var found = db.read(() -> submissions.selectByRequestKey(entity, store, namespace));
+        if (found == null) {
             return null;
         }
-        var saved = db.json.readValue(receipt.getSafeSnapshot(), SubmissionAcceptance.class);
-        AppointmentPersistence.require(
-                "BEAUTY_SOURCE_SUBMISSION".equals(receipt.getAggregateType())
-                        && "SOURCE_SUBMITTED".equals(receipt.getAction())
-                        && namespace.equals(receipt.getRequestRef())
-                        && saved.schemaVersion() == 1
-                        && namespace.equals(saved.namespace())
-                        && payload.equals(saved.payload())
-                        && workOrder.equals(saved.workOrderNo())
-                        && receipt.getAggregateNo().equals(saved.submissionNo()));
-        var row = query.submission(entity, store, saved.submissionNo());
+        var row = query.submission(entity, store, found.getSubmissionNo());
         AppointmentPersistence.require(
                 namespace.equals(row.getRequestKeyHash())
                         && payload.equals(row.getPayloadHash())
@@ -770,11 +736,11 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
         if (existing != null) {
             return recoveryReplay(existing, namespace, payload, number);
         }
-        // 提交在行业库、这条恢复请求记在操作日志里（B-5d）：先按普通读核对提交的版本，再在事务里记；
-        // 记录本身带着核对时的版本，期间提交被推进也不影响这条请求的含义
+        // 恢复请求记成服务提交表的一行（动作 RECOVERY，与提交单同在行业库，TDD §2.6 第 12 项）：
+        // 先按普通读核对提交的版本，再在行业事务里记；记录带着核对时的版本，期间提交被推进也不影响这条请求的含义
         var row = db.read(() -> submissions.selectScoped(entity, store, number));
         try {
-            return db.tx(
+            return db.industryTx(
                     () -> {
                         var concurrent = recoveryReceipt(entity, store, recoveryNo);
                         if (concurrent != null) {
@@ -788,24 +754,21 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                                         number,
                                         number,
                                         row.getVersion(),
-                                        "ACCEPTED",
+                                        BtyServiceSubmission.STATUS_ACCEPTED,
                                         "AUTHENTICATED_ORIGINAL_RECOVERY");
-                        var action = new BtyActionLog();
-                        action.setEntityNo(entity);
-                        action.setStoreNo(store);
-                        action.setActionNo(recoveryNo);
-                        action.setAggregateType("BEAUTY_SOURCE_SUBMISSION");
-                        action.setAggregateNo(number);
-                        action.setAction("RECOVERY_REQUESTED");
-                        action.setOperatorRef(actor);
-                        action.setRequestRef(namespace);
-                        action.setExpectedRevision(row.getVersion());
-                        action.setResultRevision(row.getVersion());
-                        action.setReason(req.reason());
-                        action.setSafeSnapshot(
+                        var request = new BtyServiceSubmission();
+                        request.setEntityNo(entity);
+                        request.setStoreNo(store);
+                        request.setSubmissionNo(recoveryNo);
+                        request.setWorkOrderNo(row.getWorkOrderNo());
+                        request.setAction(BtyServiceSubmission.ACTION_RECOVERY);
+                        request.setRequestKeyHash(namespace);
+                        request.setPayloadHash(payload);
+                        request.setStatus(BtyServiceSubmission.STATUS_ACCEPTED);
+                        request.setFrozenCommand(
                                 db.json.writeValueAsString(
-                                        new RecoveryAcceptance(1, namespace, payload, accepted)));
-                        db.actions.insert(action);
+                                        new RecoveryAcceptance(1, namespace, payload, accepted, req.reason())));
+                        submissions.insert(request);
                         return accepted;
                     });
         } catch (DuplicateKeyException collision) {
@@ -815,32 +778,25 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
         }
     }
 
+    /** 恢复请求的受理回执，存在恢复请求那一行的冻结命令里；原因随之一并记下。 */
     private record RecoveryAcceptance(
-            int schemaVersion, String namespace, String payload, RecoveryRequestVO receipt) {}
+            int schemaVersion, String namespace, String payload, RecoveryRequestVO receipt, String reason) {}
 
-    private BtyActionLog recoveryReceipt(String entity, String store, String number) {
-        return db.read(
-                () ->
-                        db.actions.selectOne(
-                                Wrappers.<BtyActionLog>lambdaQuery()
-                                        .eq(BtyActionLog::getTenantNo, "MAIN")
-                                        .eq(BtyActionLog::getEntityNo, entity)
-                                        .eq(BtyActionLog::getStoreNo, store)
-                                        .eq(BtyActionLog::getActionNo, number)));
+    private BtyServiceSubmission recoveryReceipt(String entity, String store, String number) {
+        return db.read(() -> submissions.selectScoped(entity, store, number));
     }
 
     private RecoveryRequestVO recoveryReplay(
-            BtyActionLog row, String namespace, String payload, String submission) {
-        var saved = db.json.readValue(row.getSafeSnapshot(), RecoveryAcceptance.class);
+            BtyServiceSubmission row, String namespace, String payload, String submission) {
+        var saved = db.json.readValue(row.getFrozenCommand(), RecoveryAcceptance.class);
         AppointmentPersistence.require(
-                "BEAUTY_SOURCE_SUBMISSION".equals(row.getAggregateType())
-                        && "RECOVERY_REQUESTED".equals(row.getAction())
-                        && submission.equals(row.getAggregateNo())
-                        && namespace.equals(row.getRequestRef())
+                BtyServiceSubmission.ACTION_RECOVERY.equals(row.getAction())
+                        && namespace.equals(row.getRequestKeyHash())
+                        && payload.equals(row.getPayloadHash())
                         && saved.schemaVersion() == 1
                         && namespace.equals(saved.namespace())
                         && payload.equals(saved.payload())
-                        && row.getActionNo().equals(saved.receipt().recoveryNo())
+                        && row.getSubmissionNo().equals(saved.receipt().recoveryNo())
                         && submission.equals(saved.receipt().submissionNo()));
         return saved.receipt();
     }

@@ -13,7 +13,7 @@ import ai.neargo.shop.beauty.dto.MyAppointmentVO;
 import ai.neargo.shop.beauty.dto.PreviewMyAppointmentReq;
 import ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq;
 import ai.neargo.shop.beauty.dto.ReceptionIdentityProof;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
+import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.AppointmentService;
 import ai.neargo.shop.idem.IdempotencyScope;
@@ -79,11 +79,10 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
     boolean occupied;
     boolean otherOccupied;
     /** Fails the audit row written in the same transaction as a reception state change. */
-    boolean failAudit;
+    /** 在哪一步注入失败：ARRIVE 标到店、EXCEPTION 接待异常核对、OPEN 开单写提交；空 = 不注入。 */
+    String failAt;
     long quotePrice = 1000;
     Long goodsRevision = 7L;
-    static final Set<String> FAILING_ACTIONS = Set.of("CHECKED_IN", "RECEPTION_EXCEPTION_REQUESTED",
-            "WORK_ORDER_OPENED");
     final OffsetDateTime start = OffsetDateTime.now(ZoneOffset.UTC).plusDays(1)
             .truncatedTo(ChronoUnit.DAYS).plusHours(10);
 
@@ -187,14 +186,23 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
                             "A", q.startAt(), q.endAt(), List.of("RULE"))).toList();
                 }).withInitializer(application -> application.getBeanFactory().addBeanPostProcessor(
                         new BeanPostProcessor() {
-                            private final BeanPostProcessor audit = BeautyFailureInjection.afterCall(
-                                    BeautyMappers.ActionLogMapper.class, "insert",
-                                    row -> failAudit && row instanceof BtyActionLog log
-                                            && FAILING_ACTIONS.contains(log.getAction()),
-                                    () -> { throw new IllegalStateException("reception-audit-rollback"); });
+                            // 业务步骤里注入失败（原来挂在操作日志上，日志退役后挂到同一步的业务写入上，TDD §2.6 第 12 项）
+                            private final List<BeanPostProcessor> faults = List.of(
+                                    BeautyFailureInjection.afterAnyCall(BeautyMappers.AppointmentMapper.class,
+                                            "markArrived", args -> "ARRIVE".equals(failAt), this::fail),
+                                    BeautyFailureInjection.afterAnyCall(
+                                            BeautyMappers.AppointmentResourceFenceMapper.class,
+                                            "selectScopedForUpdate", args -> "EXCEPTION".equals(failAt), this::fail),
+                                    BeautyFailureInjection.afterCall(BeautyMappers.ServiceSubmissionMapper.class,
+                                            "insert", row -> "OPEN".equals(failAt)
+                                                    && row instanceof BtyServiceSubmission submission
+                                                    && "OPEN".equals(submission.getAction()), this::fail));
+                            private void fail() { throw new IllegalStateException("reception-step-rollback"); }
                             @Override public Object postProcessAfterInitialization(Object bean, String name) {
                                 if ("beautyReceptionClock".equals(name)) { return receptionClock; }
-                                return audit.postProcessAfterInitialization(bean, name);
+                                Object wrapped = bean;
+                                for (var fault : faults) { wrapped = fault.postProcessAfterInitialization(wrapped, name); }
+                                return wrapped;
                             }
                         }));
     }

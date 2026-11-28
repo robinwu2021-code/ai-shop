@@ -193,23 +193,32 @@ public final class ReceptionPreparation {
             String appointmentOperationNo, List<AppointmentItemReq> items,
             List<AppointmentAssignmentReq> assignments, OffsetDateTime requestedStartAt,
             OffsetDateTime selectedStartAt, AppointmentMatching.Matched matched,
-            String appointmentKey, String appointmentRequestHash, Long arrivalRevision, Long openingRevision)
+            String appointmentKey, String appointmentRequestHash, Long arrivalRevision, Long openingRevision,
+            java.time.LocalDateTime arriveAt)
             implements ReceptionPayload {
         public WalkInPayload { items = List.copyOf(items); assignments = List.copyOf(assignments); }
         WalkInPayload withMatch(AppointmentMatching.Matched value, String hash) {
             return new WalkInPayload(schemaVersion, appointmentNo, previewNo, appointmentOperationNo, items,
-                    assignments, requestedStartAt, value.startAt(), value, appointmentKey, hash, null, null);
+                    assignments, requestedStartAt, value.startAt(), value, appointmentKey, hash, null, null, null);
         }
         WalkInPayload withRevisions(Long arrival, Long opening) {
             return new WalkInPayload(schemaVersion, appointmentNo, previewNo, appointmentOperationNo, items,
                     assignments, requestedStartAt, selectedStartAt, matched, appointmentKey,
-                    appointmentRequestHash, arrival, opening);
+                    appointmentRequestHash, arrival, opening, arriveAt);
+        }
+        /** 进入「待标到店」时定好到店时刻（UTC）：重做时按它认出是不是这次标的到店（TDD §2.6 第 12 项）。 */
+        WalkInPayload withArriveAt(java.time.LocalDateTime at) {
+            return new WalkInPayload(schemaVersion, appointmentNo, previewNo, appointmentOperationNo, items,
+                    assignments, requestedStartAt, selectedStartAt, matched, appointmentKey,
+                    appointmentRequestHash, arrivalRevision, openingRevision, at);
         }
     }
-    public record ArrivalPayload(int schemaVersion, String appointmentNo, long expectedRevision)
-            implements ReceptionPayload { }
+    /** 到店受理：{@code arriveAt} 受理时定好（UTC 毫秒），交易事务按它标到店，重做时按它认出是不是这次标的。 */
+    public record ArrivalPayload(int schemaVersion, String appointmentNo, long expectedRevision,
+            java.time.LocalDateTime arriveAt) implements ReceptionPayload { }
+    /** 接待异常申请：整笔记在接待操作行上（申请号就是接待操作号，原因在这里，申请内容随结果落库）。 */
     public record ExceptionPayload(int schemaVersion, String appointmentNo, String kind, String proposal,
-            long expectedRevision) implements ReceptionPayload { }
+            long expectedRevision, String reason) implements ReceptionPayload { }
     public static String derived(String entity, String store, String endpoint, String key) {
         var user = SecurityUtils.requireUser();
         return IdempotencyScope.requestHash("BEAUTY_RECEPTION_V1", user.tenantNo(), entity, store,

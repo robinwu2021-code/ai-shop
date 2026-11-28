@@ -60,11 +60,11 @@ public class BeautyAppointmentConfiguration {
             operations, BeautyMappers.AppointmentCurrentMapper currents, BeautyMappers.AppointmentArrangementMapper
             arrangements, BeautyMappers.AppointmentResourceIntentMapper intents,
             BeautyMappers.AppointmentResourceFenceMapper fences, BeautyMappers.AppointmentItemMapper items,
-            BeautyMappers.AppointmentAssignmentMapper assignments, BeautyMappers.ActionLogMapper actions,
+            BeautyMappers.AppointmentAssignmentMapper assignments,
             ObjectMapper json, @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager
             manager, @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager industry) {
         return new AppointmentPersistence(roots, preparations, operations, currents, arrangements, intents, fences,
-                items, assignments, actions, json, manager, industry);
+                items, assignments, json, manager, industry);
     }
     @Bean
     AppointmentAccess appointmentAccess(ObjectProvider<MerchantOperatorAccessPort> access,

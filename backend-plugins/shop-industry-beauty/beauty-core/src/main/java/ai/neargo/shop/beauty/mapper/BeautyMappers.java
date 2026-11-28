@@ -1,6 +1,5 @@
 package ai.neargo.shop.beauty.mapper;
 
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentAssignment;
@@ -98,9 +97,6 @@ public final class BeautyMappers {
     public interface StorePolicyVersionMapper extends IndustryTableMapper<BtyStorePolicyVersion> {
     }
 
-    /** Critical actions are appended with the aggregate transaction; they are not mutable operational state. */
-    public interface ActionLogMapper extends BaseMapper<BtyActionLog> {
-    }
 
     /** 预约单；业务事务先锁预约根，再处理项目及安排历史。 */
     public interface AppointmentMapper extends TradeTableMapper<BtyAppointment> {

@@ -208,7 +208,6 @@ class BeautyBm04AssemblyTest {
                     BeautyMappers.AppointmentResourceFenceMapper.class,
                     BeautyMappers.AppointmentItemMapper.class,
                     BeautyMappers.AppointmentAssignmentMapper.class,
-                    BeautyMappers.ActionLogMapper.class,
                     BeautyMappers.AppointmentResourceDecisionMapper.class,
                     BeautyMappers.StorePolicyMapper.class,
                     BeautyMappers.StorePolicyVersionMapper.class,

@@ -325,6 +325,15 @@ public final class AppointmentCoordinator {
                 op.setState("SUCCEEDED");
             } else {
                 op.setState("CONFIRM".equals(receipt.binding().action()) ? "RELEASE_REQUIRED" : "REJECTED");
+                if ("RELEASE".equals(receipt.binding().action())) {
+                    // 取消、爽约没成：预约还在，受理时记下的原因与凭证不再成立（TDD §2.6 第 12 项）
+                    AppointmentPersistence.require(db.roots.update(null, Wrappers.<BtyAppointment>lambdaUpdate()
+                            .set(BtyAppointment::getCancelReason, null).set(BtyAppointment::getCancelEvidenceRef, null)
+                            .eq(BtyAppointment::getTenantNo, root.getTenantNo())
+                            .eq(BtyAppointment::getEntityNo, root.getEntityNo())
+                            .eq(BtyAppointment::getAppointmentNo, root.getAppointmentNo())) == 1);
+                    root.setCancelReason(null); root.setCancelEvidenceRef(null);
+                }
                 if ("RESERVE".equals(receipt.binding().action())) { root.setStatus("CANCELLED");
                         AppointmentPersistence.require(db.roots.updateById(root) == 1); }
             }

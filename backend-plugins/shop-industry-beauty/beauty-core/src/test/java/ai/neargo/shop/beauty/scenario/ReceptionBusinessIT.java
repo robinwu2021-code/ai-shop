@@ -67,8 +67,10 @@ class ReceptionBusinessIT extends ReceptionFixture {
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_service_task", Integer.class)).isZero();
             assertThat(reception.checkIn("E", "S", "A", req, "ARRIVE")).isEqualTo(arrived);
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation", Integer.class)).isOne();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action='CHECKED_IN'",
-                    Integer.class)).isOne();
+            // 到店时刻就是这次受理时定的那个（TDD §2.6 第 12 项：重做靠它认出是这次标的）
+            assertThat(arrived.checkedInAt()).isEqualTo(java.time.LocalDateTime.parse(json.readTree(
+                    sql.queryForObject("SELECT frozen_payload FROM bty_reception_operation", String.class))
+                    .get("arriveAt").asText()).atOffset(java.time.ZoneOffset.UTC));
         });
     }
 
@@ -108,8 +110,10 @@ class ReceptionBusinessIT extends ReceptionFixture {
             assertThat(result.state()).isEqualTo("PENDING_REVIEW");
             assertThat(result.affectedTaskNos()).isEmpty();
             assertThat(reception.coordinateReceptionException("E", "S", "A", req, "EX")).isEqualTo(result);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log "
-                    + "WHERE action='RECEPTION_EXCEPTION_REQUESTED'", Integer.class)).isOne();
+            // 申请整笔记在接待操作行上：申请号就是接待操作号，原因在冻结参数里
+            assertThat(result.requestNo()).isEqualTo(result.operationNo());
+            assertThat(sql.queryForObject("SELECT frozen_payload FROM bty_reception_operation WHERE action="
+                    + "'RECEPTION_EXCEPTION'", String.class)).contains("private-reason", "REQUEST_RESCHEDULE");
             assertThat(owner.accepts).hasSize(2);
         });
     }
@@ -256,18 +260,17 @@ class ReceptionBusinessIT extends ReceptionFixture {
     @Test void arrivalAndExceptionAuditFailuresRollBackAllLocalEffects() {
         business().run(c -> {
             var root = create(c); login(LoginUser.merchant("A", "operator"));
-            var reception = c.getBean(ReceptionService.class); failAudit = true;
+            var reception = c.getBean(ReceptionService.class); failAt = "ARRIVE";
             assertThatThrownBy(() -> reception.checkIn("E", "S", "A",
-                    request(root.appointmentNo(), root.revision()), "ARRIVE")).hasMessage("reception-audit-rollback");
+                    request(root.appointmentNo(), root.revision()), "ARRIVE")).hasMessage("reception-step-rollback");
             assertThat(sql.queryForObject("SELECT status FROM ord_appointment", String.class)).isEqualTo("CONFIRMED");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation", Integer.class)).isZero();
+            failAt = "EXCEPTION";
             assertThatThrownBy(() -> reception.coordinateReceptionException("E", "S", "A",
                     new ReceptionExceptionReq(root.appointmentNo(), "LATE", "KEEP_WAITING", "reason", root.revision()),
-                    "EX")).hasMessage("reception-audit-rollback");
+                    "EX")).hasMessage("reception-step-rollback");
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_reception_operation", Integer.class)).isZero();
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action IN "
-                    + "('CHECKED_IN','RECEPTION_EXCEPTION_REQUESTED')", Integer.class)).isZero();
-            failAudit = false;
+            failAt = null;
             assertThat(reception.checkIn("E", "S", "A", request(root.appointmentNo(), root.revision()), "ARRIVE")
                     .status()).isEqualTo("CHECKED_IN");
         });

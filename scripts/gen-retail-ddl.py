@@ -108,7 +108,15 @@ ADD_COLUMNS = {
     ],
     'ord_appointment': [
         "`work_order_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '已开的服务工单（行业库）；预约侧的护栏看这一列'",
+        # 取消与爽约的凭证（原来只记在美业操作日志里，日志退役后归回预约；TDD-美业域迁移新库 §2.6 第 12 项，用户 2026-11-28 定）
+        "`cancel_evidence_ref` varchar(128) DEFAULT NULL COMMENT '取消或爽约的凭证引用（如登记爽约时的证明材料）；没有为空'",
     ],
+}
+
+# ---------- 改列（整行替换基础 DDL 里的列定义） ----------
+REPLACE_COLUMNS = {
+    # 取消原因放宽到 500：取消与爽约请求的原因最长 500 字，原来只记在美业操作日志里（TDD-美业域迁移新库 §2.6 第 12 项）
+    ('ord_appointment', 'cancel_reason'): "`cancel_reason` varchar(500) DEFAULT NULL COMMENT '取消或爽约原因'",
 }
 
 # ---------- 唯一约束（B2、附录一的降级与无处安放） ----------
@@ -380,6 +388,13 @@ def build(base_dir):
             trade[n] = added[n]
     fixed += aorder
     ensure_deleted(ind['ind_assignment'])
+    # 改列
+    for (name, column), line in REPLACE_COLUMNS.items():
+        t = trade.get(name) or ind.get(name)
+        k = next((k for k, c in enumerate(t['cols']) if col_name(c) == column), None) if t else None
+        if k is None:
+            raise SystemExit('replace column: unknown %s.%s' % (name, column))
+        t['cols'][k] = '  ' + line + (',' if t['cols'][k].rstrip().endswith(',') else '')
     # 加列
     for name, cols in ADD_COLUMNS.items():
         t = trade.get(name) or ind.get(name)

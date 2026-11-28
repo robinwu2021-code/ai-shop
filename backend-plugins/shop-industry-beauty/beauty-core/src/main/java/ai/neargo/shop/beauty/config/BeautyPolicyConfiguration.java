@@ -16,8 +16,8 @@ import tools.jackson.databind.ObjectMapper;
 public class BeautyPolicyConfiguration {
     @Bean
     StorePolicyService storePolicyService(BeautyMappers.StorePolicyMapper policies,
-            BeautyMappers.StorePolicyVersionMapper versions, BeautyMappers.ActionLogMapper actions,
+            BeautyMappers.StorePolicyVersionMapper versions,
             RequestIdempotencyPort idempotency, ObjectMapper json) {
-        return new StorePolicyServiceImpl(policies, versions, actions, idempotency, json);
+        return new StorePolicyServiceImpl(policies, versions, idempotency, json);
     }
 }

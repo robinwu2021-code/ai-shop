@@ -177,7 +177,7 @@ public class ManualExecutionSourceIT {
                 c.getBean(BeautyMappers.AppointmentResourceIntentMapper.class),
                 c.getBean(BeautyMappers.AppointmentResourceFenceMapper.class),
                 c.getBean(BeautyMappers.AppointmentItemMapper.class), c.getBean(BeautyMappers.AppointmentAssignmentMapper.class),
-                c.getBean(BeautyMappers.ActionLogMapper.class), json, c.getBean(PlatformTransactionManager.class));
+                json, c.getBean(PlatformTransactionManager.class));
         var observations = c.getBean(BeautyMappers.SourceObservationMapper.class);
         var guards = c.getBean(BeautyMappers.SourceAllocationGuardMapper.class);
         var orders = c.getBean(BeautyMappers.WorkOrderMapper.class);

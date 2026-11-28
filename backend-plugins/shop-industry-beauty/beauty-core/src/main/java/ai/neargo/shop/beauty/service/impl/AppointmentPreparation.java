@@ -4,7 +4,6 @@ import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.dto.AppointmentPreviewVO;
-import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
@@ -272,6 +271,21 @@ public final class AppointmentPreparation {
             return winner;
         }
     }
+    /**
+     * 取消、爽约的原因与凭证记在预约上（与受理同一个锁住预约的交易事务；只改这两列、不动版本）。
+     * 请求原文是 {@code CancelAppointmentReq} 或 {@code RecordNoShowReq} 的 JSON（TDD §2.6 第 12 项）。
+     */
+    private void recordCancelReason(BtyAppointment root, String request) {
+        var fields = db.json.readTree(request);
+        String reason = fields.path("reason").isTextual() ? fields.path("reason").asText() : null;
+        String evidence = fields.path("evidenceRef").isTextual() ? fields.path("evidenceRef").asText() : null;
+        AppointmentPersistence.require(db.roots.update(null, Wrappers.<BtyAppointment>lambdaUpdate()
+                .set(BtyAppointment::getCancelReason, reason).set(BtyAppointment::getCancelEvidenceRef, evidence)
+                .eq(BtyAppointment::getTenantNo, root.getTenantNo()).eq(BtyAppointment::getEntityNo, root.getEntityNo())
+                .eq(BtyAppointment::getAppointmentNo, root.getAppointmentNo())) == 1);
+        root.setCancelReason(reason);
+        root.setCancelEvidenceRef(evidence);
+    }
     private BtyAppointmentOperation prepareLocked(BtyAppointmentPreparation preview, BtyAppointment root,
             String action, String key, String hash, ResourceBookingPort.Hold hold, String requestEvidence,
             String operationNo) {
@@ -293,15 +307,7 @@ public final class AppointmentPreparation {
                         hold.leaseRevision()), preview.getFrozenPlan());
         op.setAcceptPayload(db.json.writeValueAsString(request));
         db.operations.insert(op);
-        var log = new BtyActionLog();
-        log.setEntityNo(root.getEntityNo()); log.setStoreNo(root.getStoreNo());
-        log.setActionNo(BizKey.next("BTAL")); log.setAggregateType("BEAUTY_APPOINTMENT");
-        log.setAggregateNo(root.getAppointmentNo());
-                log.setAction("RECEPTION_CHANGE".equals(action) ? "RECEPTION_CHANGE_PREPARED"
-                : "APPOINTMENT_" + action + "_PREPARED");
-        log.setOperatorRef(actor.operatorNo()); log.setExpectedRevision(root.getVersion());
-        log.setResultRevision(root.getVersion()); log.setSafeSnapshot(requestEvidence);
-        log.setRequestRef(op.getOperationNo()); db.actions.insert(log);
+        if ("CANCEL".equals(action) || "NO_SHOW".equals(action)) { recordCancelReason(root, requestEvidence); }
         var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
                 root.getAppointmentNo());
         current.setOperationNo(operationNo); AppointmentPersistence.require(db.currents.updateById(current)
