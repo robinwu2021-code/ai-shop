@@ -283,7 +283,7 @@
 | 9 | 定义版本 `bty_service_definition_version` | `prd_goods_revision`（「服务项目的规则版本即此号」；`payload` 存时长快照、缓冲、步骤、注意事项） | 版本号从字符串（如 `DV…`）变成商品内自增的整数 | 设计已定；`ord_appointment_item.definition_version_no` 的取值要对齐 |
 | 10 | 服务要求 `bty_service_requirement` | `prd_fulfillment_requirement`（按商品修订号） | 只缺定义版本号，换成 `goods_no + revision_no` | 设计已定 |
 | 11 | 库存意向 `bty_service_execution_stock_intent` | 库存库 `inv_reservation`，经宿主库存接口 | — | **待定**：交接文档里库存同步一组暂停中 |
-| 12 | 操作日志 `bty_action_log` | 基础能力库 `n_common.sys_audit_log`。对应关系：`action_no`→`audit_no`，`aggregate_type/no`→`resource_type/no`，前后版本→`before/after_version`，快照→`after_masked`，接待操作号→`request_id`，门店与人员放进快照 | 门店号、人员号没有独立列 | **待定**：写法，推荐业务提交后写 |
+| 12 | 操作日志 `bty_action_log` | **退役，不迁**（用户 2026-11-28 定）：8 类纯留痕的业务表里已有；到店证明、接待异常申请、恢复请求这三类改记在所属业务行上 | 运营审计暂不收美业操作（以后要看再接宿主 `AuditLogPort`） | 见下方「第 12 项执行计划」 |
 | 13 | 请求幂等（宿主 `sys_idempotent`）；发布前 `PlatformWritePrerequisites` 检查主库技术表 | 不建表：防重是功能能力，由应用层 + 业务唯一键做（用户 11-25 原则） | — | 去掉对主库技术表的检查；各写接口改按业务键 |
 | 14 | 独立部署时的事件 outbox | `n_common` 公共事件 | — | 事件是公共能力 |
 | 15 | 私有 Flyway（`bty_flyway_history`）、`BeautySchemaValidator`、要求主库工厂的 Mapper 配置 | 退役；结构由各库部署脚本负责 | — | 启动核对：行业库已有，交易库补一个 |
@@ -337,6 +337,35 @@
   - 共用库模式全套与基线一致（只多时刻相关那一个，以及偶发失败的并发用例）；
   - 独立库模式与第一步相同。
 - 第 8～10 项（服务定义并入商品）**还没做**：`prd_goods`、`prd_goods_revision` 归商品领域（shop-core 的 `ProductMappers`），美业不能直接写；独立部署的美业里也没有商品代码。要先定由谁发布服务的时长、缓冲、步骤和服务要求，见 §8-Q2。
+
+#### 第 12 项执行计划：操作日志退役（用户 2026-11-28 定「按建议执行」）
+
+**为什么不迁到 `n_common.sys_audit_log`**：9 处写入里 8 类记的是业务表里已有的事实（发布人和时间、接待操作行、提交单、绑定、回执表），全仓库也没有页面或报表读这张表；搬过去只是在审计库多一份副本，还要为它扩宿主审计端口、协商形状。剩下三类不是副本：它们是业务记录误放在日志里，归回各自的业务行。
+
+**口径**：
+- 到店证明：受理时定好到店时刻并存进接待操作行；交易事务按这个时刻标到店；重做时「预约到店时刻 = 这次操作定的时刻」即证明是这次标的。不改交易库表结构。
+- 接待异常申请：整笔记在接待操作行（冻结参数存原因，结果存申请内容）；申请号 = 接待操作号；交易事务只锁预约、核版本，不写。接口字段 `requestNo` 不变，取值格式由 `BTAL…` 变为接待操作号。审核流程以后交独立的审核与工单服务。
+- 恢复请求：记进 `bty_service_submission`，动作取常量 `RECOVERY`、状态 `ACCEPTED`，`request_key_hash` = 请求命名空间摘要（借现有唯一键 `门店 + 动作 + 请求键摘要` 防重），冻结命令存回执；重放读这一行。表结构不改。
+- 旧表 `bty_action_log` 留在私有 Flyway 里，随第 15 项退役；`ai_shop_ume` 已作废，不迁数据。
+
+| 步 | 内容 | 主要文件 | 验证 |
+|---|---|---|---|
+| **12-1 到店证明** | `ArrivalPayload` 加到店时刻（受理时定，UTC 毫秒）；无预约到店在进入 `ARRIVAL_PENDING` 时由 `WalkInPayload.withRevisions` 一并写入；`ReceptionCoordinator` 两条到店路径按这个时刻标到店、`arrived()` 改为「已到店 + 版本正好加一 + 到店时刻相同」，不再查日志 | `ReceptionPreparation`、`ReceptionCoordinator` | `ReceptionBusinessIT`、`WalkInRecoveryIT` 里「提交后断了重做」的用例；补一条「别的接待先标了到店，这次不能冒领」 |
+| **12-2 接待异常申请** | `ExceptionPayload` 加原因；申请号用接待操作号；交易事务只锁预约核版本；申请内容随结果落在接待操作行；去掉 `loggedActionNo` | `ReceptionPreparation`、`ReceptionCoordinator` | `ReceptionBusinessIT` 的异常申请用例改为看接待操作行；重放返回同一申请号 |
+| **12-3 恢复请求** | `RECOVERY` 动作写进服务提交表（在行业事务里，与提交单同库）；重放与撞键回查都读这一行；已核对：提交表的扫描、重试、恢复租约查询都按动作过滤（`SUBMIT_SOURCE`/`ADD_SOURCE`、`START`、`OPEN`），不会收进这一行；按单号、按请求键摘要的回查不看动作，所以恢复行用自己的单号（沿用现在的 `recoveryNo`）和带命名空间的请求键摘要，不与提交单撞 | `ServiceSubmissionServiceImpl`、`BeautyMappers.ServiceSubmissionMapper`（如需按号回查） | `ServiceSubmissionIT` 的恢复用例（受理、重放、改了内容的重放被拒、并发同键只一条） |
+| **12-4 删除留痕写入** | 去掉其余 8 类写入：门店政策发布、服务定义发布、接待变更准备、顾客认领回执、开工单、提交来源、绑定来源、拒绝无预约到店（连同它的防重查询） | `StorePolicyServiceImpl`、`ServiceDefinitionServiceImpl`、`AppointmentPreparation`、`GuestRegistrationServiceImpl`、`WorkOrderCoordinator`、`ServiceSubmissionServiceImpl`、`ServiceSourceBinding`、`ReceptionCoordinator` | 编译；各自的业务测试照过 |
+| **12-5 清理引用** | 删 `BtyActionLog` 实体、`ActionLogMapper`、数据范围登记；`AppointmentPersistence` 与发布、预约、政策、定义四个配置类去掉注入 | `entity/BtyActionLog`、`BeautyMappers`、`BeautyDataScopeRegistration`、`AppointmentPersistence`、`Beauty{Appointment,Definition,Policy}Configuration` 等 | 全仓库 `grep` 不再有 `BtyActionLog` / `ActionLogMapper`（美业范围）；美业结构校验不因代码不用这张表报错 |
+| **12-6 测试改造** | 14 个测试文件：数日志条数的断言改看业务行（政策版本、定义行、接待操作行、提交单），清表名单去掉 `bty_action_log`，注入日志 Mapper 的失败注入改挂到业务写入上；美业 server 装配测试去掉该 Mapper | 美业 `AppointmentBusinessIT`、`BeautyCatalogIT`、`BeautyPolicyPublicationIT`、`GuestClaimReceiptIT`、`ManualExecutionSourceIT`、`ManualSourceBindingIT`、`ReceptionBusinessIT`、`ReceptionFixture`、`ServiceSubmissionIT`、`WorkOrderScopeIT`；server `BeautyBm04AssemblyTest`、`BookingServerWiringTest`、`BeautyStandaloneEndToEndIT`；宿主 `BeautyPolicyEndToEndIT` | 见 12-8 |
+| **12-7 约束测试** | `TransactionHandleBoundaryTest` 的 `PENDING` 清空（只剩「行业事务写操作日志」这一条已知例外，修好即删） | `TransactionHandleBoundaryTest` | 违规集合恰为空 |
+| **12-8 验证** | 美业集成测试两种模式都与 HEAD 对照：不新增失败；独立库模式下与操作日志相关的 3 条（门店政策首次发布并发、外层事务回滚操作日志、开单审计回滚）应消失或改写后通过；美业 server/channel 单测、宿主编译 | — | 失败清单对照（同 P5 的做法） |
+| **12-9 文档与提交** | 本节改为已实现、记偏差与测试输出；重新生成派生文档（旧库调用清单、分层、词条）；提交；推送前问用户 | 本 TDD | 生成文档检查全绿 |
+
+**顺序与依赖**：12-1、12-2、12-3 互不依赖，先做（它们是删日志的前提）；12-4、12-5 在三者之后；12-6、12-7 随改随修；12-8、12-9 最后。
+
+**风险**：
+- 同一毫秒两次接待标同一张预约到店：第二次在交易事务里因版本不符被拒，不会误判为「这次标的」。
+- 接待异常申请号格式变化：端上只回显、不解析，影响限于展示。
+- 运营审计看不到美业操作：现状本来就看不到（日志表没有读方），不是退步。
 
 ### 2.7 服务定义经商品接口写（用户 2026-11-28 定，§8-Q2 ②）
 
