@@ -227,7 +227,7 @@ class ManualExecutionIT extends ManualSourceHostFixture {
         assertThat(task).containsEntry("status", "PENDING").containsEntry("started_at", null);
         assertThat((BigDecimal) task.get("done_qty")).isZero();
         assertThat((BigDecimal) task.get("voided_qty")).isZero();
-        assertThat(executionCount("bty_service_participation")).isZero();
+        assertThat(executionCount("ind_assignment")).isZero();
     }
 
     @Test void neutralOriginalKeepsPersistedPrepareRevisionAfterRealSourceWithdrawal() {
@@ -356,7 +356,7 @@ class ManualExecutionIT extends ManualSourceHostFixture {
     }
 
     private long executionCount(String table) {
-        if (!List.of("ord_service_execution_unit", "ord_service_execution", "bty_service_participation").contains(table)) {
+        if (!List.of("ord_service_execution_unit", "ord_service_execution", "ind_assignment").contains(table)) {
             throw new IllegalArgumentException("fixed verification table required");
         }
         return jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE entity_no=?", Long.class, entity);

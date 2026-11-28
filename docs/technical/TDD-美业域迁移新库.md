@@ -157,6 +157,22 @@
 - 结果：beauty-core 全套与 B-1 相同（基线 + 时刻相关的那一个），其余模块全过；宿主 `BeautyEmbeddedWiringTest` 两种构建形态都通过。
 - 宿主那几个要打开开关才跑的原生测试（`ManualSource*IT`、`BeautyClaimedGuestResourceIT`、`BeautyReceptionIdentityIT`）启动时跑美业迁移，库里没有行业表和上下文列，现在会在启动核对时停下。这次只改了表名、确认能编译，它们的建库随 B-6 一起补。
 
+**B-4 已做（2026-11-28）**：
+- 服务参与的实体 `BtyServiceParticipation` 映射到行业共用的指派表 `ind_assignment`：对象类型 `TASK`，对象号是任务号，性质 `ACTUAL`，状态 `ACTIVE`/`ENDED`。字段名不改，列名用 `@TableField` 对上：
+  - 参与号 → `assignment_no`
+  - 资源占用 → `hold_no`
+  - 前一参与段 → `previous_assignment_no`
+  - 交接理由 → `handover_reason`
+  - 资格快照 → `skill_snapshot`
+- 参与里的「有效门店任职号」和指派自己的号重名，与「原计划安排号」一起放进 `ind_assignment` 新加的两列：`employment_assignment_no`、`planned_assignment_no`。对象类型的注释补上 `TASK`。这些都写在测试建库的 `V2` 里，设计稿随 B-6 同步。
+- 三处 SQL 都带 `target_type='TASK'`：按任务读参与、结束参与（同时把状态置为 `ENDED`）、关闭工单时「还有没结束的参与」检查。按任务读的那条改成按列取别名（`BtyServiceParticipation.COLUMNS`）：手写的 `SELECT *` 会按列名自动映射，`assignment_no` 会被塞进任职号字段。
+- 同 B-2：共用表的 `tenant_no` 没有库默认值，实体构造时带上 `MAIN`。数据范围登记改成 `ind_assignment`，行业表清单去掉最后一张过渡表；A6 的三组合并到此完成。
+- 测试：测试库补建 `ind_assignment`，并执行 `V2` 里加两列的语句；参与的种子数据改写到指派表；新增「同号的餐饮指派行（对象类型 `VISIT`）不算服务参与」。宿主测试里的计数改成查指派表。
+- 结果：beauty-core 全套比基线多两个失败：
+  - 一个是时刻相关的那个（同 B-1）；
+  - 另一个是 `ServiceSubmissionIT#concurrentSameEndpointKeyReplaysOneCommittedSubmission`，并发比对修订号。在 B-3 的提交上单独跑 6 次也失败 2 次，是原有的不稳定用例，走的路径也碰不到服务参与。
+- 其余模块全过；宿主 `BeautyEmbeddedWiringTest` 两种构建形态都通过。
+
 ### 2.5 部署
 
 沿用 `deploy/ume/food-industry-cutover/` 的做法（只读 `check` → 备份 → 执行 → 核对），美业表另起一份脚本；共用表只原地改。

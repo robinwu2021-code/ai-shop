@@ -678,7 +678,7 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
         assertThat(jdbc.queryForObject(
             "SELECT COUNT(*) FROM ord_service_execution_unit WHERE entity_no=? AND state='RESERVED'",
                 Long.class, entity)).isEqualTo(2);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bty_service_participation WHERE entity_no=?",
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ind_assignment WHERE entity_no=?",
             Long.class, entity)).isZero();
         assertThat(jdbc.queryForObject("SELECT SUM(done_qty) FROM bty_service_task WHERE work_order_no=?",
             BigDecimal.class,
@@ -1098,7 +1098,7 @@ class ExecutionStockRetentionIT extends ManualSourceHostFixture {
 
     private long executionCount(String table) {
         if (!List.of("ord_service_execution_unit", "ord_service_execution",
-            "bty_service_participation").contains(table)) {
+            "ind_assignment").contains(table)) {
             throw new IllegalArgumentException("fixed verification table required");
         }
         return jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE entity_no=?", Long.class, entity);

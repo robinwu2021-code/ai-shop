@@ -1,6 +1,6 @@
 -- 美业在行业库的补充（TDD-美业域迁移新库 B-1）。V1 是设计 DDL 原样（含 A6 的美业执行表，触发器去掉了）；这里补：
 -- 一、设计稿去掉的来源观察触发器（美业迁移 V9 原样）；二、执行围栏及其触发器（美业迁移 V10 原样）；
--- 三、过渡：合并完成前代码仍读写的旧表（服务参与 → B-4），每完成一步就删掉对应的表（门店策略、策略版本已在 B-2 并入 ind_store_policy、ind_config_revision；工单上下文已在 B-3 并入 bty_work_order）。
+-- 三、服务参与并入 ind_assignment 补的列（B-4）。门店策略、策略版本已在 B-2 并入 ind_store_policy、ind_config_revision；工单上下文已在 B-3 并入 bty_work_order。
 -- 含 DELIMITER 块：用 mysql 客户端或会处理 DELIMITER 的执行器执行。
 
 -- 一、来源观察的领域守卫触发器
@@ -171,35 +171,9 @@ BEGIN
 END$$
 DELIMITER ;
 
--- 三、过渡表
-CREATE TABLE `bty_service_participation` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '物理自增主键，不对外',
-    `tenant_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '沿当前租户上下文；不另启租户体系',
-    `entity_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '商家主体范围；不等于租户',
-    `created_at` DATETIME(3) NOT NULL COMMENT '创建时刻',
-    `created_by` VARCHAR(64) COLLATE utf8mb4_bin NULL COMMENT '实际操作者业务引用',
-    `updated_at` DATETIME(3) NOT NULL COMMENT '更新时间',
-    `updated_by` VARCHAR(64) COLLATE utf8mb4_bin NULL COMMENT '更新操作者',
-    `version` BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
-    `deleted` INT NOT NULL DEFAULT 0 COMMENT '沿BaseEntity；事实表禁止删除或软删覆盖',
-    `participation_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '参与号',
-    `task_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '任务',
-    `personnel_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '实际人员',
-    `assignment_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '有效门店任职',
-    `planned_assignment_no` VARCHAR(32) COLLATE utf8mb4_bin NULL COMMENT '原计划安排',
-    `role_code` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '技师或助理等业务角色',
-    `occupation_no` VARCHAR(32) COLLATE utf8mb4_bin NULL COMMENT '实际资源占用',
-    `started_at` DATETIME(3) NOT NULL COMMENT '参与开始',
-    `ended_at` DATETIME(3) NULL COMMENT '参与结束',
-    `handover_from_no` VARCHAR(32) COLLATE utf8mb4_bin NULL COMMENT '前一参与段',
-    `reason` VARCHAR(500) COLLATE utf8mb4_bin NULL COMMENT '交接理由',
-    `qualification_snapshot` JSON NOT NULL COMMENT '开工资格与规则版本',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_bty_service_participation_1` (`tenant_no`, `entity_no`, `participation_no`),
-    KEY `idx_bty_service_participation_1` (`tenant_no`, `entity_no`, `personnel_no`, `started_at`),
-    KEY `idx_bty_service_participation_2` (`tenant_no`, `entity_no`, `task_no`, `started_at`),
-    CONSTRAINT `ck_bty_service_participation_1` CHECK (`version` >= 0),
-    CONSTRAINT `ck_bty_service_participation_2` CHECK (`deleted` IN (0, 1)),
-    CONSTRAINT `ck_bty_service_participation_3` CHECK (`ended_at` IS NULL OR `ended_at` >= `started_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='实际服务人员参与段';
-
+-- 三、服务参与并入行业共用的指派表 ind_assignment（B-4）：对象类型加 TASK（美业服务任务）；
+-- 参与原有的「有效门店任职」与「原计划安排」两个号，指派表没有对应列（assignment_no 是指派自己的号），补两列
+ALTER TABLE `ind_assignment`
+  MODIFY COLUMN `target_type` varchar(24) DEFAULT NULL COMMENT '指派对象类型：VISIT 到店单、ITEM 订单行、UNIT 履约单元、APPOINTMENT_ITEM 预约项目行、TASK 美业服务任务',
+  ADD COLUMN `employment_assignment_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '人员当时有效的门店任职号（美业服务参与）' AFTER `personnel_no`,
+  ADD COLUMN `planned_assignment_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '对应的预约计划安排号（美业服务参与）' AFTER `employment_assignment_no`;

@@ -1256,7 +1256,7 @@ class NativeInventoryExecutionStockRetentionIT extends ManualSourceHostFixture {
 
     private long executionCount(String table) {
         if (!List.of("ord_service_execution_unit", "ord_service_execution",
-            "bty_service_participation").contains(table)) {
+            "ind_assignment").contains(table)) {
             throw new IllegalArgumentException("fixed verification table required");
         }
         return jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE entity_no=?", Long.class, entity);

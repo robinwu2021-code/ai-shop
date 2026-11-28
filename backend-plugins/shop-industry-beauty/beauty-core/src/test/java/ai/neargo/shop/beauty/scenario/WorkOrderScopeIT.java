@@ -579,7 +579,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                         .isEqualTo("DV");
             });
             assertThat(count("bty_appointment")).isZero(); assertThat(count("bty_appointment_assignment")).isZero();
-            assertThat(count("bty_service_step")).isZero(); assertThat(count("bty_service_participation")).isZero();
+            assertThat(count("bty_service_step")).isZero(); assertThat(count("ind_assignment")).isZero();
             assertThat(owner.accepts).isEmpty();
             String context = sql.queryForObject("SELECT frozen_scope FROM bty_work_order", String.class);
             String draft = sql.queryForObject("SELECT frozen_command FROM bty_service_submission", String.class);
@@ -669,12 +669,18 @@ class WorkOrderScopeIT extends ReceptionFixture {
                     "status", "PENDING");
             seed("bty_service_step", "entity_no", "OTHER", "step_no", "POISON", "task_no", task,
                     "step_code", "POISON", "sequence_no", 1, "status", "PENDING");
-            seed("bty_service_participation", "participation_no", "REAL-P", "task_no", task,
-                    "personnel_no", "P1", "assignment_no", "A1", "occupation_no", "O1",
-                    "qualification_snapshot", "{}", "role_code", "MAIN", "started_at", T0);
-            seed("bty_service_participation", "entity_no", "OTHER", "participation_no", "POISON-P", "task_no", task,
-                    "personnel_no", "OTHER-P", "assignment_no", "OTHER-A", "occupation_no", "OTHER-O",
-                    "qualification_snapshot", "{}", "role_code", "MAIN", "started_at", T0);
+            seed("ind_assignment", "assignment_no", "REAL-P", "target_type", "TASK", "target_no", task,
+                    "assignment_kind", "ACTUAL", "status", "ACTIVE",
+                    "personnel_no", "P1", "employment_assignment_no", "A1", "hold_no", "O1",
+                    "skill_snapshot", "{}", "role_code", "MAIN", "started_at", T0);
+            seed("ind_assignment", "entity_no", "OTHER", "assignment_no", "POISON-P", "target_type", "TASK",
+                    "target_no", task, "assignment_kind", "ACTUAL", "status", "ACTIVE",
+                    "personnel_no", "OTHER-P", "employment_assignment_no", "OTHER-A", "hold_no", "OTHER-O",
+                    "skill_snapshot", "{}", "role_code", "MAIN", "started_at", T0);
+            // 共用指派表里同号的餐饮行（对象类型不是 TASK）不算服务参与
+            seed("ind_assignment", "assignment_no", "FNB-P", "target_type", "VISIT", "target_no", task,
+                    "assignment_kind", "RESPONSIBLE", "status", "ACTIVE", "personnel_no", "WAITER",
+                    "role_code", "WAITER", "started_at", T0);
             var detail = service.getWorkOrder("E", "S", "A", opened.workOrderNo());
             assertThat(detail.tasks().getFirst().steps()).extracting(step -> step.stepNo()).containsExactly("REAL");
             assertThat(detail.tasks().getFirst().participations()).extracting(person -> person.participationNo())

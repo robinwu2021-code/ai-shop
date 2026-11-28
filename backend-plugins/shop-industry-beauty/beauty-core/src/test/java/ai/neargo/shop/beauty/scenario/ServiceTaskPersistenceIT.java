@@ -36,9 +36,11 @@ class ServiceTaskPersistenceIT extends BeautyExecutionFixture {
                 "finished_at", status.equals("DONE") ? T0.plusMinutes(10) : null);
     }
     private void participation() {
-        seed("bty_service_participation", "participation_no", "P", "task_no", "T", "personnel_no", "TECH",
-                "assignment_no", "EMPLOYMENT", "role_code", "TECH", "started_at", T0,
-                "qualification_snapshot", "{}");
+        // 服务参与在行业共用的指派表（B-4）：对象类型 TASK，任职号存在 employment_assignment_no
+        seed("ind_assignment", "assignment_no", "P", "target_type", "TASK", "target_no", "T",
+                "assignment_kind", "ACTUAL", "status", "ACTIVE", "personnel_no", "TECH",
+                "employment_assignment_no", "EMPLOYMENT", "role_code", "TECH", "started_at", T0,
+                "skill_snapshot", "{}");
     }
     @Test
     void rejectsOverCompletionAndStaleBindingAndKeepsPartialWorkOpen() {
@@ -92,7 +94,7 @@ class ServiceTaskPersistenceIT extends BeautyExecutionFixture {
                     0L, T0.plusMinutes(1), "handover", "ACTOR", T0))).isEqualTo(1);
             assertThat(tx(context, () -> call(context, "ServiceParticipationMapper", "endParticipation", "E", "S", "P",
                     1L, T0.plusMinutes(2), "again", "ACTOR", T0))).isEqualTo(0);
-            assertThat(sql.queryForObject("SELECT personnel_no FROM bty_service_participation", String.class))
+            assertThat(sql.queryForObject("SELECT personnel_no FROM ind_assignment", String.class))
                     .isEqualTo("TECH");
         });
     }
@@ -120,7 +122,7 @@ class ServiceTaskPersistenceIT extends BeautyExecutionFixture {
             sql.execute("UPDATE bty_service_task SET status='DONE',done_qty=qty,"
                     + "finished_at=DATE_ADD(started_at,INTERVAL 1 HOUR)");
             assertThat(tx(context, () -> close(context))).isEqualTo(0);
-            sql.execute("UPDATE bty_service_participation SET ended_at=started_at");
+            sql.execute("UPDATE ind_assignment SET ended_at=started_at");
             sql.execute("UPDATE bty_service_task SET binding_revision=2");
             assertThat(tx(context, () -> close(context))).isEqualTo(0);
             sql.execute("UPDATE bty_service_task SET binding_revision=1");

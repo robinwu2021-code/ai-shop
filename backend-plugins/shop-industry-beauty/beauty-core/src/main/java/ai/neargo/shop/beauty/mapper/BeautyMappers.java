@@ -706,9 +706,9 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 AND s.entity_no=t.entity_no AND s.task_no=t.task_no AND s.deleted=0 AND (s.status NOT IN
                 ('DONE','SKIPPED') OR (s.status='DONE' AND s.finished_at IS NULL)
                 OR s.finished_at>t.finished_at)))
-                OR EXISTS (SELECT 1 FROM bty_service_participation p WHERE p.tenant_no='MAIN' AND
-                p.entity_no=t.entity_no
-                AND p.task_no=t.task_no AND p.deleted=0 AND (p.ended_at IS NULL OR p.ended_at>#{closedAt}))))
+                OR EXISTS (SELECT 1 FROM ind_assignment p WHERE p.tenant_no='MAIN' AND
+                p.entity_no=t.entity_no AND p.target_type='TASK'
+                AND p.target_no=t.task_no AND p.deleted=0 AND (p.ended_at IS NULL OR p.ended_at>#{closedAt}))))
                 """)
         int closeFrozenScope(
                 @Param("entityNo") String entityNo,
@@ -954,17 +954,20 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
     }
 
     /** 实际服务人员参与段；调用者在本域短事务按根→任务→子行锁序操作。 */
+    /** 服务参与在行业共用的指派表 {@code ind_assignment}，只碰对象类型 {@code TASK} 的行（B-4）。 */
     public interface ServiceParticipationMapper extends IndustryTableMapper<BtyServiceParticipation> {
         /** A task number alone cannot authorize rows from a foreign or deleted parent. */
         @Select(
                 """
-                SELECT c.* FROM bty_service_participation c JOIN bty_service_task t
-                  ON t.tenant_no=c.tenant_no AND t.entity_no=c.entity_no AND t.task_no=c.task_no
+                SELECT ${@ai.neargo.shop.beauty.entity.BtyServiceParticipation@COLUMNS}
+                FROM ind_assignment p JOIN bty_service_task t
+                  ON t.tenant_no=p.tenant_no AND t.entity_no=p.entity_no AND t.task_no=p.target_no
                 JOIN bty_work_order w ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no
                   AND w.work_order_no=t.work_order_no
-                WHERE c.tenant_no='MAIN' AND c.entity_no=#{entityNo} AND c.task_no=#{taskNo} AND c.deleted=0
+                WHERE p.tenant_no='MAIN' AND p.entity_no=#{entityNo} AND p.target_type='TASK'
+                  AND p.target_no=#{taskNo} AND p.deleted=0
                   AND t.work_order_no=#{workOrderNo} AND t.deleted=0 AND w.deleted=0 AND w.store_no=#{storeNo}
-                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision ORDER BY c.id
+                  AND t.scope_revision>0 AND t.scope_revision<=w.scope_revision ORDER BY p.id
                 """)
         List<BtyServiceParticipation> selectForTask(
                 @Param("entityNo") String entityNo,
@@ -975,14 +978,14 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
         @Update(
                 """
-                UPDATE bty_service_participation p
+                UPDATE ind_assignment p
                 JOIN bty_service_task t ON t.tenant_no=p.tenant_no AND t.entity_no=p.entity_no AND
-                t.task_no=p.task_no
+                p.target_type='TASK' AND t.task_no=p.target_no
                 JOIN bty_work_order w ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND
                 w.work_order_no=t.work_order_no
-                SET p.ended_at=#{endedAt}, p.reason=#{reason}, p.version=p.version+1,
+                SET p.ended_at=#{endedAt}, p.handover_reason=#{reason}, p.status='ENDED', p.version=p.version+1,
                 p.updated_by=#{actorNo}, p.updated_at=#{updatedAt}
-                WHERE p.tenant_no='MAIN' AND p.entity_no=#{entityNo} AND p.participation_no=#{participationNo}
+                WHERE p.tenant_no='MAIN' AND p.entity_no=#{entityNo} AND p.assignment_no=#{participationNo}
                 AND p.deleted=0 AND p.version=#{expectedVersion} AND p.ended_at IS NULL AND #{endedAt}>=p.started_at
                 AND t.deleted=0 AND w.deleted=0 AND w.store_no=#{storeNo}
                 AND w.status IN ('OPEN','IN_SERVICE','${@ai.neargo.shop.beauty.entity.BtyServiceTask@SERVICE_FINISHED}') AND #{actorNo} IS NOT NULL AND
