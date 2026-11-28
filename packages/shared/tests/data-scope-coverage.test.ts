@@ -59,6 +59,12 @@ const OWNER_COLUMNS = [
  * 业务数据的答案永远是会。
  */
 const EXEMPT: Record<string, string> = {
+  // 商品换库后的历史迁移表。当前表名已由商品域登记。
+  mch_store_category: "旧门店分类表，现有读取映射到已登记的 prd_store_category",
+  prd_goods_favorite: "旧商品收藏表，现有读取映射到已登记的 mbr_favorite",
+  prd_stock_alignment_batch: "库存对齐的 JdbcTemplate 批次凭据，业务查询按主体与门店绑定",
+  prd_stock_sync_operation: "库存同步的 JdbcTemplate 操作回执，业务查询按主体与门店绑定",
+  ord_checkout_payment_request: "结账支付操作回执，仅用于已授权操作的幂等恢复，没有独立运营检索入口",
   ord_payment_resolution: "原收款处置协调记录；运营列表及退款均经PaymentResolutionOpsService.visibleParents按真实子单数据域筛选/复核，user_no是原付款人而非运营SELF归属，不能以该列代替父单/子单授权。",
   pts_statement_build: "账单构建游标，仅内部恢复按构建号访问；对外经账单所属门店权限校验，不提供独立列表。",
   pts_statement_confirmation: "修订确认与通知状态，B仅按当前已授权门店账单访问，Ops先校验门店；后台恢复不能按请求数据域截断。",
