@@ -406,6 +406,18 @@
 | **4-2 实体与 Mapper** ✅ | `BtyAppointmentArrangement` 映射修订表全部业务列与 8 个状态常量；`BtyAppointment` 加 `HELD`、`CONFIRMED`、`CHECKED_IN` 常量。Mapper：按预览号 / 命令号 / 在途取（加锁）、草稿 → 在途（`toApplying`：未过期、预约单仍是基于的版本且仍可变更）、许可一次（`permit`）、许可前拒绝（`refuse`）、对账终态（`settle`：许可前已拒绝的不能生效；待释放 → 资源拒绝）、取下一个修订号（`nextRevision`）、生效后旧版标被取代（`supersedeBefore`）、到期扫描（`claimDue`，`FOR UPDATE SKIP LOCKED`）。「预约单仍可变更」的条件只写一处（`ROOT_OPEN`）。设计稿补：`result_hash`（宿主终态回执摘要，原资源意向的 `terminal_hash`）；`based_on_revision` 说明更正为预约单版本（旧代码比对的是 `ord_appointment.version`） | `entity/BtyAppointmentArrangement`、`BtyAppointment`、`BeautyMappers`、生成器 | `AppointmentRevisionPersistenceIT` 6/6：同一预约第二个在途被唯一键拒绝；预约单已变、已到店非「到店后改」、草稿过期都不能转在途；许可只一次、许可后不能再拒；许可前已拒绝的不能生效、待释放仍占闸门、释放完成后下一次取新号；只扫到期的 |
 | **4-3 预约准备** ✅ | 预览写成 `DRAFT` 修订（冻结计划、计划摘要、过期时刻、发起人、基于的预约单版本），不再写 `bty_appointment_preparation`；按预览号读、锁草稿都走修订表。**一并改**：确认时原来按同一预览号另插一行修订，与「预览号唯一」冲突——改为草稿行自己升为生效版（写预约单号、修订号、占用、动作），旧生效版标被取代；恢复用的联查、门店改挂的事实核对改看修订表。动作取值与代码一致用 `CHANGE`（设计稿注释同步）。准备表的 Mapper 仍在构造参数里，随 4-10 删 | `AppointmentPreparation`、`AppointmentPersistence`、`AppointmentCoordinator.arrange`、`BeautyMappers`、`BeautyStoreRelinkFactsPortImpl`；测试种子把「准备行 + 修订行」合成一行 | 美业插件与宿主测试模块编译通过；全量对照（独立库模式 `-Dtest=*`，410 条）较 4-2 多 1 条：`AppointmentBusinessIT#terminalSourceRollsBackWithFenceAndReplaysExactlyOnce`——新约入口要求「预览没有预约单号」，草稿升为生效版后带上了预约单号，同键重放在防重之前就被挡。改为看「基于的预约单版本为 0」（新约预览才是 0，改约至少 1）后该类 21/21；另一条 `ServiceSubmissionIT` 的并发用例在 HEAD 上同样时好时坏 |
 | 4-4 预约协调 | 新建、改约、到店后改：草稿 → `APPLYING` → 调宿主 → `CONFIRMED`（预约根 `current_revision` 前移、旧版 `SUPERSEDED`）/ `REJECTED` / `RELEASING`；去掉当前行、预约操作、资源围栏；预约根上的「在途」`EXISTS` 改看修订 | `AppointmentCoordinator`、`AppointmentPersistence` | 预约、接待用例 |
+
+**4-4 动手前发现（2026-11-28，待用户定）**：通读预约协调、预约准备、来源授权后，「一次变更一行修订」在**资源命令**这一层装不下：
+
+1. **一次变更不止一条资源命令**：新约是两条（先 `RESERVE` 占位，成功后再 `CONFIRM`）；确认失败要补一条 `RELEASE`（待释放）。宿主对**每条命令**单独来问许可（`decide`），而且同一条命令重放时必须答回**原来那次**的许可（决策号、窗口，过期也一样）。修订行只有一组命令号与决策列，换到下一条命令就得覆盖上一条的许可，重放答不回原样。
+2. **受理载荷里有修订行没有的东西**：发给宿主的受理请求带目标占位的版本、租约版本、宿主侧期望版本；回执里有宿主算的绑定与结果。恢复、对账、来源授权都靠它们核对。
+3. **预约操作号是对外接口字段**：`AppointmentVO`、`OperationVO`、`WalkInVO` 等 10 个出参带 `operationNo`，端上按它查进度；接待操作（行业库）也用它挂接预约侧。去掉预约操作表就要定这个号由谁来出。
+4. **请求防重（4-8）与预约操作是同一张表**：去掉预约操作，4-8 必须同一步做。
+
+**可选方向**：
+- **A（推荐）六张收成两张**：修订承担预览、在途闸门（取代当前行与资源围栏）与变更状态；另留一张精简的**资源命令**表（交易库），一条命令一行，合并原资源意向 + 资源决策 + 预约操作里的受理载荷与回执绑定，许可一经写入不改，重放原样答。预约操作号改由修订提供（修订加一个对外的变更号，取消、爽约的修订也有）。请求防重走统一防重（4-8 同步做）。宿主协议不变。
+- **B 坚持一行**：先改宿主协议，让一次变更只发一条命令（新约直接「占位即确认」、待释放的补偿不再单独要许可），再收成一张。要先做宿主（4-9）并改资源端口契约，范围更大。
+
 | 4-5 来源授权（宿主冻结回调） | 按命令号找修订行作答；许可写决策号、许可时刻与截止，之后不再改（替代决策表的重放） | `AppointmentSourceAuthority` | 来源授权与开单用例 |
 | 4-6 取消与爽约 | 各写一行修订（快照不变、计划是释放命令）；原因与凭证仍写预约根 | `AppointmentCoordinator` | 取消、爽约用例 |
 | 4-7 恢复 | 后台扫描到期的 `APPLYING` / `RELEASING`，行锁抢占，不留租约 | `AppointmentRecovery` | 恢复用例 |
