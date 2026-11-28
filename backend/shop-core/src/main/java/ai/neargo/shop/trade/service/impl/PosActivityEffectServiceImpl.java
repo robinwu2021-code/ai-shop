@@ -14,6 +14,7 @@ import java.math.RoundingMode;
 import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PosActivityEffectServiceImpl implements PosActivityEffectService {
     private final PosActivitySaleMapper facts;
     private final MerchantScopeFactsPort merchants;
+    @Value("${shop.trade.canonical-storage:false}") private boolean canonicalStorage;
 
     public PosActivityEffectServiceImpl(PosActivitySaleMapper facts, MerchantScopeFactsPort merchants) {
         this.facts=facts; this.merchants=merchants;
@@ -34,9 +36,13 @@ public class PosActivityEffectServiceImpl implements PosActivityEffectService {
         var end=through.plusDays(1).atStartOfDay(zone).toInstant();
         long start=from.atStartOfDay(zone).toInstant().toEpochMilli();
         return DataScopeContext.executeWithoutScope(() -> {
-            var coverage=facts.coverage(actor.tenantNo(),actor.entityNo(),store,end.toEpochMilli());
-            var lines=facts.lines(actor.tenantNo(),actor.entityNo(),store,activity,start,end.toEpochMilli(),
-                    LocalDateTime.ofInstant(end,ZoneOffset.UTC));
+            long endMillis = end.toEpochMilli();
+            var endUtc = LocalDateTime.ofInstant(end, ZoneOffset.UTC);
+            var coverage = canonicalStorage ? facts.canonicalCoverage(actor.tenantNo(), actor.entityNo(), store, endMillis)
+                    : facts.coverage(actor.tenantNo(), actor.entityNo(), store, endMillis);
+            var lines = canonicalStorage
+                    ? facts.canonicalLines(actor.tenantNo(), actor.entityNo(), store, activity, start, endMillis, endUtc)
+                    : facts.lines(actor.tenantNo(), actor.entityNo(), store, activity, start, endMillis, endUtc);
             return aggregate(from,through,zone,coverage,lines);
         });
     }

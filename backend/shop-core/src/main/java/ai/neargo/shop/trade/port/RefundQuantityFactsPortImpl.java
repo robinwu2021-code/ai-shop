@@ -5,11 +5,14 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.spi.trade.RefundQuantityFactsPort;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
+import ai.neargo.shop.trade.order.refund.service.CanonicalRefundExecutionJournal;
+import ai.neargo.common.data.scope.DataScopeContext;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Component;
@@ -21,18 +24,29 @@ import tools.jackson.databind.ObjectMapper;
 public final class RefundQuantityFactsPortImpl implements RefundQuantityFactsPort {
     private final JdbcTemplate db;
     private final ObjectMapper json;
+    private final CanonicalRefundExecutionJournal journal;
+    private final boolean canonicalStorage;
 
     public RefundQuantityFactsPortImpl(@Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager,
-                                      ObjectMapper json) {
+                                      ObjectMapper json, CanonicalRefundExecutionJournal journal,
+                                      @Value("${shop.trade.canonical-storage:false}") boolean canonicalStorage) {
         if (!(manager instanceof DataSourceTransactionManager data)) {
             throw new IllegalStateException("Core JDBC transaction required");
         }
         this.db = new JdbcTemplate(Objects.requireNonNull(data.getDataSource()));
         this.json = json;
+        this.journal = journal;
+        this.canonicalStorage = canonicalStorage;
     }
 
     @Override
     public List<Fact> succeeded(String tenantNo, String subOrderNo, Instant through, List<String> processed) {
+        if (canonicalStorage) {
+            return DataScopeContext.executeWithoutScope(
+                    () -> journal.succeeded(tenantNo, subOrderNo, through.toEpochMilli(), processed).stream()
+                            .map(row -> fact(row.getExecutionNo(), subOrderNo, row.getPlanJson(), row.getSucceededAt()))
+                            .toList());
+        }
         var rows = db.queryForList("SELECT execution_no,plan_json,succeeded_at FROM ord_refund_execution "
                 + "WHERE tenant_no=? AND sub_order_no=? AND status='SUCCEEDED' AND succeeded_at<=? "
                 + "ORDER BY succeeded_at,id", tenantNo, subOrderNo, through.toEpochMilli());
@@ -40,12 +54,16 @@ public final class RefundQuantityFactsPortImpl implements RefundQuantityFactsPor
         for (var row : rows) {
             String executionNo = (String) row.get("execution_no");
             if (processed.contains(executionNo)) continue;
-            var plan = json.readValue((String) row.get("plan_json"), RefundPlan.class);
-            if (!subOrderNo.equals(plan.subOrderNo())) throw BizException.of(ErrorCode.CONFLICT);
-            var lines = plan.lines().stream().map(line -> new LineQuantity(line.itemId(), line.qty())).toList();
-            facts.add(new Fact(executionNo, plan.subOrderNo(), lines,
+            facts.add(fact(executionNo, subOrderNo, (String) row.get("plan_json"),
                     ((Number) row.get("succeeded_at")).longValue()));
         }
         return List.copyOf(facts);
+    }
+
+    private Fact fact(String executionNo, String subOrderNo, String planJson, long succeededAt) {
+        var plan = json.readValue(planJson, RefundPlan.class);
+        if (!subOrderNo.equals(plan.subOrderNo())) throw BizException.of(ErrorCode.CONFLICT);
+        var lines = plan.lines().stream().map(line -> new LineQuantity(line.itemId(), line.qty())).toList();
+        return new Fact(executionNo, plan.subOrderNo(), lines, succeededAt);
     }
 }

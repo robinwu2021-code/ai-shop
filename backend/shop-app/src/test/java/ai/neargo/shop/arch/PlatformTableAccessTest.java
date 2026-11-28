@@ -36,13 +36,20 @@ class PlatformTableAccessTest {
     private static final List<String> PLATFORM_CODE = List.of(
             "commerce/commerce-persistence/src/main/java/ai/neargo/commerce/persistence/platform/",
             "shop-merchant/src/main/java/ai/neargo/shop/merchant/", "shop-core/src/main/java/ai/neargo/shop/user/",
-            "shop-auth-store/", "shop-base-auth/", "shop-gateway/src/main/java/ai/neargo/shop/merchantbridge/");
+            "shop-auth-store/", "shop-base-auth/", "shop-gateway/src/main/java/ai/neargo/shop/merchantbridge/",
+            // 运营账号（新库 ops_staff）：platform 包里混着别的库的表，只按文件登记已接平台句柄的两个
+            "shop-core/src/main/java/ai/neargo/shop/platform/auth/OpsApiKeyStore.java",
+            "shop-core/src/main/java/ai/neargo/shop/platform/entity/SysOpsStaff.java");
     /**
      * 提到平台表名但不是访问：数据域按表名登记（拦截器对每个工厂都生效）；会话存储的表名配置（它本身就是平台句柄的一部分）；
      * 已执行的历史迁移（冻结，只在旧库上跑过）。
      */
     private static final List<String> NOT_ACCESS = List.of("shop-app/src/main/java/ai/neargo/shop/config/DataScopeRegistration.java",
-            "shop-app/src/main/java/ai/neargo/shop/config/SessionProfiles.java", "/src/main/java/db/migration/");
+            "shop-app/src/main/java/ai/neargo/shop/config/SessionProfiles.java", "/src/main/java/db/migration/",
+            // 收款商户回填与比对：迁移工具，按设计读旧库的 mch_payment_merchant（新库已并入 near-pay）连同旧的门店、主体做对照，
+            // 不是运行时访问平台表；随收款商户迁移收尾一起退役
+            "shop-gateway/src/main/java/ai/neargo/shop/paybridge/PayMerchantBackfillRunner.java",
+            "shop-gateway/src/main/java/ai/neargo/shop/paybridge/PayMerchantComparator.java");
 
     private static final List<String> SPLIT_OUT = List.of("/merchant/booking/", "/merchant/funds/", "/merchant/plan/",
             "/merchant/paymerchant/", "/merchant/dictionary/", "/merchant/violation/");

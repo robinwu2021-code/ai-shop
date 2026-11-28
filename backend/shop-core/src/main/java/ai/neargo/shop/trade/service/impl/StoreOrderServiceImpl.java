@@ -41,6 +41,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -81,6 +82,7 @@ public class StoreOrderServiceImpl implements StoreOrderService {
     @Autowired private PosActivityPort posActivities;
     @Autowired private PosSaleMemberPort posMembers;
     @Autowired private PosActivitySaleMapper posFacts;
+    @Value("${shop.trade.canonical-storage:false}") private boolean canonicalStorage;
 
     private final OrderMapper orders;
     private final SubOrderMapper subOrders;
@@ -243,8 +245,10 @@ public class StoreOrderServiceImpl implements StoreOrderService {
         order.setStoreNo(scope.storeNo());
         order.setOperationNo(keyHash);
         order.setClientOrderNo(cmd.clientOrderNo());
-        order.setPosActivityFactsVersion(cmd.activityFactsVersion());
-        if (cmd.activityFactsVersion() != null) order.setPosMemberNo(cmd.memberNo());
+        String memberNo = cmd.activityFactsVersion() == null ? null : cmd.memberNo();
+        String memberUser = memberNo == null ? null
+                : posMembers.requireUser(TENANT, scope.entityNo(), scope.storeNo(), memberNo);
+        if (canonicalStorage) order.setUserNo(memberUser);
         order.setChannel(cmd.channel());
         order.setInvoiceTiming(cmd.invoiceTiming());
         order.setCurrency(cmd.currency());
@@ -255,6 +259,9 @@ public class StoreOrderServiceImpl implements StoreOrderService {
         order.setStatus(OrdOrder.WAIT_PAY);
         order.setPointsIntegrated(false);
         orders.insert(order);
+        if (!canonicalStorage && cmd.activityFactsVersion() != null) {
+            posFacts.setLegacyFacts(TENANT, orderNo.value(), cmd.activityFactsVersion(), memberNo);
+        }
         var sub = new OrdSubOrder();
         sub.setTenantNo(TENANT);
         sub.setSubOrderNo(subNo.value());
@@ -294,8 +301,6 @@ public class StoreOrderServiceImpl implements StoreOrderService {
         if (!selected.isEmpty() && cmd.activityFactsVersion() == null
                 || selected.stream().map(AdjustmentCmd::activityNo).distinct().count() != selected.size())
             throw BizException.of(ErrorCode.BAD_REQUEST);
-        String memberUser = order.getPosMemberNo() == null ? null
-                : posMembers.requireUser(TENANT,scope.entityNo(),scope.storeNo(),order.getPosMemberNo());
         var cart = plan.lines().stream().map(l -> new PosActivityPort.Line(l.getGoodsNo(), l.getCategoryNo(),
                 l.getQty(), l.getPrice())).toList();
         long[] activityTotals = new long[cart.size()];
@@ -303,7 +308,9 @@ public class StoreOrderServiceImpl implements StoreOrderService {
                 posActivities.itemOffers(TENANT, selected.stream().map(AdjustmentCmd::activityNo).toList());
         var executionOrder=selected.stream().sorted(java.util.Comparator.comparing(a -> !itemOffers.contains(a.activityNo()))).toList();
         boolean hasOrderOffer = false;
-        for (var adjustment : executionOrder) {
+        var canonicalShares = new ArrayList<PosSaleQuote.Share>();
+        for (int step = 0; step < executionOrder.size(); step++) {
+            var adjustment = executionOrder.get(step);
             long amount = Math.negateExact(adjustment.amountMinor());
             var eligible = new ArrayList<>(cart);
             if (!itemOffers.contains(adjustment.activityNo())) {
@@ -321,15 +328,28 @@ public class StoreOrderServiceImpl implements StoreOrderService {
                 if (activityTotals[i] != 0) throw BizException.of(ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE);
                 activityTotals[i] = shares[i];
                 if (activityTotals[i] > item.getAmount()) throw BizException.of(ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE);
-                posFacts.insert(TENANT,subNo.value(),item.getId(),use.applyNo(),adjustment.activityNo(),use.versionNo(),shares[i]);
+                if (canonicalStorage) {
+                    canonicalShares.add(new PosSaleQuote.Share(i, step, use.applyNo(), adjustment.activityNo(),
+                            use.versionNo(), use.weights()[i], shares[i]));
+                } else {
+                    posFacts.insert(TENANT, subNo.value(), item.getId(), use.applyNo(), adjustment.activityNo(),
+                            use.versionNo(), shares[i]);
+                }
             }
         }
         if (!selected.isEmpty()) {
             long[] remaining = new long[cart.size()];
             for (int i=0;i<remaining.length;i++) remaining[i]=plan.lines().get(i).getAmount()-activityTotals[i];
             long[] paid = LineShares.allocate(plan.totalMinor(), remaining);
-            for (int i=0;i<paid.length;i++) items.update(null,new UpdateWrapper<OrdItem>()
-                    .eq("id",plan.lines().get(i).getId()).set("paid_share_minor",paid[i]));
+            for (int i = 0; i < paid.length; i++) {
+                var item = plan.lines().get(i);
+                item.setPaidShareMinor(paid[i]);
+                items.update(null, new UpdateWrapper<OrdItem>().eq("id", item.getId()).set("paid_share_minor", paid[i]));
+            }
+        }
+        if (canonicalStorage && cmd.activityFactsVersion() != null) {
+            PosSaleQuote.record(posFacts, order, subNo.value(), memberNo, cmd.activityFactsVersion(), plan.lines(),
+                    canonicalShares, activityTotals);
         }
         numbers.bindReserved(new DocumentSource(TENANT, "CORE", "TRADE_ORDER", orderNo.value()), orderNo);
         numbers.bindReserved(new DocumentSource(TENANT, "CORE", "TRADE_SUBORDER", subNo.value()), subNo);
@@ -487,7 +507,12 @@ public class StoreOrderServiceImpl implements StoreOrderService {
             subOrders.update(null, new UpdateWrapper<OrdSubOrder>().eq("id", sub.getId())
                     .eq("status", OrdSubOrder.WAIT_PAY).set("status", OrdSubOrder.CANCELLED)
                     .setSql("version=version+1"));
-            if (order.getPosActivityFactsVersion() != null) posActivities.cancel(orderNo);
+            var facts = canonicalStorage ? posFacts.canonicalFacts(TENANT, sub.getSubOrderNo(), orderNo)
+                    : posFacts.legacyFacts(TENANT, orderNo);
+            if (facts != null) {
+                posActivities.cancel(orderNo);
+                if (canonicalStorage) posFacts.decideAllocations(TENANT, sub.getSubOrderNo(), orderNo, "CANCELLED");
+            }
             return null;
         }));
         return get(scope, orderNo);

@@ -54,7 +54,11 @@ INSERT INTO {trade}.prd_goods
      cutoff_at, arrival_desc, weighed, origin, duration_min, points_config, group_price_minor, group_min_count,
      sellable_override, pay_modes, inv_mode, new_notified_at, restricted_regions, freight_template_no,
      deleted, version, created_at, created_by, updated_at, updated_by)
-SELECT tenant_no, goods_no, entity_no, store_no, store_name, std_no, title, title_i18n, subtitle, subtitle_i18n,
+-- 商品一定有所属门店（读路径只认这一列；商品与库存方案 §3）：旧商品没填的取主体默认店
+SELECT tenant_no, goods_no, entity_no,
+       COALESCE(NULLIF(store_no, ''), (SELECT MIN(ms.store_no) FROM {src}.mch_store ms
+                                        WHERE ms.entity_no = prd_goods.entity_no AND ms.deleted = 0 AND ms.is_default = 1)),
+       store_name, std_no, title, title_i18n, subtitle, subtitle_i18n,
        cover, images, detail, detail_images, type, category_no, fulfillments, spec_groups, params,
        rating, rating_count, sales, limit_per_user, on_sale, pending_on_sale, sale_mode, audit_status, audit_reason,
        cutoff_at, arrival_desc, weighed, origin, duration_min, points_config, group_price_minor, group_min_count,
@@ -214,12 +218,28 @@ FROM {src}.prd_store_price WHERE deleted = 0;
 INSERT INTO store_sku_in
 SELECT tenant_no, entity_no, store_no, sku_no, @home_market, NULL, NULL, stock, locked_stock, 0, 1
 FROM {src}.prd_store_stock WHERE deleted = 0;
--- 主体级库存（原 prd_sku.stock）进门店号为空串的库存池，与运行时口径一致（PR #59）；一个 SKU 一份
+-- 主体级库存（原 prd_sku.stock）的去处（商品与库存方案 §3.2 S5）：
+--   单店主体（只有一家在用的店）且那家店没有这个 SKU 的店级库存 → 并进那家店的行（同一份货，行为不变）；
+--   其余（多店主体，或那家店已有店级库存）→ 门店号为空串的库存池，与运行时口径一致（PR #59）。一个 SKU 一份。
+CREATE TEMPORARY TABLE single_store (entity_no VARCHAR(32) PRIMARY KEY, store_no VARCHAR(32));
+INSERT INTO single_store
+SELECT entity_no, MIN(store_no) FROM {src}.mch_store WHERE deleted = 0 GROUP BY entity_no HAVING COUNT(*) = 1;
+CREATE TEMPORARY TABLE pool_home (sku_no VARCHAR(32) PRIMARY KEY, store_no VARCHAR(32));
+INSERT INTO pool_home
+SELECT p.sku_no, MIN(IF(ss.store_no IS NOT NULL AND NOT EXISTS (
+           SELECT 1 FROM {src}.prd_store_stock st
+            WHERE st.deleted = 0 AND st.store_no = ss.store_no AND st.sku_no = p.sku_no), ss.store_no, ''))
+FROM {src}.prd_sku p LEFT JOIN single_store ss ON ss.entity_no = p.entity_no
+WHERE p.deleted = 0 AND p.stock IS NOT NULL
+GROUP BY p.sku_no;
 INSERT INTO store_sku_in
-SELECT MIN(tenant_no), entity_no, '', sku_no, @home_market, NULL, NULL, MIN(stock), MIN(locked_stock), 0, 1
-FROM {src}.prd_sku WHERE deleted = 0 AND stock IS NOT NULL
-GROUP BY entity_no, sku_no;
+SELECT MIN(p.tenant_no), p.entity_no, h.store_no, p.sku_no, @home_market, NULL, NULL, MIN(p.stock), MIN(p.locked_stock), 0, 1
+FROM {src}.prd_sku p JOIN pool_home h ON h.sku_no = p.sku_no
+WHERE p.deleted = 0 AND p.stock IS NOT NULL
+GROUP BY p.entity_no, p.sku_no, h.store_no;
 
+INSERT INTO migrate_guard
+SELECT 'goods_without_store', COUNT(*) FROM {trade}.prd_goods WHERE deleted = 0 AND (store_no IS NULL OR store_no = '');
 INSERT INTO migrate_guard
 SELECT 'sku_stock_divergent_by_market', COUNT(*) FROM (
     SELECT sku_no FROM {src}.prd_sku WHERE deleted = 0 GROUP BY sku_no
@@ -255,7 +275,11 @@ INSERT INTO {trade}.prd_stock_lock
      locked_at, settled_at, source_manifest_hash, lifecycle_version, confirmation_operation_no,
      deleted, version, created_at, created_by, updated_at, updated_by)
 SELECT l.tenant_no, (SELECT MIN(s.entity_no) FROM {src}.prd_sku s WHERE s.sku_no = l.sku_no),
-       l.lock_no, l.store_no, l.source_store_no, l.sku_no, l.qty, l.presale, l.fulfillment_ref, l.status,
+       l.lock_no,
+       -- 主体级现货锁跟着余额走：余额并进了本店行，释放与扣减也要落到那一行
+       IF((l.store_no IS NULL OR l.store_no = '') AND COALESCE(l.presale, 0) = 0,
+          NULLIF((SELECT h.store_no FROM pool_home h WHERE h.sku_no = l.sku_no), ''), l.store_no),
+       l.source_store_no, l.sku_no, l.qty, l.presale, l.fulfillment_ref, l.status,
        l.locked_at, l.settled_at, l.source_manifest_hash, COALESCE(l.lifecycle_version, 0), l.confirmation_operation_no,
        l.deleted, l.version, l.created_at, l.created_by, l.updated_at, l.updated_by
 FROM {src}.prd_stock_lock l;

@@ -19,6 +19,7 @@ import ai.neargo.shop.trade.entity.OrdOfflineRecordEvent;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.OfflineRecordMappers.EventMapper;
 import ai.neargo.shop.trade.mapper.OfflineRecordMappers.RecordMapper;
+import ai.neargo.shop.trade.mapper.OfflinePaymentMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 import ai.neargo.shop.trade.policy.CashStepPolicy;
@@ -29,11 +30,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -61,6 +65,10 @@ import java.util.stream.Collectors;
  */
 @Service
 public class OfflineRecordServiceImpl implements OfflineRecordService {
+    @Autowired(required = false) private OfflinePaymentMapper offlinePayments;
+    @Autowired private ObjectMapper json;
+    @Value("${shop.trade.canonical-offline-records:false}") private boolean canonicalOfflineRecords;
+
     private StoreOwnershipWritePort ownershipWrites;
     @Autowired
     public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
@@ -129,7 +137,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         requireStep(cmd.amountMinor(), market.currency(), market);
         String keyHash = CheckoutDigests.hash(cmd.idempotencyKey());
         String requestHash = requestHash(scope, cmd);
-        OrdOfflineRecord prior = records.findKey(scope.entityNo(), scope.storeNo(), keyHash);
+        OrdOfflineRecord prior = findKey(scope, keyHash);
         if (prior != null) {
             return replay(prior, requestHash, market);
         }
@@ -137,13 +145,11 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         // 实收时间按秒存：响应按秒回显，App 原样带回更正时不会因毫秒差被当成「改了」
         Instant receivedAt = (cmd.receivedAt() == null ? now : cmd.receivedAt()).truncatedTo(ChronoUnit.SECONDS);
         requireReceivedAt(receivedAt, now, market);
-        if (cmd.orderNo() != null) {
-            requireOwnOrder(scope, cmd.orderNo());
-        }
+        String parentOrder = cmd.orderNo() == null ? null : requireOwnOrder(scope, cmd.orderNo());
         OrdOfflineRecord row;
         try {
             row = writes.execute(tx -> {
-                OrdOfflineRecord inserted = insert(scope, cmd, keyHash, requestHash, receivedAt, now);
+                OrdOfflineRecord inserted = insert(scope, cmd, keyHash, requestHash, receivedAt, now, parentOrder);
                 if (cmd.orderNo() != null) {
                     storeSettlements.afterOfflineRecorded(scope.entityNo(), scope.storeNo(), cmd.orderNo(),
                             cmd.currency());
@@ -152,7 +158,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
             });
         } catch (DuplicateKeyException race) {
             // 同一键并发双写：唯一键兜住，输的那一路读回赢家那条再按摘要判同体 / 异体
-            OrdOfflineRecord winner = records.findKey(scope.entityNo(), scope.storeNo(), keyHash);
+            OrdOfflineRecord winner = findKey(scope, keyHash);
             if (winner == null) {
                 throw race;
             }
@@ -189,7 +195,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         }
         where.orderByDesc(OrdOfflineRecord::getReceivedAt).orderByDesc(OrdOfflineRecord::getId)
                 .last("LIMIT " + (query.size() + 1));
-        List<OrdOfflineRecord> rows = records.selectList(where);
+        List<OrdOfflineRecord> rows = listRows(where);
         String next = null;
         if (rows.size() > query.size()) {
             rows = rows.subList(0, query.size());
@@ -205,7 +211,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         MarketBrief market = market(scope);
-        List<OrdOfflineRecord> rows = records.selectList(Wrappers.<OrdOfflineRecord>lambdaQuery()
+        List<OrdOfflineRecord> rows = listRows(Wrappers.<OrdOfflineRecord>lambdaQuery()
                 .eq(OrdOfflineRecord::getTenantNo, "MAIN")
                 .eq(OrdOfflineRecord::getEntityNo, scope.entityNo())
                 .eq(OrdOfflineRecord::getStoreNo, scope.storeNo())
@@ -220,10 +226,13 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         MarketBrief market = market(scope);
         ZoneId zone = ZoneId.of(market.timeZone());
         LocalDate[] range = range(from, to, zone);
-        long count = records.selectCount(
-                inRange(scope, range, zone).eq(OrdOfflineRecord::getStatus, OrdOfflineRecord.RECORDED));
-        long amount = records.sumRecorded(
-                scope.entityNo(), scope.storeNo(), utc(range[0], zone), utc(range[1].plusDays(1), zone));
+        var where = inRange(scope, range, zone).eq(OrdOfflineRecord::getStatus, OrdOfflineRecord.RECORDED);
+        long count = canonicalOfflineRecords ? offlinePayments.count(where) : records.selectCount(where);
+        LocalDateTime start = utc(range[0], zone);
+        LocalDateTime end = utc(range[1].plusDays(1), zone);
+        long amount = canonicalOfflineRecords
+                ? offlinePayments.sumRecorded("MAIN", scope.entityNo(), scope.storeNo(), start, end)
+                : records.sumRecorded(scope.entityNo(), scope.storeNo(), start, end);
         return new Summary(range[0].toString(), range[1].toString(), market.currency(), count, amount);
     }
 
@@ -288,7 +297,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         MarketBrief market = market(scope);
         Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         OrdOfflineRecord row = writes.execute(tx -> {
-            OrdOfflineRecord current = records.lock(scope.entityNo(), scope.storeNo(), recordNo);
+            OrdOfflineRecord current = lock(scope, recordNo);
             if (current == null) throw BizException.of(ErrorCode.NOT_FOUND);
             if (!"CASH".equals(current.getMethod()) || current.getAmountMinor() != cmd.amountMinor()) {
                 throw BizException.of(ErrorCode.STORE_ORDER_STATE_INVALID);
@@ -312,7 +321,8 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
     // ------------------------------------------------------------------ 写
 
     private OrdOfflineRecord insert(
-            Scope scope, RecordCmd cmd, String keyHash, String requestHash, Instant receivedAt, Instant now) {
+            Scope scope, RecordCmd cmd, String keyHash, String requestHash, Instant receivedAt, Instant now,
+            String parentOrder) {
         ownershipWrites.lockAndCheck("MAIN", scope.entityNo(), scope.storeNo());
         OrdOfflineRecord row = new OrdOfflineRecord();
         row.setTenantNo("MAIN");
@@ -334,16 +344,32 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         row.setVersion(1L);
         // 审计列沿仓库口径（JVM 本地时间）；显式给值，让 recordedAt 与 CREATE 事件是同一刻
         row.setCreatedAt(LocalDateTime.ofInstant(now, ZoneId.systemDefault()));
-        records.insert(row);
         OrdOfflineRecordEvent event = event(row.getRecordNo(), OrdOfflineRecordEvent.CREATE, scope.actorNo(), now);
         event.setToAmountMinor(cmd.amountMinor());
         event.setToMethod(cmd.method());
-        events.insert(event);
+        if (canonicalOfflineRecords) {
+            appendHistory(row, event);
+            offlinePayments.insert(row, parentOrder, canonicalKey(scope, keyHash));
+        } else {
+            records.insert(row);
+            events.insert(event);
+        }
         return row;
     }
 
     /** 乐观锁加一与事件同一事务；行已锁住，0 行只可能是并发改过，按版本不符回 10409。 */
     private OrdOfflineRecord update(OrdOfflineRecord current, OrdOfflineRecordEvent event) {
+        if (canonicalOfflineRecords) {
+            appendHistory(current, event);
+            if (offlinePayments.update(current) != 1) throw BizException.of(ErrorCode.CONFLICT);
+            current.setVersion(current.getVersion() + 1);
+            if (OrdOfflineRecordEvent.REFUND.equals(event.getAction())
+                    && offlinePayments.insertReversal(current, BizKey.next(BizKey.OFFLINE_RECORD),
+                            event.getOccurredAt(), event.getActorNo()) != 1) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            return current;
+        }
         if (records.updateById(current) != 1) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
@@ -369,7 +395,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
     /** 本店、未作废、版本对得上、记账未超窗口（已拍板 D7-C，越界是状态不允许，回 10409）。 */
     private OrdOfflineRecord lockForChange(
             Scope scope, String recordNo, long expectedVersion, Instant now, MarketBrief market) {
-        OrdOfflineRecord row = records.lock(scope.entityNo(), scope.storeNo(), recordNo);
+        OrdOfflineRecord row = lock(scope, recordNo);
         if (row == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -423,19 +449,21 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
      * 订单视角的 orderNo 就是子单号；这里只校验归属本店。不读也不改它的状态（已拍板 D3）——
      * 唯一例外是门店零售单，由 {@link StoreOrderSettlementService} 在写入事务里判付清。
      */
-    private void requireOwnOrder(Scope scope, String orderNo) {
-        Long hit = DataScopeContext.executeWithoutScope(() -> subOrders.selectCount(
+    private String requireOwnOrder(Scope scope, String orderNo) {
+        var row = DataScopeContext.executeWithoutScope(() -> subOrders.selectOne(
                 Wrappers.<OrdSubOrder>lambdaQuery()
+                        .select(OrdSubOrder::getOrderNo)
                         .eq(OrdSubOrder::getSubOrderNo, orderNo)
                         .eq(OrdSubOrder::getEntityNo, scope.entityNo())
                         .eq(OrdSubOrder::getStoreNo, scope.storeNo())));
-        if (hit == null || hit == 0) {
+        if (row == null || row.getOrderNo() == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        return row.getOrderNo();
     }
 
     private OfflineRecordView replay(OrdOfflineRecord row, String requestHash, MarketBrief market) {
-        if (!row.getRequestHash().equals(requestHash)) {
+        if (!Objects.equals(row.getRequestHash(), requestHash)) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         return views(List.of(row), market).getFirst();
@@ -503,12 +531,44 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
 
     // ------------------------------------------------------------------ 读
 
+    private List<OrdOfflineRecord> listRows(LambdaQueryWrapper<OrdOfflineRecord> where) {
+        return canonicalOfflineRecords ? offlinePayments.list(where) : records.selectList(where);
+    }
+
+    private static String canonicalKey(Scope scope, String hash) {
+        return CheckoutDigests.hash("MAIN|" + scope.entityNo() + "|" + scope.storeNo() + "|" + hash);
+    }
+
+    private OrdOfflineRecord findKey(Scope scope, String keyHash) {
+        return canonicalOfflineRecords
+                ? offlinePayments.findKey("MAIN", scope.entityNo(), scope.storeNo(), canonicalKey(scope, keyHash))
+                : records.findKey(scope.entityNo(), scope.storeNo(), keyHash);
+    }
+
+    private OrdOfflineRecord lock(Scope scope, String no) {
+        return canonicalOfflineRecords ? offlinePayments.lock("MAIN", scope.entityNo(), scope.storeNo(), no)
+                : records.lock(scope.entityNo(), scope.storeNo(), no);
+    }
+
+    private List<OrdOfflineRecordEvent> history(OrdOfflineRecord row) {
+        if (row.getOfflineHistory() == null) return List.of();
+        return json.readValue(row.getOfflineHistory(), new TypeReference<List<OrdOfflineRecordEvent>>() {});
+    }
+
+    private void appendHistory(OrdOfflineRecord row, OrdOfflineRecordEvent event) {
+        var entries = new ArrayList<>(history(row));
+        entries.add(event);
+        row.setOfflineHistory(json.writeValueAsString(entries));
+    }
+
     private List<OfflineRecordView> views(List<OrdOfflineRecord> rows, MarketBrief market) {
         if (rows.isEmpty()) {
             return List.of();
         }
         ZoneId zone = ZoneId.of(market.timeZone());
-        Map<String, List<OrdOfflineRecordEvent>> trail = events.selectList(
+        Map<String, List<OrdOfflineRecordEvent>> trail = canonicalOfflineRecords
+                ? rows.stream().collect(Collectors.toMap(OrdOfflineRecord::getRecordNo, this::history))
+                : events.selectList(
                         Wrappers.<OrdOfflineRecordEvent>lambdaQuery()
                                 .eq(OrdOfflineRecordEvent::getTenantNo, "MAIN")
                                 .in(OrdOfflineRecordEvent::getRecordNo,

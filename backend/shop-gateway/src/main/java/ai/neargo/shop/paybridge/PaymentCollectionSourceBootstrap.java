@@ -15,12 +15,15 @@ public final class PaymentCollectionSourceBootstrap {
     private final PaymentCollectionSourceProperties properties;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transaction;
+    /** 门店与主体在平台基础库：只读核对，经商户域端口 */
+    private final ai.neargo.shop.spi.user.PaymentCollectionFactsPort facts;
 
     public PaymentCollectionSourceBootstrap(PaymentCollectionSourceProperties properties,
-            DataSource dataSource, PlatformTransactionManager manager) {
+            DataSource dataSource, PlatformTransactionManager manager, ai.neargo.shop.spi.user.PaymentCollectionFactsPort facts) {
         this.properties = properties;
         jdbc = new JdbcTemplate(dataSource);
         transaction = new TransactionTemplate(manager);
+        this.facts = facts;
     }
 
     public void provision() {
@@ -43,12 +46,10 @@ public final class PaymentCollectionSourceBootstrap {
     }
 
     private void provision(Binding b) {
-        var shops = jdbc.queryForList("SELECT s.id FROM mch_store s JOIN mch_entity e"
-                        + " ON e.entity_no=s.entity_no WHERE s.id=? AND s.store_no=?"
-                        + " AND s.entity_no=? AND s.deleted=0 AND e.deleted=0 AND e.market=?"
-                        + " FOR UPDATE",
-                b.shopStoreId(), b.storeNo(), b.entityNo(), b.market());
-        if (shops.size() != 1) {
+        // 启动时的一次性核对：门店坐标（id、门店号、主体、市场）与平台基础库一致才授予来源
+        var shop = facts.storeByNo(b.storeNo());
+        if (shop.isEmpty() || shop.get().storeId() != b.shopStoreId()
+                || !b.entityNo().equals(shop.get().entityNo()) || !b.market().equals(shop.get().market())) {
             throw new IllegalStateException("Payment collection SHOP coordinates conflict: "
                     + fingerprint(b));
         }

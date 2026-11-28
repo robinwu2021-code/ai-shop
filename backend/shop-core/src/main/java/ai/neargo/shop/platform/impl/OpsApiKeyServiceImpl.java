@@ -46,7 +46,8 @@ public class OpsApiKeyServiceImpl implements OpsApiKeyService {
     }
 
     @Override
-    @Transactional
+    // 锁运营账号行（平台库）与它同一事务：停用、改密与发钥匙串行
+    @Transactional(transactionManager = ai.neargo.shop.common.config.ModuleDataSources.PLATFORM_TX_MANAGER)
     public Issued issue(String staffNo, UUID keyNo, String label, Access access, int validDays) {
         KeyOwner owner = requireEligibleStaff(staffNo);
         var issued = conflictOnDuplicate(() -> credentials.issue(
@@ -56,7 +57,8 @@ public class OpsApiKeyServiceImpl implements OpsApiKeyService {
     }
 
     @Override
-    @Transactional
+    // 锁运营账号行（平台库）与它同一事务：停用、改密与发钥匙串行
+    @Transactional(transactionManager = ai.neargo.shop.common.config.ModuleDataSources.PLATFORM_TX_MANAGER)
     @OperationLog("ops.api_key.register")
     public Metadata registerOwn(UUID keyNo, String label, Access access, int validDays, String hash) {
         String staffNo = SecurityUtils.currentUserNo();
@@ -105,7 +107,8 @@ public class OpsApiKeyServiceImpl implements OpsApiKeyService {
     }
 
     @Override
-    @Transactional
+    // 锁运营账号行（平台库）与它同一事务：停用、改密与发钥匙串行
+    @Transactional(transactionManager = ai.neargo.shop.common.config.ModuleDataSources.PLATFORM_TX_MANAGER)
     @OperationLog("ops.api_key.revoke")
     public void revoke(String staffNo, UUID keyNo) {
         boolean revoked = keys.ownerOf(staffNo).map(owner -> credentials.revoke(owner, keyNo.toString(),

@@ -20,7 +20,10 @@ public class OpsApiKeyStore {
     private final JdbcTemplate jdbc;
     private final CredentialVerifier credentials;
 
-    public OpsApiKeyStore(JdbcTemplate jdbc, CredentialVerifier credentials) {
+    /** 运营账号在平台基础库（新库 {@code ops_staff}）：经平台句柄读写，锁也落在平台库的连接上 */
+    public OpsApiKeyStore(@org.springframework.beans.factory.annotation.Qualifier(
+            ai.neargo.shop.common.config.PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc,
+                          CredentialVerifier credentials) {
         this.jdbc = jdbc;
         this.credentials = credentials;
     }

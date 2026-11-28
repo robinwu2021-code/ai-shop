@@ -64,7 +64,7 @@ class SandboxPaymentReadHttpTest {
             var http=new InternalHttp(service->Optional.of(base),"shared-test-token",
                     beans.getBeanProvider(InternalServiceInterceptor.class));
             var normal=new RemoteBizPaymentAppService(http,fixture.audit);
-            var router=new PaymentReadRouter(normal,fixture.configured,http,fixture.jdbc.getDataSource(),fixture.identities,fixture.audit);
+            var router=new PaymentReadRouter(normal,fixture.configured,http,fixture.jdbc.getDataSource(),fixture.identities,fixture.audit,fixture.merchants);
             var mvc=MockMvcBuilders.standaloneSetup(new BizPaymentController(normal,router)).build();
             mvc.perform(get("/biz/payment/collect-status").header(PaymentReadRouter.HEADER,"SANDBOX"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.channels[0]").value("AI_SHOP_UME_SANDBOX"));

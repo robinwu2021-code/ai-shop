@@ -32,33 +32,38 @@ public abstract class MallGateSubject implements ApprovalSubject {
             .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS).build();
 
     protected final JdbcTemplate db;
-    private final JdbcTemplate platform;
+    /** 门店 → 所属主体：门店在平台基础库，经商户域的门店目录端口取，不在这里写 SQL */
+    private final java.util.function.Function<String, String> storeEntity;
     protected final boolean split;
 
     @Component
     static final class Databases {
+        /** 商户域的门店目录实现（商城侧也有一个同接口的适配器，按名字取商户域那个） */
+        static final String STORE_DIRECTORY = "storeDirectoryPortImpl";
         final JdbcTemplate mall;
-        final JdbcTemplate platform;
+        final java.util.function.Function<String, String> storeEntity;
         final boolean split;
 
         Databases(JdbcTemplate legacy, org.springframework.beans.factory.BeanFactory beans,
                 @Value("${shop.modules.mall.datasource:}") String mallName) {
             split = !mallName.isBlank();
             mall = split ? new JdbcTemplate(beans.getBean(mallName + "DataSource", javax.sql.DataSource.class)) : legacy;
-            platform = split ? new JdbcTemplate(beans.getBean("platformDataSource", javax.sql.DataSource.class)) : legacy;
+            storeEntity = store -> {
+                var card = beans.getBean(STORE_DIRECTORY, ai.neargo.shop.spi.user.StoreDirectoryPort.class)
+                        .cards(java.util.List.of(store)).get(store);
+                return card == null ? null : card.entityNo();
+            };
         }
     }
 
-    protected MallGateSubject(JdbcTemplate db, JdbcTemplate platform, boolean split) {
+    protected MallGateSubject(JdbcTemplate db, java.util.function.Function<String, String> storeEntity, boolean split) {
         this.db = db;
-        this.platform = platform;
+        this.storeEntity = storeEntity;
         this.split = split;
     }
 
     protected MallGateSubject(JdbcTemplate db) {
-        this.db = db;
-        this.platform = db;
-        this.split = false;
+        this(db, store -> null, false);
     }
 
     /** 门禁对应的商城动作（{@code OpsApprovalGatePort} 常量）。 */
@@ -132,9 +137,9 @@ public abstract class MallGateSubject implements ApprovalSubject {
 
     /** 范围标签：门店所属主体（被限定范围的运营据此可见）+ 门店。 */
     java.util.Set<String> scopes(Ref r) {
-        var entity = platform.queryForList("SELECT entity_no FROM mch_store WHERE tenant_no=? AND store_no=? AND deleted=0", String.class, r.tenant(), r.store());
-        return entity.isEmpty() || entity.getFirst() == null ? java.util.Set.of("store:" + r.store())
-                : java.util.Set.of("merchant:" + entity.getFirst(), "store:" + r.store());
+        String entity = storeEntity.apply(r.store());
+        return entity == null ? java.util.Set.of("store:" + r.store())
+                : java.util.Set.of("merchant:" + entity, "store:" + r.store());
     }
 
     static String yuan(Object money) {

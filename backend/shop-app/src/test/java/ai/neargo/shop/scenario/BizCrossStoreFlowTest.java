@@ -66,6 +66,9 @@ class BizCrossStoreFlowTest {
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storeStockMapper;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate stockJdbc;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
@@ -293,7 +296,7 @@ class BizCrossStoreFlowTest {
     }
 
     @Test
-    @DisplayName("★★ 缺货数只数已启用店级库存的 SKU —— 没设过店级库存的不算这家店缺货")
+    @DisplayName("★★ 缺货数只数店级库存行 —— 所属店卖光算缺货，别的店与主体库存池都不算")
     void outOfStockCountsOnlyStoreManagedSkus() throws Exception {
         String biz = merchant("18601000040", "跨店·缺货总店");
         TestPlan.grantPro(planMapper, merchantNoOf(biz));
@@ -303,13 +306,26 @@ class BizCrossStoreFlowTest {
 
         String managed = listedGoods(biz, "分店管理品", 900, 30);
         String managedSku = firstSku(managed);
-        // 另一件商品**从不设店级库存** —— 它走主体总量，对谁都不算缺货
-        String unmanaged = listedGoods(biz, "总量管理品", 900, 0);
+        /*
+         * 新建商品的初始库存写在**所属门店**那一行（不带 X-Store-No 时所属店是默认店 A）。
+         * 这件建出来就是 0：它是 A 店自己的货、A 店卖光了 —— 店主能补货，算 A 店缺货；B 店没有它的行，不算。
+         */
+        String ownedEmpty = listedGoods(biz, "本店售罄品", 900, 0);
+        String ownedEmptySku = firstSku(ownedEmpty);
+        /*
+         * 主体库存池（store_no = ''）只来自旧数据搬迁：主体级总量 0 的 SKU 不算任何一家店缺货。
+         * 接口建不出池行，这里把一件新建商品的行挪进池里来模拟搬迁后的数据。
+         */
+        String pooled = listedGoods(biz, "总量管理品", 900, 0);
+        String pooledSku = firstSku(pooled);
+        assertThat(stockJdbc.update("UPDATE prd_store_sku SET store_no='' WHERE sku_no=? AND store_no=?",
+                pooledSku, storeA)).as("前提：总量管理品在所属店 A 有一行").isEqualTo(1);
 
-        // 起点：一条店级行都没有 → 两家店都是 0
         JsonNode before = compare(biz, 30).get("data").get("stores");
-        assertThat(rowOf(before, storeA).get("outOfStockSkus").asInt()).isZero();
-        assertThat(rowOf(before, storeB).get("outOfStockSkus").asInt()).isZero();
+        assertThat(rowOf(before, storeA).get("outOfStockSkus").asInt())
+                .as("A 店只有本店售罄品（%s）缺货", ownedEmptySku).isEqualTo(1);
+        assertThat(rowOf(before, storeB).get("outOfStockSkus").asInt())
+                .as("B 店一行都没有，不算缺货").isZero();
 
         // A 店把这个 SKU 设成 0 —— 它现在是「已启用店级库存且卖光了」
         setStoreStock(biz, storeA, managed, managedSku, 0);
@@ -318,21 +334,13 @@ class BizCrossStoreFlowTest {
 
         JsonNode after = compare(biz, 30).get("data").get("stores");
         assertThat(rowOf(after, storeA).get("outOfStockSkus").asInt())
-                .as("A 店把这个 SKU 设成 0，缺货数该 +1").isEqualTo(1);
+                .as("A 店把这个 SKU 设成 0，缺货数该 +1").isEqualTo(2);
         assertThat(rowOf(after, storeB).get("outOfStockSkus").asInt())
                 .as("B 店还有 10 件，不该算缺货").isZero();
 
-        /*
-         * ★ 反面：`unmanaged` 那件商品主体总量是 0，但它**一条店级行都没有**，
-         * 走的是主体总量 —— 不算任何一家店缺货。
-         *
-         * 把它算进来的话，一家什么都没配过的店会显示「缺货 200 件」，
-         * 而店主没有任何可做的动作 —— 那个数字只会让他学会忽略这一列。
-         */
-        assertThat(rowOf(after, storeA).get("outOfStockSkus").asInt())
-                .as("没启用店级库存的 SKU（%s）不该被数进来", unmanaged).isEqualTo(1);
-        assertThat(storeStockRows(firstSku(unmanaged)))
-                .as("这件商品不该有任何店级库存行，否则上面那条断言测的不是它").isZero();
+        // ★ 反面：库存池里的总量 0 不算任何一家店缺货 —— 上面 A 店的 2 里没有它
+        assertThat(storeStockRows(pooledSku))
+                .as("总量管理品不该有任何店级库存行，否则上面那条断言测的不是它").isZero();
     }
 
     // ---------------------------------------------------------------- 子账号作用域
@@ -460,6 +468,8 @@ class BizCrossStoreFlowTest {
                 storeStockMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
                         .<ai.neargo.shop.product.entity.PrdStoreSku>lambdaQuery()
                         .eq(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo, skuNo)
+                        .ne(ai.neargo.shop.product.entity.PrdStoreSku::getStoreNo,
+                                ai.neargo.shop.product.entity.PrdStoreSku.ENTITY_POOL)
                         .isNotNull(ai.neargo.shop.product.entity.PrdStoreSku::getSellableQty)));
     }
 

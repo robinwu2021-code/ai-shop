@@ -12,7 +12,7 @@ public class MallOfflinePaymentApprovalSubject extends MallGateSubject {
     public static final String SUBJECT_TYPE = "shop.mall_offline_payment";
 
     public MallOfflinePaymentApprovalSubject(Databases databases) {
-        super(databases.mall, databases.platform, databases.split);
+        super(databases.mall, databases.storeEntity, databases.split);
     }
 
     @Override public String subjectType() { return SUBJECT_TYPE; }

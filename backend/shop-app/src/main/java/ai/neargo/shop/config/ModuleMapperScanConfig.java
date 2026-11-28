@@ -43,6 +43,9 @@ import org.springframework.context.annotation.Import;
         sqlSessionFactoryRef = ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
 @MapperScan(basePackages = "ai.neargo.shop.merchant.mapper", markerInterface = PlatformSqlMapper.class,
         sqlSessionFactoryRef = ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
+// 运营账号（新库 ops_staff）在平台基础库；同包其余 Mapper（版本、行业、审计等）的表不在平台库，仍由全局扫描绑主库
+@MapperScan(basePackages = "ai.neargo.shop.platform.mapper", markerInterface = PlatformTableMapper.class,
+        sqlSessionFactoryRef = ModuleDataSources.PLATFORM_SQL_SESSION_FACTORY)
 // 门店交易库的 Mapper（ADR-068）：按标记收，不按包。交易相关的几个包里混着别的库的表，
 // 「先留原表」的也留在主库，见 docs/technical/零售域-旧表新表对照.md
 @MapperScan(basePackages = {"ai.neargo.shop.trade", "ai.neargo.shop.product", "ai.neargo.shop.fulfillment",

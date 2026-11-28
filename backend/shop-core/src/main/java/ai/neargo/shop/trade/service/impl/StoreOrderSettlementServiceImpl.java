@@ -3,10 +3,12 @@ package ai.neargo.shop.trade.service.impl;
 import ai.neargo.shop.common.PayChannels;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.invoice.InvoicePort;
+import ai.neargo.shop.spi.member.PosSaleMemberPort;
 import ai.neargo.shop.spi.pay.PaidCollectionPort;
 import ai.neargo.shop.spi.pay.PaidCollectionPort.PaidCollection;
 import ai.neargo.shop.spi.trade.OrderEvents;
@@ -15,6 +17,8 @@ import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStoreCollection;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.OfflineRecordMappers.RecordMapper;
+import ai.neargo.shop.trade.mapper.OfflinePaymentMapper;
+import ai.neargo.shop.trade.mapper.PosActivitySaleMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.StoreCollectionMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
@@ -26,7 +30,9 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -52,8 +58,11 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
     static final String CHANNEL_MIXED = "MIXED";
     static final String CHANNEL_COLLECT = "COLLECT";
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private ai.neargo.shop.spi.member.PosSaleMemberPort posMembers;
+    @Autowired private PosSaleMemberPort posMembers;
+    @Autowired private PosActivitySaleMapper posFacts;
+    @Autowired(required = false) private OfflinePaymentMapper offlinePayments;
+    @Value("${shop.trade.canonical-storage:false}") private boolean canonicalStorage;
+    @Value("${shop.trade.canonical-offline-records:false}") private boolean canonicalOfflineRecords;
     private final OrderMapper orders;
     private final SubOrderMapper subOrders;
     private final RecordMapper offline;
@@ -146,8 +155,10 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
                         sub.getSubOrderNo(), order.getCurrency());
                 return false;
             }
-            if (collections.selectCount(new QueryWrapper<OrdStoreCollection>().eq("tenant_no", "MAIN")
-                    .eq("pay_order_no", c.payOrderNo())) > 0) return false;
+            long existing = canonicalOfflineRecords ? offlinePayments.countCollection(c.payOrderNo())
+                    : collections.selectCount(new QueryWrapper<OrdStoreCollection>().eq("tenant_no", "MAIN")
+                            .eq("pay_order_no", c.payOrderNo()));
+            if (existing > 0) return false;
             var row = new OrdStoreCollection();
             row.setTenantNo("MAIN");
             row.setPayOrderNo(c.payOrderNo());
@@ -158,7 +169,8 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
             row.setCurrency(c.currency());
             row.setPaidMinor(c.paidMinor());
             row.setPayChannel(c.payChannel());
-            collections.insert(row);
+            if (canonicalOfflineRecords) offlinePayments.insertCollection(row, BizKey.next(BizKey.OFFLINE_RECORD));
+            else collections.insert(row);
             if (OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) settle(sub, order);
             // 已付清 / 已取消后才到的钱照记（多收、或取消后顾客仍付了）：退还走退款，P3
             else log.warn("[store-order] 收款 {} 到达时订单 {} 已是 {}，只记不转状态", c.payOrderNo(),
@@ -179,7 +191,7 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
 
     @Override
     public long paidMinor(String entityNo, String storeNo, String subOrderNo, String currency) {
-        return unscoped(() -> Math.addExact(offline.sumRecordedOfOrder(entityNo, storeNo, subOrderNo, currency),
+        return unscoped(() -> Math.addExact(sumOffline(entityNo, storeNo, subOrderNo, currency),
                 collectionsOf(subOrderNo).stream().filter(r -> currency.equals(r.getCurrency()))
                         .mapToLong(OrdStoreCollection::getPaidMinor).sum()));
     }
@@ -190,7 +202,7 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
     private void settle(OrdSubOrder sub, OrdOrder order) {
         if (!OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) return;
         String currency = order.getCurrency();
-        long cash = unscoped(() -> offline.sumRecordedOfOrder(sub.getEntityNo(), sub.getStoreNo(),
+        long cash = unscoped(() -> sumOffline(sub.getEntityNo(), sub.getStoreNo(),
                 sub.getSubOrderNo(), currency));
         var collected = unscoped(() -> collectionsOf(sub.getSubOrderNo())).stream()
                 .filter(r -> currency.equals(r.getCurrency())).toList();
@@ -198,13 +210,25 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
         if (paid < order.getPayAmount()) return;
         String channel = channel(cash > 0, collected);
         long now = System.currentTimeMillis();
+        String tenant = order.getTenantNo();
+        String orderNo = order.getOrderNo();
+        String subNo = sub.getSubOrderNo();
+        var facts = unscoped(() -> canonicalStorage ? posFacts.canonicalFacts(tenant, subNo, orderNo)
+                : posFacts.legacyFacts(tenant, orderNo));
+        boolean active = facts != null && facts.memberNo() != null
+                && unscoped(() -> posMembers.active(tenant, sub.getEntityNo(), sub.getStoreNo(), facts.memberNo()));
         int changed = unscoped(() -> orders.update(null, new UpdateWrapper<OrdOrder>().eq("tenant_no", "MAIN")
                 .eq("order_no", order.getOrderNo()).eq("status", OrdOrder.WAIT_PAY)
-                .set(order.getPosActivityFactsVersion() != null, "pos_member_at_payment",
-                        order.getPosMemberNo() != null && posMembers.active("MAIN",sub.getEntityNo(),sub.getStoreNo(),order.getPosMemberNo()))
+                .set(!canonicalStorage && facts != null, "pos_member_at_payment", active)
                 .set("status", OrdOrder.PAID).set("paid_at", now).set("pay_channel", channel)
                 .setSql("version=version+1")));
         if (changed != 1) throw BizException.of(ErrorCode.STORE_ORDER_STATE_INVALID);
+        if (canonicalStorage && facts != null) {
+            unscoped(() -> {
+                PosSaleQuote.requireLinked(posFacts.recordCanonicalMembership(tenant, subNo, orderNo, active));
+                return posFacts.decideAllocations(tenant, subNo, orderNo, "COMMITTED");
+            });
+        }
         unscoped(() -> subOrders.update(null, new UpdateWrapper<OrdSubOrder>().eq("id", sub.getId())
                 .eq("status", OrdSubOrder.WAIT_PAY).set("status", OrdSubOrder.COMPLETED).set("completed_at", now)
                 .setSql("version=version+1")));
@@ -241,8 +265,14 @@ public class StoreOrderSettlementServiceImpl implements StoreOrderSettlementServ
     }
 
     private List<OrdStoreCollection> collectionsOf(String subOrderNo) {
+        if (canonicalOfflineRecords) return offlinePayments.collections(subOrderNo);
         return collections.selectList(new QueryWrapper<OrdStoreCollection>().eq("tenant_no", "MAIN")
                 .eq("sub_order_no", subOrderNo));
+    }
+
+    private long sumOffline(String entity, String store, String sub, String currency) {
+        return canonicalOfflineRecords ? offlinePayments.sumRecordedOfOrder("MAIN", entity, store, sub, currency)
+                : offline.sumRecordedOfOrder(entity, store, sub, currency);
     }
 
     private static <T> T unscoped(Supplier<T> action) {

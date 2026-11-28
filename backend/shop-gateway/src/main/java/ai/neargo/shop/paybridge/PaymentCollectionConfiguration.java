@@ -41,8 +41,9 @@ public class PaymentCollectionConfiguration {
     @Bean
     PaymentCollectionService paymentCollectionService(
             DataSource ds, PlatformTransactionManager tx, OutboxEventBus events,
-            PaymentCollectionProperties properties, StoreOrderSettlementService settlements) {
-        return new PaymentCollectionServiceImpl(ds, tx, events, properties, settlements);
+            PaymentCollectionProperties properties, StoreOrderSettlementService settlements,
+            ai.neargo.shop.spi.user.PaymentCollectionFactsPort facts) {
+        return new PaymentCollectionServiceImpl(ds, tx, events, properties, settlements, facts);
     }
 
     @Bean
@@ -52,9 +53,10 @@ public class PaymentCollectionConfiguration {
             ObjectMapper json,
             MessageService messages,
             BizIdentityResolver identities,
-            MarketPort markets) {
+            MarketPort markets,
+            ai.neargo.shop.spi.user.PaymentCollectionFactsPort facts) {
         return new PaymentCollectionProjection(
-                ds, tx, json, messages, identities, markets, Clock.systemUTC());
+                ds, tx, json, messages, identities, markets, Clock.systemUTC(), facts);
     }
 
     @Bean(destroyMethod = "close")

@@ -31,7 +31,21 @@ class EnrollmentApprovalSubjectTest {
     final JdbcTemplate db = mock(JdbcTemplate.class);
     final PlatformActivityService activities = mock(PlatformActivityService.class);
     @SuppressWarnings("unchecked") final ObjectProvider<ApprovalPort> provider = mock(ObjectProvider.class);
-    final EnrollmentApprovalSubject subject = new EnrollmentApprovalSubject(db, activities, provider, 10_000_000);
+    @SuppressWarnings("unchecked") final ObjectProvider<ai.neargo.shop.spi.user.MerchantQueryPort> merchantProvider = mock(ObjectProvider.class);
+    final ai.neargo.shop.spi.user.MerchantQueryPort merchants = mock(ai.neargo.shop.spi.user.MerchantQueryPort.class);
+    {
+        when(merchantProvider.getIfAvailable()).thenReturn(merchants);
+        when(merchants.find("E1")).thenReturn(java.util.Optional.of(new ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief(
+                "E1", "甲商家", true, true, null, 0, 0, true, 0, false)));
+    }
+    final EnrollmentApprovalSubject subject = new EnrollmentApprovalSubject(db, activities, provider, merchantProvider, 10_000_000);
+
+    @Test
+    @DisplayName("商家名经商户端口取，不跨库连主体表")
+    void entityNameComesFromTheMerchantPort() {
+        enrollment("SUBMITTED", 9_000_000, 0);
+        assertThat(subject.snapshot("EN-1").title() + subject.snapshot("EN-1").summary()).contains("甲商家");
+    }
 
     Map<String, Object> enrollment(String status, long platformMax, long version) {
         Map<String, Object> e = new HashMap<>();

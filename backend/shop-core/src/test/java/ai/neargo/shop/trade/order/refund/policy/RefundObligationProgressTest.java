@@ -16,7 +16,7 @@ class RefundObligationProgressTest {
     @Test void points_unknown_and_operator_required_are_not_reported_as_normal_processing() {
         var mapper = mock(RefundObligationMapper.class);
         var service = new RefundObligationServiceImpl(mapper, mock(RefundExecutionStore.class),
-                mock(CouponPort.class), new ObjectMapper(), mock(PlatformTransactionManager.class));
+                mock(CouponPort.class), new ObjectMapper(), mock(PlatformTransactionManager.class), false);
         when(mapper.pointsSource("AS")).thenReturn(Map.of("closure_version", 2, "net_cash_minor", 50,
                 "state", "CASH_PENDING", "phase", "CASH_PENDING", "after_sale_status", "REFUNDING"));
         assertThat(service.progress("PRF-AS").cashStatus()).isEqualTo("UNKNOWN");

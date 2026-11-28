@@ -34,6 +34,8 @@ class PaymentReadRouterTest {
     final SandboxPaymentReadApi sandbox = mock(SandboxPaymentReadApi.class);
     final BizIdentityResolver identities = mock(BizIdentityResolver.class);
     final AuditLogPort audit = mock(AuditLogPort.class);
+    /** 门店与主体经商户端口判；这里用 H2 里的两张表模拟它的口径（门店已删为空、主体已删时市场回落为 CN） */
+    final ai.neargo.shop.spi.user.MerchantQueryPort merchants = mock(ai.neargo.shop.spi.user.MerchantQueryPort.class);
     final LoginUser user = LoginUser.merchant("OP1", "reader");
     JdbcTemplate jdbc;
     PaymentReadRouter router;
@@ -52,7 +54,13 @@ class PaymentReadRouterTest {
         jdbc.update("INSERT INTO mch_entity VALUES('E1','TW',0),('E2','TW',0)");
         jdbc.update("INSERT INTO mch_store VALUES('S1','E1',0)");
         jdbc.update("INSERT INTO payment_collection_source VALUES('SANDBOX',42,'CHECKOUT',42,9001,'S1','E1',TRUE)");
-        router = new PaymentReadRouter(normal, configured, sandbox, ds, identities, audit);
+        org.mockito.Mockito.when(merchants.payStoreOf(org.mockito.ArgumentMatchers.anyString())).thenAnswer(inv ->
+                jdbc.query("SELECT s.store_no,s.entity_no,COALESCE((SELECT e.market FROM mch_entity e WHERE e.entity_no=s.entity_no"
+                                + " AND e.deleted=0),'CN') m FROM mch_store s WHERE s.store_no=? AND s.deleted=0",
+                        (rs, i) -> new ai.neargo.shop.spi.user.MerchantQueryPort.PayStore(1L, rs.getString(1), "店",
+                                rs.getString(2), "主体", rs.getString(3), null),
+                        inv.getArgument(0, String.class)).stream().findFirst());
+        router = new PaymentReadRouter(normal, configured, sandbox, ds, identities, audit, merchants);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, List.of()));
         BizContext.set(scope(Set.of(BizPerms.PAY_ORDER_VIEW, BizPerms.PAY_STATEMENT)));
@@ -142,7 +150,7 @@ class PaymentReadRouterTest {
         for (var p : List.of(new PaymentReadProperties(true,"SANDBOX",false,null,null),
                 new PaymentReadProperties(true,"SANDBOX",true,"SB",null),
                 new PaymentReadProperties(false,"SANDBOX",true,"SB","credential"))) {
-            var unavailable = new PaymentReadRouter(normal,p,sandbox,jdbc.getDataSource(),identities,audit);
+            var unavailable = new PaymentReadRouter(normal,p,sandbox,jdbc.getDataSource(),identities,audit,merchants);
             assertThatThrownBy(()->unavailable.status("SANDBOX")).isInstanceOf(BizException.class);
         }
         verifyNoInteractions(normal,sandbox);

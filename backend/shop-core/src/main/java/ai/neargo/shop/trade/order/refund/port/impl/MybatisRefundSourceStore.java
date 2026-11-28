@@ -23,14 +23,12 @@ public class MybatisRefundSourceStore implements RefundSourceStore {
 
     @Override
     public List<OrdItem> items(String subOrderNo) {
-        return DataScopeContext.executeWithoutScope(() -> itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
-                .eq(OrdItem::getSubOrderNo, subOrderNo).orderByAsc(OrdItem::getId)));
+        return DataScopeContext.executeWithoutScope(() -> itemMapper.refundItems(subOrderNo, false));
     }
 
     @Override
     public List<OrdItem> lockItems(String subOrderNo) {
-        return DataScopeContext.executeWithoutScope(() -> itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
-                .eq(OrdItem::getSubOrderNo, subOrderNo).orderByAsc(OrdItem::getId).last("FOR UPDATE")));
+        return DataScopeContext.executeWithoutScope(() -> itemMapper.refundItems(subOrderNo, true));
     }
 
     @Override

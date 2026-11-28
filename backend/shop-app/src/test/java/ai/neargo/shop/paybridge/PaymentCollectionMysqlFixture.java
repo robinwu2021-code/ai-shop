@@ -206,7 +206,8 @@ final class PaymentCollectionMysqlFixture implements AutoCloseable {
                                         "TW", "Taiwan", "TWD", 2, "Asia/Taipei", 1, true)));
         projection =
                 new PaymentCollectionProjection(
-                        ds, manager, json, messages, identities, markets, Clock.systemUTC());
+                        ds, manager, json, messages, identities, markets, Clock.systemUTC(),
+                        new ai.neargo.shop.merchant.port.PaymentCollectionFactsPortImpl(new org.springframework.jdbc.core.JdbcTemplate(ds)));
         facade = new UnifiedOutboxFacade(json);
         facade.register(
                 new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, ds, manager, json),
@@ -220,7 +221,8 @@ final class PaymentCollectionMysqlFixture implements AutoCloseable {
                         new StaticListableBeanFactory().getBeanProvider(OutboxPump.class));
         bus.setUnified(facade);
         service = new PaymentCollectionServiceImpl(ds, manager, bus, properties,
-                mock(ai.neargo.shop.trade.service.StoreOrderSettlementService.class));
+                mock(ai.neargo.shop.trade.service.StoreOrderSettlementService.class),
+                new ai.neargo.shop.merchant.port.PaymentCollectionFactsPortImpl(new org.springframework.jdbc.core.JdbcTemplate(ds)));
         var props = new OutboxProperties();
         props.setRecoveryInterval(Duration.ofMillis(100));
         runner = new OutboxRunner(facade, Clock.systemUTC(), props);

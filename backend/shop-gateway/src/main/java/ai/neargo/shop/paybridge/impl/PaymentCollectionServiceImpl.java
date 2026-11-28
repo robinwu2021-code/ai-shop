@@ -33,15 +33,19 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
     private final OutboxEventBus events;
     private final PaymentCollectionProperties properties;
     private final StoreOrderSettlementService settlements;
+    /** 门店与主体在平台基础库：核验经商户域端口，口径同原 SQL（门店、主体未删；按 id 时连租户） */
+    private final ai.neargo.shop.spi.user.PaymentCollectionFactsPort facts;
 
     public PaymentCollectionServiceImpl(
             DataSource ds, PlatformTransactionManager manager, OutboxEventBus events,
-            PaymentCollectionProperties properties, StoreOrderSettlementService settlements) {
+            PaymentCollectionProperties properties, StoreOrderSettlementService settlements,
+            ai.neargo.shop.spi.user.PaymentCollectionFactsPort facts) {
         jdbc = new JdbcTemplate(ds);
         transaction = new TransactionTemplate(manager);
         this.events = events;
         this.properties = properties;
         this.settlements = settlements;
+        this.facts = facts;
     }
 
     @Override
@@ -107,28 +111,19 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
      * store exists and its entity's market matches (TDD-沙箱收款消息与SSE, 2026-11-16 增量).
      */
     private Map<String, Object> legacyStore(String environment, PaymentCollectionFact fact) {
-        var bindings =
-                jdbc.queryForList(
-                        "SELECT s.store_no,s.entity_no,e.market FROM"
-                                + " payment_collection_source b JOIN mch_store s ON"
-                                + " s.store_no=b.store_no AND s.entity_no=b.entity_no AND"
-                                + " s.deleted=0 JOIN mch_entity e ON"
-                                + " e.entity_no=s.entity_no AND e.deleted=0 WHERE"
-                                + " b.environment=? AND b.pay_app_id=? AND"
-                                + " b.source_type=? AND b.source_id=? AND"
-                                + " b.payment_store_id=? AND b.enabled=1",
-                        environment,
-                        fact.payAppId(),
-                        fact.sourceType(),
-                        fact.sourceId(),
-                        fact.storeId());
+        // 来源绑定在本库；它指向的门店须仍在、主体须仍在且与绑定一致（门店与主体经商户域端口）
+        var bindings = new java.util.ArrayList<Map<String, Object>>();
+        for (var b : jdbc.queryForList(
+                "SELECT store_no,entity_no FROM payment_collection_source WHERE"
+                        + " environment=? AND pay_app_id=? AND source_type=? AND source_id=? AND"
+                        + " payment_store_id=? AND enabled=1",
+                environment, fact.payAppId(), fact.sourceType(), fact.sourceId(), fact.storeId())) {
+            facts.storeByNo((String) b.get("store_no"))
+                    .filter(s -> s.entityNo().equals(b.get("entity_no")))
+                    .ifPresent(s -> bindings.add(storeRow(s)));
+        }
         if (bindings.isEmpty() && fact.storeNo() != null)
-            bindings =
-                    jdbc.queryForList(
-                            "SELECT s.store_no,s.entity_no,e.market FROM mch_store s JOIN mch_entity e"
-                                    + " ON e.entity_no=s.entity_no AND e.deleted=0"
-                                    + " WHERE s.store_no=? AND s.deleted=0",
-                            fact.storeNo());
+            facts.storeByNo(fact.storeNo()).ifPresent(s -> bindings.add(storeRow(s)));
         if (bindings.size() != 1
                 || !Objects.equals(bindings.getFirst().get("market"), fact.market())
                 || fact.storeNo() != null
@@ -143,14 +138,9 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                 || !canonicalSourceAllowed(environment, fact)) {
             throw untrustedStore();
         }
-        var stores = jdbc.queryForList("""
-                SELECT s.store_no, s.entity_no, s.tenant_no, e.market
-                FROM mch_store s JOIN mch_entity e
-                  ON e.tenant_no=s.tenant_no AND e.entity_no=s.entity_no AND e.deleted=0
-                WHERE s.tenant_no=? AND s.id=? AND s.deleted=0
-                """, fact.tenantNo(), fact.storeId());
-        if (stores.size() != 1) throw untrustedStore();
-        var store = stores.getFirst();
+        var found = facts.storeById(fact.tenantNo(), fact.storeId());
+        if (found.isEmpty()) throw untrustedStore();
+        var store = storeRow(found.get());
         if (!fact.tenantNo().equals(store.get("tenant_no")) || !fact.entityNo().equals(store.get("entity_no"))
                 || !fact.market().equals(store.get("market"))
                 || fact.storeNo() != null && !fact.storeNo().equals(store.get("store_no"))) {
@@ -174,6 +164,15 @@ public final class PaymentCollectionServiceImpl implements PaymentCollectionServ
                 && properties.getCanonicalCheckoutSources().contains(source))
                 || ("BIZ".equals(fact.sourceType()) && "BIZ_COLLECT".equals(fact.bizType())
                 && properties.getCanonicalBizCollectSources().contains(source));
+    }
+
+    private static Map<String, Object> storeRow(ai.neargo.shop.spi.user.PaymentCollectionFactsPort.StoreFact s) {
+        var row = new java.util.HashMap<String, Object>();
+        row.put("store_no", s.storeNo());
+        row.put("entity_no", s.entityNo());
+        row.put("tenant_no", s.tenantNo());
+        row.put("market", s.market());
+        return row;
     }
 
     private static ResponseStatusException untrustedStore() {

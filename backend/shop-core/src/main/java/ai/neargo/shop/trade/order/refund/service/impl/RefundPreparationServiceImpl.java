@@ -171,6 +171,7 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
         row.setReturnCoupon(versioned && flags.bool("refund.return-coupon",true));
         row.setAfterSaleNo(as.getAfterSaleNo());
         row.setSubOrderNo(child.getSubOrderNo());
+        row.setTenantNo(child.getTenantNo());
         row.setOrderNo(child.getOrderNo());
         row.setAmountMinor(plan.totalMinor());
         row.setZeroLiability(BasicRefundPolicy.zeroLiability(child));

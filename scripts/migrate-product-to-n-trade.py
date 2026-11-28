@@ -23,6 +23,27 @@ SQL = ROOT / 'backend/scripts/migrate-product-to-n-trade.sql'
 NAME = re.compile(r'^[A-Za-z0-9_]+$')
 
 REPORT = """
+WITH single_store AS (
+    SELECT entity_no, MIN(store_no) AS store_no
+    FROM {src}.mch_store WHERE deleted=0 GROUP BY entity_no HAVING COUNT(*)=1
+), pool_home AS (
+    SELECT p.sku_no, MIN(IF(s.store_no IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM {src}.prd_store_stock st
+        WHERE st.deleted=0 AND st.store_no=s.store_no AND st.sku_no=p.sku_no
+    ), s.store_no, '')) AS store_no
+    FROM {src}.prd_sku p LEFT JOIN single_store s ON s.entity_no=p.entity_no
+    WHERE p.deleted=0 AND p.stock IS NOT NULL GROUP BY p.sku_no
+), old_store_sku_keys AS (
+    SELECT store_no COLLATE utf8mb4_bin AS store_no, sku_no COLLATE utf8mb4_bin AS sku_no,
+           IF(market='CN', 'TW', market) COLLATE utf8mb4_bin AS market
+    FROM {src}.prd_store_price WHERE deleted=0
+    UNION
+    SELECT store_no COLLATE utf8mb4_bin, sku_no COLLATE utf8mb4_bin, _utf8mb4'TW' COLLATE utf8mb4_bin
+    FROM {src}.prd_store_stock WHERE deleted=0
+    UNION
+    SELECT store_no COLLATE utf8mb4_bin, sku_no COLLATE utf8mb4_bin, _utf8mb4'TW' COLLATE utf8mb4_bin
+    FROM pool_home
+)
 SELECT 'prd_category' AS `项`, (SELECT COUNT(*) FROM {src}.prd_category) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_category) AS `新`
 UNION ALL SELECT 'prd_goods' AS `项`, (SELECT COUNT(*) FROM {src}.prd_goods) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_goods) AS `新`
 UNION ALL SELECT 'prd_sku' AS `项`, (SELECT COUNT(*) FROM {src}.prd_sku) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_sku) AS `新`
@@ -39,7 +60,8 @@ UNION ALL SELECT '平台品类兜底模板 → CATEGORY_TYPE 维度级' AS `项`
         WHERE deleted=0 AND scope='PLATFORM' AND category_no IS NULL) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_spec_usage WHERE scope_type='CATEGORY_TYPE' AND value_no='') AS `新`
 UNION ALL SELECT '  其中名字对不上平台维度的模板（未搬，需人工）' AS `项`, (SELECT COUNT(*) FROM {src}.prd_spec_template t
         WHERE t.deleted=0 AND t.scope='PLATFORM' AND t.category_no IS NULL AND NOT EXISTS (
-          SELECT 1 FROM {trade}.prd_spec_dim d WHERE d.scope='PLATFORM' AND d.name=t.name AND d.deleted=0)) AS `旧`, '' AS `新`
+          SELECT 1 FROM {trade}.prd_spec_dim d WHERE d.scope='PLATFORM'
+            AND d.name=t.name COLLATE utf8mb4_0900_ai_ci AND d.deleted=0)) AS `旧`, '' AS `新`
 UNION ALL SELECT '类目级平台模板（不搬：类目选定后只用类目绑定）' AS `项`, (SELECT COUNT(*) FROM {src}.prd_spec_template
         WHERE deleted=0 AND scope='PLATFORM' AND category_no IS NOT NULL) AS `旧`, '' AS `新`
 UNION ALL SELECT '商家自存模板（未搬，需人工转为自建维度）' AS `项`, (SELECT COUNT(*) FROM {src}.prd_spec_template
@@ -47,9 +69,20 @@ UNION ALL SELECT '商家自存模板（未搬，需人工转为自建维度）' 
 UNION ALL SELECT 'prd_goods_revision（含草稿）' AS `项`, (SELECT COUNT(*) FROM {src}.prd_goods_revision)
        + (SELECT COUNT(*) FROM {src}.prd_goods_draft WHERE deleted=0) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_goods_revision) AS `新`
 UNION ALL SELECT '  其中草稿（EDITING/SUBMITTED）' AS `项`, (SELECT COUNT(*) FROM {src}.prd_goods_draft WHERE deleted=0) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_goods_revision WHERE status IN ('EDITING','SUBMITTED')) AS `新`
-UNION ALL SELECT '门店价 + 店级库存 + 库存池 → prd_store_sku' AS `项`, (SELECT COUNT(*) FROM {src}.prd_store_price WHERE deleted=0)
-       + (SELECT COUNT(*) FROM {src}.prd_store_stock WHERE deleted=0) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_store_sku) AS `新`
-UNION ALL SELECT '  其中库存池（主体级库存）' AS `项`, (SELECT COUNT(DISTINCT sku_no) FROM {src}.prd_sku WHERE deleted=0 AND stock IS NOT NULL) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_store_sku WHERE store_no='') AS `新`
+UNION ALL SELECT '门店价 + 店级库存 + 库存池 → prd_store_sku' AS `项`,
+       (SELECT COUNT(*) FROM old_store_sku_keys) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_store_sku) AS `新`
+UNION ALL SELECT '  门店 SKU 源有目标无', (SELECT COUNT(*) FROM old_store_sku_keys o
+       WHERE NOT EXISTS (SELECT 1 FROM {trade}.prd_store_sku n
+           WHERE n.store_no=o.store_no AND n.sku_no=o.sku_no AND n.market=o.market)), ''
+UNION ALL SELECT '  门店 SKU 目标有源无', '', (SELECT COUNT(*) FROM {trade}.prd_store_sku n
+       WHERE NOT EXISTS (SELECT 1 FROM old_store_sku_keys o
+           WHERE n.store_no=o.store_no AND n.sku_no=o.sku_no AND n.market=o.market))
+UNION ALL SELECT '  主体级库存（旧 SKU 数）→ 新：并进单店本店行 + 库存池',
+       (SELECT COUNT(*) FROM pool_home), CONCAT((SELECT COUNT(*) FROM pool_home h
+           JOIN {trade}.prd_store_sku n ON n.sku_no=h.sku_no COLLATE utf8mb4_bin
+           AND n.store_no=h.store_no COLLATE utf8mb4_bin AND n.market='TW'
+           WHERE h.store_no<>'' AND n.sellable_qty IS NOT NULL), ' + ',
+           (SELECT COUNT(*) FROM {trade}.prd_store_sku WHERE store_no=''))
 UNION ALL SELECT '  库存总件数 / 锁量（旧：主体 + 店级）' AS `项`, CONCAT((SELECT COALESCE(SUM(st),0) FROM (SELECT MIN(stock) st FROM {src}.prd_sku WHERE deleted=0 GROUP BY sku_no) a)
               + (SELECT COALESCE(SUM(stock),0) FROM {src}.prd_store_stock WHERE deleted=0), ' / ',
               (SELECT COALESCE(SUM(lk),0) FROM (SELECT MIN(locked_stock) lk FROM {src}.prd_sku WHERE deleted=0 GROUP BY sku_no) b)

@@ -42189,6 +42189,13 @@
         "module": "shop-base"
       },
       {
+        "host": "ScopeCodes",
+        "name": "BRAND",
+        "value": "BRAND",
+        "zh": "连锁的存储编码",
+        "module": "shop-base"
+      },
+      {
         "host": "CallSources",
         "name": "UNKNOWN",
         "value": "UNKNOWN",
@@ -51072,6 +51079,17 @@
           "UNKNOWN"
         ],
         "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "ScopeType",
+        "values": [
+          "STORE",
+          "ENTITY",
+          "GROUP",
+          "PLATFORM"
+        ],
+        "zh": "一项能力在哪生效（连锁整体设计 §4.1）。",
         "module": "shop-base"
       },
       {

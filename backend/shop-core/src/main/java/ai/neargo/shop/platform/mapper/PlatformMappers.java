@@ -14,7 +14,7 @@ public final class PlatformMappers {
     private PlatformMappers() {
     }
 
-    public interface StaffMapper extends BaseMapper<SysOpsStaff> {
+    public interface StaffMapper extends ai.neargo.shop.common.config.PlatformTableMapper<SysOpsStaff> {
     }
 
     public interface BannedWordMapper

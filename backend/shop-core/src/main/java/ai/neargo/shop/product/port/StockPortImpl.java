@@ -190,7 +190,7 @@ public class StockPortImpl implements StockPort, ReservationOwner {
         }
         List<String> failed = new ArrayList<>();
         for (SkuQty item : items) {
-            String storeNo = item.storeNo();
+            String storeNo = effectiveStore(item.skuNo(), item.storeNo());
             /*
              * 按 SKU 判定走哪条路，而不是按商家或按请求 ——
              * 同一个商家完全可能「大米按店管、酱油还没分」，一刀切会让没分的那些
@@ -406,9 +406,10 @@ public class StockPortImpl implements StockPort, ReservationOwner {
              * 两处判据不一致的话，会出现「从店级扣、回补到主体级」这种半边账，
              * 而两个数都还是正的，没有任何地方会报错。
              */
-            if (it.storeNo() != null && hasStoreStock(it.skuNo())) {
+            String storeNo = effectiveStore(it.skuNo(), it.storeNo());
+            if (storeNo != null && hasStoreStock(it.skuNo())) {
                 DataScopeContext.executeWithoutScope(
-                        () -> storeStockMapper.restoreStock(it.storeNo(), it.skuNo(), it.qty()));
+                        () -> storeStockMapper.restoreStock(storeNo, it.skuNo(), it.qty()));
             } else {
                 DataScopeContext.executeWithoutScope(
                         () -> skuMapper.restoreStock(it.skuNo(), it.qty()));
@@ -488,21 +489,45 @@ public class StockPortImpl implements StockPort, ReservationOwner {
         if (storeNo == null || storeNo.isBlank()) {
             return true;
         }
+        return storeNo.equals(ownerStoreOf(skuNo));
+    }
+
+    /**
+     * 这次调用实际落在哪家店（商品与库存方案 §3.2 S3）：带了门店就是那家；
+     * 没带门店时，所属门店有店级库存行就落所属门店 —— 单店的库存就在那一行（PR #59 起建品写在那里）；
+     * 都没有才返回空，走旧数据的主体库存池。存量调用方（{@code SkuQty(sku, qty)}）因此不必知道门店。
+     */
+    private String effectiveStore(String skuNo, String storeNo) {
+        if (storeNo != null && !storeNo.isBlank()) {
+            return storeNo;
+        }
+        String owner = ownerStoreOf(skuNo);
+        if (owner == null || owner.isBlank()) {
+            return null;
+        }
+        return DataScopeContext.executeWithoutScope(() ->
+                storeStockMapper.selectCount(Wrappers.<PrdStoreSku>lambdaQuery()
+                        .eq(PrdStoreSku::getSkuNo, skuNo).eq(PrdStoreSku::getStoreNo, owner)
+                        .isNotNull(PrdStoreSku::getSellableQty))) > 0 ? owner : null;
+    }
+
+    /** 商品所属门店；查不到返回空 */
+    private String ownerStoreOf(String skuNo) {
         if (goodsMapper == null) {
-            return false;
+            return null;
         }
         ai.neargo.shop.product.entity.PrdSku sku = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
                         .select(ai.neargo.shop.product.entity.PrdSku::getGoodsNo)
                         .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, skuNo).last("limit 1")));
         if (sku == null || sku.getGoodsNo() == null) {
-            return false;
+            return null;
         }
         ai.neargo.shop.product.entity.PrdGoods goods = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
                         .select(ai.neargo.shop.product.entity.PrdGoods::getStoreNo)
                         .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, sku.getGoodsNo()).last("limit 1")));
-        return goods != null && storeNo.equals(goods.getStoreNo());
+        return goods == null ? null : goods.getStoreNo();
     }
 
     /** 预售余量：与 lockPresale 的 WHERE 条件逐条对应；没开预售或已截单为 0 */
@@ -568,14 +593,15 @@ public class StockPortImpl implements StockPort, ReservationOwner {
         if (onHand < 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        boolean perStore = storeNo != null && !storeNo.isBlank() && hasStoreStock(skuNo);
+        String target = effectiveStore(skuNo, storeNo);
+        boolean perStore = target != null && hasStoreStock(skuNo);
         // Lock complete native accounting rows first so a partial multi-market update cannot be reported success.
         if (perStore) {
             var current = DataScopeContext.executeWithoutScope(() -> storeStockMapper.lockSkuStoresCurrent(skuNo))
-                    .stream().filter(row -> storeNo.equals(row.getStoreNo()) && Integer.valueOf(0).equals(
+                    .stream().filter(row -> target.equals(row.getStoreNo()) && Integer.valueOf(0).equals(
                         row.getDeleted())).toList();
             if (current.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
-            if (storeStockMapper.setStock(storeNo, skuNo, onHand) != current.size()) {
+            if (storeStockMapper.setStock(target, skuNo, onHand) != current.size()) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
         } else {
