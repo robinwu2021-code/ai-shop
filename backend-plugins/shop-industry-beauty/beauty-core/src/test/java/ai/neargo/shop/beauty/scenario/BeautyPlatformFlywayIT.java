@@ -65,7 +65,7 @@ class BeautyPlatformFlywayIT {
     void knownV10StatesPreservePrimaryPlatformFlyway() throws Exception {
         for (int state = 0; state < 3; state++) {
             database();
-            if (state == 0) fixture.baseNine();
+            if (state == 0) { fixture.baseNine(); fixture.industrySharedTables(); }
             else fixture.initialize("migrate");
             if (state == 2) sql.execute("DROP TRIGGER trg_bsef_no_delete");
             final int expected = state;

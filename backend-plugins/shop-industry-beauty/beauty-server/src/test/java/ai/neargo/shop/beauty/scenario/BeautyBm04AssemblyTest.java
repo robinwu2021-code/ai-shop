@@ -219,7 +219,6 @@ class BeautyBm04AssemblyTest {
                     BeautyMappers.GuestClaimReceiptMapper.class,
                     BeautyMappers.ArrivalChallengeMapper.class,
                     BeautyMappers.WorkOrderMapper.class,
-                    BeautyMappers.WorkOrderContextMapper.class,
                     BeautyMappers.ServiceTaskMapper.class,
                     BeautyMappers.ServiceStepMapper.class,
                     BeautyMappers.ServiceParticipationMapper.class,

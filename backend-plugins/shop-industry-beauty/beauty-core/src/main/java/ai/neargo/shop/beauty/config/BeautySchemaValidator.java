@@ -606,6 +606,9 @@ public final class BeautySchemaValidator {
             connection.setReadOnly(true);
             for (var entry : expected.entrySet()) {
                 String table = entry.getKey();
+                // 已迁到行业库的表（TDD-美业域迁移新库 B-3）：主库上只剩冻结的旧结构，由行业句柄上的
+                // BeautyIndustrySchemaCheck 核对，这里不再逐列比
+                if (BeautyIndustryTables.NAMES.contains(table)) continue;
                 Set<String> columns = new TreeSet<>();
                 try (var rows =
                         connection

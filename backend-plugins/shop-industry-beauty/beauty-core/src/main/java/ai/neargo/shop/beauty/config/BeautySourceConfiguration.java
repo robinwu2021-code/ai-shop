@@ -167,7 +167,7 @@ public class BeautySourceConfiguration {
     ServiceSubmissionQuery serviceSubmissionQuery(
             AppointmentPersistence db,
             BeautyMappers.WorkOrderMapper orders,
-            BeautyMappers.WorkOrderContextMapper contexts,
+            BeautyMappers.WorkOrderMapper contexts,
             BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ReceptionOperationMapper receptions,
             BeautyMappers.ServiceSubmissionMapper submissions,

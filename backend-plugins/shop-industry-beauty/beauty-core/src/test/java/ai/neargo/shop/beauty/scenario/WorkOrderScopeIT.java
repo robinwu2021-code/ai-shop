@@ -478,7 +478,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                 assertThat(c.getBean(AppointmentService.class).openWorkOrderFromAppointment("E", "S", "A",
                         appointment.appointmentNo(), req, key)).isEqualTo(opened);
                 assertThat(count("bty_work_order")).isEqualTo(1);
-                assertThat(count("bty_work_order_context")).isEqualTo(1);
+                assertThat(count("bty_work_order WHERE identity_kind IS NOT NULL")).isEqualTo(1);
                 assertThat(count("bty_service_submission")).isEqualTo(1);
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM bty_action_log WHERE action='WORK_ORDER_OPENED'",
                         Integer.class)).isEqualTo(1);
@@ -581,7 +581,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThat(count("bty_appointment")).isZero(); assertThat(count("bty_appointment_assignment")).isZero();
             assertThat(count("bty_service_step")).isZero(); assertThat(count("bty_service_participation")).isZero();
             assertThat(owner.accepts).isEmpty();
-            String context = sql.queryForObject("SELECT frozen_scope FROM bty_work_order_context", String.class);
+            String context = sql.queryForObject("SELECT frozen_scope FROM bty_work_order", String.class);
             String draft = sql.queryForObject("SELECT frozen_command FROM bty_service_submission", String.class);
             assertThat(json.readTree(context).get("scopeHash").asText())
                     .isEqualTo(json.readTree(draft).get("scopeHash").asText());
@@ -720,8 +720,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
     @Test void legacyContextIsReadOnlyUnknownAndReceiptOwnershipIsScoped() {
         business().run(c -> {
             var opened = open(c); var service = c.getBean(WorkOrderService.class);
-            sql.update("UPDATE bty_work_order_context SET identity_kind='GUEST',identity_ref='BTG123'");
-            sql.update("UPDATE bty_work_order SET customer_ref='GUEST:BTG123'");
+            sql.update("UPDATE bty_work_order SET identity_kind='GUEST',identity_ref='BTG123',customer_ref='GUEST:BTG123'");
             sql.update("UPDATE bty_reception_operation SET identity_kind='GUEST',identity_ref='BTG123' "
                     + "WHERE action='OPEN_WORK_ORDER'");
             login(LoginUser.consumer("USR1", "customer"));
@@ -736,7 +735,8 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThat(service.getMyWorkOrder("USR1", opened.workOrderNo()).tasks()).hasSize(1);
             assertThat(json.writeValueAsString(service.getMyWorkOrder("USR1", opened.workOrderNo())))
                     .doesNotContain("identityKind", "identityRef", "BTG123", "USR1");
-            login(LoginUser.merchant("A", "operator")); sql.update("DELETE FROM bty_work_order_context");
+            login(LoginUser.merchant("A", "operator")); sql.update("UPDATE bty_work_order SET identity_kind=NULL,identity_ref=NULL,source_reception_operation_no=NULL,"
+                    + "appointment_arrangement_revision=NULL,frozen_scope=NULL"); // 旧工单：没有上下文
             var legacy = service.getWorkOrder("E", "S", "A", opened.workOrderNo());
             assertThat(legacy.customer().kind()).isEqualTo("UNKNOWN"); assertThat(legacy.customer().reference())
                     .isNull();
@@ -756,7 +756,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
             failAudit = true;
             assertThatThrownBy(() -> c.getBean(AppointmentService.class).openWorkOrderFromAppointment("E", "S", "A",
                     root.appointmentNo(), req, "OPEN")).hasMessage("reception-audit-rollback");
-            for (String table : List.of("bty_work_order", "bty_work_order_context", "bty_service_task",
+            for (String table : List.of("bty_work_order", "bty_service_task",
                     "bty_service_submission")) { assertThat(count(table)).isZero(); }
             // 开单分步提交（ADR-068）：预约上的开单标记在交易事务里已经提交，工单那一步回滚；
             // 接待操作带着预留的工单号，重试时直接补建工单
@@ -810,7 +810,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                     assertThat(frozen.bufferBeforeMin()).isEqualTo(3); assertThat(frozen.bufferAfterMin()).isEqualTo(4);
                     assertThat(frozen.notes()).isEmpty(); assertThat(frozen.requirements().getFirst().roleCode())
                             .isEqualTo("MAIN");
-                    assertThat(json.readTree(sql.queryForObject("SELECT frozen_scope FROM bty_work_order_context",
+                    assertThat(json.readTree(sql.queryForObject("SELECT frozen_scope FROM bty_work_order",
                             String.class)).get("scopeHash").asText()).isEqualTo(originalHash);
                 });
     }
@@ -1147,7 +1147,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
             }).isInstanceOfSatisfying(BizException.class,
                     failure -> assertThat(failure.errorCode()).isEqualTo(ErrorCode.CONFLICT));
             assertThat(count("bty_service_task")).isEqualTo(1); assertThat(count("bty_work_order")).isZero();
-            assertThat(count("bty_work_order_context")).isZero(); assertThat(count("bty_service_submission")).isZero();
+            assertThat(count("bty_service_submission")).isZero();
             assertThat(owner.accepts).hasSize(accepts);
         });
     }

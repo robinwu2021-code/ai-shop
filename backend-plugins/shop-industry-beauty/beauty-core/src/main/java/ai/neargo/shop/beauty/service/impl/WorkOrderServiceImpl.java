@@ -32,7 +32,7 @@ public final class WorkOrderServiceImpl implements WorkOrderService {
     private final BeautyMappers.WorkOrderMapper orders;
     private final ServiceSubmissionService submissions;
     private final WorkOrderBillService bills;
-    private BeautyMappers.WorkOrderContextMapper contexts;
+    private BeautyMappers.WorkOrderMapper contexts;
     private ObjectProvider<GuestRegistrationPort> guests;
 
     public WorkOrderServiceImpl(
@@ -56,7 +56,7 @@ public final class WorkOrderServiceImpl implements WorkOrderService {
             BeautyMappers.WorkOrderMapper orders,
             ServiceSubmissionService submissions,
             WorkOrderBillService bills,
-            BeautyMappers.WorkOrderContextMapper contexts,
+            BeautyMappers.WorkOrderMapper contexts,
             ObjectProvider<GuestRegistrationPort> guests) {
         this(coordinator, query, db, access, orders, submissions, bills);
         this.contexts = contexts;
@@ -81,7 +81,7 @@ public final class WorkOrderServiceImpl implements WorkOrderService {
                             ? null
                             : db.read(
                                     () ->
-                                            contexts.selectScoped(
+                                            contexts.selectContext(
                                                     candidate.getEntityNo(),
                                                     candidate.getStoreNo(),
                                                     number));
@@ -127,7 +127,7 @@ public final class WorkOrderServiceImpl implements WorkOrderService {
             var rereadContext =
                     db.read(
                             () ->
-                                    contexts.selectScoped(
+                                    contexts.selectContext(
                                             candidate.getEntityNo(),
                                             candidate.getStoreNo(),
                                             number));

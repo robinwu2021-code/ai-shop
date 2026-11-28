@@ -148,7 +148,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
                     .recoverOperation("E", "S", "A", (String) original.get("operation_no"));
             assertThat(recovered.state()).isEqualTo("PENDING");
             assertThat(recovered.failureCode()).isEqualTo("ARRIVAL_REQUIRES_RESCHEDULE");
-            for (String table : List.of("bty_work_order", "bty_work_order_context", "bty_service_task",
+            for (String table : List.of("bty_work_order", "bty_service_task",
                     "bty_service_submission")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
             }
@@ -280,7 +280,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
             assertThat(result.workOrder().status()).isEqualTo("OPEN");
             assertThat(result.workOrder().sourceState()).isEqualTo("UNBOUND");
             assertThat(result.workOrder().taskNos()).hasSize(1);
-            for (String table : List.of("bty_appointment", "bty_work_order", "bty_work_order_context",
+            for (String table : List.of("bty_appointment", "bty_work_order",
                     "bty_service_task", "bty_service_submission")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isOne();
             }
@@ -753,7 +753,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
                 assertThatThrownBy(() -> c.getBean(ReceptionService.class)
                         .receiveWalkIn("E", "S", "A", walkIn(), "SCOPE-ATOMIC")).isInstanceOf(RuntimeException.class);
             } finally { sql.execute("DROP TRIGGER fail_draft"); }
-            for (String table : List.of("bty_work_order", "bty_work_order_context", "bty_service_task",
+            for (String table : List.of("bty_work_order", "bty_service_task",
                     "bty_service_submission")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
             }

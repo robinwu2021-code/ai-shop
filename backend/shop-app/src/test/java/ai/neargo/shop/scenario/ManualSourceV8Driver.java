@@ -947,7 +947,7 @@ public final class ManualSourceV8Driver {
                 host.json
                         .readTree(
                                 host.jdbc.queryForObject(
-                                        "SELECT frozen_scope FROM bty_work_order_context"
+                                        "SELECT frozen_scope FROM bty_work_order"
                                                 + " WHERE work_order_no=?",
                                         String.class,
                                         work))

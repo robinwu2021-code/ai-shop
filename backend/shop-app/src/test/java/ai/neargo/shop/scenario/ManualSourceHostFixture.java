@@ -341,7 +341,7 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
         var frozen =
                 json.readTree(
                         jdbc.queryForObject(
-                                "SELECT frozen_scope FROM bty_work_order_context"
+                                "SELECT frozen_scope FROM bty_work_order"
                                         + " WHERE entity_no=? AND store_no=? AND work_order_no=?",
                                 String.class,
                                 entity,
@@ -738,7 +738,7 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
         String scopeHash =
                 json.readTree(
                                 jdbc.queryForObject(
-                                        "SELECT frozen_scope FROM bty_work_order_context WHERE"
+                                        "SELECT frozen_scope FROM bty_work_order WHERE"
                                                 + " entity_no=? AND store_no=? AND work_order_no=?",
                                         String.class,
                                         entity,

@@ -1,6 +1,6 @@
 -- 美业在行业库的补充（TDD-美业域迁移新库 B-1）。V1 是设计 DDL 原样（含 A6 的美业执行表，触发器去掉了）；这里补：
 -- 一、设计稿去掉的来源观察触发器（美业迁移 V9 原样）；二、执行围栏及其触发器（美业迁移 V10 原样）；
--- 三、过渡：合并完成前代码仍读写的旧表（工单上下文 → B-3；服务参与 → B-4），每完成一步就删掉对应的表（门店策略、策略版本已在 B-2 并入 ind_store_policy、ind_config_revision）。
+-- 三、过渡：合并完成前代码仍读写的旧表（服务参与 → B-4），每完成一步就删掉对应的表（门店策略、策略版本已在 B-2 并入 ind_store_policy、ind_config_revision；工单上下文已在 B-3 并入 bty_work_order）。
 -- 含 DELIMITER 块：用 mysql 客户端或会处理 DELIMITER 的执行器执行。
 
 -- 一、来源观察的领域守卫触发器
@@ -172,33 +172,6 @@ END$$
 DELIMITER ;
 
 -- 三、过渡表
-CREATE TABLE `bty_work_order_context` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '物理自增主键，不对外',
-    `tenant_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '沿当前租户上下文；不另启租户体系',
-    `entity_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT '商家主体范围；不等于租户',
-    `created_at` DATETIME(3) NOT NULL COMMENT '创建时刻',
-    `created_by` VARCHAR(64) COLLATE utf8mb4_bin NULL COMMENT '实际操作者业务引用',
-    `updated_at` DATETIME(3) NOT NULL COMMENT '更新时间',
-    `updated_by` VARCHAR(64) COLLATE utf8mb4_bin NULL COMMENT '更新操作者',
-    `version` BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
-    `deleted` INT NOT NULL DEFAULT 0 COMMENT '沿BaseEntity；事实表禁止删除或软删覆盖',
-    `store_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT 'store_no',
-    `work_order_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT 'work_order_no',
-    `identity_kind` VARCHAR(16) COLLATE utf8mb4_bin NOT NULL COMMENT 'identity_kind',
-    `identity_ref` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT 'identity_ref',
-    `source_reception_operation_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL COMMENT 'source_reception_operation_no',
-    `appointment_arrangement_revision` BIGINT NULL COMMENT 'appointment_arrangement_revision',
-    `frozen_scope` JSON NOT NULL COMMENT 'frozen_scope',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_bty_work_order_context_1` (`tenant_no`, `entity_no`, `work_order_no`),
-    KEY `idx_bty_work_order_context_1` (`tenant_no`, `entity_no`, `store_no`, `identity_kind`, `identity_ref`),
-    KEY `idx_bty_work_order_context_2` (`tenant_no`, `entity_no`, `store_no`, `source_reception_operation_no`),
-    CONSTRAINT `ck_bty_work_order_context_1` CHECK (`version` >= 0),
-    CONSTRAINT `ck_bty_work_order_context_2` CHECK (`deleted` = 0),
-    CONSTRAINT `ck_bty_work_order_context_3` CHECK (`identity_kind` IN ('USER','GUEST')),
-    CONSTRAINT `ck_bty_work_order_context_4` CHECK (`appointment_arrangement_revision` IS NULL OR `appointment_arrangement_revision` > 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-
 CREATE TABLE `bty_service_participation` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '物理自增主键，不对外',
     `tenant_no` VARCHAR(32) COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '沿当前租户上下文；不另启租户体系',

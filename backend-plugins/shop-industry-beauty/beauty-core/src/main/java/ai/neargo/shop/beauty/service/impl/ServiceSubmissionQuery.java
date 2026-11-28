@@ -22,7 +22,7 @@ import java.util.List;
 public final class ServiceSubmissionQuery {
     private final AppointmentPersistence db;
     private final BeautyMappers.WorkOrderMapper orders;
-    private final BeautyMappers.WorkOrderContextMapper contexts;
+    private final BeautyMappers.WorkOrderMapper contexts;
     private final BeautyMappers.ServiceTaskMapper tasks;
     private final BeautyMappers.ReceptionOperationMapper receptions;
     private final BeautyMappers.ServiceSubmissionMapper submissions;
@@ -32,7 +32,7 @@ public final class ServiceSubmissionQuery {
     public ServiceSubmissionQuery(
             AppointmentPersistence db,
             BeautyMappers.WorkOrderMapper orders,
-            BeautyMappers.WorkOrderContextMapper contexts,
+            BeautyMappers.WorkOrderMapper contexts,
             BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ReceptionOperationMapper receptions,
             BeautyMappers.ServiceSubmissionMapper submissions,
@@ -59,7 +59,7 @@ public final class ServiceSubmissionQuery {
         return db.read(
                 () -> {
                     var order = orders.selectScoped(entity, store, number);
-                    var context = contexts.selectScoped(entity, store, number);
+                    var context = contexts.selectContext(entity, store, number);
                     if (order == null
                             || context == null
                             || receptions.selectOpenedForWorkOrder(

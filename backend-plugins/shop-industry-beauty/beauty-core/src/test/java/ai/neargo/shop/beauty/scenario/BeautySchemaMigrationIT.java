@@ -67,8 +67,9 @@ class BeautySchemaMigrationIT {
     }
 
     /**
-     * 测试里三条句柄都指向同一个库：美业用到的行业共用表（门店策略头与修订，TDD-美业域迁移新库 B-2）
-     * 按行业库设计稿建在这里；生产上它们在 {@code n_industry}，不进美业的私有 Flyway。
+     * 测试里三条句柄都指向同一个库，这里把它补成行业库的样子：美业用到的行业共用表（门店策略头与修订，
+     * TDD-美业域迁移新库 B-2）按行业库设计稿建；工单补上并入的上下文列（B-3）。生产上它们在 {@code n_industry}，
+     * 不进美业的私有 Flyway（主库的校验也不再管已迁的表）。
      */
     void industrySharedTables() {
         try {
@@ -76,6 +77,15 @@ class BeautySchemaMigrationIT {
                 if (statement.startsWith("CREATE TABLE `ind_store_policy`")
                         || statement.startsWith("CREATE TABLE `ind_config_revision`"))
                     execute(statement.replaceFirst("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
+            // 工单上下文并入工单（B-3）：按行业库设计稿给主库上的工单补可空的上下文列
+            if (count("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() "
+                    + "AND table_name='bty_work_order' AND column_name='identity_kind'") == 0)
+                execute("ALTER TABLE bty_work_order"
+                        + " ADD COLUMN identity_kind varchar(16) COLLATE utf8mb4_bin NULL,"
+                        + " ADD COLUMN identity_ref varchar(32) COLLATE utf8mb4_bin NULL,"
+                        + " ADD COLUMN source_reception_operation_no varchar(32) COLLATE utf8mb4_bin NULL,"
+                        + " ADD COLUMN appointment_arrangement_revision bigint NULL,"
+                        + " ADD COLUMN frozen_scope json NULL");
         } catch (java.io.IOException | SQLException ex) {
             throw new AssertionError(ex);
         }
@@ -191,7 +201,7 @@ class BeautySchemaMigrationIT {
         for (String damage : new String[] {
                 "UPDATE bty_flyway_history SET checksum=123 WHERE version='9'",
                 "DELETE FROM bty_flyway_history WHERE version='8'",
-                "ALTER TABLE bty_work_order DROP COLUMN scope_frozen",
+                "ALTER TABLE bty_appointment DROP COLUMN status",
                 "DROP TRIGGER trg_bty_source_observation_domain_guard",
                 "CREATE TABLE bty_unknown_execution(id BIGINT)",
                 "UPDATE bty_flyway_history SET version='12' WHERE version='10'",
@@ -254,9 +264,7 @@ class BeautySchemaMigrationIT {
     @Test
     void rejectsRemovedBusinessUniqueIndex() throws SQLException {
         initialize("migrate");
-        execute(
-                "ALTER TABLE bty_source_allocation_guard DROP INDEX"
-                    + " uk_bty_source_allocation_guard_2");
+        execute("ALTER TABLE bty_service_definition DROP INDEX uk_bty_service_definition_2");
         assertThrows(IllegalStateException.class, () -> initialize("validate"));
     }
     @Test
@@ -269,9 +277,7 @@ class BeautySchemaMigrationIT {
     @Test
     void rejectsRemovedQuantityConstraint() throws SQLException {
         initialize("migrate");
-        execute(
-                "ALTER TABLE bty_source_allocation_guard DROP CHECK"
-                    + " ck_bty_source_allocation_guard_6");
+        execute("ALTER TABLE bty_appointment_resource_intent DROP CHECK ck_bty_appointment_resource_intent_4");
         assertThrows(IllegalStateException.class, () -> initialize("validate"));
     }
 
@@ -308,11 +314,11 @@ class BeautySchemaMigrationIT {
     void rejectsChangedConstraintOperatorGrouping() throws SQLException {
         initialize("migrate");
         // A legal Boolean CHECK with identical tokens and a different operator tree.
-        execute("ALTER TABLE bty_service_participation DROP CHECK ck_bty_service_participation_3");
+        execute("ALTER TABLE bty_appointment_resource_intent DROP CHECK ck_bty_appointment_resource_intent_8");
         execute(
-                "ALTER TABLE bty_service_participation ADD CONSTRAINT"
-                    + " ck_bty_service_participation_3 CHECK ((ended_at IS NULL OR ended_at) >="
-                    + " started_at)");
+                "ALTER TABLE bty_appointment_resource_intent ADD CONSTRAINT"
+                    + " ck_bty_appointment_resource_intent_8 CHECK ((terminal_code IS NULL OR terminal_code) = 2"
+                    + " OR reason_code IS NULL)");
         assertThrows(IllegalStateException.class, () -> initialize("validate"));
     }
 
@@ -324,19 +330,6 @@ class BeautySchemaMigrationIT {
         assertThrows(IllegalStateException.class, () -> initialize("validate"));
     }
 
-    @Test void v5ReceiptScopeAndChecksAreStrictlyValidated() throws SQLException {
-        initialize("migrate");
-        assertEquals(
-                1,
-                count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='5' AND success=1"));
-        execute("ALTER TABLE bty_guest_claim_receipt DROP INDEX uk_bty_guest_claim_receipt_1");
-        assertThrows(IllegalStateException.class, () -> initialize("validate"));
-    }
-    @Test void v5ChallengeConstraintAndColumnsCannotDrift() throws SQLException {
-        initialize("migrate");
-        execute("ALTER TABLE bty_arrival_challenge DROP CHECK ck_bty_arrival_challenge_4");
-        assertThrows(IllegalStateException.class, () -> initialize("validate"));
-    }
     @Test void jdbcEnumRepresentationAndLiteralCaseDriftRemainStrict() throws SQLException {
         initialize("migrate");
         try (var connection = source.getConnection();
@@ -345,17 +338,16 @@ class BeautySchemaMigrationIT {
                         statement.executeQuery(
                                 "SELECT check_clause FROM information_schema.check_constraints"
                                     + " WHERE constraint_schema=DATABASE() AND"
-                                    + " constraint_name='ck_bty_reception_operation_3'")) {
+                                    + " constraint_name='ck_bty_work_order_context_3'")) {
             assertTrue(rows.next());
             String clause = rows.getString(1);
             // Integer codepoints distinguish JDBC raw characters from CLI/JSON escaping.
             System.out.println("V5_JDBC_CHECK_CODEPOINTS=" + clause.codePoints().boxed().toList());
-            assertTrue(clause.contains("RECEIVED"));
+            assertTrue(clause.contains("GUEST"));
         }
-        execute("ALTER TABLE bty_reception_operation DROP CHECK ck_bty_reception_operation_3");
-        execute("ALTER TABLE bty_reception_operation ADD CONSTRAINT ck_bty_reception_operation_3 "
-                + "CHECK (phase IN ('received','RESOURCE_PENDING','ARRIVAL_PENDING',"
-                + "'OPEN_PENDING','SUCCEEDED','REJECTED'))");
+        execute("ALTER TABLE bty_work_order_context DROP CHECK ck_bty_work_order_context_3");
+        execute("ALTER TABLE bty_work_order_context ADD CONSTRAINT ck_bty_work_order_context_3 "
+                + "CHECK (identity_kind IN ('user','GUEST'))");
         assertThrows(IllegalStateException.class, () -> initialize("validate"));
     }
 
@@ -384,12 +376,29 @@ class BeautySchemaMigrationIT {
             statement.setString(4, kind); statement.setString(5, ref); statement.executeUpdate();
         }
     }
+    /**
+     * 已迁到行业库的表（TDD-美业域迁移新库 B-3）不再由主库的冻结校验逐列核对：改动它们的约束不挡启动；
+     * 缺列由行业句柄上的 {@code BeautyIndustrySchemaCheck} 挡下。
+     */
+    @Test void industryTablesAreHandedOverToTheIndustryCheck() throws SQLException {
+        initialize("migrate");
+        execute("ALTER TABLE bty_arrival_challenge DROP CHECK ck_bty_arrival_challenge_4");
+        execute("ALTER TABLE bty_guest_claim_receipt DROP INDEX uk_bty_guest_claim_receipt_1");
+        execute("ALTER TABLE bty_reception_operation DROP CHECK ck_bty_reception_operation_5");
+        initialize("validate");
+        ai.neargo.shop.beauty.config.BeautyIndustrySchemaCheck.verify(source);
+        execute("ALTER TABLE bty_work_order DROP COLUMN frozen_scope");
+        var failure = assertThrows(IllegalStateException.class,
+                () -> ai.neargo.shop.beauty.config.BeautyIndustrySchemaCheck.verify(source));
+        assertTrue(failure.getMessage().contains("bty_work_order"), failure.getMessage());
+    }
+
     @Test void rejectsBacktickInsideCheckLiteral() throws SQLException {
         initialize("migrate");
-        execute("ALTER TABLE bty_reception_operation DROP CHECK ck_bty_reception_operation_3");
-        execute("ALTER TABLE bty_reception_operation ADD CONSTRAINT ck_bty_reception_operation_3 "
-                + "CHECK (phase IN ('RECE`IVED','RESOURCE_PENDING','ARRIVAL_PENDING',"
-                + "'OPEN_PENDING','SUCCEEDED','REJECTED'))");
+        // 接待操作已迁到行业库（B-3 起主库校验不管）；用主库仍校验的旧上下文表上的字面量检查
+        execute("ALTER TABLE bty_work_order_context DROP CHECK ck_bty_work_order_context_3");
+        execute("ALTER TABLE bty_work_order_context ADD CONSTRAINT ck_bty_work_order_context_3 "
+                + "CHECK (identity_kind IN ('US`ER','GUEST'))");
         assertThrows(IllegalStateException.class, () -> initialize("validate"));
     }
 
@@ -564,11 +573,6 @@ class BeautySchemaMigrationIT {
         assertThrows(RuntimeException.class, () -> initialize("migrate"));
         assertThrows(RuntimeException.class, () -> initialize("validate"));
     }
-    @Test void droppingV6GuardCannotPassValidation() throws SQLException {
-        initialize("migrate");
-        execute("ALTER TABLE bty_reception_operation DROP CHECK ck_bty_reception_operation_5");
-        assertThrows(IllegalStateException.class, () -> initialize("validate"));
-    }
 
     @Test
     void v7HistoryUpgradesToV9WithoutRewritingIntentsOrHeldQuantity() throws SQLException {
@@ -688,25 +692,25 @@ class BeautySchemaMigrationIT {
                 jdbc.queryForObject(
                                 "SELECT CHECK_CLAUSE FROM information_schema.check_constraints"
                                     + " WHERE constraint_schema=DATABASE() AND"
-                                    + " constraint_name='ck_bty_source_observation_6'",
+                                    + " constraint_name='ck_bty_appointment_resource_intent_5'",
                                 String.class)
                         .replace("\\'", "'");
         for (String altered :
                 new String[] {
-                    original.replace("json_type", "json_unquote"),
-                    original.replace("<= 20", "<= 21")
+                    original.replace("json_valid", "NOT json_valid"),
+                    original.replace("65536", "65537")
                 }) {
             assertTrue(!original.equals(altered), original);
-            execute("ALTER TABLE bty_source_observation DROP CHECK ck_bty_source_observation_6");
+            execute("ALTER TABLE bty_appointment_resource_intent DROP CHECK ck_bty_appointment_resource_intent_5");
             execute(
-                    "ALTER TABLE bty_source_observation ADD CONSTRAINT ck_bty_source_observation_6"
+                    "ALTER TABLE bty_appointment_resource_intent ADD CONSTRAINT ck_bty_appointment_resource_intent_5"
                         + " CHECK ("
                             + altered
                             + ")");
             assertThrows(IllegalStateException.class, () -> initialize("validate"));
-            execute("ALTER TABLE bty_source_observation DROP CHECK ck_bty_source_observation_6");
+            execute("ALTER TABLE bty_appointment_resource_intent DROP CHECK ck_bty_appointment_resource_intent_5");
             execute(
-                    "ALTER TABLE bty_source_observation ADD CONSTRAINT ck_bty_source_observation_6"
+                    "ALTER TABLE bty_appointment_resource_intent ADD CONSTRAINT ck_bty_appointment_resource_intent_5"
                         + " CHECK ("
                             + original
                             + ")");

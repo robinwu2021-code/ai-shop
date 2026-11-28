@@ -1,29 +1,41 @@
 package ai.neargo.shop.beauty.entity;
 
-import ai.neargo.shop.common.BaseEntity;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
 
-/** Durable scoped reception fact; never a shared customer master. */
+/**
+ * 工单上下文：开单时冻结的身份与服务范围。原来是独立表 {@code bty_work_order_context}，B-3 起并入
+ * {@code bty_work_order} 的可空列（TDD-美业域迁移新库 §2.3）；这里只是从工单行取出的只读视图，不再单独持久化。
+ */
 @Getter
 @Setter
-@TableName("bty_work_order_context")
-public class BtyWorkOrderContext extends BaseEntity {
-    /** entity_no; scoped internal persistence only. */
+public class BtyWorkOrderContext {
+    private String tenantNo;
     private String entityNo;
-    /** store_no; scoped internal persistence only. */
     private String storeNo;
-    /** work_order_no; scoped internal persistence only. */
     private String workOrderNo;
-    /** identity_kind; scoped internal persistence only. */
     private String identityKind;
-    /** identity_ref; scoped internal persistence only. */
     private String identityRef;
-    /** source_reception_operation_no; scoped internal persistence only. */
     private String sourceReceptionOperationNo;
-    /** appointment_arrangement_revision; scoped internal persistence only. */
     private Long appointmentArrangementRevision;
-    /** frozen_scope; scoped internal persistence only. */
     private String frozenScope;
+    /** 所在工单行的版本。 */
+    private Long version;
+
+    /** 工单行没有上下文（旧工单）或不存在时返回 null，与原来「查不到上下文行」一致。 */
+    public static BtyWorkOrderContext of(BtyWorkOrder order) {
+        if (order == null || order.getIdentityKind() == null) return null;
+        var context = new BtyWorkOrderContext();
+        context.setTenantNo(order.getTenantNo());
+        context.setEntityNo(order.getEntityNo());
+        context.setStoreNo(order.getStoreNo());
+        context.setWorkOrderNo(order.getWorkOrderNo());
+        context.setIdentityKind(order.getIdentityKind());
+        context.setIdentityRef(order.getIdentityRef());
+        context.setSourceReceptionOperationNo(order.getSourceReceptionOperationNo());
+        context.setAppointmentArrangementRevision(order.getAppointmentArrangementRevision());
+        context.setFrozenScope(order.getFrozenScope());
+        context.setVersion(order.getVersion());
+        return context;
+    }
 }

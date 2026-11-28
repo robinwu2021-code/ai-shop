@@ -70,7 +70,7 @@ public final class WorkOrderCoordinator {
     private final AppointmentCoordinator appointments;
     private final BeautyMappers.ReceptionOperationMapper receptionRows;
     private final BeautyMappers.WorkOrderMapper orders;
-    private final BeautyMappers.WorkOrderContextMapper contexts;
+    private final BeautyMappers.WorkOrderMapper contexts;
     private final BeautyMappers.ServiceTaskMapper tasks;
     private final BeautyMappers.ServiceSubmissionMapper submissions;
     private final Clock clock;
@@ -79,7 +79,7 @@ public final class WorkOrderCoordinator {
             WorkOrderPreparation preparation,
             ReceptionReassignment reassignment, AppointmentCoordinator appointments,
             BeautyMappers.ReceptionOperationMapper receptionRows, BeautyMappers.WorkOrderMapper orders,
-            BeautyMappers.WorkOrderContextMapper contexts, BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.WorkOrderMapper contexts, BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ServiceSubmissionMapper submissions, Clock clock) {
         this.db = db; this.access = access; this.receptionAccess = receptionAccess; this.identities = identities;
         this.ownership = ownership; this.operations = operations; this.preparation = preparation;
@@ -702,7 +702,9 @@ public final class WorkOrderCoordinator {
                 : prepared.frozen().holdEvidence().arrangementRevision());
         context.setFrozenScope(db.json.writeValueAsString(new WorkOrderScopeSnapshot(1, 1, hash,
                 prepared.frozen().policyVersionNo(), prepared.frozen().cancelRule(), prepared.frozen(),
-                prepared.assignments(), refs))); contexts.insert(context);
+                prepared.assignments(), refs)));
+        // 上下文并入工单行（B-3）：开单同一事务里写一次
+        if (contexts.attachContext(context) != 1) throw new IllegalStateException("work order context not attached");
         var submission = new BtyServiceSubmission(); submission.setEntityNo(scope.entityNo());
         submission.setStoreNo(scope.storeNo()); submission.setWorkOrderNo(root.getWorkOrderNo());
         submission.setSubmissionNo(BizKey.next("BTSU"));

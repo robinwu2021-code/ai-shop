@@ -397,7 +397,7 @@ class ServiceSubmissionIT extends SourceFixture {
                                 sql.update("UPDATE " + table + " SET deleted=0");
                             }
                             for (var table :
-                                    List.of("bty_work_order_context", "bty_reception_operation")) {
+                                    List.of("bty_reception_operation")) {
                                 sql.update("UPDATE " + table + " SET store_no='OTHER'");
                                 Assertions.assertThrows(
                                         BizException.class,
@@ -434,7 +434,7 @@ class ServiceSubmissionIT extends SourceFixture {
                             var service = context.getBean(ServiceSubmissionService.class);
                             String original =
                                     sql.queryForObject(
-                                            "SELECT frozen_scope FROM bty_work_order_context",
+                                            "SELECT frozen_scope FROM bty_work_order",
                                             String.class);
                             String definition =
                                     sql.queryForObject(
@@ -478,7 +478,7 @@ class ServiceSubmissionIT extends SourceFixture {
                             assertThat(
                                             sql.queryForObject(
                                                     "SELECT frozen_scope FROM"
-                                                            + " bty_work_order_context",
+                                                            + " bty_work_order",
                                                     String.class))
                                     .isEqualTo(original);
                             settled(old.checkoutOperationNo(), 1);
@@ -715,7 +715,8 @@ class ServiceSubmissionIT extends SourceFixture {
                                                     request,
                                                     "KEY"));
                             sql.update("UPDATE bty_service_definition SET store_no='S'");
-                            sql.update("UPDATE bty_work_order_context SET work_order_no='MISSING'");
+                            String identity = sql.queryForObject("SELECT identity_kind FROM bty_work_order", String.class);
+                            sql.update("UPDATE bty_work_order SET identity_kind=NULL"); // 没有上下文
                             Assertions.assertThrows(
                                     BizException.class,
                                     () ->
@@ -726,9 +727,7 @@ class ServiceSubmissionIT extends SourceFixture {
                                                     root.workOrderNo(),
                                                     request,
                                                     "KEY"));
-                            sql.update(
-                                    "UPDATE bty_work_order_context SET work_order_no=?",
-                                    root.workOrderNo());
+                            sql.update("UPDATE bty_work_order SET identity_kind=?", identity);
                             sql.update(
                                     "UPDATE bty_service_submission SET"
                                         + " frozen_command=JSON_SET(frozen_command,'$.scopeHash',?)"

@@ -28,7 +28,7 @@ import java.util.Objects;
 /** Reads authorized stored facts; templates never become execution facts during projection. */
 public final class WorkOrderQuery {
     private final AppointmentPersistence db;
-    private final BeautyMappers.WorkOrderContextMapper contexts;
+    private final BeautyMappers.WorkOrderMapper contexts;
     private final BeautyMappers.ServiceTaskMapper tasks;
     private final BeautyMappers.ServiceStepMapper steps;
     private final BeautyMappers.ServiceParticipationMapper participations;
@@ -40,7 +40,7 @@ public final class WorkOrderQuery {
 
     public WorkOrderQuery(
             AppointmentPersistence db,
-            BeautyMappers.WorkOrderContextMapper contexts,
+            BeautyMappers.WorkOrderMapper contexts,
             BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ServiceStepMapper steps,
             BeautyMappers.ServiceParticipationMapper participations,
@@ -58,7 +58,7 @@ public final class WorkOrderQuery {
     }
     /** The Service has already authorized this persisted root in SQL; callers cannot supply a request number. */
     public WorkOrderDetailVO detail(BtyWorkOrder root) {
-        var context = contexts.selectScoped(root.getEntityNo(), root.getStoreNo(), root.getWorkOrderNo());
+        var context = contexts.selectContext(root.getEntityNo(), root.getStoreNo(), root.getWorkOrderNo());
         boolean legacy = context == null;
         var operation = legacy ? null : operations.selectOpenedForWorkOrder(root.getEntityNo(), root.getStoreNo(),
                 root.getWorkOrderNo(), context.getSourceReceptionOperationNo());

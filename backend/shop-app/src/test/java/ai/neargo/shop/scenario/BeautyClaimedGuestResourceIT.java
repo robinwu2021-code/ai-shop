@@ -197,7 +197,7 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                 .containsEntry("customer_ref", "USER:" + buyer);
         assertThat(
                         row(
-                                "SELECT identity_kind,identity_ref FROM bty_work_order_context"
+                                "SELECT identity_kind,identity_ref FROM bty_work_order"
                                         + " WHERE work_order_no=?",
                                 workOrder))
                 .containsEntry("identity_kind", "USER")

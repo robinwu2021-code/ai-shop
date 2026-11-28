@@ -172,7 +172,7 @@ public class ManualExecutionSourceIT {
         var actualSchema = new ServiceExecutionSchemaVerifier(c.getBean("dataSource", DataSource.class));
         var coordinator = new ServiceExecutionFenceCoordinator(actualSchema, fences, observations, guards, orders,
                 tasks, starts, bindings, json, CLOCK);
-        var query = new ServiceSubmissionQuery(db, orders, c.getBean(BeautyMappers.WorkOrderContextMapper.class), tasks,
+        var query = new ServiceSubmissionQuery(db, orders, c.getBean(BeautyMappers.WorkOrderMapper.class), tasks,
                 c.getBean(BeautyMappers.ReceptionOperationMapper.class), starts,
                 c.getBean(BeautyMappers.ServiceDefinitionMapper.class),
                 c.getBean(BeautyMappers.ServiceDefinitionVersionMapper.class));
@@ -729,9 +729,10 @@ public class ManualExecutionSourceIT {
                 "definition_version_no", "DV", "appointment_item_no", "ITEM", "qty", 1, "done_qty", 0,
                 "voided_qty", 0, "uom", "COUNT", "status", "PENDING", "binding_revision", 1,
                 "execution_snapshot", executionSnapshot);
-        seed("bty_work_order_context", "store_no", "S", "work_order_no", "WO", "identity_kind", "USER",
-                "identity_ref", "BUYER", "source_reception_operation_no", "RECEPTION",
-                "appointment_arrangement_revision", 1, "frozen_scope", json.writeValueAsString(scope));
+        // 工单上下文在工单行上（B-3）
+        sql.update("UPDATE bty_work_order SET identity_kind='USER',identity_ref='BUYER',"
+                + "source_reception_operation_no='RECEPTION',appointment_arrangement_revision=1,frozen_scope=? "
+                + "WHERE work_order_no='WO'", json.writeValueAsString(scope));
         seed("bty_reception_operation", "store_no", "S", "operation_no", "RECEPTION", "actor_no", "100",
                 "actor_realm", "MERCHANT", "actor_kind", "MCH", "endpoint", "BAPI-054", "action", "OPEN_WORK_ORDER",
                 "key_hash", HASH, "request_hash", HASH, "work_order_no", "WO", "identity_kind", "USER",
@@ -764,7 +765,7 @@ public class ManualExecutionSourceIT {
 
     /** Two distinct qty1 appointment items share one genuine source line with Q2; no synthetic grant is used. */
     private void secondTaskFixture() {
-        var original = json.readValue(sql.queryForObject("SELECT frozen_scope FROM bty_work_order_context", String.class),
+        var original = json.readValue(sql.queryForObject("SELECT frozen_scope FROM bty_work_order", String.class),
                 WorkOrderCoordinator.WorkOrderScopeSnapshot.class);
         var item = original.frozen().items().getFirst();
         var second = new AppointmentPlanItemVO("ITEM2", item.skuNo(), item.goodsNo(), item.definitionVersionNo(), 1,
@@ -792,7 +793,7 @@ public class ManualExecutionSourceIT {
         refs.add(new WorkOrderCoordinator.TaskReference("TASK2", "SKU", "DV", BigDecimal.ONE, "COUNT"));
         var scope = new WorkOrderCoordinator.WorkOrderScopeSnapshot(1, 1, HASH, "PV", null, frozen, assignments, refs);
         var draft = new WorkOrderCoordinator.OpenSubmissionDraft(1, 1, HASH, new VerifiedIdentity("USER", "BUYER"), refs);
-        sql.update("UPDATE bty_work_order_context SET frozen_scope=?", json.writeValueAsString(scope));
+        sql.update("UPDATE bty_work_order SET frozen_scope=?", json.writeValueAsString(scope));
         sql.update("UPDATE bty_service_submission SET frozen_command=?,payload_hash=? WHERE action='OPEN'",
                 json.writeValueAsString(draft), IdempotencyScope.requestHash(json.writeValueAsString(draft)));
         sql.update("UPDATE bty_appointment_preparation SET frozen_plan=?,plan_hash=?,snapshot=?,end_at=?",

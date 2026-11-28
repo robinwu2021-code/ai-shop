@@ -341,7 +341,7 @@ class ManualSourceBindingIT extends ManualSourceHostFixture {
         String scopeHash =
                 json.readTree(
                                 jdbc.queryForObject(
-                                        "SELECT frozen_scope FROM bty_work_order_context WHERE"
+                                        "SELECT frozen_scope FROM bty_work_order WHERE"
                                                 + " entity_no=? AND store_no=? AND work_order_no=?",
                                         String.class,
                                         entity,
@@ -713,7 +713,7 @@ class ManualSourceBindingIT extends ManualSourceHostFixture {
             assertThat(number).isNotBlank();
             assertThat(
                             jdbc.queryForMap(
-                                    "SELECT identity_kind,identity_ref FROM bty_work_order_context"
+                                    "SELECT identity_kind,identity_ref FROM bty_work_order"
                                         + " WHERE entity_no=? AND store_no=? AND work_order_no=?",
                                     entity,
                                     store,
@@ -1120,7 +1120,7 @@ class ManualSourceBindingIT extends ManualSourceHostFixture {
                 .isEqualTo("BOUND");
         assertThat(
                         jdbc.queryForMap(
-                                "SELECT identity_kind,identity_ref FROM bty_work_order_context"
+                                "SELECT identity_kind,identity_ref FROM bty_work_order"
                                         + " WHERE work_order_no=?",
                                 guestWork))
                 .containsEntry("identity_kind", "GUEST")
@@ -1719,7 +1719,7 @@ class ManualSourceBindingIT extends ManualSourceHostFixture {
         assertThat(command.path("party").path("identityRevision").asLong()).isEqualTo(1);
         assertThat(
                         jdbc.queryForObject(
-                                "SELECT identity_kind FROM bty_work_order_context WHERE"
+                                "SELECT identity_kind FROM bty_work_order WHERE"
                                         + " work_order_no=?",
                                 String.class,
                                 work))

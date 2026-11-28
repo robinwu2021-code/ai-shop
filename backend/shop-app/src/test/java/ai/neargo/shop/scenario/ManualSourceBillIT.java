@@ -327,7 +327,7 @@ class ManualSourceBillIT extends ManualSourceHostFixture {
                 .containsEntry("buyer_no", null);
         assertThat(
                         jdbc.queryForObject(
-                                "SELECT identity_kind FROM bty_work_order_context WHERE"
+                                "SELECT identity_kind FROM bty_work_order WHERE"
                                         + " work_order_no=?",
                                 String.class,
                                 work))

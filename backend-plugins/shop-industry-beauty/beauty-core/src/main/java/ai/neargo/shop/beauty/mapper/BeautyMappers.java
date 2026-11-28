@@ -533,6 +533,25 @@ public final class BeautyMappers {
 
     /** 服务工单；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface WorkOrderMapper extends IndustryTableMapper<BtyWorkOrder> {
+        /** 工单上下文（B-3 并入工单行）；旧工单或查不到时为 null，原「按范围查上下文行」的语义。 */
+        default BtyWorkOrderContext selectContext(String entityNo, String storeNo, String workOrderNo) {
+            return BtyWorkOrderContext.of(selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<BtyWorkOrder>lambdaQuery().eq(BtyWorkOrder::getTenantNo, "MAIN")
+                    .eq(BtyWorkOrder::getEntityNo, entityNo).eq(BtyWorkOrder::getStoreNo, storeNo)
+                    .eq(BtyWorkOrder::getWorkOrderNo, workOrderNo)));
+        }
+
+        /** 开单时写一次上下文；已有上下文的行不覆盖（原上下文表只插不改）。 */
+        @Update(
+                """
+                UPDATE bty_work_order SET identity_kind=#{c.identityKind}, identity_ref=#{c.identityRef},
+                  source_reception_operation_no=#{c.sourceReceptionOperationNo},
+                  appointment_arrangement_revision=#{c.appointmentArrangementRevision}, frozen_scope=#{c.frozenScope}
+                WHERE tenant_no='MAIN' AND entity_no=#{c.entityNo} AND store_no=#{c.storeNo}
+                  AND work_order_no=#{c.workOrderNo} AND deleted=0 AND identity_kind IS NULL
+                """)
+        int attachContext(@Param("c") BtyWorkOrderContext context);
+
         /** Binding changes the aggregate revision but never silently changes its service scope. */
         @Update(
                 """
@@ -557,11 +576,8 @@ public final class BeautyMappers {
                 """
                 SELECT w.* FROM bty_work_order w WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo}
                 AND w.store_no=#{storeNo} AND w.work_order_no=#{workOrderNo} AND w.deleted=0
-                AND (NOT EXISTS (SELECT 1 FROM bty_work_order_context any_context
-                  WHERE any_context.tenant_no=w.tenant_no AND any_context.work_order_no=w.work_order_no)
-                  OR EXISTS (SELECT 1 FROM bty_work_order_context c WHERE c.tenant_no=w.tenant_no
-                    AND c.entity_no=w.entity_no AND c.store_no=w.store_no AND c.work_order_no=w.work_order_no
-                    AND c.deleted=0 AND w.customer_ref=CONCAT(c.identity_kind,':',c.identity_ref)))
+                AND (w.identity_kind IS NULL
+                  OR w.customer_ref=CONCAT(w.identity_kind,':',w.identity_ref))
                 """)
         BtyWorkOrder selectScoped(
                 @Param("entityNo") String entityNo,
@@ -571,26 +587,22 @@ public final class BeautyMappers {
         /** Strict original USER owner; local claim receipts alone never authorize GUEST reads. */
         @Select(
                 """
-                SELECT w.* FROM bty_work_order w JOIN bty_work_order_context c
-                  ON c.tenant_no=w.tenant_no AND c.entity_no=w.entity_no AND c.store_no=w.store_no
-                  AND c.work_order_no=w.work_order_no AND c.deleted=0
-                  AND w.customer_ref=CONCAT(c.identity_kind,':',c.identity_ref)
+                SELECT w.* FROM bty_work_order w
                 WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
-                  AND c.identity_kind='USER' AND c.identity_ref=#{userNo}
+                  AND w.customer_ref=CONCAT(w.identity_kind,':',w.identity_ref)
+                  AND w.identity_kind='USER' AND w.identity_ref=#{userNo}
                 """)
         BtyWorkOrder selectOwned(
                 @Param("userNo") String userNo, @Param("workOrderNo") String workOrderNo);
 
         @Select(
 """
-SELECT w.* FROM bty_work_order w JOIN bty_work_order_context c
-  ON c.tenant_no=w.tenant_no AND c.entity_no=w.entity_no AND c.store_no=w.store_no
-  AND c.work_order_no=w.work_order_no AND c.deleted=0
-  AND w.customer_ref=CONCAT(c.identity_kind,':',c.identity_ref)
+SELECT w.* FROM bty_work_order w
 WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
-  AND c.identity_kind='GUEST' AND EXISTS (SELECT 1 FROM bty_guest_claim_receipt r
+  AND w.customer_ref=CONCAT(w.identity_kind,':',w.identity_ref)
+  AND w.identity_kind='GUEST' AND EXISTS (SELECT 1 FROM bty_guest_claim_receipt r
     WHERE r.tenant_no=w.tenant_no AND r.entity_no=w.entity_no AND r.store_no=w.store_no
-    AND r.guest_no=c.identity_ref AND r.user_no=#{userNo} AND r.claim_revision=2
+    AND r.guest_no=w.identity_ref AND r.user_no=#{userNo} AND r.claim_revision=2
     AND r.owner_receipt_hash IS NOT NULL AND r.deleted=0)
 """)
         BtyWorkOrder selectClaimedCandidate(
@@ -599,13 +611,11 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
         /** Only consumed after exact live member-owner proof; no receipt grants access here. */
         @Select(
                 """
-                SELECT w.* FROM bty_work_order w JOIN bty_work_order_context c
-                  ON c.tenant_no=w.tenant_no AND c.entity_no=w.entity_no AND c.store_no=w.store_no
-                  AND c.work_order_no=w.work_order_no AND c.deleted=0
-                  AND w.customer_ref=CONCAT(c.identity_kind,':',c.identity_ref)
+                SELECT w.* FROM bty_work_order w
                 WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo}
                   AND w.work_order_no=#{workOrderNo} AND w.deleted=0
-                  AND c.identity_kind='GUEST' AND c.identity_ref=#{guestNo}
+                  AND w.customer_ref=CONCAT(w.identity_kind,':',w.identity_ref)
+                  AND w.identity_kind='GUEST' AND w.identity_ref=#{guestNo}
                 """)
         BtyWorkOrder selectClaimed(
                 @Param("entityNo") String entityNo,
@@ -1634,13 +1644,12 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
          */
         @Select(
                 """
-                SELECT o.* FROM bty_reception_operation o JOIN bty_work_order_context c
-                  ON c.tenant_no=o.tenant_no AND c.entity_no=o.entity_no AND c.store_no=o.store_no
-                  AND c.source_reception_operation_no=o.operation_no AND c.work_order_no=o.work_order_no
-                  AND c.identity_kind=o.identity_kind AND c.identity_ref=o.identity_ref AND c.deleted=0
-                JOIN bty_work_order w ON w.tenant_no=c.tenant_no AND w.entity_no=c.entity_no
-                  AND w.store_no=c.store_no AND w.work_order_no=c.work_order_no AND w.deleted=0
-                  AND w.customer_ref=CONCAT(c.identity_kind,':',c.identity_ref)
+                SELECT o.* FROM bty_reception_operation o
+                JOIN bty_work_order w ON w.tenant_no=o.tenant_no AND w.entity_no=o.entity_no
+                  AND w.store_no=o.store_no AND w.work_order_no=o.work_order_no AND w.deleted=0
+                  AND w.source_reception_operation_no=o.operation_no
+                  AND w.identity_kind=o.identity_kind AND w.identity_ref=o.identity_ref
+                  AND w.customer_ref=CONCAT(w.identity_kind,':',w.identity_ref)
                 WHERE o.tenant_no='MAIN' AND o.entity_no=#{entityNo} AND o.store_no=#{storeNo}
                   AND o.work_order_no=#{workOrderNo} AND o.operation_no=#{operationNo} AND o.deleted=0
                   AND ((o.action='OPEN_WORK_ORDER' AND o.endpoint IN ('BAPI-052','BAPI-054'))
@@ -1661,19 +1670,6 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 @Param("entityNo") String entityNo,
                 @Param("storeNo") String storeNo,
                 @Param("operationNo") String operationNo);
-    }
-
-    /** Scoped reception persistence; authorization remains in services. */
-    public interface WorkOrderContextMapper extends IndustryTableMapper<BtyWorkOrderContext> {
-        @Select(
-                """
-                SELECT * FROM bty_work_order_context WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
-                  AND store_no=#{storeNo} AND work_order_no=#{workOrderNo} AND deleted=0
-                """)
-        BtyWorkOrderContext selectScoped(
-                @Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo,
-                @Param("workOrderNo") String workOrderNo);
     }
 
     /** Scoped reception persistence; authorization remains in services. */

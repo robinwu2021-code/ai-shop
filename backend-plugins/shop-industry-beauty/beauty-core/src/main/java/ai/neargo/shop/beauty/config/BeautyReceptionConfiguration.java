@@ -103,7 +103,7 @@ public class BeautyReceptionConfiguration {
             ReceptionPreparation operations,
             WorkOrderPreparation preparation, ReceptionReassignment reassignment, AppointmentCoordinator appointments,
             BeautyMappers.ReceptionOperationMapper receptionRows, BeautyMappers.WorkOrderMapper orders,
-            BeautyMappers.WorkOrderContextMapper contexts, BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.WorkOrderMapper contexts, BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ServiceSubmissionMapper submissions,
             @Qualifier("beautyReceptionClock") Clock clock) {
         return new WorkOrderCoordinator(db, access, receptionAccess, identities, ownership, operations, preparation,
@@ -113,7 +113,7 @@ public class BeautyReceptionConfiguration {
     @Bean
     WorkOrderQuery workOrderQuery(
             AppointmentPersistence db,
-            BeautyMappers.WorkOrderContextMapper contexts,
+            BeautyMappers.WorkOrderMapper contexts,
             BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ServiceStepMapper steps,
             BeautyMappers.ServiceParticipationMapper participations,
@@ -144,7 +144,7 @@ public class BeautyReceptionConfiguration {
             BeautyMappers.WorkOrderMapper orders,
             ServiceSubmissionService submissions,
             WorkOrderBillService bills,
-            BeautyMappers.WorkOrderContextMapper contexts,
+            BeautyMappers.WorkOrderMapper contexts,
             ObjectProvider<GuestRegistrationPort> guests) {
         return new WorkOrderServiceImpl(
                 coordinator, query, db, access, orders, submissions, bills, contexts, guests);

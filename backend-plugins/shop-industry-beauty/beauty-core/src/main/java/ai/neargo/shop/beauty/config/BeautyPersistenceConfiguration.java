@@ -42,8 +42,11 @@ public class BeautyPersistenceConfiguration {
     @Bean
     @ConditionalOnMissingBean(name = "beautySchemaReady")
     BeautySchemaReady beautySchemaReady(@Qualifier("dataSource") DataSource source,
+            @Qualifier(ModuleDataSources.INDUSTRY_DATA_SOURCE) DataSource industry,
             @Value("${shop.beauty.migration.mode:validate}") String mode) {
         new BeautySchemaValidator().initialize(source, mode);
+        // 行业表在行业句柄上核对（行业句柄没绑定时就是主库）
+        BeautyIndustrySchemaCheck.verify(industry);
         // Highest installed migration may be10; this token proves only the unchanged V1-V9 base.
         return new BeautySchemaReady("9");
     }
