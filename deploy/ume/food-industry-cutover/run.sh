@@ -88,10 +88,11 @@ while IFS=$'\t' read -r kind t name cols; do
   case "$SHARED " in *" $t "*) ;; *) continue ;; esac
   [ "$name" = "PRIMARY" ] && continue
   # 同名索引可能是普通索引（设计稿把 uk_ 开头的建成了普通 KEY），或列不同：先删再建成唯一键
-  have=$(q -e "SELECT CONCAT(MIN(non_unique),':',GROUP_CONCAT(column_name ORDER BY seq_in_index)) FROM information_schema.statistics WHERE table_schema='$DB' AND table_name='$t' AND index_name='$name'")
+  # 循环里的查询不能读标准输入：经容器转发的客户端会把循环剩下的输入（期望结构文件）吃掉
+  have=$(q -e "SELECT CONCAT(MIN(non_unique),':',GROUP_CONCAT(column_name ORDER BY seq_in_index)) FROM information_schema.statistics WHERE table_schema='$DB' AND table_name='$t' AND index_name='$name'" < /dev/null)
   if [ "$have" != "0:$cols" ]; then
-    [ -n "$have" ] && [ "$have" != "NULL" ] && q "$DB" -e "ALTER TABLE \`$t\` DROP INDEX \`$name\`"
-    q "$DB" -e "ALTER TABLE \`$t\` ADD UNIQUE KEY \`$name\` ($(echo "$cols" | sed 's/[^,]*/`&`/g'))"
+    [ -n "$have" ] && [ "$have" != "NULL" ] && q "$DB" -e "ALTER TABLE \`$t\` DROP INDEX \`$name\`" < /dev/null
+    q "$DB" -e "ALTER TABLE \`$t\` ADD UNIQUE KEY \`$name\` ($(echo "$cols" | sed 's/[^,]*/`&`/g'))" < /dev/null
     echo "   补唯一键 $t.$name ($cols)"
   fi
 done < "$HERE/expected-structure.tsv"
