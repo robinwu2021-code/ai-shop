@@ -130,7 +130,7 @@
 **待确认**
 
 1. ~~切换批次~~ 已定（用户 2026-11-27「按推荐来」）：商品改造先行、上线与交易同批。
-2. 专题（`prd_topic`、`prd_topic_goods`）放哪个库、表结构怎么定。
+2. ~~专题放哪个库、表结构怎么定~~ 已定（用户 2026-11-28）：放会员营销库，按字段定稿建表。
 3. 库存同步、对齐、原始库存恢复这几项功能直接下线、交给库存服务，可否。
 
 ## §5 对账三 · 实现 → 需求（测试）
@@ -218,6 +218,14 @@
 - DDL：`07-n_member.sql` 的 `mbr_favorite` 加唯一约束 `uk_mbr_favorite_goods (tenant_no, user_no, favorite_type, goods_no)`（用户 2026-11-28 确认）；门店收藏的 `goods_no` 为空，不受它约束。该文件由 ai-shop-slim 的字段数据生成，**重新生成时要带上这一条**；已建好的 n_member 实库要另外由 root 执行加约束。
 - 数据域登记从 `prd_goods_favorite` 换到 `mbr_favorite`（SELF / `user_no`）。基线 −2。
 - 搬迁：`prd_goods_favorite` 每行写一行 `mbr_favorite`（`favorite_type = GOODS`、`tenant_no = MAIN`、`entity_no` 取商品的主体）。
+
+### 第 3 批 · 专题（2026-11-28，用户定放会员营销库）
+
+- DDL：`07-n_member.sql` 新建 `prd_topic`、`prd_topic_goods`（用户确认按 `db-target-fields.json` 定稿建全列）。`prd_topic` 含并入内容位与榜单的列（`topic_type`、`rank_kind`、`capacity`、`community_nos`、`enabled`），专题编号唯一、（类型, 状态, 排序）索引；`prd_topic_goods` 加 `sku_no`（按商品挑选时空串，唯一键 `(topic_no, goods_no, sku_no)` 才挡得住重复）与商品号索引。公共列照零售库规则。本文件由 ai-shop-slim 生成，**重新生成时要带上这两张**；n_member 实库要由 root 另外建表。
+- 代码：`TopicMapper`、`TopicGoodsMapper` 改收会员营销句柄，写事务改 `MEMBER_MARKETING_TX_MANAGER`；查询从 `TopicMapper.topics()` 起手，只碰 `topic_type = TOPIC`。内容位、榜单并进来不在这一批。
+- 顺带修正：移出专题的商品原走逻辑删，唯一键不含 `deleted`，同一件商品再加回来会撞键；改为真删（`purge`）。
+- 搬迁：旧 `prd_topic` 每行写 `topic_type = TOPIC`、`enabled = 1`；`prd_topic_goods` 每行 `sku_no = ''`，已逻辑删的行不搬。
+- 后续：媒体模块 `CoreMediaRefs` 按表名清理无主图片，`prd_topic.cover` 现在在会员营销库，随媒体改为按句柄查库一起改（与标准品、评价同一件事）。基线 −4。
 
 ### 偏差说明
 
