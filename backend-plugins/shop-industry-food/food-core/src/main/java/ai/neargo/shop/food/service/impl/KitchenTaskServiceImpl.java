@@ -37,7 +37,7 @@ import ai.neargo.shop.food.entity.FnbKitchenTicket;
 import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderComponent;
 import ai.neargo.shop.food.entity.FnbOrderLine;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
@@ -49,7 +49,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.policy.CustodyFulfillmentPolicy;
 import ai.neargo.shop.food.mapper.FoodIndustryOperationsMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
@@ -104,7 +104,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
     private final ConfigRevisionMapper revisions;
     private final KitchenTicketMapper tickets;
     private final KitchenTaskMapper tasks;
-    private final ServiceEventMapper events;
+    private final KitchenEventMapper events;
     private final CourseMapper courses;
     private final CheckMapper checks;
     /** 退菜在交易侧：已由厨房确认取消的数量从这里读。 */
@@ -156,7 +156,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
             ConfigRevisionMapper revisions,
             KitchenTicketMapper tickets,
             KitchenTaskMapper tasks,
-            ServiceEventMapper events,
+            KitchenEventMapper events,
             CourseMapper courses,
             CheckMapper checks,
             ReturnItemMapper returnItems,
@@ -190,7 +190,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
             ConfigRevisionMapper revisions,
             KitchenTicketMapper tickets,
             KitchenTaskMapper tasks,
-            ServiceEventMapper events,
+            KitchenEventMapper events,
             CourseMapper courses,
             CheckMapper checks,
             ReturnItemMapper returnItems,
@@ -595,7 +595,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                                 readyLoss(entity, taskNo));
                     stampUpdate(task, actor);
                     if (tasks.updateById(task) != 1) throw conflict();
-                    FnbServiceEvent event = null;
+                    FnbKitchenEvent event = null;
                     String originalOperation = operation(entity, store, key);
                     if (returned) {
                         if (workLoss.signum() > 0)
@@ -726,10 +726,10 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                     scopedTask(entity, store, taskNo);
                     return events
                             .selectList(
-                                    Wrappers.<FnbServiceEvent>lambdaQuery()
-                                            .eq(FnbServiceEvent::getEntityNo, entity)
-                                            .eq(FnbServiceEvent::getTaskNo, taskNo)
-                                            .orderByAsc(FnbServiceEvent::getId))
+                                    Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                            .eq(FnbKitchenEvent::getEntityNo, entity)
+                                            .eq(FnbKitchenEvent::getTaskNo, taskNo)
+                                            .orderByAsc(FnbKitchenEvent::getId))
                             .stream()
                             .map(KitchenTaskServiceImpl::event)
                             .toList();
@@ -1095,13 +1095,13 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                         for (var task : ticketTasks(entity, ticket.getTicketNo()))
                             for (var event :
                                     events.selectList(
-                                            Wrappers.<FnbServiceEvent>lambdaQuery()
-                                                    .eq(FnbServiceEvent::getEntityNo, entity)
+                                            Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                                    .eq(FnbKitchenEvent::getEntityNo, entity)
                                                     .eq(
-                                                            FnbServiceEvent::getTaskNo,
+                                                            FnbKitchenEvent::getTaskNo,
                                                             task.getTaskNo())
-                                                    .isNotNull(FnbServiceEvent::getCustodySnapshot)
-                                                    .orderByAsc(FnbServiceEvent::getId))) {
+                                                    .isNotNull(FnbKitchenEvent::getCustodySnapshot)
+                                                    .orderByAsc(FnbKitchenEvent::getId))) {
                                 var receipt =
                                         json.readValue(
                                                 event.getCustodySnapshot(), CustodyReceiptVO.class);
@@ -1344,12 +1344,12 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
     private BigDecimal factQty(String entity, String task, String action) {
         return events
                 .selectList(
-                        Wrappers.<FnbServiceEvent>lambdaQuery()
-                                .eq(FnbServiceEvent::getEntityNo, entity)
-                                .eq(FnbServiceEvent::getTaskNo, task)
-                                .eq(FnbServiceEvent::getAction, action))
+                        Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                .eq(FnbKitchenEvent::getEntityNo, entity)
+                                .eq(FnbKitchenEvent::getTaskNo, task)
+                                .eq(FnbKitchenEvent::getAction, action))
                 .stream()
-                .map(FnbServiceEvent::getQty)
+                .map(FnbKitchenEvent::getQty)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -1517,10 +1517,10 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                                 .eq(FnbKitchenTask::getFoodLineNo, row.getFoodLineNo()));
         for (var related : lineTasks)
             if (!events.selectList(
-                            Wrappers.<FnbServiceEvent>lambdaQuery()
-                                    .eq(FnbServiceEvent::getEntityNo, entity)
-                                    .eq(FnbServiceEvent::getTaskNo, related.getTaskNo())
-                                    .eq(FnbServiceEvent::getAction, "HANDOVER"))
+                            Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                    .eq(FnbKitchenEvent::getEntityNo, entity)
+                                    .eq(FnbKitchenEvent::getTaskNo, related.getTaskNo())
+                                    .eq(FnbKitchenEvent::getAction, "HANDOVER"))
                     .isEmpty()) throw conflict();
         return row;
     }
@@ -1592,28 +1592,28 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
     private BigDecimal loss(String entity, String task) {
         return events
                 .selectList(
-                        Wrappers.<FnbServiceEvent>lambdaQuery()
-                                .eq(FnbServiceEvent::getEntityNo, entity)
-                                .eq(FnbServiceEvent::getTaskNo, task)
-                                .eq(FnbServiceEvent::getAction, "LOSS"))
+                        Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                .eq(FnbKitchenEvent::getEntityNo, entity)
+                                .eq(FnbKitchenEvent::getTaskNo, task)
+                                .eq(FnbKitchenEvent::getAction, "LOSS"))
                 .stream()
-                .map(FnbServiceEvent::getQty)
+                .map(FnbKitchenEvent::getQty)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private BigDecimal readyLoss(String entity, String task) {
         return events
                 .selectList(
-                        Wrappers.<FnbServiceEvent>lambdaQuery()
-                                .eq(FnbServiceEvent::getEntityNo, entity)
-                                .eq(FnbServiceEvent::getTaskNo, task)
-                                .eq(FnbServiceEvent::getAction, "LOSS"))
+                        Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                .eq(FnbKitchenEvent::getEntityNo, entity)
+                                .eq(FnbKitchenEvent::getTaskNo, task)
+                                .eq(FnbKitchenEvent::getAction, "LOSS"))
                 .stream()
                 .map(e -> e.getReadyLossQty() == null ? e.getQty() : e.getReadyLossQty())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private FnbServiceEvent append(
+    private FnbKitchenEvent append(
             String entity,
             String actor,
             String task,
@@ -1621,7 +1621,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
             BigDecimal qty,
             String reason,
             String operation) {
-        var event = new FnbServiceEvent();
+        var event = new FnbKitchenEvent();
         stamp(event, actor);
         event.setEntityNo(entity);
         event.setEventNo(BizKey.next("FSEV"));
@@ -1730,7 +1730,7 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                 head.getOriginalTicketNo());
     }
 
-    private static EventVO event(FnbServiceEvent e) {
+    private static EventVO event(FnbKitchenEvent e) {
         return new EventVO(
                 e.getEventNo(),
                 e.getTaskNo(),

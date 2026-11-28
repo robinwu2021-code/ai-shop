@@ -331,35 +331,37 @@ CREATE TABLE `fnb_service_calendar` (
   KEY `ix_food_ref_1` (`entity_no`,`policy_no`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='é¤é¥®æŽ¥å•æ—¥åŽ†ä¾‹å¤–';
 
--- 五、过渡：9 组合并（TDD §2.5）与寄存改名完成前，代码仍读写的旧表；每完成一组就从这里删掉对应的表。
+-- 五、过渡表已全部合并或改名完毕（TDD §2.5）。
 
-CREATE TABLE `fnb_service_event` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'BaseEntityè‡ªå¢žç‰©ç†ä¸»é”®ï¼Œä¸å¯¹å¤–ä¸è¿›URL',
-  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT 'æ²¿ç”¨BaseEntityï¼Œä¸€æœŸMAINï¼›ä¸æ˜¯entity_noï¼Œä¸å¦å¯ç§Ÿæˆ·ä½“ç³»',
-  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'å½“å‰ä¸»ä½“æˆ–ä¸šåŠ¡å‘ç”Ÿæ—¶ä¸»ä½“å¿«ç…§ï¼Œä¸ç­‰äºŽè´¦å·å’Œæ”¯ä»˜å•†æˆ·å·',
-  `created_at` datetime(3) NOT NULL COMMENT 'æ²¿ç”¨MetaObjectHandleråŠçŽ°æœ‰LocalDateTimeæŒä¹…åŒ–çº¦å®š',
-  `created_by` varchar(32) NOT NULL COMMENT 'å½“å‰è®¤è¯ä¸šåŠ¡é”®ï¼›æŒ‰çŽ°æœ‰å¡«å……è§„åˆ™ï¼Œä½œä¸šSYSTEM',
-  `updated_at` datetime(3) NOT NULL COMMENT 'æ²¿ç”¨å…¬å…±å¡«å……',
-  `updated_by` varchar(32) NOT NULL COMMENT 'æ²¿ç”¨å…¬å…±å¡«å……',
-  `version` bigint NOT NULL DEFAULT '0' COMMENT 'BaseEntityä¹è§‚é”',
-  `deleted` int NOT NULL DEFAULT '0' COMMENT 'BaseEntityé€»è¾‘åˆ é™¤ï¼›ç­¾æ ¸å’Œäº‹å®žè¡¨ç¦æ­¢ä¸šåŠ¡å½’æ¡£è¦†ç›–åŽ†å²',
-  `event_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'äº‹ä»¶å·',
-  `task_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'ä»»åŠ¡',
-  `action` varchar(24) NOT NULL COMMENT 'START/READY/SERVE/HOLD/FIRE/URGE/VOID/LOSS',
-  `qty` decimal(18,6) NOT NULL COMMENT 'æœ¬æ¬¡æ•°é‡',
-  `operation_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'å¹‚ç­‰æ“ä½œ',
-  `reason` varchar(255) DEFAULT NULL COMMENT 'åŽŸå› ',
-  `inventory_doc_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'æ ¸å¿ƒåº“å­˜å‡­æ®',
-  `custody_snapshot` text COMMENT 'Immutable packing/custody receipt with original line and recipient scope',
-  `source_request_hash` varchar(64) DEFAULT NULL,
-  `ready_loss_qty` decimal(24,6) DEFAULT NULL COMMENT 'Null legacy LOSS was entirely ready food; new events freeze exact stage quantity',
+-- 合并 ⑥ 服务事件 → 厨房事件（TDD §2.8 D-1）：厨房动作的事实只写这一张；动作防重键与来源请求摘要代码在用，补回并建唯一键。
+-- 厨显推送流 fnb_kds_event 与游标在 D-3 改为「拉当前状态」后删除。
+CREATE TABLE `fnb_kitchen_event` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
+  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '租户号',
+  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '所属主体编号',
+  `event_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '事件编号',
+  `task_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '制作任务编号',
+  `event_type` varchar(24) NOT NULL COMMENT '厨房动作：START 开始制作、READY 出品、SERVE 上菜、HOLD 叫停、FIRE 起菜、URGE 催菜、VOID 划菜、LOSS 损耗、HANDOVER 打包交接、MATERIAL_SUPPLEMENT 补料、MATERIAL_WASTE 废料',
+  `qty` decimal(18,6) NOT NULL COMMENT '本次涉及数量',
+  `ready_loss_qty` decimal(24,6) DEFAULT NULL COMMENT '损耗时其中已做好的数量；空为旧数据，整笔按成品损耗',
+  `operation_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '动作防重键',
+  `source_request_hash` varchar(64) DEFAULT NULL COMMENT '来源请求摘要，重放时比对同键异参',
+  `reason` varchar(255) DEFAULT NULL COMMENT '原因（催菜、划菜、损耗）',
+  `inventory_doc_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '损耗对应的库存出库凭据编号',
+  `custody_snapshot` text COMMENT '打包交接时定格的原始行与接收范围',
+  `version` bigint NOT NULL DEFAULT '0' COMMENT '乐观锁版本号',
+  `deleted` int NOT NULL DEFAULT '0' COMMENT '逻辑删除：0 正常，1 已删除',
+  `created_at` datetime(3) NOT NULL COMMENT '创建时间，即动作发生时间',
+  `created_by` varchar(32) NOT NULL COMMENT '操作人',
+  `updated_at` datetime(3) NOT NULL COMMENT '更新时间',
+  `updated_by` varchar(32) NOT NULL COMMENT '更新人',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_food_1` (`event_no`),
-  UNIQUE KEY `uk_food_2` (`operation_key`),
-  KEY `ix_food_audit` (`entity_no`,`created_at`,`id`),
-  KEY `ix_food_ref_1` (`entity_no`,`task_no`,`id`),
-  CONSTRAINT `fnb_service_event_chk_1` CHECK ((`qty` > 0))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='å‡ºå“ä¸ŠèœåŠæŸè€—äº‹å®ž';
+  UNIQUE KEY `uk_kitchen_event_no` (`event_no`),
+  UNIQUE KEY `uk_kitchen_event_operation` (`operation_key`),
+  KEY `ix_kitchen_event_task` (`entity_no`,`task_no`,`id`),
+  KEY `ix_kitchen_event_audit` (`entity_no`,`created_at`,`id`),
+  CONSTRAINT `fnb_kitchen_event_chk_qty` CHECK ((`qty` > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='厨房事件：厨房动作的事实（开始、出品、上菜、叫停、催菜、划菜、损耗、交接），报表、耗料、日结、退货回库都读它';
 
 -- 合并 ⑦ 交接与责任 → ind_assignment（TDD §2.5）：交接单号（多条指派归成一张交接）与来源摘要（接收时比对来源有没有变）代码在用。
 ALTER TABLE ind_assignment ADD COLUMN handover_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '交接单号：同一次交接的各条指派', ADD COLUMN source_hash CHAR(64) NULL COMMENT '发起交接时对象的来源摘要', ADD KEY ix_ind_assignment_handover (entity_no, handover_no);

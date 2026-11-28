@@ -13,7 +13,7 @@ import ai.neargo.shop.food.entity.FnbKitchenTask;
 import ai.neargo.shop.food.entity.FnbKitchenTicket;
 import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderLine;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.mapper.FoodMappers.CheckMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CoreLineAllocationMapper;
@@ -24,7 +24,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.service.impl.KitchenTaskServiceImpl;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
@@ -57,19 +57,19 @@ class KitchenCustodyServiceTest {
     private final ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper returnItems=
             mock(ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper.class);
     private final KitchenTaskMapper tasks=mock(KitchenTaskMapper.class);
-    private final ServiceEventMapper events=mock(ServiceEventMapper.class);
+    private final KitchenEventMapper events=mock(KitchenEventMapper.class);
     private final CoreOrderBindingMapper bindings=mock(CoreOrderBindingMapper.class);
     private final CoreLineAllocationMapper allocations=mock(CoreLineAllocationMapper.class);
     private final RequestIdempotencyPort idem=mock(RequestIdempotencyPort.class);
     private final PlatformTransactionManager manager=mock(PlatformTransactionManager.class);
-    private final List<FnbServiceEvent> facts=new ArrayList<>();
+    private final List<FnbKitchenEvent> facts=new ArrayList<>();
     private final FnbKitchenTask task=new FnbKitchenTask();
     private KitchenTaskServiceImpl service;
 
     @BeforeEach void setup() {
         var assistant=new MapperBuilderAssistant(new MybatisConfiguration(),"custody-test");
         assistant.setCurrentNamespace("custody-test");
-        TableInfoHelper.initTableInfo(assistant,FnbServiceEvent.class);
+        TableInfoHelper.initTableInfo(assistant,FnbKitchenEvent.class);
         when(manager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
         when(idem.execute(anyString(),anyString(),anyString(),anyString(),any(),any()))
                 .thenAnswer(i -> ((Supplier<?>)i.getArgument(5)).get());
@@ -96,16 +96,16 @@ class KitchenCustodyServiceTest {
         when(tasks.selectList(any())).thenReturn(List.of(task));
         when(tasks.updateById(any(FnbKitchenTask.class))).thenReturn(1);
         when(events.selectList(any())).thenAnswer(i -> {
-            LambdaQueryWrapper<FnbServiceEvent> query=i.getArgument(0); String sql=query.getSqlSegment();
+            LambdaQueryWrapper<FnbKitchenEvent> query=i.getArgument(0); String sql=query.getSqlSegment();
             var values=query.getParamNameValuePairs().values();
             return facts.stream().filter(e -> values.contains(e.getTaskNo()))
-                    .filter(e -> !sql.contains("action") || values.contains(e.getAction()))
+                    .filter(e -> !sql.contains("event_type") || values.contains(e.getAction()))
                     .filter(e -> !sql.contains("custody_snapshot") || e.getCustodySnapshot()!=null).toList();
         });
-        when(events.insert(any(FnbServiceEvent.class))).thenAnswer(i -> {
-            FnbServiceEvent fact=i.getArgument(0); fact.setId((long)facts.size()+1); facts.add(fact); return 1;
+        when(events.insert(any(FnbKitchenEvent.class))).thenAnswer(i -> {
+            FnbKitchenEvent fact=i.getArgument(0); fact.setId((long)facts.size()+1); facts.add(fact); return 1;
         });
-        when(events.updateById(any(FnbServiceEvent.class))).thenReturn(1);
+        when(events.updateById(any(FnbKitchenEvent.class))).thenReturn(1);
         service=new KitchenTaskServiceImpl(batches,lines,mock(OrderComponentMapper.class),
                 mock(ConfigRevisionMapper.class),
                 tickets,tasks,events,mock(CourseMapper.class),mock(CheckMapper.class),returnItems,idem,new ObjectMapper(),manager,
@@ -187,7 +187,7 @@ class KitchenCustodyServiceTest {
     }
 
     @Test void oldWholeHandoverReceiptCannotBeReusedForPartialCustody() {
-        var legacy=new FnbServiceEvent(); legacy.setTaskNo("TASK"); legacy.setAction("HANDOVER");
+        var legacy=new FnbKitchenEvent(); legacy.setTaskNo("TASK"); legacy.setAction("HANDOVER");
         legacy.setQty(new BigDecimal("3")); facts.add(legacy);
         assertThatThrownBy(() -> pack("1","pack-1")).isInstanceOf(BizException.class);
     }

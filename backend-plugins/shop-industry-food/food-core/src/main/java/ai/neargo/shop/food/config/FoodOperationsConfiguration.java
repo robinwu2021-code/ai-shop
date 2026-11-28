@@ -44,7 +44,7 @@ public class FoodOperationsConfiguration {
     KitchenTaskService kitchenTaskService(FoodMappers.OrderBatchMapper batches,FoodMappers.OrderLineMapper lines,
             FoodMappers.OrderComponentMapper components,FoodMappers.ConfigRevisionMapper revisions,
             FoodMappers.KitchenTicketMapper tickets,FoodMappers.KitchenTaskMapper tasks,
-            FoodMappers.ServiceEventMapper events,FoodMappers.CourseMapper courses,FoodMappers.CheckMapper checks,
+            FoodMappers.KitchenEventMapper events,FoodMappers.CourseMapper courses,FoodMappers.CheckMapper checks,
             FoodMappers.ReturnItemMapper returnItems,RequestIdempotencyPort idem,ObjectMapper json,
             // 出品整组（制作任务、出品单、服务事件、道次）在行业库（ADR-068 修订一）：厨房动作是行业库内的本地事务。
             @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
@@ -60,7 +60,7 @@ public class FoodOperationsConfiguration {
             FoodMappers.OrderBatchMapper batches,FoodMappers.OrderLineMapper lines,FoodMappers.SettlementMapper settlements,
             FoodMappers.SettlementItemMapper settlementItems,FoodMappers.CoreOrderBindingMapper bindings,
             FoodMappers.ReturnMapper returns,FoodMappers.KitchenTicketMapper tickets,FoodMappers.KitchenTaskMapper tasks,
-            FoodMappers.ServiceEventMapper events,ObjectProvider<StoreCardQueryPort> stores,RequestIdempotencyPort idem,ObjectMapper json,
+            FoodMappers.KitchenEventMapper events,ObjectProvider<StoreCardQueryPort> stores,RequestIdempotencyPort idem,ObjectMapper json,
             @Qualifier(ModuleDataSources.TRADE_TX_MANAGER) PlatformTransactionManager manager) {
         return new BusinessCloseServiceImpl(days,runs,balances,exceptions,adjustments,policies,batches,lines,
                 settlements,settlementItems,bindings,returns,tickets,tasks,events,numbers -> stores.getObject().cards(numbers),idem,json,manager);
@@ -82,7 +82,7 @@ public class FoodOperationsConfiguration {
     ProductionConsumptionService productionConsumptionService(FoodMappers.ProductionConsumptionMapper heads,
             FoodMappers.ProductionConsumptionLineMapper lines,FoodMappers.OrderBatchMapper batches,
             FoodMappers.OrderLineMapper orderLines,FoodMappers.KitchenTicketMapper tickets,
-            FoodMappers.KitchenTaskMapper tasks,FoodMappers.ServiceEventMapper events,
+            FoodMappers.KitchenTaskMapper tasks,FoodMappers.KitchenEventMapper events,
             FoodMappers.ConfigRevisionMapper revisions,ObjectProvider<StoreCardQueryPort> stores,ObjectProvider<InventoryProductionPort> inventory,
             ObjectProvider<ai.neargo.shop.spi.food.FoodProductionStockPort> stockOwners,ObjectProvider<FoodMappers.ReturnStockDispositionMapper> returnStockClaims,ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new ProductionConsumptionServiceImpl(heads,lines,batches,orderLines,tickets,tasks,events,

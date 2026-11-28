@@ -12,13 +12,13 @@ import ai.neargo.shop.food.entity.FnbKitchenTask;
 import ai.neargo.shop.food.entity.FnbKitchenTicket;
 import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderLine;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.mapper.DiningChannelMappers.ChannelOrderSourceMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
@@ -40,7 +40,7 @@ import java.util.Objects;
  * calls or scanning unrelated custody receipts.
  */
 public class DiningChannelFulfillmentSignalPortImpl implements DiningChannelFulfillmentSignalPort {
-    private final ServiceEventMapper events;
+    private final KitchenEventMapper events;
     private final KitchenTaskMapper tasks;
     private final KitchenTicketMapper tickets;
     private final OrderBatchMapper batches;
@@ -50,7 +50,7 @@ public class DiningChannelFulfillmentSignalPortImpl implements DiningChannelFulf
     private final Clock clock;
 
     public DiningChannelFulfillmentSignalPortImpl(
-            ServiceEventMapper events,
+            KitchenEventMapper events,
             KitchenTaskMapper tasks,
             KitchenTicketMapper tickets,
             OrderBatchMapper batches,
@@ -91,7 +91,7 @@ public class DiningChannelFulfillmentSignalPortImpl implements DiningChannelFulf
     private Signal original(DiningServiceEvent event) {
         var stored =
                 events.selectOne(
-                        Wrappers.<FnbServiceEvent>query()
+                        Wrappers.<FnbKitchenEvent>query()
                                 .eq("tenant_no", "MAIN")
                                 .eq("entity_no", event.entityNo())
                                 .eq("event_no", event.eventNo())

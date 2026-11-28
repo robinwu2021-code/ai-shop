@@ -32,13 +32,13 @@ public final class FoodReturnStockServiceImpl implements FoodReturnStockService 
     private final FoodRecoveryLog recoveryLog = new FoodRecoveryLog(
             LoggerFactory.getLogger(FoodReturnStockServiceImpl.class), "food.return-stock.recovery");
     private final ReturnStockDispositionMapper claims;private final ReturnMapper returns;private final ReturnItemMapper returnItems;
-    private final ProductionConsumptionMapper production;private final ServiceEventMapper events;private final KitchenTaskMapper tasks;
+    private final ProductionConsumptionMapper production;private final KitchenEventMapper events;private final KitchenTaskMapper tasks;
     private final OrderBatchMapper batches;private final OrderLineMapper lines;private final StockCommandMapper commands;
     private final StockReservationMapper reservations;private final StockMovementMapper movements;
     private final FoodLocalStockPort stock;private final ObjectMapper json;private final TransactionTemplate write;private final TransactionTemplate read;
     public record NativeCall(FoodLocalStockPort.Command command,String reservationNo,List<FoodLocalStockPort.ReturnTarget> targets) {}
     public FoodReturnStockServiceImpl(ReturnStockDispositionMapper claims,ReturnMapper returns,ReturnItemMapper returnItems,
-            ProductionConsumptionMapper production,ServiceEventMapper events,KitchenTaskMapper tasks,OrderBatchMapper batches,
+            ProductionConsumptionMapper production,KitchenEventMapper events,KitchenTaskMapper tasks,OrderBatchMapper batches,
             OrderLineMapper lines,StockCommandMapper commands,StockReservationMapper reservations,StockMovementMapper movements,
             FoodLocalStockPort stock,ObjectMapper json,PlatformTransactionManager manager) {
         this.claims=claims;this.returns=returns;this.returnItems=returnItems;this.production=production;this.events=events;
@@ -68,8 +68,8 @@ public final class FoodReturnStockServiceImpl implements FoodReturnStockService 
                     .eq(FnbReturnStockDisposition::getReturnItemNo,item.getReturnItemNo())).stream()
                     .map(FnbReturnStockDisposition::getDishQty).reduce(BigDecimal.ZERO,BigDecimal::add);
             if(claimed.add(input.dishQty()).compareTo(item.getQty())>0)throw conflict();
-            var event=events.selectOne(Wrappers.<FnbServiceEvent>lambdaQuery().eq(FnbServiceEvent::getTenantNo,"MAIN")
-                    .eq(FnbServiceEvent::getEntityNo,entity).eq(FnbServiceEvent::getEventNo,input.productionEventNo()));
+            var event=events.selectOne(Wrappers.<FnbKitchenEvent>lambdaQuery().eq(FnbKitchenEvent::getTenantNo,"MAIN")
+                    .eq(FnbKitchenEvent::getEntityNo,entity).eq(FnbKitchenEvent::getEventNo,input.productionEventNo()));
             if(event==null||!"START".equals(event.getAction())||event.getQty()==null||input.dishQty().compareTo(event.getQty())>0)throw conflict();
             var task=tasks.selectOne(Wrappers.<FnbKitchenTask>lambdaQuery().eq(FnbKitchenTask::getTenantNo,"MAIN")
                     .eq(FnbKitchenTask::getEntityNo,entity).eq(FnbKitchenTask::getTaskNo,event.getTaskNo()));

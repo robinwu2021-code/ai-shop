@@ -40,7 +40,7 @@ public class FoodStockAutoConfiguration {
         return new FoodStockReportFactsPortAdapter(balances,items,movements,commands,json,manager,zone);
     }
     @Bean FoodReturnStockService foodReturnStockService(ReturnStockDispositionMapper claims,
-            ReturnMapper returns,ReturnItemMapper returnItems,ProductionConsumptionMapper production,ServiceEventMapper events,
+            ReturnMapper returns,ReturnItemMapper returnItems,ProductionConsumptionMapper production,KitchenEventMapper events,
             KitchenTaskMapper tasks,OrderBatchMapper batches,OrderLineMapper lines,StockCommandMapper commands,
             StockReservationMapper reservations,StockMovementMapper movements,FoodLocalStockPort stock,
             ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager) {

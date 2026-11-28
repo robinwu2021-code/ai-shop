@@ -25,7 +25,7 @@ import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderLine;
 import ai.neargo.shop.food.entity.FnbProductionConsumption;
 import ai.neargo.shop.food.entity.FnbProductionConsumptionLine;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
@@ -33,7 +33,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ProductionConsumptionLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ProductionConsumptionMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.mapper.FoodProductionEvidenceMapper;
 import ai.neargo.shop.food.policy.DiningPriceFactsPolicy;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
@@ -95,7 +95,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
     private final OrderLineMapper orderLines;
     private final KitchenTicketMapper tickets;
     private final KitchenTaskMapper tasks;
-    private final ServiceEventMapper events;
+    private final KitchenEventMapper events;
     private ProductionSourceQuery sources;
     private final ConfigRevisionMapper revisions;
     private final StoreCardQueryPort stores;
@@ -125,7 +125,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
             OrderLineMapper orderLines,
             KitchenTicketMapper tickets,
             KitchenTaskMapper tasks,
-            ServiceEventMapper events,
+            KitchenEventMapper events,
             ConfigRevisionMapper revisions,
             StoreCardQueryPort stores,
             InventoryProductionPort inventory,
@@ -329,10 +329,10 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                             if (batch == null) throw missing();
                             var prior =
                                     events.selectOne(
-                                            Wrappers.<FnbServiceEvent>lambdaQuery()
-                                                    .eq(FnbServiceEvent::getEntityNo, entity)
+                                            Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                                    .eq(FnbKitchenEvent::getEntityNo, entity)
                                                     .eq(
-                                                            FnbServiceEvent::getOperationKey,
+                                                            FnbKitchenEvent::getOperationKey,
                                                             operation));
                             if (prior != null) {
                                 if (!hash.equals(prior.getSourceRequestHash())) throw conflict();
@@ -348,7 +348,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                                     || !"MAKE".equals(task.getTaskRole())
                                     || !req.version().equals(task.getVersion())
                                     || req.qty().compareTo(task.getQty()) > 0) throw conflict();
-                            var created = new FnbServiceEvent();
+                            var created = new FnbKitchenEvent();
                             created.setEntityNo(entity);
                             created.setEventNo(BizKey.next("FSEV"));
                             created.setTaskNo(taskNo);
@@ -594,9 +594,9 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
         if (prior != null) return prior;
         var event =
                 events.selectOne(
-                        Wrappers.<FnbServiceEvent>lambdaQuery()
-                                .eq(FnbServiceEvent::getEntityNo, entity)
-                                .eq(FnbServiceEvent::getEventNo, eventNo));
+                        Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                .eq(FnbKitchenEvent::getEntityNo, entity)
+                                .eq(FnbKitchenEvent::getEventNo, eventNo));
         if (event == null) throw missing();
         var task =
                 tasks.selectOne(
@@ -898,9 +898,9 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
         if (prior != null) return prior;
         var event =
                 events.selectOne(
-                        Wrappers.<FnbServiceEvent>lambdaQuery()
-                                .eq(FnbServiceEvent::getEntityNo, entity)
-                                .eq(FnbServiceEvent::getEventNo, eventNo));
+                        Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                .eq(FnbKitchenEvent::getEntityNo, entity)
+                                .eq(FnbKitchenEvent::getEventNo, eventNo));
         if (event == null) throw missing();
         var task =
                 tasks.selectOne(

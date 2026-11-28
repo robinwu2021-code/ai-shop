@@ -11,12 +11,12 @@ import ai.neargo.shop.food.entity.FnbKitchenTask;
 import ai.neargo.shop.food.entity.FnbKitchenTicket;
 import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderLine;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.port.DiningKitchenReportFactsPortAdapter;
 import ai.neargo.shop.food.service.DiningReportFactsService;
 import ai.neargo.shop.spi.report.ReportContracts.Coverage;
@@ -38,7 +38,7 @@ import java.util.List;
 
 class DiningKitchenReportFactsTest {
     private final DiningReportFactsService days = mock(DiningReportFactsService.class);
-    private final ServiceEventMapper events = mock(ServiceEventMapper.class);
+    private final KitchenEventMapper events = mock(KitchenEventMapper.class);
     private final KitchenTaskMapper tasks = mock(KitchenTaskMapper.class);
     private final KitchenTicketMapper tickets = mock(KitchenTicketMapper.class);
     private final OrderBatchMapper batches = mock(OrderBatchMapper.class);
@@ -68,8 +68,8 @@ class DiningKitchenReportFactsTest {
                 days, events, tasks, tickets, batches, lines, manager);
     }
 
-    private FnbServiceEvent event(String number, String action) {
-        var row = new FnbServiceEvent();
+    private FnbKitchenEvent event(String number, String action) {
+        var row = new FnbKitchenEvent();
         row.setEventNo(number);
         row.setTaskNo("TASK");
         row.setAction(action);

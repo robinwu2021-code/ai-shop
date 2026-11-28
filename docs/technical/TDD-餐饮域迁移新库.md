@@ -400,7 +400,12 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   接收：在行业事务里锁住该对象的全部责任指派（含别的交接的待接收条），锁内复核当前负责人仍是发起人，然后旧责任 `ENDED`、这条 `ACTIVE` 且 `previous_assignment_no` 指向旧条——同一对象上的接收因此串行，旧表靠唯一键保证的「一个对象一个负责人」由行锁保证。取消：待接收的条全部 `CANCELLED`。
   交接单不单独成行：由明细汇总（有待接收为 `PROPOSED`、已取消为 `CANCELLED`、否则 `ACCEPTED`；决定人按状态推出）。交接单的来源摘要改为各明细来源摘要的摘要（旧的是全部证据 JSON 的摘要，含义不变、取值变）。
   `V2` 补回 `handover_no`（归组）与 `source_hash`（接收时比对来源）两列及索引。测试：交接夹具改用 `IndustrySchema`，补链式交接与取消用例。
-- 待做：设备出口 D-1～D-6（§2.8，含合并 ⑥）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
+- **D-1 / P1-3 合并 ⑥：服务事件 → 厨房事件 `fnb_kitchen_event`**（§2.8）。厨房动作的事实只写这一张；`action` 列改名 `event_type`（实体字段仍叫 `action`，用 `@TableField` 映射），`operation_key`、`source_request_hash` 与两条唯一键（事件号、动作防重键）保留。
+  实体与 Mapper 改名 `FnbKitchenEvent` / `KitchenEventMapper`；耗料来源的两条原生 SQL 改表名与列名；`FoodIndustryTables` 把旧表移入 `MERGED`，校验器登记新表的唯一键与列，数据域登记改新表。
+  厨显推送流 `fnb_kds_event` 与游标暂不动，D-3 改为「拉当前状态」后删除。`V2` 去掉过渡的 `fnb_service_event`，过渡表至此清空。
+  测试：按实体建表的两个夹具改为认 `@TableField` 列名；`IndustrySchema` 在一次性 MySQL 上保留 JSON 列（原先一律转成超长 VARCHAR，MySQL 建 `ind_config_revision` 失败，合并 ③ 起 `KitchenLifecycleAcceptanceTest` 在 MySQL 模式下跑不起来）。
+  餐饮全量 763 个（跳过 55 个仅 MySQL 用例）无失败；本机 MySQL 上 `FoodIndustryDatabaseTest`、`ProductionConsumptionListMapperTest`、`KitchenLifecycleAcceptanceTest` 通过。
+- 待做：设备出口 D-2～D-6（§2.8）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
 

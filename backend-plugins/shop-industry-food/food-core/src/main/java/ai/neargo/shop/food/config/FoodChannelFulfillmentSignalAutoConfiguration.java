@@ -5,7 +5,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
 import ai.neargo.shop.food.port.DiningChannelFulfillmentSignalPortImpl;
 
@@ -30,7 +30,7 @@ import java.time.Clock;
 public class FoodChannelFulfillmentSignalAutoConfiguration {
     @Bean
     DiningChannelFulfillmentSignalPort diningChannelFulfillmentSignalPort(
-            ServiceEventMapper events,
+            KitchenEventMapper events,
             KitchenTaskMapper tasks,
             KitchenTicketMapper tickets,
             OrderBatchMapper batches,

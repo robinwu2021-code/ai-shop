@@ -4,7 +4,7 @@ import ai.neargo.shop.food.dto.ProductionContracts.PendingVO;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ProductionConsumptionMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,13 +26,13 @@ public final class ProductionSourceQuery {
             Set.of("PREPARED", "SUBMITTED", "UNKNOWN", "REVERSAL_PENDING", "BLOCKED", "FAILED");
     private static final int SCAN = 500;
 
-    private final ServiceEventMapper events;
+    private final KitchenEventMapper events;
     private final OrderBatchMapper batches;
     private final OrderLineMapper lines;
     private final ProductionConsumptionMapper heads;
 
     public ProductionSourceQuery(
-            ServiceEventMapper events,
+            KitchenEventMapper events,
             OrderBatchMapper batches,
             OrderLineMapper lines,
             ProductionConsumptionMapper heads) {
@@ -107,17 +107,17 @@ public final class ProductionSourceQuery {
     private record PageFacts(
             Map<BatchKey, OrderBatchMapper.BatchState> batches,
             Map<EventKey, ProductionConsumptionMapper.EventState> consumptions) {
-        OrderBatchMapper.BatchState batch(ServiceEventMapper.ProductionCandidate candidate) {
+        OrderBatchMapper.BatchState batch(KitchenEventMapper.ProductionCandidate candidate) {
             return batches.get(new BatchKey(candidate.entityNo(), candidate.batchNo()));
         }
 
         ProductionConsumptionMapper.EventState consumption(
-                ServiceEventMapper.ProductionCandidate candidate, String store) {
+                KitchenEventMapper.ProductionCandidate candidate, String store) {
             return consumptions.get(new EventKey(candidate.entityNo(), store, candidate.sourceEventNo()));
         }
     }
 
-    private PageFacts facts(List<ServiceEventMapper.ProductionCandidate> page) {
+    private PageFacts facts(List<KitchenEventMapper.ProductionCandidate> page) {
         var byEntity = new HashMap<String, Set<String>>();
         for (var candidate : page)
             byEntity.computeIfAbsent(candidate.entityNo(), k -> new TreeSet<>()).add(candidate.batchNo());
@@ -130,7 +130,7 @@ public final class ProductionSourceQuery {
         var consumptions = new HashMap<EventKey, ProductionConsumptionMapper.EventState>();
         for (var state :
                 heads.eventStates(
-                        page.stream().map(ServiceEventMapper.ProductionCandidate::sourceEventNo).toList()))
+                        page.stream().map(KitchenEventMapper.ProductionCandidate::sourceEventNo).toList()))
             consumptions.put(new EventKey(state.entityNo(), state.storeNo(), state.sourceEventNo()), state);
         return new PageFacts(batchStates, consumptions);
     }

@@ -6,12 +6,12 @@ import ai.neargo.shop.food.entity.FnbKitchenTask;
 import ai.neargo.shop.food.entity.FnbKitchenTicket;
 import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderLine;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.service.DiningKitchenReportFactsService;
 import ai.neargo.shop.food.service.DiningReportFactsService;
 import ai.neargo.shop.spi.report.ReportContracts.Attribution;
@@ -58,7 +58,7 @@ public final class DiningKitchenReportFactsPortAdapter implements DiningKitchenR
                     "REMAKE",
                     "KITCHEN_REWORK_QTY");
     private final DiningReportFactsService days;
-    private final ServiceEventMapper events;
+    private final KitchenEventMapper events;
     private final KitchenTaskMapper tasks;
     private final KitchenTicketMapper tickets;
     private final OrderBatchMapper batches;
@@ -67,7 +67,7 @@ public final class DiningKitchenReportFactsPortAdapter implements DiningKitchenR
 
     public DiningKitchenReportFactsPortAdapter(
             DiningReportFactsService days,
-            ServiceEventMapper events,
+            KitchenEventMapper events,
             KitchenTaskMapper tasks,
             KitchenTicketMapper tickets,
             OrderBatchMapper batches,
@@ -110,13 +110,13 @@ public final class DiningKitchenReportFactsPortAdapter implements DiningKitchenR
         // empty day.
         var rows =
                 events.selectList(
-                        Wrappers.<FnbServiceEvent>lambdaQuery()
-                                .eq(FnbServiceEvent::getTenantNo, s.tenantNo())
-                                .eq(FnbServiceEvent::getEntityNo, s.entityNo())
-                                .eq(FnbServiceEvent::getDeleted, 0)
-                                .ge(FnbServiceEvent::getCreatedAt, start)
-                                .lt(FnbServiceEvent::getCreatedAt, end)
-                                .orderByAsc(FnbServiceEvent::getEventNo)
+                        Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                .eq(FnbKitchenEvent::getTenantNo, s.tenantNo())
+                                .eq(FnbKitchenEvent::getEntityNo, s.entityNo())
+                                .eq(FnbKitchenEvent::getDeleted, 0)
+                                .ge(FnbKitchenEvent::getCreatedAt, start)
+                                .lt(FnbKitchenEvent::getCreatedAt, end)
+                                .orderByAsc(FnbKitchenEvent::getEventNo)
                                 .last("LIMIT " + (q.rowLimit() + 1)));
         if (rows.size() > q.rowLimit()) throw new IllegalStateException("REPORT_SOURCE_ROW_LIMIT");
         var facts = new ArrayList<MetricFact>();
@@ -249,25 +249,25 @@ public final class DiningKitchenReportFactsPortAdapter implements DiningKitchenR
                                                     var event =
                                                             events.selectOne(
                                                                     Wrappers
-                                                                            .<FnbServiceEvent>
+                                                                            .<FnbKitchenEvent>
                                                                                     lambdaQuery()
                                                                             .eq(
-                                                                                    FnbServiceEvent
+                                                                                    FnbKitchenEvent
                                                                                             ::getTenantNo,
                                                                                     scope
                                                                                             .tenantNo())
                                                                             .eq(
-                                                                                    FnbServiceEvent
+                                                                                    FnbKitchenEvent
                                                                                             ::getEntityNo,
                                                                                     scope
                                                                                             .entityNo())
                                                                             .eq(
-                                                                                    FnbServiceEvent
+                                                                                    FnbKitchenEvent
                                                                                             ::getEventNo,
                                                                                     change
                                                                                             .eventNo())
                                                                             .eq(
-                                                                                    FnbServiceEvent
+                                                                                    FnbKitchenEvent
                                                                                             ::getDeleted,
                                                                                     0));
                                                     if (event == null

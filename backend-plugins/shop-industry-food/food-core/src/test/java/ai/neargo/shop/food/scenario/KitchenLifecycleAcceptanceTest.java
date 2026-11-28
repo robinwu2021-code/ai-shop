@@ -96,8 +96,8 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
                     .isInstanceOf(BizException.class);
             assertThatThrownBy(() -> f.service.actCourse("E", "FOREIGN", "A", "COURSE", new CourseActionReq(2L, "FIRE", null, null), "foreign"))
                     .isInstanceOf(BizException.class);
-            assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM fnb_service_event WHERE action='START'", Long.class)).isEqualTo(1);
-            assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM fnb_service_event WHERE action='FIRE'", Long.class)).isEqualTo(1);
+            assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM fnb_kitchen_event WHERE event_type='START'", Long.class)).isEqualTo(1);
+            assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM fnb_kitchen_event WHERE event_type='FIRE'", Long.class)).isEqualTo(1);
             assertThat(f.qty("T2", "making_qty")).isEqualByComparingTo("0");
         });
     }
@@ -116,7 +116,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             assertThat(f.status("Z_LATER")).isEqualTo("MAKING");
             assertThat(f.text("SELECT status FROM fnb_course")).isEqualTo("HELD");
             assertThat(f.sql.queryForObject("SELECT version FROM fnb_course", Long.class)).isZero();
-            assertThat(f.count("fnb_service_event")).isZero();
+            assertThat(f.count("fnb_kitchen_event")).isZero();
             assertThat(f.count("kitchen_acceptance_outbox")).isZero();
             assertThat(f.count("sys_idempotent")).isZero();
         });
@@ -147,7 +147,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             assertThat(f.qty("MAKE2", "making_qty")).isEqualByComparingTo("4");
             assertThat(f.qty("MAKE2", "ready_qty")).isEqualByComparingTo("4");
             assertThat(f.count("fnb_kitchen_task")).isEqualTo(4);
-            assertThat(f.count("fnb_service_event")).isEqualTo(4);
+            assertThat(f.count("fnb_kitchen_event")).isEqualTo(4);
             assertThat(f.count("kitchen_acceptance_outbox")).isEqualTo(4);
         });
     }
@@ -175,10 +175,10 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             assertThat(f.qty("ORIGINAL", "making_qty")).isEqualByComparingTo("3");
             assertThat(f.qty("ORIGINAL", "ready_qty")).isEqualByComparingTo("2");
             assertThat(f.qty("ORIGINAL", "served_qty")).isEqualByComparingTo("1");
-            assertThat(f.sql.queryForObject("SELECT qty FROM fnb_service_event WHERE event_no='LOSS1'", BigDecimal.class)).isEqualByComparingTo("1");
+            assertThat(f.sql.queryForObject("SELECT qty FROM fnb_kitchen_event WHERE event_no='LOSS1'", BigDecimal.class)).isEqualByComparingTo("1");
             assertThat(f.count("fnb_kitchen_ticket")).isEqualTo(2);
             assertThat(f.count("fnb_kitchen_task")).isEqualTo(2);
-            assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM fnb_service_event WHERE action='REMAKE'", Long.class)).isEqualTo(1);
+            assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM fnb_kitchen_event WHERE event_type='REMAKE'", Long.class)).isEqualTo(1);
             assertThatThrownBy(() -> f.service.remake("E", "S", "A", "ORIGINAL", new RemakeReq(0L, new BigDecimal("0.25"), "replace spoiled portion"), "remake"))
                     .isInstanceOf(BizException.class);
             assertThatThrownBy(() -> f.service.remake("E", "S", "A", "ORIGINAL", new RemakeReq(0L, new BigDecimal("0.25"), "more than original loss"), "over-loss"))
@@ -206,7 +206,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
                     .isInstanceOf(BizException.class);
             assertThat(f.count("fnb_kitchen_ticket")).isEqualTo(1);
             assertThat(f.count("fnb_kitchen_task")).isEqualTo(1);
-            assertThat(f.count("fnb_service_event")).isZero();
+            assertThat(f.count("fnb_kitchen_event")).isZero();
             assertThat(f.count("kitchen_acceptance_outbox")).isZero();
             assertThat(f.count("sys_idempotent")).isZero();
         });
@@ -237,7 +237,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             org.mockito.Mockito.when(owner.consume(org.mockito.ArgumentMatchers.eq("E"), org.mockito.ArgumentMatchers.eq("S"),
                     org.mockito.ArgumentMatchers.eq("A"), org.mockito.ArgumentMatchers.anyString())).thenAnswer(i -> {
                 assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-                assertThat(f.sql.queryForObject("SELECT action FROM fnb_service_event WHERE event_no=?", String.class, (String) i.getArgument(3)))
+                assertThat(f.sql.queryForObject("SELECT event_type FROM fnb_kitchen_event WHERE event_no=?", String.class, (String) i.getArgument(3)))
                         .isEqualTo("START");
                 calls.incrementAndGet(); return null;
             });
@@ -245,7 +245,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             var result = f.service.act("E", "S", "A", "T1", req, "direct-start");
             assertThat(f.service.act("E", "S", "A", "T1", req, "direct-start")).isEqualTo(result);
             assertThat(calls).hasValue(1);
-            assertThat(f.count("fnb_service_event")).isEqualTo(1);
+            assertThat(f.count("fnb_kitchen_event")).isEqualTo(1);
         });
     }
 
@@ -265,11 +265,11 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
                 status.setRollbackOnly();
             });
             org.mockito.Mockito.verifyNoInteractions(owner);
-            assertThat(f.count("fnb_service_event")).isZero();
+            assertThat(f.count("fnb_kitchen_event")).isZero();
             org.mockito.Mockito.when(owner.consume(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString())).thenThrow(new IllegalStateException("transport unavailable"));
             f.service.act("E", "S", "A", "T1", new TaskActionReq(0L, "START", BigDecimal.ONE, null), "committed-start");
-            assertThat(f.count("fnb_service_event")).isEqualTo(1);
+            assertThat(f.count("fnb_kitchen_event")).isEqualTo(1);
             assertThat(f.qty("T1", "making_qty")).isEqualByComparingTo("1");
         });
     }
@@ -283,13 +283,13 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
                 f.batch("B" + n, "C1", "2".equals(n) ? "S2" : "S", "ACCEPTED");
                 f.ticket("K" + n, "B" + n); f.line("L" + n, "B" + n, "SEAT1", null);
                 f.task("T" + n, "K" + n, "L" + n, "MAKE", "QUEUED", "1", "0", "0", "0");
-                f.sql.update("INSERT INTO fnb_service_event(tenant_no,entity_no,event_no,task_no,action,qty,version,deleted) VALUES('MAIN','E',?,?,'START',1,0,0)", "EV" + n, "T" + n);
+                f.sql.update("INSERT INTO fnb_kitchen_event(tenant_no,entity_no,event_no,task_no,event_type,qty,version,deleted) VALUES('MAIN','E',?,?,'START',1,0,0)", "EV" + n, "T" + n);
             }
             f.sql.update("UPDATE fnb_kitchen_task SET task_role='PACK' WHERE task_no='T3'");
-            f.sql.update("UPDATE fnb_service_event SET deleted=1 WHERE event_no='EV4'");
+            f.sql.update("UPDATE fnb_kitchen_event SET deleted=1 WHERE event_no='EV4'");
             // 原是一条跨库联表 SQL，拆库后由 ProductionSourceQuery 分三次查询合并；断言不变。
             var mapper = new ai.neargo.shop.food.service.support.ProductionSourceQuery(
-                    c.getBean(ServiceEventMapper.class), c.getBean(OrderBatchMapper.class),
+                    c.getBean(KitchenEventMapper.class), c.getBean(OrderBatchMapper.class),
                     c.getBean(OrderLineMapper.class), c.getBean(ProductionConsumptionMapper.class));
             assertThat(mapper.unconsumed(1)).extracting(ai.neargo.shop.food.service.support.ProductionSourceQuery.Source::eventNo).containsExactly("EV1");
             assertThat(mapper.unconsumed(10)).extracting(ai.neargo.shop.food.service.support.ProductionSourceQuery.Source::storeNo).containsExactly("S", "S2");
@@ -329,12 +329,12 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             table(f.sql, ai.neargo.shop.food.entity.FnbProductionConsumption.class, "fnb_production_consumption");
             f.batch("B1", "C1", "S", "ACCEPTED"); f.ticket("K1", "B1"); f.line("L1", "B1", "SEAT1", null);
             f.task("T1", "K1", "L1", "MAKE", "QUEUED", "1", "0", "0", "0");
-            f.sql.update("INSERT INTO fnb_service_event(tenant_no,entity_no,event_no,task_no,action,qty,version,deleted) VALUES('MAIN','E','NEW','T1','START',1,0,0)");
+            f.sql.update("INSERT INTO fnb_kitchen_event(tenant_no,entity_no,event_no,task_no,event_type,qty,version,deleted) VALUES('MAIN','E','NEW','T1','START',1,0,0)");
             for (int n = 0; n < 4; n++) f.sql.update("INSERT INTO fnb_production_consumption(tenant_no,entity_no,store_no,source_event_no,status,updated_at,version,deleted) VALUES('MAIN','E','OLD_STORE',?,'UNKNOWN',CURRENT_TIMESTAMP,0,0)", "OLD" + n);
             var original = new ai.neargo.shop.food.service.impl.ProductionConsumptionServiceImpl(
                     c.getBean(ProductionConsumptionMapper.class), org.mockito.Mockito.mock(ProductionConsumptionLineMapper.class),
                     c.getBean(OrderBatchMapper.class), c.getBean(OrderLineMapper.class), c.getBean(KitchenTicketMapper.class),
-                    c.getBean(KitchenTaskMapper.class), c.getBean(ServiceEventMapper.class), c.getBean(ConfigRevisionMapper.class),
+                    c.getBean(KitchenTaskMapper.class), c.getBean(KitchenEventMapper.class), c.getBean(ConfigRevisionMapper.class),
                     org.mockito.Mockito.mock(ai.neargo.shop.spi.user.StoreCardQueryPort.class), null,
                     c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class));
             var service = org.mockito.Mockito.spy(original);
@@ -356,7 +356,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
         table(db, FnbCheck.class, "fnb_check"); table(db, FnbOrderBatch.class, "fnb_order_batch");
         table(db, FnbOrderLine.class, "fnb_order_line"); table(db, FnbOrderComponent.class, "fnb_order_component");
         table(db, FnbKitchenTicket.class, "fnb_kitchen_ticket"); table(db, FnbKitchenTask.class, "fnb_kitchen_task");
-        table(db, FnbServiceEvent.class, "fnb_service_event"); table(db, FnbCourse.class, "fnb_course");
+        table(db, FnbKitchenEvent.class, "fnb_kitchen_event"); table(db, FnbCourse.class, "fnb_course");
         IndustrySchema.create(db.getDataSource(), "ind_config_revision");
         db.execute("CREATE TABLE kitchen_acceptance_outbox(event_no VARCHAR(32),task_no VARCHAR(32),ticket_no VARCHAR(32),action VARCHAR(32),qty DECIMAL(24,6))");
         // Test transport sink: real JDBC writes prove event publication shares business rollback.
@@ -366,7 +366,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             db.update("INSERT INTO kitchen_acceptance_outbox VALUES (?,?,?,?,?)", e.eventNo(), e.taskNo(), e.ticketNo(), e.action(), e.qty());
             return null;
         };
-        var service = new KitchenTaskServiceImpl(c.getBean(OrderBatchMapper.class), c.getBean(OrderLineMapper.class), c.getBean(OrderComponentMapper.class), c.getBean(ConfigRevisionMapper.class), c.getBean(KitchenTicketMapper.class), c.getBean(KitchenTaskMapper.class), c.getBean(ServiceEventMapper.class), c.getBean(CourseMapper.class), c.getBean(CheckMapper.class), c.getBean(ReturnItemMapper.class), c.getBean(RequestIdempotencyPort.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), outbox);
+        var service = new KitchenTaskServiceImpl(c.getBean(OrderBatchMapper.class), c.getBean(OrderLineMapper.class), c.getBean(OrderComponentMapper.class), c.getBean(ConfigRevisionMapper.class), c.getBean(KitchenTicketMapper.class), c.getBean(KitchenTaskMapper.class), c.getBean(KitchenEventMapper.class), c.getBean(CourseMapper.class), c.getBean(CheckMapper.class), c.getBean(ReturnItemMapper.class), c.getBean(RequestIdempotencyPort.class), c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), outbox);
         var f = new Kitchen(db, service);
         for (String check : List.of("C1", "C2")) db.update("INSERT INTO fnb_check(tenant_no,entity_no,store_no,check_no,status,version,deleted) VALUES ('MAIN','E','S',?,'OPEN',0,0)", check);
         return f;
@@ -389,7 +389,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             sql.update("INSERT INTO fnb_kitchen_task(tenant_no,entity_no,task_no,ticket_no,food_line_no,station_no,route_version,task_role,status,qty,making_qty,ready_qty,served_qty,void_qty,version,deleted) VALUES ('MAIN','E',?,?,?,'STATION',1,?,?,?,?,?,?,0,0,0)",no,ticket,line,role,status,new BigDecimal(qty),new BigDecimal(making),new BigDecimal(ready),new BigDecimal(served));
         }
         void loss(String no,String task,String qty,String readyLoss) {
-            sql.update("INSERT INTO fnb_service_event(tenant_no,entity_no,event_no,task_no,action,qty,ready_loss_qty,version,deleted) VALUES ('MAIN','E',?,?,'LOSS',?,?,0,0)",no,task,new BigDecimal(qty),new BigDecimal(readyLoss));
+            sql.update("INSERT INTO fnb_kitchen_event(tenant_no,entity_no,event_no,task_no,event_type,qty,ready_loss_qty,version,deleted) VALUES ('MAIN','E',?,?,'LOSS',?,?,0,0)",no,task,new BigDecimal(qty),new BigDecimal(readyLoss));
         }
         long count(String table) { return sql.queryForObject("SELECT COUNT(*) FROM "+table,Long.class); }
         String text(String query) { return sql.queryForObject(query,String.class); }
@@ -402,6 +402,8 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
         for (Class<?> type=entity;type!=Object.class;type=type.getSuperclass()) for (var field:type.getDeclaredFields()) {
             if (Modifier.isStatic(field.getModifiers())) continue;
             String name=field.getName().replaceAll("([a-z0-9])([A-Z])","$1_$2").toLowerCase(Locale.ROOT);
+            var mapped=field.getAnnotation(com.baomidou.mybatisplus.annotation.TableField.class);
+            if(mapped!=null&&!mapped.value().isEmpty()) name=mapped.value();
             Class<?> value=field.getType();
             // Keep ordinary fields bounded on MySQL; only structured documents need TEXT.
             // Making every field a large VARCHAR exceeds both column and total-row limits.
@@ -424,7 +426,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
         @Bean MapperFactoryBean<ConfigRevisionMapper> revisionMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(ConfigRevisionMapper.class,t); }
         @Bean MapperFactoryBean<KitchenTicketMapper> ticketMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(KitchenTicketMapper.class,t); }
         @Bean MapperFactoryBean<KitchenTaskMapper> taskMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(KitchenTaskMapper.class,t); }
-        @Bean MapperFactoryBean<ServiceEventMapper> eventMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(ServiceEventMapper.class,t); }
+        @Bean MapperFactoryBean<KitchenEventMapper> eventMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(KitchenEventMapper.class,t); }
         @Bean MapperFactoryBean<CourseMapper> courseMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(CourseMapper.class,t); }
         @Bean MapperFactoryBean<CheckMapper> checkMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(CheckMapper.class,t); }
         @Bean MapperFactoryBean<ReturnItemMapper> returnItemMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(ReturnItemMapper.class,t); }

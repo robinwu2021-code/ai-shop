@@ -38,7 +38,7 @@ import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderLine;
 import ai.neargo.shop.food.entity.FnbProductionConsumption;
 import ai.neargo.shop.food.entity.FnbProductionConsumptionLine;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
@@ -46,7 +46,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ProductionConsumptionLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ProductionConsumptionMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.policy.DiningPriceSourcePolicy;
 import ai.neargo.shop.food.policy.ProductionDemandPolicy;
 import ai.neargo.shop.food.service.FoodMaintenanceService.Report;
@@ -592,7 +592,7 @@ class ProductionConsumptionTest {
         final AtomicReference<FnbProductionConsumption> stored = new AtomicReference<>();
         final FnbOrderBatch batch = new FnbOrderBatch();
         final FnbOrderLine line = new FnbOrderLine();
-        final ServiceEventMapper events = mock(ServiceEventMapper.class);
+        final KitchenEventMapper events = mock(KitchenEventMapper.class);
         final ai.neargo.shop.food.service.support.ProductionSourceQuery sources =
                 mock(ai.neargo.shop.food.service.support.ProductionSourceQuery.class);
         final ProductionConsumptionServiceImpl service;
@@ -608,7 +608,7 @@ class ProductionConsumptionTest {
                                 return 1;
                             });
             when(children.selectList(any())).thenReturn(List.of());
-            var event = new FnbServiceEvent();
+            var event = new FnbKitchenEvent();
             event.setEntityNo("E");
             event.setEventNo("EVENT");
             event.setTaskNo("TASK");
@@ -812,7 +812,7 @@ class ProductionConsumptionTest {
                             mock(OrderLineMapper.class),
                             mock(KitchenTicketMapper.class),
                             mock(KitchenTaskMapper.class),
-                            mock(ServiceEventMapper.class),
+                            mock(KitchenEventMapper.class),
                             mock(ConfigRevisionMapper.class),
                             stores,
                             inventory,

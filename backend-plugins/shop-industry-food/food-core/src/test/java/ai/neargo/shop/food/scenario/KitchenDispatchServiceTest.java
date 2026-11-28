@@ -12,7 +12,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderComponentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.service.impl.KitchenTaskServiceImpl;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import java.time.LocalDateTime;
@@ -40,7 +40,7 @@ class KitchenDispatchServiceTest {
     private KitchenTaskServiceImpl service() {
         when(manager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
         return new KitchenTaskServiceImpl(batches,mock(OrderLineMapper.class),mock(OrderComponentMapper.class),
-                revisions,tickets,tasks,mock(ServiceEventMapper.class),mock(CourseMapper.class),mock(CheckMapper.class),
+                revisions,tickets,tasks,mock(KitchenEventMapper.class),mock(CourseMapper.class),mock(CheckMapper.class),
                 mock(ai.neargo.shop.food.mapper.FoodMappers.ReturnItemMapper.class),mock(RequestIdempotencyPort.class),new ObjectMapper(),manager,mock(OutboxPublisher.class));
     }
     @Test void denyDispatchBeforeActualAcceptanceEvenWithAcceptedTimestamp() {

@@ -18,13 +18,13 @@ import ai.neargo.shop.food.entity.FnbKitchenTask;
 import ai.neargo.shop.food.entity.FnbKitchenTicket;
 import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderLine;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.mapper.DiningChannelMappers.ChannelOrderSourceMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
 import ai.neargo.shop.food.port.DiningChannelFulfillmentSignalPortImpl;
@@ -41,7 +41,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 class DiningChannelFulfillmentSignalPortTest {
-    final ServiceEventMapper events = mock(ServiceEventMapper.class);
+    final KitchenEventMapper events = mock(KitchenEventMapper.class);
     final KitchenTaskMapper tasks = mock(KitchenTaskMapper.class);
     final KitchenTicketMapper tickets = mock(KitchenTicketMapper.class);
     final OrderBatchMapper batches = mock(OrderBatchMapper.class);
@@ -83,7 +83,7 @@ class DiningChannelFulfillmentSignalPortTest {
     FnbChannelOrderSource source;
 
     void setup(boolean channel) {
-        var stored = new FnbServiceEvent();
+        var stored = new FnbKitchenEvent();
         stored.setEventNo("EVENT");
         stored.setTaskNo("TASK");
         stored.setEntityNo("E");

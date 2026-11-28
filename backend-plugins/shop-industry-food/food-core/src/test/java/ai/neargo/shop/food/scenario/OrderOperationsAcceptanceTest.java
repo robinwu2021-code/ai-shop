@@ -451,7 +451,7 @@ public class OrderOperationsAcceptanceTest {
     void adjustmentOriginalKeyReplaysExistingEventAndChangedPayloadCannotCreateAnother() {
         var f = new Production();
         var req = new AdjustmentReq(0L,"MATERIAL_SUPPLEMENT",BigDecimal.ONE,"more stock");
-        var prior = new FnbServiceEvent();
+        var prior = new FnbKitchenEvent();
         prior.setEventNo("EVENT");
         prior.setSourceRequestHash(FoodCommandFingerprint.hash("production-adjust:v1","A","TASK",f.json.writeValueAsString(req)));
         when(f.events.selectOne(any())).thenReturn(prior);
@@ -567,9 +567,9 @@ public class OrderOperationsAcceptanceTest {
         final InventoryProductionPort inventory = mock(InventoryProductionPort.class);
         final FnbProductionConsumption head = new FnbProductionConsumption();
         final FnbProductionConsumptionLine child = new FnbProductionConsumptionLine();
-        final ServiceEventMapper events = mock(ServiceEventMapper.class);
+        final KitchenEventMapper events = mock(KitchenEventMapper.class);
         final OrderBatchMapper batches = mock(OrderBatchMapper.class);
-        final AtomicReference<FnbServiceEvent> created = new AtomicReference<>();
+        final AtomicReference<FnbKitchenEvent> created = new AtomicReference<>();
         final List<String> statusHistory = new ArrayList<>();
         final Command command;
         final ProductionConsumptionServiceImpl service;
@@ -584,7 +584,7 @@ public class OrderOperationsAcceptanceTest {
             when(heads.updateById(any(FnbProductionConsumption.class))).thenAnswer(i -> { statusHistory.add(((FnbProductionConsumption)i.getArgument(0)).getStatus()); return 1; });
             when(lines.selectList(any())).thenReturn(List.of(child));
             when(lines.updateById(any(FnbProductionConsumptionLine.class))).thenReturn(1);
-            when(events.insert(any(FnbServiceEvent.class))).thenAnswer(i -> { created.set(i.getArgument(0)); return 1; });
+            when(events.insert(any(FnbKitchenEvent.class))).thenAnswer(i -> { created.set(i.getArgument(0)); return 1; });
             var task = new FnbKitchenTask(); task.setEntityNo("E"); task.setTaskNo("TASK"); task.setTicketNo("TICKET"); task.setTaskRole("MAKE"); task.setVersion(0L); task.setQty(new BigDecimal("2"));
             var tasks = mock(KitchenTaskMapper.class); when(tasks.selectOne(any())).thenReturn(task);
             var ticket = new FnbKitchenTicket(); ticket.setBatchNo("B1");
@@ -601,8 +601,8 @@ public class OrderOperationsAcceptanceTest {
 
     private static final class NewAdjustment {
         final ObjectMapper json = new ObjectMapper();
-        final AtomicReference<FnbServiceEvent> created = new AtomicReference<>();
-        final List<FnbServiceEvent> createdEvents = new ArrayList<>();
+        final AtomicReference<FnbKitchenEvent> created = new AtomicReference<>();
+        final List<FnbKitchenEvent> createdEvents = new ArrayList<>();
         final List<String> publishedEvents = new ArrayList<>();
         final AtomicReference<Command> command = new AtomicReference<>();
         final InventoryProductionPort inventory = mock(InventoryProductionPort.class);
@@ -618,9 +618,9 @@ public class OrderOperationsAcceptanceTest {
             when(children.selectList(any())).thenAnswer(i -> List.copyOf(storedLines));
             when(children.insert(any(FnbProductionConsumptionLine.class))).thenAnswer(i -> { storedLines.add(i.getArgument(0)); return 1; });
             when(children.updateById(any(FnbProductionConsumptionLine.class))).thenReturn(1);
-            var events = mock(ServiceEventMapper.class);
+            var events = mock(KitchenEventMapper.class);
             when(events.selectOne(any())).thenAnswer(i -> created.get());
-            when(events.insert(any(FnbServiceEvent.class))).thenAnswer(i -> { created.set(i.getArgument(0)); createdEvents.add(created.get()); return 1; });
+            when(events.insert(any(FnbKitchenEvent.class))).thenAnswer(i -> { created.set(i.getArgument(0)); createdEvents.add(created.get()); return 1; });
             var task = new FnbKitchenTask();
             task.setEntityNo("E"); task.setTaskNo("TASK"); task.setTicketNo("TICKET"); task.setFoodLineNo("FL"); task.setStationNo("STATION"); task.setRouteVersion(1L); task.setTaskRole("MAKE"); task.setQty(new BigDecimal("2")); task.setVersion(0L);
             var tasks = mock(KitchenTaskMapper.class);

@@ -27,7 +27,7 @@ import ai.neargo.shop.food.entity.FnbKitchenTicket;
 import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderLine;
 import ai.neargo.shop.food.entity.FnbReturn;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.entity.FnbSettlement;
 import ai.neargo.shop.food.entity.FnbSettlementItem;
 import ai.neargo.shop.food.entity.FnbStorePolicy;
@@ -45,7 +45,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ReturnMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.SettlementItemMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.SettlementMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
@@ -126,7 +126,7 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
     private final ReturnMapper returns;
     private final KitchenTicketMapper tickets;
     private final KitchenTaskMapper tasks;
-    private final ServiceEventMapper events;
+    private final KitchenEventMapper events;
     private final StoreCardQueryPort stores;
     private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
@@ -147,7 +147,7 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
             ReturnMapper returns,
             KitchenTicketMapper tickets,
             KitchenTaskMapper tasks,
-            ServiceEventMapper events,
+            KitchenEventMapper events,
             StoreCardQueryPort stores,
             RequestIdempotencyPort idem,
             ObjectMapper json,
@@ -876,7 +876,7 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
         var quantities = new TreeMap<String, BigDecimal>();
         var issues = new ArrayList<Issue>();
         var serviceQuantities = new TreeMap<String, BigDecimal>();
-        var serviceRows = new ArrayList<FnbServiceEvent>();
+        var serviceRows = new ArrayList<FnbKitchenEvent>();
         var bindingRows = new ArrayList<FnbCoreOrderBinding>();
         var itemRows = new ArrayList<FnbSettlementItem>();
         for (var batch : batchRows) {
@@ -907,10 +907,10 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
                 for (var task : taskRows) {
                     var eventRows =
                             events.selectList(
-                                    Wrappers.<FnbServiceEvent>lambdaQuery()
-                                            .eq(FnbServiceEvent::getEntityNo, entity)
-                                            .eq(FnbServiceEvent::getTaskNo, task.getTaskNo())
-                                            .orderByAsc(FnbServiceEvent::getEventNo));
+                                    Wrappers.<FnbKitchenEvent>lambdaQuery()
+                                            .eq(FnbKitchenEvent::getEntityNo, entity)
+                                            .eq(FnbKitchenEvent::getTaskNo, task.getTaskNo())
+                                            .orderByAsc(FnbKitchenEvent::getEventNo));
                     serviceRows.addAll(eventRows);
                     // Component units are not necessarily their parent line's sale unit.
                     if (task.getComponentNo() == null)

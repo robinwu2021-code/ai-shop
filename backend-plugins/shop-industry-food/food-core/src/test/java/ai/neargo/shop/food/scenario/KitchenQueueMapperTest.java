@@ -73,7 +73,7 @@ class KitchenQueueMapperTest extends FoodWriteGuardFixture {
             var kitchen=new KitchenTaskServiceImpl(c.getBean(FoodMappers.OrderBatchMapper.class),
                     c.getBean(FoodMappers.OrderLineMapper.class),mock(FoodMappers.OrderComponentMapper.class),
                     mock(FoodMappers.ConfigRevisionMapper.class),c.getBean(FoodMappers.KitchenTicketMapper.class),mapper,
-                    mock(FoodMappers.ServiceEventMapper.class),mock(FoodMappers.CourseMapper.class),mock(FoodMappers.CheckMapper.class),
+                    mock(FoodMappers.KitchenEventMapper.class),mock(FoodMappers.CourseMapper.class),mock(FoodMappers.CheckMapper.class),
                     mock(FoodMappers.ReturnItemMapper.class),mock(RequestIdempotencyPort.class),c.getBean(ObjectMapper.class),c.getBean(PlatformTransactionManager.class),
                     mock(OutboxPublisher.class));
             assertThat(kitchen.queue("E","S",null,null)).extracting(t -> t.taskNo())

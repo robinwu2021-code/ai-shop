@@ -7,7 +7,7 @@ import ai.neargo.shop.food.entity.FnbOrderBatch;
 import ai.neargo.shop.food.entity.FnbOrderLine;
 import ai.neargo.shop.food.entity.FnbProductionConsumption;
 import ai.neargo.shop.food.entity.FnbProductionConsumptionLine;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.mapper.FoodMappers;
 import ai.neargo.shop.food.service.impl.ProductionConsumptionServiceImpl;
 import ai.neargo.shop.spi.inventory.InventoryProductionPort;
@@ -82,8 +82,8 @@ class ProductionConsumptionListMapperTest extends FoodWriteGuardFixture {
                         no.equals("BAD_STORE")?"OTHER":"S",no.equals("C3")?"SKU_B":"SKU_A");
             }
             material(sql,"C1","MAIN","E","MAT",0,2); // Two matching materials still yield one head.
-            sql.update("UPDATE fnb_service_event SET entity_no='OTHER' WHERE event_no='EV-CROSS'");
-            sql.update("UPDATE fnb_service_event SET deleted=1 WHERE event_no='EV-DELETED_EVENT'");
+            sql.update("UPDATE fnb_kitchen_event SET entity_no='OTHER' WHERE event_no='EV-CROSS'");
+            sql.update("UPDATE fnb_kitchen_event SET deleted=1 WHERE event_no='EV-DELETED_EVENT'");
             sql.update("UPDATE fnb_kitchen_task SET deleted=1 WHERE task_no='T-DELETED_TASK'");
             sql.update("UPDATE fnb_order_line SET deleted=1 WHERE food_line_no='L-DELETED_LINE'");
             sql.update("UPDATE fnb_order_batch SET deleted=1 WHERE batch_no='B-DELETED_BATCH'");
@@ -133,14 +133,14 @@ class ProductionConsumptionListMapperTest extends FoodWriteGuardFixture {
                 c.getBean(FoodMappers.ProductionConsumptionLineMapper.class),mock(FoodMappers.OrderBatchMapper.class),
                 // 按商品筛选拆库后由交易库取点菜行、行业库取事件号，这两个用真实 Mapper。
                 c.getBean(FoodMappers.OrderLineMapper.class),mock(FoodMappers.KitchenTicketMapper.class),
-                mock(FoodMappers.KitchenTaskMapper.class),c.getBean(FoodMappers.ServiceEventMapper.class),
+                mock(FoodMappers.KitchenTaskMapper.class),c.getBean(FoodMappers.KitchenEventMapper.class),
                 mock(FoodMappers.ConfigRevisionMapper.class),stores,inventory,c.getBean(ObjectMapper.class),
                 c.getBean(PlatformTransactionManager.class));
     }
     private void tables(JdbcTemplate sql) {
         create(sql,FnbProductionConsumption.class,"fnb_production_consumption");
         create(sql,FnbProductionConsumptionLine.class,"fnb_production_consumption_line");
-        create(sql,FnbServiceEvent.class,"fnb_service_event"); create(sql,FnbKitchenTask.class,"fnb_kitchen_task");
+        create(sql,FnbKitchenEvent.class,"fnb_kitchen_event"); create(sql,FnbKitchenTask.class,"fnb_kitchen_task");
         create(sql,FnbOrderLine.class,"fnb_order_line"); create(sql,FnbOrderBatch.class,"fnb_order_batch");
     }
     // Only real entity column shapes are derived; production predicates/pagination are never duplicated in a test query.
@@ -149,6 +149,8 @@ class ProductionConsumptionListMapperTest extends FoodWriteGuardFixture {
         for(Class<?> type=entity;type!=Object.class;type=type.getSuperclass()) for(var field:type.getDeclaredFields()) {
             if(Modifier.isStatic(field.getModifiers())) continue;
             String name=field.getName().replaceAll("([a-z0-9])([A-Z])","$1_$2").toLowerCase(java.util.Locale.ROOT);
+            var mapped=field.getAnnotation(com.baomidou.mybatisplus.annotation.TableField.class);
+            if(mapped!=null&&!mapped.value().isEmpty()) name=mapped.value();
             Class<?> value=field.getType();
             String data=name.equals("id")?"BIGINT AUTO_INCREMENT PRIMARY KEY":value==LocalDateTime.class?"TIMESTAMP":
                     value==LocalDate.class?"DATE":value==BigDecimal.class?"DECIMAL(24,6)":
@@ -173,7 +175,7 @@ class ProductionConsumptionListMapperTest extends FoodWriteGuardFixture {
         sql.update("INSERT INTO fnb_order_batch(tenant_no,entity_no,store_no,batch_no,version,deleted) VALUES(?,?,?,?,0,0)",tenant,entity,store,"B-"+no);
         sql.update("INSERT INTO fnb_order_line(tenant_no,entity_no,batch_no,food_line_no,sku_no,version,deleted) VALUES(?,?,?,?,?,0,0)",tenant,entity,"B-"+no,"L-"+no,sku);
         sql.update("INSERT INTO fnb_kitchen_task(tenant_no,entity_no,task_no,food_line_no,version,deleted) VALUES(?,?,?,?,0,0)",tenant,entity,"T-"+no,"L-"+no);
-        sql.update("INSERT INTO fnb_service_event(tenant_no,entity_no,event_no,task_no,version,deleted) VALUES(?,?,?,?,0,0)",tenant,entity,"EV-"+no,"T-"+no);
+        sql.update("INSERT INTO fnb_kitchen_event(tenant_no,entity_no,event_no,task_no,version,deleted) VALUES(?,?,?,?,0,0)",tenant,entity,"EV-"+no,"T-"+no);
     }
     private static <T> MapperFactoryBean<T> mapper(Class<T> type,SqlSessionTemplate template) {
         var bean=new MapperFactoryBean<>(type); bean.setSqlSessionTemplate(template); return bean;
@@ -185,7 +187,7 @@ class ProductionConsumptionListMapperTest extends FoodWriteGuardFixture {
                 @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(FoodMappers.ProductionConsumptionLineMapper.class,t); }
         @Bean MapperFactoryBean<FoodMappers.OrderLineMapper> orderLineMapper(
                 @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(FoodMappers.OrderLineMapper.class,t); }
-        @Bean MapperFactoryBean<FoodMappers.ServiceEventMapper> serviceEventMapper(
-                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(FoodMappers.ServiceEventMapper.class,t); }
+        @Bean MapperFactoryBean<FoodMappers.KitchenEventMapper> serviceEventMapper(
+                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(FoodMappers.KitchenEventMapper.class,t); }
     }
 }

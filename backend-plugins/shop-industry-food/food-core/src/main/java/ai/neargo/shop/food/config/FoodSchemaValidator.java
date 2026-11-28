@@ -304,6 +304,7 @@ public final class FoodSchemaValidator {
         contracts.put("fnb_service_form", List.of("entity_no,store_no,active_check_no", "form_no"));
         contracts.put("fnb_service_form_batch", List.of("entity_no,store_no,batch_no"));
         contracts.put("ind_assignment", List.of("assignment_no"));
+        contracts.put("fnb_kitchen_event", List.of("event_no", "operation_key"));
         contracts.put("fnb_service_slot", List.of("slot_no"));
         contracts.put(
                 "fnb_channel_party",
@@ -666,7 +667,6 @@ public final class FoodSchemaValidator {
                             "cancelled_by",
                             "cancellation_reason"));
             expected.put("fnb_business_share_plan", share);
-            expected.get("fnb_service_event").add("custody_snapshot");
             expected.get("fnb_order_component")
                     .addAll(List.of("component_kind", "source_component_ref"));
             expected.get("fnb_close_exception")
@@ -1070,8 +1070,6 @@ public final class FoodSchemaValidator {
                                     "updated_at",
                                     "updated_by",
                                     "version"));
-            expected.computeIfAbsent("fnb_service_event", key -> new TreeSet<>())
-                    .addAll(List.of("ready_loss_qty", "source_request_hash"));
             expected.computeIfAbsent("fnb_service_form", key -> new TreeSet<>())
                     .addAll(
                             List.of(
@@ -1300,6 +1298,22 @@ public final class FoodSchemaValidator {
                                     "pay_policy",
                                     "capabilities",
                                     "status")));
+            expected.put(
+                    "fnb_kitchen_event",
+                    new TreeSet<>(
+                            List.of(
+                                    "tenant_no",
+                                    "entity_no",
+                                    "event_no",
+                                    "task_no",
+                                    "event_type",
+                                    "qty",
+                                    "ready_loss_qty",
+                                    "operation_key",
+                                    "source_request_hash",
+                                    "reason",
+                                    "inventory_doc_no",
+                                    "custody_snapshot")));
             expected.put(
                     "ind_assignment",
                     new TreeSet<>(

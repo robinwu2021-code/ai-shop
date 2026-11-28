@@ -48,7 +48,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.CloseExceptionMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.CloseAdjustmentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.KitchenTaskMapper;
-import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.KitchenEventMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.impl.BusinessCloseServiceImpl;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
@@ -360,7 +360,7 @@ class BusinessCloseEvidenceTest {
                     .execute(anyString(),anyString(),anyString(),anyString(),any(),any());
             service=new BusinessCloseServiceImpl(days,runs,balances,exceptions,adjustments,mock(StorePolicyMapper.class),
                     batches,lines,settlements,items,bindings,mock(ReturnMapper.class),mock(KitchenTicketMapper.class),
-                    mock(KitchenTaskMapper.class),mock(ServiceEventMapper.class),stores,idem,json,new TestTransactions());
+                    mock(KitchenTaskMapper.class),mock(KitchenEventMapper.class),stores,idem,json,new TestTransactions());
             day.setDayNo("D"); day.setBusinessDate(query.businessDate());
             day.setEndsAt(LocalDateTime.of(2026,10,2,0,0)); day.setCurrentCloseRefs("{}"); day.setVersion(0L);
             day.setStartsAt(LocalDateTime.of(2026,10,1,0,0)); day.setStatus("OPEN");

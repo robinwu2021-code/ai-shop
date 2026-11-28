@@ -28,8 +28,11 @@ final class IndustrySchema {
         String scripts = read("db/n_industry/V1__industry_design.sql") + "\n"
                 + read("db/n_industry/V2__industry_supplement.sql");
         var db = new JdbcTemplate(source);
+        // 一次性 MySQL 库（FOOD_TEST_DISPOSABLE）原生支持 JSON；只有 H2 要把 JSON 列按文本建。
+        boolean h2 = Boolean.TRUE.equals(db.execute((java.sql.Connection c) ->
+                c.getMetaData().getDatabaseProductName().equalsIgnoreCase("H2")));
         for (String table : tables) {
-            db.execute(h2(table, scripts));
+            db.execute(h2(table, scripts, h2));
             for (String clause : alterations(table, scripts)) db.execute(clause);
         }
     }
@@ -78,15 +81,15 @@ final class IndustrySchema {
         return parts;
     }
 
-    private static String h2(String table, String scripts) {
+    private static String h2(String table, String scripts, boolean h2) {
         Matcher m = CREATE.matcher(scripts);
         while (m.find()) {
             if (!m.group(1).equals(table)) continue;
             String body = m.group(2)
                     .replaceAll("\\s+CHARACTER SET \\w+", "")
-                    .replaceAll("\\s+COLLATE \\w+", "")
-                    // H2 的 JSON 列会把写入的字符串再包成 JSON 字符串值，读回来多一层引号；按文本列建。
-                    .replaceAll("(?i)` json ", "` varchar(1048576) ");
+                    .replaceAll("\\s+COLLATE \\w+", "");
+            // H2 的 JSON 列会把写入的字符串再包成 JSON 字符串值，读回来多一层引号；按文本列建。
+            if (h2) body = body.replaceAll("(?i)` json ", "` varchar(1048576) ");
             body = INDEX.matcher(body).replaceAll(r -> r.group(1) + " `" + table + "__" + r.group(2) + "`");
             return "CREATE TABLE `" + table + "` (" + body + "\n)";
         }

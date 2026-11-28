@@ -9,7 +9,7 @@ import ai.neargo.shop.food.entity.FnbCloseBalance;
 import ai.neargo.shop.food.entity.FnbCloseRun;
 import ai.neargo.shop.food.entity.FnbCloseException;
 import ai.neargo.shop.food.entity.FnbCloseAdjustment;
-import ai.neargo.shop.food.entity.FnbServiceEvent;
+import ai.neargo.shop.food.entity.FnbKitchenEvent;
 import ai.neargo.shop.food.entity.FnbKitchenTicket;
 import ai.neargo.shop.food.entity.FnbKitchenTask;
 import ai.neargo.shop.food.entity.FnbCourse;
@@ -495,27 +495,27 @@ public final class FoodMappers {
                 + "AND r.status<>'CANCELLED' ORDER BY r.policy_no,r.effective_at DESC,r.revision_index DESC")
         List<FnbConfigRevision> stationPublications(@Param("entity") String entity);
     }
-    public interface ServiceEventMapper extends IndustryTableMapper<FnbServiceEvent> {
+    public interface KitchenEventMapper extends IndustryTableMapper<FnbKitchenEvent> {
         /**
-         * 会触发出品耗料的服务事件（制作环节的开始、补料、损耗），带所属批次号。
+         * 会触发出品耗料的厨房事件（制作环节的开始、补料、损耗），带所属批次号。
          * 批次的门店与接单状态在交易库、耗料处理状态在耗料表，由服务按批次号与事件号分别补查（不跨库联表）。
          */
         record ProductionCandidate(long sourceId, String entityNo, String sourceEventNo, String taskNo,
                 String action, String batchNo) {}
 
-        @Select("<script>SELECT e.id AS source_id,e.entity_no,e.event_no AS source_event_no,e.task_no,e.action,"
-                + "k.batch_no FROM fnb_service_event e "
+        @Select("<script>SELECT e.id AS source_id,e.entity_no,e.event_no AS source_event_no,e.task_no,e.event_type AS action,"
+                + "k.batch_no FROM fnb_kitchen_event e "
                 + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no AND t.task_no=e.task_no "
                 + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
                 + "WHERE e.tenant_no='MAIN' <if test='entity != null'>AND e.entity_no=#{entity} </if>"
                 + "AND e.deleted=0 AND t.deleted=0 AND k.deleted=0 AND t.task_role='MAKE' "
-                + "AND e.action IN ('START','MATERIAL_SUPPLEMENT','MATERIAL_WASTE') "
+                + "AND e.event_type IN ('START','MATERIAL_SUPPLEMENT','MATERIAL_WASTE') "
                 + "AND e.id&gt;#{afterId} ORDER BY e.id LIMIT #{limit}</script>")
         List<ProductionCandidate> productionCandidates(@Param("entity") String entity,
                 @Param("afterId") long afterId, @Param("limit") int limit);
 
-        /** 这些点菜行上的服务事件号：出品耗料按商品筛选用。 */
-        @Select("<script>SELECT e.event_no FROM fnb_service_event e "
+        /** 这些点菜行上的厨房事件号：出品耗料按商品筛选用。 */
+        @Select("<script>SELECT e.event_no FROM fnb_kitchen_event e "
                 + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no "
                 + "AND t.task_no=e.task_no AND t.deleted=0 "
                 + "WHERE e.tenant_no='MAIN' AND e.entity_no=#{entity} AND e.deleted=0 AND t.food_line_no IN "
