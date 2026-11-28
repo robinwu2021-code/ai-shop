@@ -6,9 +6,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.dto.AppointmentPreviewVO;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
-import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
-import ai.neargo.shop.beauty.entity.BtyAppointmentResourceFence;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
@@ -234,14 +232,11 @@ public final class AppointmentPreparation {
                 AppointmentPersistence.require(reception ? "CHECKED_IN".equals(root.getStatus())
                         && db.roots.countWorkOrders(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()) == 0
                         : "HELD".equals(root.getStatus()) || "CONFIRMED".equals(root.getStatus()));
-                var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                        root.getAppointmentNo());
-                AppointmentPersistence.require(fence != null && fence.getActiveIntentNo() == null);
                 if (target != null) {
                     AppointmentPersistence.require(Objects.equals(root.getHoldNo(), target.getHoldNo()));
                 }
-                var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                        root.getAppointmentNo());
+                // 在途闸门在修订上（§2.6 第 4–6 项 4-4b-2，取代资源围栏与当前行）
+                var current = db.gateForUpdate(root);
                 if (receptionOperationNo != null) {
                     // 接待操作在行业库：这里只读核对，挂接在提交后由 linkOuter 在行业事务里做
                     var outer = db.read(() -> receptions.selectScoped(root.getEntityNo(), root.getStoreNo(),
@@ -306,11 +301,57 @@ public final class AppointmentPreparation {
         op.setAcceptPayload(db.json.writeValueAsString(request));
         db.operations.insert(op);
         if ("CANCEL".equals(action) || "NO_SHOW".equals(action)) { recordCancelReason(root, requestEvidence); }
-        var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                root.getAppointmentNo());
-        current.setOperationNo(operationNo); AppointmentPersistence.require(db.currents.updateById(current)
-                == 1);
+        // 这次变更的修订转在途：变更号 = 预约操作号；同一预约已有在途变更时唯一键拒绝（抛重复键，调用者按键找赢家）
+        var revision = changeRevision(preview, root, action);
+        var now = AppointmentPersistence.now();
+        AppointmentPersistence.require(db.arrangements.toApplying(root.getEntityNo(), root.getStoreNo(),
+                revision.getPreviewNo(), revision.getVersion(), root.getAppointmentNo(),
+                db.arrangements.nextRevision(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()), action,
+                operationNo, now, root.getVersion(), actor.operatorNo(), now) == 1);
         return op;
+    }
+    /**
+     * 这次变更的那一行修订：新约、改约、到店后改就是预览的草稿；同一预览上次被资源方拒绝后重试，照被拒那一版另起一行草稿
+     * （每次变更一行，被拒的那次留作历史）；取消、爽约照当前生效版（快照、计划、占用不变）另起一行草稿。
+     */
+    private BtyAppointmentArrangement changeRevision(BtyAppointmentArrangement preview, BtyAppointment root,
+            String action) {
+        String number = preview.getPreviewNo();
+        boolean release = "CANCEL".equals(action) || "NO_SHOW".equals(action);
+        if (release) {
+            var actor = access.actor();
+            number = draftFrom(preview, root, actor.operatorNo(), actor.realm(), actor.subjectKind(), root.getVersion(),
+                    AppointmentPersistence.now(), root.getHoldNo(), true);
+        } else {
+            var row = db.arrangements.selectByPreviewForUpdate(root.getEntityNo(), root.getStoreNo(), number);
+            if (row != null && BtyAppointmentArrangement.REJECTED.equals(row.getStatus())) {
+                number = draftFrom(row, root, row.getActorNo(), row.getActorRealm(), row.getActorKind(),
+                        row.getBasedOnRevision(), row.getExpiresAt(), null, false);
+            }
+        }
+        var row = db.arrangements.selectByPreviewForUpdate(root.getEntityNo(), root.getStoreNo(), number);
+        AppointmentPersistence.require(row != null && BtyAppointmentArrangement.DRAFT.equals(row.getStatus()));
+        return row;
+    }
+    /** 照一版修订另起一行草稿，返回新预览号。取消、爽约的时间与适用规则取预约单当前的，改约重试照原预览。 */
+    private String draftFrom(BtyAppointmentArrangement source, BtyAppointment root, String actorNo, String realm,
+            String kind, Long basedOn, java.time.LocalDateTime expires, String hold, boolean fromRoot) {
+        var copy = new BtyAppointmentArrangement();
+        copy.setEntityNo(root.getEntityNo()); copy.setStoreNo(root.getStoreNo());
+        String number = BizKey.next("BTPR"); copy.setPreviewNo(number);
+        copy.setSnapshot(source.getSnapshot()); copy.setFrozenPlan(source.getFrozenPlan());
+        copy.setPlanHash(source.getPlanHash()); copy.setHoldNo(hold);
+        copy.setStartAt(fromRoot ? root.getStartAt() : source.getStartAt());
+        copy.setEndAt(fromRoot ? root.getEndAt() : source.getEndAt());
+        copy.setTimezone(fromRoot ? root.getTimezone() : source.getTimezone());
+        copy.setPolicyVersionNo(fromRoot ? root.getPolicyVersionNo() : source.getPolicyVersionNo());
+        copy.setCustomerRef(fromRoot ? root.getCustomerRef() : source.getCustomerRef());
+        copy.setGuestRef(fromRoot ? root.getGuestRef() : source.getGuestRef());
+        copy.setActorNo(actorNo); copy.setActorRealm(realm); copy.setActorKind(kind);
+        copy.setBasedOnRevision(basedOn); copy.setExpiresAt(expires);
+        copy.setStatus(BtyAppointmentArrangement.DRAFT);
+        db.arrangements.insert(copy);
+        return number;
     }
     /** Commits a new reception root and its only resource command in the same transaction as the outer link. */
     public BtyAppointmentOperation prepareReception(String entity, String store, String actor, String number) {
@@ -367,9 +408,7 @@ public final class AppointmentPreparation {
                     return op;
                 }
                 var root = createRoot(preview, payload.appointmentNo());
-                var fence = db.fences.selectScopedForUpdate(entity, store, root.getAppointmentNo());
-                var current = db.currents.selectScopedForUpdate(entity, store, root.getAppointmentNo());
-                AppointmentPersistence.require(fence.getActiveIntentNo() == null && current.getOperationNo() == null);
+                AppointmentPersistence.require(db.gateForUpdate(root).getOperationNo() == null);
                 workOrders.verifyCreateLocked(match);
                 if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", preview.getEntityNo(), preview.getStoreNo());
                 preview.setStatus(BtyAppointmentArrangement.DRAFT); db.arrangements.insert(preview);
@@ -452,13 +491,8 @@ public final class AppointmentPreparation {
                 root.setGuestRef(p.getGuestRef());
         root.setSource("CONSUMER".equals(p.getActorRealm()) ? "ONLINE" : "STAFF"); root.setStatus("HELD");
         root.setStartAt(p.getStartAt()); root.setEndAt(p.getEndAt()); root.setTimezone(p.getTimezone());
-        root.setPolicyVersionNo(p.getPolicyVersionNo()); root.setVersion(1L); db.roots.insert(root);
-        var fence = new BtyAppointmentResourceFence(); fence.setEntityNo(root.getEntityNo());
-        fence.setAppointmentNo(root.getAppointmentNo()); fence.setStoreNo(root.getStoreNo());
-        fence.setFenceNo(BizKey.next("BTF")); db.fences.insert(fence);
-        var current = new BtyAppointmentCurrent(); current.setEntityNo(root.getEntityNo());
-        current.setAppointmentNo(root.getAppointmentNo()); current.setArrangementRevision(0L);
-                db.currents.insert(current);
+        root.setPolicyVersionNo(p.getPolicyVersionNo()); root.setVersion(1L); root.setCurrentRevision(0L);
+        db.roots.insert(root);
         return root;
     }
 }

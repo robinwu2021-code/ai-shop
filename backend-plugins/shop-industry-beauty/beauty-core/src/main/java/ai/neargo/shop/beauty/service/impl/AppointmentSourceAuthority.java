@@ -34,7 +34,7 @@ public final class AppointmentSourceAuthority {
         }
         return db.tx(() -> {
             var locked = db.lock(root);
-            var fence = db.fences.selectScopedForUpdate(b.entityNo(), b.storeNo(), b.sourceNo());
+            var gate = db.gateForUpdate(locked); // 在途闸门在修订上（4-4b-2，取代资源围栏）
             // 按命令号找命令行作答（§2.6 第 4–6 项方向 A，取代资源意向与资源决策）
             var command = db.commands.selectByCommandForUpdate(b.entityNo(), b.storeNo(), b.commandNo());
             if (command == null) { return unknown(b); }
@@ -48,13 +48,13 @@ public final class AppointmentSourceAuthority {
                 }
                 return authorized(b, command);
             }
-            var current = db.current(locked);
-            var operation = db.operation(current.getOperationNo());
+            AppointmentPersistence.require(gate.getOperationNo() != null);
+            var operation = db.operation(gate.getOperationNo());
             var receipt = db.json.readValue(operation.getReceipt(), ResourceBookingPort.Receipt.class);
             var accepted = db.json.readValue(command.getAcceptPayload(), ResourceBookingPort.Accept.class);
             AppointmentPersistence.require(receipt.binding().equals(b)
                     && receipt.frozenPayload().equals(accepted.frozenPayload())
-                    && command.getRequestKey().equals(fence.getActiveIntentNo())
+                    && command.getChangeNo().equals(gate.getOperationNo())
                     && locked.getVersion() == b.sourceRevision());
             if ("RECEPTION_CHANGE".equals(operation.getAction())) {
                 AppointmentPersistence.require("CHECKED_IN".equals(locked.getStatus())
@@ -65,8 +65,8 @@ public final class AppointmentSourceAuthority {
             if (freeze && BtyAppointmentCommand.BOUND.equals(command.getStatus())) {
                 var now = AppointmentPersistence.now();
                 AppointmentPersistence.require(db.commands.permit(b.entityNo(), b.storeNo(), b.commandNo(),
-                        command.getVersion(), BizKey.next("BTD"), now, now.plusMinutes(2), fence.getFenceNo(),
-                        fence.getVersion(), request.operatorNo()) == 1);
+                        command.getVersion(), BizKey.next("BTD"), now, now.plusMinutes(2), locked.getAppointmentNo(),
+                        gate.applying().getArrangementRevision(), request.operatorNo()) == 1);
                 command = db.commands.selectByCommandForUpdate(b.entityNo(), b.storeNo(), b.commandNo());
             }
             if (!BtyAppointmentCommand.PERMITTED.equals(command.getStatus())) {

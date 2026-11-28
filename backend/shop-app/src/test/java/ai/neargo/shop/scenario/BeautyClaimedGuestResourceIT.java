@@ -681,7 +681,7 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
                                 "SELECT * FROM mch_booking_hold_unit WHERE hold_no=? ORDER BY id",
                                 scenario.hold()),
                         jdbc.queryForList(
-                                "SELECT arrangement_revision FROM bty_appointment_current WHERE"
+                                "SELECT current_revision FROM ord_appointment WHERE"
                                         + " appointment_no=?",
                                 scenario.appointment()),
                         jdbc.queryForList(
@@ -727,10 +727,10 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
         assertThat(intent.get("decision_no")).isNotNull(); // 许可记在命令行上，原资源决策表不再用
         assertThat(
                         number(
-                                "SELECT COUNT(*) FROM bty_appointment_resource_fence WHERE"
-                                        + " appointment_no=? AND active_intent_no IS NULL",
+                                "SELECT COUNT(*) FROM ord_appointment_revision WHERE"
+                                        + " appointment_no=? AND applying_key IS NOT NULL",
                                 intent.get("appointment_no")))
-                .isEqualTo(1);
+                .isZero(); // 在途闸门已放开（修订上，4-4b-2）
     }
 
     private String currentHold(String appointment) {
@@ -746,9 +746,9 @@ class BeautyClaimedGuestResourceIT extends CheckoutFlowFixture {
     private List<String> currentResources(String appointment) {
         return jdbc.queryForList(
                 // 人员安排在当前那一版修订的快照里（TDD-美业域迁移新库 §2.6 第 7 项）
-                "SELECT DISTINCT j.resource_no FROM bty_appointment_current c JOIN ord_appointment_revision r"
+                "SELECT DISTINCT j.resource_no FROM ord_appointment c JOIN ord_appointment_revision r"
                     + " ON r.appointment_no=c.appointment_no AND r.entity_no=c.entity_no"
-                    + " AND r.arrangement_revision=c.arrangement_revision,"
+                    + " AND r.arrangement_revision=c.current_revision,"
                     + " JSON_TABLE(r.snapshot, '$.assignments[*]' COLUMNS (resource_no VARCHAR(32)"
                     + " PATH '$.resourceNo')) j WHERE c.appointment_no=?",
                 String.class,

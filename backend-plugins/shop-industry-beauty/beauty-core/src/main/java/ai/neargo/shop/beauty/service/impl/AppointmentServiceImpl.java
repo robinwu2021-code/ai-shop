@@ -245,20 +245,18 @@ public final class AppointmentServiceImpl implements AppointmentService {
                 .eq(BtyAppointment::getStoreNo, store);
         if (q.personnelNo() != null) {
             // 人员安排在当前那一版修订的快照里（TDD §2.6 第 7 项）。不用 JSON_TABLE：分页与数据范围拦截器的 SQL 解析不认它
-            query.apply("EXISTS (SELECT 1 FROM bty_appointment_current c JOIN ord_appointment_revision r "
-                    + "ON r.tenant_no=c.tenant_no AND r.entity_no=c.entity_no AND r.appointment_no=c.appointment_no "
-                    + "AND r.arrangement_revision=c.arrangement_revision AND r.deleted=0 "
-                    + "WHERE c.appointment_no=ord_appointment.appointment_no AND c.entity_no=ord_appointment.entity_no "
-                    + "AND c.tenant_no=ord_appointment.tenant_no AND c.deleted=0 "
+            query.apply("EXISTS (SELECT 1 FROM ord_appointment_revision r "
+                    + "WHERE r.tenant_no=ord_appointment.tenant_no AND r.entity_no=ord_appointment.entity_no "
+                    + "AND r.appointment_no=ord_appointment.appointment_no "
+                    + "AND r.arrangement_revision=ord_appointment.current_revision AND r.deleted=0 "
                     + "AND JSON_CONTAINS(JSON_EXTRACT(r.snapshot, '$.assignments[*].personnelNo'), JSON_QUOTE({0})))",
                     q.personnelNo());
         }
         if (q.assignmentState() != null) {
             AppointmentPersistence.require(List.of("ASSIGNED", "UNASSIGNED").contains(q.assignmentState()));
-            query.apply(("UNASSIGNED".equals(q.assignmentState()) ? "NOT " : "")
-                    + "EXISTS (SELECT 1 FROM bty_appointment_current c "
-                    + "WHERE c.appointment_no=ord_appointment.appointment_no "
-                    + "AND c.entity_no=ord_appointment.entity_no AND c.arrangement_revision>0)");
+            // 已有生效版即「已安排」（当前生效版本在预约单上，§2.6 第 4–6 项 4-4b-2）
+            query.apply("UNASSIGNED".equals(q.assignmentState()) ? "COALESCE(current_revision, 0) = 0"
+                    : "current_revision > 0");
         }
         var page = page(query, q.page(), q.size());
         return new PageData<>(page.getRecords().stream().map(this::summary).toList(), page.getTotal(),

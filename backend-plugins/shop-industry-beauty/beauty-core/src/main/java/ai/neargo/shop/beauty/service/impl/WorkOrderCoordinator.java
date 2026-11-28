@@ -566,10 +566,7 @@ public final class WorkOrderCoordinator {
             if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", prepared.scope().entityNo(), prepared.scope().storeNo());
             if (observed != null) {
                 var root = db.lock(observed);
-                db.fences.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                        observed.getAppointmentNo());
-                db.currents.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                        observed.getAppointmentNo());
+                if (root != null) db.gateForUpdate(root);
                 if (root != null && workOrderNo.equals(root.getWorkOrderNo())) {
                     // 第二步已经提交过：走入单此时已越过开始时间就撤销标记，否则直接去补第三步
                     if (walkIn && !stillFuture(op)) {
@@ -621,13 +618,9 @@ public final class WorkOrderCoordinator {
     private void verifyAppointmentLocked(BtyAppointment observed, PreparedWorkOrderScope prepared, long revision,
             boolean walkIn) {
         var root = db.lock(observed);
-        var fence = db.fences.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                observed.getAppointmentNo());
-        var current = db.currents.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                observed.getAppointmentNo());
+        var current = db.gateForUpdate(root);
         var evidence = prepared.frozen().holdEvidence();
-        AppointmentPersistence.require(root != null && fence != null && current != null
-                && fence.getActiveIntentNo() == null && current.getOperationNo() == null
+        AppointmentPersistence.require(root != null && current != null && current.getOperationNo() == null
                 && root.getVersion() == revision && "CHECKED_IN".equals(root.getStatus())
                 && root.getCheckedInAt() != null && (walkIn || now().isBefore(root.getEndAt()))
                 && Objects.equals(root.getHoldNo(), observed.getHoldNo())

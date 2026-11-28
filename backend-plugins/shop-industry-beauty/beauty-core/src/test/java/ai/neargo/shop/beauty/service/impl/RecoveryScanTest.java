@@ -10,9 +10,7 @@ import static org.mockito.Mockito.when;
 
 import ai.neargo.job.api.JobStatus;
 import ai.neargo.shop.beauty.entity.BtyAppointment;
-import ai.neargo.shop.beauty.entity.BtyAppointmentCurrent;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
-import ai.neargo.shop.beauty.entity.BtyAppointmentResourceFence;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.job.AppointmentRecoveryJob;
 import ai.neargo.shop.beauty.job.ReceptionRecoveryJob;
@@ -44,6 +42,9 @@ class RecoveryScanTest {
     private final BeautyMappers.AppointmentCurrentMapper currents = mock(BeautyMappers.AppointmentCurrentMapper.class);
     private final BeautyMappers.AppointmentResourceFenceMapper fences =
             mock(BeautyMappers.AppointmentResourceFenceMapper.class);
+    /** 在途闸门在修订上（§2.6 第 4–6 项 4-4b-2）：没有在途变更。 */
+    private final BeautyMappers.AppointmentArrangementMapper arrangements =
+            mock(BeautyMappers.AppointmentArrangementMapper.class);
 
     @BeforeAll
     static void initializeMapperMetadata() {
@@ -105,9 +106,9 @@ class RecoveryScanTest {
         root.setStoreNo("S");
         root.setAppointmentNo("AP");
         when(roots.selectOne(any())).thenReturn(root);
+        root.setCurrentRevision(1L);
         when(roots.selectScopedForUpdate("E", "S", "AP")).thenReturn(root);
-        when(fences.selectScopedForUpdate("E", "S", "AP")).thenReturn(new BtyAppointmentResourceFence());
-        when(currents.selectScopedForUpdate("E", "S", "AP")).thenReturn(new BtyAppointmentCurrent());
+        when(roots.selectById(any())).thenReturn(root);
         var receipt = mock(ResourceBookingPort.Receipt.class);
         var binding = mock(ResourceSourceAuthorityPort.Binding.class);
         when(coordinator.verifiedReceipt(rejectedOwner, true)).thenReturn(receipt);
@@ -133,7 +134,7 @@ class RecoveryScanTest {
     private AppointmentPersistence persistence() {
         var manager = mock(PlatformTransactionManager.class);
         when(manager.getTransaction(any())).thenAnswer(call -> new SimpleTransactionStatus());
-        return new AppointmentPersistence(roots, null, operations, currents, null, null, fences, null,
+        return new AppointmentPersistence(roots, null, operations, currents, arrangements, null, fences, null,
                 null, manager);
     }
 

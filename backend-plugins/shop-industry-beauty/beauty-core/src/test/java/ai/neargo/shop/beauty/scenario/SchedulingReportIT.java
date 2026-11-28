@@ -85,8 +85,8 @@ class SchedulingReportIT {
         sql.update("INSERT INTO ord_appointment (tenant_no, entity_no, created_at, updated_at, appointment_no, store_no,"
                 + " source, status, start_at, end_at, timezone, policy_version_no) VALUES ('MAIN','E',?,?,?,?,"
                 + "'STAFF',?,?,?,'Asia/Taipei','PV')", IN, IN, no, store, status, start, start.plusHours(1));
-        sql.update("INSERT INTO bty_appointment_current (tenant_no, entity_no, created_at, updated_at, appointment_no,"
-                + " arrangement_revision) VALUES ('MAIN','E',?,?,?,?)", IN, IN, no, revision);
+        // 当前生效版本在预约单上（§2.6 第 4–6 项 4-4b-2，取代当前行）
+        sql.update("UPDATE ord_appointment SET current_revision=? WHERE appointment_no=?", revision, no);
         return no;
     }
 

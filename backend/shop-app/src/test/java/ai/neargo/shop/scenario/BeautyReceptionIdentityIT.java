@@ -508,15 +508,13 @@ class BeautyReceptionIdentityIT {
         row("ord_appointment", "appointment_no", number, "store_no", store, "customer_ref", customer,
                 "guest_ref", guest, "source", "STAFF", "status", "CONFIRMED", "start_at", start.toLocalDateTime(),
                 "end_at", end.toLocalDateTime(), "timezone", "UTC", "policy_version_no", "PV", "hold_no", holdNo,
-                "version", 7);
+                "version", 7, "current_revision", 1);
         row("ord_appointment_revision", "preview_no", preview, "store_no", store, "actor_no", actor,
                 "actor_realm", "MERCHANT", "actor_kind", "MCH", "based_on_revision", 0, "policy_version_no", "PV",
                 "start_at", start.toLocalDateTime(), "end_at", end.toLocalDateTime(), "timezone", "UTC",
                 "frozen_plan", plan, "plan_hash", binding.planHash(), "snapshot", snapshot,
                 "expires_at", end.toLocalDateTime(), "appointment_no", number,
                 "arrangement_revision", 1, "hold_no", holdNo, "status", "CONFIRMED", "action", "CREATE");
-        row("bty_appointment_current", "appointment_no", number, "arrangement_revision", 1);
-        row("bty_appointment_resource_fence", "appointment_no", number, "store_no", store, "fence_no", "BF-" + number);
         row("bty_appointment_operation", "operation_no", "BO-" + number, "store_no", store, "actor_no", actor,
                 "actor_realm", "MERCHANT", "actor_kind", "MCH", "key_hash", IdempotencyScope.requestHash(number),
                 "request_hash", "a".repeat(64), "appointment_no", number, "preview_no", preview, "action", "CREATE",

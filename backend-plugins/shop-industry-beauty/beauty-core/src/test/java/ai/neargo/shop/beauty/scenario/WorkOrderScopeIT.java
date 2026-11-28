@@ -538,17 +538,13 @@ class WorkOrderScopeIT extends ReceptionFixture {
             assertThatThrownBy(() -> service.openWorkOrderFromAppointment("E", "S", "A", appointment.appointmentNo(),
                     req, "EXPIRED")).isInstanceOf(BizException.class);
             clockAt = null;
-            sql.update("UPDATE bty_appointment_resource_fence SET active_intent_no='UNKNOWN'");
+            sql.update("UPDATE ord_appointment_revision SET status='APPLYING' WHERE status='CONFIRMED'"); // 有变更在途（4-4b-2）
             assertThatThrownBy(() -> service.openWorkOrderFromAppointment("E", "S", "A", appointment.appointmentNo(),
-                    req, "ACTIVE-FENCE")).isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_appointment_resource_fence SET active_intent_no=NULL");
-            sql.update("UPDATE bty_appointment_current SET operation_no='UNKNOWN'");
+                    req, "ACTIVE-CHANGE")).isInstanceOf(BizException.class);
+            sql.update("UPDATE ord_appointment_revision SET status='CONFIRMED' WHERE status='APPLYING'");
+            sql.update("UPDATE ord_appointment SET current_revision=99");
             assertThatThrownBy(() -> service.openWorkOrderFromAppointment("E", "S", "A", appointment.appointmentNo(),
-                    req, "ACTIVE-CURRENT")).isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_appointment_current SET operation_no=NULL");
-            sql.update("DELETE FROM bty_appointment_resource_fence");
-            assertThatThrownBy(() -> service.openWorkOrderFromAppointment("E", "S", "A", appointment.appointmentNo(),
-                    req, "NO-FENCE")).isInstanceOf(BizException.class);
+                    req, "UNKNOWN-REVISION")).isInstanceOf(BizException.class);
             assertThat(count("bty_work_order")).isZero(); assertThat(count("bty_service_task")).isZero();
         });
     }

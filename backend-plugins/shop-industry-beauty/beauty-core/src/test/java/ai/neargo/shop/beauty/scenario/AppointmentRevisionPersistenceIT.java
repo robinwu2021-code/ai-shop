@@ -33,7 +33,7 @@ class AppointmentRevisionPersistenceIT extends BeautyExecutionFixture {
 
     private Object apply(ApplicationContext context, String preview, long revision, String action, String change) {
         return tx(context, () -> call(context, "AppointmentArrangementMapper", "toApplying", "E", "S", preview, 0L,
-                "A", revision, action, change, T0.plusSeconds(30), "ACTOR", T0));
+                "A", revision, action, change, T0.plusSeconds(30), 0L, "ACTOR", T0)); // 调用者核对过的预约单版本 0
     }
 
     private Object revision(ApplicationContext context, String method, String key, String property) {
@@ -121,6 +121,26 @@ class AppointmentRevisionPersistenceIT extends BeautyExecutionFixture {
                     T0.plusMinutes(1), 10));
             assertThat(due).hasSize(1);
             assertThat(new BeanWrapperImpl(due.getFirst()).getPropertyValue("changeNo")).isEqualTo("CH1");
+        });
+    }
+
+    @Test
+    void inFlightChangeBlocksScheduleCancelConfirmAndArrival() {
+        // 原资源围栏的语义改由修订的在途闸门承担（4-4b-2）：有变更在途时预约单的改期、取消、确认、到店都不成
+        runner().run(ctx -> {
+            assertThat(apply(ctx, "P1", 1L, "CHANGE", "CH1")).isEqualTo(1);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeSchedule", "E", "S", "A", 0L,
+                    "CONFIRMED", T0.plusHours(2), T0.plusHours(3), "NEXT", "ACTOR", T0))).isEqualTo(0);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
+                    "CONFIRMED", "CANCELLED", "ACTOR", T0))).isEqualTo(0);
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "markArrived", "E", "S", "A", 0L,
+                    "CONFIRMED", T0, "ACTOR", T0))).isEqualTo(0);
+            sql.update("UPDATE ord_appointment SET status='HELD'");
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
+                    "HELD", "CONFIRMED", "ACTOR", T0))).isEqualTo(0);
+            assertThat(settleChange(ctx, "CH1", 1L, "REJECTED", "RESOURCE_REJECTED")).isEqualTo(1); // 放开闸门
+            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
+                    "HELD", "CANCELLED", "ACTOR", T0))).isEqualTo(1);
         });
     }
 

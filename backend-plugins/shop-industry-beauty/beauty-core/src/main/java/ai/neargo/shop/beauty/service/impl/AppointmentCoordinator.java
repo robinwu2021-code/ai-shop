@@ -165,7 +165,7 @@ public final class AppointmentCoordinator {
                 .eq(BtyAppointmentOperation::getEntityNo, root.getEntityNo())
                 .eq(BtyAppointmentOperation::getStoreNo, root.getStoreNo())
                 .eq(BtyAppointmentOperation::getAppointmentNo, root.getAppointmentNo())
-                .eq(BtyAppointmentOperation::getPreviewNo, history.getPreviewNo())
+                .eq(BtyAppointmentOperation::getOperationNo, history.getChangeNo()) // 变更号 = 预约操作号（4-4b-2）
                 .eq(BtyAppointmentOperation::getState, "SUCCEEDED")
                 .in(BtyAppointmentOperation::getAction, "CREATE", "CHANGE", "RECEPTION_CHANGE")));
         AppointmentPersistence.require(op != null && op.getReceipt() != null);
@@ -222,7 +222,6 @@ public final class AppointmentCoordinator {
     private void bind(BtyAppointmentOperation operation, ResourceBookingPort.Receipt receipt) {
         db.tx(() -> {
             var root = db.lock(db.root(operation.getAppointmentNo()));
-            var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
             var op = db.operation(operation.getOperationNo());
             AppointmentPersistence.require(op.getAcceptPayload().equals(operation.getAcceptPayload()));
             if (op.getReceipt() != null) {
@@ -243,10 +242,7 @@ public final class AppointmentCoordinator {
             command.setCommandNo(b.commandNo()); command.setCommandHash(b.commandHash());
             command.setPlanHash(b.planHash()); command.setReceipt(db.json.writeValueAsString(receipt));
             command.setStatus(BtyAppointmentCommand.BOUND);
-            db.commands.insert(command);
-            AppointmentPersistence.require(db.fences.acquire(root.getEntityNo(), root.getStoreNo(),
-                    root.getAppointmentNo(), command.getRequestKey(), fence.getVersion(), op.getActorNo(),
-                    AppointmentPersistence.now()) == 1);
+            db.commands.insert(command); // 在途闸门已在受理时由修订占住（4-4b-2），这里不再另取围栏
             op.setReceipt(db.json.writeValueAsString(receipt));
                     AppointmentPersistence.require(db.operations.updateById(op) == 1);
             return null;
@@ -273,7 +269,6 @@ public final class AppointmentCoordinator {
             ResourceBookingPort.Hold hold) {
         db.tx(() -> {
             var root = db.lock(db.root(operation.getAppointmentNo()));
-            var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
             var command = db.commands.selectByCommandForUpdate(root.getEntityNo(), root.getStoreNo(),
                     receipt.binding().commandNo());
             var op = db.operation(operation.getOperationNo());
@@ -298,9 +293,6 @@ public final class AppointmentCoordinator {
                     command.getCommandNo(), command.getVersion(),
                     success ? BtyAppointmentCommand.SUCCEEDED : BtyAppointmentCommand.REJECTED, hash, null,
                     op.getActorNo(), AppointmentPersistence.now()) == 1);
-            AppointmentPersistence.require(db.fences.releaseReconciled(root.getEntityNo(), root.getStoreNo(),
-                    root.getAppointmentNo(), command.getRequestKey(), fence.getVersion(), op.getActorNo(),
-                    AppointmentPersistence.now()) == 1);
             op.setResult(receipt.resultPayload());
             op.setReceipt(db.json.writeValueAsString(receipt));
             if (success && "RESERVE".equals(receipt.binding().action())) {
@@ -320,6 +312,7 @@ public final class AppointmentCoordinator {
             if (success) {
                 if ("RELEASE".equals(receipt.binding().action())) {
                     root.setStatus("NO_SHOW".equals(op.getAction()) ? "NO_SHOW" : "CANCELLED");
+                    confirmChange(root, op, null);
                 } else {
                     root.setStatus("RECEPTION_CHANGE".equals(op.getAction()) ? "CHECKED_IN" : "CONFIRMED");
                     root.setHoldNo(hold.holdNo()); arrange(root, op, hold.holdNo());
@@ -339,9 +332,15 @@ public final class AppointmentCoordinator {
                 }
                 if ("RESERVE".equals(receipt.binding().action())) { root.setStatus("CANCELLED");
                         AppointmentPersistence.require(db.roots.updateById(root) == 1); }
+                // 这次变更没成：修订以资源拒绝结束、放开在途闸门；原因码记操作的结果（待释放与否）
+                var revision = db.arrangements.selectByChangeForUpdate(root.getEntityNo(), root.getStoreNo(),
+                        op.getOperationNo());
+                AppointmentPersistence.require(revision != null && db.arrangements.settle(root.getEntityNo(),
+                        root.getStoreNo(), op.getOperationNo(), revision.getVersion(),
+                        BtyAppointmentArrangement.REJECTED, op.getState(), null, op.getActorNo(),
+                        AppointmentPersistence.now()) == 1);
             }
             AppointmentPersistence.require(db.operations.updateById(op) == 1);
-            db.clearCurrent(root);
             String state = op.getState();
             String appointmentState = root.getStatus();
             String requestId = MDC.get("requestId");
@@ -352,22 +351,26 @@ public final class AppointmentCoordinator {
             return null;
         });
     }
+    /**
+     * 这次变更生效：在途那一版改为生效、写上占用，预约单的当前版本指向它，此前生效的各版标为被取代
+     * （§2.6 第 4–6 项 4-4b-2，取代当前行）。返回这一版。
+     */
+    private BtyAppointmentArrangement confirmChange(BtyAppointment root, BtyAppointmentOperation op, String hold) {
+        var revision = db.arrangements.selectByChangeForUpdate(root.getEntityNo(), root.getStoreNo(),
+                op.getOperationNo());
+        AppointmentPersistence.require(revision != null
+                && BtyAppointmentArrangement.APPLYING.equals(revision.getStatus()));
+        if (hold != null) { revision.setHoldNo(hold); }
+        revision.setStatus(BtyAppointmentArrangement.CONFIRMED);
+        AppointmentPersistence.require(db.arrangements.updateById(revision) == 1);
+        db.arrangements.supersedeBefore(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo(),
+                revision.getArrangementRevision(), op.getActorNo(), AppointmentPersistence.now());
+        root.setCurrentRevision(revision.getArrangementRevision());
+        return revision;
+    }
     private void arrange(BtyAppointment root, BtyAppointmentOperation op, String hold) {
-        var p = db.preview(op.getPreviewNo());
+        var p = confirmChange(root, op, hold);
         var snapshot = db.json.readValue(p.getSnapshot(), AppointmentMatching.Snapshot.class);
-        var current = db.current(root);
-        long revision = current.getArrangementRevision() + 1;
-        // 草稿升为生效版：同一行写上预约单号、修订号与占用，旧的生效版标为被取代（TDD §2.6 第 4–6 项，步 4-3）
-        var arrangement = db.arrangements.selectByPreviewForUpdate(root.getEntityNo(), root.getStoreNo(),
-                p.getPreviewNo());
-        AppointmentPersistence.require(arrangement != null
-                && BtyAppointmentArrangement.DRAFT.equals(arrangement.getStatus()));
-        arrangement.setAppointmentNo(root.getAppointmentNo()); arrangement.setArrangementRevision(revision);
-        arrangement.setHoldNo(hold); arrangement.setAction(op.getAction());
-        arrangement.setStatus(BtyAppointmentArrangement.CONFIRMED);
-        AppointmentPersistence.require(db.arrangements.updateById(arrangement) == 1);
-        db.arrangements.supersedeBefore(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo(), revision,
-                op.getActorNo(), AppointmentPersistence.now());
         int index = 0;
         for (var item : snapshot.items()) {
             var row = new BtyAppointmentItem(); row.setEntityNo(root.getEntityNo());
@@ -377,7 +380,6 @@ public final class AppointmentCoordinator {
             row.setExecutionSnapshot(db.json.writeValueAsString(item)); db.items.insert(row);
         }
         // 人员安排就在这一版的快照里（snapshot.assignments），不再另存安排行（TDD §2.6 第 7 项）
-        current.setArrangementRevision(revision); AppointmentPersistence.require(db.currents.updateById(current) == 1);
         root.setStartAt(p.getStartAt()); root.setEndAt(p.getEndAt()); root.setPolicyVersionNo(p.getPolicyVersionNo());
     }
     /** 命令已对账（宿主成功或拒绝），终态回执摘要已记。 */

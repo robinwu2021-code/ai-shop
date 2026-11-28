@@ -122,10 +122,8 @@ public final class BeautyMappers {
                 """
                 SELECT j.personnel_no AS personnel_no, COUNT(DISTINCT j.appointment_item_no) AS n
                 FROM ord_appointment ap
-                JOIN bty_appointment_current c ON c.tenant_no=ap.tenant_no AND c.entity_no=ap.entity_no
-                  AND c.appointment_no=ap.appointment_no AND c.deleted=0
                 JOIN ord_appointment_revision r ON r.tenant_no=ap.tenant_no AND r.entity_no=ap.entity_no
-                  AND r.appointment_no=ap.appointment_no AND r.arrangement_revision=c.arrangement_revision
+                  AND r.appointment_no=ap.appointment_no AND r.arrangement_revision=ap.current_revision
                   AND r.deleted=0,
                 JSON_TABLE(r.snapshot, '$.assignments[*]' COLUMNS (
                   appointment_item_no VARCHAR(32) PATH '$.appointmentItemNo',
@@ -166,12 +164,9 @@ public final class BeautyMappers {
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                 AND appointment_no=#{appointmentNo} AND deleted=0 AND version=#{expectedVersion}
                 AND status='CHECKED_IN' AND checked_in_at IS NOT NULL
-                AND EXISTS (SELECT 1 FROM bty_appointment_current c WHERE c.tenant_no=ord_appointment.tenant_no
-                  AND c.entity_no=ord_appointment.entity_no AND c.appointment_no=ord_appointment.appointment_no
-                  AND c.deleted=0 AND c.operation_no IS NULL)
-                AND EXISTS (SELECT 1 FROM bty_appointment_resource_fence f WHERE f.tenant_no=ord_appointment.tenant_no
-                  AND f.entity_no=ord_appointment.entity_no AND f.appointment_no=ord_appointment.appointment_no
-                  AND f.deleted=0 AND f.active_intent_no IS NULL)
+                AND NOT EXISTS (SELECT 1 FROM ord_appointment_revision g
+                  WHERE g.tenant_no=ord_appointment.tenant_no AND g.entity_no=ord_appointment.entity_no
+                  AND g.applying_key=ord_appointment.appointment_no AND g.deleted=0)
                 AND work_order_no IS NULL AND #{workOrderNo} IS NOT NULL
                 """)
         int markWorkOrderOpened(
@@ -228,9 +223,9 @@ public final class BeautyMappers {
                 version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
-                AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
-                  WHERE f.tenant_no=ord_appointment.tenant_no AND f.entity_no=ord_appointment.entity_no
-                  AND f.appointment_no=ord_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
+                AND NOT EXISTS (SELECT 1 FROM ord_appointment_revision g
+                  WHERE g.tenant_no=ord_appointment.tenant_no AND g.entity_no=ord_appointment.entity_no
+                  AND g.applying_key=ord_appointment.appointment_no AND g.deleted=0)
                 AND status=#{expectedStatus} AND status IN ('HELD','CONFIRMED')
                 AND #{startAt} IS NOT NULL AND #{endAt}> #{startAt}
                 AND #{holdNo} IS NOT NULL AND LENGTH(TRIM(#{holdNo}))>0 AND #{actorNo} IS NOT NULL AND
@@ -255,9 +250,9 @@ public final class BeautyMappers {
                 updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
-                AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
-                  WHERE f.tenant_no=ord_appointment.tenant_no AND f.entity_no=ord_appointment.entity_no
-                  AND f.appointment_no=ord_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
+                AND NOT EXISTS (SELECT 1 FROM ord_appointment_revision g
+                  WHERE g.tenant_no=ord_appointment.tenant_no AND g.entity_no=ord_appointment.entity_no
+                  AND g.applying_key=ord_appointment.appointment_no AND g.deleted=0)
                 AND status=#{expectedStatus}
                 AND ((status='HELD' AND #{targetStatus} IN ('CANCELLED','EXPIRED'))
                 OR (status='HELD' AND #{targetStatus}='CONFIRMED' AND hold_no IS NOT NULL AND
@@ -282,9 +277,9 @@ public final class BeautyMappers {
                 updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
                 appointment_no=#{appointmentNo} AND version=#{expectedVersion}
-                AND NOT EXISTS (SELECT 1 FROM bty_appointment_resource_fence f
-                  WHERE f.tenant_no=ord_appointment.tenant_no AND f.entity_no=ord_appointment.entity_no
-                  AND f.appointment_no=ord_appointment.appointment_no AND f.active_intent_no IS NOT NULL)
+                AND NOT EXISTS (SELECT 1 FROM ord_appointment_revision g
+                  WHERE g.tenant_no=ord_appointment.tenant_no AND g.entity_no=ord_appointment.entity_no
+                  AND g.applying_key=ord_appointment.appointment_no AND g.deleted=0)
                 AND status=#{expectedStatus} AND status='CONFIRMED' AND checked_in_at IS NULL
                 AND #{checkedInAt} IS NOT NULL AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND
                 #{updatedAt} IS NOT NULL
@@ -1508,7 +1503,8 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 @Param("appointmentNo") String appointmentNo);
 
         /**
-         * 草稿 → 在途：草稿未过期（取消、爽约不看过期）、预约单仍是草稿基于的那一版且仍可变更；写上预约单号、修订号、
+         * 草稿 → 在途：草稿未过期（取消、爽约不看过期）、预约单仍是调用者核对过的版本（新约建单后为 1，所以不直接比草稿的
+         * 基于版本）且仍可变更；写上预约单号、修订号、
          * 动作与变更号。同一预约已有在途变更时唯一键 applying_key 拒绝（抛重复键）。
          */
         @Update(
@@ -1523,7 +1519,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                   AND r.preview_no=#{previewNo} AND r.deleted=0 AND r.status='${@ai.neargo.shop.beauty.entity.BtyAppointmentArrangement@DRAFT}'
                   AND r.version=#{expectedVersion}
                   AND (r.expires_at>#{now} OR #{action} IN ('CANCEL','NO_SHOW'))
-                  AND p.version=r.based_on_revision AND
+                  AND p.version=#{rootVersion} AND
                 """ + ROOT_OPEN + """
 
                   AND #{changeNo} IS NOT NULL AND #{action} IS NOT NULL
@@ -1538,6 +1534,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 @Param("action") String action,
                 @Param("changeNo") String changeNo,
                 @Param("nextRetryAt") LocalDateTime nextRetryAt,
+                @Param("rootVersion") long rootVersion,
                 @Param("actorNo") String actorNo,
                 @Param("now") LocalDateTime now);
 

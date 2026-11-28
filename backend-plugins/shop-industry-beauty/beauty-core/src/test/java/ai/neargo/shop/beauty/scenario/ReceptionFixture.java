@@ -190,8 +190,8 @@ abstract class ReceptionFixture extends BeautyExecutionFixture {
                             private final List<BeanPostProcessor> faults = List.of(
                                     BeautyFailureInjection.afterAnyCall(BeautyMappers.AppointmentMapper.class,
                                             "markArrived", args -> "ARRIVE".equals(failAt), this::fail),
-                                    BeautyFailureInjection.afterAnyCall(
-                                            BeautyMappers.AppointmentResourceFenceMapper.class,
+                                    // 接待异常在锁住预约单之后失败（原来挂在锁资源围栏上，围栏已由修订的在途闸门取代）
+                                    BeautyFailureInjection.afterAnyCall(BeautyMappers.AppointmentMapper.class,
                                             "selectScopedForUpdate", args -> "EXCEPTION".equals(failAt), this::fail),
                                     BeautyFailureInjection.afterCall(BeautyMappers.ServiceSubmissionMapper.class,
                                             "insert", row -> "OPEN".equals(failAt)

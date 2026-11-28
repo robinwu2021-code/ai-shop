@@ -81,8 +81,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
             assertThat(owner.accepts).isEmpty();
             assertThat(result.state()).isEqualTo("PENDING");
             assertThat(result.failureCode()).isEqualTo("ARRIVAL_REQUIRES_RESCHEDULE");
-            for (String table : List.of("ord_appointment", "bty_appointment_resource_fence",
-                    "bty_appointment_current", "ord_appointment_revision", "bty_appointment_operation")) {
+            for (String table : List.of("ord_appointment", "ord_appointment_revision", "bty_appointment_operation")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
             }
             var latest = sql.queryForMap("SELECT * FROM bty_reception_operation");
@@ -674,8 +673,8 @@ class WalkInRecoveryIT extends ReceptionFixture {
                 .doesNotContain("beauty-reception-recovery"));
     }
     @ParameterizedTest
-    @ValueSource(strings = {"ord_appointment", "bty_appointment_resource_fence", "bty_appointment_current",
-            "ord_appointment_revision", "bty_appointment_operation", "bty_reception_operation"})
+    @ValueSource(strings = {"ord_appointment", "ord_appointment_revision", "bty_appointment_operation",
+            "bty_reception_operation"})
     void atomicCreatePreparationRollsBackWithoutHalfLinks(String failedTable) {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
@@ -691,8 +690,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
             } finally { sql.execute("DROP TRIGGER fail_preparation"); }
             // 预约侧任一表失败：预约侧整体回滚、不留半截。接待操作在行业库（B-5，ReceptionSteps）：预约侧先提交，
             // 挂接接待操作失败时预约侧已在、接待操作仍是「已受理」，由下面的恢复按冻结的号认出预约、补上挂接
-            for (String table : List.of("ord_appointment", "ord_appointment_revision", "bty_appointment_current",
-                    "bty_appointment_resource_fence", "bty_appointment_operation")) {
+            for (String table : List.of("ord_appointment", "ord_appointment_revision", "bty_appointment_operation")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class))
                         .as(table).isEqualTo(outerLink ? 1 : 0);
             }
@@ -797,8 +795,8 @@ class WalkInRecoveryIT extends ReceptionFixture {
             original[0] = pending.operationNo(); original[1] = pending.appointmentNo();
             original[2] = sql.queryForObject("SELECT accept_payload FROM bty_appointment_operation", String.class);
             assertThat(pending.operationState()).isEqualTo("PENDING");
-            assertThat(sql.queryForObject("SELECT active_intent_no FROM bty_appointment_resource_fence", String.class))
-                    .isNotBlank();
+            assertThat(sql.queryForObject("SELECT applying_key FROM ord_appointment_revision WHERE applying_key IS NOT NULL",
+                    String.class)).isNotBlank(); // 在途闸门在修订上（4-4b-2）
         });
         business().run(c -> {
             revokedActor = "A"; login(LoginUser.merchant("B", "second"));
@@ -891,7 +889,7 @@ class WalkInRecoveryIT extends ReceptionFixture {
                 assertThat(first.appointmentNo()).isEqualTo(second.appointmentNo());
             }
             for (String table : List.of("bty_reception_operation", "ord_appointment", "ord_appointment_revision",
-                    "bty_appointment_operation", "bty_appointment_current", "bty_appointment_resource_fence")) {
+                    "bty_appointment_operation")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isOne();
             }
         });

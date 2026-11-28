@@ -723,7 +723,7 @@ public class ManualExecutionSourceIT {
                 "frozen_plan", bookingPlan, "plan_hash", ownerBinding.planHash(), "snapshot", snapshot,
                 "expires_at", end.toLocalDateTime(), "appointment_no", "APPOINTMENT", "arrangement_revision", 1,
                 "hold_no", "HOLD", "status", "CONFIRMED", "action", "CREATE");
-        seed("bty_appointment_current", "appointment_no", "APPOINTMENT", "arrangement_revision", 1);
+        sql.update("UPDATE ord_appointment SET current_revision=1 WHERE appointment_no='APPOINTMENT'");
         var accept = new ResourceBookingPort.Accept(new ResourceBookingPort.Scope("MAIN", "E", "S"), "CONFIRM",
                 "BOOK_KEY", "BEAUTY_APPOINTMENT", "APPOINTMENT", 1, 1, null, bookingPlan);
         var receipt = new ResourceBookingPort.Receipt(ownerBinding, "RESOURCE_OWNER", "SUCCEEDED", 1, 1, null,

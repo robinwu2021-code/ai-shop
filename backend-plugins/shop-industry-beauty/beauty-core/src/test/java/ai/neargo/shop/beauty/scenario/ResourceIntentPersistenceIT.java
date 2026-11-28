@@ -104,25 +104,6 @@ class ResourceIntentPersistenceIT extends BeautyExecutionFixture {
     }
 
     @Test
-    void blocksScheduleCancelConfirmAndArrivalEvenWhenPermissionHasExpired() {
-        runner().run(ctx -> {
-            assertThat(tx(ctx, () -> acquire(ctx, "S", "I1", 0))).isOne();
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentCommandMapper", "permit", "E", "S", "CMD1", 0L, "D", T0, T0.plusSeconds(1), "F", 1L, "ACTOR"))).isEqualTo(1);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeSchedule", "E", "S", "A", 0L,
-                    "CONFIRMED", T0.plusHours(2), T0.plusHours(3), "NEXT", "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
-                    "CONFIRMED", "CANCELLED", "ACTOR", T0))).isEqualTo(0);
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "markArrived", "E", "S", "A", 0L,
-                    "CONFIRMED", T0, "ACTOR", T0))).isEqualTo(0);
-            sql.update("UPDATE ord_appointment SET status='HELD'");
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
-                    "HELD", "CONFIRMED", "ACTOR", T0))).isEqualTo(0);
-            sql.update("UPDATE bty_appointment_resource_fence SET deleted=1");
-            assertThat(tx(ctx, () -> call(ctx, "AppointmentMapper", "changeStatus", "E", "S", "A", 0L,
-                    "HELD", "CANCELLED", "ACTOR", T0))).isEqualTo(0);
-        });
-    }
-    @Test
     void requiresReconciledTerminalEvidenceBeforeFenceRelease() {
         runner().run(ctx -> {
             assertThat(tx(ctx, () -> acquire(ctx, "S", "I1", 0))).isOne();

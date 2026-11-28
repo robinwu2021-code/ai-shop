@@ -53,4 +53,6 @@ public class BtyAppointment extends BaseEntity {
     private String cancelReason;
     /** 取消或爽约的凭证引用（登记爽约时的证明材料）；没有为空。 */
     private String cancelEvidenceRef;
+    /** 当前生效的预约修订号（ord_appointment_revision.arrangement_revision）；还没有生效版为 0（§2.6 第 4–6 项 4-4b-2，取代当前行）。 */
+    private Long currentRevision;
 }

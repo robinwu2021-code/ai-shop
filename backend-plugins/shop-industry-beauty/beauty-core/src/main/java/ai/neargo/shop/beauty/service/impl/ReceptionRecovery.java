@@ -104,13 +104,11 @@ public final class ReceptionRecovery {
     private BtyReceptionOperation project(BtyReceptionOperation observed, LocalDateTime lease) {
         return steps.advance(observed, java.util.Set.of(BtyReceptionOperation.RESOURCE_PENDING), () -> {
             var root = db.lock(db.root(observed.getAppointmentNo()));
-            var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
-            var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                    root.getAppointmentNo());
+            var current = db.gateForUpdate(root);
             var linked = preparation.linkedReception(observed);
             if ("PENDING".equals(linked.getState())) { return new Outcome("PENDING", null); }
             var receipt = appointments.verifiedReceipt(linked, true);
-            AppointmentPersistence.require(fence.getActiveIntentNo() == null && current.getOperationNo() == null);
+            AppointmentPersistence.require(current.getOperationNo() == null);
             if ("SUCCEEDED".equals(linked.getState())) {
                 AppointmentPersistence.require("CONFIRM".equals(receipt.binding().action())
                         && "SUCCEEDED".equals(receipt.status()) && "CONFIRMED".equals(root.getStatus())

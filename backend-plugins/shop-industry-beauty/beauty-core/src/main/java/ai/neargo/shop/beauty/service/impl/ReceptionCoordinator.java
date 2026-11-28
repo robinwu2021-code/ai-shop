@@ -143,14 +143,12 @@ public final class ReceptionCoordinator {
                 final var active = op;
                 op = steps.advance(active, java.util.Set.of(BtyReceptionOperation.RESOURCE_PENDING), () -> {
                     var root = db.lock(scoped(entity, store, active.getAppointmentNo()));
-                    var fence = db.fences.selectScopedForUpdate(entity, store, root.getAppointmentNo());
-                    var current = db.currents.selectScopedForUpdate(entity, store, root.getAppointmentNo());
+                    var current = db.gateForUpdate(root);
                     var original = appointmentPreparation.linkedReception(active);
                     var receipt = appointments.verifiedReceipt(original, true);
                     AppointmentPersistence.require("SUCCEEDED".equals(receipt.status())
                             && "CONFIRM".equals(receipt.binding().action()) && "SUCCEEDED".equals(original.getState())
-                            && "CONFIRMED".equals(root.getStatus()) && root.getHoldNo() != null
-                            && fence.getActiveIntentNo() == null && current.getOperationNo() == null);
+                            && "CONFIRMED".equals(root.getStatus()) && root.getHoldNo() != null && current.getOperationNo() == null);
                     return root.getVersion();
                 }, (locked, rootVersion) -> {
                     AppointmentPersistence.require(sameWalkIn(active, locked));
@@ -188,12 +186,10 @@ public final class ReceptionCoordinator {
             var root = db.lock(original);
             // 上次已标到店、提交后断了：只补接待操作
             if (arrived(root, arrival, arriveAt)) { return null; }
-            var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
-            var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                    root.getAppointmentNo());
+            var current = db.gateForUpdate(root);
             AppointmentPersistence.require(evidence != null
                     && root.getVersion().equals(arrival) && "CONFIRMED".equals(root.getStatus())
-                    && root.getCheckedInAt() == null && fence.getActiveIntentNo() == null
+                    && root.getCheckedInAt() == null
                     && current.getOperationNo() == null
                     && current.getArrangementRevision() == evidence.arrangementRevision()
                     && db.roots.countWorkOrders(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()) == 0
@@ -250,9 +246,7 @@ public final class ReceptionCoordinator {
         }
         return steps.advance(observed, ACTIVE, () -> {
             var root = db.lock(scoped(observed.getEntityNo(), observed.getStoreNo(), observed.getAppointmentNo()));
-            var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
-            var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                    root.getAppointmentNo());
+            var current = db.gateForUpdate(root);
             var original = appointmentPreparation.linkedReception(observed);
             var latest = db.operation(release.getOperationNo());
             appointments.verifiedReceipt(original, true); appointments.verifiedReceipt(latest, true);
@@ -261,7 +255,7 @@ public final class ReceptionCoordinator {
                     && "SUCCEEDED".equals(latest.getState())
                     && release.getAcceptPayload().equals(latest.getAcceptPayload())
                     && release.getReceipt().equals(latest.getReceipt())
-                    && current.getOperationNo() == null && fence.getActiveIntentNo() == null
+                    && current.getOperationNo() == null
                     && db.roots.countWorkOrders(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()) == 0);
             return null;
         }, (op, ignored) -> {
@@ -275,12 +269,9 @@ public final class ReceptionCoordinator {
     private WalkInVO rejectWalkIn(BtyReceptionOperation observed) {
         return steps.advance(observed, ACTIVE, () -> {
             var root = db.lock(scoped(observed.getEntityNo(), observed.getStoreNo(), observed.getAppointmentNo()));
-            var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
-            var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                    root.getAppointmentNo());
+            var current = db.gateForUpdate(root);
             var linked = appointmentPreparation.linkedReception(observed);
-            AppointmentPersistence.require("REJECTED".equals(linked.getState()) && root.getHoldNo() == null
-                    && fence.getActiveIntentNo() == null && current.getOperationNo() == null);
+            AppointmentPersistence.require("REJECTED".equals(linked.getState()) && root.getHoldNo() == null && current.getOperationNo() == null);
             return null;
         }, (op, ignored) -> {
             AppointmentPersistence.require(sameWalkIn(observed, op));
@@ -389,9 +380,7 @@ public final class ReceptionCoordinator {
             var root = db.lock(observed);
             // 上次已标到店、提交后断了：按预约上的到店时刻补结果
             if (arrived(root, revision, at)) { return arrivalResult(root, revision, root.getCheckedInAt(), op); }
-            var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
-            AppointmentPersistence.require(fence != null && fence.getActiveIntentNo() == null);
-            var current = db.current(root);
+                        var current = db.current(root);
             AppointmentPersistence.require(evidence != null && root.getVersion() == revision && "CONFIRMED".equals(root.getStatus())
                     && root.getCheckedInAt() == null && current != null && current.getOperationNo() == null
                     && current.getArrangementRevision() == evidence.arrangementRevision()
@@ -436,9 +425,7 @@ public final class ReceptionCoordinator {
         var affected = workOrders.affectedTaskNos(entity, store, observed.getAppointmentNo());
         return steps.once(op, () -> {
             var root = db.lock(observed);
-            var fence = db.fences.selectScopedForUpdate(entity, store, root.getAppointmentNo());
-            AppointmentPersistence.require(fence != null);
-            AppointmentPersistence.require(root.getVersion().equals(req.expectedRevision()));
+                        AppointmentPersistence.require(root.getVersion().equals(req.expectedRevision()));
             // 申请只核对、不改预约：申请号就是接待操作号，内容随结果记在接待操作行上（TDD §2.6 第 12 项）
             publish(root, op, root.getVersion(), "PENDING_REVIEW");
             return new ReceptionExceptionVO(op.getOperationNo(), root.getAppointmentNo(), "PENDING_REVIEW", affected,
