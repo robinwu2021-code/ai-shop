@@ -341,7 +341,8 @@
 #### B-6：行业库部署脚本与设计稿同步（2026-11-28）
 - 设计稿：执行围栏、库存意向两张表进 `retail-ddl/beauty-execution-tables.sql`（服务端规范化写法）；生成器 `REPLACE_COLUMNS` 放宽 `bty_service_step.status` 到 `varchar(24)`、`ind_assignment.target_type` 注释加 `TASK`，`ADD_COLUMNS` 给 `ind_assignment` 加美业两列。`06-n_industry.sql` 由 38 张变 40 张。
 - 测试：美业行业库 V1 按新 06 重新拷贝；V2 只剩 5 个触发器（设计 DDL 不收触发器）；共用库模式的辅助不再补两列（随 V1 来）。两种模式下 `BeautyIndustryDatabaseIT`、`ServiceTaskPersistenceIT`、`BeautySchemaMigrationIT` 全过，`WorkOrderScopeIT` 只剩 HEAD 上同样失败的 1 条。
-- 部署：`deploy/ume/beauty-industry-cutover/`（`gen.py` 从 V1、V2 生成；`run.sh check|apply`：美业表为空才执行、备份、建 12 张表、补共用指派表两列、建 5 个触发器、按期望结构核对）。本机按旧设计稿演练两遍通过，数据保留。.61 尚未执行（要用户批准）。
+- 部署：`deploy/ume/beauty-industry-cutover/`（`gen.py` 从 V1、V2 生成；`run.sh check|apply`：美业表为空才执行、备份、建 12 张表、补共用指派表两列、建 5 个触发器、按期望结构核对）。本机按旧设计稿演练两遍通过，数据保留。
+- .61 已执行（2026-11-28 14:12Z，用户批准）：`check` 差异与预期一致 → `apply` 备份到 `~/backup/beauty-industry-20261128T141226Z/`、建 12 张表、补两列、建 5 个触发器，核对通过 → 再 `check` 无差异。`n_industry` 由 28 张变 39 张，美业表与 `ind_assignment` 都是 0 行。详见部署目录 README「执行记录」。
 
 #### 第 4–6 项方案（草稿，2026-11-28，待用户定）：以预约修订为中心
 

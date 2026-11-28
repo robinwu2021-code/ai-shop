@@ -44,4 +44,10 @@
 
 ## 执行记录
 
-（.61 执行后在此追加：时间、执行人、备份位置、核对结果。）
+### .61 · 2026-11-28 14:12:25–14:12:28Z（UTC）
+
+- 执行：Claude 会话（用户批准），提交 `7ac7bf71b` 的脚本复制到 .61 `~/deploy/beauty-industry-cutover-7ac7bf71b/`，六个产物 sha256 与仓库一致；root 经容器内的 `mysqlw` / `mysqldumpw` 包装执行（口令不出容器，同餐饮）。
+- 执行前：`read_only=0`，没有连接在用 `n_industry`；`check` 差异与上面变更清单一致（缺 11 张表、`bty_service_step` 旧结构、`ind_assignment` 缺两列、无触发器），没有多出的 `>` 行。
+- `apply`：美业表全空（只有 `bty_service_step` 0 行）→ 备份 `~/backup/beauty-industry-20261128T141226Z/n_industry.sql`（`bty_service_step` + `ind_assignment` 结构，`ind_assignment` 0 行故无 INSERT）→ 02、03、04 → 核对通过（12 张美业表与 `ind_assignment` 的列、唯一键、触发器与定稿一致）。
+- 执行后再 `check`：12 张美业表都 0 行，`ind_assignment` 美业两列 2 列，与定稿无差异。`n_industry` 由 28 张变 39 张。
+
