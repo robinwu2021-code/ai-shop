@@ -135,6 +135,8 @@ public final class BizKey {
     public static final String INVOICE_REQUEST = "INV";
     /** 费率规则版本 */
     public static final String FEE_RULE = "FR";
+    /** 交付要求（prd_fulfillment_requirement）：服务定义发布时按行生成 */
+    public static final String FULFILLMENT_REQUIREMENT = "PFQ";
     /** 收款流水（stl_payment）。与结算单 STL 分开：那是「该给商家多少」，这是「用户付了多少」 */
     public static final String PAYMENT = "PY";
     /** 商家提现单（stl_withdraw）。V288 起商家可申请，此前这张表从没被写过 */

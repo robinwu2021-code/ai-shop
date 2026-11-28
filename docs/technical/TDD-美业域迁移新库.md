@@ -503,6 +503,13 @@
 - 本机 MySQL 9.7 建 68 张表通过；默认行加覆盖行可写，同版本重复、时长 0、负缓冲分别被唯一键与检查约束挡住。
 - slim 的 `db-target-fields.json` 等派生件由 V2 会话补（已发 DDL）。
 
+**P3 完成（2026-11-28，商品会话已核对）**：
+- `shop-base` 加 `ServiceDefinitionPort`（发布 / 当前 / 按版本 / 按时刻列表）；`shop-core` 加 `PrdServiceDefinition`、`PrdFulfillmentRequirement` 与两个 Mapper，「这个 SKU 用哪一行」只在 `ServiceDefinitionMapper.applicable` 判。
+- 「主体 + 门店 + SKU → 服务商品」抽成 `ServiceGoods`，服务事实与服务定义共用；服务事实的时长有定义取定义（按 SKU），否则取商品。
+- 时长同一事实一处：`PrdGoods.durationMin` 标 `updateStrategy = NEVER`，整行 `updateById` 永远不写（商品会话指出上下架、评价回写评分、规格合并三处整行写回会盖掉镜像）；写入方只有两个定向更新：商家保存（商品还没有服务定义时）与定义发布的镜像。
+- 测试 `ServiceDefinitionPortTest`（7 条，H2 跑定稿结构）：发布并镜像且商品版本不变、整行更新不写回旧时长、版本冲突、覆盖行、重放、无定义回落、商家保存不写已定义的时长。
+- 商家编辑页把美业服务时长改为只读：要给 `GoodsVO` 加标记（契约变更），按商品会话建议单独做，不在 P3。
+
 **原待定（已定，留作记录）**：
 - 新表的加法：生成器加机制，还是改 ai-shop-slim 生成源；
 - 发布服务定义是否让 `prd_goods.version` 加一（会让商家手上未发布的商品草稿提示「有人中途改过」）；

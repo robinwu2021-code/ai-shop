@@ -674,4 +674,69 @@ public final class ProductMappers {
      */
     public interface SpuStdMapper extends ProductTableMapper<ai.neargo.shop.product.entity.PrdSpuStd> {
     }
+
+    /**
+     * 服务定义（TDD-美业域迁移新库 §2.8）。「这个 SKU 用哪一行」只在 {@link #applicable} 一处决定：
+     * 有覆盖行用覆盖行，否则用默认行。
+     */
+    public interface ServiceDefinitionMapper
+            extends ProductTableMapper<ai.neargo.shop.product.entity.PrdServiceDefinition> {
+
+        /** 商品当前的定义版本；还没有定义时为 0。 */
+        @Select("SELECT COALESCE(MAX(definition_version), 0) FROM prd_service_definition "
+                + "WHERE tenant_no = 'MAIN' AND goods_no = #{goodsNo} AND deleted = 0")
+        int currentVersion(@Param("goodsNo") String goodsNo);
+
+        /** 门店下各商品在 {@code at} 时刻生效的版本：每个商品一行，只填商品号与版本。 */
+        @Select("SELECT goods_no, MAX(definition_version) AS definition_version FROM prd_service_definition "
+                + "WHERE tenant_no = 'MAIN' AND entity_no = #{entityNo} AND store_no = #{storeNo} "
+                + "AND published_at <= #{at} AND deleted = 0 GROUP BY goods_no ORDER BY goods_no")
+        List<ai.neargo.shop.product.entity.PrdServiceDefinition> versionsAt(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("at") LocalDateTime at);
+
+        /** 某版本的全部行（默认行在前）。 */
+        default List<ai.neargo.shop.product.entity.PrdServiceDefinition> rows(String goodsNo, int version) {
+            return selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdServiceDefinition>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdServiceDefinition::getTenantNo, "MAIN")
+                    .eq(ai.neargo.shop.product.entity.PrdServiceDefinition::getGoodsNo, goodsNo)
+                    .eq(ai.neargo.shop.product.entity.PrdServiceDefinition::getDefinitionVersion, version)
+                    .orderByAsc(ai.neargo.shop.product.entity.PrdServiceDefinition::getSkuNo));
+        }
+
+        /** 这个 SKU 在一组行里用哪一行：有覆盖行用覆盖行，否则用默认行；都没有为 {@code null}。 */
+        static ai.neargo.shop.product.entity.PrdServiceDefinition applicable(
+                List<ai.neargo.shop.product.entity.PrdServiceDefinition> rows, String skuNo) {
+            ai.neargo.shop.product.entity.PrdServiceDefinition fallback = null;
+            for (var row : rows) {
+                if (row.getSkuNo().equals(skuNo)) { return row; }
+                if (row.getSkuNo().isEmpty()) { fallback = row; }
+            }
+            return fallback;
+        }
+
+        /** 这个 SKU 现在用哪一行（见 {@link #applicable}）；商品没有服务定义时为 {@code null}。 */
+        default ai.neargo.shop.product.entity.PrdServiceDefinition current(String goodsNo, String skuNo) {
+            int version = currentVersion(goodsNo);
+            return version == 0 ? null : applicable(rows(goodsNo, version), skuNo);
+        }
+    }
+
+    /** 交付要求：服务的要求挂服务定义版本。 */
+    public interface FulfillmentRequirementMapper
+            extends ProductTableMapper<ai.neargo.shop.product.entity.PrdFulfillmentRequirement> {
+
+        /** 某服务定义版本的全部要求，按 SKU、顺序排。 */
+        default List<ai.neargo.shop.product.entity.PrdFulfillmentRequirement> ofDefinition(String goodsNo,
+                int version) {
+            return selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdFulfillmentRequirement>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdFulfillmentRequirement::getTenantNo, "MAIN")
+                    .eq(ai.neargo.shop.product.entity.PrdFulfillmentRequirement::getGoodsNo, goodsNo)
+                    .eq(ai.neargo.shop.product.entity.PrdFulfillmentRequirement::getDefinitionVersion, version)
+                    .orderByAsc(ai.neargo.shop.product.entity.PrdFulfillmentRequirement::getSkuNo,
+                            ai.neargo.shop.product.entity.PrdFulfillmentRequirement::getSequenceNo,
+                            ai.neargo.shop.product.entity.PrdFulfillmentRequirement::getId));
+        }
+    }
 }

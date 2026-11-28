@@ -232,6 +232,34 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.retentionGuard = guard;
     }
 
+    /** 服务定义（TDD-美业域迁移新库 §2.8）：有定义的服务商品，时长只由定义发布写。 */
+    private ai.neargo.shop.product.mapper.ProductMappers.ServiceDefinitionMapper serviceDefinitions;
+
+    @Autowired
+    public void setServiceDefinitions(ai.neargo.shop.product.mapper.ProductMappers.ServiceDefinitionMapper mapper) {
+        this.serviceDefinitions = mapper;
+    }
+
+    /**
+     * 商家保存的时长写入：{@code duration_min} 不随整行更新（见 {@link PrdGoods#getDurationMin()}），
+     * 这里是商家这一侧唯一的写入方。商品已有服务定义时不写，时长归定义发布。
+     */
+    private void writeDuration(PrdGoods g) {
+        if (!PrdGoods.TYPE_SERVICE.equals(g.getType()) || g.getDurationMin() == null
+                || durationOwnedByDefinition(g)) {
+            return;
+        }
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.update(null, Wrappers.<PrdGoods>lambdaUpdate()
+                .set(PrdGoods::getDurationMin, g.getDurationMin())
+                .eq(PrdGoods::getEntityNo, g.getEntityNo()).eq(PrdGoods::getGoodsNo, g.getGoodsNo())));
+    }
+
+    /** 这件服务商品的时长归服务定义管（已发布过定义）：商家保存与草稿换版都不写时长。 */
+    private boolean durationOwnedByDefinition(PrdGoods g) {
+        return serviceDefinitions != null && g.getGoodsNo() != null
+                && DataScopeContext.executeWithoutScope(() -> serviceDefinitions.currentVersion(g.getGoodsNo())) > 0;
+    }
+
     // ---------------------------------------------------------------- 查询
 
     @Override
@@ -1198,6 +1226,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             DataScopeContext.executeWithoutScope(() -> goodsMapper.insert(g));
         } else {
             updateGoods(g);
+            writeDuration(g);
             // 直接改了主行 = 送审的是这一版；之前提交的草稿基于旧内容，留着会被过审原样换上来
             if (PUBLISHING.get() == null) {
                 withdrawSubmittedDraft(g.getGoodsNo());
@@ -1834,7 +1863,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         if (cmd.service() != null && PrdGoods.TYPE_SERVICE.equals(g.getType())) {
             var s = cmd.service();
-            if (s.durationMin() != null) {
+            // 有服务定义的商品时长由定义发布写并镜像过来；这里写的话，草稿里的旧时长会在换版时盖回去
+            if (s.durationMin() != null && !durationOwnedByDefinition(g)) {
                 g.setDurationMin(s.durationMin());
             }
             if (s.storeName() != null) {

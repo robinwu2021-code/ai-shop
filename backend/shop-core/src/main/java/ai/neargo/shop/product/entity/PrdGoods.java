@@ -215,6 +215,12 @@ public class PrdGoods extends BaseEntity {
     private String origin;
 
     // ---- SERVICE ----
+    /**
+     * 服务时长（分钟）。<b>整行更新永远不写这一列</b>（TDD-美业域迁移新库 §2.8）：服务定义发布把时长定向镜像过来、
+     * 不动乐观锁版本，任何「先读整行、改别的字段、updateById」的路径都会把读到的旧时长写回去。
+     * 只有两个定向写入方：商家保存（商品还没有服务定义时）与服务定义发布。新建商品的 INSERT 照常写。
+     */
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
     private Integer durationMin;
     private String storeName;
 

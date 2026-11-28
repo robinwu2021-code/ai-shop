@@ -9,7 +9,9 @@ import static org.mockito.Mockito.when;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.ServiceDefinitionMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.product.port.ServiceGoods;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.ServiceProductFactsPort;
 import java.util.List;
@@ -46,16 +48,20 @@ class ServiceProductFactsPortTest {
                     + "type VARCHAR(32),duration_min INT,tenant_no VARCHAR(32),deleted INT,version BIGINT DEFAULT 0)");
             sql.execute("INSERT INTO prd_sku VALUES ('SKU','G','E','MAIN',0,'CN',0)");
             sql.execute("INSERT INTO prd_goods VALUES ('G','E','S','SERVICE',60,'MAIN',0,7)");
+            sql.execute("CREATE TABLE prd_service_definition (goods_no VARCHAR(32), sku_no VARCHAR(32),"
+                    + "definition_version INT, duration_min INT, tenant_no VARCHAR(32), deleted INT)");
             if (mutation != null) { sql.execute(mutation); }
             var factory = context.getBean(SqlSessionFactory.class);
             factory.getConfiguration().addMapper(SkuMapper.class);
             factory.getConfiguration().addMapper(GoodsMapper.class);
+            factory.getConfiguration().addMapper(ServiceDefinitionMapper.class);
             var template = new SqlSessionTemplate(factory);
             Class<?> impl = assertDoesNotThrow(() -> Class.forName(
                     "ai.neargo.shop.product.port.ServiceProductFactsPortImpl"));
-            var port = (ServiceProductFactsPort) impl.getConstructor(SkuMapper.class, GoodsMapper.class,
-                    GoodsQueryPort.class).newInstance(template.getMapper(SkuMapper.class),
-                            template.getMapper(GoodsMapper.class), quotes(onSale));
+            var lookup = new ServiceGoods(template.getMapper(SkuMapper.class), template.getMapper(GoodsMapper.class));
+            var port = (ServiceProductFactsPort) impl.getConstructor(ServiceGoods.class,
+                    ServiceDefinitionMapper.class, GoodsQueryPort.class).newInstance(lookup,
+                            template.getMapper(ServiceDefinitionMapper.class), quotes(onSale));
             if (succeeds) {
                 var fact = port.get("E", "S", "SKU");
                 assertThat(fact.durationMin()).isEqualTo(60);
