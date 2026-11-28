@@ -1,0 +1,414 @@
+column	bty_arrival_challenge	id	bigint	NO	<null>
+column	bty_arrival_challenge	tenant_no	varchar(32)	NO	MAIN
+column	bty_arrival_challenge	entity_no	varchar(32)	NO	<null>
+column	bty_arrival_challenge	created_at	datetime(3)	NO	<null>
+column	bty_arrival_challenge	created_by	varchar(64)	YES	<null>
+column	bty_arrival_challenge	updated_at	datetime(3)	NO	<null>
+column	bty_arrival_challenge	updated_by	varchar(64)	YES	<null>
+column	bty_arrival_challenge	version	bigint	NO	0
+column	bty_arrival_challenge	deleted	int	NO	0
+column	bty_arrival_challenge	store_no	varchar(32)	NO	<null>
+column	bty_arrival_challenge	challenge_no	varchar(32)	NO	<null>
+column	bty_arrival_challenge	code	varchar(43)	NO	<null>
+column	bty_arrival_challenge	issued_at	datetime(3)	NO	<null>
+column	bty_arrival_challenge	expires_at	datetime(3)	NO	<null>
+column	bty_arrival_challenge	actor_no	varchar(64)	NO	<null>
+column	bty_arrival_challenge	actor_realm	varchar(32)	NO	<null>
+column	bty_arrival_challenge	actor_kind	varchar(32)	NO	<null>
+column	bty_arrival_challenge	key_hash	char(64)	NO	<null>
+column	bty_guest_claim_receipt	id	bigint	NO	<null>
+column	bty_guest_claim_receipt	tenant_no	varchar(32)	NO	MAIN
+column	bty_guest_claim_receipt	entity_no	varchar(32)	NO	<null>
+column	bty_guest_claim_receipt	created_at	datetime(3)	NO	<null>
+column	bty_guest_claim_receipt	created_by	varchar(64)	YES	<null>
+column	bty_guest_claim_receipt	updated_at	datetime(3)	NO	<null>
+column	bty_guest_claim_receipt	updated_by	varchar(64)	YES	<null>
+column	bty_guest_claim_receipt	version	bigint	NO	0
+column	bty_guest_claim_receipt	deleted	int	NO	0
+column	bty_guest_claim_receipt	store_no	varchar(32)	NO	<null>
+column	bty_guest_claim_receipt	guest_no	varchar(32)	NO	<null>
+column	bty_guest_claim_receipt	claim_revision	bigint	NO	<null>
+column	bty_guest_claim_receipt	user_no	varchar(32)	NO	<null>
+column	bty_guest_claim_receipt	owner_receipt_hash	char(64)	NO	<null>
+column	bty_guest_claim_receipt	recorded_at	datetime(3)	NO	<null>
+column	bty_reception_operation	id	bigint	NO	<null>
+column	bty_reception_operation	tenant_no	varchar(32)	NO	MAIN
+column	bty_reception_operation	entity_no	varchar(32)	NO	<null>
+column	bty_reception_operation	created_at	datetime(3)	NO	<null>
+column	bty_reception_operation	created_by	varchar(64)	YES	<null>
+column	bty_reception_operation	updated_at	datetime(3)	NO	<null>
+column	bty_reception_operation	updated_by	varchar(64)	YES	<null>
+column	bty_reception_operation	version	bigint	NO	0
+column	bty_reception_operation	deleted	int	NO	0
+column	bty_reception_operation	store_no	varchar(32)	NO	<null>
+column	bty_reception_operation	operation_no	varchar(32)	NO	<null>
+column	bty_reception_operation	actor_no	varchar(64)	NO	<null>
+column	bty_reception_operation	actor_realm	varchar(32)	NO	<null>
+column	bty_reception_operation	actor_kind	varchar(32)	NO	<null>
+column	bty_reception_operation	endpoint	varchar(64)	NO	<null>
+column	bty_reception_operation	action	varchar(32)	NO	<null>
+column	bty_reception_operation	key_hash	char(64)	NO	<null>
+column	bty_reception_operation	request_hash	char(64)	NO	<null>
+column	bty_reception_operation	appointment_no	varchar(32)	YES	<null>
+column	bty_reception_operation	work_order_no	varchar(32)	YES	<null>
+column	bty_reception_operation	identity_kind	varchar(16)	YES	<null>
+column	bty_reception_operation	identity_ref	varchar(32)	YES	<null>
+column	bty_reception_operation	phase	varchar(24)	NO	<null>
+column	bty_reception_operation	appointment_operation_no	varchar(32)	YES	<null>
+column	bty_reception_operation	derived_key_hash	char(64)	YES	<null>
+column	bty_reception_operation	frozen_payload	json	NO	<null>
+column	bty_reception_operation	result	json	YES	<null>
+column	bty_reception_operation	next_retry_at	datetime(3)	YES	<null>
+column	bty_reception_operation	lease_until	datetime(3)	YES	<null>
+column	bty_reception_operation	failure_code	varchar(64)	YES	<null>
+column	bty_service_execution_fence	id	bigint	NO	<null>
+column	bty_service_execution_fence	tenant_no	varchar(32)	NO	MAIN
+column	bty_service_execution_fence	created_at	datetime(3)	NO	<null>
+column	bty_service_execution_fence	created_by	varchar(64)	YES	<null>
+column	bty_service_execution_fence	updated_at	datetime(3)	NO	<null>
+column	bty_service_execution_fence	updated_by	varchar(64)	YES	<null>
+column	bty_service_execution_fence	version	bigint	NO	1
+column	bty_service_execution_fence	deleted	int	NO	0
+column	bty_service_execution_fence	fence_no	varchar(32)	NO	<null>
+column	bty_service_execution_fence	entity_no	varchar(32)	NO	<null>
+column	bty_service_execution_fence	store_no	varchar(32)	NO	<null>
+column	bty_service_execution_fence	work_order_no	varchar(32)	NO	<null>
+column	bty_service_execution_fence	task_no	varchar(32)	NO	<null>
+column	bty_service_execution_fence	binding_no	varchar(32)	NO	<null>
+column	bty_service_execution_fence	execution_no	varchar(32)	NO	<null>
+column	bty_service_execution_fence	submission_no	varchar(32)	NO	<null>
+column	bty_service_execution_fence	definition_version_no	varchar(32)	NO	<null>
+column	bty_service_execution_fence	resource_command_no	varchar(32)	NO	<null>
+column	bty_service_execution_fence	source_no	varchar(64)	NO	<null>
+column	bty_service_execution_fence	order_no	varchar(64)	NO	<null>
+column	bty_service_execution_fence	source_operation_no	varchar(64)	NO	<null>
+column	bty_service_execution_fence	source_kind	varchar(32)	NO	<null>
+column	bty_service_execution_fence	source_line_no	varchar(40)	NO	<null>
+column	bty_service_execution_fence	binding_revision	bigint	NO	<null>
+column	bty_service_execution_fence	manual_source_revision	bigint	NO	<null>
+column	bty_service_execution_fence	manual_source_epoch	bigint	NO	<null>
+column	bty_service_execution_fence	initial_task_revision	bigint	NO	<null>
+column	bty_service_execution_fence	scope_revision	bigint	NO	<null>
+column	bty_service_execution_fence	unit_ordinal	int	NO	<null>
+column	bty_service_execution_fence	ordered_units	int	NO	<null>
+column	bty_service_execution_fence	attempt_no	int	NO	<null>
+column	bty_service_execution_fence	quantity	int	NO	<null>
+column	bty_service_execution_fence	uom	varchar(8)	NO	COUNT
+column	bty_service_execution_fence	manual_source_hash	char(64)	NO	<null>
+column	bty_service_execution_fence	source_intent_hash	char(64)	NO	<null>
+column	bty_service_execution_fence	binding_hash	char(64)	NO	<null>
+column	bty_service_execution_fence	payload_hash	char(64)	NO	<null>
+column	bty_service_execution_fence	execution_snapshot_hash	char(64)	NO	<null>
+column	bty_service_execution_fence	plan_hash	char(64)	NO	<null>
+column	bty_service_execution_fence	resource_command_hash	char(64)	NO	<null>
+column	bty_service_execution_fence	intent_state	varchar(32)	NO	<null>
+column	bty_service_execution_fence	source_fence_revision	bigint	NO	1
+column	bty_service_execution_fence	observation_epoch	bigint	NO	0
+column	bty_service_execution_fence	next_retry_at	datetime(3)	YES	<null>
+column	bty_service_execution_fence	observed_grant_no	varchar(32)	YES	<null>
+column	bty_service_execution_fence	observed_grant_revision	bigint	YES	<null>
+column	bty_service_execution_fence	observed_grant_state	varchar(32)	YES	<null>
+column	bty_service_execution_fence	suspension_intent_revision	bigint	YES	<null>
+column	bty_service_execution_fence	suspension_manual_epoch	bigint	YES	<null>
+column	bty_service_execution_fence	suspension_observation_version	bigint	YES	<null>
+column	bty_service_execution_fence	suspension_observed_revision	bigint	YES	<null>
+column	bty_service_execution_fence	suspension_observed_hash	char(64)	YES	<null>
+column	bty_service_execution_fence	suspension_reason	varchar(64)	YES	<null>
+column	bty_service_execution_fence	suspension_proof_hash	char(64)	YES	<null>
+column	bty_service_execution_fence	binding_json	longtext	NO	<null>
+column	bty_service_execution_stock_intent	id	bigint	NO	<null>
+column	bty_service_execution_stock_intent	tenant_no	varchar(32)	NO	MAIN
+column	bty_service_execution_stock_intent	created_at	datetime(3)	NO	<null>
+column	bty_service_execution_stock_intent	created_by	varchar(64)	YES	<null>
+column	bty_service_execution_stock_intent	updated_at	datetime(3)	NO	<null>
+column	bty_service_execution_stock_intent	updated_by	varchar(64)	YES	<null>
+column	bty_service_execution_stock_intent	version	bigint	NO	1
+column	bty_service_execution_stock_intent	deleted	int	NO	0
+column	bty_service_execution_stock_intent	entity_no	varchar(32)	NO	<null>
+column	bty_service_execution_stock_intent	store_no	varchar(32)	NO	<null>
+column	bty_service_execution_stock_intent	work_order_no	varchar(32)	NO	<null>
+column	bty_service_execution_stock_intent	task_no	varchar(32)	NO	<null>
+column	bty_service_execution_stock_intent	fence_no	varchar(32)	NO	<null>
+column	bty_service_execution_stock_intent	submission_no	varchar(32)	NO	<null>
+column	bty_service_execution_stock_intent	execution_no	varchar(32)	NO	<null>
+column	bty_service_execution_stock_intent	resource_command_no	varchar(32)	NO	<null>
+column	bty_service_execution_stock_intent	attempt_no	int	NO	<null>
+column	bty_service_execution_stock_intent	binding_hash	char(64)	NO	<null>
+column	bty_service_execution_stock_intent	source_intent_hash	char(64)	NO	<null>
+column	bty_service_execution_stock_intent	resource_command_hash	char(64)	NO	<null>
+column	bty_service_execution_stock_intent	plan_hash	char(64)	NO	<null>
+column	bty_service_execution_stock_intent	reference_hash	char(64)	NO	<null>
+column	bty_service_execution_stock_intent	lookup_hash	char(64)	NO	<null>
+column	bty_service_execution_stock_intent	retention_no	char(64)	NO	<null>
+column	bty_service_execution_stock_intent	request_hash	char(64)	NO	<null>
+column	bty_service_execution_stock_intent	reference_json	longtext	NO	<null>
+column	bty_service_execution_stock_intent	lookup_json	longtext	NO	<null>
+column	bty_service_execution_stock_intent	route_no	char(64)	YES	<null>
+column	bty_service_execution_stock_intent	route_hash	char(64)	YES	<null>
+column	bty_service_execution_stock_intent	evidence_hash	char(64)	YES	<null>
+column	bty_service_execution_stock_intent	receipt_hash	char(64)	YES	<null>
+column	bty_service_execution_stock_intent	evidence_json	longtext	YES	<null>
+column	bty_service_execution_stock_intent	receipt_json	longtext	YES	<null>
+column	bty_service_execution_stock_intent	evidence_observed_at	datetime(3)	YES	<null>
+column	bty_service_execution_stock_intent	receipt_observed_at	datetime(3)	YES	<null>
+column	bty_service_execution_stock_intent	observation_state	varchar(40)	NO	<null>
+column	bty_service_execution_stock_intent	pending_reason	varchar(64)	YES	<null>
+column	bty_service_execution_stock_intent	source_fence_revision	bigint	NO	<null>
+column	bty_service_execution_stock_intent	observation_epoch	bigint	NO	<null>
+column	bty_service_step	id	bigint unsigned	NO	<null>
+column	bty_service_step	tenant_no	varchar(32)	NO	<null>
+column	bty_service_step	entity_no	varchar(32)	NO	<null>
+column	bty_service_step	step_no	varchar(32)	NO	<null>
+column	bty_service_step	task_no	varchar(32)	NO	<null>
+column	bty_service_step	step_code	varchar(32)	NO	<null>
+column	bty_service_step	sequence_no	int	NO	<null>
+column	bty_service_step	status	varchar(24)	NO	<null>
+column	bty_service_step	started_at	datetime(3)	YES	<null>
+column	bty_service_step	finished_at	datetime(3)	YES	<null>
+column	bty_service_step	result_snapshot	json	YES	<null>
+column	bty_service_step	deleted	tinyint	NO	0
+column	bty_service_step	version	bigint	NO	0
+column	bty_service_step	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	bty_service_step	created_by	varchar(64)	YES	<null>
+column	bty_service_step	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	bty_service_step	updated_by	varchar(64)	YES	<null>
+column	bty_service_submission	id	bigint	NO	<null>
+column	bty_service_submission	tenant_no	varchar(32)	NO	MAIN
+column	bty_service_submission	entity_no	varchar(32)	NO	<null>
+column	bty_service_submission	created_at	datetime(3)	NO	<null>
+column	bty_service_submission	created_by	varchar(64)	YES	<null>
+column	bty_service_submission	updated_at	datetime(3)	NO	<null>
+column	bty_service_submission	updated_by	varchar(64)	YES	<null>
+column	bty_service_submission	version	bigint	NO	0
+column	bty_service_submission	deleted	int	NO	0
+column	bty_service_submission	submission_no	varchar(32)	NO	<null>
+column	bty_service_submission	store_no	varchar(32)	NO	<null>
+column	bty_service_submission	work_order_no	varchar(32)	YES	<null>
+column	bty_service_submission	action	varchar(32)	NO	<null>
+column	bty_service_submission	request_key_hash	char(64)	NO	<null>
+column	bty_service_submission	payload_hash	char(64)	NO	<null>
+column	bty_service_submission	status	varchar(24)	NO	<null>
+column	bty_service_submission	frozen_command	json	NO	<null>
+column	bty_service_submission	next_retry_at	datetime(3)	YES	<null>
+column	bty_service_submission	failure_code	varchar(64)	YES	<null>
+column	bty_service_task	id	bigint	NO	<null>
+column	bty_service_task	tenant_no	varchar(32)	NO	MAIN
+column	bty_service_task	entity_no	varchar(32)	NO	<null>
+column	bty_service_task	created_at	datetime(3)	NO	<null>
+column	bty_service_task	created_by	varchar(64)	YES	<null>
+column	bty_service_task	updated_at	datetime(3)	NO	<null>
+column	bty_service_task	updated_by	varchar(64)	YES	<null>
+column	bty_service_task	version	bigint	NO	0
+column	bty_service_task	deleted	int	NO	0
+column	bty_service_task	task_no	varchar(32)	NO	<null>
+column	bty_service_task	work_order_no	varchar(32)	NO	<null>
+column	bty_service_task	scope_revision	bigint	NO	<null>
+column	bty_service_task	sku_no	varchar(32)	NO	<null>
+column	bty_service_task	definition_version_no	varchar(32)	NO	<null>
+column	bty_service_task	appointment_item_no	varchar(32)	YES	<null>
+column	bty_service_task	qty	decimal(18,6)	NO	<null>
+column	bty_service_task	done_qty	decimal(18,6)	NO	<null>
+column	bty_service_task	voided_qty	decimal(18,6)	NO	<null>
+column	bty_service_task	uom	varchar(24)	NO	<null>
+column	bty_service_task	status	varchar(24)	NO	<null>
+column	bty_service_task	binding_revision	bigint	NO	<null>
+column	bty_service_task	started_at	datetime(3)	YES	<null>
+column	bty_service_task	finished_at	datetime(3)	YES	<null>
+column	bty_service_task	execution_snapshot	json	NO	<null>
+column	bty_source_allocation_guard	id	bigint	NO	<null>
+column	bty_source_allocation_guard	tenant_no	varchar(32)	NO	MAIN
+column	bty_source_allocation_guard	entity_no	varchar(32)	NO	<null>
+column	bty_source_allocation_guard	created_at	datetime(3)	NO	<null>
+column	bty_source_allocation_guard	created_by	varchar(64)	YES	<null>
+column	bty_source_allocation_guard	updated_at	datetime(3)	NO	<null>
+column	bty_source_allocation_guard	updated_by	varchar(64)	YES	<null>
+column	bty_source_allocation_guard	version	bigint	NO	0
+column	bty_source_allocation_guard	deleted	int	NO	0
+column	bty_source_allocation_guard	guard_no	varchar(32)	NO	<null>
+column	bty_source_allocation_guard	source_kind	varchar(32)	NO	<null>
+column	bty_source_allocation_guard	source_no	varchar(64)	NO	<null>
+column	bty_source_allocation_guard	source_line_ref	varchar(64)	NO	<null>
+column	bty_source_allocation_guard	source_revision	bigint	YES	<null>
+column	bty_source_allocation_guard	source_qty	decimal(18,6)	NO	<null>
+column	bty_source_allocation_guard	allocated_qty	decimal(18,6)	NO	<null>
+column	bty_source_allocation_guard	uom	varchar(24)	NO	<null>
+column	bty_source_allocation_guard	source_hash	char(64)	YES	<null>
+column	bty_source_allocation_guard	admission_kind	varchar(24)	NO	LEGACY_FUNDED
+column	bty_source_allocation_guard	customer_kind	varchar(8)	YES	<null>
+column	bty_source_allocation_guard	guest_no	varchar(32)	YES	<null>
+column	bty_source_allocation_guard	identity_revision	bigint	YES	<null>
+column	bty_source_allocation_guard	buyer_no	varchar(64)	YES	<null>
+column	bty_source_allocation_guard	manual_source_revision	bigint	YES	<null>
+column	bty_source_allocation_guard	manual_source_hash	char(64)	YES	<null>
+column	bty_source_observation	id	bigint	NO	<null>
+column	bty_source_observation	tenant_no	varchar(32)	NO	MAIN
+column	bty_source_observation	entity_no	varchar(32)	NO	<null>
+column	bty_source_observation	created_at	datetime(3)	NO	<null>
+column	bty_source_observation	created_by	varchar(64)	YES	<null>
+column	bty_source_observation	updated_at	datetime(3)	NO	<null>
+column	bty_source_observation	updated_by	varchar(64)	YES	<null>
+column	bty_source_observation	version	bigint	NO	0
+column	bty_source_observation	deleted	int	NO	0
+column	bty_source_observation	store_no	varchar(32)	NO	<null>
+column	bty_source_observation	source_kind	varchar(32)	NO	<null>
+column	bty_source_observation	source_no	varchar(64)	NO	<null>
+column	bty_source_observation	checkout_caller	varchar(16)	NO	<null>
+column	bty_source_observation	checkout_operation_no	varchar(64)	NO	<null>
+column	bty_source_observation	order_no	varchar(64)	NO	<null>
+column	bty_source_observation	buyer_no	varchar(64)	YES	<null>
+column	bty_source_observation	observation_epoch	bigint	NO	0
+column	bty_source_observation	state	varchar(16)	NO	<null>
+column	bty_source_observation	source_revision	bigint	YES	<null>
+column	bty_source_observation	source_hash	char(64)	YES	<null>
+column	bty_source_observation	verified_revision	bigint	YES	<null>
+column	bty_source_observation	verified_hash	char(64)	YES	<null>
+column	bty_source_observation	verified_lines	json	YES	<null>
+column	bty_source_observation	verified_at	datetime(3)	YES	<null>
+column	bty_source_observation	observed_at	datetime(3)	YES	<null>
+column	bty_source_observation	failure_code	varchar(64)	YES	<null>
+column	bty_source_observation	admission_kind	varchar(24)	NO	LEGACY_FUNDED
+column	bty_source_observation	customer_kind	varchar(8)	YES	<null>
+column	bty_source_observation	guest_no	varchar(32)	YES	<null>
+column	bty_source_observation	identity_revision	bigint	YES	<null>
+column	bty_source_observation	manual_epoch	bigint	YES	<null>
+column	bty_source_observation	manual_state	varchar(16)	YES	<null>
+column	bty_source_observation	manual_observed_at	datetime(3)	YES	<null>
+column	bty_source_observation	manual_failure_code	varchar(64)	YES	<null>
+column	bty_source_observation	manual_revision	bigint	YES	<null>
+column	bty_source_observation	manual_hash	char(64)	YES	<null>
+column	bty_source_observation	manual_verified_revision	bigint	YES	<null>
+column	bty_source_observation	manual_verified_hash	char(64)	YES	<null>
+column	bty_source_observation	manual_verified_lines	json	YES	<null>
+column	bty_source_observation	manual_verified_at	datetime(3)	YES	<null>
+column	bty_source_observation	manual_admission_revision	bigint	YES	<null>
+column	bty_source_observation	manual_admission_state	varchar(24)	YES	<null>
+column	bty_trade_binding	id	bigint	NO	<null>
+column	bty_trade_binding	tenant_no	varchar(32)	NO	MAIN
+column	bty_trade_binding	entity_no	varchar(32)	NO	<null>
+column	bty_trade_binding	created_at	datetime(3)	NO	<null>
+column	bty_trade_binding	created_by	varchar(64)	YES	<null>
+column	bty_trade_binding	updated_at	datetime(3)	NO	<null>
+column	bty_trade_binding	updated_by	varchar(64)	YES	<null>
+column	bty_trade_binding	version	bigint	NO	0
+column	bty_trade_binding	deleted	int	NO	0
+column	bty_trade_binding	binding_no	varchar(32)	NO	<null>
+column	bty_trade_binding	submission_no	varchar(32)	NO	<null>
+column	bty_trade_binding	task_no	varchar(32)	NO	<null>
+column	bty_trade_binding	binding_revision	bigint	NO	<null>
+column	bty_trade_binding	source_kind	varchar(32)	NO	<null>
+column	bty_trade_binding	source_no	varchar(64)	NO	<null>
+column	bty_trade_binding	source_line_ref	varchar(64)	NO	<null>
+column	bty_trade_binding	source_revision	bigint	YES	<null>
+column	bty_trade_binding	qty	decimal(18,6)	NO	<null>
+column	bty_trade_binding	uom	varchar(24)	NO	<null>
+column	bty_trade_binding	source_snapshot_hash	char(64)	YES	<null>
+column	bty_trade_binding	guard_no	varchar(32)	NO	<null>
+column	bty_trade_binding	admission_kind	varchar(24)	NO	LEGACY_FUNDED
+column	bty_trade_binding	customer_kind	varchar(8)	YES	<null>
+column	bty_trade_binding	guest_no	varchar(32)	YES	<null>
+column	bty_trade_binding	identity_revision	bigint	YES	<null>
+column	bty_trade_binding	buyer_no	varchar(64)	YES	<null>
+column	bty_trade_binding	manual_source_revision	bigint	YES	<null>
+column	bty_trade_binding	manual_source_hash	char(64)	YES	<null>
+column	bty_work_order	id	bigint	NO	<null>
+column	bty_work_order	tenant_no	varchar(32)	NO	MAIN
+column	bty_work_order	entity_no	varchar(32)	NO	<null>
+column	bty_work_order	created_at	datetime(3)	NO	<null>
+column	bty_work_order	created_by	varchar(64)	YES	<null>
+column	bty_work_order	updated_at	datetime(3)	NO	<null>
+column	bty_work_order	updated_by	varchar(64)	YES	<null>
+column	bty_work_order	version	bigint	NO	0
+column	bty_work_order	deleted	int	NO	0
+column	bty_work_order	work_order_no	varchar(32)	NO	<null>
+column	bty_work_order	store_no	varchar(32)	NO	<null>
+column	bty_work_order	appointment_no	varchar(32)	YES	<null>
+column	bty_work_order	customer_ref	varchar(64)	NO	<null>
+column	bty_work_order	status	varchar(24)	NO	<null>
+column	bty_work_order	scope_revision	bigint	NO	<null>
+column	bty_work_order	scope_frozen	tinyint	NO	<null>
+column	bty_work_order	started_at	datetime(3)	YES	<null>
+column	bty_work_order	finished_at	datetime(3)	YES	<null>
+column	bty_work_order	closed_at	datetime(3)	YES	<null>
+column	bty_work_order	identity_kind	varchar(16)	YES	<null>
+column	bty_work_order	identity_ref	varchar(32)	YES	<null>
+column	bty_work_order	source_reception_operation_no	varchar(32)	YES	<null>
+column	bty_work_order	appointment_arrangement_revision	bigint	YES	<null>
+column	bty_work_order	frozen_scope	json	YES	<null>
+column	ind_assignment	id	bigint unsigned	NO	<null>
+column	ind_assignment	tenant_no	varchar(32)	YES	<null>
+column	ind_assignment	entity_no	varchar(32)	YES	<null>
+column	ind_assignment	store_no	varchar(32)	YES	<null>
+column	ind_assignment	assignment_no	varchar(32)	YES	<null>
+column	ind_assignment	target_type	varchar(24)	YES	<null>
+column	ind_assignment	target_no	varchar(32)	YES	<null>
+column	ind_assignment	assignment_kind	varchar(16)	YES	<null>
+column	ind_assignment	personnel_no	varchar(32)	YES	<null>
+column	ind_assignment	role_code	varchar(32)	YES	<null>
+column	ind_assignment	resource_no	varchar(32)	YES	<null>
+column	ind_assignment	hold_no	varchar(32)	YES	<null>
+column	ind_assignment	appointment_revision	bigint	YES	<null>
+column	ind_assignment	planned_start_at	datetime(3)	YES	<null>
+column	ind_assignment	planned_end_at	datetime(3)	YES	<null>
+column	ind_assignment	started_at	datetime(3)	YES	<null>
+column	ind_assignment	ended_at	datetime(3)	YES	<null>
+column	ind_assignment	previous_assignment_no	varchar(32)	YES	<null>
+column	ind_assignment	handover_reason	varchar(255)	YES	<null>
+column	ind_assignment	status	varchar(10)	YES	<null>
+column	ind_assignment	skill_snapshot	json	YES	<null>
+column	ind_assignment	designated	tinyint	YES	<null>
+column	ind_assignment	deleted	tinyint	NO	0
+column	ind_assignment	employment_assignment_no	varchar(32)	YES	<null>
+column	ind_assignment	planned_assignment_no	varchar(32)	YES	<null>
+column	ind_assignment	version	bigint	NO	0
+column	ind_assignment	created_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	ind_assignment	created_by	varchar(64)	YES	<null>
+column	ind_assignment	updated_at	datetime(3)	NO	CURRENT_TIMESTAMP(3)
+column	ind_assignment	updated_by	varchar(64)	YES	<null>
+column	ind_assignment	handover_no	varchar(32)	YES	<null>
+column	ind_assignment	source_hash	char(64)	YES	<null>
+unique	bty_arrival_challenge	PRIMARY	id
+unique	bty_arrival_challenge	uk_bty_arrival_challenge_1	tenant_no,entity_no,challenge_no
+unique	bty_arrival_challenge	uk_bty_arrival_challenge_2	tenant_no,code
+unique	bty_arrival_challenge	uk_bty_arrival_challenge_3	tenant_no,entity_no,store_no,actor_realm,actor_kind,actor_no,key_hash
+unique	bty_guest_claim_receipt	PRIMARY	id
+unique	bty_guest_claim_receipt	uk_bty_guest_claim_receipt_1	tenant_no,entity_no,store_no,guest_no
+unique	bty_reception_operation	PRIMARY	id
+unique	bty_reception_operation	uk_bty_reception_operation_1	tenant_no,entity_no,operation_no
+unique	bty_reception_operation	uk_bty_reception_operation_2	tenant_no,entity_no,store_no,actor_realm,actor_kind,actor_no,endpoint,key_hash
+unique	bty_service_execution_fence	PRIMARY	id
+unique	bty_service_execution_fence	uk_bsef_execution	tenant_no,execution_no
+unique	bty_service_execution_fence	uk_bsef_fence	tenant_no,fence_no
+unique	bty_service_execution_fence	uk_bsef_task	tenant_no,entity_no,task_no
+unique	bty_service_execution_fence	uk_bsef_unit	tenant_no,source_line_no,unit_ordinal
+unique	bty_service_execution_stock_intent	PRIMARY	id
+unique	bty_service_execution_stock_intent	uk_bsesi_execution	tenant_no,execution_no
+unique	bty_service_execution_stock_intent	uk_bsesi_fence	tenant_no,fence_no
+unique	bty_service_execution_stock_intent	uk_bsesi_retention	tenant_no,retention_no
+unique	bty_service_execution_stock_intent	uk_bsesi_task	tenant_no,entity_no,task_no
+unique	bty_service_step	PRIMARY	id
+unique	bty_service_step	uk_bty_service_step_1	tenant_no,entity_no,step_no
+unique	bty_service_step	uk_bty_service_step_2	tenant_no,entity_no,task_no,step_code
+unique	bty_service_submission	PRIMARY	id
+unique	bty_service_submission	uk_bty_service_submission_1	tenant_no,entity_no,submission_no
+unique	bty_service_submission	uk_bty_service_submission_2	tenant_no,entity_no,store_no,action,request_key_hash
+unique	bty_service_task	PRIMARY	id
+unique	bty_service_task	uk_bty_service_task_1	tenant_no,entity_no,task_no
+unique	bty_source_allocation_guard	PRIMARY	id
+unique	bty_source_allocation_guard	uk_bty_source_allocation_guard_1	tenant_no,entity_no,guard_no
+unique	bty_source_allocation_guard	uk_bty_source_allocation_guard_2	tenant_no,entity_no,source_kind,source_no,source_line_ref
+unique	bty_source_observation	PRIMARY	id
+unique	bty_source_observation	uk_bty_source_observation_1	tenant_no,entity_no,source_kind,source_no
+unique	bty_source_observation	uk_bty_source_observation_2	tenant_no,entity_no,checkout_caller,checkout_operation_no
+unique	bty_trade_binding	PRIMARY	id
+unique	bty_trade_binding	uk_bty_trade_binding_1	tenant_no,entity_no,binding_no
+unique	bty_trade_binding	uk_bty_trade_binding_2	tenant_no,entity_no,task_no,binding_revision,source_kind,source_no,source_line_ref
+unique	bty_work_order	PRIMARY	id
+unique	bty_work_order	uk_bty_work_order_1	tenant_no,entity_no,work_order_no
+unique	bty_work_order	uk_bty_work_order_2	tenant_no,entity_no,appointment_no
+unique	ind_assignment	PRIMARY	id
+unique	ind_assignment	uk_ind_assignment_assignment_n	assignment_no
+trigger	bty_service_execution_fence	trg_bsef_immutable
+trigger	bty_service_execution_fence	trg_bsef_no_delete
+trigger	bty_service_execution_stock_intent	trg_bsesi_immutable
+trigger	bty_service_execution_stock_intent	trg_bsesi_no_delete
+trigger	bty_source_observation	trg_bty_source_observation_domain_guard

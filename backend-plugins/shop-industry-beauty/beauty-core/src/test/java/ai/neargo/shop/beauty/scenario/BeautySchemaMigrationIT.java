@@ -186,11 +186,7 @@ class BeautySchemaMigrationIT {
                         || statement.startsWith("CREATE TABLE `ind_config_revision`")
                         || statement.startsWith("CREATE TABLE `ind_assignment`"))
                     execute(statement.replaceFirst("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
-            // 服务参与并入共用指派表（B-4）：美业补的两列取自行业库补充脚本
-            if (count("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() "
-                    + "AND table_name='ind_assignment' AND column_name='employment_assignment_no'") == 0)
-                for (String statement : BeautyIndustryDatabaseIT.statements("db/n_industry/V2__beauty_supplement.sql"))
-                    if (statement.startsWith("ALTER TABLE `ind_assignment`")) execute(statement);
+            // 服务参与并入共用指派表（B-4）：美业补的两列已进设计 DDL（B-6），随 V1 的建表语句一起来
             // 工单上下文并入工单（B-3）：按行业库设计稿给主库上的工单补可空的上下文列
             if (count("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() "
                     + "AND table_name='bty_work_order' AND column_name='identity_kind'") == 0)
