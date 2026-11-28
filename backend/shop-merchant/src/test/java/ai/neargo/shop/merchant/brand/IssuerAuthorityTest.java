@@ -37,8 +37,8 @@ class IssuerAuthorityTest {
         assertThatThrownBy(()->service.storePreparationScope(new Actor("OTHER","MCH:MA1"),"S1")).isInstanceOf(BizException.class);
         f.jdbc.update("UPDATE mch_entity SET status='INACTIVE' WHERE entity_no='E1'");
         assertThatThrownBy(()->service.storePreparationScope(f.owner,"S1")).isInstanceOf(BizException.class);
-        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_management_space",Long.class)).isZero();
-        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_management_grant",Long.class)).isZero();
+        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_group",Long.class)).isZero();
+        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_grant WHERE grant_kind='PERMISSION'",Long.class)).isZero();
     }
 
     @Test void storeManagementDoesNotImplicitlyAuthorizeSettlementAndOfflineHasNoFakeMerchant() throws Exception {
@@ -72,6 +72,6 @@ class IssuerAuthorityTest {
         assertThat(candidates).hasSize(1);assertThat(candidates.getFirst()).containsEntry("entityNo","E1").containsEntry("accepted",false).containsEntry("canAccept",true);
         f.scopes.grant(f.owner,m,new GrantCommand(f.owner.actorKey(),"ENTITY","E1","sv.issuer.settlement.authorize",null,null,false,null,false));
         assertThat(service.settlementCandidates(f.owner,m,"STORE","S1").getFirst()).containsEntry("accepted",true).containsEntry("canAccept",false);
-        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_management_grant WHERE resource_type='STORE' AND permission_code LIKE 'sv.issuer.%'",Long.class)).isEqualTo(2);
+        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mch_grant WHERE grant_kind='PERMISSION' AND resource_type='STORE' AND permission_code LIKE 'sv.issuer.%'",Long.class)).isEqualTo(2);
     }
 }

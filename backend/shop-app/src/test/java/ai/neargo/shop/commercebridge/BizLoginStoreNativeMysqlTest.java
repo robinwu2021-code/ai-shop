@@ -23,7 +23,6 @@ import ai.neargo.shop.merchant.service.MerchantPlanService;
 import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import ai.neargo.shop.merchant.service.impl.StoreAdminServiceImpl;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.merchant.paymerchant.mapper.PayMerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.spi.marketing.FissionPort;
@@ -109,7 +108,7 @@ class BizLoginStoreNativeMysqlTest {
             auth.setRegistrationMarkets("CN,TW");
             var stores = new StoreAdminServiceImpl(mock(MerchantStoreCreation.class),
                     mock(StoreCategoryService.class), db.mybatis.getMapper(MchStoreMapper.class),
-                    db.mybatis.getMapper(MchStoreRoleMapper.class), new ai.neargo.shop.merchant.paymerchant.impl.CollectingMerchantsImpl(db.mybatis.getMapper(MchPaymentMapper.class)),
+                    org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class), new ai.neargo.shop.merchant.paymerchant.impl.CollectingMerchantsImpl(db.mybatis.getMapper(MchPaymentMapper.class)),
                     mock(MerchantPlanService.class), db.mybatis.getMapper(MchEntityMapper.class),
                     mock(StoreLinkService.class), null, null);
             stores.setOwnership(new ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl(db.jdbc));

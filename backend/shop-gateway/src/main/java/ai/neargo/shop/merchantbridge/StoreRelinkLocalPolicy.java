@@ -91,7 +91,7 @@ public class StoreRelinkLocalPolicy {
         if(jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_service_area WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0
                 || jdbc.queryForObject("SELECT COUNT(*) FROM mch_store_fulfillment WHERE tenant_no=? AND store_no=?",Integer.class,tenant,store)>0)
             blockers.add("STORE_CONFIGURATION_HISTORY");
-        int staff=jdbc.queryForObject("SELECT COUNT(DISTINCT r.mch_account_no) FROM mch_store_role r WHERE r.tenant_no=? AND r.store_no=? AND r.deleted=0 AND NOT EXISTS(SELECT 1 FROM mch_account a WHERE a.tenant_no=r.tenant_no AND a.mch_account_no=r.mch_account_no AND a.entity_no=? AND a.is_owner=1 AND a.deleted=0)",Integer.class,tenant,store,source);
+        int staff=jdbc.queryForObject("SELECT COUNT(DISTINCT g.actor_no) FROM mch_grant g WHERE g.tenant_no=? AND g.resource_type='STORE' AND g.resource_no=? AND g.grant_kind='ROLE' AND g.status='ACTIVE' AND g.deleted=0 AND NOT EXISTS(SELECT 1 FROM mch_account a WHERE a.tenant_no=g.tenant_no AND CONCAT('MCH:',a.mch_account_no)=g.actor_no AND a.entity_no=? AND a.is_owner=1 AND a.deleted=0)",Integer.class,tenant,store,source);
         return new Check(st,List.copyOf(blockers),staff);
     }
     public boolean owner(String tenant,String user,String entity) {

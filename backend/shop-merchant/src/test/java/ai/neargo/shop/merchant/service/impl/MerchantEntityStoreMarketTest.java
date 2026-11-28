@@ -33,7 +33,7 @@ class MerchantEntityStoreMarketTest {
     private static MerchantEntityServiceImpl service(String entityMarket, StoreVO row, MarketPort markets) {
         var accounts = mock(MerchantMappers.MchAccountMapper.class);
         var entities = mock(MerchantMappers.MchEntityMapper.class);
-        var roles = mock(MerchantMappers.MchStoreRoleMapper.class);
+        var roles = mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class);
         var stores = mock(StoreAdminService.class);
         var account = new MchAccount();
         account.setEntityNo("E1");

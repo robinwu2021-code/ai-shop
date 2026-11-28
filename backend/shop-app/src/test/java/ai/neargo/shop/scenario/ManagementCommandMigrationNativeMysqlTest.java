@@ -45,7 +45,7 @@ class ManagementCommandMigrationNativeMysqlTest {
         sql.update("INSERT INTO sys_outbox(id,event_no,aggregate_type,aggregate_id,event_type,payload,status,created_at) VALUES(30,'OTHER','ORDER','O1','ORDER_CREATED','{}','PENDING',UTC_TIMESTAMP())");
         sql.update("INSERT INTO sys_outbox_delivery(event_no,handler_id,stream_key,stream_sequence,status,created_at) VALUES('ENVELOPE','management-audit-v1','MANAGEMENT:MAIN:BR1',1,'PENDING',UTC_TIMESTAMP())");
         new ResourceDatabasePopulator(new FileSystemResource("src/main/resources/db/migration/V622__management_command_journal.sql")).execute(source);
-        repository=new ManagementRepository(sql,new DataSourceTransactionManager(source),JsonMapper.builder().build());
+        repository=new ManagementRepository(sql,new DataSourceTransactionManager(source),JsonMapper.builder().build(),org.mockito.Mockito.mock(ai.neargo.shop.spi.idempotency.RequestIdempotencyPort.class),org.mockito.Mockito.mock(ai.neargo.shop.spi.platform.AuditLogPort.class));
     }
     @Test void realMigrationPreservesReplayAuditIdsAndRetiresOnlyTheEmptyDelivery() {
         assertThat(sql.queryForList("SELECT id FROM mch_management_command ORDER BY id",Long.class)).containsExactly(10L,20L);

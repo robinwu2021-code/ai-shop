@@ -8,14 +8,13 @@ import ai.neargo.shop.auth.BizIdentityResolver;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchStore;
-import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.spi.user.PickupQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,18 +42,24 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
     private final PickupQueryPort pickupQueryPort;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper;
     private final MchStoreMapper storeMapper;
-    private final MchStoreRoleMapper roleMapper;
+    private final StoreRoleGrants storeRoleGrants;
+    /** Q7.5 合并权限码授权用；手工装配（测试）时可空 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ai.neargo.shop.merchant.brand.ManagementRepository managementDb;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private ai.neargo.shop.merchant.brand.impl.ManagementScopeServiceImpl managementScopes;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper;
     private final RolePointStore rolePoints;
 
     public BizIdentityResolverImpl(MchEntityMapper merchantMapper, PickupQueryPort pickupQueryPort,
                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper,
-                                   MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
+                                   MchStoreMapper storeMapper, StoreRoleGrants storeRoleGrants,
                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper,
                                    RolePointStore rolePoints) {
         this.rolePoints = rolePoints;
         this.storeMapper = storeMapper;
-        this.roleMapper = roleMapper;
+        this.storeRoleGrants = storeRoleGrants;
         this.roleDefMapper = roleDefMapper;
         this.merchantMapper = merchantMapper;
         this.pickupQueryPort = pickupQueryPort;
@@ -74,6 +79,57 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
      * <p>库里查不到的角色码（比如角色被删了而授权还在）**按零权限处理**，不抛错 ——
      * 认不出角色时给权限是这类判定最坏的失败方式。
      */
+    /** 当前人在管理授权里的两个身份：B 端账号（MCH:）、关联的 C 端用户（USER:） */
+    private static List<String> actorKeys(ai.neargo.shop.merchant.entity.MchAccount membership, String userNo,
+                                          SubjectKind kind) {
+        List<String> keys = new java.util.ArrayList<>();
+        keys.add(StoreRoleGrants.actorOf(membership.getMchAccountNo()));
+        String user = kind == SubjectKind.USR ? userNo : membership.getUserNo();
+        if (user != null && !user.isBlank()) {
+            keys.add("USER:" + user);
+        }
+        return keys;
+    }
+
+    /**
+     * 本主体门店上、给这几个身份的生效权限码授权（{@code grant_kind=PERMISSION}，范围 STORE）。
+     * 每一行都过一遍管理授权的实时复核（来源、有效期、集团状态），与网关判 STORE 范围权限同一口径。
+     */
+    private java.util.Map<String, Set<String>> storePermissionGrants(String entityNo, List<String> actorKeys) {
+        if (managementDb == null || managementScopes == null || actorKeys.isEmpty()) {
+            return java.util.Map.of();
+        }
+        String marks = String.join(",", java.util.Collections.nCopies(actorKeys.size(), "?"));
+        List<Object> args = new java.util.ArrayList<>(actorKeys);
+        args.add(entityNo);
+        java.util.Map<String, Set<String>> out = new java.util.HashMap<>();
+        for (var row : managementDb.rows("SELECT g.* FROM mch_grant g JOIN mch_store s ON s.tenant_no=g.tenant_no"
+                + " AND s.store_no=g.resource_no AND s.deleted=0 WHERE g.grant_kind='PERMISSION' AND g.tenant_no='MAIN'"
+                + " AND g.resource_type='STORE' AND g.status='ACTIVE' AND g.deleted=0 AND g.actor_no IN (" + marks + ")"
+                + " AND s.entity_no=?", args.toArray())) {
+            String actor = String.valueOf(row.get("actor_no"));
+            if (managementScopes.valid(new ai.neargo.shop.merchant.brand.ManagementModels.Actor("MAIN", actor), row,
+                    new java.util.HashSet<>())) {
+                out.computeIfAbsent(String.valueOf(row.get("resource_no")), k -> new java.util.HashSet<>())
+                        .add(String.valueOf(row.get("permission_code")));
+            }
+        }
+        return out;
+    }
+
+    private static java.util.Map<String, Set<String>> merge(java.util.Map<String, Set<String>> roles,
+                                                           java.util.Map<String, Set<String>> grants) {
+        if (grants.isEmpty()) {
+            return roles;
+        }
+        java.util.Map<String, Set<String>> out = new java.util.HashMap<>();
+        roles.forEach((store, codes) -> out.computeIfAbsent(store, k -> new java.util.HashSet<>()).addAll(codes));
+        grants.forEach((store, codes) -> out.computeIfAbsent(store, k -> new java.util.HashSet<>()).addAll(codes));
+        java.util.Map<String, Set<String>> frozen = new java.util.HashMap<>();
+        out.forEach((store, codes) -> frozen.put(store, Set.copyOf(codes)));
+        return frozen;
+    }
+
     private java.util.Map<String, Set<String>> permsByStore(
             String entityNo, java.util.Map<String, Set<String>> rolesByStore) {
         if (rolesByStore.isEmpty()) {
@@ -244,12 +300,14 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
          * 一次解析好放进 BizContext，切门店（X-Store-No）时不用重查库 ——
          * 而角色必须跟着门店走：同一个人可能在文三路店是店长、古墩路店是店员。
          */
-        java.util.Map<String, Set<String>> rolesByStore = roleMapper.selectList(
-                        Wrappers.<MchStoreRole>lambdaQuery()
-                                .eq(MchStoreRole::getMchAccountNo, membership.getMchAccountNo()))
+        // 门店角色是授权表的 ROLE 行（原 mch_store_role）：只取生效的（有效期、集团、门店仍属主体，Q7.3）
+        java.util.Map<String, Set<String>> rolesByStore = storeRoleGrants.ofAccounts(List.of(membership.getMchAccountNo()))
                 .stream()
-                .collect(Collectors.groupingBy(MchStoreRole::getStoreNo,
-                        Collectors.mapping(MchStoreRole::getRole, Collectors.toUnmodifiableSet())));
+                .collect(Collectors.groupingBy(StoreRoleGrants.StoreRole::storeNo,
+                        Collectors.mapping(StoreRoleGrants.StoreRole::role, Collectors.toUnmodifiableSet())));
+        // Q7.5：选中门店时的能力 = 该店角色的功能点 ∪ 该店的权限码授权（当前人的 B 端账号与 C 端用户两个身份都算）
+        java.util.Map<String, Set<String>> grantsByStore = storePermissionGrants(merchant.getEntityNo(),
+                actorKeys(membership, userNo, kind));
 
         /*
          * 同上：老板的门店集合是作用域的一部分，解析它时作用域还不存在。
@@ -274,9 +332,8 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
                         storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
                                 .eq(MchStore::getEntityNo, merchant.getEntityNo()))).stream()
                         .map(MchStore::getStoreNo).collect(Collectors.toSet())
-                : roleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
-                        .eq(MchStoreRole::getMchAccountNo, membership.getMchAccountNo())).stream()
-                        .map(MchStoreRole::getStoreNo).collect(Collectors.toSet());
+                : java.util.stream.Stream.concat(rolesByStore.keySet().stream(), grantsByStore.keySet().stream())
+                        .collect(Collectors.toSet());
 
         /*
          * 放开 storeNos 之后要补的两道边（§9.3 AC3 / AC4）：
@@ -340,6 +397,6 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
 
         return new BizContext(merchant.getEntityNo(), pickupNos, Set.of(), storeNos, defaultStore,
                 Boolean.TRUE.equals(membership.getIsOwner()), rolesByStore,
-                permsByStore(merchant.getEntityNo(), rolesByStore));
+                merge(permsByStore(merchant.getEntityNo(), rolesByStore), grantsByStore));
     }
 }

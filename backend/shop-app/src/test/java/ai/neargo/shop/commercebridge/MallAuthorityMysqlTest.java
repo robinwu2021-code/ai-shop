@@ -45,7 +45,7 @@ class MallAuthorityMysqlTest {
                 org.mockito.Mockito.mock(ai.neargo.shop.spi.user.PickupQueryPort.class),
                 f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper.class),
                 f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper.class),
-                f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper.class),
+                org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                 f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper.class),
                 new ai.neargo.shop.merchant.service.impl.RolePointStore(f.jdbc));
             var sessions=new DbAccountSessionVerifier(f.dao,f.loader,f.clock,f.manager);

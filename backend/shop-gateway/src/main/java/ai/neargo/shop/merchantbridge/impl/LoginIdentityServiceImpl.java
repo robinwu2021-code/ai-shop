@@ -9,11 +9,9 @@ import ai.neargo.shop.common.*;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.service.LoginIdentityService;
 import ai.neargo.shop.user.IdentityType;
@@ -45,14 +43,14 @@ public class LoginIdentityServiceImpl implements LoginIdentityService {
     private final MchAccountMapper accounts;
     private final MchEntityMapper entities;
     private final MchStoreMapper stores;
-    private final MchStoreRoleMapper roles;
+    private final ai.neargo.shop.merchant.service.impl.StoreRoleGrants roles;
     private final IdentityMapper credentials;
     private final UserMapper users;
     private final MessageSource messages;
 
     public LoginIdentityServiceImpl(AuthService auth, LoginTicketService tickets, TokenStore tokens,
             LoginAuditor auditor, MchAccountMapper accounts, MchEntityMapper entities, MchStoreMapper stores,
-            MchStoreRoleMapper roles, IdentityMapper credentials, UserMapper users, MessageSource messages) {
+            ai.neargo.shop.merchant.service.impl.StoreRoleGrants roles, IdentityMapper credentials, UserMapper users, MessageSource messages) {
         this.auth = auth; this.tickets = tickets; this.tokens = tokens; this.auditor = auditor;
         this.merchantTokens = tokens instanceof TokenStores pools ? pools.of(Realm.MERCHANT) : tokens;
         this.accounts = accounts; this.entities = entities; this.stores = stores; this.roles = roles;
@@ -116,12 +114,12 @@ public class LoginIdentityServiceImpl implements LoginIdentityService {
 
     private Identity staff(MchAccount row, Locale locale) {
         var entity = entities.selectOne(Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, row.getEntityNo()).last("LIMIT 1"));
-        var grants = roles.selectList(Wrappers.<MchStoreRole>lambdaQuery().eq(MchStoreRole::getMchAccountNo, row.getMchAccountNo()));
-        var codes = grants.stream().map(MchStoreRole::getRole).distinct().sorted().toList();
+        var grants = roles.ofAccounts(java.util.List.of(row.getMchAccountNo()));
+        var codes = grants.stream().map(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.StoreRole::role).distinct().sorted().toList();
         return new Identity("STAFF-" + row.getMchAccountNo(), "STAFF", row.getEntityNo(),
                 entity == null ? null : entity.getName(), 1,
                 String.join("、", codes.stream().map(c -> label(c, locale)).toList()), codes,
-                (int) grants.stream().map(MchStoreRole::getStoreNo).distinct().count());
+                (int) grants.stream().map(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.StoreRole::storeNo).distinct().count());
     }
 
     private List<MchAccount> memberships(String no) {

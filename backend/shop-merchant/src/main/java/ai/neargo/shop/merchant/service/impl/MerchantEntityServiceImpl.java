@@ -11,10 +11,8 @@ import ai.neargo.shop.merchant.dto.EntityVO;
 import ai.neargo.shop.merchant.dto.StoreVO;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchEntity;
-import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.merchant.service.MerchantEntityService;
 import ai.neargo.shop.merchant.service.StoreAdminService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -43,7 +41,7 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
 
     private final MchAccountMapper accountMapper;
     private final MchEntityMapper entityMapper;
-    private final MchStoreRoleMapper roleMapper;
+    private final StoreRoleGrants roleGrants;
     /** 门店行的组装（收款状态、员工数、评分）只此一份，不在这里重抄一遍 */
     private final StoreAdminService storeAdminService;
     /** sys_market 元数据（币种、小数位、时区）。没有这个端口的部署只给 market。 */
@@ -55,10 +53,10 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
     }
 
     public MerchantEntityServiceImpl(MchAccountMapper accountMapper, MchEntityMapper entityMapper,
-                                     MchStoreRoleMapper roleMapper, StoreAdminService storeAdminService) {
+                                     StoreRoleGrants roleGrants, StoreAdminService storeAdminService) {
         this.accountMapper = accountMapper;
         this.entityMapper = entityMapper;
-        this.roleMapper = roleMapper;
+        this.roleGrants = roleGrants;
         this.storeAdminService = storeAdminService;
     }
 
@@ -174,10 +172,8 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
             List<StoreVO> stores = DataScopeContext.executeWithoutScope(() ->
                     storeAdminService.list(m.getEntityNo()));
             if (!owner) {
-                Set<String> granted = DataScopeContext.executeWithoutScope(() ->
-                                roleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
-                                        .eq(MchStoreRole::getMchAccountNo, m.getMchAccountNo())))
-                        .stream().map(MchStoreRole::getStoreNo).collect(Collectors.toSet());
+                Set<String> granted = roleGrants.ofAccounts(List.of(m.getMchAccountNo()))
+                        .stream().map(StoreRoleGrants.StoreRole::storeNo).collect(Collectors.toSet());
                 stores = stores.stream().filter(s -> granted.contains(s.storeNo())).toList();
             }
             stores = withMarket(stores, e.getMarket());

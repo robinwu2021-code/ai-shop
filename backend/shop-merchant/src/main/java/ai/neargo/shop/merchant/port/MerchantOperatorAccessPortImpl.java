@@ -30,7 +30,7 @@ public class MerchantOperatorAccessPortImpl implements MerchantOperatorAccessPor
         }
         return DataScopeContext.executeWithoutScope(
                 () -> {
-                    var rows = mapper.selectAccess(query);
+                    var rows = mapper.selectAccess(query, java.sql.Timestamp.from(java.time.Instant.now()));
                     return rows.size() == 1 && rows.getFirst().allowed()
                             ? Optional.of(new AuthorizedOperator(rows.getFirst().accountNo()))
                             : Optional.empty();

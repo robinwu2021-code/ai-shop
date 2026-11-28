@@ -55,6 +55,19 @@ public class AuditLogPortImpl implements AuditLogPort, DisposableBean {
     }
 
     @Override
+    public java.util.List<Entry> byTarget(String target, long beforeId, int limit) {
+        return auditLogs.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers.<SysAuditLog>lambdaQuery()
+                        .eq(SysAuditLog::getTarget, target)
+                        .lt(SysAuditLog::getId, beforeId)
+                        .orderByDesc(SysAuditLog::getId)
+                        .last("LIMIT " + Math.max(1, Math.min(limit, 500))))
+                .stream()
+                .map(r -> new Entry(r.getId(), r.getOpAction(), r.getDetail(), r.getAfterJson(),
+                        r.getAt() == null ? 0L : r.getAt()))
+                .toList();
+    }
+
+    @Override
     public void record(String action, String target, String detail) {
         record(action, target, detail, false, null, null);
     }

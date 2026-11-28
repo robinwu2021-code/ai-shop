@@ -107,10 +107,10 @@ class MediaHostMigrationTest {
         String where = " WHERE tenant_no = ? AND brand_no = ?";
         try {
             jdbc.update("INSERT INTO mch_brand (tenant_no,brand_no,management_no,name,logo,status,"
-                            + "scope_revision,name_key,create_key,create_hash,created_at,updated_at,created_by,updated_by)"
-                            + " VALUES ('MAIN',?,?,'Media host fixture',?,'DRAFT',0,'Media host fixture',?, ?,"
+                            + "scope_revision,name_key,created_at,updated_at,created_by,updated_by)"
+                            + " VALUES ('MAIN',?,?,'Media host fixture',?,'DRAFT',0,'Media host fixture',"
                             + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'TEST','TEST')",
-                    brandNo, brandNo, OLD + "brand/logo.png", brandNo, "0".repeat(64));
+                    brandNo, brandNo, OLD + "brand/logo.png");
             String migration = statements().get("mch_brand.logo");
             assertThat(migration).as("品牌标识图必须有独立补充迁移").isNotNull();
             jdbc.execute(migration);

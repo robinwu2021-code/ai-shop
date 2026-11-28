@@ -1,10 +1,5 @@
 package ai.neargo.shop.merchant.entity;
 
-import ai.neargo.shop.common.BaseEntity;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Getter;
-import lombok.Setter;
 
 /**
  * 子账号在某家门店的角色。<b>一人一店可多行</b>（V18 起）。
@@ -17,10 +12,14 @@ import lombok.Setter;
  * 「站收银台的顺手把货送了」（店员 + 配送员）—— 一店一角色放不下他，
  * 硬要一人一角色，结果只会是「都给店长」，那等于没分。
  */
-@Getter
-@Setter
-@TableName("mch_store_role")
-public class MchStoreRole extends BaseEntity {
+/**
+ * 门店角色码（常量）。员工在门店上的角色记在授权表 {@code mch_grant} 的 ROLE 行里（原 {@code mch_store_role}，
+ * TDD-平台基础库换表 第 2 步 G），读写走 {@code StoreRoleGrants}；这里只留角色码。
+ */
+public final class MchStoreRole {
+
+    private MchStoreRole() {
+    }
 
     /** 店长：除结算与子账号管理外的经营权限。 */
     public static final String MANAGER = "MANAGER";
@@ -58,8 +57,4 @@ public class MchStoreRole extends BaseEntity {
 
     /** 老板不在这张表里 —— 把它当角色授给别人等于凭空造一个第二老板 */
     public static final String OWNER_CODE = "OWNER";
-
-    private String mchAccountNo;
-    private String storeNo;
-    private String role;
 }

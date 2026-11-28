@@ -12,7 +12,6 @@ import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStaffLogMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.merchant.entity.MchStaffLog;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
@@ -47,7 +46,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
      */
     private final ai.neargo.shop.auth.TokenStores tokenStores;
     private final MchStoreMapper storeMapper;
-    private final MchStoreRoleMapper roleMapper;
+    private final StoreRoleGrants roleGrants;
     private final MchStaffLogMapper logMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper;
     private final StaffAuditLogger audit;
@@ -90,14 +89,14 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
 
     public MerchantStaffServiceImpl(MchAccountMapper staffMapper,
                                     ai.neargo.shop.auth.TokenStores tokenStores, MchStoreMapper storeMapper,
-                                    MchStoreRoleMapper roleMapper, MchStaffLogMapper logMapper,
+                                    StoreRoleGrants roleGrants, MchStaffLogMapper logMapper,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper,
                                     StaffAuditLogger audit, TokenStore tokenStore,
                                     OtpStore otpStore) {
         this.staffMapper = staffMapper;
         this.tokenStores = tokenStores;
         this.storeMapper = storeMapper;
-        this.roleMapper = roleMapper;
+        this.roleGrants = roleGrants;
         this.logMapper = logMapper;
         this.roleDefMapper = roleDefMapper;
         this.audit = audit;
@@ -213,8 +212,8 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     public List<StaffVO> list(String merchantNo) {
         List<MchAccount> accounts = accounts(merchantNo);
         Map<String, String> storeNames = storeNames(merchantNo);
-        Map<String, List<MchStoreRole>> byAccount = rolesOf(accounts).stream()
-                .collect(Collectors.groupingBy(MchStoreRole::getMchAccountNo));
+        Map<String, List<StoreRoleGrants.StoreRole>> byAccount = rolesOf(accounts).stream()
+                .collect(Collectors.groupingBy(StoreRoleGrants.StoreRole::accountNo));
         return accounts.stream().map(a -> toVO(a, byAccount, storeNames)).toList();
     }
 
@@ -431,47 +430,27 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
          * 老板想「再加一个配送员」，结果把「店员」冲掉了，而且不报错。
          * 撤销同理：只删这一个角色的那一行，不碰别的。
          */
-        MchStoreRole row = DataScopeContext.executeWithoutScope(() ->
-                roleMapper.selectOne(Wrappers.<MchStoreRole>lambdaQuery()
-                        .eq(MchStoreRole::getMchAccountNo, mchAccountNo)
-                        .eq(MchStoreRole::getStoreNo, storeNo)
-                        .eq(MchStoreRole::getRole, role).last("limit 1")));
+        // 门店角色是授权表的 ROLE 行（原 mch_store_role，TDD-平台基础库换表 第 2 步 G）
+        boolean held = roleGrants.has(mchAccountNo, storeNo, role);
+        // 授权行上记谁动的（带前缀的操作人编号，与管理授权同一口径）
+        String actor = SecurityUtils.currentUser()
+                .map(u -> (u.subjectKind() == ai.neargo.auth.store.SubjectKind.USR ? "USER:" : "MCH:") + u.userNo())
+                .orElse("SYSTEM");
 
         if (!granted) {
-            // 撤销。**撤到一个不剩 = 从这家店移除他** —— 不留空壳行
-            if (row != null) {
-                DataScopeContext.executeWithoutScope(() -> roleMapper.deleteById(row.getId()));
-                // 只有真删了才记。撤销一个他本来就没有的角色是空操作，
-                // 记下来会让日志里出现一串「撤销了店长」而他从来不是店长
+            // 撤销。**撤到一个不剩 = 从这家店移除他**
+            if (held) {
+                roleGrants.revoke(storeNo, mchAccountNo, role, actor);
+                // 只有真撤了才记。撤销一个他本来就没有的角色是空操作
                 log(merchantNo, mchAccountNo, MchStaffLog.ROLE_REVOKE, storeNo, role,
                         "撤销 " + storeNames(merchantNo).get(storeNo) + " 的 "
                                 + roleName(merchantNo, role));
             }
             return single(merchantNo, a);
         }
-        // 已经有了就什么都不做 —— 重复授予是幂等的，不该长出两行
-        if (row == null) {
-            /*
-             * **先试着复活被逻辑删的那一行**。
-             *
-             * 撤销授权是逻辑删，而 uk_store_role 不含 deleted 列 ——
-             * 「撤销再授予同一个角色」时直接 insert 必然撞唯一键，接口 500，
-             * 而老板看到的只是「系统开小差」，与他刚做的操作毫无关系。
-             *
-             * 这个坑在商家社区表、商品社区池上各踩过一次，这是第三次：
-             * 凡是「逻辑删 + 业务唯一键」的组合都有它，而它只在
-             * 「删了再加回来」这条路径上出现 —— 日常测试很难走到。
-             */
-            boolean revived = DataScopeContext.executeWithoutScope(() ->
-                    roleMapper.revive(mchAccountNo, storeNo, role)) > 0;
-            if (!revived) {
-                MchStoreRole fresh = new MchStoreRole();
-                fresh.setMchAccountNo(mchAccountNo);
-                fresh.setStoreNo(storeNo);
-                fresh.setRole(role);
-                DataScopeContext.executeWithoutScope(() -> roleMapper.insert(fresh));
-            }
-            // 复活与新建都是「授予」，记同一条 —— 那个区别是实现细节，不是老板做的事
+        // 已经有了就什么都不做 —— 重复授予是幂等的；撤过的同一行重新生效，不长第二行（唯一键）
+        if (!held) {
+            roleGrants.grant(storeNo, mchAccountNo, role, actor);
             log(merchantNo, mchAccountNo, MchStaffLog.ROLE_GRANT, storeNo, role,
                     "授予 " + storeNames(merchantNo).get(storeNo) + " 的 "
                             + roleName(merchantNo, role));
@@ -712,19 +691,13 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                         s -> s.getName() == null ? s.getStoreNo() : s.getName()));
     }
 
-    private List<MchStoreRole> rolesOf(List<MchAccount> accounts) {
-        if (accounts.isEmpty()) {
-            return List.of();
-        }
-        List<String> nos = accounts.stream().map(MchAccount::getMchAccountNo).toList();
-        return DataScopeContext.executeWithoutScope(() ->
-                roleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
-                        .in(MchStoreRole::getMchAccountNo, nos)));
+    private List<StoreRoleGrants.StoreRole> rolesOf(List<MchAccount> accounts) {
+        return roleGrants.ofAccounts(accounts.stream().map(MchAccount::getMchAccountNo).toList());
     }
 
     private StaffVO single(String merchantNo, MchAccount a) {
         return toVO(a, rolesOf(List.of(a)).stream()
-                        .collect(Collectors.groupingBy(MchStoreRole::getMchAccountNo)),
+                        .collect(Collectors.groupingBy(StoreRoleGrants.StoreRole::accountNo)),
                 storeNames(merchantNo));
     }
 
@@ -750,12 +723,12 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         return Boolean.TRUE.equals(a.getIsOwner()) ? "店主" : a.getMchAccountNo();
     }
 
-    private StaffVO toVO(MchAccount a, Map<String, List<MchStoreRole>> byAccount,
+    private StaffVO toVO(MchAccount a, Map<String, List<StoreRoleGrants.StoreRole>> byAccount,
                          Map<String, String> storeNames) {
         List<StaffVO.StoreRoleVO> roles = byAccount.getOrDefault(a.getMchAccountNo(), List.of())
                 .stream()
-                .map(r -> new StaffVO.StoreRoleVO(r.getStoreNo(),
-                        storeNames.getOrDefault(r.getStoreNo(), r.getStoreNo()), r.getRole()))
+                .map(r -> new StaffVO.StoreRoleVO(r.storeNo(),
+                        storeNames.getOrDefault(r.storeNo(), r.storeNo()), r.role()))
                 .toList();
         /*
          * **手机号不脱敏**（2026-08-12 拍板）。

@@ -168,7 +168,8 @@ public class StoreEntityClaimServiceImpl implements StoreEntityClaimService {
         subscriptions.getObject().relinkFree(new StoreRelinkFacade.Command(new StoreRef(tenant,store),source,target,no));
         jdbc.update("UPDATE mch_store SET entity_no=?,is_default=0,pay_merchant_no=NULL,payment_changed_at=?,updated_at=GREATEST(CURRENT_TIMESTAMP(3),?),version=version+1 WHERE tenant_no=? AND store_no=? AND ownership_change_no=?",
                 target,System.currentTimeMillis(),LocalDateTime.ofInstant(Instant.ofEpochMilli(number(c,"expected_pay_revision")-NearPayStoreProfile.PROFILE_VERSION+1),ZoneOffset.UTC),tenant,store,no);
-        jdbc.update("DELETE FROM mch_store_role WHERE tenant_no=? AND store_no=? AND NOT EXISTS(SELECT 1 FROM mch_account a WHERE a.tenant_no=mch_store_role.tenant_no AND a.mch_account_no=mch_store_role.mch_account_no AND a.entity_no=? AND a.is_owner=1 AND a.deleted=0)",tenant,store,source);
+        // 门店换主体：原主体员工在这家店上的角色授权全部撤销（授权表 ROLE 行，原 mch_store_role 物理删）
+        jdbc.update("UPDATE mch_grant SET status='REVOKED',version=version+1 WHERE tenant_no=? AND resource_type='STORE' AND resource_no=? AND grant_kind='ROLE' AND status='ACTIVE' AND NOT EXISTS(SELECT 1 FROM mch_account a WHERE a.tenant_no=mch_grant.tenant_no AND CONCAT('MCH:',a.mch_account_no)=mch_grant.actor_no AND a.entity_no=? AND a.is_owner=1 AND a.deleted=0)",tenant,store,source);
         boolean retired=jdbc.queryForObject("SELECT COUNT(*) FROM mch_store WHERE tenant_no=? AND entity_no=? AND deleted=0",Integer.class,tenant,source)==0;
         if(retired != (number(c,"source_retire_planned")!=0)) throw BizException.of(ErrorCode.CONFLICT);
         if(retired) {

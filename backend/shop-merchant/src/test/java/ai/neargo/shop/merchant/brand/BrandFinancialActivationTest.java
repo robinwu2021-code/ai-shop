@@ -17,7 +17,7 @@ class BrandFinancialActivationTest {
  record F(BrandFixture f,BrandService brands,String management,String brand,BrandFinancialActivationService journal,AuthorizedScope authority,View issuer){}
  F setup()throws Exception{
   var f=new BrandFixture();String sql=Files.readString(Path.of("../shop-app/src/main/resources/db/migration/V573__brand_financial_activation_fence.sql")).replaceAll("(?m)^--.*$","").replaceAll(" ENGINE=InnoDB[^;]*","").replace(" JSON"," VARCHAR(30000)").replace("status IN ('PREPARING','ACTIVE')","CASE status WHEN 'PREPARING' THEN TRUE WHEN 'ACTIVE' THEN TRUE ELSE FALSE END");
-  for(String part:sql.split(";"))if(!part.isBlank())f.jdbc.execute(part);
+  for(String part:sql.split(";"))if(!part.isBlank()&&!part.contains("ADD COLUMN stored_value_status"))f.jdbc.execute(part);   // 新 mch_brand 已带该列
   String m=f.no(f.space(),"managementNo");var brands=new BrandServiceImpl(f.repo,f.scopes,new ManagementTokenCodec("test-brand-finance-key-more-than-thirty-two-characters",f.repo.json),(a,e,s)->new BrandChangeImpactPort.Impact(true,false,0,0,0,0),f.numbers());
   String b=f.no(brands.create(f.owner,new BrandCreate(m,"Brand",null,"ACTIVE"),"CREATE"),"brandNo");
   f.scopes.grant(f.owner,m,new GrantCommand(f.owner.actorKey(),"STORE","S1","store.read",null,null,false,null,false));

@@ -165,7 +165,6 @@ final class PaymentCollectionMysqlFixture implements AutoCloseable {
                         MchEntityMapper.class,
                         MchAccountMapper.class,
                         MchStoreMapper.class,
-                        MchStoreRoleMapper.class,
                         MchRoleMapper.class,
                         MessageMapper.class,
                         SysOutboxMapper.class)) config.addMapper(mapper);
@@ -175,7 +174,7 @@ final class PaymentCollectionMysqlFixture implements AutoCloseable {
                         mock(PickupQueryPort.class),
                         session.getMapper(MchAccountMapper.class),
                         session.getMapper(MchStoreMapper.class),
-                        session.getMapper(MchStoreRoleMapper.class),
+                        org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                         session.getMapper(MchRoleMapper.class),
                         new ai.neargo.shop.merchant.service.impl.RolePointStore(jdbc));
         messages =

@@ -418,7 +418,7 @@ class PersonnelMaintenanceIT {
         @Bean
         @Primary
         MerchantStaffService actualStaff(MerchantMappers.MchAccountMapper accounts,
-                MerchantMappers.MchStoreMapper stores, MerchantMappers.MchStoreRoleMapper roles,
+                MerchantMappers.MchStoreMapper stores, ai.neargo.shop.merchant.service.impl.StoreRoleGrants roles,
                 MerchantMappers.MchStaffLogMapper logs, MerchantMappers.MchRoleMapper definitions,
                 MemoryTokenStore tokens) {
             return new MerchantStaffServiceImpl(accounts, TokenStores.single(tokens), stores, roles, logs,

@@ -9,10 +9,8 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.RoleVO;
 import ai.neargo.shop.merchant.entity.MchRole;
 import ai.neargo.shop.merchant.entity.MchStore;
-import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.merchant.service.MerchantRoleService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -28,12 +26,12 @@ import java.util.stream.Collectors;
 public class MerchantRoleServiceImpl implements MerchantRoleService {
 
     private final MchRoleMapper roleMapper;
-    private final MchStoreRoleMapper grantMapper;
+    private final StoreRoleGrants grantMapper;
     private final MchStoreMapper storeMapper;
     private final StaffAuditLogger audit;
     private final RolePointStore points;
 
-    public MerchantRoleServiceImpl(MchRoleMapper roleMapper, MchStoreRoleMapper grantMapper,
+    public MerchantRoleServiceImpl(MchRoleMapper roleMapper, StoreRoleGrants grantMapper,
                                    MchStoreMapper storeMapper, StaffAuditLogger audit, RolePointStore points) {
         this.points = points;
         this.roleMapper = roleMapper;
@@ -205,11 +203,9 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
         if (storeNos.isEmpty()) {
             return Map.of();
         }
-        List<MchStoreRole> grants = DataScopeContext.executeWithoutScope(() ->
-                grantMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
-                        .in(MchStoreRole::getStoreNo, storeNos)));
-        return grants.stream().collect(Collectors.groupingBy(MchStoreRole::getRole,
-                Collectors.mapping(MchStoreRole::getMchAccountNo,
+        List<StoreRoleGrants.StoreRole> grants = grantMapper.ofStores(storeNos);
+        return grants.stream().collect(Collectors.groupingBy(StoreRoleGrants.StoreRole::role,
+                Collectors.mapping(StoreRoleGrants.StoreRole::accountNo,
                         Collectors.collectingAndThen(Collectors.toSet(), s -> (long) s.size()))));
     }
 

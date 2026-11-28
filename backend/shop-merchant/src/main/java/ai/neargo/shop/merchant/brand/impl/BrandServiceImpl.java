@@ -56,12 +56,13 @@ public class BrandServiceImpl implements BrandService {
   if(!Set.of("DRAFT","ACTIVE").contains(status))throw BizException.of(ErrorCode.BAD_REQUEST);validateLogo(c.logo());text(key,64);
   var digest=hash(db.encode(c));return db.write(()->{
    scopes.lock(a,c.managementNo());scopes.resolve(a,c.managementNo());scopes.require(a,c.managementNo(),"SPACE",c.managementNo(),"brand.manage");
-   var old=db.one("SELECT * FROM mch_brand WHERE tenant_no=? AND management_no=? AND create_key=?",a.tenantNo(),c.managementNo(),key);
-   if(old!=null){if(!digest.equals(str(old,"create_hash")))throw BizException.of(ErrorCode.CONFLICT);return db.view(old);}
-   var row=db.base(a);String no=BizKey.next(BizKey.BRAND);row.put("brand_no",no);row.put("management_no",c.managementNo());row.put("name",name);row.put("name_key",name);row.put("logo",c.logo());row.put("status",status);row.put("scope_revision",0);row.put("create_key",key);row.put("create_hash",digest);db.insert("mch_brand",row);
+   // 建品牌的幂等走统一防重（原 create_key / hash 新库已去掉，Q10）
+   String command=db.commandId(a,c.managementNo(),"BRAND_CREATE",key);
+   var prior=db.replay(command,digest);if(prior!=null)return prior;
+   var row=db.base(a);String no=BizKey.next(BizKey.BRAND);row.put("brand_no",no);row.put("management_no",c.managementNo());row.put("name",name);row.put("name_key",name);row.put("logo",c.logo());row.put("status",status);row.put("scope_revision",0);db.insert("mch_brand",row);
    // Creator receives only this brand, not any entity financial rights.
    scopes.seedBrandCreator(a,c.managementNo(),no);
-   var result=db.view(row);db.emit(a,db.commandId(a,c.managementNo(),"BRAND_CREATE",key),no,"BRAND_CREATE",digest,result);return result;
+   var result=db.view(row);db.emit(a,command,no,"BRAND_CREATE",digest,result);return result;
   });
  }
  private static void validateLogo(String logo){if(logo!=null&&!logo.isBlank()&&(!logo.startsWith("/")||logo.startsWith("//")||logo.contains("..")||logo.length()>512))throw BizException.of(ErrorCode.BAD_REQUEST);}

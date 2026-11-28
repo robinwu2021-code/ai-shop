@@ -184,7 +184,7 @@ public final class CommerceChainLocalLauncher {
                 fixture.db.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper.class),
                 fixture.db.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper.class),
                 fixture.db.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper.class),
-                fixture.db.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper.class),
+                org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                 fixture.db.mybatis.getMapper(ai.neargo.shop.user.mapper.UserMappers.IdentityMapper.class),
                 fixture.db.mybatis.getMapper(ai.neargo.shop.user.mapper.UserMappers.UserMapper.class), messages);
         fixture.realServices.put(ai.neargo.shop.merchant.service.LoginIdentityService.class, identities);
@@ -200,7 +200,7 @@ public final class CommerceChainLocalLauncher {
                 org.springframework.jdbc.core.simple.JdbcClient.create(fixture.db.ds)));
 
         ObjectMapper json = new ObjectMapper();
-        var repository = new ManagementRepository(fixture.db.jdbc, fixture.db.manager, json);
+        var repository = new ManagementRepository(fixture.db.jdbc, fixture.db.manager, json, org.mockito.Mockito.mock(ai.neargo.shop.spi.idempotency.RequestIdempotencyPort.class),org.mockito.Mockito.mock(ai.neargo.shop.spi.platform.AuditLogPort.class));
         var scopes = new ManagementScopeServiceImpl(repository);
         var codec = new ManagementTokenCodec(UUID.randomUUID().toString(), json);
         var numberRepository = new JdbcDocumentNumberRepository(DocumentOwner.CORE, fixture.db.manager);

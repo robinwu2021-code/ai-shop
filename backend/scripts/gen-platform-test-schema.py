@@ -24,6 +24,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 DESIGN = ROOT / "backend/shop-app/src/test/resources/db/n_platform/V1__platform_design.sql"
 SUPPLEMENT = ROOT / "backend/shop-app/src/test/resources/db/n_platform/V2__platform_supplement.sql"
 OUT = ROOT / "backend/shop-app/src/test/resources/schema-platform-test.sql"
+# 挂在旧表上的过渡触发器：旧表由 schema-test.sql 建，所以单独一个文件、在它之后执行
+OUT_AFTER = ROOT / "backend/shop-app/src/test/resources/schema-platform-test-after.sql"
+TRIGGERS_AFTER = [
+    'CREATE TRIGGER IF NOT EXISTS mch_store_role_to_grant AFTER INSERT, UPDATE, DELETE ON mch_store_role'
+    ' FOR EACH ROW CALL "ai.neargo.shop.support.StoreRoleToGrantTrigger";',
+]
 
 # 已换到新结构的平台表（按换表顺序追加）。表名取自新库设计
 TABLES = [
@@ -38,6 +44,8 @@ TABLES = [
     "mch_personnel",               # D 账号关联并进人员（原 mch_personnel_account，Q4）
     "mch_store_service_area",      # E 四张服务范围表并一张（channel 空串 = 基础覆盖面）
     "mch_service_area_cell",       # E 多边形网格（V2 补表，带 channel）
+    "mch_grant", "mch_group",      # G 门店角色与管理授权并成授权表；管理空间改集团
+    "mch_brand",                   # G 品牌（建品牌的幂等改走统一防重，去掉 create_key / hash）
 ]
 
 # 过渡列：同名表里新设计去掉了、平台代码还在用的列（列定义取自旧测试库）。换完对应那一项就从这里删
@@ -187,16 +195,25 @@ def render():
     return "\n".join(out)
 
 
+def render_after():
+    return "\n".join(["-- 【自动生成，勿手改】由 backend/scripts/gen-platform-test-schema.py 生成。",
+                      "-- 挂在旧表上的过渡触发器（旧测试还按旧表写，同步到新结构），在 schema-test.sql 之后执行。", ""]
+                     + TRIGGERS_AFTER + [""])
+
+
 def main():
-    text = render()
+    outputs = {OUT: render(), OUT_AFTER: render_after()}
     if "--check" in sys.argv:
-        if not OUT.exists() or OUT.read_text(encoding="utf-8") != text:
-            print(f"✗ {OUT.relative_to(ROOT)} 不是最新：跑一次 python3 backend/scripts/gen-platform-test-schema.py")
+        stale = [p for p, text in outputs.items() if not p.exists() or p.read_text(encoding="utf-8") != text]
+        for p in stale:
+            print(f"✗ {p.relative_to(ROOT)} 不是最新：跑一次 python3 backend/scripts/gen-platform-test-schema.py")
+        if stale:
             sys.exit(1)
-        print(f"✓ {OUT.relative_to(ROOT)} 是最新的")
+        print("✓ 平台测试建表脚本是最新的")
         return
-    OUT.write_text(text, encoding="utf-8")
-    print(f"{OUT.relative_to(ROOT)}: {text.count('CREATE TABLE')} 张表")
+    for p, text in outputs.items():
+        p.write_text(text, encoding="utf-8")
+        print(f"{p.relative_to(ROOT)}: {text.count('CREATE TABLE')} 张表，{text.count('CREATE TRIGGER')} 个触发器")
 
 
 if __name__ == "__main__":

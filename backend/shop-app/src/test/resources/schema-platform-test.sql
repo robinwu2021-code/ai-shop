@@ -412,4 +412,75 @@ CREATE TABLE IF NOT EXISTS mch_service_area_cell (
   CONSTRAINT mch_service_area_cell__uk_sac_area_cell UNIQUE (area_no, cell_id)
 );
 
+CREATE TABLE IF NOT EXISTS mch_grant (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(64) DEFAULT 'MAIN',
+  grant_no varchar(64) DEFAULT NULL,
+  management_no varchar(64) DEFAULT NULL,
+  actor_no varchar(64) NOT NULL,
+  resource_type varchar(24) DEFAULT NULL,
+  resource_no varchar(64) DEFAULT NULL,
+  grant_kind varchar(16) DEFAULT NULL,
+  role_code varchar(32) NOT NULL DEFAULT '',
+  permission_code varchar(32) NOT NULL DEFAULT '',
+  status varchar(10) DEFAULT NULL,
+  valid_from datetime(3) DEFAULT NULL,
+  valid_to datetime(3) DEFAULT NULL,
+  authority_source_type varchar(24) DEFAULT NULL,
+  authority_source_no varchar(64) DEFAULT NULL,
+  delegatable tinyint DEFAULT 0,
+  authority_snapshot TEXT NULL,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version int NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by varchar(64) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT mch_grant__uk_mch_grant_no UNIQUE (tenant_no, grant_no),
+  CONSTRAINT mch_grant__uk_mch_grant_item UNIQUE (tenant_no, management_no, actor_no, resource_type, resource_no, grant_kind, role_code, permission_code)
+);
+
+CREATE TABLE IF NOT EXISTS mch_group (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(64) NOT NULL DEFAULT 'MAIN',
+  management_no varchar(64) NOT NULL,
+  name varchar(64) NOT NULL,
+  owner_actor_no varchar(64) NOT NULL,
+  status varchar(10) NOT NULL,
+  bootstrap_source_account_no varchar(64) NOT NULL,
+  auth_revision bigint NOT NULL DEFAULT 0,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version int NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by varchar(64) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT mch_group__uk_1 UNIQUE (tenant_no, management_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_brand (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(64) NOT NULL DEFAULT 'MAIN',
+  brand_no varchar(64) NOT NULL,
+  management_no varchar(64) NOT NULL,
+  legal_entity_no varchar(64) DEFAULT NULL,
+  name varchar(100) NOT NULL,
+  name_key varchar(100) NOT NULL,
+  logo varchar(512) DEFAULT NULL,
+  status varchar(10) NOT NULL,
+  stored_value_status varchar(10) NOT NULL DEFAULT 'NONE',
+  scope_revision bigint NOT NULL,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version int NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by varchar(64) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT mch_brand__uk_1 UNIQUE (tenant_no, brand_no),
+  CONSTRAINT mch_brand__uk_2 UNIQUE (tenant_no, management_no, name_key)
+);
+
 CREATE TRIGGER IF NOT EXISTS mch_role_perms_to_points AFTER INSERT, UPDATE, DELETE ON mch_role FOR EACH ROW CALL "ai.neargo.shop.support.RolePermsToPointsTrigger";

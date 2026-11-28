@@ -91,7 +91,7 @@ class PlatformSchemaGapTest {
                 }
             }
         }
-        assertThat(entities).as("一个平台句柄下的实体都没找到 —— 标记接口改名了？").isGreaterThan(15);
+        assertThat(entities).as("一个平台句柄下的实体都没找到 —— 标记接口改名了？").isGreaterThan(14);
 
         Set<String> known = new TreeSet<>();
         for (String line : Files.readAllLines(KNOWN, StandardCharsets.UTF_8)) {

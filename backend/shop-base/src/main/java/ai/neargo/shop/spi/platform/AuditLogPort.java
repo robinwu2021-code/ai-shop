@@ -53,4 +53,16 @@ public interface AuditLogPort {
                          String beforeJson, String afterJson) {
         record(action, target, detail, critical);
     }
+
+    /**
+     * 按审计对象倒序翻页（id 小于 {@code beforeId}，取 {@code limit} 条）。
+     * 给「某个对象的操作记录」页用：品牌管理的变更历史写在统一审计里（TDD-平台基础库换表 G6）。
+     */
+    default java.util.List<Entry> byTarget(String target, long beforeId, int limit) {
+        return java.util.List.of();
+    }
+
+    /** 一条审计：操作码、说明、变更后快照（JSON）、发生时间（毫秒） */
+    record Entry(long id, String action, String detail, String afterJson, long at) {
+    }
 }

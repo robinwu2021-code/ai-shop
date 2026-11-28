@@ -145,7 +145,6 @@ final class AccessMysqlFixture implements AutoCloseable {
                         PlanDefMapper.class,
                         ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper.class,
                         MchStoreMapper.class,
-                        MchStoreRoleMapper.class,
                         MchRoleMapper.class,
                         ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper.class,
                         ai.neargo.shop.platform.perm.mapper.PermMappers.RoleMapper.class,

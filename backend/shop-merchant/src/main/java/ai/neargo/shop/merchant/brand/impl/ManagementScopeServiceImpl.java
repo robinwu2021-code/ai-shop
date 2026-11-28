@@ -102,11 +102,12 @@ public class ManagementScopeServiceImpl implements ManagementScopeService {
    if(ownerAccounts(a).stream().noneMatch(x->source.equals(str(x,"mch_account_no"))))throw BizException.of(ErrorCode.FORBIDDEN);
    // Lock the source row, so concurrent initialization using the same key is serialized.
    db.one("SELECT mch_account_no FROM mch_account WHERE tenant_no=? AND mch_account_no=? FOR UPDATE",a.tenantNo(),source);
-   var existing=db.one("SELECT * FROM mch_group WHERE tenant_no=? AND owner_actor_no=? AND bootstrap_key=?",a.tenantNo(),a.actorKey(),k);
-   if(existing!=null){if(!hash.equals(str(existing,"bootstrap_hash")))throw BizException.of(ErrorCode.CONFLICT);return db.view(existing);}
+   // 建集团的幂等走统一防重（原 bootstrap_key / hash 新库已去掉，Q10）：同一人同一幂等键重放上次结果，内容不同报冲突
+   String command=db.commandId(a,"SPACE","SPACE_CREATE",k);
+   var prior=db.replay(command,hash);if(prior!=null)return prior;
    var row=db.base(a);String no=BizKey.next(BizKey.MANAGEMENT_SPACE);
-   row.put("management_no",no);row.put("name",n);row.put("owner_actor_no",a.actorKey());row.put("status","ACTIVE");row.put("bootstrap_source_account_no",source);row.put("bootstrap_key",k);row.put("bootstrap_hash",hash);row.put("auth_revision",0);
-   db.insert("mch_group",row);seedOwnedResource(a,no,"SPACE",no,PERMISSIONS.get("SPACE"));var result=db.view(row);db.emit(a,db.commandId(a,no,"SPACE_CREATE",k),no,"SPACE_CREATE",hash,result);return result;
+   row.put("management_no",no);row.put("name",n);row.put("owner_actor_no",a.actorKey());row.put("status","ACTIVE");row.put("bootstrap_source_account_no",source);row.put("auth_revision",0);
+   db.insert("mch_group",row);seedOwnedResource(a,no,"SPACE",no,PERMISSIONS.get("SPACE"));var result=db.view(row);db.emit(a,command,no,"SPACE_CREATE",hash,result);return result;
   });
  }
  // Called only inside the authorized creation transaction, never from a grant API.

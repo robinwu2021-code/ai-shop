@@ -469,7 +469,7 @@ class CommerceAccessSecurityFlowTest {
                         mock(PickupQueryPort.class),
                         f.mybatis.getMapper(MchAccountMapper.class),
                         f.mybatis.getMapper(MchStoreMapper.class),
-                        f.mybatis.getMapper(MchStoreRoleMapper.class),
+                        org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                         f.mybatis.getMapper(MchRoleMapper.class),
                         new ai.neargo.shop.merchant.service.impl.RolePointStore(f.jdbc));
         var sessions = new DbAccountSessionVerifier(f.dao, f.loader, f.clock, f.manager);
@@ -553,7 +553,7 @@ class CommerceAccessSecurityFlowTest {
                     b.registerSingleton("qualificationRows", f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper.class));
                     b.registerSingleton("roleRows", f.mybatis.getMapper(MchRoleMapper.class));
                     b.registerSingleton(
-                            "storeRoleRows", f.mybatis.getMapper(MchStoreRoleMapper.class));
+                            "storeRoleRows", org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class));
                     b.registerSingleton("communities", f.mybatis.getMapper(CommunityMapper.class));
                     b.registerSingleton(
                             "pickupPoints", f.mybatis.getMapper(PickupPointMapper.class));

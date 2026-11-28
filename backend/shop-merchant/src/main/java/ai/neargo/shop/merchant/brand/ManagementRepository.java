@@ -22,9 +22,20 @@ public class ManagementRepository {
  final JdbcTemplate jdbc;
  final TransactionTemplate transactions;
  final ObjectMapper json;
- public ManagementRepository(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc,@Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager tx,ObjectMapper json) {
-  this.jdbc=jdbc;this.transactions=new TransactionTemplate(tx);this.json=json;
+ /** 命令的幂等重放与按幂等键查结果（原 mch_management_command，新库不建；TDD-平台基础库换表 G5） */
+ private final ai.neargo.shop.spi.idempotency.RequestIdempotencyPort idempotency;
+ /** 管理操作的变更历史写统一审计（G6），品牌「操作记录」页按审计对象读回 */
+ private final ai.neargo.shop.spi.platform.AuditLogPort audit;
+ /** 命令在统一防重里的入口名 */
+ static final String JOURNAL_ENDPOINT="management.command";
+ public ManagementRepository(@Qualifier(PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE) JdbcTemplate jdbc,@Qualifier(ModuleDataSources.PLATFORM_TX_MANAGER) PlatformTransactionManager tx,ObjectMapper json,
+   ai.neargo.shop.spi.idempotency.RequestIdempotencyPort idempotency,ai.neargo.shop.spi.platform.AuditLogPort audit) {
+  this.jdbc=jdbc;this.transactions=new TransactionTemplate(tx);this.json=json;this.idempotency=idempotency;this.audit=audit;
  }
+ /** 统一审计（Spring 代理下不能直接读字段） */
+ public ai.neargo.shop.spi.platform.AuditLogPort audit(){return audit;}
+ /** 审计对象：某集团下某个目标（集团、品牌、门店……）的管理操作 */
+ public static String auditTarget(String tenantNo,String target){return "MANAGEMENT:"+tenantNo+"|"+target;}
  public <T> T write(Supplier<T> action) {
   try{return transactions.execute(s->action.get());}
   catch(org.springframework.dao.DuplicateKeyException|org.springframework.dao.CannotAcquireLockException e){throw BizException.of(ErrorCode.CONFLICT);}
@@ -90,20 +101,31 @@ public class ManagementRepository {
  public static String hash(String value){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}
  public String commandId(ManagementModels.Actor a,String target,String action,String key){return hash(a.tenantNo()+"|"+a.actorKey()+"|"+target+"|"+action+"|"+ManagementModels.text(key,64));}
  public Map<String,Object> replay(String id,String commandHash){
-  var row=one("SELECT payload FROM mch_management_command WHERE command_id=?",id);
-  if(row==null)return null;var payload=decode(row.get("payload"));
+  @SuppressWarnings("unchecked") Map<String,Object> payload=idempotency.findCompleted(id,JOURNAL_ENDPOINT,null,null,Map.class).orElse(null);
+  if(payload==null)return null;
+  // 命令摘要放在载荷里自己比：按幂等键查结果（command）时并不知道摘要
   if(!Objects.equals(commandHash,payload.get("commandHash")))throw BizException.of(ErrorCode.CONFLICT);
   return decode(encode(payload.get("resultSnapshot")));
  }
  public Map<String,Object> command(ManagementModels.Actor a,String target,String action,String key){
-  var row=one("SELECT payload FROM mch_management_command WHERE tenant_no=? AND command_id=?",a.tenantNo(),commandId(a,target,action,key));
-  if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
-  return decode(encode(decode(row.get("payload")).get("resultSnapshot")));
+  @SuppressWarnings("unchecked") Map<String,Object> payload=idempotency.findCompleted(commandId(a,target,action,key),JOURNAL_ENDPOINT,null,null,Map.class).orElse(null);
+  if(payload==null||!a.tenantNo().equals(payload.get("tenantNo")))throw BizException.of(ErrorCode.NOT_FOUND);
+  return decode(encode(payload.get("resultSnapshot")));
  }
+ /**
+  * 记下一条已完成的命令：进统一防重（重放用）并写统一审计（变更历史）。
+  * 平台事务提交之后才记 —— 事务回滚的写不能留下可重放的结果；提交后、记之前进程没了，重试由业务表唯一键兜住（G5）。
+  */
  public void emit(ManagementModels.Actor a,String id,String target,String action,String commandHash,Map<String,Object> result){
   var payload=new LinkedHashMap<String,Object>();payload.put("tenantNo",a.tenantNo());payload.put("actorKey",a.actorKey());
   payload.put("action",action);payload.put("target",target);payload.put("commandHash",commandHash);payload.put("resultSnapshot",result);
-  jdbc.update("INSERT INTO mch_management_command(command_id,tenant_no,aggregate_id,payload,created_at) VALUES(?,?,?,?,?)",
-   id,a.tenantNo(),a.tenantNo()+"|"+target,encode(payload),Timestamp.from(Instant.now()));
+  // 统一审计自己就等提交后再写（回滚不留痕）；放进下面的 afterCommit 里再登记一次反而会被丢掉
+  audit.record(action,auditTarget(a.tenantNo(),target),a.actorKey(),false,null,encode(payload));
+  Runnable record=()->idempotency.execute(id,JOURNAL_ENDPOINT,null,null,Map.class,()->payload);
+  if(org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()){
+   org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization(){
+    @Override public void afterCommit(){record.run();}
+   });
+  }else record.run();
  }
 }

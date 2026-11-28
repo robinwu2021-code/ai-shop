@@ -125,9 +125,9 @@ public class ManagementQueryServiceImpl implements ManagementQueryService {
   var row=db.one("SELECT management_no FROM mch_brand WHERE tenant_no=? AND brand_no=? AND deleted=0",a.tenantNo(),brand);if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);String m=str(row,"management_no");scopes.resolve(a,m);scopes.require(a,m,"BRAND",brand,"brand.audit.read");
   if(size<1||size>100)throw BizException.of(ErrorCode.BAD_REQUEST);var scope=hash(a.tenantNo()+a.actorKey()+brand);long before=Long.MAX_VALUE;
   if(cursor!=null){var c=tokens.decode("AUDIT_CURSOR",cursor);if(!scope.equals(c.get("scope")))throw BizException.of(ErrorCode.CONFLICT);before=((Number)c.get("before")).longValue();}
-  // All audit reads use the durable source, including unprojected events; no async read-after-write gap.
-  var rows=db.rows("SELECT id,payload,created_at FROM mch_management_command WHERE tenant_no=? AND aggregate_id=? AND id<? ORDER BY id DESC LIMIT ?",a.tenantNo(),a.tenantNo()+"|"+brand,before,size+1);
-  var chosen=rows.stream().limit(size).toList();var items=chosen.stream().map(r->{var payload=db.decode(r.get("payload"));if(!a.tenantNo().equals(payload.get("tenantNo")))throw BizException.of(ErrorCode.FORBIDDEN);return Map.<String,Object>of("action",payload.get("action"),"actorKey",payload.get("actorKey"),"occurredAt",String.valueOf(r.get("created_at")),"result",payload.get("resultSnapshot"));}).toList();
-  return new Page(items,rows.size()>size?tokens.encode("AUDIT_CURSOR",Map.of("scope",scope,"before",num(chosen.getLast(),"id")),900):null);
+  // 变更历史在统一审计里（G6）：按审计对象倒序翻页
+  var rows=db.audit().byTarget(ai.neargo.shop.merchant.brand.ManagementRepository.auditTarget(a.tenantNo(),brand),before,size+1);
+  var chosen=rows.stream().limit(size).toList();var items=chosen.stream().map(r->{var payload=db.decode(r.afterJson());if(!a.tenantNo().equals(payload.get("tenantNo")))throw BizException.of(ErrorCode.FORBIDDEN);return Map.<String,Object>of("action",payload.get("action"),"actorKey",payload.get("actorKey"),"occurredAt",java.time.Instant.ofEpochMilli(r.at()).toString(),"result",payload.get("resultSnapshot"));}).toList();
+  return new Page(items,rows.size()>size?tokens.encode("AUDIT_CURSOR",Map.of("scope",scope,"before",chosen.getLast().id()),900):null);
  }
 }

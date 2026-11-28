@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 class ManagementReadScopeTest {
  @Test void brandReaderSeesMemberStoreSummaryButNotEntityFinance() throws Exception {
   var f=new BrandFixture();var m=f.no(f.space(),"managementNo");
-  f.jdbc.update("INSERT INTO mch_brand(tenant_no,brand_no,management_no,name,name_key,status,scope_revision,create_key,create_hash,created_at,updated_at,created_by,updated_by) VALUES('MAIN','B1',?,'品牌','品牌','ACTIVE',1,'create','hash',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'MCH:MA1','MCH:MA1')",m);
+  f.jdbc.update("INSERT INTO mch_brand(tenant_no,brand_no,management_no,name,name_key,status,scope_revision,created_at,updated_at,created_by,updated_by) VALUES('MAIN','B1',?,'品牌','品牌','ACTIVE',1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'MCH:MA1','MCH:MA1')",m);
   f.jdbc.update("INSERT INTO mch_brand_store_binding(tenant_no,binding_no,brand_no,store_no,status,effective_from,scope_revision,change_no,created_at,updated_at,created_by,updated_by) VALUES('MAIN','BIND','B1','S1','ACTIVE',CURRENT_TIMESTAMP,1,'C1',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'MCH:MA1','MCH:MA1')");
   for(var grant:new GrantCommand[]{new GrantCommand("MCH:MA3","SPACE",m,"management.enter",null,null,false,null,false),new GrantCommand("MCH:MA3","BRAND","B1","brand.read",null,null,false,null,false)})f.scopes.grant(f.owner,m,grant);
   var staff=new Actor("MAIN","MCH:MA3");var q=new ManagementQueryServiceImpl(f.repo,f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",f.repo.json));

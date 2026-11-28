@@ -26,7 +26,7 @@ class SelfRenameTest {
 
     private MerchantStaffServiceImpl svc() {
         var service = new MerchantStaffServiceImpl(staffMapper, mock(TokenStores.class),
-                mock(MerchantMappers.MchStoreMapper.class), mock(MerchantMappers.MchStoreRoleMapper.class),
+                mock(MerchantMappers.MchStoreMapper.class), mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                 mock(MerchantMappers.MchStaffLogMapper.class), mock(MerchantMappers.MchRoleMapper.class),
                 mock(StaffAuditLogger.class), mock(TokenStore.class), mock(OtpStore.class));
         service.setOwnership(mock(ai.neargo.shop.spi.user.StoreOwnershipWritePort.class));

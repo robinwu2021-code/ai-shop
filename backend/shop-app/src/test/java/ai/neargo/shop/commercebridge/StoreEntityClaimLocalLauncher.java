@@ -196,7 +196,7 @@ public final class StoreEntityClaimLocalLauncher {
                     f.auth, new ai.neargo.shop.user.service.impl.LoginTicketServiceImpl(f.db.jdbc.getDataSource(), f.db.manager, Duration.ofMinutes(5)),
                     f.tokens, mock(ai.neargo.shop.auth.LoginAuditor.class),
                     f.db.mybatis.getMapper(MchAccountMapper.class), f.db.mybatis.getMapper(MchEntityMapper.class),
-                    f.db.mybatis.getMapper(MchStoreMapper.class), f.db.mybatis.getMapper(MchStoreRoleMapper.class),
+                    f.db.mybatis.getMapper(MchStoreMapper.class), org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                     f.db.mybatis.getMapper(ai.neargo.shop.user.mapper.UserMappers.IdentityMapper.class),
                     f.db.mybatis.getMapper(ai.neargo.shop.user.mapper.UserMappers.UserMapper.class), messages);
             f.realServices.put(ai.neargo.shop.merchant.service.LoginIdentityService.class, identities);

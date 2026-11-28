@@ -172,8 +172,7 @@ class CommerceStoreCreationFlowTest {
                             EntityPlanMapper.class,
                             PlanDefMapper.class,
                             MchPaymentMapper.class,
-                            ServiceAreaMapper.class,
-                            MchStoreRoleMapper.class)) config.addMapper(mapper);
+                            ServiceAreaMapper.class)) config.addMapper(mapper);
             var operatorPermissions=org.mockito.Mockito.mock(ai.neargo.shop.auth.PermChecker.class);
             org.mockito.Mockito.when(operatorPermissions.can(org.mockito.ArgumentMatchers.anyString())).thenAnswer(v->
                     ai.neargo.common.security.rbac.Permissions.matches(ai.neargo.shop.auth.SecurityUtils.requireUser().grantedPermissions(),v.getArgument(0)));
@@ -250,7 +249,7 @@ class CommerceStoreCreationFlowTest {
                                     creation,
                                     org.mockito.Mockito.mock(StoreCategoryService.class),
                                     sessions.getMapper(MchStoreMapper.class),
-                                    sessions.getMapper(MchStoreRoleMapper.class),
+                                    org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                                     new ai.neargo.shop.merchant.paymerchant.impl.CollectingMerchantsImpl(sessions.getMapper(MchPaymentMapper.class)),
                                     plans,
                                     sessions.getMapper(MchEntityMapper.class),

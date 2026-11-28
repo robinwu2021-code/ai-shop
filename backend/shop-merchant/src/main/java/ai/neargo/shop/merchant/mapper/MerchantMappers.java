@@ -38,7 +38,6 @@ import ai.neargo.shop.merchant.booking.entity.MchScheduleChangeLog;
 import ai.neargo.shop.merchant.booking.entity.MchScheduleRule;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreCategory;
-import ai.neargo.shop.merchant.entity.MchStoreRole;
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -73,18 +72,24 @@ public final class MerchantMappers {
         @Select("""
                 SELECT a.mch_account_no AS account_no,
                   (a.is_owner=1 OR EXISTS (
-                    SELECT 1 FROM mch_store_role g JOIN mch_role d ON d.tenant_no=g.tenant_no
-                      AND CAST(d.role_code AS BINARY)=CAST(g.role AS BINARY) AND d.deleted=0
-                    WHERE g.tenant_no=a.tenant_no AND g.mch_account_no=a.mch_account_no AND g.deleted=0
-                      AND CAST(g.store_no AS BINARY)=CAST(s.store_no AS BINARY)
+                    SELECT 1 FROM mch_grant g JOIN mch_role d ON d.tenant_no=g.tenant_no
+                      AND CAST(d.role_code AS BINARY)=CAST(g.role_code AS BINARY) AND d.deleted=0
+                    JOIN mch_role_point p ON CAST(p.entity_no AS BINARY)=CAST(d.entity_no AS BINARY)
+                      AND CAST(p.role_code AS BINARY)=CAST(d.role_code AS BINARY)
+                    WHERE g.tenant_no=a.tenant_no AND g.grant_kind='ROLE' AND g.resource_type='STORE'
+                      AND g.status='ACTIVE' AND g.deleted=0
+                      AND CAST(g.actor_no AS BINARY)=CAST(CONCAT('MCH:',a.mch_account_no) AS BINARY)
+                      AND CAST(g.resource_no AS BINARY)=CAST(s.store_no AS BINARY)
+                      AND g.valid_from<=#{now} AND (g.valid_to IS NULL OR g.valid_to>#{now})
+                      AND CAST(g.management_no AS BINARY)=CAST(e.management_no AS BINARY)
+                      AND EXISTS (SELECT 1 FROM mch_group m WHERE m.tenant_no=g.tenant_no
+                        AND CAST(m.management_no AS BINARY)=CAST(g.management_no AS BINARY) AND m.status='ACTIVE' AND m.deleted=0)
                       AND (CAST(d.entity_no AS BINARY)=CAST(e.entity_no AS BINARY)
                         OR (d.entity_no='*' AND NOT EXISTS (SELECT 1 FROM mch_role custom
                           WHERE custom.tenant_no=d.tenant_no AND custom.deleted=0
                             AND CAST(custom.entity_no AS BINARY)=CAST(e.entity_no AS BINARY)
                             AND CAST(custom.role_code AS BINARY)=CAST(d.role_code AS BINARY))))
-                      AND JSON_VALID(d.perms)
-                      AND (JSON_CONTAINS(d.perms,JSON_QUOTE(#{q.permission}))
-                        OR JSON_CONTAINS(d.perms,JSON_QUOTE('*'))))) AS allowed
+                      AND (p.perm_code=#{q.permission} OR p.perm_code='*'))) AS allowed
                 FROM mch_entity e JOIN mch_store s ON s.tenant_no=e.tenant_no AND s.entity_no=e.entity_no
                 JOIN mch_account a ON a.tenant_no=e.tenant_no AND a.entity_no=e.entity_no
                 WHERE CAST(e.tenant_no AS BINARY)=CAST(#{q.tenantNo} AS BINARY)
@@ -96,7 +101,8 @@ public final class MerchantMappers {
                     OR (#{q.subjectKind}='USR' AND CAST(a.user_no AS BINARY)=CAST(#{q.operatorNo} AS BINARY)))
                 LIMIT 2
                 """)
-        List<OperatorAccessRow> selectAccess(@Param("q") MerchantOperatorAccessPort.Query query);
+        List<OperatorAccessRow> selectAccess(@Param("q") MerchantOperatorAccessPort.Query query,
+                                             @Param("now") java.sql.Timestamp now);
     }
 
 
@@ -242,32 +248,6 @@ public final class MerchantMappers {
         MchAccount lockPersonnelAccount(@Param("entity") String entity, @Param("account") String account);
 
     }
-
-    /** 子账号在各门店的角色（每店一个角色）。 */
-    public interface MchStoreRoleMapper extends PlatformTableMapper<MchStoreRole> {
-
-        /**
-         * 复活一条被逻辑删的授权。
-         *
-         * <p><b>撤销授权是逻辑删，而 {@code uk_store_role} 不含 deleted 列</b> ——
-         * 所以「撤销再授予同一个角色」时直接 insert 必然撞唯一键，
-         * 表现为授权接口 500，而老板看到的只是「系统开小差」。
-         *
-         * <p>这个坑在商家社区表、商品社区池上各踩过一次，这是第三次 ——
-         * <b>凡是「逻辑删 + 业务唯一键」的组合都有它</b>，
-         * 而它只在「删了再加回来」这条路径上出现，日常测试很难走到。
-         *
-         * @return 影响行数；0 表示压根没有这一行（该走 insert）
-         */
-        @Update("""
-                UPDATE mch_store_role SET deleted = 0, version = version + 1
-                WHERE mch_account_no = #{accountNo} AND store_no = #{storeNo}
-                  AND role = #{role} AND deleted = 1
-                """)
-        int revive(@Param("accountNo") String accountNo, @Param("storeNo") String storeNo,
-                   @Param("role") String role);
-    }
-
     /**
      * 商家角色（V71）：6 个预置（{@code entity_no='*'}）+ 商家自定义。
      *

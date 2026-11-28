@@ -2,9 +2,7 @@ package ai.neargo.shop.merchant.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchAccount;
-import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.spi.user.MerchantStaffPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
@@ -23,9 +21,9 @@ import java.util.Set;
 public class MerchantStaffPortImpl implements MerchantStaffPort {
 
     private final MchAccountMapper accountMapper;
-    private final MchStoreRoleMapper storeRoleMapper;
+    private final ai.neargo.shop.merchant.service.impl.StoreRoleGrants storeRoleMapper;
 
-    public MerchantStaffPortImpl(MchAccountMapper accountMapper, MchStoreRoleMapper storeRoleMapper) {
+    public MerchantStaffPortImpl(MchAccountMapper accountMapper, ai.neargo.shop.merchant.service.impl.StoreRoleGrants storeRoleMapper) {
         this.accountMapper = accountMapper;
         this.storeRoleMapper = storeRoleMapper;
     }
@@ -54,10 +52,9 @@ public class MerchantStaffPortImpl implements MerchantStaffPort {
             if (roles != null && !roles.isEmpty()) {
                 List<String> accountNos = accounts.stream()
                         .map(MchAccount::getMchAccountNo).toList();
-                Set<String> hit = storeRoleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
-                                .in(MchStoreRole::getMchAccountNo, accountNos)
-                                .in(MchStoreRole::getRole, roles)).stream()
-                        .map(MchStoreRole::getMchAccountNo)
+                Set<String> hit = storeRoleMapper.ofAccounts(accountNos).stream()
+                        .filter(r -> roles.contains(r.role()))
+                        .map(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.StoreRole::accountNo)
                         .collect(java.util.stream.Collectors.toSet());
                 accounts.stream()
                         .filter(a -> hit.contains(a.getMchAccountNo()))

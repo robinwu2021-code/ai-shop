@@ -37,7 +37,7 @@ class OperatingEntityCreationMySqlTest {
         jdbc.update("INSERT INTO usr_account VALUES ('MAIN','U1','TW','NORMAL',0),('MAIN','U2','TW','NORMAL',0),('OTHER','U1','TW','NORMAL',0)");
         jdbc.update("INSERT INTO mch_account VALUES ('MAIN','MA1','U1','L1',1,'ACTIVE',0),('MAIN','STAFF','U1','L1',0,'ACTIVE',0),('MAIN','MA2','U2','L2',1,'ACTIVE',0),('MAIN','MA3','U1','CN1',1,'ACTIVE',0)");
         jdbc.update("INSERT INTO mch_entity(tenant_no,entity_no,name,market,legal_form,version,status,verified,deleted) VALUES ('MAIN','L1','本人证照','TW','COMPANY',0,'ACTIVE',1,0),('MAIN','L2','别人证照','TW','COMPANY',0,'ACTIVE',1,0),('MAIN','CN1','大陆证照','CN','COMPANY',0,'ACTIVE',1,0)");
-        service=new OperatingEntityServiceImpl(new ManagementRepository(jdbc,new DataSourceTransactionManager(ds),new ObjectMapper()));
+        service=new OperatingEntityServiceImpl(new ManagementRepository(jdbc,new DataSourceTransactionManager(ds),new ObjectMapper(),org.mockito.Mockito.mock(ai.neargo.shop.spi.idempotency.RequestIdempotencyPort.class),org.mockito.Mockito.mock(ai.neargo.shop.spi.platform.AuditLogPort.class)));
     }
     @AfterEach void cleanup() { if (schema!=null) admin.execute("DROP DATABASE "+schema); }
     Create draft(String legal) { return new Create("  经营主体  ",Market.TW,legal); }

@@ -9,11 +9,9 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.StoreVO;
 import ai.neargo.shop.merchant.paymerchant.CollectingMerchants;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.merchant.paymerchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.StoreSlugs;
 import ai.neargo.shop.merchant.entity.MchStore;
-import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.service.StoreAdminService;
 import ai.neargo.shop.merchant.service.StoreCategoryService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -44,7 +42,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership;
     @org.springframework.beans.factory.annotation.Autowired
     public void setOwnership(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership) {this.ownership=ownership;}
-    private final MchStoreRoleMapper roleMapper;
+    private final StoreRoleGrants roleGrants;
     private final CollectingMerchants collectingMerchants;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
 
@@ -65,7 +63,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
     public StoreAdminServiceImpl(MerchantStoreCreation commerce, StoreCategoryService categories,
-                                 MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
+                                 MchStoreMapper storeMapper, StoreRoleGrants roleGrants,
                                  CollectingMerchants collectingMerchants,
                                  ai.neargo.shop.merchant.service.MerchantPlanService planService,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper,
@@ -78,7 +76,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         this.serviceAreaMapper = serviceAreaMapper;
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
-        this.roleMapper = roleMapper;
+        this.roleGrants = roleGrants;
         this.collectingMerchants = collectingMerchants;
         this.planService = planService;
         this.storeLinkService = storeLinkService;
@@ -88,11 +86,8 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     public List<StoreVO> list(String merchantNo) {
         List<MchStore> stores = stores(merchantNo);
         Set<String> payReady = activePayMerchantNos(merchantNo);
-        Map<String, Long> staffCount = DataScopeContext.executeWithoutScope(() ->
-                        roleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
-                                .in(MchStoreRole::getStoreNo,
-                                        stores.isEmpty() ? List.of("") : stores.stream().map(MchStore::getStoreNo).toList())))
-                .stream().collect(Collectors.groupingBy(MchStoreRole::getStoreNo, Collectors.counting()));
+        Map<String, Long> staffCount = roleGrants.ofStores(stores.stream().map(MchStore::getStoreNo).toList())
+                .stream().collect(Collectors.groupingBy(StoreRoleGrants.StoreRole::storeNo, Collectors.counting()));
         return stores.stream().map(s -> toVO(s, payReady, staffCount)).toList();
     }
 
@@ -389,10 +384,8 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     }
 
     private Map<String, Long> staffCountOf(String storeNo) {
-        return DataScopeContext.executeWithoutScope(() ->
-                        roleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
-                                .eq(MchStoreRole::getStoreNo, storeNo)))
-                .stream().collect(Collectors.groupingBy(MchStoreRole::getStoreNo, Collectors.counting()));
+        return roleGrants.ofStores(List.of(storeNo))
+                .stream().collect(Collectors.groupingBy(StoreRoleGrants.StoreRole::storeNo, Collectors.counting()));
     }
 
     private StoreVO toVO(MchStore s, Set<String> activePay, Map<String, Long> staffCount) {

@@ -186,3 +186,6 @@ CREATE TABLE `mch_brand_financial_change` (
   UNIQUE KEY `uk_brand_financial_change_command` (`tenant_no`, `original_actor_no`, `command_key`),
   UNIQUE KEY `uk_brand_financial_change_store` (`tenant_no`, `in_flight_store_no`)
 ) COMMENT='储值开通后的门店入退连锁：与支付侧两阶段变更成员的中间状态与回执';
+
+-- 品牌：储值状态由代码推进（NONE → PREPARING → ACTIVE），建品牌时不写，靠旧表默认值 NONE；新表没有。
+ALTER TABLE `mch_brand` ALTER COLUMN `stored_value_status` SET DEFAULT 'NONE';

@@ -80,7 +80,7 @@ class BizIdentityNativeMysqlTest {
             var ticketService = new LoginTicketServiceImpl(db.jdbc.getDataSource(), db.manager, Duration.ofMinutes(5));
             identities = new LoginIdentityServiceImpl(auth, ticketService, tokens, mock(LoginAuditor.class),
                     db.mybatis.getMapper(MchAccountMapper.class), db.mybatis.getMapper(MchEntityMapper.class),
-                    db.mybatis.getMapper(MchStoreMapper.class), db.mybatis.getMapper(MchStoreRoleMapper.class),
+                    db.mybatis.getMapper(MchStoreMapper.class), org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                     db.mybatis.getMapper(IdentityMapper.class), db.mybatis.getMapper(UserMapper.class), new StaticMessageSource());
             mvc = CommerceAccessSecurityFlowTest.merchantMvc(db, web, true,
                     Map.of(AuthService.class, auth, OtpStore.class, otp, TokenStore.class, tokens,
@@ -301,7 +301,7 @@ class BizIdentityNativeMysqlTest {
             var tickets = new LoginTicketServiceImpl(f.db.jdbc.getDataSource(), controlled, Duration.ofMinutes(5));
             LoginIdentityService service = new LoginIdentityServiceImpl(f.auth, tickets, cache, mock(LoginAuditor.class),
                     f.db.mybatis.getMapper(MchAccountMapper.class), f.db.mybatis.getMapper(MchEntityMapper.class),
-                    f.db.mybatis.getMapper(MchStoreMapper.class), f.db.mybatis.getMapper(MchStoreRoleMapper.class),
+                    f.db.mybatis.getMapper(MchStoreMapper.class), org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                     f.db.mybatis.getMapper(IdentityMapper.class), f.db.mybatis.getMapper(UserMapper.class), new StaticMessageSource());
             f.otp.save(phone, "246813");
             var first = service.verifyAndList("PHONE_OTP", phone, "246813", true, null, Locale.ENGLISH);

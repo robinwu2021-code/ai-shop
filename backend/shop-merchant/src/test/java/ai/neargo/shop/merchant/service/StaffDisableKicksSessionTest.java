@@ -46,7 +46,7 @@ class StaffDisableKicksSessionTest {
         service = new MerchantStaffServiceImpl(
                 staffMapper, tokenStores,
                 mock(MerchantMappers.MchStoreMapper.class),
-                mock(MerchantMappers.MchStoreRoleMapper.class),
+                mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                 mock(MerchantMappers.MchStaffLogMapper.class),
                 mock(MerchantMappers.MchRoleMapper.class),
                 mock(ai.neargo.shop.merchant.service.impl.StaffAuditLogger.class),

@@ -85,7 +85,7 @@ public class PersonnelOperatorFactsPortImpl implements PersonnelOperatorFactsPor
             MerchantOperatorAccessPort.Query query, String accountNo, Instant observedAt) {
         // The canonical resolver intentionally remains outside this transaction; only its unchanged
         // SQL runs here.
-        var authorization = accessMapper.selectAccess(query);
+        var authorization = accessMapper.selectAccess(query, java.sql.Timestamp.from(java.time.Instant.now()));
         if (authorization.size() != 1
                 || !authorization.getFirst().allowed()
                 || !accountNo.equals(authorization.getFirst().accountNo())) {

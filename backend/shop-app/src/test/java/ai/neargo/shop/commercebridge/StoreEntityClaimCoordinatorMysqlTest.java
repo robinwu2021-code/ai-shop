@@ -231,13 +231,12 @@ class StoreEntityClaimCoordinatorMysqlTest {
             var session=new org.mybatis.spring.SqlSessionTemplate(factory.getObject());
             for(var type:List.of(ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper.class,
                     ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper.class,
-                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper.class,
                     ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper.class))config.addMapper(type);
             var service=new ai.neargo.shop.merchant.service.impl.MerchantStaffServiceImpl(
                     session.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper.class),
                     mock(ai.neargo.shop.auth.TokenStores.class),
                     session.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper.class),
-                    session.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper.class),
+                    org.mockito.Mockito.mock(ai.neargo.shop.merchant.service.impl.StoreRoleGrants.class),
                     mock(ai.neargo.shop.merchant.mapper.MerchantMappers.MchStaffLogMapper.class),
                     session.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper.class),
                     mock(ai.neargo.shop.merchant.service.impl.StaffAuditLogger.class),
