@@ -11,6 +11,10 @@ import lombok.Setter;
 @Setter
 @TableName("ord_appointment")
 public class BtyAppointment extends BaseEntity {
+    /** 预约单状态（定稿注释的取值）：新写的 SQL 与代码引用本常量。 */
+    public static final String HELD = "HELD";
+    public static final String CONFIRMED = "CONFIRMED";
+    public static final String CHECKED_IN = "CHECKED_IN";
     /** 存在门店交易库 {@code ord_appointment}（TDD-美业域迁移新库 §2.6 第 1 项）；预约类型固定 SERVICE（餐饮订位是 TABLE）。共用表的 {@code tenant_no} 没有库默认值，平台审计也不填它：在这里带上。 */
     public BtyAppointment() {
         setTenantNo("MAIN");

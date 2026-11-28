@@ -114,7 +114,7 @@ ADD_COLUMNS = {
     # 预约修订承担一次变更的整个生命周期（TDD-美业域迁移新库 §2.6 第 4–6 项，用户 2026-11-28 定）：收掉美业的预约准备、当前行、
     # 预约操作、资源围栏、资源意向、资源决策 6 张表；请求防重与宿主回执走基础能力库的统一防重，不进这里
     'ord_appointment_revision': [
-        "`based_on_revision` bigint DEFAULT NULL COMMENT '草稿基于的预约修订版本（新约为空）；生效时核对仍是当前版本'",
+        "`based_on_revision` bigint DEFAULT NULL COMMENT '草稿基于的预约单版本（ord_appointment.version，新约为 0）；转在途与许可时核对预约单仍是这一版'",
         "`actor_kind` varchar(32) DEFAULT NULL COMMENT '发起人类型（同一发起方下的细分，如店主、员工、顾客本人）'",
         "`action` varchar(24) DEFAULT NULL COMMENT '这次变更做什么：CREATE 新约、RESCHEDULE 改约、RECEPTION_CHANGE 到店后改、CANCEL 取消、NO_SHOW 爽约'",
         "`frozen_plan` longtext NULL COMMENT '冻结的资源计划（原样作资源命令载荷）；取消、爽约是释放命令'",
@@ -125,6 +125,7 @@ ADD_COLUMNS = {
         "`permitted_at` datetime(3) DEFAULT NULL COMMENT '许可时刻'",
         "`valid_until` datetime(3) DEFAULT NULL COMMENT '许可有效截止'",
         "`reject_code` varchar(64) DEFAULT NULL COMMENT '资源拒绝或释放的原因码'",
+        "`result_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '宿主终态回执摘要；有值即已对账，不再改'",
         "`next_retry_at` datetime(3) DEFAULT NULL COMMENT '在途或待释放时下次重试时刻；后台按它扫描，用行锁抢占'",
         "`applying_key` varchar(32) COLLATE utf8mb4_bin GENERATED ALWAYS AS ((case when (`status` in ('APPLYING','RELEASING')) then `appointment_no` end)) STORED COMMENT '同一预约只有一个变更在途的闸门：在途或待释放时等于预约单号，否则为空'",
     ],

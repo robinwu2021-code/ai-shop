@@ -403,7 +403,7 @@
 | 步 | 内容 | 主要文件 | 验证 |
 |---|---|---|---|
 | **4-1 设计 DDL** ✅ | `ord_appointment_revision` 加 12 列（基于版本、发起人类型、动作、冻结计划与摘要、命令号与摘要、决策号、许可时刻与截止、拒绝码、下次重试）与生成列 `applying_key`（在途或待释放时等于预约单号）；唯一键：预览号、命令号、`applying_key`；重试扫描索引；状态注释扩成 8 个短值。生成器 `ADD_COLUMNS` / `REPLACE_COLUMNS` / `ADD_UNIQUE` / `ADD_INDEX` | `scripts/gen-retail-ddl.py`、`05-n_trade.sql`、美业测试 `db/n_trade/V1` | 本机 MySQL 实建；同一预约第二个在途变更被唯一键拒绝；预约、接待、到店恢复测试无新增失败 |
-| 4-2 实体与 Mapper | `BtyAppointmentArrangement` 加列与状态常量；Mapper：建草稿、草稿 → 在途（核对基于版本仍是当前版本）、按命令号取、生效 / 拒绝 / 待释放、按到期扫描（`FOR UPDATE SKIP LOCKED`） | `entity/BtyAppointmentArrangement`、`BeautyMappers` | 持久层用例 |
+| **4-2 实体与 Mapper** ✅ | `BtyAppointmentArrangement` 映射修订表全部业务列与 8 个状态常量；`BtyAppointment` 加 `HELD`、`CONFIRMED`、`CHECKED_IN` 常量。Mapper：按预览号 / 命令号 / 在途取（加锁）、草稿 → 在途（`toApplying`：未过期、预约单仍是基于的版本且仍可变更）、许可一次（`permit`）、许可前拒绝（`refuse`）、对账终态（`settle`：许可前已拒绝的不能生效；待释放 → 资源拒绝）、取下一个修订号（`nextRevision`）、生效后旧版标被取代（`supersedeBefore`）、到期扫描（`claimDue`，`FOR UPDATE SKIP LOCKED`）。「预约单仍可变更」的条件只写一处（`ROOT_OPEN`）。设计稿补：`result_hash`（宿主终态回执摘要，原资源意向的 `terminal_hash`）；`based_on_revision` 说明更正为预约单版本（旧代码比对的是 `ord_appointment.version`） | `entity/BtyAppointmentArrangement`、`BtyAppointment`、`BeautyMappers`、生成器 | `AppointmentRevisionPersistenceIT` 6/6：同一预约第二个在途被唯一键拒绝；预约单已变、已到店非「到店后改」、草稿过期都不能转在途；许可只一次、许可后不能再拒；许可前已拒绝的不能生效、待释放仍占闸门、释放完成后下一次取新号；只扫到期的 |
 | 4-3 预约准备 | 预览写成 `DRAFT` 修订（冻结计划、计划摘要、过期时刻、发起人），不再写 `bty_appointment_preparation` | `AppointmentPreparation` | 预约业务用例（预览 5 分钟有效、只能本人用、只能用一次） |
 | 4-4 预约协调 | 新建、改约、到店后改：草稿 → `APPLYING` → 调宿主 → `CONFIRMED`（预约根 `current_revision` 前移、旧版 `SUPERSEDED`）/ `REJECTED` / `RELEASING`；去掉当前行、预约操作、资源围栏；预约根上的「在途」`EXISTS` 改看修订 | `AppointmentCoordinator`、`AppointmentPersistence` | 预约、接待用例 |
 | 4-5 来源授权（宿主冻结回调） | 按命令号找修订行作答；许可写决策号、许可时刻与截止，之后不再改（替代决策表的重放） | `AppointmentSourceAuthority` | 来源授权与开单用例 |
@@ -412,7 +412,10 @@
 | 4-8 请求防重 | 操作人 + 键摘要的防重与回执改走基础能力库统一防重 `RequestIdempotencyPort`（已有：同键同人只执行一次、内容不同即冲突、并发重复拒绝）。**待定**：它的回执跟调用方事务走，而回执表在 `n_common`、预约变更在交易库事务里且中间要调宿主——要么只包「受理」那一步（受理即落草稿转在途、返回修订号，之后的进度按修订号查），要么另定。做到这步时先给出方案 | 美业受理入口 | 重放返回同一结果、改了内容的重放被拒 |
 | 4-9 宿主 | 命令防重与回执改用统一防重；占用归属改用 `rsv_booking.current_key`；清掉越界清单里预约的 4 个文件（跨库加锁改读一次 + 版本比对） | 宿主预约与资源命令 | 宿主预约测试；`BeautySourceCheckoutIT` |
 | 4-10 退役 | 删 6 张表的实体、Mapper、数据范围登记与结构校验；`TransactionHandleBoundaryTest` 保持为空 | 美业 | 全仓库 `grep` 无引用 |
-| 4-11 文档与 .61 | 本节改为已实现；`n_trade_v2` 上加列（带 DDL，须用户批准、先备份） | 本 TDD、商品交接 §5 | 两次 `check` |
+| 4-11 文档与 .61 | 本节改为已实现；`n_trade_v2` 上加列（带 DDL，须用户批准、先备份）。**注意**：4-2 起实体已映射新列，部署含 4-2 的包之前 `n_trade_v2` 必须先加列，否则读修订会因缺列报错 | 本 TDD、商品交接 §5 | 两次 `check` |
+
+**设计要点（4-2 定）**：修订号按「该预约已有最大号 + 1」分配，被拒、待释放的版本保留自己的号，号可以不连续；生效的是预约单 `current_revision` 指的那一版（持久层用例里先撞到：被拒版占着 1，下一次再用 1 违反唯一键）。
+- 4-2 全量对照（独立库模式 `-Dtest=*`，410 条）：37 条失败，较 `23449fd7e` 时少 3 条（两条是当时改写的主库旧表结构用例，一条是时好时坏的并发提交用例），没有新增失败。
 
 #### 第 7 项：人员安排改读修订快照（2026-11-28，用户定「用修订快照」）
 - 依据：安排行写在确认预约的交易事务里，搬到行业库就成了跨库写；而每行都是确认那一版修订快照 `assignments` 的照抄（占用编号即该版修订的 `hold_no`），唯一的程序用途是和快照逐条比对。同一事实只留快照一处。
