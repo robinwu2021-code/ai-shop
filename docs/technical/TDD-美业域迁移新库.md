@@ -437,7 +437,7 @@
 |---|---|---|---|
 | **P0 文档与对齐** | 改《商品域-多业态商品方案》§3.4、§3.5、§3.6-4；本节定稿；把方案发给商品会话「零售」确认（加表方式、端口、时长镜像、发布是否让 `prd_goods.version` 加一） | 本会话 | 商品会话同意后才进 P1 |
 | **P1 定稿 DDL** | 05 加 `prd_service_definition`，改 `prd_fulfillment_requirement.revision_no` 的注释。生成器没有「新增交易表」的机制：加一个，或按交接文档在 ai-shop-slim 的生成源里加（与商品会话定）。重新生成 05 与派生文档（03-表名对照、01-清单、库、字段）；`gen-product-test-schema.py` 重跑；美业测试副本 `db/n_trade/V1__trade_design.sql` 同步 | 本会话 | `check-generated-docs` 全绿；产品测试库多一张表 |
-| **P2 .61 建表** | `n_trade_v2` 上建 `prd_service_definition`、改注释。新表不涉及数据备份，改注释前导出结构；root 执行；前后只读核对；记入商品交接 §5 | 本会话，**执行前请用户批准** | 逐列核对与定稿一致 |
+| ✅ **P2 .61 建表**（2026-11-28 已执行，记在商品交接 §5） | `n_trade_v2` 上建 `prd_service_definition`、改注释。新表不涉及数据备份，改注释前导出结构；root 执行；前后只读核对；记入商品交接 §5 | 本会话，**执行前请用户批准** | 逐列核对与定稿一致 |
 | **P3 商品侧代码** | `shop-base` 加 `ServiceDefinitionPort`（发布 / 当前 / 按版本 / 按时刻列表）；`shop-core` 加实体与 Mapper（`PrdServiceDefinition`，`PrdFulfillmentRequirement` 继承 `ProductTableMapper`）和端口实现，详见下方 P3 说明；同步改造现有时长读写，详见下方 P3 说明 | 本会话，提交前发 diff 给商品会话 | 商品测试：发布、版本冲突、按 SKU 覆盖、重放、商家保存忽略时长、镜像时长 |
 | **P4 独立部署** | `ServiceDefinitionInternalApi` + 宿主内部控制器 + `beauty-server` 客户端，照 `ServiceProductFactsInternalApi` 的写法 | 本会话 | 美业 server 装配测试；宿主内部接口测试 |
 | **P5 美业侧** | 详见下方 P5 说明 | 本会话 | 美业全套（共用库、独立库两种模式）不新增失败；约束测试照旧 |
