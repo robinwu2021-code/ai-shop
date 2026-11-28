@@ -36517,6 +36517,13 @@
       "package": "ai.neargo.shop.link.entity"
     },
     {
+      "table": "mbr_favorite",
+      "class": "PrdGoodsFavorite",
+      "zh": "商品收藏：买家 × 商品（V343，TDD-C端商品收藏与送达判断）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
       "table": "mbr_guest_registration",
       "class": "MbrGuestRegistration",
       "zh": "Only the member owner persists guest credentials; encrypted fields never form a public customer fact.",
@@ -38018,13 +38025,6 @@
       "table": "prd_goods",
       "class": "PrdGoods",
       "zh": "商品（SPU）。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_goods_favorite",
-      "class": "PrdGoodsFavorite",
-      "zh": "商品收藏：买家 × 商品（V343，TDD-C端商品收藏与送达判断）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
@@ -44430,6 +44430,13 @@
         "module": "shop-core"
       },
       {
+        "host": "PrdGoodsFavorite",
+        "name": "TYPE_GOODS",
+        "value": "GOODS",
+        "zh": "收藏对象类型：商品",
+        "module": "shop-core"
+      },
+      {
         "host": "PrdGoodsRevision",
         "name": "DRAFT",
         "value": "DRAFT",
@@ -44756,6 +44763,13 @@
         "name": "ALIGN_COUNT",
         "value": "COUNT",
         "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdTopic",
+        "name": "TYPE_TOPIC",
+        "value": "TOPIC",
+        "zh": "主题专题。",
         "module": "shop-core"
       },
       {
@@ -58350,6 +58364,14 @@
       "type": "Set<String>",
       "value": "Set.of(COMMUNITY, CITY, PLATFORM)",
       "zh": "合法取值全集。",
+      "module": "shop-base"
+    },
+    {
+      "host": "WechatMasterSwitch",
+      "name": "KEY",
+      "type": "String",
+      "value": "\"shop.wx.enabled\"",
+      "zh": "",
       "module": "shop-base"
     },
     {

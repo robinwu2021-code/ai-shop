@@ -21,18 +21,30 @@ package ai.neargo.shop.media;
  * @param label     人话描述的模板，如「商品 · 主图」。运营端那列
  *                  「曾被『商品 G0012 · 主图』引用」就是拿它拼的
  * @param keyColumn 业务键列（如 {@code goods_no}），用来把 label 拼成具体的哪一条
- * @param onPlatform 这张表在平台基础库（ADR-066 的平台句柄）。扫描器按它选连接 ——
- *                  分库之后平台表不在主库，走错连接读到的是旧表，那一列引用的图会被判成孤儿删掉
+ * @param module    这张表所在的模块句柄（ADR-066，{@code ModuleDataSources} 里的模块名）；空 = 主库。
+ *                  扫描器按它选连接 —— 分库之后表不在主库，走错连接读到的是旧表，
+ *                  那一列引用的图会被判成孤儿删掉
  */
-public record MediaRefColumn(String table, String column, String label, String keyColumn, boolean onPlatform) {
+public record MediaRefColumn(String table, String column, String label, String keyColumn, String module) {
 
     /** 主库上的一列。 */
     public static MediaRefColumn of(String table, String column, String label, String keyColumn) {
-        return new MediaRefColumn(table, column, label, keyColumn, false);
+        return new MediaRefColumn(table, column, label, keyColumn, null);
     }
 
     /** 平台基础库上的一列：只在平台句柄下的代码里声明（{@code PlatformMediaRefs}）。 */
     public static MediaRefColumn onPlatform(String table, String column, String label, String keyColumn) {
-        return new MediaRefColumn(table, column, label, keyColumn, true);
+        return new MediaRefColumn(table, column, label, keyColumn,
+                ai.neargo.shop.common.config.ModuleDataSources.PLATFORM);
+    }
+
+    /** 某个模块句柄下的一列（商品、会员营销……）：表跟着句柄绑定的库走，没绑定时句柄指向主库 */
+    public static MediaRefColumn inModule(String module, String table, String column, String label,
+                                          String keyColumn) {
+        return new MediaRefColumn(table, column, label, keyColumn, module);
+    }
+
+    public boolean onPlatform() {
+        return ai.neargo.shop.common.config.ModuleDataSources.PLATFORM.equals(module);
     }
 }

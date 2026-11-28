@@ -86,6 +86,13 @@ class MediaRefCoverageTest {
         NOT_MEDIA.put("ent_code_token.consumed_operation_no","码令牌已消费的操作编号，不存二维码图片或明码");
     }
 
+    /**
+     * 迁移脚本里的旧表名 → 新库的表名（商品领域迁到门店交易库）。本测试读的是旧库迁移，
+     * 旧表的图片列只要新表上同名的列已被声明，就算认领了 —— 回收扫描扫的是新表。
+     */
+    private static final Map<String, String> RENAMED = Map.of(
+            "prd_spu_std", "prd_standard_goods");
+
     private static final Pattern CREATE_TABLE =
             Pattern.compile("CREATE TABLE(?:\\s+IF NOT EXISTS)?\\s+([a-z_]+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern COLUMN =
@@ -115,7 +122,11 @@ class MediaRefCoverageTest {
 
         List<String> unclaimed = new ArrayList<>();
         for (String candidate : scanSchema()) {
-            if (declared.contains(candidate) || NOT_MEDIA.containsKey(candidate)) {
+            String table = candidate.substring(0, candidate.indexOf('.'));
+            String renamed = RENAMED.containsKey(table)
+                    ? RENAMED.get(table) + candidate.substring(candidate.indexOf('.')) : null;
+            if (declared.contains(candidate) || NOT_MEDIA.containsKey(candidate)
+                    || (renamed != null && declared.contains(renamed))) {
                 continue;
             }
             unclaimed.add(candidate);

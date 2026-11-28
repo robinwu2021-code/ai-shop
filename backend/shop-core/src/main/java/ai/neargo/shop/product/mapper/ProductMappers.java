@@ -65,12 +65,26 @@ public final class ProductMappers {
         }
     }
 
-    /** 商品收藏（V343）。取消要真删，理由同 SpecUsageMapper#purgeScope：软删行占着唯一键，再收藏就撞 */
+    /**
+     * 商品收藏（V343；第 3 批起在会员营销库的通用收藏 {@code mbr_favorite}，收会员营销句柄）。
+     * 取消要真删，理由同 SpecUsageMapper#purgeScope：软删行占着唯一键，再收藏就撞。
+     */
     public interface GoodsFavoriteMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdGoodsFavorite> {
+            extends ai.neargo.shop.common.config.MemberMarketingTableMapper<ai.neargo.shop.product.entity.PrdGoodsFavorite> {
+
+        /** 这个人收藏的商品（只碰 GOODS 那一类，门店收藏不在这里） */
+        static com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                ai.neargo.shop.product.entity.PrdGoodsFavorite> goodsOf(String userNo) {
+            return com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdGoodsFavorite>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdGoodsFavorite::getFavoriteType,
+                            ai.neargo.shop.product.entity.PrdGoodsFavorite.TYPE_GOODS)
+                    .eq(ai.neargo.shop.product.entity.PrdGoodsFavorite::getUserNo, userNo);
+        }
 
         @org.apache.ibatis.annotations.Delete(
-                "DELETE FROM prd_goods_favorite WHERE user_no = #{userNo} AND goods_no = #{goodsNo}")
+                "DELETE FROM mbr_favorite WHERE user_no = #{userNo} AND favorite_type = '"
+                        + ai.neargo.shop.product.entity.PrdGoodsFavorite.TYPE_GOODS + "' AND goods_no = #{goodsNo}")
         int purge(@org.apache.ibatis.annotations.Param("userNo") String userNo,
                   @org.apache.ibatis.annotations.Param("goodsNo") String goodsNo);
     }
@@ -491,10 +505,26 @@ public final class ProductMappers {
         }
     }
 
-    public interface TopicMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdTopic> {
+    /**
+     * 专题（第 3 批起在会员营销库，收会员营销句柄）。同一张表还放榜单、楼层、轮播、频道，
+     * 专题代码一律从 {@link #topics()} 起手，只碰 TOPIC 那一类。
+     */
+    public interface TopicMapper
+            extends ai.neargo.shop.common.config.MemberMarketingTableMapper<ai.neargo.shop.product.entity.PrdTopic> {
+        static com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                ai.neargo.shop.product.entity.PrdTopic> topics() {
+            return com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdTopic>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdTopic::getTopicType,
+                            ai.neargo.shop.product.entity.PrdTopic.TYPE_TOPIC);
+        }
     }
 
-    public interface TopicGoodsMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdTopicGoods> {
+    /** 专题下的商品（会员营销库）。移出专题要真删：唯一键不含 deleted，软删行会挡住同一件商品再加回来 */
+    public interface TopicGoodsMapper
+            extends ai.neargo.shop.common.config.MemberMarketingTableMapper<ai.neargo.shop.product.entity.PrdTopicGoods> {
+        @org.apache.ibatis.annotations.Delete("DELETE FROM prd_topic_goods WHERE id = #{id}")
+        int purge(@org.apache.ibatis.annotations.Param("id") Long id);
     }
 
     /** 门店级上架关系。只有增删改查，没有原子扣减那套 —— 它不是并发争抢的资源 */

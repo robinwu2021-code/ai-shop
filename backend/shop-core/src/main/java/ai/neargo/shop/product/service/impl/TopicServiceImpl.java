@@ -57,7 +57,7 @@ public class TopicServiceImpl implements TopicService {
          * 不豁免的话 C 端（SELF 维度）拿到的是空列表，而首页那几个入口会静默消失。
          */
         List<PrdTopic> rows = DataScopeContext.executeWithoutScope(() ->
-                topicMapper.selectList(Wrappers.<PrdTopic>lambdaQuery()
+                topicMapper.selectList(TopicMapper.topics()
                         .eq(!includeArchived, PrdTopic::getStatus, ACTIVE)
                         .orderByAsc(PrdTopic::getSort)));
         Map<String, Integer> counts = countsOf(rows.stream().map(PrdTopic::getTopicNo).toList());
@@ -65,7 +65,7 @@ public class TopicServiceImpl implements TopicService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ai.neargo.shop.common.config.ModuleDataSources.MEMBER_MARKETING_TX_MANAGER)
     public TopicVO save(SaveCommand cmd) {
         if (cmd.title() == null || cmd.title().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -99,7 +99,7 @@ public class TopicServiceImpl implements TopicService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ai.neargo.shop.common.config.ModuleDataSources.MEMBER_MARKETING_TX_MANAGER)
     public TopicVO setArchived(String topicNo, boolean archived) {
         PrdTopic t = require(topicNo);
         t.setStatus(archived ? ARCHIVED : ACTIVE);
@@ -130,7 +130,7 @@ public class TopicServiceImpl implements TopicService {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = ai.neargo.shop.common.config.ModuleDataSources.MEMBER_MARKETING_TX_MANAGER)
     public void setGoods(String topicNo, List<String> goodsNos) {
         require(topicNo);
         List<String> want = goodsNos == null ? List.of() : new ArrayList<>(new LinkedHashSet<>(goodsNos));
@@ -158,7 +158,7 @@ public class TopicServiceImpl implements TopicService {
         Set<String> keep = new LinkedHashSet<>(want);
         for (PrdTopicGoods row : existing) {
             if (!keep.contains(row.getGoodsNo())) {
-                DataScopeContext.executeWithoutScope(() -> topicGoodsMapper.deleteById(row.getId()));
+                DataScopeContext.executeWithoutScope(() -> topicGoodsMapper.purge(row.getId()));
             }
         }
         Map<String, PrdTopicGoods> byGoods = existing.stream()
@@ -193,7 +193,7 @@ public class TopicServiceImpl implements TopicService {
     private PrdTopic require(String topicNo) {
         PrdTopic t = topicNo == null || topicNo.isBlank() ? null
                 : DataScopeContext.executeWithoutScope(() -> topicMapper.selectOne(
-                        Wrappers.<PrdTopic>lambdaQuery()
+                        TopicMapper.topics()
                                 .eq(PrdTopic::getTopicNo, topicNo).last("limit 1")));
         if (t == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);

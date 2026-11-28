@@ -139,7 +139,7 @@
 **待确认**
 
 1. ~~切换批次~~ 已定（用户 2026-11-27「按推荐来」）：商品改造先行、上线与交易同批。
-2. 专题（`prd_topic`、`prd_topic_goods`）放哪个库、表结构怎么定。
+2. ~~专题放哪个库、表结构怎么定~~ 已定（用户 2026-11-28）：放会员营销库，按字段定稿建表。
 3. 库存同步、对齐、原始库存恢复这几项功能直接下线、交给库存服务，可否。
 
 ## §5 对账三 · 实现 → 需求（测试）
@@ -290,6 +290,28 @@ PR #59 补充验证：`StorePriceFlowTest#legacyCancelledPriceRowCanBeRepricedAn
 - `DevSeeder` 不走建品接口（演示数据要固定编号 G0001/SK0001，测试按编号断言），改为调商品领域的 `ProductDemoSeeder`（同样只在 `shop.seed.enabled=true` 时存在），商品表只由商品领域写。
 - `StoreSalesCatalogServiceImpl` 的数据源与事务改点名商品句柄（R4）；商品与交易绑同一个数据源名时是同一个连接池，结账事务里的判据照旧。`StoreSalesCatalogIT` 补上未绑定时的句柄别名，本机 MySQL 上 7 条全过。
 - **保留未动**（库存同步一组，待定是否下线交库存服务）：`StockSyncAppService`、`StockAlignmentService`、`StockReconcileService`、`StockSyncSweepJob`、`OnlineQuotaPortImpl`、`InventoryBackfillServiceImpl`（商品库存搬进进销存的回填）、`ExecutionStockMirrorEvidenceServiceImpl` 与库存模块的 `ExecutionStockRetentionSchemaVerifier`（执行占用，表待退役）。基线 R5 剩 20 条、R4 剩 1 条，都在这一组。
+
+### 第 3 批 · 收藏（2026-11-28；评价暂停，专题待定）
+
+- `prd_goods_favorite` → 会员营销库 `mbr_favorite`（通用收藏，商品收藏是 `favorite_type = GOODS` 那一类）。实体 `PrdGoodsFavorite` 改映射新表，`GoodsFavoriteMapper` 改收会员营销句柄（未绑定时随支付句柄落到支付连接池，测试里与主库同一个 H2），读写从 `GoodsFavoriteMapper.goodsOf` 起手；取消仍真删。`toggle` 的事务改用 `MEMBER_MARKETING_TX_MANAGER`；连点撞唯一键视为已收藏。新增冗余 `entity_no`（商品所属主体）。
+- DDL：`07-n_member.sql` 的 `mbr_favorite` 加唯一约束 `uk_mbr_favorite_goods (tenant_no, user_no, favorite_type, goods_no)`（用户 2026-11-28 确认）；门店收藏的 `goods_no` 为空，不受它约束。该文件由 ai-shop-slim 的字段数据生成，**重新生成时要带上这一条**；已建好的 n_member 实库要另外由 root 执行加约束。
+- 数据域登记从 `prd_goods_favorite` 换到 `mbr_favorite`（SELF / `user_no`）。基线 −2。
+- 搬迁：`prd_goods_favorite` 每行写一行 `mbr_favorite`（`favorite_type = GOODS`、`tenant_no = MAIN`、`entity_no` 取商品的主体）。
+
+### 第 3 批 · 专题（2026-11-28，用户定放会员营销库）
+
+- DDL：`07-n_member.sql` 新建 `prd_topic`、`prd_topic_goods`（用户确认按 `db-target-fields.json` 定稿建全列）。`prd_topic` 含并入内容位与榜单的列（`topic_type`、`rank_kind`、`capacity`、`community_nos`、`enabled`），专题编号唯一、（类型, 状态, 排序）索引；`prd_topic_goods` 加 `sku_no`（按商品挑选时空串，唯一键 `(topic_no, goods_no, sku_no)` 才挡得住重复）与商品号索引。公共列照零售库规则。本文件由 ai-shop-slim 生成，**重新生成时要带上这两张**；n_member 实库要由 root 另外建表。
+- 代码：`TopicMapper`、`TopicGoodsMapper` 改收会员营销句柄，写事务改 `MEMBER_MARKETING_TX_MANAGER`；查询从 `TopicMapper.topics()` 起手，只碰 `topic_type = TOPIC`。内容位、榜单并进来不在这一批。
+- 顺带修正：移出专题的商品原走逻辑删，唯一键不含 `deleted`，同一件商品再加回来会撞键；改为真删（`purge`）。
+- 搬迁：旧 `prd_topic` 每行写 `topic_type = TOPIC`、`enabled = 1`；`prd_topic_goods` 每行 `sku_no = ''`，已逻辑删的行不搬。
+- 媒体回收已改按句柄扫（见下节）。基线 −4。
+
+### 媒体回收按句柄扫商品表（2026-11-28）
+
+- `MediaRefColumn` 的「是否在平台库」开关换成「所属模块句柄」（空 = 主库）：`MediaScanner` 对带句柄的列按 `ModuleDataSources.dataSource(module)` 取数据源扫（句柄没绑定时别名指向主库，与 Mapper 同一规则），平台库仍走原来的平台连接。
+- `CoreMediaRefs`：商品三列与标准品两列登记在商品句柄下，标准品改扫 `prd_standard_goods`；专题封面登记在会员营销句柄下。评价几列随评价暂停，仍在主库。
+- `MediaRefCoverageTest` 读的是旧库迁移脚本，加「旧表名 → 新表名」对照（`prd_spu_std` → `prd_standard_goods`），新表上已声明的同名列视为已认领。
+- 不在本项：订单快照 `ord_item.cover`、售后凭证等交易表的列仍按主库登记，随交易域切库时同样改成交易句柄。
 
 ### 偏差说明
 

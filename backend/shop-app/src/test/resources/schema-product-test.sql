@@ -601,7 +601,8 @@ CREATE TABLE IF NOT EXISTS mbr_favorite (
   created_by varchar(32) DEFAULT NULL,
   updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_by varchar(32) DEFAULT NULL,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  CONSTRAINT mbr_favorite__uk_mbr_favorite_goods UNIQUE (tenant_no, user_no, favorite_type, goods_no)
 );
 
 CREATE TABLE IF NOT EXISTS rvw_review (
@@ -681,4 +682,48 @@ CREATE TABLE IF NOT EXISTS rvw_appeal (
   PRIMARY KEY (id),
   CONSTRAINT rvw_appeal__uk_appeal_no UNIQUE (appeal_no),
   CONSTRAINT rvw_appeal__uk_review UNIQUE (review_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_topic (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(32) NOT NULL DEFAULT 'MAIN',
+  topic_no varchar(64) NOT NULL,
+  topic_type varchar(16) NOT NULL DEFAULT 'TOPIC',
+  rank_kind varchar(16) DEFAULT NULL,
+  capacity int DEFAULT NULL,
+  title varchar(64) NOT NULL,
+  subtitle varchar(128) DEFAULT NULL,
+  cover varchar(512) DEFAULT NULL,
+  community_nos text NULL,
+  sort int NOT NULL DEFAULT 0,
+  start_at datetime(3) DEFAULT NULL,
+  end_at datetime(3) DEFAULT NULL,
+  enabled tinyint NOT NULL DEFAULT 1,
+  status varchar(16) NOT NULL DEFAULT 'ACTIVE',
+  deleted tinyint NOT NULL DEFAULT 0,
+  version bigint NOT NULL DEFAULT 0,
+  created_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  created_by varchar(64) DEFAULT NULL,
+  updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT prd_topic__uk_prd_topic_no UNIQUE (topic_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_topic_goods (
+  id bigint NOT NULL AUTO_INCREMENT,
+  tenant_no varchar(32) NOT NULL DEFAULT 'MAIN',
+  topic_no varchar(64) NOT NULL,
+  goods_no varchar(64) NOT NULL,
+  sku_no varchar(64) NOT NULL DEFAULT '',
+  entity_no varchar(64) NOT NULL,
+  sort int NOT NULL DEFAULT 0,
+  deleted tinyint NOT NULL DEFAULT 0,
+  version bigint NOT NULL DEFAULT 0,
+  created_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  created_by varchar(64) DEFAULT NULL,
+  updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_by varchar(64) DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT prd_topic_goods__uk_prd_topic_goods UNIQUE (topic_no, goods_no, sku_no)
 );

@@ -20,7 +20,11 @@ import lombok.Setter;
 @TableName("prd_topic")
 public class PrdTopic extends BaseEntity {
 
+    /** 主题专题。同一张表里还有榜单、首页楼层、轮播、频道（会员营销库 prd_topic，第 3 批），专题代码只碰这一类 */
+    public static final String TYPE_TOPIC = "TOPIC";
+
     private String topicNo;
+    private String topicType = TYPE_TOPIC;
     private String title;
     /** 一句话说明，如「7 点前送到」。空 = 不展示副标题 */
     private String subtitle;
