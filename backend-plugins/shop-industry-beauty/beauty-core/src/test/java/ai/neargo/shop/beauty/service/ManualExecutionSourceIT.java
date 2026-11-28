@@ -567,7 +567,7 @@ public class ManualExecutionSourceIT {
                 assertThat(observed.continuity().state()).isEqualTo("SUSPENDED");
                 assertThat(observed.suspension()).isNotNull();
                 assertThat(sql.queryForObject("SELECT status FROM bty_service_submission WHERE action='START'",
-                        String.class)).isEqualTo("EXECUTION_SUSPENDED");
+                        String.class)).isEqualTo("SUSPENDED");
                 var cause = observed.suspension();
                 // A subsequent unchanged completion cannot erase the first genuine contradiction.
                 h.observations().observeManual(canonical, "READ");

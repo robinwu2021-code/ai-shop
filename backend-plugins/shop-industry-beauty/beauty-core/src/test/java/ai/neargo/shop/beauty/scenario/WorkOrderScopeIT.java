@@ -926,7 +926,7 @@ class WorkOrderScopeIT extends ReceptionFixture {
                     opened.operationNo());
             assertThatThrownBy(() -> service.getWorkOrder("E", "S", "A", opened.workOrderNo()))
                     .isInstanceOf(BizException.class);
-            sql.update("UPDATE bty_reception_operation SET work_order_no=?,phase='OPEN_PENDING' WHERE operation_no=?",
+            sql.update("UPDATE bty_reception_operation SET work_order_no=?,phase='TO_OPEN' WHERE operation_no=?",
                     opened.workOrderNo(), opened.operationNo());
             assertThatThrownBy(() -> service.getWorkOrder("E", "S", "A", opened.workOrderNo()))
                     .isInstanceOf(BizException.class);

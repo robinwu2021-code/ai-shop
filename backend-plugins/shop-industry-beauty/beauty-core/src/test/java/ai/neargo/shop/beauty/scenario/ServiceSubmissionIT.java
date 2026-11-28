@@ -584,7 +584,7 @@ class ServiceSubmissionIT extends SourceFixture {
                                                     second.taskNos().getFirst(),
                                                     "EXISTING"),
                                             "BIND2");
-                            assertThat(late.status()).isEqualTo("SOURCE_PENDING");
+                            assertThat(late.status()).isEqualTo("TO_SOURCE");
                             assertThat(
                                             sql.queryForObject(
                                                     "SELECT COUNT(*) FROM bty_trade_binding",
@@ -1199,7 +1199,7 @@ class ServiceSubmissionIT extends SourceFixture {
                                                                     root.taskNos().getFirst(),
                                                                     "OP"),
                                                             "KEY"));
-                            assertThat(pending.status()).isEqualTo("SOURCE_PENDING");
+                            assertThat(pending.status()).isEqualTo("TO_SOURCE");
                             assertThat(pending.phase()).isEqualTo("SOURCE_UNKNOWN");
                             assertThat(pending.checkoutOperationNo()).isEqualTo("OP");
                             assertThat(
@@ -1510,7 +1510,7 @@ class ServiceSubmissionIT extends SourceFixture {
                                                             "S",
                                                             "A",
                                                             accepted.submissionNo()));
-                            assertThat(pending.status()).isEqualTo("SOURCE_PENDING");
+                            assertThat(pending.status()).isEqualTo("TO_SOURCE");
                             assertThat(pending.phase()).isEqualTo("SOURCE_UNKNOWN");
                             var current = observer.read(canonical);
                             assertThat(current.getState()).isEqualTo("UNKNOWN");

@@ -67,7 +67,8 @@ class BeautyPlatformFlywayIT {
             database();
             if (state == 0) { fixture.baseNine(); fixture.industryTables(); }
             else fixture.initialize("migrate");
-            if (state == 2) sql.execute("DROP TRIGGER trg_bsef_no_delete");
+            // 主库旧 V10 只核对迁移记录（结构在行业库核对）
+            if (state == 2) sql.execute("UPDATE bty_flyway_history SET checksum=123 WHERE version='10'");
             final int expected = state;
             runner().withPropertyValues("shop.beauty.enabled=true").run(context -> {
                 assertThat(context).hasNotFailed().hasSingleBean(Flyway.class);

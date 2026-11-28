@@ -404,7 +404,7 @@ class BeautySourceCheckoutIT extends CheckoutFlowFixture {
                                         store,
                                         actor,
                                         value(submitted, "submissionNo")));
-        assertThat(value(pending, "status")).isEqualTo("SOURCE_PENDING");
+        assertThat(value(pending, "status")).isEqualTo("TO_SOURCE");
         assertThat(
                         jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM bty_trade_binding WHERE entity_no=?",

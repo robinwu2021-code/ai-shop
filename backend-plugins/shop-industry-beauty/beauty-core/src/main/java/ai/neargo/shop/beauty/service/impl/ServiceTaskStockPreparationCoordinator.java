@@ -2,6 +2,7 @@ package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.beauty.dto.ServiceTaskPreparationVO;
+import ai.neargo.shop.beauty.entity.BtyServiceExecutionFence;
 import ai.neargo.shop.beauty.entity.BtyServiceExecutionStockIntent;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.ServiceExecutionAccess;
@@ -379,7 +380,7 @@ public final class ServiceTaskStockPreparationCoordinator {
                             row.setEvidenceJson(db.json.writeValueAsString(evidence));
                             row.setEvidenceHash(evidence.proofHash());
                             row.setEvidenceObservedAt(local(evidence.observedAt()));
-                            row.setObservationState(state);
+                            row.setObservationState(BtyServiceExecutionStockIntent.observationCode(state));
                             row.setPendingReason(
                                     "SOURCE_SUSPENDED".equals(state)
                                             ? "SOURCE_SUSPENDED"
@@ -447,7 +448,7 @@ public final class ServiceTaskStockPreparationCoordinator {
                             String quantity =
                                     original.fence().getObservedGrantState() == null
                                             ? "PENDING"
-                                            : original.fence().getObservedGrantState();
+                                            : BtyServiceExecutionFence.grantOf(original.fence().getObservedGrantState()).name();
                             String state =
                                     !locallyReady(original)
                                             ? "SOURCE_SUSPENDED"
@@ -479,7 +480,7 @@ public final class ServiceTaskStockPreparationCoordinator {
                 "PREPARED",
                 "SOURCE_SUSPENDED".equals(reason)
                         ? "SOURCE_SUSPENDED"
-                        : reason != null ? "STOCK_RETENTION_PENDING" : row.getObservationState(),
+                        : reason != null ? "STOCK_RETENTION_PENDING" : BtyServiceExecutionStockIntent.observationOf(row.getObservationState()),
                 row.getReceiptJson() == null
                         ? "UNKNOWN"
                         : db.json
@@ -629,7 +630,7 @@ public final class ServiceTaskStockPreparationCoordinator {
     private static void requireReady(StockOriginal original, Grant grant) {
         require(
                 locallyReady(original)
-                        && "PREPARED".equals(original.fence().getObservedGrantState())
+                        && BtyServiceExecutionFence.grantOf(original.fence().getObservedGrantState()) == GrantState.PREPARED
                         && grant.grantNo().equals(original.fence().getObservedGrantNo())
                         && grant.grantRevision() == original.fence().getObservedGrantRevision());
     }
@@ -675,7 +676,7 @@ public final class ServiceTaskStockPreparationCoordinator {
         row.setEvidenceJson(db.json.writeValueAsString(evidence));
         row.setEvidenceHash(evidence.proofHash());
         row.setEvidenceObservedAt(local(evidence.observedAt()));
-        row.setObservationState("STOCK_RETENTION_PENDING");
+        row.setObservationState(BtyServiceExecutionStockIntent.observationCode("STOCK_RETENTION_PENDING"));
         row.setPendingReason("AUTHENTICATED_ORIGINAL_RECOVERY");
         row.setSourceFenceRevision(original.fence().getSourceFenceRevision());
         row.setObservationEpoch(0L);

@@ -154,7 +154,7 @@ class RecoveryScanTest {
         row.setOperationNo(number);
         row.setAppointmentOperationNo("LINK-" + number);
         row.setVersion(0L);
-        row.setPhase("RESOURCE_PENDING");
+        row.setPhase("TO_BOOK");
         row.setRequestHash("hash");
         row.setFrozenPayload("{}");
         row.setLeaseUntil(LocalDateTime.now(clock).plusSeconds(30));

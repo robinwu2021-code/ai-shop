@@ -120,7 +120,8 @@ public final class ServiceExecutionStockIntentSchemaVerifier {
                             && success(marker.get("success"))
                             && marker.get("checksum") instanceof Number checksum
                             && checksum.intValue() == contract.path("flywayChecksum").asInt());
-            inspect(connection, schema, contract);
+            // 主库上旧私有迁移建的表只核对迁移记录：表已归行业库、代码不再读写，状态取值也已改短值（TDD-美业域迁移新库
+            // 「状态改短值」），结构按描述文件只在行业库核对；旧表随第 15 项退役
             return Installation.INSTALLED;
         } catch (Exception failure) {
             return Installation.CORRUPT;

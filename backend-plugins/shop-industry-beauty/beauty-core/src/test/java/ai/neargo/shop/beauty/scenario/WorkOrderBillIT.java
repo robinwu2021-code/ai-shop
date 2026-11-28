@@ -159,7 +159,7 @@ class WorkOrderBillIT extends SourceFixture {
                                                     root.workOrderNo(),
                                                     existing(root, root.taskNos().getFirst(), "OP"),
                                                     "BIND");
-                            assertThat(submitted.status()).isEqualTo("SOURCE_PENDING");
+                            assertThat(submitted.status()).isEqualTo("TO_SOURCE");
                             var bill =
                                     context.getBean(WorkOrderBillService.class)
                                             .getBill("E", "S", "A", root.workOrderNo());

@@ -242,14 +242,13 @@ public final class AppointmentServiceImpl implements AppointmentService {
         var query = query(q.from(), q.to(), q.status()).eq(BtyAppointment::getEntityNo, entity)
                 .eq(BtyAppointment::getStoreNo, store);
         if (q.personnelNo() != null) {
-            // 人员安排在当前那一版修订的快照里（TDD §2.6 第 7 项）
+            // 人员安排在当前那一版修订的快照里（TDD §2.6 第 7 项）。不用 JSON_TABLE：分页与数据范围拦截器的 SQL 解析不认它
             query.apply("EXISTS (SELECT 1 FROM bty_appointment_current c JOIN ord_appointment_revision r "
                     + "ON r.tenant_no=c.tenant_no AND r.entity_no=c.entity_no AND r.appointment_no=c.appointment_no "
-                    + "AND r.arrangement_revision=c.arrangement_revision AND r.deleted=0, "
-                    + "JSON_TABLE(r.snapshot, '$.assignments[*]' COLUMNS (personnel_no VARCHAR(32) "
-                    + "PATH '$.personnelNo')) j "
+                    + "AND r.arrangement_revision=c.arrangement_revision AND r.deleted=0 "
                     + "WHERE c.appointment_no=ord_appointment.appointment_no AND c.entity_no=ord_appointment.entity_no "
-                    + "AND c.tenant_no=ord_appointment.tenant_no AND c.deleted=0 AND j.personnel_no={0})",
+                    + "AND c.tenant_no=ord_appointment.tenant_no AND c.deleted=0 "
+                    + "AND JSON_CONTAINS(JSON_EXTRACT(r.snapshot, '$.assignments[*].personnelNo'), JSON_QUOTE({0})))",
                     q.personnelNo());
         }
         if (q.assignmentState() != null) {

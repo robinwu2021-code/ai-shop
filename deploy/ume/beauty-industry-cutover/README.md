@@ -30,7 +30,7 @@
 | `bty_work_order`、`bty_service_task`、`bty_trade_binding`、`bty_service_submission`、`bty_reception_operation`、`bty_guest_claim_receipt`、`bty_arrival_challenge`、`bty_source_observation`、`bty_source_allocation_guard` | 新建（A6 后留在行业库的美业执行表；工单已含并入的上下文列） |
 | `bty_service_execution_fence` | 新建（原美业私有迁移 V10，表结构取服务端规范化写法） |
 | `bty_service_execution_stock_intent` | 新建（原美业私有迁移 V11，§2.6 第 11 项从主库搬来） |
-| `bty_service_step` | 重建：`status` 由 `varchar(10)` 放宽到 `varchar(24)`（代码用 `IN_PROGRESS`） |
+| `bty_service_step` | 重建（旧设计稿的公共字段写法与定稿不同）；`status` 保持 `varchar(10)`，代码改用短值 `DOING` |
 | `ind_assignment` | 补两列、改注释（B-4 服务参与并入） |
 | 触发器 | 新建 5 个：`trg_bty_source_observation_domain_guard`、`trg_bsef_immutable`、`trg_bsef_no_delete`、`trg_bsesi_immutable`、`trg_bsesi_no_delete` |
 
@@ -41,6 +41,10 @@
 ## 本机演练（2026-11-28）
 
 一次性库按旧设计稿建（只留 `bty_service_step`，`ind_assignment` 放 1 行数据）：`check` 列出差异 → `apply` 建表、补列、建触发器，核对通过、数据保留 → 再 `check` 无差异 → 再 `apply` 跳过补列、核对仍通过。
+
+## 状态改短值（2026-11-28，用户定）
+
+用户 11-26 定「状态取值不超过 10 个字符、列宽不放宽」，B-6 初版把 `bty_service_step.status` 放宽到 24、并沿用了设计稿里美业几张执行表宽于 10 的状态列，与之不符。改为：美业行业库所有 `status`、`state`、`*_state` 与接待操作的 `phase` 一律 `varchar(10)`，取值按[状态短值换值表](../../../docs/technical/零售域-状态短值换值表.md) §3.9。本目录产物已重新生成；.61 已执行的初版表都是空表，重跑 `apply` 即按新结构重建（`ind_assignment` 两列已有，跳过 03）。
 
 ## 执行记录
 

@@ -53,7 +53,7 @@ column	bty_reception_operation	appointment_no	varchar(32)	YES	<null>
 column	bty_reception_operation	work_order_no	varchar(32)	YES	<null>
 column	bty_reception_operation	identity_kind	varchar(16)	YES	<null>
 column	bty_reception_operation	identity_ref	varchar(32)	YES	<null>
-column	bty_reception_operation	phase	varchar(24)	NO	<null>
+column	bty_reception_operation	phase	varchar(10)	NO	<null>
 column	bty_reception_operation	appointment_operation_no	varchar(32)	YES	<null>
 column	bty_reception_operation	derived_key_hash	char(64)	YES	<null>
 column	bty_reception_operation	frozen_payload	json	NO	<null>
@@ -101,13 +101,13 @@ column	bty_service_execution_fence	payload_hash	char(64)	NO	<null>
 column	bty_service_execution_fence	execution_snapshot_hash	char(64)	NO	<null>
 column	bty_service_execution_fence	plan_hash	char(64)	NO	<null>
 column	bty_service_execution_fence	resource_command_hash	char(64)	NO	<null>
-column	bty_service_execution_fence	intent_state	varchar(32)	NO	<null>
+column	bty_service_execution_fence	intent_state	varchar(10)	NO	<null>
 column	bty_service_execution_fence	source_fence_revision	bigint	NO	1
 column	bty_service_execution_fence	observation_epoch	bigint	NO	0
 column	bty_service_execution_fence	next_retry_at	datetime(3)	YES	<null>
 column	bty_service_execution_fence	observed_grant_no	varchar(32)	YES	<null>
 column	bty_service_execution_fence	observed_grant_revision	bigint	YES	<null>
-column	bty_service_execution_fence	observed_grant_state	varchar(32)	YES	<null>
+column	bty_service_execution_fence	observed_grant_state	varchar(10)	YES	<null>
 column	bty_service_execution_fence	suspension_intent_revision	bigint	YES	<null>
 column	bty_service_execution_fence	suspension_manual_epoch	bigint	YES	<null>
 column	bty_service_execution_fence	suspension_observation_version	bigint	YES	<null>
@@ -151,7 +151,7 @@ column	bty_service_execution_stock_intent	evidence_json	longtext	YES	<null>
 column	bty_service_execution_stock_intent	receipt_json	longtext	YES	<null>
 column	bty_service_execution_stock_intent	evidence_observed_at	datetime(3)	YES	<null>
 column	bty_service_execution_stock_intent	receipt_observed_at	datetime(3)	YES	<null>
-column	bty_service_execution_stock_intent	observation_state	varchar(40)	NO	<null>
+column	bty_service_execution_stock_intent	observation_state	varchar(10)	NO	<null>
 column	bty_service_execution_stock_intent	pending_reason	varchar(64)	YES	<null>
 column	bty_service_execution_stock_intent	source_fence_revision	bigint	NO	<null>
 column	bty_service_execution_stock_intent	observation_epoch	bigint	NO	<null>
@@ -162,7 +162,7 @@ column	bty_service_step	step_no	varchar(32)	NO	<null>
 column	bty_service_step	task_no	varchar(32)	NO	<null>
 column	bty_service_step	step_code	varchar(32)	NO	<null>
 column	bty_service_step	sequence_no	int	NO	<null>
-column	bty_service_step	status	varchar(24)	NO	<null>
+column	bty_service_step	status	varchar(10)	NO	<null>
 column	bty_service_step	started_at	datetime(3)	YES	<null>
 column	bty_service_step	finished_at	datetime(3)	YES	<null>
 column	bty_service_step	result_snapshot	json	YES	<null>
@@ -187,7 +187,7 @@ column	bty_service_submission	work_order_no	varchar(32)	YES	<null>
 column	bty_service_submission	action	varchar(32)	NO	<null>
 column	bty_service_submission	request_key_hash	char(64)	NO	<null>
 column	bty_service_submission	payload_hash	char(64)	NO	<null>
-column	bty_service_submission	status	varchar(24)	NO	<null>
+column	bty_service_submission	status	varchar(10)	NO	<null>
 column	bty_service_submission	frozen_command	json	NO	<null>
 column	bty_service_submission	next_retry_at	datetime(3)	YES	<null>
 column	bty_service_submission	failure_code	varchar(64)	YES	<null>
@@ -210,7 +210,7 @@ column	bty_service_task	qty	decimal(18,6)	NO	<null>
 column	bty_service_task	done_qty	decimal(18,6)	NO	<null>
 column	bty_service_task	voided_qty	decimal(18,6)	NO	<null>
 column	bty_service_task	uom	varchar(24)	NO	<null>
-column	bty_service_task	status	varchar(24)	NO	<null>
+column	bty_service_task	status	varchar(10)	NO	<null>
 column	bty_service_task	binding_revision	bigint	NO	<null>
 column	bty_service_task	started_at	datetime(3)	YES	<null>
 column	bty_service_task	finished_at	datetime(3)	YES	<null>
@@ -257,7 +257,7 @@ column	bty_source_observation	checkout_operation_no	varchar(64)	NO	<null>
 column	bty_source_observation	order_no	varchar(64)	NO	<null>
 column	bty_source_observation	buyer_no	varchar(64)	YES	<null>
 column	bty_source_observation	observation_epoch	bigint	NO	0
-column	bty_source_observation	state	varchar(16)	NO	<null>
+column	bty_source_observation	state	varchar(10)	NO	<null>
 column	bty_source_observation	source_revision	bigint	YES	<null>
 column	bty_source_observation	source_hash	char(64)	YES	<null>
 column	bty_source_observation	verified_revision	bigint	YES	<null>
@@ -271,7 +271,7 @@ column	bty_source_observation	customer_kind	varchar(8)	YES	<null>
 column	bty_source_observation	guest_no	varchar(32)	YES	<null>
 column	bty_source_observation	identity_revision	bigint	YES	<null>
 column	bty_source_observation	manual_epoch	bigint	YES	<null>
-column	bty_source_observation	manual_state	varchar(16)	YES	<null>
+column	bty_source_observation	manual_state	varchar(10)	YES	<null>
 column	bty_source_observation	manual_observed_at	datetime(3)	YES	<null>
 column	bty_source_observation	manual_failure_code	varchar(64)	YES	<null>
 column	bty_source_observation	manual_revision	bigint	YES	<null>
@@ -281,7 +281,7 @@ column	bty_source_observation	manual_verified_hash	char(64)	YES	<null>
 column	bty_source_observation	manual_verified_lines	json	YES	<null>
 column	bty_source_observation	manual_verified_at	datetime(3)	YES	<null>
 column	bty_source_observation	manual_admission_revision	bigint	YES	<null>
-column	bty_source_observation	manual_admission_state	varchar(24)	YES	<null>
+column	bty_source_observation	manual_admission_state	varchar(10)	YES	<null>
 column	bty_trade_binding	id	bigint	NO	<null>
 column	bty_trade_binding	tenant_no	varchar(32)	NO	MAIN
 column	bty_trade_binding	entity_no	varchar(32)	NO	<null>
@@ -323,7 +323,7 @@ column	bty_work_order	work_order_no	varchar(32)	NO	<null>
 column	bty_work_order	store_no	varchar(32)	NO	<null>
 column	bty_work_order	appointment_no	varchar(32)	YES	<null>
 column	bty_work_order	customer_ref	varchar(64)	NO	<null>
-column	bty_work_order	status	varchar(24)	NO	<null>
+column	bty_work_order	status	varchar(10)	NO	<null>
 column	bty_work_order	scope_revision	bigint	NO	<null>
 column	bty_work_order	scope_frozen	tinyint	NO	<null>
 column	bty_work_order	started_at	datetime(3)	YES	<null>

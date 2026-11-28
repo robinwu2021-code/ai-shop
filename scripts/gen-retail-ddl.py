@@ -122,9 +122,6 @@ ADD_COLUMNS = {
 REPLACE_COLUMNS = {
     # 取消原因放宽到 500：取消与爽约请求的原因最长 500 字，原来只记在美业操作日志里（TDD-美业域迁移新库 §2.6 第 12 项）
     ('ord_appointment', 'cancel_reason'): "`cancel_reason` varchar(500) DEFAULT NULL COMMENT '取消或爽约原因'",
-    # 美业 B-6 同步（TDD-美业域迁移新库）：服务步骤状态代码用 IN_PROGRESS（11 字符），设计稿原为 varchar(10)
-    ('bty_service_step', 'status'): "`status` varchar(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL "
-                                    "COMMENT '状态：PENDING 待开始、IN_PROGRESS 进行中、DONE 完成、SKIPPED 跳过'",
     # 美业服务参与并入指派表（B-4）：对象类型加 TASK
     ('ind_assignment', 'target_type'): "`target_type` varchar(24) DEFAULT NULL COMMENT '指派对象类型：VISIT 到店单、"
                                        "ITEM 订单行、UNIT 履约单元、APPOINTMENT_ITEM 预约项目行、TASK 美业服务任务'",

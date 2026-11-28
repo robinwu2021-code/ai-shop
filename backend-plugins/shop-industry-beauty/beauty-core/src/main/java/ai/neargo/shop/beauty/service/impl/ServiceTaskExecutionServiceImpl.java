@@ -369,7 +369,7 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         row.setSourceIntentHash(ServiceExecutionContract.intentHash(intent));
         row.setBindingJson(ServiceExecutionContract.bindingJson(binding));
         row.setSourceFenceRevision(1L);
-        row.setIntentState("FROZEN");
+        row.setIntentState(BtyServiceExecutionFence.intentCode(IntentState.FROZEN));
         row.setObservationEpoch(0L);
         row.setNextRetryAt(now());
         row.setVersion(0L);
@@ -582,11 +582,11 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
             require(grant.quantity().orderedUnits() == row.getOrderedUnits()
                     && (grant.state() != ServiceExecutionPort.GrantState.PREPARED || grant.quantity().reservedUnits() > 0));
             if (Objects.equals(row.getObservedGrantRevision(), grant.grantRevision())) {
-                require(Objects.equals(row.getObservedGrantState(), grant.state().name()));
+                require(Objects.equals(row.getObservedGrantState(), BtyServiceExecutionFence.grantCode(grant.state())));
             }
             row.setObservedGrantNo(grant.grantNo());
             row.setObservedGrantRevision(grant.grantRevision());
-            row.setObservedGrantState(grant.state().name());
+            row.setObservedGrantState(BtyServiceExecutionFence.grantCode(grant.state()));
             boolean prepared = grant.state() == ServiceExecutionPort.GrantState.PREPARED;
             row.setIntentState(row.getSuspensionIntentRevision() != null ? BtyServiceTask.SUSPEND_REQUESTED
                     : prepared ? BtyServiceTask.PREPARED_OBSERVED : BtyServiceTask.EXECUTION_PENDING);
@@ -626,7 +626,7 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
                     row.getSuspensionProofHash());
             require(ServiceExecutionContract.suspensionHash(binding, suspension).equals(suspension.proofHash()));
         }
-        return new StartIntent(binding, IntentState.valueOf(row.getIntentState()), row.getSourceFenceRevision(),
+        return new StartIntent(binding, BtyServiceExecutionFence.intentOf(row.getIntentState()), row.getSourceFenceRevision(),
                 original.admissionKind(), original.customerPartyDigest(), original.personnel(),
                 original.operatorNamespaceHash(), original.resourceCommandNo(), original.resourceCommandHash(),
                 original.frozenPlan(), original.frozenPlanHash(), continuity(observation, binding, suspension), suspension);

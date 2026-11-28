@@ -218,7 +218,7 @@
 - 其余模块全过；宿主 `BeautyEmbeddedWiringTest` 两种构建形态都通过。
 
 **B-5a 已做（2026-11-28）：测试能把行业句柄连到独立的库**
-- 开关 `-Dbeauty.test.industry-db=separate`（默认 `shared`，与主库同一个库）：
+- 开关 `-Dbeauty.test.industry-db`：`separate` 为独立库（2026-11-28 起为默认，见「状态改短值」）；`shared` 与主库同一个库，只留作对照：
   - 测试另建一个按 `db/n_industry` V1、V2 建的库；
   - 应用上下文按 `shop.datasources.n_industry.*` + `shop.modules.industry.datasource=n_industry` 绑定。数据源名不能和模块同名，否则启动直接拒绝。
 - 测试直接读写表的 SQL 走 `IndustryRoutingDataSource`，按表名分到两个库，测试代码基本不用改：
@@ -232,7 +232,7 @@
   - **TDD 漏掉的跨库点**：幂等记录（`sys_idempotent`，主库）在行业事务里写，比如门店策略发布，并发首建就不再只有一个赢家。
   - 「审计写失败，业务也回滚」的用例在独立库下不成立：操作日志在主库。B-5c 要定是否接受「提交后写日志」带来的语义变化。
   - 接待相关的事务问题（`WalkInRecoveryIT`）。
-- **设计稿缺陷**：`bty_service_step.status` 设计稿是 `varchar(10)`、注释写 `DOING`，代码用 `IN_PROGRESS`（11 字符，旧表 `varchar(24)`）。测试建库的 `V2` 先改正，设计稿随 B-6 同步。B-1 的核对只看列在不在、不看宽度，所以没发现。
+- **设计稿缺陷**：`bty_service_step.status` 设计稿是 `varchar(10)`、注释写 `DOING`，代码用 `IN_PROGRESS`（11 字符，旧表 `varchar(24)`）。测试建库的 `V2` 先改正，设计稿随 B-6 同步。**（2026-11-28 更正：设计稿是对的，改的是代码——取值改短值 `DOING`，见 B-6 后「状态改短值」。）**B-1 的核对只看列在不在、不看宽度，所以没发现。
 
 **B-5b 已做（2026-11-28）：接待操作只经 `ReceptionSteps` 写**
 - 按 §2.2.1 建 `ReceptionSteps`，提供以下方法：
@@ -343,6 +343,20 @@
 - 测试：美业行业库 V1 按新 06 重新拷贝；V2 只剩 5 个触发器（设计 DDL 不收触发器）；共用库模式的辅助不再补两列（随 V1 来）。两种模式下 `BeautyIndustryDatabaseIT`、`ServiceTaskPersistenceIT`、`BeautySchemaMigrationIT` 全过，`WorkOrderScopeIT` 只剩 HEAD 上同样失败的 1 条。
 - 部署：`deploy/ume/beauty-industry-cutover/`（`gen.py` 从 V1、V2 生成；`run.sh check|apply`：美业表为空才执行、备份、建 12 张表、补共用指派表两列、建 5 个触发器、按期望结构核对）。本机按旧设计稿演练两遍通过，数据保留。
 - .61 已执行（2026-11-28 14:12Z，用户批准）：`check` 差异与预期一致 → `apply` 备份到 `~/backup/beauty-industry-20261128T141226Z/`、建 12 张表、补两列、建 5 个触发器，核对通过 → 再 `check` 无差异。`n_industry` 由 28 张变 39 张，美业表与 `ind_assignment` 都是 0 行。详见部署目录 README「执行记录」。
+
+#### 状态改短值（2026-11-28，用户定「Shorten values」）
+- 起因：用户 11-26 定「状态取值不超过 10 个字符、列宽不放宽」（`零售域-状态短值换值表.md`）。B-6 初版把 `bty_service_step.status` 放宽到 24，设计稿里美业执行表另有 10 列宽于 10，与之不符；这条规则当时漏查。
+- 范围：美业在行业库的 `status`、`state`、`*_state` 与接待操作 `phase`，共 11 列，一律 `varchar(10)`；约束里的取值同步。换值按换值表 §3.9（服务任务、服务步骤已有，接待阶段与 §3.7 同写法，围栏与库存意向本次补登）。
+- 做法：
+  - 实体常量直接改值（`BtyServiceTask`、`BtyServiceStep`、`BtyReceptionOperation`），SQL 引用常量，不用改。
+  - 围栏的意向、许可状态是宿主接口枚举名，库存意向的观察状态也是对外准备进度名：接口与对外取值不变，只在 `BtyServiceExecutionFence`、`BtyServiceExecutionStockIntent` 两个实体里落库换短值、读出还原，一处换。
+  - 设计稿源 `retail-ddl/beauty-execution-tables.sql` 改列宽与约束；生成器去掉放宽 `bty_service_step.status` 那条。`06-n_industry.sql`、美业测试 V1、.61 部署脚本重新生成。
+  - 结构描述文件（执行围栏、库存意向）按新结构改；主库上旧私有迁移 V10、V11 建的两张表只核对迁移记录、不再按描述文件核对结构（表已归行业库，代码不读写，随第 15 项退役）。
+  - 测试默认改为独立行业库模式：共用库模式里的行业表来自旧私有迁移，带旧取值的约束，改短值后不再兼容，只留作对照。
+- 顺带修：第 7 项的人员筛选用 `JSON_TABLE`，分页与数据范围拦截器解析不了（`AppointmentBusinessIT` 按人员筛选那条失败；第 7 项当时没跑完对照，漏了），改为 `JSON_CONTAINS(JSON_EXTRACT(...))`。报表那条是注解 SQL、不经拦截器，保留。
+- 主库旧 V10 的结构破坏用例改到行业库上测（`industryFenceStructureDamageIsCorrupt`，含把 `intent_state` 放宽回 32）；主库只留迁移记录类的破坏。
+- 验证（与 HEAD `e9a2e1bab` 同机同库，独立库模式，`-Dtest=*` 全部 403 条）：HEAD 39 条失败，本改动 40 条；按人员筛选那条修好；新增的 2 条是上面改写前的主库结构破坏用例，改写后 `BeautySchemaMigrationIT` 33/33、`BeautyPlatformFlywayIT` 3/3（不带开关，即新默认）。其余失败与 HEAD 相同（`ServiceSourceObservationIT` ×5 缺迁移、`ManualExecutionSourceIT` 等既有）。生成器 `--check` 两个都通过。
+- .61：初版表都是空表，按新脚本重跑 `apply` 即可，须用户批准。
 
 #### 第 4–6 项方案（2026-11-28 用户定「按建议采纳」）：以预约修订为中心
 

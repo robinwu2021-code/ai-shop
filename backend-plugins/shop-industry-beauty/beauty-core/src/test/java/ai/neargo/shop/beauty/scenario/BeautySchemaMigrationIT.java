@@ -26,11 +26,12 @@ import javax.sql.DataSource;
 /** Explicitly selected by the disposable MySQL runner; never consumes application DB settings. */
 class BeautySchemaMigrationIT {
     /**
-     * 行业句柄连哪：{@code shared}（默认）与主库同一个库；{@code separate} 连按 {@code db/n_industry} 新建的独立库，
-     * 分库后会断的写法在测试里直接暴露（TDD-美业域迁移新库 B-5a）。{@code -Dbeauty.test.industry-db=separate}。
+     * 行业句柄连哪：{@code separate}（默认）连按 {@code db/n_industry} 新建的独立库，分库后会断的写法在测试里直接暴露
+     * （TDD-美业域迁移新库 B-5a）；{@code shared} 与主库同一个库，行业表来自旧私有迁移的结构，状态改短值后不再兼容，
+     * 只留作对照。{@code -Dbeauty.test.industry-db=shared}。
      */
     static final boolean SEPARATE_INDUSTRY =
-            "separate".equals(System.getProperty("beauty.test.industry-db", "shared"));
+            !"shared".equals(System.getProperty("beauty.test.industry-db", "separate"));
     MysqlDataSource source;
     /**
      * 本进程建过的一次性库，测试进程退出时统一删掉（原来不删，本机曾积到 7600 多个、五十多 G，把磁盘占满）。
@@ -276,17 +277,11 @@ class BeautySchemaMigrationIT {
 
     @Test
     void knownV10DamageIsolatedFromIntactBase() throws Exception {
+        // 主库上旧私有迁移 V10 建的表只核对迁移记录（表已归行业库，代码不读写；状态改短值后结构按描述文件只在行业库核对）
         for (String damage : new String[] {
                 "UPDATE bty_flyway_history SET checksum=123 WHERE version='10'",
                 "UPDATE bty_flyway_history SET success=0 WHERE version='10'",
-                "DROP TABLE bty_service_execution_fence",
-                "ALTER TABLE bty_service_execution_fence DROP INDEX uk_bsef_task",
-                "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_unit",
-                "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_json_execution_no,"
-                        + " ADD CONSTRAINT ck_bsef_json_execution_no CHECK (execution_no IS NOT NULL)",
-                "DROP TRIGGER trg_bsef_immutable",
-                "ALTER TABLE bty_service_execution_fence MODIFY binding_json LONGTEXT CHARACTER SET utf8mb4"
-                        + " COLLATE utf8mb4_unicode_ci NOT NULL"}) {
+                "DROP TABLE bty_service_execution_fence"}) {
             isolatedDatabase();
             initialize("migrate");
             execute(damage);
@@ -294,6 +289,31 @@ class BeautySchemaMigrationIT {
             assertEquals(ServiceExecutionSchemaVerifier.Installation.CORRUPT,
                     new ServiceExecutionSchemaVerifier(source).installation(), damage);
             assertThrows(RuntimeException.class, () -> initialize("migrate"), damage);
+        }
+    }
+
+    @Test
+    void industryFenceStructureDamageIsCorrupt() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeTrue(SEPARATE_INDUSTRY, "结构只在独立的行业库核对");
+        for (String damage : new String[] {
+                "ALTER TABLE bty_service_execution_fence DROP INDEX uk_bsef_task",
+                "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_unit",
+                "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_json_execution_no,"
+                        + " ADD CONSTRAINT ck_bsef_json_execution_no CHECK (execution_no IS NOT NULL)",
+                "DROP TRIGGER trg_bsef_immutable",
+                "ALTER TABLE bty_service_execution_fence MODIFY intent_state varchar(32) CHARACTER SET utf8mb4"
+                        + " COLLATE utf8mb4_bin NOT NULL",
+                "ALTER TABLE bty_service_execution_fence MODIFY binding_json LONGTEXT CHARACTER SET utf8mb4"
+                        + " COLLATE utf8mb4_unicode_ci NOT NULL"}) {
+            isolatedDatabase();
+            initialize("migrate");
+            assertEquals(ServiceExecutionSchemaVerifier.Installation.INSTALLED,
+                    new ServiceExecutionSchemaVerifier(industrySource).installation(), damage);
+            try (var connection = industrySource.getConnection(); var statement = connection.createStatement()) {
+                statement.execute(damage);
+            }
+            assertEquals(ServiceExecutionSchemaVerifier.Installation.CORRUPT,
+                    new ServiceExecutionSchemaVerifier(industrySource).installation(), damage);
         }
     }
 
