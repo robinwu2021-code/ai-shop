@@ -71,12 +71,12 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
 
     /**
      * 商品草稿：只给待审看板用 —— 在售商品提交的草稿待审时 live 行保持 APPROVED，
-     * 积压只能从草稿表数出来。setter 注入：构造函数被切片测试直接 new，缺了就只数商品行。
+     * 积压只能从提交历史里的待审草稿数出来（批次 2-f）。setter 注入：构造函数被切片测试直接 new，缺了就只数商品行。
      */
-    private ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper;
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsRevisionMapper draftMapper;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void setDraftMapper(ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper) {
+    public void setDraftMapper(ai.neargo.shop.product.mapper.ProductMappers.GoodsRevisionMapper draftMapper) {
         this.draftMapper = draftMapper;
     }
 
@@ -462,14 +462,14 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
 
         long cnt = row.get("cnt") instanceof Number n ? n.longValue() : 0L;
         /*
-         * 在售商品提交的草稿：待审记在草稿行上（SUBMITTED），live 行保持 APPROVED 照卖旧版。
+         * 在售商品提交的草稿：待审记在提交历史的草稿行上（SUBMITTED，批次 2-f 起），live 行保持 APPROVED 照卖旧版。
          * 与待审队列同一个口径（MerchantGoodsServiceImpl#auditQueue），同样不绕数据域
-         * （prd_goods_draft 也按 MERCHANT 登记了）—— 卡片与队列对任何人都得是同一个数。
+         * （prd_goods_revision 也按 MERCHANT 登记了）—— 卡片与队列对任何人都得是同一个数。
          */
         Map<String, Object> drafts = draftMapper == null ? Map.of()
-                : draftMapper.selectMaps(Wrappers.<ai.neargo.shop.product.entity.PrdGoodsDraft>query()
+                : draftMapper.selectMaps(Wrappers.<ai.neargo.shop.product.entity.PrdGoodsRevision>query()
                                 .select("COUNT(*) AS cnt", "MIN(updated_at) AS oldest")
-                                .eq("status", ai.neargo.shop.product.entity.PrdGoodsDraft.SUBMITTED)
+                                .eq("status", ai.neargo.shop.product.entity.PrdGoodsRevision.SUBMITTED)
                                 .eq("deleted", 0))
                         .stream().findFirst().orElse(Map.of());
         cnt += drafts.get("cnt") instanceof Number n ? n.longValue() : 0L;

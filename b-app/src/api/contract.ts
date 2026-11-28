@@ -774,8 +774,18 @@ export interface GoodsDraft {
 /**
  * 一个提交版本的状态。**ONLINE 不一定是 revisionNo 最大的那一版** ——
  * 这是这张列表最容易看错的一点（「最新」≠「买家此刻看到的」）。
+ *
+ * EDITING / SUBMITTED 是在售商品的草稿（编辑中、待审核，一件商品至多一行）；
+ * DISCARDED 是放弃了的草稿。DRAFT 是还没上架时直接保存的那一版，不是草稿。
  */
-export type GoodsRevisionStatus = "DRAFT" | "ONLINE" | "SUPERSEDED" | "REJECTED";
+export type GoodsRevisionStatus =
+  | "DRAFT"
+  | "ONLINE"
+  | "SUPERSEDED"
+  | "REJECTED"
+  | "EDITING"
+  | "SUBMITTED"
+  | "DISCARDED";
 
 /** 这一版怎么录的。与后端 `prd_goods_revision.entry_source` 同一套取值 */
 export type GoodsEntrySource = "MANUAL" | "QUICK_TEXT" | "ZIP" | "IMAGE";

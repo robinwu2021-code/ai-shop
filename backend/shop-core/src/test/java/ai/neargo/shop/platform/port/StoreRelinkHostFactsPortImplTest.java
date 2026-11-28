@@ -31,7 +31,7 @@ class StoreRelinkHostFactsPortImplTest {
             jdbc.execute("CREATE TABLE " + table + "(store_no VARCHAR(64))");
         for (String table : java.util.List.of("prd_goods", "prd_store_sku", "prd_store_goods"))
             jdbc.execute("CREATE TABLE " + table + "(tenant_no VARCHAR(32),entity_no VARCHAR(64),store_no VARCHAR(64),deleted INT)");
-        for (String table : java.util.List.of("prd_sku", "prd_goods_draft"))
+        for (String table : java.util.List.of("prd_sku", "prd_goods_revision"))
             jdbc.execute("CREATE TABLE " + table + "(tenant_no VARCHAR(32),entity_no VARCHAR(64),deleted INT)");
         facts = new StoreRelinkHostFactsPortImpl(jdbc);
     }
@@ -113,7 +113,7 @@ class StoreRelinkHostFactsPortImplTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings={"prd_sku","prd_goods_draft"})
+    @ValueSource(strings={"prd_sku","prd_goods_revision"})
     void orphanSkuAndUnpublishedDraftRetainSourceOwnership(String table) {
         jdbc.update("INSERT INTO "+table+" VALUES('OTHER','M',1)");
         jdbc.update("INSERT INTO "+table+" VALUES('MAIN','OTHER',1)");

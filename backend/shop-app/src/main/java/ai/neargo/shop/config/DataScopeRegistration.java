@@ -80,13 +80,14 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
-         * 商品草稿（V279，双版本）。商家私有数据，与 prd_goods 同一根轴。
+         * 商品提交历史，含草稿（V279 双版本；门店交易库批次 2-f 起草稿并进这张表）。
+         * 商家私有数据，与 prd_goods 同一根轴。
          * **登记时服务层的十处访问已全部显式豁免**（saveAsDraft/publishDraft/
          * swapFromDraft/审核换版/hasDraft/preview —— 归属由上游 mine(merchantNo,goodsNo)
          * 把关），所以这一行是纵深防御：将来谁绕过服务层直查这张表，
          * 会被按商家过滤而不是全平台放行。
          */
-        registry.register("prd_goods_draft", Map.of(
+        registry.register("prd_goods_revision", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*

@@ -12,7 +12,6 @@ R1 TopicMapper 继承 BaseMapper
 R2 AppealMapper 用到 rvw_appeal，不在 目标库 DDL
 R2 EntityCategoryInvMapper 用到 prd_entity_category_inv，不在 05-n_trade.sql
 R2 ExecutionRetentionMapper 用到 prd_execution_retention，不在 目标库 DDL
-R2 GoodsDraftMapper 用到 prd_goods_draft，不在 05-n_trade.sql
 R2 GoodsFavoriteMapper 用到 prd_goods_favorite，不在 目标库 DDL
 R2 ReviewLikeMapper 用到 rvw_review_like，不在 目标库 DDL
 R2 ReviewMapper 用到 rvw_review，不在 目标库 DDL

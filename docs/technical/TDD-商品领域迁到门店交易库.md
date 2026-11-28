@@ -101,6 +101,7 @@
 - 市场：旧库 SKU、门店价的 `market` 为 `CN` 的改为 `TW`（正式库 5 个 SKU 里 4 个是 `CN`，来源是代码原先写死的「本市场」；新库默认值与代码的本市场都按部署配置为 `TW`，见 [列默认值补回方案](design/门店交易库-列默认值补回方案.md) §3）。
 - 规格范围的搬法：类目绑定写 `CATEGORY` 维度级行（`value_no=''`），类目取值子集写同范围取值级行；商家覆盖写 `MCH_CATEGORY`（`scope_ref` = 商家号/类目号，`value_no` 空串照搬，`enabled=0` → `DISABLED`）；商家常用维度与取值写 `MERCHANT`（`favorite=1`）。
 - 规格模板的搬法：平台模板按名字对到规格库的平台维度、选项按 code 对到取值，写 `CATEGORY_TYPE` 推荐（对不上的维度或取值列进搬迁报告，人工定）；`category_no` 非空的类目级模板不搬；商家自存模板转为他的自建维度 + `MERCHANT` 常用。
+- 草稿的搬法：每行草稿在提交历史里落一行（`EDITING` → `EDITING`、`SUBMITTED` → `SUBMITTED`，`base_version` → `base_goods_version`），编号取该商品最大编号 +1；若同一商品已有未发布（`DRAFT`）且内容相同的那一行，直接改它的状态而不另开。
 - 合表的搬法：`prd_store_price` 与 `prd_store_stock` 按 门店 + SKU 合成一行（库存行没有市场列，取本市场）；类目付款方式只搬 `allowed=0` 的行进 `disallowed_pay_modes`；SKU 定价策略、卡类权益绑定按 SKU 写进本市场那一行（权益绑定的 `status` 非 ACTIVE 或已删的，SKU 置 `DISABLED`）。
 - 对账：逐表比行数，商品、SKU、门店价与库存逐行比关键字段；对账报告存进上线记录。
 - 搬迁在切换窗口里与交易一起做，搬完旧表只读、不删。
@@ -188,6 +189,13 @@
   - 类目级的 16 条旧模板不搬：类目选定后只用规格库的类目绑定，它们本来就读不到。
   - 测试种子：品类推荐 6 组直接按新表写进 `schema-test-extra.sql`（不从旧表复制），普通品类原叫「规格」的那组即件数维度 `SD_COUNT`。
   - 基线 −1；新增用例 `OpsProductGovernFlowTest#categoryTypeRecommendationPointsAtLibraryDims`。
+- **2-f 商品草稿**：`prd_goods_draft` → `prd_goods_revision`，草稿就是提交历史里的一行。不改表结构，状态加三个值（列宽 10 内）：`EDITING` 编辑中、`SUBMITTED` 待审、`DISCARDED` 已放弃；原 `DRAFT` 仍表示「还没上架时直接保存的那一版」，不是草稿。
+  - 草稿 = 状态为 `EDITING` / `SUBMITTED` 的那一行，一件商品至多一行（锁商品行保证）；「有未发布修改」就看它在不在。原 `base_version` 改存 `base_goods_version`。读写集中在 `GoodsRevisionService` 的草稿方法。
+  - 去向：存在售商品的修改 = 有草稿改它（内容变了才改、退回编辑中），没有新开一行；免审发布 = 草稿行改在售、原在售改已替换；送审 = 改待审；撤回 = 改回编辑中；驳回 = 这一行记驳回与原因，再复制一行编辑中的新草稿（编号 +1）；放弃 = 改已放弃。草稿保存不再另记一笔历史（草稿行本身就是那一笔）。
+  - 换版时先把草稿行改成在售再回放（原来是先删草稿行），返回的 `hasDraft` 才是 false；回放失败整个事务回滚。
+  - 审核队列、待审看板改数提交历史里的 `SUBMITTED`；数据域登记从 `prd_goods_draft` 换到 `prd_goods_revision`（同为 MERCHANT / `entity_no`，服务层访问都已显式豁免）；门店换绑的「有没有商品数据」检查同样换表。
+  - B 端：`GoodsRevisionStatus` 加三个值，历史页加中英阿三语文案，编辑中/待审用提醒色；编辑页横幅「草稿 vN · 线上 vM」改认编辑中/待审。接口字段不变。
+  - 测试：`GoodsIntegrityFlowTest` 驳回后断言历史留有驳回原因；`M9bBizGoodsFlowTest` 放弃后断言历史留有已放弃那一版；`b-app/tests/goods-revisions.test.ts` 加新状态。基线 −1。
 - 公共防重表 `sys_idempotent` 目前在主库、不与商品事务同库（定价策略原本就是如此）；它属于公共能力，随防重服务化处理，不进门店交易库。
 
 ### 偏差说明

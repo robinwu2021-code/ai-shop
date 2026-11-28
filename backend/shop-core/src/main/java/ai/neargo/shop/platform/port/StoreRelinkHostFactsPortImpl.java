@@ -86,7 +86,7 @@ public class StoreRelinkHostFactsPortImpl implements StoreRelinkHostFactsPort {
             trades |= Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM " + table
                     + " WHERE tenant_no=:tenant AND (entity_no=:entity OR store_no=:store))", scope, Boolean.class));
         }
-        for (String table : List.of("prd_sku", "prd_goods_draft")) {
+        for (String table : List.of("prd_sku", "prd_goods_revision")) {
             trades |= Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM " + table
                     + " WHERE tenant_no=:tenant AND entity_no=:entity)", scope, Boolean.class));
         }

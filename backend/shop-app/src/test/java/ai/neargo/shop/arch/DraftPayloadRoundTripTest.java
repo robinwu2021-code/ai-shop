@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 在售商品改价/限购「发布后不生效」排查的回归守卫（设计-发布与销售地区优化 #1）。
  *
- * <p>在售商品的保存只写草稿：{@code SaveCommand} 被序列化进 {@code prd_goods_draft.payload}，
+ * <p>在售商品的保存只写草稿：{@code SaveCommand} 被序列化进草稿行 {@code prd_goods_revision.payload}，
  * 发布时再反序列化回来重放。此前**序列化用注入的 Jackson 3（配过的 json bean），
  * 反序列化却 new 了一只临时 Jackson 2** —— 这是整条链里唯一能让某些字段静默丢失的地方：
  * 若 json bean 配了非默认命名/包含策略，Jackson 2 读不回。
