@@ -15,10 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Keeps the InternalFoodKdsController protocol scoped to original restaurant facts and lifecycle
- * authority.
- */
+/** 门店设备与厨显工位的内部接口（TDD-餐饮域迁移新库 §2.8 D-5）。 */
 @RestController
 @ConditionalOnFoodEnabled
 @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
@@ -32,33 +29,37 @@ public class InternalFoodKdsController {
         this.token = token;
     }
 
-    @PostMapping(FoodKdsInternalApi.ROOT + "/grant")
-    public ResponseEntity<?> grant(
-            @RequestBody FoodKdsInternalApi.Grant c,
+    @PostMapping(FoodKdsInternalApi.ROOT + "/register")
+    public ResponseEntity<?> register(
+            @RequestBody FoodKdsInternalApi.Register c,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         return InternalServiceResponses.invoke(
-                token,
-                given,
-                () ->
-                        service.grant(
-                                c.entityNo(), c.storeNo(), c.actorNo(), c.definition(), c.key()));
+                token, given, () -> service.register(c.entityNo(), c.storeNo(), c.actorNo(), c.definition(), c.key()));
     }
 
-    @PostMapping(FoodKdsInternalApi.ROOT + "/revoke")
-    public ResponseEntity<?> revoke(
-            @RequestBody FoodKdsInternalApi.Revoke c,
+    @PostMapping(FoodKdsInternalApi.ROOT + "/status")
+    public ResponseEntity<?> changeStatus(
+            @RequestBody FoodKdsInternalApi.Status c,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         return InternalServiceResponses.invoke(
-                token,
-                given,
-                () ->
-                        service.revoke(
-                                c.entityNo(),
-                                c.storeNo(),
-                                c.actorNo(),
-                                c.subscriptionNo(),
-                                c.definition(),
-                                c.key()));
+                token, given,
+                () -> service.changeStatus(c.entityNo(), c.storeNo(), c.actorNo(), c.deviceNo(), c.definition()));
+    }
+
+    @PostMapping(FoodKdsInternalApi.ROOT + "/stations")
+    public ResponseEntity<?> assignStations(
+            @RequestBody FoodKdsInternalApi.Stations c,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(
+                token, given,
+                () -> service.assignStations(c.entityNo(), c.storeNo(), c.actorNo(), c.deviceNo(), c.definition()));
+    }
+
+    @PostMapping(FoodKdsInternalApi.ROOT + "/list")
+    public ResponseEntity<?> list(
+            @RequestBody FoodKdsInternalApi.Store c,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> service.list(c.entityNo(), c.storeNo()));
     }
 
     @PostMapping(FoodKdsInternalApi.ROOT + "/authorize")
@@ -66,8 +67,6 @@ public class InternalFoodKdsController {
             @RequestBody FoodKdsInternalApi.Authorize c,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         return InternalServiceResponses.invoke(
-                token,
-                given,
-                () -> service.authorize(c.entityNo(), c.storeNo(), c.actorNo(), c.subscriptionNo()));
+                token, given, () -> service.authorize(c.entityNo(), c.storeNo(), c.actorNo(), c.deviceNo()));
     }
 }

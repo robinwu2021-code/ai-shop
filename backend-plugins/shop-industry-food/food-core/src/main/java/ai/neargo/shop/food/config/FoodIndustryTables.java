@@ -27,6 +27,7 @@ public final class FoodIndustryTables {
                     "ind_config_revision",
                     "ind_store_policy",
                     "ind_assignment",
+                    "ind_store_device",
                     // 厨显：.61 已按独立表建（01-industry-kds.sql）
                     "fnb_kds_voice_command",
                     // 修订一：出品整组

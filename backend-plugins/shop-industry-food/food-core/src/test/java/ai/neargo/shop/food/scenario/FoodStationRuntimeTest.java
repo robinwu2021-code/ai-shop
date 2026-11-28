@@ -7,7 +7,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.ControlReq;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.VoiceReceipt;
 import ai.neargo.shop.food.mapper.FoodKdsMapper;
@@ -16,7 +15,6 @@ import ai.neargo.shop.food.service.FoodKdsService;
 import ai.neargo.shop.food.service.FoodStationRuntimeService;
 import ai.neargo.shop.food.service.impl.FoodKdsServiceImpl;
 import ai.neargo.shop.food.service.impl.FoodStationRuntimeServiceImpl;
-import ai.neargo.shop.spi.printing.PrintPort;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +42,6 @@ class FoodStationRuntimeTest {
     FoodKdsService kds;
     FoodStationRuntimeMapper commands;
     FoodKdsMapper kdsMapper;
-    PrintPort printing;
     DataSourceTransactionManager transactions;
     String subscription;
     final Clock clock = Clock.fixed(Instant.parse("2026-10-24T00:00:00Z"), ZoneOffset.UTC);
@@ -77,27 +74,9 @@ class FoodStationRuntimeTest {
         transactions = new DataSourceTransactionManager(ds);
         commands = new FoodStationRuntimeMapper(jdbc);
         kdsMapper = new FoodKdsMapper(jdbc);
-        printing = mock(PrintPort.class);
-        when(printing.configuration(any()))
-                .thenReturn(
-                        new PrintPort.Configuration(
-                                List.of(
-                                        new PrintPort.DeviceVO(
-                                                "D", "V", "LAN", "BRIDGE", "ACTIVE", "{}", null,
-                                                true, 1)),
-                                List.of(),
-                                List.of()));
-        kds =
-                new FoodKdsServiceImpl(
-                        kdsMapper, printing, JsonMapper.builder().build(), transactions, clock);
-        subscription =
-                kds.grant(
-                                "E",
-                                "S",
-                                "ADMIN",
-                                new GrantReq("D", "BRIDGE", List.of("ST"), 3600),
-                                "grant")
-                        .subscriptionNo();
+        KdsDeviceFixture.create(jdbc);
+        kds = new FoodKdsServiceImpl(kdsMapper, JsonMapper.builder().build(), transactions, clock);
+        subscription = KdsDeviceFixture.DEVICE;
         runtime = service(clock);
     }
 
@@ -106,7 +85,6 @@ class FoodStationRuntimeTest {
                 commands,
                 kdsMapper,
                 kds,
-                printing,
                 transactions,
                 clock,
                 JsonMapper.builder().build());

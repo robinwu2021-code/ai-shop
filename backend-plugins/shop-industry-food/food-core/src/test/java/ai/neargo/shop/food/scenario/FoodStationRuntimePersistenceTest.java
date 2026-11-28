@@ -11,7 +11,6 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.ControlReq;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.VoiceReceipt;
 import ai.neargo.shop.food.mapper.FoodKdsMapper;
@@ -20,7 +19,6 @@ import ai.neargo.shop.food.service.FoodKdsService;
 import ai.neargo.shop.food.service.FoodStationRuntimeService;
 import ai.neargo.shop.food.service.impl.FoodKdsServiceImpl;
 import ai.neargo.shop.food.service.impl.FoodStationRuntimeServiceImpl;
-import ai.neargo.shop.spi.printing.PrintPort;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -50,20 +48,17 @@ class FoodStationRuntimePersistenceTest extends FoodWriteGuardFixture {
                 "src/main/resources/db/industry/food/V18__food_kds_event_subscription.sql")).execute(f.source());
         f.sql().execute("CREATE TABLE fnb_station(entity_no VARCHAR(32),store_no VARCHAR(32),station_no VARCHAR(32),deleted INT,runtime_status VARCHAR(10),version BIGINT DEFAULT 0)");
         f.sql().update("INSERT INTO fnb_station(entity_no,store_no,station_no,deleted) VALUES('E','S','ST',0)");
-        var printing = mock(PrintPort.class);
-        when(printing.configuration(any())).thenReturn(new PrintPort.Configuration(List.of(
-                new PrintPort.DeviceVO("D", "V", "LAN", "BRIDGE", "ACTIVE", "{}", null, true, 1)), List.of(), List.of()));
+        KdsDeviceFixture.create(f.sql());
         var mapper = new FoodKdsMapper(f.sql());
         var json = c.getBean(ObjectMapper.class);
         var manager = c.getBean(PlatformTransactionManager.class);
-        var kds = new FoodKdsServiceImpl(mapper, printing, json, manager, clock);
-        var subscription = kds.grant("E", "S", "ADMIN", new GrantReq("D", "BRIDGE", List.of("ST"), 3600), "grant");
-        var runtime = new FoodStationRuntimeServiceImpl(new FoodStationRuntimeMapper(f.sql()), mapper, kds, printing, manager, clock, json);
+        var kds = new FoodKdsServiceImpl(mapper, json, manager, clock);
+        var runtime = new FoodStationRuntimeServiceImpl(new FoodStationRuntimeMapper(f.sql()), mapper, kds, manager, clock, json);
         var refresh = new InProcessFoodDeviceRefresh();
         var signals = new CopyOnWriteArrayList<Signal>();
         refresh.listen(signals::add);
         runtime.setDeviceRefresh(refresh);
-        return new Fixture(f.sql(), mapper, kds, runtime, subscription.subscriptionNo(), signals);
+        return new Fixture(f.sql(), mapper, kds, runtime, KdsDeviceFixture.DEVICE, signals);
     }
 
     private static final Signal STATION = new Signal("E", "S", FoodDeviceRefresh.STATION, List.of("ST"));

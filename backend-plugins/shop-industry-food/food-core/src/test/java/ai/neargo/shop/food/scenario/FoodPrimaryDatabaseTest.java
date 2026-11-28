@@ -299,7 +299,6 @@ class FoodPrimaryDatabaseTest {
                             new JdbcTemplate(source)),
                     new ai.neargo.shop.food.mapper.FoodKdsMapper(new JdbcTemplate(source)),
                     null,
-                    null,
                     manager,
                     java.time.Clock.systemUTC(),
                     json);

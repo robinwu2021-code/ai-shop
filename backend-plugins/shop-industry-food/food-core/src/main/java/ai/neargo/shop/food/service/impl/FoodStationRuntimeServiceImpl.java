@@ -20,7 +20,6 @@ import ai.neargo.shop.food.mapper.FoodKdsMapper;
 import ai.neargo.shop.food.mapper.FoodStationRuntimeMapper;
 import ai.neargo.shop.food.service.FoodKdsService;
 import ai.neargo.shop.food.service.FoodStationRuntimeService;
-import ai.neargo.shop.spi.printing.PrintPort;
 
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DuplicateKeyException;
@@ -44,7 +43,6 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
     private final FoodStationRuntimeMapper mapper;
     private final FoodKdsMapper kdsMapper;
     private final FoodKdsService kds;
-    private final PrintPort printing;
     private final TransactionTemplate tx;
     private final Clock clock;
     private final ObjectMapper json;
@@ -59,14 +57,12 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
             FoodStationRuntimeMapper mapper,
             FoodKdsMapper kdsMapper,
             FoodKdsService kds,
-            PrintPort printing,
             PlatformTransactionManager manager,
             Clock clock,
             ObjectMapper json) {
         this.mapper = mapper;
         this.kdsMapper = kdsMapper;
         this.kds = kds;
-        this.printing = printing;
         this.tx = new TransactionTemplate(manager);
         this.clock = clock;
         this.json = json;
@@ -115,11 +111,9 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
         if ("CALL".equals(req.action())) {
             id(req.deviceNo());
             value(req.voiceText(), 128);
-            if (printing.configuration(new PrintPort.Scope(e, s, actor)).devices().stream()
-                    .noneMatch(
-                            d ->
-                                    req.deviceNo().equals(d.deviceNo())
-                                            && "ACTIVE".equals(d.status()))) {
+            // 播报的厨显须本店在册、在用（TDD §2.8 D-5）
+            var device = kdsMapper.device(e, s, req.deviceNo(), false);
+            if (device == null || !"KDS".equals(device.deviceType()) || !"ACTIVE".equals(device.status())) {
                 forbidden();
             }
         } else if (req.deviceNo() != null || req.voiceText() != null) {
@@ -161,11 +155,11 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
     }
 
     @Override
-    public VoiceClaim claim(String e, String s, String actor, String subscription) {
-        kds.authorize(e, s, actor, subscription);
+    public VoiceClaim claim(String e, String s, String actor, String device) {
+        kds.authorize(e, s, actor, device);
         return write(
                 () -> {
-                    var grant = grant(e, s, actor, subscription);
+                    var grant = grant(e, s, device);
                     for (var expired : mapper.expired(e, s, grant.deviceNo(), clock.instant())) {
                         String no = text(expired, "command_no");
                         mapper.receipt(e, s, no, "UNKNOWN", "RECEIPT_TIMEOUT");
@@ -194,7 +188,7 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
 
     @Override
     public CommandVO acknowledge(
-            String e, String s, String actor, String subscription, VoiceReceipt req) {
+            String e, String s, String actor, String device, VoiceReceipt req) {
         if (req == null) {
             bad();
         }
@@ -207,10 +201,10 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
         if (req.responseCode() != null && !req.responseCode().matches("[A-Z0-9_]{1,64}")) {
             bad();
         }
-        kds.authorize(e, s, actor, subscription);
+        kds.authorize(e, s, actor, device);
         return write(
                 () -> {
-                    var grant = grant(e, s, actor, subscription);
+                    var grant = grant(e, s, device);
                     var row = mapper.command(e, s, req.commandNo(), true);
                     if (row == null) {
                         throw BizException.of(ErrorCode.NOT_FOUND);
@@ -239,12 +233,10 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
                 });
     }
 
-    private FnbKdsSubscription grant(String e, String s, String actor, String no) {
-        var grant = kdsMapper.subscription(e, s, no, true);
-        if (grant == null
-                || !actor.equals(grant.actorNo())
-                || !"ACTIVE".equals(grant.status())
-                || !grant.expiresAt().isAfter(clock.instant())) {
+    /** 锁住这台厨显的订阅行：同一台屏的领取与回执排队执行（原先借门店游标全店排队）。 */
+    private FnbKdsSubscription grant(String e, String s, String device) {
+        var grant = kdsMapper.subscription(e, s, device, true);
+        if (grant == null) {
             forbidden();
         }
         return grant;

@@ -94,7 +94,7 @@ P1 本身照做：餐饮的行业 Mapper 对齐新结构，并在「`industry` �
 
 | 项 | 变更 |
 |---|---|
-| 端点 / JSON | 设备出口（§2.8）：`GET /biz/x/food/kitchen-events` 停用；`kitchen-stream` 只推 `refresh`、去掉 `after` 与 `Last-Event-ID`；状态用现成的后厨任务列表与排号列表；手工打印不再接受厨房变更、桌台变更、标签三种事件单（D-3 已做）。叫号屏配对待 D-5。其余无 |
+| 端点 / JSON | 设备出口（§2.8）：`GET /biz/x/food/kitchen-events` 停用；`kitchen-stream` 只推 `refresh`、去掉 `after` 与 `Last-Event-ID`；状态用现成的后厨任务列表与排号列表；手工打印不再接受厨房变更、桌台变更、标签三种事件单（D-3 已做）。D-5：新增门店设备的登记、列表、停用恢复、厨显工位接口，停用订阅开通与吊销，事件流与语音按设备号。其余无 |
 | 库表 | 行业库：按 [06-n_industry.sql](design/schema/ddl/06-n_industry.sql) 建；补充脚本 `V2` 只补代码真实需要、设计稿漏掉的列与唯一键（ADR-068 第 4 条：防重列与唯一约束保留），每处写依据。旧库：不改（「只要在新库上能跑」，同平台基础库换表） |
 | 配置项 | 无新增。`shop.modules.industry.datasource` 已有；P1 后餐饮要求它指向按 `n_industry` 建的库 |
 | 权限码 / i18n | 无 |
@@ -421,7 +421,13 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   防重键沿用、不加版本：厨房单 `AUTO_PRINT_V1:批次:场景:工位`（每批次只有一张制作出品单，等同出品单号 + 工位），事件单据 `EVENT_PRINT:事件号:场景:工位`。改单、重做、损耗都是新事件，带新键，同一事件重投不会重打。
   缺的是中间件这一段：餐饮这五个事件（`DINING_ORDER_ACCEPTED`、`DINING_SERVICE_EVENT`、`DINING_CUSTODY_HANDOVER`、`FOOD_CHECK_CHANGED`、`DINING_ORDER_CHANGED`）不在「发件箱改由中间件投递」名单里。收它们的消费者（建出品单与出单、设备出口、渠道履约回传、报表冲正）收的餐饮类型都在这五个里，按「全进或全不进」整组加进 `shop.events.outbox-event-types` 默认值。`transport=rabbitmq` 时各消费者按自己的保序订阅（按流键分区）收；`local` 时名单不起作用、行为不变。新增 `DiningKitchenRelayListTest`。
   部署注意：餐饮要求平台发件箱为统一模式（`SHOP_OUTBOX_PLATFORM_MODE=unified`）；环境里若用 `SHOP_EVENTS_OUTBOX_TYPES` 覆盖了名单，要把这五个补进去。
-- 待做：设备出口 D-5～D-6（§2.8）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
+- **D-5 门店设备进行业库**（§2.8；用户 2026-11-28 定：**屏用店员账号登录，设备只需在册**，不做设备凭据登录）。
+  - **`ind_store_device`**（`V2` 新建）：列取自平台库设计稿 `mch_store_device`，去掉 `capabilities`、`device_config` 两个通用 JSON 列；类型 `ORDER_SCREEN`、`KDS`、`CALL_SCREEN`、`OFFLINE_POS`。配对、凭据、离线收银几列保留、先留空。设备号由登记请求键派生（业务键回查：同键重放得到同一台、同键异参冲突），登记即在用。
+  - **`fnb_kds_subscription` 精简**为「哪台厨显看哪些工位」：`device_no` 唯一、`stations`、`version`；登录人、到期、防重键、撤销信息都去掉，停用设备即撤销。`V2` 删设计稿的表后重建；`IndustrySchema` 改为以最后一次建表为准。
+  - **接口**：新增 `POST/GET /biz/x/food/devices`（登记、列表）、`POST /biz/x/food/devices/{deviceNo}:status`（停用、恢复，已是目标状态按重放返回）、`PUT /biz/x/food/devices/{deviceNo}/stations`（厨显工位，须是本店工位，按订阅版本比较交换）；停用 `kitchen-subscriptions` 的开通与吊销。事件流参数改为 `deviceNo`；语音领取、回执改为 `/biz/x/food/devices/{deviceNo}/voice:claim|acknowledge`。内部接口同步（`/internal/food/kds/register|status|stations|list|authorize`，语音的 `subscriptionNo` 改名 `deviceNo`）。网关接口清单重新生成（B 端净增 2 个入口）。
+  - **核验**：连上来的屏须本店在册、在用；厨显还要设定了工位，叫号屏不需要；其他类型连不上。厨显只收后厨与工位的刷新，叫号屏只收排号的刷新。不再借打印设备的登记，`FoodKdsServiceImpl`、`FoodStationRuntimeServiceImpl` 去掉对打印域的依赖；语音播报指定的厨显也改查设备表。
+  - 测试：设备服务测试（登记重放与冲突、工位须属本店与版本、停用即连不上、叫号屏与其他类型）；流测试补叫号屏只收排号；运行状态测试改用设备夹具 `KdsDeviceFixture`。food-core 762 个（跳过 55）、food-web 259 个无失败；本机 MySQL 上新库、运行状态、厨房生命周期测试通过。food-server 本机离线构建缺依赖（food-channel 的外部包，与本次无关），其内部接口已逐行核对。
+- 待做：设备出口 D-6（§2.8，设计稿对齐）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
 

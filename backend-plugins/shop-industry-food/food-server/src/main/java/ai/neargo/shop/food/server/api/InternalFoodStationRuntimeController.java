@@ -85,7 +85,7 @@ public class InternalFoodStationRuntimeController {
                                         c.entityNo(),
                                         c.storeNo(),
                                         c.actorNo(),
-                                        c.subscriptionNo())));
+                                        c.deviceNo())));
     }
 
     @PostMapping(FoodStationRuntimeInternalApi.ROOT + "/acknowledge")
@@ -100,7 +100,7 @@ public class InternalFoodStationRuntimeController {
                                 c.entityNo(),
                                 c.storeNo(),
                                 c.actorNo(),
-                                c.subscriptionNo(),
+                                c.deviceNo(),
                                 c.definition()));
     }
 }

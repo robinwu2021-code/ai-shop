@@ -1,38 +1,41 @@
 package ai.neargo.shop.food.spi;
 
-import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
-import ai.neargo.shop.food.dto.FoodKdsContracts.RevokeReq;
-import ai.neargo.shop.food.dto.FoodKdsContracts.SubscriptionVO;
+import ai.neargo.shop.food.dto.FoodKdsContracts.DeviceStationsReq;
+import ai.neargo.shop.food.dto.FoodKdsContracts.DeviceStatusReq;
+import ai.neargo.shop.food.dto.FoodKdsContracts.RegisterDeviceReq;
+import ai.neargo.shop.food.dto.FoodKdsContracts.StoreDeviceVO;
 
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.service.annotation.PostExchange;
 
-/**
- * Keeps the FoodKdsInternalApi protocol scoped to original restaurant facts and lifecycle
- * authority.
- */
+import java.util.List;
+
+/** 门店设备与厨显工位的内部接口（独立部署时网关侧调餐饮核心，TDD-餐饮域迁移新库 §2.8 D-5）。 */
 public interface FoodKdsInternalApi {
     String ROOT = "/internal/food/kds";
 
-    record Grant(
-            String entityNo, String storeNo, String actorNo, GrantReq definition, String key) {}
+    record Register(String entityNo, String storeNo, String actorNo, RegisterDeviceReq definition, String key) {}
 
-    record Revoke(
-            String entityNo,
-            String storeNo,
-            String actorNo,
-            String subscriptionNo,
-            RevokeReq definition,
-            String key) {}
+    record Status(String entityNo, String storeNo, String actorNo, String deviceNo, DeviceStatusReq definition) {}
 
-    record Authorize(String entityNo, String storeNo, String actorNo, String subscriptionNo) {}
+    record Stations(String entityNo, String storeNo, String actorNo, String deviceNo, DeviceStationsReq definition) {}
 
-    @PostExchange(ROOT + "/grant")
-    SubscriptionVO grant(@RequestBody Grant request);
+    record Store(String entityNo, String storeNo) {}
 
-    @PostExchange(ROOT + "/revoke")
-    SubscriptionVO revoke(@RequestBody Revoke request);
+    record Authorize(String entityNo, String storeNo, String actorNo, String deviceNo) {}
+
+    @PostExchange(ROOT + "/register")
+    StoreDeviceVO register(@RequestBody Register request);
+
+    @PostExchange(ROOT + "/status")
+    StoreDeviceVO changeStatus(@RequestBody Status request);
+
+    @PostExchange(ROOT + "/stations")
+    StoreDeviceVO assignStations(@RequestBody Stations request);
+
+    @PostExchange(ROOT + "/list")
+    List<StoreDeviceVO> list(@RequestBody Store request);
 
     @PostExchange(ROOT + "/authorize")
-    SubscriptionVO authorize(@RequestBody Authorize request);
+    StoreDeviceVO authorize(@RequestBody Authorize request);
 }

@@ -82,10 +82,12 @@ final class IndustrySchema {
     }
 
     private static String h2(String table, String scripts, boolean h2) {
+        // V2 可能删掉设计稿的表再重建（如 fnb_kds_subscription），以最后一次建表为准。
         Matcher m = CREATE.matcher(scripts);
-        while (m.find()) {
-            if (!m.group(1).equals(table)) continue;
-            String body = m.group(2)
+        String last = null;
+        while (m.find()) if (m.group(1).equals(table)) last = m.group(2);
+        if (last != null) {
+            String body = last
                     .replaceAll("\\s+CHARACTER SET \\w+", "")
                     .replaceAll("\\s+COLLATE \\w+", "");
             // H2 的 JSON 列会把写入的字符串再包成 JSON 字符串值，读回来多一层引号；按文本列建。

@@ -76,10 +76,10 @@ public class BizFoodStationRuntimeController {
                 key);
     }
 
-    @PostMapping("/biz/x/food/kitchen-subscriptions/{subscriptionNo}/voice:claim")
+    @PostMapping("/biz/x/food/devices/{deviceNo}/voice:claim")
     @PreAuthorize("@perm.canBiz('" + BizPerms.RECEIVE + "')")
     public VoicePoll claim(
-            @PathVariable @NotBlank @Size(max = 32) String subscriptionNo,
+            @PathVariable @NotBlank @Size(max = 32) String deviceNo,
             HttpServletRequest request) {
         var c = stores.current(request);
         return new VoicePoll(
@@ -87,13 +87,13 @@ public class BizFoodStationRuntimeController {
                         c.merchantNo(),
                         c.currentStoreNo(),
                         SecurityUtils.currentUserNo(),
-                        subscriptionNo));
+                        deviceNo));
     }
 
-    @PostMapping("/biz/x/food/kitchen-subscriptions/{subscriptionNo}/voice:acknowledge")
+    @PostMapping("/biz/x/food/devices/{deviceNo}/voice:acknowledge")
     @PreAuthorize("@perm.canBiz('" + BizPerms.RECEIVE + "')")
     public CommandVO acknowledge(
-            @PathVariable @NotBlank @Size(max = 32) String subscriptionNo,
+            @PathVariable @NotBlank @Size(max = 32) String deviceNo,
             @Valid @RequestBody VoiceReceipt req,
             HttpServletRequest request) {
         var c = stores.current(request);
@@ -101,7 +101,7 @@ public class BizFoodStationRuntimeController {
                 c.merchantNo(),
                 c.currentStoreNo(),
                 SecurityUtils.currentUserNo(),
-                subscriptionNo,
+                deviceNo,
                 req);
     }
 }

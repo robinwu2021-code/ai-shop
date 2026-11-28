@@ -2,22 +2,21 @@ package ai.neargo.shop.food.foodclient;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
-import ai.neargo.shop.food.dto.FoodKdsContracts.RevokeReq;
-import ai.neargo.shop.food.dto.FoodKdsContracts.SubscriptionVO;
+import ai.neargo.shop.food.dto.FoodKdsContracts.DeviceStationsReq;
+import ai.neargo.shop.food.dto.FoodKdsContracts.DeviceStatusReq;
+import ai.neargo.shop.food.dto.FoodKdsContracts.RegisterDeviceReq;
+import ai.neargo.shop.food.dto.FoodKdsContracts.StoreDeviceVO;
 import ai.neargo.shop.food.service.FoodKdsService;
 import ai.neargo.shop.food.spi.FoodKdsInternalApi;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCallException;
 import ai.neargo.svc.client.ServiceCalls;
 
+import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 
-/**
- * Keeps the RemoteFoodKdsService business boundary scoped to original restaurant facts and
- * lifecycle authority.
- */
+/** 独立部署时网关侧调餐饮核心的门店设备接口；回来的设备必须属于请求的主体与门店。 */
 public class RemoteFoodKdsService implements FoodKdsService {
     private final FoodKdsInternalApi api;
 
@@ -26,49 +25,51 @@ public class RemoteFoodKdsService implements FoodKdsService {
     }
 
     @Override
-    public SubscriptionVO grant(String e, String s, String a, GrantReq r, String k) {
-        var result =
-                valid(e, s, call(() -> api.grant(new FoodKdsInternalApi.Grant(e, s, a, r, k))));
-        if (!r.deviceNo().equals(result.deviceNo())
-                || !r.deviceActorNo().equals(result.actorNo())
-                || !result.stationNos()
-                        .equals(r.stationNos().stream().distinct().sorted().toList())) {
+    public StoreDeviceVO register(String e, String s, String a, RegisterDeviceReq r, String k) {
+        var result = valid(e, s, call(() -> api.register(new FoodKdsInternalApi.Register(e, s, a, r, k))));
+        if (!r.deviceType().equals(result.deviceType())) bad();
+        return result;
+    }
+
+    @Override
+    public StoreDeviceVO changeStatus(String e, String s, String a, String no, DeviceStatusReq r) {
+        var result = valid(e, s, call(() -> api.changeStatus(new FoodKdsInternalApi.Status(e, s, a, no, r))));
+        if (!no.equals(result.deviceNo()) || !r.status().equals(result.status())) bad();
+        return result;
+    }
+
+    @Override
+    public StoreDeviceVO assignStations(String e, String s, String a, String no, DeviceStationsReq r) {
+        var result = valid(e, s, call(() -> api.assignStations(new FoodKdsInternalApi.Stations(e, s, a, no, r))));
+        if (!no.equals(result.deviceNo())
+                || !result.stationNos().equals(r.stationNos().stream().distinct().sorted().toList())) {
             bad();
         }
         return result;
     }
 
     @Override
-    public SubscriptionVO revoke(String e, String s, String a, String no, RevokeReq r, String k) {
-        var result =
-                valid(
-                        e,
-                        s,
-                        call(() -> api.revoke(new FoodKdsInternalApi.Revoke(e, s, a, no, r, k))));
-        if (!no.equals(result.subscriptionNo()) || !"REVOKED".equals(result.status())) {
-            bad();
-        }
+    public List<StoreDeviceVO> list(String e, String s) {
+        var result = call(() -> api.list(new FoodKdsInternalApi.Store(e, s)));
+        if (result == null) bad();
+        result.forEach(d -> valid(e, s, d));
         return result;
     }
 
     @Override
-    public SubscriptionVO authorize(String e, String s, String a, String no) {
-        var result =
-                valid(e, s, call(() -> api.authorize(new FoodKdsInternalApi.Authorize(e, s, a, no))));
-        if (!no.equals(result.subscriptionNo()) || !"ACTIVE".equals(result.status())) {
-            bad();
-        }
+    public StoreDeviceVO authorize(String e, String s, String a, String no) {
+        var result = valid(e, s, call(() -> api.authorize(new FoodKdsInternalApi.Authorize(e, s, a, no))));
+        if (!no.equals(result.deviceNo()) || !"ACTIVE".equals(result.status())) bad();
         return result;
     }
 
-    private SubscriptionVO valid(String e, String s, SubscriptionVO result) {
+    private StoreDeviceVO valid(String e, String s, StoreDeviceVO result) {
         if (result == null
                 || !e.equals(result.entityNo())
                 || !s.equals(result.storeNo())
-                || result.subscriptionNo() == null
+                || result.deviceNo() == null
                 || result.version() < 0
-                || result.expiresAt() == null
-                || !Set.of("ACTIVE", "REVOKED").contains(result.status())) {
+                || !Set.of("PAIRING", "ACTIVE", "SUSPENDED", "REVOKED").contains(result.status())) {
             bad();
         }
         return result;

@@ -281,7 +281,8 @@ public final class FoodSchemaValidator {
                 "fnb_identity_operation",
                 List.of("entity_no,store_no,actor_no,action,request_key_hash", "operation_no"));
         contracts.put(
-                "fnb_kds_subscription", List.of("entity_no,store_no,requested_by,request_key"));
+                "fnb_kds_subscription", List.of("device_no"));
+        contracts.put("ind_store_device", List.of("device_no"));
         contracts.put(
                 "fnb_kds_voice_command", List.of("entity_no,store_no,requested_by,request_key"));
         contracts.put("fnb_operation_case", List.of("case_no", "entity_no,store_no,active_source"));
@@ -890,25 +891,24 @@ public final class FoodSchemaValidator {
                                     "updated_by",
                                     "version"));
             // 厨显事件流与游标退役（TDD §2.8 D-3）。
-            expected.computeIfAbsent("fnb_kds_subscription", key -> new TreeSet<>())
-                    .addAll(
+            // 厨显订阅精简为「哪台厨显看哪些工位」，门店设备进行业库（TDD §2.8 D-5）。
+            expected.put(
+                    "fnb_kds_subscription",
+                    new TreeSet<>(List.of("tenant_no", "entity_no", "store_no", "device_no", "stations", "version")));
+            expected.put(
+                    "ind_store_device",
+                    new TreeSet<>(
                             List.of(
-                                    "actor_no",
-                                    "device_no",
-                                    "device_version",
+                                    "tenant_no",
                                     "entity_no",
-                                    "expires_at",
-                                    "request_hash",
-                                    "request_key",
-                                    "requested_by",
-                                    "revoke_key",
-                                    "revoke_reason",
-                                    "revoked_by",
-                                    "stations",
-                                    "status",
                                     "store_no",
-                                    "subscription_no",
-                                    "version"));
+                                    "device_no",
+                                    "device_type",
+                                    "display_name",
+                                    "serial_no",
+                                    "status",
+                                    "version",
+                                    "deleted")));
             expected.computeIfAbsent("fnb_kds_voice_command", key -> new TreeSet<>())
                     .addAll(
                             List.of(

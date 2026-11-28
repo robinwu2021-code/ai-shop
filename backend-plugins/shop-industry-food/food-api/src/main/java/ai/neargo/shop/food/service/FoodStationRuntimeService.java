@@ -23,8 +23,8 @@ public interface FoodStationRuntimeService {
             ControlReq request,
             String key);
 
-    VoiceClaim claim(String entity, String store, String actor, String subscription);
+    VoiceClaim claim(String entity, String store, String actor, String device);
 
     CommandVO acknowledge(
-            String entity, String store, String actor, String subscription, VoiceReceipt receipt);
+            String entity, String store, String actor, String device, VoiceReceipt receipt);
 }

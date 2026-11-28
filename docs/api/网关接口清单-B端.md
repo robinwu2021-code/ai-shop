@@ -3,7 +3,7 @@
 > 由 `python3 scripts/gen-gateway-api-inventory.py` 生成，**请勿手改**。来源是后端源码里实际声明的入口。
 > 总览、分类规则与验证清单见 [网关接口清单](网关接口清单.md)。
 
-共 **1226** 个入口：支付 269、零售 583、餐饮 260、服务业 32、库存 45、平台与通用 37。
+共 **1228** 个入口：支付 269、零售 583、餐饮 262、服务业 32、库存 45、平台与通用 37。
 
 ## 支付（269）
 
@@ -1460,9 +1460,9 @@
 | GET | `/biz/x/commerce/sync-runs/{runNo}/items` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-commerce-integration | 未部署 | BizSyncRunController |
 | POST | `/biz/x/commerce/sync-runs/{runNo}:cancel-queued` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-commerce-integration | 未部署 | BizSyncRunController |
 
-## 餐饮（260）
+## 餐饮（262）
 
-网关判权：能提前判 260。构建：插件 shop-industry-food 260。生产：未部署 260。
+网关判权：能提前判 262。构建：插件 shop-industry-food 262。生产：未部署 262。
 
 ### x/food/batches（8）
 
@@ -1627,6 +1627,17 @@
 | POST | `/biz/x/food/courses/{courseNo}:act` | `@perm.canBiz('biz:receive')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizCourseController |
 | POST | `/biz/x/food/courses/{courseNo}:fire` | `@perm.canBiz('biz:receive')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizCourseController |
 
+### x/food/devices（6）
+
+| 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
+|---|---|---|---|---|---|---|
+| GET | `/biz/x/food/devices` | `@perm.canBiz('biz:receive')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodKdsController |
+| POST | `/biz/x/food/devices` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodKdsController |
+| PUT | `/biz/x/food/devices/{deviceNo}/stations` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodKdsController |
+| POST | `/biz/x/food/devices/{deviceNo}/voice:acknowledge` | `@perm.canBiz('biz:receive')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodStationRuntimeController |
+| POST | `/biz/x/food/devices/{deviceNo}/voice:claim` | `@perm.canBiz('biz:receive')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodStationRuntimeController |
+| POST | `/biz/x/food/devices/{deviceNo}:status` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodKdsController |
+
 ### x/food/dining-devices（3）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
@@ -1640,15 +1651,6 @@
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
 | GET | `/biz/x/food/kitchen-stream` | `@perm.canBiz('biz:receive')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodKdsController |
-
-### x/food/kitchen-subscriptions（4）
-
-| 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
-|---|---|---|---|---|---|---|
-| POST | `/biz/x/food/kitchen-subscriptions` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodKdsController |
-| POST | `/biz/x/food/kitchen-subscriptions/{subscriptionNo}/voice:acknowledge` | `@perm.canBiz('biz:receive')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodStationRuntimeController |
-| POST | `/biz/x/food/kitchen-subscriptions/{subscriptionNo}/voice:claim` | `@perm.canBiz('biz:receive')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodStationRuntimeController |
-| POST | `/biz/x/food/kitchen-subscriptions/{subscriptionNo}:revoke` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodKdsController |
 
 ### x/food/menu-channel-bindings（2）
 

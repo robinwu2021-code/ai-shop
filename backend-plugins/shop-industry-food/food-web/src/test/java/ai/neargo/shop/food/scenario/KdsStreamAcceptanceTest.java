@@ -36,37 +36,47 @@ class KdsStreamAcceptanceTest {
                     .withUserConfiguration(OperationsHttpAcceptanceTest.Host.class, KdsHost.class)
                     .withPropertyValues("shop.food.enabled=true", "spring.profiles.active=api,ops");
 
-    static final SubscriptionVO HOT =
-            new SubscriptionVO("SUB1", "E", "A", "DEV1", "staff", List.of("HOT"), "2026-10-25T12:00:00Z", "ACTIVE", 1);
+    static final StoreDeviceVO HOT =
+            new StoreDeviceVO("DEV1", "E", "A", "KDS", "热菜厨显", null, "ACTIVE", 1, List.of("HOT"), 1);
+    static final StoreDeviceVO CALL =
+            new StoreDeviceVO("DEV2", "E", "A", "CALL_SCREEN", "门口叫号屏", null, "ACTIVE", 0, List.of(), 0);
 
     @Test
-    void grantBindsStationsAndTheEventReplayEndpointIsGone() {
+    void registerAndAssignStationsAndTheOldEndpointsAreGone() {
         runner.run(
                 c -> {
                     var owner = c.getBean(FoodKdsService.class);
-                    var grant = new GrantReq("DEV1", "bridge", List.of("HOT"), 600);
-                    when(owner.grant("E", "A", "staff", grant, "grant-key")).thenReturn(HOT);
+                    var register = new RegisterDeviceReq("KDS", "热菜厨显", null);
+                    when(owner.register("E", "A", "staff", register, "reg-key")).thenReturn(HOT);
+                    var stations = new DeviceStationsReq(0, List.of("HOT"));
+                    when(owner.assignStations("E", "A", "staff", "DEV1", stations)).thenReturn(HOT);
                     var mvc = OperationsHttpAcceptanceTest.mvc(c);
                     String token = OperationsHttpAcceptanceTest.biz(c, "staff");
                     mvc.perform(
-                                    post("/biz/x/food/kitchen-subscriptions")
+                                    post("/biz/x/food/devices")
                                             .header("Authorization", token)
-                                            .header("Idempotency-Key", "grant-key")
+                                            .header("Idempotency-Key", "reg-key")
                                             .contentType("application/json")
-                                            .content(
-                                                    "{\"deviceNo\":\"DEV1\",\"deviceActorNo\":\"bridge\",\"stationNos\":[\"HOT\"],\"lifetimeSeconds\":600}"))
-                            .andExpect(jsonPath("$.data.subscriptionNo").value("SUB1"))
+                                            .content("{\"deviceType\":\"KDS\",\"displayName\":\"热菜厨显\"}"))
+                            .andExpect(jsonPath("$.data.deviceNo").value("DEV1"))
+                            .andExpect(jsonPath("$.data.deviceType").value("KDS"));
+                    mvc.perform(
+                                    put("/biz/x/food/devices/DEV1/stations")
+                                            .header("Authorization", token)
+                                            .contentType("application/json")
+                                            .content("{\"version\":0,\"stationNos\":[\"HOT\"]}"))
                             .andExpect(jsonPath("$.data.stationNos[0]").value("HOT"));
-                    // 按序号拉事件已停用：屏改为收刷新后拉后厨任务列表
-                    var gone =
-                            mvc.perform(
-                                            get("/biz/x/food/kitchen-events")
-                                                    .header("Authorization", token)
-                                                    .param("subscriptionNo", "SUB1"))
-                                    .andReturn()
-                                    .getResponse();
-                    assertThat(gone.getContentAsString()).doesNotContain("nextCursor");
-                    verify(owner).grant("E", "A", "staff", grant, "grant-key");
+                    // 订阅开通、吊销与按序号拉事件都已停用
+                    for (var gone : List.of(
+                            post("/biz/x/food/kitchen-subscriptions").header("Authorization", token)
+                                    .header("Idempotency-Key", "k").contentType("application/json").content("{}"),
+                            get("/biz/x/food/kitchen-events").header("Authorization", token)
+                                    .param("deviceNo", "DEV1"))) {
+                        assertThat(mvc.perform(gone).andReturn().getResponse().getContentAsString())
+                                .doesNotContain("subscriptionNo", "nextCursor");
+                    }
+                    verify(owner).register("E", "A", "staff", register, "reg-key");
+                    verify(owner).assignStations("E", "A", "staff", "DEV1", stations);
                     verifyNoMoreInteractions(owner);
                 });
     }
@@ -81,26 +91,26 @@ class KdsStreamAcceptanceTest {
                                             .header(
                                                     "Authorization",
                                                     OperationsHttpAcceptanceTest.biz(c, "cashier"))
-                                            .param("subscriptionNo", "SUB1"))
+                                            .param("deviceNo", "DEV1"))
                             .andExpect(jsonPath("$.code").value(70006));
                     mvc.perform(
                                     get("/biz/x/food/kitchen-stream")
                                             .header("Authorization", OperationsHttpAcceptanceTest.biz(c, "staff"))
                                             .header("X-Store-No", "B")
-                                            .param("subscriptionNo", "SUB1"))
+                                            .param("deviceNo", "DEV1"))
                             .andExpect(jsonPath("$.code").value(10403));
                     verifyNoInteractions(c.getBean(FoodKdsService.class));
                 });
     }
 
     @Test
-    void streamPushesRefreshForItsStoreAndStationsAndClosesWhenTheGrantIsRevoked() {
+    void kdsReceivesKitchenAndStationRefreshesForItsStationsAndClosesWhenSuspended() {
         runner.run(
                 c -> {
                     var owner = c.getBean(FoodKdsService.class);
                     var revoked = new CountDownLatch(1);
                     var reauthorized = new java.util.concurrent.atomic.AtomicBoolean();
-                    when(owner.authorize("E", "A", "staff", "SUB1"))
+                    when(owner.authorize("E", "A", "staff", "DEV1"))
                             .thenAnswer(
                                     invocation -> {
                                         if (!reauthorized.getAndSet(true)) return HOT;
@@ -115,42 +125,66 @@ class KdsStreamAcceptanceTest {
                                                     .header(
                                                             "Authorization",
                                                             OperationsHttpAcceptanceTest.biz(c, "staff"))
-                                                    .param("subscriptionNo", "SUB1"))
+                                                    .param("deviceNo", "DEV1"))
                                     .andExpect(status().isOk())
                                     .andExpect(request().asyncStarted())
                                     .andReturn();
                     // 连上先推一次全量刷新
                     assertThat(result.getResponse().getContentAsString())
                             .contains("event:refresh", "\"kind\":\"ALL\"", "\"stationNos\":[\"HOT\"]");
-                    // 别的门店、别的工位不推；本店整店或涉及 HOT 的推
+                    // 别的门店、别的工位、叫号的变化不推；本店整店或涉及 HOT 的后厨、工位变化推
                     refresh.signal(new Signal("E", "B", FoodDeviceRefresh.KITCHEN, List.of("HOT")));
                     refresh.signal(new Signal("E", "A", FoodDeviceRefresh.KITCHEN, List.of("COLD")));
                     refresh.signal(new Signal("E", "A", FoodDeviceRefresh.STATION, List.of("HOT", "COLD")));
                     refresh.signal(new Signal("E", "A", FoodDeviceRefresh.QUEUE, List.of()));
+                    refresh.signal(new Signal("E", "A", FoodDeviceRefresh.KITCHEN, List.of()));
                     String pushed = result.getResponse().getContentAsString();
                     assertThat(pushed.split("event:refresh", -1)).hasSize(4);
                     assertThat(pushed)
                             .contains("\"kind\":\"STATION\",\"stationNos\":[\"HOT\"]")
-                            .contains("\"kind\":\"QUEUE\",\"stationNos\":[\"HOT\"]")
-                            .doesNotContain("COLD");
-                    // 兜底时重新核验；订阅被吊销即断开
+                            .contains("\"kind\":\"KITCHEN\",\"stationNos\":[\"HOT\"]")
+                            .doesNotContain("COLD", "QUEUE");
+                    // 兜底时重新核验；设备被停用即断开
                     assertThat(revoked.await(5, TimeUnit.SECONDS)).isTrue();
                     assertThat(result.getAsyncResult(5000)).isInstanceOf(BizException.class);
                 });
     }
 
     @Test
-    void revokedInitialGrantFailsBeforeTheStreamStarts() {
+    void callScreenReceivesOnlyQueueRefreshes() {
+        runner.run(
+                c -> {
+                    when(c.getBean(FoodKdsService.class).authorize("E", "A", "staff", "DEV2")).thenReturn(CALL);
+                    var refresh = c.getBean(FoodDeviceRefresh.class);
+                    var result =
+                            OperationsHttpAcceptanceTest.mvc(c)
+                                    .perform(
+                                            get("/biz/x/food/kitchen-stream")
+                                                    .header("Authorization", OperationsHttpAcceptanceTest.biz(c, "staff"))
+                                                    .param("deviceNo", "DEV2"))
+                                    .andExpect(request().asyncStarted())
+                                    .andReturn();
+                    refresh.signal(new Signal("E", "A", FoodDeviceRefresh.KITCHEN, List.of()));
+                    refresh.signal(new Signal("E", "A", FoodDeviceRefresh.STATION, List.of("HOT")));
+                    refresh.signal(new Signal("E", "A", FoodDeviceRefresh.QUEUE, List.of()));
+                    String pushed = result.getResponse().getContentAsString();
+                    assertThat(pushed.split("event:refresh", -1)).hasSize(3);
+                    assertThat(pushed).contains("\"kind\":\"QUEUE\"").doesNotContain("KITCHEN", "STATION");
+                });
+    }
+
+    @Test
+    void suspendedDeviceFailsBeforeTheStreamStarts() {
         runner.run(
                 c -> {
                     var owner = c.getBean(FoodKdsService.class);
-                    when(owner.authorize("E", "A", "staff", "SUB1"))
+                    when(owner.authorize("E", "A", "staff", "DEV1"))
                             .thenThrow(BizException.of(ErrorCode.FORBIDDEN));
                     OperationsHttpAcceptanceTest.mvc(c)
                             .perform(
                                     get("/biz/x/food/kitchen-stream")
                                             .header("Authorization", OperationsHttpAcceptanceTest.biz(c, "staff"))
-                                            .param("subscriptionNo", "SUB1"))
+                                            .param("deviceNo", "DEV1"))
                             .andExpect(jsonPath("$.code").value(10403))
                             .andExpect(request().asyncNotStarted());
                 });

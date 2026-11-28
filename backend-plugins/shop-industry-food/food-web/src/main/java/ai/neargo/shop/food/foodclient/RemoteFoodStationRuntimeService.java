@@ -69,13 +69,13 @@ public class RemoteFoodStationRuntimeService implements FoodStationRuntimeServic
     }
 
     @Override
-    public VoiceClaim claim(String e, String s, String a, String subscription) {
+    public VoiceClaim claim(String e, String s, String a, String device) {
         var result =
                 call(
                         () ->
                                 api.claim(
                                         new FoodStationRuntimeInternalApi.Poll(
-                                                e, s, a, subscription)));
+                                                e, s, a, device)));
         if (result == null) {
             bad();
         }
@@ -94,14 +94,14 @@ public class RemoteFoodStationRuntimeService implements FoodStationRuntimeServic
 
     @Override
     public CommandVO acknowledge(
-            String e, String s, String a, String subscription, VoiceReceipt receipt) {
+            String e, String s, String a, String device, VoiceReceipt receipt) {
         var result =
                 valid(
                         call(
                                 () ->
                                         api.acknowledge(
                                                 new FoodStationRuntimeInternalApi.Receipt(
-                                                        e, s, a, subscription, receipt))));
+                                                        e, s, a, device, receipt))));
         if (!receipt.commandNo().equals(result.commandNo())
                 || !receipt.status().equals(result.status())) {
             bad();

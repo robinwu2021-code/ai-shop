@@ -60,8 +60,14 @@ public class FoodKdsStreamTransportImpl implements FoodKdsStreamTransport {
     }
 
     @Override
-    public SseEmitter subscribe(String entity, String store, String actor, String subscription) {
-        List<String> stations = service.authorize(entity, store, actor, subscription).stationNos();
+    public SseEmitter subscribe(String entity, String store, String actor, String device) {
+        var screen = service.authorize(entity, store, actor, device);
+        List<String> stations = screen.stationNos();
+        // 厨显收后厨与工位的变化，叫号屏只收排号的变化（TDD §2.8 D-5）
+        Set<String> kinds =
+                "CALL_SCREEN".equals(screen.deviceType())
+                        ? Set.of(FoodDeviceRefresh.QUEUE)
+                        : Set.of(FoodDeviceRefresh.KITCHEN, FoodDeviceRefresh.STATION);
         var emitter = new SseEmitter(1800000L);
         clients.add(emitter);
         var stopped = new AtomicBoolean();
@@ -95,7 +101,9 @@ public class FoodKdsStreamTransportImpl implements FoodKdsStreamTransport {
         listening[0] =
                 refresh.listen(
                         signal -> {
-                            if (stopped.get() || !signal.concerns(entity, store, stations)) return;
+                            if (stopped.get()
+                                    || !kinds.contains(signal.kind())
+                                    || !signal.concerns(entity, store, stations)) return;
                             try {
                                 send(emitter, signal.kind(), watched(signal, stations));
                             } catch (IOException | RuntimeException failure) {
@@ -108,7 +116,7 @@ public class FoodKdsStreamTransportImpl implements FoodKdsStreamTransport {
                         () -> {
                             if (stopped.get()) return;
                             try {
-                                service.authorize(entity, store, actor, subscription);
+                                service.authorize(entity, store, actor, device);
                                 send(emitter, ALL, stations);
                             } catch (IOException | RuntimeException failure) {
                                 close.run();

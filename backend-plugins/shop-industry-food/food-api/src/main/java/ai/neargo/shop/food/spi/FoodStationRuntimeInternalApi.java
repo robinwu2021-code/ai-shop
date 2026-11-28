@@ -26,13 +26,13 @@ public interface FoodStationRuntimeInternalApi {
             ControlReq definition,
             String key) {}
 
-    record Poll(String entityNo, String storeNo, String actorNo, String subscriptionNo) {}
+    record Poll(String entityNo, String storeNo, String actorNo, String deviceNo) {}
 
     record Receipt(
             String entityNo,
             String storeNo,
             String actorNo,
-            String subscriptionNo,
+            String deviceNo,
             VoiceReceipt definition) {}
 
     @PostExchange(ROOT + "/state")

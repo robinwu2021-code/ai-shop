@@ -1,24 +1,4 @@
 package ai.neargo.shop.food.entity;
 
-import java.time.Instant;
-
-/**
- * Persisted authorization; actorNo is a real authenticated bridge identity, not a device number.
- */
-public record FnbKdsSubscription(
-        String subscriptionNo,
-        String entityNo,
-        String storeNo,
-        String deviceNo,
-        String actorNo,
-        String stations,
-        long deviceVersion,
-        Instant expiresAt,
-        String status,
-        long version,
-        String requestedBy,
-        String requestKey,
-        String requestHash,
-        String revokeKey,
-        String revokeReason,
-        String revokedBy) {}
+/** 厨显订阅：哪台厨显看哪些工位（{@code stations} 为 JSON 数组），每台一行（TDD-餐饮域迁移新库 §2.8 D-5）。 */
+public record FnbKdsSubscription(String entityNo, String storeNo, String deviceNo, String stations, long version) {}

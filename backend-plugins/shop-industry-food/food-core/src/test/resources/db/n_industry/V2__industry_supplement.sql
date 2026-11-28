@@ -24,21 +24,63 @@ ALTER TABLE fnb_station
 -- 厨显事件流退役（TDD §2.8 D-3）：屏收刷新信号后拉当前状态，不再按门店序号拉事件；设计稿建的表删掉，游标表不建。
 DROP TABLE fnb_kds_event;
 
-ALTER TABLE fnb_kds_subscription
-    MODIFY subscription_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    MODIFY entity_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    MODIFY store_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    MODIFY device_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    MODIFY actor_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    MODIFY status VARCHAR(16) NOT NULL,
-    MODIFY version BIGINT NOT NULL DEFAULT 0,
-    MODIFY requested_by VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    MODIFY revoked_by VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    ADD COLUMN request_key VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    ADD COLUMN request_hash VARCHAR(64) NOT NULL,
-    ADD COLUMN revoke_key VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    ADD UNIQUE KEY uk_kds_subscription (subscription_no),
-    ADD UNIQUE KEY uk_kds_grant (entity_no, store_no, requested_by, request_key);
+-- 门店设备（TDD §2.8 D-5，用户 2026-11-28 定）：由平台库设计稿的 mch_store_device 搬来，屏类设备归行业库。
+-- 打印机、本地打印代理留在打印域，支付终端留在支付库；不设通用 JSON 列。屏用店员账号登录，设备只需在册且在用；
+-- 配对、凭据与离线收银几列先留空，做设备凭据登录或离线收银时再用。
+CREATE TABLE `ind_store_device` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
+  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '租户号',
+  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '设备所属主体号',
+  `store_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '设备所在门店号',
+  `device_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '设备号',
+  `device_type` varchar(16) NOT NULL COMMENT '设备类型：ORDER_SCREEN 点餐屏、KDS 厨显、CALL_SCREEN 叫号屏、OFFLINE_POS 离线收银',
+  `display_name` varchar(64) NOT NULL COMMENT '设备显示名，如「热菜厨显 1 号」',
+  `serial_no` varchar(32) DEFAULT NULL COMMENT '设备硬件序列号或厂商机身号',
+  `platform` varchar(24) DEFAULT NULL COMMENT '运行平台：WINDOWS、ANDROID、LINUX、MACOS',
+  `software_version` varchar(32) DEFAULT NULL COMMENT '设备上运行的软件版本',
+  `status` varchar(10) NOT NULL COMMENT '设备状态：PAIRING 配对中、ACTIVE 在用、SUSPENDED 停用、REVOKED 已吊销',
+  `generation` bigint NOT NULL DEFAULT 0 COMMENT '设备代数，重新配对或换机时递增',
+  `credential_hash` varbinary(64) DEFAULT NULL COMMENT '设备访问凭据的哈希（设备凭据登录时用）',
+  `credential_version` int DEFAULT NULL COMMENT '设备凭据版本，轮换时递增',
+  `enrollment_expires_at` datetime(3) DEFAULT NULL COMMENT '配对码有效期',
+  `signer_key_no` varchar(32) DEFAULT NULL COMMENT '离线收银签名密钥号',
+  `signer_public_key` varchar(128) DEFAULT NULL COMMENT '离线收银签名公钥',
+  `signer_public_key_hash` char(64) DEFAULT NULL COMMENT '签名公钥摘要',
+  `challenge_no` varchar(32) DEFAULT NULL COMMENT '联网后核验挑战号',
+  `challenge_expires_at` datetime(3) DEFAULT NULL COMMENT '核验挑战的过期时间',
+  `write_lease_no` varchar(32) DEFAULT NULL COMMENT '离线写入授权（租约）号',
+  `write_lease_expires_at` datetime(3) DEFAULT NULL COMMENT '离线写入授权到期时间',
+  `write_accepted_through` bigint DEFAULT NULL COMMENT '已被接收的离线单据序号上限',
+  `last_seen_at` datetime(3) DEFAULT NULL COMMENT '最后在线时间',
+  `revoked_at` datetime(3) DEFAULT NULL COMMENT '吊销时间',
+  `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 正常，1 已删除',
+  `version` bigint NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
+  `created_at` datetime(3) NOT NULL COMMENT '创建时间',
+  `created_by` varchar(32) NOT NULL COMMENT '创建人',
+  `updated_at` datetime(3) NOT NULL COMMENT '更新时间',
+  `updated_by` varchar(32) NOT NULL COMMENT '更新人',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_store_device_no` (`device_no`),
+  KEY `ix_store_device_store` (`entity_no`, `store_no`, `device_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='门店设备：点餐屏、厨显、叫号屏、离线收银的登记与状态；屏用店员账号登录，设备在册且在用才能连';
+
+-- 厨显订阅精简（TDD §2.8 D-5）：只记「哪台厨显看哪些工位」，每台一行；登录人、到期、防重、撤销都去掉，停用设备即撤销。
+DROP TABLE fnb_kds_subscription;
+CREATE TABLE `fnb_kds_subscription` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
+  `tenant_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'MAIN' COMMENT '租户号',
+  `entity_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '所属主体编号',
+  `store_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '门店编号',
+  `device_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '厨显设备号，见 ind_store_device',
+  `stations` json NOT NULL COMMENT '这台厨显看的工位编号列表',
+  `version` bigint NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
+  `created_at` datetime(3) NOT NULL COMMENT '创建时间',
+  `created_by` varchar(32) NOT NULL COMMENT '创建人',
+  `updated_at` datetime(3) NOT NULL COMMENT '更新时间',
+  `updated_by` varchar(32) NOT NULL COMMENT '更新人',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_kds_subscription_device` (`device_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='厨显订阅：哪台厨显看哪些工位';
 
 -- 工位运行状态表 fnb_station_runtime 不建（TDD §2.8 D-2）：开停写 fnb_station.runtime_status（RUNNING/PAUSED，空即 RUNNING），用工位版本号。
 

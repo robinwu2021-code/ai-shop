@@ -1,16 +1,17 @@
 package ai.neargo.shop.food.service.impl;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.common.pricing.PricingSnapshotHash;
-import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
-import ai.neargo.shop.food.dto.FoodKdsContracts.RevokeReq;
-import ai.neargo.shop.food.dto.FoodKdsContracts.SubscriptionVO;
+import ai.neargo.shop.food.dto.FoodKdsContracts;
+import ai.neargo.shop.food.dto.FoodKdsContracts.DeviceStationsReq;
+import ai.neargo.shop.food.dto.FoodKdsContracts.DeviceStatusReq;
+import ai.neargo.shop.food.dto.FoodKdsContracts.RegisterDeviceReq;
+import ai.neargo.shop.food.dto.FoodKdsContracts.StoreDeviceVO;
 import ai.neargo.shop.food.entity.FnbKdsSubscription;
+import ai.neargo.shop.food.entity.IndStoreDevice;
 import ai.neargo.shop.food.mapper.FoodKdsMapper;
 import ai.neargo.shop.food.service.FoodKdsService;
-import ai.neargo.shop.spi.printing.PrintPort;
+import ai.neargo.shop.food.service.support.CommandBusinessKey;
 
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DuplicateKeyException;
@@ -23,27 +24,30 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
- * 厨显订阅：哪台屏、由谁登录、看哪些工位。屏不再按序号拉事件，收到刷新后按工位拉当前状态
- * （TDD-餐饮域迁移新库 §2.8 D-3）。
+ * 门店设备与厨显工位（TDD-餐饮域迁移新库 §2.8 D-5）。屏用店员账号登录；连上来的屏要本店在册、在用，
+ * 厨显还要设定了工位。停用设备即让它连不上，不另设撤销单。
  */
 public class FoodKdsServiceImpl implements FoodKdsService {
+    static final String ACTIVE = "ACTIVE";
+    static final String SUSPENDED = "SUSPENDED";
+    static final String KDS = "KDS";
+    static final String CALL_SCREEN = "CALL_SCREEN";
     private final FoodKdsMapper mapper;
-    private final PrintPort printing;
     private final ObjectMapper json;
     private final TransactionTemplate write;
     private final Clock clock;
 
     public FoodKdsServiceImpl(
-            FoodKdsMapper mapper,
-            PrintPort printing,
-            ObjectMapper json,
-            PlatformTransactionManager manager,
-            Clock clock) {
+            FoodKdsMapper mapper, ObjectMapper json, PlatformTransactionManager manager, Clock clock) {
         this.mapper = mapper;
-        this.printing = printing;
         this.json = json;
         this.clock = clock;
         write = new TransactionTemplate(manager);
@@ -51,155 +55,155 @@ public class FoodKdsServiceImpl implements FoodKdsService {
     }
 
     @Override
-    public SubscriptionVO grant(
-            String entity, String store, String actor, GrantReq req, String key) {
+    public StoreDeviceVO register(
+            String entity, String store, String actor, RegisterDeviceReq req, String key) {
         scope(entity, store, actor);
-        key(key, 128);
-        if (req == null) {
+        if (req == null
+                || !FoodKdsContracts.DEVICE_TYPES.contains(req.deviceType())
+                || blank(req.displayName(), 64)
+                || (req.serialNo() != null && blank(req.serialNo(), 32))) {
             bad();
         }
-        id(req.deviceNo());
-        id(req.deviceActorNo());
-        if (req.stationNos() == null
+        String no = CommandBusinessKey.derive("FDEV", "REGISTER_DEVICE", entity, store, actor, key);
+        var row =
+                new IndStoreDevice(
+                        no, entity, store, req.deviceType(), req.displayName().trim(),
+                        req.serialNo() == null ? null : req.serialNo().trim(), ACTIVE, 0);
+        // 业务键回查：同一请求键重放得到同一台设备，同键异参冲突。
+        Supplier<StoreDeviceVO> replay =
+                () -> {
+                    var old = mapper.deviceByNo(no);
+                    if (old == null
+                            || !old.entityNo().equals(entity)
+                            || !old.storeNo().equals(store)
+                            || !old.deviceType().equals(row.deviceType())
+                            || !old.displayName().equals(row.displayName())
+                            || !Objects.equals(old.serialNo(), row.serialNo())) {
+                        conflict();
+                    }
+                    return view(old, null);
+                };
+        if (mapper.deviceByNo(no) != null) return replay.get();
+        try {
+            return tx(
+                    () -> {
+                        mapper.insertDevice(row, actor, clock.instant());
+                        return view(row, null);
+                    });
+        } catch (BizException race) {
+            if (mapper.deviceByNo(no) != null) return replay.get();
+            throw race;
+        }
+    }
+
+    @Override
+    public StoreDeviceVO changeStatus(
+            String entity, String store, String actor, String no, DeviceStatusReq req) {
+        scope(entity, store, actor);
+        id(no);
+        if (req == null || req.version() < 0 || !Set.of(ACTIVE, SUSPENDED).contains(req.status())) {
+            bad();
+        }
+        return tx(
+                () -> {
+                    var row = mapper.device(entity, store, no, true);
+                    if (row == null) missing();
+                    if (!req.status().equals(row.status())) {
+                        if (row.version() != req.version()
+                                || mapper.changeStatus(
+                                                entity, store, no, req.status(), req.version(), actor,
+                                                clock.instant())
+                                        != 1) {
+                            conflict();
+                        }
+                        row = mapper.device(entity, store, no, false);
+                    }
+                    return view(row, mapper.subscription(entity, store, no, false));
+                });
+    }
+
+    @Override
+    public StoreDeviceVO assignStations(
+            String entity, String store, String actor, String no, DeviceStationsReq req) {
+        scope(entity, store, actor);
+        id(no);
+        if (req == null
+                || req.version() < 0
+                || req.stationNos() == null
                 || req.stationNos().isEmpty()
-                || req.stationNos().size() > 100
-                || req.lifetimeSeconds() < 60
-                || req.lifetimeSeconds() > 86400) {
+                || req.stationNos().size() > 100) {
             bad();
         }
         req.stationNos().forEach(FoodKdsServiceImpl::id);
         var stations = req.stationNos().stream().distinct().sorted().toList();
-        long deviceVersion = liveDevice(entity, store, actor, req.deviceNo(), req.deviceActorNo());
-        String hash =
-                PricingSnapshotHash.of(
-                        List.of(
-                                req.deviceNo(),
-                                req.deviceActorNo(),
-                                stations,
-                                req.lifetimeSeconds()));
+        String text = json.writeValueAsString(stations);
         return tx(
                 () -> {
-                    var original = mapper.originalGrant(entity, store, actor, key);
-                    if (original != null) {
-                        if (!hash.equals(original.requestHash())) {
+                    var device = mapper.device(entity, store, no, true);
+                    if (device == null) missing();
+                    if (!KDS.equals(device.deviceType()) || !ACTIVE.equals(device.status())) conflict();
+                    if (mapper.stationCount(entity, store, stations) != stations.size()) bad();
+                    var sub = mapper.subscription(entity, store, no, true);
+                    var now = clock.instant();
+                    if (sub == null) {
+                        if (req.version() != 0) conflict();
+                        mapper.insertSubscription(entity, store, no, text, actor, now);
+                    } else if (!stations.equals(stations(sub))) {
+                        if (sub.version() != req.version()
+                                || mapper.updateStations(entity, store, no, text, req.version(), actor, now)
+                                        != 1) {
                             conflict();
                         }
-                        return view(original);
                     }
-                    var row =
-                            new FnbKdsSubscription(
-                                    BizKey.next("KDS"),
-                                    entity,
-                                    store,
-                                    req.deviceNo(),
-                                    req.deviceActorNo(),
-                                    json.writeValueAsString(stations),
-                                    deviceVersion,
-                                    clock.instant().plusSeconds(req.lifetimeSeconds()),
-                                    "ACTIVE",
-                                    0,
-                                    actor,
-                                    key,
-                                    hash,
-                                    null,
-                                    null,
-                                    null);
-                    mapper.insert(row);
-                    return view(row);
+                    return view(device, mapper.subscription(entity, store, no, false));
                 });
     }
 
     @Override
-    public SubscriptionVO revoke(
-            String entity, String store, String actor, String no, RevokeReq req, String key) {
-        scope(entity, store, actor);
-        id(no);
-        key(key, 128);
-        if (req == null || req.version() < 0) {
-            bad();
-        }
-        key(req.reason(), 255);
-        return tx(
-                () -> {
-                    var row = mapper.subscription(entity, store, no, true);
-                    if (row == null) {
-                        missing();
-                    }
-                    if ("REVOKED".equals(row.status())) {
-                        if (!key.equals(row.revokeKey())
-                                || !actor.equals(row.revokedBy())
-                                || !req.reason().equals(row.revokeReason())) {
-                            conflict();
-                        }
-                        return view(row);
-                    }
-                    if (row.version() != req.version()) {
-                        conflict();
-                    }
-                    mapper.revoke(entity, store, no, req.version(), actor, req.reason(), key);
-                    return view(mapper.subscription(entity, store, no, false));
-                });
+    public List<StoreDeviceVO> list(String entity, String store) {
+        id(entity);
+        id(store);
+        Map<String, FnbKdsSubscription> subs =
+                mapper.subscriptions(entity, store).stream()
+                        .collect(Collectors.toMap(FnbKdsSubscription::deviceNo, Function.identity()));
+        return mapper.devices(entity, store).stream()
+                .map(d -> view(d, subs.get(d.deviceNo())))
+                .toList();
     }
 
     @Override
-    public SubscriptionVO authorize(String entity, String store, String actor, String no) {
+    public StoreDeviceVO authorize(String entity, String store, String actor, String no) {
         scope(entity, store, actor);
         id(no);
-        var row = mapper.subscription(entity, store, no, false);
-        authorize(row, actor);
-        // 每次都核对设备仍在册且授权版本没变（换机、吊销后旧订阅立即失效）。
-        if (liveDevice(entity, store, actor, row.deviceNo(), actor) != row.deviceVersion()) {
-            forbidden();
-        }
-        return view(row);
+        var device = mapper.device(entity, store, no, false);
+        if (device == null || !ACTIVE.equals(device.status())) forbidden();
+        if (CALL_SCREEN.equals(device.deviceType())) return view(device, null);
+        if (!KDS.equals(device.deviceType())) forbidden();
+        var sub = mapper.subscription(entity, store, no, false);
+        if (sub == null) forbidden();
+        return view(device, sub);
     }
 
-    private void authorize(FnbKdsSubscription row, String actor) {
-        if (row == null
-                || !actor.equals(row.actorNo())
-                || !"ACTIVE".equals(row.status())
-                || !row.expiresAt().isAfter(clock.instant())) {
-            forbidden();
-        }
-    }
-
-    private long liveDevice(String entity, String store, String actor, String no, String bridge) {
-        var configuration = printing.configuration(new PrintPort.Scope(entity, store, actor));
-        if (configuration == null) {
-            forbidden();
-        }
-        var device =
-                configuration.devices().stream()
-                        .filter(
-                                d ->
-                                        no.equals(d.deviceNo())
-                                                && bridge.equals(d.bridgeActorNo())
-                                                && "ACTIVE".equals(d.status()))
-                        .findFirst()
-                        .orElseThrow(() -> BizException.of(ErrorCode.FORBIDDEN));
-        return device.authorizationVersion();
+    private StoreDeviceVO view(IndStoreDevice d, FnbKdsSubscription sub) {
+        return new StoreDeviceVO(
+                d.deviceNo(),
+                d.entityNo(),
+                d.storeNo(),
+                d.deviceType(),
+                d.displayName(),
+                d.serialNo(),
+                d.status(),
+                d.version(),
+                sub == null ? List.of() : stations(sub),
+                sub == null ? 0 : sub.version());
     }
 
     private List<String> stations(FnbKdsSubscription row) {
-        var tree = json.readTree(row.stations());
         var out = new ArrayList<String>();
-        for (var item : tree) {
+        for (var item : json.readTree(row.stations())) {
             out.add(item.asString());
         }
         return List.copyOf(out);
-    }
-
-    private SubscriptionVO view(FnbKdsSubscription row) {
-        return new SubscriptionVO(
-                row.subscriptionNo(),
-                row.entityNo(),
-                row.storeNo(),
-                row.deviceNo(),
-                row.actorNo(),
-                stations(row),
-                row.expiresAt().toString(),
-                row.status(),
-                row.version());
     }
 
     private <T> T tx(Supplier<T> body) {
@@ -210,6 +214,13 @@ public class FoodKdsServiceImpl implements FoodKdsService {
         }
     }
 
+    private static boolean blank(String value, int max) {
+        return value == null
+                || value.isBlank()
+                || value.trim().length() > max
+                || value.chars().anyMatch(c -> c < 32);
+    }
+
     private static void scope(String entity, String store, String actor) {
         id(entity);
         id(store);
@@ -218,15 +229,6 @@ public class FoodKdsServiceImpl implements FoodKdsService {
 
     private static void id(String value) {
         if (value == null || !value.matches("[A-Za-z0-9_.:-]{1,32}")) {
-            bad();
-        }
-    }
-
-    private static void key(String value, int max) {
-        if (value == null
-                || value.isBlank()
-                || value.length() > max
-                || value.chars().anyMatch(c -> c < 32)) {
             bad();
         }
     }

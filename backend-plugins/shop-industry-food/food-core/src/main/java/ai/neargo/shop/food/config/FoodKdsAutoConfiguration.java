@@ -13,11 +13,9 @@ import ai.neargo.shop.food.service.FoodKdsService;
 import ai.neargo.shop.food.service.FoodStationRuntimeService;
 import ai.neargo.shop.food.service.impl.FoodKdsServiceImpl;
 import ai.neargo.shop.food.service.impl.FoodStationRuntimeServiceImpl;
-import ai.neargo.shop.spi.printing.PrintPort;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
@@ -31,11 +29,7 @@ import java.time.Clock;
 import javax.sql.DataSource;
 
 /** Registers persistent KDS ownership only where the FOOD primary database is local. */
-@AutoConfiguration(
-        afterName = {
-            "ai.neargo.shop.food.config.FoodAutoConfiguration",
-            "ai.neargo.shop.food.channel.config.FoodPrintingClientConfiguration"
-        })
+@AutoConfiguration(afterName = "ai.neargo.shop.food.config.FoodAutoConfiguration")
 @ConditionalOnFoodEnabled
 @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
 public class FoodKdsAutoConfiguration {
@@ -59,12 +53,11 @@ public class FoodKdsAutoConfiguration {
             FoodStationRuntimeMapper mapper,
             FoodKdsMapper kdsMapper,
             FoodKdsService kds,
-            PrintPort printing,
             @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
             ObjectMapper json,
             FoodDeviceRefresh refresh) {
         var service = new FoodStationRuntimeServiceImpl(
-                mapper, kdsMapper, kds, printing, manager, Clock.systemUTC(), json);
+                mapper, kdsMapper, kds, manager, Clock.systemUTC(), json);
         service.setDeviceRefresh(refresh);
         return service;
     }
@@ -77,12 +70,10 @@ public class FoodKdsAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(FoodKdsService.class)
-    @ConditionalOnBean(PrintPort.class)
     FoodKdsService foodKdsService(
             FoodKdsMapper mapper,
-            PrintPort printing,
             ObjectMapper json,
             @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager) {
-        return new FoodKdsServiceImpl(mapper, printing, json, manager, Clock.systemUTC());
+        return new FoodKdsServiceImpl(mapper, json, manager, Clock.systemUTC());
     }
 }
