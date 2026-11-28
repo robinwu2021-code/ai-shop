@@ -467,6 +467,50 @@ class StoreStockFlowTest {
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storeStockMapper;
 
+    @Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("stockPortImpl")
+    private ai.neargo.shop.spi.product.StockPort productStock;
+
+    @Test
+    @DisplayName("★★★ 单店：不带门店的锁量、改数、可售量都落在所属门店那一行，不碰主体库存池")
+    void storelessCallsLandOnTheOwningStore() throws Exception {
+        String biz = merchant("19600190120", "单店·不带门店");
+        String goodsNo = listedGoods(biz, 3);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        String lockNo = "L-SS-" + System.nanoTime();
+
+        assertThat(productStock.lock(lockNo,
+                java.util.List.of(new ai.neargo.shop.spi.product.StockPort.SkuQty(skuNo, 2))))
+                .as("所属门店有 3 件，不带门店锁 2 件应当成功").isEmpty();
+        assertThat(lockedAt(storeA, skuNo)).as("锁在所属门店那一行").isEqualTo(2);
+        productStock.release(lockNo);
+        assertThat(lockedAt(storeA, skuNo)).as("释放回所属门店那一行").isZero();
+
+        productStock.setOnHand(skuNo, null, 9, "OTHER");
+        assertThat(storeStock(biz, storeA, skuNo)).as("改数写所属门店那一行").isEqualTo(9);
+        assertThat(productStock.sellable(skuNo)).isEqualTo(9);
+        assertThat(poolRows(skuNo)).as("单店不该出现主体库存池行").isZero();
+    }
+
+    private int lockedAt(String storeNo, String skuNo) {
+        var row = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                storeStockMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdStoreSku>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStoreSku::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo, skuNo)));
+        return row == null || row.getLockedQty() == null ? -1 : row.getLockedQty();
+    }
+
+    private long poolRows(String skuNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                storeStockMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdStoreSku>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo, skuNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStoreSku::getStoreNo,
+                                ai.neargo.shop.product.entity.PrdStoreSku.ENTITY_POOL)));
+    }
+
     private int storeStock(String bizToken, String storeNo, String skuNo) {
         var row = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                 storeStockMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers

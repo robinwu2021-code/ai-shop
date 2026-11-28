@@ -49,7 +49,7 @@ UNION ALL SELECT 'prd_goods_revision（含草稿）' AS `项`, (SELECT COUNT(*) 
 UNION ALL SELECT '  其中草稿（EDITING/SUBMITTED）' AS `项`, (SELECT COUNT(*) FROM {src}.prd_goods_draft WHERE deleted=0) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_goods_revision WHERE status IN ('EDITING','SUBMITTED')) AS `新`
 UNION ALL SELECT '门店价 + 店级库存 + 库存池 → prd_store_sku' AS `项`, (SELECT COUNT(*) FROM {src}.prd_store_price WHERE deleted=0)
        + (SELECT COUNT(*) FROM {src}.prd_store_stock WHERE deleted=0) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_store_sku) AS `新`
-UNION ALL SELECT '  其中库存池（主体级库存）' AS `项`, (SELECT COUNT(DISTINCT sku_no) FROM {src}.prd_sku WHERE deleted=0 AND stock IS NOT NULL) AS `旧`, (SELECT COUNT(*) FROM {trade}.prd_store_sku WHERE store_no='') AS `新`
+UNION ALL SELECT '  主体级库存（旧 SKU 数）→ 新：并进单店本店行 + 库存池' AS `项`, (SELECT COUNT(DISTINCT sku_no) FROM {src}.prd_sku WHERE deleted=0 AND stock IS NOT NULL) AS `旧`, CONCAT((SELECT COUNT(DISTINCT s.sku_no) FROM {trade}.prd_store_sku s WHERE s.store_no<>'' AND s.sellable_qty IS NOT NULL AND NOT EXISTS (SELECT 1 FROM {src}.prd_store_stock st WHERE st.deleted=0 AND st.store_no=s.store_no AND st.sku_no=s.sku_no)), ' + ', (SELECT COUNT(*) FROM {trade}.prd_store_sku WHERE store_no='')) AS `新`
 UNION ALL SELECT '  库存总件数 / 锁量（旧：主体 + 店级）' AS `项`, CONCAT((SELECT COALESCE(SUM(st),0) FROM (SELECT MIN(stock) st FROM {src}.prd_sku WHERE deleted=0 GROUP BY sku_no) a)
               + (SELECT COALESCE(SUM(stock),0) FROM {src}.prd_store_stock WHERE deleted=0), ' / ',
               (SELECT COALESCE(SUM(lk),0) FROM (SELECT MIN(locked_stock) lk FROM {src}.prd_sku WHERE deleted=0 GROUP BY sku_no) b)
