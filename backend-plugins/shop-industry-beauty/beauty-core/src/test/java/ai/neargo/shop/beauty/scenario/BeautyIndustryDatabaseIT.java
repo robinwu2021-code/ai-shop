@@ -89,8 +89,9 @@ class BeautyIndustryDatabaseIT {
             }
         });
         assertTrue(failures.isEmpty(), String.join("\n", failures));
-        // 设计稿去掉的触发器由 V2 补回
-        assertEquals(List.of("trg_bsef_immutable", "trg_bsef_no_delete", "trg_bty_source_observation_domain_guard"),
+        // 设计稿去掉的触发器由 V2 补回；库存意向搬来后带着它的两个触发器（§2.6 第 11 项）
+        assertEquals(List.of("trg_bsef_immutable", "trg_bsef_no_delete", "trg_bsesi_immutable", "trg_bsesi_no_delete",
+                        "trg_bty_source_observation_domain_guard"),
                 industry.queryForList("SELECT trigger_name FROM information_schema.triggers WHERE trigger_schema=DATABASE()"
                         + " ORDER BY trigger_name", String.class));
     }

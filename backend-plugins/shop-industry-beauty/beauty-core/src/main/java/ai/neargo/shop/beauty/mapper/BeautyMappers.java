@@ -1946,7 +1946,7 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
     /** Companion originals never replace the permanent task/fence/unit ownership relation. */
     @Mapper
     public interface ServiceExecutionStockIntentMapper
-            extends BaseMapper<BtyServiceExecutionStockIntent> {
+            extends IndustryTableMapper<BtyServiceExecutionStockIntent> {
         @Select(
                 """
                 SELECT * FROM bty_service_execution_stock_intent WHERE tenant_no='MAIN'

@@ -282,7 +282,7 @@
 | 8 | 服务定义 `bty_service_definition` | `prd_goods`（`type=SERVICE`、`industry_code=BEAUTY`；`industry_ext` 放时长、前后缓冲、步骤模板、注意事项） | 定义号、SKU、当前版本、状态都改用商品自己的列 | 设计已定，代码改动大 |
 | 9 | 定义版本 `bty_service_definition_version` | `prd_goods_revision`（「服务项目的规则版本即此号」；`payload` 存时长快照、缓冲、步骤、注意事项） | 版本号从字符串（如 `DV…`）变成商品内自增的整数 | 设计已定；`ord_appointment_item.definition_version_no` 的取值要对齐 |
 | 10 | 服务要求 `bty_service_requirement` | `prd_fulfillment_requirement`（按商品修订号） | 只缺定义版本号，换成 `goods_no + revision_no` | 设计已定 |
-| 11 | 库存意向 `bty_service_execution_stock_intent` | 库存库 `inv_reservation`，经宿主库存接口 | — | **待定**：交接文档里库存同步一组暂停中 |
+| 11 | 库存意向 `bty_service_execution_stock_intent` | **行业库**（2026-11-28 已搬）：表与触发器原样，写入本来就在行业事务里；库存库 `inv_reservation` 与宿主的执行保留表都还没有对应结构 | — | 已搬；库存迁移恢复后再与库存域定是否收进 `inv_reservation` |
 | 12 | 操作日志 `bty_action_log` | **退役，不迁**（用户 2026-11-28 定）：8 类纯留痕的业务表里已有；到店证明、接待异常申请、恢复请求这三类改记在所属业务行上 | 运营审计暂不收美业操作（以后要看再接宿主 `AuditLogPort`） | 见下方「第 12 项执行计划」 |
 | 13 | 请求幂等（宿主 `sys_idempotent`）；发布前 `PlatformWritePrerequisites` 检查主库技术表 | 不建表：防重是功能能力，由应用层 + 业务唯一键做（用户 11-25 原则） | — | 去掉对主库技术表的检查；各写接口改按业务键 |
 | 14 | 独立部署时的事件 outbox | `n_common` 公共事件 | — | 事件是公共能力 |
@@ -337,6 +337,11 @@
   - 共用库模式全套与基线一致（只多时刻相关那一个，以及偶发失败的并发用例）；
   - 独立库模式与第一步相同。
 - 第 8～10 项（服务定义并入商品）**还没做**：`prd_goods`、`prd_goods_revision` 归商品领域（shop-core 的 `ProductMappers`），美业不能直接写；独立部署的美业里也没有商品代码。要先定由谁发布服务的时长、缓冲、步骤和服务要求，见 §8-Q2。
+
+#### 第 11 项：库存意向搬到行业库（2026-11-28，用户「先做 7 和 11」）
+- 改动：`ServiceExecutionStockIntentMapper` 改为行业句柄；`BeautyIndustryTables` 加这张表、启动核对把它列为可选（同执行围栏）；结构校验器改在行业句柄上，没有私有迁移历史时只核对结构与触发器（同执行围栏）。
+- 建表：测试行业库的美业补充脚本 `V2__beauty_supplement.sql` 第五节，表与两个触发器原样取自私有迁移 V11；设计稿与 .61 部署随 B-6（.61 的 `n_industry` 尚未建美业表）。主库上私有迁移建的旧表随第 15 项退役。
+- 验证：独立库模式 `BeautyIndustryDatabaseIT`（触发器清单多两个）、`ServiceTaskStockPreparationCoordinatorTest` 15/15、`ServiceTaskPersistenceIT` 17/17、`TransactionHandleBoundaryTest` 通过；共用库模式 `BeautySchemaMigrationIT` 32/32，`ServiceSourceObservationIT` 的 5 条失败在 HEAD 上同样存在（缺迁移脚本）。
 
 #### 第 12 项执行计划：操作日志退役（用户 2026-11-28 定「按建议执行」）
 

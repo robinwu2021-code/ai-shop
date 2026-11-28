@@ -25,6 +25,8 @@ public final class BeautyIndustryTables {
                     "bty_source_observation",
                     "bty_source_allocation_guard",
                     "bty_service_execution_fence",
+                    // 库存意向：写入本来就在行业事务里，表从主库搬来（TDD §2.6 第 11 项，库存迁移恢复后再与库存域定是否收进 inv_reservation）
+                    "bty_service_execution_stock_intent",
                     // 行业共用表：门店策略头与修订（B-2 已并）
                     "ind_store_policy",
                     "ind_config_revision",

@@ -24,7 +24,8 @@ import javax.sql.DataSource;
  */
 public final class BeautyIndustrySchemaCheck {
     /** 可选扩展（迁移 V10）：装没装、坏没坏由 {@code ServiceExecutionSchemaVerifier} 自己判，启动不要求它在。 */
-    static final java.util.Set<String> OPTIONAL = java.util.Set.of("bty_service_execution_fence");
+    static final java.util.Set<String> OPTIONAL =
+            java.util.Set.of("bty_service_execution_fence", "bty_service_execution_stock_intent");
 
     private BeautyIndustrySchemaCheck() {}
 
