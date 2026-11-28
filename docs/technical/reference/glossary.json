@@ -58367,6 +58367,14 @@
       "module": "shop-base"
     },
     {
+      "host": "WechatMasterSwitch",
+      "name": "KEY",
+      "type": "String",
+      "value": "\"shop.wx.enabled\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
       "host": "WxLogisticsTypes",
       "name": "EXPRESS",
       "type": "int",
