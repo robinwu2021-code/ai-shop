@@ -417,7 +417,11 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
   - **设备出口消费者**（`DiningKdsEventConsumer`，处理者编号不变）不再写厨显事件表：发刷新，并按打印路由打事件单据（厨房变更、标签、桌台变更）。单据内容直接由到达的事件定格（`FoodEventPrintDocuments`，从 food-core 的 `FoodEventPrintDocumentAssembler` 移来），经 `PrintPort` 入队。**契约变化**：手工 `POST /biz/x/food/print-jobs` 不再接受这三种事件单场景（`BAD_REQUEST`），补打走原打印任务的补打。
   - 测试：流的验收测试按刷新语义重写（首推、按店按工位过滤、兜底重新核验后断开、吊销的订阅连不上）；消费者测试改为断言刷新与由事件定格的标签；订阅测试改测核验；运行状态的 MySQL 测试改为断言提交后发信号、被拒不发；`RabbitMessageBrokerTest` 补广播拓扑。food-core 761 个（跳过 55）、food-web 258 个无失败；本机 MySQL 上新库、运行状态、厨房生命周期、耗料来源测试通过；网关接口清单重新生成（B 端少 1 个入口）。
   - 未做：独立部署（`shop.food.deployment=standalone`）且未配消息中间件时，网关侧收不到核心进程的开停与叫号信号，只靠 30 秒兜底；叫号屏的订阅与设备类型在 D-5。
-- 待做：设备出口 D-4～D-6（§2.8）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
+- **D-4 打印必达**（§2.8）。核对后，厨房打印已经都在发件箱消费者上：接单建出品单后出单（`DiningKitchenAcceptedConsumer`）、定时出品到点出单（`ScheduledDiningDispatchServiceImpl`，与接单同一个键）、事件单据（设备出口消费者）。失败抛出即由发件箱重投。
+  防重键沿用、不加版本：厨房单 `AUTO_PRINT_V1:批次:场景:工位`（每批次只有一张制作出品单，等同出品单号 + 工位），事件单据 `EVENT_PRINT:事件号:场景:工位`。改单、重做、损耗都是新事件，带新键，同一事件重投不会重打。
+  缺的是中间件这一段：餐饮这五个事件（`DINING_ORDER_ACCEPTED`、`DINING_SERVICE_EVENT`、`DINING_CUSTODY_HANDOVER`、`FOOD_CHECK_CHANGED`、`DINING_ORDER_CHANGED`）不在「发件箱改由中间件投递」名单里。收它们的消费者（建出品单与出单、设备出口、渠道履约回传、报表冲正）收的餐饮类型都在这五个里，按「全进或全不进」整组加进 `shop.events.outbox-event-types` 默认值。`transport=rabbitmq` 时各消费者按自己的保序订阅（按流键分区）收；`local` 时名单不起作用、行为不变。新增 `DiningKitchenRelayListTest`。
+  部署注意：餐饮要求平台发件箱为统一模式（`SHOP_OUTBOX_PLATFORM_MODE=unified`）；环境里若用 `SHOP_EVENTS_OUTBOX_TYPES` 覆盖了名单，要把这五个补进去。
+- 待做：设备出口 D-5～D-6（§2.8）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
 
