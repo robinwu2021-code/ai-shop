@@ -64,6 +64,9 @@ ADD_COLUMNS = {
     'ord_refund_obligation': [
         "`input_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '义务输入摘要（防重放）'",
     ],
+    'ord_after_sale_item': [
+        "`coupon_return_minor` bigint NOT NULL DEFAULT 0 COMMENT '本行本次退回的券额（分）：分到本行的券额按已退件数累计取整，补贴结算与对账用'",
+    ],
     'ord_execution': [
         "`source_type` varchar(16) DEFAULT NULL COMMENT '执行来源：ORDER 订单、MANUAL 手工受理'",
         "`source_no` varchar(32) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '来源编号'",
