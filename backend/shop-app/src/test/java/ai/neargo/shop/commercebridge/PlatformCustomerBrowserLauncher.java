@@ -118,9 +118,11 @@ public final class PlatformCustomerBrowserLauncher {
       web.getEnvironment().setActiveProfiles("ops");
       web.addBeanFactoryPostProcessor(b->{
         b.registerSingleton("dataSource",ds);b.registerSingleton("jdbc",jdbc);b.registerSingleton("transactionManager",new DataSourceTransactionManager(ds));
+        // 本地单库：平台句柄与主库是同一个
+        b.registerAlias("jdbc",ai.neargo.shop.common.config.PlatformJdbcConfiguration.PLATFORM_JDBC_TEMPLATE);b.registerAlias("transactionManager",ai.neargo.shop.common.config.ModuleDataSources.PLATFORM_TX_MANAGER);
         b.registerSingleton("tokens",tokens);b.registerSingleton("livePerms",perms);b.registerSingleton("liveIdentity",identitiesResolver);b.registerSingleton("ops",ops);
       });
-      web.register(Web.class,Authentication.class,OpsCustomerController.class,OpsOperatingEntityController.class,CustomerReadAccess.class,CustomerReportingServiceImpl.class,
+      web.register(Web.class,Authentication.class,OpsCustomerController.class,OpsOperatingEntityController.class,CustomerReadAccess.class,CustomerReportingServiceImpl.class,ai.neargo.shop.merchant.port.OpsCustomerDirectoryPortImpl.class,
         PermChecker.class,ApiResponseWrapper.class,GlobalExceptionHandler.class);
       Path scratch=Files.createTempDirectory("customer-browser-http-");
       tomcat.setBaseDir(scratch.toString());tomcat.setPort(34111);tomcat.getConnector().setProperty("address","127.0.0.1");

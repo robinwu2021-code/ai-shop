@@ -22,7 +22,7 @@ class CustomerReportingMysqlTest {
     var url=System.getenv("COMMERCE_MYSQL_URL");var user=System.getenv().getOrDefault("COMMERCE_MYSQL_USER","root");var password=System.getenv().getOrDefault("COMMERCE_MYSQL_PASSWORD","");
     admin=new JdbcTemplate(new DriverManagerDataSource(url,user,password));assertTrue(admin.queryForObject("SELECT VERSION()",String.class).startsWith("9."));
     schema="customer_reporting_"+UUID.randomUUID().toString().replace("-","");admin.execute("CREATE DATABASE "+schema+" CHARACTER SET utf8mb4 COLLATE utf8mb4_bin");
-    var ds=new DriverManagerDataSource(url.replace("/?","/"+schema+"?"),user,password);db=new JdbcTemplate(ds);CustomerReportingFixture.createAndSeed(db);reporting=new CustomerReportingServiceImpl(ds);
+    var ds=new DriverManagerDataSource(url.replace("/?","/"+schema+"?"),user,password);db=new JdbcTemplate(ds);CustomerReportingFixture.createAndSeed(db);reporting=new CustomerReportingServiceImpl(ds,new ai.neargo.shop.merchant.port.OpsCustomerDirectoryPortImpl(db));
   }
   @AfterEach void cleanup(){if(admin!=null&&schema!=null)admin.execute("DROP DATABASE "+schema);}
   @Test void migrationPreservesEachStoresMetricsAndPrivateProfile(){

@@ -12,5 +12,4 @@ shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ResourceService
 shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/impl/ScheduleServiceImpl.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/booking/mapper/BookingMappers.java
 shop-merchant/src/main/java/ai/neargo/shop/merchant/plan/impl/EntityPlanPurchaseServiceImpl.java
-shop-gateway/src/main/java/ai/neargo/shop/portal/service/impl/CustomerReportingServiceImpl.java
 shop-store-mybatis/src/main/java/ai/neargo/shop/archive/impl/ArchiveServiceImpl.java
