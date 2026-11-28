@@ -117,8 +117,8 @@ class DualOriginalRestoreFlowTest {
     }
 
     private Fixture fixture() {
-        String ref = UUID.randomUUID().toString();
-        String skuNo = "SKU-" + ref;
+        String ref = UUID.randomUUID().toString().replace("-", "");
+        String skuNo = "SKU-" + ref.substring(0, 24);
         PrdSku sku = new PrdSku();
         sku.setSkuNo(skuNo);
         sku.setGoodsNo("G0002");

@@ -10,11 +10,11 @@ import ai.neargo.shop.common.pricing.MoneyMinor;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStoreGoods;
-import ai.neargo.shop.product.entity.PrdStorePrice;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper;
 import ai.neargo.shop.spi.pay.MarketPort;
 import ai.neargo.shop.spi.product.CatalogPriceSourceFacts;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort;
@@ -46,7 +46,7 @@ import java.util.List;
 public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
     private final SkuMapper skus;
     private final GoodsMapper goods;
-    private final StorePriceMapper prices;
+    private final StoreSkuMapper prices;
     private final StoreGoodsMapper visibility;
     private final StoreDirectoryPort stores;
     private final MerchantQueryPort merchants;
@@ -59,7 +59,7 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
     public CatalogPriceSourcePortImpl(
             SkuMapper skus,
             GoodsMapper goods,
-            StorePriceMapper prices,
+            StoreSkuMapper prices,
             StoreGoodsMapper visibility,
             StoreDirectoryPort stores,
             MerchantQueryPort merchants,
@@ -82,7 +82,7 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
     public CatalogPriceSourcePortImpl(
             SkuMapper skus,
             GoodsMapper goods,
-            StorePriceMapper prices,
+            StoreSkuMapper prices,
             StoreGoodsMapper visibility,
             StoreDirectoryPort stores,
             MerchantQueryPort merchants,
@@ -264,7 +264,7 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
         if (byGoods.size() != goodsNos.size()) throw notFound();
         var overlays =
                 visibility.selectList(
-                        Wrappers.<PrdStoreGoods>lambdaQuery()
+                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                 .eq(PrdStoreGoods::getEntityNo, q.entityNo())
                                 .in(PrdStoreGoods::getGoodsNo, goodsNos));
         var managed = new HashSet<String>();
@@ -280,12 +280,12 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
         }
         var storePrices =
                 prices.selectList(
-                        Wrappers.<PrdStorePrice>lambdaQuery()
-                                .eq(PrdStorePrice::getEntityNo, q.entityNo())
-                                .eq(PrdStorePrice::getStoreNo, q.storeNo())
-                                .eq(PrdStorePrice::getMarket, market.market())
-                                .in(PrdStorePrice::getSkuNo, q.skuNos()));
-        var byPrice = new HashMap<String, PrdStorePrice>();
+                        Wrappers.<PrdStoreSku>lambdaQuery()
+                                .eq(PrdStoreSku::getEntityNo, q.entityNo())
+                                .eq(PrdStoreSku::getStoreNo, q.storeNo())
+                                .eq(PrdStoreSku::getMarket, market.market())
+                                .in(PrdStoreSku::getSkuNo, q.skuNos()));
+        var byPrice = new HashMap<String, PrdStoreSku>();
         for (var price : storePrices) {
             if (!q.entityNo().equals(price.getEntityNo())
                     || !q.storeNo().equals(price.getStoreNo())

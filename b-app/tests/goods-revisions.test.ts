@@ -44,6 +44,16 @@ describe("编辑页横幅的两个号", () => {
     expect(draftVersionsOf([rev(1, "DRAFT")])).toBeNull();
   });
 
+  it("★★ 在售商品的草稿是 EDITING / SUBMITTED —— 驳回后复制出的新草稿也认得出", () => {
+    const rows = [rev(6, "EDITING"), rev(5, "REJECTED"), rev(4, "ONLINE"), rev(3, "DISCARDED")];
+    expect(draftVersionsOf(rows)).toEqual({ n: 6, m: 4 });
+    expect(draftVersionsOf([rev(2, "SUBMITTED"), rev(1, "ONLINE")])).toEqual({ n: 2, m: 1 });
+  });
+
+  it("放弃了的草稿不算草稿", () => {
+    expect(draftVersionsOf([rev(2, "DISCARDED"), rev(1, "ONLINE")])).toBeNull();
+  });
+
   it("只有线上（没有未发布改动）回 null —— 横幅那会儿根本不该出现", () => {
     expect(draftVersionsOf([rev(1, "ONLINE")])).toBeNull();
   });
@@ -55,6 +65,9 @@ describe("四种状态要分得开", () => {
     ["DRAFT", "sh-chip--warning"],
     ["REJECTED", "sh-chip--danger"],
     ["SUPERSEDED", ""],
+    ["EDITING", "sh-chip--warning"],
+    ["SUBMITTED", "sh-chip--warning"],
+    ["DISCARDED", ""],
   ] as [GoodsRevisionStatus, string][])("%s → %s", (s, cls) => {
     expect(statusChipOf(s)).toBe(cls);
   });

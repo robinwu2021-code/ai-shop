@@ -53,7 +53,7 @@ class EntitlementServiceOrderFlowTest {
     private String instance;
     private EntitlementContext context;
     private ServiceOrderCreate command;
-    private String id() { return UUID.randomUUID().toString(); }
+    private String id() { return UUID.randomUUID().toString().replace("-", ""); }   // 32 位：新库的编号列是 varchar(32)
     @BeforeEach void setup() {
         user = id(); actor = id(); entity = id(); store = id(); goods = id(); sku = id(); instance = id();
         context = new EntitlementContext("MAIN", actor, id(), "a".repeat(64));
@@ -68,8 +68,8 @@ class EntitlementServiceOrderFlowTest {
         jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,title,type,on_sale,audit_status,fulfillments,tenant_no,"
                 + "created_at,updated_at) VALUES (?,?,'swimming','SERVICE',1,'APPROVED','[\"STORE_VERIFY\"]',"
                 + "'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", goods, entity);
-        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,price,stock,locked_stock,tenant_no,created_at,updated_at) "
-                + "VALUES (?,?,?,1000,0,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sku, goods, entity);
+        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,created_at,"
+                + "updated_at) VALUES (?,?,?,'CN',1000,0,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sku, goods, entity);
         var rule = new EntitlementDefinition("30 times", "PAID_CARD", "MERCHANT", "CNY", "SERVICE_UNITS",
                 null, null, null, null, null, "COUNT", 30, null,
                 new EntitlementDefinition.Validity("RELATIVE", null, null, 30, "FIRST_USE", "ROLLING_DAYS", "UTC"),

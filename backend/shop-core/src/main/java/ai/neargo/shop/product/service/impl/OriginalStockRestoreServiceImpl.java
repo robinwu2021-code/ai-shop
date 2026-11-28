@@ -9,7 +9,7 @@ import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdStockRestore;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper;
 import ai.neargo.shop.product.mapper.StockRestoreMapper;
 import ai.neargo.shop.product.service.OriginalStockRestoreService;
 import ai.neargo.shop.spi.product.StockPort.SkuQty;
@@ -34,10 +34,10 @@ public class OriginalStockRestoreServiceImpl implements OriginalStockRestoreServ
     private final StockLockMapper locks;
     private final StockRestoreMapper claims;
     private final SkuMapper skus;
-    private final StoreStockMapper stores;
+    private final StoreSkuMapper stores;
 
     public OriginalStockRestoreServiceImpl(StockLockMapper locks, StockRestoreMapper claims,
-                                           SkuMapper skus, StoreStockMapper stores) {
+                                           SkuMapper skus, StoreSkuMapper stores) {
         this.locks = locks;
         this.claims = claims;
         this.skus = skus;

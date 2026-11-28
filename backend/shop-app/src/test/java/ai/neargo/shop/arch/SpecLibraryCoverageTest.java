@@ -1,11 +1,9 @@
 package ai.neargo.shop.arch;
 
-import ai.neargo.shop.product.entity.PrdCategorySpec;
-import ai.neargo.shop.product.entity.PrdCategorySpecValue;
+import ai.neargo.shop.product.entity.PrdSpecUsage;
 import ai.neargo.shop.product.entity.PrdSpecDim;
 import ai.neargo.shop.product.entity.PrdSpecValue;
-import ai.neargo.shop.product.mapper.ProductMappers.CategorySpecMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.CategorySpecValueMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.SpecUsageMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SpecDimMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SpecValueMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -47,15 +45,13 @@ class SpecLibraryCoverageTest {
     @Autowired
     private SpecValueMapper valueMapper;
     @Autowired
-    private CategorySpecMapper catSpecMapper;
-    @Autowired
-    private CategorySpecValueMapper catValueMapper;
+    private SpecUsageMapper usageMapper;
 
     @Test
     @DisplayName("★★ 每个类目恰好一个主维度 —— 零个靠运气预填，两个就是随机预填")
     void exactlyOnePrimaryPerCategory() {
-        Map<String, List<PrdCategorySpec>> byCat = activeBindings().stream()
-                .collect(Collectors.groupingBy(PrdCategorySpec::getCategoryNo));
+        Map<String, List<PrdSpecUsage>> byCat = activeBindings().stream()
+                .collect(Collectors.groupingBy(PrdSpecUsage::getScopeRef));
 
         List<String> bad = byCat.entrySet().stream()
                 .filter(e -> e.getValue().stream()
@@ -76,14 +72,14 @@ class SpecLibraryCoverageTest {
         Set<String> dims = DIMS().stream().map(PrdSpecDim::getDimNo).collect(Collectors.toSet());
         Set<String> values = VALUES().stream().map(PrdSpecValue::getValueNo).collect(Collectors.toSet());
         List<String> problems = new java.util.ArrayList<>();
-        for (PrdCategorySpec b : activeBindings()) {
+        for (PrdSpecUsage b : activeBindings()) {
             if (!dims.contains(b.getDimNo())) {
-                problems.add(b.getCategoryNo() + " → 维度 " + b.getDimNo() + "（不存在或已归档）");
+                problems.add(b.getScopeRef() + " → 维度 " + b.getDimNo() + "（不存在或已归档）");
             }
         }
-        for (PrdCategorySpecValue v : DataScope(() -> catValueMapper.selectList(null))) {
+        for (PrdSpecUsage v : DataScope(() -> usageMapper.selectList(SpecUsageMapper.categoryValues()))) {
             if (!values.contains(v.getValueNo())) {
-                problems.add(v.getCategoryNo() + "/" + v.getDimNo() + " → 值 " + v.getValueNo() + "（不存在）");
+                problems.add(v.getScopeRef() + "/" + v.getDimNo() + " → 值 " + v.getValueNo() + "（不存在）");
             }
         }
         assertThat(problems)
@@ -113,9 +109,9 @@ class SpecLibraryCoverageTest {
 
     // ---------------------------------------------------------------- helpers
 
-    private List<PrdCategorySpec> activeBindings() {
-        return DataScope(() -> catSpecMapper.selectList(Wrappers.<PrdCategorySpec>lambdaQuery()
-                .eq(PrdCategorySpec::getStatus, PrdSpecDim.ACTIVE)));
+    private List<PrdSpecUsage> activeBindings() {
+        return DataScope(() -> usageMapper.selectList(SpecUsageMapper.categoryDims()
+                .eq(PrdSpecUsage::getStatus, PrdSpecUsage.ACTIVE)));
     }
 
     private List<PrdSpecDim> DIMS() {

@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.shop.product.service.GoodsService;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -43,7 +45,16 @@ import java.util.stream.Collectors;
 public class GoodsServiceImpl implements GoodsService {
 
     /** 一期恒 CN；多市场时由请求上下文带入。 */
-    private static final String MARKET_CN = "CN";
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
 
     private final GoodsMapper goodsMapper;
     private final SkuMapper skuMapper;
@@ -60,7 +71,7 @@ public class GoodsServiceImpl implements GoodsService {
     /** 买家在哪儿能看到什么 —— 查询时现算（方案-商品可见性改查询时关联） */
     private final GoodsVisibility visibility;
     /** 门店售价覆盖层 —— 买家侧展示要与下单取价（GoodsQueryPortImpl.snapshot）同一个数 */
-    private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
+    private final ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storePriceMapper;
 
     public GoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
                             MerchantQueryPort merchantPort, ObjectMapper json,
@@ -69,7 +80,7 @@ public class GoodsServiceImpl implements GoodsService {
                             ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
                             ai.neargo.shop.product.service.StoreStockReader storeStockReader,
                             GoodsVisibility visibility,
-                            ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper) {
+                            ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storePriceMapper) {
         this.storePriceMapper = storePriceMapper;
         this.visibility = visibility;
         this.storeGoodsMapper = storeGoodsMapper;
@@ -283,7 +294,7 @@ public class GoodsServiceImpl implements GoodsService {
      */
     private List<String> notOnSaleAt(String entityNo, String storeNo) {
         List<ai.neargo.shop.product.entity.PrdStoreGoods> rows = DataScopeContext.executeWithoutScope(() ->
-                storeGoodsMapper.selectList(Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                storeGoodsMapper.selectList(ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                         .eq(entityNo != null && !entityNo.isBlank(),
                                 ai.neargo.shop.product.entity.PrdStoreGoods::getEntityNo, entityNo)));
         java.util.Set<String> managed = new java.util.HashSet<>();
@@ -458,7 +469,7 @@ public class GoodsServiceImpl implements GoodsService {
         }
         List<ai.neargo.shop.product.entity.PrdStoreGoods> rows =
                 DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
-                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                 .in(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNos)));
         Map<String, java.util.Set<String>> selling = new HashMap<>();
         for (var r : rows) {
@@ -688,7 +699,7 @@ public class GoodsServiceImpl implements GoodsService {
                 Wrappers.<PrdSku>lambdaQuery()
                         .eq(PrdSku::getGoodsNo, goodsNo)
                         .eq(PrdSku::getSkuNo, skuNo)
-                        .eq(PrdSku::getMarket, MARKET_CN)
+                        .eq(PrdSku::getMarket, homeMarket)
                         .last("limit 1")));
         if (sku == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
@@ -742,7 +753,7 @@ public class GoodsServiceImpl implements GoodsService {
         return DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(
                         Wrappers.<PrdSku>lambdaQuery()
                                 .in(PrdSku::getGoodsNo, goodsNos)
-                                .eq(PrdSku::getMarket, MARKET_CN))).stream()
+                                .eq(PrdSku::getMarket, homeMarket))).stream()
                 .collect(Collectors.groupingBy(PrdSku::getGoodsNo));
     }
 
@@ -926,13 +937,13 @@ public class GoodsServiceImpl implements GoodsService {
         }
         // ★ 买家侧读门店价同样是公共目录查询，显式豁免数据域（见类注释）
         return DataScopeContext.executeWithoutScope(() -> storePriceMapper.selectList(
-                        Wrappers.<ai.neargo.shop.product.entity.PrdStorePrice>lambdaQuery()
-                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo, storeNo)
-                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, MARKET_CN)
-                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, skuNos)))
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreSku>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdStoreSku::getStoreNo, storeNo)
+                                .eq(ai.neargo.shop.product.entity.PrdStoreSku::getMarket, homeMarket)
+                                .in(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo, skuNos)))
                 .stream().filter(r -> r.getPrice() != null)
-                .collect(Collectors.toMap(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo,
-                        ai.neargo.shop.product.entity.PrdStorePrice::getPrice, (a, b) -> a));
+                .collect(Collectors.toMap(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo,
+                        ai.neargo.shop.product.entity.PrdStoreSku::getPrice, (a, b) -> a));
     }
 
     private GoodsVO.SkuVO toSkuVO(PrdSku s, Long flashPrice, Long storePrice) {

@@ -30,7 +30,6 @@ import ai.neargo.shop.numbering.ReservedDocumentNumber;
 import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.SkuPricingPolicyMapper;
 import ai.neargo.shop.product.port.GoodsPricingPolicyPortImpl;
 import ai.neargo.shop.product.service.impl.GoodsPricingPolicyServiceImpl;
 import ai.neargo.shop.spi.invoice.InvoicePort;
@@ -728,7 +727,7 @@ class StoreOrderMysqlTest {
         static final String USER = System.getenv("COMMERCE_MYSQL_USER");
         static final String PASS = System.getenv("COMMERCE_MYSQL_PASSWORD");
         static final List<String> TABLES = List.of("ord_order", "ord_sub_order", "ord_item",
-                "ord_industry_order_source", "ord_price_quote_line", "prd_sku_pricing_policy", "mch_role",
+                "ord_industry_order_source", "ord_price_quote_line", "mch_role",
                 "ord_offline_record", "ord_offline_record_event", "sys_outbox", "pmt_apply", "ord_after_sale",
                 "ord_after_sale_item", "ord_legacy_coupon_checkout");
         static DataSource ds;
@@ -771,11 +770,19 @@ class StoreOrderMysqlTest {
                 for (var statement : sql.replaceAll("(?m)^--.*$", "").split(";"))
                     if (!statement.isBlank()) jdbc.execute(statement);
             }
-            jdbc.update("INSERT INTO prd_sku_pricing_policy(policy_no,tenant_no,entity_no,store_no,goods_no,sku_no,"
-                    + "promotion_eligible,tax_class,created_at,created_by,updated_at,updated_by,version,deleted) VALUES"
-                    + " ('P-A','MAIN','E1','S1','G-A','SKU-A',1,'STANDARD',NOW(),'T',NOW(),'T',1,0),"
-                    + " ('P-X','MAIN','E1','S1','G-X','SKU-X',1,'OUT_OF_SCOPE',NOW(),'T',NOW(),'T',1,0),"
-                    + " ('P-A2','MAIN','E1','S2','G-A','SKU-A',1,'EXEMPT',NOW(),'T',NOW(),'T',1,0)");
+            // 门店交易库把 SKU 定价策略并进了 prd_sku（tax_class / promotion_eligible），门店由商品归属给出；
+            // 模板库还是旧结构，这里只建策略读取用到的列
+            jdbc.execute("CREATE TABLE prd_goods(id BIGINT AUTO_INCREMENT PRIMARY KEY,goods_no VARCHAR(32),"
+                    + "entity_no VARCHAR(32),store_no VARCHAR(32),tenant_no VARCHAR(32),deleted TINYINT DEFAULT 0)");
+            jdbc.execute("CREATE TABLE prd_sku(id BIGINT AUTO_INCREMENT PRIMARY KEY,sku_no VARCHAR(32),"
+                    + "goods_no VARCHAR(32),entity_no VARCHAR(32),market VARCHAR(8),tenant_no VARCHAR(32),"
+                    + "tax_class VARCHAR(24),promotion_eligible TINYINT,version BIGINT NOT NULL DEFAULT 0,"
+                    + "deleted TINYINT DEFAULT 0)");
+            jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,store_no,tenant_no) VALUES"
+                    + " ('G-A','E1','S1','MAIN'),('G-X','E1','S1','MAIN')");
+            jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,tenant_no,tax_class,promotion_eligible,"
+                    + "version) VALUES ('SKU-A','G-A','E1','CN','MAIN','STANDARD',1,1),"
+                    + " ('SKU-X','G-X','E1','CN','MAIN','OUT_OF_SCOPE',1,1)");
             return ds;
         }
     }
@@ -949,10 +956,10 @@ class StoreOrderMysqlTest {
 
         @Bean
         StoreOrderService storeOrders(OrderMapper orders, SubOrderMapper subs, OrderItemMapper items,
-                InvoiceDataFillMapper fills, GoodsMapper goodsRows, SkuMapper skuRows, SkuPricingPolicyMapper policies,
+                InvoiceDataFillMapper fills, GoodsMapper goodsRows, SkuMapper skuRows,
                 PlatformTransactionManager tx, FakeInvoices invoices, StoreOrderSettlementService settlements) {
             var policyPort = new GoodsPricingPolicyPortImpl(new GoodsPricingPolicyServiceImpl(goodsRows, skuRows,
-                    policies, mock(RequestIdempotencyPortImpl.class), tx));
+                    mock(RequestIdempotencyPortImpl.class), tx));
             var goods = mock(GoodsQueryPort.class);
             when(goods.snapshot(anyList(), anyMap())).thenAnswer(inv -> {
                 var out = new java.util.HashMap<String, SkuSnapshot>();

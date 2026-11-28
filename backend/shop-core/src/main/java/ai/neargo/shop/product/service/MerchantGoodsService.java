@@ -248,7 +248,7 @@ public interface MerchantGoodsService {
     /**
      * 各门店的缺货 SKU 数（跨店对比，B-11.12.6）。
      *
-     * <p>口径：这家店 {@code prd_store_stock} 里<b>可用量（stock − locked）≤ 0</b> 的行数。
+     * <p>口径：这家店 {@code prd_store_sku} 里<b>可用量（sellable_qty − locked_qty）≤ 0</b> 的行数。
      *
      * <p><b>只数已启用分店库存的 SKU</b> —— 一个 SKU 一条店级行都没有时走主体总量
      * （见 {@link #saveStoreStock}），它对这家店<b>不算缺货</b>：
@@ -256,7 +256,7 @@ public interface MerchantGoodsService {
      * 显示「缺货 200 件」，而店主根本没有可做的动作。
      *
      * <p>⚠️ 已知的不对称：某 SKU 已转为店级管理、但<b>这家店没有行</b>时，
-     * 实际可售量是 0（那是 {@code PrdStoreStock} 刻意的语义），而这里不计。
+     * 实际可售量是 0（那是 {@code PrdStoreSku} 刻意的语义），而这里不计。
      * 保持与「只数已启用的」这句话一致 —— 要把它算进来，得先决定
      * 「没配过的店到底算不算这件商品的经营范围」，那是另一个问题。
      *

@@ -2,7 +2,6 @@
 R1 AppealMapper 继承 BaseMapper
 R1 ExecutionRetentionMapper 继承 BaseMapper
 R1 GoodsFavoriteMapper 继承 BaseMapper
-R1 PrdEntBindingCommandMapper 继承 BaseMapper
 R1 ReviewLikeMapper 继承 BaseMapper
 R1 ReviewMapper 继承 BaseMapper
 R1 StockRestoreMapper 继承 BaseMapper
@@ -11,30 +10,12 @@ R1 StoreStockSyncMapper 继承 BaseMapper
 R1 TopicGoodsMapper 继承 BaseMapper
 R1 TopicMapper 继承 BaseMapper
 R2 AppealMapper 用到 rvw_appeal，不在 目标库 DDL
-R2 CategoryPayModeMapper 用到 prd_category_pay_mode，不在 05-n_trade.sql
-R2 CategorySpecMapper 用到 prd_category_spec，不在 05-n_trade.sql
-R2 CategorySpecValueMapper 用到 prd_category_spec_value，不在 05-n_trade.sql
-R2 EntityCategoryInvMapper 用到 prd_entity_category_inv，不在 05-n_trade.sql
 R2 ExecutionRetentionMapper 用到 prd_execution_retention，不在 目标库 DDL
-R2 GoodsDraftMapper 用到 prd_goods_draft，不在 05-n_trade.sql
 R2 GoodsFavoriteMapper 用到 prd_goods_favorite，不在 目标库 DDL
-R2 MerchantSpecMapper 用到 prd_merchant_spec，不在 05-n_trade.sql
-R2 MerchantSpecOverrideMapper 用到 prd_merchant_spec_override，不在 05-n_trade.sql
-R2 MerchantSpecValueMapper 用到 prd_merchant_spec_value，不在 05-n_trade.sql
-R2 PrdEntBindingCommandMapper 用到 prd_ent_binding_command，不在 目标库 DDL
-R2 PrdEntitlementBindingMapper 用到 prd_entitlement_binding，不在 05-n_trade.sql
 R2 ReviewLikeMapper 用到 rvw_review_like，不在 目标库 DDL
 R2 ReviewMapper 用到 rvw_review，不在 目标库 DDL
-R2 SellRuleMapper 用到 prd_sell_rule，不在 05-n_trade.sql
-R2 SkuPricingPolicyMapper 用到 prd_sku_pricing_policy，不在 05-n_trade.sql
-R2 SpecTemplateMapper 用到 prd_spec_template，不在 05-n_trade.sql
-R2 SpuStdMapper 用到 prd_spu_std，不在 05-n_trade.sql
 R2 StockRestoreMapper 用到 prd_stock_restore，不在 目标库 DDL
 R2 StockSyncLogMapper 用到 prd_stock_sync_log，不在 目标库 DDL
-R2 StoreCatalogVersionMapper 用到 prd_store_catalog_version，不在 05-n_trade.sql
-R2 StoreGoodsMapper 用到 prd_store_goods，不在 05-n_trade.sql
-R2 StorePriceMapper 用到 prd_store_price，不在 05-n_trade.sql
-R2 StoreStockMapper 用到 prd_store_stock，不在 05-n_trade.sql
 R2 StoreStockSyncMapper 用到 prd_store_stock_sync，不在 目标库 DDL
 R2 TopicGoodsMapper 用到 prd_topic_goods，不在 目标库 DDL
 R2 TopicMapper 用到 prd_topic，不在 目标库 DDL
@@ -59,11 +40,11 @@ R5 InvManagedBackfillRunner.java import ProductMappers.GoodsMapper
 R5 InventoryBackfillServiceImpl.java import PrdGoods
 R5 InventoryBackfillServiceImpl.java import PrdSku
 R5 InventoryBackfillServiceImpl.java import PrdStockLock
-R5 InventoryBackfillServiceImpl.java import PrdStoreStock
+R5 InventoryBackfillServiceImpl.java import PrdStoreSku
 R5 InventoryBackfillServiceImpl.java import ProductMappers.GoodsMapper
 R5 InventoryBackfillServiceImpl.java import ProductMappers.SkuMapper
 R5 InventoryBackfillServiceImpl.java import ProductMappers.StockLockMapper
-R5 InventoryBackfillServiceImpl.java import ProductMappers.StoreStockMapper
+R5 InventoryBackfillServiceImpl.java import ProductMappers.StoreSkuMapper
 R5 InventoryDeliveryGuard.java import ProductMappers.StockLockMapper
 R5 InventoryHealthServiceImpl.java import PrdGoods
 R5 InventoryHealthServiceImpl.java import PrdSku

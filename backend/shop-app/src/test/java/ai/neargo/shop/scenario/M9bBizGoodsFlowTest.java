@@ -52,7 +52,7 @@ class M9bBizGoodsFlowTest {
     private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
 
     @Autowired
-    private ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper;
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsRevisionMapper draftMapper;
 
     @Autowired
     private ai.neargo.shop.merchant.plan.mapper.PlanMappers.EntityPlanMapper planMapper;
@@ -1497,8 +1497,10 @@ class M9bBizGoodsFlowTest {
 
         var draft = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                 draftMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.product.entity.PrdGoodsDraft>lambdaQuery()
-                        .eq(ai.neargo.shop.product.entity.PrdGoodsDraft::getGoodsNo, goodsNo)));
+                        .<ai.neargo.shop.product.entity.PrdGoodsRevision>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdGoodsRevision::getGoodsNo, goodsNo)
+                        .in(ai.neargo.shop.product.entity.PrdGoodsRevision::getStatus,
+                                ai.neargo.shop.product.entity.PrdGoodsRevision.DRAFT_STATES)));
         assertThat(draft).as("改动落进草稿行 —— 它就是「有未发布修改」标识的判据").isNotNull();
         assertThat(draft.getPayload()).contains("新标题");
     }
@@ -1555,9 +1557,11 @@ class M9bBizGoodsFlowTest {
             assertThat(live.getOnSale()).as("换版不经过下架真空期").isTrue();
             var draft = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                     draftMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                            .<ai.neargo.shop.product.entity.PrdGoodsDraft>lambdaQuery()
-                            .eq(ai.neargo.shop.product.entity.PrdGoodsDraft::getGoodsNo, goodsNo)));
-            assertThat(draft).as("发布成功即删草稿行 —— 标识跟着消失").isNull();
+                            .<ai.neargo.shop.product.entity.PrdGoodsRevision>lambdaQuery()
+                            .eq(ai.neargo.shop.product.entity.PrdGoodsRevision::getGoodsNo, goodsNo)
+                            .in(ai.neargo.shop.product.entity.PrdGoodsRevision::getStatus,
+                                    ai.neargo.shop.product.entity.PrdGoodsRevision.DRAFT_STATES)));
+            assertThat(draft).as("发布成功草稿行即转为在售那一版 —— 标识跟着消失").isNull();
         } finally {
             mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -1802,6 +1806,14 @@ class M9bBizGoodsFlowTest {
         mvc().perform(post("/biz/goods/" + goodsNo + "/draft/discard")
                         .header("Authorization", "Bearer " + lastBiz))
                 .andExpect(jsonPath("$.code").value(0));
+        // 放弃的那一版留在历史里（批次 2-f：草稿就是提交历史的一行），只是不再是草稿
+        long discarded = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                draftMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdGoodsRevision>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdGoodsRevision::getGoodsNo, goodsNo)
+                        .eq(ai.neargo.shop.product.entity.PrdGoodsRevision::getStatus,
+                                ai.neargo.shop.product.entity.PrdGoodsRevision.DISCARDED)));
+        assertThat(discarded).as("放弃不是删除：历史里要看得到这一版").isEqualTo(1L);
     }
 
     @Test

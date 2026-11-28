@@ -16,11 +16,11 @@ import ai.neargo.shop.common.pricing.TaxSettingDefinition;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStoreGoods;
-import ai.neargo.shop.product.entity.PrdStorePrice;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper;
 import ai.neargo.shop.product.port.CatalogPriceSourcePortImpl;
 import ai.neargo.shop.spi.pay.MarketPort;
 import ai.neargo.shop.spi.pay.MarketPort.MarketBrief;
@@ -80,7 +80,7 @@ class CatalogPriceSourcePortTest {
                                     List.of(
                                             PrdGoods.class,
                                             PrdSku.class,
-                                            PrdStorePrice.class,
+                                            PrdStoreSku.class,
                                             PrdStoreGoods.class)) createTable(sql, type);
                             sql.update(
                                     "INSERT INTO"
@@ -161,7 +161,7 @@ class CatalogPriceSourcePortTest {
                 (c, sql) -> {
                     sql.update(
                             "INSERT INTO"
-                                + " prd_store_price(id,entity_no,store_no,sku_no,market,price,version,deleted)"
+                                + " prd_store_sku(id,entity_no,store_no,sku_no,market,price,version,deleted)"
                                 + " VALUES(1,'E','S','SKU','AE',800,4,0),(2,'E','OTHER','SKU','AE',100,4,0),"
                                 + "(3,'E','S','SKU','CN',50,4,0),(4,'FOREIGN','S','SKU','AE',1,4,0)");
                     var source = c.getBean(CatalogPriceSourcePort.class);
@@ -169,11 +169,11 @@ class CatalogPriceSourcePortTest {
                     assertThat(first.amountMinor()).isEqualTo(800);
                     assertThat(first.sourceKind()).isEqualTo("STORE_PRICE");
                     assertThat(first.versions().storePrice()).isEqualTo(4);
-                    sql.update("UPDATE prd_store_price SET price=810,version=5 WHERE id=1");
+                    sql.update("UPDATE prd_store_sku SET price=810,version=5 WHERE id=1");
                     var next = source.capture(REQUEST).prices().getFirst();
                     assertThat(next.sourceRevision()).isNotEqualTo(first.sourceRevision());
                     assertThat(next.amountMinor()).isEqualTo(810);
-                    sql.update("UPDATE prd_store_price SET price=NULL,version=6 WHERE id=1");
+                    sql.update("UPDATE prd_store_sku SET price=NULL,version=6 WHERE id=1");
                     var fallback = source.capture(REQUEST).prices().getFirst();
                     assertThat(fallback.amountMinor()).isEqualTo(900);
                     assertThat(fallback.sourceKind()).isEqualTo("ENTITY_SKU");
@@ -207,20 +207,20 @@ class CatalogPriceSourcePortTest {
                     var source = c.getBean(CatalogPriceSourcePort.class);
                     sql.update(
                             "INSERT INTO"
-                                + " prd_store_goods(id,entity_no,store_no,goods_no,on_sale,version,deleted)"
-                                + " VALUES(1,'FOREIGN','OTHER','G',TRUE,1,0)");
+                                + " prd_catalog_item(id,entity_no,store_no,goods_no,enabled,version,deleted,catalog_version_no)"
+                                + " VALUES(1,'FOREIGN','OTHER','G',TRUE,1,0,'')");
                     assertThat(source.capture(REQUEST).prices()).hasSize(1);
                     sql.update(
                             "INSERT INTO"
-                                + " prd_store_goods(id,entity_no,store_no,goods_no,on_sale,version,deleted)"
-                                + " VALUES(2,'E','OTHER','G',TRUE,2,0)");
+                                + " prd_catalog_item(id,entity_no,store_no,goods_no,enabled,version,deleted,catalog_version_no)"
+                                + " VALUES(2,'E','OTHER','G',TRUE,2,0,'')");
                     code(() -> source.capture(REQUEST), ErrorCode.NOT_FOUND);
                     sql.update(
                             "INSERT INTO"
-                                + " prd_store_goods(id,entity_no,store_no,goods_no,on_sale,version,deleted)"
-                                + " VALUES(3,'E','S','G',FALSE,3,0)");
+                                + " prd_catalog_item(id,entity_no,store_no,goods_no,enabled,version,deleted,catalog_version_no)"
+                                + " VALUES(3,'E','S','G',FALSE,3,0,'')");
                     code(() -> source.capture(REQUEST), ErrorCode.NOT_FOUND);
-                    sql.update("UPDATE prd_store_goods SET on_sale=TRUE,version=4 WHERE id=3");
+                    sql.update("UPDATE prd_catalog_item SET enabled=TRUE,version=4 WHERE id=3");
                     assertThat(source.capture(REQUEST).prices().getFirst().versions().storeGoods())
                             .isEqualTo(4);
                     sql.update("UPDATE prd_goods SET store_no='OTHER'");
@@ -337,17 +337,17 @@ class CatalogPriceSourcePortTest {
                     var source = c.getBean(CatalogPriceSourcePort.class);
                     sql.update(
                             "INSERT INTO"
-                                + " prd_store_price(id,entity_no,store_no,sku_no,market,price,version,deleted)"
+                                + " prd_store_sku(id,entity_no,store_no,sku_no,market,price,version,deleted)"
                                 + " VALUES(1,'E','S','SKU','AE',NULL,NULL,0)");
                     assertThatThrownBy(() -> source.capture(REQUEST))
                             .isInstanceOf(IllegalStateException.class);
-                    sql.update("UPDATE prd_store_price SET version=1");
+                    sql.update("UPDATE prd_store_sku SET version=1");
                     assertThat(source.capture(REQUEST).prices().getFirst().amountMinor())
                             .isEqualTo(900);
                     sql.update(
                             "INSERT INTO"
-                                + " prd_store_goods(id,entity_no,store_no,goods_no,on_sale,version,deleted)"
-                                + " VALUES(1,'E','S','G',TRUE,NULL,0)");
+                                + " prd_catalog_item(id,entity_no,store_no,goods_no,enabled,version,deleted,catalog_version_no)"
+                                + " VALUES(1,'E','S','G',TRUE,NULL,0,'')");
                     assertThatThrownBy(() -> source.capture(REQUEST))
                             .isInstanceOf(IllegalStateException.class);
                 });
@@ -385,8 +385,8 @@ class CatalogPriceSourcePortTest {
         }
 
         @Bean
-        MapperFactoryBean<StorePriceMapper> prices(SqlSessionTemplate s) {
-            return mapper(StorePriceMapper.class, s);
+        MapperFactoryBean<StoreSkuMapper> prices(SqlSessionTemplate s) {
+            return mapper(StoreSkuMapper.class, s);
         }
 
         @Bean
@@ -437,7 +437,7 @@ class CatalogPriceSourcePortTest {
         CatalogPriceSourcePort source(
                 SkuMapper s,
                 GoodsMapper g,
-                StorePriceMapper p,
+                StoreSkuMapper p,
                 StoreGoodsMapper v,
                 StoreDirectoryPort stores,
                 MerchantQueryPort merchants,

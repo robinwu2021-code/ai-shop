@@ -11,7 +11,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("prd_sell_rule")
+@TableName("prd_sellable_rule")
 public class PrdSellRule extends BaseEntity {
 
     public static final String SCOPE_STORE = "STORE";

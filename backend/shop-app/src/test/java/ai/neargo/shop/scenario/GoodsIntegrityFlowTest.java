@@ -182,7 +182,7 @@ class GoodsIntegrityFlowTest {
         assertThat(jdbc.queryForObject("select category_no from prd_goods where goods_no=?",
                 String.class, goodsNo)).as("过审把商品换进了禁售类目").isEqualTo("CAT210");
         assertThat(onSale(goodsNo)).as("旧版继续卖").isTrue();
-        assertThat(jdbc.queryForObject("select status from prd_goods_draft where goods_no=?",
+        assertThat(jdbc.queryForObject("select status from prd_goods_revision where goods_no=? and status in ('EDITING','SUBMITTED')",
                 String.class, goodsNo)).isEqualTo("EDITING");
     }
 
@@ -260,9 +260,12 @@ class GoodsIntegrityFlowTest {
 
         assertThat(onSale(goodsNo)).as("驳回的是草稿，不该把线上旧版拉下架").isTrue();
         assertThat(buyerGet("/mp/goods/" + goodsNo).get("data").get("title").asString()).isEqualTo("驳回旧版");
-        assertThat(jdbc.queryForObject("select status from prd_goods_draft where goods_no=?",
+        assertThat(jdbc.queryForObject("select status from prd_goods_revision where goods_no=? and status in ('EDITING','SUBMITTED')",
                 String.class, goodsNo)).isEqualTo("EDITING");
         assertThat(detail(biz, goodsNo).get("auditReason").asString()).contains("图不清楚");
+        // 驳回的那一版留在历史里（批次 2-f），内容复制成新的编辑中草稿
+        assertThat(jdbc.queryForObject("select reject_reason from prd_goods_revision where goods_no=?"
+                + " and status='REJECTED'", String.class, goodsNo)).contains("图不清楚");
     }
 
     private JsonNode buyerGet(String path) throws Exception {
@@ -346,7 +349,7 @@ class GoodsIntegrityFlowTest {
         assertThat(postJson(biz, "/biz/goods/" + goodsNo + "/publish", "{}").get("code").asInt()).isZero();
         assertThat(postJson(opsLogin(), "/ops/goods/" + goodsNo + "/force-off", "{\"reason\":\"抽查\"}")
                 .get("code").asInt()).isZero();
-        assertThat(jdbc.queryForObject("select status from prd_goods_draft where goods_no=?",
+        assertThat(jdbc.queryForObject("select status from prd_goods_revision where goods_no=? and status in ('EDITING','SUBMITTED')",
                 String.class, goodsNo)).as("强制下架要让待审草稿失效").isEqualTo("EDITING");
 
         // 商品已下架 → 编辑直接写主行（不走草稿），回到待审

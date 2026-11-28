@@ -64,7 +64,7 @@ class BizCrossStoreFlowTest {
     private ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper pickupMapper;
 
     @Autowired
-    private ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;
+    private ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storeStockMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -458,8 +458,9 @@ class BizCrossStoreFlowTest {
     private long storeStockRows(String skuNo) {
         return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                 storeStockMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.product.entity.PrdStoreStock>lambdaQuery()
-                        .eq(ai.neargo.shop.product.entity.PrdStoreStock::getSkuNo, skuNo)));
+                        .<ai.neargo.shop.product.entity.PrdStoreSku>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStoreSku::getSkuNo, skuNo)
+                        .isNotNull(ai.neargo.shop.product.entity.PrdStoreSku::getSellableQty)));
     }
 
     private void setStoreStock(String token, String storeNo, String goodsNo, String skuNo, int stock)

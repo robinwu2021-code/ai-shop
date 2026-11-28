@@ -121,8 +121,9 @@ public class GoodsRevisionServiceImpl implements GoodsRevisionService {
                 online == null || online.getRevisionNo().equals(r.getRevisionNo())
                         ? List.of()
                         : GoodsDiffs.between(parse(online.getPayload()), mine),
-                // 线上在售那一版取回毫无意义
-                !PrdGoodsRevision.ONLINE.equals(r.getStatus()));
+                // 线上在售那一版取回毫无意义；当前草稿本来就在编辑，取回它也一样
+                !PrdGoodsRevision.ONLINE.equals(r.getStatus())
+                        && !PrdGoodsRevision.DRAFT_STATES.contains(r.getStatus()));
     }
 
     @Override
@@ -151,7 +152,8 @@ public class GoodsRevisionServiceImpl implements GoodsRevisionService {
 
     @Override
     public Snapshot pendingBaseSnapshot(String goodsNo) {
-        PrdGoodsRevision p = pending(goodsNo);
+        PrdGoodsRevision d = draft(goodsNo);
+        PrdGoodsRevision p = d != null ? d : pending(goodsNo);
         if (p == null || p.getBaseRevision() == null) {
             return null;
         }
@@ -159,6 +161,116 @@ public class GoodsRevisionServiceImpl implements GoodsRevisionService {
                 revisionMapper.selectOne(Wrappers.<PrdGoodsRevision>lambdaQuery()
                         .eq(PrdGoodsRevision::getGoodsNo, goodsNo)
                         .eq(PrdGoodsRevision::getRevisionNo, p.getBaseRevision()).last("limit 1"))));
+    }
+
+    // ---------------------------------------------------------------- 草稿
+
+    @Override
+    public PrdGoodsRevision draft(String goodsNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                revisionMapper.selectOne(Wrappers.<PrdGoodsRevision>lambdaQuery()
+                        .eq(PrdGoodsRevision::getGoodsNo, goodsNo)
+                        .in(PrdGoodsRevision::getStatus, PrdGoodsRevision.DRAFT_STATES)
+                        .orderByDesc(PrdGoodsRevision::getRevisionNo)
+                        .last("limit 1")));
+    }
+
+    @Override
+    public PrdGoodsRevision submittedDraft(String goodsNo) {
+        return byStatus(goodsNo, PrdGoodsRevision.SUBMITTED);
+    }
+
+    @Override
+    public void saveDraft(String goodsNo, String entityNo, Long baseGoodsVersion, String payload,
+                          String changeSummary, String entrySource) {
+        String source = entrySource == null ? PrdGoodsRevision.SRC_MANUAL : entrySource;
+        PrdGoodsRevision d = draft(goodsNo);
+        if (d == null) {
+            PrdGoodsRevision row = new PrdGoodsRevision();
+            row.setGoodsNo(goodsNo);
+            row.setEntityNo(entityNo);
+            row.setRevisionNo(DataScopeContext.executeWithoutScope(
+                    () -> revisionMapper.nextRevisionNo(goodsNo)));
+            PrdGoodsRevision online = current(goodsNo);
+            row.setBaseRevision(online == null ? null : online.getRevisionNo());
+            row.setBaseGoodsVersion(baseGoodsVersion);
+            row.setPayload(payload);
+            row.setChangeSummary(changeSummary);
+            row.setEntrySource(source);
+            row.setStatus(PrdGoodsRevision.EDITING);
+            DataScopeContext.executeWithoutScope(() -> revisionMapper.insert(row));
+            return;
+        }
+        // 内容没变不动它：待审的草稿原样再存一次，不该把它从审核队列里撤下来
+        if (payload.equals(d.getPayload())) {
+            return;
+        }
+        d.setPayload(payload);
+        d.setStatus(PrdGoodsRevision.EDITING);
+        d.setChangeSummary(changeSummary);
+        d.setEntrySource(source);
+        DataScopeContext.executeWithoutScope(() -> revisionMapper.updateById(d));
+    }
+
+    @Override
+    public void updateDraft(PrdGoodsRevision draft) {
+        DataScopeContext.executeWithoutScope(() -> revisionMapper.updateById(draft));
+    }
+
+    @Override
+    public void publishDraft(PrdGoodsRevision draft, String publishedBy) {
+        PrdGoodsRevision online = current(draft.getGoodsNo());
+        if (online != null) {
+            online.setStatus(PrdGoodsRevision.SUPERSEDED);
+            DataScopeContext.executeWithoutScope(() -> revisionMapper.updateById(online));
+        }
+        draft.setStatus(PrdGoodsRevision.ONLINE);
+        draft.setPublishedBy(publishedBy);
+        draft.setPublishedAt(LocalDateTime.now());
+        DataScopeContext.executeWithoutScope(() -> revisionMapper.updateById(draft));
+    }
+
+    @Override
+    public void rejectDraft(PrdGoodsRevision draft, String reason) {
+        draft.setStatus(PrdGoodsRevision.REJECTED);
+        draft.setRejectReason(reason);
+        DataScopeContext.executeWithoutScope(() -> revisionMapper.updateById(draft));
+        /*
+         * 驳回的那一版留在历史里（「为什么被驳回」是商家回头最想看的那一行），
+         * 内容原样复制成一份新草稿 —— 商家照着驳回原因接着改，而不是从线上版重来。
+         */
+        PrdGoodsRevision next = new PrdGoodsRevision();
+        next.setGoodsNo(draft.getGoodsNo());
+        next.setEntityNo(draft.getEntityNo());
+        next.setRevisionNo(DataScopeContext.executeWithoutScope(
+                () -> revisionMapper.nextRevisionNo(draft.getGoodsNo())));
+        next.setBaseRevision(draft.getBaseRevision());
+        next.setBaseGoodsVersion(draft.getBaseGoodsVersion());
+        next.setPayload(draft.getPayload());
+        next.setChangeSummary(draft.getChangeSummary());
+        next.setEntrySource(draft.getEntrySource());
+        next.setStatus(PrdGoodsRevision.EDITING);
+        DataScopeContext.executeWithoutScope(() -> revisionMapper.insert(next));
+    }
+
+    @Override
+    public void discardDraft(String goodsNo) {
+        PrdGoodsRevision d = draft(goodsNo);
+        if (d == null) {
+            return;
+        }
+        d.setStatus(PrdGoodsRevision.DISCARDED);
+        DataScopeContext.executeWithoutScope(() -> revisionMapper.updateById(d));
+    }
+
+    @Override
+    public void withdrawSubmitted(String goodsNo) {
+        PrdGoodsRevision d = submittedDraft(goodsNo);
+        if (d == null) {
+            return;
+        }
+        d.setStatus(PrdGoodsRevision.EDITING);
+        DataScopeContext.executeWithoutScope(() -> revisionMapper.updateById(d));
     }
 
     private static Snapshot snap(PrdGoodsRevision r) {

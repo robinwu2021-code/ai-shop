@@ -39,11 +39,11 @@ class EntitlementScopeValidationTest {
 
     @BeforeEach
     void fixture() {
-        entity = "SCOPE-M-" + UUID.randomUUID();
-        store = "SCOPE-S-" + UUID.randomUUID();
-        goods = "SCOPE-G-" + UUID.randomUUID();
-        category = "SCOPE-C-" + UUID.randomUUID();
-        otherStore = "SCOPE-S-" + UUID.randomUUID();
+        entity = "SCOPE-M-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        store = "SCOPE-S-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        goods = "SCOPE-G-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        category = "SCOPE-C-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        otherStore = "SCOPE-S-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         jdbc.update("INSERT INTO mch_entity(entity_no,name,status,tenant_no,created_at,updated_at) "
                 + "VALUES (?,'scope merchant','ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", entity);
         jdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,tenant_no,created_at,updated_at) "
@@ -157,7 +157,7 @@ class EntitlementScopeValidationTest {
     @Test
     void validatesEveryBatchIncludingTheLastReference() {
         for (int i = 0; i < 201; i++) {
-            String id = "BATCH-G-" + UUID.randomUUID();
+            String id = "BATCH-G-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
             extraGoods.add(id);
             jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,title,type,tenant_no,created_at,updated_at) "
                     + "VALUES (?,?,'batch goods','SERVICE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", id, entity);

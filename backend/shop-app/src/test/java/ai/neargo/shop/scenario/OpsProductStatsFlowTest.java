@@ -93,7 +93,7 @@ class OpsProductStatsFlowTest {
         assertThat(s.get("skusWithBarcode").asLong()).isLessThanOrEqualTo(s.get("skus").asLong());
         assertThat(s.get("skusWithCode").asLong()).isLessThanOrEqualTo(s.get("skus").asLong());
         assertThat(s.get("specDimsBound").asLong())
-                .as("挂上类目的维度比维度总数还多 —— prd_category_spec 里有指向已删维度的行？")
+                .as("挂上类目的维度比维度总数还多 —— prd_spec_usage 的类目维度行指向了已删维度？")
                 .isLessThanOrEqualTo(s.get("specDims").asLong());
         assertThat(s.get("auditDays").asInt()).isEqualTo(7);
     }

@@ -12,7 +12,7 @@ import lombok.Setter;
  * 两者不矛盾，因为约束落在<b>「上架到门店」</b>那一步，不在建品那一步。
  * 一句话：<b>建品看主体，上架看门店。</b>
  *
- * <p>⚠️ 与 {@code prd_store_goods} / {@code prd_store_stock} 的语义<b>不同</b>：
+ * <p>⚠️ 与 {@code prd_store_goods} / {@code prd_store_sku} 的语义<b>不同</b>：
  * 那两张是「<b>覆盖</b>」（有行才按店算，没行的店视为 0），这张是「<b>声明</b>」。
  * 写成覆盖语义的话，一个类目都没配的新店什么都上不了架 —— 而那正是新店的初始状态。
  *

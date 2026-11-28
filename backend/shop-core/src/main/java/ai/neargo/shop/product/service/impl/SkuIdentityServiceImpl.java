@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -30,7 +32,16 @@ import java.util.Set;
 public class SkuIdentityServiceImpl implements SkuIdentityService {
 
     /** 只导本土市场那一份：AE/US 是同一个 skuNo 的另一行价格，不是另一件货 */
-    private static final String HOME_MARKET = "CN";
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
 
     /** 预览给几行。多了他也不会逐行看，少了看不出「改的是不是我想的那些」 */
     private static final int SAMPLE_LIMIT = 20;
@@ -317,7 +328,7 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
         return DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
                         .eq(PrdSku::getEntityNo, merchantNo)
-                        .eq(PrdSku::getMarket, HOME_MARKET)
+                        .eq(PrdSku::getMarket, homeMarket)
                         .orderByAsc(PrdSku::getGoodsNo)
                         .orderByAsc(PrdSku::getId)));
     }

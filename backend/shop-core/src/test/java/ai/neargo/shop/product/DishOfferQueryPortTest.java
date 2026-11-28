@@ -10,14 +10,12 @@ import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper;
 import ai.neargo.shop.product.port.DishOfferQueryPortImpl;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStoreGoods;
-import ai.neargo.shop.product.entity.PrdStorePrice;
-import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import java.time.LocalDateTime;
 import ai.neargo.shop.product.port.GoodsQueryPortImpl;
@@ -49,8 +47,8 @@ class DishOfferQueryPortTest {
                 "spring.datasource.username=sa", "spring.datasource.password=").run(c -> {
             assertThat(c).hasNotFailed();
             var sql = new JdbcTemplate(c.getBean(DataSource.class));
-            for (Class<?> type : List.of(PrdGoods.class, PrdSku.class, PrdStorePrice.class,
-                    PrdStoreGoods.class, PrdStoreStock.class)) createTable(sql, type);
+            for (Class<?> type : List.of(PrdGoods.class, PrdSku.class, PrdStoreSku.class,
+                    PrdStoreGoods.class)) createTable(sql, type);
             sql.update("INSERT INTO prd_goods(id,goods_no,entity_no,store_no,title,"
                     + "on_sale,audit_status,deleted) VALUES(1,'G','E','S','Dish',TRUE,'APPROVED',0)");
             sql.update("INSERT INTO prd_sku(id,sku_no,goods_no,entity_no,market,price,"
@@ -80,17 +78,16 @@ class DishOfferQueryPortTest {
             assertThat(offer.pricingStatus()).isEqualTo("KNOWN");
             assertThat(offer.available()).isEqualTo(8);
             assertThat(offer.stockStatus()).isEqualTo("KNOWN");
-            sql.update("INSERT INTO prd_store_price(id,sku_no,entity_no,store_no,market,"
-                    + "price,deleted) VALUES(1,'SKU','E','S','CN',700,0)");
-            sql.update("INSERT INTO prd_store_stock(id,sku_no,entity_no,store_no,stock,"
-                    + "locked_stock,deleted) VALUES(1,'SKU','E','S',4,1,0)");
+            // 门店价与店级库存同在 prd_store_sku 一行
+            sql.update("INSERT INTO prd_store_sku(id,sku_no,entity_no,store_no,market,"
+                    + "price,sellable_qty,locked_qty,deleted) VALUES(1,'SKU','E','S','CN',700,4,1,0)");
             assertThat(port.getOffers("E", "S", List.of("SKU")).getFirst().priceMinor()).isEqualTo(700);
             assertThat(port.getOffers("E", "S", List.of("SKU")).getFirst().available()).isEqualTo(3);
             when(c.getBean(CampaignPort.class).flashOffers(List.of("G")))
                     .thenReturn(Map.of("G", new CampaignPort.PriceOffer("FLASH1", 600L)));
             assertThat(port.getOffers("E", "S", List.of("SKU")).getFirst().priceMinor()).isEqualTo(600);
-            assertThat(sql.queryForObject("SELECT stock FROM prd_store_stock", Integer.class)).isEqualTo(4);
-            sql.update("UPDATE prd_store_stock SET store_no='OTHER'");
+            assertThat(sql.queryForObject("SELECT sellable_qty FROM prd_store_sku", Integer.class)).isEqualTo(4);
+            sql.update("UPDATE prd_store_sku SET store_no='OTHER'");
             assertThat(port.getOffers("E", "S", List.of("SKU")).getFirst().available()).isZero();
         });
     }
@@ -150,18 +147,15 @@ class DishOfferQueryPortTest {
         }
         @Bean MapperFactoryBean<SkuMapper> skus(SqlSessionTemplate s) { return mapper(SkuMapper.class, s); }
         @Bean MapperFactoryBean<GoodsMapper> goods(SqlSessionTemplate s) { return mapper(GoodsMapper.class, s); }
-        @Bean MapperFactoryBean<StorePriceMapper> prices(SqlSessionTemplate s) {
-            return mapper(StorePriceMapper.class, s);
+        @Bean MapperFactoryBean<StoreSkuMapper> prices(SqlSessionTemplate s) {
+            return mapper(StoreSkuMapper.class, s);
         }
         @Bean MapperFactoryBean<StoreGoodsMapper> storeGoods(SqlSessionTemplate s) {
             return mapper(StoreGoodsMapper.class, s);
         }
-        @Bean MapperFactoryBean<StoreStockMapper> stockMapper(SqlSessionTemplate s) {
-            return mapper(StoreStockMapper.class, s);
-        }
         @Bean CampaignPort campaigns() { return mock(CampaignPort.class); }
-        @Bean StoreStockReader stocks(SkuMapper s, StoreStockMapper st) { return new StoreStockReader(s, st); }
-        @Bean GoodsQueryPortImpl original(SkuMapper s, GoodsMapper g, StorePriceMapper p, StoreGoodsMapper sg,
+        @Bean StoreStockReader stocks(SkuMapper s, StoreSkuMapper st) { return new StoreStockReader(s, st); }
+        @Bean GoodsQueryPortImpl original(SkuMapper s, GoodsMapper g, StoreSkuMapper p, StoreGoodsMapper sg,
                 CampaignPort c, StoreStockReader st) {
             return new GoodsQueryPortImpl(s,g,new ObjectMapper(),p,sg,c,st);
         }

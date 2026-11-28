@@ -5,10 +5,10 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStockLock;
-import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper;
 import ai.neargo.shop.product.port.StockPortImpl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.AfterEach;
@@ -50,7 +50,7 @@ class StockConfirmGuardTest {
     @Autowired
     StockLockMapper lockMapper;
     @Autowired
-    StoreStockMapper storeStockMapper;
+    StoreSkuMapper storeStockMapper;
 
     private final List<String> skus = new ArrayList<>();
 
@@ -60,7 +60,7 @@ class StockConfirmGuardTest {
         for (String sku : skus) {
             DataScopeContext.executeWithoutScope(() -> {
                 skuMapper.delete(Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, sku));
-                storeStockMapper.delete(Wrappers.<PrdStoreStock>lambdaQuery().eq(PrdStoreStock::getSkuNo, sku));
+                storeStockMapper.delete(Wrappers.<PrdStoreSku>lambdaQuery().eq(PrdStoreSku::getSkuNo, sku));
                 return lockMapper.delete(Wrappers.<PrdStockLock>lambdaQuery().eq(PrdStockLock::getSkuNo, sku));
             });
         }
@@ -155,19 +155,19 @@ class StockConfirmGuardTest {
     @DisplayName("★★★ 手工改库存不能改到已锁定量以下（门店级）")
     void setOnHandPerStoreCannotGoBelowLocked() {
         String skuNo = sku(0, 0);
-        PrdStoreStock row = new PrdStoreStock();
+        PrdStoreSku row = new PrdStoreSku();
         row.setStoreNo("ST-CG");
         row.setSkuNo(skuNo);
         row.setEntityNo("E-CG");
-        row.setStock(8);
-        row.setLockedStock(4);
+        row.setSellableQty(8);
+        row.setLockedQty(4);
         DataScopeContext.executeWithoutScope(() -> storeStockMapper.insert(row));
 
         assertThatThrownBy(() -> stockPort.setOnHand(skuNo, "ST-CG", 2, "OTHER"))
                 .isInstanceOf(BizException.class)
                 .extracting(e -> ((BizException) e).errorCode()).isEqualTo(ErrorCode.CONFLICT);
-        PrdStoreStock after = DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectOne(
-                Wrappers.<PrdStoreStock>lambdaQuery().eq(PrdStoreStock::getSkuNo, skuNo)));
-        assertThat(after.getStock()).isEqualTo(8);
+        PrdStoreSku after = DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectOne(
+                Wrappers.<PrdStoreSku>lambdaQuery().eq(PrdStoreSku::getSkuNo, skuNo)));
+        assertThat(after.getSellableQty()).isEqualTo(8);
     }
 }

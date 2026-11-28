@@ -301,7 +301,7 @@ const DERIVED = {
     originPrice: "同上",
     status: "on_sale + audit_status + pending_on_sale 三列合出来的展示态 ——"
       + "**库里不能合**：审核与上架是两条线，合了「驳回」和「下架」就共用取值",
-    hasDraft: "prd_goods_draft 有没有行（不比内容 —— 保存时内容相同即删行）",
+    hasDraft: "prd_goods_revision 有没有草稿行（状态 EDITING / SUBMITTED）",
   },
   CartItem: {
     title: "join prd_goods（购物车只存 goods_no/sku_no —— 加购到结算之间商品会改，存快照反而给用户看的是旧价）",

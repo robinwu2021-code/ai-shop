@@ -38,7 +38,7 @@ class EntitlementServiceUseHttpFlowTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired TokenStores tokens;
     @Autowired OtpStore otp;
-    private String id() { return UUID.randomUUID().toString(); }
+    private String id() { return UUID.randomUUID().toString().replace("-", ""); }
     private String phone() { return "186" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
     }
     private JsonNode postJson(MockMvc mvc, String path, String token, Object body, String key) throws Exception {
@@ -70,8 +70,8 @@ class EntitlementServiceUseHttpFlowTest {
         jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,title,type,on_sale,audit_status,fulfillments,tenant_no,"
                 + "created_at,updated_at) VALUES (?,?,'beauty service','SERVICE',1,'APPROVED','[\"STORE_VERIFY\"]',"
                 + "'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", goods, entity);
-        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,price,stock,locked_stock,tenant_no,created_at,updated_at) "
-                + "VALUES (?,?,?,1000,0,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sku, goods, entity);
+        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,created_at,"
+                + "updated_at) VALUES (?,?,?,'CN',1000,0,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sku, goods, entity);
         String kind = locator ? "STORE_EXCHANGE" : "PAID_CARD";
         var rule = new EntitlementDefinition("30 times", kind, "MERCHANT", "CNY", "SERVICE_UNITS",
                 null, null, null, null, null, "COUNT", 30, null,

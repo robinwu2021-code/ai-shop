@@ -25,7 +25,6 @@ import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.nio.file.Files;
-import org.flywaydb.core.Flyway;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -74,14 +73,22 @@ class StoreSalesCatalogIT {
                 + " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         source = new DriverManagerDataSource(admin.replace("/mysql?", "/" + database + "?"), "root", "");
         Path repo = Path.of(System.getProperty("store-catalog.test.root"));
-        new ResourceDatabasePopulator(new FileSystemResource(repo.resolve(
-                "backend/shop-app/src/main/resources/db/migration/V596__shared_store_sales_catalog.sql")),
-                new FileSystemResource(repo.resolve("backend-plugins/shop-industry-beauty/beauty-core/"
-                        + "src/test/resources/platform-write-fixture.sql"))).execute(source);
         sql = new JdbcTemplate(source);
+        // 门店交易库的目录表（批次 2-g：一个版本一行），取自定稿 DDL，不再走旧库迁移 V596
+        sql.execute(catalogDdl(repo));
+        new ResourceDatabasePopulator(new FileSystemResource(repo.resolve("backend-plugins/shop-industry-beauty/beauty-core/"
+                + "src/test/resources/platform-write-fixture.sql"))).execute(source);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 LoginUser.merchant("ACTOR", "operator"), null, List.of()));
         BizContext.set(new BizContext("E", Set.of(), Set.of(), Set.of("S"), "S", true));
+    }
+    private static String catalogDdl(Path repo) {
+        String ddl = assertDoesNotThrow(() -> Files.readString(
+                repo.resolve("docs/technical/design/schema/ddl/05-n_trade.sql")));
+        var m = java.util.regex.Pattern.compile("CREATE TABLE `prd_store_catalog` \\(.*?\\n\\)[^;]*;",
+                java.util.regex.Pattern.DOTALL).matcher(ddl);
+        assertThat(m.find()).isTrue();
+        return m.group();
     }
     @AfterEach
     void clean() {
@@ -122,7 +129,7 @@ class StoreSalesCatalogIT {
             assertThat(json.writeValueAsString(publish(context, 0, "2026-10-20T00:00:00Z", DEFINITION, "K")))
                     .isEqualTo(json.writeValueAsString(first));
             assertThat(read(context, NOW)).contains("面部护理", "SKU", "WINDOWED");
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_store_catalog_version", Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_store_catalog", Integer.class)).isOne();
         });
     }
     @Test
@@ -133,7 +140,7 @@ class StoreSalesCatalogIT {
                     DEFINITION.replace("面部护理", "changed"), "K")).isInstanceOf(BizException.class);
             assertThatThrownBy(() -> publish(context, 0, "2026-10-20T00:00:00Z", DEFINITION, "STALE"))
                     .isInstanceOf(BizException.class);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_store_catalog_version", Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_store_catalog", Integer.class)).isOne();
         });
     }
     @Test
@@ -143,7 +150,7 @@ class StoreSalesCatalogIT {
             publish(context, 1, "2026-10-22T00:00:00Z", DEFINITION.replace("面部护理", "future"), "NEXT");
             assertThat(read(context, NOW)).contains("面部护理").doesNotContain("future");
             assertThat(read(context, NOW.plusSeconds(86400))).contains("future");
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_store_catalog_version", Integer.class))
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_store_catalog", Integer.class))
                     .isEqualTo(2);
         });
     }
@@ -161,7 +168,7 @@ class StoreSalesCatalogIT {
         runner().run(context -> {
             assertThat(read(context, NOW)).contains("\"configured\":false");
             publish(context, 0, "2026-10-20T00:00:00Z", DEFINITION, "K");
-            sql.update("UPDATE prd_store_catalog_version SET frozen_payload=REPLACE(frozen_payload,?,?)",
+            sql.update("UPDATE prd_store_catalog SET frozen_content=REPLACE(frozen_content,?,?)",
                     "面部护理", "tampered");
             assertThatThrownBy(() -> call(context, "read", "E", "S", NOW)).isInstanceOf(BizException.class);
         });
@@ -185,35 +192,9 @@ class StoreSalesCatalogIT {
                     .isEqualTo(original);
             assertThatThrownBy(() -> publish(context, 1, "2026-10-20T00:00:00Z", DEFINITION, "NEW-OFFSHELF"))
                     .isInstanceOf(BizException.class);
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_store_catalog_version", Integer.class)).isOne();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM prd_store_catalog", Integer.class)).isOne();
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isOne();
         });
-    }
-    @Test
-    void incrementalFlywayUpgradePreservesExistingPlatformRowsAndRestartsCleanly() throws Exception {
-        sql.execute("DROP TABLE prd_store_catalog_version");
-        sql.execute("DROP TABLE prd_store_catalog");
-        sql.execute("CREATE TABLE catalog_legacy_probe (reference_no VARCHAR(32) PRIMARY KEY)");
-        sql.update("INSERT INTO catalog_legacy_probe VALUES('BEFORE_V536')");
-        Path migrations = Files.createTempDirectory("store-catalog-v536-");
-        Path migration = migrations.resolve("V596__shared_store_sales_catalog.sql");
-        try {
-            Files.copy(Path.of(System.getProperty("store-catalog.test.root"),
-                    "backend/shop-app/src/main/resources/db/migration/V596__shared_store_sales_catalog.sql"),
-                    migration);
-            var flyway = Flyway.configure().dataSource(source).locations("filesystem:" + migrations)
-                    .table("catalog_flyway_history").baselineOnMigrate(true).baselineVersion("535").load();
-            assertThat(flyway.migrate().migrationsExecuted).isOne();
-            flyway.validate();
-            assertThat(flyway.migrate().migrationsExecuted).isZero();
-            assertThat(sql.queryForObject("SELECT reference_no FROM catalog_legacy_probe", String.class))
-                    .isEqualTo("BEFORE_V536");
-            assertThat(sql.queryForObject("SELECT COUNT(*) FROM catalog_flyway_history "
-                    + "WHERE version='536' AND success=1", Integer.class)).isOne();
-        } finally {
-            Files.deleteIfExists(migration);
-            Files.deleteIfExists(migrations);
-        }
     }
     @Test
     void simultaneousFirstPublicationHasExactlyOneWinnerAndNoOrphans() {
@@ -233,7 +214,7 @@ class StoreSalesCatalogIT {
                 go.countDown();
                 assertThat(work.get(0).get(20, TimeUnit.SECONDS) ^ work.get(1).get(20, TimeUnit.SECONDS)).isTrue();
             }
-            for (String table : List.of("prd_store_catalog", "prd_store_catalog_version", "sys_idempotent")) {
+            for (String table : List.of("prd_store_catalog", "sys_idempotent")) {
                 assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isOne();
             }
         });
@@ -247,10 +228,6 @@ class StoreSalesCatalogIT {
         @Bean
         ProductMappers.StoreCatalogMapper storeCatalogMapper(SqlSessionFactory factory) {
             return mapper(factory, ProductMappers.StoreCatalogMapper.class);
-        }
-        @Bean
-        ProductMappers.StoreCatalogVersionMapper storeCatalogVersionMapper(SqlSessionFactory factory) {
-            return mapper(factory, ProductMappers.StoreCatalogVersionMapper.class);
         }
         @Bean
         RequestIdempotencyPortImpl idempotencyService(SqlSessionFactory factory, ObjectMapper json) {

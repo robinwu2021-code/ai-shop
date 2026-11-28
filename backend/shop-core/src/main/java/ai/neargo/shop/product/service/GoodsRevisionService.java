@@ -77,4 +77,34 @@ public interface GoodsRevisionService {
      * 未发布那一行的 {@code base_revision} 才是「我存草稿时线上是哪一版」。
      */
     Snapshot pendingBaseSnapshot(String goodsNo);
+
+    // ---------------------------------------------------------------- 草稿（批次 2-f：原 prd_goods_draft）
+
+    /** 这件商品的草稿（编辑中或待审），没有返回 null。一件商品至多一行 */
+    ai.neargo.shop.product.entity.PrdGoodsRevision draft(String goodsNo);
+
+    /** 待审的草稿，没有返回 null */
+    ai.neargo.shop.product.entity.PrdGoodsRevision submittedDraft(String goodsNo);
+
+    /**
+     * 存草稿：没有就新开一行（记下基于的线上版本），有就在内容变了时改它并退回编辑中。
+     * {@code baseGoodsVersion} 只在新开时记 —— 续改同一份草稿不刷新它，否则中途有人改过线上这件事就被洗掉了。
+     */
+    void saveDraft(String goodsNo, String entityNo, Long baseGoodsVersion, String payload,
+                   String changeSummary, String entrySource);
+
+    /** 落下草稿行上改过的状态或基线 */
+    void updateDraft(ai.neargo.shop.product.entity.PrdGoodsRevision draft);
+
+    /** 草稿换上线：它变成在售那一版，原来在售的那版改为已替换 */
+    void publishDraft(ai.neargo.shop.product.entity.PrdGoodsRevision draft, String publishedBy);
+
+    /** 驳回待审草稿：这一行记驳回原因，再复制一行编辑中的新草稿让商家接着改 */
+    void rejectDraft(ai.neargo.shop.product.entity.PrdGoodsRevision draft, String reason);
+
+    /** 放弃草稿：留在历史里，标为已放弃。没有草稿是 no-op（重复点「放弃」不该报错） */
+    void discardDraft(String goodsNo);
+
+    /** 待审草稿撤回编辑中（撤回，不删 —— 那是商家写的内容） */
+    void withdrawSubmitted(String goodsNo);
 }

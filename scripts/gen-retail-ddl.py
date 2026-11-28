@@ -86,7 +86,9 @@ ADD_COLUMNS = {
         "`favorite` tinyint NOT NULL DEFAULT 0 COMMENT '是否常用'",
     ],
     'prd_store_catalog': [
-        "`frozen_content` json NULL COMMENT '冻结内容（结账对账用）'",
+        # 不用 json 类型：MySQL 会把 JSON 规范化（键排序、去空白），读回来的文本与写入时不同，
+        # 快照摘要按写入文本算，读出即对不上（商品领域迁移批次 2-g，用户 2026-11-28 确认改 DDL）
+        "`frozen_content` mediumtext NULL COMMENT '冻结内容（结账对账用）：发布时的原文，快照摘要按它算'",
         "`snapshot_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '快照摘要'",
     ],
     'ord_appointment': [
@@ -115,8 +117,16 @@ ADD_UNIQUE = {
     'ord_cart_item': [('cart_item_no',)],
     'ord_item': [('sub_order_no', 'line_no')],
     'prd_catalog_item_sku': [('catalog_item_no', 'sku_no')],
+    # 商品领域迁移批次 2-g（用户 2026-11-28 确认）：目录按版本一行，保留定时生效；版本号即并发闸门
+    'prd_store_catalog': [('tenant_no', 'entity_no', 'catalog_no', 'version_no'), ('tenant_no', 'catalog_version_no')],
+    # 门店级的上下架行（原 prd_store_goods）：目录版本号存空串，一店一商品一行
+    'prd_catalog_item': [('tenant_no', 'store_no', 'goods_no', 'catalog_version_no')],
     'prd_fulfillment_requirement': [('requirement_no', 'revision_no')],
     'ind_commission_rule': [('rule_no', 'version_no')],
+}
+# 去掉的唯一约束：prd_store_catalog 一店一行装不下按版本存的目录（定时生效要并存多版）
+DROP_KEYS = {
+    'prd_store_catalog': ['uk_prd_catalog_no', 'uk_prd_catalog_scope'],
 }
 ADD_INDEX = {
     'ind_assignment': [('target_type', 'target_no'), ('entity_no', 'store_no', 'planned_start_at')],
@@ -127,6 +137,7 @@ ADD_INDEX = {
 WIDE = re.compile(r'^(created_by|updated_by|confirmed_by|actor_no|operator_no|request_key|client_order_no|channel_order_no'
                   r'|external_[a-z_]+|[a-z_]*_external_[a-z_]+|[a-z_]*_ref|trade_no|pay_trade_no|pay_order_no|out_trade_no'
                   r'|channel_store_key|external_order_key)$')
+NULL_MEANS = re.compile(r"COMMENT '[^']*(空表示|未配时|可不填)")
 MONEY_COUNT = re.compile(r'^([a-z_]*_minor|[a-z_]*_qty|qty|quantity|[a-z_]*_count|count|[a-z_]*_units|units|persons'
                          r'|party_size|seats|capacity|[a-z_]*_persons)$')
 BIN_COLLATE = re.compile(r'^([a-z_]*_no|[a-z_]*_key|[a-z_]*_hash|code|[a-z_]*_code)$')
@@ -176,8 +187,9 @@ def fix_column(table, line, statuses):
     if WIDE.match(name):
         ln = re.sub(r'`%s` varchar\((\d+)\)' % name,
                     lambda m: '`%s` varchar(%d)' % (name, max(64, int(m.group(1)))), ln)
-    # D6：金额与计数不为空、默认 0
-    if MONEY_COUNT.match(name) and re.search(r'`%s` (bigint|int|smallint|tinyint|decimal\([0-9,]+\))( unsigned)? DEFAULT NULL' % name, ln):
+    # D6：金额与计数不为空、默认 0。例外：注释写明「空」有含义的（空表示…、未配时…、可不填）保持可空 ——
+    # 0 与空含义不同（团购价 0 元 ≠ 未开拼团，可售量 0 ≠ 按规则换算），用户 2026-11-27 确认
+    if MONEY_COUNT.match(name) and not NULL_MEANS.search(ln) and re.search(r'`%s` (bigint|int|smallint|tinyint|decimal\([0-9,]+\))( unsigned)? DEFAULT NULL' % name, ln):
         ln = re.sub(r'(`%s` (?:bigint|int|smallint|tinyint|decimal\([0-9,]+\))(?: unsigned)?) DEFAULT NULL' % name,
                     r'\1 NOT NULL DEFAULT 0', ln)
     # D7：编号、键、摘要按二进制比较
@@ -195,6 +207,9 @@ def fix_keys(table, keys, cols):
     names = {col_name(c) for c in cols}
     have = set()
     for k in keys:
+        dm = re.search(r'KEY `([^`]+)`', k)
+        if dm and dm.group(1) in DROP_KEYS.get(table, []):
+            continue
         k2 = k
         m = re.match(r'(\s*)KEY `(uk_[^`]+)` \((.*)\)$', k)
         if m:  # D1：以 uk_ 命名的一律是唯一约束
@@ -213,6 +228,77 @@ def fix_keys(table, keys, cols):
     for cols_ in ADD_INDEX.get(table, []):
         out.append('  KEY `idx_%s_%s` (%s)' % (table, '_'.join(c[:12] for c in cols_)[:40], ', '.join('`%s`' % c for c in cols_)))
     return out
+
+
+OLD_SCHEMA = ROOT / 'backend/shop-app/src/test/resources/schema-test.sql'
+# 不照搬旧库的默认值：旧库的市场、币种默认是大陆时期的 CN / CNY，当前主场景是台湾（部署配置
+# SHOP_DEFAULT_MARKET=TW，正式库订单币种全是 TWD）。代码里的「本市场」读同一个部署配置，不写死。
+DEFAULT_OVERRIDES = {'market': "'TW'", 'currency': "'TWD'"}
+MANIFEST = ROOT / 'docs/technical/design/schema/db-split-manifest.csv'
+
+
+def old_defaults():
+    """旧库每张表的列默认值：表 -> 列 -> (默认值, 是否 NOT NULL)。
+
+    来源是按旧迁移重放出来的 schema-test.sql（可复现、离线可查）。字段草案生成器没有带默认值，
+    而代码大量依赖库里的默认值（插入时不写 tenant_no、status、audit_status……），丢了就是行为变了。
+    新表名到旧表名按拆库清单的「清理后表名」和本文件的 TRADE_TO_INDUSTRY 反查。
+    """
+    import csv
+    old = {}
+    pat = re.compile(r'CREATE TABLE IF NOT EXISTS (\w+)\s*\((.*?)\n\);', re.S)
+    for m in pat.finditer(OLD_SCHEMA.read_text(encoding='utf-8')):
+        cols = {}
+        for line in m.group(2).split('\n'):
+            c = re.match(r'\s*`?(\w+)`?\s+\S+(.*)', line)
+            if not c or c.group(1).upper() in ('PRIMARY', 'UNIQUE', 'KEY', 'CONSTRAINT', 'INDEX'):
+                continue
+            d = re.search(r"DEFAULT\s+('(?:[^']|'')*'|[-\w.()]+)", c.group(2), re.I)
+            cols[c.group(1).lower()] = (d.group(1) if d else None, 'NOT NULL' in c.group(2).upper())
+        old[m.group(1)] = cols
+    sources = {}
+    with open(MANIFEST, encoding='utf-8') as f:
+        for row in csv.DictReader(f):
+            new = (row.get('清理后表名') or '').strip()
+            if new and row.get('处置') in ('保留', '改归属', '改名'):
+                sources.setdefault(new, []).append(row['表'])
+    for old_name, new_name in TRADE_TO_INDUSTRY.items():
+        sources.setdefault(new_name, []).append(old_name)
+    return {'tables': old, 'sources': sources}
+
+
+def restore_default(table, line, olddefs, statuses):
+    """新列没有默认值、旧库同名列有字面量默认值时补回（不改类型；旧列 NOT NULL 就一并补上）。"""
+    name = col_name(line)
+    if re.search(r'AUTO_INCREMENT|GENERATED ALWAYS', line, re.I):
+        return line
+    if re.search(r"\bDEFAULT\s+(?!NULL\b)", line, re.I):
+        return line
+    found = None
+    for src in [table] + olddefs['sources'].get(table, []):
+        col = olddefs['tables'].get(src, {}).get(name)
+        if col and col[0] is not None and col[0].upper() != 'NULL':
+            found = col
+            break
+    if not found:
+        return line
+    value, not_null = found
+    if re.search(r'CURRENT_TIMESTAMP|NOW\(', value, re.I):
+        return line                         # 时间列由公共字段规则管，不在这里补
+    value = {'TRUE': '1', 'FALSE': '0'}.get(value.upper(), value)
+    q = re.match(r"'([A-Z_]+)'$", value)
+    if q and q.group(1) in statuses:       # 默认值是被换成短值的状态，跟着换
+        value = "'%s'" % statuses[q.group(1)]
+    if name in DEFAULT_OVERRIDES:          # 旧库是大陆时期的默认值，按当前主场景改（用户 2026-11-27）
+        value = DEFAULT_OVERRIDES[name]
+    body = re.sub(r'\s+DEFAULT\s+NULL\b', '', line, flags=re.I)
+    m = re.match(r"(\s*`\w+`\s+\w+(?:\([^)]*\))?(?:\s+unsigned)?)((?:\s+(?:CHARACTER SET|COLLATE)\s+\w+)*)(\s+NOT NULL)?(.*)$",
+                 body)
+    if not m:
+        return line
+    head, charset, nn, rest = m.group(1), m.group(2) or '', m.group(3), m.group(4) or ''
+    nn = ' NOT NULL' if (nn or not_null) else ''
+    return '%s%s%s DEFAULT %s%s' % (head, charset, nn, value, rest)
 
 
 def ensure_deleted(t):
@@ -282,11 +368,13 @@ def build(base_dir):
             t['cols'].insert(anchor, '  ' + c)
             anchor += 1
     # 列规则与键
+    olddefs = old_defaults()
     for tables in (trade, ind):
         for name, t in tables.items():
             if name in fixed:
                 continue  # 美业执行表、设备出口表取自实际结构，列与约束原样保留
             t['cols'] = [fix_column(name, c, statuses) for c in t['cols']]
+            t['cols'] = [restore_default(name, c, olddefs, statuses) for c in t['cols']]
             t['keys'] = fix_keys(name, t['keys'], t['cols'])
     header = ('-- 门店交易库 n_trade：建库建表（零售域第二段定稿，ADR-068）。由 scripts/gen-retail-ddl.py 生成，不要手改。\n'
               '-- 基础：ai-shop-slim 字段草案生成的 05-n_trade.sql；改动：方案与表清单 A1–A6、B1–B2、C1，状态短值换值表。\n\n'

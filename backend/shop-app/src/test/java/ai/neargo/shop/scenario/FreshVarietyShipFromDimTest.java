@@ -1,8 +1,8 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.product.entity.PrdCategorySpec;
+import ai.neargo.shop.product.entity.PrdSpecUsage;
 import ai.neargo.shop.product.entity.PrdSpecDim;
-import ai.neargo.shop.product.mapper.ProductMappers.CategorySpecMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.SpecUsageMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SpecDimMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -40,16 +40,16 @@ class FreshVarietyShipFromDimTest {
     @Autowired
     private SpecDimMapper dimMapper;
     @Autowired
-    private CategorySpecMapper catSpecMapper;
+    private SpecUsageMapper usageMapper;
 
     private PrdSpecDim dim(String dimNo) {
         return dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
                 .eq(PrdSpecDim::getDimNo, dimNo).last("limit 1"));
     }
 
-    private List<PrdCategorySpec> bindings(String dimNo) {
-        return catSpecMapper.selectList(Wrappers.<PrdCategorySpec>lambdaQuery()
-                .eq(PrdCategorySpec::getDimNo, dimNo));
+    private List<PrdSpecUsage> bindings(String dimNo) {
+        return usageMapper.selectList(SpecUsageMapper.categoryDims()
+                .eq(PrdSpecUsage::getDimNo, dimNo));
     }
 
     @Test
@@ -61,7 +61,7 @@ class FreshVarietyShipFromDimTest {
         // TEXT 不入池：柿子的阳丰、苹果的红富士，按三级类目才穷举得完，而绑定主力 CAT120 是二级
         assertThat(d.getValueType()).as("走 TEXT 不入 prd_spec_value（理由见迁移注释）").isEqualTo("TEXT");
 
-        assertThat(bindings("SD_VARIETY").stream().map(PrdCategorySpec::getCategoryNo))
+        assertThat(bindings("SD_VARIETY").stream().map(PrdSpecUsage::getScopeRef))
                 .as("蔬菜/水果/浆果/常温水果四个都要绑").containsAll(FRESH_CATEGORIES);
     }
 
@@ -79,10 +79,10 @@ class FreshVarietyShipFromDimTest {
     @DisplayName("★★ AC4 只追加 PROP，不动各类目原有的主维度")
     void newBindingsAreNotPrimary() {
         for (String dimNo : List.of("SD_VARIETY")) {
-            for (PrdCategorySpec b : bindings(dimNo)) {
+            for (PrdSpecUsage b : bindings(dimNo)) {
                 assertThat(b.getIsPrimary())
                         .as("%s 在 %s 上必须是 is_primary=0（每个类目只能有一个主维度，"
-                                + "多一个 SpecLibraryCoverageTest 就红）", dimNo, b.getCategoryNo())
+                                + "多一个 SpecLibraryCoverageTest 就红）", dimNo, b.getScopeRef())
                         .isFalse();
                 assertThat(b.getUsageType()).as("%s 要是 PROP 不是 SPEC", dimNo).isEqualTo("PROP");
             }

@@ -5,7 +5,7 @@ import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
-import ai.neargo.shop.product.entity.PrdCategoryPayMode;
+import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.product.service.PayModeService;
@@ -45,7 +45,7 @@ class PayModeResolveFlowTest {
     @Autowired
     private ProductMappers.GoodsMapper goodsMapper;
     @Autowired
-    private ProductMappers.CategoryPayModeMapper catPayModeMapper;
+    private ProductMappers.CategoryMapper categoryMapper;
     @Autowired
     private MerchantMappers.MchStoreMapper storeMapper;
     @Autowired
@@ -133,19 +133,13 @@ class PayModeResolveFlowTest {
             }
 
             /*
-             * 类目这一层是**全局**的（prd_category_pay_mode 按 category_no，不按主体），
-             * 所以先把这个类目下的行清干净再按需插 —— 否则「类目禁了」那条用例会污染其余四条。
-             * 这里用物理删除语义上更准：它不是「作废一条配置」，是「把测试造的脏数据擦掉」。
+             * 类目这一层是**全局**的（prd_category.disallowed_pay_modes 按类目，不按主体），
+             * 所以每条用例都把这一列显式写一遍 —— 否则「类目禁了」那条用例会污染其余四条。
              */
-            catPayModeMapper.delete(Wrappers.<PrdCategoryPayMode>lambdaQuery()
-                    .eq(PrdCategoryPayMode::getCategoryNo, CATEGORY));
-            if (!categoryAllows) {
-                PrdCategoryPayMode row = new PrdCategoryPayMode();
-                row.setCategoryNo(CATEGORY);
-                row.setPayMode(PayModes.OFFLINE);
-                row.setAllowed(0);
-                catPayModeMapper.insert(row);
-            }
+            categoryMapper.update(null, Wrappers.<PrdCategory>lambdaUpdate()
+                    .eq(PrdCategory::getCategoryNo, CATEGORY)
+                    .set(PrdCategory::getDisallowedPayModes,
+                            categoryAllows ? null : "[\"" + PayModes.OFFLINE + "\"]"));
 
             PrdGoods g = new PrdGoods();
             g.setGoodsNo(goodsNo);

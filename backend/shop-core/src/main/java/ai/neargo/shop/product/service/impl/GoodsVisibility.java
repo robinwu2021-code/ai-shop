@@ -283,7 +283,7 @@ public class GoodsVisibility {
             return out;
         }
         DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
-                        Wrappers.<PrdStoreGoods>lambdaQuery()
+                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                 .select(PrdStoreGoods::getGoodsNo, PrdStoreGoods::getStoreNo, PrdStoreGoods::getOnSale)
                                 .in(PrdStoreGoods::getGoodsNo, goodsNos)))
                 .forEach(r -> out.computeIfAbsent(r.getGoodsNo(), k -> new java.util.ArrayList<>()).add(r));

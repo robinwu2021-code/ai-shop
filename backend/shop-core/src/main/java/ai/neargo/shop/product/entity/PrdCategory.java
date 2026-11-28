@@ -84,4 +84,7 @@ public class PrdCategory extends BaseEntity {
 
     /** ACTIVE / DISABLED —— 停用类目不出现在树里，否则用户点进去是空列表。 */
     private String status;
+
+    /** 该类目禁止的付款方式（JSON 数组，ONLINE / OFFLINE）；空表示全部放行。读写见 CategoryPayModePolicy */
+    private String disallowedPayModes;
 }

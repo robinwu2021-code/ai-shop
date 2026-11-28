@@ -2,8 +2,8 @@
 /**
  * 提交历史（TDD-商品编辑页-录入落点与发布历史 AC11）。
  *
- * <p><b>为什么要这一页</b>：发布此前不留痕 —— `prd_goods_draft` 只存当前一份草稿，
- * 发布就把行删掉。于是发完只剩「线上是什么」，查不到「发过什么」：谁在什么时候
+ * <p><b>为什么要这一页</b>：发布此前不留痕 —— 草稿只存当前一份，
+ * 发布就把行删掉（门店交易库起草稿并进提交历史，编辑中 / 待审核 / 已放弃也在这一页）。于是发完只剩「线上是什么」，查不到「发过什么」：谁在什么时候
  * 改了哪几项、上一版长什么样、为什么被驳回，一概无从回答。发布确认页能说出
  * 「线上在你保存之后有过变动」，却说不出**是谁改的**。
  *
@@ -40,6 +40,9 @@ const STATUS_LABEL: Record<GoodsRevisionStatus, string> = {
   ONLINE: "goods.revStatusONLINE",
   SUPERSEDED: "goods.revStatusSUPERSEDED",
   REJECTED: "goods.revStatusREJECTED",
+  EDITING: "goods.revStatusEDITING",
+  SUBMITTED: "goods.revStatusSUBMITTED",
+  DISCARDED: "goods.revStatusDISCARDED",
 };
 const SRC_LABEL: Record<GoodsEntrySource, string> = {
   MANUAL: "goods.revSrcMANUAL",

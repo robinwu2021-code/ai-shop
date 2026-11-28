@@ -163,8 +163,7 @@ class SuspendedStoreWindDownFlowTest {
 
     private boolean storeOnSale(String goodsNo, String storeNo) {
         return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                storeGoodsMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                                .<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                storeGoodsMapper.selectList(ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                 .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNo)
                                 .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo, storeNo))
                         .stream().anyMatch(r -> Boolean.TRUE.equals(r.getOnSale())));

@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.port;
 
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -40,6 +42,17 @@ import org.springframework.transaction.annotation.Isolation;
 /** Pure product metadata: explicit owner predicates also protect service-token and consumer callers. */
 @Component
 public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
+
     private final GoodsMapper goods;
     private final SkuMapper skus;
 
@@ -302,9 +315,9 @@ public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
             var sku = skus.selectOne(Wrappers.<PrdSku>lambdaQuery()
                     .select(PrdSku::getSkuNo, PrdSku::getGoodsNo, PrdSku::getEntityNo,
                             PrdSku::getMarket, PrdSku::getVersion).eq(PrdSku::getEntityNo, entity)
-                    .eq(PrdSku::getSkuNo, number).eq(PrdSku::getMarket, "CN"));
+                    .eq(PrdSku::getSkuNo, number).eq(PrdSku::getMarket, homeMarket));
             if (sku == null || !entity.equals(sku.getEntityNo()) || !number.equals(sku.getSkuNo())
-                    || !"CN".equals(sku.getMarket())) throw BizException.of(ErrorCode.NOT_FOUND);
+                    || !homeMarket.equals(sku.getMarket())) throw BizException.of(ErrorCode.NOT_FOUND);
             var owner = goods.selectOne(Wrappers.<PrdGoods>lambdaQuery()
                     .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo, PrdGoods::getStoreNo)
                     .eq(PrdGoods::getGoodsNo, sku.getGoodsNo())
@@ -330,7 +343,7 @@ public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
             var variants = skus.selectList(Wrappers.<PrdSku>lambdaQuery()
                     .select(PrdSku::getSkuNo, PrdSku::getSpec, PrdSku::getVersion)
                     .eq(PrdSku::getEntityNo, entityNo).eq(PrdSku::getGoodsNo, goodsNo)
-                    .eq(PrdSku::getMarket, "CN").orderByAsc(PrdSku::getSkuNo));
+                    .eq(PrdSku::getMarket, homeMarket).orderByAsc(PrdSku::getSkuNo));
             return new GoodsFact(row.getGoodsNo(), row.getEntityNo(), row.getStoreNo(), row.getTitle(),
                     row.getCover(), Boolean.TRUE.equals(row.getOnSale()), row.getAuditStatus(), row.getVersion(),
                     variants.stream().map(s -> new SkuFact(s.getSkuNo(), s.getSpec(), s.getVersion())).toList());

@@ -46,7 +46,7 @@ class CardProductBindingFlowTest {
     @Autowired ObjectMapper json;
     @Autowired OtpStore otp;
     @Autowired TokenStores tokens;
-    private String id() { return UUID.randomUUID().toString(); }
+    private String id() { return UUID.randomUUID().toString().replace("-", ""); }   // 32 位：新库的编号列是 varchar(32)
     private EntitlementDefinition rule(String title) {
         return new EntitlementDefinition(title, "PAID_CARD", "MERCHANT", "CNY", "SERVICE_UNITS",
                 null, null, null, null, null, "COUNT", 30, null,
@@ -99,9 +99,9 @@ class CardProductBindingFlowTest {
         var head = catalog.get(scope, template.templateNo());
         var draft = catalog.saveDraft(scope, template.templateNo(), head.revision(), rule("New card title"), id());
         var v2 = catalog.publish(scope, template.templateNo(), draft.revision(), id());
-        assertThat(jdbc.queryForObject("SELECT template_version_no FROM prd_entitlement_binding WHERE sku_no=?",
+        assertThat(jdbc.queryForObject("SELECT entitlement_version_no FROM prd_sku WHERE sku_no=?",
                 String.class, sku)).isEqualTo(v1.versionNo());
-        assertThat(jdbc.queryForObject("SELECT rule_snapshot FROM prd_entitlement_binding WHERE sku_no=?",
+        assertThat(jdbc.queryForObject("SELECT entitlement_rule_snapshot FROM prd_sku WHERE sku_no=?",
                 String.class, sku)).contains("30 swims").doesNotContain("New card title");
         var second = bindings.bind(ctx, entity, new ProductEntitlementBinding(goods, sku, 1, v2.versionNo(), 1), id());
         assertThat(second.productRevision()).isEqualTo(2);
@@ -123,13 +123,11 @@ class CardProductBindingFlowTest {
             assertThat(won).isEqualTo(1);
         }
         assertThat(jdbc.queryForObject("SELECT version FROM prd_goods WHERE goods_no=?", Long.class, goods)).isEqualTo(3);
-        jdbc.update("UPDATE prd_entitlement_binding SET status='DISABLED' WHERE sku_no=?", sku);
-        assertThatThrownBy(() -> orders.createFor(actor, checkout, id())).isInstanceOfSatisfying(BizException.class,
-                e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
-        jdbc.update("UPDATE prd_entitlement_binding SET deleted=1 WHERE sku_no=?", sku);
-        assertThatThrownBy(() -> orders.createFor(actor, checkout, id())).isInstanceOfSatisfying(BizException.class,
-                e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
-        jdbc.update("UPDATE prd_entitlement_binding SET status='ACTIVE',deleted=0 WHERE sku_no=?", sku);
+        // 绑定并进 prd_sku 后，「停用绑定」就是停用这个 SKU：不能借此退回旧的无权益卖法
+        jdbc.update("UPDATE prd_sku SET status='DISABLED' WHERE sku_no=?", sku);
+        assertThatThrownBy(() -> orders.createFor(actor, checkout, id())).isInstanceOf(BizException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_order WHERE user_no=?", Integer.class, actor)).isZero();
+        jdbc.update("UPDATE prd_sku SET status=NULL WHERE sku_no=?", sku);
         jdbc.update("UPDATE prd_goods SET type='SERVICE' WHERE goods_no=?", goods);
         assertThatThrownBy(() -> bindings.bind(ctx, entity,
                 new ProductEntitlementBinding(goods, sku, 3, v2.versionNo(), 1), id())).isInstanceOf(BizException.class);

@@ -76,7 +76,7 @@
 
 - 商品可以先改造、先在测试里验证；
 - **上线必须与交易同批**：在交易对齐新库之前，交易句柄绑不了 `n_trade`，商品单独上线会让下单锁库存跨库、失去原子性。（v2 已删旧库配置，交易迁完之前本来也不会上线。）
-- 测试里两个句柄绑同一个 H2 库：建表脚本 = 现有的测试建表脚本去掉旧的 `prd_*`，再加上从 `05-n_trade.sql` 生成的商品新表。别的领域的 SQL 不查 `prd_*`（§1），所以两套表在一个测试库里不冲突。
+- 测试里两个句柄仍落在同一个 H2 库（shop）：`backend/scripts/gen-product-test-schema.py` 从 `05-n_trade.sql` 的全部 `prd_*` 与 `07-n_member.sql` 的评价、收藏表生成 `schema-product-test.sql`，h2db profile 在 `schema-test.sql` **之前**执行，同名的旧建表语句因此跳过（不 DROP：内存库跨测试上下文存活，DROP 会删掉别的上下文造的演示数据）。新设计去掉但代码还在用的列作「过渡列」临时补上并在文件头列出；只在旧库有的商品表暂不动，代码不再用时再去掉。别的领域的 SQL 不查 `prd_*`（§1），所以新旧两套表在一个测试库里不冲突；漂移测试只比 `schema-test.sql` 与迁移，不受影响。
 - `StockPortImpl` 等商品服务上的 `TRADE_TX_MANAGER` 改为 `PRODUCT_TX_MANAGER`；绑到同一数据源时它们是同一个 bean。
 
 **跨库的 4 个类**：评价（`n_member`）读商品（`n_trade`）的地方，改为经端口按商品号读，不在一个事务里写两个库。
@@ -98,6 +98,12 @@
 ### 2.5 数据搬迁
 
 - 一次性脚本 `scripts/migrate-product-to-n-trade.py`：从 `ai_shop_ume` 读、按 §2.3 的并入与改名规则转换、写 `n_trade` / `n_member`。可重复执行（按业务号覆盖），先在演练库 `ai_shop_ume_rehearsal` 上跑。
+- 市场：旧库 SKU、门店价的 `market` 为 `CN` 的改为 `TW`（正式库 5 个 SKU 里 4 个是 `CN`，来源是代码原先写死的「本市场」；新库默认值与代码的本市场都按部署配置为 `TW`，见 [列默认值补回方案](design/门店交易库-列默认值补回方案.md) §3）。
+- 规格范围的搬法：类目绑定写 `CATEGORY` 维度级行（`value_no=''`），类目取值子集写同范围取值级行；商家覆盖写 `MCH_CATEGORY`（`scope_ref` = 商家号/类目号，`value_no` 空串照搬，`enabled=0` → `DISABLED`）；商家常用维度与取值写 `MERCHANT`（`favorite=1`）。
+- 规格模板的搬法：平台模板按名字对到规格库的平台维度、选项按 code 对到取值，写 `CATEGORY_TYPE` 推荐（对不上的维度或取值列进搬迁报告，人工定）；`category_no` 非空的类目级模板不搬；商家自存模板转为他的自建维度 + `MERCHANT` 常用。
+- 草稿的搬法：每行草稿在提交历史里落一行（`EDITING` → `EDITING`、`SUBMITTED` → `SUBMITTED`，`base_version` → `base_goods_version`），编号取该商品最大编号 +1；若同一商品已有未发布（`DRAFT`）且内容相同的那一行，直接改它的状态而不另开。
+- 门店目录的搬法：旧库每个目录版本一行写进 `prd_store_catalog`（`revision_index` → `version_no`、`frozen_payload` → `frozen_content` 原文照搬、`stage = PUBLISHED`，目录号沿用旧编号）；门店商品写 `prd_catalog_item`（`catalog_version_no = ''`、`on_sale` → `enabled`）；类目库存开关写 `prd_store_category` 主体级行（`category_no` 按同一摘要算）。
+- 合表的搬法：`prd_store_price` 与 `prd_store_stock` 按 门店 + SKU 合成一行（库存行没有市场列，取本市场）；类目付款方式只搬 `allowed=0` 的行进 `disallowed_pay_modes`；SKU 定价策略、卡类权益绑定按 SKU 写进本市场那一行（权益绑定的 `status` 非 ACTIVE 或已删的，SKU 置 `DISABLED`）。
 - 对账：逐表比行数，商品、SKU、门店价与库存逐行比关键字段；对账报告存进上线记录。
 - 搬迁在切换窗口里与交易一起做，搬完旧表只读、不删。
 
@@ -148,9 +154,63 @@
 - `ProductDatabaseIsolationTest`（L3 五条）与基线 `product-db-isolation-baseline.txt`：现状 89 条违规（R1 11、R2 28、R4 2、R5 48），即第 3、4 步的工作清单，只许减少。
 - `ModuleTxManagerConventionTest`：商品包改为点名 `PRODUCT_TX_MANAGER`。
 
+### 第 2 步（测试库）
+
+- `backend/scripts/gen-product-test-schema.py` → `schema-product-test.sql`（25 张表：n_trade 的 21 张 `prd_*` + 评价 3 张 + 收藏），挂进 `check-generated-docs`；`application-h2db.yml` 的 `schema-locations` 把它排在 `schema-test.sql` 之前。过渡列：`prd_sku.stock`、`prd_sku.locked_stock`、`prd_store_catalog.current_version_no`。
+
+### 第 3 步 · 批次 1（纯改名）
+
+- `PrdSpuStd` → `prd_standard_goods`、`PrdSellRule` → `prd_sellable_rule`：列完全一致，只改 `@TableName`；基线 89 → 87。
+- 后续（不在商品范围）：媒体模块 `CoreMediaRefs` 按表名清理无主图片，仍登记旧表 `prd_spu_std`（其覆盖测试扫的是旧迁移）；媒体随它自己的迁移改成按句柄查新库。
+- 其余改名表都牵涉合表，放批次 2：`prd_store_price` → `prd_store_sku`（并入门店库存）、`prd_category_spec` → `prd_spec_usage`（类目改为范围）、`prd_category_spec_value` 在零售定稿里并入 `prd_spec_usage`。
+
+### 第 3 步 · 批次 2（合表）
+
+- **2-a 类目付款方式**：`prd_category_pay_mode` → `prd_category.disallowed_pay_modes`（JSON 数组，只记禁止的，空为 NULL 即全部放行；语义与原表「没有行即放行」一致）。读写集中在 `CategoryPayModePolicy`；`OpsCategoryPolicyController`、`PayModeServiceImpl` 改读类目表；删 `PrdCategoryPayMode` 与其 Mapper。运营端接口出参不变（`configured` 恒等于 `!offlineAllowed`）。基线 −1。
+- **2-b SKU 定价策略**：`prd_sku_pricing_policy` → `prd_sku.tax_class` / `promotion_eligible`，写在本市场那一行。原表的 `store_no` 维度不丢：服务本来就要求商品归属这家门店（`goods.store_no`），一个 SKU 只属一家店。策略编号改用 `sku_no`；版本复用该行乐观锁 `version`，未配时对外为 0。行为差异：同一 SKU 的其他修改（改价、条码）也会让在途的策略编辑冲突重来。`taxClasses` 的门店过滤改为经 `prd_goods.store_no`。删 `PrdSkuPricingPolicy` 与其 Mapper、数据范围登记；`PrivateOwnerDataScopeTest` 改为校验 `prd_sku` 同样拒绝仅位置授权。`BizKey.SKU_PRICING_POLICY` 暂留（术语表由它生成），再无写入方。
+- **2-b 卡类权益绑定**：`prd_entitlement_binding` → `prd_sku.entitlement_version_no` / `entitlement_rule_snapshot` / `entitlement_units`；币种从冻结的规则快照里取（写入时已校验与市场币种一致）。原表的 `status`（代码只写 ACTIVE）与「停用绑定」改为停用 SKU（`prd_sku.status = DISABLED`），同样不能借此退回旧的无权益卖法。专用防重表 `prd_ent_binding_command`（不在新库设计）改走公共的 `RequestIdempotencyPort`。基线 −4。
+- **2-c 门店价 + 店级库存**：`prd_store_price`、`prd_store_stock` → `prd_store_sku`（一店一 SKU 一市场一行），实体 `PrdStoreSku`、`StoreSkuMapper` 取代原来两套。列映射：`stock` → `sellable_qty`、`locked_stock` → `locked_qty`，口径不变（总量含已锁，可卖 = `sellable_qty - locked_qty`），扣减 SQL 逐条照搬。合表带来的语义要点：
+  - 两半各自可空、回退方向相反（门店价空回退主体价；店级库存空 = 这家店没有，按 SKU 判是否按店管理）。**一律看列不看行**：`hasStoreStock` / `managedByStore` / 可售量读取都加 `sellable_qty IS NOT NULL`，扣减类 SQL 也带这个条件，避免只设过价的行「影响 1 行」冒充成功。
+  - 写入：建店级库存走 `StoreSkuMapper.startStoreStock`（有行补列、无行才插，市场取本市场）；取消门店价只清价格两列，行上有店级库存时不删行；改价显式 set（划线价传空能清掉）。
+  - 价格来源的 `storePrice` 版本沿用原约定：行在就记它的版本（价格回退时也记，缺版本直接报错）。合表后店级库存的变动也会让这个版本变 —— 它只作留痕、不做比对，`prd_sku` 的版本本来就随锁库存变。
+  - 数据域：旧库门店价登记了 MERCHANT、店级库存没登记；合表后按库存那半不登记（扣减路径多处直接调 Mapper，登记后漏一处豁免就是「有货却下单失败」）。
+  - 本批不动 `prd_sku.stock`（主体级库存，过渡列）：去掉它意味着单店商家也要按店记库存，属于业务口径变化，另列一步。
+  - 基线 −2，另有 2 条 R5（invbridge 回填）随类名改写，仍属第 4 步。
+- **2-d 规格的使用范围**：`prd_category_spec`、`prd_category_spec_value`、`prd_merchant_spec_override`、`prd_merchant_spec`、`prd_merchant_spec_value` → `prd_spec_usage`，实体 `PrdSpecUsage`、`SpecUsageMapper` 取代五套。按 `scope_type` 分：
+  - `CATEGORY`：`scope_ref` = 类目号；维度级行即原类目绑定，取值级行即原类目取值子集（含类目内叫法）。
+  - `MCH_CATEGORY`（列宽 16，不用全称）：`scope_ref` = 商家号 + `/` + 类目号，`entity_no` = 商家号；原商家覆盖。原 `enabled=false` → `status = DISABLED`，其余为 `ACTIVE`；取值级行的 `value_no` 照旧存取值的 code。
+  - `MERCHANT`：`scope_ref` = 商家号；原商家常用维度与取值。代码里没有读写方，只随数据搬迁。
+  - 维度级行的 `value_no` 存空串而不是 NULL：唯一键 `(scope_type, scope_ref, dim_no, value_no)` 里 NULL 互不相等，存 NULL 就挡不住重复。
+  - 整份替换仍真删（`purgeScope`，唯一键不含 `deleted`）；查询一律从 `SpecUsageMapper.categoryDims / categoryValues / overrides` 起手，避免漏掉范围条件读到别的范围的行。
+  - 测试种子仍在旧表，`schema-test-extra.sql` 末尾复制进新表。基线 −5。
+- **2-e 规格模板**：`prd_spec_template` 退场，不新建平行的维度（旧模板与规格库内容重复：22 条测试种子的选项码只有 `VCASE` 一个在规格库里找不到）。读写集中在 `SpecTemplateBook`：
+  - 平台模板 → 品类推荐 `prd_spec_usage.scope_type = CATEGORY_TYPE`，`scope_ref` = 品类（`*` = 不限品类）。维度级行指向规格库的维度，取值级行是推荐的几档，叫法不同记 `label_override`。运营按名字建：规格库有同名平台维度就用它，没有就按规格库规则建一个（禁用词、重名同样拦）；选项按 code 找取值，没有就建成平台取值（量纲维度要归一量，此路建不出新档位）。
+  - 运营端模板号改为「品类-维度号」（同一维度可推荐给多个品类、各自归档）；下发给商家的 `templateNo` 改为维度号，与规格库下发一致，商品保存时据它反查取值编号。接口形状不变，ops-web、b-app 不用改。
+  - 商家「存为常用规格」→ 走「我的规格」建自建维度（同名平台维度则直接用平台的），再记 `scope_type = MERCHANT`、`favorite = 1`；下发时两种情况都带上，同一维度只给一次。
+  - 类目级的 16 条旧模板不搬：类目选定后只用规格库的类目绑定，它们本来就读不到。
+  - 测试种子：品类推荐 6 组直接按新表写进 `schema-test-extra.sql`（不从旧表复制），普通品类原叫「规格」的那组即件数维度 `SD_COUNT`。
+  - 基线 −1；新增用例 `OpsProductGovernFlowTest#categoryTypeRecommendationPointsAtLibraryDims`。
+- **2-f 商品草稿**：`prd_goods_draft` → `prd_goods_revision`，草稿就是提交历史里的一行。不改表结构，状态加三个值（列宽 10 内）：`EDITING` 编辑中、`SUBMITTED` 待审、`DISCARDED` 已放弃；原 `DRAFT` 仍表示「还没上架时直接保存的那一版」，不是草稿。
+  - 草稿 = 状态为 `EDITING` / `SUBMITTED` 的那一行，一件商品至多一行（锁商品行保证）；「有未发布修改」就看它在不在。原 `base_version` 改存 `base_goods_version`。读写集中在 `GoodsRevisionService` 的草稿方法。
+  - 去向：存在售商品的修改 = 有草稿改它（内容变了才改、退回编辑中），没有新开一行；免审发布 = 草稿行改在售、原在售改已替换；送审 = 改待审；撤回 = 改回编辑中；驳回 = 这一行记驳回与原因，再复制一行编辑中的新草稿（编号 +1）；放弃 = 改已放弃。草稿保存不再另记一笔历史（草稿行本身就是那一笔）。
+  - 换版时先把草稿行改成在售再回放（原来是先删草稿行），返回的 `hasDraft` 才是 false；回放失败整个事务回滚。
+  - 审核队列、待审看板改数提交历史里的 `SUBMITTED`；数据域登记从 `prd_goods_draft` 换到 `prd_goods_revision`（同为 MERCHANT / `entity_no`，服务层访问都已显式豁免）；门店换绑的「有没有商品数据」检查同样换表。
+  - B 端：`GoodsRevisionStatus` 加三个值，历史页加中英阿三语文案，编辑中/待审用提醒色；编辑页横幅「草稿 vN · 线上 vM」改认编辑中/待审。接口字段不变。
+  - 测试：`GoodsIntegrityFlowTest` 驳回后断言历史留有驳回原因；`M9bBizGoodsFlowTest` 放弃后断言历史留有已放弃那一版；`b-app/tests/goods-revisions.test.ts` 加新状态。基线 −1。
+- **2-g 门店目录三张表**（用户 2026-11-28 确认，其中两处改了新库 DDL，改在 `scripts/gen-retail-ddl.py`）：
+  - 目录版本 `prd_store_catalog_version` → `prd_store_catalog`，**一个版本一行**。DDL：去掉「一店一行」`uk_prd_catalog_scope` 与 `uk_prd_catalog_no`，改为 `(tenant_no, entity_no, catalog_no, version_no)`、`(tenant_no, catalog_version_no)` 两条唯一；`frozen_content` 从 `json` 改为 `mediumtext`（MySQL 会规范化 JSON，读回的文本与写入不同，快照摘要即对不上）。发布 = 锁住最新一版（`lockLatest ... FOR UPDATE`）、核对 expectedRevision、插下一版；结账锁同一行。读与结账取「已生效里最新的那一版」，定时生效照旧。首发的目录号用门店号，两人同时首发撞唯一键只留一份。`StoreSalesCatalogIT` 改为用定稿 DDL 建表（删掉旧迁移 V596 的升级用例），本机 MySQL 9.7 上 7 条全过。
+  - 门店商品 `prd_store_goods` → `prd_catalog_item` 的「门店级行」：`catalog_version_no` 存空串、`enabled` 即原 `on_sale`。DDL 加唯一 `(tenant_no, store_no, goods_no, catalog_version_no)`；餐饮的 `uk_food_1 (category_no, goods_no)` 保留（门店级行类目为空，不受它约束）。查询一律从 `StoreGoodsMapper.storeLevel()` 起手，免得把菜单条目当成门店上下架。
+  - 主体类目库存开关 `prd_entity_category_inv` → `prd_store_category` 的「主体级行」：门店号、目录号存空串，`platform_category_no` 为平台类目，`inv_managed` 为开关；行编号 `category_no` 按「主体 + 平台类目」摘要算出（`INV` + 29 位），同一开关永远落同一行，并发首设撞键后改那一行。不改 DDL。
+  - 新表 `tenant_no` 无默认值，两个实体构造时填 `MAIN`。门店换绑检查从 `prd_store_goods` 换到 `prd_catalog_item`；数据域去掉 `prd_store_catalog_version` 的登记。基线 −3。
+- 公共防重表 `sys_idempotent` 目前在主库、不与商品事务同库（定价策略原本就是如此）；它属于公共能力，随防重服务化处理，不进门店交易库。
+
 ### 偏差说明
 
+- 测试库没有按原方案「去掉旧 `prd_*`、两个句柄绑同一个 H2」，而是同一个 H2 库里追加一份按新设计生成的建表脚本：改动更小，漂移测试不受影响，且能逐批迁移。
+
 - 原方案新建 `member` 句柄；实现时发现已有 `memberMarketing` 句柄目标就是会员营销库，改为复用，只加标记接口。
+
+- 批次 2-b 定价策略的版本：原表有独立版本，并进 SKU 后复用行版本（设计 DDL 无专用列；加列属于改表结构，需另行确认）。
 
 ## §7 确认与完成
 

@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,13 +21,11 @@ import ai.neargo.shop.product.dto.GoodsDiffs;
 import ai.neargo.shop.product.dto.GoodsVO;
 import ai.neargo.shop.product.dto.SpecTemplateVO;
 import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.entity.PrdGoodsDraft;
+import ai.neargo.shop.product.entity.PrdGoodsRevision;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.entity.PrdSpecTemplate;
-import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.entity.PrdStoreSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.SpecTemplateMapper;
 import ai.neargo.shop.product.service.GoodsService;
 import ai.neargo.shop.product.service.MerchantGoodsService;
 import ai.neargo.shop.spi.product.ProductEvents.CatalogSourceChanged;
@@ -79,7 +79,16 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private static final String REJECTED = "REJECTED";
 
     /** 一期只做单市场（CN）；priceByMarket 里的其余市场各写一行 SKU。 */
-    private static final String HOME_MARKET = "CN";
+    /**
+     * 本市场：SKU 以这个市场的那一行为准。按部署配置 {@code shop.merchant.default-market}（正式环境 TW），
+     * 不写死；没配时与 {@code StoreMarkets} 一样回落 CN。手工构造（单测）时也是 CN。
+     */
+    private String homeMarket = "CN";
+
+    @Value("${shop.merchant.default-market:CN}")
+    void setHomeMarket(String market) {
+        this.homeMarket = market.trim().toUpperCase(Locale.ROOT);
+    }
 
     /** 市场主数据。**只用来校验 market 取值**，见 marketsOf 的注释 */
     private final ai.neargo.shop.spi.pay.MarketPort marketPort;
@@ -98,7 +107,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     private final GoodsMapper goodsMapper;
     private final SkuMapper skuMapper;
-    private final SpecTemplateMapper templateMapper;
+    private final SpecTemplateBook specTemplateBook;
     private final GoodsService goodsService;
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
 
@@ -111,7 +120,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     /** 建品规则（必填主图 / 标题长度）。同上，走 SPI */
     private final ai.neargo.shop.spi.platform.ProductPolicyPort productPolicy;
 
-    private final ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper;
+    /** 审核队列认待审草稿（数据域不豁免，与商品行同一根轴）；其余草稿读写都走 revisions */
+    private final ai.neargo.shop.product.mapper.ProductMappers.GoodsRevisionMapper revisionMapper;
 
     /**
      * 「正在换版」的重入标志。发布/过审换版要把草稿**原样走一遍 save() 全链路** （applyStd 的权威收敛、字段应用、saveSkus、门店行 —— 少任何一段都会漂移），
@@ -131,8 +141,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     /** 标准品：引用建品时用它把类目与 optionCode 拉回权威值 */
     private final ai.neargo.shop.product.service.SpuStdService spuStdService;
 
-    /** 门店级库存。**只有商家显式设置过才有行** —— 见 saveStoreStock 的说明 */
-    private final ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;
+    /** 门店 SKU（门店价 + 店级库存，一店一 SKU 一行；两半各自可空，见 PrdStoreSku） */
+    private final ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storeSkuMapper;
 
     /**
      * 改库存走它，不自己 update。
@@ -158,8 +168,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     /** 记不记库存的唯一判据；投影事件带上它，进销存据此决定建不建物料 */
     private final ai.neargo.shop.product.service.InvManagedService invManaged;
 
-    /** 门店级售价。**无行回退主体价**（与库存的「无行视为 0」相反，见 PrdStorePrice） */
-    private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
 
     /** 规格库（V195）：类目级规格从这里来，SKU 的值编号也靠它反查 */
     private final ai.neargo.shop.product.service.SpecLibraryService specLibrary;
@@ -168,20 +176,19 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             ai.neargo.shop.spi.product.StockPort stockPort,
             GoodsMapper goodsMapper,
             SkuMapper skuMapper,
-            SpecTemplateMapper templateMapper,
+            SpecTemplateBook specTemplateBook,
             GoodsService goodsService,
             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
             ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
             ai.neargo.shop.spi.platform.BannedWordPort bannedWords,
             ai.neargo.shop.spi.platform.ProductPolicyPort productPolicy,
-            ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper,
+            ai.neargo.shop.product.mapper.ProductMappers.GoodsRevisionMapper revisionMapper,
             ai.neargo.shop.spi.user.AdmissionPort admissionPort,
             ai.neargo.shop.product.service.CategoryService categoryService,
             ai.neargo.shop.product.service.SpuStdService spuStdService,
-            ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper,
+            ai.neargo.shop.product.mapper.ProductMappers.StoreSkuMapper storeSkuMapper,
             ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
             ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort,
-            ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper,
             ai.neargo.shop.product.service.SpecLibraryService specLibrary,
             ai.neargo.shop.event.OutboxEventBus events,
             ai.neargo.shop.spi.pay.MarketPort marketPort,
@@ -195,10 +202,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.marketPort = marketPort;
         this.invManaged = invManaged;
         this.specLibrary = specLibrary;
-        this.storePriceMapper = storePriceMapper;
         this.storeCategoryPort = storeCategoryPort;
         this.events = events;
-        this.storeStockMapper = storeStockMapper;
+        this.storeSkuMapper = storeSkuMapper;
         this.storeGoodsMapper = storeGoodsMapper;
         this.categoryService = categoryService;
         this.spuStdService = spuStdService;
@@ -206,12 +212,12 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.switchPort = switchPort;
         this.bannedWords = bannedWords;
         this.productPolicy = productPolicy;
-        this.draftMapper = draftMapper;
+        this.revisionMapper = revisionMapper;
         this.admissionPort = admissionPort;
         this.stockPort = stockPort;
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
-        this.templateMapper = templateMapper;
+        this.specTemplateBook = specTemplateBook;
         this.goodsService = goodsService;
         this.revisions = revisions;
         this.json = json;
@@ -250,9 +256,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             DataScopeContext.executeWithoutScope(
                             () ->
                                     storeGoodsMapper.selectList(
-                                            Wrappers
-                                                    .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                            lambdaQuery()
+                                            ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                     .eq(
                                                             ai.neargo.shop.product.entity
                                                                             .PrdStoreGoods
@@ -414,9 +418,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectList(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getEntityNo,
@@ -484,9 +486,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectList(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getEntityNo,
@@ -538,7 +538,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                 skuMapper.selectList(
                                         Wrappers.<PrdSku>lambdaQuery()
                                                 .eq(PrdSku::getEntityNo, merchantNo)
-                                                .eq(PrdSku::getMarket, HOME_MARKET)));
+                                                .eq(PrdSku::getMarket, homeMarket)));
         Map<String, Boolean> anyInStock = new LinkedHashMap<>();
         for (PrdSku s : rows) {
             boolean has = nz(s.getStock()) - nz(s.getLockedStock()) > 0;
@@ -634,17 +634,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         var w = Wrappers.<PrdGoods>lambdaQuery();
         /*
          * 待审 = 商品行在审（新品 / 免审关时的直接编辑）**或** 在售商品有一份已提交的草稿。
-         * 后者的 live 行保持 APPROVED（线上照卖旧版，见 publishDraft），只能从草稿表认出来。
-         * 草稿表同样按 MERCHANT 登记了数据域，这里**不豁免**：配了商家域的审核员只捞到自己那几家。
+         * 后者的 live 行保持 APPROVED（线上照卖旧版，见 publishDraft），只能从提交历史里的待审草稿认出来。
+         * 提交历史同样按 MERCHANT 登记了数据域，这里**不豁免**：配了商家域的审核员只捞到自己那几家。
          */
         List<String> submitted =
-                draftMapper
+                revisionMapper
                         .selectList(
-                                Wrappers.<PrdGoodsDraft>lambdaQuery()
-                                        .select(PrdGoodsDraft::getGoodsNo)
-                                        .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED))
+                                Wrappers.<PrdGoodsRevision>lambdaQuery()
+                                        .select(PrdGoodsRevision::getGoodsNo)
+                                        .eq(PrdGoodsRevision::getStatus, PrdGoodsRevision.SUBMITTED))
                         .stream()
-                        .map(PrdGoodsDraft::getGoodsNo)
+                        .map(PrdGoodsRevision::getGoodsNo)
                         .toList();
         if (submitted.isEmpty()) {
             applyStatus(w, "PENDING");
@@ -779,9 +779,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectList(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .in(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getGoodsNo,
@@ -799,25 +797,26 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         .map(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo)
                         .collect(java.util.stream.Collectors.toSet());
 
-        List<PrdStoreStock> stockRows =
+        List<PrdStoreSku> stockRows =
                 skuNos.isEmpty()
                         ? List.of()
                         : DataScopeContext.executeWithoutScope(
                                 () ->
-                                        storeStockMapper.selectList(
-                                                Wrappers.<PrdStoreStock>lambdaQuery()
-                                                        .in(PrdStoreStock::getSkuNo, skuNos)));
+                                        storeSkuMapper.selectList(
+                                                Wrappers.<PrdStoreSku>lambdaQuery()
+                                                        .in(PrdStoreSku::getSkuNo, skuNos)
+                                                        .isNotNull(PrdStoreSku::getSellableQty)));
         Set<String> managedSkus =
                 stockRows.stream()
-                        .map(PrdStoreStock::getSkuNo)
+                        .map(PrdStoreSku::getSkuNo)
                         .collect(java.util.stream.Collectors.toSet());
         Map<String, Integer> stockAtStore =
                 stockRows.stream()
                         .filter(r -> storeNo.equals(r.getStoreNo()))
                         .collect(
                                 java.util.stream.Collectors.toMap(
-                                        PrdStoreStock::getSkuNo,
-                                        r -> Math.max(nz(r.getStock()) - nz(r.getLockedStock()), 0),
+                                        PrdStoreSku::getSkuNo,
+                                        r -> Math.max(nz(r.getSellableQty()) - nz(r.getLockedQty()), 0),
                                         (a, b) -> a));
         return new StoreProjection(managedGoods, onSaleAtStore, managedSkus, stockAtStore);
     }
@@ -1356,48 +1355,21 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      */
     /** 「有未发布修改」标识的判据：草稿行存在与否，不比内容（保存时内容相同即删行） */
     private Boolean hasDraft(String goodsNo) {
-        Long n =
-                DataScopeContext.executeWithoutScope(
-                        () ->
-                                draftMapper.selectCount(
-                                        Wrappers.<PrdGoodsDraft>lambdaQuery()
-                                                .eq(PrdGoodsDraft::getGoodsNo, goodsNo)));
-        return n != null && n > 0;
+        return revisions.draft(goodsNo) != null;
     }
 
     private GoodsVO saveAsDraft(PrdGoods live, SaveCommand cmd) {
         lockOwnership(live.getEntityNo(), live.getStoreNo());
         String payload = writeJson(cmd);
-        PrdGoodsDraft row =
-                DataScopeContext.executeWithoutScope(
-                        () ->
-                                draftMapper.selectOne(
-                                        Wrappers.<PrdGoodsDraft>lambdaQuery()
-                                                .eq(PrdGoodsDraft::getGoodsNo, live.getGoodsNo())
-                                                .last("limit 1")));
-        if (row == null) {
-            row = new PrdGoodsDraft();
-            row.setGoodsNo(live.getGoodsNo());
-            row.setEntityNo(live.getEntityNo());
-            row.setBaseVersion(live.getVersion());
-            row.setStatus(PrdGoodsDraft.EDITING);
-            row.setPayload(payload);
-            PrdGoodsDraft ins = row;
-            DataScopeContext.executeWithoutScope(() -> draftMapper.insert(ins));
-        } else if (!payload.equals(row.getPayload())) {
-            row.setPayload(payload);
-            row.setStatus(PrdGoodsDraft.EDITING);
-            PrdGoodsDraft upd = row;
-            DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(upd));
-        }
         /*
-         * 记一笔提交历史。**与草稿行并列写，不是从草稿行推出来的** ——
-         * 草稿行发布就被物理删掉，历史要留。changeSummary 用现成的差异计算，
-         * 这里只取标签：它是给人看的摘要，不是结构化 diff（diff 随时能重算）。
+         * 草稿就是提交历史里状态为编辑中/待审的那一行（批次 2-f）：没有就新开一行，
+         * 有就在内容变了时改它。changeSummary 用现成的差异计算，只取标签 ——
+         * 它是给人看的摘要，不是结构化 diff（diff 随时能重算）。
          */
-        revisions.recordSave(
+        revisions.saveDraft(
                 live.getGoodsNo(),
                 live.getEntityNo(),
+                live.getVersion(),
                 payload,
                 summarize(live, cmd),
                 cmd.entrySource());
@@ -1410,13 +1382,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     public GoodsVO publishDraft(String merchantNo, String goodsNo, Long confirmVersion) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         PrdGoods live = mine(merchantNo, goodsNo);
-        PrdGoodsDraft draft =
-                DataScopeContext.executeWithoutScope(
-                        () ->
-                                draftMapper.selectOne(
-                                        Wrappers.<PrdGoodsDraft>lambdaQuery()
-                                                .eq(PrdGoodsDraft::getGoodsNo, goodsNo)
-                                                .last("limit 1")));
+        PrdGoodsRevision draft = revisions.draft(goodsNo);
         if (draft == null) {
             // 没草稿没什么可发布 —— 这不是错误路径的兜底，是端上按钮态漏了
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1432,14 +1398,14 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 确认之后线上又变了照样拒（等值比较天然做到）。另一条出路是 discardDraft。
          */
         boolean stale =
-                draft.getBaseVersion() != null && !draft.getBaseVersion().equals(live.getVersion());
+                draft.getBaseGoodsVersion() != null && !draft.getBaseGoodsVersion().equals(live.getVersion());
         if (stale && !live.getVersion().equals(confirmVersion)) {
             throw BizException.of(ErrorCode.GOODS_DRAFT_STALE);
         }
         if (stale) {
             // 确认过的冲突就地重新基线：审核开时草稿还要活到过审那一刻，
             // 行上记录的「基于哪一版」应当反映商家确认过的这一版
-            draft.setBaseVersion(live.getVersion());
+            draft.setBaseGoodsVersion(live.getVersion());
         }
         if (auditRequired()) {
             /*
@@ -1451,8 +1417,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * 而买家列表、详情、下单快照全都要求 APPROVED：审核期间旧版不是「继续卖」，
              * 是从买家那边整件消失。待审队列与看板改成同时认 SUBMITTED 草稿。
              */
-            draft.setStatus(PrdGoodsDraft.SUBMITTED);
-            DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(draft));
+            draft.setStatus(PrdGoodsRevision.SUBMITTED);
+            revisions.updateDraft(draft);
             return toVO(live);
         }
         return swapFromDraft(live, draft, merchantNo);
@@ -1462,24 +1428,19 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public GoodsVO discardDraft(String merchantNo, String goodsNo) {
         lockOwnership(merchantNo, BizContext.current().currentStoreNo());
-        // mine() 先核归属 —— 草稿表只有 goods_no，不核的话拿别家的单号也删得掉
+        // mine() 先核归属 —— 草稿按 goods_no 查，不核的话拿别家的单号也删得掉
         PrdGoods live = mine(merchantNo, goodsNo);
         // 幂等：purge 对不存在的行是 0 行 no-op，重复点「放弃」不该报错
-        DataScopeContext.executeWithoutScope(() -> draftMapper.purge(live.getGoodsNo()));
+        // 留在历史里、标为已放弃（批次 2-f）；没有草稿时是 no-op
+        revisions.discardDraft(live.getGoodsNo());
         return toVO(live);
     }
 
     @Override
     public SaveCommand draftOf(String merchantNo, String goodsNo) {
-        // mine() 先把归属核了：草稿表只有 goods_no，不核的话拿别家的单号也读得到
+        // mine() 先把归属核了：草稿按 goods_no 查，不核的话拿别家的单号也读得到
         PrdGoods live = mine(merchantNo, goodsNo);
-        PrdGoodsDraft draft =
-                DataScopeContext.executeWithoutScope(
-                        () ->
-                                draftMapper.selectOne(
-                                        Wrappers.<PrdGoodsDraft>lambdaQuery()
-                                                .eq(PrdGoodsDraft::getGoodsNo, live.getGoodsNo())
-                                                .last("limit 1")));
+        PrdGoodsRevision draft = revisions.draft(live.getGoodsNo());
         if (draft == null) {
             return null;
         }
@@ -1496,13 +1457,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     public ai.neargo.shop.product.dto.PublishPreviewVO publishPreview(
             String merchantNo, String goodsNo) {
         PrdGoods live = mine(merchantNo, goodsNo);
-        PrdGoodsDraft draft =
-                DataScopeContext.executeWithoutScope(
-                        () ->
-                                draftMapper.selectOne(
-                                        Wrappers.<PrdGoodsDraft>lambdaQuery()
-                                                .eq(PrdGoodsDraft::getGoodsNo, goodsNo)
-                                                .last("limit 1")));
+        PrdGoodsRevision draft = revisions.draft(goodsNo);
         if (draft == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -1522,16 +1477,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 「审内容本身」，那条路上没有 diff 可看，是常态不是错误。
          */
         PrdGoods live = requireByNoInScope(goodsNo);
-        PrdGoodsDraft draft =
-                DataScopeContext.executeWithoutScope(
-                        () ->
-                                draftMapper.selectOne(
-                                        Wrappers.<PrdGoodsDraft>lambdaQuery()
-                                                .eq(PrdGoodsDraft::getGoodsNo, live.getGoodsNo())
-                                                .eq(
-                                                        PrdGoodsDraft::getStatus,
-                                                        PrdGoodsDraft.SUBMITTED)
-                                                .last("limit 1")));
+        PrdGoodsRevision draft = revisions.submittedDraft(live.getGoodsNo());
         if (draft == null) {
             return null;
         }
@@ -1540,7 +1486,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     /** 草稿 vs 线上的字段级 diff。商家发布确认页与运营审核抽屉共用 —— 两边看的必须是同一份 */
     private ai.neargo.shop.product.dto.PublishPreviewVO buildPreview(
-            PrdGoods live, PrdGoodsDraft draft) {
+            PrdGoods live, PrdGoodsRevision draft) {
         SaveCommand cmd;
         try {
             cmd = json.readValue(draft.getPayload(), SaveCommand.class);
@@ -1548,7 +1494,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         boolean stale =
-                draft.getBaseVersion() != null && !draft.getBaseVersion().equals(live.getVersion());
+                draft.getBaseGoodsVersion() != null && !draft.getBaseGoodsVersion().equals(live.getVersion());
 
         // dry-run 烘焙草稿的规格 —— 与真发布同一套规则（bakeSpecs），否则预览会说谎
         String draftGroupsJson = writeSpecGroups(cmd.specGroups());
@@ -1715,7 +1661,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      *
      * @return 拦下的原因；能换回 null
      */
-    private String swapBlocker(PrdGoods live, PrdGoodsDraft draft) {
+    private String swapBlocker(PrdGoods live, PrdGoodsRevision draft) {
         SaveCommand cmd = snapshotCmd(draft.getPayload());
         if (cmd == null) {
             return "草稿解析失败";
@@ -1748,17 +1694,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * <p>调用点：强制下架（处置推翻了草稿提交时的前提）、商品行被直接改写（送审的已是另一版）。 不撤的话：草稿待审 → 强制下架 → 商家整改 → 运营过审，生效的是强制下架之前那份草稿。
      */
     private void withdrawSubmittedDraft(String goodsNo) {
-        DataScopeContext.executeWithoutScope(
-                () ->
-                        draftMapper.update(
-                                null,
-                                Wrappers.<PrdGoodsDraft>lambdaUpdate()
-                                        .set(PrdGoodsDraft::getStatus, PrdGoodsDraft.EDITING)
-                                        .eq(PrdGoodsDraft::getGoodsNo, goodsNo)
-                                        .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED)));
+        revisions.withdrawSubmitted(goodsNo);
     }
 
-    private GoodsVO swapFromDraft(PrdGoods live, PrdGoodsDraft draft, String publishedBy) {
+    private GoodsVO swapFromDraft(PrdGoods live, PrdGoodsRevision draft, String publishedBy) {
         SaveCommand cmd;
         try {
             cmd = json.readValue(draft.getPayload(), SaveCommand.class);
@@ -1769,26 +1708,24 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         PUBLISHING.set(Boolean.TRUE);
         try {
             /*
-             * ★ **先删草稿行，再 save。** 顺序反过来的话 save() 内部构建 VO 时
+             * ★ **先把草稿收掉，再 save。** 顺序反过来的话 save() 内部构建 VO 时
              * 草稿行还在，返回的 {@code hasDraft} 就是 true —— 比真相晚一条语句。
              *
              * 而端上正是用这个字段选提示文案：免审直通发布之后，商家看到的是
              * 「已提交审核，线上仍在售旧版，过审后自动换新」—— <b>说了反话</b>，
              * 改动其实已经生效。2026-09-17 关掉 goods.audit 后在生产上实测到。
              *
-             * payload 已经解析进 cmd，删行不影响 save()；它也不读草稿表
+             * payload 已经解析进 cmd，收掉草稿不影响 save()；它也不读草稿
              * （stayDraft 只看商品自身的 audit_status）。同一个事务里，
              * save() 抛异常整体回滚，草稿不会被白删。
              */
-            DataScopeContext.executeWithoutScope(() -> draftMapper.purge(draft.getGoodsNo()));
-            GoodsVO vo = save(live.getEntityNo(), cmd);
+            revisions.publishDraft(draft, publishedBy);
             /*
-             * 换版成功了才记发布 —— 放在 save 之前的话,save 抛 80017 虽然会连同
-             * 这一笔一起回滚(同一事务),但顺序反着写就埋了一个「哪天改成不同事务
-             * 就会留下假记录」的雷。**成功之后记,不靠事务兜底。**
+             * 草稿行先改成在售（批次 2-f 起草稿就是这一行历史），再 save：理由同上 ——
+             * 草稿还挂着的话返回的 hasDraft 是 true。save 抛异常（如 80017）时整个事务回滚，
+             * 这一行退回草稿，不会留下假的「已发布」。
              */
-            revisions.recordPublished(draft.getGoodsNo(), publishedBy);
-            return vo;
+            return save(live.getEntityNo(), cmd);
         } finally {
             PUBLISHING.remove();
         }
@@ -2048,7 +1985,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             // 按市场逐行写：(entity_no, sku_no, market) 是价格的唯一权威，
             // 一个 SKU 在三个市场就是三行，而不是一行里塞一个 JSON 价格表
             Map<String, Long> prices = new LinkedHashMap<>();
-            prices.put(HOME_MARKET, sku.price());
+            prices.put(homeMarket, sku.price());
             if (sku.priceByMarket() != null) {
                 /*
                  * **market 的取值要校验，它是从调用方原样落进列里的。**
@@ -2251,9 +2188,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 }
             }
             for (String sku : removals) {
-                var stores = storeStockMapper.lockSkuStoresCurrent(sku);
+                var stores = storeSkuMapper.lockSkuStoresCurrent(sku);
                 if (stores.stream().anyMatch(row -> !entity.equals(row.getEntityNo())
-                        || (row.getLockedStock() != null && row.getLockedStock() != 0))) throw BizException.of(
+                        || (row.getLockedQty() != null && row.getLockedQty() != 0))) throw BizException.of(
                             ErrorCode.CONFLICT);
             }
             return null;
@@ -2295,19 +2232,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (skuNos.isEmpty()) {
             return;
         }
-        List<PrdStoreStock> rows =
+        List<PrdStoreSku> rows =
                 DataScopeContext.executeWithoutScope(
                         () ->
-                                storeStockMapper.selectList(
-                                        Wrappers.<PrdStoreStock>lambdaQuery()
-                                                .in(PrdStoreStock::getSkuNo, skuNos)));
+                                storeSkuMapper.selectList(
+                                        Wrappers.<PrdStoreSku>lambdaQuery()
+                                                .in(PrdStoreSku::getSkuNo, skuNos)
+                                                .isNotNull(PrdStoreSku::getSellableQty)));
         if (rows.isEmpty()) {
             // 这件商品还没有任何门店库存行 = 没启用分店库存，什么都不用做
             return;
         }
         Set<String> stores =
                 rows.stream()
-                        .map(PrdStoreStock::getStoreNo)
+                        .map(PrdStoreSku::getStoreNo)
                         .collect(
                                 java.util.stream.Collectors.toCollection(
                                         java.util.LinkedHashSet::new));
@@ -2320,13 +2258,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 if (have.contains(skuNo + "@" + storeNo)) {
                     continue;
                 }
-                PrdStoreStock row = new PrdStoreStock();
-                row.setStoreNo(storeNo);
-                row.setSkuNo(skuNo);
-                row.setEntityNo(merchantNo);
-                row.setStock(0);
-                row.setLockedStock(0);
-                DataScopeContext.executeWithoutScope(() -> storeStockMapper.insert(row));
+                DataScopeContext.executeWithoutScope(() -> {
+                    storeSkuMapper.startStoreStock(merchantNo, storeNo, skuNo, homeMarket);
+                    return null;
+                });
             }
         }
     }
@@ -2736,9 +2671,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectList(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getStoreNo,
@@ -2881,9 +2814,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectOne(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getStoreNo,
@@ -3058,9 +2989,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectOne(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getStoreNo,
@@ -3091,10 +3020,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         DataScopeContext.executeWithoutScope(
                                 () ->
                                         storeGoodsMapper.selectOne(
-                                                Wrappers
-                                                        .<ai.neargo.shop.product.entity
-                                                                        .PrdStoreGoods>
-                                                                lambdaQuery()
+                                                ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                         .eq(
                                                                 ai.neargo.shop.product.entity
                                                                                 .PrdStoreGoods
@@ -3368,23 +3294,11 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (!exists) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        PrdStoreStock row =
-                DataScopeContext.executeWithoutScope(
-                        () ->
-                                storeStockMapper.selectOne(
-                                        Wrappers.<PrdStoreStock>lambdaQuery()
-                                                .eq(PrdStoreStock::getStoreNo, storeNo)
-                                                .eq(PrdStoreStock::getSkuNo, skuNo)));
-        if (row == null) {
-            // 这家店还没有这一行 —— 先建出来（Port 的 setOnHand 只改不建）
-            PrdStoreStock toInsert = new PrdStoreStock();
-            toInsert.setStoreNo(storeNo);
-            toInsert.setSkuNo(skuNo);
-            toInsert.setEntityNo(merchantNo);
-            toInsert.setLockedStock(0);
-            toInsert.setStock(0);
-            DataScopeContext.executeWithoutScope(() -> storeStockMapper.insert(toInsert));
-        }
+        // 这家店还没有店级库存 —— 先建出来（Port 的 setOnHand 只改不建）；只设过门店价的店补上库存列
+        DataScopeContext.executeWithoutScope(() -> {
+            storeSkuMapper.startStoreStock(merchantNo, storeNo, skuNo, homeMarket);
+            return null;
+        });
         /*
          * **接入进销存、且本店开了同步的货，改的是「线上放多少」，不是实物**（§8）。
          * 实物只由单据改；这里直接写商城库存的话，下一次进货 / 盘点的写回会把它盖掉 ——
@@ -3537,22 +3451,22 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         var existing =
                 DataScopeContext.executeWithoutScope(
                         () ->
-                                storePriceMapper.selectOne(
+                                storeSkuMapper.selectOne(
                                         Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStorePrice>
+                                                .<ai.neargo.shop.product.entity.PrdStoreSku>
                                                         lambdaQuery()
                                                 .eq(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getStoreNo,
                                                         storeNo)
                                                 .eq(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getSkuNo,
                                                         skuNo)
                                                 .eq(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getMarket,
-                                                        HOME_MARKET)));
+                                                        homeMarket)));
         /*
          * **传空 = 取消本店单独定价**，回到主体价。
          *
@@ -3560,9 +3474,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 「改成和总部一样」只能靠他自己抄一遍数字，而抄错没有任何一处会拦。
          */
         if (price == null) {
-            if (existing != null) {
+            if (existing != null && existing.getPrice() != null) {
+                /*
+                 * 只清价格那两列，不删行：门店价与店级库存同在 prd_store_sku 一行，
+                 * 删行会把这家店的库存一起删掉。没有店级库存的行清完价就是空壳，顺手删掉。
+                 */
                 DataScopeContext.executeWithoutScope(
-                        () -> storePriceMapper.deleteById(existing.getId()));
+                        () -> existing.getSellableQty() == null
+                                ? storeSkuMapper.deleteById(existing.getId())
+                                : storeSkuMapper.update(null, Wrappers.<PrdStoreSku>lambdaUpdate()
+                                        .eq(PrdStoreSku::getId, existing.getId())
+                                        .set(PrdStoreSku::getPrice, null)
+                                        .set(PrdStoreSku::getOriginPrice, null)));
                 events.publish(
                         new CatalogSourceChanged(
                                 merchantNo, storeNo, goodsNo, "STORE_PRICE_CHANGED"));
@@ -3573,18 +3496,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (existing == null) {
-            var row = new ai.neargo.shop.product.entity.PrdStorePrice();
+            var row = new ai.neargo.shop.product.entity.PrdStoreSku();
             row.setStoreNo(storeNo);
             row.setSkuNo(skuNo);
             row.setEntityNo(merchantNo);
-            row.setMarket(HOME_MARKET);
+            row.setMarket(homeMarket);
             row.setPrice(price);
             row.setOriginPrice(originPrice);
-            DataScopeContext.executeWithoutScope(() -> storePriceMapper.insert(row));
+            DataScopeContext.executeWithoutScope(() -> storeSkuMapper.insert(row));
         } else {
-            existing.setPrice(price);
-            existing.setOriginPrice(originPrice);
-            DataScopeContext.executeWithoutScope(() -> storePriceMapper.updateById(existing));
+            // 显式 set：划线价传空要能清掉（updateById 会跳过空字段）；只改价格两列，库存列不碰
+            DataScopeContext.executeWithoutScope(() -> storeSkuMapper.update(null,
+                    Wrappers.<PrdStoreSku>lambdaUpdate().eq(PrdStoreSku::getId, existing.getId())
+                            .set(PrdStoreSku::getPrice, price)
+                            .set(PrdStoreSku::getOriginPrice, originPrice)));
         }
         events.publish(
                 new CatalogSourceChanged(merchantNo, storeNo, goodsNo, "STORE_PRICE_CHANGED"));
@@ -3601,20 +3526,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         for (var r :
                 DataScopeContext.executeWithoutScope(
                         () ->
-                                storePriceMapper.selectList(
+                                storeSkuMapper.selectList(
                                         Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStorePrice>
+                                                .<ai.neargo.shop.product.entity.PrdStoreSku>
                                                         lambdaQuery()
                                                 .eq(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getStoreNo,
                                                         storeNo)
                                                 .eq(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getMarket,
-                                                        HOME_MARKET)
+                                                        homeMarket)
                                                 .in(
-                                                        ai.neargo.shop.product.entity.PrdStorePrice
+                                                        ai.neargo.shop.product.entity.PrdStoreSku
                                                                 ::getSkuNo,
                                                         skuNos)))) {
             if (r.getPrice() != null) {
@@ -3630,9 +3555,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 && !skuNo.isBlank()
                 && DataScopeContext.executeWithoutScope(
                                 () ->
-                                        storeStockMapper.selectCount(
-                                                Wrappers.<PrdStoreStock>lambdaQuery()
-                                                        .eq(PrdStoreStock::getSkuNo, skuNo)))
+                                        storeSkuMapper.selectCount(
+                                                Wrappers.<PrdStoreSku>lambdaQuery()
+                                                        .eq(PrdStoreSku::getSkuNo, skuNo)
+                                                        .isNotNull(PrdStoreSku::getSellableQty)))
                         > 0;
     }
 
@@ -3646,18 +3572,19 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 || (storeNos != null && storeNos.isEmpty())) {
             return java.util.Map.of();
         }
-        List<PrdStoreStock> rows =
+        List<PrdStoreSku> rows =
                 DataScopeContext.executeWithoutScope(
                         () ->
-                                storeStockMapper.selectList(
-                                        Wrappers.<PrdStoreStock>lambdaQuery()
-                                                .eq(PrdStoreStock::getEntityNo, merchantNo)
+                                storeSkuMapper.selectList(
+                                        Wrappers.<PrdStoreSku>lambdaQuery()
+                                                .eq(PrdStoreSku::getEntityNo, merchantNo)
+                                                .isNotNull(PrdStoreSku::getSellableQty)
                                                 .in(
                                                         storeNos != null,
-                                                        PrdStoreStock::getStoreNo,
+                                                        PrdStoreSku::getStoreNo,
                                                         storeNos == null ? List.of() : storeNos)));
         java.util.Map<String, Integer> out = new java.util.LinkedHashMap<>();
-        for (PrdStoreStock r : rows) {
+        for (PrdStoreSku r : rows) {
             if (r.getStoreNo() == null || r.getStoreNo().isBlank()) {
                 continue;
             }
@@ -3666,7 +3593,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * 20 件全被未付款的单锁着，货架上就是空的 —— 只看 stock 的话
              * 商家在「缺货 0」的页面上眼看着卖不出去。
              */
-            int available = nzi(r.getStock()) - nzi(r.getLockedStock());
+            int available = nzi(r.getSellableQty()) - nzi(r.getLockedQty());
             if (available <= 0) {
                 out.merge(r.getStoreNo(), 1, Integer::sum);
             }
@@ -3719,34 +3646,14 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * DRAFT 仍放行：运营代审未提交的新品是存量用法（大量测试夹具也这么建品），
          * 它没有「绕过整改」的问题 —— 草稿从没过过审。
          */
-        boolean hasSubmittedDraft =
-                DataScopeContext.executeWithoutScope(
-                                () ->
-                                        draftMapper.selectCount(
-                                                Wrappers.<PrdGoodsDraft>lambdaQuery()
-                                                        .eq(
-                                                                PrdGoodsDraft::getGoodsNo,
-                                                                g.getGoodsNo())
-                                                        .eq(
-                                                                PrdGoodsDraft::getStatus,
-                                                                PrdGoodsDraft.SUBMITTED)))
-                        > 0;
+        boolean hasSubmittedDraft = revisions.submittedDraft(g.getGoodsNo()) != null;
         if (!hasSubmittedDraft
                 && !AUDITING.equals(g.getAuditStatus())
                 && !DRAFT.equals(g.getAuditStatus())) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         if (!approved) {
-            PrdGoodsDraft pending =
-                    DataScopeContext.executeWithoutScope(
-                            () ->
-                                    draftMapper.selectOne(
-                                            Wrappers.<PrdGoodsDraft>lambdaQuery()
-                                                    .eq(PrdGoodsDraft::getGoodsNo, g.getGoodsNo())
-                                                    .eq(
-                                                            PrdGoodsDraft::getStatus,
-                                                            PrdGoodsDraft.SUBMITTED)
-                                                    .last("limit 1")));
+            PrdGoodsRevision pending = revisions.submittedDraft(g.getGoodsNo());
             if (pending != null) {
                 /*
                  * **驳回的是草稿，不是线上那一版。** 双版本下待审的是 SUBMITTED 草稿，
@@ -3755,12 +3662,11 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                  * 草稿退回编辑态让商家改了再发；原因落在商品行上，商家侧照常看得到。
                  * （发布曾把 live 置 AUDITING 的存量行，这里一并拨回 APPROVED。）
                  */
-                pending.setStatus(PrdGoodsDraft.EDITING);
-                DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(pending));
+                // 驳回的那一版留在历史里，内容复制成一份编辑中的新草稿（批次 2-f）
+                revisions.rejectDraft(pending, reason.trim());
                 g.setAuditStatus(APPROVED);
                 g.setAuditReason(reason.trim());
                 updateGoods(g);
-                revisions.recordRejected(goodsNo, reason.trim());
                 return toVO(g);
             }
         }
@@ -3791,16 +3697,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              *     正好与商家刚做的事相反。
              * 只恢复他真的表达过的那一份，这两条就都不受影响。
              */
-            PrdGoodsDraft submitted =
-                    DataScopeContext.executeWithoutScope(
-                            () ->
-                                    draftMapper.selectOne(
-                                            Wrappers.<PrdGoodsDraft>lambdaQuery()
-                                                    .eq(PrdGoodsDraft::getGoodsNo, g.getGoodsNo())
-                                                    .eq(
-                                                            PrdGoodsDraft::getStatus,
-                                                            PrdGoodsDraft.SUBMITTED)
-                                                    .last("limit 1")));
+            PrdGoodsRevision submitted = revisions.submittedDraft(g.getGoodsNo());
             if (submitted != null) {
                 /*
                  * 双版本的过审 = 换版（swapFromDraft 内部会编译+保持在售+删草稿）。
@@ -3820,8 +3717,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                             "[换版] 过审换版被拦，旧版继续卖、草稿退回编辑态：goods={} reason={}",
                             g.getGoodsNo(),
                             blocker);
-                    submitted.setStatus(PrdGoodsDraft.EDITING);
-                    DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(submitted));
+                    submitted.setStatus(PrdGoodsRevision.EDITING);
+                    revisions.updateDraft(submitted);
                     g.setAuditStatus(APPROVED);
                     updateGoods(g);
                     return toVO(g);
@@ -3863,139 +3760,29 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     public List<SpecTemplateVO> specTemplates(
             String merchantNo, String categoryType, String categoryNo) {
-        var w =
-                Wrappers.<PrdSpecTemplate>lambdaQuery()
-                        /*
-                         * 归档的不下发（V102）。**归档了商家还能选，等于没归档** ——
-                         * 而运营会以为自己把那套错的规格下线了，直到发现新品还在用它。
-                         * 存量行的 status 由迁移的 DEFAULT 'ACTIVE' 兜住。
-                         */
-                        .eq(PrdSpecTemplate::getStatus, PrdSpecTemplate.ACTIVE)
-                        // 平台模板 + 我自己的。别家商家自存的模板与我无关
-                        .and(
-                                q ->
-                                        q.eq(PrdSpecTemplate::getScope, PrdSpecTemplate.PLATFORM)
-                                                .or(
-                                                        o ->
-                                                                o.eq(
-                                                                                PrdSpecTemplate
-                                                                                        ::getScope,
-                                                                                PrdSpecTemplate
-                                                                                        .MERCHANT)
-                                                                        .eq(
-                                                                                PrdSpecTemplate
-                                                                                        ::getEntityNo,
-                                                                                merchantNo)));
-        if (categoryType != null && !categoryType.isBlank()) {
-            // 品类过滤只作用于平台模板：商家自存的模板不限品类（他自己知道用在哪）
-            w.and(
-                    q ->
-                            q.eq(PrdSpecTemplate::getCategoryType, categoryType)
-                                    .or(o -> o.isNull(PrdSpecTemplate::getCategoryType)));
-        }
         /*
-         * **别家类目的专属模板要挡掉。**
+         * 三路来源，都已在规格库里（批次 2-e 起旧模板表退场）：
+         *   · 类目选定：规格库按类目装配的那几组（templatesForCategory）
+         *   · 还没选类目：按品类推荐的那几组（原平台模板的品类兜底，运营端 /ops/spec-templates 维护）
+         *   · 两种情况都带上：他自己存过的常用规格（原商家自存模板）
          *
-         * 类目级模板的 category_type 也填着（不填会变成谁都查不到的孤儿行），
-         * 所以只按品类过滤的话，选「休闲零食」会连「手机数码 → 颜色/存储」
-         * 一起推过来 —— 它们同属 NORMAL。
+         * **类目选定之后，没配规格就是没有规格 —— 不再回落品类推荐。**
+         * 那条回落让运营端看到的「缺口」在商家这边被兜底盖住，于是没人急着补；
+         * 而兜底给出的是「包装：袋装/瓶装/罐装」这种推给谁都不对题的东西。
+         * 商家仍有出路：手输，或者自建规格（POST /biz/spec-dims、/biz/spec-values）。
+         *
+         * 契约形状一个字没变（SpecTemplate[]），templateNo 一律是维度号 ——
+         * 商品保存时据它反查取值编号，所以按推荐建的商品也能跨店聚合。
          */
         String picked = categoryNo == null || categoryNo.isBlank() ? null : categoryNo;
-        w.and(
-                q -> {
-                    q.isNull(PrdSpecTemplate::getCategoryNo);
-                    if (picked != null) {
-                        q.or(o -> o.eq(PrdSpecTemplate::getCategoryNo, picked));
-                    }
-                });
-
-        List<SpecTemplateVO> legacy =
-                DataScopeContext.executeWithoutScope(() -> templateMapper.selectList(w)).stream()
-                        .map(this::toVO)
-                        .toList();
-        /*
-         * **类目级规格来自规格库（V195），品类兜底与商家自存仍来自老表。**
-         *
-         * 规格库那边一个类目能给出 3–5 个维度、值有编号也有归一量；老表那 22 条里
-         * 类目级只覆盖 13 个类目，且值只是 JSON 里的字符串。所以类目一确定就以新库为准，
-         * 老库只剩两件事：没配规格的类目还能拿到品类兜底，商家自存的常用还在。
-         *
-         * 契约形状一个字没变（SpecTemplate[]），b-app 因此不用改。
-         */
-        List<SpecTemplateVO> fromLibrary =
-                picked == null ? List.of() : specLibrary.templatesForCategory(merchantNo, picked);
-        /*
-         * **类目选定之后，没配规格就是没有规格 —— 不再回落品类兜底。**
-         *
-         * 那条回落有两个后果：运营端看到的「缺口」在商家这边被兜底盖住了，于是没人急着补；
-         * 而兜底给出的是「包装：袋装/瓶装/罐装」这种推给谁都不对题的东西，商家照样全删了手打。
-         * 删掉之后三件事同时成立：缺口计数是真的、商家看到的推荐一定对题、老模板表能退役。
-         *
-         * 商家仍有出路：手输，或者自建规格（POST /biz/spec-dims、/biz/spec-values）。
-         */
-        if (picked != null) {
-            List<SpecTemplateVO> merged0 = new java.util.ArrayList<>(fromLibrary);
-            // 商家自存的常用仍旧给他 —— 那是他自己的东西，与运营配没配无关
-            legacy.stream()
-                    .filter(t -> PrdSpecTemplate.MERCHANT.equals(t.scope()))
-                    .forEach(merged0::add);
-            return merged0;
-        }
-        if (fromLibrary.isEmpty()) {
-            /*
-             * **还没选类目：平台模板照给。**
-             *
-             * 我上一版在这里只留了商家自存的，理由是「选完类目才知道该推什么」——
-             * 那句话对的是上面 picked != null 那条（选了类目就不该再回落品类兜底），
-             * 搬到这里就错了：运营端 /ops/spec-templates 仍旧往老表写，
-             * 而商家侧只认新库的话，**运营建的模板商家永远查不到** ——
-             * 「模板是死的」那条断裂原样回来了，且运营那边看不出任何异常。
-             */
-            return legacy;
-        }
-        // 新库给了这一类目的维度，老表里同名的那几条（兜底或旧类目级）就别再推一遍
-        Set<String> libNames =
-                fromLibrary.stream()
-                        .map(SpecTemplateVO::name)
-                        .collect(java.util.stream.Collectors.toSet());
-        List<SpecTemplateVO> merged = new java.util.ArrayList<>(fromLibrary);
-        for (SpecTemplateVO t : legacy) {
-            boolean sameName = libNames.contains(t.name());
-            boolean mine = PrdSpecTemplate.MERCHANT.equals(t.scope());
-            // 商家自存的即便同名也留着 —— 那是他自己的东西，平台没有资格顶掉
-            if (mine || !sameName) {
-                merged.add(t);
-            }
-        }
-        return merged;
-    }
-
-    /**
-     * 类目级顶掉同名的品类兜底，并把类目级排在前面。
-     *
-     * <p>不去重的话，选「休闲零食」会同时看到类目级的「重量」与兜底的「规格」， 而商家其实只该看到前者 —— 两个都推给他，他得先判断该用哪个， 而这正是模板本该替他省掉的那一步。
-     *
-     * <p>只按 <b>name</b> 去重而不按 templateNo：顶掉的判据是「说的是同一个维度」， 编号本来就不同。商家自存的模板（scope=MERCHANT）不参与顶替，
-     * 那是他自己的东西，平台没有资格覆盖。
-     */
-    private static List<SpecTemplateVO> preferCategoryLevel(
-            List<SpecTemplateVO> all, String picked) {
-        if (picked == null) {
-            return all;
-        }
-        Set<String> catLevelNames =
-                all.stream()
-                        .filter(t -> picked.equals(t.categoryNo()))
-                        .map(SpecTemplateVO::name)
-                        .collect(java.util.stream.Collectors.toSet());
-        List<SpecTemplateVO> out =
-                new java.util.ArrayList<>(
-                        all.stream().filter(t -> picked.equals(t.categoryNo())).toList());
-        for (SpecTemplateVO t : all) {
-            boolean isCatLevel = picked.equals(t.categoryNo());
-            boolean shadowed =
-                    PrdSpecTemplate.PLATFORM.equals(t.scope()) && catLevelNames.contains(t.name());
-            if (!isCatLevel && !shadowed) {
+        List<SpecTemplateVO> out = new java.util.ArrayList<>(picked == null
+                ? specTemplateBook.recommended(categoryType)
+                : specLibrary.templatesForCategory(merchantNo, picked));
+        Set<String> shown = out.stream().map(SpecTemplateVO::templateNo)
+                .collect(java.util.stream.Collectors.toSet());
+        // 他自己的常用即便与平台同名也留着 —— 那是他自己的东西，平台没有资格顶掉；同一维度只给一次
+        for (SpecTemplateVO t : specTemplateBook.favorites(merchantNo)) {
+            if (shown.add(t.templateNo())) {
                 out.add(t);
             }
         }
@@ -4006,19 +3793,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public SpecTemplateVO saveSpecTemplate(
             String merchantNo, String name, List<SpecOption> options) {
-        if (name == null || name.isBlank() || options == null || options.isEmpty()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        PrdSpecTemplate t = new PrdSpecTemplate();
-        t.setTemplateNo(BizKey.next(BizKey.SPEC_TEMPLATE));
-        // 一律存成 MERCHANT：商家改不了平台模板 —— 平台模板是跨店可比的基础
-        t.setScope(PrdSpecTemplate.MERCHANT);
-        t.setStatus(PrdSpecTemplate.ACTIVE);
-        t.setEntityNo(merchantNo);
-        t.setName(name);
-        t.setOptions(writeJson(options));
-        DataScopeContext.executeWithoutScope(() -> templateMapper.insert(t));
-        return toVO(t);
+        // 存成他的自建维度再记一条常用（批次 2-e）：一律归他自己 —— 平台的规格是跨店可比的基础，商家改不得
+        return specTemplateBook.saveFavorite(merchantNo, name, options);
     }
 
     // ---------------------------------------------------------------- helpers
@@ -4254,7 +4030,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         return DataScopeContext.executeWithoutScope(
                 () ->
                         storeGoodsMapper.selectList(
-                                Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                         .eq(
                                                 ai.neargo.shop.product.entity.PrdStoreGoods
                                                         ::getGoodsNo,
@@ -4442,12 +4218,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                                     s.saleUnit()))
                             .toList();
         }
-        Map<String, PrdStoreStock> byStore =
+        Map<String, PrdStoreSku> byStore =
                 DataScopeContext.executeWithoutScope(
                                 () ->
-                                        storeStockMapper.selectList(
-                                                Wrappers.<PrdStoreStock>lambdaQuery()
-                                                        .in(PrdStoreStock::getSkuNo, skuNos)))
+                                        storeSkuMapper.selectList(
+                                                Wrappers.<PrdStoreSku>lambdaQuery()
+                                                        .in(PrdStoreSku::getSkuNo, skuNos)
+                                                        .isNotNull(PrdStoreSku::getSellableQty)))
                         .stream()
                         .collect(
                                 java.util.stream.Collectors.toMap(
@@ -4457,7 +4234,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         // 这些 SKU 里有没有任何一个启用了分店库存 —— 判据与 StockPortImpl 保持一致
         java.util.Set<String> perStore =
                 byStore.values().stream()
-                        .map(PrdStoreStock::getSkuNo)
+                        .map(PrdStoreSku::getSkuNo)
                         .collect(java.util.stream.Collectors.toSet());
         if (perStore.isEmpty()) {
             return skus;
@@ -4468,16 +4245,16 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                             if (!perStore.contains(sku.skuNo())) {
                                 return sku;
                             }
-                            PrdStoreStock row = byStore.get(sku.skuNo() + "@" + storeNo);
+                            PrdStoreSku row = byStore.get(sku.skuNo() + "@" + storeNo);
                             /*
                              * 这家店没有行 = 0，不是回退总量 —— 与下单侧同一口径。
                              * 两处口径不一致的话，会出现「页面显示有货、下单说库存不足」。
                              */
-                            int stock = row == null || row.getStock() == null ? 0 : row.getStock();
+                            int stock = row == null || row.getSellableQty() == null ? 0 : row.getSellableQty();
                             int locked =
-                                    row == null || row.getLockedStock() == null
+                                    row == null || row.getLockedQty() == null
                                             ? 0
-                                            : row.getLockedStock();
+                                            : row.getLockedQty();
                             int available = Math.max(stock - locked, 0);
                             return new GoodsVO.SkuVO(
                                     sku.skuNo(),
@@ -4495,30 +4272,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     sku.saleUnit());
                         })
                 .toList();
-    }
-
-    private SpecTemplateVO toVO(PrdSpecTemplate t) {
-        List<SpecTemplateVO.Option> options;
-        try {
-            options =
-                    json.readValue(
-                            t.getOptions() == null ? "[]" : t.getOptions(),
-                            new TypeReference<List<SpecTemplateVO.Option>>() {});
-        } catch (Exception e) {
-            options = List.of();
-        }
-        // 老 prd_spec_template 里的模板（商家自存 + 品类兜底）没有主维度这个概念 ——
-        // 主维度是类目绑定上的判据，这条路根本不经过绑定表
-        return new SpecTemplateVO(
-                t.getTemplateNo(),
-                t.getScope(),
-                t.getCategoryType(),
-                t.getCategoryNo(),
-                t.getName(),
-                options,
-                t.getEntityNo(),
-                false,
-                null);
     }
 
     private String writeSpecGroups(List<SpecGroup> groups) {

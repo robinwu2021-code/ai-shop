@@ -88,8 +88,8 @@ class EntitlementOrderSourceFactsFlowTest {
 
     @Test
     void anUnknownOrForeignTenantParentCannotBecomeAnEligibleCategoryAncestor() {
-        String child = "OF-C" + UUID.randomUUID();
-        String parent = "OF-P" + UUID.randomUUID();
+        String child = "OF-C" + UUID.randomUUID().toString().replace("-", "").substring(0, 28);   // 新库类目号 varchar(32)
+        String parent = "OF-P" + UUID.randomUUID().toString().replace("-", "").substring(0, 28);
         jdbc.update("INSERT INTO prd_category(category_no,parent_no,name,status,tenant_no,created_at,updated_at) "
                 + "VALUES (?,?,'child','ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", child, parent);
         jdbc.update("INSERT INTO prd_category(category_no,name,status,tenant_no,created_at,updated_at) "

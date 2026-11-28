@@ -80,13 +80,14 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
-         * 商品草稿（V279，双版本）。商家私有数据，与 prd_goods 同一根轴。
+         * 商品提交历史，含草稿（V279 双版本；门店交易库批次 2-f 起草稿并进这张表）。
+         * 商家私有数据，与 prd_goods 同一根轴。
          * **登记时服务层的十处访问已全部显式豁免**（saveAsDraft/publishDraft/
          * swapFromDraft/审核换版/hasDraft/preview —— 归属由上游 mine(merchantNo,goodsNo)
          * 把关），所以这一行是纵深防御：将来谁绕过服务层直查这张表，
          * 会被按商家过滤而不是全平台放行。
          */
-        registry.register("prd_goods_draft", Map.of(
+        registry.register("prd_goods_revision", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
@@ -253,19 +254,15 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
-         * 门店价。登记 MERCHANT 是给运营端看的；取价链路全程 executeWithoutScope
-         * （调用方是 C 端会话，SELF 维度）。
+         * 门店 SKU（prd_store_sku，门店价与店级库存并成一张）：**刻意不登记**。
          *
-         * **万一哪条路径忘了豁免，后果是回退主体价而不是 0** —— 与库存那张表相反，
-         * 那边漏豁免会把货变成「没货」，这边最多是「没享受到本店价」。
-         * 这个方向差别正是 prd_store_price 与 prd_store_stock 回退语义相反的延伸。
+         * 旧库里门店价（prd_store_price）登记了 MERCHANT，店级库存（prd_store_stock）没有登记 ——
+         * 库存那半的原子扣减（StockPortImpl、写回、退货入库）有多处直接调 Mapper，
+         * 漏一处豁免就是 1=0，表现为「有货的店下单说库存不足」，且日志干净。
+         * 并成一张表后按库存那半的口径：不登记。归属由 Service 的 requireMerchantNo / requireStore 保证；
+         * 运营端若要按商家过滤门店价，在查询里显式带 entity_no。
          */
         registry.register("prd_store_catalog", Map.of(ScopeDim.MERCHANT, "entity_no"));
-        registry.register("prd_store_catalog_version", Map.of(
-                ScopeDim.MERCHANT, "entity_no"));
-
-        registry.register("prd_store_price", Map.of(
-                ScopeDim.MERCHANT, "entity_no"));
 
         /*
          * —— 图片资产记账 sys_media_asset：**刻意不登记**（TDD-图片存储与空间回收）——
@@ -605,7 +602,6 @@ public class DataScopeRegistration implements DataScopeRegistrar {
         registry.register("ord_pricing_funding_source", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("ord_store_pricing_config", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("ord_store_pricing_revision", Map.of(ScopeDim.MERCHANT, "entity_no"));
-        registry.register("prd_sku_pricing_policy", Map.of(ScopeDim.MERCHANT, "entity_no"));
 
         registry.register("pmt_apply", Map.of(
                 ScopeDim.SELF, "user_no",

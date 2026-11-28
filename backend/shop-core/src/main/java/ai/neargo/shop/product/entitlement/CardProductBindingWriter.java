@@ -1,21 +1,18 @@
 package ai.neargo.shop.product.entitlement;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.config.ModuleDataSources;
 import ai.neargo.shop.product.dto.CardProductBindingView;
 import ai.neargo.shop.product.dto.ProductEntitlementBinding;
-import ai.neargo.shop.product.entity.PrdEntBindingCommand;
-import ai.neargo.shop.product.entity.PrdEntitlementBinding;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.mapper.PrdEntBindingCommandMapper;
-import ai.neargo.shop.product.mapper.PrdEntitlementBindingMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
-import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementCatalogPort.PublishedDefinition;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -23,40 +20,43 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-/** All external publication/market checks happen before entering this core transaction. */
+/**
+ * All external publication/market checks happen before entering this core transaction.
+ *
+ * <p>门店交易库里绑定是 {@code prd_sku} 的三列（{@code entitlement_version_no}、
+ * {@code entitlement_rule_snapshot}、{@code entitlement_units}），写在商家本市场那一行上；
+ * 防重走公共的 {@link RequestIdempotencyPort}，不再有专用的 prd_ent_binding_command 表。
+ */
 @Component
 public class CardProductBindingWriter {
-    private final PrdEntitlementBindingMapper bindings;
-    private final PrdEntBindingCommandMapper commands;
+    static final String ENDPOINT = "CARD_PRODUCT_BINDING";
+    private final GoodsMapper goods;
     private final SkuMapper skus;
+    private final RequestIdempotencyPort idempotency;
     private final ObjectMapper json;
-    public CardProductBindingWriter(PrdEntitlementBindingMapper bindings, PrdEntBindingCommandMapper commands,
-                                     SkuMapper skus, ObjectMapper json) {
-        this.bindings = bindings; this.commands = commands; this.skus = skus; this.json = json;
+    public CardProductBindingWriter(GoodsMapper goods, SkuMapper skus, RequestIdempotencyPort idempotency,
+                                    ObjectMapper json) {
+        this.goods = goods; this.skus = skus; this.idempotency = idempotency; this.json = json;
     }
+    /** 同一个 key：已完成则原样返回；载荷不同则冲突（由防重能力判定）。 */
     public CardProductBindingView replay(EntitlementContext ctx, String entity,
                                          ProductEntitlementBinding c, String key) {
         String hash = CardBindingFingerprint.payload(ctx, entity, c, key, json);
-        var previous = commands.find(ctx.tenantNo(), key);
-        return previous == null ? null : original(previous, hash);
+        return idempotency.findCompleted(key, ENDPOINT, ctx.actorNo(), hash, CardProductBindingView.class)
+                .orElse(null);
     }
     @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public CardProductBindingView write(EntitlementContext ctx, String entity, ProductEntitlementBinding c, String key,
                                          String market, String currency, PublishedDefinition definition) {
-        return DataScopeContext.executeWithoutScope(() ->
-                writeQualified(ctx, entity, c, key, market, currency, definition));
+        String hash = CardBindingFingerprint.payload(ctx, entity, c, key, json);
+        return idempotency.execute(key, ENDPOINT, ctx.actorNo(), hash, CardProductBindingView.class,
+                () -> DataScopeContext.executeWithoutScope(() ->
+                        writeQualified(ctx, entity, c, market, currency, definition)));
     }
     private CardProductBindingView writeQualified(EntitlementContext ctx, String entity, ProductEntitlementBinding c,
-                                                   String key, String market, String currency,
-                                                   PublishedDefinition definition) {
-        String hash = CardBindingFingerprint.payload(ctx, entity, c, key, json);
-        var claim = new PrdEntBindingCommand(); audit(claim, ctx);
-        claim.setRequestKey(key); claim.setPayloadHash(hash); claim.setStatus("PENDING"); commands.claim(claim);
-        var command = commands.lock(ctx.tenantNo(), key);
-        if (command == null || !hash.equals(command.getPayloadHash())) conflict();
-        var replay = original(command, hash);
-        if (replay != null) return replay;
-        var product = bindings.lockGoods(ctx.tenantNo(), entity, c.goodsNo());
+                                                   String market, String currency, PublishedDefinition definition) {
+        var product = goods.selectOne(Wrappers.<PrdGoods>lambdaQuery().eq(PrdGoods::getTenantNo, ctx.tenantNo())
+                .eq(PrdGoods::getEntityNo, entity).eq(PrdGoods::getGoodsNo, c.goodsNo()).last("FOR UPDATE"));
         if (product == null) throw BizException.of(ErrorCode.NOT_FOUND);
         if (!PrdGoods.TYPE_CARD.equals(product.getType())
                 || product.getVersion() != c.expectedProductRevision()) conflict();
@@ -64,39 +64,25 @@ public class CardProductBindingWriter {
                 .eq(PrdSku::getEntityNo, entity).eq(PrdSku::getGoodsNo, c.goodsNo()).eq(PrdSku::getSkuNo, c.skuNo())
                 .eq(PrdSku::getMarket, market).last("FOR UPDATE"));
         if (sku == null || sku.getPrice() == null || sku.getPrice() <= 0) conflict();
-        var row = bindings.selectOne(Wrappers.<PrdEntitlementBinding>lambdaQuery()
-                .eq(PrdEntitlementBinding::getTenantNo, ctx.tenantNo())
-                .eq(PrdEntitlementBinding::getGoodsNo, c.goodsNo())
-                .eq(PrdEntitlementBinding::getSkuNo, c.skuNo()).last("FOR UPDATE"));
-        boolean fresh = row == null;
-        if (fresh) { row = new PrdEntitlementBinding(); audit(row, ctx); row.setVersion(0L); }
-        row.setGoodsNo(c.goodsNo()); row.setSkuNo(c.skuNo()); row.setMarket(market);
         if (!c.templateVersionNo().equals(definition.versionNo())
                 || !"PAID_CARD".equals(definition.definition().kind())
                 || !currency.equals(definition.definition().currency())) conflict();
-        row.setTemplateVersionNo(c.templateVersionNo()); row.setUnitsPerItem(c.unitsPerItem());
-        row.setRuleSnapshot(json.writeValueAsString(definition.definition()));
-        row.setRuleHash(definition.snapshotHash());
-        row.setCurrency(currency); row.setStatus("ACTIVE"); row.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
-        row.setUpdatedBy(ctx.actorNo());
-        if ((fresh ? bindings.insert(row) : bindings.updateById(row)) != 1) conflict();
-        if (bindings.bumpProduct(ctx.tenantNo(), entity, c.goodsNo(), c.expectedProductRevision(),
-                LocalDateTime.now(ZoneOffset.UTC), ctx.actorNo()) != 1) conflict();
-        var result = new CardProductBindingView(c.goodsNo(), c.skuNo(), c.templateVersionNo(), c.unitsPerItem(),
-                currency, "ACTIVE", c.expectedProductRevision() + 1, row.getVersion());
-        command.setStatus("COMPLETED"); command.setResponseSnapshot(json.writeValueAsString(result));
-        command.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC)); command.setUpdatedBy(ctx.actorNo());
-        if (commands.updateById(command) != 1) conflict();
-        return result;
-    }
-    private CardProductBindingView original(PrdEntBindingCommand row, String hash) {
-        if (!hash.equals(row.getPayloadHash())) conflict();
-        return "COMPLETED".equals(row.getStatus())
-                ? json.readValue(row.getResponseSnapshot(), CardProductBindingView.class) : null;
-    }
-    private void audit(BaseEntity row, EntitlementContext ctx) {
-        row.setTenantNo(ctx.tenantNo()); row.setCreatedBy(ctx.actorNo()); row.setUpdatedBy(ctx.actorNo());
-        row.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC)); row.setUpdatedAt(row.getCreatedAt());
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        long skuVersion = sku.getVersion() == null ? 0 : sku.getVersion();
+        if (skus.update(null, Wrappers.<PrdSku>lambdaUpdate().eq(PrdSku::getId, sku.getId())
+                .eq(PrdSku::getVersion, skuVersion)
+                .set(PrdSku::getVersion, skuVersion + 1)
+                .set(PrdSku::getEntitlementVersionNo, c.templateVersionNo())
+                .set(PrdSku::getEntitlementRuleSnapshot, json.writeValueAsString(definition.definition()))
+                .set(PrdSku::getEntitlementUnits, c.unitsPerItem())
+                .set(PrdSku::getUpdatedAt, now).set(PrdSku::getUpdatedBy, ctx.actorNo())) != 1) conflict();
+        if (goods.update(null, Wrappers.<PrdGoods>lambdaUpdate().eq(PrdGoods::getTenantNo, ctx.tenantNo())
+                .eq(PrdGoods::getEntityNo, entity).eq(PrdGoods::getGoodsNo, c.goodsNo())
+                .eq(PrdGoods::getVersion, c.expectedProductRevision())
+                .set(PrdGoods::getVersion, c.expectedProductRevision() + 1)
+                .set(PrdGoods::getUpdatedAt, now).set(PrdGoods::getUpdatedBy, ctx.actorNo())) != 1) conflict();
+        return new CardProductBindingView(c.goodsNo(), c.skuNo(), c.templateVersionNo(), c.unitsPerItem(),
+                currency, PrdSku.STATUS_ACTIVE, c.expectedProductRevision() + 1, skuVersion + 1);
     }
     private static void conflict() { throw BizException.of(ErrorCode.CONFLICT); }
 }

@@ -11,7 +11,6 @@ import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.idempotency.RequestIdempotencyPort;
 import ai.neargo.shop.product.entity.PrdStoreCatalog;
-import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.product.service.StoreSalesCatalogService;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
@@ -43,11 +42,15 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
-/** Owner facts precede a short local transaction; head CAS, immutable version, idempotency and evidence are atomic. */
+/**
+ * Owner facts precede a short local transaction; version insert, idempotency and evidence are atomic.
+ *
+ * <p>门店交易库起目录一个版本一行（批次 2-g）：发布 = 锁住最新一版、核对 expectedRevision、插下一版；
+ * 版本号的唯一约束兜住并发。读与结账取「已生效里最新的那一版」，所以定时生效照旧。
+ */
 @Service
 public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
-    private final ProductMappers.StoreCatalogMapper heads;
-    private final ProductMappers.StoreCatalogVersionMapper versions;
+    private final ProductMappers.StoreCatalogMapper catalogs;
     private final StoreDirectoryPort stores;
     private final GoodsQueryPort quotes;
     private final RequestIdempotencyPort idempotency;
@@ -56,12 +59,11 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
     private final TransactionTemplate writes;
     private final TransactionTemplate reads;
 
-    public StoreSalesCatalogServiceImpl(ProductMappers.StoreCatalogMapper heads,
-            ProductMappers.StoreCatalogVersionMapper versions, StoreDirectoryPort stores, GoodsQueryPort quotes,
+    public StoreSalesCatalogServiceImpl(ProductMappers.StoreCatalogMapper catalogs,
+            StoreDirectoryPort stores, GoodsQueryPort quotes,
             RequestIdempotencyPort idempotency, @Qualifier("dataSource") DataSource source, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        this.heads = heads;
-        this.versions = versions;
+        this.catalogs = catalogs;
         this.stores = stores;
         this.quotes = quotes;
         this.idempotency = idempotency;
@@ -115,29 +117,13 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
         return DataScopeContext.executeWithoutScope(
                 () -> {
                     stores.checkoutCardInCurrentTransaction("MAIN", entityNo, storeNo);
-                    var locked = heads.lockHead(entityNo, storeNo);
+                    var locked = catalogs.lockLatest(entityNo, storeNo);
                     if (locked == null) {
                         throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
                     }
                     // Acquiring the lock may have crossed a scheduled version boundary.
                     var currentTime = checkoutClocks.getIfAvailable(Clock::systemUTC).instant();
-                    var version =
-                            versions.selectOne(
-                                    Wrappers.<PrdStoreCatalogVersion>lambdaQuery()
-                                            .eq(PrdStoreCatalogVersion::getTenantNo, "MAIN")
-                                            .eq(PrdStoreCatalogVersion::getEntityNo, entityNo)
-                                            .eq(PrdStoreCatalogVersion::getStoreNo, storeNo)
-                                            .eq(
-                                                    PrdStoreCatalogVersion::getCatalogNo,
-                                                    locked.getCatalogNo())
-                                            .le(
-                                                    PrdStoreCatalogVersion::getEffectiveAt,
-                                                    LocalDateTime.ofInstant(
-                                                            currentTime, ZoneOffset.UTC))
-                                            .orderByDesc(
-                                                    PrdStoreCatalogVersion::getEffectiveAt,
-                                                    PrdStoreCatalogVersion::getRevisionIndex)
-                                            .last("LIMIT 1"));
+                    var version = effective(entityNo, storeNo, locked.getCatalogNo(), currentTime);
                     if (version == null) {
                         throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
                     }
@@ -150,16 +136,9 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
         requireExternalScope(entityNo, storeNo, false);
         if (at == null) { throw BizException.of(ErrorCode.BAD_REQUEST); }
         return DataScopeContext.executeWithoutScope(() -> reads.execute(status -> {
-            var head = head(entityNo, storeNo);
+            var head = latest(entityNo, storeNo);
             if (head == null) { return empty(entityNo, storeNo, null); }
-            var version = versions.selectOne(Wrappers.<PrdStoreCatalogVersion>lambdaQuery()
-                    .eq(PrdStoreCatalogVersion::getTenantNo, "MAIN")
-                    .eq(PrdStoreCatalogVersion::getEntityNo, entityNo)
-                    .eq(PrdStoreCatalogVersion::getStoreNo, storeNo)
-                    .eq(PrdStoreCatalogVersion::getCatalogNo, head.getCatalogNo())
-                    .le(PrdStoreCatalogVersion::getEffectiveAt, LocalDateTime.ofInstant(at, ZoneOffset.UTC))
-                    .orderByDesc(PrdStoreCatalogVersion::getEffectiveAt, PrdStoreCatalogVersion::getRevisionIndex)
-                    .last("LIMIT 1"));
+            var version = effective(entityNo, storeNo, head.getCatalogNo(), at);
             return version == null ? empty(entityNo, storeNo, head) : snapshot(head, version);
         }));
     }
@@ -210,37 +189,27 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
     }
 
     private Snapshot write(String entity, String store, String actor, PublishReq request, String payload, String hash) {
-        var head = head(entity, store);
-        String next = BizKey.next("PCV");
-        long revision = Math.addExact(request.expectedRevision(), 1L);
-        if (head == null) {
-            if (request.expectedRevision() != 0) { throw BizException.of(ErrorCode.CONFLICT); }
-            head = new PrdStoreCatalog();
-            head.setTenantNo("MAIN");
-            head.setEntityNo(entity);
-            head.setStoreNo(store);
-            head.setCatalogNo(BizKey.next("PCT"));
-            head.setCurrentVersionNo(next);
-            head.setVersion(revision);
-            heads.insert(head);
-        } else {
-            if (heads.advance(entity, store, head.getCatalogNo(), request.expectedRevision(), next, actor,
-                    LocalDateTime.now(ZoneOffset.UTC)) != 1) { throw BizException.of(ErrorCode.CONFLICT); }
-            head.setVersion(revision);
-            head.setCurrentVersionNo(next);
-        }
-        var version = new PrdStoreCatalogVersion();
+        // 锁住最新一版再判 expectedRevision：同店的结账与发布在这一行上排队
+        var head = catalogs.lockLatest(entity, store);
+        long current = head == null ? 0 : head.getVersionNo();
+        if (request.expectedRevision() != current) { throw BizException.of(ErrorCode.CONFLICT); }
+        var version = new PrdStoreCatalog();
         version.setTenantNo("MAIN");
         version.setEntityNo(entity);
         version.setStoreNo(store);
-        version.setCatalogNo(head.getCatalogNo());
-        version.setCatalogVersionNo(next);
-        version.setRevisionIndex(revision);
+        // 首发用门店号作目录号：两个人同时首发撞 (entity, catalog_no, version_no) 唯一键，只留一份目录
+        version.setCatalogNo(head == null ? store : head.getCatalogNo());
+        version.setCatalogVersionNo(BizKey.next("PCV"));
+        version.setStage(PrdStoreCatalog.STAGE_PUBLISHED);
+        version.setVersionNo(Math.toIntExact(Math.addExact(current, 1L)));
+        version.setPublishedAt(LocalDateTime.now(ZoneOffset.UTC));
         version.setEffectiveAt(request.validFrom().toLocalDateTime());
-        version.setFrozenPayload(payload);
+        version.setFrozenContent(payload);
         version.setSnapshotHash(hash);
-        versions.insert(version);
-        return snapshot(head, version);
+        version.setCreatedBy(actor);
+        version.setUpdatedBy(actor);
+        catalogs.insert(version);
+        return snapshot(version, version);
     }
 
     private void requireExternalScope(String entity, String store, boolean writing) {
@@ -260,26 +229,43 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
     }
-    private PrdStoreCatalog head(String entity, String store) {
-        return heads.selectOne(Wrappers.<PrdStoreCatalog>lambdaQuery().eq(PrdStoreCatalog::getTenantNo, "MAIN")
-                .eq(PrdStoreCatalog::getEntityNo, entity).eq(PrdStoreCatalog::getStoreNo, store));
+    /** 这家店目录的最新一版（不论生效与否）：目录号与当前版本号取它 */
+    private PrdStoreCatalog latest(String entity, String store) {
+        return catalogs.selectOne(Wrappers.<PrdStoreCatalog>lambdaQuery().eq(PrdStoreCatalog::getTenantNo, "MAIN")
+                .eq(PrdStoreCatalog::getEntityNo, entity).eq(PrdStoreCatalog::getStoreNo, store)
+                .orderByDesc(PrdStoreCatalog::getVersionNo).last("LIMIT 1"));
     }
+
+    /** 在 {@code at} 时已生效的最新一版；同一生效时刻发了多版取版本号大的 */
+    private PrdStoreCatalog effective(String entity, String store, String catalogNo, Instant at) {
+        return catalogs.selectOne(Wrappers.<PrdStoreCatalog>lambdaQuery()
+                .eq(PrdStoreCatalog::getTenantNo, "MAIN")
+                .eq(PrdStoreCatalog::getEntityNo, entity)
+                .eq(PrdStoreCatalog::getStoreNo, store)
+                .eq(PrdStoreCatalog::getCatalogNo, catalogNo)
+                .le(PrdStoreCatalog::getEffectiveAt, LocalDateTime.ofInstant(at, ZoneOffset.UTC))
+                .orderByDesc(PrdStoreCatalog::getEffectiveAt, PrdStoreCatalog::getVersionNo)
+                .last("LIMIT 1"));
+    }
+
     private String hash(LocalDateTime effective, String payload) {
         return IdempotencyScope.requestHash("STORE_CATALOG_V1", effective.toString(), payload);
     }
-    private Snapshot snapshot(PrdStoreCatalog head, PrdStoreCatalogVersion version) {
-        if (!hash(version.getEffectiveAt(), version.getFrozenPayload()).equals(version.getSnapshotHash())) {
+    /** {@code head} 是最新一版（给出目录号与当前版本号），{@code version} 是生效的那一版 */
+    private Snapshot snapshot(PrdStoreCatalog head, PrdStoreCatalog version) {
+        if (!hash(version.getEffectiveAt(), version.getFrozenContent()).equals(version.getSnapshotHash())) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         Definition definition;
-        try { definition = json.readValue(version.getFrozenPayload(), Definition.class); }
+        try { definition = json.readValue(version.getFrozenContent(), Definition.class); }
         catch (RuntimeException invalid) { throw BizException.of(ErrorCode.CONFLICT); }
-        return new Snapshot(head.getEntityNo(), head.getStoreNo(), head.getCatalogNo(), head.getVersion(),
-                version.getCatalogVersionNo(), version.getRevisionIndex(),
+        return new Snapshot(head.getEntityNo(), head.getStoreNo(), head.getCatalogNo(), head.getVersionNo(),
+                version.getCatalogVersionNo(), version.getVersionNo(),
                 version.getEffectiveAt().atOffset(ZoneOffset.UTC), true, definition, version.getSnapshotHash());
     }
+
     private Snapshot empty(String entity, String store, PrdStoreCatalog head) {
         return new Snapshot(entity, store, head == null ? null : head.getCatalogNo(),
-                head == null ? 0 : head.getVersion(), null, 0, null, false, null, null);
+                head == null ? 0 : head.getVersionNo(), null, 0, null, false, null, null);
     }
 }
