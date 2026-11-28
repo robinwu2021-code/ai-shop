@@ -13364,10 +13364,22 @@
           "ar": "ملف مضغوط"
         },
         {
+          "key": "goods.revStatusDISCARDED",
+          "zh-CN": "已放弃",
+          "en": "Discarded",
+          "ar": "مُهمَل"
+        },
+        {
           "key": "goods.revStatusDRAFT",
           "zh-CN": "待发布",
           "en": "Unpublished",
           "ar": "غير منشور"
+        },
+        {
+          "key": "goods.revStatusEDITING",
+          "zh-CN": "编辑中",
+          "en": "Editing",
+          "ar": "قيد التحرير"
         },
         {
           "key": "goods.revStatusONLINE",
@@ -13380,6 +13392,12 @@
           "zh-CN": "已驳回",
           "en": "Rejected",
           "ar": "مرفوض"
+        },
+        {
+          "key": "goods.revStatusSUBMITTED",
+          "zh-CN": "待审核",
+          "en": "In review",
+          "ar": "قيد المراجعة"
         },
         {
           "key": "goods.revStatusSUPERSEDED",
@@ -37976,51 +37994,16 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "prd_catalog_item",
+      "class": "PrdStoreGoods",
+      "zh": "门店级上架关系：这家店卖不卖这件货。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
       "table": "prd_category",
       "class": "PrdCategory",
       "zh": "平台类目（**两级封顶**，V168）。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_category_pay_mode",
-      "class": "PrdCategoryPayMode",
-      "zh": "类目 × 支付方式：支付方式四层判定的第 ① 层。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_category_spec",
-      "class": "PrdCategorySpec",
-      "zh": "类目 × 规格项：这一类目用哪些维度、谁是主维度。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_category_spec_value",
-      "class": "PrdCategorySpecValue",
-      "zh": "类目下的取值子集。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_ent_binding_command",
-      "class": "PrdEntBindingCommand",
-      "zh": "",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_entitlement_binding",
-      "class": "PrdEntitlementBinding",
-      "zh": "",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_entity_category_inv",
-      "class": "PrdEntityCategoryInv",
-      "zh": "主体按类目设置记不记库存（V345，TDD-商品纳入进销存开关 §3）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
@@ -38039,13 +38022,6 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
-      "table": "prd_goods_draft",
-      "class": "PrdGoodsDraft",
-      "zh": "商品草稿：一件商品至多一份未发布修改（TDD-商品规格与发布 §3.3）。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
       "table": "prd_goods_favorite",
       "class": "PrdGoodsFavorite",
       "zh": "商品收藏：买家 × 商品（V343，TDD-C端商品收藏与送达判断）。",
@@ -38060,28 +38036,7 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
-      "table": "prd_merchant_spec",
-      "class": "PrdMerchantSpec",
-      "zh": "商家常用维度。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_merchant_spec_override",
-      "class": "PrdMerchantSpecOverride",
-      "zh": "商家对平台规格的覆盖（V213）：**用哪几个、什么顺序、在我店里叫什么**。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_merchant_spec_value",
-      "class": "PrdMerchantSpecValue",
-      "zh": "商家常用取值：他上次挑过的那几档，下次建品排在前面。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_sell_rule",
+      "table": "prd_sellable_rule",
       "class": "PrdSellRule",
       "zh": "门店线上可售规则（V346，TDD-商品纳入进销存开关 §4 / §18）。",
       "module": "shop-core",
@@ -38095,13 +38050,6 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
-      "table": "prd_sku_pricing_policy",
-      "class": "PrdSkuPricingPolicy",
-      "zh": "Sparse store/SKU extension: no price copy and no implicit policy for missing rows.",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
       "table": "prd_spec_dim",
       "class": "PrdSpecDim",
       "zh": "规格项（维度）：颜色、重量、口径、材质。",
@@ -38109,9 +38057,9 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
-      "table": "prd_spec_template",
-      "class": "PrdSpecTemplate",
-      "zh": "规格模板（平台维护 + 商家自存）。",
+      "table": "prd_spec_usage",
+      "class": "PrdSpecUsage",
+      "zh": "规格的使用范围：哪个范围用哪些维度、哪些取值，在那里叫什么、排第几。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
@@ -38123,7 +38071,7 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
-      "table": "prd_spu_std",
+      "table": "prd_standard_goods",
       "class": "PrdSpuStd",
       "zh": "平台标准品：商家引用建品的**模子**。",
       "module": "shop-core",
@@ -38153,35 +38101,21 @@
     {
       "table": "prd_store_catalog",
       "class": "PrdStoreCatalog",
-      "zh": "Product-owned store catalog revision head.",
+      "zh": "门店销售目录的一个版本（门店交易库 prd_store_catalog，TDD-商品领域迁到门店交易库 批次 2-g）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
     {
-      "table": "prd_store_catalog_version",
-      "class": "PrdStoreCatalogVersion",
-      "zh": "Product-owned store catalog immutable publication.",
+      "table": "prd_store_category",
+      "class": "PrdEntityCategoryInv",
+      "zh": "主体按平台类目设置记不记库存（V345，TDD-商品纳入进销存开关 §3）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
     {
-      "table": "prd_store_goods",
-      "class": "PrdStoreGoods",
-      "zh": "门店级上架关系：这家店卖不卖这件货。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_store_price",
-      "class": "PrdStorePrice",
-      "zh": "门店级售价。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_store_stock",
-      "class": "PrdStoreStock",
-      "zh": "门店级库存。",
+      "table": "prd_store_sku",
+      "class": "PrdStoreSku",
+      "zh": "门店 SKU（门店交易库 prd_store_sku）：这家店对某个 SKU 的门店价与门店库存，一店一 SKU 一行。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
@@ -44496,24 +44430,31 @@
         "module": "shop-core"
       },
       {
-        "host": "PrdGoodsDraft",
-        "name": "EDITING",
-        "value": "EDITING",
-        "zh": "编辑中 —— 只有商家自己看得到",
-        "module": "shop-core"
-      },
-      {
-        "host": "PrdGoodsDraft",
-        "name": "SUBMITTED",
-        "value": "SUBMITTED",
-        "zh": "已提交待审（审核开关开着时）。",
-        "module": "shop-core"
-      },
-      {
         "host": "PrdGoodsRevision",
         "name": "DRAFT",
         "value": "DRAFT",
         "zh": "未发布。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "EDITING",
+        "value": "EDITING",
+        "zh": "在售商品的草稿，编辑中（原 prd_goods_draft 的 EDITING，批次 2-f）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "SUBMITTED",
+        "value": "SUBMITTED",
+        "zh": "草稿已提交待审。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "DISCARDED",
+        "value": "DISCARDED",
+        "zh": "商家放弃了这份草稿。",
         "module": "shop-core"
       },
       {
@@ -44629,6 +44570,20 @@
         "module": "shop-core"
       },
       {
+        "host": "PrdSku",
+        "name": "STATUS_ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSku",
+        "name": "STATUS_DISABLED",
+        "value": "DISABLED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "PrdSpecDim",
         "name": "PLATFORM",
         "value": "PLATFORM",
@@ -44692,31 +44647,45 @@
         "module": "shop-core"
       },
       {
-        "host": "PrdSpecTemplate",
-        "name": "PLATFORM",
-        "value": "PLATFORM",
-        "zh": "平台统一维护，商家只能用不能改。",
+        "host": "PrdSpecUsage",
+        "name": "CATEGORY",
+        "value": "CATEGORY",
+        "zh": "类目绑定与类目取值子集",
         "module": "shop-core"
       },
       {
-        "host": "PrdSpecTemplate",
+        "host": "PrdSpecUsage",
+        "name": "MERCHANT_CATEGORY",
+        "value": "MCH_CATEGORY",
+        "zh": "商家在某一类目下对平台规格的覆盖（scope_type 列 16 字符，故不用 MERCHANT_CATEGORY 全称）",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSpecUsage",
+        "name": "CATEGORY_TYPE",
+        "value": "CATEGORY_TYPE",
+        "zh": "品类推荐（原平台规格模板 prd_spec_template 的品类兜底）：scope_ref = 品类， ALL_TYPES 表示不限品类。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSpecUsage",
         "name": "MERCHANT",
         "value": "MERCHANT",
-        "zh": "商家自存。",
+        "zh": "商家常用维度与取值。",
         "module": "shop-core"
       },
       {
-        "host": "PrdSpecTemplate",
+        "host": "PrdSpecUsage",
         "name": "ACTIVE",
         "value": "ACTIVE",
-        "zh": "归档后仍要能恢复。",
+        "zh": "",
         "module": "shop-core"
       },
       {
-        "host": "PrdSpecTemplate",
+        "host": "PrdSpecUsage",
         "name": "DISABLED",
         "value": "DISABLED",
-        "zh": "",
+        "zh": "覆盖里「本店不用」：旧表的 enabled=false",
         "module": "shop-core"
       },
       {
@@ -44766,6 +44735,13 @@
         "name": "ALLOCATED",
         "value": "ALLOCATED",
         "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdStoreCatalog",
+        "name": "STAGE_PUBLISHED",
+        "value": "PUBLISHED",
+        "zh": "已发布。",
         "module": "shop-core"
       },
       {
@@ -52728,7 +52704,10 @@
           "DRAFT",
           "ONLINE",
           "SUPERSEDED",
-          "REJECTED"
+          "REJECTED",
+          "EDITING",
+          "SUBMITTED",
+          "DISCARDED"
         ],
         "zh": "一个提交版本的状态。"
       },
@@ -61334,11 +61313,59 @@
       "module": "shop-core"
     },
     {
-      "host": "PrdMerchantSpecOverride",
+      "host": "PrdEntityCategoryInv",
+      "name": "ENTITY_LEVEL",
+      "type": "String",
+      "value": "\"\"",
+      "zh": "主体级行的门店号与目录号",
+      "module": "shop-core"
+    },
+    {
+      "host": "PrdGoods",
+      "name": "AUDIT_AUDITING",
+      "type": "String",
+      "value": "ai.neargo.shop.spi.product.InventoryProductPort.AUDIT_AUDITING",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "PrdGoods",
+      "name": "AUDIT_APPROVED",
+      "type": "String",
+      "value": "ai.neargo.shop.spi.product.InventoryProductPort.AUDIT_APPROVED",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "PrdGoodsRevision",
+      "name": "DRAFT_STATES",
+      "type": "java.util.List<String>",
+      "value": "java.util.List.of(EDITING, SUBMITTED)",
+      "zh": "草稿的两种状态：编辑中、待审",
+      "module": "shop-core"
+    },
+    {
+      "host": "PrdSpecUsage",
+      "name": "ALL_TYPES",
+      "type": "String",
+      "value": "\"*\"",
+      "zh": "CATEGORY_TYPE 范围里「不限品类」的 scope_ref",
+      "module": "shop-core"
+    },
+    {
+      "host": "PrdSpecUsage",
       "name": "DIM_LEVEL",
       "type": "String",
       "value": "\"\"",
-      "zh": "覆盖维度时用它：value_no 存空串而不是 NULL —— 唯一键里的 NULL 互不相等",
+      "zh": "维度级行的 value_no",
+      "module": "shop-core"
+    },
+    {
+      "host": "PrdStoreGoods",
+      "name": "STORE_LEVEL",
+      "type": "String",
+      "value": "\"\"",
+      "zh": "门店级上下架行的目录版本号：空串（门店交易库批次 2-g，原 prd_store_goods 并入 prd_catalog_item）。",
       "module": "shop-core"
     },
     {
