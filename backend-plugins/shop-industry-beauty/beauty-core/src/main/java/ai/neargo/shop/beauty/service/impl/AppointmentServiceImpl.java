@@ -105,7 +105,9 @@ public final class AppointmentServiceImpl implements AppointmentService {
     private AppointmentVO create(String preview, List<String> refs, String consent, String key, String request) {
         financial(refs, consent);
         var p = db.preview(preview); preparations.own(p);
-        AppointmentPersistence.require(p.getAppointmentNo() == null);
+        // 只收新约的预览（基于预约单版本 0；改约预览基于的版本至少是 1）。不看预约单号：确认后草稿升为生效版、
+        // 已写上预约单号，同键重放仍要走到下面的防重（TDD §2.6 第 4–6 项，步 4-3）
+        AppointmentPersistence.require(p.getBasedOnRevision() != null && p.getBasedOnRevision() == 0);
         var op = preparations.prepare(p, null, 0, "CREATE", key, IdempotencyScope.requestHash("CREATE", request), null,
                 db.json.writeValueAsString(Map.of("previewNo", preview)));
         return outcome(coordinator.advance(op.getOperationNo()));
