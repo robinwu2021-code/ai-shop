@@ -72,7 +72,14 @@ public final class ReceptionCoordinator {
         this.operations = operations; this.challenges = challenges; this.clock = clock;
         this.reassignment = reassignment; this.matching = matching;
         this.appointmentPreparation = appointmentPreparation; this.workOrders = workOrders;
+        this.steps = new ReceptionSteps(db, operations);
     }
+    /** 接待操作的唯一写入口（TDD §2.2.1）。 */
+    private final ReceptionSteps steps;
+    /** 散客接待还在进行中的阶段。 */
+    private static final java.util.Set<String> ACTIVE = java.util.Set.of("RECEIVED",
+            BtyReceptionOperation.RESOURCE_PENDING, BtyReceptionOperation.ARRIVAL_PENDING,
+            BtyReceptionOperation.OPEN_PENDING);
     /** A verified identity and stable operation are durable before any resource command is accepted. */
     public WalkInVO receiveWalkIn(String entity, String store, String actor, ReceiveWalkInReq req, String key) {
         access.merchant(entity, store, actor, true); receptionAccess.customer(entity, store, actor);
@@ -135,25 +142,25 @@ public final class ReceptionCoordinator {
                 if ("REJECTED".equals(linked.getState())) { return rejectWalkIn(op); }
                 if (!"SUCCEEDED".equals(linked.getState())) { return walkInView(op); }
                 final var active = op;
-                op = db.tx(() -> {
+                op = steps.advance(active, java.util.Set.of(BtyReceptionOperation.RESOURCE_PENDING), () -> {
                     var root = db.lock(scoped(entity, store, active.getAppointmentNo()));
                     var fence = db.fences.selectScopedForUpdate(entity, store, root.getAppointmentNo());
                     var current = db.currents.selectScopedForUpdate(entity, store, root.getAppointmentNo());
-                    var locked = operations.selectScopedForUpdate(entity, store, active.getOperationNo());
-                    if (!BtyReceptionOperation.RESOURCE_PENDING.equals(locked.getPhase())) { return locked; }
-                    var original = appointmentPreparation.linkedReception(locked);
+                    var original = appointmentPreparation.linkedReception(active);
                     var receipt = appointments.verifiedReceipt(original, true);
                     AppointmentPersistence.require("SUCCEEDED".equals(receipt.status())
                             && "CONFIRM".equals(receipt.binding().action()) && "SUCCEEDED".equals(original.getState())
                             && "CONFIRMED".equals(root.getStatus()) && root.getHoldNo() != null
                             && fence.getActiveIntentNo() == null && current.getOperationNo() == null);
+                    return root.getVersion();
+                }, (locked, rootVersion) -> {
+                    AppointmentPersistence.require(sameWalkIn(active, locked));
                     locked.setFrozenPayload(db.json.writeValueAsString(walkInPayload(locked)
-                            .withRevisions(root.getVersion(), null)));
+                            .withRevisions(rootVersion, null)));
                     locked.setPhase(BtyReceptionOperation.ARRIVAL_PENDING);
-                    AppointmentPersistence.require(operations.updateById(locked) == 1);
-                    clearRetry(locked);
+                    steps.save(locked); steps.clearRetry(locked);
                     return locked;
-                });
+                }, locked -> locked);
             }
             if (BtyReceptionOperation.ARRIVAL_PENDING.equals(op.getPhase())) { op = arriveWalkIn(op, actor); }
             if (BtyReceptionOperation.OPEN_PENDING.equals(op.getPhase())) {
@@ -171,34 +178,56 @@ public final class ReceptionCoordinator {
     }
     private BtyReceptionOperation arriveWalkIn(BtyReceptionOperation observed, String actor) {
         var original = scoped(observed.getEntityNo(), observed.getStoreNo(), observed.getAppointmentNo());
-        var evidence = appointments.currentArrangementEvidence(original);
-        return db.tx(() -> {
+        var payload = walkInPayload(observed);
+        AppointmentPersistence.require(payload.arrivalRevision() != null);
+        long arrival = payload.arrivalRevision();
+        boolean pending = "CONFIRMED".equals(original.getStatus());
+        var evidence = pending ? appointments.currentArrangementEvidence(original) : null;
+        return steps.advance(observed, java.util.Set.of(BtyReceptionOperation.ARRIVAL_PENDING), () -> {
             var root = db.lock(original);
+            // 上次已标到店、提交后断了：只补接待操作
+            if (arrived(root, arrival, observed)) { return null; }
             var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
             var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
                     root.getAppointmentNo());
-            var op = operations.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), observed.getOperationNo());
-            AppointmentPersistence.require(sameWalkIn(observed, op));
-            if (!BtyReceptionOperation.ARRIVAL_PENDING.equals(op.getPhase())) { return op; }
-            var payload = walkInPayload(op);
-            AppointmentPersistence.require(payload.arrivalRevision() != null
-                    && root.getVersion().equals(payload.arrivalRevision()) && "CONFIRMED".equals(root.getStatus())
+            AppointmentPersistence.require(evidence != null
+                    && root.getVersion().equals(arrival) && "CONFIRMED".equals(root.getStatus())
                     && root.getCheckedInAt() == null && fence.getActiveIntentNo() == null
                     && current.getOperationNo() == null
                     && current.getArrangementRevision() == evidence.arrangementRevision()
                     && db.roots.countWorkOrders(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()) == 0
                     && future(payload) && now().isBefore(root.getEndAt()));
-            appointmentPreparation.linkedReception(op);
+            appointmentPreparation.linkedReception(observed);
             verifyArrangement(root, evidence);
             AppointmentPersistence.require(db.roots.markArrived(root.getEntityNo(), root.getStoreNo(),
                     root.getAppointmentNo(), root.getVersion(), "CONFIRMED", now(), actor, now()) == 1);
-            op.setFrozenPayload(db.json.writeValueAsString(payload.withRevisions(payload.arrivalRevision(),
-                    root.getVersion() + 1)));
-            op.setPhase(BtyReceptionOperation.OPEN_PENDING); AppointmentPersistence.require(operations.updateById(op) == 1);
-            action(root, op, "CHECKED_IN", null, "{\"state\":\"CHECKED_IN\"}", root.getVersion() + 1);
-            publish(root, op, root.getVersion() + 1, "CHECKED_IN");
+            action(root, observed, "CHECKED_IN", null, "{\"state\":\"CHECKED_IN\"}", root.getVersion() + 1);
+            publish(root, observed, root.getVersion() + 1, "CHECKED_IN");
+            return null;
+        }, (op, ignored) -> {
+            AppointmentPersistence.require(sameWalkIn(observed, op));
+            op.setFrozenPayload(db.json.writeValueAsString(walkInPayload(op).withRevisions(arrival, arrival + 1)));
+            op.setPhase(BtyReceptionOperation.OPEN_PENDING); steps.save(op);
             return op;
-        });
+        }, op -> op);
+    }
+    /** 预约已由这次接待标到店（版本正好加一、有这次接待的到店日志）。 */
+    private boolean arrived(BtyAppointment root, long revision, BtyReceptionOperation op) {
+        return "CHECKED_IN".equals(root.getStatus()) && root.getVersion() == revision + 1
+                && logged(root, op, "CHECKED_IN");
+    }
+    /** 这次接待在这张预约上已经记过这条操作日志（预约侧重做时不重复记）。 */
+    private boolean logged(BtyAppointment root, BtyReceptionOperation op, String action) {
+        return loggedActionNo(root, op, action) != null;
+    }
+    private String loggedActionNo(BtyAppointment root, BtyReceptionOperation op, String action) {
+        var row = db.actions.selectOne(Wrappers.<BtyActionLog>lambdaQuery()
+                .eq(BtyActionLog::getTenantNo, root.getTenantNo()).eq(BtyActionLog::getEntityNo, root.getEntityNo())
+                .eq(BtyActionLog::getAggregateType, "BEAUTY_APPOINTMENT")
+                .eq(BtyActionLog::getAggregateNo, root.getAppointmentNo())
+                .eq(BtyActionLog::getRequestRef, op.getOperationNo()).eq(BtyActionLog::getAction, action)
+                .last("LIMIT 1"));
+        return row == null ? null : row.getActionNo();
     }
     private WalkInVO closeReleasedWalkIn(BtyReceptionOperation observed) {
         var linked = appointmentPreparation.linkedReception(observed);
@@ -229,15 +258,12 @@ public final class ReceptionCoordinator {
         } catch (IllegalStateException malformedEvidence) {
             return walkInFailure(observed, "RESOURCE_RELEASE_REQUIRED");
         }
-        return db.tx(() -> {
+        return steps.advance(observed, ACTIVE, () -> {
             var root = db.lock(scoped(observed.getEntityNo(), observed.getStoreNo(), observed.getAppointmentNo()));
             var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
             var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
                     root.getAppointmentNo());
-            var op = operations.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), observed.getOperationNo());
-            AppointmentPersistence.require(sameWalkIn(observed, op));
-            if (succeeded(op) || "REJECTED".equals(op.getPhase())) { return walkInView(op); }
-            var original = appointmentPreparation.linkedReception(op);
+            var original = appointmentPreparation.linkedReception(observed);
             var latest = db.operation(release.getOperationNo());
             appointments.verifiedReceipt(original, true); appointments.verifiedReceipt(latest, true);
             AppointmentPersistence.require("RELEASE_REQUIRED".equals(original.getState())
@@ -247,49 +273,48 @@ public final class ReceptionCoordinator {
                     && release.getReceipt().equals(latest.getReceipt())
                     && current.getOperationNo() == null && fence.getActiveIntentNo() == null
                     && db.roots.countWorkOrders(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo()) == 0);
+            if (!logged(root, observed, "WALK_IN_RESOURCE_REJECTED")) {
+                action(root, observed, "WALK_IN_RESOURCE_REJECTED", null, "{\"state\":\"REJECTED\"}",
+                        root.getVersion());
+            }
+            return null;
+        }, (op, ignored) -> {
+            AppointmentPersistence.require(sameWalkIn(observed, op));
             op.setPhase("REJECTED"); op.setFailureCode("RESOURCE_REJECTED");
             op.setResult(db.json.writeValueAsString(walkInView(op)));
-            AppointmentPersistence.require(operations.updateById(op) == 1); clearRetry(op);
-            action(root, op, "WALK_IN_RESOURCE_REJECTED", null, "{\"state\":\"REJECTED\"}", root.getVersion());
+            steps.save(op); steps.clearRetry(op);
             return walkInView(op);
-        });
+        }, this::walkInView);
     }
     private WalkInVO rejectWalkIn(BtyReceptionOperation observed) {
-        return db.tx(() -> {
+        return steps.advance(observed, ACTIVE, () -> {
             var root = db.lock(scoped(observed.getEntityNo(), observed.getStoreNo(), observed.getAppointmentNo()));
             var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
             var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
                     root.getAppointmentNo());
-            var op = operations.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), observed.getOperationNo());
-            AppointmentPersistence.require(sameWalkIn(observed, op));
-            if (succeeded(op) || "REJECTED".equals(op.getPhase())) { return walkInView(op); }
-            var linked = appointmentPreparation.linkedReception(op);
+            var linked = appointmentPreparation.linkedReception(observed);
             AppointmentPersistence.require("REJECTED".equals(linked.getState()) && root.getHoldNo() == null
                     && fence.getActiveIntentNo() == null && current.getOperationNo() == null);
+            return null;
+        }, (op, ignored) -> {
+            AppointmentPersistence.require(sameWalkIn(observed, op));
             op.setPhase("REJECTED"); op.setFailureCode("RESOURCE_REJECTED");
             op.setResult(db.json.writeValueAsString(walkInView(op)));
-            AppointmentPersistence.require(operations.updateById(op) == 1); clearRetry(op);
+            steps.save(op); steps.clearRetry(op);
             return walkInView(op);
-        });
+        }, this::walkInView);
     }
     private boolean future(WalkInPayload payload) {
         return payload.matched() != null && ResourcePlanContract.decode(payload.matched().plan()).demands().stream()
                 .flatMap(d -> d.intervals().stream()).allMatch(i -> i.startAt().isAfter(clock.instant()));
     }
     private WalkInVO walkInFailure(BtyReceptionOperation observed, String code) {
-        return db.tx(() -> {
-            var op = operations.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                    observed.getOperationNo());
+        return steps.update(observed, op -> {
             AppointmentPersistence.require(sameWalkIn(observed, op));
             if (succeeded(op) || "REJECTED".equals(op.getPhase())) { return walkInView(op); }
-            op.setFailureCode(code); AppointmentPersistence.require(operations.updateById(op) == 1); clearRetry(op);
+            op.setFailureCode(code); steps.save(op); steps.clearRetry(op);
             return walkInView(op);
         });
-    }
-    private void clearRetry(BtyReceptionOperation op) {
-        operations.update(null, Wrappers.<BtyReceptionOperation>lambdaUpdate()
-                .eq(BtyReceptionOperation::getId, op.getId()).set(BtyReceptionOperation::getNextRetryAt, null)
-                .set(BtyReceptionOperation::getLeaseUntil, null));
     }
     private boolean sameWalkIn(BtyReceptionOperation expected, BtyReceptionOperation actual) {
         return actual != null && expected.getTenantNo().equals(actual.getTenantNo())
@@ -363,16 +388,22 @@ public final class ReceptionCoordinator {
     }
     private ArrivalVO arrive(BtyAppointment observed, String actor, long revision, String endpoint, String key,
             String hash, VerifiedIdentity identity, String challenge) {
-        AppointmentPersistence.require("CONFIRMED".equals(observed.getStatus()));
-        var evidence = appointments.currentArrangementEvidence(observed);
-        return db.tx(() -> {
+        // 接待操作在行业库、预约在交易库：先受理，再在交易事务里标到店，最后落结果（ReceptionSteps.once）
+        var prior = preparations.find(observed.getEntityNo(), observed.getStoreNo(), actor, endpoint, key, hash);
+        if (succeeded(prior)) { return arrival(prior); }
+        AppointmentPersistence.require(prior != null || "CONFIRMED".equals(observed.getStatus()));
+        var evidence = "CONFIRMED".equals(observed.getStatus())
+                ? appointments.currentArrangementEvidence(observed) : null;
+        var op = preparations.begin(observed.getEntityNo(), observed.getStoreNo(), actor, endpoint, key, hash, identity,
+                new ReceptionPreparation.ArrivalPayload(1, observed.getAppointmentNo(), revision));
+        return steps.once(op, () -> {
             var root = db.lock(observed);
+            // 上次已标到店、提交后断了：按预约上的到店时刻补结果
+            if (arrived(root, revision, op)) { return arrivalResult(root, revision, root.getCheckedInAt(), op); }
             var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
             AppointmentPersistence.require(fence != null && fence.getActiveIntentNo() == null);
             var current = db.current(root);
-            var prior = preparations.find(root.getEntityNo(), root.getStoreNo(), actor, endpoint, key, hash);
-            if (succeeded(prior)) { return arrival(prior); }
-            AppointmentPersistence.require(root.getVersion() == revision && "CONFIRMED".equals(root.getStatus())
+            AppointmentPersistence.require(evidence != null && root.getVersion() == revision && "CONFIRMED".equals(root.getStatus())
                     && root.getCheckedInAt() == null && current != null && current.getOperationNo() == null
                     && current.getArrangementRevision() == evidence.arrangementRevision()
                     && Objects.equals(observed.getHoldNo(), root.getHoldNo())
@@ -385,20 +416,22 @@ public final class ReceptionCoordinator {
             var at = now();
             if (!at.isBefore(root.getEndAt())) { throw BizException.of(ErrorCode.BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE); }
             if (challenge != null) { challenge(root, challenge, at); }
-            var op = preparations.begin(root.getEntityNo(), root.getStoreNo(), actor, endpoint, key, hash, identity,
-                    new ReceptionPreparation.ArrivalPayload(1, root.getAppointmentNo(), revision));
             AppointmentPersistence.require(db.roots.markArrived(root.getEntityNo(), root.getStoreNo(),
                     root.getAppointmentNo(), revision, "CONFIRMED", at, actor, at) == 1);
-            String timing = at.isBefore(root.getStartAt()) ? "EARLY" : at.equals(root
-                    .getStartAt()) ? "ON_TIME" : "LATE";
-            var result = new ArrivalVO(root.getAppointmentNo(), revision + 1, "CHECKED_IN", at.atOffset(ZoneOffset.UTC),
-                    timing, root.getStartAt().atOffset(ZoneOffset.UTC), root.getEndAt().atOffset(ZoneOffset.UTC),
-                    op.getOperationNo(), "SUCCEEDED");
-            complete(op, result);
             action(root, op, "CHECKED_IN", null, "{\"state\":\"CHECKED_IN\"}", revision + 1);
             publish(root, op, revision + 1, "CHECKED_IN");
-            return result;
-        });
+            return arrivalResult(root, revision, at, op);
+        }, (row, result) -> { complete(row, result); return result; }, this::arrivalOrConflict);
+    }
+    private ArrivalVO arrivalResult(BtyAppointment root, long revision, LocalDateTime at, BtyReceptionOperation op) {
+        String timing = at.isBefore(root.getStartAt()) ? "EARLY" : at.equals(root.getStartAt()) ? "ON_TIME" : "LATE";
+        return new ArrivalVO(root.getAppointmentNo(), revision + 1, "CHECKED_IN", at.atOffset(ZoneOffset.UTC),
+                timing, root.getStartAt().atOffset(ZoneOffset.UTC), root.getEndAt().atOffset(ZoneOffset.UTC),
+                op.getOperationNo(), "SUCCEEDED");
+    }
+    private ArrivalVO arrivalOrConflict(BtyReceptionOperation op) {
+        if (succeeded(op)) { return arrival(op); }
+        throw BizException.of(ErrorCode.CONFLICT);
     }
     public ReceptionExceptionVO coordinateException(String entity, String store, String actor,
             ReceptionExceptionReq req, String key) {
@@ -408,24 +441,29 @@ public final class ReceptionCoordinator {
         String hash = fingerprint("BAPI-053", entity, store, req);
         var existing = preparations.find(entity, store, actor, "BAPI-053", key, hash);
         if (succeeded(existing)) { return db.json.readValue(existing.getResult(), ReceptionExceptionVO.class); }
-        return db.tx(() -> {
+        // 先受理（行业库），再在交易事务里记异常日志，最后落结果（ReceptionSteps.once）
+        var op = preparations.begin(entity, store, actor, "BAPI-053", key, hash, null,
+                new ReceptionPreparation.ExceptionPayload(1, observed.getAppointmentNo(), req.kind(), req.proposal(),
+                        req.expectedRevision()));
+        // 受影响的任务在行业库：在交易事务外读
+        var affected = workOrders.affectedTaskNos(entity, store, observed.getAppointmentNo());
+        return steps.once(op, () -> {
             var root = db.lock(observed);
             var fence = db.fences.selectScopedForUpdate(entity, store, root.getAppointmentNo());
             AppointmentPersistence.require(fence != null);
-            var prior = preparations.find(entity, store, actor, "BAPI-053", key, hash);
-            if (succeeded(prior)) { return db.json.readValue(prior.getResult(), ReceptionExceptionVO.class); }
             AppointmentPersistence.require(root.getVersion().equals(req.expectedRevision()));
-            var op = preparations.begin(entity, store, actor, "BAPI-053", key, hash, null,
-                    new ReceptionPreparation.ExceptionPayload(1, root.getAppointmentNo(), req.kind(), req.proposal(),
-                            req.expectedRevision()));
-            var affected = workOrders.affectedTaskNos(entity, store, root.getAppointmentNo());
-            String actionNo = action(root, op, "RECEPTION_EXCEPTION_REQUESTED", req.reason(),
-                    db.json.writeValueAsString(new ExceptionSnapshot(req.kind(), req.proposal(), affected)),
-                    root.getVersion());
-            var result = new ReceptionExceptionVO(actionNo, root.getAppointmentNo(), "PENDING_REVIEW", affected,
+            String actionNo = loggedActionNo(root, op, "RECEPTION_EXCEPTION_REQUESTED");
+            if (actionNo == null) {
+                actionNo = action(root, op, "RECEPTION_EXCEPTION_REQUESTED", req.reason(),
+                        db.json.writeValueAsString(new ExceptionSnapshot(req.kind(), req.proposal(), affected)),
+                        root.getVersion());
+                publish(root, op, root.getVersion(), "PENDING_REVIEW");
+            }
+            return new ReceptionExceptionVO(actionNo, root.getAppointmentNo(), "PENDING_REVIEW", affected,
                     op.getOperationNo());
-            complete(op, result); publish(root, op, root.getVersion(), "PENDING_REVIEW");
-            return result;
+        }, (row, result) -> { complete(row, result); return result; }, row -> {
+            if (succeeded(row)) { return db.json.readValue(row.getResult(), ReceptionExceptionVO.class); }
+            throw BizException.of(ErrorCode.CONFLICT);
         });
     }
     /** The shared helper keeps later walk-in orchestration independent from order opening. */
@@ -467,9 +505,10 @@ public final class ReceptionCoordinator {
     private LocalDateTime now() {
         return LocalDateTime.ofInstant(clock.instant().truncatedTo(ChronoUnit.MILLIS), ZoneOffset.UTC);
     }
+    /** 只在 ReceptionSteps 的回调里调用（接待操作已锁住）。 */
     private void complete(BtyReceptionOperation op, Object result) {
         op.setPhase("SUCCEEDED"); op.setResult(db.json.writeValueAsString(result));
-        AppointmentPersistence.require(operations.updateById(op) == 1);
+        steps.save(op);
     }
     private String action(BtyAppointment root, BtyReceptionOperation op, String action, String reason, String snapshot,
             long revision) {

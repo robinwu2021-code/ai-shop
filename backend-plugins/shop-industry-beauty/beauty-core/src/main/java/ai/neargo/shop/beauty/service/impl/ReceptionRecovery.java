@@ -4,7 +4,6 @@ import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.impl.ReceptionPreparation.WalkInPayload;
 import ai.neargo.shop.event.AfterCommit;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -24,8 +23,9 @@ public final class ReceptionRecovery {
     public ReceptionRecovery(AppointmentPersistence db, AppointmentCoordinator appointments,
             AppointmentPreparation preparation, BeautyMappers.ReceptionOperationMapper rows, Clock clock) {
         this.db = db; this.appointments = appointments; this.preparation = preparation; this.rows = rows;
-        this.clock = clock;
+        this.clock = clock; this.steps = new ReceptionSteps(db, rows);
     }
+    private final ReceptionSteps steps;
     public int scan() { return scanReport().attempted(); }
 
     public RecoveryScanResult scanReport() {
@@ -34,8 +34,7 @@ public final class ReceptionRecovery {
         for (var row : db.read(() -> rows.selectResourceRecoverable(cutoff))) {
             var claimAt = now();
             var lease = claimAt.plusSeconds(30);
-            if (!db.tx(() -> rows.claimResource(row.getEntityNo(), row.getStoreNo(), row.getOperationNo(),
-                    row.getVersion(), claimAt, lease) == 1)) { continue; }
+            if (!steps.claimResource(row, claimAt, lease)) { continue; }
             attempted++;
             boolean failed = false;
             try {
@@ -64,66 +63,63 @@ public final class ReceptionRecovery {
                         failure.getClass().getSimpleName());
             } finally {
                 int backoffSeconds = failed ? 60 : 30;
-                db.tx(() -> {
-                    var locked = rows.selectScopedForUpdate(row.getEntityNo(), row.getStoreNo(), row.getOperationNo());
-                    if (!Objects.equals(lease, locked.getLeaseUntil())) { return null; }
-                    boolean retry = BtyReceptionOperation.RESOURCE_PENDING.equals(locked.getPhase()) && locked.getFailureCode() == null;
-                    rows.update(null, Wrappers.<BtyReceptionOperation>lambdaUpdate()
-                            .eq(BtyReceptionOperation::getId, locked.getId())
-                            .eq(BtyReceptionOperation::getVersion, locked.getVersion())
-                            .eq(BtyReceptionOperation::getLeaseUntil, lease)
-                            .set(BtyReceptionOperation::getNextRetryAt,
-                                    retry ? now().plusSeconds(backoffSeconds) : null)
-                            .set(BtyReceptionOperation::getLeaseUntil, null));
-                    return null;
-                });
+                steps.releaseResource(row, lease, locked ->
+                        BtyReceptionOperation.RESOURCE_PENDING.equals(locked.getPhase()) && locked.getFailureCode() == null
+                                ? now().plusSeconds(backoffSeconds) : null);
             }
         }
         return new RecoveryScanResult(attempted, completed, pending, failedCount);
     }
     private LocalDateTime now() { return LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC).withNano(0); }
+    /** 预约侧的资源结果：已确认（带预约版本）、要释放、或被拒。 */
+    private record Outcome(String state, Long rootVersion) { }
+
     private BtyReceptionOperation project(BtyReceptionOperation observed, LocalDateTime lease) {
-        return db.tx(() -> {
+        return steps.advance(observed, java.util.Set.of(BtyReceptionOperation.RESOURCE_PENDING), () -> {
             var root = db.lock(db.root(observed.getAppointmentNo()));
             var fence = db.fences.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(), root.getAppointmentNo());
             var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
                     root.getAppointmentNo());
-            var row = rows.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                    observed.getOperationNo());
-            if (!BtyReceptionOperation.RESOURCE_PENDING.equals(row.getPhase()) || !Objects.equals(lease, row.getLeaseUntil())
-                    || !row.getVersion().equals(observed.getVersion())) { return row; }
-            AppointmentPersistence.require(row.getRequestHash().equals(observed.getRequestHash())
-                    && row.getFrozenPayload().equals(observed.getFrozenPayload())
-                    && row.getAppointmentOperationNo().equals(observed.getAppointmentOperationNo()));
-            var linked = preparation.linkedReception(row);
-            if ("PENDING".equals(linked.getState())) { return row; }
+            var linked = preparation.linkedReception(observed);
+            if ("PENDING".equals(linked.getState())) { return new Outcome("PENDING", null); }
             var receipt = appointments.verifiedReceipt(linked, true);
             AppointmentPersistence.require(fence.getActiveIntentNo() == null && current.getOperationNo() == null);
             if ("SUCCEEDED".equals(linked.getState())) {
                 AppointmentPersistence.require("CONFIRM".equals(receipt.binding().action())
                         && "SUCCEEDED".equals(receipt.status()) && "CONFIRMED".equals(root.getStatus())
-                        && root.getHoldNo() != null && row.getWorkOrderNo() == null);
-                var p = db.json.readValue(row.getFrozenPayload(), WalkInPayload.class);
-                row.setFrozenPayload(db.json.writeValueAsString(p.withRevisions(root.getVersion(), null)));
-                row.setPhase(BtyReceptionOperation.ARRIVAL_PENDING);
-            } else if ("RELEASE_REQUIRED".equals(linked.getState())) {
-                row.setFailureCode("RESOURCE_RELEASE_REQUIRED");
-            } else {
+                        && root.getHoldNo() != null);
+            } else if (!"RELEASE_REQUIRED".equals(linked.getState())) {
                 AppointmentPersistence.require("REJECTED".equals(linked.getState())
                         && "RESERVE".equals(receipt.binding().action()) && "REJECTED".equals(receipt.status())
                         && root.getHoldNo() == null);
+            }
+            return new Outcome(linked.getState(), root.getVersion());
+        }, (row, outcome) -> {
+            if (!Objects.equals(lease, row.getLeaseUntil()) || !row.getVersion().equals(observed.getVersion())
+                    || "PENDING".equals(outcome.state())) { return row; }
+            AppointmentPersistence.require(row.getRequestHash().equals(observed.getRequestHash())
+                    && row.getFrozenPayload().equals(observed.getFrozenPayload())
+                    && row.getAppointmentOperationNo().equals(observed.getAppointmentOperationNo()));
+            if ("SUCCEEDED".equals(outcome.state())) {
+                AppointmentPersistence.require(row.getWorkOrderNo() == null);
+                var p = db.json.readValue(row.getFrozenPayload(), WalkInPayload.class);
+                row.setFrozenPayload(db.json.writeValueAsString(p.withRevisions(outcome.rootVersion(), null)));
+                row.setPhase(BtyReceptionOperation.ARRIVAL_PENDING);
+            } else if ("RELEASE_REQUIRED".equals(outcome.state())) {
+                row.setFailureCode("RESOURCE_RELEASE_REQUIRED");
+            } else {
                 row.setPhase("REJECTED"); row.setFailureCode("RESOURCE_REJECTED");
             }
-            AppointmentPersistence.require(rows.updateById(row) == 1);
+            steps.save(row);
             String requestId = MDC.get("requestId");
             String receptionState = row.getPhase();
-            String appointmentState = linked.getState();
+            String appointmentState = outcome.state();
             AfterCommit.run("beauty.reception.recovery_projected", () -> LOG.info(
                     "beauty.reception.recovery_projected requestId={} operationNo={} appointmentNo={}"
                             + " appointmentOperationNo={} receptionState={} appointmentOperationState={}",
                     requestId, observed.getOperationNo(), observed.getAppointmentNo(),
                     observed.getAppointmentOperationNo(), receptionState, appointmentState));
             return row;
-        });
+        }, row -> row);
     }
 }

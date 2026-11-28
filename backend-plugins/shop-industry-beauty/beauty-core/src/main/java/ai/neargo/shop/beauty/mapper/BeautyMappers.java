@@ -1555,6 +1555,22 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
     public interface AppointmentResourceDecisionMapper extends BaseMapper<BtyAppointmentResourceDecision> { }
     /** Scoped reception persistence; authorization remains in services. */
     public interface ReceptionOperationMapper extends IndustryTableMapper<BtyReceptionOperation> {
+        /**
+         * 撤回刚受理、预约侧没做成的一次性接待（签到、接待异常）：只删仍是「已受理」、没有结果的那一行，
+         * 恢复原来「一个事务里失败就不留痕」的效果。只由 {@code ReceptionSteps.discard} 调用。
+         */
+        @org.apache.ibatis.annotations.Delete(
+                """
+                DELETE FROM bty_reception_operation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                  AND store_no=#{storeNo} AND operation_no=#{operationNo} AND version=#{version}
+                  AND phase='RECEIVED' AND result IS NULL
+                """)
+        int discardReceived(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("operationNo") String operationNo,
+                @Param("version") long version);
+
         @Select(
                 """
                 SELECT * FROM bty_reception_operation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}

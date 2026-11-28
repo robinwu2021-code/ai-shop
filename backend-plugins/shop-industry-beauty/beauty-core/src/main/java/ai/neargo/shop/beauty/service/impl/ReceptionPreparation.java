@@ -29,8 +29,9 @@ public final class ReceptionPreparation {
 
     private final AppointmentPersistence db;
     private final BeautyMappers.ReceptionOperationMapper operations;
+    private final ReceptionSteps steps;
     public ReceptionPreparation(AppointmentPersistence db, BeautyMappers.ReceptionOperationMapper operations) {
-        this.db = db; this.operations = operations;
+        this.db = db; this.operations = operations; this.steps = new ReceptionSteps(db, operations);
     }
     public BtyReceptionOperation findClaim(String entity, String store, String key, String hash) {
         var user = SecurityUtils.requireUser();
@@ -58,7 +59,7 @@ public final class ReceptionPreparation {
         op.setIdentityKind("USER"); op.setIdentityRef(target); op.setPhase("RECEIVED");
         op.setDerivedKeyHash(derived(entity, store, "BAPI-032", key));
         op.setFrozenPayload(db.json.writeValueAsString(new ClaimPayload(1, guest, target)));
-        try { db.tx(() -> { if (ownershipWrites != null) ownershipWrites.lockAndCheck(user.tenantNo(), entity, store); operations.insert(op); return null; }); }
+        try { steps.insert(op, ownershipGuard(user.tenantNo(), entity, store)); }
         catch (DuplicateKeyException raced) {
             var winner = findClaim(entity, store, key, hash);
             if (winner == null) { throw raced; }
@@ -140,17 +141,13 @@ public final class ReceptionPreparation {
         if (identity != null) { op.setIdentityKind(identity.kind()); op.setIdentityRef(identity.reference()); }
         op.setDerivedKeyHash(derived(entity, store, endpoint, key));
         op.setFrozenPayload(db.json.writeValueAsString(payload));
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            if (ownershipWrites != null) ownershipWrites.lockAndCheck(user.tenantNo(), entity, store);
-            operations.insert(op);
-        }
-        else {
-            try { db.tx(() -> { if (ownershipWrites != null) ownershipWrites.lockAndCheck(user.tenantNo(), entity, store); operations.insert(op); return null; }); }
-            catch (DuplicateKeyException raced) {
-                var winner = find(entity, store, actor, endpoint, key, hash);
-                if (winner == null) { throw raced; }
-                return winner;
-            }
+        // 接待操作在行业库，受理自己一个行业事务；调用方不得在交易事务里调用（ReceptionSteps）
+        AppointmentPersistence.require(!TransactionSynchronizationManager.isActualTransactionActive());
+        try { steps.insert(op, ownershipGuard(user.tenantNo(), entity, store)); }
+        catch (DuplicateKeyException raced) {
+            var winner = find(entity, store, actor, endpoint, key, hash);
+            if (winner == null) { throw raced; }
+            return winner;
         }
         return op;
     }
@@ -160,13 +157,8 @@ public final class ReceptionPreparation {
     }
     /** Freeze once outside the root lock chain; a concurrent winner always keeps its original complete plan. */
     public BtyReceptionOperation freezeWalkIn(BtyReceptionOperation observed, AppointmentMatching.Matched match) {
-        return db.tx(
-                () -> {
-                    var row =
-                            operations.selectScopedForUpdate(
-                                    observed.getEntityNo(),
-                                    observed.getStoreNo(),
-                                    observed.getOperationNo());
+        return steps.update(observed,
+                row -> {
                     AppointmentPersistence.require(
                             row != null
                                     && row.getRequestHash().equals(observed.getRequestHash())
@@ -189,9 +181,13 @@ public final class ReceptionPreparation {
                                                     row.getRequestHash(),
                                                     payload.previewNo(),
                                                     match.plan()))));
-                    AppointmentPersistence.require(operations.updateById(row) == 1);
+                    steps.save(row);
                     return row;
                 });
+    }
+    /** 门店归属锁（宿主能力，主库）：受理前在交易事务里核对，没有这项能力时为 null。 */
+    private Runnable ownershipGuard(String tenant, String entity, String store) {
+        return ownershipWrites == null ? null : () -> ownershipWrites.lockAndCheck(tenant, entity, store);
     }
     public record WalkInPayload(int schemaVersion, String appointmentNo, String previewNo,
             String appointmentOperationNo, List<AppointmentItemReq> items,

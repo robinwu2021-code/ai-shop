@@ -29,12 +29,15 @@ public final class GuestRegistrationServiceImpl implements GuestRegistrationServ
     private final ReceptionPreparation preparations;
     private final ObjectProvider<GuestRegistrationPort> owner;
     private final BeautyMappers.ReceptionOperationMapper operations;
+    /** 接待操作的唯一写入口（TDD §2.2.1）。 */
+    private final ReceptionSteps steps;
     private final BeautyMappers.GuestClaimReceiptMapper receipts;
     public GuestRegistrationServiceImpl(AppointmentPersistence db, ReceptionAccess access, ReceptionIdentity identities,
             ReceptionPreparation preparations, ObjectProvider<GuestRegistrationPort> owner,
             BeautyMappers.ReceptionOperationMapper operations, BeautyMappers.GuestClaimReceiptMapper receipts) {
         this.db = db; this.access = access; this.identities = identities; this.preparations = preparations;
         this.owner = owner; this.operations = operations; this.receipts = receipts;
+        this.steps = new ReceptionSteps(db, operations);
     }
     @Override
     public GuestRegistrationVO registerGuest(String entity, String store, String actor, RegisterGuestReq req,
@@ -111,10 +114,8 @@ public final class GuestRegistrationServiceImpl implements GuestRegistrationServ
         catch (DuplicateKeyException race) { return finishTransaction(observed, fact); }
     }
     private GuestClaimVO finishTransaction(BtyReceptionOperation observed, GuestRegistrationPort.GuestFact fact) {
-        return db.industryTx(() -> {
-            var op = operations.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
-                    observed.getOperationNo());
-            AppointmentPersistence.require(op != null && op.getRequestHash().equals(observed.getRequestHash()));
+        return steps.update(observed, op -> {
+            AppointmentPersistence.require(op.getRequestHash().equals(observed.getRequestHash()));
             if ("SUCCEEDED".equals(op.getPhase())) { return result(op); }
             String hash = IdempotencyScope.requestHash("GUEST_CLAIM_RECEIPT_V1", op.getTenantNo(), op.getEntityNo(),
                     op.getStoreNo(), fact.guestNo(), "CLAIMED", fact.userNo(), Long.toString(fact.revision()));
@@ -136,7 +137,7 @@ public final class GuestRegistrationServiceImpl implements GuestRegistrationServ
             var result = new GuestClaimVO(op.getOperationNo(), fact.guestNo(), fact.userNo(), fact.revision(),
                     "SUCCEEDED", null);
             op.setPhase("SUCCEEDED"); op.setResult(db.json.writeValueAsString(result));
-            AppointmentPersistence.require(operations.updateById(op) == 1);
+            steps.save(op);
             var log = new BtyActionLog(); log.setEntityNo(op.getEntityNo()); log.setStoreNo(op.getStoreNo());
             log.setActionNo(BizKey.next("BTAL")); log.setAggregateType("BEAUTY_GUEST_CLAIM");
             log.setAggregateNo(fact.guestNo()); log.setAction("GUEST_CLAIM_RECEIPT_RECORDED");

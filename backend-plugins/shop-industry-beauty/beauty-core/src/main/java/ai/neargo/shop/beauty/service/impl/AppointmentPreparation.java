@@ -46,6 +46,8 @@ public final class AppointmentPreparation {
     private final ObjectProvider<ServiceCatalogFactsPort> products;
     private final ReceptionIdentity identities;
     private final BeautyMappers.ReceptionOperationMapper receptions;
+    /** 接待操作的唯一写入口（TDD §2.2.1）。 */
+    private final ReceptionSteps steps;
     private final WorkOrderPreparation workOrders;
     private final Clock clock;
     public AppointmentPreparation(AppointmentPersistence db, AppointmentAccess access,
@@ -57,6 +59,7 @@ public final class AppointmentPreparation {
         this.customers = customers;
         this.products = products;
         this.identities = identities; this.receptions = receptions; this.workOrders = workOrders; this.clock = clock;
+        this.steps = new ReceptionSteps(db, receptions);
     }
     public AppointmentPreviewVO save(AppointmentMatching.Matched match, String customerRef, BtyAppointment target,
             long expected) {
@@ -167,6 +170,31 @@ public final class AppointmentPreparation {
     private BtyAppointmentOperation prepare(BtyAppointmentPreparation preview, BtyAppointment target,
             long expected, String action, String key, String hash, ResourceBookingPort.Hold hold,
             String requestEvidence, Runnable lockedCheck, String receptionOperationNo) {
+        // 预约侧（交易事务）建预约操作；再把它的号挂到开单的接待操作上（行业库，ReceptionSteps）。
+        // 重放、竞争的赢家也都走一遍挂接，上一次预约侧提交后断了也能补上
+        var op = prepareAppointment(preview, target, expected, action, key, hash, hold, requestEvidence, lockedCheck,
+                receptionOperationNo);
+        return receptionOperationNo == null ? op : linkOuter(receptionOperationNo, op);
+    }
+    private BtyAppointmentOperation linkOuter(String receptionOperationNo, BtyAppointmentOperation op) {
+        var observed = db.read(() -> receptions.selectScoped(op.getEntityNo(), op.getStoreNo(), receptionOperationNo));
+        AppointmentPersistence.require(observed != null);
+        return steps.update(observed, outer -> {
+            AppointmentPersistence.require(op.getAppointmentNo().equals(outer.getAppointmentNo()));
+            if (outer.getAppointmentOperationNo() != null) {
+                AppointmentPersistence.require(op.getOperationNo().equals(outer.getAppointmentOperationNo()));
+                return op;
+            }
+            AppointmentPersistence.require(BtyReceptionOperation.OPEN_PENDING.equals(outer.getPhase()));
+            outer.setAppointmentOperationNo(op.getOperationNo());
+            outer.setPhase(BtyReceptionOperation.RESOURCE_PENDING);
+            steps.save(outer);
+            return op;
+        });
+    }
+    private BtyAppointmentOperation prepareAppointment(BtyAppointmentPreparation preview, BtyAppointment target,
+            long expected, String action, String key, String hash, ResourceBookingPort.Hold hold,
+            String requestEvidence, Runnable lockedCheck, String receptionOperationNo) {
         if ("CANCEL".equals(action) || "NO_SHOW".equals(action)) { access.root(target, true); }
         else { own(preview); }
         var existing = find(preview.getEntityNo(), preview.getStoreNo(), key, hash);
@@ -217,10 +245,10 @@ public final class AppointmentPreparation {
                 }
                 var current = db.currents.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
                         root.getAppointmentNo());
-                BtyReceptionOperation outer = null;
                 if (receptionOperationNo != null) {
-                    outer = receptions.selectScopedForUpdate(root.getEntityNo(), root.getStoreNo(),
-                            receptionOperationNo);
+                    // 接待操作在行业库：这里只读核对，挂接在提交后由 linkOuter 在行业事务里做
+                    var outer = db.read(() -> receptions.selectScoped(root.getEntityNo(), root.getStoreNo(),
+                            receptionOperationNo));
                     AppointmentPersistence.require(outer != null && root.getAppointmentNo().equals(outer
                             .getAppointmentNo())
                             && "OPEN_WORK_ORDER".equals(outer.getAction())
@@ -236,10 +264,6 @@ public final class AppointmentPreparation {
                 AppointmentPersistence.require(current.getOperationNo() == null);
                 var op = prepareLocked(preview, root, action, key, hash, hold, requestEvidence,
                         BizKey.next("BTOP"));
-                if (outer != null) {
-                    outer.setAppointmentOperationNo(op.getOperationNo()); outer.setPhase(BtyReceptionOperation.RESOURCE_PENDING);
-                    AppointmentPersistence.require(receptions.updateById(outer) == 1);
-                }
                 return op;
             });
         } catch (DuplicateKeyException race) {
@@ -319,25 +343,35 @@ public final class AppointmentPreparation {
                     && item.priceMinor() == product.priceMinor() && item.durationMin() == product.durationMin());
         }
         try {
-            return db.tx(() -> {
+            return createReception(entity, store, number, observed, payload, match, preview);
+        } catch (DuplicateKeyException raced) {
+            // 同一次接待并发：赢家已建好预约（建预约的唯一键挡住了这边）；再走一遍，预约侧认出已建、只补挂接
+            return createReception(entity, store, number, observed, payload, match, preview);
+        }
+    }
+    private BtyAppointmentOperation createReception(String entity, String store, String number,
+            BtyReceptionOperation observed, WalkInPayload payload, AppointmentMatching.Matched match,
+            BtyAppointmentPreparation preview) {
+        {
+            return steps.advance(observed, java.util.Set.of("RECEIVED"), () -> {
+                // 上次已建好预约与预约操作、提交后断了：按冻结的号认出来，只补接待操作
+                var built = db.root(payload.appointmentNo());
+                if (built != null) {
+                    var op = db.operation(payload.appointmentOperationNo());
+                    AppointmentPersistence.require(op != null && built.getAppointmentNo().equals(op.getAppointmentNo())
+                            && entity.equals(built.getEntityNo()) && store.equals(built.getStoreNo()));
+                    return op;
+                }
                 var root = createRoot(preview, payload.appointmentNo());
                 var fence = db.fences.selectScopedForUpdate(entity, store, root.getAppointmentNo());
                 var current = db.currents.selectScopedForUpdate(entity, store, root.getAppointmentNo());
-                var outer = receptions.selectScopedForUpdate(entity, store, number);
-                AppointmentPersistence.require(outer != null && "RECEIVED".equals(outer.getPhase())
-                        && observed.getRequestHash().equals(outer.getRequestHash())
-                        && observed.getFrozenPayload().equals(outer.getFrozenPayload())
-                        && outer.getAppointmentNo() == null && outer.getAppointmentOperationNo() == null
-                        && fence.getActiveIntentNo() == null && current.getOperationNo() == null);
+                AppointmentPersistence.require(fence.getActiveIntentNo() == null && current.getOperationNo() == null);
                 workOrders.verifyCreateLocked(match);
                 if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", preview.getEntityNo(), preview.getStoreNo());
                 db.preparations.insert(preview);
                 var op = prepareLocked(preview, root, "CREATE", payload.appointmentKey(),
                         payload.appointmentRequestHash(), null, "{\"receptionOperationNo\":\"" + number + "\"}",
                         payload.appointmentOperationNo());
-                outer.setAppointmentNo(root.getAppointmentNo()); outer.setAppointmentOperationNo(op.getOperationNo());
-                outer.setPhase(BtyReceptionOperation.RESOURCE_PENDING); outer.setNextRetryAt(AppointmentPersistence.now());
-                AppointmentPersistence.require(receptions.updateById(outer) == 1);
                 // Head acquisition or earlier writes may wait; expiry must roll the entire preparation back.
                 var at = clock.instant();
                 if (ResourcePlanContract.decode(match.plan()).demands().stream()
@@ -345,11 +379,18 @@ public final class AppointmentPreparation {
                     throw new ReceptionPlanExpired();
                 }
                 return op;
+            }, (outer, op) -> {
+                AppointmentPersistence.require(observed.getRequestHash().equals(outer.getRequestHash())
+                        && observed.getFrozenPayload().equals(outer.getFrozenPayload())
+                        && outer.getAppointmentNo() == null && outer.getAppointmentOperationNo() == null);
+                outer.setAppointmentNo(op.getAppointmentNo()); outer.setAppointmentOperationNo(op.getOperationNo());
+                outer.setPhase(BtyReceptionOperation.RESOURCE_PENDING); outer.setNextRetryAt(AppointmentPersistence.now());
+                steps.save(outer);
+                return op;
+            }, outer -> {
+                AppointmentPersistence.require(outer.getAppointmentOperationNo() != null);
+                return linkedReception(outer);
             });
-        } catch (DuplicateKeyException raced) {
-            var winner = db.read(() -> receptions.selectScoped(entity, store, number));
-            if (winner == null || winner.getAppointmentOperationNo() == null) { throw raced; }
-            return linkedReception(winner);
         }
     }
     /** Separates a rolled-back CREATE from ordinary conflicts so only expiry becomes reschedule-PENDING. */

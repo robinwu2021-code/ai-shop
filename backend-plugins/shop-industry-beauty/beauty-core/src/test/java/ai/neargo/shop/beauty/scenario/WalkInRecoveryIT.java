@@ -726,9 +726,12 @@ class WalkInRecoveryIT extends ReceptionFixture {
                 assertThatThrownBy(() -> c.getBean(ReceptionService.class)
                         .receiveWalkIn("E", "S", "A", walkIn(), "ATOMIC")).isInstanceOf(RuntimeException.class);
             } finally { sql.execute("DROP TRIGGER fail_preparation"); }
+            // 预约侧任一表失败：预约侧整体回滚、不留半截。接待操作在行业库（B-5，ReceptionSteps）：预约侧先提交，
+            // 挂接接待操作失败时预约侧已在、接待操作仍是「已受理」，由下面的恢复按冻结的号认出预约、补上挂接
             for (String table : List.of("bty_appointment", "bty_appointment_preparation", "bty_appointment_current",
                     "bty_appointment_resource_fence", "bty_appointment_operation")) {
-                assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
+                assertThat(sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class))
+                        .as(table).isEqualTo(outerLink ? 1 : 0);
             }
             assertThat(owner.accepts).isEmpty();
             var original = sql.queryForMap("SELECT operation_no,phase,appointment_no,appointment_operation_no "

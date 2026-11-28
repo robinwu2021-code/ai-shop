@@ -69,6 +69,8 @@ public final class WorkOrderCoordinator {
     private final ReceptionReassignment reassignment;
     private final AppointmentCoordinator appointments;
     private final BeautyMappers.ReceptionOperationMapper receptionRows;
+    /** 接待操作的唯一写入口（TDD §2.2.1）。 */
+    private final ReceptionSteps steps;
     private final BeautyMappers.WorkOrderMapper orders;
     private final BeautyMappers.WorkOrderMapper contexts;
     private final BeautyMappers.ServiceTaskMapper tasks;
@@ -85,6 +87,7 @@ public final class WorkOrderCoordinator {
         this.ownership = ownership; this.operations = operations; this.preparation = preparation;
         this.reassignment = reassignment;
         this.appointments = appointments; this.receptionRows = receptionRows; this.orders = orders;
+        this.steps = new ReceptionSteps(db, receptionRows);
         this.contexts = contexts; this.tasks = tasks; this.submissions = submissions;
         this.clock = clock;
     }
@@ -441,14 +444,8 @@ public final class WorkOrderCoordinator {
                 var opening = original.withOpeningRevision(binding.sourceRevision() + 1);
                 final var active = op;
                 var completed =
-                        db.tx(
-                                () -> {
-                                    var root = db.lock(scoped(entity, store, number));
-                                    db.fences.selectScopedForUpdate(entity, store, number);
-                                    db.currents.selectScopedForUpdate(entity, store, number);
-                                    var locked =
-                                            receptionRows.selectScopedForUpdate(
-                                                    entity, store, active.getOperationNo());
+                        steps.update(active,
+                                locked -> {
                                     AppointmentPersistence.require(sameOperation(active, locked));
                                     if (succeeded(locked)) {
                                         return result(locked);
@@ -463,8 +460,7 @@ public final class WorkOrderCoordinator {
                                         locked.setFrozenPayload(
                                                 db.json.writeValueAsString(opening));
                                         locked.setPhase(BtyReceptionOperation.OPEN_PENDING);
-                                        AppointmentPersistence.require(
-                                                receptionRows.updateById(locked) == 1);
+                                        steps.save(locked);
                                     } else {
                                         AppointmentPersistence.require(
                                                 BtyReceptionOperation.OPEN_PENDING.equals(locked.getPhase())
@@ -535,8 +531,7 @@ public final class WorkOrderCoordinator {
             PreparedWorkOrderScope prepared, long revision) {
         String entity = prepared.scope().entityNo();
         String store = prepared.scope().storeNo();
-        var reserved = db.industryTx(() -> {
-            var locked = receptionRows.selectScopedForUpdate(entity, store, op.getOperationNo());
+        var reserved = steps.update(op, locked -> {
             AppointmentPersistence.require(sameOperation(op, locked));
             if (succeeded(locked)) { return new Claim(result(locked), null); }
             AppointmentPersistence.require(!"REJECTED".equals(locked.getPhase()));
@@ -546,7 +541,7 @@ public final class WorkOrderCoordinator {
                 AppointmentPersistence.require(items.isEmpty()
                         || tasks.countForAppointmentItems(entity, items) == 0);
                 locked.setWorkOrderNo(BizKey.next("BTWO"));
-                AppointmentPersistence.require(receptionRows.updateById(locked) == 1);
+                steps.save(locked);
             }
             return new Claim(null, locked.getWorkOrderNo());
         });
@@ -554,8 +549,7 @@ public final class WorkOrderCoordinator {
         String workOrderNo = reserved.workOrderNo();
         var marked = markAppointment(observed, actor, op, prepared, revision, workOrderNo);
         if (marked == Mark.RESCHEDULE) { return requireReschedule(entity, store, op); }
-        return db.industryTx(() -> {
-            var locked = receptionRows.selectScopedForUpdate(entity, store, op.getOperationNo());
+        return steps.update(op, locked -> {
             AppointmentPersistence.require(sameOperation(op, locked));
             if (succeeded(locked)) { return result(locked); }
             AppointmentPersistence.require(workOrderNo.equals(locked.getWorkOrderNo()));
@@ -613,16 +607,11 @@ public final class WorkOrderCoordinator {
     }
     /** 走入单越过开始时间：接待操作保持进行中，记下原因并停止自动重试，等重新排期。 */
     private WorkOrderVO requireReschedule(String entity, String store, BtyReceptionOperation op) {
-        return db.industryTx(() -> {
-            var locked = receptionRows.selectScopedForUpdate(entity, store, op.getOperationNo());
+        return steps.update(op, locked -> {
             AppointmentPersistence.require(sameOperation(op, locked));
             if (succeeded(locked)) { return result(locked); }
             locked.setFailureCode("ARRIVAL_REQUIRES_RESCHEDULE");
-            AppointmentPersistence.require(receptionRows.updateById(locked) == 1);
-            receptionRows.update(null, Wrappers.<BtyReceptionOperation>lambdaUpdate()
-                    .eq(BtyReceptionOperation::getId, locked.getId())
-                    .set(BtyReceptionOperation::getNextRetryAt, null)
-                    .set(BtyReceptionOperation::getLeaseUntil, null));
+            steps.save(locked); steps.clearRetry(locked);
             return pending(locked);
         });
     }
@@ -730,7 +719,7 @@ public final class WorkOrderCoordinator {
                 ? new WalkInVO(op.getOperationNo(), "SUCCEEDED", op.getAppointmentNo(), result,
                         db.json.readValue(op.getFrozenPayload(), WalkInPayload.class).selectedStartAt(), null)
                 : result));
-        AppointmentPersistence.require(receptionRows.updateById(op) == 1);
+        steps.save(op);
         String requestId = MDC.get("requestId");
         AfterCommit.run("beauty.work_order.opened", () -> LOG.info(
                 "beauty.work_order.opened requestId={} operationNo={} appointmentNo={} workOrderNo={}",
@@ -886,16 +875,12 @@ public final class WorkOrderCoordinator {
                 null);
     }
     private void reject(BtyReceptionOperation op) {
-        db.tx(
-                () -> {
-                    var row =
-                            receptionRows.selectScopedForUpdate(
-                                    op.getEntityNo(), op.getStoreNo(), op.getOperationNo());
-                    row.setPhase("REJECTED");
-                    row.setFailureCode("CONFLICT");
-                    receptionRows.updateById(row);
-                    return null;
-                });
+        steps.update(op, row -> {
+            row.setPhase("REJECTED");
+            row.setFailureCode("CONFLICT");
+            steps.save(row);
+            return null;
+        });
     }
     private LocalDateTime now() { return LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC).withNano(0); }
 
