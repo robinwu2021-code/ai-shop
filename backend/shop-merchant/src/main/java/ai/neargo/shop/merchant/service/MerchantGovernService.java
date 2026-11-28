@@ -39,6 +39,17 @@ public interface MerchantGovernService {
      */
     MerchantProfileVO setVerified(String merchantNo, boolean verified, String operatorNo);
 
+    /**
+     * 归档：盖上归档时间，从运营端默认列表移走；与封禁正交，商家照常营业。
+     * 幂等，已归档的再归档只刷新时间。商家不存在报 NOT_FOUND。
+     *
+     * @return 归档时间（epoch 毫秒）
+     */
+    long archive(String merchantNo);
+
+    /** 恢复：清空归档时间。商家不存在报 NOT_FOUND。 */
+    void unarchive(String merchantNo);
+
     /** 违规记录列表。不传 {@code merchantNo} 就是全平台。 */
     List<ViolationVO> violations(String merchantNo);
 

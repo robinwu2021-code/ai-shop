@@ -10,9 +10,8 @@ import org.apache.ibatis.annotations.Update;
  *
  * <p>为什么这么写，而不是各域拿自己的 Mapper 来更新：
  * <ul>
- *   <li>{@code mch_entity} 在 shop-merchant，而这个服务在 shop-core ——
- *       直接引它的 Mapper 会被 ArchUnit 的模块依赖规则拦下，
- *       而为「盖一个时间戳」引一整套 SPI port 是不成比例的</li>
+ *   <li>各域的表分散在各自的模块里，为「盖一个时间戳」各引一套 Mapper 或 SPI port 不成比例。
+ *       例外是平台基础库的表（如商家 {@code mch_entity}）：它们只能经平台句柄写，由商户域自己归档</li>
  *   <li>归档是<b>横切关注点</b>：四个域的这段逻辑逐字相同，
  *       它本来就不该长在任何一个域里面</li>
  * </ul>

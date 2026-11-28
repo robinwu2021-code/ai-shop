@@ -46,15 +46,11 @@ public class OpsMerchantAuthController {
 
     public OpsMerchantAuthController(MerchantAuthCodeService authCodeService,
                                      MerchantGovernService governService,
-                                     AuditLogPort auditLogPort,
-                                     ai.neargo.shop.archive.ArchiveService archiveService) {
+                                     AuditLogPort auditLogPort) {
         this.authCodeService = authCodeService;
         this.governService = governService;
         this.auditLogPort = auditLogPort;
-        this.archiveService = archiveService;
     }
-
-    private final ai.neargo.shop.archive.ArchiveService archiveService;
 
     /*
      * 商家归档 = 从运营端默认列表移走，**与封禁完全是两回事**：
@@ -64,16 +60,16 @@ public class OpsMerchantAuthController {
     @PostMapping("/ops/merchants/{merchantNo}/archive")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_BAN + "')")
     public java.util.Map<String, Object> archiveMerchant(@PathVariable String merchantNo) {
-        long at = archiveService.archive(ai.neargo.shop.archive.ArchiveService.Kind.MERCHANT,
-                merchantNo, SecurityUtils.currentUserNo());
+        long at = governService.archive(merchantNo);
+        auditLogPort.record("MERCHANT_ARCHIVE", merchantNo, "归档");
         return java.util.Map.of("merchantNo", merchantNo, "archivedAt", at);
     }
 
     @PostMapping("/ops/merchants/{merchantNo}/unarchive")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_BAN + "')")
     public java.util.Map<String, Object> unarchiveMerchant(@PathVariable String merchantNo) {
-        archiveService.unarchive(ai.neargo.shop.archive.ArchiveService.Kind.MERCHANT,
-                merchantNo, SecurityUtils.currentUserNo());
+        governService.unarchive(merchantNo);
+        auditLogPort.record("MERCHANT_UNARCHIVE", merchantNo, "恢复");
         return java.util.Map.of("merchantNo", merchantNo);
     }
 
