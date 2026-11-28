@@ -18,7 +18,6 @@ public final class FoodIndustryTables {
                     "fnb_station",
                     "fnb_kitchen_ticket",
                     "fnb_kds_subscription",
-                    "fnb_kds_event",
                     "fnb_service_entitlement",
                     "fnb_service_entitlement_event",
                     "fnb_course",
@@ -29,7 +28,6 @@ public final class FoodIndustryTables {
                     "ind_store_policy",
                     "ind_assignment",
                     // 厨显：.61 已按独立表建（01-industry-kds.sql）
-                    "fnb_kds_cursor",
                     "fnb_kds_voice_command",
                     // 修订一：出品整组
                     "fnb_kitchen_task",
@@ -57,7 +55,7 @@ public final class FoodIndustryTables {
     public static final Set<String> MERGED = Set.of("fnb_dining_entitlement", "fnb_banquet_plan_revision", "fnb_config_revision", "fnb_store_policy",
             "fnb_scheduled_dispatch", "fnb_service_handover", "fnb_service_handover_item",
             "fnb_service_responsibility", "fnb_service_event",
-            "fnb_station_runtime");
+            "fnb_station_runtime", "fnb_kds_event", "fnb_kds_cursor");
 
     /** 主库里不再要求的旧表：改名的与合并掉的。 */
     public static Set<String> retired() {

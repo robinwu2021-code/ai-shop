@@ -7,7 +7,9 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
-import ai.neargo.shop.food.dto.FoodKdsContracts.EventDraft;
+import ai.neargo.shop.food.spi.FoodDeviceRefresh;
+import ai.neargo.shop.food.spi.FoodDeviceRefresh.Signal;
+import ai.neargo.shop.food.spi.InProcessFoodDeviceRefresh;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.CommandVO;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.ControlReq;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.StateVO;
@@ -30,7 +32,6 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -47,6 +48,12 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
     private final TransactionTemplate tx;
     private final Clock clock;
     private final ObjectMapper json;
+    private FoodDeviceRefresh refresh = new InProcessFoodDeviceRefresh();
+
+    /** 设备刷新信号；不设时只在本进程内传递。 */
+    public void setDeviceRefresh(FoodDeviceRefresh refresh) {
+        this.refresh = refresh;
+    }
 
     public FoodStationRuntimeServiceImpl(
             FoodStationRuntimeMapper mapper,
@@ -121,7 +128,6 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
         String hash = PricingSnapshotHash.of(List.of(station, req));
         return write(
                 () -> {
-                    lockCursor(e, s);
                     var state = mapper.state(e, s, station, true);
                     var old = mapper.original(e, s, actor, key);
                     if (old != null) {
@@ -156,11 +162,10 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
 
     @Override
     public VoiceClaim claim(String e, String s, String actor, String subscription) {
-        kds.replay(e, s, actor, subscription, 0, 1);
+        kds.authorize(e, s, actor, subscription);
         return write(
                 () -> {
                     var grant = grant(e, s, actor, subscription);
-                    lockCursor(e, s);
                     for (var expired : mapper.expired(e, s, grant.deviceNo(), clock.instant())) {
                         String no = text(expired, "command_no");
                         mapper.receipt(e, s, no, "UNKNOWN", "RECEIPT_TIMEOUT");
@@ -202,11 +207,10 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
         if (req.responseCode() != null && !req.responseCode().matches("[A-Z0-9_]{1,64}")) {
             bad();
         }
-        kds.replay(e, s, actor, subscription, 0, 1);
+        kds.authorize(e, s, actor, subscription);
         return write(
                 () -> {
                     var grant = grant(e, s, actor, subscription);
-                    lockCursor(e, s);
                     var row = mapper.command(e, s, req.commandNo(), true);
                     if (row == null) {
                         throw BizException.of(ErrorCode.NOT_FOUND);
@@ -264,21 +268,9 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
                 text(row, "reason"));
     }
 
-    private void lockCursor(String e, String s) {
-        kdsMapper.ensureCursor(e, s);
-        kdsMapper.head(e, s, true);
-    }
-
+    /** 开停、语音指令变化后让看这个工位的屏刷新（TDD §2.8 D-3），屏再拉工位状态与待播指令。 */
     private void publish(String e, String s, CommandVO cmd) {
-        var body = new LinkedHashMap<String, Object>();
-        body.put("stationNo", cmd.stationNo());
-        body.put("commandNo", cmd.commandNo());
-        body.put("action", cmd.action());
-        body.put("status", cmd.status());
-        body.put("reason", cmd.reason());
-        kds.append(new EventDraft(BizKey.next(BizKey.EVENT), e, s, cmd.stationNo(),
-                "CALL".equals(cmd.action()) ? "VOICE_CALL" : "STATION_CONTROL",
-                cmd.commandNo(), cmd.sourceVersion(), json.writeValueAsString(body), clock.instant().toString()));
+        refresh.signal(new Signal(e, s, FoodDeviceRefresh.STATION, List.of(cmd.stationNo())));
     }
 
     private <T> T write(Supplier<T> body) {

@@ -2,15 +2,12 @@ package ai.neargo.shop.food.api.biz;
 
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.api.FoodBizStoreScope;
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
 import ai.neargo.shop.food.api.stream.FoodKdsStreamTransport;
 import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
-import ai.neargo.shop.food.dto.FoodKdsContracts.ReplayVO;
 import ai.neargo.shop.food.dto.FoodKdsContracts.RevokeReq;
 import ai.neargo.shop.food.dto.FoodKdsContracts.SubscriptionVO;
 import ai.neargo.shop.food.service.FoodKdsService;
@@ -18,8 +15,6 @@ import ai.neargo.shop.spi.user.StoreDirectoryPort;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -88,47 +83,17 @@ public class BizFoodKdsController {
                 key);
     }
 
-    @GetMapping("/biz/x/food/kitchen-events")
-    @PreAuthorize("@perm.canBiz('" + BizPerms.RECEIVE + "')")
-    public ReplayVO replay(
-            @RequestParam @NotBlank @Size(max = 32) String subscriptionNo,
-            @RequestParam(defaultValue = "0") @Min(0) long after,
-            @RequestParam(defaultValue = "100") @Min(1) @Max(100) int limit,
-            HttpServletRequest request) {
-        var c = scope.current(request);
-        return service.replay(
-                c.merchantNo(),
-                c.currentStoreNo(),
-                SecurityUtils.currentUserNo(),
-                subscriptionNo,
-                after,
-                limit);
-    }
-
+    /**
+     * 屏的刷新通知流（TDD-餐饮域迁移新库 §2.8 D-3）：只推「来刷新」，不推业务数据。连上即推一次全量刷新，
+     * 之后有变化就推、每 30 秒兜底推一次；屏收到后按工位调后厨任务列表、排号列表拉当前状态。
+     */
     @GetMapping(value = "/biz/x/food/kitchen-stream", produces = "text/event-stream")
     @PreAuthorize("@perm.canBiz('" + BizPerms.RECEIVE + "')")
     public SseEmitter stream(
             @RequestParam @NotBlank @Size(max = 32) String subscriptionNo,
-            @RequestParam(defaultValue = "0") @Min(0) long after,
-            @RequestHeader(value = "Last-Event-ID", required = false) String last,
             HttpServletRequest request) {
-        long cursor = after;
-        if (last != null) {
-            try {
-                cursor = Long.parseLong(last);
-                if (cursor < 0) {
-                    throw new NumberFormatException();
-                }
-            } catch (NumberFormatException ex) {
-                throw BizException.of(ErrorCode.BAD_REQUEST);
-            }
-        }
         var c = scope.current(request);
         return streams.subscribe(
-                c.merchantNo(),
-                c.currentStoreNo(),
-                SecurityUtils.currentUserNo(),
-                subscriptionNo,
-                cursor);
+                c.merchantNo(), c.currentStoreNo(), SecurityUtils.currentUserNo(), subscriptionNo);
     }
 }

@@ -2,7 +2,6 @@ package ai.neargo.shop.food.service.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler;
 import ai.neargo.shop.food.assembler.FoodPrintDocumentAssembler;
 import ai.neargo.shop.food.dto.PrintDocumentReq;
 import ai.neargo.shop.food.service.FoodPrintService;
@@ -24,20 +23,11 @@ import java.util.function.Supplier;
 public class FoodPrintServiceImpl implements FoodPrintService {
     private final FoodPrintDocumentAssembler documents;
     private final Supplier<PrintPort> printing;
-    private final FoodEventPrintDocumentAssembler eventDocuments;
 
     public FoodPrintServiceImpl(
             FoodPrintDocumentAssembler documents, Supplier<PrintPort> printing) {
-        this(documents, printing, null);
-    }
-
-    public FoodPrintServiceImpl(
-            FoodPrintDocumentAssembler documents,
-            Supplier<PrintPort> printing,
-            FoodEventPrintDocumentAssembler eventDocuments) {
         this.documents = documents;
         this.printing = printing;
-        this.eventDocuments = eventDocuments;
     }
 
     @Override
@@ -45,23 +35,16 @@ public class FoodPrintServiceImpl implements FoodPrintService {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
-        var frozen =
-                request != null
-                                && Set.of("KITCHEN_CHANGE", "TABLE_CHANGE", "LABEL")
-                                        .contains(request.scene())
-                        ? eventDocument(scope, request, key)
-                        : documents.freeze(scope, request, key);
+        // 厨房变更、桌台变更、标签由业务事件到达时自动定格并打印（DiningKdsEventConsumer），补打走原任务；
+        // 不再按事件号手工首打（厨显事件表退役，TDD §2.8 D-3）。
+        if (request != null && Set.of("KITCHEN_CHANGE", "TABLE_CHANGE", "LABEL").contains(request.scene())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var frozen = documents.freeze(scope, request, key);
         var port = printing.get();
         if (port == null) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         return port.enqueue(scope, frozen);
-    }
-
-    private Enqueue eventDocument(Scope scope, PrintDocumentReq request, String key) {
-        if (eventDocuments == null) {
-            throw BizException.of(ErrorCode.CONFLICT);
-        }
-        return eventDocuments.freeze(scope, request, key);
     }
 }

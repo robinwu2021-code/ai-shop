@@ -2,9 +2,7 @@ package ai.neargo.shop.food.foodclient;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.food.dto.FoodKdsContracts.EventDraft;
 import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
-import ai.neargo.shop.food.dto.FoodKdsContracts.ReplayVO;
 import ai.neargo.shop.food.dto.FoodKdsContracts.RevokeReq;
 import ai.neargo.shop.food.dto.FoodKdsContracts.SubscriptionVO;
 import ai.neargo.shop.food.service.FoodKdsService;
@@ -54,39 +52,13 @@ public class RemoteFoodKdsService implements FoodKdsService {
     }
 
     @Override
-    public ReplayVO replay(String e, String s, String a, String no, long after, int limit) {
+    public SubscriptionVO authorize(String e, String s, String a, String no) {
         var result =
-                call(() -> api.replay(new FoodKdsInternalApi.Replay(e, s, a, no, after, limit)));
-        if (result == null
-                || !e.equals(result.entityNo())
-                || !s.equals(result.storeNo())
-                || !no.equals(result.subscriptionNo())
-                || result.events() == null
-                || result.events().size() > limit
-                || result.nextCursor() < after
-                || result.nextCursor() > result.watermark()
-                || result.hasMore() != (result.nextCursor() < result.watermark())) {
+                valid(e, s, call(() -> api.authorize(new FoodKdsInternalApi.Authorize(e, s, a, no))));
+        if (!no.equals(result.subscriptionNo()) || !"ACTIVE".equals(result.status())) {
             bad();
-        }
-        long cursor = after;
-        for (var event : result.events()) {
-            if (event == null
-                    || event.cursor() <= cursor
-                    || event.cursor() > result.nextCursor()
-                    || event.eventNo() == null
-                    || event.payload() == null) {
-                bad();
-            }
-            cursor = event.cursor();
         }
         return result;
-    }
-
-    @Override
-    public void append(EventDraft e) {
-        if (!Boolean.TRUE.equals(call(() -> api.append(e)))) {
-            bad();
-        }
     }
 
     private SubscriptionVO valid(String e, String s, SubscriptionVO result) {

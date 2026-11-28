@@ -6,13 +6,11 @@ import ai.neargo.shop.event.outbox.OutboxHandler;
 import ai.neargo.shop.event.outbox.RetryableOutboxException;
 import ai.neargo.shop.food.dto.FoodKdsContracts.EventDraft;
 import ai.neargo.shop.food.dto.PrintDocumentReq;
-import ai.neargo.shop.food.service.FoodKdsService;
-import ai.neargo.shop.food.service.FoodPrintService;
+import ai.neargo.shop.food.spi.FoodDeviceRefresh;
 import ai.neargo.shop.food.spi.DiningOrderChanged;
 import ai.neargo.shop.spi.food.CheckChanged;
 import ai.neargo.shop.spi.food.DiningOrderAccepted;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
-import ai.neargo.shop.spi.food.DiningStationRuntimeChanged;
 import ai.neargo.shop.spi.printing.PrintPort;
 import ai.neargo.svc.client.ServiceCallException;
 
@@ -20,34 +18,33 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
 
 /**
- * Projects original durable domain events; never polls queue state or emits invented business
- * transitions.
+ * 设备出口（TDD-餐饮域迁移新库 §2.8 D-3、D-4）：收原始业务事件（接单、厨房动作、打包交接、改单、账单变化），
+ * 让相关的屏刷新，并按打印路由打事件单据（厨房变更、标签、桌台变更）。打印是必达的，所以走发件箱；
+ * 屏只收刷新信号，自己拉当前状态。不再写厨显事件表。处理者编号沿用，发件箱里已有的投递记录照旧认领。
  */
 public class DiningKdsEventConsumer implements OutboxHandler {
     public static final String HANDLER = "food-kds-business-events-v1";
-    private final FoodKdsService service;
+    private final FoodDeviceRefresh refresh;
     private final ObjectMapper json;
     private final Supplier<PrintPort> printing;
-    private final Supplier<FoodPrintService> documents;
+    private final FoodEventPrintDocuments documents;
 
-    public DiningKdsEventConsumer(FoodKdsService service, ObjectMapper json) {
-        this(service, json, () -> null, () -> null);
+    public DiningKdsEventConsumer(FoodDeviceRefresh refresh, ObjectMapper json) {
+        this(refresh, json, () -> null);
     }
 
     public DiningKdsEventConsumer(
-            FoodKdsService service,
-            ObjectMapper json,
-            Supplier<PrintPort> printing,
-            Supplier<FoodPrintService> documents) {
-        this.service = service;
+            FoodDeviceRefresh refresh, ObjectMapper json, Supplier<PrintPort> printing) {
+        this.refresh = refresh;
         this.json = json;
         this.printing = printing;
-        this.documents = documents;
+        this.documents = new FoodEventPrintDocuments(json);
     }
 
     @Override
@@ -73,7 +70,7 @@ public class DiningKdsEventConsumer implements OutboxHandler {
 
     @Override
     public DeliveryResult handle(OutboxEnvelope envelope) {
-        if ((!supports(envelope.eventType()) && !"DINING_STATION_RUNTIME_CHANGED".equals(envelope.eventType()))
+        if (!supports(envelope.eventType())
                 || envelope.eventNo() == null
                 || envelope.occurredAt() == null) {
             throw new IllegalArgumentException("Invalid KDS original event");
@@ -143,25 +140,6 @@ public class DiningKdsEventConsumer implements OutboxHandler {
                                 source.sourceVersion(),
                                 body);
             }
-            case "DINING_STATION_RUNTIME_CHANGED" -> {
-                var source = json.readValue(envelope.payload(), DiningStationRuntimeChanged.class);
-                match(envelope, "FOOD_STATION_RUNTIME", source.stationNo());
-                body.put("stationNo", source.stationNo());
-                body.put("commandNo", source.commandNo());
-                body.put("action", source.action());
-                body.put("status", source.status());
-                body.put("reason", source.reason());
-                event =
-                        draft(
-                                envelope,
-                                source.entityNo(),
-                                source.storeNo(),
-                                source.stationNo(),
-                                "CALL".equals(source.action()) ? "VOICE_CALL" : "STATION_CONTROL",
-                                source.commandNo(),
-                                source.sourceVersion(),
-                                body);
-            }
             default -> {
                 var source = json.readValue(envelope.payload(), CheckChanged.class);
                 match(envelope, "FOOD_CHECK", source.checkNo());
@@ -186,7 +164,12 @@ public class DiningKdsEventConsumer implements OutboxHandler {
             }
         }
         try {
-            service.append(event);
+            refresh.signal(
+                    new FoodDeviceRefresh.Signal(
+                            event.entityNo(),
+                            event.storeNo(),
+                            FoodDeviceRefresh.KITCHEN,
+                            event.stationNo() == null ? List.of() : List.of(event.stationNo())));
             enqueue(event);
             return DeliveryResult.sent();
         } catch (ServiceCallException failure) {
@@ -243,8 +226,7 @@ public class DiningKdsEventConsumer implements OutboxHandler {
             return;
         }
         var owner = printing.get();
-        var service = documents.get();
-        if (owner == null || service == null) {
+        if (owner == null) {
             throw new IllegalStateException("KDS print owner unavailable");
         }
         var scope = new PrintPort.Scope(event.entityNo(), event.storeNo(), "SYSTEM");
@@ -257,15 +239,18 @@ public class DiningKdsEventConsumer implements OutboxHandler {
             }
         }
         for (var request : requests) {
-            service.enqueue(
+            owner.enqueue(
                     scope,
-                    request,
-                    "EVENT_PRINT:"
-                            + event.eventNo()
-                            + ":"
-                            + scene
-                            + ":"
-                            + Objects.toString(request.stationNo(), ""));
+                    documents.freeze(
+                            scope,
+                            request,
+                            "EVENT_PRINT:"
+                                    + event.eventNo()
+                                    + ":"
+                                    + scene
+                                    + ":"
+                                    + Objects.toString(request.stationNo(), ""),
+                            event));
         }
     }
 

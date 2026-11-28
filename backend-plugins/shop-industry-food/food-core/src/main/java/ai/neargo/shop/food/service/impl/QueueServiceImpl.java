@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.spi.FoodDeviceRefresh;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -72,6 +74,14 @@ public class QueueServiceImpl implements QueueService {
     private final RequestIdempotencyPort idem;
     private final ObjectMapper json;
     private final TransactionTemplate tx;
+
+    private FoodDeviceRefresh refresh;
+
+    /** 设备刷新信号（叫号屏）；没装配时不发。 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setDeviceRefresh(FoodDeviceRefresh refresh) {
+        this.refresh = refresh;
+    }
 
     public QueueServiceImpl(
             QueueTicketMapper tickets,
@@ -508,6 +518,10 @@ public class QueueServiceImpl implements QueueService {
         audit.setCreatedBy(actor);
         audit.setUpdatedBy(actor);
         actions.insert(audit);
+        // 叫号屏与 App 排队页收到刷新后拉当前排号（TDD §2.8 D-3）；提交后才发
+        if (refresh != null)
+            refresh.signal(new FoodDeviceRefresh.Signal(
+                    row.getEntityNo(), row.getStoreNo(), FoodDeviceRefresh.QUEUE, List.of()));
         if (notifications != null && "CALLED".equals(row.getStatus()))
             notifications.called(
                     row.getEntityNo(),

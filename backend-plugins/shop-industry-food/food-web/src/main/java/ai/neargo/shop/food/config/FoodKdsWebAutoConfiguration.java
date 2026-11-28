@@ -1,5 +1,8 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.food.spi.FoodDeviceRefresh;
+import ai.neargo.shop.food.spi.InProcessFoodDeviceRefresh;
+
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
 import ai.neargo.shop.food.api.biz.BizFoodKdsController;
 import ai.neargo.shop.food.api.biz.BizFoodStationRuntimeController;
@@ -9,7 +12,6 @@ import ai.neargo.shop.food.event.DiningKdsEventConsumer;
 import ai.neargo.shop.food.foodclient.RemoteFoodKdsService;
 import ai.neargo.shop.food.foodclient.RemoteFoodStationRuntimeService;
 import ai.neargo.shop.food.service.FoodKdsService;
-import ai.neargo.shop.food.service.FoodPrintService;
 import ai.neargo.shop.food.service.FoodStationRuntimeService;
 import ai.neargo.shop.food.spi.FoodKdsInternalApi;
 import ai.neargo.shop.food.spi.FoodStationRuntimeInternalApi;
@@ -68,10 +70,20 @@ public class FoodKdsWebAutoConfiguration {
                 http.client(ServiceName.FOOD, FoodKdsInternalApi.class, Duration.ofSeconds(5)));
     }
 
+    /**
+     * 本进程里没有餐饮核心（独立部署的网关侧）时的刷新信号：只在本进程内传递，
+     * 收得到本进程消费者发的厨房事件刷新；核心那边的开停、叫号刷新靠流的定时兜底（TDD §2.8 D-3）。
+     */
+    @Bean
+    @ConditionalOnMissingBean(FoodDeviceRefresh.class)
+    FoodDeviceRefresh inProcessFoodDeviceRefresh() {
+        return new InProcessFoodDeviceRefresh();
+    }
+
     @Bean
     @ConditionalOnMissingBean(FoodKdsStreamTransport.class)
-    FoodKdsStreamTransport foodKdsStreamService(FoodKdsService service) {
-        return new FoodKdsStreamTransportImpl(service);
+    FoodKdsStreamTransport foodKdsStreamService(FoodKdsService service, FoodDeviceRefresh refresh) {
+        return new FoodKdsStreamTransportImpl(service, refresh);
     }
 
     @Bean
@@ -87,11 +99,7 @@ public class FoodKdsWebAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(DiningKdsEventConsumer.class)
     DiningKdsEventConsumer diningKdsEventConsumer(
-            FoodKdsService service,
-            ObjectMapper json,
-            ObjectProvider<PrintPort> printing,
-            ObjectProvider<FoodPrintService> documents) {
-        return new DiningKdsEventConsumer(
-                service, json, printing::getIfAvailable, documents::getIfAvailable);
+            FoodDeviceRefresh refresh, ObjectMapper json, ObjectProvider<PrintPort> printing) {
+        return new DiningKdsEventConsumer(refresh, json, printing::getIfAvailable);
     }
 }

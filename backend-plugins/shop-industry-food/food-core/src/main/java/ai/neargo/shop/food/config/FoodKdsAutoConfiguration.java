@@ -2,7 +2,11 @@ package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.common.config.ModuleDataSources;
 
-import ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler;
+import ai.neargo.shop.event.broker.MessageBroker;
+import ai.neargo.shop.food.service.support.BrokerFoodDeviceRefresh;
+import ai.neargo.shop.food.spi.FoodDeviceRefresh;
+import ai.neargo.shop.food.spi.InProcessFoodDeviceRefresh;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.food.mapper.FoodKdsMapper;
 import ai.neargo.shop.food.mapper.FoodStationRuntimeMapper;
 import ai.neargo.shop.food.service.FoodKdsService;
@@ -40,6 +44,16 @@ public class FoodKdsAutoConfiguration {
         return new FoodStationRuntimeMapper(new JdbcTemplate(source));
     }
 
+    /** 设备刷新信号（TDD §2.8 D-3）：配了消息中间件就广播到每个实例，否则只在本进程内传递。 */
+    @Bean
+    @ConditionalOnMissingBean(FoodDeviceRefresh.class)
+    FoodDeviceRefresh foodDeviceRefresh(ObjectProvider<MessageBroker> broker, ObjectMapper json) {
+        MessageBroker available = broker.getIfAvailable();
+        return available == null
+                ? new InProcessFoodDeviceRefresh()
+                : new BrokerFoodDeviceRefresh(available, json);
+    }
+
     @Bean
     FoodStationRuntimeService foodStationRuntimeService(
             FoodStationRuntimeMapper mapper,
@@ -47,15 +61,12 @@ public class FoodKdsAutoConfiguration {
             FoodKdsService kds,
             PrintPort printing,
             @Qualifier(ModuleDataSources.INDUSTRY_TX_MANAGER) PlatformTransactionManager manager,
-            ObjectMapper json) {
-        return new FoodStationRuntimeServiceImpl(
+            ObjectMapper json,
+            FoodDeviceRefresh refresh) {
+        var service = new FoodStationRuntimeServiceImpl(
                 mapper, kdsMapper, kds, printing, manager, Clock.systemUTC(), json);
-    }
-
-    @Bean
-    FoodEventPrintDocumentAssembler foodEventPrintDocumentAssembler(
-            FoodKdsMapper mapper, ObjectMapper json) {
-        return new FoodEventPrintDocumentAssembler(mapper, json);
+        service.setDeviceRefresh(refresh);
+        return service;
     }
 
     @Bean

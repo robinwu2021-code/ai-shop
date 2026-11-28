@@ -1,10 +1,10 @@
-package ai.neargo.shop.food.assembler;
+package ai.neargo.shop.food.event;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.food.dto.PrintDocumentReq;
-import ai.neargo.shop.food.mapper.FoodKdsMapper;
+import ai.neargo.shop.food.dto.FoodKdsContracts.EventDraft;
 import ai.neargo.shop.spi.printing.PrintPort.Document;
 import ai.neargo.shop.spi.printing.PrintPort.Enqueue;
 import ai.neargo.shop.spi.printing.PrintPort.Line;
@@ -18,17 +18,18 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-/** Prints immutable event deltas, never the current whole order after a change. */
-public class FoodEventPrintDocumentAssembler {
-    private final FoodKdsMapper events;
+/**
+ * 事件单据（厨房变更、桌台变更、标签）：按到达的原始业务事件定格内容，只打变化部分，不打改后的整单。
+ * 原来按事件号回读厨显事件表，厨显事件表退役后改为直接用事件本身（TDD-餐饮域迁移新库 §2.8 D-3）。
+ */
+final class FoodEventPrintDocuments {
     private final ObjectMapper json;
 
-    public FoodEventPrintDocumentAssembler(FoodKdsMapper events, ObjectMapper json) {
-        this.events = events;
+    FoodEventPrintDocuments(ObjectMapper json) {
         this.json = json;
     }
 
-    public Enqueue freeze(Scope scope, PrintDocumentReq req, String key) {
+    Enqueue freeze(Scope scope, PrintDocumentReq req, String key, EventDraft event) {
         if (scope == null
                 || req == null
                 || key == null
@@ -44,8 +45,7 @@ public class FoodEventPrintDocumentAssembler {
         if (req.stationNo() != null) {
             id(req.stationNo());
         }
-        var event = events.originalEvent(scope.entityNo(), scope.storeNo(), req.sourceNo());
-        if (event == null) {
+        if (event == null || !req.sourceNo().equals(event.eventNo())) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         if (event.stationNo() != null && !Objects.equals(event.stationNo(), req.stationNo())) {

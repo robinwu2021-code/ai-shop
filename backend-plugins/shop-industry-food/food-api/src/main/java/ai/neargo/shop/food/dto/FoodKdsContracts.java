@@ -66,7 +66,11 @@ public final class FoodKdsContracts {
         }
     }
 
-    /** Payload is a selected business projection, never raw order/customer rows or credentials. */
+    /**
+     * 事件打印的来源：由原始业务事件（接单、厨房动作、改单、账单变化）投影出的一份内容，打印时据此定格单据。
+     * 不再落厨显事件表（TDD-餐饮域迁移新库 §2.8 D-3）。Payload is a selected business projection, never raw
+     * order/customer rows or credentials.
+     */
     public record EventDraft(
             String eventNo,
             String entityNo,
@@ -77,27 +81,4 @@ public final class FoodKdsContracts {
             long sourceVersion,
             String payload,
             String occurredAt) {}
-
-    public record EventVO(
-            long cursor,
-            String eventNo,
-            String stationNo,
-            String eventType,
-            String sourceNo,
-            long sourceVersion,
-            String payload,
-            String occurredAt) {}
-
-    public record ReplayVO(
-            String subscriptionNo,
-            String entityNo,
-            String storeNo,
-            List<EventVO> events,
-            long nextCursor,
-            long watermark,
-            boolean hasMore) {
-        public ReplayVO {
-            events = List.copyOf(events);
-        }
-    }
 }

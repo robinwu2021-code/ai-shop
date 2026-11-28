@@ -3,7 +3,7 @@
 > 由 `python3 scripts/gen-gateway-api-inventory.py` 生成，**请勿手改**。来源是后端源码里实际声明的入口。
 > 总览、分类规则与验证清单见 [网关接口清单](网关接口清单.md)。
 
-共 **1227** 个入口：支付 269、零售 583、餐饮 261、服务业 32、库存 45、平台与通用 37。
+共 **1226** 个入口：支付 269、零售 583、餐饮 260、服务业 32、库存 45、平台与通用 37。
 
 ## 支付（269）
 
@@ -1460,9 +1460,9 @@
 | GET | `/biz/x/commerce/sync-runs/{runNo}/items` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-commerce-integration | 未部署 | BizSyncRunController |
 | POST | `/biz/x/commerce/sync-runs/{runNo}:cancel-queued` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-commerce-integration | 未部署 | BizSyncRunController |
 
-## 餐饮（261）
+## 餐饮（260）
 
-网关判权：能提前判 261。构建：插件 shop-industry-food 261。生产：未部署 261。
+网关判权：能提前判 260。构建：插件 shop-industry-food 260。生产：未部署 260。
 
 ### x/food/batches（8）
 
@@ -1634,12 +1634,6 @@
 | POST | `/biz/x/food/dining-devices` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizDiningIdentityController |
 | GET | `/biz/x/food/dining-devices/{deviceNo}` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizDiningIdentityController |
 | POST | `/biz/x/food/dining-devices/{deviceNo}:revoke` | `@perm.canBiz('biz:store:admin')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizDiningIdentityController |
-
-### x/food/kitchen-events（1）
-
-| 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
-|---|---|---|---|---|---|---|
-| GET | `/biz/x/food/kitchen-events` | `@perm.canBiz('biz:receive')` | 能提前判 | 插件 shop-industry-food | 未部署 | BizFoodKdsController |
 
 ### x/food/kitchen-stream（1）
 

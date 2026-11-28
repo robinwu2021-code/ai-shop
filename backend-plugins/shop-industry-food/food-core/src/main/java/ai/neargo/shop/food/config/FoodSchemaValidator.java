@@ -280,7 +280,6 @@ public final class FoodSchemaValidator {
         contracts.put(
                 "fnb_identity_operation",
                 List.of("entity_no,store_no,actor_no,action,request_key_hash", "operation_no"));
-        contracts.put("fnb_kds_event", List.of("entity_no,store_no,event_no"));
         contracts.put(
                 "fnb_kds_subscription", List.of("entity_no,store_no,requested_by,request_key"));
         contracts.put(
@@ -890,21 +889,7 @@ public final class FoodSchemaValidator {
                                     "updated_at",
                                     "updated_by",
                                     "version"));
-            expected.computeIfAbsent("fnb_kds_cursor", key -> new TreeSet<>())
-                    .addAll(List.of("entity_no", "sequence_no", "store_no"));
-            expected.computeIfAbsent("fnb_kds_event", key -> new TreeSet<>())
-                    .addAll(
-                            List.of(
-                                    "entity_no",
-                                    "event_no",
-                                    "event_type",
-                                    "occurred_at",
-                                    "payload",
-                                    "sequence_no",
-                                    "source_no",
-                                    "source_version",
-                                    "station_no",
-                                    "store_no"));
+            // 厨显事件流与游标退役（TDD §2.8 D-3）。
             expected.computeIfAbsent("fnb_kds_subscription", key -> new TreeSet<>())
                     .addAll(
                             List.of(

@@ -13,6 +13,9 @@ import ai.neargo.shop.food.api.biz.BizFoodKdsController;
 import ai.neargo.shop.food.api.stream.FoodKdsStreamTransportImpl;
 import ai.neargo.shop.food.dto.FoodKdsContracts.*;
 import ai.neargo.shop.food.service.FoodKdsService;
+import ai.neargo.shop.food.spi.FoodDeviceRefresh;
+import ai.neargo.shop.food.spi.FoodDeviceRefresh.Signal;
+import ai.neargo.shop.food.spi.InProcessFoodDeviceRefresh;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 
 import org.junit.jupiter.api.Test;
@@ -23,34 +26,26 @@ import org.springframework.context.annotation.Configuration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
-/** Actual HTTP + actual SSE streamer; durable replay/grant owner is a mock, not a DB. */
+/**
+ * 真实 HTTP + 真实 SSE 流；订阅的归属方是 mock。流只推「来刷新」（TDD-餐饮域迁移新库 §2.8 D-3）。
+ */
 class KdsStreamAcceptanceTest {
     final WebApplicationContextRunner runner =
             new WebApplicationContextRunner()
                     .withUserConfiguration(OperationsHttpAcceptanceTest.Host.class, KdsHost.class)
                     .withPropertyValues("shop.food.enabled=true", "spring.profiles.active=api,ops");
 
+    static final SubscriptionVO HOT =
+            new SubscriptionVO("SUB1", "E", "A", "DEV1", "staff", List.of("HOT"), "2026-10-25T12:00:00Z", "ACTIVE", 1);
+
     @Test
-    void grantAndReplayBindOriginalStationsCursorLimitAndTrustedActor() {
+    void grantBindsStationsAndTheEventReplayEndpointIsGone() {
         runner.run(
                 c -> {
                     var owner = c.getBean(FoodKdsService.class);
                     var grant = new GrantReq("DEV1", "bridge", List.of("HOT"), 600);
-                    when(owner.grant("E", "A", "staff", grant, "grant-key"))
-                            .thenReturn(
-                                    new SubscriptionVO(
-                                            "SUB1",
-                                            "E",
-                                            "A",
-                                            "DEV1",
-                                            "bridge",
-                                            List.of("HOT"),
-                                            "2026-10-25T12:00:00Z",
-                                            "ACTIVE",
-                                            1));
-                    when(owner.replay("E", "A", "staff", "SUB1", 7, 2)).thenReturn(page(8));
+                    when(owner.grant("E", "A", "staff", grant, "grant-key")).thenReturn(HOT);
                     var mvc = OperationsHttpAcceptanceTest.mvc(c);
                     String token = OperationsHttpAcceptanceTest.biz(c, "staff");
                     mvc.perform(
@@ -62,48 +57,35 @@ class KdsStreamAcceptanceTest {
                                                     "{\"deviceNo\":\"DEV1\",\"deviceActorNo\":\"bridge\",\"stationNos\":[\"HOT\"],\"lifetimeSeconds\":600}"))
                             .andExpect(jsonPath("$.data.subscriptionNo").value("SUB1"))
                             .andExpect(jsonPath("$.data.stationNos[0]").value("HOT"));
-                    mvc.perform(
-                                    get("/biz/x/food/kitchen-events")
-                                            .header("Authorization", token)
-                                            .param("subscriptionNo", "SUB1")
-                                            .param("after", "7")
-                                            .param("limit", "2"))
-                            .andExpect(jsonPath("$.data.events[0].eventNo").value("EV8"))
-                            .andExpect(jsonPath("$.data.events[0].stationNo").value("HOT"))
-                            .andExpect(jsonPath("$.data.nextCursor").value(8));
+                    // 按序号拉事件已停用：屏改为收刷新后拉后厨任务列表
+                    var gone =
+                            mvc.perform(
+                                            get("/biz/x/food/kitchen-events")
+                                                    .header("Authorization", token)
+                                                    .param("subscriptionNo", "SUB1"))
+                                    .andReturn()
+                                    .getResponse();
+                    assertThat(gone.getContentAsString()).doesNotContain("nextCursor");
                     verify(owner).grant("E", "A", "staff", grant, "grant-key");
-                    verify(owner).replay("E", "A", "staff", "SUB1", 7, 2);
+                    verifyNoMoreInteractions(owner);
                 });
     }
 
     @Test
-    void replayRejectsInvalidPagingRoleAndStoreBeforeReplayOwner() {
+    void streamRejectsWrongRoleAndStoreBeforeTouchingTheOwner() {
         runner.run(
                 c -> {
                     var mvc = OperationsHttpAcceptanceTest.mvc(c);
-                    String token = OperationsHttpAcceptanceTest.biz(c, "staff");
                     mvc.perform(
-                                    get("/biz/x/food/kitchen-events")
-                                            .header("Authorization", token)
-                                            .param("subscriptionNo", "SUB1")
-                                            .param("after", "-1"))
-                            .andExpect(jsonPath("$.code").value(10400));
-                    mvc.perform(
-                                    get("/biz/x/food/kitchen-events")
-                                            .header("Authorization", token)
-                                            .param("subscriptionNo", "SUB1")
-                                            .param("limit", "101"))
-                            .andExpect(jsonPath("$.code").value(10400));
-                    mvc.perform(
-                                    get("/biz/x/food/kitchen-events")
+                                    get("/biz/x/food/kitchen-stream")
                                             .header(
                                                     "Authorization",
                                                     OperationsHttpAcceptanceTest.biz(c, "cashier"))
                                             .param("subscriptionNo", "SUB1"))
                             .andExpect(jsonPath("$.code").value(70006));
                     mvc.perform(
-                                    get("/biz/x/food/kitchen-events")
-                                            .header("Authorization", token)
+                                    get("/biz/x/food/kitchen-stream")
+                                            .header("Authorization", OperationsHttpAcceptanceTest.biz(c, "staff"))
                                             .header("X-Store-No", "B")
                                             .param("subscriptionNo", "SUB1"))
                             .andExpect(jsonPath("$.code").value(10403));
@@ -112,98 +94,66 @@ class KdsStreamAcceptanceTest {
     }
 
     @Test
-    void lastEventIdResumesActualPersistedEventProjectionAndRevocationClosesStream() {
+    void streamPushesRefreshForItsStoreAndStationsAndClosesWhenTheGrantIsRevoked() {
         runner.run(
                 c -> {
                     var owner = c.getBean(FoodKdsService.class);
                     var revoked = new CountDownLatch(1);
-                    var calls = new AtomicInteger();
-                    when(owner.replay(
-                                    eq("E"), eq("A"), eq("staff"), eq("SUB1"), anyLong(), eq(100)))
+                    var reauthorized = new java.util.concurrent.atomic.AtomicBoolean();
+                    when(owner.authorize("E", "A", "staff", "SUB1"))
                             .thenAnswer(
                                     invocation -> {
-                                        if (calls.getAndIncrement() == 0) {
-                                            assertThat(invocation.<Long>getArgument(4))
-                                                    .isEqualTo(41L);
-                                            return page(42);
-                                        }
-                                        assertThat(invocation.<Long>getArgument(4)).isEqualTo(42L);
+                                        if (!reauthorized.getAndSet(true)) return HOT;
                                         revoked.countDown();
                                         throw BizException.of(ErrorCode.FORBIDDEN);
                                     });
+                    var refresh = c.getBean(FoodDeviceRefresh.class);
                     var result =
                             OperationsHttpAcceptanceTest.mvc(c)
                                     .perform(
                                             get("/biz/x/food/kitchen-stream")
                                                     .header(
                                                             "Authorization",
-                                                            OperationsHttpAcceptanceTest.biz(
-                                                                    c, "staff"))
-                                                    .header("Last-Event-ID", "41")
-                                                    .param("subscriptionNo", "SUB1")
-                                                    .param("after", "3"))
+                                                            OperationsHttpAcceptanceTest.biz(c, "staff"))
+                                                    .param("subscriptionNo", "SUB1"))
                                     .andExpect(status().isOk())
                                     .andExpect(request().asyncStarted())
                                     .andReturn();
-                    String initial = result.getResponse().getContentAsString();
-                    assertThat(initial)
-                            .contains("id:42", "event:KITCHEN_CHANGE", "EV42", "event:cursor")
-                            .doesNotContain("EV41");
-                    // Await the production scheduler's first reauthorization attempt, not an
-                    // arbitrary sleep.
+                    // 连上先推一次全量刷新
+                    assertThat(result.getResponse().getContentAsString())
+                            .contains("event:refresh", "\"kind\":\"ALL\"", "\"stationNos\":[\"HOT\"]");
+                    // 别的门店、别的工位不推；本店整店或涉及 HOT 的推
+                    refresh.signal(new Signal("E", "B", FoodDeviceRefresh.KITCHEN, List.of("HOT")));
+                    refresh.signal(new Signal("E", "A", FoodDeviceRefresh.KITCHEN, List.of("COLD")));
+                    refresh.signal(new Signal("E", "A", FoodDeviceRefresh.STATION, List.of("HOT", "COLD")));
+                    refresh.signal(new Signal("E", "A", FoodDeviceRefresh.QUEUE, List.of()));
+                    String pushed = result.getResponse().getContentAsString();
+                    assertThat(pushed.split("event:refresh", -1)).hasSize(4);
+                    assertThat(pushed)
+                            .contains("\"kind\":\"STATION\",\"stationNos\":[\"HOT\"]")
+                            .contains("\"kind\":\"QUEUE\",\"stationNos\":[\"HOT\"]")
+                            .doesNotContain("COLD");
+                    // 兜底时重新核验；订阅被吊销即断开
                     assertThat(revoked.await(5, TimeUnit.SECONDS)).isTrue();
                     assertThat(result.getAsyncResult(5000)).isInstanceOf(BizException.class);
-                    assertThat(calls).hasValue(2);
-                    assertThat(result.getResponse().getContentAsString()).isEqualTo(initial);
                 });
     }
 
     @Test
-    void malformedOrNegativeLastEventIdFailsBeforeStreamAndRevokedInitialGrantFailsClosed() {
+    void revokedInitialGrantFailsBeforeTheStreamStarts() {
         runner.run(
                 c -> {
-                    var mvc = OperationsHttpAcceptanceTest.mvc(c);
-                    String token = OperationsHttpAcceptanceTest.biz(c, "staff");
-                    for (String last : List.of("not-a-cursor", "-1", "9223372036854775808")) {
-                        mvc.perform(
-                                        get("/biz/x/food/kitchen-stream")
-                                                .header("Authorization", token)
-                                                .header("Last-Event-ID", last)
-                                                .param("subscriptionNo", "SUB1"))
-                                .andExpect(jsonPath("$.code").value(10400))
-                                .andExpect(request().asyncNotStarted());
-                    }
                     var owner = c.getBean(FoodKdsService.class);
-                    verifyNoInteractions(owner);
-                    when(owner.replay("E", "A", "staff", "SUB1", 0, 100))
+                    when(owner.authorize("E", "A", "staff", "SUB1"))
                             .thenThrow(BizException.of(ErrorCode.FORBIDDEN));
-                    mvc.perform(
+                    OperationsHttpAcceptanceTest.mvc(c)
+                            .perform(
                                     get("/biz/x/food/kitchen-stream")
-                                            .header("Authorization", token)
+                                            .header("Authorization", OperationsHttpAcceptanceTest.biz(c, "staff"))
                                             .param("subscriptionNo", "SUB1"))
                             .andExpect(jsonPath("$.code").value(10403))
                             .andExpect(request().asyncNotStarted());
                 });
-    }
-
-    static ReplayVO page(long cursor) {
-        return new ReplayVO(
-                "SUB1",
-                "E",
-                "A",
-                List.of(
-                        new EventVO(
-                                cursor,
-                                "EV" + cursor,
-                                "HOT",
-                                "KITCHEN_CHANGE",
-                                "B1",
-                                7,
-                                "{\"quantity\":2}",
-                                "2026-10-25T10:00:00Z")),
-                cursor,
-                cursor,
-                false);
     }
 
     @Configuration(proxyBeanMethods = false)
@@ -213,9 +163,14 @@ class KdsStreamAcceptanceTest {
             return mock(FoodKdsService.class);
         }
 
+        @Bean
+        FoodDeviceRefresh refresh() {
+            return new InProcessFoodDeviceRefresh();
+        }
+
         @Bean(destroyMethod = "shutdown")
-        FoodKdsStreamTransportImpl streams(FoodKdsService s) {
-            return new FoodKdsStreamTransportImpl(s);
+        FoodKdsStreamTransportImpl streams(FoodKdsService s, FoodDeviceRefresh r) {
+            return new FoodKdsStreamTransportImpl(s, r, 1);
         }
 
         @Bean

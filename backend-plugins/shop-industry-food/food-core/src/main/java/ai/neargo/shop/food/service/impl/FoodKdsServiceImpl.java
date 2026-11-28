@@ -4,13 +4,9 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
-import ai.neargo.shop.food.dto.FoodKdsContracts.EventDraft;
-import ai.neargo.shop.food.dto.FoodKdsContracts.EventVO;
 import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
-import ai.neargo.shop.food.dto.FoodKdsContracts.ReplayVO;
 import ai.neargo.shop.food.dto.FoodKdsContracts.RevokeReq;
 import ai.neargo.shop.food.dto.FoodKdsContracts.SubscriptionVO;
-import ai.neargo.shop.food.entity.FnbKdsEvent;
 import ai.neargo.shop.food.entity.FnbKdsSubscription;
 import ai.neargo.shop.food.mapper.FoodKdsMapper;
 import ai.neargo.shop.food.service.FoodKdsService;
@@ -25,17 +21,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.function.Supplier;
 
 /**
- * Original event log plus revocable device/actor grant. Replay never manufactures events from queue
- * snapshots.
+ * 厨显订阅：哪台屏、由谁登录、看哪些工位。屏不再按序号拉事件，收到刷新后按工位拉当前状态
+ * （TDD-餐饮域迁移新库 §2.8 D-3）。
  */
 public class FoodKdsServiceImpl implements FoodKdsService {
     private final FoodKdsMapper mapper;
@@ -87,8 +79,6 @@ public class FoodKdsServiceImpl implements FoodKdsService {
                                 req.lifetimeSeconds()));
         return tx(
                 () -> {
-                    mapper.ensureCursor(entity, store);
-                    mapper.head(entity, store, true);
                     var original = mapper.originalGrant(entity, store, actor, key);
                     if (original != null) {
                         if (!hash.equals(original.requestHash())) {
@@ -152,125 +142,16 @@ public class FoodKdsServiceImpl implements FoodKdsService {
     }
 
     @Override
-    public ReplayVO replay(
-            String entity, String store, String actor, String no, long after, int limit) {
+    public SubscriptionVO authorize(String entity, String store, String actor, String no) {
         scope(entity, store, actor);
         id(no);
-        if (after < 0 || limit < 1 || limit > 100) {
-            bad();
-        }
-        var known = mapper.subscription(entity, store, no, false);
-        authorize(known, actor);
-        // Remote owner checks happen outside the grant row transaction; every batch verifies the
-        // actual device binding.
-        if (liveDevice(entity, store, actor, known.deviceNo(), actor) != known.deviceVersion()) {
+        var row = mapper.subscription(entity, store, no, false);
+        authorize(row, actor);
+        // 每次都核对设备仍在册且授权版本没变（换机、吊销后旧订阅立即失效）。
+        if (liveDevice(entity, store, actor, row.deviceNo(), actor) != row.deviceVersion()) {
             forbidden();
         }
-        return tx(
-                () -> {
-                    var row = mapper.subscription(entity, store, no, true);
-                    authorize(row, actor);
-                    long head = mapper.head(entity, store, false);
-                    if (after > head) {
-                        conflict();
-                    }
-                    var events = mapper.replay(entity, store, stations(row), after, head, limit);
-                    long next = events.size() == limit ? events.getLast().sequenceNo() : head;
-                    return new ReplayVO(
-                            no,
-                            entity,
-                            store,
-                            events.stream()
-                                    .map(
-                                            e ->
-                                                    new EventVO(
-                                                            e.sequenceNo(),
-                                                            e.eventNo(),
-                                                            e.stationNo(),
-                                                            e.eventType(),
-                                                            e.sourceNo(),
-                                                            e.sourceVersion(),
-                                                            e.payload(),
-                                                            e.occurredAt().toString()))
-                                    .toList(),
-                            next,
-                            head,
-                            next < head);
-                });
-    }
-
-    @Override
-    public void append(EventDraft event) {
-        if (event == null) {
-            bad();
-        }
-        scope(event.entityNo(), event.storeNo(), "SYSTEM");
-        key(event.eventNo(), 64);
-        id(event.sourceNo());
-        if (event.stationNo() != null) {
-            id(event.stationNo());
-        }
-        if (!Set.of(
-                                "ORDER_ACCEPTED",
-                                "KITCHEN_ACTION",
-                                "CHECK_CHANGED",
-                                "ORDER_CHANGED",
-                                "PRINT_CHANGED",
-                                "STATION_CONTROL",
-                                "VOICE_CALL")
-                        .contains(Objects.toString(event.eventType(), ""))
-                || event.sourceVersion() < 0
-                || event.payload() == null
-                || event.payload().length() > 65536) {
-            bad();
-        }
-        try {
-            if (!json.readTree(event.payload()).isObject()) {
-                bad();
-            }
-        } catch (RuntimeException failure) {
-            bad();
-        }
-        final Instant at;
-        try {
-            at = Instant.parse(event.occurredAt()).truncatedTo(ChronoUnit.MILLIS);
-        } catch (RuntimeException failure) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        tx(
-                () -> {
-                    mapper.ensureCursor(event.entityNo(), event.storeNo());
-                    long head = mapper.head(event.entityNo(), event.storeNo(), true);
-                    var old =
-                            mapper.originalEvent(
-                                    event.entityNo(), event.storeNo(), event.eventNo());
-                    if (old != null) {
-                        if (!Objects.equals(old.stationNo(), event.stationNo())
-                                || !old.eventType().equals(event.eventType())
-                                || !old.sourceNo().equals(event.sourceNo())
-                                || old.sourceVersion() != event.sourceVersion()
-                                || !old.payload().equals(event.payload())
-                                || !old.occurredAt().equals(at)) {
-                            conflict();
-                        }
-                        return null;
-                    }
-                    long next = Math.addExact(head, 1);
-                    mapper.insert(
-                            new FnbKdsEvent(
-                                    event.entityNo(),
-                                    event.storeNo(),
-                                    next,
-                                    event.eventNo(),
-                                    event.stationNo(),
-                                    event.eventType(),
-                                    event.sourceNo(),
-                                    event.sourceVersion(),
-                                    event.payload(),
-                                    at));
-                    mapper.advance(event.entityNo(), event.storeNo(), next);
-                    return null;
-                });
+        return view(row);
     }
 
     private void authorize(FnbKdsSubscription row, String actor) {

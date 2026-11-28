@@ -94,7 +94,7 @@ P1 本身照做：餐饮的行业 Mapper 对齐新结构，并在「`industry` �
 
 | 项 | 变更 |
 |---|---|
-| 端点 / JSON | 设备出口（§2.8）：厨显按序号拉事件停用，改工位状态接口 + 刷新通知；新增叫号屏状态接口与配对。其余无 |
+| 端点 / JSON | 设备出口（§2.8）：`GET /biz/x/food/kitchen-events` 停用；`kitchen-stream` 只推 `refresh`、去掉 `after` 与 `Last-Event-ID`；状态用现成的后厨任务列表与排号列表；手工打印不再接受厨房变更、桌台变更、标签三种事件单（D-3 已做）。叫号屏配对待 D-5。其余无 |
 | 库表 | 行业库：按 [06-n_industry.sql](design/schema/ddl/06-n_industry.sql) 建；补充脚本 `V2` 只补代码真实需要、设计稿漏掉的列与唯一键（ADR-068 第 4 条：防重列与唯一约束保留），每处写依据。旧库：不改（「只要在新库上能跑」，同平台基础库换表） |
 | 配置项 | 无新增。`shop.modules.industry.datasource` 已有；P1 后餐饮要求它指向按 `n_industry` 建的库 |
 | 权限码 / i18n | 无 |
@@ -408,7 +408,16 @@ P1 的行业库表数随之增加（这几张在设计 DDL 里没有，`V2` 按�
 - **D-2 工位运行状态并回工位**（§2.8）。`fnb_station_runtime` 退役（`V2` 不再建，`FoodIndustryTables.MERGED` 登记）；开停写 `fnb_station.runtime_status`（`RUNNING` / `PAUSED`，空即 `RUNNING`，沿用接口现有取值；设计稿注释的 OPEN/CLOSED 在 D-6 对齐），版本号用工位自己的 `version`，按读到的版本比较交换，改不到即冲突。
   不再需要「先补一行运行状态」：`FoodStationRuntimeMapper#initialize` 删除。代价：开停会推进工位版本号，此后拿旧版本号改工位配置会冲突，需重新读取。
   测试：两个运行状态夹具的工位表补 `runtime_status`、`version`；补一条断言暂停后工位行状态与版本号。全量 763 个无失败，MySQL 新库测试通过。
-- 待做：设备出口 D-3～D-6（§2.8）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
+- **D-3 屏改为收刷新、拉当前状态**（§2.8，用户 2026-11-28 定多实例广播这次一起做）。
+  - **刷新信号** `FoodDeviceRefresh`（food-api）：只带门店、工位、变化类型（`KITCHEN` / `QUEUE` / `STATION`），提交后发。配了消息中间件时由 `BrokerFoodDeviceRefresh`（food-core）经**广播订阅**发到每个服务实例；没配时 `InProcessFoodDeviceRefresh` 只在本进程内传。发出时：厨房动作、接单、改单、账单变化（设备出口消费者收到发件箱事件后）、工位开停与语音指令（`FoodStationRuntimeServiceImpl`）、排号变化（`QueueServiceImpl`）。
+  - **消息封装加广播订阅**（基础能力，ADR-067 第 9 条的实现语义补第 6 条）：`BrokerSubscription` 加 `broadcast`；RabbitMQ 实现给每个进程实例建一条非持久、最后一个消费者断开即删的队列 `<前缀>.<订阅名>.<实例号>`，不设投递上限与死信，处理失败只记日志。原三参构造保留，现有订阅不受影响。
+  - **状态接口用现成的**：后厨任务列表 `GET /biz/x/food/stores/{storeNo}/kitchen/tasks?stationNo=`、排号列表 `GET /biz/x/food/queue-tickets`，不新增端点。
+  - **事件流** `GET /biz/x/food/kitchen-stream?subscriptionNo=` 只推 `refresh` 事件（`kind` + 该看的 `stationNos`）：连上推一次全量；本店、涉及这台屏工位的信号到了就推；每 30 秒重新核验订阅并兜底推一次全量，订阅被吊销或过期即断开。`after` 参数与 `Last-Event-ID` 去掉。
+  - **停用** `GET /biz/x/food/kitchen-events`（按序号拉）与内部接口 `/internal/food/kds/replay`、`/append`，新增内部 `/authorize`；`FoodKdsService.replay/append` 换成 `authorize`。`fnb_kds_event`、`fnb_kds_cursor` 退役（`V2` 删表、不建游标；`FoodIndustryTables.MERGED` 登记；校验器去掉）。语音领取与回执原先借游标做全店串行，改为只锁本台屏的订阅行。
+  - **设备出口消费者**（`DiningKdsEventConsumer`，处理者编号不变）不再写厨显事件表：发刷新，并按打印路由打事件单据（厨房变更、标签、桌台变更）。单据内容直接由到达的事件定格（`FoodEventPrintDocuments`，从 food-core 的 `FoodEventPrintDocumentAssembler` 移来），经 `PrintPort` 入队。**契约变化**：手工 `POST /biz/x/food/print-jobs` 不再接受这三种事件单场景（`BAD_REQUEST`），补打走原打印任务的补打。
+  - 测试：流的验收测试按刷新语义重写（首推、按店按工位过滤、兜底重新核验后断开、吊销的订阅连不上）；消费者测试改为断言刷新与由事件定格的标签；订阅测试改测核验；运行状态的 MySQL 测试改为断言提交后发信号、被拒不发；`RabbitMessageBrokerTest` 补广播拓扑。food-core 761 个（跳过 55）、food-web 258 个无失败；本机 MySQL 上新库、运行状态、厨房生命周期、耗料来源测试通过；网关接口清单重新生成（B 端少 1 个入口）。
+  - 未做：独立部署（`shop.food.deployment=standalone`）且未配消息中间件时，网关侧收不到核心进程的开停与叫号信号，只靠 30 秒兜底；叫号屏的订阅与设备类型在 D-5。
+- 待做：设备出口 D-4～D-6（§2.8）、JDBC 行业 Mapper 与跨域流程的新库测试、P1-5 部署脚本、§8-Q3。
 
 ### 事务拆分记录
 

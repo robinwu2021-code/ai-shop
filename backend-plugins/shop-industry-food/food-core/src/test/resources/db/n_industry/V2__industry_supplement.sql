@@ -21,20 +21,8 @@ ALTER TABLE fnb_station
     DROP INDEX uk_food_1,
     ADD UNIQUE KEY uk_food_1 (station_no);
 
-ALTER TABLE fnb_kds_event
-    MODIFY entity_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    MODIFY store_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    MODIFY sequence_no BIGINT NOT NULL,
-    MODIFY event_no VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    MODIFY station_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    MODIFY event_type VARCHAR(40) NOT NULL,
-    MODIFY source_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    MODIFY source_version BIGINT NOT NULL,
-    MODIFY payload MEDIUMTEXT NOT NULL,
-    MODIFY occurred_at DATETIME(3) NOT NULL,
-    DROP INDEX uk_kds_source,
-    ADD UNIQUE KEY uk_kds_source (entity_no, store_no, event_no),
-    ADD UNIQUE KEY uk_kds_sequence (entity_no, store_no, sequence_no);
+-- 厨显事件流退役（TDD §2.8 D-3）：屏收刷新信号后拉当前状态，不再按门店序号拉事件；设计稿建的表删掉，游标表不建。
+DROP TABLE fnb_kds_event;
 
 ALTER TABLE fnb_kds_subscription
     MODIFY subscription_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
@@ -51,13 +39,6 @@ ALTER TABLE fnb_kds_subscription
     ADD COLUMN revoke_key VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
     ADD UNIQUE KEY uk_kds_subscription (subscription_no),
     ADD UNIQUE KEY uk_kds_grant (entity_no, store_no, requested_by, request_key);
-
-CREATE TABLE fnb_kds_cursor (
- entity_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
- store_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
- sequence_no BIGINT NOT NULL DEFAULT 0,
- PRIMARY KEY(entity_no,store_no)
-) ENGINE=InnoDB;
 
 -- 工位运行状态表 fnb_station_runtime 不建（TDD §2.8 D-2）：开停写 fnb_station.runtime_status（RUNNING/PAUSED，空即 RUNNING），用工位版本号。
 

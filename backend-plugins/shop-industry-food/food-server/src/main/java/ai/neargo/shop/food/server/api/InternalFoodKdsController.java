@@ -2,7 +2,6 @@ package ai.neargo.shop.food.server.api;
 
 import ai.neargo.shop.food.config.ConditionalOnFoodEnabled;
 import ai.neargo.shop.food.config.FoodPersistenceConfiguration;
-import ai.neargo.shop.food.dto.FoodKdsContracts.EventDraft;
 import ai.neargo.shop.food.service.FoodKdsService;
 import ai.neargo.shop.food.spi.FoodKdsInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
@@ -62,33 +61,13 @@ public class InternalFoodKdsController {
                                 c.key()));
     }
 
-    @PostMapping(FoodKdsInternalApi.ROOT + "/replay")
-    public ResponseEntity<?> replay(
-            @RequestBody FoodKdsInternalApi.Replay c,
+    @PostMapping(FoodKdsInternalApi.ROOT + "/authorize")
+    public ResponseEntity<?> authorize(
+            @RequestBody FoodKdsInternalApi.Authorize c,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         return InternalServiceResponses.invoke(
                 token,
                 given,
-                () ->
-                        service.replay(
-                                c.entityNo(),
-                                c.storeNo(),
-                                c.actorNo(),
-                                c.subscriptionNo(),
-                                c.after(),
-                                c.limit()));
-    }
-
-    @PostMapping(FoodKdsInternalApi.ROOT + "/append")
-    public ResponseEntity<?> append(
-            @RequestBody EventDraft c,
-            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
-        return InternalServiceResponses.invoke(
-                token,
-                given,
-                () -> {
-                    service.append(c);
-                    return Boolean.TRUE;
-                });
+                () -> service.authorize(c.entityNo(), c.storeNo(), c.actorNo(), c.subscriptionNo()));
     }
 }

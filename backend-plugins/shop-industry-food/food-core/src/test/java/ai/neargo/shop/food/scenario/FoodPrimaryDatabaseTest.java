@@ -105,13 +105,6 @@ class FoodPrimaryDatabaseTest {
                                 ai.neargo.shop.food.config.DiningDeliveryAutoConfiguration.class))
                 .withUserConfiguration(PrimaryWithModuleHandles.class)
                 .withBean(
-                        ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler.class,
-                        () ->
-                                new ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler(
-                                        new ai.neargo.shop.food.mapper.FoodKdsMapper(
-                                                new JdbcTemplate(source)),
-                                        new ObjectMapper()))
-                .withBean(
                         ai.neargo.shop.food.service.CheckBusinessGuardService.class,
                         () ->
                                 new ai.neargo.shop.food.service.impl.CheckBusinessGuardServiceImpl(

@@ -1,14 +1,16 @@
 package ai.neargo.shop.food.scenario;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.food.spi.FoodDeviceRefresh;
+import ai.neargo.shop.food.spi.FoodDeviceRefresh.Signal;
+import ai.neargo.shop.food.spi.InProcessFoodDeviceRefresh;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
-import ai.neargo.shop.food.dto.FoodKdsContracts.EventDraft;
 import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.ControlReq;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.VoiceReceipt;
@@ -23,7 +25,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
@@ -40,7 +42,7 @@ class FoodStationRuntimePersistenceTest extends FoodWriteGuardFixture {
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-30T00:00:00Z"), ZoneOffset.UTC);
 
     private record Fixture(JdbcTemplate sql, FoodKdsMapper mapper, FoodKdsService kds,
-            FoodStationRuntimeService runtime, String subscription) {}
+            FoodStationRuntimeService runtime, String subscription, List<Signal> signals) {}
 
     private Fixture fixture(org.springframework.boot.test.context.assertj.AssertableApplicationContext c) {
         var f = prepare(c);
@@ -54,13 +56,20 @@ class FoodStationRuntimePersistenceTest extends FoodWriteGuardFixture {
         var mapper = new FoodKdsMapper(f.sql());
         var json = c.getBean(ObjectMapper.class);
         var manager = c.getBean(PlatformTransactionManager.class);
-        var kds = spy(new FoodKdsServiceImpl(mapper, printing, json, manager, clock));
+        var kds = new FoodKdsServiceImpl(mapper, printing, json, manager, clock);
         var subscription = kds.grant("E", "S", "ADMIN", new GrantReq("D", "BRIDGE", List.of("ST"), 3600), "grant");
         var runtime = new FoodStationRuntimeServiceImpl(new FoodStationRuntimeMapper(f.sql()), mapper, kds, printing, manager, clock, json);
-        return new Fixture(f.sql(), mapper, kds, runtime, subscription.subscriptionNo());
+        var refresh = new InProcessFoodDeviceRefresh();
+        var signals = new CopyOnWriteArrayList<Signal>();
+        refresh.listen(signals::add);
+        runtime.setDeviceRefresh(refresh);
+        return new Fixture(f.sql(), mapper, kds, runtime, subscription.subscriptionNo(), signals);
     }
 
-    @Test void controlsCommitWithOriginalKdsPayloadCursorAndIdempotencyWithoutOutbox() {
+    private static final Signal STATION = new Signal("E", "S", FoodDeviceRefresh.STATION, List.of("ST"));
+
+    /** 开停提交后让看这个工位的屏刷新（TDD §2.8 D-3）；同键重放不再发。 */
+    @Test void controlsCommitIdempotentlyAndSignalTheStationAfterCommitWithoutOutbox() {
         runner().run(c -> {
             var f = fixture(c);
             var request = new ControlReq(0, "PAUSE", "congestion", null, null);
@@ -70,78 +79,48 @@ class FoodStationRuntimePersistenceTest extends FoodWriteGuardFixture {
             assertThat(f.sql.queryForMap("SELECT runtime_status,version FROM fnb_station WHERE station_no='ST'"))
                     .containsEntry("runtime_status", "PAUSED").containsEntry("version", 1L);
             f.runtime.control("E", "S", "ADMIN", "ST", new ControlReq(1, "RESUME", "clear", null, null), "resume");
-            var events = f.kds.replay("E", "S", "BRIDGE", f.subscription, 0, 10).events();
-            assertThat(events).hasSize(2);
-            assertThat(events).extracting(e -> e.cursor()).containsExactly(1L, 2L);
-            assertThat(events).extracting(e -> e.sourceVersion()).containsExactly(1L, 2L);
-            assertThat(events.getFirst().sourceNo()).isEqualTo(paused.commandNo());
-            assertThat(events.getFirst().eventType()).isEqualTo("STATION_CONTROL");
-            assertThat(c.getBean(ObjectMapper.class).readTree(events.getFirst().payload()).path("action").asString()).isEqualTo("PAUSE");
+            assertThat(f.signals).containsExactly(STATION, STATION);
             assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Long.class)).isZero();
             assertThat(f.runtime.state("E", "S", "ST").status()).isEqualTo("RUNNING");
         });
     }
 
-    @Test void voiceEventsFollowActualQueuedSentAndPlayedReceiptsWithNoDuplicateAck() {
+    @Test void voiceCommandSignalsOnQueueSendAndPlayedReceiptWithNoDuplicateAck() {
         runner().run(c -> {
             var f = fixture(c);
-            var command = f.runtime.control("E", "S", "ADMIN", "ST", new ControlReq(0, "CALL", "ready", "D", "A12"), "call");
+            f.runtime.control("E", "S", "ADMIN", "ST", new ControlReq(0, "CALL", "ready", "D", "A12"), "call");
             var claim = f.runtime.claim("E", "S", "BRIDGE", f.subscription);
             var receipt = new VoiceReceipt(claim.commandNo(), claim.leaseToken(), "PLAYED", "OK");
             var played = f.runtime.acknowledge("E", "S", "BRIDGE", f.subscription, receipt);
             assertThat(f.runtime.acknowledge("E", "S", "BRIDGE", f.subscription, receipt)).isEqualTo(played);
-            var events = f.kds.replay("E", "S", "BRIDGE", f.subscription, 0, 10).events();
-            assertThat(events).hasSize(3);
-            assertThat(events).extracting(e -> e.eventType()).containsOnly("VOICE_CALL");
-            assertThat(events).extracting(e -> e.sourceNo()).containsOnly(command.commandNo());
-            var statuses = events.stream().map(e -> c.getBean(ObjectMapper.class).readTree(e.payload()).path("status").asString()).toList();
-            assertThat(statuses).containsExactly("QUEUED", "SENT", "PLAYED");
+            assertThat(played.status()).isEqualTo("PLAYED");
+            assertThat(f.signals).containsExactly(STATION, STATION, STATION);
             assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Long.class)).isZero();
         });
     }
 
-    @Test void failingLocalProjectionRollsBackCommandStateEventAndCursorTogether() {
+    @Test void rejectedControlChangesNothingAndSignalsNothing() {
         runner().run(c -> {
             var f = fixture(c);
-            doAnswer(i -> { i.callRealMethod(); throw new IllegalStateException("projection rollback"); })
-                    .when(f.kds).append(any(EventDraft.class));
-            assertThatThrownBy(() -> f.runtime.control("E", "S", "ADMIN", "ST", new ControlReq(0, "PAUSE", "hold", null, null), "rollback"))
-                    .isInstanceOf(IllegalStateException.class).hasMessage("projection rollback");
+            assertThatThrownBy(() -> f.runtime.control("E", "S", "ADMIN", "ST", new ControlReq(5, "PAUSE", "hold", null, null), "stale"))
+                    .isInstanceOf(BizException.class);
             assertThat(f.runtime.state("E", "S", "ST").version()).isZero();
             assertThat(f.runtime.state("E", "S", "ST").status()).isEqualTo("RUNNING");
             assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM fnb_kds_voice_command", Long.class)).isZero();
-            assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM fnb_kds_event", Long.class)).isZero();
-            assertThat(f.mapper.head("E", "S", false)).isZero();
+            assertThat(f.signals).isEmpty();
         });
     }
 
-    @Test void concurrentControlAndVoiceClaimSerializeOnOriginalCursorAndKeepAllEvents() throws Exception {
+    @Test void concurrentControlAndVoiceClaimBothCommit() throws Exception {
         runner().run(c -> {
             var f = fixture(c);
             f.runtime.control("E", "S", "ADMIN", "ST", new ControlReq(0, "CALL", "ready", "D", "A12"), "call");
-            var holding = new CountDownLatch(1);
-            var release = new CountDownLatch(1);
-            doAnswer(i -> {
-                EventDraft event = i.getArgument(0);
-                if ("STATION_CONTROL".equals(event.eventType())) {
-                    holding.countDown();
-                    if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("control gate timeout");
-                }
-                return i.callRealMethod();
-            }).when(f.kds).append(any(EventDraft.class));
             try (var pool = Executors.newFixedThreadPool(2)) {
                 var control = pool.submit(() -> f.runtime.control("E", "S", "ADMIN", "ST", new ControlReq(1, "PAUSE", "hold", null, null), "pause"));
-                try {
-                    assertThat(holding.await(10, TimeUnit.SECONDS)).isTrue();
-                    var voice = pool.submit(() -> f.runtime.claim("E", "S", "BRIDGE", f.subscription));
-                    release.countDown();
-                    assertThat(control.get(10, TimeUnit.SECONDS).status()).isEqualTo("APPLIED");
-                    assertThat(voice.get(10, TimeUnit.SECONDS).commandNo()).isNotBlank();
-                } finally { release.countDown(); }
+                var voice = pool.submit(() -> f.runtime.claim("E", "S", "BRIDGE", f.subscription));
+                assertThat(control.get(10, TimeUnit.SECONDS).status()).isEqualTo("APPLIED");
+                assertThat(voice.get(10, TimeUnit.SECONDS).commandNo()).isNotBlank();
             }
-            var events = f.kds.replay("E", "S", "BRIDGE", f.subscription, 0, 10).events();
-            assertThat(events).extracting(e -> e.cursor()).containsExactly(1L, 2L, 3L);
-            assertThat(events).extracting(e -> e.eventNo()).doesNotHaveDuplicates();
             assertThat(f.sql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Long.class)).isZero();
         });
     }

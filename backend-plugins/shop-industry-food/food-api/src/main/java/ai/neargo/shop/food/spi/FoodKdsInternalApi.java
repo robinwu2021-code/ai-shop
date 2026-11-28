@@ -1,8 +1,6 @@
 package ai.neargo.shop.food.spi;
 
-import ai.neargo.shop.food.dto.FoodKdsContracts.EventDraft;
 import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
-import ai.neargo.shop.food.dto.FoodKdsContracts.ReplayVO;
 import ai.neargo.shop.food.dto.FoodKdsContracts.RevokeReq;
 import ai.neargo.shop.food.dto.FoodKdsContracts.SubscriptionVO;
 
@@ -27,13 +25,7 @@ public interface FoodKdsInternalApi {
             RevokeReq definition,
             String key) {}
 
-    record Replay(
-            String entityNo,
-            String storeNo,
-            String actorNo,
-            String subscriptionNo,
-            long after,
-            int limit) {}
+    record Authorize(String entityNo, String storeNo, String actorNo, String subscriptionNo) {}
 
     @PostExchange(ROOT + "/grant")
     SubscriptionVO grant(@RequestBody Grant request);
@@ -41,9 +33,6 @@ public interface FoodKdsInternalApi {
     @PostExchange(ROOT + "/revoke")
     SubscriptionVO revoke(@RequestBody Revoke request);
 
-    @PostExchange(ROOT + "/replay")
-    ReplayVO replay(@RequestBody Replay request);
-
-    @PostExchange(ROOT + "/append")
-    Boolean append(@RequestBody EventDraft event);
+    @PostExchange(ROOT + "/authorize")
+    SubscriptionVO authorize(@RequestBody Authorize request);
 }
