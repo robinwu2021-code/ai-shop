@@ -33,25 +33,29 @@ public class PaymentReadRouter {
     private final JdbcTemplate jdbc;
     private final BizIdentityResolver identities;
     private final AuditLogPort audit;
+    /** 门店与主体在平台基础库：经商户端口判（门店已删为空；主体已删时市场回落为 CN，不等于 TW） */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchants;
 
     @Autowired
     public PaymentReadRouter(BizPaymentAppService production, PaymentReadProperties properties,
             InternalHttp http, @Qualifier("dataSource") DataSource dataSource,
-            BizIdentityResolver identities, AuditLogPort audit) {
+            BizIdentityResolver identities, AuditLogPort audit,
+            ai.neargo.shop.spi.user.MerchantQueryPort merchants) {
         this(production, properties,
                 http.client(ServiceName.PAY, SandboxPaymentReadApi.class, Duration.ofSeconds(5)),
-                dataSource, identities, audit);
+                dataSource, identities, audit, merchants);
     }
 
     PaymentReadRouter(BizPaymentAppService production, PaymentReadProperties properties,
             SandboxPaymentReadApi sandbox, DataSource dataSource, BizIdentityResolver identities,
-            AuditLogPort audit) {
+            AuditLogPort audit, ai.neargo.shop.spi.user.MerchantQueryPort merchants) {
         this.production = production;
         this.properties = properties;
         this.sandbox = sandbox;
         this.jdbc = new JdbcTemplate(dataSource);
         this.identities = identities;
         this.audit = audit;
+        this.merchants = merchants;
     }
 
     public CollectStatus status(String environment) {
@@ -115,18 +119,20 @@ public class PaymentReadRouter {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
         Integer matches = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM payment_collection_source b JOIN mch_store s"
-                        + " ON s.store_no=b.store_no AND s.entity_no=b.entity_no JOIN mch_entity e"
-                        + " ON e.entity_no=s.entity_no WHERE b.environment='SANDBOX'"
+                "SELECT COUNT(*) FROM payment_collection_source b WHERE b.environment='SANDBOX'"
                         + " AND b.source_type='CHECKOUT' AND b.source_id=b.pay_app_id"
-                        + " AND b.enabled=1 AND b.store_no=? AND b.entity_no=?"
-                        + " AND s.deleted=0 AND e.deleted=0 AND e.market='TW'",
+                        + " AND b.enabled=1 AND b.store_no=? AND b.entity_no=?",
                 Integer.class, store, entity);
-        if (matches == null || matches == 0) {
+        var owner = merchants.payStoreOf(store);
+        if (matches == null || matches == 0 || owner.isEmpty() || !entity.equals(owner.get().entityNo())
+                || !SANDBOX_MARKET.equals(owner.get().market())) {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
         return new Scope(store, SecurityUtils.currentUserNo());
     }
+    /** 沙箱专用读只开给这个市场的门店 */
+    static final String SANDBOX_MARKET = "TW";
+
     private String caller() { return properties.dedicatedSandboxCaller(); }
     private String credential() { return properties.dedicatedSandboxCredential(); }
     private record Scope(String store, String operator) {}

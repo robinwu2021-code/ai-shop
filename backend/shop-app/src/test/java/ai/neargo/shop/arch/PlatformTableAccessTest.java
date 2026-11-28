@@ -45,7 +45,11 @@ class PlatformTableAccessTest {
      * 已执行的历史迁移（冻结，只在旧库上跑过）。
      */
     private static final List<String> NOT_ACCESS = List.of("shop-app/src/main/java/ai/neargo/shop/config/DataScopeRegistration.java",
-            "shop-app/src/main/java/ai/neargo/shop/config/SessionProfiles.java", "/src/main/java/db/migration/");
+            "shop-app/src/main/java/ai/neargo/shop/config/SessionProfiles.java", "/src/main/java/db/migration/",
+            // 收款商户回填与比对：迁移工具，按设计读旧库的 mch_payment_merchant（新库已并入 near-pay）连同旧的门店、主体做对照，
+            // 不是运行时访问平台表；随收款商户迁移收尾一起退役
+            "shop-gateway/src/main/java/ai/neargo/shop/paybridge/PayMerchantBackfillRunner.java",
+            "shop-gateway/src/main/java/ai/neargo/shop/paybridge/PayMerchantComparator.java");
 
     private static final List<String> SPLIT_OUT = List.of("/merchant/booking/", "/merchant/funds/", "/merchant/plan/",
             "/merchant/paymerchant/", "/merchant/dictionary/", "/merchant/violation/");
