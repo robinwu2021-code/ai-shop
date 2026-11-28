@@ -34,15 +34,14 @@ class ServiceCatalogFactsPortTest {
                 + "'APPROVED','ST-M0001',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
         sql.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,created_at,updated_at) "
                 + "VALUES('BM01-SKU','BM01-G','M0001','CN',9900,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
-        sql.update("INSERT INTO prd_store_goods(store_no,goods_no,entity_no,on_sale) "
-                + "VALUES('ST-M0001','BM01-G','M0001',1)");
+        sql.update("INSERT INTO prd_catalog_item(tenant_no,catalog_version_no,store_no,goods_no,entity_no,enabled) "
+                + "VALUES('MAIN','','ST-M0001','BM01-G','M0001',1)");
     }
     @AfterEach
     void clean() {
-        sql.update("DELETE FROM prd_store_catalog_version WHERE store_no='ST-M0001'");
         sql.update("DELETE FROM prd_store_catalog WHERE store_no='ST-M0001'");
         sql.update("DELETE FROM sys_idempotent WHERE idem_key LIKE 'BM01-CATALOG-%'");
-        sql.update("DELETE FROM prd_store_goods WHERE goods_no='BM01-G'");
+        sql.update("DELETE FROM prd_catalog_item WHERE goods_no='BM01-G'");
         sql.update("DELETE FROM prd_sku WHERE sku_no='BM01-SKU'");
         sql.update("DELETE FROM prd_goods WHERE goods_no='BM01-G'");
     }
@@ -84,9 +83,9 @@ class ServiceCatalogFactsPortTest {
         sql.update("UPDATE prd_goods SET type='FRESH' WHERE goods_no='BM01-G'");
         assertThatThrownBy(() -> catalog.service("ST-M0001", "BM01-SKU")).isInstanceOf(BizException.class);
         sql.update("UPDATE prd_goods SET type='SERVICE' WHERE goods_no='BM01-G'");
-        sql.update("UPDATE prd_store_goods SET on_sale=0 WHERE goods_no='BM01-G'");
+        sql.update("UPDATE prd_catalog_item SET enabled=0 WHERE goods_no='BM01-G'");
         assertThatThrownBy(() -> catalog.service("ST-M0001", "BM01-SKU")).isInstanceOf(BizException.class);
-        sql.update("UPDATE prd_store_goods SET on_sale=1 WHERE goods_no='BM01-G'");
+        sql.update("UPDATE prd_catalog_item SET enabled=1 WHERE goods_no='BM01-G'");
         sql.update("UPDATE prd_sku SET market='OTHER' WHERE sku_no='BM01-SKU'");
         assertThatThrownBy(() -> catalog.service("ST-M0001", "BM01-SKU")).isInstanceOf(BizException.class);
     }

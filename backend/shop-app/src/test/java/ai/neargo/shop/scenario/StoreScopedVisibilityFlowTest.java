@@ -1178,8 +1178,7 @@ class StoreScopedVisibilityFlowTest {
     /** 这件货的店级行：门店号 → 在架与否。**空 Map = 零行** */
     private java.util.Map<String, Boolean> storeRowsOf(String goodsNo) {
         return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                storeGoodsMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                                .<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                storeGoodsMapper.selectList(ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                 .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNo))
                         .stream()
                         .collect(java.util.stream.Collectors.toMap(

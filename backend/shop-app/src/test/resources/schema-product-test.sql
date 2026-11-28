@@ -1,6 +1,6 @@
 -- 【自动生成，勿手改】由 backend/scripts/gen-product-test-schema.py 生成。
 -- 商品领域的表按新库设计（05-n_trade.sql、07-n_member.sql）建，在 schema-test.sql 之前执行（同名旧表随之跳过）。
--- 过渡列（新设计已去掉、商品代码还在用，迁完对应批次即删）：prd_sku.stock；prd_sku.locked_stock；prd_store_catalog.current_version_no
+-- 过渡列（新设计已去掉、商品代码还在用，迁完对应批次即删）：prd_sku.stock；prd_sku.locked_stock
 
 CREATE TABLE IF NOT EXISTS prd_category (
   id bigint NOT NULL AUTO_INCREMENT,
@@ -408,17 +408,16 @@ CREATE TABLE IF NOT EXISTS prd_store_catalog (
   fulfillments varchar(255) DEFAULT NULL,
   status varchar(10) DEFAULT NULL,
   deleted tinyint NOT NULL DEFAULT 0,
-  frozen_content TEXT NULL,
+  frozen_content mediumtext NULL,
   snapshot_hash char(64) DEFAULT NULL,
   version bigint NOT NULL DEFAULT 0,
   created_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   created_by varchar(64) DEFAULT NULL,
   updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_by varchar(64) DEFAULT NULL,
-  current_version_no VARCHAR(32) NOT NULL,
   PRIMARY KEY (id),
-  CONSTRAINT prd_store_catalog__uk_prd_catalog_no UNIQUE (tenant_no, entity_no, catalog_no),
-  CONSTRAINT prd_store_catalog__uk_prd_catalog_scope UNIQUE (tenant_no, entity_no, store_no)
+  CONSTRAINT prd_store_catalog__uk_prd_store_catalog_tenant_no_entity_no_catalog_no_version_n UNIQUE (tenant_no, entity_no, catalog_no, version_no),
+  CONSTRAINT prd_store_catalog__uk_prd_store_catalog_tenant_no_catalog_vers UNIQUE (tenant_no, catalog_version_no)
 );
 
 CREATE TABLE IF NOT EXISTS prd_catalog_item (
@@ -444,7 +443,8 @@ CREATE TABLE IF NOT EXISTS prd_catalog_item (
   updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_by varchar(64) DEFAULT NULL,
   PRIMARY KEY (id),
-  CONSTRAINT prd_catalog_item__uk_food_1 UNIQUE (category_no, goods_no)
+  CONSTRAINT prd_catalog_item__uk_food_1 UNIQUE (category_no, goods_no),
+  CONSTRAINT prd_catalog_item__uk_prd_catalog_item_tenant_no_store_no_goods_no_catalog_vers UNIQUE (tenant_no, store_no, goods_no, catalog_version_no)
 );
 
 CREATE TABLE IF NOT EXISTS prd_store_sku (

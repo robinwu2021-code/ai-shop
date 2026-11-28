@@ -190,23 +190,34 @@ public class InvManagedServiceImpl implements InvManagedService {
     @Override
     @Transactional(transactionManager = ModuleDataSources.PRODUCT_TX_MANAGER)
     public void saveCategory(String entityNo, String categoryNo, boolean managed, String operator) {
+        String rowNo = PrdEntityCategoryInv.keyOf(entityNo, categoryNo);
         PrdEntityCategoryInv row = DataScopeContext.executeWithoutScope(() ->
-                categoryInvMapper.selectOne(Wrappers.<PrdEntityCategoryInv>lambdaQuery()
-                        .eq(PrdEntityCategoryInv::getEntityNo, entityNo)
-                        .eq(PrdEntityCategoryInv::getCategoryNo, categoryNo)
+                categoryInvMapper.selectOne(EntityCategoryInvMapper.entityLevel()
+                        .eq(PrdEntityCategoryInv::getRowNo, rowNo)
                         .last("limit 1")));
         if (row == null) {
             PrdEntityCategoryInv n = new PrdEntityCategoryInv();
             n.setEntityNo(entityNo);
+            n.setRowNo(rowNo);
             n.setCategoryNo(categoryNo);
             n.setManaged(managed ? 1 : 0);
             n.setCreatedBy(operator);
             n.setUpdatedBy(operator);
-            DataScopeContext.executeWithoutScope(() -> categoryInvMapper.insert(n));
-            return;
+            try {
+                DataScopeContext.executeWithoutScope(() -> categoryInvMapper.insert(n));
+                return;
+            } catch (org.springframework.dao.DuplicateKeyException concurrent) {
+                // 同一开关被同时首次设置：行编号是算出来的，撞键说明对方已插 —— 改那一行
+                row = DataScopeContext.executeWithoutScope(() ->
+                        categoryInvMapper.selectOne(EntityCategoryInvMapper.entityLevel()
+                                .eq(PrdEntityCategoryInv::getRowNo, rowNo)
+                                .last("limit 1")));
+            }
         }
         PrdEntityCategoryInv u = new PrdEntityCategoryInv();
         u.setId(row.getId());
+        u.setStoreNo(null);
+        u.setCatalogNo(null);
         u.setManaged(managed ? 1 : 0);
         u.setUpdatedBy(operator);
         DataScopeContext.executeWithoutScope(() -> categoryInvMapper.updateById(u));
@@ -219,7 +230,7 @@ public class InvManagedServiceImpl implements InvManagedService {
             return out;
         }
         DataScopeContext.executeWithoutScope(() -> categoryInvMapper.selectList(
-                        Wrappers.<PrdEntityCategoryInv>lambdaQuery()
+                        EntityCategoryInvMapper.entityLevel()
                                 .eq(PrdEntityCategoryInv::getEntityNo, entityNo)))
                 .forEach(r -> out.put(r.getCategoryNo(), r.getManaged() != null && r.getManaged() == 1));
         return out;

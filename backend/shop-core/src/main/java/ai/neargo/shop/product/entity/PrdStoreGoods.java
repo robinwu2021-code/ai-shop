@@ -22,13 +22,30 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("prd_store_goods")
+@TableName("prd_catalog_item")
 public class PrdStoreGoods extends BaseEntity {
+    /**
+     * 门店级上下架行的目录版本号：空串（门店交易库批次 2-g，原 {@code prd_store_goods} 并入 {@code prd_catalog_item}）。
+     *
+     * <p>同一张表里挂目录版本的是菜单条目（餐饮），不是这里的门店上下架；读写一律从
+     * {@code StoreGoodsMapper.storeLevel()} 起手，只碰空串那一类。存空串不存 NULL：唯一键
+     * {@code (tenant_no, store_no, goods_no, catalog_version_no)} 里 NULL 互不相等，挡不住重复。
+     */
+    public static final String STORE_LEVEL = "";
+
+    private String catalogVersionNo = STORE_LEVEL;
+
+    /** 新表的 tenant_no 没有默认值：不填就是 NULL，按租户查的地方（门店换绑检查）会漏掉这一行 */
+    public PrdStoreGoods() {
+        setTenantNo("MAIN");
+    }
 
     private String storeNo;
     private String goodsNo;
     /** 冗余主体号：按商家查全部门店上架情况时免 join */
     private String entityNo;
+    /** 新表叫 enabled（本目录里卖不卖这件商品），语义同旧的 on_sale */
+    @com.baomidou.mybatisplus.annotation.TableField("enabled")
     private Boolean onSale;
 
     /**

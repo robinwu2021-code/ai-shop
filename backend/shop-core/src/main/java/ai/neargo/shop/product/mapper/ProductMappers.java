@@ -7,7 +7,6 @@ import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdStoreCatalog;
-import ai.neargo.shop.product.entity.PrdStoreCatalogVersion;
 import ai.neargo.shop.product.entity.PrdStoreSku;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.time.LocalDateTime;
@@ -24,21 +23,15 @@ public final class ProductMappers {
     }
 
     public interface StoreCatalogMapper extends ProductTableMapper<PrdStoreCatalog> {
-        /** Serialize checkout with publication on the same platform catalog head. */
+        /**
+         * 锁住这家店目录的最新一版：结账与发布在同一行上排队（批次 2-g 起一个版本一行，
+         * 发布插新行之前先锁旧的最新行，结账拿到的目录在它的事务里不会被换掉）。
+         */
         @Select("SELECT * FROM prd_store_catalog WHERE tenant_no='MAIN' "
-                + "AND entity_no=#{entity} AND store_no=#{store} AND deleted=0 FOR UPDATE")
-        PrdStoreCatalog lockHead(@Param("entity") String entity, @Param("store") String store);
-
-        @Update("UPDATE prd_store_catalog SET current_version_no=#{next}, version=version+1, "
-                + "updated_at=#{at}, updated_by=#{actor} WHERE tenant_no='MAIN' AND entity_no=#{entity} "
-                + "AND store_no=#{store} AND catalog_no=#{catalog} AND version=#{expected} AND deleted=0")
-        int advance(@Param("entity") String entity, @Param("store") String store,
-                @Param("catalog") String catalog, @Param("expected") long expected,
-                @Param("next") String next, @Param("actor") String actor,
-                @Param("at") LocalDateTime at);
+                + "AND entity_no=#{entity} AND store_no=#{store} AND deleted=0 "
+                + "ORDER BY version_no DESC LIMIT 1 FOR UPDATE")
+        PrdStoreCatalog lockLatest(@Param("entity") String entity, @Param("store") String store);
     }
-
-    public interface StoreCatalogVersionMapper extends ProductTableMapper<PrdStoreCatalogVersion> { }
 
     public interface GoodsMapper extends ProductTableMapper<PrdGoods> {
     }
@@ -55,9 +48,17 @@ public final class ProductMappers {
     public interface StockSyncLogMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdStockSyncLog> {
     }
 
-    /** 主体按类目的「记不记库存」（V345）。稀疏，只改不删 */
+    /** 主体按类目的「记不记库存」（V345；批次 2-g 起在 prd_store_category 的主体级行上）。稀疏，只改不删 */
     public interface EntityCategoryInvMapper
             extends ProductTableMapper<ai.neargo.shop.product.entity.PrdEntityCategoryInv> {
+        /** 主体级行（门店号为空串）；门店号非空的是商家的门店展示分类，不是库存开关 */
+        static com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                ai.neargo.shop.product.entity.PrdEntityCategoryInv> entityLevel() {
+            return com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdEntityCategoryInv>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdEntityCategoryInv::getStoreNo,
+                            ai.neargo.shop.product.entity.PrdEntityCategoryInv.ENTITY_LEVEL);
+        }
     }
 
     /** 商品收藏（V343）。取消要真删，理由同 SpecUsageMapper#purgeScope：软删行占着唯一键，再收藏就撞 */
@@ -432,7 +433,27 @@ public final class ProductMappers {
     }
 
     /** 门店级上架关系。只有增删改查，没有原子扣减那套 —— 它不是并发争抢的资源 */
+    /**
+     * 门店级上下架（{@code prd_catalog_item} 里目录版本号为空串的那一类，批次 2-g）。
+     * 查询与按条件更新一律从 {@link #storeLevel()} / {@link #storeLevelUpdate()} 起手：
+     * 漏了条件就会把餐饮菜单条目当成门店上下架读进来，而那不报错。
+     */
     public interface StoreGoodsMapper extends ProductTableMapper<ai.neargo.shop.product.entity.PrdStoreGoods> {
+        static com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                ai.neargo.shop.product.entity.PrdStoreGoods> storeLevel() {
+            return com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getCatalogVersionNo,
+                            ai.neargo.shop.product.entity.PrdStoreGoods.STORE_LEVEL);
+        }
+
+        static com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<
+                ai.neargo.shop.product.entity.PrdStoreGoods> storeLevelUpdate() {
+            return com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaUpdate()
+                    .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getCatalogVersionNo,
+                            ai.neargo.shop.product.entity.PrdStoreGoods.STORE_LEVEL);
+        }
     }
 
     public interface StockLockMapper extends ProductTableMapper<PrdStockLock> {

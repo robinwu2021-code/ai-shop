@@ -264,7 +264,7 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
         if (byGoods.size() != goodsNos.size()) throw notFound();
         var overlays =
                 visibility.selectList(
-                        Wrappers.<PrdStoreGoods>lambdaQuery()
+                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                 .eq(PrdStoreGoods::getEntityNo, q.entityNo())
                                 .in(PrdStoreGoods::getGoodsNo, goodsNos));
         var managed = new HashSet<String>();

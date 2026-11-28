@@ -207,20 +207,20 @@ class CatalogPriceSourcePortTest {
                     var source = c.getBean(CatalogPriceSourcePort.class);
                     sql.update(
                             "INSERT INTO"
-                                + " prd_store_goods(id,entity_no,store_no,goods_no,on_sale,version,deleted)"
-                                + " VALUES(1,'FOREIGN','OTHER','G',TRUE,1,0)");
+                                + " prd_catalog_item(id,entity_no,store_no,goods_no,enabled,version,deleted,catalog_version_no)"
+                                + " VALUES(1,'FOREIGN','OTHER','G',TRUE,1,0,'')");
                     assertThat(source.capture(REQUEST).prices()).hasSize(1);
                     sql.update(
                             "INSERT INTO"
-                                + " prd_store_goods(id,entity_no,store_no,goods_no,on_sale,version,deleted)"
-                                + " VALUES(2,'E','OTHER','G',TRUE,2,0)");
+                                + " prd_catalog_item(id,entity_no,store_no,goods_no,enabled,version,deleted,catalog_version_no)"
+                                + " VALUES(2,'E','OTHER','G',TRUE,2,0,'')");
                     code(() -> source.capture(REQUEST), ErrorCode.NOT_FOUND);
                     sql.update(
                             "INSERT INTO"
-                                + " prd_store_goods(id,entity_no,store_no,goods_no,on_sale,version,deleted)"
-                                + " VALUES(3,'E','S','G',FALSE,3,0)");
+                                + " prd_catalog_item(id,entity_no,store_no,goods_no,enabled,version,deleted,catalog_version_no)"
+                                + " VALUES(3,'E','S','G',FALSE,3,0,'')");
                     code(() -> source.capture(REQUEST), ErrorCode.NOT_FOUND);
-                    sql.update("UPDATE prd_store_goods SET on_sale=TRUE,version=4 WHERE id=3");
+                    sql.update("UPDATE prd_catalog_item SET enabled=TRUE,version=4 WHERE id=3");
                     assertThat(source.capture(REQUEST).prices().getFirst().versions().storeGoods())
                             .isEqualTo(4);
                     sql.update("UPDATE prd_goods SET store_no='OTHER'");
@@ -346,8 +346,8 @@ class CatalogPriceSourcePortTest {
                             .isEqualTo(900);
                     sql.update(
                             "INSERT INTO"
-                                + " prd_store_goods(id,entity_no,store_no,goods_no,on_sale,version,deleted)"
-                                + " VALUES(1,'E','S','G',TRUE,NULL,0)");
+                                + " prd_catalog_item(id,entity_no,store_no,goods_no,enabled,version,deleted,catalog_version_no)"
+                                + " VALUES(1,'E','S','G',TRUE,NULL,0,'')");
                     assertThatThrownBy(() -> source.capture(REQUEST))
                             .isInstanceOf(IllegalStateException.class);
                 });

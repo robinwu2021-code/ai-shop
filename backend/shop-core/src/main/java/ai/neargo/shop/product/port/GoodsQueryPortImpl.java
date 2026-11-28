@@ -224,7 +224,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         }
         List<ai.neargo.shop.product.entity.PrdStoreGoods> rows =
                 DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
-                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                 .in(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNos)));
         if (rows.isEmpty()) {
             return java.util.Set.of();
@@ -419,7 +419,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         }
         List<ai.neargo.shop.product.entity.PrdStoreGoods> rows =
                 DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
-                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                 .in(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, storeOfGoods.keySet())));
         java.util.Set<String> managed = new java.util.HashSet<>();
         java.util.Set<String> onHere = new java.util.HashSet<>();

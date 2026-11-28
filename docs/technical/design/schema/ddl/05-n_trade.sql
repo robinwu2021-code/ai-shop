@@ -426,7 +426,7 @@ CREATE TABLE `prd_store_catalog` (
   `fulfillments` varchar(255) DEFAULT NULL COMMENT '适用的履约方式（JSON 数组，如堂食、自提、外送）；空表示全部',
   `status` varchar(10) DEFAULT NULL COMMENT '启停：ENABLED 启用 / DISABLED 停用',
   `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除：0 = 正常，1 = 已删除',
-  `frozen_content` json NULL COMMENT '冻结内容（结账对账用）',
+  `frozen_content` mediumtext NULL COMMENT '冻结内容（结账对账用）：发布时的原文，快照摘要按它算',
   `snapshot_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '快照摘要',
   `version` bigint NOT NULL DEFAULT 0 COMMENT '乐观锁版本号，每次修改加 1',
   `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
@@ -434,8 +434,8 @@ CREATE TABLE `prd_store_catalog` (
   `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间，每次修改自动更新',
   `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_prd_catalog_no` (`tenant_no`, `entity_no`, `catalog_no`),
-  UNIQUE KEY `uk_prd_catalog_scope` (`tenant_no`, `entity_no`, `store_no`)
+  UNIQUE KEY `uk_prd_store_catalog_tenant_no_entity_no_catalog_no_version_n` (`tenant_no`, `entity_no`, `catalog_no`, `version_no`),
+  UNIQUE KEY `uk_prd_store_catalog_tenant_no_catalog_vers` (`tenant_no`, `catalog_version_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='门店目录：一家店的一份在售清单，一家店可以有多份；带类型、生效日期、同时生效时的优先级、适用的下单来源和履约方式。不留历史版本，只有草稿、已发布、上一版，带版本号与发布时间供各端同步对齐';
 
 CREATE TABLE `prd_catalog_item` (
@@ -462,7 +462,8 @@ CREATE TABLE `prd_catalog_item` (
   `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
   PRIMARY KEY (`id`),
   KEY `ix_food_audit` (`entity_no`, `created_at`, `id`),
-  UNIQUE KEY `uk_food_1` (`category_no`, `goods_no`)
+  UNIQUE KEY `uk_food_1` (`category_no`, `goods_no`),
+  UNIQUE KEY `uk_prd_catalog_item_tenant_no_store_no_goods_no_catalog_vers` (`tenant_no`, `store_no`, `goods_no`, `catalog_version_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='目录条目：目录里的一个商品，带排序与展示';
 
 CREATE TABLE `prd_store_sku` (

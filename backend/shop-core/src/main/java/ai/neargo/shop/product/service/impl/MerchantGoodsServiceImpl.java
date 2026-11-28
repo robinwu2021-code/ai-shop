@@ -256,9 +256,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             DataScopeContext.executeWithoutScope(
                             () ->
                                     storeGoodsMapper.selectList(
-                                            Wrappers
-                                                    .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                            lambdaQuery()
+                                            ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                     .eq(
                                                             ai.neargo.shop.product.entity
                                                                             .PrdStoreGoods
@@ -420,9 +418,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectList(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getEntityNo,
@@ -490,9 +486,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectList(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getEntityNo,
@@ -785,9 +779,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectList(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .in(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getGoodsNo,
@@ -2679,9 +2671,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectList(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getStoreNo,
@@ -2824,9 +2814,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectOne(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getStoreNo,
@@ -3001,9 +2989,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 storeGoodsMapper.selectOne(
-                                        Wrappers
-                                                .<ai.neargo.shop.product.entity.PrdStoreGoods>
-                                                        lambdaQuery()
+                                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                 .eq(
                                                         ai.neargo.shop.product.entity.PrdStoreGoods
                                                                 ::getStoreNo,
@@ -3034,10 +3020,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         DataScopeContext.executeWithoutScope(
                                 () ->
                                         storeGoodsMapper.selectOne(
-                                                Wrappers
-                                                        .<ai.neargo.shop.product.entity
-                                                                        .PrdStoreGoods>
-                                                                lambdaQuery()
+                                                ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                                         .eq(
                                                                 ai.neargo.shop.product.entity
                                                                                 .PrdStoreGoods
@@ -4047,7 +4030,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         return DataScopeContext.executeWithoutScope(
                 () ->
                         storeGoodsMapper.selectList(
-                                Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                         .eq(
                                                 ai.neargo.shop.product.entity.PrdStoreGoods
                                                         ::getGoodsNo,

@@ -73,7 +73,9 @@ ADD_COLUMNS = {
         "`favorite` tinyint NOT NULL DEFAULT 0 COMMENT '是否常用'",
     ],
     'prd_store_catalog': [
-        "`frozen_content` json NULL COMMENT '冻结内容（结账对账用）'",
+        # 不用 json 类型：MySQL 会把 JSON 规范化（键排序、去空白），读回来的文本与写入时不同，
+        # 快照摘要按写入文本算，读出即对不上（商品领域迁移批次 2-g，用户 2026-11-28 确认改 DDL）
+        "`frozen_content` mediumtext NULL COMMENT '冻结内容（结账对账用）：发布时的原文，快照摘要按它算'",
         "`snapshot_hash` char(64) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '快照摘要'",
     ],
     'ord_appointment': [
@@ -102,9 +104,17 @@ ADD_UNIQUE = {
     'ord_cart_item': [('cart_item_no',)],
     'ord_item': [('sub_order_no', 'line_no')],
     'prd_catalog_item_sku': [('catalog_item_no', 'sku_no')],
+    # 商品领域迁移批次 2-g（用户 2026-11-28 确认）：目录按版本一行，保留定时生效；版本号即并发闸门
+    'prd_store_catalog': [('tenant_no', 'entity_no', 'catalog_no', 'version_no'), ('tenant_no', 'catalog_version_no')],
+    # 门店级的上下架行（原 prd_store_goods）：目录版本号存空串，一店一商品一行
+    'prd_catalog_item': [('tenant_no', 'store_no', 'goods_no', 'catalog_version_no')],
     'prd_fulfillment_requirement': [('requirement_no', 'revision_no')],
     'fnb_kds_subscription': [('subscription_no',)],
     'ind_commission_rule': [('rule_no', 'version_no')],
+}
+# 去掉的唯一约束：prd_store_catalog 一店一行装不下按版本存的目录（定时生效要并存多版）
+DROP_KEYS = {
+    'prd_store_catalog': ['uk_prd_catalog_no', 'uk_prd_catalog_scope'],
 }
 ADD_INDEX = {
     'ind_assignment': [('target_type', 'target_no'), ('entity_no', 'store_no', 'planned_start_at')],
@@ -185,6 +195,9 @@ def fix_keys(table, keys, cols):
     names = {col_name(c) for c in cols}
     have = set()
     for k in keys:
+        dm = re.search(r'KEY `([^`]+)`', k)
+        if dm and dm.group(1) in DROP_KEYS.get(table, []):
+            continue
         k2 = k
         m = re.match(r'(\s*)KEY `(uk_[^`]+)` \((.*)\)$', k)
         if m:  # D1：以 uk_ 命名的一律是唯一约束

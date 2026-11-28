@@ -263,8 +263,6 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * 运营端若要按商家过滤门店价，在查询里显式带 entity_no。
          */
         registry.register("prd_store_catalog", Map.of(ScopeDim.MERCHANT, "entity_no"));
-        registry.register("prd_store_catalog_version", Map.of(
-                ScopeDim.MERCHANT, "entity_no"));
 
         /*
          * —— 图片资产记账 sys_media_asset：**刻意不登记**（TDD-图片存储与空间回收）——

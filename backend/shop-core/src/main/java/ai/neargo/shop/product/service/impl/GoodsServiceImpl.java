@@ -294,7 +294,7 @@ public class GoodsServiceImpl implements GoodsService {
      */
     private List<String> notOnSaleAt(String entityNo, String storeNo) {
         List<ai.neargo.shop.product.entity.PrdStoreGoods> rows = DataScopeContext.executeWithoutScope(() ->
-                storeGoodsMapper.selectList(Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                storeGoodsMapper.selectList(ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                         .eq(entityNo != null && !entityNo.isBlank(),
                                 ai.neargo.shop.product.entity.PrdStoreGoods::getEntityNo, entityNo)));
         java.util.Set<String> managed = new java.util.HashSet<>();
@@ -469,7 +469,7 @@ public class GoodsServiceImpl implements GoodsService {
         }
         List<ai.neargo.shop.product.entity.PrdStoreGoods> rows =
                 DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
-                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                        ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper.storeLevel()
                                 .in(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNos)));
         Map<String, java.util.Set<String>> selling = new HashMap<>();
         for (var r : rows) {

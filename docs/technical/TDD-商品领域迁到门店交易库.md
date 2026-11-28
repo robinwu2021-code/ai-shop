@@ -102,6 +102,7 @@
 - 规格范围的搬法：类目绑定写 `CATEGORY` 维度级行（`value_no=''`），类目取值子集写同范围取值级行；商家覆盖写 `MCH_CATEGORY`（`scope_ref` = 商家号/类目号，`value_no` 空串照搬，`enabled=0` → `DISABLED`）；商家常用维度与取值写 `MERCHANT`（`favorite=1`）。
 - 规格模板的搬法：平台模板按名字对到规格库的平台维度、选项按 code 对到取值，写 `CATEGORY_TYPE` 推荐（对不上的维度或取值列进搬迁报告，人工定）；`category_no` 非空的类目级模板不搬；商家自存模板转为他的自建维度 + `MERCHANT` 常用。
 - 草稿的搬法：每行草稿在提交历史里落一行（`EDITING` → `EDITING`、`SUBMITTED` → `SUBMITTED`，`base_version` → `base_goods_version`），编号取该商品最大编号 +1；若同一商品已有未发布（`DRAFT`）且内容相同的那一行，直接改它的状态而不另开。
+- 门店目录的搬法：旧库每个目录版本一行写进 `prd_store_catalog`（`revision_index` → `version_no`、`frozen_payload` → `frozen_content` 原文照搬、`stage = PUBLISHED`，目录号沿用旧编号）；门店商品写 `prd_catalog_item`（`catalog_version_no = ''`、`on_sale` → `enabled`）；类目库存开关写 `prd_store_category` 主体级行（`category_no` 按同一摘要算）。
 - 合表的搬法：`prd_store_price` 与 `prd_store_stock` 按 门店 + SKU 合成一行（库存行没有市场列，取本市场）；类目付款方式只搬 `allowed=0` 的行进 `disallowed_pay_modes`；SKU 定价策略、卡类权益绑定按 SKU 写进本市场那一行（权益绑定的 `status` 非 ACTIVE 或已删的，SKU 置 `DISABLED`）。
 - 对账：逐表比行数，商品、SKU、门店价与库存逐行比关键字段；对账报告存进上线记录。
 - 搬迁在切换窗口里与交易一起做，搬完旧表只读、不删。
@@ -196,6 +197,11 @@
   - 审核队列、待审看板改数提交历史里的 `SUBMITTED`；数据域登记从 `prd_goods_draft` 换到 `prd_goods_revision`（同为 MERCHANT / `entity_no`，服务层访问都已显式豁免）；门店换绑的「有没有商品数据」检查同样换表。
   - B 端：`GoodsRevisionStatus` 加三个值，历史页加中英阿三语文案，编辑中/待审用提醒色；编辑页横幅「草稿 vN · 线上 vM」改认编辑中/待审。接口字段不变。
   - 测试：`GoodsIntegrityFlowTest` 驳回后断言历史留有驳回原因；`M9bBizGoodsFlowTest` 放弃后断言历史留有已放弃那一版；`b-app/tests/goods-revisions.test.ts` 加新状态。基线 −1。
+- **2-g 门店目录三张表**（用户 2026-11-28 确认，其中两处改了新库 DDL，改在 `scripts/gen-retail-ddl.py`）：
+  - 目录版本 `prd_store_catalog_version` → `prd_store_catalog`，**一个版本一行**。DDL：去掉「一店一行」`uk_prd_catalog_scope` 与 `uk_prd_catalog_no`，改为 `(tenant_no, entity_no, catalog_no, version_no)`、`(tenant_no, catalog_version_no)` 两条唯一；`frozen_content` 从 `json` 改为 `mediumtext`（MySQL 会规范化 JSON，读回的文本与写入不同，快照摘要即对不上）。发布 = 锁住最新一版（`lockLatest ... FOR UPDATE`）、核对 expectedRevision、插下一版；结账锁同一行。读与结账取「已生效里最新的那一版」，定时生效照旧。首发的目录号用门店号，两人同时首发撞唯一键只留一份。`StoreSalesCatalogIT` 改为用定稿 DDL 建表（删掉旧迁移 V596 的升级用例），本机 MySQL 9.7 上 7 条全过。
+  - 门店商品 `prd_store_goods` → `prd_catalog_item` 的「门店级行」：`catalog_version_no` 存空串、`enabled` 即原 `on_sale`。DDL 加唯一 `(tenant_no, store_no, goods_no, catalog_version_no)`；餐饮的 `uk_food_1 (category_no, goods_no)` 保留（门店级行类目为空，不受它约束）。查询一律从 `StoreGoodsMapper.storeLevel()` 起手，免得把菜单条目当成门店上下架。
+  - 主体类目库存开关 `prd_entity_category_inv` → `prd_store_category` 的「主体级行」：门店号、目录号存空串，`platform_category_no` 为平台类目，`inv_managed` 为开关；行编号 `category_no` 按「主体 + 平台类目」摘要算出（`INV` + 29 位），同一开关永远落同一行，并发首设撞键后改那一行。不改 DDL。
+  - 新表 `tenant_no` 无默认值，两个实体构造时填 `MAIN`。门店换绑检查从 `prd_store_goods` 换到 `prd_catalog_item`；数据域去掉 `prd_store_catalog_version` 的登记。基线 −3。
 - 公共防重表 `sys_idempotent` 目前在主库、不与商品事务同库（定价策略原本就是如此）；它属于公共能力，随防重服务化处理，不进门店交易库。
 
 ### 偏差说明
