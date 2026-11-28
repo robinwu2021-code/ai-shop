@@ -15248,6 +15248,12 @@
           "ar": "التغيير غير متاح"
         },
         {
+          "key": "management.blocker.CHAIN_ENTITLEMENT_REQUIRED",
+          "zh-CN": "这家门店还没有连锁权益，先在商城购买连锁版套餐或连锁端包",
+          "en": "This store has no chain entitlement yet; buy the chain plan or chain add-on in the mall first",
+          "ar": "لا يملك هذا المتجر صلاحية السلسلة بعد؛ اشترِ باقة السلسلة أو إضافة السلسلة من المتجر أولاً"
+        },
+        {
           "key": "management.blocker.DEPENDENCY_NOT_READY",
           "zh-CN": "共享能力尚未就绪",
           "en": "Shared capabilities are not ready",
@@ -15816,6 +15822,12 @@
           "zh-CN": "已停用",
           "en": "Inactive",
           "ar": "غير مفعّل"
+        },
+        {
+          "key": "management.state.PAY_PREPARED",
+          "zh-CN": "支付侧已准备",
+          "en": "Payment side prepared",
+          "ar": "تم تجهيز جانب الدفع"
         },
         {
           "key": "management.state.PENDING_LICENSE",
@@ -34713,6 +34725,12 @@
           "ar": "لا تملك ترخيصًا لهذه الفئة، قدّم طلبًا من «تراخيص النشاط» أولًا"
         },
         {
+          "key": "err.merchant.chain_entitlement_required",
+          "zh-CN": "这家门店还没有连锁权益，先在商城给它购买连锁版套餐或连锁端包，再加入品牌。",
+          "en": "This store has no chain entitlement yet. Buy the chain plan or the chain add-on for it in the mall, then add it to the brand.",
+          "ar": "لا يملك هذا المتجر صلاحية السلسلة بعد. اشترِ له باقة السلسلة أو إضافة السلسلة من المتجر، ثم أضِفه إلى العلامة التجارية."
+        },
+        {
           "key": "err.merchant.channel_locked",
           "zh-CN": "这条送货方式已被平台暂停，请联系运营",
           "en": "This delivery method was suspended by the platform — contact ops",
@@ -36851,13 +36869,6 @@
       "package": "ai.neargo.shop.merchant.entity"
     },
     {
-      "table": "mch_staff_log",
-      "class": "MchStaffLog",
-      "zh": "员工与授权的操作日志（B-11.10.3）。",
-      "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
-    },
-    {
       "table": "mch_store",
       "class": "MchStore",
       "zh": "门店（V44 起由「主体的门面」升级为门店实体，表名 mch_store）。",
@@ -36882,13 +36893,6 @@
       "table": "mch_store_qrcode_print",
       "class": "MchStoreQrcodePrint",
       "zh": "店铺码印刷量登记（append-only 台账）。",
-      "module": "shop-merchant",
-      "package": "ai.neargo.shop.merchant.entity"
-    },
-    {
-      "table": "mch_store_role",
-      "class": "MchStoreRole",
-      "zh": "子账号在某家门店的角色。",
       "module": "shop-merchant",
       "package": "ai.neargo.shop.merchant.entity"
     },
@@ -37094,6 +37098,13 @@
       "zh": "客服工单。",
       "module": "shop-core",
       "package": "ai.neargo.shop.message.entity"
+    },
+    {
+      "table": "ops_staff",
+      "class": "SysOpsStaff",
+      "zh": "运营员工。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.platform.entity"
     },
     {
       "table": "ord_after_sale",
@@ -38739,13 +38750,6 @@
       "zh": "短信/邮件发送记录。",
       "module": "shop-core",
       "package": "ai.neargo.shop.message.entity"
-    },
-    {
-      "table": "sys_ops_staff",
-      "class": "SysOpsStaff",
-      "zh": "运营员工。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.platform.entity"
     },
     {
       "table": "sys_outbox",
@@ -41190,7 +41194,7 @@
         "host": "BizKey",
         "name": "STAFF",
         "value": "STF",
-        "zh": "平台运营员工（sys_ops_staff）。",
+        "zh": "平台运营员工（ops_staff）。",
         "module": "shop-base"
       },
       {
@@ -46857,6 +46861,34 @@
         "module": "shop-merchant"
       },
       {
+        "host": "ChainAdmissionPolicy",
+        "name": "ENTITLEMENT",
+        "value": "END_CHAIN",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "ChainAdmissionPolicy",
+        "name": "BASIS_ENTITLEMENT",
+        "value": "ENTITLEMENT",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "ChainAdmissionPolicy",
+        "name": "BASIS_LEGACY",
+        "value": "LEGACY",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "ChainAdmissionPolicy",
+        "name": "BLOCKER",
+        "value": "CHAIN_ENTITLEMENT_REQUIRED",
+        "zh": "预检返回给前端的阻断项：门店没有连锁权益，下一步去商城购买",
+        "module": "shop-merchant"
+      },
+      {
         "host": "StoreVO",
         "name": "OTHER",
         "value": "OTHER",
@@ -47043,69 +47075,6 @@
         "name": "LEVEL_PICKUP_POINT",
         "value": "PICKUP_POINT",
         "zh": "邻里自提点：ref_code 是自提点号，channel 是 NEIGHBOR_PICKUP。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchStaffLog",
-        "name": "STAFF_ADD",
-        "value": "STAFF_ADD",
-        "zh": "加员工（含把已停用的重新启用 —— 对老板来说那就是「把人加回来」）",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchStaffLog",
-        "name": "STAFF_ENABLE",
-        "value": "STAFF_ENABLE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchStaffLog",
-        "name": "STAFF_DISABLE",
-        "value": "STAFF_DISABLE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchStaffLog",
-        "name": "STAFF_PHONE_CHANGE",
-        "value": "STAFF_PHONE_CHANGE",
-        "zh": "The staff member changed their own login phone; this entity's row followed (D5).",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchStaffLog",
-        "name": "ROLE_GRANT",
-        "value": "ROLE_GRANT",
-        "zh": "授予某店某角色",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchStaffLog",
-        "name": "ROLE_REVOKE",
-        "value": "ROLE_REVOKE",
-        "zh": "撤销某店某角色。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchStaffLog",
-        "name": "ROLE_CREATE",
-        "value": "ROLE_CREATE",
-        "zh": "下面三个是**角色定义本身**的变更（V71 自定义角色）。",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchStaffLog",
-        "name": "ROLE_UPDATE",
-        "value": "ROLE_UPDATE",
-        "zh": "",
-        "module": "shop-merchant"
-      },
-      {
-        "host": "MchStaffLog",
-        "name": "ROLE_DELETE",
-        "value": "ROLE_DELETE",
-        "zh": "",
         "module": "shop-merchant"
       },
       {
@@ -47490,6 +47459,83 @@
         "host": "PlanVO",
         "name": "FROM_CONFIG",
         "value": "CONFIG",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StaffAuditLogger",
+        "name": "STAFF_ADD",
+        "value": "STAFF_ADD",
+        "zh": "动作码（原 MchStaffLog 上的常量。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StaffAuditLogger",
+        "name": "STAFF_ENABLE",
+        "value": "STAFF_ENABLE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StaffAuditLogger",
+        "name": "STAFF_DISABLE",
+        "value": "STAFF_DISABLE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StaffAuditLogger",
+        "name": "STAFF_PHONE_CHANGE",
+        "value": "STAFF_PHONE_CHANGE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StaffAuditLogger",
+        "name": "ROLE_GRANT",
+        "value": "ROLE_GRANT",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StaffAuditLogger",
+        "name": "ROLE_REVOKE",
+        "value": "ROLE_REVOKE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StaffAuditLogger",
+        "name": "ROLE_CREATE",
+        "value": "ROLE_CREATE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StaffAuditLogger",
+        "name": "ROLE_UPDATE",
+        "value": "ROLE_UPDATE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StaffAuditLogger",
+        "name": "ROLE_DELETE",
+        "value": "ROLE_DELETE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StoreRoleGrants",
+        "name": "KIND_ROLE",
+        "value": "ROLE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "StoreRoleGrants",
+        "name": "RESOURCE_STORE",
+        "value": "STORE",
         "zh": "",
         "module": "shop-merchant"
       },
@@ -48966,6 +49012,7 @@
           "STORE_SUSPENDED_BY_PLATFORM",
           "STAFF_QUOTA_EXCEEDED",
           "PLAN_CAPABILITY_REQUIRED",
+          "CHAIN_ENTITLEMENT_REQUIRED",
           "CATEGORY_TOO_DEEP",
           "CATEGORY_IN_USE",
           "CATEGORY_PARENT_ARCHIVED",

@@ -17736,9 +17736,6 @@ components:
         allowed:
           type: "boolean"
           description: "Whether the server permits this operation after checking all constraints."
-        canDecide:
-          type: "boolean"
-          description: "Whether the operator may approve or reject this checked change."
         blockers:
           type: "array"
           items:
@@ -17762,7 +17759,37 @@ components:
           type:
             - "number"
             - "null"
-          description: "Destination-brand revision validated by the impact check."
+        admission:
+          type: "object"
+          properties:
+            required:
+              type: "string"
+            basis:
+              type:
+                - "string"
+                - "null"
+              enum:
+                - "ENTITLEMENT"
+                - "LEGACY"
+                - null
+            entitledUntil:
+              type:
+                - "number"
+                - "null"
+          required:
+            - "required"
+            - "basis"
+            - "entitledUntil"
+          additionalProperties: false
+          description: "Chain admission: joining a brand needs the store's END_CHAIN entitlement; basis is null when not admitted."
+        nextAction:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "BUY"
+            - null
+          description: "BUY when the store must purchase the chain entitlement in the mall first."
       required:
         - "allowed"
         - "blockers"
@@ -17775,12 +17802,11 @@ components:
     BrandChange:
       type: "object"
       properties:
-        financial:
-          type: "boolean"
-          description: "Whether this brand-binding change uses the financial stored-value migration workflow."
         changeNo:
-          type: "string"
-          description: "Identifier of the requested brand/store binding change."
+          type:
+            - "string"
+            - "null"
+          description: "Identifier of the applied brand/store binding change; null when not applied."
         managementNo:
           type: "string"
           description: "Management-space identifier under which the operation is authorized."
@@ -17793,36 +17819,32 @@ components:
         toBrandNo:
           type: "string"
           description: "Destination brand identifier; null removes the store's brand binding."
-        status:
-          type: "string"
-          description: "Current server-owned lifecycle state of this resource."
-        revision:
-          type: "number"
-          description: "Current revision used for optimistic concurrency or snapshot traceability."
+        bindingNo:
+          type:
+            - "string"
+            - "null"
+          description: "New binding created by the change; null when leaving or not applied."
         applied:
           type: "boolean"
-          description: "Whether the accepted change has been applied to the store's current binding."
+          description: "Whether the change has been applied to the store's current binding."
+        admissionBasis:
+          type:
+            - "string"
+            - "null"
+          description: "Why the store was admitted to the chain (ENTITLEMENT or LEGACY); null when leaving."
         blockers:
           type: "array"
           items:
             type: "string"
           description: "Server-provided reasons preventing the requested operation."
-        actions:
-          type: "array"
-          items:
-            type: "string"
-          description: "Actions currently permitted by the server for this resource."
-        reason:
-          type: "string"
-          description: "Business reason recorded for the operation, rejection or manual recovery."
       required:
         - "changeNo"
         - "managementNo"
         - "storeNo"
-        - "status"
-        - "revision"
         - "applied"
+        - "blockers"
       additionalProperties: false
+      description: "Result of a brand change: applied at once when checks pass (no approval step)."
     OperatingContext:
       type: "object"
       properties:
@@ -25984,7 +26006,7 @@ paths:
   "/biz/stores/{s}/brand-changes":
     post:
       operationId: "mSubmitBrandChange"
-      summary: "提交品牌变更"
+      summary: "品牌变更（校验通过当场生效）"
       tags:
         - "stores"
       security:
@@ -26020,78 +26042,6 @@ paths:
           "application/json":
             schema:
               "$ref": "#/components/schemas/ManagementBrandChangeSubmitReq"
-  "/biz/management/brand-changes/{c}":
-    get:
-      operationId: "mBrandChange"
-      summary: "查询品牌变更"
-      tags:
-        - "management"
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: "c"
-          in: "path"
-          required: true
-          schema:
-            type: "string"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "application/json":
-              schema:
-                type: "object"
-                properties:
-                  code:
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg:
-                    type: "string"
-                  data:
-                    "$ref": "#/components/schemas/BrandChange"
-                required:
-                  - "code"
-                  - "msg"
-                  - "data"
-  "/biz/management/brand-changes/{c}/decisions":
-    post:
-      operationId: "mDecideBrandChange"
-      summary: "决定品牌变更"
-      tags:
-        - "management"
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: "c"
-          in: "path"
-          required: true
-          schema:
-            type: "string"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "application/json":
-              schema:
-                type: "object"
-                properties:
-                  code:
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg:
-                    type: "string"
-                  data:
-                    "$ref": "#/components/schemas/BrandChange"
-                required:
-                  - "code"
-                  - "msg"
-                  - "data"
-      requestBody:
-        required: true
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ManagementBrandDecisionReq"
   "/biz/stored-value/customer-candidates":
     get:
       operationId: "mSvCandidates"

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1275 个接口**：后端已实现 1017（80%）· 前端在调 1092
+**合计 1273 个接口**：后端已实现 1017（80%）· 前端在调 1090
 
 ---
 
@@ -332,7 +332,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **511** 个接口 ｜ 后端已实现 **402**（79%）｜ 前端在调 **509**
+共 **509** 个接口 ｜ 后端已实现 **402**（79%）｜ 前端在调 **507**
 
 ### activities（4）
 
@@ -638,12 +638,10 @@
 | PUT | `/biz/invoices/buyer-preferences` | 销售发票：付款前预存买受人 | — | — | 🔒 | ✅ | ✅ |
 | GET | `/biz/invoices/upload-backlog` | 销售发票：本门店上传积压 | — | `SiUploadBacklog` | 🔒 | ✅ | ✅ |
 
-### management（74）
+### management（72）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/biz/management/brand-changes/{c}` | 查询品牌变更 | — | `BrandChange` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/management/brand-changes/{c}/decisions` | 决定品牌变更 | `ManagementBrandDecisionReq` | `BrandChange` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/management/brands` | 品牌列表 | — | `ManagementBrandPage` | 🔒 | ✅ | ✅ |
 | POST | `/biz/management/brands` | 创建品牌 | `ManagementBrandCreateReq` | `Brand` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/brands/{b}` | 品牌详情 | — | `Brand` | 🔒 | ⬜ | ✅ |
@@ -1163,7 +1161,7 @@
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/stores/{no}/stored-value/store-summary` | mSvStoreSummary | — | `SvSummary` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/stores/{s}/brand-changes` | 提交品牌变更 | `ManagementBrandChangeSubmitReq` | `BrandChange` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{s}/brand-changes` | 品牌变更（校验通过当场生效） | `ManagementBrandChangeSubmitReq` | `BrandChange` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/stores/{s}/brand-changes/check` | 品牌变更影响检查 | `ManagementBrandCheckReq` | `BrandImpact` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{s}/operating-context` | 门店组织上下文 | — | `OperatingContext` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/stores/{store}/members` | 在当前品牌或门店录入会员 | `ScopeMemberCreateReq` | `ScopeMemberSummary` | 🔒 | ⬜ | ✅ |

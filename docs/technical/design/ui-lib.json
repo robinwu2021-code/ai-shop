@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 153,
+        "b-app": 152,
         "c-app": 82
       }
     },
@@ -635,7 +635,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 396,
+        "b-app": 395,
         "c-app": 105
       }
     },
@@ -677,7 +677,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 253,
+        "b-app": 252,
         "c-app": 36
       }
     },
@@ -827,7 +827,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 375,
+        "b-app": 374,
         "c-app": 98
       }
     },
@@ -849,7 +849,7 @@
         "padding": "14px 0"
       },
       "usage": {
-        "b-app": 13,
+        "b-app": 12,
         "c-app": 1
       }
     },
@@ -939,7 +939,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 133,
+        "b-app": 134,
         "c-app": 12
       }
     },
@@ -1479,7 +1479,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 776,
+        "b-app": 775,
         "c-app": 230
       }
     },
@@ -1729,7 +1729,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 12,
+        "b-app": 11,
         "c-app": 3
       }
     },
@@ -1799,7 +1799,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 95,
+        "b-app": 94,
         "c-app": 0
       }
     },
@@ -1941,7 +1941,7 @@
         "dock?: boolean"
       ],
       "usage": {
-        "b-app": 54,
+        "b-app": 53,
         "c-app": 19,
         "lib": 0
       },
@@ -3945,7 +3945,7 @@
         "sh-actionbar",
         "sh-scaffold"
       ],
-      "libClassHits": 14,
+      "libClassHits": 6,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []
@@ -3960,7 +3960,7 @@
         "sh-empty",
         "sh-sheet"
       ],
-      "libClassHits": 15,
+      "libClassHits": 16,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []

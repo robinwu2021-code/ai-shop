@@ -3850,74 +3850,6 @@ _无字段_
 
 ### management
 
-#### GET `/biz/management/brand-changes/{c}`
-
-查询品牌变更　🔒
-
-**入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `c` | path | `string` | 是 | — |
-
-**出参**（`data`）
-
-类型：[`BrandChange`](#brandchange)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
-| `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
-| `fromBrandNo` | `string` | 否 | Previous brand identifier; absent when the store was unbranded. |
-| `toBrandNo` | `string` | 否 | Destination brand identifier; null removes the store's brand binding. |
-| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
-| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
-| `applied` | `boolean` | 是 | Whether the accepted change has been applied to the store's current binding. |
-| `blockers` | `string`\[\] | 否 | Server-provided reasons preventing the requested operation. |
-| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
-| `reason` | `string` | 否 | Business reason recorded for the operation, rejection or manual recovery. |
-
-
-#### POST `/biz/management/brand-changes/{c}/decisions`
-
-决定品牌变更　🔒
-
-**入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `c` | path | `string` | 是 | — |
-
-请求体：[`ManagementBrandDecisionReq`](#managementbranddecisionreq)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `decision` | `APPROVE` \| `REJECT` | 是 | Approval or return decision submitted for the current revision. |
-| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
-| `reason` | `string` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
-
-**出参**（`data`）
-
-类型：[`BrandChange`](#brandchange)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
-| `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
-| `fromBrandNo` | `string` | 否 | Previous brand identifier; absent when the store was unbranded. |
-| `toBrandNo` | `string` | 否 | Destination brand identifier; null removes the store's brand binding. |
-| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
-| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
-| `applied` | `boolean` | 是 | Whether the accepted change has been applied to the store's current binding. |
-| `blockers` | `string`\[\] | 否 | Server-provided reasons preventing the requested operation. |
-| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
-| `reason` | `string` | 否 | Business reason recorded for the operation, rejection or manual recovery. |
-
-
 #### GET `/biz/management/brands`
 
 品牌列表　🔒
@@ -11859,7 +11791,7 @@ mSvStoreSummary　🔒
 
 #### POST `/biz/stores/{s}/brand-changes`
 
-提交品牌变更　🔒
+品牌变更（校验通过当场生效）　🔒
 
 **入参**
 
@@ -11875,18 +11807,15 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
-| `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
+| `changeNo` | `string,null` | 是 | Identifier of the applied brand/store binding change; null when not applied. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
 | `fromBrandNo` | `string` | 否 | Previous brand identifier; absent when the store was unbranded. |
 | `toBrandNo` | `string` | 否 | Destination brand identifier; null removes the store's brand binding. |
-| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
-| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
-| `applied` | `boolean` | 是 | Whether the accepted change has been applied to the store's current binding. |
-| `blockers` | `string`\[\] | 否 | Server-provided reasons preventing the requested operation. |
-| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
-| `reason` | `string` | 否 | Business reason recorded for the operation, rejection or manual recovery. |
+| `bindingNo` | `string,null` | 否 | New binding created by the change; null when leaving or not applied. |
+| `applied` | `boolean` | 是 | Whether the change has been applied to the store's current binding. |
+| `admissionBasis` | `string,null` | 否 | Why the store was admitted to the chain (ENTITLEMENT or LEGACY); null when leaving. |
+| `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
 
 
 #### POST `/biz/stores/{s}/brand-changes/check`
@@ -11913,13 +11842,22 @@ mSvStoreSummary　🔒
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `allowed` | `boolean` | 是 | Whether the server permits this operation after checking all constraints. |
-| `canDecide` | `boolean` | 否 | Whether the operator may approve or reject this checked change. |
 | `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
 | `checkToken` | `string` | 是 | Server-issued token binding submission to the validated change preview. |
 | `storeVersion` | `number` | 是 | Store revision validated by the impact check. |
 | `bindingRevision` | `number` | 是 | Expected revision of the existing brand/store binding. |
 | `fromRevision` | `number,null` | 是 | Revision of the source brand validated by the impact check. |
-| `toRevision` | `number,null` | 是 | Destination-brand revision validated by the impact check. |
+| `toRevision` | `number,null` | 是 | — |
+| `admission` | `object`（见下） | 否 | Chain admission: joining a brand needs the store's END_CHAIN entitlement; basis is null when not admitted. |
+| `nextAction` | `BUY` \| `null` | 否 | BUY when the store must purchase the chain entitlement in the mall first. |
+
+`admission` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `required` | `string` | 是 | — |
+| `basis` | `ENTITLEMENT` \| `LEGACY` \| `null` | 是 | — |
+| `entitledUntil` | `number,null` | 是 | — |
 
 
 #### GET `/biz/stores/{s}/operating-context`
@@ -13616,33 +13554,41 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 
 ### BrandChange
 
+Result of a brand change: applied at once when checks pass (no approval step).
+
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
-| `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
+| `changeNo` | `string,null` | 是 | Identifier of the applied brand/store binding change; null when not applied. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
 | `fromBrandNo` | `string` | 否 | Previous brand identifier; absent when the store was unbranded. |
 | `toBrandNo` | `string` | 否 | Destination brand identifier; null removes the store's brand binding. |
-| `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
-| `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
-| `applied` | `boolean` | 是 | Whether the accepted change has been applied to the store's current binding. |
-| `blockers` | `string`\[\] | 否 | Server-provided reasons preventing the requested operation. |
-| `actions` | `string`\[\] | 否 | Actions currently permitted by the server for this resource. |
-| `reason` | `string` | 否 | Business reason recorded for the operation, rejection or manual recovery. |
+| `bindingNo` | `string,null` | 否 | New binding created by the change; null when leaving or not applied. |
+| `applied` | `boolean` | 是 | Whether the change has been applied to the store's current binding. |
+| `admissionBasis` | `string,null` | 否 | Why the store was admitted to the chain (ENTITLEMENT or LEGACY); null when leaving. |
+| `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
 
 ### BrandImpact
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `allowed` | `boolean` | 是 | Whether the server permits this operation after checking all constraints. |
-| `canDecide` | `boolean` | 否 | Whether the operator may approve or reject this checked change. |
 | `blockers` | `string`\[\] | 是 | Server-provided reasons preventing the requested operation. |
 | `checkToken` | `string` | 是 | Server-issued token binding submission to the validated change preview. |
 | `storeVersion` | `number` | 是 | Store revision validated by the impact check. |
 | `bindingRevision` | `number` | 是 | Expected revision of the existing brand/store binding. |
 | `fromRevision` | `number,null` | 是 | Revision of the source brand validated by the impact check. |
-| `toRevision` | `number,null` | 是 | Destination-brand revision validated by the impact check. |
+| `toRevision` | `number,null` | 是 | — |
+| `admission` | `object`（见下） | 否 | Chain admission: joining a brand needs the store's END_CHAIN entitlement; basis is null when not admitted. |
+| `nextAction` | `BUY` \| `null` | 否 | BUY when the store must purchase the chain entitlement in the mall first. |
+
+`admission` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `required` | `string` | 是 | — |
+| `basis` | `ENTITLEMENT` \| `LEGACY` \| `null` | 是 | — |
+| `entitledUntil` | `number,null` | 是 | — |
 
 ### BusinessMode
 
@@ -15224,14 +15170,6 @@ SKU 组件：一件 SKU 交付哪些东西
 |---|---|:---:|---|
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `toBrandNo` | `string,null` | 是 | Destination brand identifier; null removes the store's brand binding. |
-
-### ManagementBrandDecisionReq
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `decision` | `APPROVE` \| `REJECT` | 是 | Approval or return decision submitted for the current revision. |
-| `expectedRevision` | `number` | 是 | Previously observed resource revision; stale writes are rejected. |
-| `reason` | `string` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
 
 ### ManagementBrandPage
 

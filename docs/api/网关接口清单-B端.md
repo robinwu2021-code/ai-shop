@@ -3,7 +3,7 @@
 > 由 `python3 scripts/gen-gateway-api-inventory.py` 生成，**请勿手改**。来源是后端源码里实际声明的入口。
 > 总览、分类规则与验证清单见 [网关接口清单](网关接口清单.md)。
 
-共 **1228** 个入口：支付 269、零售 583、餐饮 262、服务业 32、库存 45、平台与通用 37。
+共 **1226** 个入口：支付 269、零售 581、餐饮 262、服务业 32、库存 45、平台与通用 37。
 
 ## 支付（269）
 
@@ -378,9 +378,9 @@
 | GET | `/biz/stores/{storeNo}/stored-value/recharge-options` | `@perm.canBiz('pay:sv:recharge:create')` | 能提前判 | 默认构建 | 已入网关 | BizStoredValueIssuerOperationsController |
 | GET | `/biz/stores/{storeNo}/stored-value/store-summary` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoredValueReportController |
 
-## 零售（583）
+## 零售（581）
 
-网关判权：能提前判 454、只要求登录 123、留给入口判 6。构建：默认构建 515、插件 shop-commerce-integration 68。生产：已入网关 468、未部署 115。
+网关判权：能提前判 454、只要求登录 121、留给入口判 6。构建：默认构建 513、插件 shop-commerce-integration 68。生产：已入网关 466、未部署 115。
 
 ### activities（6）
 
@@ -703,12 +703,10 @@
 | GET | `/biz/invoice-setup/store-settings` | `@perm.canBiz('biz:invoice:read')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceStoreSetupController |
 | PUT | `/biz/invoice-setup/store-settings` | `@perm.canBiz('biz:invoice:setup')` | 能提前判 | 默认构建 | 未部署 | BizInvoiceStoreSetupController |
 
-### management（32）
+### management（30）
 
 | 方法 | 地址 | 权限要求 | 网关判权 | 构建 | 生产 | 入口类 |
 |---|---|---|---|---|---|---|
-| GET | `/biz/management/brand-changes/{changeNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoreOperatingContextController |
-| POST | `/biz/management/brand-changes/{changeNo}/decisions` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizStoreOperatingContextController |
 | GET | `/biz/management/brands` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
 | POST | `/biz/management/brands` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
 | GET | `/biz/management/brands/{brandNo}` | 商家身份 | 只要求登录 | 默认构建 | 已入网关 | BizBrandController |
